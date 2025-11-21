@@ -1,0 +1,524 @@
+// ============================================================================
+// TELYX - UPGRADED PRISMA SCHEMA
+// ============================================================================
+// This is the complete updated schema with subscription tiers,
+// usage tracking, and enhanced models
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ============================================================================
+// USERS & AUTHENTICATION
+// ============================================================================
+
+model User {
+  id         Int      @id @default(autoincrement())
+  email      String   @unique
+  password   String
+  role       UserRole @default(MEMBER)
+  businessId Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  business   Business @relation(fields: [businessId], references: [id])
+
+  @@index([businessId])
+  @@index([email])
+}
+
+enum UserRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+// ============================================================================
+// BUSINESS & SETTINGS
+// ============================================================================
+
+model Business {
+  id                     Int                     @id @default(autoincrement())
+  name                   String
+  
+  // ⭐ NEW: Language and Phone Numbers
+  language               String                  @default("EN") // "EN" or "TR"
+  phoneNumbers           String[]                @default([])   // Array of VAPI phone numbers
+  
+  // VAPI Configuration
+  vapiPhoneNumber        String?                 // DEPRECATED - use phoneNumbers array
+  vapiAssistantId        String?
+  vapiPitch              Float?                  @default(1.0)
+  vapiSpeed              Float?                  @default(1.0)
+  vapiTone               VoiceTone?              @default(PROFESSIONAL)
+  vapiVoiceGender        VoiceGender?            @default(MALE)
+  vapiVoiceId            String?                 @default("male-1-professional")
+  
+  // Business Settings
+  businessType           BusinessType            @default(OTHER)
+  customGreeting         String?
+  customInstructions     String?
+  bookingDuration        Int?                    @default(30)
+  bufferTime             Int?                    @default(15)
+  
+  // Google Sheets Integration (existing)
+  googleSheetId          String?
+  googleSheetLastSync    DateTime?
+  googleSheetName        String?
+  
+  // Timestamps
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  
+  // Relations
+  users                  User[]
+  subscription           Subscription?
+  callLogs               CallLog[]
+  aiTrainings            AiTraining[]
+  appointments           Appointment[]
+  businessHours          BusinessHours?
+  products               Product[]
+  shippingInfos          ShippingInfo[]
+  bookingIntegration     BookingIntegration?
+  reservationIntegration ReservationIntegration?
+  erpIntegration         ErpIntegration?
+  integrations           Integration[]           // ⭐ NEW
+
+  @@index([name])
+}
+
+enum BusinessType {
+  RESTAURANT
+  SALON
+  ECOMMERCE
+  SERVICE
+  OTHER
+}
+
+enum VoiceGender {
+  MALE
+  FEMALE
+}
+
+enum VoiceTone {
+  PROFESSIONAL
+  FRIENDLY
+  WARM
+  ENERGETIC
+}
+
+// ============================================================================
+// SUBSCRIPTION SYSTEM (UPGRADED)
+// ============================================================================
+
+model Subscription {
+  id                    Int                 @id @default(autoincrement())
+  businessId            Int                 @unique
+  business              Business            @relation(fields: [businessId], references: [id])
+  
+  // ⭐ NEW: Plan and Status
+  plan                  SubscriptionPlan    @default(FREE)
+  status                SubscriptionStatus  @default(TRIAL)
+  
+  // Stripe Integration
+  stripeCustomerId      String?
+  stripeSubscriptionId  String?             @unique
+  stripePriceId         String?
+  currentPeriodStart    DateTime?
+  currentPeriodEnd      DateTime?
+  cancelAtPeriodEnd     Boolean             @default(false)
+  
+  // ⭐ NEW: Usage Tracking
+  minutesUsed           Int                 @default(0)
+  callsThisMonth        Int                 @default(0)
+  assistantsCreated     Int                 @default(0)
+  phoneNumbersUsed      Int                 @default(0)
+  
+  // ⭐ NEW: Plan Limits (set based on plan)
+  minutesLimit          Int                 @default(0)      // 0 = unlimited
+  callsLimit            Int                 @default(0)      // 0 = unlimited
+  assistantsLimit       Int                 @default(0)
+  phoneNumbersLimit     Int                 @default(0)
+  
+  // Timestamps
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  @@index([businessId])
+  @@index([plan])
+  @@index([status])
+}
+
+enum SubscriptionPlan {
+  FREE
+  BASIC
+  PROFESSIONAL
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  INCOMPLETE
+}
+
+// ============================================================================
+// CALL LOGS (ENHANCED)
+// ============================================================================
+
+model CallLog {
+  id         Int      @id @default(autoincrement())
+  businessId Int
+  business   Business @relation(fields: [businessId], references: [id])
+  
+  // Call Details
+  callId     String   @unique
+  callerId   String?                 // Phone number of caller
+  duration   Int?                    // Duration in seconds
+  status     String                  // answered, missed, voicemail
+  transcript String?                 @db.Text
+  recordingUrl String?
+  
+  // ⭐ NEW: AI Analysis (PRO feature)
+  intent     String?                 // Primary reason for call
+  sentiment  String?                 // positive, neutral, negative
+  summary    String?                 @db.Text // One-sentence summary
+  keyPoints  String[]                @default([]) // Array of key points
+  taskCompleted Boolean?             // Did assistant help successfully?
+  followUpNeeded Boolean?            // Does customer need follow-up?
+  
+  // Timestamps
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([businessId])
+  @@index([callId])
+  @@index([createdAt])
+  @@index([status])
+}
+
+// ============================================================================
+// INTEGRATIONS (NEW UNIFIED MODEL)
+// ============================================================================
+
+model Integration {
+  id           Int      @id @default(autoincrement())
+  businessId   Int
+  business     Business @relation(fields: [businessId], references: [id])
+  
+  // Integration Details
+  type         IntegrationType     // OPENTABLE, CALENDLY, SHOPIFY, etc.
+  credentials  Json                // Encrypted API keys and config
+  isActive     Boolean  @default(true)
+  
+  // Sync Settings
+  syncEnabled  Boolean  @default(true)
+  lastSync     DateTime?
+  
+  // Timestamps
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([businessId])
+  @@index([type])
+}
+
+enum IntegrationType {
+  OPENTABLE
+  CALENDLY
+  SHOPIFY
+  STRIPE_PAYMENTS
+  TWILIO_SMS
+  SENDGRID_EMAIL
+  GOOGLE_CALENDAR
+  HUBSPOT
+  ZAPIER
+  CUSTOM
+}
+
+// ============================================================================
+// APPOINTMENTS & CALENDAR
+// ============================================================================
+
+model BusinessHours {
+  id         Int      @id @default(autoincrement())
+  businessId Int      @unique
+  business   Business @relation(fields: [businessId], references: [id])
+  
+  monday     Json?    @default("{\"open\": \"09:00\", \"close\": \"17:00\", \"closed\": false}")
+  tuesday    Json?    @default("{\"open\": \"09:00\", \"close\": \"17:00\", \"closed\": false}")
+  wednesday  Json?    @default("{\"open\": \"09:00\", \"close\": \"17:00\", \"closed\": false}")
+  thursday   Json?    @default("{\"open\": \"09:00\", \"close\": \"17:00\", \"closed\": false}")
+  friday     Json?    @default("{\"open\": \"09:00\", \"close\": \"17:00\", \"closed\": false}")
+  saturday   Json?    @default("{\"open\": \"09:00\", \"close\": \"17:00\", \"closed\": true}")
+  sunday     Json?    @default("{\"open\": \"09:00\", \"close\": \"17:00\", \"closed\": true}")
+  
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Appointment {
+  id              Int               @id @default(autoincrement())
+  businessId      Int
+  business        Business          @relation(fields: [businessId], references: [id])
+  
+  // Customer Details
+  customerName    String
+  customerPhone   String
+  customerEmail   String?
+  
+  // Appointment Details
+  appointmentDate DateTime
+  duration        Int               // Duration in minutes
+  serviceType     String?
+  notes           String?           @db.Text
+  
+  // Status
+  status          AppointmentStatus @default(PENDING)
+  
+  // Timestamps
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([businessId])
+  @@index([appointmentDate])
+  @@index([status])
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
+// ============================================================================
+// PRODUCTS & INVENTORY
+// ============================================================================
+
+model Product {
+  id                Int            @id @default(autoincrement())
+  businessId        Int
+  business          Business       @relation(fields: [businessId], references: [id])
+  
+  // Product Details
+  sku               String
+  name              String
+  description       String?        @db.Text
+  price             Float
+  category          String?
+  imageUrl          String?
+  
+  // Inventory
+  stockQuantity     Int            @default(0)
+  lowStockThreshold Int            @default(10)
+  isActive          Boolean        @default(true)
+  
+  // Relations
+  inventoryLogs     InventoryLog[]
+  
+  // Timestamps
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  @@unique([businessId, sku])
+  @@index([businessId])
+  @@index([category])
+  @@index([isActive])
+}
+
+model InventoryLog {
+  id             Int                 @id @default(autoincrement())
+  productId      Int
+  product        Product             @relation(fields: [productId], references: [id])
+  
+  changeType     InventoryChangeType
+  quantityChange Int                 // Can be negative for sales
+  newQuantity    Int
+  note           String?             @db.Text
+  
+  createdAt      DateTime            @default(now())
+
+  @@index([productId])
+  @@index([createdAt])
+}
+
+enum InventoryChangeType {
+  SALE
+  RESTOCK
+  ADJUSTMENT
+  RETURN
+}
+
+// ============================================================================
+// SHIPPING & TRACKING
+// ============================================================================
+
+model ShippingInfo {
+  id                Int             @id @default(autoincrement())
+  businessId        Int
+  business          Business        @relation(fields: [businessId], references: [id])
+  
+  // Order Details
+  orderId           String
+  trackingNumber    String
+  carrier           ShippingCarrier
+  status            ShippingStatus  @default(PENDING)
+  
+  // Delivery
+  estimatedDelivery DateTime?
+  actualDelivery    DateTime?
+  
+  // Customer
+  customerPhone     String?
+  customerEmail     String?
+  
+  // Timestamps
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@unique([businessId, orderId])
+  @@index([businessId])
+  @@index([trackingNumber])
+  @@index([status])
+}
+
+enum ShippingCarrier {
+  UPS
+  FEDEX
+  USPS
+  DHL
+  OTHER
+}
+
+enum ShippingStatus {
+  PENDING
+  SHIPPED
+  IN_TRANSIT
+  DELIVERED
+  RETURNED
+}
+
+// ============================================================================
+// AI TRAINING
+// ============================================================================
+
+model AiTraining {
+  id           Int      @id @default(autoincrement())
+  businessId   Int
+  business     Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  
+  title        String
+  instructions String   @db.Text
+  category     String?
+  isActive     Boolean  @default(true)
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([businessId])
+  @@index([isActive])
+}
+
+// ============================================================================
+// LEGACY INTEGRATIONS (KEEP FOR BACKWARDS COMPATIBILITY)
+// ============================================================================
+
+model ErpIntegration {
+  id           Int       @id @default(autoincrement())
+  businessId   Int       @unique
+  business     Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  
+  type         ErpType
+  apiEndpoint  String?
+  apiKey       String?
+  username     String?
+  password     String?
+  companyCode  String?
+  syncEnabled  Boolean   @default(true)
+  syncInterval Int       @default(60)
+  lastSync     DateTime?
+  realtimeMode Boolean   @default(false)
+  isActive     Boolean   @default(true)
+  
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([businessId])
+}
+
+enum ErpType {
+  MIKRO
+  SAP
+  NETSUITE
+  ODOO
+  CUSTOM
+}
+
+model ReservationIntegration {
+  id            Int                 @id @default(autoincrement())
+  businessId    Int                 @unique
+  business      Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  
+  platform      ReservationPlatform
+  apiKey        String?
+  apiSecret     String?
+  restaurantId  String?
+  syncEnabled   Boolean             @default(true)
+  autoSync      Boolean             @default(true)
+  lastSync      DateTime?
+  webhookUrl    String?
+  webhookSecret String?
+  isActive      Boolean             @default(true)
+  
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@index([businessId])
+}
+
+enum ReservationPlatform {
+  YELP
+  OPENTABLE
+  RESY
+  GOOGLE_RESERVE
+  CUSTOM
+}
+
+model BookingIntegration {
+  id            Int             @id @default(autoincrement())
+  businessId    Int             @unique
+  business      Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  
+  platform      BookingPlatform
+  apiKey        String?
+  shopId        String?
+  accessToken   String?
+  syncEnabled   Boolean         @default(true)
+  bidirectional Boolean         @default(false)
+  lastSync      DateTime?
+  isActive      Boolean         @default(true)
+  
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([businessId])
+}
+
+enum BookingPlatform {
+  BOOKSY
+  SQUARE_APPOINTMENTS
+  FRESHA
+  VAGARO
+  SCHEDULICITY
+  CUSTOM
+}

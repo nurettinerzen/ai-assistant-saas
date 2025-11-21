@@ -1,0 +1,10 @@
+node_modules
+.next
+.env
+.env.local
+*.log
+.DS_Store
+**/google-credentials.json
+*-backup-*
+*.zip
+.emergent

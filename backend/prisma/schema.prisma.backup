@@ -1,0 +1,354 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id         Int      @id @default(autoincrement())
+  email      String   @unique
+  password   String
+  role       UserRole @default(MEMBER)
+  businessId Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  business   Business @relation(fields: [businessId], references: [id])
+
+  @@index([businessId])
+  @@index([email])
+}
+
+model Business {
+  id                     Int                     @id @default(autoincrement())
+  name                   String
+  vapiPhoneNumber        String?
+  vapiAssistantId        String?
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  bookingDuration        Int?                    @default(30)
+  bufferTime             Int?                    @default(15)
+  customGreeting         String?
+  customInstructions     String?
+  vapiPitch              Float?                  @default(1.0)
+  vapiSpeed              Float?                  @default(1.0)
+  vapiTone               VoiceTone?              @default(PROFESSIONAL)
+  vapiVoiceGender        VoiceGender?            @default(MALE)
+  vapiVoiceId            String?                 @default("male-1-professional")
+  businessType           BusinessType            @default(OTHER)
+  googleSheetId          String?
+  googleSheetLastSync    DateTime?
+  googleSheetName        String?
+  aiTrainings            AiTraining[]
+  appointments           Appointment[]
+  bookingIntegration     BookingIntegration?
+  businessHours          BusinessHours?
+  callLogs               CallLog[]
+  erpIntegration         ErpIntegration?
+  products               Product[]
+  reservationIntegration ReservationIntegration?
+  shippingInfos          ShippingInfo[]
+  subscription           Subscription?
+  users                  User[]
+
+  @@index([name])
+}
+
+model CallLog {
+  id         Int      @id @default(autoincrement())
+  businessId Int
+  callId     String   @unique
+  transcript String?
+  duration   Int?
+  status     String
+  createdAt  DateTime @default(now())
+  business   Business @relation(fields: [businessId], references: [id])
+
+  @@index([businessId])
+  @@index([callId])
+  @@index([createdAt])
+}
+
+model BusinessHours {
+  id         Int      @id @default(autoincrement())
+  businessId Int      @unique
+  monday     Json?    @default("{\"open\": \"09:00\", \"close\": \"17:00\", \"closed\": false}")
+  tuesday    Json?    @default("{\"open\": \"09:00\", \"close\": \"17:00\", \"closed\": false}")
+  wednesday  Json?    @default("{\"open\": \"09:00\", \"close\": \"17:00\", \"closed\": false}")
+  thursday   Json?    @default("{\"open\": \"09:00\", \"close\": \"17:00\", \"closed\": false}")
+  friday     Json?    @default("{\"open\": \"09:00\", \"close\": \"17:00\", \"closed\": false}")
+  saturday   Json?    @default("{\"open\": \"09:00\", \"close\": \"17:00\", \"closed\": true}")
+  sunday     Json?    @default("{\"open\": \"09:00\", \"close\": \"17:00\", \"closed\": true}")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  business   Business @relation(fields: [businessId], references: [id])
+}
+
+model Appointment {
+  id              Int               @id @default(autoincrement())
+  customerName    String
+  customerPhone   String
+  customerEmail   String?
+  status          AppointmentStatus @default(PENDING)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  appointmentDate DateTime
+  businessId      Int
+  duration        Int
+  notes           String?
+  serviceType     String?
+  business        Business          @relation(fields: [businessId], references: [id])
+
+  @@index([businessId])
+  @@index([appointmentDate])
+  @@index([status])
+}
+
+model Product {
+  id                Int            @id @default(autoincrement())
+  businessId        Int
+  sku               String
+  name              String
+  description       String?
+  price             Float
+  stockQuantity     Int            @default(0)
+  lowStockThreshold Int            @default(10)
+  category          String?
+  isActive          Boolean        @default(true)
+  imageUrl          String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  inventoryLogs     InventoryLog[]
+  business          Business       @relation(fields: [businessId], references: [id])
+
+  @@unique([businessId, sku])
+  @@index([businessId])
+  @@index([category])
+  @@index([isActive])
+}
+
+model ErpIntegration {
+  id           Int       @id @default(autoincrement())
+  businessId   Int       @unique
+  type         ErpType
+  apiEndpoint  String?
+  apiKey       String?
+  username     String?
+  password     String?
+  companyCode  String?
+  syncEnabled  Boolean   @default(true)
+  syncInterval Int       @default(60)
+  lastSync     DateTime?
+  realtimeMode Boolean   @default(false)
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  business     Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+}
+
+model ReservationIntegration {
+  id            Int                 @id @default(autoincrement())
+  businessId    Int                 @unique
+  platform      ReservationPlatform
+  apiKey        String?
+  apiSecret     String?
+  restaurantId  String?
+  syncEnabled   Boolean             @default(true)
+  autoSync      Boolean             @default(true)
+  lastSync      DateTime?
+  webhookUrl    String?
+  webhookSecret String?
+  isActive      Boolean             @default(true)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  business      Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+}
+
+model BookingIntegration {
+  id            Int             @id @default(autoincrement())
+  businessId    Int             @unique
+  platform      BookingPlatform
+  apiKey        String?
+  shopId        String?
+  accessToken   String?
+  syncEnabled   Boolean         @default(true)
+  bidirectional Boolean         @default(false)
+  lastSync      DateTime?
+  isActive      Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  business      Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+}
+
+model ShippingInfo {
+  id                Int             @id @default(autoincrement())
+  businessId        Int
+  orderId           String
+  trackingNumber    String
+  carrier           ShippingCarrier
+  status            ShippingStatus  @default(PENDING)
+  estimatedDelivery DateTime?
+  actualDelivery    DateTime?
+  customerPhone     String?
+  customerEmail     String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  business          Business        @relation(fields: [businessId], references: [id])
+
+  @@unique([businessId, orderId])
+  @@index([businessId])
+  @@index([trackingNumber])
+  @@index([status])
+}
+
+model InventoryLog {
+  id             Int                 @id @default(autoincrement())
+  productId      Int
+  changeType     InventoryChangeType
+  quantityChange Int
+  newQuantity    Int
+  note           String?
+  createdAt      DateTime            @default(now())
+  product        Product             @relation(fields: [productId], references: [id])
+
+  @@index([productId])
+  @@index([createdAt])
+}
+
+model AiTraining {
+  id           Int      @id @default(autoincrement())
+  businessId   Int
+  title        String
+  instructions String
+  category     String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  business     Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([isActive])
+}
+
+model Subscription {
+  id                    Int                 @id @default(autoincrement())
+  businessId            Int                 @unique
+  stripeCustomerId      String?
+  stripeSubscriptionId  String?             @unique
+  stripePriceId         String?
+  status                SubscriptionStatus  @default(TRIAL)
+  currentPeriodStart    DateTime?
+  currentPeriodEnd      DateTime?
+  cancelAtPeriodEnd     Boolean             @default(false)
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  Business              Business            @relation(fields: [businessId], references: [id])
+
+  @@index([businessId])
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  INCOMPLETE
+}
+
+enum UserRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum SubscriptionPlan {
+  FREE
+  BASIC
+  PRO
+  ENTERPRISE
+}
+
+enum VoiceGender {
+  MALE
+  FEMALE
+}
+
+enum VoiceTone {
+  PROFESSIONAL
+  FRIENDLY
+  WARM
+  ENERGETIC
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
+enum ShippingCarrier {
+  UPS
+  FEDEX
+  USPS
+  DHL
+  OTHER
+}
+
+enum ShippingStatus {
+  PENDING
+  SHIPPED
+  IN_TRANSIT
+  DELIVERED
+  RETURNED
+}
+
+enum InventoryChangeType {
+  SALE
+  RESTOCK
+  ADJUSTMENT
+  RETURN
+}
+
+enum ErpType {
+  MIKRO
+  SAP
+  NETSUITE
+  ODOO
+  CUSTOM
+}
+
+enum ReservationPlatform {
+  YELP
+  OPENTABLE
+  RESY
+  GOOGLE_RESERVE
+  CUSTOM
+}
+
+enum BookingPlatform {
+  BOOKSY
+  SQUARE_APPOINTMENTS
+  FRESHA
+  VAGARO
+  SCHEDULICITY
+  CUSTOM
+}
+
+enum BusinessType {
+  RESTAURANT
+  SALON
+  ECOMMERCE
+  SERVICE
+  OTHER
+}
