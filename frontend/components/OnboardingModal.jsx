@@ -25,16 +25,16 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 const VOICES = {
   EN: [
-    { id: 'male-1-professional', name: 'Male Professional', gender: 'MALE', tone: 'PROFESSIONAL' },
-    { id: 'male-2-friendly', name: 'Male Friendly', gender: 'MALE', tone: 'FRIENDLY' },
-    { id: 'female-1-professional', name: 'Female Professional', gender: 'FEMALE', tone: 'PROFESSIONAL' },
-    { id: 'female-2-warm', name: 'Female Warm', gender: 'FEMALE', tone: 'WARM' }
+    { id: 'male-1-professional', nameKey: 'voiceMaleProfessional', gender: 'MALE', tone: 'PROFESSIONAL' },
+    { id: 'male-2-friendly', nameKey: 'voiceMaleFriendly', gender: 'MALE', tone: 'FRIENDLY' },
+    { id: 'female-1-professional', nameKey: 'voiceFemaleProfessional', gender: 'FEMALE', tone: 'PROFESSIONAL' },
+    { id: 'female-2-warm', nameKey: 'voiceFemaleWarm', gender: 'FEMALE', tone: 'WARM' }
   ],
   TR: [
-    { id: 'tr-male-1', name: 'Erkek Profesyonel', gender: 'MALE', tone: 'PROFESSIONAL' },
-    { id: 'tr-male-2', name: 'Erkek Samimi', gender: 'MALE', tone: 'FRIENDLY' },
-    { id: 'tr-female-1', name: 'Kadın Profesyonel', gender: 'FEMALE', tone: 'PROFESSIONAL' },
-    { id: 'tr-female-2', name: 'Kadın Sıcak', gender: 'FEMALE', tone: 'WARM' }
+    { id: 'tr-male-1', nameKey: 'voiceMaleProfessional', gender: 'MALE', tone: 'PROFESSIONAL' },
+    { id: 'tr-male-2', nameKey: 'voiceMaleFriendly', gender: 'MALE', tone: 'FRIENDLY' },
+    { id: 'tr-female-1', nameKey: 'voiceFemaleProfessional', gender: 'FEMALE', tone: 'PROFESSIONAL' },
+    { id: 'tr-female-2', nameKey: 'voiceFemaleWarm', gender: 'FEMALE', tone: 'WARM' }
   ]
 };
 
@@ -42,12 +42,36 @@ export function OnboardingModal({ open, onClose, businessId }) {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [createdAssistantId, setCreatedAssistantId] = useState(null);
+  const [locale, setLocale] = useState(getCurrentLanguage());
   const [data, setData] = useState({
     language: '',
     industry: '',
     voice: null,
     greeting: ''
   });
+  
+  // Update locale when language changes
+  useEffect(() => {
+    setLocale(getCurrentLanguage());
+  }, []);
+  
+  // Define steps and industries based on current locale
+  const STEPS = [
+    { id: 1, title: t('step1Title', locale), description: t('step1Desc', locale) },
+    { id: 2, title: t('step2Title', locale), description: t('step2Desc', locale) },
+    { id: 3, title: t('step3Title', locale), description: t('step3Desc', locale) },
+    { id: 4, title: t('step4Title', locale), description: t('step4Desc', locale) },
+    { id: 5, title: t('step5Title', locale), description: t('step5Desc', locale) },
+    { id: 6, title: t('step6Title', locale), description: t('step6Desc', locale) }
+  ];
+
+  const INDUSTRIES = [
+    { id: 'RESTAURANT', icon: '🍴', nameKey: 'industryRestaurant', exampleKey: 'greetingRestaurant' },
+    { id: 'SALON', icon: '💇', nameKey: 'industrySalon', exampleKey: 'greetingSalon' },
+    { id: 'ECOMMERCE', icon: '🛒', nameKey: 'industryEcommerce', exampleKey: 'greetingEcommerce' },
+    { id: 'SERVICE', icon: '💼', nameKey: 'industryProfessional', exampleKey: 'greetingProfessional' },
+    { id: 'OTHER', icon: '📦', nameKey: 'industryOther', exampleKey: 'greetingOther' }
+  ];
 
   const handleLanguageSelect = (lang) => {
     setData({ ...data, language: lang });
