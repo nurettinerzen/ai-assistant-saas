@@ -96,7 +96,7 @@ export function OnboardingModal({ open, onClose, businessId }) {
       const token = localStorage.getItem('token');
       const headers = { Authorization: `Bearer ${token}` };
 
-      // Update business settings
+      // Update business settings with language
       await axios.put(
         `${API_URL}/api/business/${businessId}`,
         {
@@ -114,14 +114,14 @@ export function OnboardingModal({ open, onClose, businessId }) {
       await axios.post(
         `${API_URL}/api/ai-training`,
         {
-          title: 'Greeting',
+          title: t('greetingLabel', locale),
           instructions: data.greeting,
           category: 'greeting'
         },
         { headers }
       );
 
-      toast.success('Onboarding complete! 🎉');
+      toast.success(t('onboardingComplete', locale));
       
       // Mark onboarding as complete
       localStorage.setItem('onboarding_completed', 'true');
@@ -130,7 +130,7 @@ export function OnboardingModal({ open, onClose, businessId }) {
       onClose();
     } catch (error) {
       console.error('Onboarding error:', error);
-      toast.error('Failed to complete onboarding');
+      toast.error(t('saveError', locale));
     } finally {
       setLoading(false);
     }
