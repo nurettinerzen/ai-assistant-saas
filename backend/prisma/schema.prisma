@@ -460,6 +460,58 @@ model AiTraining {
 }
 
 // ============================================================================
+// KNOWLEDGE BASE
+// ============================================================================
+
+model KnowledgeBase {
+  id          String   @id @default(cuid())
+  businessId  Int
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  
+  type        KnowledgeType     // DOCUMENT, FAQ, URL
+  title       String
+  content     String?  @db.Text
+  
+  // For documents
+  fileName    String?
+  fileSize    Int?
+  mimeType    String?
+  filePath    String?
+  
+  // For URLs
+  url         String?
+  crawlDepth  Int?
+  pageCount   Int?
+  lastCrawled DateTime?
+  
+  // For FAQs
+  question    String?  @db.Text
+  answer      String?  @db.Text
+  category    String?
+  
+  status      KnowledgeStatus @default(PROCESSING)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([businessId])
+  @@index([type])
+  @@index([status])
+}
+
+enum KnowledgeType {
+  DOCUMENT
+  FAQ
+  URL
+}
+
+enum KnowledgeStatus {
+  PROCESSING
+  ACTIVE
+  FAILED
+}
+
+// ============================================================================
 // LEGACY INTEGRATIONS (KEEP FOR BACKWARDS COMPATIBILITY)
 // ============================================================================
 
