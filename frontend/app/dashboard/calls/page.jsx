@@ -18,11 +18,13 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import CallDetailModal from '@/components/CallDetailModal';
+import CallDetailsModal from '@/components/CallDetailsModal';
 import EmptyState from '@/components/EmptyState';
 import { Phone, Search, Download, Filter } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast } from '@/lib/toast';
 import { formatDate, formatDuration, formatCurrency, formatPhone } from '@/lib/utils';
+import { t, getCurrentLanguage } from '@/lib/translations';
 
 export default function CallsPage() {
   const [calls, setCalls] = useState([]);
