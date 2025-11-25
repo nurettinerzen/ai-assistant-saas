@@ -304,18 +304,18 @@ export function OnboardingModal({ open, onClose, businessId }) {
             <div className="space-y-4">
               <Card className="p-4 bg-blue-50 border-blue-200">
                 <p className="text-sm text-blue-900">
-                  <strong>💡 Tip:</strong> Keep your greeting short, friendly, and include your business name.
+                  {t('greetingTip', locale)}
                 </p>
               </Card>
 
               <div>
-                <Label htmlFor="greeting">Greeting Message</Label>
+                <Label htmlFor="greeting">{t('greetingLabel', locale)}</Label>
                 <textarea
                   id="greeting"
                   value={data.greeting}
                   onChange={(e) => setData({ ...data, greeting: e.target.value })}
                   className="w-full min-h-[120px] p-3 border rounded-lg mt-2 resize-none"
-                  placeholder="Enter your greeting message..."
+                  placeholder={t('greetingPlaceholder', locale)}
                   data-testid="greeting-input"
                 />
                 <p className="text-xs text-gray-500 mt-1">
@@ -324,9 +324,11 @@ export function OnboardingModal({ open, onClose, businessId }) {
               </div>
 
               <div className="p-4 bg-gray-50 rounded-lg">
-                <h4 className="font-semibold text-sm mb-2">Example for {INDUSTRIES.find(i => i.id === data.industry)?.name}:</h4>
+                <h4 className="font-semibold text-sm mb-2">
+                  {t('greetingExample', locale)} {t(INDUSTRIES.find(i => i.id === data.industry)?.nameKey, locale)}:
+                </h4>
                 <p className="text-sm text-gray-700 italic">
-                  "{INDUSTRIES.find(i => i.id === data.industry)?.example}"
+                  "{t(INDUSTRIES.find(i => i.id === data.industry)?.exampleKey, locale)}"
                 </p>
               </div>
             </div>
