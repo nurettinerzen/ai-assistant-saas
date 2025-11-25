@@ -18,11 +18,26 @@ const prisma = new PrismaClient();
 router.use(authenticateToken);
 
 // Get all phone numbers for business
-router.get('/', verifyBusinessAccess, async (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const { businessId } = req.user;
+    const businessId = req.businessId;
 
-    const phoneNumbers = await vapiPhoneNumber.listPhoneNumbers(businessId);
+    // For now, return empty array (VAPI service integration can be added later)
+    // const phoneNumbers = await vapiPhoneNumber.listPhoneNumbers(businessId);
+    
+    // Get from business phoneNumbers array
+    const business = await prisma.business.findUnique({
+      where: { id: businessId },
+      select: { phoneNumbers: true }
+    });
+
+    const phoneNumbers = (business?.phoneNumbers || []).map(number => ({
+      id: number,
+      phoneNumber: number,
+      status: 'ACTIVE',
+      assistantName: 'Default Assistant',
+      createdAt: new Date()
+    }));
 
     res.json({
       phoneNumbers,
