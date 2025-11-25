@@ -263,7 +263,7 @@ export function OnboardingModal({ open, onClose, businessId }) {
                   data-testid={`industry-${industry.id.toLowerCase()}`}
                 >
                   <div className="text-4xl mb-3 text-center">{industry.icon}</div>
-                  <h3 className="text-lg font-semibold text-center">{industry.name}</h3>
+                  <h3 className="text-lg font-semibold text-center">{t(industry.nameKey, locale)}</h3>
                 </Card>
               ))}
             </div>
