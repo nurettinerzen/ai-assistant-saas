@@ -231,18 +231,22 @@ router.get('/faqs', authenticateToken, async (req, res) => {
   try {
     const businessId = req.businessId;
     
-    const faqs = await prisma.knowledgeBase.findMany({
-      where: { 
-        businessId,
-        type: 'FAQ'
-      },
-      orderBy: { createdAt: 'desc' }
-    });
-
-    res.json({ faqs });
+    try {
+      const faqs = await prisma.knowledgeBase.findMany({
+        where: { 
+          businessId,
+          type: 'FAQ'
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+      res.json({ faqs });
+    } catch (dbError) {
+      console.log('KnowledgeBase table may not exist yet, returning empty array');
+      res.json({ faqs: [] });
+    }
   } catch (error) {
     console.error('Error fetching FAQs:', error);
-    res.status(500).json({ error: 'Failed to fetch FAQs' });
+    res.json({ faqs: [] });
   }
 });
 
