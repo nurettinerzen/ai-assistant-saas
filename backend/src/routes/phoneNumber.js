@@ -112,9 +112,9 @@ router.post('/provision', async (req, res) => {
 });
 
 // Release (delete) a phone number
-router.delete('/:phoneNumber', verifyBusinessAccess, async (req, res) => {
+router.delete('/:phoneNumber', async (req, res) => {
   try {
-    const { businessId } = req.user;
+    const businessId = req.businessId;
     const { phoneNumber } = req.params;
 
     // Verify this phone number belongs to this business
