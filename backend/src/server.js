@@ -26,6 +26,12 @@ import aiTrainingRoutes from './routes/aiTraining.js';
 import demoRoutes from './routes/demo.js';
 import phoneNumberRoutes from './routes/phoneNumber.js';
 import vapiRoutes from './routes/vapi.js'; // Updated VAPI routes
+import dashboardRoutes from './routes/dashboard.js';
+import settingsRoutes from './routes/settings.js';
+import voicesRoutes from './routes/voices.js';
+import knowledgeRoutes from './routes/knowledge.js';
+import analyticsRoutes from './routes/analytics.js';
+
 
 // Import jobs
 import { initMonthlyResetJob } from './jobs/monthlyReset.js';
@@ -68,7 +74,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/business', businessRoutes);
 app.use('/api/call-logs', callLogRoutes);
 app.use('/api/subscription', subscriptionRoutes);
-app.use('/api/assistant', assistantRoutes);
+app.use('/api/assistants', assistantRoutes);
 app.use('/api/calendar', calendarRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/products', productsRoutes);
@@ -79,6 +85,12 @@ app.use('/api/ai-training', aiTrainingRoutes);
 app.use('/api/phone-number', phoneNumberRoutes); // NEW
 app.use('/api/vapi', vapiRoutes); // Updated VAPI routes
 app.use('/api', demoRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/settings', settingsRoutes);
+app.use('/api/voices', voicesRoutes);
+app.use('/api/knowledge', knowledgeRoutes);
+app.use('/api/analytics', analyticsRoutes);
+
 
 // Error handling middleware
 app.use((err, req, res, next) => {

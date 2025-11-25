@@ -57,6 +57,26 @@ const PLAN_CONFIG = {
   }
 };
 
+// GET /api/subscription - Get current subscription
+router.get('/', authenticateToken, async (req, res) => {
+  try {
+    const businessId = req.businessId;
+
+    const subscription = await prisma.subscription.findUnique({
+      where: { businessId },
+    });
+
+    if (!subscription) {
+      return res.status(404).json({ error: 'Subscription not found' });
+    }
+
+    res.json(subscription);
+  } catch (error) {
+    console.error('Error fetching subscription:', error);
+    res.status(500).json({ error: 'Failed to fetch subscription' });
+  }
+});
+
 // ============================================================================
 // WEBHOOK - MUST BE FIRST (before express.json middleware)
 // ============================================================================
@@ -635,6 +655,41 @@ router.post('/create-portal-session', verifyBusinessAccess, async (req, res) => 
   } catch (error) {
     console.error('Create portal session error:', error);
     res.status(500).json({ error: 'Failed to create portal session' });
+  }
+});
+
+// GET /api/subscription/billing-history
+router.get('/billing-history', authenticateToken, async (req, res) => {
+  try {
+    const { businessId } = req;
+
+    const subscription = await prisma.subscription.findUnique({
+      where: { businessId },
+      include: {
+        business: true
+      }
+    });
+
+    if (!subscription) {
+      return res.json({ history: [] });
+    }
+
+    // Mock billing history for now (Stripe webhook'tan gelecek)
+    const history = [
+      {
+        id: 1,
+        date: new Date().toISOString(),
+        amount: subscription.plan === 'FREE' ? 0 : subscription.plan === 'BASIC' ? 29 : 99,
+        status: 'paid',
+        plan: subscription.plan,
+        period: 'monthly'
+      }
+    ];
+
+    res.json({ history });
+  } catch (error) {
+    console.error('Get billing history error:', error);
+    res.status(500).json({ error: 'Failed to fetch billing history' });
   }
 });
 

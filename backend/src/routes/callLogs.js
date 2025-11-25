@@ -171,4 +171,35 @@ router.get('/stats/summary', async (req, res) => {
   }
 });
 
+// Export calls as CSV
+router.get('/export', async (req, res) => {
+  try {
+    const { businessId } = req;
+
+    const callLogs = await prisma.callLog.findMany({
+      where: { businessId },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    // Create CSV
+    const headers = ['Date', 'Phone Number', 'Duration', 'Status', 'Cost'];
+    const rows = callLogs.map(call => [
+      new Date(call.createdAt).toISOString(),
+      call.callerId || 'Unknown',
+      call.duration || 0,
+      call.status,
+      (call.duration * 0.01).toFixed(2) // Example cost calculation
+    ]);
+
+    const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=calls.csv');
+    res.send(csv);
+  } catch (error) {
+    console.error('Export calls error:', error);
+    res.status(500).json({ error: 'Failed to export calls' });
+  }
+});
+
 export default router;

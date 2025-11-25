@@ -54,7 +54,7 @@ router.post('/register', async (req, res) => {
         data: {
           businessId: business.id,
           plan: 'FREE',
-          status: 'active',
+          status: 'TRIAL',
         },
       });
 

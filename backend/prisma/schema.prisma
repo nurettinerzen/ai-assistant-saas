@@ -88,7 +88,8 @@ model Business {
   bookingIntegration     BookingIntegration?
   reservationIntegration ReservationIntegration?
   erpIntegration         ErpIntegration?
-  integrations           Integration[]           // ⭐ NEW
+  integrations           Integration[]          
+  assistants             Assistant[]
 
   @@index([name])
 }
@@ -111,6 +112,35 @@ enum VoiceTone {
   FRIENDLY
   WARM
   ENERGETIC
+}
+
+// ============================================================================
+// ASSISTANTS
+// ============================================================================
+
+model Assistant {
+  id              String   @id @default(cuid())
+  businessId      Int
+  business        Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  
+  // Assistant Details
+  name            String
+  voiceId         String
+  systemPrompt    String   @db.Text
+  model           String   @default("gpt-4")
+  
+  // VAPI Integration
+  vapiAssistantId String?  @unique
+  
+  // Status
+  isActive        Boolean  @default(true)
+  
+  // Timestamps
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([businessId])
+  @@index([isActive])
 }
 
 // ============================================================================
