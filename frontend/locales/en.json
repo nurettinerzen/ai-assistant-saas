@@ -1,0 +1,79 @@
+{
+  "common": {
+    "language": "English",
+    "login": "Login",
+    "signup": "Sign Up",
+    "logout": "Logout",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "back": "Back",
+    "next": "Next",
+    "complete": "Complete",
+    "loading": "Loading..."
+  },
+  "landing": {
+    "hero": {
+      "title": "AI Phone Assistants That Sound Human",
+      "subtitle": "Automate your phone support with intelligent AI assistants",
+      "cta": "Start Free Trial",
+      "watch": "Watch Demo"
+    },
+    "features": {
+      "title": "Everything You Need",
+      "voice": "Natural Voice",
+      "voiceDesc": "Human-like conversations",
+      "analytics": "Advanced Analytics",
+      "analyticsDesc": "Track every call",
+      "integration": "Easy Integration",
+      "integrationDesc": "Connect with your tools"
+    }
+  },
+  "auth": {
+    "loginTitle": "Welcome back",
+    "signupTitle": "Create your account",
+    "email": "Email",
+    "password": "Password",
+    "fullName": "Full Name",
+    "continueWith": "Or continue with",
+    "alreadyHaveAccount": "Already have an account?",
+    "dontHaveAccount": "Don't have an account?",
+    "forgotPassword": "Forgot password?"
+  },
+  "dashboard": {
+    "overview": "Dashboard",
+    "assistants": "Assistants",
+    "calls": "Calls",
+    "analytics": "Analytics",
+    "knowledgeBase": "Knowledge Base",
+    "subscription": "Subscription",
+    "settings": "Settings"
+  },
+  "onboarding": {
+    "step1": {
+      "title": "Choose Language",
+      "description": "Select your preferred language"
+    },
+    "step2": {
+      "title": "Choose Industry",
+      "description": "Tell us about your business"
+    },
+    "step3": {
+      "title": "Pick Your Voice",
+      "description": "Select your assistant's voice"
+    },
+    "step4": {
+      "title": "Add Training",
+      "description": "Create your first greeting"
+    },
+    "step5": {
+      "title": "Test Assistant",
+      "description": "Try it out!"
+    },
+    "step6": {
+      "title": "Complete",
+      "description": "You're all set!"
+    }
+  }
+}

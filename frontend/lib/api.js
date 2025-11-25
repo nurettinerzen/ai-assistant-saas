@@ -1,0 +1,175 @@
+/**
+ * API Helper Functions
+ * Axios wrapper with authentication, error handling, and interceptors
+ */
+
+import axios from 'axios';
+import { toast } from 'sonner';
+
+const API_BASE_URL = process.env.REACT_APP_BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Request interceptor - Add auth token
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor - Handle errors globally
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const message = error.response?.data?.message || error.message || 'An error occurred';
+    
+    // Handle specific status codes
+    if (error.response?.status === 401) {
+      // Sadece token varsa ve geçersizse logout yap
+      // Login sayfasında zaten olabilir, o yüzden redirect yapma
+      const token = localStorage.getItem('token');
+      const isLoginPage = typeof window !== 'undefined' && window.location.pathname === '/login';
+      
+      if (token && !isLoginPage) {
+        // Token geçersiz, logout yap
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+      }
+      // Login sayfasındaysa hiçbir şey yapma, hatayı döndür
+    } else if (error.response?.status === 403) {
+      toast.error('Access denied');
+    } else if (error.response?.status === 429) {
+      toast.error('Too many requests. Please try again later.');
+    } else if (error.response?.status >= 500) {
+      toast.error('Server error. Please try again later.');
+    }
+    
+    return Promise.reject(error);
+  }
+);
+
+// API helper functions
+export const apiClient = {
+  // Generic methods
+  get: (url, config) => api.get(url, config),
+  post: (url, data, config) => api.post(url, data, config),
+  put: (url, data, config) => api.put(url, data, config),
+  patch: (url, data, config) => api.patch(url, data, config),
+  delete: (url, config) => api.delete(url, config),
+
+  // Auth endpoints
+  auth: {
+    login: (credentials) => api.post('/api/auth/login', credentials),
+    signup: (data) => api.post('/api/auth/signup', data),
+    register: (data) => api.post('/api/auth/register', data),
+    logout: () => api.post('/api/auth/logout'),
+    verifyEmail: (code) => api.post('/api/auth/verify-email', { code }),
+    googleAuth: (token) => api.post('/api/auth/google', { token }),
+  },
+
+  // Dashboard stats
+  dashboard: {
+    getStats: () => api.get('/api/dashboard/stats'),
+    getRecentCalls: () => api.get('/api/dashboard/recent-calls'),
+    getChartData: (timeRange = '7d') => api.get(`/api/dashboard/chart?range=${timeRange}`),
+  },
+
+  // Assistants
+  assistants: {
+    getAll: () => api.get('/api/assistants'),
+    getById: (id) => api.get(`/api/assistants/${id}`),
+    create: (data) => api.post('/api/assistants', data),
+    update: (id, data) => api.put(`/api/assistants/${id}`, data),
+    delete: (id) => api.delete(`/api/assistants/${id}`),
+  },
+
+  // Calls
+  // Calls
+  calls: {
+    getAll: (params) => api.get('/api/call-logs', { params }),
+    getById: (id) => api.get(`/api/call-logs/${id}`),
+    export: (format = 'csv') => api.get(`/api/call-logs/export?format=${format}`, { responseType: 'blob' }),
+  },
+
+  // Analytics
+  analytics: {
+    getOverview: (timeRange = '30d') => api.get(`/api/analytics/overview?range=${timeRange}`),
+    getCallMetrics: (timeRange) => api.get(`/api/analytics/calls?range=${timeRange}`),
+    getAssistantPerformance: () => api.get('/api/analytics/assistants'),
+  },
+
+  // Settings
+  settings: {
+    getProfile: () => api.get('/api/settings/profile'),
+    updateProfile: (data) => api.put('/api/settings/profile', data),
+    getNotifications: () => api.get('/api/settings/notifications'),
+    updateNotifications: (data) => api.put('/api/settings/notifications', data),
+    changePassword: (data) => api.post('/api/settings/change-password', data),
+  },
+
+  // Subscription
+  subscription: {
+    getCurrent: () => api.get('/api/subscription'),
+    getPlans: () => api.get('/api/subscription/plans'),
+    upgrade: (planId) => api.post('/api/subscription/upgrade', { planId }),
+    cancel: () => api.post('/api/subscription/cancel'),
+    getBillingHistory: () => api.get('/api/subscription/billing-history'),
+  },
+
+  // Integrations
+  integrations: {
+    getAll: () => api.get('/api/integrations'),
+    connect: (provider, data) => api.post(`/api/integrations/${provider}/connect`, data),
+    disconnect: (provider) => api.post(`/api/integrations/${provider}/disconnect`),
+    test: (provider) => api.post(`/api/integrations/${provider}/test`),
+  },
+
+  // Knowledge Base
+  knowledge: {
+    // Documents
+    getDocuments: () => api.get('/api/knowledge/documents'),
+    uploadDocument: (formData) => api.post('/api/knowledge/documents', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+    deleteDocument: (id) => api.delete(`/api/knowledge/documents/${id}`),
+    
+    // FAQs
+    getFaqs: () => api.get('/api/knowledge/faqs'),
+    createFaq: (data) => api.post('/api/knowledge/faqs', data),
+    updateFaq: (id, data) => api.put(`/api/knowledge/faqs/${id}`, data),
+    deleteFaq: (id) => api.delete(`/api/knowledge/faqs/${id}`),
+    
+    // URLs
+    getUrls: () => api.get('/api/knowledge/urls'),
+    addUrl: (data) => api.post('/api/knowledge/urls', data),
+    deleteUrl: (id) => api.delete(`/api/knowledge/urls/${id}`),
+  },
+
+  // Voices
+  voices: {
+    getAll: () => api.get('/api/voices'),
+  },
+
+  // Phone Numbers
+  phoneNumbers: {
+    getAll: () => api.get('/api/phone-numbers'),
+    provision: (data) => api.post('/api/phone-numbers/provision', data),
+    release: (id) => api.delete(`/api/phone-numbers/${id}`),
+    test: (id) => api.post(`/api/phone-numbers/${id}/test`),
+  },
+};
+
+export default api;

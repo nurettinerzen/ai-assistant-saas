@@ -1,0 +1,79 @@
+{
+  "common": {
+    "language": "Türkçe",
+    "login": "Giriş Yap",
+    "signup": "Kayıt Ol",
+    "logout": "Çıkış Yap",
+    "save": "Kaydet",
+    "cancel": "İptal",
+    "delete": "Sil",
+    "edit": "Düzenle",
+    "back": "Geri",
+    "next": "İleri",
+    "complete": "Tamamla",
+    "loading": "Yükleniyor..."
+  },
+  "landing": {
+    "hero": {
+      "title": "İnsan Gibi Konuşan AI Telefon Asistanları",
+      "subtitle": "Akıllı AI asistanlarla telefon desteğinizi otomatikleştirin",
+      "cta": "Ücretsiz Dene",
+      "watch": "Demo İzle"
+    },
+    "features": {
+      "title": "İhtiyacınız Olan Her Şey",
+      "voice": "Doğal Ses",
+      "voiceDesc": "İnsan gibi konuşmalar",
+      "analytics": "Gelişmiş Analitik",
+      "analyticsDesc": "Her aramayı takip edin",
+      "integration": "Kolay Entegrasyon",
+      "integrationDesc": "Araçlarınızla bağlanın"
+    }
+  },
+  "auth": {
+    "loginTitle": "Tekrar hoş geldiniz",
+    "signupTitle": "Hesap oluşturun",
+    "email": "E-posta",
+    "password": "Şifre",
+    "fullName": "Ad Soyad",
+    "continueWith": "Veya şununla devam edin",
+    "alreadyHaveAccount": "Zaten hesabınız var mı?",
+    "dontHaveAccount": "Hesabınız yok mu?",
+    "forgotPassword": "Şifrenizi mi unuttunuz?"
+  },
+  "dashboard": {
+    "overview": "Panel",
+    "assistants": "Asistanlar",
+    "calls": "Aramalar",
+    "analytics": "Analitik",
+    "knowledgeBase": "Bilgi Bankası",
+    "subscription": "Abonelik",
+    "settings": "Ayarlar"
+  },
+  "onboarding": {
+    "step1": {
+      "title": "Dil Seçin",
+      "description": "Tercih ettiğiniz dili seçin"
+    },
+    "step2": {
+      "title": "Sektör Seçin",
+      "description": "İşletmeniz hakkında bilgi verin"
+    },
+    "step3": {
+      "title": "Ses Seçin",
+      "description": "Asistanınızın sesini seçin"
+    },
+    "step4": {
+      "title": "Eğitim Ekle",
+      "description": "İlk karşılama mesajınızı oluşturun"
+    },
+    "step5": {
+      "title": "Asistanı Test Et",
+      "description": "Deneyin!"
+    },
+    "step6": {
+      "title": "Tamamla",
+      "description": "Hazırsınız!"
+    }
+  }
+}

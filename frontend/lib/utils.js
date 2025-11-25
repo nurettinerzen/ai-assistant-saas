@@ -1,0 +1,259 @@
+/**
+ * General Utility Functions
+ * Formatting, validation, and helper functions
+ */
+
+import { clsx } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+/**
+ * Merge Tailwind classes (already exists in most projects)
+ */
+export function cn(...inputs) {
+  return twMerge(clsx(inputs));
+}
+
+/**
+ * Format phone number to E.164 or display format
+ * @param {string} phone - Phone number
+ * @param {string} format - 'e164' or 'display'
+ */
+export function formatPhone(phone, format = 'display') {
+  if (!phone) return '';
+  
+  // Remove all non-digit characters
+  const digits = phone.replace(/\D/g, '');
+  
+  if (format === 'e164') {
+    // E.164 format: +1234567890
+    return `+${digits}`;
+  }
+  
+  // Display format: +1 (234) 567-8900
+  if (digits.length === 11 && digits.startsWith('1')) {
+    return `+1 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
+  } else if (digits.length === 10) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  }
+  
+  return phone;
+}
+
+/**
+ * Format duration in seconds to human-readable format
+ * @param {number} seconds - Duration in seconds
+ */
+export function formatDuration(seconds) {
+  if (!seconds || seconds < 0) return '0s';
+  
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+  
+  if (hours > 0) {
+    return `${hours}h ${minutes}m ${secs}s`;
+  } else if (minutes > 0) {
+    return `${minutes}m ${secs}s`;
+  } else {
+    return `${secs}s`;
+  }
+}
+
+/**
+ * Format date to various formats
+ * @param {string|Date} date - Date to format
+ * @param {string} format - 'short', 'long', 'time', 'relative'
+ */
+export function formatDate(date, format = 'short') {
+  if (!date) return '';
+  
+  const d = new Date(date);
+  
+  if (isNaN(d.getTime())) return 'Invalid Date';
+  
+  if (format === 'short') {
+    // Jan 15, 2025
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  } else if (format === 'long') {
+    // January 15, 2025 at 3:45 PM
+    return d.toLocaleDateString('en-US', { 
+      month: 'long', 
+      day: 'numeric', 
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+  } else if (format === 'time') {
+    // 3:45 PM
+    return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  } else if (format === 'relative') {
+    // 2 hours ago, 3 days ago, etc.
+    return getRelativeTime(d);
+  }
+  
+  return d.toLocaleDateString();
+}
+
+/**
+ * Get relative time (e.g., "2 hours ago")
+ */
+function getRelativeTime(date) {
+  const now = new Date();
+  const diffMs = now - date;
+  const diffSecs = Math.floor(diffMs / 1000);
+  const diffMins = Math.floor(diffSecs / 60);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+  
+  if (diffSecs < 60) {
+    return 'Just now';
+  } else if (diffMins < 60) {
+    return `${diffMins} ${diffMins === 1 ? 'minute' : 'minutes'} ago`;
+  } else if (diffHours < 24) {
+    return `${diffHours} ${diffHours === 1 ? 'hour' : 'hours'} ago`;
+  } else if (diffDays < 7) {
+    return `${diffDays} ${diffDays === 1 ? 'day' : 'days'} ago`;
+  } else {
+    return formatDate(date, 'short');
+  }
+}
+
+/**
+ * Format currency
+ * @param {number} amount - Amount in cents or dollars
+ * @param {string} currency - Currency code
+ */
+export function formatCurrency(amount, currency = 'USD') {
+  if (amount === null || amount === undefined) return '$0.00';
+  
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currency,
+  }).format(amount);
+}
+
+/**
+ * Format large numbers with K, M, B suffixes
+ * @param {number} num - Number to format
+ */
+export function formatNumber(num) {
+  if (num === null || num === undefined) return '0';
+  
+  if (num >= 1000000000) {
+    return (num / 1000000000).toFixed(1) + 'B';
+  } else if (num >= 1000000) {
+    return (num / 1000000).toFixed(1) + 'M';
+  } else if (num >= 1000) {
+    return (num / 1000).toFixed(1) + 'K';
+  } else {
+    return num.toString();
+  }
+}
+
+/**
+ * Format file size
+ * @param {number} bytes - File size in bytes
+ */
+export function formatFileSize(bytes) {
+  if (!bytes || bytes === 0) return '0 B';
+  
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  
+  return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
+}
+
+/**
+ * Truncate text with ellipsis
+ * @param {string} text - Text to truncate
+ * @param {number} maxLength - Maximum length
+ */
+export function truncate(text, maxLength = 50) {
+  if (!text || text.length <= maxLength) return text;
+  return text.slice(0, maxLength) + '...';
+}
+
+/**
+ * Validate email
+ * @param {string} email - Email to validate
+ */
+export function isValidEmail(email) {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+}
+
+/**
+ * Validate phone number (US format)
+ * @param {string} phone - Phone to validate
+ */
+export function isValidPhone(phone) {
+  const phoneRegex = /^[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$/;
+  return phoneRegex.test(phone);
+}
+
+/**
+ * Validate URL
+ * @param {string} url - URL to validate
+ */
+export function isValidUrl(url) {
+  try {
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Copy text to clipboard
+ * @param {string} text - Text to copy
+ */
+export async function copyToClipboard(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    // Fallback for older browsers
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+    return true;
+  }
+}
+
+/**
+ * Debounce function
+ * @param {Function} func - Function to debounce
+ * @param {number} wait - Wait time in milliseconds
+ */
+export function debounce(func, wait = 300) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
+/**
+ * Generate random ID
+ */
+export function generateId() {
+  return Math.random().toString(36).substring(2, 9);
+}
+
+/**
+ * Sleep/delay function
+ * @param {number} ms - Milliseconds to sleep
+ */
+export function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}

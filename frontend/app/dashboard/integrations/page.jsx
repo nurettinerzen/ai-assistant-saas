@@ -1,0 +1,249 @@
+/**
+ * Integrations Page
+ * Manage third-party integrations (Stripe, Zapier, etc.)
+ * UPDATE EXISTING FILE: frontend/app/dashboard/integrations/page.jsx
+ */
+
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import EmptyState from '@/components/EmptyState';
+import { Puzzle, Check, ExternalLink } from 'lucide-react';
+import { apiClient } from '@/lib/api';
+import { toast, toastHelpers } from '@/lib/toast';
+
+const AVAILABLE_INTEGRATIONS = [
+  {
+    id: 'stripe',
+    name: 'Stripe',
+    description: 'Accept payments and manage subscriptions',
+    icon: '💳',
+    category: 'Payments',
+    docsUrl: 'https://stripe.com/docs',
+  },
+  {
+    id: 'zapier',
+    name: 'Zapier',
+    description: 'Connect with 5000+ apps using Zapier workflows',
+    icon: '⚡',
+    category: 'Automation',
+    docsUrl: 'https://zapier.com',
+  },
+  {
+    id: 'slack',
+    name: 'Slack',
+    description: 'Get call notifications in your Slack workspace',
+    icon: '💬',
+    category: 'Communication',
+    docsUrl: 'https://slack.com/api',
+  },
+  {
+    id: 'hubspot',
+    name: 'HubSpot',
+    description: 'Sync calls and contacts with HubSpot CRM',
+    icon: '🎯',
+    category: 'CRM',
+    docsUrl: 'https://developers.hubspot.com',
+  },
+  {
+    id: 'salesforce',
+    name: 'Salesforce',
+    description: 'Integrate with Salesforce CRM',
+    icon: '☁️',
+    category: 'CRM',
+    docsUrl: 'https://developer.salesforce.com',
+  },
+  {
+    id: 'calendly',
+    name: 'Calendly',
+    description: 'Schedule appointments from calls',
+    icon: '📅',
+    category: 'Scheduling',
+    docsUrl: 'https://developer.calendly.com',
+  },
+];
+
+export default function IntegrationsPage() {
+  const [integrations, setIntegrations] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadIntegrations();
+  }, []);
+
+  const loadIntegrations = async () => {
+    setLoading(true);
+    try {
+      const response = await apiClient.integrations.getAll();
+      setIntegrations(response.data.integrations || []);
+    } catch (error) {
+      toast.error('Failed to load integrations');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleConnect = async (integrationId) => {
+    try {
+      await toastHelpers.async(
+        apiClient.integrations.connect(integrationId, {}),
+        'Connecting...',
+        'Integration connected!'
+      );
+      loadIntegrations();
+    } catch (error) {
+      // Error handled
+    }
+  };
+
+  const handleDisconnect = async (integrationId) => {
+    if (!confirm('Disconnect this integration?')) return;
+
+    try {
+      await toastHelpers.async(
+        apiClient.integrations.disconnect(integrationId),
+        'Disconnecting...',
+        'Integration disconnected!'
+      );
+      loadIntegrations();
+    } catch (error) {
+      // Error handled
+    }
+  };
+
+  const handleTest = async (integrationId) => {
+    try {
+      await toastHelpers.async(
+        apiClient.integrations.test(integrationId),
+        'Testing connection...',
+        'Integration is working!'
+      );
+    } catch (error) {
+      // Error handled
+    }
+  };
+
+  const isConnected = (integrationId) => {
+    return integrations.some((i) => i.provider === integrationId && i.connected);
+  };
+
+  return (
+    <div className="space-y-8">
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold text-neutral-900">Integrations</h1>
+        <p className="text-neutral-600 mt-1">
+          Connect Telyx with your favorite tools and services
+        </p>
+      </div>
+
+      {/* Integrations grid */}
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div
+              key={i}
+              className="bg-white rounded-xl border border-neutral-200 p-6 animate-pulse"
+            >
+              <div className="h-12 w-12 bg-neutral-200 rounded-lg mb-4"></div>
+              <div className="h-6 w-32 bg-neutral-200 rounded mb-2"></div>
+              <div className="h-4 w-full bg-neutral-200 rounded mb-1"></div>
+              <div className="h-4 w-2/3 bg-neutral-200 rounded mb-4"></div>
+              <div className="h-10 w-full bg-neutral-200 rounded"></div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {AVAILABLE_INTEGRATIONS.map((integration) => {
+            const connected = isConnected(integration.id);
+            return (
+              <div
+                key={integration.id}
+                className="bg-white rounded-xl border border-neutral-200 p-6 hover:shadow-md transition-shadow"
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="text-4xl">{integration.icon}</div>
+                    <div>
+                      <h3 className="font-semibold text-neutral-900">{integration.name}</h3>
+                      <Badge variant="secondary" className="text-xs mt-1">
+                        {integration.category}
+                      </Badge>
+                    </div>
+                  </div>
+                  {connected && (
+                    <div className="p-1 bg-green-100 rounded-full">
+                      <Check className="h-4 w-4 text-green-600" />
+                    </div>
+                  )}
+                </div>
+
+                <p className="text-sm text-neutral-600 mb-4">{integration.description}</p>
+
+                <div className="flex gap-2">
+                  {connected ? (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => handleTest(integration.id)}
+                      >
+                        Test
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDisconnect(integration.id)}
+                      >
+                        Disconnect
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => handleConnect(integration.id)}
+                    >
+                      Connect
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    asChild
+                  >
+                    <a
+                      href={integration.docsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Info banner */}
+      <div className="bg-primary-50 border border-primary-200 rounded-xl p-6">
+        <h3 className="text-sm font-semibold text-primary-900 mb-2">
+          Need a custom integration?
+        </h3>
+        <p className="text-sm text-primary-700 mb-3">
+          We can help you build custom integrations for your specific needs. Contact our team to
+          discuss your requirements.
+        </p>
+        <Button variant="outline" size="sm">
+          Contact Sales
+        </Button>
+      </div>
+    </div>
+  );
+}
