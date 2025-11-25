@@ -23,6 +23,7 @@ export const translations = {
     pleaseFillAllFields: 'Please fill in all fields',
     invalidEmailOrPassword: 'Invalid email or password',
     googleSignInComingSoon: 'Google Sign-In coming soon!',
+    navChatWidget: 'Chat Widget',
     // Onboarding
     chooseLanguage: 'Choose Language',
     chooseIndustry: 'Choose Industry',
@@ -481,6 +482,7 @@ export const translations = {
     pleaseFillAllFields: 'Lütfen tüm alanları doldurun',
     invalidEmailOrPassword: 'Geçersiz e-posta veya şifre',
     googleSignInComingSoon: 'Google ile giriş yakında geliyor!',
+    navChatWidget: 'Web Sohbet',
     // Onboarding
     chooseLanguage: 'Dil Seçin',
     chooseIndustry: 'Sektör Seçin',

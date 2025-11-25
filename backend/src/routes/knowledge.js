@@ -5,10 +5,13 @@ import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs/promises';
-import pdfParse from 'pdf-parse';
-import mammoth from 'mammoth';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
+import { createRequire } from 'module';
+
+const require = createRequire(import.meta.url);
+const pdfParse = require('pdf-parse');
+const mammoth = require('mammoth');
 
 const router = express.Router();
 const prisma = new PrismaClient();

@@ -6,6 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { MessageSquare } from 'lucide-react';
 import {
   LayoutDashboard,
   Bot,
@@ -62,6 +63,7 @@ export default function Sidebar({ user, credits }) {
         { icon: Bot, labelKey: 'navAssistants', href: '/dashboard/assistant' },
         { icon: BookOpen, labelKey: 'navKnowledgeBase', href: '/dashboard/knowledge' },
         { icon: Mic, labelKey: 'navVoices', href: '/dashboard/voices' },
+        { icon: MessageSquare, labelKey: 'navChatWidget', href: '/dashboard/chat-widget' },
       ],
     },
     {
