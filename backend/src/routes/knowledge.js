@@ -299,10 +299,55 @@ router.delete('/faqs/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// Helper function to scrape URL content
+async function scrapeURL(url) {
+  try {
+    const response = await axios.get(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; TelyxBot/1.0)'
+      },
+      timeout: 10000
+    });
+    
+    const $ = cheerio.load(response.data);
+    
+    // Remove script and style elements
+    $('script, style, nav, header, footer, aside').remove();
+    
+    // Extract text content
+    const title = $('title').text();
+    const bodyText = $('body').text().trim().replace(/\s+/g, ' ');
+    
+    return {
+      title,
+      content: bodyText,
+      success: true
+    };
+  } catch (error) {
+    console.error('URL scraping error:', error.message);
+    return {
+      title: url,
+      content: '',
+      success: false,
+      error: error.message
+    };
+  }
+}
+
 // GET /api/knowledge/urls
 router.get('/urls', authenticateToken, async (req, res) => {
   try {
-    res.json({ urls: [] });
+    const businessId = req.businessId;
+    
+    const urls = await prisma.knowledgeBase.findMany({
+      where: { 
+        businessId,
+        type: 'URL'
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    res.json({ urls });
   } catch (error) {
     console.error('Error fetching URLs:', error);
     res.status(500).json({ error: 'Failed to fetch URLs' });
@@ -312,35 +357,104 @@ router.get('/urls', authenticateToken, async (req, res) => {
 // POST /api/knowledge/urls
 router.post('/urls', authenticateToken, async (req, res) => {
   try {
+    const businessId = req.businessId;
     const { url, crawlDepth } = req.body;
     
     if (!url) {
       return res.status(400).json({ error: 'URL is required' });
     }
 
-    // TODO: Save to database and start crawling
-    const urlEntry = {
-      id: Date.now(),
-      url,
-      crawlDepth: crawlDepth || 1,
-      status: 'crawling',
-      pageCount: 0,
-      lastCrawled: null,
-      createdAt: new Date()
-    };
+    // Validate URL format
+    try {
+      new URL(url);
+    } catch {
+      return res.status(400).json({ error: 'Invalid URL format' });
+    }
 
-    res.json({ url: urlEntry, message: 'URL added successfully' });
+    // Create database entry
+    const urlEntry = await prisma.knowledgeBase.create({
+      data: {
+        businessId,
+        type: 'URL',
+        title: url,
+        url,
+        crawlDepth: crawlDepth || 1,
+        pageCount: 0,
+        status: 'PROCESSING'
+      }
+    });
+
+    // Start crawling asynchronously
+    crawlURL(urlEntry.id, url).catch(error => {
+      console.error('URL crawling failed:', error);
+    });
+
+    res.json({ url: urlEntry, message: 'URL added and crawling started' });
   } catch (error) {
     console.error('Error adding URL:', error);
     res.status(500).json({ error: 'Failed to add URL' });
   }
 });
 
+// Async function to crawl URL
+async function crawlURL(entryId, url) {
+  try {
+    const result = await scrapeURL(url);
+    
+    if (result.success) {
+      await prisma.knowledgeBase.update({
+        where: { id: entryId },
+        data: {
+          title: result.title || url,
+          content: result.content,
+          pageCount: 1,
+          lastCrawled: new Date(),
+          status: 'ACTIVE'
+        }
+      });
+      console.log(`✅ URL ${entryId} crawled successfully`);
+    } else {
+      await prisma.knowledgeBase.update({
+        where: { id: entryId },
+        data: { 
+          status: 'FAILED',
+          content: `Error: ${result.error}`
+        }
+      });
+      console.log(`❌ URL ${entryId} crawling failed`);
+    }
+  } catch (error) {
+    console.error(`❌ URL ${entryId} crawling error:`, error);
+    await prisma.knowledgeBase.update({
+      where: { id: entryId },
+      data: { status: 'FAILED' }
+    });
+  }
+}
+
 // DELETE /api/knowledge/urls/:id
 router.delete('/urls/:id', authenticateToken, async (req, res) => {
   try {
-    // TODO: Delete from database
-    res.json({ message: 'URL deleted' });
+    const businessId = req.businessId;
+    const { id } = req.params;
+
+    const urlEntry = await prisma.knowledgeBase.findFirst({
+      where: { 
+        id,
+        businessId,
+        type: 'URL'
+      }
+    });
+
+    if (!urlEntry) {
+      return res.status(404).json({ error: 'URL not found' });
+    }
+
+    await prisma.knowledgeBase.delete({
+      where: { id }
+    });
+
+    res.json({ message: 'URL deleted successfully' });
   } catch (error) {
     console.error('Error deleting URL:', error);
     res.status(500).json({ error: 'Failed to delete URL' });
