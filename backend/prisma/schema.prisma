@@ -90,6 +90,7 @@ model Business {
   erpIntegration         ErpIntegration?
   integrations           Integration[]          
   assistants             Assistant[]
+  knowledgeBase          KnowledgeBase[]
 
   @@index([name])
 }
