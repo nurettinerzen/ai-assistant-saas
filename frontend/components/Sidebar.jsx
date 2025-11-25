@@ -212,13 +212,13 @@ export default function Sidebar({ user, credits }) {
             <DropdownMenuItem asChild>
               <Link href="/dashboard/settings" className="cursor-pointer">
                 <User className="h-4 w-4 mr-2" />
-                Profile Settings
+                {t('profileSettings', locale)}
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-600">
               <LogOut className="h-4 w-4 mr-2" />
-              Log out
+              {t('logOut', locale)}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
