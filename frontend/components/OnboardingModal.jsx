@@ -342,7 +342,7 @@ export function OnboardingModal({ open, onClose, businessId }) {
               ) : (
                 <div className="text-center py-8">
                   <Loader2 className="h-12 w-12 mx-auto text-purple-600 animate-spin mb-4" />
-                  <p className="text-gray-600">Creating your assistant...</p>
+                  <p className="text-gray-600">{t('creatingAssistant', locale)}</p>
                 </div>
               )}
             </div>
@@ -354,30 +354,30 @@ export function OnboardingModal({ open, onClose, businessId }) {
               <div className="w-24 h-24 mx-auto mb-6 bg-green-100 rounded-full flex items-center justify-center">
                 <Check className="w-12 h-12 text-green-600" />
               </div>
-              <h3 className="text-2xl font-bold mb-3">🎉 You're All Set!</h3>
+              <h3 className="text-2xl font-bold mb-3">{t('onboardingComplete', locale)}</h3>
               <p className="text-gray-600 mb-6">
-                Your AI assistant is ready to go. Here's what you can do next:
+                {t('onboardingCompleteDesc', locale)}
               </p>
               <div className="space-y-3 text-left max-w-md mx-auto">
                 <div className="flex items-start gap-3 p-3 bg-purple-50 rounded-lg">
                   <div className="w-6 h-6 rounded-full bg-purple-600 text-white flex items-center justify-center text-sm font-bold flex-shrink-0">1</div>
                   <div>
-                    <p className="font-semibold">Upgrade to Get Your Phone Number</p>
-                    <p className="text-sm text-gray-600">Start receiving real calls - only $27/month</p>
+                    <p className="font-semibold">{t('upgradeToGetPhone', locale)}</p>
+                    <p className="text-sm text-gray-600">{t('upgradeDesc', locale)}</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg">
                   <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold flex-shrink-0">2</div>
                   <div>
-                    <p className="font-semibold">Add More Trainings</p>
-                    <p className="text-sm text-gray-600">Teach your assistant about your services</p>
+                    <p className="font-semibold">{t('addMoreTrainings', locale)}</p>
+                    <p className="text-sm text-gray-600">{t('addTrainingsDesc', locale)}</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3 p-3 bg-green-50 rounded-lg">
                   <div className="w-6 h-6 rounded-full bg-green-600 text-white flex items-center justify-center text-sm font-bold flex-shrink-0">3</div>
                   <div>
-                    <p className="font-semibold">Set Up Integrations</p>
-                    <p className="text-sm text-gray-600">Connect OpenTable, Calendly, or Shopify</p>
+                    <p className="font-semibold">{t('setupIntegrations', locale)}</p>
+                    <p className="text-sm text-gray-600">{t('setupIntegrationsDesc', locale)}</p>
                   </div>
                 </div>
               </div>
