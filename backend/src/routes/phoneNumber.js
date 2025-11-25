@@ -67,9 +67,9 @@ router.get('/can-provision', verifyBusinessAccess, async (req, res) => {
 });
 
 // Provision a new phone number
-router.post('/provision', verifyBusinessAccess, checkLimit('phoneNumbers'), async (req, res) => {
+router.post('/provision', async (req, res) => {
   try {
-    const { businessId } = req.user;
+    const businessId = req.businessId;
     const { assistantId, areaCode } = req.body;
 
     // Get business assistant ID if not provided
