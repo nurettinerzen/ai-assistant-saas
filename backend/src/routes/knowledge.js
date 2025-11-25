@@ -45,8 +45,17 @@ const upload = multer({
 // GET /api/knowledge/documents
 router.get('/documents', authenticateToken, async (req, res) => {
   try {
-    // TODO: Fetch from database
-    res.json({ documents: [] });
+    const businessId = req.businessId;
+    
+    const documents = await prisma.knowledgeBase.findMany({
+      where: { 
+        businessId,
+        type: 'DOCUMENT'
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    res.json({ documents });
   } catch (error) {
     console.error('Error fetching documents:', error);
     res.status(500).json({ error: 'Failed to fetch documents' });
