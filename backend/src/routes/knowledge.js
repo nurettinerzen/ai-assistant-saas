@@ -45,6 +45,47 @@ const upload = multer({
   }
 });
 
+// GET /api/knowledge - Get all knowledge base items (documents, faqs, urls)
+router.get('/', authenticateToken, async (req, res) => {
+  try {
+    const businessId = req.businessId;
+    
+    // Return empty structure if no businessId
+    if (!businessId) {
+      return res.json({ documents: [], faqs: [], urls: [] });
+    }
+
+    let documents = [];
+    let faqs = [];
+    let urls = [];
+
+    try {
+      [documents, faqs, urls] = await Promise.all([
+        prisma.knowledgeBase.findMany({
+          where: { businessId, type: 'DOCUMENT' },
+          orderBy: { createdAt: 'desc' }
+        }),
+        prisma.knowledgeBase.findMany({
+          where: { businessId, type: 'FAQ' },
+          orderBy: { createdAt: 'desc' }
+        }),
+        prisma.knowledgeBase.findMany({
+          where: { businessId, type: 'URL' },
+          orderBy: { createdAt: 'desc' }
+        })
+      ]);
+    } catch (dbError) {
+      console.log('KnowledgeBase query error, returning empty arrays:', dbError.message);
+    }
+
+    res.json({ documents, faqs, urls });
+  } catch (error) {
+    console.error('Error fetching knowledge base:', error);
+    // Return empty arrays instead of error for better UX
+    res.json({ documents: [], faqs: [], urls: [] });
+  }
+});
+
 // GET /api/knowledge/documents
 router.get('/documents', authenticateToken, async (req, res) => {
   try {

@@ -31,6 +31,7 @@ import settingsRoutes from './routes/settings.js';
 import voicesRoutes from './routes/voices.js';
 import knowledgeRoutes from './routes/knowledge.js';
 import analyticsRoutes from './routes/analytics.js';
+import costCalculatorRoutes from './routes/costCalculator.js';
 
 
 // Import jobs
@@ -83,6 +84,7 @@ app.use('/api/google-sheets', googleSheetsRoutes);
 app.use('/api/integrations', integrationsRoutes);
 app.use('/api/ai-training', aiTrainingRoutes);
 app.use('/api/phone-number', phoneNumberRoutes); // NEW
+app.use('/api/phone-numbers', phoneNumberRoutes); // Alias for frontend compatibility
 app.use('/api/vapi', vapiRoutes); // Updated VAPI routes
 app.use('/api', demoRoutes);
 app.use('/api/dashboard', dashboardRoutes);
@@ -90,6 +92,7 @@ app.use('/api/settings', settingsRoutes);
 app.use('/api/voices', voicesRoutes);
 app.use('/api/knowledge', knowledgeRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/cost-calculator', costCalculatorRoutes);
 
 
 // Error handling middleware

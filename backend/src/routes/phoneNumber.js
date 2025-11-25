@@ -22,14 +22,24 @@ router.get('/', async (req, res) => {
   try {
     const businessId = req.businessId;
 
-    // For now, return empty array (VAPI service integration can be added later)
-    // const phoneNumbers = await vapiPhoneNumber.listPhoneNumbers(businessId);
-    
+    // Return empty array if no businessId (guest/unauthenticated)
+    if (!businessId) {
+      return res.json({
+        phoneNumbers: [],
+        count: 0
+      });
+    }
+
     // Get from business phoneNumbers array
-    const business = await prisma.business.findUnique({
-      where: { id: businessId },
-      select: { phoneNumbers: true }
-    });
+    let business = null;
+    try {
+      business = await prisma.business.findUnique({
+        where: { id: businessId },
+        select: { phoneNumbers: true }
+      });
+    } catch (dbError) {
+      console.log('Database query error, returning empty array:', dbError.message);
+    }
 
     const phoneNumbers = (business?.phoneNumbers || []).map(number => ({
       id: number,
@@ -45,9 +55,10 @@ router.get('/', async (req, res) => {
     });
   } catch (error) {
     console.error('List phone numbers error:', error);
-    res.status(500).json({ 
-      error: 'Failed to list phone numbers',
-      message: error.message
+    // Return empty array instead of error for better UX
+    res.json({ 
+      phoneNumbers: [],
+      count: 0
     });
   }
 });

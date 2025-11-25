@@ -6,7 +6,6 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { MessageSquare } from 'lucide-react';
 import {
   LayoutDashboard,
   Bot,
@@ -14,6 +13,7 @@ import {
   BarChart3,
   Settings,
   CreditCard,
+  Calculator,
   Puzzle,
   BookOpen,
   Mic,
@@ -24,6 +24,7 @@ import {
   X,
   LogOut,
   User,
+  MessageSquare,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -84,6 +85,7 @@ export default function Sidebar({ user, credits }) {
     {
       labelKey: 'navSystem',
       items: [
+        { icon: Calculator, labelKey: 'navCostCalculator', href: '/dashboard/cost-calculator' },
         { icon: Settings, labelKey: 'navSettings', href: '/dashboard/settings' },
         { icon: CreditCard, labelKey: 'navSubscription', href: '/dashboard/subscription' },
       ],
