@@ -117,16 +117,17 @@ export default function Sidebar({ user, credits }) {
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4 px-3">
         {NAVIGATION.map((section) => {
-          const isCollapsed = collapsedSections.includes(section.label);
+          const sectionLabel = t(section.labelKey, locale);
+          const isCollapsed = collapsedSections.includes(sectionLabel);
           
           return (
-            <div key={section.label} className="mb-6">
+            <div key={section.labelKey} className="mb-6">
               {/* Section header */}
               <button
-                onClick={() => toggleSection(section.label)}
+                onClick={() => toggleSection(sectionLabel)}
                 className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold text-neutral-500 uppercase tracking-wider hover:text-neutral-700 transition-colors"
               >
-                <span>{section.label}</span>
+                <span>{sectionLabel}</span>
                 {isCollapsed ? (
                   <ChevronRight className="h-3 w-3" />
                 ) : (
@@ -154,7 +155,7 @@ export default function Sidebar({ user, credits }) {
                         )}
                       >
                         <Icon className="h-5 w-5 flex-shrink-0" />
-                        <span>{item.label}</span>
+                        <span>{t(item.labelKey, locale)}</span>
                       </Link>
                     );
                   })}
