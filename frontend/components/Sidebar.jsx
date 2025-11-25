@@ -3,7 +3,7 @@
  * Main navigation sidebar with grouped sections
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -35,44 +35,58 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import LanguageSwitcher from './LanguageSwitcher';
-
-const NAVIGATION = [
-  {
-    label: 'BUILD',
-    items: [
-      { icon: Bot, label: 'Assistants', href: '/dashboard/assistant' },
-      { icon: BookOpen, label: 'Knowledge Base', href: '/dashboard/knowledge' },
-      { icon: Mic, label: 'Voices', href: '/dashboard/voices' },
-    ],
-  },
-  {
-    label: 'DEPLOY',
-    items: [
-      { icon: PhoneCall, label: 'Phone Numbers', href: '/dashboard/phone-numbers' },
-      { icon: Puzzle, label: 'Integrations', href: '/dashboard/integrations' },
-    ],
-  },
-  {
-    label: 'MONITOR',
-    items: [
-      { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
-      { icon: Phone, label: 'Calls', href: '/dashboard/calls' },
-      { icon: BarChart3, label: 'Analytics', href: '/dashboard/analytics' },
-    ],
-  },
-  {
-    label: 'SYSTEM',
-    items: [
-      { icon: Settings, label: 'Settings', href: '/dashboard/settings' },
-      { icon: CreditCard, label: 'Subscription', href: '/dashboard/subscription' },
-    ],
-  },
-];
+import { t, getCurrentLanguage } from '@/lib/translations';
 
 export default function Sidebar({ user, credits }) {
   const pathname = usePathname();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState([]);
+  const [locale, setLocale] = useState('en');
+
+  useEffect(() => {
+    setLocale(getCurrentLanguage());
+    
+    // Listen for language changes
+    const handleStorageChange = () => {
+      setLocale(getCurrentLanguage());
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
+  const NAVIGATION = [
+    {
+      labelKey: 'navBuild',
+      items: [
+        { icon: Bot, labelKey: 'navAssistants', href: '/dashboard/assistant' },
+        { icon: BookOpen, labelKey: 'navKnowledgeBase', href: '/dashboard/knowledge' },
+        { icon: Mic, labelKey: 'navVoices', href: '/dashboard/voices' },
+      ],
+    },
+    {
+      labelKey: 'navDeploy',
+      items: [
+        { icon: PhoneCall, labelKey: 'navPhoneNumbers', href: '/dashboard/phone-numbers' },
+        { icon: Puzzle, labelKey: 'navIntegrations', href: '/dashboard/integrations' },
+      ],
+    },
+    {
+      labelKey: 'navMonitor',
+      items: [
+        { icon: LayoutDashboard, labelKey: 'navDashboard', href: '/dashboard' },
+        { icon: Phone, labelKey: 'navCalls', href: '/dashboard/calls' },
+        { icon: BarChart3, labelKey: 'navAnalytics', href: '/dashboard/analytics' },
+      ],
+    },
+    {
+      labelKey: 'navSystem',
+      items: [
+        { icon: Settings, labelKey: 'navSettings', href: '/dashboard/settings' },
+        { icon: CreditCard, labelKey: 'navSubscription', href: '/dashboard/subscription' },
+      ],
+    },
+  ];
 
   const toggleSection = (label) => {
     setCollapsedSections((prev) =>
