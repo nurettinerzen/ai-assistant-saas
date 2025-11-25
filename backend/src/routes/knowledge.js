@@ -224,7 +224,17 @@ router.delete('/documents/:id', authenticateToken, async (req, res) => {
 // GET /api/knowledge/faqs
 router.get('/faqs', authenticateToken, async (req, res) => {
   try {
-    res.json({ faqs: [] });
+    const businessId = req.businessId;
+    
+    const faqs = await prisma.knowledgeBase.findMany({
+      where: { 
+        businessId,
+        type: 'FAQ'
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    res.json({ faqs });
   } catch (error) {
     console.error('Error fetching FAQs:', error);
     res.status(500).json({ error: 'Failed to fetch FAQs' });
@@ -234,20 +244,24 @@ router.get('/faqs', authenticateToken, async (req, res) => {
 // POST /api/knowledge/faqs
 router.post('/faqs', authenticateToken, async (req, res) => {
   try {
+    const businessId = req.businessId;
     const { question, answer, category } = req.body;
     
     if (!question || !answer) {
       return res.status(400).json({ error: 'Question and answer are required' });
     }
 
-    // TODO: Save to database
-    const faq = {
-      id: Date.now(),
-      question,
-      answer,
-      category,
-      createdAt: new Date()
-    };
+    const faq = await prisma.knowledgeBase.create({
+      data: {
+        businessId,
+        type: 'FAQ',
+        title: question.substring(0, 100), // Use first 100 chars as title
+        question,
+        answer,
+        category,
+        status: 'ACTIVE'
+      }
+    });
 
     res.json({ faq, message: 'FAQ created successfully' });
   } catch (error) {
@@ -259,8 +273,26 @@ router.post('/faqs', authenticateToken, async (req, res) => {
 // DELETE /api/knowledge/faqs/:id
 router.delete('/faqs/:id', authenticateToken, async (req, res) => {
   try {
-    // TODO: Delete from database
-    res.json({ message: 'FAQ deleted' });
+    const businessId = req.businessId;
+    const { id } = req.params;
+
+    const faq = await prisma.knowledgeBase.findFirst({
+      where: { 
+        id,
+        businessId,
+        type: 'FAQ'
+      }
+    });
+
+    if (!faq) {
+      return res.status(404).json({ error: 'FAQ not found' });
+    }
+
+    await prisma.knowledgeBase.delete({
+      where: { id }
+    });
+
+    res.json({ message: 'FAQ deleted successfully' });
   } catch (error) {
     console.error('Error deleting FAQ:', error);
     res.status(500).json({ error: 'Failed to delete FAQ' });
