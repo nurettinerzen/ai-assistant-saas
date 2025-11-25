@@ -62,31 +62,124 @@ router.get('/documents', authenticateToken, async (req, res) => {
   }
 });
 
+// Helper function to extract text from PDF
+async function extractTextFromPDF(filePath) {
+  try {
+    const dataBuffer = await fs.readFile(filePath);
+    const data = await pdfParse(dataBuffer);
+    return data.text;
+  } catch (error) {
+    console.error('PDF parsing error:', error);
+    throw new Error('Failed to extract text from PDF');
+  }
+}
+
+// Helper function to extract text from DOCX
+async function extractTextFromDOCX(filePath) {
+  try {
+    const result = await mammoth.extractRawText({ path: filePath });
+    return result.value;
+  } catch (error) {
+    console.error('DOCX parsing error:', error);
+    throw new Error('Failed to extract text from DOCX');
+  }
+}
+
+// Helper function to extract text from TXT/CSV
+async function extractTextFromTXT(filePath) {
+  try {
+    return await fs.readFile(filePath, 'utf-8');
+  } catch (error) {
+    console.error('TXT reading error:', error);
+    throw new Error('Failed to read text file');
+  }
+}
+
 // POST /api/knowledge/documents - Upload document
 router.post('/documents', authenticateToken, upload.single('file'), async (req, res) => {
   try {
+    const businessId = req.businessId;
+    
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    // TODO: Save to database and process file
-    const document = {
-      id: Date.now(),
-      name: req.file.originalname,
-      type: path.extname(req.file.originalname).slice(1).toUpperCase(),
-      size: req.file.size,
-      status: 'processing',
-      uploadedAt: new Date(),
-      path: req.file.path
-    };
+    const ext = path.extname(req.file.originalname).toLowerCase();
+    
+    // Create initial database entry
+    const document = await prisma.knowledgeBase.create({
+      data: {
+        businessId,
+        type: 'DOCUMENT',
+        title: req.file.originalname,
+        fileName: req.file.filename,
+        fileSize: req.file.size,
+        mimeType: req.file.mimetype,
+        filePath: req.file.path,
+        status: 'PROCESSING'
+      }
+    });
 
-    console.log('Document uploaded:', document);
-    res.json({ document, message: 'Document uploaded successfully' });
+    // Process file asynchronously
+    processDocument(document.id, req.file.path, ext, businessId).catch(error => {
+      console.error('Document processing failed:', error);
+    });
+
+    res.json({ 
+      document, 
+      message: 'Document uploaded and processing started' 
+    });
   } catch (error) {
     console.error('Error uploading document:', error);
     res.status(500).json({ error: 'Failed to upload document' });
   }
 });
+
+// Async function to process document
+async function processDocument(documentId, filePath, ext, businessId) {
+  try {
+    let content = '';
+    
+    // Extract text based on file type
+    switch (ext) {
+      case '.pdf':
+        content = await extractTextFromPDF(filePath);
+        break;
+      case '.docx':
+        content = await extractTextFromDOCX(filePath);
+        break;
+      case '.txt':
+      case '.csv':
+        content = await extractTextFromTXT(filePath);
+        break;
+      default:
+        throw new Error('Unsupported file type');
+    }
+
+    // Update document with extracted content
+    await prisma.knowledgeBase.update({
+      where: { id: documentId },
+      data: {
+        content,
+        status: 'ACTIVE'
+      }
+    });
+
+    console.log(`✅ Document ${documentId} processed successfully`);
+    
+    // TODO: Sync with VAPI assistant's knowledge base
+    // This would require VAPI's knowledge base API endpoint
+    
+  } catch (error) {
+    console.error(`❌ Document ${documentId} processing failed:`, error);
+    
+    // Mark as failed
+    await prisma.knowledgeBase.update({
+      where: { id: documentId },
+      data: { status: 'FAILED' }
+    });
+  }
+}
 
 // DELETE /api/knowledge/documents/:id
 router.delete('/documents/:id', authenticateToken, async (req, res) => {
