@@ -394,11 +394,11 @@ export function OnboardingModal({ open, onClose, businessId }) {
             data-testid="prev-step-btn"
           >
             <ChevronLeft className="w-4 h-4 mr-1" />
-            Back
+            {t('back', locale)}
           </Button>
 
           <div className="text-sm text-gray-500">
-            Step {step} of {STEPS.length}
+            {t('stepOf', locale)} {step} {t('of', locale)} {STEPS.length}
           </div>
 
           <Button
@@ -406,7 +406,7 @@ export function OnboardingModal({ open, onClose, businessId }) {
             disabled={!canProceed() || loading}
             data-testid="next-step-btn"
           >
-            {loading ? 'Saving...' : step === 6 ? 'Complete' : 'Next'}
+            {loading ? `${t('loading', locale)}` : step === 6 ? t('complete', locale) : t('next', locale)}
             {step < 6 && <ChevronRight className="w-4 h-4 ml-1" />}
           </Button>
         </div>
