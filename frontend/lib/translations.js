@@ -411,6 +411,135 @@ export const translations = {
     saveError: 'Kaydetme başarısız',
     deleteSuccess: 'Başarıyla silindi',
     deleteError: 'Silme başarısız',
+    
+    // Onboarding Steps
+    step1Title: 'Dil Seçin',
+    step2Title: 'Sektör Seçin',
+    step3Title: 'Ses Seçin',
+    step4Title: 'Eğitim Ekle',
+    step5Title: 'Asistanı Test Et',
+    step6Title: 'Tamamla',
+    step1Desc: 'Tercih ettiğiniz dili seçin',
+    step2Desc: 'İşletmeniz hakkında bilgi verin',
+    step3Desc: 'Asistanınızın sesini seçin',
+    step4Desc: 'İlk karşılama mesajınızı oluşturun',
+    step5Desc: 'Deneyin!',
+    step6Desc: 'Hazırsınız!',
+    
+    // Industries
+    industryRestaurant: 'Restoran',
+    industrySalon: 'Kuaför/Spa',
+    industryEcommerce: 'E-ticaret',
+    industryProfessional: 'Profesyonel Hizmetler',
+    industryOther: 'Diğer',
+    
+    // Voice Selection
+    voiceMaleProfessional: 'Erkek Profesyonel',
+    voiceMaleFriendly: 'Erkek Samimi',
+    voiceFemaleProfessional: 'Kadın Profesyonel',
+    voiceFemaleWarm: 'Kadın Sıcak',
+    
+    // Greeting Examples
+    greetingRestaurant: '[İşletme adı] aramanız için teşekkürler. Size nasıl yardımcı olabilirim?',
+    greetingSalon: 'Merhaba! [İşletme adı] buradasınız. Size nasıl yardımcı olabilirim?',
+    greetingEcommerce: 'Merhaba! [İşletme adı] aramanız için teşekkürler. Size nasıl yardımcı olabilirim?',
+    greetingProfessional: 'İyi günler! [İşletme adı] konuşuyor. Size nasıl yardımcı olabilirim?',
+    greetingOther: 'Merhaba! Aramanız için teşekkürler. Size nasıl yardımcı olabilirim?',
+    
+    // Onboarding Actions
+    greetingLabel: 'Karşılama Mesajı',
+    greetingPlaceholder: 'Karşılama mesajınızı girin...',
+    greetingTip: '💡 İpucu: Karşılama mesajınızı kısa, samimi tutun ve işletme adınızı ekleyin.',
+    greetingExample: 'Örnek',
+    testYourAssistant: 'Asistanınızı Test Edin',
+    startVoiceTest: 'Sesli Test Başlat',
+    endCall: 'Aramayı Sonlandır',
+    creatingAssistant: 'Asistanınız oluşturuluyor...',
+    onboardingComplete: '🎉 Hazırsınız!',
+    onboardingCompleteDesc: 'AI asistanınız hazır. İşte yapabilecekleriniz:',
+    upgradeToGetPhone: 'Telefon Numaranızı Almak İçin Yükseltin',
+    upgradeDesc: 'Gerçek aramalar almaya başlayın - sadece $27/ay',
+    addMoreTrainings: 'Daha Fazla Eğitim Ekleyin',
+    addTrainingsDesc: 'Asistanınıza hizmetleriniz hakkında öğretin',
+    setupIntegrations: 'Entegrasyonları Kurun',
+    setupIntegrationsDesc: 'OpenTable, Calendly veya Shopify bağlayın',
+    back: 'Geri',
+    next: 'İleri',
+    stepOf: 'Adım',
+    of: '/',
+    
+    // Navigation
+    navBuild: 'OLUŞTUR',
+    navDeploy: 'YAYINLA',
+    navMonitor: 'İZLE',
+    navSystem: 'SİSTEM',
+    navAssistants: 'Asistanlar',
+    navKnowledgeBase: 'Bilgi Bankası',
+    navVoices: 'Sesler',
+    navPhoneNumbers: 'Telefon Numaraları',
+    navIntegrations: 'Entegrasyonlar',
+    navDashboard: 'Kontrol Paneli',
+    navCalls: 'Aramalar',
+    navAnalytics: 'Analitik',
+    navSettings: 'Ayarlar',
+    navSubscription: 'Abonelik',
+    availableCredits: 'Mevcut Kredi',
+    addCredits: 'Kredi ekle',
+    profileSettings: 'Profil Ayarları',
+    logOut: 'Çıkış yap',
+    
+    // Common Actions
+    noDataYet: 'Henüz veri yok',
+    createYourFirst: 'İlkini oluştur',
+    viewDetails: 'Detayları Gör',
+    viewAll: 'Tümünü Gör',
+    confirmDelete: 'Silmeyi Onayla',
+    areYouSure: 'Emin misiniz?',
+    thisActionCannot: 'Bu işlem geri alınamaz.',
+    yesDelete: 'Evet, sil',
+    noCancel: 'Hayır, iptal et',
+    
+    // Date & Time
+    todayLabel: 'Bugün',
+    yesterdayLabel: 'Dün',
+    last7Days: 'Son 7 Gün',
+    last30Days: 'Son 30 Gün',
+    thisMonth: 'Bu Ay',
+    thisYear: 'Bu Yıl',
+    
+    // Call Status
+    completed: 'Tamamlandı',
+    failed: 'Başarısız',
+    inProgress: 'Devam Ediyor',
+    queued: 'Sırada',
+    
+    // Dashboard
+    callHistory: 'Arama Geçmişi',
+    callHistoryDesc: 'Tüm aramalarınızı görüntüleyin ve analiz edin',
+    exportCSV: 'CSV Olarak Dışa Aktar',
+    totalCalls: 'Toplam Arama',
+    avgDuration: 'Ort. Süre',
+    totalCost: 'Toplam Maliyet',
+    successRate: 'Başarı Oranı',
+    
+    // Knowledge Base
+    knowledgeBase: 'Bilgi Bankası',
+    documents: 'Belgeler',
+    faqs: 'SSS',
+    urls: 'URL\'ler',
+    uploadDocument: 'Belge Yükle',
+    addFAQ: 'SSS Ekle',
+    addURL: 'URL Ekle',
+    processing: 'İşleniyor',
+    active: 'Aktif',
+    
+    // Analytics
+    analyticsTitle: 'Analitik',
+    analyticsDesc: 'Performans ve içgörüleri takip edin',
+    callVolume: 'Arama Hacmi',
+    peakHours: 'Yoğun Saatler',
+    avgCallDuration: 'Ortalama Arama Süresi',
+    costPerCall: 'Arama Başına Maliyet',
   },
 };
 
