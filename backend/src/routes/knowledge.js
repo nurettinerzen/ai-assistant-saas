@@ -184,8 +184,37 @@ async function processDocument(documentId, filePath, ext, businessId) {
 // DELETE /api/knowledge/documents/:id
 router.delete('/documents/:id', authenticateToken, async (req, res) => {
   try {
-    // TODO: Delete from database
-    res.json({ message: 'Document deleted' });
+    const businessId = req.businessId;
+    const { id } = req.params;
+
+    // Find document
+    const document = await prisma.knowledgeBase.findFirst({
+      where: { 
+        id,
+        businessId,
+        type: 'DOCUMENT'
+      }
+    });
+
+    if (!document) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+
+    // Delete file from filesystem
+    if (document.filePath) {
+      try {
+        await fs.unlink(document.filePath);
+      } catch (error) {
+        console.error('Failed to delete file:', error);
+      }
+    }
+
+    // Delete from database
+    await prisma.knowledgeBase.delete({
+      where: { id }
+    });
+
+    res.json({ message: 'Document deleted successfully' });
   } catch (error) {
     console.error('Error deleting document:', error);
     res.status(500).json({ error: 'Failed to delete document' });
