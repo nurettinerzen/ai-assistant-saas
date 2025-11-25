@@ -8,7 +8,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -19,25 +19,9 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import VoiceDemo from './VoiceDemo';
 import { ChevronRight, ChevronLeft, Check, Play, Mic, Loader2 } from 'lucide-react';
+import { t, getCurrentLanguage } from '@/lib/translations';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-
-const STEPS = [
-  { id: 1, title: 'Choose Language', description: 'Select your preferred language' },
-  { id: 2, title: 'Choose Industry', description: 'Tell us about your business' },
-  { id: 3, title: 'Pick Your Voice', description: 'Select your assistant\'s voice' },
-  { id: 4, title: 'Add Training', description: 'Create your first greeting' },
-  { id: 5, title: 'Test Assistant', description: 'Try it out!' },
-  { id: 6, title: 'Complete', description: 'You\'re all set!' }
-];
-
-const INDUSTRIES = [
-  { id: 'RESTAURANT', icon: '🍴', name: 'Restaurant', example: 'Thanks for calling [business name]. How can I help you today?' },
-  { id: 'SALON', icon: '💇', name: 'Salon/Spa', example: 'Hello! You\'ve reached [business name]. How may I assist you?' },
-  { id: 'ECOMMERCE', icon: '🛒', name: 'E-commerce', example: 'Hi! Thanks for calling [business name]. What can I help you with?' },
-  { id: 'SERVICE', icon: '💼', name: 'Professional Services', example: 'Good day! [business name] speaking. How can I help?' },
-  { id: 'OTHER', icon: '📦', name: 'Other', example: 'Hello! Thanks for calling. How can I assist you today?' }
-];
 
 const VOICES = {
   EN: [
