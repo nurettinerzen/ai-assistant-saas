@@ -282,7 +282,7 @@ export function OnboardingModal({ open, onClose, businessId }) {
                   data-testid={`voice-${voice.id}`}
                 >
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-semibold">{voice.name}</h3>
+                    <h3 className="font-semibold">{t(voice.nameKey, locale)}</h3>
                     <Button variant="ghost" size="sm" onClick={(e) => {
                       e.stopPropagation();
                       toast.info('Voice preview coming soon');
