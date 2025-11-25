@@ -4,6 +4,11 @@ import { authenticateToken } from '../middleware/auth.js';
 import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs/promises';
+import pdfParse from 'pdf-parse';
+import mammoth from 'mammoth';
+import axios from 'axios';
+import * as cheerio from 'cheerio';
 
 const router = express.Router();
 const prisma = new PrismaClient();
