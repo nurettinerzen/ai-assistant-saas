@@ -39,3 +39,7 @@ prisma/migrations/
 .cache/
 .temp/
 backend/config/google-credentials.json
+-e 
+# Environment files
+*.env
+*.env.*
