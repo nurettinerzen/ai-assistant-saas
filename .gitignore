@@ -38,3 +38,4 @@ prisma/migrations/
 # Misc
 .cache/
 .temp/
+backend/config/google-credentials.json
