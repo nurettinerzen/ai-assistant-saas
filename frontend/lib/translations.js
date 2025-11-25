@@ -140,6 +140,135 @@ export const translations = {
     saveError: 'Failed to save',
     deleteSuccess: 'Deleted successfully',
     deleteError: 'Failed to delete',
+    
+    // Onboarding Steps
+    step1Title: 'Choose Language',
+    step2Title: 'Choose Industry',
+    step3Title: 'Pick Your Voice',
+    step4Title: 'Add Training',
+    step5Title: 'Test Assistant',
+    step6Title: 'Complete',
+    step1Desc: 'Select your preferred language',
+    step2Desc: 'Tell us about your business',
+    step3Desc: 'Select your assistant\'s voice',
+    step4Desc: 'Create your first greeting',
+    step5Desc: 'Try it out!',
+    step6Desc: 'You\'re all set!',
+    
+    // Industries
+    industryRestaurant: 'Restaurant',
+    industrySalon: 'Salon/Spa',
+    industryEcommerce: 'E-commerce',
+    industryProfessional: 'Professional Services',
+    industryOther: 'Other',
+    
+    // Voice Selection
+    voiceMaleProfessional: 'Male Professional',
+    voiceMaleFriendly: 'Male Friendly',
+    voiceFemaleProfessional: 'Female Professional',
+    voiceFemaleWarm: 'Female Warm',
+    
+    // Greeting Examples
+    greetingRestaurant: 'Thanks for calling [business name]. How can I help you today?',
+    greetingSalon: 'Hello! You\'ve reached [business name]. How may I assist you?',
+    greetingEcommerce: 'Hi! Thanks for calling [business name]. What can I help you with?',
+    greetingProfessional: 'Good day! [business name] speaking. How can I help?',
+    greetingOther: 'Hello! Thanks for calling. How can I assist you today?',
+    
+    // Onboarding Actions
+    greetingLabel: 'Greeting Message',
+    greetingPlaceholder: 'Enter your greeting message...',
+    greetingTip: '💡 Tip: Keep your greeting short, friendly, and include your business name.',
+    greetingExample: 'Example for',
+    testYourAssistant: 'Test Your Assistant',
+    startVoiceTest: 'Start Voice Test',
+    endCall: 'End Call',
+    creatingAssistant: 'Creating your assistant...',
+    onboardingComplete: '🎉 You\'re All Set!',
+    onboardingCompleteDesc: 'Your AI assistant is ready to go. Here\'s what you can do next:',
+    upgradeToGetPhone: 'Upgrade to Get Your Phone Number',
+    upgradeDesc: 'Start receiving real calls - only $27/month',
+    addMoreTrainings: 'Add More Trainings',
+    addTrainingsDesc: 'Teach your assistant about your services',
+    setupIntegrations: 'Set Up Integrations',
+    setupIntegrationsDesc: 'Connect OpenTable, Calendly, or Shopify',
+    back: 'Back',
+    next: 'Next',
+    stepOf: 'Step',
+    of: 'of',
+    
+    // Navigation
+    navBuild: 'BUILD',
+    navDeploy: 'DEPLOY',
+    navMonitor: 'MONITOR',
+    navSystem: 'SYSTEM',
+    navAssistants: 'Assistants',
+    navKnowledgeBase: 'Knowledge Base',
+    navVoices: 'Voices',
+    navPhoneNumbers: 'Phone Numbers',
+    navIntegrations: 'Integrations',
+    navDashboard: 'Dashboard',
+    navCalls: 'Calls',
+    navAnalytics: 'Analytics',
+    navSettings: 'Settings',
+    navSubscription: 'Subscription',
+    availableCredits: 'Available Credits',
+    addCredits: 'Add credits',
+    profileSettings: 'Profile Settings',
+    logOut: 'Log out',
+    
+    // Common Actions
+    noDataYet: 'No data yet',
+    createYourFirst: 'Create your first',
+    viewDetails: 'View Details',
+    viewAll: 'View All',
+    confirmDelete: 'Confirm Delete',
+    areYouSure: 'Are you sure?',
+    thisActionCannot: 'This action cannot be undone.',
+    yesDelete: 'Yes, delete',
+    noCancel: 'No, cancel',
+    
+    // Date & Time
+    todayLabel: 'Today',
+    yesterdayLabel: 'Yesterday',
+    last7Days: 'Last 7 Days',
+    last30Days: 'Last 30 Days',
+    thisMonth: 'This Month',
+    thisYear: 'This Year',
+    
+    // Call Status
+    completed: 'Completed',
+    failed: 'Failed',
+    inProgress: 'In Progress',
+    queued: 'Queued',
+    
+    // Dashboard
+    callHistory: 'Call History',
+    callHistoryDesc: 'View and analyze all your calls',
+    exportCSV: 'Export CSV',
+    totalCalls: 'Total Calls',
+    avgDuration: 'Avg Duration',
+    totalCost: 'Total Cost',
+    successRate: 'Success Rate',
+    
+    // Knowledge Base
+    knowledgeBase: 'Knowledge Base',
+    documents: 'Documents',
+    faqs: 'FAQs',
+    urls: 'URLs',
+    uploadDocument: 'Upload Document',
+    addFAQ: 'Add FAQ',
+    addURL: 'Add URL',
+    processing: 'Processing',
+    active: 'Active',
+    
+    // Analytics
+    analyticsTitle: 'Analytics',
+    analyticsDesc: 'Track performance and insights',
+    callVolume: 'Call Volume',
+    peakHours: 'Peak Hours',
+    avgCallDuration: 'Average Call Duration',
+    costPerCall: 'Cost Per Call',
   },
   tr: {
     // Common
