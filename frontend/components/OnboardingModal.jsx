@@ -159,16 +159,17 @@ export function OnboardingModal({ open, onClose, businessId }) {
           {
             name: 'Test Assistant',
             voiceId: data.voice.id,
-            systemPrompt: data.greeting
+            systemPrompt: data.greeting,
+            language: data.language // Pass language parameter
           },
           { headers: { Authorization: `Bearer ${token}` } }
         );
         setCreatedAssistantId(response.data.assistant.vapiAssistantId);
-        toast.success('Assistant created!');
+        toast.success(t('saveSuccess', locale));
         setStep(5);
       } catch (error) {
         console.error('Failed to create assistant:', error);
-        toast.error('Failed to create assistant');
+        toast.error(t('saveError', locale));
       } finally {
         setLoading(false);
       }
