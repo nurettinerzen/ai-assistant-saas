@@ -36,7 +36,7 @@ router.get('/', authenticateToken, async (req, res) => {
 router.post('/', authenticateToken, async (req, res) => {
   try {
     const businessId = req.businessId;
-    const { name, voiceId, systemPrompt, model } = req.body;
+    const { name, voiceId, systemPrompt, model, language } = req.body;
 
     // Check subscription limits
     const subscription = await prisma.subscription.findUnique({
@@ -70,6 +70,15 @@ router.post('/', authenticateToken, async (req, res) => {
     };
     const realVoiceId = voiceMapping[voiceId] || '21m00Tcm4TlvDq8ikWAM';
 
+    // Add language instruction based on selected language
+    const languageInstructions = {
+      'TR': 'Sen bir Türkçe konuşan AI asistansın. SADECE TÜRKÇE konuş. Kullanıcı ne dilde konuşursa konuşsun, sen her zaman Türkçe yanıt ver. Doğal, akıcı ve profesyonel bir şekilde Türkçe konuş.',
+      'EN': 'You are an English-speaking AI assistant. Always respond in English. Speak naturally, fluently, and professionally.'
+    };
+
+    const languageInstruction = languageInstructions[language] || languageInstructions['EN'];
+    const fullSystemPrompt = `${languageInstruction}\n\n${systemPrompt}`;
+
     // Create VAPI assistant
     const vapiResponse = await fetch('https://api.vapi.ai/assistant', {
       method: 'POST',
@@ -85,7 +94,7 @@ router.post('/', authenticateToken, async (req, res) => {
           messages: [
             {
               role: 'system',
-              content: systemPrompt
+              content: fullSystemPrompt
             }
           ]
         },
@@ -93,7 +102,9 @@ router.post('/', authenticateToken, async (req, res) => {
           provider: '11labs',
           voiceId: realVoiceId || '21m00Tcm4TlvDq8ikWAM'
         },
-        firstMessage: `Hi, I'm ${name}. How can I help you today?`,
+        firstMessage: language === 'TR' 
+          ? `Merhaba, ben ${name}. Size nasıl yardımcı olabilirim?`
+          : `Hi, I'm ${name}. How can I help you today?`,
       }),
     });
 
@@ -101,6 +112,7 @@ router.post('/', authenticateToken, async (req, res) => {
     
     // Log VAPI response
     console.log('🎤 VAPI Response:', vapiAssistant);
+    console.log('🌍 Language:', language);
     
     // Check if VAPI request was successful
     if (!vapiResponse.ok || !vapiAssistant.id) {
@@ -114,7 +126,7 @@ router.post('/', authenticateToken, async (req, res) => {
         businessId,
         name,
         voiceId,
-        systemPrompt,
+        systemPrompt: fullSystemPrompt,
         model: model || 'gpt-4',
         vapiAssistantId: vapiAssistant.id,
       },
