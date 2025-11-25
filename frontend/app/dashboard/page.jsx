@@ -23,6 +23,7 @@ import {
 import { apiClient } from '@/lib/api';
 import { toast } from '@/lib/toast';
 import { formatDate, formatDuration, formatCurrency } from '@/lib/utils';
+import { t, getCurrentLanguage } from '@/lib/translations';
 import {
   LineChart,
   Line,
@@ -39,6 +40,11 @@ export default function DashboardPage() {
   const [stats, setStats] = useState(null);
   const [chartData, setChartData] = useState([]);
   const [recentCalls, setRecentCalls] = useState([]);
+  const [locale, setLocale] = useState('en');
+
+  useEffect(() => {
+    setLocale(getCurrentLanguage());
+  }, []);
 
   useEffect(() => {
     loadDashboardData();
