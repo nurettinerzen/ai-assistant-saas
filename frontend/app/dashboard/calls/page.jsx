@@ -96,12 +96,12 @@ export default function CallsPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-neutral-900">Call History</h1>
-          <p className="text-neutral-600 mt-1">View and analyze all your calls</p>
+          <h1 className="text-3xl font-bold text-neutral-900">{t('callHistoryTitle', locale)}</h1>
+          <p className="text-neutral-600 mt-1">{t('viewAndAnalyze', locale)}</p>
         </div>
         <Button onClick={handleExport} variant="outline">
           <Download className="h-4 w-4 mr-2" />
-          Export CSV
+          {t('exportCSV', locale)}
         </Button>
       </div>
 
@@ -110,7 +110,7 @@ export default function CallsPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
           <Input
-            placeholder="Search by phone number or assistant..."
+            placeholder={t('searchByPhone', locale)}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
@@ -122,11 +122,11 @@ export default function CallsPage() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="completed">Completed</SelectItem>
-            <SelectItem value="failed">Failed</SelectItem>
-            <SelectItem value="in-progress">In Progress</SelectItem>
-            <SelectItem value="queued">Queued</SelectItem>
+            <SelectItem value="all">{t('allStatus', locale)}</SelectItem>
+            <SelectItem value="completed">{t('completed', locale)}</SelectItem>
+            <SelectItem value="failed">{t('failed', locale)}</SelectItem>
+            <SelectItem value="in-progress">{t('inProgress', locale)}</SelectItem>
+            <SelectItem value="queued">{t('queued', locale)}</SelectItem>
           </SelectContent>
         </Select>
       </div>
