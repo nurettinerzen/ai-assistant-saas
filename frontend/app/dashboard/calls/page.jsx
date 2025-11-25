@@ -33,8 +33,10 @@ export default function CallsPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedCall, setSelectedCall] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [locale, setLocale] = useState('en');
 
   useEffect(() => {
+    setLocale(getCurrentLanguage());
     loadCalls();
   }, [statusFilter]);
 
