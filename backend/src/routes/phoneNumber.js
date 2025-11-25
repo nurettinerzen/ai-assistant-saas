@@ -147,9 +147,9 @@ router.delete('/:phoneNumber', async (req, res) => {
 });
 
 // Update phone number's assistant
-router.patch('/:phoneNumber/assistant', verifyBusinessAccess, async (req, res) => {
+router.patch('/:phoneNumber/assistant', async (req, res) => {
   try {
-    const { businessId } = req.user;
+    const businessId = req.businessId;
     const { phoneNumber } = req.params;
     const { assistantId } = req.body;
 
