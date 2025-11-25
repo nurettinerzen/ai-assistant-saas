@@ -82,7 +82,7 @@ export function OnboardingModal({ open, onClose, businessId }) {
     setData({ 
       ...data, 
       industry,
-      greeting: industryData.example
+      greeting: t(industryData.exampleKey, locale)
     });
   };
 
