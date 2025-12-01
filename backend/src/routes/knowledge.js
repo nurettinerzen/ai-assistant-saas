@@ -510,11 +510,35 @@ async function crawlURL(entryId, url) {
     const result = await scrapeURL(url);
     
     if (result.success) {
+      // Get entry to find businessId
+      const entry = await prisma.knowledgeBase.findUnique({
+        where: { id: entryId },
+        include: { business: { select: { vapiAssistantId: true } } }
+      });
+
+      let vapiKnowledgeId = null;
+
+      // Upload to VAPI if assistant exists
+      if (entry?.business?.vapiAssistantId) {
+        try {
+          const vapiResponse = await vapiKnowledgeService.uploadUrl(
+            entry.business.vapiAssistantId,
+            url,
+            result.title || url
+          );
+          vapiKnowledgeId = vapiResponse.id;
+          console.log(`✅ URL uploaded to VAPI: ${vapiKnowledgeId}`);
+        } catch (vapiError) {
+          console.error('VAPI URL upload failed:', vapiError);
+        }
+      }
+
       await prisma.knowledgeBase.update({
         where: { id: entryId },
         data: {
           title: result.title || url,
           content: result.content,
+          vapiKnowledgeId,
           pageCount: 1,
           lastCrawled: new Date(),
           status: 'ACTIVE'
