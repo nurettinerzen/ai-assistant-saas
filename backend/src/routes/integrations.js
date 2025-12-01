@@ -3,6 +3,11 @@ import { PrismaClient } from '@prisma/client';
 import { authenticateToken } from '../middleware/auth.js';
 import OpenTableService from '../services/openTableService.js';
 import BooksyService from '../services/booksyService.js';
+import calendlyService from '../services/calendly.js';
+import googleCalendarService from '../services/google-calendar.js';
+import hubspotService from '../services/hubspot.js';
+import googleSheetsService from '../services/google-sheets.js';
+import whatsappService from '../services/whatsapp.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
