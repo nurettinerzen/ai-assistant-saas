@@ -206,19 +206,44 @@ async function processDocument(documentId, filePath, ext, businessId) {
         throw new Error('Unsupported file type');
     }
 
+    // Get business assistant ID
+    const business = await prisma.business.findUnique({
+      where: { id: businessId },
+      select: { vapiAssistantId: true }
+    });
+
+    let vapiKnowledgeId = null;
+
+    // Upload to VAPI if assistant exists
+    if (business?.vapiAssistantId) {
+      try {
+        const document = await prisma.knowledgeBase.findUnique({
+          where: { id: documentId }
+        });
+        const vapiResponse = await vapiKnowledgeService.uploadText(
+          business.vapiAssistantId,
+          document.title,
+          content
+        );
+        vapiKnowledgeId = vapiResponse.id;
+        console.log(`✅ Uploaded to VAPI knowledge base: ${vapiKnowledgeId}`);
+      } catch (vapiError) {
+        console.error('VAPI upload failed:', vapiError);
+        // Continue even if VAPI fails
+      }
+    }
+
     // Update document with extracted content
     await prisma.knowledgeBase.update({
       where: { id: documentId },
       data: {
         content,
+        vapiKnowledgeId,
         status: 'ACTIVE'
       }
     });
 
     console.log(`✅ Document ${documentId} processed successfully`);
-    
-    // TODO: Sync with VAPI assistant's knowledge base
-    // This would require VAPI's knowledge base API endpoint
     
   } catch (error) {
     console.error(`❌ Document ${documentId} processing failed:`, error);
