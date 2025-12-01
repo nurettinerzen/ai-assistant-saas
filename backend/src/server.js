@@ -32,6 +32,7 @@ import voicesRoutes from './routes/voices.js';
 import knowledgeRoutes from './routes/knowledge.js';
 import analyticsRoutes from './routes/analytics.js';
 import costCalculatorRoutes from './routes/costCalculator.js';
+import webhooksRoutes from './routes/webhooks.js';
 
 
 // Import jobs
