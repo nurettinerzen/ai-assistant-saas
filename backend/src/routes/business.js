@@ -46,6 +46,14 @@ router.put('/:businessId', authenticateToken, verifyBusinessAccess, requireRole(
   try {
     const { name, vapiPhoneNumber, vapiAssistantId, gender, tone, language } = req.body;
 
+    // 🌍 Validate language if provided
+    if (language && !SUPPORTED_LANGUAGES.includes(language.toUpperCase())) {
+      return res.status(400).json({ 
+        error: 'Invalid language code',
+        supportedLanguages: SUPPORTED_LANGUAGES
+      });
+    }
+
     const business = await prisma.business.findUnique({
       where: { id: req.businessId }
     });
