@@ -8,6 +8,7 @@ import fs from 'fs/promises';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 import { createRequire } from 'module';
+import vapiKnowledgeService from '../services/vapiKnowledge.js';
 
 const require = createRequire(import.meta.url);
 const pdfParse = require('pdf-parse');
