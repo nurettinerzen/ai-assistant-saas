@@ -14,6 +14,7 @@ import { Check, CreditCard, TrendingUp, X } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast, toastHelpers } from '@/lib/toast';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { t, getCurrentLanguage } from '@/lib/translations';
 
 const PLANS = [
   {
@@ -67,10 +68,12 @@ const PLANS = [
 
 export default function SubscriptionPage() {
   const [loading, setLoading] = useState(true);
+  const [locale, setLocale] = useState('en');
   const [subscription, setSubscription] = useState(null);
   const [billingHistory, setBillingHistory] = useState([]);
 
   useEffect(() => {
+    setLocale(getCurrentLanguage());
     loadData();
   }, []);
 
@@ -84,20 +87,20 @@ export default function SubscriptionPage() {
       setSubscription(subRes.data);
       setBillingHistory(billingRes.data.history || []);
     } catch (error) {
-      toast.error('Failed to load subscription data');
+      toast.error(t('saveError', locale));
     } finally {
       setLoading(false);
     }
   };
 
   const handleUpgrade = async (planId) => {
-    if (!confirm(`Upgrade to ${PLANS.find((p) => p.id === planId)?.name} plan?`)) return;
+    if (!confirm(`${t('upgradeConfirm', locale)} ${PLANS.find((p) => p.id === planId)?.name} ${t('planQuestion', locale)}`)) return;
 
     try {
       await toastHelpers.async(
         apiClient.subscription.upgrade(planId),
-        'Processing upgrade...',
-        'Plan upgraded successfully!'
+        t('processingUpgrade', locale),
+        t('planUpgradedSuccess', locale)
       );
       loadData();
     } catch (error) {
@@ -113,8 +116,8 @@ export default function SubscriptionPage() {
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-neutral-900">Subscription</h1>
-        <p className="text-neutral-600 mt-1">Manage your plan and billing</p>
+        <h1 className="text-3xl font-bold text-neutral-900">{t('subscriptionTitle2', locale)}</h1>
+        <p className="text-neutral-600 mt-1">{t('managePlanBilling', locale)}</p>
       </div>
 
       {/* Current plan & usage */}
@@ -123,26 +126,26 @@ export default function SubscriptionPage() {
           {/* Current plan */}
           <div className="bg-white rounded-xl border border-neutral-200 p-6 shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-neutral-900">Current Plan</h2>
+              <h2 className="text-lg font-semibold text-neutral-900">{t('currentPlanLabel', locale)}</h2>
               <Badge className="bg-primary-100 text-primary-800">
-                {subscription.planName || 'Free'}
+                {subscription.planName || t('freePlanLabel', locale)}
               </Badge>
             </div>
             <div className="space-y-3">
               <div className="flex justify-between text-sm">
-                <span className="text-neutral-600">Monthly Cost:</span>
+                <span className="text-neutral-600">{t('monthlyCostLabel', locale)}</span>
                 <span className="font-semibold text-neutral-900">
                   {formatCurrency(subscription.price || 0)}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-neutral-600">Billing Cycle:</span>
+                <span className="text-neutral-600">{t('billingCycleLabel', locale)}</span>
                 <span className="font-medium text-neutral-900">
-                  {subscription.billingCycle || 'Monthly'}
+                  {subscription.billingCycle || t('monthlyLabel', locale)}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-neutral-600">Next Billing:</span>
+                <span className="text-neutral-600">{t('nextBillingLabel', locale)}</span>
                 <span className="font-medium text-neutral-900">
                   {formatDate(subscription.nextBillingDate, 'short')}
                 </span>
@@ -154,26 +157,26 @@ export default function SubscriptionPage() {
           <div className="bg-white rounded-xl border border-neutral-200 p-6 shadow-sm">
             <div className="flex items-center gap-3 mb-4">
               <TrendingUp className="h-5 w-5 text-primary-600" />
-              <h2 className="text-lg font-semibold text-neutral-900">Credit Usage</h2>
+              <h2 className="text-lg font-semibold text-neutral-900">{t('creditUsageLabel', locale)}</h2>
             </div>
             <div className="space-y-3">
               <div className="flex justify-between text-sm">
-                <span className="text-neutral-600">Used this month:</span>
+                <span className="text-neutral-600">{t('usedThisMonth', locale)}</span>
                 <span className="font-semibold text-neutral-900">
-                  {subscription.creditsUsed || 0} / {subscription.creditsLimit || 0} credits
+                  {subscription.creditsUsed || 0} / {subscription.creditsLimit || 0} {t('creditsLabel', locale)}
                 </span>
               </div>
               <Progress value={usagePercent} className="h-2" />
               <p className="text-xs text-neutral-500">
                 {usagePercent < 80
-                  ? `${Math.round(100 - usagePercent)}% remaining`
+                  ? `${Math.round(100 - usagePercent)}% ${t('remaining', locale)}`
                   : usagePercent < 100
-                  ? 'Running low on credits'
-                  : 'Limit reached - upgrade needed'}
+                  ? t('runningLowOnCredits', locale)
+                  : t('limitReachedUpgrade', locale)}
               </p>
             </div>
             <Button className="w-full mt-4" variant="outline">
-              Add Credits
+              {t('addCreditsBtn', locale)}
             </Button>
           </div>
         </div>
@@ -181,7 +184,7 @@ export default function SubscriptionPage() {
 
       {/* Pricing plans */}
       <div>
-        <h2 className="text-2xl font-bold text-neutral-900 mb-6">Available Plans</h2>
+        <h2 className="text-2xl font-bold text-neutral-900 mb-6">{t('availablePlans', locale)}</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {PLANS.map((plan) => {
             const isCurrentPlan = subscription?.planId === plan.id;
@@ -194,7 +197,7 @@ export default function SubscriptionPage() {
               >
                 {plan.popular && (
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                    <Badge className="bg-primary-600 text-white">Most Popular</Badge>
+                    <Badge className="bg-primary-600 text-white">{t('mostPopular', locale)}</Badge>
                   </div>
                 )}
 
@@ -204,9 +207,9 @@ export default function SubscriptionPage() {
                     <span className="text-4xl font-bold text-neutral-900">
                       ${plan.price}
                     </span>
-                    <span className="text-neutral-500">/month</span>
+                    <span className="text-neutral-500">{t('perMonthLabel2', locale)}</span>
                   </div>
-                  <p className="text-sm text-neutral-600 mt-2">{plan.credits} credits included</p>
+                  <p className="text-sm text-neutral-600 mt-2">{plan.credits} {t('creditsIncluded', locale)}</p>
                 </div>
 
                 <ul className="space-y-3 mb-6">
@@ -230,7 +233,7 @@ export default function SubscriptionPage() {
                   disabled={isCurrentPlan}
                   onClick={() => handleUpgrade(plan.id)}
                 >
-                  {isCurrentPlan ? 'Current Plan' : 'Upgrade'}
+                  {isCurrentPlan ? t('currentPlanBtn', locale) : t('upgradeBtn', locale)}
                 </Button>
               </div>
             );
@@ -243,7 +246,7 @@ export default function SubscriptionPage() {
         <div className="p-6 border-b border-neutral-200">
           <div className="flex items-center gap-3">
             <CreditCard className="h-5 w-5 text-primary-600" />
-            <h2 className="text-lg font-semibold text-neutral-900">Billing History</h2>
+            <h2 className="text-lg font-semibold text-neutral-900">{t('billingHistoryTitle', locale)}</h2>
           </div>
         </div>
 
@@ -253,19 +256,19 @@ export default function SubscriptionPage() {
               <thead className="bg-neutral-50 border-b border-neutral-200">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">
-                    Date
+                    {t('dateHeader', locale)}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">
-                    Description
+                    {t('descriptionHeader', locale)}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">
-                    Amount
+                    {t('amountHeader', locale)}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">
-                    Status
+                    {t('statusHeader', locale)}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">
-                    Invoice
+                    {t('invoiceHeader', locale)}
                   </th>
                 </tr>
               </thead>
@@ -291,12 +294,12 @@ export default function SubscriptionPage() {
                             : 'bg-red-100 text-red-800'
                         }
                       >
-                        {invoice.status}
+                        {t(invoice.status === 'paid' ? 'paidStatus' : 'pendingStatus', locale)}
                       </Badge>
                     </td>
                     <td className="px-6 py-4">
                       <Button variant="link" size="sm" className="p-0 h-auto">
-                        Download
+                        {t('downloadBtn', locale)}
                       </Button>
                     </td>
                   </tr>
@@ -306,7 +309,7 @@ export default function SubscriptionPage() {
           </div>
         ) : (
           <div className="p-8 text-center text-sm text-neutral-500">
-            No billing history yet
+            {t('noBillingHistory', locale)}
           </div>
         )}
       </div>

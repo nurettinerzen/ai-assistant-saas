@@ -1,7 +1,7 @@
 /**
  * Phone Numbers Page
  * Manage provisioned phone numbers
- * CREATE NEW FILE: frontend/app/dashboard/phone-numbers/page.jsx
+ * UPDATE EXISTING FILE: frontend/app/dashboard/phone-numbers/page.jsx
  */
 
 'use client';
@@ -15,13 +15,16 @@ import { Phone, Plus, Trash2, TestTube2 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast, toastHelpers } from '@/lib/toast';
 import { formatPhone, formatDate } from '@/lib/utils';
+import { t, getCurrentLanguage } from '@/lib/translations';
 
 export default function PhoneNumbersPage() {
   const [phoneNumbers, setPhoneNumbers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showProvisionModal, setShowProvisionModal] = useState(false);
+  const [locale, setLocale] = useState('en');
 
   useEffect(() => {
+    setLocale(getCurrentLanguage());
     loadPhoneNumbers();
   }, []);
 
@@ -31,7 +34,7 @@ export default function PhoneNumbersPage() {
       const response = await apiClient.phoneNumbers.getAll();
       setPhoneNumbers(response.data.phoneNumbers || []);
     } catch (error) {
-      toast.error('Failed to load phone numbers');
+      toast.error(t('saveError', locale));
     } finally {
       setLoading(false);
     }
@@ -41,8 +44,8 @@ export default function PhoneNumbersPage() {
     try {
       await toastHelpers.async(
         apiClient.phoneNumbers.test(phoneNumber.id),
-        'Initiating test call...',
-        'Test call started! Check your phone.'
+        t('initiatingTestCall', locale),
+        t('testCallStarted', locale)
       );
     } catch (error) {
       // Error handled
@@ -52,7 +55,7 @@ export default function PhoneNumbersPage() {
   const handleRelease = async (phoneNumber) => {
     if (
       !confirm(
-        `Release ${formatPhone(phoneNumber.phoneNumber)}? This number will be returned to the pool.`
+        `${t('releaseNumberConfirm', locale)} ${formatPhone(phoneNumber.phoneNumber)}${t('numberWillReturn', locale)}`
       )
     )
       return;
@@ -60,8 +63,8 @@ export default function PhoneNumbersPage() {
     try {
       await toastHelpers.async(
         apiClient.phoneNumbers.release(phoneNumber.id),
-        'Releasing number...',
-        'Phone number released!'
+        t('releasingNumber', locale),
+        t('phoneNumberReleased', locale)
       );
       loadPhoneNumbers();
     } catch (error) {
@@ -74,12 +77,12 @@ export default function PhoneNumbersPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-neutral-900">Phone Numbers</h1>
-          <p className="text-neutral-600 mt-1">Manage your provisioned phone numbers</p>
+          <h1 className="text-3xl font-bold text-neutral-900">{t('phoneNumbersTitle2', locale)}</h1>
+          <p className="text-neutral-600 mt-1">{t('managePhoneNumbers', locale)}</p>
         </div>
         <Button onClick={() => setShowProvisionModal(true)}>
           <Plus className="h-4 w-4 mr-2" />
-          Get Phone Number
+          {t('getPhoneNumberBtn', locale)}
         </Button>
       </div>
 
@@ -114,7 +117,7 @@ export default function PhoneNumbersPage() {
                       {formatPhone(number.phoneNumber)}
                     </p>
                     <p className="text-xs text-neutral-500 mt-1">
-                      Provisioned {formatDate(number.createdAt, 'short')}
+                      {t('provisionedLabel', locale)} {formatDate(number.createdAt, 'short')}
                     </p>
                   </div>
                 </div>
@@ -122,17 +125,17 @@ export default function PhoneNumbersPage() {
 
               <div className="space-y-2 mb-4">
                 <div className="flex justify-between text-sm">
-                  <span className="text-neutral-600">Assistant:</span>
+                  <span className="text-neutral-600">{t('assistantColonLabel', locale)}</span>
                   <span className="font-medium text-neutral-900">
-                    {number.assistantName || 'Not assigned'}
+                    {number.assistantName || t('notAssignedLabel', locale)}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-neutral-600">Status:</span>
-                  <Badge className="bg-green-100 text-green-800">Active</Badge>
+                  <span className="text-neutral-600">{t('statusColonLabel', locale)}</span>
+                  <Badge className="bg-green-100 text-green-800">{t('activeLabel', locale)}</Badge>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-neutral-600">Monthly Cost:</span>
+                  <span className="text-neutral-600">{t('monthlyCostColonLabel', locale)}</span>
                   <span className="font-medium text-neutral-900">$1.00</span>
                 </div>
               </div>
@@ -145,7 +148,7 @@ export default function PhoneNumbersPage() {
                   onClick={() => handleTestCall(number)}
                 >
                   <TestTube2 className="h-3 w-3 mr-2" />
-                  Test
+                  {t('testBtn', locale)}
                 </Button>
                 <Button
                   variant="outline"
@@ -162,9 +165,9 @@ export default function PhoneNumbersPage() {
         <div className="bg-white rounded-xl border border-neutral-200 p-8">
           <EmptyState
             icon={Phone}
-            title="No phone numbers yet"
-            description="Get a phone number to start receiving calls"
-            actionLabel="Get Phone Number"
+            title={t('noPhoneNumbersTitle', locale)}
+            description={t('getNumberToStartDesc', locale)}
+            actionLabel={t('getPhoneNumberBtn', locale)}
             onAction={() => setShowProvisionModal(true)}
           />
         </div>
@@ -173,10 +176,9 @@ export default function PhoneNumbersPage() {
       {/* Info banner */}
       {phoneNumbers.length > 0 && (
         <div className="bg-primary-50 border border-primary-200 rounded-xl p-6">
-          <h3 className="text-sm font-semibold text-primary-900 mb-2">Billing Information</h3>
+          <h3 className="text-sm font-semibold text-primary-900 mb-2">{t('billingInformationTitle', locale)}</h3>
           <p className="text-sm text-primary-700">
-            Each phone number costs $1.00/month. Numbers are billed on the first of each month.
-            You can release a number at any time to stop charges.
+            {t('phoneNumberBillingDesc', locale)}
           </p>
         </div>
       )}

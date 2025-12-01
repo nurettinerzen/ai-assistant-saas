@@ -23,19 +23,22 @@ import { t, getCurrentLanguage } from '@/lib/translations';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-const VOICES = {
-  EN: [
-    { id: 'male-1-professional', nameKey: 'voiceMaleProfessional', gender: 'MALE', tone: 'PROFESSIONAL' },
-    { id: 'male-2-friendly', nameKey: 'voiceMaleFriendly', gender: 'MALE', tone: 'FRIENDLY' },
-    { id: 'female-1-professional', nameKey: 'voiceFemaleProfessional', gender: 'FEMALE', tone: 'PROFESSIONAL' },
-    { id: 'female-2-warm', nameKey: 'voiceFemaleWarm', gender: 'FEMALE', tone: 'WARM' }
-  ],
-  TR: [
-    { id: 'tr-male-1', nameKey: 'voiceMaleProfessional', gender: 'MALE', tone: 'PROFESSIONAL' },
-    { id: 'tr-male-2', nameKey: 'voiceMaleFriendly', gender: 'MALE', tone: 'FRIENDLY' },
-    { id: 'tr-female-1', nameKey: 'voiceFemaleProfessional', gender: 'FEMALE', tone: 'PROFESSIONAL' },
-    { id: 'tr-female-2', nameKey: 'voiceFemaleWarm', gender: 'FEMALE', tone: 'WARM' }
-  ]
+// Sektöre göre default system prompt'lar
+const INDUSTRY_PROMPTS = {
+  TR: {
+    RESTAURANT: 'Sen bir restoran asistanısın. Rezervasyon al, menü hakkında bilgi ver, çalışma saatlerini söyle, müşteri sorularını yanıtla.',
+    SALON: 'Sen bir kuaför/güzellik salonu asistanısın. Randevu al, hizmetler ve fiyatlar hakkında bilgi ver, uygun saatleri söyle.',
+    ECOMMERCE: 'Sen bir e-ticaret asistanısın. Stok bilgisi ver, sipariş durumu hakkında bilgi ver, iade ve değişim süreçlerini açıkla.',
+    SERVICE: 'Sen bir profesyonel hizmet asistanısın. Randevu al, hizmetler hakkında bilgi ver, fiyatlandırma konusunda yardımcı ol.',
+    OTHER: 'Sen bir işletme asistanısın. Müşteri sorularını yanıtla, bilgi ver, yardımcı ol.'
+  },
+  EN: {
+    RESTAURANT: 'You are a restaurant assistant. Take reservations, provide menu information, share working hours, answer customer questions.',
+    SALON: 'You are a salon assistant. Book appointments, provide information about services and prices, share available times.',
+    ECOMMERCE: 'You are an e-commerce assistant. Provide stock information, order status updates, explain return and exchange processes.',
+    SERVICE: 'You are a professional service assistant. Book appointments, provide service information, help with pricing.',
+    OTHER: 'You are a business assistant. Answer customer questions, provide information, be helpful.'
+  }
 };
 
 export function OnboardingModal({ open, onClose, businessId }) {
@@ -43,17 +46,65 @@ export function OnboardingModal({ open, onClose, businessId }) {
   const [loading, setLoading] = useState(false);
   const [createdAssistantId, setCreatedAssistantId] = useState(null);
   const [locale, setLocale] = useState(getCurrentLanguage());
+  const [availableVoices, setAvailableVoices] = useState({});
   const [data, setData] = useState({
     language: '',
     industry: '',
     voice: null,
-    greeting: ''
+    firstMessage: '',      // Karşılama mesajı
+    systemPrompt: ''       // Asistan talimatları
   });
+  
+  // Fetch voices from backend
+  useEffect(() => {
+    const fetchVoices = async () => {
+      try {
+        const response = await axios.get(`${API_URL}/api/voices`);
+        const voiceData = response.data.voices;
+        
+        setAvailableVoices({
+          EN: voiceData.english || [],
+          TR: voiceData.turkish || []
+        });
+      } catch (error) {
+        console.error('Failed to fetch voices:', error);
+        toast.error('Failed to load voices');
+      }
+    };
+    
+    fetchVoices();
+  }, []);
   
   // Update locale when language changes
   useEffect(() => {
     setLocale(getCurrentLanguage());
   }, []);
+
+  // Ses seçildiğinde default first message'ı güncelle
+  useEffect(() => {
+    if (data.voice && data.language) {
+      const defaultFirstMessage = data.language === 'TR'
+        ? `Merhaba, ben ${data.voice.name}, size nasıl yardımcı olabilirim?`
+        : `Hi, I'm ${data.voice.name}, how can I help you?`;
+      
+      // Sadece firstMessage boşsa veya önceki default ise güncelle
+      if (!data.firstMessage || data.firstMessage.includes('size nasıl yardımcı') || data.firstMessage.includes('how can I help')) {
+        setData(prev => ({ ...prev, firstMessage: defaultFirstMessage }));
+      }
+    }
+  }, [data.voice, data.language]);
+
+  // Sektör seçildiğinde default system prompt'u güncelle
+  useEffect(() => {
+    if (data.industry && data.language) {
+      const defaultPrompt = INDUSTRY_PROMPTS[data.language]?.[data.industry] || INDUSTRY_PROMPTS['EN']['OTHER'];
+      
+      // Sadece systemPrompt boşsa güncelle
+      if (!data.systemPrompt) {
+        setData(prev => ({ ...prev, systemPrompt: defaultPrompt }));
+      }
+    }
+  }, [data.industry, data.language]);
   
   // Define steps and industries based on current locale
   const STEPS = [
@@ -74,20 +125,28 @@ export function OnboardingModal({ open, onClose, businessId }) {
   ];
 
   const handleLanguageSelect = (lang) => {
-    setData({ ...data, language: lang });
+    setData({ ...data, language: lang, systemPrompt: '', firstMessage: '' });
   };
 
   const handleIndustrySelect = (industry) => {
-    const industryData = INDUSTRIES.find(i => i.id === industry);
+    const defaultPrompt = INDUSTRY_PROMPTS[data.language]?.[industry] || '';
     setData({ 
       ...data, 
       industry,
-      greeting: t(industryData.exampleKey, locale)
+      systemPrompt: defaultPrompt
     });
   };
 
   const handleVoiceSelect = (voice) => {
-    setData({ ...data, voice });
+    const defaultFirstMessage = data.language === 'TR'
+      ? `Merhaba, ben ${voice.name}, size nasıl yardımcı olabilirim?`
+      : `Hi, I'm ${voice.name}, how can I help you?`;
+    
+    setData({ 
+      ...data, 
+      voice,
+      firstMessage: defaultFirstMessage
+    });
   };
 
   const handleComplete = async () => {
@@ -105,7 +164,7 @@ export function OnboardingModal({ open, onClose, businessId }) {
           vapiVoiceId: data.voice.id,
           vapiVoiceGender: data.voice.gender,
           vapiTone: data.voice.tone,
-          customGreeting: data.greeting
+          customGreeting: data.firstMessage
         },
         { headers }
       );
@@ -115,7 +174,7 @@ export function OnboardingModal({ open, onClose, businessId }) {
         `${API_URL}/api/ai-training`,
         {
           title: t('greetingLabel', locale),
-          instructions: data.greeting,
+          instructions: data.systemPrompt,
           category: 'greeting'
         },
         { headers }
@@ -141,9 +200,9 @@ export function OnboardingModal({ open, onClose, businessId }) {
       case 1: return data.language !== '';
       case 2: return data.industry !== '';
       case 3: return data.voice !== null;
-      case 4: return data.greeting.trim() !== '';
+      case 4: return data.firstMessage.trim() !== '' && data.systemPrompt.trim() !== '';
       case 5: return true;
-      case 6: return true;  // ← BUNU EKLEDİK
+      case 6: return true;
       default: return false;
     }
   };
@@ -157,10 +216,12 @@ export function OnboardingModal({ open, onClose, businessId }) {
         const response = await axios.post(
           `${API_URL}/api/assistants`,
           {
-            name: 'Test Assistant',
+            name: data.voice.name,  // Sesin adını kullan
             voiceId: data.voice.id,
-            systemPrompt: data.greeting,
-            language: data.language // Pass language parameter
+            firstMessage: data.firstMessage,
+            systemPrompt: data.systemPrompt,
+            language: data.language,
+            industry: data.industry
           },
           { headers: { Authorization: `Bearer ${token}` } }
         );
@@ -189,7 +250,7 @@ export function OnboardingModal({ open, onClose, businessId }) {
     if (step > 1) setStep(step - 1);
   };
 
-  const availableVoices = data.language ? VOICES[data.language] : [];
+  const voicesToShow = data.language ? availableVoices[data.language] || [] : [];
 
   return (
     <Dialog open={open} onOpenChange={() => {}}>
@@ -272,7 +333,7 @@ export function OnboardingModal({ open, onClose, businessId }) {
           {/* STEP 3: Voice Selection */}
           {step === 3 && (
             <div className="grid grid-cols-2 gap-4">
-              {availableVoices.map((voice) => (
+              {voicesToShow.map((voice) => (
                 <Card
                   key={voice.id}
                   className={`p-6 cursor-pointer hover:shadow-lg transition-all ${
@@ -282,7 +343,10 @@ export function OnboardingModal({ open, onClose, businessId }) {
                   data-testid={`voice-${voice.id}`}
                 >
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-semibold">{t(voice.nameKey, locale)}</h3>
+                    <div>
+                      <h3 className="font-semibold">{voice.name}</h3>
+                      <p className="text-xs text-gray-500">{voice.accent}</p>
+                    </div>
                     <Button variant="ghost" size="sm" onClick={(e) => {
                       e.stopPropagation();
                       toast.info('Voice preview coming soon');
@@ -291,46 +355,82 @@ export function OnboardingModal({ open, onClose, businessId }) {
                     </Button>
                   </div>
                   <div className="flex gap-2">
-                    <Badge variant="secondary">{voice.gender}</Badge>
-                    <Badge variant="outline">{voice.tone}</Badge>
+                    <Badge variant="secondary">{voice.gender === 'male' ? t('male', locale) : t('female', locale)}</Badge>
+                    <Badge variant="outline">{voice.description}</Badge>
                   </div>
                 </Card>
               ))}
             </div>
           )}
 
-          {/* STEP 4: First Training */}
+          {/* STEP 4: First Message & System Prompt */}
           {step === 4 && (
-            <div className="space-y-4">
-              <Card className="p-4 bg-blue-50 border-blue-200">
-                <p className="text-sm text-blue-900">
-                  {t('greetingTip', locale)}
-                </p>
-              </Card>
-
+            <div className="space-y-6">
+              {/* Karşılama Mesajı */}
               <div>
-                <Label htmlFor="greeting">{t('greetingLabel', locale)}</Label>
+                <Label htmlFor="firstMessage" className="text-base font-semibold">
+                  {data.language === 'TR' ? '🎙️ Karşılama Mesajı' : '🎙️ Greeting Message'}
+                </Label>
+                <p className="text-sm text-gray-500 mb-2">
+                  {data.language === 'TR' 
+                    ? 'Asistanınız aramayı açtığında söyleyeceği ilk cümle'
+                    : 'The first sentence your assistant will say when answering a call'}
+                </p>
                 <textarea
-                  id="greeting"
-                  value={data.greeting}
-                  onChange={(e) => setData({ ...data, greeting: e.target.value })}
-                  className="w-full min-h-[120px] p-3 border rounded-lg mt-2 resize-none"
-                  placeholder={t('greetingPlaceholder', locale)}
-                  data-testid="greeting-input"
+                  id="firstMessage"
+                  value={data.firstMessage}
+                  onChange={(e) => setData({ ...data, firstMessage: e.target.value })}
+                  className="w-full min-h-[80px] p-3 border rounded-lg resize-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder={data.language === 'TR' 
+                    ? `Merhaba, ben ${data.voice?.name || 'asistanınız'}, size nasıl yardımcı olabilirim?`
+                    : `Hi, I'm ${data.voice?.name || 'your assistant'}, how can I help you?`}
+                  data-testid="first-message-input"
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  {data.greeting.length} / 500 characters
+                  {data.firstMessage.length} / 200
                 </p>
               </div>
 
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <h4 className="font-semibold text-sm mb-2">
-                  {t('greetingExample', locale)} {t(INDUSTRIES.find(i => i.id === data.industry)?.nameKey, locale)}:
-                </h4>
-                <p className="text-sm text-gray-700 italic">
-                  "{t(INDUSTRIES.find(i => i.id === data.industry)?.exampleKey, locale)}"
+              {/* Asistan Talimatları */}
+              <div>
+                <Label htmlFor="systemPrompt" className="text-base font-semibold">
+                  {data.language === 'TR' ? '📋 Asistan Talimatları' : '📋 Assistant Instructions'}
+                </Label>
+                <p className="text-sm text-gray-500 mb-2">
+                  {data.language === 'TR' 
+                    ? 'Asistanınızın nasıl davranması gerektiğini anlatan talimatlar'
+                    : 'Instructions describing how your assistant should behave'}
+                </p>
+                <textarea
+                  id="systemPrompt"
+                  value={data.systemPrompt}
+                  onChange={(e) => setData({ ...data, systemPrompt: e.target.value })}
+                  className="w-full min-h-[120px] p-3 border rounded-lg resize-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder={data.language === 'TR' 
+                    ? 'Örn: Müşterilere kibar davran, rezervasyon bilgilerini al, menü hakkında bilgi ver...'
+                    : 'E.g.: Be polite to customers, take reservation details, provide menu information...'}
+                  data-testid="system-prompt-input"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  {data.systemPrompt.length} / 1000
                 </p>
               </div>
+
+              {/* Örnek Gösterimi */}
+              <Card className="p-4 bg-gray-50 border-gray-200">
+                <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                  <span>👀</span>
+                  {data.language === 'TR' ? 'Önizleme' : 'Preview'}
+                </h4>
+                <div className="space-y-2 text-sm">
+                  <div>
+                    <span className="font-medium text-purple-600">
+                      {data.language === 'TR' ? 'Asistan açılış:' : 'Assistant opens:'}
+                    </span>
+                    <p className="text-gray-700 italic">"{data.firstMessage || '...'}"</p>
+                  </div>
+                </div>
+              </Card>
             </div>
           )}
 

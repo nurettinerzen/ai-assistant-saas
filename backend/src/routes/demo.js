@@ -3,6 +3,11 @@ import fetch from 'node-fetch';
 
 const router = express.Router();
 
+const DEMO_ASSISTANT_IDS = {
+  en: '3612d9ab-e581-48bc-ac70-a9f64e6a7681',
+  tr: '81321197-d4f3-4d96-a8f8-0ab653722e1d'
+};
+
 // Demo assistant configuration - Pre-made assistant for demos
 const DEMO_ASSISTANT_CONFIG = {
   en: {
@@ -17,24 +22,31 @@ Key behaviors:
 - If user chooses salon: Book a mock appointment with service type and preferred time
 - If user chooses questions: Answer general questions about AI phone assistants
 - Always end by asking if they'd like to learn more about Telyx pricing
+IMPORTANT: You don't know the user's name. If needed, politely ask: "May I have your name?" Never make up random names!
 
 Keep responses concise since this is a phone call. Sound natural and human-like.`
   },
   tr: {
     name: 'Telyx Demo Asistanı',
     firstMessage: "Merhaba! Ben Telyx, yapay zeka telefon asistanı demonuz. İşletmelerin 7/24 telefon desteğini otomatikleştirmesine yardımcı olabilirim. Size nasıl yardımcı olabileceğimi göstermemi ister misiniz? 1. Restoran rezervasyonu alma, 2. Kuaför randevusu ayarlama, 3. Müşteri sorularını yanıtlama, veya 4. Sadece doğal bir sohbet? Hangisini denemek istersiniz?",
-    systemPrompt: `Sen Telyx'sin, samimi ve etkileyici bir yapay zeka telefon asistanı demosu. Amacın 60 saniyelik bir aramada Telyx'in yeteneklerini sergilemek.
+    systemPrompt: `Sen Telyx'sin, Türkçe konuşan bir yapay zeka telefon asistanısın. 
 
-Temel davranışlar:
-- Hevesli ve profesyonel ol
-- Doğal konuşma yeteneğini göster
-- Kullanıcı restoran seçerse: İsim, kişi sayısı, tarih/saat ile sahte rezervasyon al
-- Kullanıcı kuaför seçerse: Hizmet türü ve tercih edilen saat ile sahte randevu ayarla
-- Kullanıcı soru seçerse: AI telefon asistanları hakkında genel soruları yanıtla
-- Her zaman Telyx fiyatlandırması hakkında daha fazla bilgi almak isteyip istemediklerini sorarak bitir
+ÖNEMLİ KURALLAR:
+- SADECE ve SADECE Türkçe konuş
+- Türkçe karakterleri doğru kullan (ş, ğ, ü, ö, ç, ı)
+- İngilizce kelime kullanma
+- Doğal bir Türk gibi konuş
 
-Bu bir telefon görüşmesi olduğundan yanıtları kısa tut. Doğal ve insan gibi konuş.
-HER ZAMAN TÜRKÇE KONUŞ.`
+Görevin: 60 saniyelik aramada Telyx'in yeteneklerini göster.
+
+Kullanıcı seçenekler:
+1. Restoran rezervasyonu: İsim, kişi sayısı, tarih/saat al
+2. Kuaför randevusu: Hizmet türü ve saat al  
+3. Sorular: AI telefon asistanları hakkında bilgi ver
+4. Sohbet: Doğal konuşma yap
+ÖNEMLI: Kullanıcının adını bilmiyorsun. Eğer gerekirse nazikçe sor: "Adınızı öğrenebilir miyim?" Asla rastgele isim uydurma!
+
+Kısa ve net konuş. Her zaman Türkçe!`
   }
 };
 
@@ -65,10 +77,23 @@ router.post('/demo/request-call', async (req, res) => {
     // Get demo config based on language
     const config = language === 'TR' ? DEMO_ASSISTANT_CONFIG.tr : DEMO_ASSISTANT_CONFIG.en;
     // Use native Turkish voice (Caner Boyraz) for TR, Adam for EN
-    const voiceId = language === 'TR' ? 'GvbLQkVki5VurnilV994' : 'pNInz6obpgDQGcFmaJgB';
+    const turkishVoices = [
+  'EJGs6dWlD5VrB3llhBqB',
+  'BQnJrtsrT9aT7kziS653', 
+  'mBUB5zYuPwfVE6DTcEjf',
+  'KbaseEXyT9EE0CQLEfbB',
+  'hsMJcij6L6TqrCZZuK1m'
+];
+
+// Pick random Turkish voice or use Adam for English
+const voiceId = language === 'TR' 
+  ? turkishVoices[Math.floor(Math.random() * turkishVoices.length)]
+  : 'pNInz6obpgDQGcFmaJgB';
 
     // Check if VAPI phone number is configured AND phone number provided for outbound calls
     if (process.env.VAPI_PHONE_NUMBER_ID && cleanPhone) {
+      console.log('🔍 Voice ID:', voiceId);
+  console.log('🔍 Language:', language);
       // Create outbound call via VAPI
       const vapiResponse = await fetch('https://api.vapi.ai/call/phone', {
         method: 'POST',
@@ -80,26 +105,31 @@ router.post('/demo/request-call', async (req, res) => {
           phoneNumberId: process.env.VAPI_PHONE_NUMBER_ID,
           customer: {
             number: cleanPhone,
-            name: name || 'Demo User'
+            name: name || ''
           },
           assistant: {
-            name: config.name,
-            firstMessage: config.firstMessage,
-            model: {
-              provider: 'openai',
-              model: 'gpt-4',
-              messages: [
-                {
-                  role: 'system',
-                  content: config.systemPrompt
-                }
-              ]
-            },
-            voice: {
-              provider: '11labs',
-              voiceId: voiceId
-            }
-          }
+  name: config.name,
+  firstMessage: config.firstMessage,
+  model: {
+    provider: 'openai',
+    model: 'gpt-4',
+    messages: [
+      {
+        role: 'system',
+        content: config.systemPrompt
+      }
+    ]
+  },
+  voice: {
+    provider: '11labs',
+    voiceId: voiceId
+  },
+  transcriber: {
+    provider: 'deepgram',
+    model: 'nova-2',
+    language: language === 'TR' ? 'tr' : 'en'
+  }
+}
         }),
       });
 
@@ -127,61 +157,21 @@ router.post('/demo/request-call', async (req, res) => {
       });
     }
 
-    // If no phone number configured, create a transient assistant for web call
-    // User can call via browser using VAPI web SDK
-    const assistantResponse = await fetch('https://api.vapi.ai/assistant', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.VAPI_PRIVATE_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        name: `TelyxDemo${language}`,
-        firstMessage: config.firstMessage,
-        model: {
-          provider: 'openai',
-          model: 'gpt-4',
-          messages: [
-            {
-              role: 'system',
-              content: config.systemPrompt
-            }
-          ]
-        },
-        voice: {
-          provider: '11labs',
-          voiceId: voiceId
-        },
-        transcriber: {
-          provider: 'deepgram',
-          model: 'nova-2',
-          language: language === 'TR' ? 'tr' : 'en'
-        }
-      }),
-    });
+    // Use pre-configured assistant IDs instead of creating new ones
+const assistantId = DEMO_ASSISTANT_IDS[language.toLowerCase()] || DEMO_ASSISTANT_IDS.en;
 
-    const assistant = await assistantResponse.json();
+console.log('📞 Using pre-configured demo assistant:', {
+  assistantId,
+  language
+});
 
-    if (!assistantResponse.ok) {
-      console.error('VAPI assistant creation error:', assistant);
-      return res.status(500).json({ 
-        error: 'Failed to create demo assistant',
-        details: assistant.message || 'Unknown error'
-      });
-    }
-
-    console.log('📞 Demo assistant created for web call:', {
-      assistantId: assistant.id,
-      language
-    });
-
-    res.json({
-      success: true,
-      message: 'Demo assistant ready! Click to start web call.',
-      assistantId: assistant.id,
-      callType: 'web',
-      publicKey: process.env.VAPI_PUBLIC_KEY
-    });
+res.json({
+  success: true,
+  message: 'Demo assistant ready! Click to start web call.',
+  assistantId: assistantId,
+  callType: 'web',
+  publicKey: process.env.VAPI_PUBLIC_KEY
+});
 
   } catch (error) {
     console.error('Demo call error:', error);

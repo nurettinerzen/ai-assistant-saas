@@ -13,54 +13,49 @@ import EmptyState from '@/components/EmptyState';
 import { Puzzle, Check, ExternalLink } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast, toastHelpers } from '@/lib/toast';
+import { t, getCurrentLanguage } from '@/lib/translations';
 
 const AVAILABLE_INTEGRATIONS = [
   {
     id: 'stripe',
     name: 'Stripe',
-    description: 'Accept payments and manage subscriptions',
     icon: '💳',
-    category: 'Payments',
+    category: 'paymentsCategory',
     docsUrl: 'https://stripe.com/docs',
   },
   {
     id: 'zapier',
     name: 'Zapier',
-    description: 'Connect with 5000+ apps using Zapier workflows',
     icon: '⚡',
-    category: 'Automation',
+    category: 'automationCategory',
     docsUrl: 'https://zapier.com',
   },
   {
     id: 'slack',
     name: 'Slack',
-    description: 'Get call notifications in your Slack workspace',
     icon: '💬',
-    category: 'Communication',
+    category: 'communicationCategory',
     docsUrl: 'https://slack.com/api',
   },
   {
     id: 'hubspot',
     name: 'HubSpot',
-    description: 'Sync calls and contacts with HubSpot CRM',
     icon: '🎯',
-    category: 'CRM',
+    category: 'crmCategory',
     docsUrl: 'https://developers.hubspot.com',
   },
   {
     id: 'salesforce',
     name: 'Salesforce',
-    description: 'Integrate with Salesforce CRM',
     icon: '☁️',
-    category: 'CRM',
+    category: 'crmCategory',
     docsUrl: 'https://developer.salesforce.com',
   },
   {
     id: 'calendly',
     name: 'Calendly',
-    description: 'Schedule appointments from calls',
     icon: '📅',
-    category: 'Scheduling',
+    category: 'schedulingCategory',
     docsUrl: 'https://developer.calendly.com',
   },
 ];
@@ -68,8 +63,10 @@ const AVAILABLE_INTEGRATIONS = [
 export default function IntegrationsPage() {
   const [integrations, setIntegrations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [locale, setLocale] = useState('en');
 
   useEffect(() => {
+    setLocale(getCurrentLanguage());
     loadIntegrations();
   }, []);
 
@@ -79,7 +76,7 @@ export default function IntegrationsPage() {
       const response = await apiClient.integrations.getAll();
       setIntegrations(response.data.integrations || []);
     } catch (error) {
-      toast.error('Failed to load integrations');
+      toast.error(t('saveError', locale));
     } finally {
       setLoading(false);
     }
@@ -89,8 +86,8 @@ export default function IntegrationsPage() {
     try {
       await toastHelpers.async(
         apiClient.integrations.connect(integrationId, {}),
-        'Connecting...',
-        'Integration connected!'
+        t('connectingText', locale),
+        t('integrationConnected', locale)
       );
       loadIntegrations();
     } catch (error) {
@@ -99,13 +96,13 @@ export default function IntegrationsPage() {
   };
 
   const handleDisconnect = async (integrationId) => {
-    if (!confirm('Disconnect this integration?')) return;
+    if (!confirm(t('disconnectConfirm', locale))) return;
 
     try {
       await toastHelpers.async(
         apiClient.integrations.disconnect(integrationId),
-        'Disconnecting...',
-        'Integration disconnected!'
+        t('disconnectingText', locale),
+        t('integrationDisconnected', locale)
       );
       loadIntegrations();
     } catch (error) {
@@ -117,8 +114,8 @@ export default function IntegrationsPage() {
     try {
       await toastHelpers.async(
         apiClient.integrations.test(integrationId),
-        'Testing connection...',
-        'Integration is working!'
+        t('testingConnection', locale),
+        t('integrationWorking', locale)
       );
     } catch (error) {
       // Error handled
@@ -129,13 +126,25 @@ export default function IntegrationsPage() {
     return integrations.some((i) => i.provider === integrationId && i.connected);
   };
 
+  const getDescription = (id) => {
+    const descMap = {
+      stripe: 'stripeDesc2',
+      zapier: 'zapierDesc2',
+      slack: 'slackDesc',
+      hubspot: 'hubspotDesc2',
+      salesforce: 'salesforceDesc',
+      calendly: 'calendlyDesc',
+    };
+    return t(descMap[id] || '', locale);
+  };
+
   return (
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-neutral-900">Integrations</h1>
+        <h1 className="text-3xl font-bold text-neutral-900">{t('integrationsTitle2', locale)}</h1>
         <p className="text-neutral-600 mt-1">
-          Connect Telyx with your favorite tools and services
+          {t('connectTelyx', locale)}
         </p>
       </div>
 
@@ -170,7 +179,7 @@ export default function IntegrationsPage() {
                     <div>
                       <h3 className="font-semibold text-neutral-900">{integration.name}</h3>
                       <Badge variant="secondary" className="text-xs mt-1">
-                        {integration.category}
+                        {t(integration.category, locale)}
                       </Badge>
                     </div>
                   </div>
@@ -181,7 +190,7 @@ export default function IntegrationsPage() {
                   )}
                 </div>
 
-                <p className="text-sm text-neutral-600 mb-4">{integration.description}</p>
+                <p className="text-sm text-neutral-600 mb-4">{getDescription(integration.id)}</p>
 
                 <div className="flex gap-2">
                   {connected ? (
@@ -192,14 +201,14 @@ export default function IntegrationsPage() {
                         className="flex-1"
                         onClick={() => handleTest(integration.id)}
                       >
-                        Test
+                        {t('testBtn2', locale)}
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => handleDisconnect(integration.id)}
                       >
-                        Disconnect
+                        {t('disconnectBtn', locale)}
                       </Button>
                     </>
                   ) : (
@@ -208,7 +217,7 @@ export default function IntegrationsPage() {
                       className="flex-1"
                       onClick={() => handleConnect(integration.id)}
                     >
-                      Connect
+                      {t('connectBtn', locale)}
                     </Button>
                   )}
                   <Button
@@ -234,14 +243,13 @@ export default function IntegrationsPage() {
       {/* Info banner */}
       <div className="bg-primary-50 border border-primary-200 rounded-xl p-6">
         <h3 className="text-sm font-semibold text-primary-900 mb-2">
-          Need a custom integration?
+          {t('needCustomIntegration', locale)}
         </h3>
         <p className="text-sm text-primary-700 mb-3">
-          We can help you build custom integrations for your specific needs. Contact our team to
-          discuss your requirements.
+          {t('customIntegrationDesc', locale)}
         </p>
         <Button variant="outline" size="sm">
-          Contact Sales
+          {t('contactSalesBtn', locale)}
         </Button>
       </div>
     </div>

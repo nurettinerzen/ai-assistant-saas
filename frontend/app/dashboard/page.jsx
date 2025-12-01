@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation';
 import StatsCard from '@/components/StatsCard';
 import EmptyState from '@/components/EmptyState';
 import { Button } from '@/components/ui/button';
+import DemoCallWidget from '@/components/DemoCallWidget';
 import {
   Phone,
   Clock,
@@ -51,50 +52,52 @@ export default function DashboardPage() {
   }, []);
 
   const loadDashboardData = async () => {
-    setLoading(true);
-    try {
-      // Load all dashboard data in parallel
-      const [statsRes, chartRes, callsRes] = await Promise.all([
-        apiClient.dashboard.getStats(),
-        apiClient.dashboard.getChartData('7d'),
-        apiClient.dashboard.getRecentCalls(),
-      ]);
+  setLoading(true);
+  try {
+    const [statsRes, chartRes, callsRes] = await Promise.all([
+      apiClient.dashboard.getStats(),
+      apiClient.dashboard.getChartData('7d'),
+      apiClient.dashboard.getRecentCalls(),
+    ]);
 
-      setStats(statsRes.data);
-      setChartData(chartRes.data.chartData || []);
-      setRecentCalls(callsRes.data.calls || []);
-    } catch (error) {
-      toast.error('Failed to load dashboard data');
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    setStats(statsRes.data);
+    setChartData(chartRes.data.chartData || []);
+    setRecentCalls(callsRes.data.calls || []);
+  } catch (error) {
+    toast.error('Failed to load dashboard data');
+    console.error(error);
+  } finally {
+    setLoading(false);
+  }
+};
 
-  return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-neutral-900">Dashboard</h1>
-          <p className="text-neutral-600 mt-1">Monitor your AI assistant performance</p>
-        </div>
-        <div className="flex gap-3">
-          <Button variant="outline" onClick={() => router.push('/dashboard/assistant')}>
-            <Plus className="h-4 w-4 mr-2" />
-            New Assistant
-          </Button>
-          <Button onClick={() => router.push('/dashboard/calls')}>
-            View All Calls
-            <ExternalLink className="h-4 w-4 ml-2" />
-          </Button>
-        </div>
+return (
+  <div className="space-y-8">
+    {/* Demo Call Widget - Prominent at top */}
+    <DemoCallWidget locale={locale} />
+
+    {/* Header */}
+    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div>
+        <h1 className="text-3xl font-bold text-neutral-900">{t('dashboardTitle', locale)}</h1>
+        <p className="text-neutral-600 mt-1">{t('monitorPerformance', locale)}</p>
       </div>
+      <div className="flex gap-3">
+        <Button variant="outline" onClick={() => router.push('/dashboard/assistant')}>
+          <Plus className="h-4 w-4 mr-2" />
+          {t('newAssistant', locale)}
+        </Button>
+        <Button onClick={() => router.push('/dashboard/calls')}>
+          {t('viewAllCalls', locale)}
+          <ExternalLink className="h-4 w-4 ml-2" />
+        </Button>
+      </div>
+    </div>
 
       {/* Stats cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatsCard
-          label="Total Calls"
+          label={t('totalCallsLabel', locale)}
           value={stats?.totalCalls || 0}
           icon={Phone}
           trend="up"
@@ -103,7 +106,7 @@ export default function DashboardPage() {
           loading={loading}
         />
         <StatsCard
-          label="Avg Duration"
+          label={t('avgDurationLabel2', locale)}
           value={formatDuration(stats?.avgDuration || 0)}
           icon={Clock}
           trend="down"
@@ -112,7 +115,7 @@ export default function DashboardPage() {
           loading={loading}
         />
         <StatsCard
-          label="Total Cost"
+          label={t('totalCostLabel', locale)}
           value={formatCurrency(stats?.totalCost || 0)}
           icon={DollarSign}
           trend="up"
@@ -121,7 +124,7 @@ export default function DashboardPage() {
           loading={loading}
         />
         <StatsCard
-          label="Success Rate"
+          label={t('successRateLabel', locale)}
           value={`${stats?.successRate || 0}%`}
           icon={TrendingUp}
           trend="up"
@@ -135,14 +138,14 @@ export default function DashboardPage() {
       <div className="bg-white rounded-xl border border-neutral-200 p-6 shadow-sm">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="text-lg font-semibold text-neutral-900">Calls Over Time</h2>
-            <p className="text-sm text-neutral-500">Last 7 days</p>
+            <h2 className="text-lg font-semibold text-neutral-900">{t('callsOverTime', locale)}</h2>
+            <p className="text-sm text-neutral-500">{t('last7Days', locale)}</p>
           </div>
         </div>
 
         {loading ? (
           <div className="h-80 flex items-center justify-center">
-            <div className="animate-pulse text-neutral-400">Loading chart...</div>
+            <div className="animate-pulse text-neutral-400">{t('loadingChart', locale)}</div>
           </div>
         ) : chartData.length > 0 ? (
           <ResponsiveContainer width="100%" height={320}>
@@ -177,8 +180,8 @@ export default function DashboardPage() {
         ) : (
           <EmptyState
             icon={PhoneCall}
-            title="No call data yet"
-            description="Start making calls to see your analytics"
+            title={t('noCallDataYet', locale)}
+            description={t('startMakingCalls', locale)}
           />
         )}
       </div>
@@ -188,15 +191,15 @@ export default function DashboardPage() {
         <div className="p-6 border-b border-neutral-200">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-neutral-900">Recent Calls</h2>
-              <p className="text-sm text-neutral-500">Your latest call activity</p>
+              <h2 className="text-lg font-semibold text-neutral-900">{t('recentCallsTitle', locale)}</h2>
+              <p className="text-sm text-neutral-500">{t('latestCallActivity', locale)}</p>
             </div>
             <Button
               variant="outline"
               size="sm"
               onClick={() => router.push('/dashboard/calls')}
             >
-              View All
+              {t('viewAll', locale)}
             </Button>
           </div>
         </div>
@@ -215,19 +218,19 @@ export default function DashboardPage() {
               <thead className="bg-neutral-50 border-b border-neutral-200">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    Phone Number
+                    {t('phoneNumberLabel', locale)}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    Assistant
+                    {t('assistantLabel', locale)}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    Duration
+                    {t('durationLabel', locale)}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    Date
+                    {t('dateLabel', locale)}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    Status
+                    {t('statusLabel', locale)}
                   </th>
                 </tr>
               </thead>
@@ -272,8 +275,8 @@ export default function DashboardPage() {
           <div className="p-8">
             <EmptyState
               icon={Phone}
-              title="No calls yet"
-              description="Your call history will appear here"
+              title={t('noCallsYetTitle', locale)}
+              description={t('callHistoryAppear', locale)}
             />
           </div>
         )}

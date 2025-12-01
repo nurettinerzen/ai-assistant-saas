@@ -20,6 +20,7 @@ import { Phone, Clock, DollarSign, TrendingUp, Calendar } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast } from '@/lib/toast';
 import { formatCurrency, formatDuration } from '@/lib/utils';
+import { t, getCurrentLanguage } from '@/lib/translations';
 import {
   LineChart,
   Line,
@@ -36,19 +37,17 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 
-const TIME_RANGES = [
-  { value: '7d', label: 'Last 7 days' },
-  { value: '30d', label: 'Last 30 days' },
-  { value: '90d', label: 'Last 90 days' },
-  { value: '1y', label: 'Last year' },
-];
-
 const COLORS = ['#4f46e5', '#06b6d4', '#10b981', '#f59e0b', '#ef4444'];
 
 export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState('30d');
   const [analytics, setAnalytics] = useState(null);
+  const [locale, setLocale] = useState('en');
+
+  useEffect(() => {
+    setLocale(getCurrentLanguage());
+  }, []);
 
   useEffect(() => {
     loadAnalytics();
@@ -60,19 +59,26 @@ export default function AnalyticsPage() {
       const response = await apiClient.analytics.getOverview(timeRange);
       setAnalytics(response.data);
     } catch (error) {
-      toast.error('Failed to load analytics');
+      toast.error(t('saveError', locale));
     } finally {
       setLoading(false);
     }
   };
+
+  const TIME_RANGES = [
+    { value: '7d', label: t('last7DaysLabel', locale) },
+    { value: '30d', label: t('last30DaysLabel', locale) },
+    { value: '90d', label: t('last90DaysLabel', locale) },
+    { value: '1y', label: t('lastYearLabel', locale) },
+  ];
 
   return (
     <div className="space-y-8">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-neutral-900">Analytics</h1>
-          <p className="text-neutral-600 mt-1">Detailed insights into your call performance</p>
+          <h1 className="text-3xl font-bold text-neutral-900">{t('analyticsTitle2', locale)}</h1>
+          <p className="text-neutral-600 mt-1">{t('detailedInsights2', locale)}</p>
         </div>
         <Select value={timeRange} onValueChange={setTimeRange}>
           <SelectTrigger className="w-48">
@@ -92,7 +98,7 @@ export default function AnalyticsPage() {
       {/* Stats cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatsCard
-          label="Total Calls"
+          label={t('totalCallsLabel2', locale)}
           value={analytics?.totalCalls || 0}
           icon={Phone}
           trend="up"
@@ -101,7 +107,7 @@ export default function AnalyticsPage() {
           loading={loading}
         />
         <StatsCard
-          label="Avg Duration"
+          label={t('avgDurationLabel3', locale)}
           value={formatDuration(analytics?.avgDuration || 0)}
           icon={Clock}
           trend="up"
@@ -110,7 +116,7 @@ export default function AnalyticsPage() {
           loading={loading}
         />
         <StatsCard
-          label="Total Spent"
+          label={t('totalSpent', locale)}
           value={formatCurrency(analytics?.totalCost || 0)}
           icon={DollarSign}
           trend="up"
@@ -119,7 +125,7 @@ export default function AnalyticsPage() {
           loading={loading}
         />
         <StatsCard
-          label="Success Rate"
+          label={t('successRateLabel2', locale)}
           value={`${analytics?.successRate || 0}%`}
           icon={TrendingUp}
           trend="up"
@@ -133,10 +139,10 @@ export default function AnalyticsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Calls over time */}
         <div className="bg-white rounded-xl border border-neutral-200 p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-neutral-900 mb-4">Calls Over Time</h2>
+          <h2 className="text-lg font-semibold text-neutral-900 mb-4">{t('callsOverTimeChart', locale)}</h2>
           {loading ? (
             <div className="h-80 flex items-center justify-center">
-              <div className="animate-pulse text-neutral-400">Loading...</div>
+              <div className="animate-pulse text-neutral-400">{t('loadingText', locale)}</div>
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={320}>
@@ -165,10 +171,10 @@ export default function AnalyticsPage() {
 
         {/* Call status distribution */}
         <div className="bg-white rounded-xl border border-neutral-200 p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-neutral-900 mb-4">Call Status Distribution</h2>
+          <h2 className="text-lg font-semibold text-neutral-900 mb-4">{t('callStatusDistribution', locale)}</h2>
           {loading ? (
             <div className="h-80 flex items-center justify-center">
-              <div className="animate-pulse text-neutral-400">Loading...</div>
+              <div className="animate-pulse text-neutral-400">{t('loadingText', locale)}</div>
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={320}>
@@ -198,10 +204,10 @@ export default function AnalyticsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Duration distribution */}
         <div className="bg-white rounded-xl border border-neutral-200 p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-neutral-900 mb-4">Call Duration Distribution</h2>
+          <h2 className="text-lg font-semibold text-neutral-900 mb-4">{t('callDurationDistribution', locale)}</h2>
           {loading ? (
             <div className="h-80 flex items-center justify-center">
-              <div className="animate-pulse text-neutral-400">Loading...</div>
+              <div className="animate-pulse text-neutral-400">{t('loadingText', locale)}</div>
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={320}>
@@ -224,10 +230,10 @@ export default function AnalyticsPage() {
 
         {/* Assistant performance */}
         <div className="bg-white rounded-xl border border-neutral-200 p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-neutral-900 mb-4">Assistant Performance</h2>
+          <h2 className="text-lg font-semibold text-neutral-900 mb-4">{t('assistantPerformance', locale)}</h2>
           {loading ? (
             <div className="h-80 flex items-center justify-center">
-              <div className="animate-pulse text-neutral-400">Loading...</div>
+              <div className="animate-pulse text-neutral-400">{t('loadingText', locale)}</div>
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={320}>
@@ -257,10 +263,10 @@ export default function AnalyticsPage() {
 
       {/* Cost breakdown */}
       <div className="bg-white rounded-xl border border-neutral-200 p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-neutral-900 mb-4">Cost Over Time</h2>
+        <h2 className="text-lg font-semibold text-neutral-900 mb-4">{t('costOverTime', locale)}</h2>
         {loading ? (
           <div className="h-80 flex items-center justify-center">
-            <div className="animate-pulse text-neutral-400">Loading...</div>
+            <div className="animate-pulse text-neutral-400">{t('loadingText', locale)}</div>
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={320}>

@@ -170,6 +170,12 @@ export const apiClient = {
     release: (id) => api.delete(`/api/phone-numbers/${id}`),
     test: (id) => api.post(`/api/phone-numbers/${id}/test`),
   },
+
+  // Demo Call
+  demo: {
+    requestCall: (data) => api.post('/api/demo/request-call', data),
+    submitFeedback: (data) => api.post('/api/demo/feedback', data),
+  },
 };
 
 export default api;

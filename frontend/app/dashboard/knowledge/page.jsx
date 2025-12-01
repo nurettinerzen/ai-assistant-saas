@@ -25,6 +25,7 @@ import { Upload, FileText, MessageSquare, Link as LinkIcon, Plus, Trash2 } from 
 import { apiClient } from '@/lib/api';
 import { toast, Toaster } from 'sonner';
 import { formatDate, formatFileSize } from '@/lib/utils';
+import { t, getCurrentLanguage } from '@/lib/translations';
 
 export default function KnowledgeBasePage() {
   const [documents, setDocuments] = useState([]);
@@ -32,6 +33,7 @@ export default function KnowledgeBasePage() {
   const [urls, setUrls] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploadingFile, setUploadingFile] = useState(false);
+  const [locale, setLocale] = useState('en');
   
   // Modal states
   const [showDocModal, setShowDocModal] = useState(false);
@@ -45,6 +47,7 @@ export default function KnowledgeBasePage() {
   const [urlForm, setUrlForm] = useState({ url: '', crawlDepth: 1 });
 
   useEffect(() => {
+    setLocale(getCurrentLanguage());
     loadData();
   }, []);
 
@@ -60,7 +63,7 @@ export default function KnowledgeBasePage() {
       setFaqs(faqsRes.data.faqs || []);
       setUrls(urlsRes.data.urls || []);
     } catch (error) {
-      toast.error('Failed to load knowledge base');
+      toast.error(t('saveError', locale));
     } finally {
       setLoading(false);
     }
@@ -70,21 +73,20 @@ export default function KnowledgeBasePage() {
     const file = e.target.files?.[0];
     if (file) {
       setSelectedFile(file);
-      // Auto-fill document name from filename
       if (!docName) {
-        setDocName(file.name.replace(/\.[^/.]+$/, '')); // Remove extension
+        setDocName(file.name.replace(/\.[^/.]+$/, ''));
       }
     }
   };
 
   const handleSaveDocument = async () => {
     if (!docName) {
-      toast.error('Please enter a knowledge base name');
+      toast.error(t('enterKnowledgeBaseName', locale));
       return;
     }
 
     if (!selectedFile) {
-      toast.error('Please select a file to upload');
+      toast.error(t('selectFileToUpload', locale));
       return;
     }
 
@@ -93,12 +95,11 @@ export default function KnowledgeBasePage() {
     formData.append('name', docName);
 
     setUploadingFile(true);
-    const uploadToast = toast.loading('Uploading document...');
+    const uploadToast = toast.loading(t('uploadingText', locale));
     
     try {
       const response = await apiClient.knowledge.uploadDocument(formData);
       
-      // Add to local state
       const newDoc = {
         id: response.data.document?.id || Date.now(),
         name: docName,
@@ -110,12 +111,12 @@ export default function KnowledgeBasePage() {
       
       setDocuments([newDoc, ...documents]);
       
-      toast.success('Document uploaded successfully!', { id: uploadToast });
+      toast.success(t('documentUploadedSuccess', locale), { id: uploadToast });
       setShowDocModal(false);
       setDocName('');
       setSelectedFile(null);
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Upload failed', { id: uploadToast });
+      toast.error(error.response?.data?.error || t('uploadFailed', locale), { id: uploadToast });
     } finally {
       setUploadingFile(false);
     }
@@ -123,23 +124,23 @@ export default function KnowledgeBasePage() {
 
   const handleDeleteDocument = async (id) => {
     try {
-      const deleteToast = toast.loading('Deleting...');
+      const deleteToast = toast.loading(t('deletingText', locale));
       await apiClient.knowledge.deleteDocument(id);
       setDocuments(documents.filter(doc => doc.id !== id));
-      toast.success('Document deleted!', { id: deleteToast });
+      toast.success(t('documentDeleted', locale), { id: deleteToast });
     } catch (error) {
-      toast.error('Failed to delete document');
+      toast.error(t('failedToDeleteDocument', locale));
     }
   };
 
   const handleCreateFaq = async () => {
     if (!faqForm.question || !faqForm.answer) {
-      toast.error('Please fill in question and answer');
+      toast.error(t('fillQuestionAnswer', locale));
       return;
     }
     
     try {
-      const createToast = toast.loading('Creating FAQ...');
+      const createToast = toast.loading(t('creatingFaq', locale));
       const response = await apiClient.knowledge.createFaq(faqForm);
       
       const newFaq = {
@@ -149,33 +150,33 @@ export default function KnowledgeBasePage() {
       };
       
       setFaqs([newFaq, ...faqs]);
-      toast.success('FAQ created!', { id: createToast });
+      toast.success(t('faqCreated', locale), { id: createToast });
       setShowFaqModal(false);
       setFaqForm({ question: '', answer: '', category: '' });
     } catch (error) {
-      toast.error('Failed to create FAQ');
+      toast.error(t('failedToCreateFaq', locale));
     }
   };
 
   const handleDeleteFaq = async (id) => {
     try {
-      const deleteToast = toast.loading('Deleting...');
+      const deleteToast = toast.loading(t('deletingText', locale));
       await apiClient.knowledge.deleteFaq(id);
       setFaqs(faqs.filter(faq => faq.id !== id));
-      toast.success('FAQ deleted!', { id: deleteToast });
+      toast.success(t('faqDeleted', locale), { id: deleteToast });
     } catch (error) {
-      toast.error('Failed to delete FAQ');
+      toast.error(t('failedToDeleteFaq', locale));
     }
   };
 
   const handleAddUrl = async () => {
     if (!urlForm.url) {
-      toast.error('Please enter a URL');
+      toast.error(t('enterUrl', locale));
       return;
     }
     
     try {
-      const addToast = toast.loading('Adding URL...');
+      const addToast = toast.loading(t('addingUrl', locale));
       const response = await apiClient.knowledge.addUrl(urlForm);
       
       const newUrl = {
@@ -189,22 +190,22 @@ export default function KnowledgeBasePage() {
       };
       
       setUrls([newUrl, ...urls]);
-      toast.success('URL added! Crawling in progress...', { id: addToast });
+      toast.success(t('urlAddedCrawling', locale), { id: addToast });
       setShowUrlModal(false);
       setUrlForm({ url: '', crawlDepth: 1 });
     } catch (error) {
-      toast.error('Failed to add URL');
+      toast.error(t('failedToAddUrl', locale));
     }
   };
 
   const handleDeleteUrl = async (id) => {
     try {
-      const deleteToast = toast.loading('Deleting...');
+      const deleteToast = toast.loading(t('deletingText', locale));
       await apiClient.knowledge.deleteUrl(id);
       setUrls(urls.filter(url => url.id !== id));
-      toast.success('URL deleted!', { id: deleteToast });
+      toast.success(t('urlDeleted', locale), { id: deleteToast });
     } catch (error) {
-      toast.error('Failed to delete URL');
+      toast.error(t('failedToDeleteUrl', locale));
     }
   };
 
@@ -212,16 +213,16 @@ export default function KnowledgeBasePage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-neutral-900">Knowledge Base</h1>
-        <p className="text-neutral-600 mt-1">Train your AI with documents, FAQs, and web content</p>
+        <h1 className="text-3xl font-bold text-neutral-900">{t('knowledgeBaseTitle', locale)}</h1>
+        <p className="text-neutral-600 mt-1">{t('trainWithDocuments', locale)}</p>
       </div>
 
       {/* Tabs */}
       <Tabs defaultValue="documents" className="space-y-6">
         <TabsList>
-          <TabsTrigger value="documents">Documents ({documents.length})</TabsTrigger>
-          <TabsTrigger value="faqs">FAQs ({faqs.length})</TabsTrigger>
-          <TabsTrigger value="urls">URLs ({urls.length})</TabsTrigger>
+          <TabsTrigger value="documents">{t('documentsTab', locale)} ({documents.length})</TabsTrigger>
+          <TabsTrigger value="faqs">{t('faqsTab', locale)} ({faqs.length})</TabsTrigger>
+          <TabsTrigger value="urls">{t('urlsTab', locale)} ({urls.length})</TabsTrigger>
         </TabsList>
 
         {/* Documents Tab */}
@@ -229,7 +230,7 @@ export default function KnowledgeBasePage() {
           <div className="flex justify-end items-center">
             <Button onClick={() => setShowDocModal(true)}>
               <Plus className="h-4 w-4 mr-2" />
-              Add Document
+              {t('addDocument', locale)}
             </Button>
           </div>
 
@@ -238,12 +239,12 @@ export default function KnowledgeBasePage() {
               <table className="w-full">
                 <thead className="bg-neutral-50 border-b border-neutral-200">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Type</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Size</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Uploaded</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Actions</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">{t('nameTableHeader', locale)}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">{t('typeTableHeader', locale)}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">{t('sizeTableHeader', locale)}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">{t('statusTableHeader', locale)}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">{t('uploadedTableHeader', locale)}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">{t('actionsTableHeader', locale)}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-200">
@@ -267,7 +268,7 @@ export default function KnowledgeBasePage() {
                               : 'bg-red-100 text-red-800'
                           }
                         >
-                          {doc.status}
+                          {t(doc.status === 'ready' ? 'ready' : doc.status === 'processing' ? 'processing2' : 'failed', locale)}
                         </Badge>
                       </td>
                       <td className="px-6 py-4 text-sm text-neutral-600">
@@ -291,8 +292,8 @@ export default function KnowledgeBasePage() {
             <div className="bg-white rounded-xl border border-neutral-200 p-12">
               <EmptyState
                 icon={FileText}
-                title="No documents yet"
-                description="Upload documents to train your AI assistant"
+                title={t('noDocumentsTitle', locale)}
+                description={t('uploadDocumentsDesc', locale)}
               />
             </div>
           )}
@@ -303,7 +304,7 @@ export default function KnowledgeBasePage() {
           <div className="flex justify-end">
             <Button onClick={() => setShowFaqModal(true)}>
               <Plus className="h-4 w-4 mr-2" />
-              Add FAQ
+              {t('addFaqBtn', locale)}
             </Button>
           </div>
 
@@ -332,8 +333,8 @@ export default function KnowledgeBasePage() {
             <div className="bg-white rounded-xl border border-neutral-200 p-12">
               <EmptyState
                 icon={MessageSquare}
-                title="No FAQs yet"
-                description="Add frequently asked questions to help your AI"
+                title={t('noFaqsTitle', locale)}
+                description={t('addFaqsDesc', locale)}
               />
             </div>
           )}
@@ -344,7 +345,7 @@ export default function KnowledgeBasePage() {
           <div className="flex justify-end">
             <Button onClick={() => setShowUrlModal(true)}>
               <Plus className="h-4 w-4 mr-2" />
-              Add URL
+              {t('addUrlBtn', locale)}
             </Button>
           </div>
 
@@ -353,11 +354,11 @@ export default function KnowledgeBasePage() {
               <table className="w-full">
                 <thead className="bg-neutral-50 border-b border-neutral-200">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">URL</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Pages</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Last Crawled</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Actions</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">{t('urlTableHeader', locale)}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">{t('statusTableHeader', locale)}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">{t('pagesTableHeader', locale)}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">{t('lastCrawledHeader', locale)}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">{t('actionsTableHeader', locale)}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-200">
@@ -386,7 +387,7 @@ export default function KnowledgeBasePage() {
                               : 'bg-red-100 text-red-800'
                           }
                         >
-                          {url.status}
+                          {t(url.status === 'ready' ? 'ready' : url.status === 'crawling' ? 'crawling2' : 'failed', locale)}
                         </Badge>
                       </td>
                       <td className="px-6 py-4 text-sm text-neutral-600">{url.pageCount}</td>
@@ -411,8 +412,8 @@ export default function KnowledgeBasePage() {
             <div className="bg-white rounded-xl border border-neutral-200 p-12">
               <EmptyState
                 icon={LinkIcon}
-                title="No URLs yet"
-                description="Add website URLs to crawl and extract content"
+                title={t('noUrlsTitle', locale)}
+                description={t('addUrlsDesc', locale)}
               />
             </div>
           )}
@@ -423,22 +424,22 @@ export default function KnowledgeBasePage() {
       <Dialog open={showDocModal} onOpenChange={setShowDocModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Knowledge Base</DialogTitle>
-            <DialogDescription>Upload documents to train your AI assistant</DialogDescription>
+            <DialogTitle>{t('addKnowledgeBase', locale)}</DialogTitle>
+            <DialogDescription>{t('uploadDocumentsLabel', locale)}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="doc-name">Knowledge Base Name</Label>
+              <Label htmlFor="doc-name">{t('knowledgeBaseName', locale)}</Label>
               <Input
                 id="doc-name"
-                placeholder="Enter name for this knowledge base"
+                placeholder={t('knowledgeBaseNamePlaceholder', locale)}
                 value={docName}
                 onChange={(e) => setDocName(e.target.value)}
               />
             </div>
             
             <div>
-              <Label>Documents</Label>
+              <Label>{t('documentsLabel', locale)}</Label>
               <div className="mt-2 border-2 border-dashed border-neutral-200 rounded-lg p-8 text-center hover:border-primary-300 transition-colors cursor-pointer">
                 <input
                   type="file"
@@ -455,16 +456,16 @@ export default function KnowledgeBasePage() {
                         {selectedFile.name}
                       </p>
                       <p className="text-xs text-neutral-500">
-                        {formatFileSize(selectedFile.size)} • Click to change
+                        {formatFileSize(selectedFile.size)} • {t('clickToChange', locale)}
                       </p>
                     </>
                   ) : (
                     <>
                       <p className="text-sm text-neutral-600 mb-1">
-                        Click to upload or drag and drop
+                        {t('clickToUpload', locale)}
                       </p>
                       <p className="text-xs text-neutral-500">
-                        PDF, DOCX, TXT, or CSV (max 10MB)
+                        {t('pdfDocxTxtCsv', locale)}
                       </p>
                     </>
                   )}
@@ -481,13 +482,13 @@ export default function KnowledgeBasePage() {
                 setSelectedFile(null);
               }}
             >
-              Cancel
+              {t('cancel', locale)}
             </Button>
             <Button 
               onClick={handleSaveDocument} 
               disabled={uploadingFile}
             >
-              {uploadingFile ? 'Uploading...' : 'Save'}
+              {uploadingFile ? t('uploadingText', locale) : t('saveBtn', locale)}
             </Button>
           </div>
         </DialogContent>
@@ -497,44 +498,44 @@ export default function KnowledgeBasePage() {
       <Dialog open={showFaqModal} onOpenChange={setShowFaqModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add FAQ</DialogTitle>
-            <DialogDescription>Create a frequently asked question</DialogDescription>
+            <DialogTitle>{t('addFaqTitle', locale)}</DialogTitle>
+            <DialogDescription>{t('createFaqDesc', locale)}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="question">Question *</Label>
+              <Label htmlFor="question">{t('questionRequired', locale)}</Label>
               <Input
                 id="question"
                 value={faqForm.question}
                 onChange={(e) => setFaqForm({ ...faqForm, question: e.target.value })}
-                placeholder="What are your hours?"
+                placeholder={t('questionPlaceholder', locale)}
               />
             </div>
             <div>
-              <Label htmlFor="answer">Answer *</Label>
+              <Label htmlFor="answer">{t('answerRequired', locale)}</Label>
               <Textarea
                 id="answer"
                 rows={4}
                 value={faqForm.answer}
                 onChange={(e) => setFaqForm({ ...faqForm, answer: e.target.value })}
-                placeholder="We're open Monday-Friday, 9am-5pm."
+                placeholder={t('answerPlaceholder', locale)}
               />
             </div>
             <div>
-              <Label htmlFor="category">Category (optional)</Label>
+              <Label htmlFor="category">{t('categoryOptional', locale)}</Label>
               <Input
                 id="category"
                 value={faqForm.category}
                 onChange={(e) => setFaqForm({ ...faqForm, category: e.target.value })}
-                placeholder="General"
+                placeholder={t('categoryPlaceholder', locale)}
               />
             </div>
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t">
             <Button variant="outline" onClick={() => setShowFaqModal(false)}>
-              Cancel
+              {t('cancel', locale)}
             </Button>
-            <Button onClick={handleCreateFaq}>Create FAQ</Button>
+            <Button onClick={handleCreateFaq}>{t('createFaqBtn', locale)}</Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -543,22 +544,22 @@ export default function KnowledgeBasePage() {
       <Dialog open={showUrlModal} onOpenChange={setShowUrlModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add URL</DialogTitle>
-            <DialogDescription>Crawl a website to extract content</DialogDescription>
+            <DialogTitle>{t('addUrlTitle', locale)}</DialogTitle>
+            <DialogDescription>{t('crawlWebsiteDesc', locale)}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="url">Website URL *</Label>
+              <Label htmlFor="url">{t('websiteUrlRequired', locale)}</Label>
               <Input
                 id="url"
                 type="url"
                 value={urlForm.url}
                 onChange={(e) => setUrlForm({ ...urlForm, url: e.target.value })}
-                placeholder="https://example.com"
+                placeholder={t('websiteUrlPlaceholder', locale)}
               />
             </div>
             <div>
-              <Label htmlFor="depth">Crawl Depth</Label>
+              <Label htmlFor="depth">{t('crawlDepthLabel', locale)}</Label>
               <Input
                 id="depth"
                 type="number"
@@ -568,15 +569,15 @@ export default function KnowledgeBasePage() {
                 onChange={(e) => setUrlForm({ ...urlForm, crawlDepth: parseInt(e.target.value) })}
               />
               <p className="text-xs text-neutral-500 mt-1">
-                Number of levels to crawl (1 = homepage only)
+                {t('crawlDepthDesc', locale)}
               </p>
             </div>
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t">
             <Button variant="outline" onClick={() => setShowUrlModal(false)}>
-              Cancel
+              {t('cancel', locale)}
             </Button>
-            <Button onClick={handleAddUrl}>Add URL</Button>
+            <Button onClick={handleAddUrl}>{t('addUrlSubmit', locale)}</Button>
           </div>
         </DialogContent>
       </Dialog>

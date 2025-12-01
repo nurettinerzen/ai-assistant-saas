@@ -9,7 +9,6 @@ const prisma = new PrismaClient();
 router.use(authenticateToken);
 
 // GET /api/assistants - List all assistants
-// GET /api/assistants - List all assistants
 router.get('/', authenticateToken, async (req, res) => {
   try {
     const businessId = req.businessId;
@@ -32,11 +31,10 @@ router.get('/', authenticateToken, async (req, res) => {
 });
 
 // POST /api/assistants - Create new assistant
-// POST /api/assistants - Create new assistant
 router.post('/', authenticateToken, async (req, res) => {
   try {
     const businessId = req.businessId;
-    const { name, voiceId, systemPrompt, model, language } = req.body;
+    const { name, voiceId, firstMessage, systemPrompt, model, language, industry } = req.body;
 
     // Check subscription limits
     const subscription = await prisma.subscription.findUnique({
@@ -57,34 +55,32 @@ router.post('/', authenticateToken, async (req, res) => {
       });
     }
 
-    // Map our voice IDs to real 11Labs IDs
-    // Turkish voices: Using native Turkish 11Labs voices
-    // Reference: https://elevenlabs.io/text-to-speech/turkish
-    const voiceMapping = {
-      // English voices
-      'male-1-professional': 'pNInz6obpgDQGcFmaJgB', // Adam - Professional male
-      'male-2-friendly': 'ErXwobaYiN019PkySvjV', // Antoni - Friendly male
-      'female-1-professional': 'EXAVITQu4vr4xnSDxMaL', // Bella - Professional female
-      'female-2-warm': 'MF3mGyEYCl7XYWbV9V6O', // Elli - Warm female
+    // ✅ YENİ: 11Labs Voice ID'leri (VAPI Assistant ID'leri DEĞİL!)
+    const VOICE_MAPPING = {
+      // Turkish voices - 11Labs Voice IDs
+      'tr-m-cihan': 'Md4RAnfKt9kVIbvqUxly',
+      'tr-m-yunus': 'Q5n6GDIjpN0pLOlycRFT',
+      'tr-m-sukru': 'pMQM2vAjnEa9PmfDvgkY',
+      'tr-m-murat': 'xouejoTN10DvXRSlXvmB',
+      'tr-f-ecem': 'PVbzZmwmdI99VcmuRK7G',
+      'tr-f-aslihan': '973ByT3y0FasCLLTLBAL',
+      'tr-f-gokce': 'oPC5I9GKjMReiaM29gjY',
+      'tr-f-auralis': 'X5CGTTx85DmIuopBFHlz',
       
-      // Native Turkish voices - Real 11Labs Turkish voice IDs
-      'tr-male-1': 'GvbLQkVki5VurnilV994', // Caner Boyraz - Energetic Turkish male
-      'tr-male-2': 'ADt6orTrVUa6DCpMjrDW', // Muharrem Kudu - Confident Turkish male
-      'tr-male-3': 'g3LHrNTQNTFM2HUdizDR', // Mehmet Ali Arslan - Young Turkish male
-      'tr-male-4': 'dv1FlExW4kIBpj3BBTOM', // Doruk Terzi - Engaging Turkish male
-      'tr-male-5': 'A2nJYsJQbhz9yDiDndcv', // Ersen Tahsin - Mature Turkish male
-      'tr-female-1': 'c4n2ypvZwjKx1uUi3vSG', // Ayşe - Young Turkish female
-      
-      // Backward compatibility mappings
-      'tr-professional-male': 'GvbLQkVki5VurnilV994',
-      'tr-professional-female': 'c4n2ypvZwjKx1uUi3vSG',
-      'tr-friendly-male': 'ADt6orTrVUa6DCpMjrDW',
-      'tr-friendly-female': 'c4n2ypvZwjKx1uUi3vSG',
+      // English voices - 11Labs Voice IDs
+      'en-m-jude': 'Yg7C1g7suzNt5TisIqkZ',
+      'en-m-stokes': 'kHhWB9Fw3aF6ly7JvltC',
+      'en-m-andrew': 'QCOsaFukRxK1IUh7WVlM',
+      'en-m-ollie': 'jRAAK67SEFE9m7ci5DhD',
+      'en-f-kayla': 'aTxZrSrp47xsP6Ot4Kgd',
+      'en-f-shelby': 'rfkTsdZrVWEVhDycUYn9',
+      'en-f-roshni': 'fq1SdXsX6OokE10pJ4Xw',
+      'en-f-meera': '9TwzC887zQyDD4yBthzD'
     };
     
-    // Default voice based on language
-    const defaultVoiceForLanguage = language === 'TR' ? 'GvbLQkVki5VurnilV994' : 'pNInz6obpgDQGcFmaJgB';
-    const realVoiceId = voiceMapping[voiceId] || defaultVoiceForLanguage;
+    // Default voice based on language (11Labs default voices)
+    const defaultVoiceForLanguage = language === 'TR' ? 'Md4RAnfKt9kVIbvqUxly' : 'Yg7C1g7suzNt5TisIqkZ';
+    const elevenLabsVoiceId = VOICE_MAPPING[voiceId] || defaultVoiceForLanguage;
 
     // Add language instruction based on selected language
     const languageInstructions = {
@@ -95,7 +91,13 @@ router.post('/', authenticateToken, async (req, res) => {
     const languageInstruction = languageInstructions[language] || languageInstructions['EN'];
     const fullSystemPrompt = `${languageInstruction}\n\n${systemPrompt}`;
 
-    // Create VAPI assistant
+    // Default first message (eğer gönderilmemişse)
+    const defaultFirstMessage = language === 'TR'
+      ? `Merhaba, ben ${name}, size nasıl yardımcı olabilirim?`
+      : `Hi, I'm ${name}, how can I help you?`;
+    const finalFirstMessage = firstMessage || defaultFirstMessage;
+
+    // VAPI'de YENİ assistant oluştur
     const vapiResponse = await fetch('https://api.vapi.ai/assistant', {
       method: 'POST',
       headers: {
@@ -103,7 +105,16 @@ router.post('/', authenticateToken, async (req, res) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        name,
+        name: `${name} - ${Date.now()}`,
+        
+        // Transcriber - 11Labs
+        transcriber: {
+          provider: '11labs',
+          model: 'scribe_v1',
+          language: language === 'TR' ? 'tr' : 'en',
+        },
+        
+        // Model
         model: {
           provider: 'openai',
           model: model || 'gpt-4',
@@ -114,37 +125,39 @@ router.post('/', authenticateToken, async (req, res) => {
             }
           ]
         },
+        
+        // Voice - 11Labs
         voice: {
           provider: '11labs',
-          voiceId: realVoiceId || '21m00Tcm4TlvDq8ikWAM'
+          voiceId: elevenLabsVoiceId,
+          model: 'eleven_turbo_v2_5',
+          stability: 0.5,
+          similarityBoost: 0.75,
         },
-        firstMessage: language === 'TR' 
-          ? `Merhaba, ben ${name}. Size nasıl yardımcı olabilirim?`
-          : `Hi, I'm ${name}. How can I help you today?`,
+        
+        // First Message - Müşterinin yazdığı karşılama
+        firstMessage: finalFirstMessage,
       }),
     });
 
-    const vapiAssistant = await vapiResponse.json();
-    
-    // Log VAPI response
-    console.log('🎤 VAPI Response:', vapiAssistant);
-    console.log('🌍 Language:', language);
-    
-    // Check if VAPI request was successful
-    if (!vapiResponse.ok || !vapiAssistant.id) {
-      console.error('❌ VAPI Error:', vapiAssistant);
-      throw new Error(vapiAssistant.message || 'Failed to create VAPI assistant');
+    if (!vapiResponse.ok) {
+      const errorData = await vapiResponse.json();
+      console.error('VAPI Error:', errorData);
+      return res.status(500).json({ error: 'Failed to create VAPI assistant', details: errorData });
     }
 
-    // Save to database
+    const vapiAssistant = await vapiResponse.json();
+    console.log('✅ VAPI Assistant created:', vapiAssistant.id);
+
+    // ✅ YENİ: Database'e VAPI'den dönen assistant ID'yi kaydet
     const assistant = await prisma.assistant.create({
       data: {
         businessId,
         name,
-        voiceId,
+        voiceId,  // Frontend'den gelen voiceId (örn: 'tr-m-cihan')
         systemPrompt: fullSystemPrompt,
         model: model || 'gpt-4',
-        vapiAssistantId: vapiAssistant.id,
+        vapiAssistantId: vapiAssistant.id,  // ✅ VAPI'den dönen YENİ assistant ID
       },
     });
 
@@ -254,24 +267,24 @@ router.put('/update', async (req, res) => {
 
     // 🔥 YENİ: VAPI'Yİ GÜNCELLE (TRAINING DAHİL)
     const config = {
-  voiceId: updatedBusiness.vapiVoiceId || '21m00Tcm4TlvDq8ikWAM',
-  speed: updatedBusiness.vapiSpeed || 1.0,
-  customGreeting: updatedBusiness.customGreeting,
-  customInstructions: fullInstructions  // ← Bu doğru!
-};
+      voiceId: updatedBusiness.vapiVoiceId || '21m00Tcm4TlvDq8ikWAM',
+      speed: updatedBusiness.vapiSpeed || 1.0,
+      customGreeting: updatedBusiness.customGreeting,
+      customInstructions: fullInstructions
+    };
 
     await vapiService.updateAssistant(business.vapiAssistantId, config);
 
     console.log('✅ Sending response:', {
-  success: true,
-  trainingsApplied: trainings.length
-});
+      success: true,
+      trainingsApplied: trainings.length
+    });
 
-res.status(200).json({
-  success: true,
-  business: updatedBusiness,
-  trainingsApplied: trainings.length
-});
+    res.status(200).json({
+      success: true,
+      business: updatedBusiness,
+      trainingsApplied: trainings.length
+    });
 
   } catch (error) {
     console.error('Update assistant error:', error);
@@ -322,7 +335,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const businessId = req.businessId;
     const { id } = req.params;
-    const { name, voiceId, systemPrompt, model } = req.body;
+    const { name, voiceId, systemPrompt, model, language } = req.body;
 
     // Check if assistant belongs to this business
     const assistant = await prisma.assistant.findFirst({
@@ -337,28 +350,78 @@ router.put('/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Assistant not found' });
     }
 
+    // ✅ YENİ: 11Labs Voice ID'leri
+    const VOICE_MAPPING = {
+      'tr-m-cihan': 'Md4RAnfKt9kVIbvqUxly',
+      'tr-m-yunus': 'Q5n6GDIjpN0pLOlycRFT',
+      'tr-m-sukru': 'pMQM2vAjnEa9PmfDvgkY',
+      'tr-m-murat': 'xouejoTN10DvXRSlXvmB',
+      'tr-f-ecem': 'PVbzZmwmdI99VcmuRK7G',
+      'tr-f-aslihan': '973ByT3y0FasCLLTLBAL',
+      'tr-f-gokce': 'oPC5I9GKjMReiaM29gjY',
+      'tr-f-auralis': 'X5CGTTx85DmIuopBFHlz',
+      'en-m-jude': 'Yg7C1g7suzNt5TisIqkZ',
+      'en-m-stokes': 'kHhWB9Fw3aF6ly7JvltC',
+      'en-m-andrew': 'QCOsaFukRxK1IUh7WVlM',
+      'en-m-ollie': 'jRAAK67SEFE9m7ci5DhD',
+      'en-f-kayla': 'aTxZrSrp47xsP6Ot4Kgd',
+      'en-f-shelby': 'rfkTsdZrVWEVhDycUYn9',
+      'en-f-roshni': 'fq1SdXsX6OokE10pJ4Xw',
+      'en-f-meera': '9TwzC887zQyDD4yBthzD'
+    };
+
+    const elevenLabsVoiceId = VOICE_MAPPING[voiceId] || VOICE_MAPPING['tr-m-cihan'];
+
+    // Language instructions
+    const languageInstructions = {
+      'TR': 'Sen bir Türkçe konuşan AI asistansın. SADECE TÜRKÇE konuş. Kullanıcı ne dilde konuşursa konuşsun, sen her zaman Türkçe yanıt ver. Doğal, akıcı ve profesyonel bir şekilde Türkçe konuş.',
+      'EN': 'You are an English-speaking AI assistant. Always respond in English. Speak naturally, fluently, and professionally.'
+    };
+
+    const languageInstruction = languageInstructions[language] || languageInstructions['EN'];
+    const fullSystemPrompt = `${languageInstruction}\n\n${systemPrompt}`;
+
     // Update in database
     const updatedAssistant = await prisma.assistant.update({
       where: { id },
       data: {
         name,
         voiceId,
-        systemPrompt,
+        systemPrompt: fullSystemPrompt,
         model,
       },
     });
 
-    // Optionally: Update in VAPI too
-    // if (assistant.vapiAssistantId) {
-    //   await fetch(`https://api.vapi.ai/assistant/${assistant.vapiAssistantId}`, {
-    //     method: 'PATCH',
-    //     headers: {
-    //       'Authorization': `Bearer ${process.env.VAPI_PRIVATE_KEY}`,
-    //       'Content-Type': 'application/json',
-    //     },
-    //     body: JSON.stringify({ name, voice: { voiceId }, systemPrompt }),
-    //   });
-    // }
+    // ✅ YENİ: VAPI'deki assistant'ı da güncelle (PATCH - bu sefer doğru, çünkü kendi assistant'ını güncelliyor)
+    if (assistant.vapiAssistantId) {
+      await fetch(`https://api.vapi.ai/assistant/${assistant.vapiAssistantId}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${process.env.VAPI_PRIVATE_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name,
+          model: {
+            provider: 'openai',
+            model: model || 'gpt-4',
+            messages: [
+              {
+                role: 'system',
+                content: fullSystemPrompt
+              }
+            ]
+          },
+          voice: {
+            provider: '11labs',
+            voiceId: elevenLabsVoiceId
+          },
+          firstMessage: language === 'TR' 
+            ? `Merhaba, ben ${name}. Size nasıl yardımcı olabilirim?`
+            : `Hi, I'm ${name}. How can I help you today?`,
+        }),
+      });
+    }
 
     res.json({
       message: 'Assistant updated successfully',
@@ -388,17 +451,24 @@ router.delete('/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Assistant not found' });
     }
 
+    // ✅ YENİ: VAPI'den de sil
+    if (assistant.vapiAssistantId) {
+      try {
+        await fetch(`https://api.vapi.ai/assistant/${assistant.vapiAssistantId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${process.env.VAPI_PRIVATE_KEY}` },
+        });
+        console.log('✅ VAPI Assistant deleted:', assistant.vapiAssistantId);
+      } catch (vapiError) {
+        console.error('VAPI delete error (continuing anyway):', vapiError);
+      }
+    }
+
     // Delete from database (soft delete)
     await prisma.assistant.update({
       where: { id },
       data: { isActive: false },
     });
-
-    // Optionally: Delete from VAPI too
-    // await fetch(`https://api.vapi.ai/assistant/${assistant.vapiAssistantId}`, {
-    //   method: 'DELETE',
-    //   headers: { 'Authorization': `Bearer ${process.env.VAPI_PRIVATE_KEY}` },
-    // });
 
     res.json({ message: 'Assistant deleted successfully' });
   } catch (error) {
@@ -417,7 +487,7 @@ router.get('/templates', authenticateToken, async (req, res) => {
         name: 'Restaurant Reservation',
         language: 'EN',
         industry: 'Restaurant',
-        voiceId: 'female-1-professional',
+        voiceId: 'en-f-kayla',
         description: 'AI assistant that handles restaurant reservations, answers menu questions, and manages booking inquiries.',
         systemPrompt: `You are a friendly and professional restaurant receptionist AI. Your job is to:
 1. Greet customers warmly
@@ -433,7 +503,7 @@ Always be polite, patient, and helpful. If you can't answer something, offer to 
         name: 'Salon Appointment',
         language: 'EN',
         industry: 'Salon',
-        voiceId: 'female-2-warm',
+        voiceId: 'en-f-shelby',
         description: 'AI assistant for beauty salons that books appointments, describes services, and handles scheduling.',
         systemPrompt: `You are a friendly salon receptionist AI. Your responsibilities include:
 1. Greeting clients warmly
@@ -449,7 +519,7 @@ Be warm, professional, and make clients feel valued. Confirm all booking details
         name: 'E-commerce Support',
         language: 'EN',
         industry: 'E-commerce',
-        voiceId: 'male-1-professional',
+        voiceId: 'en-m-jude',
         description: 'AI assistant for online stores that handles order inquiries, returns, and product questions.',
         systemPrompt: `You are a helpful e-commerce customer support AI. Your duties include:
 1. Helping customers track their orders
@@ -467,7 +537,7 @@ Always ask for order number or email to assist better. Be patient and solution-o
         name: 'Restoran Rezervasyonu',
         language: 'TR',
         industry: 'Restaurant',
-        voiceId: 'tr-female-1',
+        voiceId: 'tr-f-ecem',
         description: 'Restoran rezervasyonları alan, menü soruları yanıtlayan AI asistan.',
         systemPrompt: `Sen samimi ve profesyonel bir restoran resepsiyonist yapay zekasısın. Görevlerin:
 1. Müşterileri sıcak bir şekilde karşıla
@@ -484,7 +554,7 @@ HER ZAMAN TÜRKÇE KONUŞ.`
         name: 'Kuaför Randevusu',
         language: 'TR',
         industry: 'Salon',
-        voiceId: 'tr-female-2',
+        voiceId: 'tr-f-aslihan',
         description: 'Kuaför ve güzellik salonları için randevu alan AI asistan.',
         systemPrompt: `Sen samimi bir kuaför resepsiyonist yapay zekasısın. Sorumlulukların:
 1. Müşterileri sıcak bir şekilde karşıla

@@ -5,7 +5,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Phone, Loader2, CheckCircle, Star, Mic, MicOff, PhoneOff } from 'lucide-react';
 import { getCurrentLanguage, t } from '@/lib/translations';
-import api from '@/lib/api';
+import { apiClient as api } from '@/lib/api';
+import Vapi from '@vapi-ai/web';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -32,15 +33,6 @@ export default function DemoCallWidget({ variant = 'full' }) {
     return () => window.removeEventListener('languageChange', handleLanguageChange);
   }, []);
 
-  useEffect(() => {
-    if (typeof window !== 'undefined' && !window.Vapi) {
-      const script = document.createElement('script');
-      script.src = 'https://cdn.jsdelivr.net/npm/@vapi-ai/web@latest/dist/vapi.min.js';
-      script.async = true;
-      document.body.appendChild(script);
-    }
-  }, []);
-
   const startWebCall = async () => {
     setIsLoading(true);
     setCallState('connecting');
@@ -53,9 +45,9 @@ export default function DemoCallWidget({ variant = 'full' }) {
 
       const { assistantId: newAssistantId, publicKey, callType, callId: newCallId } = response.data;
 
-      if (callType === 'web' && newAssistantId && publicKey && window.Vapi) {
+      if (callType === 'web' && newAssistantId && publicKey && Vapi) {
         setAssistantId(newAssistantId);
-        const vapi = new window.Vapi(publicKey);
+        const vapi = new Vapi(publicKey);
         vapiRef.current = vapi;
 
         vapi.on('call-start', () => {
@@ -232,7 +224,7 @@ export default function DemoCallWidget({ variant = 'full' }) {
             <div className="flex justify-center gap-2">
               {[1, 2, 3, 4, 5].map((star) => (
                 <button key={star} onClick={() => handleFeedback(star)} className="p-2 hover:scale-110 transition-transform">
-                  <Star className={\`h-8 w-8 \${star <= feedbackRating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}\`} />
+                  <Star className={`h-8 w-8 ${star <= feedbackRating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} />
                 </button>
               ))}
             </div>

@@ -32,6 +32,7 @@ import { Bot, Plus, Edit, Trash2, Play, Search } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { toast } from 'sonner';
+import { t, getCurrentLanguage } from '@/lib/translations';
 
 export default function AssistantsPage() {
   const [assistants, setAssistants] = useState([]);
@@ -41,6 +42,7 @@ export default function AssistantsPage() {
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingAssistant, setEditingAssistant] = useState(null);
+  const [locale, setLocale] = useState('en');
   const [formData, setFormData] = useState({
     name: '',
     voiceId: '',
@@ -49,6 +51,7 @@ export default function AssistantsPage() {
   });
 
   useEffect(() => {
+    setLocale(getCurrentLanguage());
     loadData();
   }, []);
 
@@ -60,9 +63,16 @@ export default function AssistantsPage() {
         apiClient.voices.getAll(),
       ]);
       setAssistants(assistantsRes.data.assistants || []);
-      setVoices(voicesRes.data.voices || []);
+      
+      // voices object olarak geliyor, düz array'e çevir
+      const voiceData = voicesRes.data.voices || {};
+      const allVoices = [
+        ...(voiceData.turkish || []),
+        ...(voiceData.english || [])
+      ];
+      setVoices(allVoices);
     } catch (error) {
-      toast.error('Failed to load assistants');
+      toast.error(t('saveError', locale));
     } finally {
       setLoading(false);
     }
@@ -88,21 +98,21 @@ export default function AssistantsPage() {
   };
 
   const handleCreate = async () => {
-  if (!formData.name || !formData.voiceId || !formData.systemPrompt) {
-    toast.error('Please fill in all required fields');
-    return;
-  }
+    if (!formData.name || !formData.voiceId || !formData.systemPrompt) {
+      toast.error(t('fillAllRequired', locale));
+      return;
+    }
 
-  try {
-    await apiClient.assistants.create(formData);
-    toast.success('Assistant created successfully!');
-    setShowCreateModal(false);
-    resetForm();
-    loadData();
-  } catch (error) {
-    toast.error(error.response?.data?.error || 'Failed to create assistant');
-  }
-};
+    try {
+      await apiClient.assistants.create(formData);
+      toast.success(t('assistantCreatedSuccess', locale));
+      setShowCreateModal(false);
+      resetForm();
+      loadData();
+    } catch (error) {
+      toast.error(error.response?.data?.error || t('saveError', locale));
+    }
+  };
 
   const handleEdit = (assistant) => {
     setEditingAssistant(assistant);
@@ -116,30 +126,28 @@ export default function AssistantsPage() {
   };
 
   const handleUpdate = async () => {
-  if (!editingAssistant) return;
+    if (!editingAssistant) return;
 
-  try {
-    await apiClient.assistants.update(editingAssistant.id, formData);
-    toast.success('Assistant updated successfully!');
-    setShowCreateModal(false);
-    resetForm();
-    loadData();
-  } catch (error) {
-    toast.error(error.response?.data?.error || 'Failed to update assistant');
-  }
-};
+    try {
+      await apiClient.assistants.update(editingAssistant.id, formData);
+      toast.success(t('assistantUpdatedSuccess', locale));
+      setShowCreateModal(false);
+      resetForm();
+      loadData();
+    } catch (error) {
+      toast.error(error.response?.data?.error || t('saveError', locale));
+    }
+  };
 
   const handleDelete = async (assistant) => {
-  // if (!confirm(`Delete "${assistant.name}"? This action cannot be undone.`)) return;
-
-  try {
-    await apiClient.assistants.delete(assistant.id);
-    toast.success('Assistant deleted successfully!');
-    loadData();
-  } catch (error) {
-    toast.error(error.response?.data?.error || 'Failed to delete assistant');
-  }
-};
+    try {
+      await apiClient.assistants.delete(assistant.id);
+      toast.success(t('assistantDeletedSuccess', locale));
+      loadData();
+    } catch (error) {
+      toast.error(error.response?.data?.error || t('deleteError', locale));
+    }
+  };
 
   const resetForm = () => {
     setFormData({ name: '', voiceId: '', systemPrompt: '', model: 'gpt-4' });
@@ -155,12 +163,12 @@ export default function AssistantsPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-neutral-900">Assistants</h1>
-          <p className="text-neutral-600 mt-1">Create and manage your AI assistants</p>
+          <h1 className="text-3xl font-bold text-neutral-900">{t('assistantsTitle', locale)}</h1>
+          <p className="text-neutral-600 mt-1">{t('createManageAssistants', locale)}</p>
         </div>
         <Button onClick={() => setShowTemplateSelector(true)}>
           <Plus className="h-4 w-4 mr-2" />
-          New Assistant
+          {t('newAssistant', locale)}
         </Button>
       </div>
 
@@ -169,7 +177,7 @@ export default function AssistantsPage() {
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
           <Input
-            placeholder="Search assistants..."
+            placeholder={t('searchAssistants', locale)}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
@@ -216,7 +224,7 @@ export default function AssistantsPage() {
                 </p>
 
                 <div className="flex flex-wrap gap-2 mb-4">
-                  <Badge variant="secondary">{voice?.name || 'No voice'}</Badge>
+                  <Badge variant="secondary">{voice?.name || t('noVoice', locale)}</Badge>
                   <Badge variant="outline">{assistant.model}</Badge>
                 </div>
 
@@ -228,7 +236,7 @@ export default function AssistantsPage() {
                     onClick={() => handleEdit(assistant)}
                   >
                     <Edit className="h-3 w-3 mr-2" />
-                    Edit
+                    {t('edit', locale)}
                   </Button>
                   <Button
                     variant="outline"
@@ -245,9 +253,9 @@ export default function AssistantsPage() {
       ) : (
         <EmptyState
           icon={Bot}
-          title="No assistants yet"
-          description="Create your first AI assistant to get started"
-          actionLabel="Create Assistant"
+          title={t('noAssistantsTitle', locale)}
+          description={t('createFirstAssistantDesc', locale)}
+          actionLabel={t('createAssistantBtn', locale)}
           onAction={() => setShowTemplateSelector(true)}
         />
       )}
@@ -269,31 +277,31 @@ export default function AssistantsPage() {
       >
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>{editingAssistant ? 'Edit' : 'Create'} Assistant</DialogTitle>
+            <DialogTitle>{editingAssistant ? t('editAssistantTitle', locale) : t('createAssistantTitle', locale)} {t('assistant', locale)}</DialogTitle>
             <DialogDescription>
-              Configure your AI assistant settings
+              {t('configureSettings', locale)}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div>
-              <Label htmlFor="name">Name *</Label>
+              <Label htmlFor="name">{t('nameRequired', locale)}</Label>
               <Input
                 id="name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Customer Support Bot"
+                placeholder={t('customerSupportBot', locale)}
               />
             </div>
 
             <div>
-              <Label htmlFor="voice">Voice *</Label>
+              <Label htmlFor="voice">{t('voiceRequired', locale)}</Label>
               <Select
                 value={formData.voiceId}
                 onValueChange={(value) => setFormData({ ...formData, voiceId: value })}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select a voice" />
+                  <SelectValue placeholder={t('selectVoiceLabel', locale)} />
                 </SelectTrigger>
                 <SelectContent>
                   {voices.map((voice) => (
@@ -306,7 +314,7 @@ export default function AssistantsPage() {
             </div>
 
             <div>
-              <Label htmlFor="model">AI Model</Label>
+              <Label htmlFor="model">{t('aiModelLabel', locale)}</Label>
               <Select
                 value={formData.model}
                 onValueChange={(value) => setFormData({ ...formData, model: value })}
@@ -322,23 +330,23 @@ export default function AssistantsPage() {
             </div>
 
             <div>
-              <Label htmlFor="prompt">System Prompt *</Label>
+              <Label htmlFor="prompt">{t('systemPromptRequired', locale)}</Label>
               <Textarea
                 id="prompt"
                 rows={6}
                 value={formData.systemPrompt}
                 onChange={(e) => setFormData({ ...formData, systemPrompt: e.target.value })}
-                placeholder="Define your assistant's personality and behavior..."
+                placeholder={t('systemPromptPlaceholder', locale)}
               />
             </div>
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t">
             <Button variant="outline" onClick={() => setShowCreateModal(false)}>
-              Cancel
+              {t('cancel', locale)}
             </Button>
             <Button onClick={editingAssistant ? handleUpdate : handleCreate}>
-              {editingAssistant ? 'Update' : 'Create'} Assistant
+              {editingAssistant ? t('updateAssistantBtn', locale) : t('createAssistantBtn', locale)}
             </Button>
           </div>
         </DialogContent>

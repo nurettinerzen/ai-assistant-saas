@@ -15,9 +15,11 @@ import { Separator } from '@/components/ui/separator';
 import { User, Bell, CreditCard, AlertTriangle } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast, toastHelpers } from '@/lib/toast';
+import { t, getCurrentLanguage } from '@/lib/translations';
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
+  const [locale, setLocale] = useState('en');
   const [profile, setProfile] = useState({ name: '', email: '', company: '' });
   const [notifications, setNotifications] = useState({
     emailOnCall: true,
@@ -32,6 +34,7 @@ export default function SettingsPage() {
   });
 
   useEffect(() => {
+    setLocale(getCurrentLanguage());
     loadSettings();
   }, []);
 
@@ -45,7 +48,7 @@ export default function SettingsPage() {
       setProfile(profileRes.data);
       setNotifications(notificationsRes.data);
     } catch (error) {
-      toast.error('Failed to load settings');
+      toast.error(t('saveError', locale));
     } finally {
       setLoading(false);
     }
@@ -55,8 +58,8 @@ export default function SettingsPage() {
     try {
       await toastHelpers.async(
         apiClient.settings.updateProfile(profile),
-        'Saving profile...',
-        'Profile updated successfully!'
+        t('savingProfile', locale),
+        t('profileUpdatedSuccess', locale)
       );
     } catch (error) {
       // Error handled
@@ -67,8 +70,8 @@ export default function SettingsPage() {
     try {
       await toastHelpers.async(
         apiClient.settings.updateNotifications(notifications),
-        'Saving preferences...',
-        'Notification preferences updated!'
+        t('savingPreferences', locale),
+        t('notificationPreferencesUpdated', locale)
       );
     } catch (error) {
       // Error handled
@@ -77,11 +80,11 @@ export default function SettingsPage() {
 
   const handleChangePassword = async () => {
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      toast.error('Passwords do not match');
+      toast.error(t('passwordsDoNotMatch2', locale));
       return;
     }
     if (passwordForm.newPassword.length < 8) {
-      toast.error('Password must be at least 8 characters');
+      toast.error(t('passwordMinLength', locale));
       return;
     }
 
@@ -91,8 +94,8 @@ export default function SettingsPage() {
           currentPassword: passwordForm.currentPassword,
           newPassword: passwordForm.newPassword,
         }),
-        'Changing password...',
-        'Password changed successfully!'
+        t('changingPassword', locale),
+        t('passwordChangedSuccess', locale)
       );
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
     } catch (error) {
@@ -112,8 +115,8 @@ export default function SettingsPage() {
     <div className="space-y-8 max-w-4xl">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-neutral-900">Settings</h1>
-        <p className="text-neutral-600 mt-1">Manage your account preferences</p>
+        <h1 className="text-3xl font-bold text-neutral-900">{t('settingsTitle2', locale)}</h1>
+        <p className="text-neutral-600 mt-1">{t('manageAccountPreferences', locale)}</p>
       </div>
 
       {/* Profile Section */}
@@ -123,14 +126,14 @@ export default function SettingsPage() {
             <User className="h-5 w-5 text-primary-600" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-neutral-900">Profile Information</h2>
-            <p className="text-sm text-neutral-500">Update your personal details</p>
+            <h2 className="text-lg font-semibold text-neutral-900">{t('profileInformation', locale)}</h2>
+            <p className="text-sm text-neutral-500">{t('updatePersonalDetails', locale)}</p>
           </div>
         </div>
 
         <div className="space-y-4">
           <div>
-            <Label htmlFor="name">Full Name</Label>
+            <Label htmlFor="name">{t('fullNameLabel', locale)}</Label>
             <Input
               id="name"
               value={profile.name}
@@ -138,7 +141,7 @@ export default function SettingsPage() {
             />
           </div>
           <div>
-            <Label htmlFor="email">Email Address</Label>
+            <Label htmlFor="email">{t('emailAddressLabel', locale)}</Label>
             <Input
               id="email"
               type="email"
@@ -147,7 +150,7 @@ export default function SettingsPage() {
             />
           </div>
           <div>
-            <Label htmlFor="company">Company Name (Optional)</Label>
+            <Label htmlFor="company">{t('companyNameOptional', locale)}</Label>
             <Input
               id="company"
               value={profile.company || ''}
@@ -157,7 +160,7 @@ export default function SettingsPage() {
         </div>
 
         <div className="flex justify-end mt-6">
-          <Button onClick={handleSaveProfile}>Save Changes</Button>
+          <Button onClick={handleSaveProfile}>{t('saveChangesBtn', locale)}</Button>
         </div>
       </div>
 
@@ -168,16 +171,16 @@ export default function SettingsPage() {
             <Bell className="h-5 w-5 text-primary-600" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-neutral-900">Notifications</h2>
-            <p className="text-sm text-neutral-500">Configure how you receive updates</p>
+            <h2 className="text-lg font-semibold text-neutral-900">{t('notificationsTitle', locale)}</h2>
+            <p className="text-sm text-neutral-500">{t('configureUpdates', locale)}</p>
           </div>
         </div>
 
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium text-neutral-900">Email on new call</p>
-              <p className="text-sm text-neutral-500">Get notified when you receive a call</p>
+              <p className="font-medium text-neutral-900">{t('emailOnNewCall', locale)}</p>
+              <p className="text-sm text-neutral-500">{t('notifyOnCall', locale)}</p>
             </div>
             <Switch
               checked={notifications.emailOnCall}
@@ -191,8 +194,8 @@ export default function SettingsPage() {
 
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium text-neutral-900">Usage limit alerts</p>
-              <p className="text-sm text-neutral-500">Alert when approaching credit limit</p>
+              <p className="font-medium text-neutral-900">{t('usageLimitAlerts', locale)}</p>
+              <p className="text-sm text-neutral-500">{t('alertApproachingLimit', locale)}</p>
             </div>
             <Switch
               checked={notifications.emailOnLimit}
@@ -206,8 +209,8 @@ export default function SettingsPage() {
 
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium text-neutral-900">Weekly summary</p>
-              <p className="text-sm text-neutral-500">Receive weekly performance reports</p>
+              <p className="font-medium text-neutral-900">{t('weeklySummaryLabel', locale)}</p>
+              <p className="text-sm text-neutral-500">{t('receiveWeeklyReports', locale)}</p>
             </div>
             <Switch
               checked={notifications.weeklySummary}
@@ -221,8 +224,8 @@ export default function SettingsPage() {
 
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium text-neutral-900">SMS notifications</p>
-              <p className="text-sm text-neutral-500">Get critical alerts via SMS</p>
+              <p className="font-medium text-neutral-900">{t('smsNotificationsLabel', locale)}</p>
+              <p className="text-sm text-neutral-500">{t('criticalAlertsViaSms', locale)}</p>
             </div>
             <Switch
               checked={notifications.smsNotifications}
@@ -234,7 +237,7 @@ export default function SettingsPage() {
         </div>
 
         <div className="flex justify-end mt-6">
-          <Button onClick={handleSaveNotifications}>Save Preferences</Button>
+          <Button onClick={handleSaveNotifications}>{t('savePreferencesBtn', locale)}</Button>
         </div>
       </div>
 
@@ -245,14 +248,14 @@ export default function SettingsPage() {
             <AlertTriangle className="h-5 w-5 text-primary-600" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-neutral-900">Security</h2>
-            <p className="text-sm text-neutral-500">Manage your password</p>
+            <h2 className="text-lg font-semibold text-neutral-900">{t('securityTitle', locale)}</h2>
+            <p className="text-sm text-neutral-500">{t('managePasswordLabel', locale)}</p>
           </div>
         </div>
 
         <div className="space-y-4">
           <div>
-            <Label htmlFor="currentPassword">Current Password</Label>
+            <Label htmlFor="currentPassword">{t('currentPasswordLabel', locale)}</Label>
             <Input
               id="currentPassword"
               type="password"
@@ -263,7 +266,7 @@ export default function SettingsPage() {
             />
           </div>
           <div>
-            <Label htmlFor="newPassword">New Password</Label>
+            <Label htmlFor="newPassword">{t('newPasswordLabel', locale)}</Label>
             <Input
               id="newPassword"
               type="password"
@@ -272,7 +275,7 @@ export default function SettingsPage() {
             />
           </div>
           <div>
-            <Label htmlFor="confirmPassword">Confirm New Password</Label>
+            <Label htmlFor="confirmPassword">{t('confirmNewPassword', locale)}</Label>
             <Input
               id="confirmPassword"
               type="password"
@@ -285,7 +288,7 @@ export default function SettingsPage() {
         </div>
 
         <div className="flex justify-end mt-6">
-          <Button onClick={handleChangePassword}>Change Password</Button>
+          <Button onClick={handleChangePassword}>{t('changePasswordBtn', locale)}</Button>
         </div>
       </div>
 
@@ -293,12 +296,12 @@ export default function SettingsPage() {
       <div className="bg-red-50 border-2 border-red-200 rounded-xl p-6">
         <div className="flex items-center gap-3 mb-4">
           <AlertTriangle className="h-5 w-5 text-red-600" />
-          <h2 className="text-lg font-semibold text-red-900">Danger Zone</h2>
+          <h2 className="text-lg font-semibold text-red-900">{t('dangerZoneTitle', locale)}</h2>
         </div>
         <p className="text-sm text-red-700 mb-4">
-          Once you delete your account, there is no going back. Please be certain.
+          {t('deleteAccountWarning2', locale)}
         </p>
-        <Button variant="destructive">Delete Account</Button>
+        <Button variant="destructive">{t('deleteAccountBtn', locale)}</Button>
       </div>
     </div>
   );

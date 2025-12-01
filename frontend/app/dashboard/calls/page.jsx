@@ -50,7 +50,7 @@ export default function CallsPage() {
       const response = await apiClient.calls.getAll(params);
       setCalls(response.data.calls || []);
     } catch (error) {
-      toast.error('Failed to load calls');
+      toast.error(t('saveError', locale));
     } finally {
       setLoading(false);
     }
@@ -66,9 +66,9 @@ export default function CallsPage() {
       document.body.appendChild(link);
       link.click();
       link.remove();
-      toast.success('Calls exported successfully!');
+      toast.success(t('saveSuccess', locale));
     } catch (error) {
-      toast.error('Failed to export calls');
+      toast.error(t('saveError', locale));
     }
   };
 
@@ -147,22 +147,22 @@ export default function CallsPage() {
               <thead className="bg-neutral-50 border-b border-neutral-200">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    Phone Number
+                    {t('phoneNumberLabel', locale)}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    Assistant
+                    {t('assistantLabel', locale)}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    Duration
+                    {t('durationLabel', locale)}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    Cost
+                    {t('costLabel', locale)}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    Date
+                    {t('dateLabel', locale)}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    Status
+                    {t('statusLabel', locale)}
                   </th>
                 </tr>
               </thead>
@@ -201,7 +201,7 @@ export default function CallsPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <Badge className={statusColors[call.status] || 'bg-neutral-100 text-neutral-800'}>
-                        {call.status}
+                        {t(call.status, locale)}
                       </Badge>
                     </td>
                   </tr>
@@ -214,11 +214,11 @@ export default function CallsPage() {
         <div className="bg-white rounded-xl border border-neutral-200 p-8">
           <EmptyState
             icon={Phone}
-            title={searchQuery || statusFilter !== 'all' ? 'No calls found' : 'No calls yet'}
+            title={searchQuery || statusFilter !== 'all' ? t('noDataYet', locale) : t('noCallsYetTitle', locale)}
             description={
               searchQuery || statusFilter !== 'all'
-                ? 'Try adjusting your filters'
-                : 'Your call history will appear here'
+                ? t('thisActionCannot', locale)
+                : t('callHistoryAppear', locale)
             }
           />
         </div>
