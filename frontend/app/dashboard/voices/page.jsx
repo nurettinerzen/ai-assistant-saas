@@ -128,11 +128,25 @@ export default function VoicesPage() {
           <SelectTrigger className="w-full sm:w-40">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="max-h-96 overflow-y-auto">
             <SelectItem value="all">{t('allLanguages', locale)}</SelectItem>
-            <SelectItem value="Turkish">{t('turkish', locale)}</SelectItem>
-            <SelectItem value="American">{t('american', locale)}</SelectItem>
-            <SelectItem value="British">{t('british', locale)}</SelectItem>
+            <SelectItem value="Turkish">🇹🇷 Turkish</SelectItem>
+            <SelectItem value="American">🇺🇸 English (US)</SelectItem>
+            <SelectItem value="British">🇬🇧 English (UK)</SelectItem>
+            <SelectItem value="German">🇩🇪 German</SelectItem>
+            <SelectItem value="French">🇫🇷 French</SelectItem>
+            <SelectItem value="Spanish">🇪🇸 Spanish</SelectItem>
+            <SelectItem value="Italian">🇮🇹 Italian</SelectItem>
+            <SelectItem value="Portuguese">🇵🇹 Portuguese</SelectItem>
+            <SelectItem value="Russian">🇷🇺 Russian</SelectItem>
+            <SelectItem value="Arabic">🇸🇦 Arabic</SelectItem>
+            <SelectItem value="Japanese">🇯🇵 Japanese</SelectItem>
+            <SelectItem value="Korean">🇰🇷 Korean</SelectItem>
+            <SelectItem value="Chinese">🇨🇳 Chinese</SelectItem>
+            <SelectItem value="Hindi">🇮🇳 Hindi</SelectItem>
+            <SelectItem value="Dutch">🇳🇱 Dutch</SelectItem>
+            <SelectItem value="Polish">🇵🇱 Polish</SelectItem>
+            <SelectItem value="Swedish">🇸🇪 Swedish</SelectItem>
           </SelectContent>
         </Select>
       </div>
