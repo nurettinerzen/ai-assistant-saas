@@ -330,14 +330,39 @@ router.post('/faqs', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Question and answer are required' });
     }
 
+    // Get business assistant ID
+    const business = await prisma.business.findUnique({
+      where: { id: businessId },
+      select: { vapiAssistantId: true }
+    });
+
+    let vapiKnowledgeId = null;
+
+    // Upload to VAPI if assistant exists
+    if (business?.vapiAssistantId) {
+      try {
+        const content = `Q: ${question}\nA: ${answer}`;
+        const vapiResponse = await vapiKnowledgeService.uploadText(
+          business.vapiAssistantId,
+          `FAQ: ${question.substring(0, 50)}...`,
+          content
+        );
+        vapiKnowledgeId = vapiResponse.id;
+        console.log(`✅ FAQ uploaded to VAPI: ${vapiKnowledgeId}`);
+      } catch (vapiError) {
+        console.error('VAPI upload failed:', vapiError);
+      }
+    }
+
     const faq = await prisma.knowledgeBase.create({
       data: {
         businessId,
         type: 'FAQ',
-        title: question.substring(0, 100), // Use first 100 chars as title
+        title: question.substring(0, 100),
         question,
         answer,
         category,
+        vapiKnowledgeId,
         status: 'ACTIVE'
       }
     });
