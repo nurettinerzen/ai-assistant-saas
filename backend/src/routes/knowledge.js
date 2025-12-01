@@ -268,11 +268,25 @@ router.delete('/documents/:id', authenticateToken, async (req, res) => {
         id,
         businessId,
         type: 'DOCUMENT'
-      }
+      },
+      include: { business: { select: { vapiAssistantId: true } } }
     });
 
     if (!document) {
       return res.status(404).json({ error: 'Document not found' });
+    }
+
+    // Delete from VAPI if exists
+    if (document.vapiKnowledgeId && document.business?.vapiAssistantId) {
+      try {
+        await vapiKnowledgeService.deleteKnowledge(
+          document.business.vapiAssistantId,
+          document.vapiKnowledgeId
+        );
+        console.log(`✅ Deleted from VAPI: ${document.vapiKnowledgeId}`);
+      } catch (vapiError) {
+        console.error('VAPI delete failed:', vapiError);
+      }
     }
 
     // Delete file from filesystem
