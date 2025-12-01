@@ -114,11 +114,28 @@ router.get('/overview', authenticateToken, async (req, res) => {
       cost: parseFloat(cost.toFixed(2))
     }));
 
+    // Sentiment breakdown
+    const sentimentCount = { positive: 0, neutral: 0, negative: 0 };
+    calls.forEach(call => {
+      const sentiment = call.sentiment || 'neutral';
+      if (sentimentCount[sentiment] !== undefined) {
+        sentimentCount[sentiment]++;
+      }
+    });
+    const totalSentiment = Object.values(sentimentCount).reduce((a, b) => a + b, 0);
+    const sentimentBreakdown = {
+      positive: totalSentiment > 0 ? ((sentimentCount.positive / totalSentiment) * 100).toFixed(1) : 0,
+      neutral: totalSentiment > 0 ? ((sentimentCount.neutral / totalSentiment) * 100).toFixed(1) : 0,
+      negative: totalSentiment > 0 ? ((sentimentCount.negative / totalSentiment) * 100).toFixed(1) : 0
+    };
+
     res.json({
       totalCalls,
+      totalMinutes: Math.round(totalDuration / 60),
       avgDuration,
       totalCost: parseFloat(totalCost.toFixed(2)),
       successRate: parseFloat(successRate),
+      sentimentBreakdown,
       callsOverTime,
       statusDistribution,
       durationDistribution,
@@ -128,6 +145,167 @@ router.get('/overview', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Error fetching analytics:', error);
     res.status(500).json({ error: 'Failed to fetch analytics' });
+  }
+});
+
+// GET /api/analytics/calls - Paginated call list with filters
+router.get('/calls', authenticateToken, async (req, res) => {
+  try {
+    const { businessId } = req;
+    const { 
+      page = 1, 
+      limit = 20, 
+      startDate, 
+      endDate, 
+      sentiment,
+      status 
+    } = req.query;
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    
+    // Build where clause
+    const where = { businessId };
+    
+    if (startDate || endDate) {
+      where.createdAt = {};
+      if (startDate) where.createdAt.gte = new Date(startDate);
+      if (endDate) where.createdAt.lte = new Date(endDate);
+    }
+    
+    if (sentiment) where.sentiment = sentiment;
+    if (status) where.status = status;
+
+    // Get calls
+    const [calls, total] = await Promise.all([
+      prisma.callLog.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: parseInt(limit)
+      }),
+      prisma.callLog.count({ where })
+    ]);
+
+    res.json({
+      calls,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / parseInt(limit))
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching calls:', error);
+    res.status(500).json({ error: 'Failed to fetch calls' });
+  }
+});
+
+// GET /api/analytics/calls/:callId - Single call detail
+router.get('/calls/:callId', authenticateToken, async (req, res) => {
+  try {
+    const { businessId } = req;
+    const { callId } = req.params;
+
+    const call = await prisma.callLog.findFirst({
+      where: {
+        callId,
+        businessId
+      }
+    });
+
+    if (!call) {
+      return res.status(404).json({ error: 'Call not found' });
+    }
+
+    res.json({ call });
+  } catch (error) {
+    console.error('Error fetching call:', error);
+    res.status(500).json({ error: 'Failed to fetch call' });
+  }
+});
+
+// GET /api/analytics/trends - Trend data for graphs
+router.get('/trends', authenticateToken, async (req, res) => {
+  try {
+    const { businessId } = req;
+    const { period = 'daily' } = req.query; // daily, weekly, monthly
+
+    const days = period === 'daily' ? 30 : period === 'weekly' ? 90 : 365;
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+
+    const calls = await prisma.callLog.findMany({
+      where: {
+        businessId,
+        createdAt: { gte: startDate }
+      },
+      orderBy: { createdAt: 'asc' }
+    });
+
+    // Group by period
+    const trends = {};
+    calls.forEach(call => {
+      let key;
+      if (period === 'daily') {
+        key = call.createdAt.toISOString().split('T')[0];
+      } else if (period === 'weekly') {
+        const weekStart = new Date(call.createdAt);
+        weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+        key = weekStart.toISOString().split('T')[0];
+      } else {
+        key = call.createdAt.toISOString().substring(0, 7); // YYYY-MM
+      }
+
+      if (!trends[key]) {
+        trends[key] = { calls: 0, duration: 0, positive: 0, negative: 0 };
+      }
+      trends[key].calls++;
+      trends[key].duration += call.duration || 0;
+      if (call.sentiment === 'positive') trends[key].positive++;
+      if (call.sentiment === 'negative') trends[key].negative++;
+    });
+
+    const trendData = Object.entries(trends).map(([date, data]) => ({
+      date,
+      calls: data.calls,
+      avgDuration: Math.round(data.duration / data.calls),
+      positiveRate: data.calls > 0 ? ((data.positive / data.calls) * 100).toFixed(1) : 0
+    }));
+
+    res.json({ trends: trendData });
+  } catch (error) {
+    console.error('Error fetching trends:', error);
+    res.status(500).json({ error: 'Failed to fetch trends' });
+  }
+});
+
+// GET /api/analytics/peak-hours - Peak calling hours
+router.get('/peak-hours', authenticateToken, async (req, res) => {
+  try {
+    const { businessId } = req;
+    
+    const calls = await prisma.callLog.findMany({
+      where: { businessId },
+      select: { createdAt: true }
+    });
+
+    // Group by hour
+    const hourCounts = Array(24).fill(0);
+    calls.forEach(call => {
+      const hour = new Date(call.createdAt).getHours();
+      hourCounts[hour]++;
+    });
+
+    const peakHours = hourCounts.map((count, hour) => ({
+      hour: `${hour.toString().padStart(2, '0')}:00`,
+      calls: count
+    }));
+
+    res.json({ peakHours });
+  } catch (error) {
+    console.error('Error fetching peak hours:', error);
+    res.status(500).json({ error: 'Failed to fetch peak hours' });
   }
 });
 
