@@ -52,13 +52,21 @@ export default function VoicesPage() {
     setLoading(true);
     try {
       const response = await apiClient.voices.getAll();
-      // Backend returns { voices: { turkish: [...], english: [...] } }
-      const allVoices = [
-        ...(response.data.voices.turkish || []),
-        ...(response.data.voices.english || [])
-      ];
+      // Backend returns { voices: { tr: [...], en: [...], de: [...], ... } }
+      const voicesData = response.data.voices || {};
+      const allVoices = [];
+      
+      // Flatten all language voices into single array
+      Object.keys(voicesData).forEach(lang => {
+        if (Array.isArray(voicesData[lang])) {
+          allVoices.push(...voicesData[lang].map(v => ({ ...v, language: lang })));
+        }
+      });
+      
+      console.log('🎤 Loaded voices:', allVoices.length, 'from', Object.keys(voicesData).length, 'languages');
       setVoices(allVoices);
     } catch (error) {
+      console.error('Failed to load voices:', error);
       toast.error(t('failedToLoadVoices', locale));
     } finally {
       setLoading(false);
