@@ -94,6 +94,7 @@ app.use('/api/voices', voicesRoutes);
 app.use('/api/knowledge', knowledgeRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/cost-calculator', costCalculatorRoutes);
+app.use('/api/webhooks', webhooksRoutes);
 
 
 // Error handling middleware
