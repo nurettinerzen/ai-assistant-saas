@@ -130,6 +130,14 @@ export default function IntegrationsPage() {
 
   const handleConnect = async (integrationId) => {
     try {
+      // OAuth integrations
+      if (['calendly', 'google-calendar', 'hubspot', 'google-sheets'].includes(integrationId)) {
+        const response = await apiClient.get(`/integrations/${integrationId}/auth`);
+        window.location.href = response.data.authUrl;
+        return;
+      }
+
+      // Other integrations
       await toastHelpers.async(
         apiClient.integrations.connect(integrationId, {}),
         t('connectingText', locale),
