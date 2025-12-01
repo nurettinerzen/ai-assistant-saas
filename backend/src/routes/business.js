@@ -6,6 +6,12 @@ import vapiService from '../services/vapi.js';
 const router = express.Router();
 const prisma = new PrismaClient();
 
+// 🌍 SUPPORTED LANGUAGES (15+)
+const SUPPORTED_LANGUAGES = [
+  'EN', 'TR', 'DE', 'FR', 'ES', 'IT', 'PT', 
+  'RU', 'AR', 'JA', 'KO', 'ZH', 'HI', 'NL', 'PL', 'SV'
+];
+
 // Get business details
 router.get('/:businessId', authenticateToken, verifyBusinessAccess, async (req, res) => {
   try {
