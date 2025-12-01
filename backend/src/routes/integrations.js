@@ -372,6 +372,333 @@ router.post('/booking/sync', async (req, res) => {
   }
 });
 
+/* ============================================================
+   CALENDLY INTEGRATION (OAuth)
+============================================================ */
 
+// Start OAuth
+router.get('/calendly/auth', async (req, res) => {
+  try {
+    const clientId = process.env.CALENDLY_CLIENT_ID;
+    const redirectUri = `${process.env.BACKEND_URL}/api/integrations/calendly/callback`;
+    const state = req.businessId;
+
+    const authUrl = calendlyService.getAuthUrl(clientId, redirectUri, state);
+    res.json({ authUrl });
+  } catch (error) {
+    console.error('Calendly auth error:', error);
+    res.status(500).json({ error: 'Failed to start Calendly OAuth' });
+  }
+});
+
+// OAuth Callback
+router.get('/calendly/callback', async (req, res) => {
+  try {
+    const { code, state } = req.query;
+    const businessId = parseInt(state);
+
+    const clientId = process.env.CALENDLY_CLIENT_ID;
+    const clientSecret = process.env.CALENDLY_CLIENT_SECRET;
+    const redirectUri = `${process.env.BACKEND_URL}/api/integrations/calendly/callback`;
+
+    const tokens = await calendlyService.getAccessToken(code, clientId, clientSecret, redirectUri);
+
+    // Save to Integration model
+    await prisma.integration.upsert({
+      where: {
+        businessId_type: {
+          businessId,
+          type: 'CALENDLY'
+        }
+      },
+      update: {
+        credentials: tokens,
+        connected: true
+      },
+      create: {
+        businessId,
+        type: 'CALENDLY',
+        credentials: tokens,
+        connected: true
+      }
+    });
+
+    res.redirect('/dashboard/integrations?success=calendly');
+  } catch (error) {
+    console.error('Calendly callback error:', error);
+    res.redirect('/dashboard/integrations?error=calendly');
+  }
+});
+
+/* ============================================================
+   GOOGLE CALENDAR INTEGRATION (OAuth)
+============================================================ */
+
+router.get('/google-calendar/auth', async (req, res) => {
+  try {
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    const redirectUri = `${process.env.BACKEND_URL}/api/integrations/google-calendar/callback`;
+
+    const oauth2Client = googleCalendarService.createOAuth2Client(clientId, clientSecret, redirectUri);
+    const authUrl = googleCalendarService.getAuthUrl(oauth2Client);
+
+    // Store businessId in session or state parameter
+    res.json({ authUrl: authUrl + `&state=${req.businessId}` });
+  } catch (error) {
+    console.error('Google Calendar auth error:', error);
+    res.status(500).json({ error: 'Failed to start Google Calendar OAuth' });
+  }
+});
+
+router.get('/google-calendar/callback', async (req, res) => {
+  try {
+    const { code, state } = req.query;
+    const businessId = parseInt(state);
+
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    const redirectUri = `${process.env.BACKEND_URL}/api/integrations/google-calendar/callback`;
+
+    const oauth2Client = googleCalendarService.createOAuth2Client(clientId, clientSecret, redirectUri);
+    const tokens = await googleCalendarService.getTokens(oauth2Client, code);
+
+    await prisma.integration.upsert({
+      where: {
+        businessId_type: {
+          businessId,
+          type: 'GOOGLE_CALENDAR'
+        }
+      },
+      update: {
+        credentials: tokens,
+        connected: true
+      },
+      create: {
+        businessId,
+        type: 'GOOGLE_CALENDAR',
+        credentials: tokens,
+        connected: true
+      }
+    });
+
+    res.redirect('/dashboard/integrations?success=google-calendar');
+  } catch (error) {
+    console.error('Google Calendar callback error:', error);
+    res.redirect('/dashboard/integrations?error=google-calendar');
+  }
+});
+
+/* ============================================================
+   HUBSPOT INTEGRATION (OAuth)
+============================================================ */
+
+router.get('/hubspot/auth', async (req, res) => {
+  try {
+    const clientId = process.env.HUBSPOT_CLIENT_ID;
+    const redirectUri = `${process.env.BACKEND_URL}/api/integrations/hubspot/callback`;
+    const scopes = ['crm.objects.contacts.write', 'crm.objects.deals.write'];
+    const state = req.businessId;
+
+    const authUrl = hubspotService.getAuthUrl(clientId, redirectUri, scopes, state);
+    res.json({ authUrl });
+  } catch (error) {
+    console.error('HubSpot auth error:', error);
+    res.status(500).json({ error: 'Failed to start HubSpot OAuth' });
+  }
+});
+
+router.get('/hubspot/callback', async (req, res) => {
+  try {
+    const { code, state } = req.query;
+    const businessId = parseInt(state);
+
+    const clientId = process.env.HUBSPOT_CLIENT_ID;
+    const clientSecret = process.env.HUBSPOT_CLIENT_SECRET;
+    const redirectUri = `${process.env.BACKEND_URL}/api/integrations/hubspot/callback`;
+
+    const tokens = await hubspotService.getAccessToken(code, clientId, clientSecret, redirectUri);
+
+    await prisma.integration.upsert({
+      where: {
+        businessId_type: {
+          businessId,
+          type: 'HUBSPOT'
+        }
+      },
+      update: {
+        credentials: tokens,
+        connected: true
+      },
+      create: {
+        businessId,
+        type: 'HUBSPOT',
+        credentials: tokens,
+        connected: true
+      }
+    });
+
+    res.redirect('/dashboard/integrations?success=hubspot');
+  } catch (error) {
+    console.error('HubSpot callback error:', error);
+    res.redirect('/dashboard/integrations?error=hubspot');
+  }
+});
+
+/* ============================================================
+   GOOGLE SHEETS INTEGRATION (OAuth)
+============================================================ */
+
+router.get('/google-sheets/auth', async (req, res) => {
+  try {
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    const redirectUri = `${process.env.BACKEND_URL}/api/integrations/google-sheets/callback`;
+
+    const oauth2Client = googleSheetsService.createOAuth2Client(clientId, clientSecret, redirectUri);
+    const authUrl = googleSheetsService.getAuthUrl(oauth2Client);
+
+    res.json({ authUrl: authUrl + `&state=${req.businessId}` });
+  } catch (error) {
+    console.error('Google Sheets auth error:', error);
+    res.status(500).json({ error: 'Failed to start Google Sheets OAuth' });
+  }
+});
+
+router.get('/google-sheets/callback', async (req, res) => {
+  try {
+    const { code, state } = req.query;
+    const businessId = parseInt(state);
+
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    const redirectUri = `${process.env.BACKEND_URL}/api/integrations/google-sheets/callback`;
+
+    const oauth2Client = googleSheetsService.createOAuth2Client(clientId, clientSecret, redirectUri);
+    const tokens = await googleSheetsService.getTokens(oauth2Client, code);
+
+    await prisma.integration.upsert({
+      where: {
+        businessId_type: {
+          businessId,
+          type: 'GOOGLE_SHEETS'
+        }
+      },
+      update: {
+        credentials: tokens,
+        connected: true
+      },
+      create: {
+        businessId,
+        type: 'GOOGLE_SHEETS',
+        credentials: tokens,
+        connected: true
+      }
+    });
+
+    res.redirect('/dashboard/integrations?success=google-sheets');
+  } catch (error) {
+    console.error('Google Sheets callback error:', error);
+    res.redirect('/dashboard/integrations?error=google-sheets');
+  }
+});
+
+/* ============================================================
+   WHATSAPP BUSINESS INTEGRATION
+============================================================ */
+
+router.post('/whatsapp/connect', async (req, res) => {
+  try {
+    const { accessToken, phoneNumberId } = req.body;
+
+    await prisma.integration.upsert({
+      where: {
+        businessId_type: {
+          businessId: req.businessId,
+          type: 'WHATSAPP'
+        }
+      },
+      update: {
+        credentials: { accessToken, phoneNumberId },
+        connected: true
+      },
+      create: {
+        businessId: req.businessId,
+        type: 'WHATSAPP',
+        credentials: { accessToken, phoneNumberId },
+        connected: true
+      }
+    });
+
+    res.json({ success: true, message: 'WhatsApp connected successfully' });
+  } catch (error) {
+    console.error('WhatsApp connect error:', error);
+    res.status(500).json({ error: 'Failed to connect WhatsApp' });
+  }
+});
+
+router.post('/whatsapp/send', async (req, res) => {
+  try {
+    const { recipientPhone, message } = req.body;
+
+    const integration = await prisma.integration.findFirst({
+      where: {
+        businessId: req.businessId,
+        type: 'WHATSAPP',
+        connected: true
+      }
+    });
+
+    if (!integration) {
+      return res.status(404).json({ error: 'WhatsApp not connected' });
+    }
+
+    const { accessToken, phoneNumberId } = integration.credentials;
+    const result = await whatsappService.sendMessage(accessToken, phoneNumberId, recipientPhone, message);
+
+    res.json({ success: true, result });
+  } catch (error) {
+    console.error('WhatsApp send error:', error);
+    res.status(500).json({ error: 'Failed to send WhatsApp message' });
+  }
+});
+
+/* ============================================================
+   ZAPIER WEBHOOK CONFIGURATION
+============================================================ */
+
+router.post('/zapier/connect', async (req, res) => {
+  try {
+    const { webhookUrl } = req.body;
+
+    if (!webhookUrl) {
+      return res.status(400).json({ error: 'Webhook URL is required' });
+    }
+
+    await prisma.integration.upsert({
+      where: {
+        businessId_type: {
+          businessId: req.businessId,
+          type: 'ZAPIER'
+        }
+      },
+      update: {
+        credentials: { webhookUrl },
+        connected: true
+      },
+      create: {
+        businessId: req.businessId,
+        type: 'ZAPIER',
+        credentials: { webhookUrl },
+        connected: true
+      }
+    });
+
+    res.json({ success: true, message: 'Zapier webhook configured' });
+  } catch (error) {
+    console.error('Zapier connect error:', error);
+    res.status(500).json({ error: 'Failed to configure Zapier' });
+  }
+});
 
 export default router;
