@@ -3,16 +3,16 @@
 import { useState } from 'react';
 import Vapi from '@vapi-ai/web';
 
-const VAPI_PUBLIC_KEY = '7f454254-027f-4679-8ced-9cd0e5035f8b'; // Senin public key
+const VAPI_PUBLIC_KEY = '7f454254-027f-4679-8ced-9cd0e5035f8b';
 
-export default function VoiceDemo({ assistantId }) {
+export default function VoiceDemo({ assistantId, onClose }) {
   const [isCallActive, setIsCallActive] = useState(false);
   const [vapi, setVapi] = useState(null);
   const [callStatus, setCallStatus] = useState('');
 
   const startCall = async () => {
     try {
-        console.log('🎯 Starting call with assistantId:', assistantId);
+      console.log('🎯 Starting call with assistantId:', assistantId);
       setCallStatus('Starting call...');
       
       const vapiInstance = new Vapi(VAPI_PUBLIC_KEY);
@@ -63,7 +63,17 @@ export default function VoiceDemo({ assistantId }) {
     }
   };
 
-    console.log('VoiceDemo rendered with assistantId:', assistantId);
+  // 🔧 BUG FIX 2: Kapatma butonu eklendi
+  const handleClose = () => {
+    if (vapi && isCallActive) {
+      vapi.stop();
+    }
+    if (onClose) {
+      onClose();
+    }
+  };
+
+  console.log('VoiceDemo rendered with assistantId:', assistantId);
 
   return (
     <div style={{ 
@@ -71,8 +81,34 @@ export default function VoiceDemo({ assistantId }) {
       background: '#f0f4ff', 
       borderRadius: '10px', 
       border: '2px solid #4f46e5',
-      textAlign: 'center'
+      textAlign: 'center',
+      position: 'relative'
     }}>
+      {/* 🔧 Close Button */}
+      {onClose && (
+        <button
+          onClick={handleClose}
+          style={{
+            position: 'absolute',
+            top: '10px',
+            right: '10px',
+            background: '#ef4444',
+            color: 'white',
+            border: 'none',
+            borderRadius: '50%',
+            width: '32px',
+            height: '32px',
+            cursor: 'pointer',
+            fontSize: '18px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          ×
+        </button>
+      )}
+
       <h3 style={{ marginBottom: '15px' }}>🎤 Test Your AI Assistant</h3>
       <p style={{ color: '#666', marginBottom: '20px', fontSize: '14px' }}>
         {assistantId 

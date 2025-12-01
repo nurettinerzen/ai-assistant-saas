@@ -24,11 +24,29 @@ export default function VoicesPage() {
   const [genderFilter, setGenderFilter] = useState('all');
   const [languageFilter, setLanguageFilter] = useState('all');
   const [selectedVoice, setSelectedVoice] = useState(null);
+  const [businessLanguage, setBusinessLanguage] = useState('EN');
 
   useEffect(() => {
     setLocale(getCurrentLanguage());
+    loadBusinessLanguage();
     loadVoices();
   }, []);
+
+  // 🔧 BUG FIX 3: Business language'a göre ses filtrele
+  const loadBusinessLanguage = async () => {
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      if (user.businessId) {
+        const response = await apiClient.business.get(user.businessId);
+        const language = response.data.business?.language || 'EN';
+        setBusinessLanguage(language);
+        // Auto-set language filter based on business language
+        setLanguageFilter(language === 'TR' ? 'Turkish' : 'American');
+      }
+    } catch (error) {
+      console.error('Failed to load business language:', error);
+    }
+  };
 
   const loadVoices = async () => {
     setLoading(true);
@@ -69,6 +87,12 @@ export default function VoicesPage() {
         <p className="text-neutral-600 mt-1">
           {t('voicesDescription', locale)}
         </p>
+        {/* 🔧 Business language indicator */}
+        {businessLanguage && (
+          <p className="text-sm text-primary-600 mt-2">
+            📌 {t('businessLanguage', locale)}: {businessLanguage === 'TR' ? 'Türkçe' : 'English'}
+          </p>
+        )}
       </div>
 
       {/* Filters */}

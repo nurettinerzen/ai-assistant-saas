@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
 
 export default function Navigation() {
   const pathname = usePathname();
@@ -83,8 +84,10 @@ export default function Navigation() {
             ))}
           </div>
 
-          {/* Auth Buttons */}
+          {/* Auth Buttons + Language Switcher */}
           <div className="hidden md:flex items-center space-x-3">
+            {/* 🔧 BUG FIX 1: Dil Seçici Eklendi */}
+            <LanguageSwitcher />
             <Link href="/login">
               <Button variant="ghost" size="sm">
                 Sign In
@@ -141,6 +144,7 @@ export default function Navigation() {
               </div>
             ))}
             <div className="flex flex-col space-y-2 px-4 pt-4">
+              <LanguageSwitcher />
               <Link href="/login">
                 <Button variant="outline" className="w-full">
                   Sign In
