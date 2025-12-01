@@ -1,7 +1,7 @@
 /**
  * Phone Numbers Page
  * Manage provisioned phone numbers
- * UPDATE EXISTING FILE: frontend/app/dashboard/phone-numbers/page.jsx
+ * 🔧 BUG FIX 5: Plan bazlı erişim kontrolü
  */
 
 'use client';
@@ -11,22 +11,50 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import EmptyState from '@/components/EmptyState';
 import PhoneNumberModal from '@/components/PhoneNumberModal';
-import { Phone, Plus, Trash2, TestTube2 } from 'lucide-react';
+import { Phone, Plus, Trash2, TestTube2, Lock } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast, toastHelpers } from '@/lib/toast';
 import { formatPhone, formatDate } from '@/lib/utils';
 import { t, getCurrentLanguage } from '@/lib/translations';
+import Link from 'next/link';
+
+// Plan limitleri
+const PLAN_LIMITS = {
+  FREE: { phoneNumbers: 0 },
+  BASIC: { phoneNumbers: 1 },
+  PROFESSIONAL: { phoneNumbers: 3 },
+  ENTERPRISE: { phoneNumbers: -1 } // unlimited
+};
 
 export default function PhoneNumbersPage() {
   const [phoneNumbers, setPhoneNumbers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showProvisionModal, setShowProvisionModal] = useState(false);
   const [locale, setLocale] = useState('en');
+  const [subscription, setSubscription] = useState(null);
+  const [isLocked, setIsLocked] = useState(false);
 
   useEffect(() => {
     setLocale(getCurrentLanguage());
+    loadSubscription();
     loadPhoneNumbers();
   }, []);
+
+  // 🔧 Load subscription to check plan
+  const loadSubscription = async () => {
+    try {
+      const response = await apiClient.subscription.get();
+      const sub = response.data.subscription;
+      setSubscription(sub);
+      
+      // Check if FREE plan
+      if (sub?.plan === 'FREE') {
+        setIsLocked(true);
+      }
+    } catch (error) {
+      console.error('Failed to load subscription:', error);
+    }
+  };
 
   const loadPhoneNumbers = async () => {
     setLoading(true);
@@ -72,6 +100,71 @@ export default function PhoneNumbersPage() {
     }
   };
 
+  // 🔧 Check if user can add more numbers
+  const canAddNumber = () => {
+    if (!subscription) return false;
+    const limit = PLAN_LIMITS[subscription.plan]?.phoneNumbers || 0;
+    if (limit === -1) return true; // unlimited
+    return phoneNumbers.length < limit;
+  };
+
+  // 🔧 Locked view for FREE plan
+  if (isLocked) {
+    return (
+      <div className="space-y-6">
+        {/* Header */}
+        <div>
+          <h1 className="text-3xl font-bold text-neutral-900">{t('phoneNumbersTitle2', locale)}</h1>
+          <p className="text-neutral-600 mt-1">{t('managePhoneNumbers', locale)}</p>
+        </div>
+
+        {/* Locked State */}
+        <div className="bg-white rounded-xl border border-neutral-200 p-12 text-center">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-neutral-100 rounded-full mb-6">
+            <Lock className="h-10 w-10 text-neutral-400" />
+          </div>
+          <h2 className="text-2xl font-bold text-neutral-900 mb-3">
+            {t('upgradeToGetPhone', locale) || 'Planınızı Yükseltin'}
+          </h2>
+          <p className="text-neutral-600 mb-6 max-w-md mx-auto">
+            {t('phoneNumbersLockedDesc', locale) || 'Telefon numarası özelliği BASIC ve üzeri planlarda mevcuttur. Gerçek aramalar almaya başlamak için planınızı yükseltin.'}
+          </p>
+          <Link href="/dashboard/subscription">
+            <Button size="lg" className="bg-gradient-to-r from-indigo-600 to-blue-500">
+              {t('upgrade', locale)} →
+            </Button>
+          </Link>
+        </div>
+
+        {/* Plan comparison */}
+        <div className="bg-primary-50 border border-primary-200 rounded-xl p-6">
+          <h3 className="text-sm font-semibold text-primary-900 mb-3">
+            {t('planFeatures', locale) || 'Plan Özellikleri'}
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div className="bg-white p-4 rounded-lg">
+              <div className="font-semibold text-neutral-900 mb-2">{t('basicPlan', locale)}</div>
+              <div className="text-neutral-600">1 {t('phoneNumber', locale)}</div>
+              <div className="text-xs text-neutral-500 mt-1">$29/ay</div>
+            </div>
+            <div className="bg-white p-4 rounded-lg border-2 border-primary-300">
+              <div className="font-semibold text-primary-700 mb-2">
+                {t('professionalPlan', locale)} ⭐
+              </div>
+              <div className="text-neutral-600">3 {t('phoneNumber', locale)}</div>
+              <div className="text-xs text-neutral-500 mt-1">$99/ay</div>
+            </div>
+            <div className="bg-white p-4 rounded-lg">
+              <div className="font-semibold text-neutral-900 mb-2">{t('enterprisePlan', locale)}</div>
+              <div className="text-neutral-600">{t('unlimited', locale) || 'Sınırsız'}</div>
+              <div className="text-xs text-neutral-500 mt-1">{t('contactSales', locale)}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -79,12 +172,33 @@ export default function PhoneNumbersPage() {
         <div>
           <h1 className="text-3xl font-bold text-neutral-900">{t('phoneNumbersTitle2', locale)}</h1>
           <p className="text-neutral-600 mt-1">{t('managePhoneNumbers', locale)}</p>
+          {/* 🔧 Plan limit indicator */}
+          {subscription && (
+            <p className="text-sm text-primary-600 mt-2">
+              {phoneNumbers.length}/{PLAN_LIMITS[subscription.plan]?.phoneNumbers === -1 ? '∞' : PLAN_LIMITS[subscription.plan]?.phoneNumbers} {t('phoneNumbersUsed', locale) || 'numara kullanılıyor'}
+            </p>
+          )}
         </div>
-        <Button onClick={() => setShowProvisionModal(true)}>
+        <Button 
+          onClick={() => setShowProvisionModal(true)}
+          disabled={!canAddNumber()}
+        >
           <Plus className="h-4 w-4 mr-2" />
           {t('getPhoneNumberBtn', locale)}
         </Button>
       </div>
+
+      {/* Limit warning */}
+      {!canAddNumber() && phoneNumbers.length > 0 && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+          <p className="text-sm text-yellow-800">
+            ⚠️ {t('phoneLimitReached', locale) || 'Telefon numarası limitinize ulaştınız. Daha fazla numara eklemek için planınızı yükseltin.'}
+            <Link href="/dashboard/subscription" className="ml-2 underline font-medium">
+              {t('upgrade', locale)}
+            </Link>
+          </p>
+        </div>
+      )}
 
       {/* Phone numbers grid */}
       {loading ? (

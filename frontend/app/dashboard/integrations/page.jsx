@@ -1,7 +1,7 @@
 /**
  * Integrations Page
  * Manage third-party integrations (Stripe, Zapier, etc.)
- * UPDATE EXISTING FILE: frontend/app/dashboard/integrations/page.jsx
+ * 🔧 BUG FIX 4: Sektöre göre entegrasyonlar göster
  */
 
 'use client';
@@ -10,10 +10,19 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import EmptyState from '@/components/EmptyState';
-import { Puzzle, Check, ExternalLink } from 'lucide-react';
+import { Puzzle, Check, ExternalLink, Star } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast, toastHelpers } from '@/lib/toast';
 import { t, getCurrentLanguage } from '@/lib/translations';
+
+// 🔧 Sektöre göre önerilen entegrasyonlar
+const INDUSTRY_INTEGRATIONS = {
+  RESTAURANT: ['calendly', 'google-calendar', 'whatsapp', 'google-sheets'],
+  SALON: ['calendly', 'google-calendar', 'whatsapp', 'google-sheets'],
+  ECOMMERCE: ['hubspot', 'zapier', 'google-sheets', 'stripe'],
+  SERVICE: ['calendly', 'hubspot', 'google-calendar', 'zapier'],
+  OTHER: ['zapier', 'google-sheets', 'google-calendar', 'calendly']
+};
 
 const AVAILABLE_INTEGRATIONS = [
   {
@@ -58,17 +67,54 @@ const AVAILABLE_INTEGRATIONS = [
     category: 'schedulingCategory',
     docsUrl: 'https://developer.calendly.com',
   },
+  {
+    id: 'google-calendar',
+    name: 'Google Calendar',
+    icon: '🗓️',
+    category: 'schedulingCategory',
+    docsUrl: 'https://developers.google.com/calendar',
+  },
+  {
+    id: 'google-sheets',
+    name: 'Google Sheets',
+    icon: '📊',
+    category: 'crmCategory',
+    docsUrl: 'https://developers.google.com/sheets',
+  },
+  {
+    id: 'whatsapp',
+    name: 'WhatsApp Business',
+    icon: '📱',
+    category: 'communicationCategory',
+    docsUrl: 'https://developers.facebook.com/docs/whatsapp',
+  },
 ];
 
 export default function IntegrationsPage() {
   const [integrations, setIntegrations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [locale, setLocale] = useState('en');
+  const [businessType, setBusinessType] = useState('OTHER');
 
   useEffect(() => {
     setLocale(getCurrentLanguage());
+    loadBusinessInfo();
     loadIntegrations();
   }, []);
+
+  // 🔧 Load business type
+  const loadBusinessInfo = async () => {
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      if (user.businessId) {
+        const response = await apiClient.business.get(user.businessId);
+        const type = response.data.business?.businessType || 'OTHER';
+        setBusinessType(type);
+      }
+    } catch (error) {
+      console.error('Failed to load business info:', error);
+    }
+  };
 
   const loadIntegrations = async () => {
     setLoading(true);
@@ -126,6 +172,21 @@ export default function IntegrationsPage() {
     return integrations.some((i) => i.provider === integrationId && i.connected);
   };
 
+  // 🔧 Check if integration is recommended for this business
+  const isRecommended = (integrationId) => {
+    const recommended = INDUSTRY_INTEGRATIONS[businessType] || [];
+    return recommended.includes(integrationId);
+  };
+
+  // 🔧 Sort: recommended first, then alphabetically
+  const sortedIntegrations = [...AVAILABLE_INTEGRATIONS].sort((a, b) => {
+    const aRecommended = isRecommended(a.id);
+    const bRecommended = isRecommended(b.id);
+    if (aRecommended && !bRecommended) return -1;
+    if (!aRecommended && bRecommended) return 1;
+    return a.name.localeCompare(b.name);
+  });
+
   const getDescription = (id) => {
     const descMap = {
       stripe: 'stripeDesc2',
@@ -134,8 +195,11 @@ export default function IntegrationsPage() {
       hubspot: 'hubspotDesc2',
       salesforce: 'salesforceDesc',
       calendly: 'calendlyDesc',
+      'google-calendar': 'googleCalendarDesc',
+      'google-sheets': 'Basit CRM olarak kullanın - aramaları otomatik kaydedin',
+      whatsapp: 'whatsappDesc',
     };
-    return t(descMap[id] || '', locale);
+    return t(descMap[id] || '', locale) || descMap[id];
   };
 
   return (
@@ -146,6 +210,12 @@ export default function IntegrationsPage() {
         <p className="text-neutral-600 mt-1">
           {t('connectTelyx', locale)}
         </p>
+        {/* Business type indicator */}
+        {businessType && (
+          <p className="text-sm text-primary-600 mt-2">
+            📌 {t('industry', locale)}: {t(`industry${businessType.charAt(0) + businessType.slice(1).toLowerCase()}`, locale)}
+          </p>
+        )}
       </div>
 
       {/* Integrations grid */}
@@ -166,18 +236,26 @@ export default function IntegrationsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {AVAILABLE_INTEGRATIONS.map((integration) => {
+          {sortedIntegrations.map((integration) => {
             const connected = isConnected(integration.id);
+            const recommended = isRecommended(integration.id);
             return (
               <div
                 key={integration.id}
-                className="bg-white rounded-xl border border-neutral-200 p-6 hover:shadow-md transition-shadow"
+                className={`bg-white rounded-xl border p-6 hover:shadow-md transition-shadow ${
+                  recommended ? 'border-primary-300 bg-primary-50/30' : 'border-neutral-200'
+                }`}
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div className="text-4xl">{integration.icon}</div>
                     <div>
-                      <h3 className="font-semibold text-neutral-900">{integration.name}</h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-neutral-900">{integration.name}</h3>
+                        {recommended && (
+                          <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                        )}
+                      </div>
                       <Badge variant="secondary" className="text-xs mt-1">
                         {t(integration.category, locale)}
                       </Badge>
@@ -189,6 +267,12 @@ export default function IntegrationsPage() {
                     </div>
                   )}
                 </div>
+
+                {recommended && (
+                  <div className="mb-3 px-2 py-1 bg-primary-100 text-primary-700 text-xs rounded-md inline-block">
+                    ⭐ {t('recommendedForYou', locale) || 'Sizin için önerilen'}
+                  </div>
+                )}
 
                 <p className="text-sm text-neutral-600 mb-4">{getDescription(integration.id)}</p>
 
