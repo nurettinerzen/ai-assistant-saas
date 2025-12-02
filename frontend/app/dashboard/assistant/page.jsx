@@ -71,7 +71,7 @@ export default function AssistantsPage() {
       ];
       setVoices(allVoices);
     } catch (error) {
-      toast.error(t('dashboard.saveError'));
+      toast.error(t('saveError'));
     } finally {
       setLoading(false);
     }
@@ -98,18 +98,18 @@ export default function AssistantsPage() {
 
   const handleCreate = async () => {
     if (!formData.name || !formData.voiceId || !formData.systemPrompt) {
-      toast.error(t('dashboard.fillAllRequired'));
+      toast.error(t('fillAllRequired'));
       return;
     }
 
     try {
       await apiClient.assistants.create(formData);
-      toast.success(t('dashboard.assistantCreatedSuccess'));
+      toast.success(t('assistantCreatedSuccess'));
       setShowCreateModal(false);
       resetForm();
       loadData();
     } catch (error) {
-      toast.error(error.response?.data?.error || t('dashboard.saveError'));
+      toast.error(error.response?.data?.error || t('saveError'));
     }
   };
 
@@ -129,22 +129,22 @@ export default function AssistantsPage() {
 
     try {
       await apiClient.assistants.update(editingAssistant.id, formData);
-      toast.success(t('dashboard.assistantUpdatedSuccess'));
+      toast.success(t('assistantUpdatedSuccess'));
       setShowCreateModal(false);
       resetForm();
       loadData();
     } catch (error) {
-      toast.error(error.response?.data?.error || t('dashboard.saveError'));
+      toast.error(error.response?.data?.error || t('saveError'));
     }
   };
 
   const handleDelete = async (assistant) => {
     try {
       await apiClient.assistants.delete(assistant.id);
-      toast.success(t('dashboard.assistantDeletedSuccess'));
+      toast.success(t('assistantDeletedSuccess'));
       loadData();
     } catch (error) {
-      toast.error(error.response?.data?.error || t('dashboard.deleteError'));
+      toast.error(error.response?.data?.error || t('deleteError'));
     }
   };
 
@@ -162,12 +162,12 @@ export default function AssistantsPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-neutral-900">{t('dashboard.assistantsTitle')}</h1>
-          <p className="text-neutral-600 mt-1">{t('dashboard.createManageAssistants')}</p>
+          <h1 className="text-3xl font-bold text-neutral-900">{t('assistantsTitle')}</h1>
+          <p className="text-neutral-600 mt-1">{t('createManageAssistants')}</p>
         </div>
         <Button onClick={() => setShowTemplateSelector(true)}>
           <Plus className="h-4 w-4 mr-2" />
-          {t('dashboard.newAssistant')}
+          {t('newAssistant')}
         </Button>
       </div>
 
@@ -176,7 +176,7 @@ export default function AssistantsPage() {
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
           <Input
-            placeholder={t('dashboard.searchAssistants')}
+            placeholder={t('searchAssistants')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
@@ -223,7 +223,7 @@ export default function AssistantsPage() {
                 </p>
 
                 <div className="flex flex-wrap gap-2 mb-4">
-                  <Badge variant="secondary">{voice?.name || t('dashboard.noVoice')}</Badge>
+                  <Badge variant="secondary">{voice?.name || t('noVoice')}</Badge>
                   <Badge variant="outline">{assistant.model}</Badge>
                 </div>
 
@@ -235,7 +235,7 @@ export default function AssistantsPage() {
                     onClick={() => handleEdit(assistant)}
                   >
                     <Edit className="h-3 w-3 mr-2" />
-                    {t('dashboard.edit')}
+                    {t('edit')}
                   </Button>
                   <Button
                     variant="outline"
@@ -252,9 +252,9 @@ export default function AssistantsPage() {
       ) : (
         <EmptyState
           icon={Bot}
-          title={t('dashboard.noAssistantsTitle')}
-          description={t('dashboard.createFirstAssistantDesc')}
-          actionLabel={t('dashboard.createAssistantBtn')}
+          title={t('noAssistantsTitle')}
+          description={t('createFirstAssistantDesc')}
+          actionLabel={t('createAssistantBtn')}
           onAction={() => setShowTemplateSelector(true)}
         />
       )}
@@ -276,31 +276,31 @@ export default function AssistantsPage() {
       >
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>{editingAssistant ? t('dashboard.editAssistantTitle') : t('dashboard.createAssistantTitle')} {t('dashboard.assistant')}</DialogTitle>
+            <DialogTitle>{editingAssistant ? t('editAssistantTitle') : t('createAssistantTitle')} {t('assistant')}</DialogTitle>
             <DialogDescription>
-              {t('dashboard.configureSettings')}
+              {t('configureSettings')}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div>
-              <Label htmlFor="name">{t('dashboard.nameRequired')}</Label>
+              <Label htmlFor="name">{t('nameRequired')}</Label>
               <Input
                 id="name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder={t('dashboard.customerSupportBot')}
+                placeholder={t('customerSupportBot')}
               />
             </div>
 
             <div>
-              <Label htmlFor="voice">{t('dashboard.voiceRequired')}</Label>
+              <Label htmlFor="voice">{t('voiceRequired')}</Label>
               <Select
                 value={formData.voiceId}
                 onValueChange={(value) => setFormData({ ...formData, voiceId: value })}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder={t('dashboard.selectVoiceLabel')} />
+                  <SelectValue placeholder={t('selectVoiceLabel')} />
                 </SelectTrigger>
                 <SelectContent>
                   {voices.map((voice) => (
@@ -313,7 +313,7 @@ export default function AssistantsPage() {
             </div>
 
             <div>
-              <Label htmlFor="model">{t('dashboard.aiModelLabel')}</Label>
+              <Label htmlFor="model">{t('aiModelLabel')}</Label>
               <Select
                 value={formData.model}
                 onValueChange={(value) => setFormData({ ...formData, model: value })}
@@ -329,23 +329,23 @@ export default function AssistantsPage() {
             </div>
 
             <div>
-              <Label htmlFor="prompt">{t('dashboard.systemPromptRequired')}</Label>
+              <Label htmlFor="prompt">{t('systemPromptRequired')}</Label>
               <Textarea
                 id="prompt"
                 rows={6}
                 value={formData.systemPrompt}
                 onChange={(e) => setFormData({ ...formData, systemPrompt: e.target.value })}
-                placeholder={t('dashboard.systemPromptPlaceholder')}
+                placeholder={t('systemPromptPlaceholder')}
               />
             </div>
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t">
             <Button variant="outline" onClick={() => setShowCreateModal(false)}>
-              {t('dashboard.cancel')}
+              {t('cancel')}
             </Button>
             <Button onClick={editingAssistant ? handleUpdate : handleCreate}>
-              {editingAssistant ? t('dashboard.updateAssistantBtn') : t('dashboard.createAssistantBtn')}
+              {editingAssistant ? t('updateAssistantBtn') : t('createAssistantBtn')}
             </Button>
           </div>
         </DialogContent>

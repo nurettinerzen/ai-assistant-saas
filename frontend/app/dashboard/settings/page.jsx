@@ -47,7 +47,7 @@ export default function SettingsPage() {
       setProfile(profileRes.data);
       setNotifications(notificationsRes.data);
     } catch (error) {
-      toast.error(t('dashboard.saveError'));
+      toast.error(t('saveError'));
     } finally {
       setLoading(false);
     }
@@ -57,8 +57,8 @@ export default function SettingsPage() {
     try {
       await toastHelpers.async(
         apiClient.settings.updateProfile(profile),
-        t('dashboard.savingProfile'),
-        t('dashboard.profileUpdatedSuccess')
+        t('savingProfile'),
+        t('profileUpdatedSuccess')
       );
     } catch (error) {
       // Error handled
@@ -69,8 +69,8 @@ export default function SettingsPage() {
     try {
       await toastHelpers.async(
         apiClient.settings.updateNotifications(notifications),
-        t('dashboard.savingPreferences'),
-        t('dashboard.notificationPreferencesUpdated')
+        t('savingPreferences'),
+        t('notificationPreferencesUpdated')
       );
     } catch (error) {
       // Error handled
@@ -79,11 +79,11 @@ export default function SettingsPage() {
 
   const handleChangePassword = async () => {
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      toast.error(t('dashboard.passwordsDoNotMatch2'));
+      toast.error(t('passwordsDoNotMatch2'));
       return;
     }
     if (passwordForm.newPassword.length < 8) {
-      toast.error(t('dashboard.passwordMinLength'));
+      toast.error(t('passwordMinLength'));
       return;
     }
 
@@ -93,8 +93,8 @@ export default function SettingsPage() {
           currentPassword: passwordForm.currentPassword,
           newPassword: passwordForm.newPassword,
         }),
-        t('dashboard.changingPassword'),
-        t('dashboard.passwordChangedSuccess')
+        t('changingPassword'),
+        t('passwordChangedSuccess')
       );
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
     } catch (error) {
@@ -114,8 +114,8 @@ export default function SettingsPage() {
     <div className="space-y-8 max-w-4xl">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-neutral-900">{t('dashboard.settingsTitle2')}</h1>
-        <p className="text-neutral-600 mt-1">{t('dashboard.manageAccountPreferences')}</p>
+        <h1 className="text-3xl font-bold text-neutral-900">{t('settingsTitle2')}</h1>
+        <p className="text-neutral-600 mt-1">{t('manageAccountPreferences')}</p>
       </div>
 
       {/* Profile Section */}
@@ -125,14 +125,14 @@ export default function SettingsPage() {
             <User className="h-5 w-5 text-primary-600" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-neutral-900">{t('dashboard.profileInformation')}</h2>
-            <p className="text-sm text-neutral-500">{t('dashboard.updatePersonalDetails')}</p>
+            <h2 className="text-lg font-semibold text-neutral-900">{t('profileInformation')}</h2>
+            <p className="text-sm text-neutral-500">{t('updatePersonalDetails')}</p>
           </div>
         </div>
 
         <div className="space-y-4">
           <div>
-            <Label htmlFor="name">{t('dashboard.fullNameLabel')}</Label>
+            <Label htmlFor="name">{t('fullNameLabel')}</Label>
             <Input
               id="name"
               value={profile.name}
@@ -140,7 +140,7 @@ export default function SettingsPage() {
             />
           </div>
           <div>
-            <Label htmlFor="email">{t('dashboard.emailAddressLabel')}</Label>
+            <Label htmlFor="email">{t('emailAddressLabel')}</Label>
             <Input
               id="email"
               type="email"
@@ -149,7 +149,7 @@ export default function SettingsPage() {
             />
           </div>
           <div>
-            <Label htmlFor="company">{t('dashboard.companyNameOptional')}</Label>
+            <Label htmlFor="company">{t('companyNameOptional')}</Label>
             <Input
               id="company"
               value={profile.company || ''}
@@ -159,7 +159,7 @@ export default function SettingsPage() {
         </div>
 
         <div className="flex justify-end mt-6">
-          <Button onClick={handleSaveProfile}>{t('dashboard.saveChangesBtn')}</Button>
+          <Button onClick={handleSaveProfile}>{t('saveChangesBtn')}</Button>
         </div>
       </div>
 
@@ -170,16 +170,16 @@ export default function SettingsPage() {
             <Bell className="h-5 w-5 text-primary-600" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-neutral-900">{t('dashboard.notificationsTitle')}</h2>
-            <p className="text-sm text-neutral-500">{t('dashboard.configureUpdates')}</p>
+            <h2 className="text-lg font-semibold text-neutral-900">{t('notificationsTitle')}</h2>
+            <p className="text-sm text-neutral-500">{t('configureUpdates')}</p>
           </div>
         </div>
 
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium text-neutral-900">{t('dashboard.emailOnNewCall')}</p>
-              <p className="text-sm text-neutral-500">{t('dashboard.notifyOnCall')}</p>
+              <p className="font-medium text-neutral-900">{t('emailOnNewCall')}</p>
+              <p className="text-sm text-neutral-500">{t('notifyOnCall')}</p>
             </div>
             <Switch
               checked={notifications.emailOnCall}
@@ -193,8 +193,8 @@ export default function SettingsPage() {
 
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium text-neutral-900">{t('dashboard.usageLimitAlerts')}</p>
-              <p className="text-sm text-neutral-500">{t('dashboard.alertApproachingLimit')}</p>
+              <p className="font-medium text-neutral-900">{t('usageLimitAlerts')}</p>
+              <p className="text-sm text-neutral-500">{t('alertApproachingLimit')}</p>
             </div>
             <Switch
               checked={notifications.emailOnLimit}
@@ -208,8 +208,8 @@ export default function SettingsPage() {
 
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium text-neutral-900">{t('dashboard.weeklySummaryLabel')}</p>
-              <p className="text-sm text-neutral-500">{t('dashboard.receiveWeeklyReports')}</p>
+              <p className="font-medium text-neutral-900">{t('weeklySummaryLabel')}</p>
+              <p className="text-sm text-neutral-500">{t('receiveWeeklyReports')}</p>
             </div>
             <Switch
               checked={notifications.weeklySummary}
@@ -223,8 +223,8 @@ export default function SettingsPage() {
 
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium text-neutral-900">{t('dashboard.smsNotificationsLabel')}</p>
-              <p className="text-sm text-neutral-500">{t('dashboard.criticalAlertsViaSms')}</p>
+              <p className="font-medium text-neutral-900">{t('smsNotificationsLabel')}</p>
+              <p className="text-sm text-neutral-500">{t('criticalAlertsViaSms')}</p>
             </div>
             <Switch
               checked={notifications.smsNotifications}
@@ -236,7 +236,7 @@ export default function SettingsPage() {
         </div>
 
         <div className="flex justify-end mt-6">
-          <Button onClick={handleSaveNotifications}>{t('dashboard.savePreferencesBtn')}</Button>
+          <Button onClick={handleSaveNotifications}>{t('savePreferencesBtn')}</Button>
         </div>
       </div>
 
@@ -247,14 +247,14 @@ export default function SettingsPage() {
             <AlertTriangle className="h-5 w-5 text-primary-600" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-neutral-900">{t('dashboard.securityTitle')}</h2>
-            <p className="text-sm text-neutral-500">{t('dashboard.managePasswordLabel')}</p>
+            <h2 className="text-lg font-semibold text-neutral-900">{t('securityTitle')}</h2>
+            <p className="text-sm text-neutral-500">{t('managePasswordLabel')}</p>
           </div>
         </div>
 
         <div className="space-y-4">
           <div>
-            <Label htmlFor="currentPassword">{t('dashboard.currentPasswordLabel')}</Label>
+            <Label htmlFor="currentPassword">{t('currentPasswordLabel')}</Label>
             <Input
               id="currentPassword"
               type="password"
@@ -265,7 +265,7 @@ export default function SettingsPage() {
             />
           </div>
           <div>
-            <Label htmlFor="newPassword">{t('dashboard.newPasswordLabel')}</Label>
+            <Label htmlFor="newPassword">{t('newPasswordLabel')}</Label>
             <Input
               id="newPassword"
               type="password"
@@ -274,7 +274,7 @@ export default function SettingsPage() {
             />
           </div>
           <div>
-            <Label htmlFor="confirmPassword">{t('dashboard.confirmNewPassword')}</Label>
+            <Label htmlFor="confirmPassword">{t('confirmNewPassword')}</Label>
             <Input
               id="confirmPassword"
               type="password"
@@ -287,7 +287,7 @@ export default function SettingsPage() {
         </div>
 
         <div className="flex justify-end mt-6">
-          <Button onClick={handleChangePassword}>{t('dashboard.changePasswordBtn')}</Button>
+          <Button onClick={handleChangePassword}>{t('changePasswordBtn')}</Button>
         </div>
       </div>
 
@@ -295,12 +295,12 @@ export default function SettingsPage() {
       <div className="bg-red-50 border-2 border-red-200 rounded-xl p-6">
         <div className="flex items-center gap-3 mb-4">
           <AlertTriangle className="h-5 w-5 text-red-600" />
-          <h2 className="text-lg font-semibold text-red-900">{t('dashboard.dangerZoneTitle')}</h2>
+          <h2 className="text-lg font-semibold text-red-900">{t('dangerZoneTitle')}</h2>
         </div>
         <p className="text-sm text-red-700 mb-4">
-          {t('dashboard.deleteAccountWarning2')}
+          {t('deleteAccountWarning2')}
         </p>
-        <Button variant="destructive">{t('dashboard.deleteAccountBtn')}</Button>
+        <Button variant="destructive">{t('deleteAccountBtn')}</Button>
       </div>
     </div>
   );
