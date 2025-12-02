@@ -78,16 +78,16 @@ return (
     {/* Header */}
     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
       <div>
-        <h1 className="text-3xl font-bold text-neutral-900">{t('dashboard.dashboardTitle')}</h1>
-        <p className="text-neutral-600 mt-1">{t('dashboard.monitorPerformance')}</p>
+        <h1 className="text-3xl font-bold text-neutral-900">{t('dashboardTitle')}</h1>
+        <p className="text-neutral-600 mt-1">{t('monitorPerformance')}</p>
       </div>
       <div className="flex gap-3">
         <Button variant="outline" onClick={() => router.push('/dashboard/assistant')}>
           <Plus className="h-4 w-4 mr-2" />
-          {t('dashboard.newAssistant')}
+          {t('newAssistant')}
         </Button>
         <Button onClick={() => router.push('/dashboard/calls')}>
-          {t('dashboard.viewAllCalls')}
+          {t('viewAllCalls')}
           <ExternalLink className="h-4 w-4 ml-2" />
         </Button>
       </div>
@@ -96,7 +96,7 @@ return (
       {/* Stats cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatsCard
-          label={t('dashboard.totalCallsLabel')}
+          label={t('totalCallsLabel')}
           value={stats?.totalCalls || 0}
           icon={Phone}
           trend="up"
@@ -105,7 +105,7 @@ return (
           loading={loading}
         />
         <StatsCard
-          label={t('dashboard.avgDurationLabel2')}
+          label={t('avgDurationLabel2')}
           value={formatDuration(stats?.avgDuration || 0)}
           icon={Clock}
           trend="down"
@@ -114,7 +114,7 @@ return (
           loading={loading}
         />
         <StatsCard
-          label={t('dashboard.totalCostLabel')}
+          label={t('totalCostLabel')}
           value={formatCurrency(stats?.totalCost || 0)}
           icon={DollarSign}
           trend="up"
@@ -123,7 +123,7 @@ return (
           loading={loading}
         />
         <StatsCard
-          label={t('dashboard.successRateLabel')}
+          label={t('successRateLabel')}
           value={`${stats?.successRate || 0}%`}
           icon={TrendingUp}
           trend="up"
@@ -137,14 +137,14 @@ return (
       <div className="bg-white rounded-xl border border-neutral-200 p-6 shadow-sm">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="text-lg font-semibold text-neutral-900">{t('dashboard.callsOverTime')}</h2>
-            <p className="text-sm text-neutral-500">{t('dashboard.last7Days')}</p>
+            <h2 className="text-lg font-semibold text-neutral-900">{t('callsOverTime')}</h2>
+            <p className="text-sm text-neutral-500">{t('last7Days')}</p>
           </div>
         </div>
 
         {loading ? (
           <div className="h-80 flex items-center justify-center">
-            <div className="animate-pulse text-neutral-400">{t('dashboard.loadingChart')}</div>
+            <div className="animate-pulse text-neutral-400">{t('loadingChart')}</div>
           </div>
         ) : chartData.length > 0 ? (
           <ResponsiveContainer width="100%" height={320}>
@@ -179,8 +179,8 @@ return (
         ) : (
           <EmptyState
             icon={PhoneCall}
-            title={t('dashboard.noCallDataYet')}
-            description={t('dashboard.startMakingCalls')}
+            title={t('noCallDataYet')}
+            description={t('startMakingCalls')}
           />
         )}
       </div>
@@ -190,15 +190,15 @@ return (
         <div className="p-6 border-b border-neutral-200">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-neutral-900">{t('dashboard.recentCallsTitle')}</h2>
-              <p className="text-sm text-neutral-500">{t('dashboard.latestCallActivity')}</p>
+              <h2 className="text-lg font-semibold text-neutral-900">{t('recentCallsTitle')}</h2>
+              <p className="text-sm text-neutral-500">{t('latestCallActivity')}</p>
             </div>
             <Button
               variant="outline"
               size="sm"
               onClick={() => router.push('/dashboard/calls')}
             >
-              {t('dashboard.viewAll')}
+              {t('viewAll')}
             </Button>
           </div>
         </div>
@@ -217,19 +217,19 @@ return (
               <thead className="bg-neutral-50 border-b border-neutral-200">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    {t('dashboard.phoneNumberLabel')}
+                    {t('phoneNumberLabel')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    {t('dashboard.assistantLabel')}
+                    {t('assistantLabel')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    {t('dashboard.durationLabel')}
+                    {t('durationLabel')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    {t('dashboard.dateLabel')}
+                    {t('dateLabel')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    {t('dashboard.statusLabel')}
+                    {t('statusLabel')}
                   </th>
                 </tr>
               </thead>
@@ -274,8 +274,8 @@ return (
           <div className="p-8">
             <EmptyState
               icon={Phone}
-              title={t('dashboard.noCallsYetTitle')}
-              description={t('dashboard.callHistoryAppear')}
+              title={t('noCallsYetTitle')}
+              description={t('callHistoryAppear')}
             />
           </div>
         )}

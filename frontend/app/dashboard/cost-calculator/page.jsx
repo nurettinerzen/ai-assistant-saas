@@ -10,8 +10,7 @@ import api from '@/lib/api';
 import { toast } from 'sonner';
 
 export default function CostCalculatorPage() {
-  const { t, locale } = useLanguage();
-  const [language, setLanguage] = useState('en');
+  const { t } = useLanguage();
   const [callsPerMonth, setCallsPerMonth] = useState(500);
   const [avgDuration, setAvgDuration] = useState(5);
   const [calculation, setCalculation] = useState(null);
@@ -55,10 +54,10 @@ export default function CostCalculatorPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
           <Calculator className="h-8 w-8 text-primary" />
-          {t('costCalculatorTitle', language)}
+          {t('costCalculatorTitle')}
         </h1>
         <p className="text-muted-foreground mt-2">
-          {t('costCalculatorDesc', language)}
+          {t('costCalculatorDesc')}
         </p>
       </div>
 
@@ -68,7 +67,7 @@ export default function CostCalculatorPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Phone className="h-5 w-5" />
-              {t('expectedCalls', language)}
+              {t('expectedCalls')}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-8">
@@ -76,7 +75,7 @@ export default function CostCalculatorPage() {
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <label className="text-sm font-medium">
-                  {t('expectedCalls', language)}
+                  {t('expectedCalls')}
                 </label>
                 <span className="text-2xl font-bold text-primary">
                   {callsPerMonth.toLocaleString()}
@@ -102,10 +101,10 @@ export default function CostCalculatorPage() {
               <div className="flex justify-between items-center">
                 <label className="text-sm font-medium flex items-center gap-2">
                   <Clock className="h-4 w-4" />
-                  {t('avgCallDurationLabel', language)}
+                  {t('avgCallDurationLabel')}
                 </label>
                 <span className="text-2xl font-bold text-primary">
-                  {avgDuration} {t('minutesLabel', language)}
+                  {avgDuration} {t('minutesLabel')}
                 </span>
               </div>
               <Slider
@@ -126,11 +125,11 @@ export default function CostCalculatorPage() {
             {/* Summary */}
             <div className="p-4 bg-muted rounded-lg">
               <div className="text-sm text-muted-foreground mb-1">
-                {t('costBreakdown', language)}
+                {t('costBreakdown')}
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span>{t('baseFee', language)}</span>
+                  <span>{t('baseFee')}</span>
                   <span>$29.00</span>
                 </div>
                 <div className="flex justify-between">
@@ -149,16 +148,16 @@ export default function CostCalculatorPage() {
             <CardContent className="pt-6">
               <div className="text-center">
                 <p className="text-sm text-muted-foreground mb-2">
-                  {t('yourEstimatedCost', language)}
+                  {t('yourEstimatedCost')}
                 </p>
                 <div className="flex items-baseline justify-center gap-1">
                   <span className="text-5xl font-bold text-primary">
                     ${calculation?.breakdown?.totalCost?.toFixed(2) || '29.00'}
                   </span>
-                  <span className="text-muted-foreground">{t('perMonthLabel', language)}</span>
+                  <span className="text-muted-foreground">{t('perMonthLabel')}</span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">
-                  {callsPerMonth.toLocaleString()} {t('callsPerMonth', language)}
+                  {callsPerMonth.toLocaleString()} {t('callsPerMonth')}
                 </p>
               </div>
             </CardContent>
@@ -169,23 +168,23 @@ export default function CostCalculatorPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Users className="h-5 w-5" />
-                {t('vsHiringEmployee', language)}
+                {t('vsHiringEmployee')}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 <div className="flex items-center justify-between p-3 bg-red-50 dark:bg-red-950/20 rounded-lg">
                   <span className="text-red-600 dark:text-red-400">
-                    {language === 'tr' ? 'Çalışan Maliyeti' : 'Employee Cost'}
+                    {t('employeeCost')}
                   </span>
                   <span className="text-xl font-bold text-red-600 dark:text-red-400">
                     $2,500/mo
                   </span>
                 </div>
-                
+
                 <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-950/20 rounded-lg">
                   <span className="text-green-600 dark:text-green-400">
-                    {t('youSave', language)}
+                    {t('youSave')}
                   </span>
                   <span className="text-2xl font-bold text-green-600 dark:text-green-400">
                     ${calculation?.comparison?.savings?.toFixed(2) || '0.00'}/mo
@@ -195,7 +194,7 @@ export default function CostCalculatorPage() {
                 <div className="text-center pt-2">
                   <span className="inline-flex items-center gap-1 text-green-600 dark:text-green-400 font-medium">
                     <TrendingDown className="h-4 w-4" />
-                    {calculation?.comparison?.savingsPercentage || 0}% {language === 'tr' ? 'daha ucuz' : 'cheaper'}
+                    {calculation?.comparison?.savingsPercentage || 0}% {t('cheaper')}
                   </span>
                 </div>
               </div>
@@ -209,7 +208,7 @@ export default function CostCalculatorPage() {
               window.location.href = '/dashboard/subscription';
             }}
           >
-            {t('startFreeTrial', language)}
+            {t('startFreeTrial')}
             <ArrowRight className="h-5 w-5" />
           </Button>
         </div>

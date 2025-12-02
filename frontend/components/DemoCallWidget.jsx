@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Phone, Loader2, CheckCircle, Star, Mic, MicOff, PhoneOff } from 'lucide-react';
@@ -17,7 +17,6 @@ import {
 
 export default function DemoCallWidget({ variant = 'full' }) {
   const { t, locale } = useLanguage();
-  const language = locale; // Compatibility
   const [isLoading, setIsLoading] = useState(false);
   const [callState, setCallState] = useState('idle');
   const [showFeedback, setShowFeedback] = useState(false);
@@ -33,7 +32,7 @@ export default function DemoCallWidget({ variant = 'full' }) {
 
     try {
       const response = await api.demo.requestCall({
-        language: language.toUpperCase(),
+        language: locale.toUpperCase(),
         name: 'Demo User'
       });
 
@@ -46,7 +45,7 @@ export default function DemoCallWidget({ variant = 'full' }) {
 
         vapi.on('call-start', () => {
           setCallState('active');
-          toast.success(t('callStarted', language));
+          toast.success(t('callStarted'));
         });
 
         vapi.on('call-end', () => {
@@ -56,7 +55,7 @@ export default function DemoCallWidget({ variant = 'full' }) {
 
         vapi.on('error', (error) => {
           console.error('VAPI error:', error);
-          toast.error(t('callError', language));
+          toast.error(t('callError'));
           setCallState('idle');
         });
 
@@ -64,11 +63,11 @@ export default function DemoCallWidget({ variant = 'full' }) {
       } else {
         setCallId(newCallId);
         setCallState('active');
-        toast.success(t('phoneWillRing', language));
+        toast.success(t('phoneWillRing'));
       }
     } catch (error) {
       console.error('Demo call error:', error);
-      toast.error(t('demoCallFailed', language));
+      toast.error(t('demoCallFailed'));
       setCallState('idle');
     } finally {
       setIsLoading(false);
@@ -92,7 +91,7 @@ export default function DemoCallWidget({ variant = 'full' }) {
     setFeedbackRating(rating);
     try {
       await api.demo.submitFeedback({ callId: callId || assistantId, rating, wouldRecommend: rating >= 4 });
-      toast.success(t('thankYouFeedback', language));
+      toast.success(t('thankYouFeedback'));
       setShowFeedback(false);
       resetWidget();
     } catch (error) {
@@ -115,11 +114,11 @@ export default function DemoCallWidget({ variant = 'full' }) {
           <Phone className="h-5 w-5 text-primary" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-medium text-sm">{t('demoCallTitle', language)}</p>
-          <p className="text-xs text-muted-foreground truncate">{t('demoCallDesc', language)}</p>
+          <p className="font-medium text-sm">{t('demoCallTitle')}</p>
+          <p className="text-xs text-muted-foreground truncate">{t('demoCallDesc')}</p>
         </div>
         <Button size="sm" onClick={startWebCall} disabled={isLoading}>
-          {t('tryDemo', language)}
+          {t('tryDemo')}
         </Button>
       </div>
     );
@@ -140,10 +139,10 @@ export default function DemoCallWidget({ variant = 'full' }) {
               </div>
               <div>
                 <h3 className="text-2xl font-bold mb-2">
-                  {t('callInProgress', language)}
+                  {t('callInProgress')}
                 </h3>
                 <p className="text-primary-foreground/80">
-                  {t('talkingWithDemo', language)}
+                  {t('talkingWithDemo')}
                 </p>
               </div>
               <div className="flex justify-center gap-4">
@@ -162,14 +161,14 @@ export default function DemoCallWidget({ variant = 'full' }) {
               </div>
               <div>
                 <h3 className="text-2xl font-bold mb-2">
-                  {t('callCompleted', language)}
+                  {t('callCompleted')}
                 </h3>
                 <p className="text-primary-foreground/80">
-                  {t('thanksForDemo', language)}
+                  {t('thanksForDemo')}
                 </p>
               </div>
               <Button variant="secondary" onClick={resetWidget} className="mt-4">
-                {t('tryAgain', language)}
+                {t('tryAgain')}
               </Button>
             </div>
           ) : (
@@ -178,11 +177,11 @@ export default function DemoCallWidget({ variant = 'full' }) {
                 <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-white/20 mb-4">
                   <Phone className="h-8 w-8" />
                 </div>
-                <h2 className="text-3xl font-bold mb-2">{t('demoCallTitle', language)}</h2>
+                <h2 className="text-3xl font-bold mb-2">{t('demoCallTitle')}</h2>
                 <p className="text-xl font-medium text-primary-foreground/90">
-  {t('tryNow', language)}
-</p>
-                <p className="text-primary-foreground/70 mt-2">{t('demoCallDesc', language)}</p>
+                  {t('tryNow')}
+                </p>
+                <p className="text-primary-foreground/70 mt-2">{t('demoCallDesc')}</p>
               </div>
               <Button
                 size="lg"
@@ -193,16 +192,16 @@ export default function DemoCallWidget({ variant = 'full' }) {
                 {isLoading || callState === 'connecting' ? (
                   <>
                     <Loader2 className="h-5 w-5 animate-spin" />
-                    {t('connecting', language)}
+                    {t('connecting')}
                   </>
                 ) : (
                   <>
                     <Mic className="h-5 w-5" />
-                    {t('talkNow', language)}
+                    {t('talkNow')}
                   </>
                 )}
               </Button>
-              <p className="text-center text-sm text-primary-foreground/60">{t('demoDisclaimer', language)}</p>
+              <p className="text-center text-sm text-primary-foreground/60">{t('demoDisclaimer')}</p>
             </div>
           )}
         </CardContent>
@@ -211,10 +210,10 @@ export default function DemoCallWidget({ variant = 'full' }) {
       <Dialog open={showFeedback} onOpenChange={setShowFeedback}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-center">{t('howWasDemo', language)}</DialogTitle>
+            <DialogTitle className="text-center">{t('howWasDemo')}</DialogTitle>
           </DialogHeader>
           <div className="py-6">
-            <p className="text-center text-muted-foreground mb-4">{t('rateExperience', language)}</p>
+            <p className="text-center text-muted-foreground mb-4">{t('rateExperience')}</p>
             <div className="flex justify-center gap-2">
               {[1, 2, 3, 4, 5].map((star) => (
                 <button key={star} onClick={() => handleFeedback(star)} className="p-2 hover:scale-110 transition-transform">
