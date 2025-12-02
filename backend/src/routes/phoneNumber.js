@@ -108,7 +108,8 @@ router.post('/provision', async (req, res) => {
     if (!countryCode) {
       return res.status(400).json({
         error: 'Country code is required',
-        example: { countryCode: 'TR' or 'US', assistantId: 'optional' }
+        example: { countryCode: 'TR or US', assistantId: 'optional' }
+
       });
     }
 
