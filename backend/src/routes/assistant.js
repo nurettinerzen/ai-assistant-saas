@@ -84,12 +84,11 @@ router.post('/', authenticateToken, async (req, res) => {
 
     // Add language instruction based on selected language
     const languageInstructions = {
-      'TR': 'Sen bir Türkçe konuşan AI asistansın. SADECE TÜRKÇE konuş. Kullanıcı ne dilde konuşursa konuşsun, sen her zaman Türkçe yanıt ver. Doğal, akıcı ve profesyonel bir şekilde Türkçe konuş.',
-      'EN': 'You are an English-speaking AI assistant. Always respond in English. Speak naturally, fluently, and professionally.'
-    };
+  'EN': 'You are an AI assistant. Always respond in the same language the customer uses. Speak naturally, fluently, and professionally.'
+};
 
-    const languageInstruction = languageInstructions[language] || languageInstructions['EN'];
-    const fullSystemPrompt = `${languageInstruction}\n\n${systemPrompt}`;
+const languageInstruction = languageInstructions[language] || languageInstructions['EN'];
+const fullSystemPrompt = `${languageInstruction}\n\n${systemPrompt}`;
 
     // Default first message (eğer gönderilmemişse)
     const defaultFirstMessage = language === 'TR'
@@ -374,12 +373,11 @@ router.put('/:id', authenticateToken, async (req, res) => {
 
     // Language instructions
     const languageInstructions = {
-      'TR': 'Sen bir Türkçe konuşan AI asistansın. SADECE TÜRKÇE konuş. Kullanıcı ne dilde konuşursa konuşsun, sen her zaman Türkçe yanıt ver. Doğal, akıcı ve profesyonel bir şekilde Türkçe konuş.',
-      'EN': 'You are an English-speaking AI assistant. Always respond in English. Speak naturally, fluently, and professionally.'
-    };
+  'EN': 'You are an AI assistant. Always respond in the same language the customer uses. Speak naturally, fluently, and professionally.'
+};
 
-    const languageInstruction = languageInstructions[language] || languageInstructions['EN'];
-    const fullSystemPrompt = `${languageInstruction}\n\n${systemPrompt}`;
+const languageInstruction = languageInstructions[language] || languageInstructions['EN'];
+const fullSystemPrompt = `${languageInstruction}\n\n${systemPrompt}`;
 
     // Update in database
     const updatedAssistant = await prisma.assistant.update({

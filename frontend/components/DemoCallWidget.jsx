@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Phone, Loader2, CheckCircle, Star, Mic, MicOff, PhoneOff } from 'lucide-react';
-import { getCurrentLanguage, t } from '@/lib/translations';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { apiClient as api } from '@/lib/api';
 import Vapi from '@vapi-ai/web';
 import { toast } from 'sonner';
@@ -16,7 +16,8 @@ import {
 } from '@/components/ui/dialog';
 
 export default function DemoCallWidget({ variant = 'full' }) {
-  const [language, setLanguage] = useState('en');
+  const { t, locale } = useLanguage();
+  const language = locale; // Compatibility
   const [isLoading, setIsLoading] = useState(false);
   const [callState, setCallState] = useState('idle');
   const [showFeedback, setShowFeedback] = useState(false);
@@ -25,13 +26,6 @@ export default function DemoCallWidget({ variant = 'full' }) {
   const [assistantId, setAssistantId] = useState(null);
   const [isMuted, setIsMuted] = useState(false);
   const vapiRef = useRef(null);
-
-  useEffect(() => {
-    setLanguage(getCurrentLanguage());
-    const handleLanguageChange = () => setLanguage(getCurrentLanguage());
-    window.addEventListener('languageChange', handleLanguageChange);
-    return () => window.removeEventListener('languageChange', handleLanguageChange);
-  }, []);
 
   const startWebCall = async () => {
     setIsLoading(true);
@@ -52,7 +46,7 @@ export default function DemoCallWidget({ variant = 'full' }) {
 
         vapi.on('call-start', () => {
           setCallState('active');
-          toast.success(language === 'tr' ? 'Arama başladı!' : 'Call started!');
+          toast.success(t('callStarted', language));
         });
 
         vapi.on('call-end', () => {
@@ -62,7 +56,7 @@ export default function DemoCallWidget({ variant = 'full' }) {
 
         vapi.on('error', (error) => {
           console.error('VAPI error:', error);
-          toast.error(language === 'tr' ? 'Arama hatası' : 'Call error');
+          toast.error(t('callError', language));
           setCallState('idle');
         });
 
@@ -125,7 +119,7 @@ export default function DemoCallWidget({ variant = 'full' }) {
           <p className="text-xs text-muted-foreground truncate">{t('demoCallDesc', language)}</p>
         </div>
         <Button size="sm" onClick={startWebCall} disabled={isLoading}>
-          {language === 'tr' ? 'Dene' : 'Try'}
+          {t('tryDemo', language)}
         </Button>
       </div>
     );
@@ -146,10 +140,10 @@ export default function DemoCallWidget({ variant = 'full' }) {
               </div>
               <div>
                 <h3 className="text-2xl font-bold mb-2">
-                  {language === 'tr' ? 'Arama Devam Ediyor...' : 'Call in Progress...'}
+                  {t('callInProgress', language)}
                 </h3>
                 <p className="text-primary-foreground/80">
-                  {language === 'tr' ? 'Demo asistanımızla konuşuyorsunuz' : 'Talking with our demo assistant'}
+                  {t('talkingWithDemo', language)}
                 </p>
               </div>
               <div className="flex justify-center gap-4">
@@ -168,10 +162,10 @@ export default function DemoCallWidget({ variant = 'full' }) {
               </div>
               <div>
                 <h3 className="text-2xl font-bold mb-2">
-                  {language === 'tr' ? 'Arama Tamamlandı' : 'Call Completed'}
+                  {t('callCompleted', language)}
                 </h3>
                 <p className="text-primary-foreground/80">
-                  {language === 'tr' ? 'Demo için teşekkürler!' : 'Thanks for trying our demo!'}
+                  {t('thanksForDemo', language)}
                 </p>
               </div>
               <Button variant="secondary" onClick={resetWidget} className="mt-4">
@@ -186,8 +180,8 @@ export default function DemoCallWidget({ variant = 'full' }) {
                 </div>
                 <h2 className="text-3xl font-bold mb-2">{t('demoCallTitle', language)}</h2>
                 <p className="text-xl font-medium text-primary-foreground/90">
-                  {language === 'tr' ? 'Hemen Deneyin!' : 'Try It Now!'}
-                </p>
+  {t('tryNow', language)}
+</p>
                 <p className="text-primary-foreground/70 mt-2">{t('demoCallDesc', language)}</p>
               </div>
               <Button
@@ -199,12 +193,12 @@ export default function DemoCallWidget({ variant = 'full' }) {
                 {isLoading || callState === 'connecting' ? (
                   <>
                     <Loader2 className="h-5 w-5 animate-spin" />
-                    {language === 'tr' ? 'Bağlanıyor...' : 'Connecting...'}
+                    {t('connecting', language)}
                   </>
                 ) : (
                   <>
                     <Mic className="h-5 w-5" />
-                    {language === 'tr' ? 'Şimdi Konuş' : 'Talk Now'}
+                    {t('talkNow', language)}
                   </>
                 )}
               </Button>

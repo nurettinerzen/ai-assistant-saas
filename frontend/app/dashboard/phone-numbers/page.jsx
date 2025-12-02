@@ -113,7 +113,7 @@ export default function PhoneNumbersPage() {
       <div className="space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold text-neutral-900">{t('dashboard.phoneNumbersTitle2')}</h1>
+          <h1 className="text-3xl font-bold text-neutral-900">{t('dashboard.phoneNumbers')}</h1>
           <p className="text-neutral-600 mt-1">{t('dashboard.managePhoneNumbers')}</p>
         </div>
 
@@ -169,7 +169,7 @@ export default function PhoneNumbersPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-neutral-900">{t('dashboard.phoneNumbersTitle2')}</h1>
+          <h1 className="text-3xl font-bold text-neutral-900">{t('dashboard.phoneNumbers')}</h1>
           <p className="text-neutral-600 mt-1">{t('dashboard.managePhoneNumbers')}</p>
           {/* 🔧 Plan limit indicator */}
           {subscription && (
@@ -278,7 +278,7 @@ export default function PhoneNumbersPage() {
         <div className="bg-white rounded-xl border border-neutral-200 p-8">
           <EmptyState
             icon={Phone}
-            title={t('dashboard.noPhoneNumbersTitle')}
+            title={t('dashboard.noPhoneNumbers')}
             description={t('dashboard.getNumberToStartDesc')}
             actionLabel={t('dashboard.getPhoneNumberBtn')}
             onAction={() => setShowProvisionModal(true)}

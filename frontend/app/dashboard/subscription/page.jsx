@@ -67,7 +67,7 @@ const PLANS = [
 ];
 
 export default function SubscriptionPage() {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [subscription, setSubscription] = useState(null);
   const [billingHistory, setBillingHistory] = useState([]);

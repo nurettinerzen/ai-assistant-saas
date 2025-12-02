@@ -95,7 +95,7 @@ export default function CallsPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-neutral-900">{t('dashboard.callHistoryTitle')}</h1>
+          <h1 className="text-3xl font-bold text-neutral-900">{t('dashboard.callHistory')}</h1>
           <p className="text-neutral-600 mt-1">{t('dashboard.viewAndAnalyze')}</p>
         </div>
         <Button onClick={handleExport} variant="outline">
@@ -213,7 +213,7 @@ export default function CallsPage() {
         <div className="bg-white rounded-xl border border-neutral-200 p-8">
           <EmptyState
             icon={Phone}
-            title={searchQuery || statusFilter !== 'all' ? t('dashboard.noDataYet') : t('dashboard.noCallsYetTitle')}
+            title={searchQuery || statusFilter !== 'all' ? t('dashboard.noDataYet') : t('dashboard.noCallsYet')}
             description={
               searchQuery || statusFilter !== 'all'
                 ? t('dashboard.thisActionCannot')

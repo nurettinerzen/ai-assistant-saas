@@ -10,24 +10,12 @@ import api from '@/lib/api';
 import { toast } from 'sonner';
 
 export default function CostCalculatorPage() {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const [language, setLanguage] = useState('en');
   const [callsPerMonth, setCallsPerMonth] = useState(500);
   const [avgDuration, setAvgDuration] = useState(5);
   const [calculation, setCalculation] = useState(null);
   const [isCalculating, setIsCalculating] = useState(false);
-
-  useEffect(() => {
-    setLanguage(getCurrentLanguage());
-    
-    // Listen for language changes
-    const handleLanguageChange = () => {
-      setLanguage(getCurrentLanguage());
-    };
-    
-    window.addEventListener('languageChange', handleLanguageChange);
-    return () => window.removeEventListener('languageChange', handleLanguageChange);
-  }, []);
 
   useEffect(() => {
     calculateCost();

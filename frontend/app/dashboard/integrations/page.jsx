@@ -206,7 +206,7 @@ export default function IntegrationsPage() {
       'google-sheets': 'Basit CRM olarak kullanın - aramaları otomatik kaydedin',
       whatsapp: 'whatsappDesc',
     };
-    return t(descMap[id] || '', locale) || descMap[id];
+    return t(descMap[id] || '') || descMap[id];
   };
 
   return (
@@ -220,7 +220,7 @@ export default function IntegrationsPage() {
         {/* Business type indicator */}
         {businessType && (
           <p className="text-sm text-primary-600 mt-2">
-            📌 {t('dashboard.industry')}: {t(`industry${businessType.charAt(0) + businessType.slice(1).toLowerCase()}`, locale)}
+            📌 {t(`industry${businessType.charAt(0) + businessType.slice(1).toLowerCase()}`)}
           </p>
         )}
       </div>
@@ -264,7 +264,7 @@ export default function IntegrationsPage() {
                         )}
                       </div>
                       <Badge variant="secondary" className="text-xs mt-1">
-                        {t(integration.category, locale)}
+                        {t(integration.category)}
                       </Badge>
                     </div>
                   </div>
