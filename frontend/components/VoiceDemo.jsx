@@ -1,11 +1,14 @@
 'use client';
 
+import { useLanguage } from '@/contexts/LanguageContext';
+
 import { useState } from 'react';
 import Vapi from '@vapi-ai/web';
 
 const VAPI_PUBLIC_KEY = '7f454254-027f-4679-8ced-9cd0e5035f8b';
 
 export default function VoiceDemo({ assistantId, onClose }) {
+  const { tr } = useLanguage();
   const [isCallActive, setIsCallActive] = useState(false);
   const [vapi, setVapi] = useState(null);
   const [callStatus, setCallStatus] = useState('');
@@ -109,10 +112,10 @@ export default function VoiceDemo({ assistantId, onClose }) {
         </button>
       )}
 
-      <h3 style={{ marginBottom: '15px' }}>🎤 Test Your AI Assistant</h3>
+      <h3 style={{ marginBottom: '15px' }}>🎤 {tr('Test Your AI Assistant')}</h3>
       <p style={{ color: '#666', marginBottom: '20px', fontSize: '14px' }}>
         {assistantId 
-          ? 'Click the button below to start a voice conversation with your AI assistant'
+          ? tr('Click the button below to start a voice conversation with your AI assistant')
           : 'Please create an assistant first to test'}
       </p>
 
@@ -147,7 +150,7 @@ export default function VoiceDemo({ assistantId, onClose }) {
               gap: '10px'
             }}
           >
-            🎤 Start Voice Test
+            {tr('Start Voice Test')}
           </button>
         ) : (
           <button
@@ -172,7 +175,7 @@ export default function VoiceDemo({ assistantId, onClose }) {
       </div>
 
       <p style={{ fontSize: '12px', color: '#999', marginTop: '15px' }}>
-        💡 Make sure to allow microphone access when prompted
+        {tr('Make sure to allow microphone access when prompted')}
       </p>
     </div>
   );

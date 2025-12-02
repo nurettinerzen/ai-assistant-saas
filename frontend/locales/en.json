@@ -476,29 +476,33 @@
     "welcomeBack": "Welcome back"
   },
   "onboarding": {
-    "step1": {
-      "title": "Choose Language",
-      "description": "Select your preferred language"
+    "step1": { "title": "Choose Language", "description": "Select your preferred language" },
+    "step2": { "title": "Choose Industry", "description": "Tell us about your business" },
+    "step3": { "title": "Pick Your Voice", "description": "Select your assistant's voice" },
+    "step4": { "title": "Add Training", "description": "Create your first greeting" },
+    "step5": { "title": "Test Assistant", "description": "Try it out!" },
+    "step6": { "title": "Complete", "description": "You're all set!" },
+    "industries": { "restaurant": "Restaurant", "salon": "Salon/Spa", "ecommerce": "E-commerce", "service": "Professional Services", "other": "Other" },
+    "prompts": {
+      "RESTAURANT": "You are a restaurant assistant. Take reservations, provide menu information, share working hours, answer customer questions.",
+      "SALON": "You are a salon assistant. Book appointments, provide information about services and prices, share available times.",
+      "ECOMMERCE": "You are an e-commerce assistant. Provide stock information, order status updates, explain return and exchange processes.",
+      "SERVICE": "You are a professional service assistant. Book appointments, provide service information, help with pricing.",
+      "OTHER": "You are a business assistant. Answer customer questions, provide information, be helpful."
     },
-    "step2": {
-      "title": "Choose Industry",
-      "description": "Tell us about your business"
-    },
-    "step3": {
-      "title": "Pick Your Voice",
-      "description": "Select your assistant's voice"
-    },
-    "step4": {
-      "title": "Add Training",
-      "description": "Create your first greeting"
-    },
-    "step5": {
-      "title": "Test Assistant",
-      "description": "Try it out!"
-    },
-    "step6": {
-      "title": "Complete",
-      "description": "You're all set!"
-    }
+    "defaultGreeting": "Hi, I'm {name}, how can I help you?",
+    "greetingLabel": "Greeting Message",
+    "greetingDesc": "The first sentence your assistant will say when answering",
+    "greetingPlaceholder": "Hi, how can I help you?",
+    "instructionsLabel": "Assistant Instructions",
+    "instructionsDesc": "Instructions for how your assistant should behave",
+    "voicePreviewSoon": "Voice preview coming soon",
+    "creatingAssistant": "Creating assistant...",
+    "assistantCreated": "Assistant created!",
+    "assistantFailed": "Failed to create assistant",
+    "allSet": "All Set!",
+    "readyToUse": "Your AI assistant is ready to use.",
+    "completed": "Completed!",
+    "error": "An error occurred"
   }
 }

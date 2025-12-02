@@ -36,7 +36,7 @@ import {
 } from 'recharts';
 
 export default function DashboardPage() {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState(null);

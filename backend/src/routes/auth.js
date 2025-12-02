@@ -84,6 +84,59 @@ router.post('/register', async (req, res) => {
   }
 });
 
+
+// Signup (alias for register)
+router.post("/signup", async (req, res) => {
+  try {
+    const { email, password, fullName } = req.body;
+    const businessName = fullName || "My Business";
+    if (!email || !password) {
+      return res.status(400).json({ error: "All fields are required" });
+    }
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser) {
+      return res.status(400).json({ error: "Email already registered" });
+    }
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const result = await prisma.$transaction(async (tx) => {
+      const business = await tx.business.create({
+        data: { name: businessName }
+      });
+      const user = await tx.user.create({
+        data: {
+          email,
+          password: hashedPassword,
+
+          role: "OWNER",
+          businessId: business.id
+        }
+      });
+      await tx.subscription.create({
+        data: {
+          businessId: business.id,
+          plan: "FREE",
+          status: "TRIAL",
+          minutesLimit: 10,
+          minutesUsed: 0
+        }
+      });
+      return { user, business };
+    });
+    const token = jwt.sign(
+      { userId: result.user.id, businessId: result.business.id, role: result.user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+    res.status(201).json({
+      token,
+      user: { id: result.user.id, email: result.user.email, name: result.user.name, role: result.user.role },
+      business: { id: result.business.id, name: result.business.name }
+    });
+  } catch (error) {
+    console.error("Signup error:", error);
+    res.status(500).json({ error: "Signup failed" });
+  }
+});
 // Login
 router.post('/login', async (req, res) => {
   try {

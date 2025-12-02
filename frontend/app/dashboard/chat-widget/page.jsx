@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
+import { useLanguage } from '@/contexts/LanguageContext';
 import {
   Select,
   SelectContent,
@@ -87,29 +88,200 @@ export default function ChatWidgetPage() {
   };
 
   const generateEmbedCode = () => {
-    const vapiPublicKey = process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY || 'YOUR_VAPI_PUBLIC_KEY';
-    
-    return `<!-- Telyx Chat Widget -->
-<script src="https://unpkg.com/@vapi-ai/web@latest/dist/index.umd.js"></script>
-<div id="telyx-chat-widget"></div>
-<script>
-  (function() {
-    const config = {
-      assistantId: '${assistantId}',
-      vapiPublicKey: '${vapiPublicKey}',
-      position: '${position}',
-      primaryColor: '${primaryColor}',
-      showBranding: ${showBranding},
-      buttonText: '${buttonText}'
-    };
-
-    // Initialize widget
-    const container = document.getElementById('telyx-chat-widget');
-    // Widget initialization code would go here
-    // This is a simplified example
-  })();
-</script>`;
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+  
+  const positionMap = {
+    'bottom-right': 'bottom: 20px; right: 20px;',
+    'bottom-left': 'bottom: 20px; left: 20px;',
+    'top-right': 'top: 20px; right: 20px;',
+    'top-left': 'top: 20px; left: 20px;'
   };
+  
+  return `<!-- Telyx.ai Chat Widget -->
+<script>
+(function() {
+  var CONFIG = {
+    assistantId: '${assistantId}',
+    apiUrl: '${apiUrl}',
+    position: '${positionMap[position] || positionMap['bottom-right']}',
+    primaryColor: '${primaryColor}',
+    buttonText: '${buttonText}',
+    showBranding: ${showBranding}
+  };
+
+  // Styles
+  var style = document.createElement('style');
+  style.textContent = \`
+    #telyx-widget-container * { box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
+    #telyx-widget-btn {
+      position: fixed; \${CONFIG.position}
+      width: 60px; height: 60px; border-radius: 50%;
+      background: \${CONFIG.primaryColor}; border: none; cursor: pointer;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      z-index: 99999; transition: all 0.3s ease;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #telyx-widget-btn:hover { transform: scale(1.1); }
+    #telyx-widget-btn svg { width: 28px; height: 28px; fill: white; }
+    #telyx-chat-window {
+      position: fixed; \${CONFIG.position}
+      width: 380px; height: 520px;
+      background: white; border-radius: 16px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+      z-index: 99999; display: none; flex-direction: column;
+      overflow: hidden;
+    }
+    #telyx-chat-window.open { display: flex; }
+    #telyx-chat-header {
+      background: \${CONFIG.primaryColor}; color: white;
+      padding: 16px; display: flex; align-items: center; justify-content: space-between;
+    }
+    #telyx-chat-header h3 { margin: 0; font-size: 16px; font-weight: 600; }
+    #telyx-close-btn { background: none; border: none; color: white; cursor: pointer; font-size: 24px; line-height: 1; }
+    #telyx-chat-messages {
+      flex: 1; overflow-y: auto; padding: 16px;
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    .telyx-msg {
+      max-width: 80%; padding: 10px 14px; border-radius: 12px;
+      font-size: 14px; line-height: 1.4; word-wrap: break-word;
+    }
+    .telyx-msg.user {
+      background: \${CONFIG.primaryColor}; color: white;
+      align-self: flex-end; border-bottom-right-radius: 4px;
+    }
+    .telyx-msg.bot {
+      background: #f1f5f9; color: #1e293b;
+      align-self: flex-start; border-bottom-left-radius: 4px;
+    }
+    .telyx-msg.typing { opacity: 0.7; }
+    #telyx-chat-input-area {
+      padding: 12px; border-top: 1px solid #e2e8f0;
+      display: flex; gap: 8px;
+    }
+    #telyx-chat-input {
+      flex: 1; padding: 10px 14px; border: 1px solid #e2e8f0;
+      border-radius: 24px; outline: none; font-size: 14px;
+    }
+    #telyx-chat-input:focus { border-color: \${CONFIG.primaryColor}; }
+    #telyx-send-btn {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: \${CONFIG.primaryColor}; border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #telyx-send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    #telyx-send-btn svg { width: 18px; height: 18px; fill: white; }
+    #telyx-branding {
+      text-align: center; padding: 8px; font-size: 11px; color: #94a3b8;
+    }
+    #telyx-branding a { color: \${CONFIG.primaryColor}; text-decoration: none; }
+  \`;
+  document.head.appendChild(style);
+
+  // Create container
+  var container = document.createElement('div');
+  container.id = 'telyx-widget-container';
+  container.innerHTML = \`
+    <button id="telyx-widget-btn" aria-label="\${CONFIG.buttonText}">
+      <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>
+    </button>
+    <div id="telyx-chat-window">
+      <div id="telyx-chat-header">
+        <h3>\${CONFIG.buttonText}</h3>
+        <button id="telyx-close-btn">&times;</button>
+      </div>
+      <div id="telyx-chat-messages"></div>
+      <div id="telyx-chat-input-area">
+        <input id="telyx-chat-input" type="text" placeholder="Type a message..." />
+        <button id="telyx-send-btn">
+          <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+        </button>
+      </div>
+      \${CONFIG.showBranding ? '<div id="telyx-branding">Powered by <a href="https://telyx.ai" target="_blank">Telyx.ai</a></div>' : ''}
+    </div>
+  \`;
+  document.body.appendChild(container);
+
+  // Elements
+  var btn = document.getElementById('telyx-widget-btn');
+  var chatWindow = document.getElementById('telyx-chat-window');
+  var closeBtn = document.getElementById('telyx-close-btn');
+  var messagesDiv = document.getElementById('telyx-chat-messages');
+  var input = document.getElementById('telyx-chat-input');
+  var sendBtn = document.getElementById('telyx-send-btn');
+
+  var conversationHistory = [];
+  var isOpen = false;
+
+  // Toggle chat
+  btn.onclick = function() {
+    isOpen = !isOpen;
+    chatWindow.classList.toggle('open', isOpen);
+    btn.style.display = isOpen ? 'none' : 'flex';
+    if (isOpen && messagesDiv.children.length === 0) {
+      addMessage('bot', 'Hello! How can I help you today?');
+    }
+  };
+  closeBtn.onclick = function() {
+    isOpen = false;
+    chatWindow.classList.remove('open');
+    btn.style.display = 'flex';
+  };
+
+  // Add message to UI
+  function addMessage(role, content, isTyping) {
+    var div = document.createElement('div');
+    div.className = 'telyx-msg ' + role + (isTyping ? ' typing' : '');
+    div.textContent = content;
+    messagesDiv.appendChild(div);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    return div;
+  }
+
+  // Send message
+  async function sendMessage() {
+    var text = input.value.trim();
+    if (!text) return;
+
+    input.value = '';
+    sendBtn.disabled = true;
+    addMessage('user', text);
+    conversationHistory.push({ role: 'user', content: text });
+
+    var typingDiv = addMessage('bot', 'Typing...', true);
+
+    try {
+      var res = await fetch(CONFIG.apiUrl + '/api/chat/widget', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          assistantId: CONFIG.assistantId,
+          message: text,
+          conversationHistory: conversationHistory
+        })
+      });
+      var data = await res.json();
+      typingDiv.remove();
+      
+      if (data.reply) {
+        addMessage('bot', data.reply);
+        conversationHistory.push({ role: 'assistant', content: data.reply });
+      } else {
+        addMessage('bot', 'Sorry, something went wrong.');
+      }
+    } catch (err) {
+      typingDiv.remove();
+      addMessage('bot', 'Connection error. Please try again.');
+    }
+    sendBtn.disabled = false;
+    input.focus();
+  }
+
+  sendBtn.onclick = sendMessage;
+  input.onkeypress = function(e) { if (e.key === 'Enter') sendMessage(); };
+})();
+</script>`;
+};
 
   const copyEmbedCode = () => {
     const code = generateEmbedCode();

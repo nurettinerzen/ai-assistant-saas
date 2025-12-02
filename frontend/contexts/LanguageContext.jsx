@@ -1,65 +1,112 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import en from '@/locales/en.json';
-import tr from '@/locales/tr.json';
-import de from '@/locales/de.json';
-import fr from '@/locales/fr.json';
-import es from '@/locales/es.json';
-import it from '@/locales/it.json';
-import pt from '@/locales/pt.json';
-import nl from '@/locales/nl.json';
-import pl from '@/locales/pl.json';
-import sv from '@/locales/sv.json';
-import ru from '@/locales/ru.json';
-import ar from '@/locales/ar.json';
-import zh from '@/locales/zh.json';
-import ja from '@/locales/ja.json';
-import ko from '@/locales/ko.json';
-import hi from '@/locales/hi.json';
-
-const translations = { en, tr, de, fr, es, it, pt, nl, pl, sv, ru, ar, zh, ja, ko, hi };
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 
 const LanguageContext = createContext();
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+// Cache
+const cache = {};
+
+const getCache = (text, locale) => {
+  const key = `${locale}:${text}`;
+  if (cache[key]) return cache[key];
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem(`tr_${key}`);
+      if (stored) { cache[key] = stored; return stored; }
+    } catch(e) {}
+  }
+  return null;
+};
+
+const setCache = (text, locale, translation) => {
+  const key = `${locale}:${text}`;
+  cache[key] = translation;
+  if (typeof window !== 'undefined') {
+    try { localStorage.setItem(`tr_${key}`, translation); } catch(e) {}
+  }
+};
 
 export function LanguageProvider({ children }) {
   const [locale, setLocale] = useState('en');
-  const [mounted, setMounted] = useState(false);
+  const [, forceUpdate] = useState(0);
+  const queue = useRef([]);
+  const timer = useRef(null);
 
-  // Load saved language preference
   useEffect(() => {
-    setMounted(true);
-    const savedLocale = localStorage.getItem('locale') || 'en';
-    setLocale(savedLocale);
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('locale') || 'en';
+      setLocale(saved);
+    }
   }, []);
 
-  // Save language preference
+  const processQueue = useCallback(async () => {
+    if (queue.current.length === 0 || locale === 'en') return;
+    
+    const texts = [...new Set(queue.current)];
+    queue.current = [];
+    
+    const uncached = texts.filter(t => !getCache(t, locale));
+    if (uncached.length === 0) return;
+
+    try {
+      const response = await fetch(`${API_URL}/api/translate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ texts: uncached, targetLang: locale })
+      });
+      
+      const data = await response.json();
+      
+      if (data.translations) {
+        uncached.forEach((text, i) => {
+          if (data.translations[i]) {
+            setCache(text, locale, data.translations[i]);
+          }
+        });
+        forceUpdate(n => n + 1);
+      }
+    } catch (e) {
+      console.error('Translation error:', e);
+    }
+  }, [locale]);
+
   const changeLocale = (newLocale) => {
     setLocale(newLocale);
-    localStorage.setItem('locale', newLocale);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('locale', newLocale);
+    }
   };
 
-  // Translation function
-  const t = (key) => {
-    if (!key) return '';
+  const tr = useCallback((text) => {
+    if (!text || locale === 'en') return text;
     
-    const keys = key.split('.');
-    let value = translations[locale];
+    const cached = getCache(text, locale);
+    if (cached) return cached;
     
-    for (const k of keys) {
-      if (value && typeof value === 'object') {
-        value = value[k];
-      } else {
-        console.warn(`Translation key not found: ${key} for locale: ${locale}`);
-        return key;
-      }
+    // Add to queue
+    if (!queue.current.includes(text)) {
+      queue.current.push(text);
+      if (timer.current) clearTimeout(timer.current);
+      timer.current = setTimeout(processQueue, 100);
     }
     
-    return value || key;
-  };
+    return text;
+  }, [locale, processQueue]);
+
+  const t = useCallback((key) => {
+    if (!key) return '';
+    if (key.includes('.')) {
+      const last = key.split('.').pop();
+      const readable = last.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).trim();
+      return tr(readable);
+    }
+    return tr(key);
+  }, [tr]);
 
   return (
-    <LanguageContext.Provider value={{ locale, changeLocale, t }}>
+    <LanguageContext.Provider value={{ locale, changeLocale, tr, t }}>
       {children}
     </LanguageContext.Provider>
   );
@@ -67,8 +114,8 @@ export function LanguageProvider({ children }) {
 
 export const useLanguage = () => {
   const context = useContext(LanguageContext);
-  if (!context) {
-    throw new Error('useLanguage must be used within LanguageProvider');
-  }
+  if (!context) throw new Error('useLanguage must be used within LanguageProvider');
   return context;
 };
+
+export default LanguageContext;

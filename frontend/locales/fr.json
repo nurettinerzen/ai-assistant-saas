@@ -467,37 +467,33 @@
     "welcomeBack": "Welcome back"
   },
   "onboarding": {
-    "step1": {
-      "title": "Choisir la langue",
-      "description": "Sélectionnez votre langue préférée"
+    "step1": { "title": "Choisir la langue", "description": "Sélectionnez votre langue préférée" },
+    "step2": { "title": "Choisir l'industrie", "description": "Parlez-nous de votre entreprise" },
+    "step3": { "title": "Choisir la voix", "description": "Sélectionnez la voix de votre assistant" },
+    "step4": { "title": "Ajouter une formation", "description": "Créez votre premier message d'accueil" },
+    "step5": { "title": "Tester l'assistant", "description": "Essayez-le!" },
+    "step6": { "title": "Terminé", "description": "Vous êtes prêt!" },
+    "industries": { "restaurant": "Restaurant", "salon": "Salon/Spa", "ecommerce": "E-commerce", "service": "Services Professionnels", "other": "Autre" },
+    "prompts": {
+      "RESTAURANT": "Tu es un assistant de restaurant. Prends des réservations, fournis des informations sur le menu, partage les horaires, réponds aux questions des clients.",
+      "SALON": "Tu es un assistant de salon. Prends des rendez-vous, informe sur les services et les prix, partage les créneaux disponibles.",
+      "ECOMMERCE": "Tu es un assistant e-commerce. Fournis des informations sur le stock, les mises à jour de commande, explique les processus de retour.",
+      "SERVICE": "Tu es un assistant de service professionnel. Prends des rendez-vous, informe sur les services, aide à la tarification.",
+      "OTHER": "Tu es un assistant commercial. Réponds aux questions des clients, fournis des informations, sois utile."
     },
-    "step2": {
-      "title": "Choisir l'industrie",
-      "description": "Parlez-nous de votre entreprise"
-    },
-    "step3": {
-      "title": "Choisir la voix",
-      "description": "Sélectionnez la voix de votre assistant"
-    },
-    "step4": {
-      "title": "Ajouter une formation",
-      "description": "Créez votre premier message d'accueil"
-    },
-    "step5": {
-      "title": "Tester l'assistant",
-      "description": "Essayez-le!"
-    },
-    "step6": {
-      "title": "Terminé",
-      "description": "Vous êtes prêt!"
-    }
-  },
-  "navigation": {
-    "solutions": "",
-    "features": "",
-    "pricing": "",
-    "contact": "",
-    "register": "",
-    "getStarted": ""
+    "defaultGreeting": "Bonjour, je suis {name}, comment puis-je vous aider?",
+    "greetingLabel": "Message d'accueil",
+    "greetingDesc": "La première phrase que votre assistant dira",
+    "greetingPlaceholder": "Bonjour, comment puis-je vous aider?",
+    "instructionsLabel": "Instructions de l'assistant",
+    "instructionsDesc": "Instructions sur le comportement de votre assistant",
+    "voicePreviewSoon": "Aperçu vocal bientôt disponible",
+    "creatingAssistant": "Création de l'assistant...",
+    "assistantCreated": "Assistant créé!",
+    "assistantFailed": "Échec de la création",
+    "allSet": "Terminé!",
+    "readyToUse": "Votre assistant IA est prêt.",
+    "completed": "Terminé!",
+    "error": "Une erreur est survenue"
   }
 }

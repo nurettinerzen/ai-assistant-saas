@@ -1,115 +1,105 @@
 /**
  * ChatWidget Component
- * Embeddable voice chat widget powered by VAPI
+ * Embeddable TEXT chat widget
  * Can be customized and embedded on any website
  */
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Phone, X, Mic, MicOff, Loader2 } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { MessageCircle, X, Send, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import Vapi from '@vapi-ai/web';
+import { Input } from '@/components/ui/input';
+import { useLanguage } from '@/contexts/LanguageContext';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 export default function ChatWidget({ 
   assistantId, 
   position = 'bottom-right',
   primaryColor = '#6366f1',
   showBranding = true,
-  buttonText = 'Talk to us',
-  vapiPublicKey
+  buttonText = 'Chat with us'
 }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [isConnected, setIsConnected] = useState(false);
-  const [isConnecting, setIsConnecting] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
   const [messages, setMessages] = useState([]);
-  const [vapi, setVapi] = useState(null);
+  const [inputValue, setInputValue] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [conversationHistory, setConversationHistory] = useState([]);
+  const { t } = useLanguage();
+  const messagesEndRef = useRef(null);
 
-  // Initialize VAPI
+  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
-    if (vapiPublicKey) {
-      const vapiInstance = new Vapi(vapiPublicKey);
-      setVapi(vapiInstance);
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
-      // Event listeners
-      vapiInstance.on('call-start', () => {
-        console.log('Call started');
-        setIsConnected(true);
-        setIsConnecting(false);
-        addMessage('system', 'Connected! Start speaking...');
-      });
+  // Add welcome message when chat opens
+  // Add welcome message when chat opens
+useEffect(() => {
+  if (isOpen && messages.length === 0) {
+    setMessages([{
+      role: 'assistant',
+      content: t('chat.welcome', 'Hello! How can I help you today?'),
+      timestamp: new Date()
+    }]);
+  }
+}, [isOpen, t]);
 
-      vapiInstance.on('call-end', () => {
-        console.log('Call ended');
-        setIsConnected(false);
-        setIsConnecting(false);
-        addMessage('system', 'Call ended');
-      });
+  const sendMessage = async () => {
+    const text = inputValue.trim();
+    if (!text || isLoading) return;
 
-      vapiInstance.on('speech-start', () => {
-        console.log('User started speaking');
-      });
+    // Add user message to UI
+    const userMessage = { role: 'user', content: text, timestamp: new Date() };
+    setMessages(prev => [...prev, userMessage]);
+    setInputValue('');
+    setIsLoading(true);
 
-      vapiInstance.on('speech-end', () => {
-        console.log('User stopped speaking');
-      });
+    // Update conversation history
+    const newHistory = [...conversationHistory, { role: 'user', content: text }];
+    setConversationHistory(newHistory);
 
-      vapiInstance.on('message', (message) => {
-        console.log('Message:', message);
-        if (message.type === 'transcript' && message.transcriptType === 'final') {
-          if (message.role === 'user') {
-            addMessage('user', message.transcript);
-          } else if (message.role === 'assistant') {
-            addMessage('assistant', message.transcript);
-          }
-        }
-      });
-
-      vapiInstance.on('error', (error) => {
-        console.error('VAPI Error:', error);
-        setIsConnecting(false);
-        setIsConnected(false);
-        addMessage('system', 'Connection error. Please try again.');
-      });
-
-      return () => {
-        vapiInstance.stop();
-      };
-    }
-  }, [vapiPublicKey]);
-
-  const addMessage = (role, content) => {
-    setMessages(prev => [...prev, { role, content, timestamp: new Date() }]);
-  };
-
-  const handleStartCall = async () => {
-    if (!vapi || !assistantId) {
-      console.error('VAPI or assistantId not available');
-      return;
-    }
-
-    setIsConnecting(true);
     try {
-      await vapi.start(assistantId);
+      const response = await fetch(`${API_URL}/api/chat/widget`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          assistantId: assistantId,
+          message: text,
+          conversationHistory: newHistory
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.reply) {
+        const botMessage = { role: 'assistant', content: data.reply, timestamp: new Date() };
+        setMessages(prev => [...prev, botMessage]);
+        setConversationHistory(prev => [...prev, { role: 'assistant', content: data.reply }]);
+      } else {
+        setMessages(prev => [...prev, {
+          role: 'system',
+          content: 'Sorry, something went wrong. Please try again.',
+          timestamp: new Date()
+        }]);
+      }
     } catch (error) {
-      console.error('Failed to start call:', error);
-      setIsConnecting(false);
-      addMessage('system', 'Failed to connect. Please try again.');
+      console.error('Chat error:', error);
+      setMessages(prev => [...prev, {
+        role: 'system',
+        content: 'Connection error. Please try again.',
+        timestamp: new Date()
+      }]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleEndCall = () => {
-    if (vapi) {
-      vapi.stop();
-      setIsConnected(false);
-    }
-  };
-
-  const toggleMute = () => {
-    if (vapi && isConnected) {
-      vapi.setMuted(!isMuted);
-      setIsMuted(!isMuted);
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
     }
   };
 
@@ -125,17 +115,17 @@ export default function ChatWidget({
       {/* Chat Window */}
       {isOpen && (
         <div 
-          className="mb-4 w-80 bg-white rounded-lg shadow-2xl border border-gray-200 overflow-hidden"
-          style={{ maxHeight: '500px' }}
+          className="mb-4 w-80 bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col"
+          style={{ height: '480px' }}
         >
           {/* Header */}
           <div 
-            className="p-4 text-white flex items-center justify-between"
+            className="p-4 text-white flex items-center justify-between shrink-0"
             style={{ backgroundColor: primaryColor }}
           >
             <div className="flex items-center gap-2">
-              <Phone className="h-5 w-5" />
-              <span className="font-semibold">Voice Assistant</span>
+              <MessageCircle className="h-5 w-5" />
+              <span className="font-semibold">{buttonText}</span>
             </div>
             <button
               onClick={() => setIsOpen(false)}
@@ -146,90 +136,75 @@ export default function ChatWidget({
           </div>
 
           {/* Messages */}
-          <div className="p-4 h-64 overflow-y-auto bg-gray-50">
-            {messages.length === 0 && (
-              <div className="text-center text-gray-500 mt-8">
-                <Phone className="h-12 w-12 mx-auto mb-2 text-gray-400" />
-                <p className="text-sm">Start a voice conversation</p>
-                <p className="text-xs mt-1">Click the button below to begin</p>
-              </div>
-            )}
+          <div className="flex-1 overflow-y-auto p-4 bg-gray-50 space-y-3">
             {messages.map((msg, index) => (
               <div
                 key={index}
-                className={`mb-3 ${
-                  msg.role === 'user' ? 'text-right' : 'text-left'
-                }`}
+                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`inline-block px-3 py-2 rounded-lg text-sm ${
+                  className={`max-w-[80%] px-4 py-2 rounded-2xl text-sm ${
                     msg.role === 'user'
-                      ? 'bg-blue-600 text-white'
+                      ? 'text-white rounded-br-md'
                       : msg.role === 'assistant'
-                      ? 'bg-white text-gray-800 border border-gray-200'
+                      ? 'bg-white text-gray-800 border border-gray-200 rounded-bl-md shadow-sm'
                       : 'bg-yellow-50 text-yellow-800 border border-yellow-200'
                   }`}
+                  style={msg.role === 'user' ? { backgroundColor: primaryColor } : {}}
                 >
                   {msg.content}
                 </div>
-                <div className="text-xs text-gray-400 mt-1">
-                  {msg.timestamp.toLocaleTimeString()}
-                </div>
               </div>
             ))}
-          </div>
-
-          {/* Controls */}
-          <div className="p-4 border-t border-gray-200 bg-white">
-            {!isConnected && !isConnecting && (
-              <Button
-                onClick={handleStartCall}
-                className="w-full"
-                style={{ backgroundColor: primaryColor }}
-              >
-                <Phone className="h-4 w-4 mr-2" />
-                Start Voice Call
-              </Button>
-            )}
-
-            {isConnecting && (
-              <Button disabled className="w-full">
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Connecting...
-              </Button>
-            )}
-
-            {isConnected && (
-              <div className="flex gap-2">
-                <Button
-                  onClick={toggleMute}
-                  variant="outline"
-                  className="flex-1"
-                >
-                  {isMuted ? (
-                    <MicOff className="h-4 w-4 mr-2" />
-                  ) : (
-                    <Mic className="h-4 w-4 mr-2" />
-                  )}
-                  {isMuted ? 'Unmute' : 'Mute'}
-                </Button>
-                <Button
-                  onClick={handleEndCall}
-                  variant="destructive"
-                  className="flex-1"
-                >
-                  <Phone className="h-4 w-4 mr-2" />
-                  End Call
-                </Button>
+            
+            {/* Typing indicator */}
+            {isLoading && (
+              <div className="flex justify-start">
+                <div className="bg-white text-gray-500 px-4 py-2 rounded-2xl rounded-bl-md border border-gray-200 shadow-sm">
+                  <div className="flex gap-1">
+                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                  </div>
+                </div>
               </div>
             )}
+            
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Input Area */}
+          <div className="p-3 border-t border-gray-200 bg-white shrink-0">
+            <div className="flex gap-2">
+              <Input
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Type a message..."
+                disabled={isLoading}
+                className="flex-1 rounded-full border-gray-300 focus:border-primary-500"
+              />
+              <Button
+                onClick={sendMessage}
+                disabled={isLoading || !inputValue.trim()}
+                size="icon"
+                className="rounded-full shrink-0"
+                style={{ backgroundColor: primaryColor }}
+              >
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
           </div>
 
           {/* Branding */}
           {showBranding && (
-            <div className="px-4 py-2 bg-gray-50 border-t border-gray-200 text-center">
-              <span className="text-xs text-gray-500">
-                Powered by <span className="font-semibold">Telyx</span>
+            <div className="px-4 py-2 bg-gray-50 border-t border-gray-100 text-center shrink-0">
+              <span className="text-xs text-gray-400">
+                Powered by <a href="https://telyx.ai" target="_blank" className="font-semibold hover:text-gray-600" style={{ color: primaryColor }}>Telyx.ai</a>
               </span>
             </div>
           )}
@@ -241,11 +216,12 @@ export default function ChatWidget({
         onClick={() => setIsOpen(!isOpen)}
         className="rounded-full p-4 text-white shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
         style={{ backgroundColor: primaryColor }}
+        aria-label={buttonText}
       >
         {isOpen ? (
           <X className="h-6 w-6" />
         ) : (
-          <Phone className="h-6 w-6" />
+          <MessageCircle className="h-6 w-6" />
         )}
       </button>
     </div>

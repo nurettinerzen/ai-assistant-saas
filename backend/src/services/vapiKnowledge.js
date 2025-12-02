@@ -146,4 +146,6 @@ class VAPIKnowledgeService {
       throw error;
     }
   }
-}\n\nexport default new VAPIKnowledgeService();
+}
+
+export default new VAPIKnowledgeService();
