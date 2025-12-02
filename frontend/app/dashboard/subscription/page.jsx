@@ -86,20 +86,20 @@ export default function SubscriptionPage() {
       setSubscription(subRes.data);
       setBillingHistory(billingRes.data.history || []);
     } catch (error) {
-      toast.error(t('dashboard.saveError'));
+      toast.error(t('saveError'));
     } finally {
       setLoading(false);
     }
   };
 
   const handleUpgrade = async (planId) => {
-    if (!confirm(`${t('dashboard.upgradeConfirm')} ${PLANS.find((p) => p.id === planId)?.name} ${t('dashboard.planQuestion')}`)) return;
+    if (!confirm(`${t('upgradeConfirm')} ${PLANS.find((p) => p.id === planId)?.name} ${t('planQuestion')}`)) return;
 
     try {
       await toastHelpers.async(
         apiClient.subscription.upgrade(planId),
-        t('dashboard.processingUpgrade'),
-        t('dashboard.planUpgradedSuccess')
+        t('processingUpgrade'),
+        t('planUpgradedSuccess')
       );
       loadData();
     } catch (error) {
@@ -115,8 +115,8 @@ export default function SubscriptionPage() {
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-neutral-900">{t('dashboard.subscriptionTitle2')}</h1>
-        <p className="text-neutral-600 mt-1">{t('dashboard.managePlanBilling')}</p>
+        <h1 className="text-3xl font-bold text-neutral-900">{t('subscriptionTitle2')}</h1>
+        <p className="text-neutral-600 mt-1">{t('managePlanBilling')}</p>
       </div>
 
       {/* Current plan & usage */}
@@ -125,26 +125,26 @@ export default function SubscriptionPage() {
           {/* Current plan */}
           <div className="bg-white rounded-xl border border-neutral-200 p-6 shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-neutral-900">{t('dashboard.currentPlanLabel')}</h2>
+              <h2 className="text-lg font-semibold text-neutral-900">{t('currentPlanLabel')}</h2>
               <Badge className="bg-primary-100 text-primary-800">
-                {subscription.planName || t('dashboard.freePlanLabel')}
+                {subscription.planName || t('freePlanLabel')}
               </Badge>
             </div>
             <div className="space-y-3">
               <div className="flex justify-between text-sm">
-                <span className="text-neutral-600">{t('dashboard.monthlyCostLabel')}</span>
+                <span className="text-neutral-600">{t('monthlyCostLabel')}</span>
                 <span className="font-semibold text-neutral-900">
                   {formatCurrency(subscription.price || 0)}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-neutral-600">{t('dashboard.billingCycleLabel')}</span>
+                <span className="text-neutral-600">{t('billingCycleLabel')}</span>
                 <span className="font-medium text-neutral-900">
-                  {subscription.billingCycle || t('dashboard.monthlyLabel')}
+                  {subscription.billingCycle || t('monthlyLabel')}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-neutral-600">{t('dashboard.nextBillingLabel')}</span>
+                <span className="text-neutral-600">{t('nextBillingLabel')}</span>
                 <span className="font-medium text-neutral-900">
                   {formatDate(subscription.nextBillingDate, 'short')}
                 </span>
@@ -156,26 +156,26 @@ export default function SubscriptionPage() {
           <div className="bg-white rounded-xl border border-neutral-200 p-6 shadow-sm">
             <div className="flex items-center gap-3 mb-4">
               <TrendingUp className="h-5 w-5 text-primary-600" />
-              <h2 className="text-lg font-semibold text-neutral-900">{t('dashboard.creditUsageLabel')}</h2>
+              <h2 className="text-lg font-semibold text-neutral-900">{t('creditUsageLabel')}</h2>
             </div>
             <div className="space-y-3">
               <div className="flex justify-between text-sm">
-                <span className="text-neutral-600">{t('dashboard.usedThisMonth')}</span>
+                <span className="text-neutral-600">{t('usedThisMonth')}</span>
                 <span className="font-semibold text-neutral-900">
-                  {subscription.creditsUsed || 0} / {subscription.creditsLimit || 0} {t('dashboard.creditsLabel')}
+                  {subscription.creditsUsed || 0} / {subscription.creditsLimit || 0} {t('creditsLabel')}
                 </span>
               </div>
               <Progress value={usagePercent} className="h-2" />
               <p className="text-xs text-neutral-500">
                 {usagePercent < 80
-                  ? `${Math.round(100 - usagePercent)}% ${t('dashboard.remaining')}`
+                  ? `${Math.round(100 - usagePercent)}% ${t('remaining')}`
                   : usagePercent < 100
-                  ? t('dashboard.runningLowOnCredits')
-                  : t('dashboard.limitReachedUpgrade')}
+                  ? t('runningLowOnCredits')
+                  : t('limitReachedUpgrade')}
               </p>
             </div>
             <Button className="w-full mt-4" variant="outline">
-              {t('dashboard.addCreditsBtn')}
+              {t('addCreditsBtn')}
             </Button>
           </div>
         </div>
@@ -183,7 +183,7 @@ export default function SubscriptionPage() {
 
       {/* Pricing plans */}
       <div>
-        <h2 className="text-2xl font-bold text-neutral-900 mb-6">{t('dashboard.availablePlans')}</h2>
+        <h2 className="text-2xl font-bold text-neutral-900 mb-6">{t('availablePlans')}</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {PLANS.map((plan) => {
             const isCurrentPlan = subscription?.planId === plan.id;
@@ -196,7 +196,7 @@ export default function SubscriptionPage() {
               >
                 {plan.popular && (
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                    <Badge className="bg-primary-600 text-white">{t('dashboard.mostPopular')}</Badge>
+                    <Badge className="bg-primary-600 text-white">{t('mostPopular')}</Badge>
                   </div>
                 )}
 
@@ -206,9 +206,9 @@ export default function SubscriptionPage() {
                     <span className="text-4xl font-bold text-neutral-900">
                       ${plan.price}
                     </span>
-                    <span className="text-neutral-500">{t('dashboard.perMonthLabel2')}</span>
+                    <span className="text-neutral-500">{t('perMonthLabel2')}</span>
                   </div>
-                  <p className="text-sm text-neutral-600 mt-2">{plan.credits} {t('dashboard.creditsIncluded')}</p>
+                  <p className="text-sm text-neutral-600 mt-2">{plan.credits} {t('creditsIncluded')}</p>
                 </div>
 
                 <ul className="space-y-3 mb-6">
@@ -232,7 +232,7 @@ export default function SubscriptionPage() {
                   disabled={isCurrentPlan}
                   onClick={() => handleUpgrade(plan.id)}
                 >
-                  {isCurrentPlan ? t('dashboard.currentPlanBtn') : t('dashboard.upgradeBtn')}
+                  {isCurrentPlan ? t('currentPlanBtn') : t('upgradeBtn')}
                 </Button>
               </div>
             );
@@ -245,7 +245,7 @@ export default function SubscriptionPage() {
         <div className="p-6 border-b border-neutral-200">
           <div className="flex items-center gap-3">
             <CreditCard className="h-5 w-5 text-primary-600" />
-            <h2 className="text-lg font-semibold text-neutral-900">{t('dashboard.billingHistoryTitle')}</h2>
+            <h2 className="text-lg font-semibold text-neutral-900">{t('billingHistoryTitle')}</h2>
           </div>
         </div>
 
@@ -255,19 +255,19 @@ export default function SubscriptionPage() {
               <thead className="bg-neutral-50 border-b border-neutral-200">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">
-                    {t('dashboard.dateHeader')}
+                    {t('dateHeader')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">
-                    {t('dashboard.descriptionHeader')}
+                    {t('descriptionHeader')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">
-                    {t('dashboard.amountHeader')}
+                    {t('amountHeader')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">
-                    {t('dashboard.statusHeader')}
+                    {t('statusHeader')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">
-                    {t('dashboard.invoiceHeader')}
+                    {t('invoiceHeader')}
                   </th>
                 </tr>
               </thead>
@@ -298,7 +298,7 @@ export default function SubscriptionPage() {
                     </td>
                     <td className="px-6 py-4">
                       <Button variant="link" size="sm" className="p-0 h-auto">
-                        {t('dashboard.downloadBtn')}
+                        {t('downloadBtn')}
                       </Button>
                     </td>
                   </tr>
@@ -308,7 +308,7 @@ export default function SubscriptionPage() {
           </div>
         ) : (
           <div className="p-8 text-center text-sm text-neutral-500">
-            {t('dashboard.noBillingHistory')}
+            {t('noBillingHistory')}
           </div>
         )}
       </div>

@@ -49,7 +49,7 @@ export default function CallsPage() {
       const response = await apiClient.calls.getAll(params);
       setCalls(response.data.calls || []);
     } catch (error) {
-      toast.error(t('dashboard.saveError'));
+      toast.error(t('saveError'));
     } finally {
       setLoading(false);
     }
@@ -65,9 +65,9 @@ export default function CallsPage() {
       document.body.appendChild(link);
       link.click();
       link.remove();
-      toast.success(t('dashboard.saveSuccess'));
+      toast.success(t('saveSuccess'));
     } catch (error) {
-      toast.error(t('dashboard.saveError'));
+      toast.error(t('saveError'));
     }
   };
 
@@ -95,12 +95,12 @@ export default function CallsPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-neutral-900">{t('dashboard.callHistoryTitle')}</h1>
-          <p className="text-neutral-600 mt-1">{t('dashboard.viewAndAnalyze')}</p>
+          <h1 className="text-3xl font-bold text-neutral-900">{t('callHistoryTitle')}</h1>
+          <p className="text-neutral-600 mt-1">{t('viewAndAnalyze')}</p>
         </div>
         <Button onClick={handleExport} variant="outline">
           <Download className="h-4 w-4 mr-2" />
-          {t('dashboard.exportCSV')}
+          {t('exportCSV')}
         </Button>
       </div>
 
@@ -109,7 +109,7 @@ export default function CallsPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
           <Input
-            placeholder={t('dashboard.searchByPhone')}
+            placeholder={t('searchByPhone')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
@@ -121,11 +121,11 @@ export default function CallsPage() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">{t('dashboard.allStatus')}</SelectItem>
-            <SelectItem value="completed">{t('dashboard.completed')}</SelectItem>
-            <SelectItem value="failed">{t('dashboard.failed')}</SelectItem>
-            <SelectItem value="in-progress">{t('dashboard.inProgress')}</SelectItem>
-            <SelectItem value="queued">{t('dashboard.queued')}</SelectItem>
+            <SelectItem value="all">{t('allStatus')}</SelectItem>
+            <SelectItem value="completed">{t('completed')}</SelectItem>
+            <SelectItem value="failed">{t('failed')}</SelectItem>
+            <SelectItem value="in-progress">{t('inProgress')}</SelectItem>
+            <SelectItem value="queued">{t('queued')}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -146,22 +146,22 @@ export default function CallsPage() {
               <thead className="bg-neutral-50 border-b border-neutral-200">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    {t('dashboard.phoneNumberLabel')}
+                    {t('phoneNumberLabel')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    {t('dashboard.assistantLabel')}
+                    {t('assistantLabel')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    {t('dashboard.durationLabel')}
+                    {t('durationLabel')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    {t('dashboard.costLabel')}
+                    {t('costLabel')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    {t('dashboard.dateLabel')}
+                    {t('dateLabel')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    {t('dashboard.statusLabel')}
+                    {t('statusLabel')}
                   </th>
                 </tr>
               </thead>
@@ -213,11 +213,11 @@ export default function CallsPage() {
         <div className="bg-white rounded-xl border border-neutral-200 p-8">
           <EmptyState
             icon={Phone}
-            title={searchQuery || statusFilter !== 'all' ? t('dashboard.noDataYet') : t('dashboard.noCallsYetTitle')}
+            title={searchQuery || statusFilter !== 'all' ? t('noDataYet') : t('noCallsYetTitle')}
             description={
               searchQuery || statusFilter !== 'all'
-                ? t('dashboard.thisActionCannot')
-                : t('dashboard.callHistoryAppear')
+                ? t('thisActionCannot')
+                : t('callHistoryAppear')
             }
           />
         </div>

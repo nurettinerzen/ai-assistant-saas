@@ -683,6 +683,11 @@ export const translations = {
   testCallStarted: 'Test call started! Check your phone.',
   releasingNumber: 'Releasing number...',
   phoneNumberReleased: 'Phone number released!',
+  upgradeToGetPhone: 'Upgrade Your Plan',
+  phoneNumbersLockedDesc: 'Phone number feature is available on BASIC and higher plans. Upgrade your plan to start receiving real calls.',
+  planFeatures: 'Plan Features',
+  unlimited: 'Unlimited',
+  phoneLimitReached: 'Phone number limit reached. Upgrade your plan to add more numbers.',
 
   // Integrations Page
   integrationsTitle2: 'Integrations',

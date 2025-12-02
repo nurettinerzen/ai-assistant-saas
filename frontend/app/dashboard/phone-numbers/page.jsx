@@ -61,7 +61,7 @@ export default function PhoneNumbersPage() {
       const response = await apiClient.phoneNumbers.getAll();
       setPhoneNumbers(response.data.phoneNumbers || []);
     } catch (error) {
-      toast.error(t('dashboard.saveError'));
+      toast.error(t('saveError'));
     } finally {
       setLoading(false);
     }
@@ -71,8 +71,8 @@ export default function PhoneNumbersPage() {
     try {
       await toastHelpers.async(
         apiClient.phoneNumbers.test(phoneNumber.id),
-        t('dashboard.initiatingTestCall'),
-        t('dashboard.testCallStarted')
+        t('initiatingTestCall'),
+        t('testCallStarted')
       );
     } catch (error) {
       // Error handled
@@ -82,7 +82,7 @@ export default function PhoneNumbersPage() {
   const handleRelease = async (phoneNumber) => {
     if (
       !confirm(
-        `${t('dashboard.releaseNumberConfirm')} ${formatPhone(phoneNumber.phoneNumber)}${t('dashboard.numberWillReturn')}`
+        `${t('releaseNumberConfirm')} ${formatPhone(phoneNumber.phoneNumber)}${t('numberWillReturn')}`
       )
     )
       return;
@@ -90,8 +90,8 @@ export default function PhoneNumbersPage() {
     try {
       await toastHelpers.async(
         apiClient.phoneNumbers.delete(phoneNumber.id),
-        t('dashboard.releasingNumber'),
-        t('dashboard.phoneNumberReleased')
+        t('releasingNumber'),
+        t('phoneNumberReleased')
       );
       loadPhoneNumbers();
     } catch (error) {
@@ -113,8 +113,8 @@ export default function PhoneNumbersPage() {
       <div className="space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold text-neutral-900">{t('dashboard.phoneNumbersTitle2')}</h1>
-          <p className="text-neutral-600 mt-1">{t('dashboard.managePhoneNumbers')}</p>
+          <h1 className="text-3xl font-bold text-neutral-900">{t('phoneNumbersTitle2')}</h1>
+          <p className="text-neutral-600 mt-1">{t('managePhoneNumbers')}</p>
         </div>
 
         {/* Locked State */}
@@ -123,14 +123,14 @@ export default function PhoneNumbersPage() {
             <Lock className="h-10 w-10 text-neutral-400" />
           </div>
           <h2 className="text-2xl font-bold text-neutral-900 mb-3">
-            {t('dashboard.upgradeToGetPhone') || 'Planınızı Yükseltin'}
+            {t('upgradeToGetPhone') || 'Planınızı Yükseltin'}
           </h2>
           <p className="text-neutral-600 mb-6 max-w-md mx-auto">
-            {t('dashboard.phoneNumbersLockedDesc') || 'Telefon numarası özelliği BASIC ve üzeri planlarda mevcuttur. Gerçek aramalar almaya başlamak için planınızı yükseltin.'}
+            {t('phoneNumbersLockedDesc') || 'Telefon numarası özelliği BASIC ve üzeri planlarda mevcuttur. Gerçek aramalar almaya başlamak için planınızı yükseltin.'}
           </p>
           <Link href="/dashboard/subscription">
             <Button size="lg" className="bg-gradient-to-r from-indigo-600 to-blue-500">
-              {t('dashboard.upgrade')} →
+              {t('upgrade')} →
             </Button>
           </Link>
         </div>
@@ -138,25 +138,25 @@ export default function PhoneNumbersPage() {
         {/* Plan comparison */}
         <div className="bg-primary-50 border border-primary-200 rounded-xl p-6">
           <h3 className="text-sm font-semibold text-primary-900 mb-3">
-            {t('dashboard.planFeatures') || 'Plan Özellikleri'}
+            {t('planFeatures') || 'Plan Özellikleri'}
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
             <div className="bg-white p-4 rounded-lg">
-              <div className="font-semibold text-neutral-900 mb-2">{t('dashboard.basicPlan')}</div>
-              <div className="text-neutral-600">1 {t('dashboard.phoneNumber')}</div>
+              <div className="font-semibold text-neutral-900 mb-2">{t('basicPlan')}</div>
+              <div className="text-neutral-600">1 {t('phoneNumber')}</div>
               <div className="text-xs text-neutral-500 mt-1">$29/ay</div>
             </div>
             <div className="bg-white p-4 rounded-lg border-2 border-primary-300">
               <div className="font-semibold text-primary-700 mb-2">
-                {t('dashboard.professionalPlan')} ⭐
+                {t('professionalPlan')} ⭐
               </div>
-              <div className="text-neutral-600">3 {t('dashboard.phoneNumber')}</div>
+              <div className="text-neutral-600">3 {t('phoneNumber')}</div>
               <div className="text-xs text-neutral-500 mt-1">$99/ay</div>
             </div>
             <div className="bg-white p-4 rounded-lg">
-              <div className="font-semibold text-neutral-900 mb-2">{t('dashboard.enterprisePlan')}</div>
-              <div className="text-neutral-600">{t('dashboard.unlimited') || 'Sınırsız'}</div>
-              <div className="text-xs text-neutral-500 mt-1">{t('dashboard.contactSales')}</div>
+              <div className="font-semibold text-neutral-900 mb-2">{t('enterprisePlan')}</div>
+              <div className="text-neutral-600">{t('unlimited') || 'Sınırsız'}</div>
+              <div className="text-xs text-neutral-500 mt-1">{t('contactSales')}</div>
             </div>
           </div>
         </div>
@@ -169,12 +169,12 @@ export default function PhoneNumbersPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-neutral-900">{t('dashboard.phoneNumbersTitle2')}</h1>
-          <p className="text-neutral-600 mt-1">{t('dashboard.managePhoneNumbers')}</p>
+          <h1 className="text-3xl font-bold text-neutral-900">{t('phoneNumbersTitle2')}</h1>
+          <p className="text-neutral-600 mt-1">{t('managePhoneNumbers')}</p>
           {/* 🔧 Plan limit indicator */}
           {subscription && (
             <p className="text-sm text-primary-600 mt-2">
-              {phoneNumbers.length}/{PLAN_LIMITS[subscription.plan]?.phoneNumbers === -1 ? '∞' : PLAN_LIMITS[subscription.plan]?.phoneNumbers} {t('dashboard.phoneNumbersUsed') || 'numara kullanılıyor'}
+              {phoneNumbers.length}/{PLAN_LIMITS[subscription.plan]?.phoneNumbers === -1 ? '∞' : PLAN_LIMITS[subscription.plan]?.phoneNumbers} {t('phoneNumbersUsed') || 'numara kullanılıyor'}
             </p>
           )}
         </div>
@@ -183,7 +183,7 @@ export default function PhoneNumbersPage() {
           disabled={!canAddNumber()}
         >
           <Plus className="h-4 w-4 mr-2" />
-          {t('dashboard.getPhoneNumberBtn')}
+          {t('getPhoneNumberBtn')}
         </Button>
       </div>
 
@@ -191,9 +191,9 @@ export default function PhoneNumbersPage() {
       {!canAddNumber() && phoneNumbers.length > 0 && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
           <p className="text-sm text-yellow-800">
-            ⚠️ {t('dashboard.phoneLimitReached') || 'Telefon numarası limitinize ulaştınız. Daha fazla numara eklemek için planınızı yükseltin.'}
+            ⚠️ {t('phoneLimitReached') || 'Telefon numarası limitinize ulaştınız. Daha fazla numara eklemek için planınızı yükseltin.'}
             <Link href="/dashboard/subscription" className="ml-2 underline font-medium">
-              {t('dashboard.upgrade')}
+              {t('upgrade')}
             </Link>
           </p>
         </div>
@@ -230,7 +230,7 @@ export default function PhoneNumbersPage() {
                       {formatPhone(number.phoneNumber)}
                     </p>
                     <p className="text-xs text-neutral-500 mt-1">
-                      {t('dashboard.provisionedLabel')} {formatDate(number.createdAt, 'short')}
+                      {t('provisionedLabel')} {formatDate(number.createdAt, 'short')}
                     </p>
                   </div>
                 </div>
@@ -238,17 +238,17 @@ export default function PhoneNumbersPage() {
 
               <div className="space-y-2 mb-4">
                 <div className="flex justify-between text-sm">
-                  <span className="text-neutral-600">{t('dashboard.assistantColonLabel')}</span>
+                  <span className="text-neutral-600">{t('assistantColonLabel')}</span>
                   <span className="font-medium text-neutral-900">
-                    {number.assistantName || t('dashboard.notAssignedLabel')}
+                    {number.assistantName || t('notAssignedLabel')}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-neutral-600">{t('dashboard.statusColonLabel')}</span>
-                  <Badge className="bg-green-100 text-green-800">{t('dashboard.activeLabel')}</Badge>
+                  <span className="text-neutral-600">{t('statusColonLabel')}</span>
+                  <Badge className="bg-green-100 text-green-800">{t('activeLabel')}</Badge>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-neutral-600">{t('dashboard.monthlyCostColonLabel')}</span>
+                  <span className="text-neutral-600">{t('monthlyCostColonLabel')}</span>
                   <span className="font-medium text-neutral-900">$1.00</span>
                 </div>
               </div>
@@ -261,7 +261,7 @@ export default function PhoneNumbersPage() {
                   onClick={() => handleTestCall(number)}
                 >
                   <TestTube2 className="h-3 w-3 mr-2" />
-                  {t('dashboard.testBtn')}
+                  {t('testBtn')}
                 </Button>
                 <Button
                   variant="outline"
@@ -278,9 +278,9 @@ export default function PhoneNumbersPage() {
         <div className="bg-white rounded-xl border border-neutral-200 p-8">
           <EmptyState
             icon={Phone}
-            title={t('dashboard.noPhoneNumbersTitle')}
-            description={t('dashboard.getNumberToStartDesc')}
-            actionLabel={t('dashboard.getPhoneNumberBtn')}
+            title={t('noPhoneNumbersTitle')}
+            description={t('getNumberToStartDesc')}
+            actionLabel={t('getPhoneNumberBtn')}
             onAction={() => setShowProvisionModal(true)}
           />
         </div>
@@ -289,9 +289,9 @@ export default function PhoneNumbersPage() {
       {/* Info banner */}
       {phoneNumbers.length > 0 && (
         <div className="bg-primary-50 border border-primary-200 rounded-xl p-6">
-          <h3 className="text-sm font-semibold text-primary-900 mb-2">{t('dashboard.billingInformationTitle')}</h3>
+          <h3 className="text-sm font-semibold text-primary-900 mb-2">{t('billingInformationTitle')}</h3>
           <p className="text-sm text-primary-700">
-            {t('dashboard.phoneNumberBillingDesc')}
+            {t('phoneNumberBillingDesc')}
           </p>
         </div>
       )}
