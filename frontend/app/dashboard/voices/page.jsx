@@ -17,7 +17,7 @@ import { toast } from 'sonner';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function VoicesPage() {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const [voices, setVoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -25,6 +25,7 @@ export default function VoicesPage() {
   const [languageFilter, setLanguageFilter] = useState('all');
   const [selectedVoice, setSelectedVoice] = useState(null);
   const [businessLanguage, setBusinessLanguage] = useState('EN');
+  
 
   useEffect(() => {
     loadBusinessLanguage();

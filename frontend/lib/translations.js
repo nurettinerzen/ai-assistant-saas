@@ -102,6 +102,23 @@ export const translations = {
     lowStockAlerts: 'Low Stock Alerts',
     pendingShipments: 'Pending Shipments',
     quickActions: 'Quick Actions',
+
+    // Dashboard Demo Widget
+tryDemo: 'Try',
+tryNow: 'Try It Now!',
+talkNow: 'Talk Now',
+callInProgress: 'Call in Progress...',
+talkingWithDemo: 'Talking with our demo assistant',
+callCompleted: 'Call Completed',
+thanksForDemo: 'Thanks for trying our demo!',
+callStarted: 'Call started!',
+callError: 'Call error',
+connecting: 'Connecting...',
+
+// Demo Widget
+demoCallTitle: 'Try Our AI Assistant',
+demoCallDesc: 'Experience AI in 30 seconds - Free!',
+demoDisclaimer: 'Free demo. No credit card required.',
     
     // Assistant
     voiceSelection: 'Voice Selection',
