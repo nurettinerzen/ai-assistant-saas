@@ -121,7 +121,7 @@ export default function IntegrationsPage() {
       const response = await apiClient.integrations.getAll();
       setIntegrations(response.data.integrations || []);
     } catch (error) {
-      toast.error(t('dashboard.saveError'));
+      toast.error(t('saveError'));
     } finally {
       setLoading(false);
     }
@@ -139,8 +139,8 @@ export default function IntegrationsPage() {
       // Other integrations
       await toastHelpers.async(
         apiClient.integrations.connect(integrationId, {}),
-        t('dashboard.connectingText'),
-        t('dashboard.integrationConnected')
+        t('connectingText'),
+        t('integrationConnected')
       );
       loadIntegrations();
     } catch (error) {
@@ -149,13 +149,13 @@ export default function IntegrationsPage() {
   };
 
   const handleDisconnect = async (integrationId) => {
-    if (!confirm(t('dashboard.disconnectConfirm'))) return;
+    if (!confirm(t('disconnectConfirm'))) return;
 
     try {
       await toastHelpers.async(
         apiClient.integrations.disconnect(integrationId),
-        t('dashboard.disconnectingText'),
-        t('dashboard.integrationDisconnected')
+        t('disconnectingText'),
+        t('integrationDisconnected')
       );
       loadIntegrations();
     } catch (error) {
@@ -167,8 +167,8 @@ export default function IntegrationsPage() {
     try {
       await toastHelpers.async(
         apiClient.integrations.test(integrationId),
-        t('dashboard.testingConnection'),
-        t('dashboard.integrationWorking')
+        t('testingConnection'),
+        t('integrationWorking')
       );
     } catch (error) {
       // Error handled
@@ -206,21 +206,21 @@ export default function IntegrationsPage() {
       'google-sheets': 'Basit CRM olarak kullanın - aramaları otomatik kaydedin',
       whatsapp: 'whatsappDesc',
     };
-    return t(descMap[id] || '') || descMap[id];
+    return t(descMap[id] || '', locale) || descMap[id];
   };
 
   return (
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-neutral-900">{t('dashboard.integrationsTitle2')}</h1>
+        <h1 className="text-3xl font-bold text-neutral-900">{t('integrationsTitle2')}</h1>
         <p className="text-neutral-600 mt-1">
-          {t('dashboard.connectTelyx')}
+          {t('connectTelyx')}
         </p>
         {/* Business type indicator */}
         {businessType && (
           <p className="text-sm text-primary-600 mt-2">
-            📌 {t(`industry${businessType.charAt(0) + businessType.slice(1).toLowerCase()}`)}
+            📌 {t('industry')}: {t(`industry${businessType.charAt(0) + businessType.slice(1).toLowerCase()}`, locale)}
           </p>
         )}
       </div>
@@ -264,7 +264,7 @@ export default function IntegrationsPage() {
                         )}
                       </div>
                       <Badge variant="secondary" className="text-xs mt-1">
-                        {t(integration.category)}
+                        {t(integration.category, locale)}
                       </Badge>
                     </div>
                   </div>
@@ -277,7 +277,7 @@ export default function IntegrationsPage() {
 
                 {recommended && (
                   <div className="mb-3 px-2 py-1 bg-primary-100 text-primary-700 text-xs rounded-md inline-block">
-                    ⭐ {t('dashboard.recommendedForYou') || 'Sizin için önerilen'}
+                    ⭐ {t('recommendedForYou') || 'Sizin için önerilen'}
                   </div>
                 )}
 
@@ -292,14 +292,14 @@ export default function IntegrationsPage() {
                         className="flex-1"
                         onClick={() => handleTest(integration.id)}
                       >
-                        {t('dashboard.testBtn2')}
+                        {t('testBtn2')}
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => handleDisconnect(integration.id)}
                       >
-                        {t('dashboard.disconnectBtn')}
+                        {t('disconnectBtn')}
                       </Button>
                     </>
                   ) : (
@@ -308,7 +308,7 @@ export default function IntegrationsPage() {
                       className="flex-1"
                       onClick={() => handleConnect(integration.id)}
                     >
-                      {t('dashboard.connectBtn')}
+                      {t('connectBtn')}
                     </Button>
                   )}
                   <Button
@@ -334,13 +334,13 @@ export default function IntegrationsPage() {
       {/* Info banner */}
       <div className="bg-primary-50 border border-primary-200 rounded-xl p-6">
         <h3 className="text-sm font-semibold text-primary-900 mb-2">
-          {t('dashboard.needCustomIntegration')}
+          {t('needCustomIntegration')}
         </h3>
         <p className="text-sm text-primary-700 mb-3">
-          {t('dashboard.customIntegrationDesc')}
+          {t('customIntegrationDesc')}
         </p>
         <Button variant="outline" size="sm">
-          {t('dashboard.contactSalesBtn')}
+          {t('contactSalesBtn')}
         </Button>
       </div>
     </div>

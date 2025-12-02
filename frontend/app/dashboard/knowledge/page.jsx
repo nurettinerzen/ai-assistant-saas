@@ -62,7 +62,7 @@ export default function KnowledgeBasePage() {
       setFaqs(faqsRes.data.faqs || []);
       setUrls(urlsRes.data.urls || []);
     } catch (error) {
-      toast.error(t('dashboard.saveError'));
+      toast.error(t('saveError'));
     } finally {
       setLoading(false);
     }
@@ -80,12 +80,12 @@ export default function KnowledgeBasePage() {
 
   const handleSaveDocument = async () => {
     if (!docName) {
-      toast.error(t('dashboard.enterKnowledgeBaseName'));
+      toast.error(t('enterKnowledgeBaseName'));
       return;
     }
 
     if (!selectedFile) {
-      toast.error(t('dashboard.selectFileToUpload'));
+      toast.error(t('selectFileToUpload'));
       return;
     }
 
@@ -94,7 +94,7 @@ export default function KnowledgeBasePage() {
     formData.append('name', docName);
 
     setUploadingFile(true);
-    const uploadToast = toast.loading(t('dashboard.uploadingText'));
+    const uploadToast = toast.loading(t('uploadingText'));
     
     try {
       const response = await apiClient.knowledge.uploadDocument(formData);
@@ -110,12 +110,12 @@ export default function KnowledgeBasePage() {
       
       setDocuments([newDoc, ...documents]);
       
-      toast.success(t('dashboard.documentUploadedSuccess'), { id: uploadToast });
+      toast.success(t('documentUploadedSuccess'), { id: uploadToast });
       setShowDocModal(false);
       setDocName('');
       setSelectedFile(null);
     } catch (error) {
-      toast.error(error.response?.data?.error || t('dashboard.uploadFailed'), { id: uploadToast });
+      toast.error(error.response?.data?.error || t('uploadFailed'), { id: uploadToast });
     } finally {
       setUploadingFile(false);
     }
@@ -123,23 +123,23 @@ export default function KnowledgeBasePage() {
 
   const handleDeleteDocument = async (id) => {
     try {
-      const deleteToast = toast.loading(t('dashboard.deletingText'));
+      const deleteToast = toast.loading(t('deletingText'));
       await apiClient.knowledge.deleteDocument(id);
       setDocuments(documents.filter(doc => doc.id !== id));
-      toast.success(t('dashboard.documentDeleted'), { id: deleteToast });
+      toast.success(t('documentDeleted'), { id: deleteToast });
     } catch (error) {
-      toast.error(t('dashboard.failedToDeleteDocument'));
+      toast.error(t('failedToDeleteDocument'));
     }
   };
 
   const handleCreateFaq = async () => {
     if (!faqForm.question || !faqForm.answer) {
-      toast.error(t('dashboard.fillQuestionAnswer'));
+      toast.error(t('fillQuestionAnswer'));
       return;
     }
     
     try {
-      const createToast = toast.loading(t('dashboard.creatingFaq'));
+      const createToast = toast.loading(t('creatingFaq'));
       const response = await apiClient.knowledge.createFaq(faqForm);
       
       const newFaq = {
@@ -149,33 +149,33 @@ export default function KnowledgeBasePage() {
       };
       
       setFaqs([newFaq, ...faqs]);
-      toast.success(t('dashboard.faqCreated'), { id: createToast });
+      toast.success(t('faqCreated'), { id: createToast });
       setShowFaqModal(false);
       setFaqForm({ question: '', answer: '', category: '' });
     } catch (error) {
-      toast.error(t('dashboard.failedToCreateFaq'));
+      toast.error(t('failedToCreateFaq'));
     }
   };
 
   const handleDeleteFaq = async (id) => {
     try {
-      const deleteToast = toast.loading(t('dashboard.deletingText'));
+      const deleteToast = toast.loading(t('deletingText'));
       await apiClient.knowledge.deleteFaq(id);
       setFaqs(faqs.filter(faq => faq.id !== id));
-      toast.success(t('dashboard.faqDeleted'), { id: deleteToast });
+      toast.success(t('faqDeleted'), { id: deleteToast });
     } catch (error) {
-      toast.error(t('dashboard.failedToDeleteFaq'));
+      toast.error(t('failedToDeleteFaq'));
     }
   };
 
   const handleAddUrl = async () => {
     if (!urlForm.url) {
-      toast.error(t('dashboard.enterUrl'));
+      toast.error(t('enterUrl'));
       return;
     }
     
     try {
-      const addToast = toast.loading(t('dashboard.addingUrl'));
+      const addToast = toast.loading(t('addingUrl'));
       const response = await apiClient.knowledge.addUrl(urlForm);
       
       const newUrl = {
@@ -189,22 +189,22 @@ export default function KnowledgeBasePage() {
       };
       
       setUrls([newUrl, ...urls]);
-      toast.success(t('dashboard.urlAddedCrawling'), { id: addToast });
+      toast.success(t('urlAddedCrawling'), { id: addToast });
       setShowUrlModal(false);
       setUrlForm({ url: '', crawlDepth: 1 });
     } catch (error) {
-      toast.error(t('dashboard.failedToAddUrl'));
+      toast.error(t('failedToAddUrl'));
     }
   };
 
   const handleDeleteUrl = async (id) => {
     try {
-      const deleteToast = toast.loading(t('dashboard.deletingText'));
+      const deleteToast = toast.loading(t('deletingText'));
       await apiClient.knowledge.deleteUrl(id);
       setUrls(urls.filter(url => url.id !== id));
-      toast.success(t('dashboard.urlDeleted'), { id: deleteToast });
+      toast.success(t('urlDeleted'), { id: deleteToast });
     } catch (error) {
-      toast.error(t('dashboard.failedToDeleteUrl'));
+      toast.error(t('failedToDeleteUrl'));
     }
   };
 
@@ -212,16 +212,16 @@ export default function KnowledgeBasePage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-neutral-900">{t('dashboard.knowledgeBaseTitle')}</h1>
-        <p className="text-neutral-600 mt-1">{t('dashboard.trainWithDocuments')}</p>
+        <h1 className="text-3xl font-bold text-neutral-900">{t('knowledgeBaseTitle')}</h1>
+        <p className="text-neutral-600 mt-1">{t('trainWithDocuments')}</p>
       </div>
 
       {/* Tabs */}
       <Tabs defaultValue="documents" className="space-y-6">
         <TabsList>
-          <TabsTrigger value="documents">{t('dashboard.documentsTab')} ({documents.length})</TabsTrigger>
-          <TabsTrigger value="faqs">{t('dashboard.faqsTab')} ({faqs.length})</TabsTrigger>
-          <TabsTrigger value="urls">{t('dashboard.urlsTab')} ({urls.length})</TabsTrigger>
+          <TabsTrigger value="documents">{t('documentsTab')} ({documents.length})</TabsTrigger>
+          <TabsTrigger value="faqs">{t('faqsTab')} ({faqs.length})</TabsTrigger>
+          <TabsTrigger value="urls">{t('urlsTab')} ({urls.length})</TabsTrigger>
         </TabsList>
 
         {/* Documents Tab */}
@@ -229,7 +229,7 @@ export default function KnowledgeBasePage() {
           <div className="flex justify-end items-center">
             <Button onClick={() => setShowDocModal(true)}>
               <Plus className="h-4 w-4 mr-2" />
-              {t('dashboard.addDocument')}
+              {t('addDocument')}
             </Button>
           </div>
 
@@ -238,12 +238,12 @@ export default function KnowledgeBasePage() {
               <table className="w-full">
                 <thead className="bg-neutral-50 border-b border-neutral-200">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">{t('dashboard.nameTableHeader')}</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">{t('dashboard.typeTableHeader')}</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">{t('dashboard.sizeTableHeader')}</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">{t('dashboard.statusTableHeader')}</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">{t('dashboard.uploadedTableHeader')}</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">{t('dashboard.actionsTableHeader')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">{t('nameTableHeader')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">{t('typeTableHeader')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">{t('sizeTableHeader')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">{t('statusTableHeader')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">{t('uploadedTableHeader')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">{t('actionsTableHeader')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-200">
@@ -291,8 +291,8 @@ export default function KnowledgeBasePage() {
             <div className="bg-white rounded-xl border border-neutral-200 p-12">
               <EmptyState
                 icon={FileText}
-                title={t('dashboard.noDocumentsTitle')}
-                description={t('dashboard.uploadDocumentsDesc')}
+                title={t('noDocumentsTitle')}
+                description={t('uploadDocumentsDesc')}
               />
             </div>
           )}
@@ -303,7 +303,7 @@ export default function KnowledgeBasePage() {
           <div className="flex justify-end">
             <Button onClick={() => setShowFaqModal(true)}>
               <Plus className="h-4 w-4 mr-2" />
-              {t('dashboard.addFaqBtn')}
+              {t('addFaqBtn')}
             </Button>
           </div>
 
@@ -332,8 +332,8 @@ export default function KnowledgeBasePage() {
             <div className="bg-white rounded-xl border border-neutral-200 p-12">
               <EmptyState
                 icon={MessageSquare}
-                title={t('dashboard.noFaqsTitle')}
-                description={t('dashboard.addFaqsDesc')}
+                title={t('noFaqsTitle')}
+                description={t('addFaqsDesc')}
               />
             </div>
           )}
@@ -344,7 +344,7 @@ export default function KnowledgeBasePage() {
           <div className="flex justify-end">
             <Button onClick={() => setShowUrlModal(true)}>
               <Plus className="h-4 w-4 mr-2" />
-              {t('dashboard.addUrlBtn')}
+              {t('addUrlBtn')}
             </Button>
           </div>
 
@@ -353,11 +353,11 @@ export default function KnowledgeBasePage() {
               <table className="w-full">
                 <thead className="bg-neutral-50 border-b border-neutral-200">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">{t('dashboard.urlTableHeader')}</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">{t('dashboard.statusTableHeader')}</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">{t('dashboard.pagesTableHeader')}</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">{t('dashboard.lastCrawledHeader')}</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">{t('dashboard.actionsTableHeader')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">{t('urlTableHeader')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">{t('statusTableHeader')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">{t('pagesTableHeader')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">{t('lastCrawledHeader')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">{t('actionsTableHeader')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-200">
@@ -411,8 +411,8 @@ export default function KnowledgeBasePage() {
             <div className="bg-white rounded-xl border border-neutral-200 p-12">
               <EmptyState
                 icon={LinkIcon}
-                title={t('dashboard.noUrlsTitle')}
-                description={t('dashboard.addUrlsDesc')}
+                title={t('noUrlsTitle')}
+                description={t('addUrlsDesc')}
               />
             </div>
           )}
@@ -423,22 +423,22 @@ export default function KnowledgeBasePage() {
       <Dialog open={showDocModal} onOpenChange={setShowDocModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t('dashboard.addKnowledgeBase')}</DialogTitle>
-            <DialogDescription>{t('dashboard.uploadDocumentsLabel')}</DialogDescription>
+            <DialogTitle>{t('addKnowledgeBase')}</DialogTitle>
+            <DialogDescription>{t('uploadDocumentsLabel')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="doc-name">{t('dashboard.knowledgeBaseName')}</Label>
+              <Label htmlFor="doc-name">{t('knowledgeBaseName')}</Label>
               <Input
                 id="doc-name"
-                placeholder={t('dashboard.knowledgeBaseNamePlaceholder')}
+                placeholder={t('knowledgeBaseNamePlaceholder')}
                 value={docName}
                 onChange={(e) => setDocName(e.target.value)}
               />
             </div>
             
             <div>
-              <Label>{t('dashboard.documentsLabel')}</Label>
+              <Label>{t('documentsLabel')}</Label>
               <div className="mt-2 border-2 border-dashed border-neutral-200 rounded-lg p-8 text-center hover:border-primary-300 transition-colors cursor-pointer">
                 <input
                   type="file"
@@ -455,16 +455,16 @@ export default function KnowledgeBasePage() {
                         {selectedFile.name}
                       </p>
                       <p className="text-xs text-neutral-500">
-                        {formatFileSize(selectedFile.size)} • {t('dashboard.clickToChange')}
+                        {formatFileSize(selectedFile.size)} • {t('clickToChange')}
                       </p>
                     </>
                   ) : (
                     <>
                       <p className="text-sm text-neutral-600 mb-1">
-                        {t('dashboard.clickToUpload')}
+                        {t('clickToUpload')}
                       </p>
                       <p className="text-xs text-neutral-500">
-                        {t('dashboard.pdfDocxTxtCsv')}
+                        {t('pdfDocxTxtCsv')}
                       </p>
                     </>
                   )}
@@ -481,13 +481,13 @@ export default function KnowledgeBasePage() {
                 setSelectedFile(null);
               }}
             >
-              {t('dashboard.cancel')}
+              {t('cancel')}
             </Button>
             <Button 
               onClick={handleSaveDocument} 
               disabled={uploadingFile}
             >
-              {uploadingFile ? t('dashboard.uploadingText') : t('dashboard.saveBtn')}
+              {uploadingFile ? t('uploadingText') : t('saveBtn')}
             </Button>
           </div>
         </DialogContent>
@@ -497,44 +497,44 @@ export default function KnowledgeBasePage() {
       <Dialog open={showFaqModal} onOpenChange={setShowFaqModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t('dashboard.addFaqTitle')}</DialogTitle>
-            <DialogDescription>{t('dashboard.createFaqDesc')}</DialogDescription>
+            <DialogTitle>{t('addFaqTitle')}</DialogTitle>
+            <DialogDescription>{t('createFaqDesc')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="question">{t('dashboard.questionRequired')}</Label>
+              <Label htmlFor="question">{t('questionRequired')}</Label>
               <Input
                 id="question"
                 value={faqForm.question}
                 onChange={(e) => setFaqForm({ ...faqForm, question: e.target.value })}
-                placeholder={t('dashboard.questionPlaceholder')}
+                placeholder={t('questionPlaceholder')}
               />
             </div>
             <div>
-              <Label htmlFor="answer">{t('dashboard.answerRequired')}</Label>
+              <Label htmlFor="answer">{t('answerRequired')}</Label>
               <Textarea
                 id="answer"
                 rows={4}
                 value={faqForm.answer}
                 onChange={(e) => setFaqForm({ ...faqForm, answer: e.target.value })}
-                placeholder={t('dashboard.answerPlaceholder')}
+                placeholder={t('answerPlaceholder')}
               />
             </div>
             <div>
-              <Label htmlFor="category">{t('dashboard.categoryOptional')}</Label>
+              <Label htmlFor="category">{t('categoryOptional')}</Label>
               <Input
                 id="category"
                 value={faqForm.category}
                 onChange={(e) => setFaqForm({ ...faqForm, category: e.target.value })}
-                placeholder={t('dashboard.categoryPlaceholder')}
+                placeholder={t('categoryPlaceholder')}
               />
             </div>
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t">
             <Button variant="outline" onClick={() => setShowFaqModal(false)}>
-              {t('dashboard.cancel')}
+              {t('cancel')}
             </Button>
-            <Button onClick={handleCreateFaq}>{t('dashboard.createFaqBtn')}</Button>
+            <Button onClick={handleCreateFaq}>{t('createFaqBtn')}</Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -543,22 +543,22 @@ export default function KnowledgeBasePage() {
       <Dialog open={showUrlModal} onOpenChange={setShowUrlModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t('dashboard.addUrlTitle')}</DialogTitle>
-            <DialogDescription>{t('dashboard.crawlWebsiteDesc')}</DialogDescription>
+            <DialogTitle>{t('addUrlTitle')}</DialogTitle>
+            <DialogDescription>{t('crawlWebsiteDesc')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="url">{t('dashboard.websiteUrlRequired')}</Label>
+              <Label htmlFor="url">{t('websiteUrlRequired')}</Label>
               <Input
                 id="url"
                 type="url"
                 value={urlForm.url}
                 onChange={(e) => setUrlForm({ ...urlForm, url: e.target.value })}
-                placeholder={t('dashboard.websiteUrlPlaceholder')}
+                placeholder={t('websiteUrlPlaceholder')}
               />
             </div>
             <div>
-              <Label htmlFor="depth">{t('dashboard.crawlDepthLabel')}</Label>
+              <Label htmlFor="depth">{t('crawlDepthLabel')}</Label>
               <Input
                 id="depth"
                 type="number"
@@ -568,15 +568,15 @@ export default function KnowledgeBasePage() {
                 onChange={(e) => setUrlForm({ ...urlForm, crawlDepth: parseInt(e.target.value) })}
               />
               <p className="text-xs text-neutral-500 mt-1">
-                {t('dashboard.crawlDepthDesc')}
+                {t('crawlDepthDesc')}
               </p>
             </div>
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t">
             <Button variant="outline" onClick={() => setShowUrlModal(false)}>
-              {t('dashboard.cancel')}
+              {t('cancel')}
             </Button>
-            <Button onClick={handleAddUrl}>{t('dashboard.addUrlSubmit')}</Button>
+            <Button onClick={handleAddUrl}>{t('addUrlSubmit')}</Button>
           </div>
         </DialogContent>
       </Dialog>
