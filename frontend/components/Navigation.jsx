@@ -5,15 +5,17 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function Navigation() {
   const pathname = usePathname();
+  const { t } = useLanguage();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState(null);
 
   const navigation = [
     {
-      name: 'Solutions',
+      name: t('navigation.solutions'),
       href: '/solutions',
       items: [
         { name: 'Restaurant & Cafe', href: '/solutions#restaurant' },
@@ -23,7 +25,7 @@ export default function Navigation() {
       ]
     },
     {
-      name: 'Features',
+      name: t('navigation.features'),
       href: '/features',
       items: [
         { name: 'AI Voice Assistant', href: '/features#voice' },
@@ -32,8 +34,8 @@ export default function Navigation() {
         { name: 'Analytics', href: '/features#analytics' },
       ]
     },
-    { name: 'Pricing', href: '/pricing' },
-    { name: 'Contact Sales', href: '/contact' },
+    { name: t('navigation.pricing'), href: '/pricing' },
+    { name: t('navigation.contact'), href: '/contact' },
   ];
 
   return (
@@ -86,16 +88,15 @@ export default function Navigation() {
 
           {/* Auth Buttons + Language Switcher */}
           <div className="hidden md:flex items-center space-x-3">
-            {/* 🔧 BUG FIX 1: Dil Seçici Eklendi */}
             <LanguageSwitcher />
             <Link href="/login">
               <Button variant="ghost" size="sm">
-                Sign In
+                {t('common.signIn')}
               </Button>
             </Link>
             <Link href="/register">
               <Button size="sm" className="bg-gradient-to-r from-indigo-600 to-blue-500 hover:from-indigo-700 hover:to-blue-600">
-                Register
+                {t('navigation.register')}
               </Button>
             </Link>
           </div>
@@ -147,12 +148,12 @@ export default function Navigation() {
               <LanguageSwitcher />
               <Link href="/login">
                 <Button variant="outline" className="w-full">
-                  Sign In
+                  {t('common.signIn')}
                 </Button>
               </Link>
               <Link href="/register">
                 <Button className="w-full bg-gradient-to-r from-indigo-600 to-blue-500">
-                  Get Started
+                  {t('navigation.getStarted')}
                 </Button>
               </Link>
             </div>

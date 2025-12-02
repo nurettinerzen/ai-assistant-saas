@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
-import { getCurrentLanguage, setLanguage } from '@/lib/translations';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Globe } from 'lucide-react';
 
 // 🌍 15+ LANGUAGES SUPPORT
@@ -39,18 +39,13 @@ const languages = [
 ];
 
 export default function LanguageSwitcher() {
-  const [locale, setLocale] = useState('en');
+  const { locale, changeLocale } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
 
-  useEffect(() => {
-    setLocale(getCurrentLanguage());
-  }, []);
-
-  const changeLocale = (newLocale) => {
-    setLanguage(newLocale);
-    setLocale(newLocale);
+  const handleChangeLocale = (newLocale) => {
+    changeLocale(newLocale);
     setIsOpen(false);
-    window.location.reload(); // Refresh to apply translations
+    // Sayfayı yenilemeye gerek yok, context otomatik günceller
   };
 
   const currentLang = languages.find(lang => lang.code === locale);
@@ -73,7 +68,7 @@ export default function LanguageSwitcher() {
         {mainLanguages.map((lang) => (
           <DropdownMenuItem
             key={lang.code}
-            onClick={() => changeLocale(lang.code)}
+            onClick={() => handleChangeLocale(lang.code)}
             className={`cursor-pointer ${locale === lang.code ? 'bg-primary-50' : ''}`}
           >
             <span className="text-xl mr-2">{lang.flag}</span>
@@ -89,7 +84,7 @@ export default function LanguageSwitcher() {
         {europeLanguages.map((lang) => (
           <DropdownMenuItem
             key={lang.code}
-            onClick={() => changeLocale(lang.code)}
+            onClick={() => handleChangeLocale(lang.code)}
             className={`cursor-pointer ${locale === lang.code ? 'bg-primary-50' : ''}`}
           >
             <span className="text-xl mr-2">{lang.flag}</span>
@@ -105,7 +100,7 @@ export default function LanguageSwitcher() {
         {asiaLanguages.map((lang) => (
           <DropdownMenuItem
             key={lang.code}
-            onClick={() => changeLocale(lang.code)}
+            onClick={() => handleChangeLocale(lang.code)}
             className={`cursor-pointer ${locale === lang.code ? 'bg-primary-50' : ''}`}
           >
             <span className="text-xl mr-2">{lang.flag}</span>

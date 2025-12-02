@@ -6,8 +6,11 @@ import { LiveDemoSection } from '@/components/LiveDemoSection';
 import { HowItWorks } from '@/components/HowItWorks';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function Home() {
+  const { t } = useLanguage();
+  
   const testimonials = [
     {
       name: 'Sarah Johnson',
@@ -47,11 +50,11 @@ export default function Home() {
         <div className="container mx-auto px-4">
           <div className="text-center max-w-3xl mx-auto mb-16">
             <h2 className="text-4xl md:text-5xl font-bold mb-6">
-              Loved by Businesses
-              <span className="gradient-text"> Worldwide</span>
+              {t('landing.testimonials.title')}
+              <span className="gradient-text"> {t('landing.testimonials.titleHighlight')}</span>
             </h2>
             <p className="text-xl text-gray-600">
-              See what our customers have to say
+              {t('landing.testimonials.subtitle')}
             </p>
           </div>
 
@@ -85,20 +88,20 @@ export default function Home() {
 
         <div className="relative container mx-auto px-4 text-center">
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
-            Ready to Transform Your Business?
+            {t('landing.cta.title')}
           </h2>
           <p className="text-xl text-blue-100 mb-12 max-w-2xl mx-auto">
-            Join thousands of businesses already using TELYX.AI to automate and scale
+            {t('landing.cta.subtitle')}
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/register">
               <Button size="lg" className="bg-white text-indigo-600 hover:bg-gray-100 shadow-xl text-lg px-8 py-6">
-                Start Free Trial
+                {t('landing.cta.startTrial')}
               </Button>
             </Link>
             <Link href="/contact">
               <Button size="lg" variant="outline" className="glass border-white/30 text-white hover:bg-white/10 text-lg px-8 py-6">
-                Talk to Sales
+                {t('landing.cta.talkToSales')}
               </Button>
             </Link>
           </div>
@@ -111,34 +114,34 @@ export default function Home() {
           <div className="grid md:grid-cols-4 gap-8">
             <div>
               <h3 className="text-2xl font-bold gradient-text mb-4">TELYX.AI</h3>
-              <p className="text-gray-400">AI-powered phone assistant for modern businesses</p>
+              <p className="text-gray-400">{t('landing.footer.tagline')}</p>
             </div>
             <div>
-              <h4 className="font-semibold mb-4">Product</h4>
+              <h4 className="font-semibold mb-4">{t('landing.footer.product')}</h4>
               <ul className="space-y-2 text-gray-400">
-                <li><Link href="/features" className="hover:text-white">Features</Link></li>
-                <li><Link href="/pricing" className="hover:text-white">Pricing</Link></li>
-                <li><Link href="/solutions" className="hover:text-white">Solutions</Link></li>
+                <li><Link href="/features" className="hover:text-white">{t('landing.footer.features')}</Link></li>
+                <li><Link href="/pricing" className="hover:text-white">{t('landing.footer.pricing')}</Link></li>
+                <li><Link href="/solutions" className="hover:text-white">{t('landing.footer.solutions')}</Link></li>
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold mb-4">Company</h4>
+              <h4 className="font-semibold mb-4">{t('landing.footer.company')}</h4>
               <ul className="space-y-2 text-gray-400">
-                <li><Link href="/contact" className="hover:text-white">Contact</Link></li>
-                <li><a href="#" className="hover:text-white">About Us</a></li>
-                <li><a href="#" className="hover:text-white">Blog</a></li>
+                <li><Link href="/contact" className="hover:text-white">{t('landing.footer.contact')}</Link></li>
+                <li><a href="#" className="hover:text-white">{t('landing.footer.about')}</a></li>
+                <li><a href="#" className="hover:text-white">{t('landing.footer.blog')}</a></li>
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold mb-4">Legal</h4>
+              <h4 className="font-semibold mb-4">{t('landing.footer.legal')}</h4>
               <ul className="space-y-2 text-gray-400">
-                <li><a href="#" className="hover:text-white">Privacy Policy</a></li>
-                <li><a href="#" className="hover:text-white">Terms of Service</a></li>
+                <li><a href="#" className="hover:text-white">{t('landing.footer.privacy')}</a></li>
+                <li><a href="#" className="hover:text-white">{t('landing.footer.terms')}</a></li>
               </ul>
             </div>
           </div>
           <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-            <p>&copy; 2024 TELYX.AI. All rights reserved.</p>
+            <p>{t('landing.footer.copyright')}</p>
           </div>
         </div>
       </footer>

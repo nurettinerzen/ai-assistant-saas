@@ -24,7 +24,7 @@ import {
 import { apiClient } from '@/lib/api';
 import { toast } from '@/lib/toast';
 import { formatDate, formatDuration, formatCurrency } from '@/lib/utils';
-import { t, getCurrentLanguage } from '@/lib/translations';
+import { useLanguage } from '@/contexts/LanguageContext';
 import {
   LineChart,
   Line,
@@ -36,15 +36,14 @@ import {
 } from 'recharts';
 
 export default function DashboardPage() {
+  const { t } = useLanguage();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState(null);
   const [chartData, setChartData] = useState([]);
   const [recentCalls, setRecentCalls] = useState([]);
-  const [locale, setLocale] = useState('en');
 
   useEffect(() => {
-    setLocale(getCurrentLanguage());
   }, []);
 
   useEffect(() => {
@@ -79,16 +78,16 @@ return (
     {/* Header */}
     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
       <div>
-        <h1 className="text-3xl font-bold text-neutral-900">{t('dashboardTitle', locale)}</h1>
-        <p className="text-neutral-600 mt-1">{t('monitorPerformance', locale)}</p>
+        <h1 className="text-3xl font-bold text-neutral-900">{t('dashboard.dashboardTitle')}</h1>
+        <p className="text-neutral-600 mt-1">{t('dashboard.monitorPerformance')}</p>
       </div>
       <div className="flex gap-3">
         <Button variant="outline" onClick={() => router.push('/dashboard/assistant')}>
           <Plus className="h-4 w-4 mr-2" />
-          {t('newAssistant', locale)}
+          {t('dashboard.newAssistant')}
         </Button>
         <Button onClick={() => router.push('/dashboard/calls')}>
-          {t('viewAllCalls', locale)}
+          {t('dashboard.viewAllCalls')}
           <ExternalLink className="h-4 w-4 ml-2" />
         </Button>
       </div>
@@ -97,7 +96,7 @@ return (
       {/* Stats cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatsCard
-          label={t('totalCallsLabel', locale)}
+          label={t('dashboard.totalCallsLabel')}
           value={stats?.totalCalls || 0}
           icon={Phone}
           trend="up"
@@ -106,7 +105,7 @@ return (
           loading={loading}
         />
         <StatsCard
-          label={t('avgDurationLabel2', locale)}
+          label={t('dashboard.avgDurationLabel2')}
           value={formatDuration(stats?.avgDuration || 0)}
           icon={Clock}
           trend="down"
@@ -115,7 +114,7 @@ return (
           loading={loading}
         />
         <StatsCard
-          label={t('totalCostLabel', locale)}
+          label={t('dashboard.totalCostLabel')}
           value={formatCurrency(stats?.totalCost || 0)}
           icon={DollarSign}
           trend="up"
@@ -124,7 +123,7 @@ return (
           loading={loading}
         />
         <StatsCard
-          label={t('successRateLabel', locale)}
+          label={t('dashboard.successRateLabel')}
           value={`${stats?.successRate || 0}%`}
           icon={TrendingUp}
           trend="up"
@@ -138,14 +137,14 @@ return (
       <div className="bg-white rounded-xl border border-neutral-200 p-6 shadow-sm">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="text-lg font-semibold text-neutral-900">{t('callsOverTime', locale)}</h2>
-            <p className="text-sm text-neutral-500">{t('last7Days', locale)}</p>
+            <h2 className="text-lg font-semibold text-neutral-900">{t('dashboard.callsOverTime')}</h2>
+            <p className="text-sm text-neutral-500">{t('dashboard.last7Days')}</p>
           </div>
         </div>
 
         {loading ? (
           <div className="h-80 flex items-center justify-center">
-            <div className="animate-pulse text-neutral-400">{t('loadingChart', locale)}</div>
+            <div className="animate-pulse text-neutral-400">{t('dashboard.loadingChart')}</div>
           </div>
         ) : chartData.length > 0 ? (
           <ResponsiveContainer width="100%" height={320}>
@@ -180,8 +179,8 @@ return (
         ) : (
           <EmptyState
             icon={PhoneCall}
-            title={t('noCallDataYet', locale)}
-            description={t('startMakingCalls', locale)}
+            title={t('dashboard.noCallDataYet')}
+            description={t('dashboard.startMakingCalls')}
           />
         )}
       </div>
@@ -191,15 +190,15 @@ return (
         <div className="p-6 border-b border-neutral-200">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-neutral-900">{t('recentCallsTitle', locale)}</h2>
-              <p className="text-sm text-neutral-500">{t('latestCallActivity', locale)}</p>
+              <h2 className="text-lg font-semibold text-neutral-900">{t('dashboard.recentCallsTitle')}</h2>
+              <p className="text-sm text-neutral-500">{t('dashboard.latestCallActivity')}</p>
             </div>
             <Button
               variant="outline"
               size="sm"
               onClick={() => router.push('/dashboard/calls')}
             >
-              {t('viewAll', locale)}
+              {t('dashboard.viewAll')}
             </Button>
           </div>
         </div>
@@ -218,19 +217,19 @@ return (
               <thead className="bg-neutral-50 border-b border-neutral-200">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    {t('phoneNumberLabel', locale)}
+                    {t('dashboard.phoneNumberLabel')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    {t('assistantLabel', locale)}
+                    {t('dashboard.assistantLabel')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    {t('durationLabel', locale)}
+                    {t('dashboard.durationLabel')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    {t('dateLabel', locale)}
+                    {t('dashboard.dateLabel')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    {t('statusLabel', locale)}
+                    {t('dashboard.statusLabel')}
                   </th>
                 </tr>
               </thead>
@@ -275,8 +274,8 @@ return (
           <div className="p-8">
             <EmptyState
               icon={Phone}
-              title={t('noCallsYetTitle', locale)}
-              description={t('callHistoryAppear', locale)}
+              title={t('dashboard.noCallsYetTitle')}
+              description={t('dashboard.callHistoryAppear')}
             />
           </div>
         )}

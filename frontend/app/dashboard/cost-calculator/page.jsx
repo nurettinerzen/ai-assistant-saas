@@ -5,11 +5,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { DollarSign, Calculator, TrendingDown, Phone, Clock, Users, ArrowRight } from 'lucide-react';
-import { getCurrentLanguage, t } from '@/lib/translations';
+import { useLanguage } from '@/contexts/LanguageContext';
 import api from '@/lib/api';
 import { toast } from 'sonner';
 
 export default function CostCalculatorPage() {
+  const { t } = useLanguage();
   const [language, setLanguage] = useState('en');
   const [callsPerMonth, setCallsPerMonth] = useState(500);
   const [avgDuration, setAvgDuration] = useState(5);

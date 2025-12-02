@@ -26,6 +26,7 @@ import axios from 'axios';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 export default function ChatWidgetPage() {
+  const { t } = useLanguage();
   const [isEnabled, setIsEnabled] = useState(false);
   const [position, setPosition] = useState('bottom-right');
   const [primaryColor, setPrimaryColor] = useState('#6366f1');

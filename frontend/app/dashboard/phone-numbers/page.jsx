@@ -15,7 +15,7 @@ import { Phone, Plus, Trash2, TestTube2, Lock } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast, toastHelpers } from '@/lib/toast';
 import { formatPhone, formatDate } from '@/lib/utils';
-import { t, getCurrentLanguage } from '@/lib/translations';
+import { useLanguage } from '@/contexts/LanguageContext';
 import Link from 'next/link';
 
 // Plan limitleri
@@ -27,15 +27,14 @@ const PLAN_LIMITS = {
 };
 
 export default function PhoneNumbersPage() {
+  const { t } = useLanguage();
   const [phoneNumbers, setPhoneNumbers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showProvisionModal, setShowProvisionModal] = useState(false);
-  const [locale, setLocale] = useState('en');
   const [subscription, setSubscription] = useState(null);
   const [isLocked, setIsLocked] = useState(false);
 
   useEffect(() => {
-    setLocale(getCurrentLanguage());
     loadSubscription();
     loadPhoneNumbers();
   }, []);
@@ -62,7 +61,7 @@ export default function PhoneNumbersPage() {
       const response = await apiClient.phoneNumbers.getAll();
       setPhoneNumbers(response.data.phoneNumbers || []);
     } catch (error) {
-      toast.error(t('saveError', locale));
+      toast.error(t('dashboard.saveError'));
     } finally {
       setLoading(false);
     }
@@ -72,8 +71,8 @@ export default function PhoneNumbersPage() {
     try {
       await toastHelpers.async(
         apiClient.phoneNumbers.test(phoneNumber.id),
-        t('initiatingTestCall', locale),
-        t('testCallStarted', locale)
+        t('dashboard.initiatingTestCall'),
+        t('dashboard.testCallStarted')
       );
     } catch (error) {
       // Error handled
@@ -83,7 +82,7 @@ export default function PhoneNumbersPage() {
   const handleRelease = async (phoneNumber) => {
     if (
       !confirm(
-        `${t('releaseNumberConfirm', locale)} ${formatPhone(phoneNumber.phoneNumber)}${t('numberWillReturn', locale)}`
+        `${t('dashboard.releaseNumberConfirm')} ${formatPhone(phoneNumber.phoneNumber)}${t('dashboard.numberWillReturn')}`
       )
     )
       return;
@@ -91,8 +90,8 @@ export default function PhoneNumbersPage() {
     try {
       await toastHelpers.async(
         apiClient.phoneNumbers.release(phoneNumber.id),
-        t('releasingNumber', locale),
-        t('phoneNumberReleased', locale)
+        t('dashboard.releasingNumber'),
+        t('dashboard.phoneNumberReleased')
       );
       loadPhoneNumbers();
     } catch (error) {
@@ -114,8 +113,8 @@ export default function PhoneNumbersPage() {
       <div className="space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold text-neutral-900">{t('phoneNumbersTitle2', locale)}</h1>
-          <p className="text-neutral-600 mt-1">{t('managePhoneNumbers', locale)}</p>
+          <h1 className="text-3xl font-bold text-neutral-900">{t('dashboard.phoneNumbersTitle2')}</h1>
+          <p className="text-neutral-600 mt-1">{t('dashboard.managePhoneNumbers')}</p>
         </div>
 
         {/* Locked State */}
@@ -124,14 +123,14 @@ export default function PhoneNumbersPage() {
             <Lock className="h-10 w-10 text-neutral-400" />
           </div>
           <h2 className="text-2xl font-bold text-neutral-900 mb-3">
-            {t('upgradeToGetPhone', locale) || 'Planınızı Yükseltin'}
+            {t('dashboard.upgradeToGetPhone') || 'Planınızı Yükseltin'}
           </h2>
           <p className="text-neutral-600 mb-6 max-w-md mx-auto">
-            {t('phoneNumbersLockedDesc', locale) || 'Telefon numarası özelliği BASIC ve üzeri planlarda mevcuttur. Gerçek aramalar almaya başlamak için planınızı yükseltin.'}
+            {t('dashboard.phoneNumbersLockedDesc') || 'Telefon numarası özelliği BASIC ve üzeri planlarda mevcuttur. Gerçek aramalar almaya başlamak için planınızı yükseltin.'}
           </p>
           <Link href="/dashboard/subscription">
             <Button size="lg" className="bg-gradient-to-r from-indigo-600 to-blue-500">
-              {t('upgrade', locale)} →
+              {t('dashboard.upgrade')} →
             </Button>
           </Link>
         </div>
@@ -139,25 +138,25 @@ export default function PhoneNumbersPage() {
         {/* Plan comparison */}
         <div className="bg-primary-50 border border-primary-200 rounded-xl p-6">
           <h3 className="text-sm font-semibold text-primary-900 mb-3">
-            {t('planFeatures', locale) || 'Plan Özellikleri'}
+            {t('dashboard.planFeatures') || 'Plan Özellikleri'}
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
             <div className="bg-white p-4 rounded-lg">
-              <div className="font-semibold text-neutral-900 mb-2">{t('basicPlan', locale)}</div>
-              <div className="text-neutral-600">1 {t('phoneNumber', locale)}</div>
+              <div className="font-semibold text-neutral-900 mb-2">{t('dashboard.basicPlan')}</div>
+              <div className="text-neutral-600">1 {t('dashboard.phoneNumber')}</div>
               <div className="text-xs text-neutral-500 mt-1">$29/ay</div>
             </div>
             <div className="bg-white p-4 rounded-lg border-2 border-primary-300">
               <div className="font-semibold text-primary-700 mb-2">
-                {t('professionalPlan', locale)} ⭐
+                {t('dashboard.professionalPlan')} ⭐
               </div>
-              <div className="text-neutral-600">3 {t('phoneNumber', locale)}</div>
+              <div className="text-neutral-600">3 {t('dashboard.phoneNumber')}</div>
               <div className="text-xs text-neutral-500 mt-1">$99/ay</div>
             </div>
             <div className="bg-white p-4 rounded-lg">
-              <div className="font-semibold text-neutral-900 mb-2">{t('enterprisePlan', locale)}</div>
-              <div className="text-neutral-600">{t('unlimited', locale) || 'Sınırsız'}</div>
-              <div className="text-xs text-neutral-500 mt-1">{t('contactSales', locale)}</div>
+              <div className="font-semibold text-neutral-900 mb-2">{t('dashboard.enterprisePlan')}</div>
+              <div className="text-neutral-600">{t('dashboard.unlimited') || 'Sınırsız'}</div>
+              <div className="text-xs text-neutral-500 mt-1">{t('dashboard.contactSales')}</div>
             </div>
           </div>
         </div>
@@ -170,12 +169,12 @@ export default function PhoneNumbersPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-neutral-900">{t('phoneNumbersTitle2', locale)}</h1>
-          <p className="text-neutral-600 mt-1">{t('managePhoneNumbers', locale)}</p>
+          <h1 className="text-3xl font-bold text-neutral-900">{t('dashboard.phoneNumbersTitle2')}</h1>
+          <p className="text-neutral-600 mt-1">{t('dashboard.managePhoneNumbers')}</p>
           {/* 🔧 Plan limit indicator */}
           {subscription && (
             <p className="text-sm text-primary-600 mt-2">
-              {phoneNumbers.length}/{PLAN_LIMITS[subscription.plan]?.phoneNumbers === -1 ? '∞' : PLAN_LIMITS[subscription.plan]?.phoneNumbers} {t('phoneNumbersUsed', locale) || 'numara kullanılıyor'}
+              {phoneNumbers.length}/{PLAN_LIMITS[subscription.plan]?.phoneNumbers === -1 ? '∞' : PLAN_LIMITS[subscription.plan]?.phoneNumbers} {t('dashboard.phoneNumbersUsed') || 'numara kullanılıyor'}
             </p>
           )}
         </div>
@@ -184,7 +183,7 @@ export default function PhoneNumbersPage() {
           disabled={!canAddNumber()}
         >
           <Plus className="h-4 w-4 mr-2" />
-          {t('getPhoneNumberBtn', locale)}
+          {t('dashboard.getPhoneNumberBtn')}
         </Button>
       </div>
 
@@ -192,9 +191,9 @@ export default function PhoneNumbersPage() {
       {!canAddNumber() && phoneNumbers.length > 0 && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
           <p className="text-sm text-yellow-800">
-            ⚠️ {t('phoneLimitReached', locale) || 'Telefon numarası limitinize ulaştınız. Daha fazla numara eklemek için planınızı yükseltin.'}
+            ⚠️ {t('dashboard.phoneLimitReached') || 'Telefon numarası limitinize ulaştınız. Daha fazla numara eklemek için planınızı yükseltin.'}
             <Link href="/dashboard/subscription" className="ml-2 underline font-medium">
-              {t('upgrade', locale)}
+              {t('dashboard.upgrade')}
             </Link>
           </p>
         </div>
@@ -231,7 +230,7 @@ export default function PhoneNumbersPage() {
                       {formatPhone(number.phoneNumber)}
                     </p>
                     <p className="text-xs text-neutral-500 mt-1">
-                      {t('provisionedLabel', locale)} {formatDate(number.createdAt, 'short')}
+                      {t('dashboard.provisionedLabel')} {formatDate(number.createdAt, 'short')}
                     </p>
                   </div>
                 </div>
@@ -239,17 +238,17 @@ export default function PhoneNumbersPage() {
 
               <div className="space-y-2 mb-4">
                 <div className="flex justify-between text-sm">
-                  <span className="text-neutral-600">{t('assistantColonLabel', locale)}</span>
+                  <span className="text-neutral-600">{t('dashboard.assistantColonLabel')}</span>
                   <span className="font-medium text-neutral-900">
-                    {number.assistantName || t('notAssignedLabel', locale)}
+                    {number.assistantName || t('dashboard.notAssignedLabel')}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-neutral-600">{t('statusColonLabel', locale)}</span>
-                  <Badge className="bg-green-100 text-green-800">{t('activeLabel', locale)}</Badge>
+                  <span className="text-neutral-600">{t('dashboard.statusColonLabel')}</span>
+                  <Badge className="bg-green-100 text-green-800">{t('dashboard.activeLabel')}</Badge>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-neutral-600">{t('monthlyCostColonLabel', locale)}</span>
+                  <span className="text-neutral-600">{t('dashboard.monthlyCostColonLabel')}</span>
                   <span className="font-medium text-neutral-900">$1.00</span>
                 </div>
               </div>
@@ -262,7 +261,7 @@ export default function PhoneNumbersPage() {
                   onClick={() => handleTestCall(number)}
                 >
                   <TestTube2 className="h-3 w-3 mr-2" />
-                  {t('testBtn', locale)}
+                  {t('dashboard.testBtn')}
                 </Button>
                 <Button
                   variant="outline"
@@ -279,9 +278,9 @@ export default function PhoneNumbersPage() {
         <div className="bg-white rounded-xl border border-neutral-200 p-8">
           <EmptyState
             icon={Phone}
-            title={t('noPhoneNumbersTitle', locale)}
-            description={t('getNumberToStartDesc', locale)}
-            actionLabel={t('getPhoneNumberBtn', locale)}
+            title={t('dashboard.noPhoneNumbersTitle')}
+            description={t('dashboard.getNumberToStartDesc')}
+            actionLabel={t('dashboard.getPhoneNumberBtn')}
             onAction={() => setShowProvisionModal(true)}
           />
         </div>
@@ -290,9 +289,9 @@ export default function PhoneNumbersPage() {
       {/* Info banner */}
       {phoneNumbers.length > 0 && (
         <div className="bg-primary-50 border border-primary-200 rounded-xl p-6">
-          <h3 className="text-sm font-semibold text-primary-900 mb-2">{t('billingInformationTitle', locale)}</h3>
+          <h3 className="text-sm font-semibold text-primary-900 mb-2">{t('dashboard.billingInformationTitle')}</h3>
           <p className="text-sm text-primary-700">
-            {t('phoneNumberBillingDesc', locale)}
+            {t('dashboard.phoneNumberBillingDesc')}
           </p>
         </div>
       )}

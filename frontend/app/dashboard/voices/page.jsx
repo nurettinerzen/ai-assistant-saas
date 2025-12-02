@@ -14,10 +14,10 @@ import EmptyState from '@/components/EmptyState';
 import { Mic, Search } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
-import { getCurrentLanguage, t } from '@/lib/translations';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function VoicesPage() {
-  const [locale, setLocale] = useState('en');
+  const { t } = useLanguage();
   const [voices, setVoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -27,7 +27,6 @@ export default function VoicesPage() {
   const [businessLanguage, setBusinessLanguage] = useState('EN');
 
   useEffect(() => {
-    setLocale(getCurrentLanguage());
     loadBusinessLanguage();
     loadVoices();
   }, []);
@@ -67,7 +66,7 @@ export default function VoicesPage() {
       setVoices(allVoices);
     } catch (error) {
       console.error('Failed to load voices:', error);
-      toast.error(t('failedToLoadVoices', locale));
+      toast.error(t('dashboard.failedToLoadVoices'));
     } finally {
       setLoading(false);
     }
@@ -75,7 +74,7 @@ export default function VoicesPage() {
 
   const handleSelectVoice = (voice) => {
     setSelectedVoice(voice);
-    toast.success(`${t('selected', locale)}: ${voice.name}`);
+    toast.success(`${t('dashboard.selected')}: ${voice.name}`);
   };
 
   const filteredVoices = voices.filter((voice) => {
@@ -91,14 +90,14 @@ export default function VoicesPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-neutral-900">{t('voices', locale)}</h1>
+        <h1 className="text-3xl font-bold text-neutral-900">{t('dashboard.voices')}</h1>
         <p className="text-neutral-600 mt-1">
-          {t('voicesDescription', locale)}
+          {t('dashboard.voicesDescription')}
         </p>
         {/* 🔧 Business language indicator */}
         {businessLanguage && (
           <p className="text-sm text-primary-600 mt-2">
-            📌 {t('businessLanguage', locale)}: {businessLanguage === 'TR' ? 'Türkçe' : 'English'}
+            📌 {t('dashboard.businessLanguage')}: {businessLanguage === 'TR' ? 'Türkçe' : 'English'}
           </p>
         )}
       </div>
@@ -108,7 +107,7 @@ export default function VoicesPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
           <Input
-            placeholder={t('searchVoices', locale)}
+            placeholder={t('dashboard.searchVoices')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
@@ -119,9 +118,9 @@ export default function VoicesPage() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">{t('allGenders', locale)}</SelectItem>
-            <SelectItem value="male">{t('male', locale)}</SelectItem>
-            <SelectItem value="female">{t('female', locale)}</SelectItem>
+            <SelectItem value="all">{t('dashboard.allGenders')}</SelectItem>
+            <SelectItem value="male">{t('dashboard.male')}</SelectItem>
+            <SelectItem value="female">{t('dashboard.female')}</SelectItem>
           </SelectContent>
         </Select>
         <Select value={languageFilter} onValueChange={setLanguageFilter}>
@@ -129,7 +128,7 @@ export default function VoicesPage() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent className="max-h-96 overflow-y-auto">
-            <SelectItem value="all">{t('allLanguages', locale)}</SelectItem>
+            <SelectItem value="all">{t('dashboard.allLanguages')}</SelectItem>
             <SelectItem value="Turkish">🇹🇷 Turkish</SelectItem>
             <SelectItem value="American">🇺🇸 English (US)</SelectItem>
             <SelectItem value="British">🇬🇧 English (UK)</SelectItem>
@@ -180,15 +179,15 @@ export default function VoicesPage() {
             ))}
           </div>
           <div className="text-center text-sm text-neutral-500">
-            {t('showing', locale)} {filteredVoices.length} {t('of', locale)} {voices.length} {t('voices', locale)}
+            {t('dashboard.showing')} {filteredVoices.length} {t('dashboard.of')} {voices.length} {t('dashboard.voices')}
           </div>
         </>
       ) : (
         <div className="bg-white rounded-xl border border-neutral-200 p-8">
           <EmptyState
             icon={Mic}
-            title={t('noVoicesFound', locale)}
-            description={t('tryAdjustingFilters', locale)}
+            title={t('dashboard.noVoicesFound')}
+            description={t('dashboard.tryAdjustingFilters')}
           />
         </div>
       )}
@@ -196,10 +195,10 @@ export default function VoicesPage() {
       {/* Info banner */}
       <div className="bg-primary-50 border border-primary-200 rounded-xl p-6">
         <h3 className="text-sm font-semibold text-primary-900 mb-2">
-          {t('aboutVoiceSelection', locale)}
+          {t('dashboard.aboutVoiceSelection')}
         </h3>
         <p className="text-sm text-primary-700">
-          {t('voiceSelectionInfo', locale)}
+          {t('dashboard.voiceSelectionInfo')}
         </p>
       </div>
     </div>

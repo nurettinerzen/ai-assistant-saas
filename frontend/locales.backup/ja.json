@@ -1,20 +1,20 @@
 {
   "common": {
-    "signIn": "Sign In",
-    "createAccount": "Create Account",
+    "signIn": "",
+    "createAccount": "",
     "google": "Google",
-    "language": "English",
-    "login": "Login",
-    "signup": "Sign Up",
-    "logout": "Logout",
-    "save": "Save",
-    "cancel": "Cancel",
-    "delete": "Delete",
-    "edit": "Edit",
-    "back": "Back",
-    "next": "Next",
-    "complete": "Complete",
-    "loading": "Loading..."
+    "language": "日本語",
+    "login": "ログイン",
+    "signup": "登録",
+    "logout": "ログアウト",
+    "save": "保存",
+    "cancel": "キャンセル",
+    "delete": "削除",
+    "edit": "編集",
+    "back": "戻る",
+    "next": "次へ",
+    "complete": "完了",
+    "loading": "読み込み中..."
   },
   "landing": {
     "hero": {
@@ -24,58 +24,51 @@
       "watch": "Watch Demo"
     },
     "features": {
-      "title": "Everything You Need",
-      "voice": "Natural Voice",
-      "voiceDesc": "Human-like conversations",
-      "analytics": "Advanced Analytics",
-      "analyticsDesc": "Track every call",
-      "integration": "Easy Integration",
-      "integrationDesc": "Connect with your tools"
+      "title": "必要なものすべて",
+      "voice": "自然な声",
+      "voiceDesc": "人間のような会話",
+      "analytics": "高度な分析",
+      "analyticsDesc": "すべての通話を追跡",
+      "integration": "簡単な統合",
+      "integrationDesc": "ツールを接続"
     },
     "testimonials": {
-      "title": "Loved by Businesses",
-      "titleHighlight": "Worldwide",
-      "subtitle": "See what our customers have to say"
+      "title": "",
+      "titleHighlight": "",
+      "subtitle": ""
     },
     "cta": {
-      "title": "Ready to Transform Your Business?",
-      "subtitle": "Join thousands of businesses already using TELYX.AI to automate and scale",
-      "startTrial": "Start Free Trial",
-      "talkToSales": "Talk to Sales"
+      "title": "",
+      "subtitle": "",
+      "startTrial": "",
+      "talkToSales": ""
     },
     "footer": {
-      "tagline": "AI-powered phone assistant for modern businesses",
-      "product": "Product",
-      "features": "Features",
-      "pricing": "Pricing",
-      "solutions": "Solutions",
-      "company": "Company",
-      "contact": "Contact",
-      "about": "About Us",
-      "blog": "Blog",
-      "legal": "Legal",
-      "privacy": "Privacy Policy",
-      "terms": "Terms of Service",
-      "copyright": "© 2024 TELYX.AI. All rights reserved."
+      "tagline": "",
+      "product": "",
+      "features": "",
+      "pricing": "",
+      "solutions": "",
+      "company": "",
+      "contact": "",
+      "about": "",
+      "blog": "",
+      "legal": "",
+      "privacy": "",
+      "terms": "",
+      "copyright": ""
     }
   },
   "auth": {
-    "loginTitle": "Welcome back",
-    "loginSubtitle": "Sign in to your account",
-    "signupTitle": "Create your account",
-    "signupSubtitle": "Start building AI assistants today",
-    "email": "Email",
-    "emailPlaceholder": "you@example.com",
-    "password": "Password",
-    "passwordPlaceholder": "••••••••",
-    "fullName": "Full Name",
-    "businessName": "Business Name",
-    "businessNamePlaceholder": "Your business name",
-    "continueWith": "Or continue with",
-    "alreadyHaveAccount": "Already have an account?",
-    "dontHaveAccount": "Don't have an account?",
-    "forgotPassword": "Forgot password?",
-    "businessType": "What type of business do you have?",
+    "loginTitle": "お帰りなさい",
+    "signupTitle": "アカウントを作成",
+    "email": "メール",
+    "password": "パスワード",
+    "fullName": "氏名",
+    "continueWith": "または次で続ける",
+    "alreadyHaveAccount": "アカウントがありますか？",
+    "dontHaveAccount": "アカウントがありませんか？",
+    "forgotPassword": "パスワードを忘れましたか？",
     "businessTypes": {
       "restaurant": "Restaurant/Cafe",
       "restaurantDesc": "Take reservations and manage bookings",
@@ -88,6 +81,12 @@
       "other": "Other",
       "otherDesc": "General business needs"
     },
+    "loginSubtitle": "Sign in to your account",
+    "signupSubtitle": "Start building AI assistants today",
+    "emailPlaceholder": "you@example.com",
+    "passwordPlaceholder": "••••••••",
+    "businessNamePlaceholder": "Your business name",
+    "businessType": "What type of business do you have?",
     "freeTrial": "14-day free trial",
     "noCreditCard": "No credit card required",
     "cancelAnytime": "Cancel anytime",
@@ -106,42 +105,34 @@
     "resendCode": "Resend Code",
     "mustBe8Chars": "Must be at least 8 characters"
   },
-  "navigation": {
-    "solutions": "Solutions",
-    "features": "Features",
-    "pricing": "Pricing",
-    "contact": "Contact Sales",
-    "register": "Register",
-    "getStarted": "Get Started"
-  },
   "dashboard": {
-    "overview": "Dashboard",
-    "assistants": "Assistants",
-    "calls": "Calls",
-    "analytics": "Analytics",
-    "knowledgeBase": "Knowledge Base",
-    "subscription": "Subscription",
-    "settings": "Settings",
-    "navBuild": "Build",
-    "navAssistants": "Assistants",
-    "navKnowledgeBase": "Knowledge Base",
-    "navVoices": "Voices",
-    "navChatWidget": "Chat Widget",
-    "navDeploy": "Deploy",
-    "navPhoneNumbers": "Phone Numbers",
-    "navIntegrations": "Integrations",
-    "navMonitor": "Monitor",
-    "navDashboard": "Dashboard",
-    "navCalls": "Calls",
-    "navAnalytics": "Analytics",
-    "navSystem": "System",
-    "navSettings": "Settings",
-    "navSubscription": "Subscription",
-    "navCostCalculator": "Cost Calculator",
-    "availableCredits": "Available Credits",
-    "addCredits": "Add Credits",
-    "profileSettings": "Profile Settings",
-    "logOut": "Log Out",
+    "overview": "ダッシュボード",
+    "assistants": "アシスタント",
+    "calls": "通話",
+    "analytics": "分析",
+    "knowledgeBase": "知識ベース",
+    "subscription": "サブスクリプション",
+    "settings": "設定",
+    "navBuild": "構築",
+    "navAssistants": "アシスタント",
+    "navKnowledgeBase": "ナレッジベース",
+    "navVoices": "音声",
+    "navChatWidget": "チャットウィジェット",
+    "navDeploy": "デプロイ",
+    "navPhoneNumbers": "電話番号",
+    "navIntegrations": "統合",
+    "navMonitor": "監視",
+    "navDashboard": "ダッシュボード",
+    "navCalls": "通話",
+    "navAnalytics": "分析",
+    "navSystem": "システム",
+    "navSettings": "設定",
+    "navSubscription": "サブスクリプション",
+    "navCostCalculator": "コスト計算機",
+    "availableCredits": "利用可能なクレジット",
+    "addCredits": "クレジットを追加",
+    "profileSettings": "プロフィール設定",
+    "logOut": "ログアウト",
     "aboutVoiceSelection": "About Voice Selection",
     "actionsTableHeader": "Actions",
     "activeLabel": "Active",
@@ -477,28 +468,36 @@
   },
   "onboarding": {
     "step1": {
-      "title": "Choose Language",
-      "description": "Select your preferred language"
+      "title": "言語を選択",
+      "description": "お好みの言語を選択"
     },
     "step2": {
-      "title": "Choose Industry",
-      "description": "Tell us about your business"
+      "title": "業界を選択",
+      "description": "ビジネスについて教えてください"
     },
     "step3": {
-      "title": "Pick Your Voice",
-      "description": "Select your assistant's voice"
+      "title": "音声を選択",
+      "description": "アシスタントの音声を選択"
     },
     "step4": {
-      "title": "Add Training",
-      "description": "Create your first greeting"
+      "title": "トレーニングを追加",
+      "description": "最初の挨拶を作成"
     },
     "step5": {
-      "title": "Test Assistant",
-      "description": "Try it out!"
+      "title": "アシスタントをテスト",
+      "description": "試してみよう！"
     },
     "step6": {
-      "title": "Complete",
-      "description": "You're all set!"
+      "title": "完了",
+      "description": "準備完了！"
     }
+  },
+  "navigation": {
+    "solutions": "",
+    "features": "",
+    "pricing": "",
+    "contact": "",
+    "register": "",
+    "getStarted": ""
   }
 }

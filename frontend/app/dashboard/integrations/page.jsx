@@ -13,7 +13,7 @@ import EmptyState from '@/components/EmptyState';
 import { Puzzle, Check, ExternalLink, Star } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast, toastHelpers } from '@/lib/toast';
-import { t, getCurrentLanguage } from '@/lib/translations';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 // 🔧 Sektöre göre önerilen entegrasyonlar
 const INDUSTRY_INTEGRATIONS = {
@@ -91,13 +91,12 @@ const AVAILABLE_INTEGRATIONS = [
 ];
 
 export default function IntegrationsPage() {
+  const { t } = useLanguage();
   const [integrations, setIntegrations] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [locale, setLocale] = useState('en');
   const [businessType, setBusinessType] = useState('OTHER');
 
   useEffect(() => {
-    setLocale(getCurrentLanguage());
     loadBusinessInfo();
     loadIntegrations();
   }, []);
@@ -122,7 +121,7 @@ export default function IntegrationsPage() {
       const response = await apiClient.integrations.getAll();
       setIntegrations(response.data.integrations || []);
     } catch (error) {
-      toast.error(t('saveError', locale));
+      toast.error(t('dashboard.saveError'));
     } finally {
       setLoading(false);
     }
@@ -140,8 +139,8 @@ export default function IntegrationsPage() {
       // Other integrations
       await toastHelpers.async(
         apiClient.integrations.connect(integrationId, {}),
-        t('connectingText', locale),
-        t('integrationConnected', locale)
+        t('dashboard.connectingText'),
+        t('dashboard.integrationConnected')
       );
       loadIntegrations();
     } catch (error) {
@@ -150,13 +149,13 @@ export default function IntegrationsPage() {
   };
 
   const handleDisconnect = async (integrationId) => {
-    if (!confirm(t('disconnectConfirm', locale))) return;
+    if (!confirm(t('dashboard.disconnectConfirm'))) return;
 
     try {
       await toastHelpers.async(
         apiClient.integrations.disconnect(integrationId),
-        t('disconnectingText', locale),
-        t('integrationDisconnected', locale)
+        t('dashboard.disconnectingText'),
+        t('dashboard.integrationDisconnected')
       );
       loadIntegrations();
     } catch (error) {
@@ -168,8 +167,8 @@ export default function IntegrationsPage() {
     try {
       await toastHelpers.async(
         apiClient.integrations.test(integrationId),
-        t('testingConnection', locale),
-        t('integrationWorking', locale)
+        t('dashboard.testingConnection'),
+        t('dashboard.integrationWorking')
       );
     } catch (error) {
       // Error handled
@@ -214,14 +213,14 @@ export default function IntegrationsPage() {
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-neutral-900">{t('integrationsTitle2', locale)}</h1>
+        <h1 className="text-3xl font-bold text-neutral-900">{t('dashboard.integrationsTitle2')}</h1>
         <p className="text-neutral-600 mt-1">
-          {t('connectTelyx', locale)}
+          {t('dashboard.connectTelyx')}
         </p>
         {/* Business type indicator */}
         {businessType && (
           <p className="text-sm text-primary-600 mt-2">
-            📌 {t('industry', locale)}: {t(`industry${businessType.charAt(0) + businessType.slice(1).toLowerCase()}`, locale)}
+            📌 {t('dashboard.industry')}: {t(`industry${businessType.charAt(0) + businessType.slice(1).toLowerCase()}`, locale)}
           </p>
         )}
       </div>
@@ -278,7 +277,7 @@ export default function IntegrationsPage() {
 
                 {recommended && (
                   <div className="mb-3 px-2 py-1 bg-primary-100 text-primary-700 text-xs rounded-md inline-block">
-                    ⭐ {t('recommendedForYou', locale) || 'Sizin için önerilen'}
+                    ⭐ {t('dashboard.recommendedForYou') || 'Sizin için önerilen'}
                   </div>
                 )}
 
@@ -293,14 +292,14 @@ export default function IntegrationsPage() {
                         className="flex-1"
                         onClick={() => handleTest(integration.id)}
                       >
-                        {t('testBtn2', locale)}
+                        {t('dashboard.testBtn2')}
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => handleDisconnect(integration.id)}
                       >
-                        {t('disconnectBtn', locale)}
+                        {t('dashboard.disconnectBtn')}
                       </Button>
                     </>
                   ) : (
@@ -309,7 +308,7 @@ export default function IntegrationsPage() {
                       className="flex-1"
                       onClick={() => handleConnect(integration.id)}
                     >
-                      {t('connectBtn', locale)}
+                      {t('dashboard.connectBtn')}
                     </Button>
                   )}
                   <Button
@@ -335,13 +334,13 @@ export default function IntegrationsPage() {
       {/* Info banner */}
       <div className="bg-primary-50 border border-primary-200 rounded-xl p-6">
         <h3 className="text-sm font-semibold text-primary-900 mb-2">
-          {t('needCustomIntegration', locale)}
+          {t('dashboard.needCustomIntegration')}
         </h3>
         <p className="text-sm text-primary-700 mb-3">
-          {t('customIntegrationDesc', locale)}
+          {t('dashboard.customIntegrationDesc')}
         </p>
         <Button variant="outline" size="sm">
-          {t('contactSalesBtn', locale)}
+          {t('dashboard.contactSalesBtn')}
         </Button>
       </div>
     </div>

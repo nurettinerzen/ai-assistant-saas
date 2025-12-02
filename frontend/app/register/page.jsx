@@ -7,19 +7,23 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useLanguage } from '@/contexts/LanguageContext';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-const BUSINESS_TYPES = [
-  { value: 'RESTAURANT', label: '🍽️ Restaurant/Cafe', description: 'Take reservations and manage bookings' },
-  { value: 'SALON', label: '💇 Salon/Spa/Barber', description: 'Schedule appointments for beauty services' },
-  { value: 'ECOMMERCE', label: '🛍️ E-commerce/Retail', description: 'Track inventory and shipping' },
-  { value: 'SERVICE', label: '🔧 Service Business', description: 'Appointments for repairs, consulting, etc.' },
-  { value: 'OTHER', label: '📋 Other', description: 'General business needs' }
+const getBusinessTypes = (t) => [
+  { value: 'RESTAURANT', label: `🍽️ ${t('auth.businessTypes.restaurant')}`, description: t('auth.businessTypes.restaurantDesc') },
+  { value: 'SALON', label: `💇 ${t('auth.businessTypes.salon')}`, description: t('auth.businessTypes.salonDesc') },
+  { value: 'ECOMMERCE', label: `🛍️ ${t('auth.businessTypes.ecommerce')}`, description: t('auth.businessTypes.ecommerceDesc') },
+  { value: 'SERVICE', label: `🔧 ${t('auth.businessTypes.service')}`, description: t('auth.businessTypes.serviceDesc') },
+  { value: 'OTHER', label: `📋 ${t('auth.businessTypes.other')}`, description: t('auth.businessTypes.otherDesc') }
 ];
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { t } = useLanguage();
+  const BUSINESS_TYPES = getBusinessTypes(t);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -61,18 +65,19 @@ export default function RegisterPage() {
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center p-4">
       <div className="w-full max-w-2xl">
         {/* Logo/Header */}
-        <div className="text-center mb-8">
-          <Link href="/" className="inline-block">
+        <div className="text-center mb-8 flex items-center justify-between max-w-2xl mx-auto">
+          <Link href="/" className="inline-block flex-1">
             <h1 className="text-4xl font-bold gradient-text mb-2">TELYX.AI</h1>
+            <p className="text-gray-600">{t('auth.signupSubtitle')}</p>
           </Link>
-          <p className="text-gray-600">Create your account to get started</p>
+          <LanguageSwitcher />
         </div>
 
         <Card className="glass border-white/20 shadow-xl">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Sign Up</CardTitle>
+            <CardTitle className="text-2xl">{t('common.signup')}</CardTitle>
             <CardDescription>
-              Start your 14-day free trial. No credit card required.
+              {t('auth.freeTrial')}. {t('auth.noCreditCard')}.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -85,11 +90,11 @@ export default function RegisterPage() {
 
               {/* Business Name */}
               <div className="space-y-2">
-                <Label htmlFor="businessName">Business Name *</Label>
+                <Label htmlFor="businessName">{t('auth.businessName')} *</Label>
                 <Input
                   id="businessName"
                   type="text"
-                  placeholder="Your business name"
+                  placeholder={t('auth.businessNamePlaceholder')}
                   value={formData.businessName}
                   onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
                   required
@@ -99,7 +104,7 @@ export default function RegisterPage() {
 
               {/* Business Type */}
               <div className="space-y-3">
-                <Label className="text-base font-semibold">What type of business do you have? *</Label>
+                <Label className="text-base font-semibold">{t('auth.businessType')} *</Label>
                 <div className="space-y-3">
                   {BUSINESS_TYPES.map(type => (
                     <div
@@ -136,11 +141,11 @@ export default function RegisterPage() {
 
               {/* Email */}
               <div className="space-y-2">
-                <Label htmlFor="email">Email Address *</Label>
+                <Label htmlFor="email">{t('auth.email')} *</Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="your@email.com"
+                  placeholder={t('auth.emailPlaceholder')}
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   required
@@ -150,11 +155,11 @@ export default function RegisterPage() {
 
               {/* Password */}
               <div className="space-y-2">
-                <Label htmlFor="password">Password *</Label>
+                <Label htmlFor="password">{t('auth.password')} *</Label>
                 <Input
                   id="password"
                   type="password"
-                  placeholder="At least 8 characters"
+                  placeholder={t('auth.passwordPlaceholder')}
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   required
@@ -176,18 +181,18 @@ export default function RegisterPage() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    <span>Creating account...</span>
+                    <span>{t('auth.creatingAccount')}</span>
                   </div>
                 ) : (
-                  'Create Account'
+                  t('common.createAccount')
                 )}
               </Button>
 
               {/* Sign In Link */}
               <p className="text-center text-sm text-gray-600">
-                Already have an account?{' '}
+                {t('auth.alreadyHaveAccount')}{' '}
                 <Link href="/login" className="text-indigo-600 hover:underline font-medium" data-testid="login-link">
-                  Sign In
+                  {t('common.signIn')}
                 </Link>
               </p>
             </form>
@@ -200,19 +205,19 @@ export default function RegisterPage() {
             <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
             </svg>
-            <span>14-day free trial</span>
+            <span>{t('auth.freeTrial')}</span>
           </div>
           <div className="flex items-center space-x-2">
             <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
             </svg>
-            <span>No credit card required</span>
+            <span>{t('auth.noCreditCard')}</span>
           </div>
           <div className="flex items-center space-x-2">
             <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
             </svg>
-            <span>Cancel anytime</span>
+            <span>{t('auth.cancelAnytime')}</span>
           </div>
         </div>
       </div>

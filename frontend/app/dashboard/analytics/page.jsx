@@ -52,15 +52,14 @@ const SENTIMENT_COLORS = {
 };
 
 export default function AnalyticsPage() {
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState('30d');
   const [analytics, setAnalytics] = useState(null);
   const [recentCalls, setRecentCalls] = useState([]);
   const [peakHours, setPeakHours] = useState([]);
-  const [locale, setLocale] = useState('en');
 
   useEffect(() => {
-    setLocale(getCurrentLanguage());
   }, []);
 
   useEffect(() => {

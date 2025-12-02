@@ -32,9 +32,10 @@ import { Bot, Plus, Edit, Trash2, Play, Search } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { toast } from 'sonner';
-import { t, getCurrentLanguage } from '@/lib/translations';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function AssistantsPage() {
+  const { t } = useLanguage();
   const [assistants, setAssistants] = useState([]);
   const [voices, setVoices] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -42,7 +43,6 @@ export default function AssistantsPage() {
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingAssistant, setEditingAssistant] = useState(null);
-  const [locale, setLocale] = useState('en');
   const [formData, setFormData] = useState({
     name: '',
     voiceId: '',
@@ -51,7 +51,6 @@ export default function AssistantsPage() {
   });
 
   useEffect(() => {
-    setLocale(getCurrentLanguage());
     loadData();
   }, []);
 
@@ -72,7 +71,7 @@ export default function AssistantsPage() {
       ];
       setVoices(allVoices);
     } catch (error) {
-      toast.error(t('saveError', locale));
+      toast.error(t('dashboard.saveError'));
     } finally {
       setLoading(false);
     }
@@ -99,18 +98,18 @@ export default function AssistantsPage() {
 
   const handleCreate = async () => {
     if (!formData.name || !formData.voiceId || !formData.systemPrompt) {
-      toast.error(t('fillAllRequired', locale));
+      toast.error(t('dashboard.fillAllRequired'));
       return;
     }
 
     try {
       await apiClient.assistants.create(formData);
-      toast.success(t('assistantCreatedSuccess', locale));
+      toast.success(t('dashboard.assistantCreatedSuccess'));
       setShowCreateModal(false);
       resetForm();
       loadData();
     } catch (error) {
-      toast.error(error.response?.data?.error || t('saveError', locale));
+      toast.error(error.response?.data?.error || t('dashboard.saveError'));
     }
   };
 
@@ -130,22 +129,22 @@ export default function AssistantsPage() {
 
     try {
       await apiClient.assistants.update(editingAssistant.id, formData);
-      toast.success(t('assistantUpdatedSuccess', locale));
+      toast.success(t('dashboard.assistantUpdatedSuccess'));
       setShowCreateModal(false);
       resetForm();
       loadData();
     } catch (error) {
-      toast.error(error.response?.data?.error || t('saveError', locale));
+      toast.error(error.response?.data?.error || t('dashboard.saveError'));
     }
   };
 
   const handleDelete = async (assistant) => {
     try {
       await apiClient.assistants.delete(assistant.id);
-      toast.success(t('assistantDeletedSuccess', locale));
+      toast.success(t('dashboard.assistantDeletedSuccess'));
       loadData();
     } catch (error) {
-      toast.error(error.response?.data?.error || t('deleteError', locale));
+      toast.error(error.response?.data?.error || t('dashboard.deleteError'));
     }
   };
 
@@ -163,12 +162,12 @@ export default function AssistantsPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-neutral-900">{t('assistantsTitle', locale)}</h1>
-          <p className="text-neutral-600 mt-1">{t('createManageAssistants', locale)}</p>
+          <h1 className="text-3xl font-bold text-neutral-900">{t('dashboard.assistantsTitle')}</h1>
+          <p className="text-neutral-600 mt-1">{t('dashboard.createManageAssistants')}</p>
         </div>
         <Button onClick={() => setShowTemplateSelector(true)}>
           <Plus className="h-4 w-4 mr-2" />
-          {t('newAssistant', locale)}
+          {t('dashboard.newAssistant')}
         </Button>
       </div>
 
@@ -177,7 +176,7 @@ export default function AssistantsPage() {
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
           <Input
-            placeholder={t('searchAssistants', locale)}
+            placeholder={t('dashboard.searchAssistants')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
@@ -224,7 +223,7 @@ export default function AssistantsPage() {
                 </p>
 
                 <div className="flex flex-wrap gap-2 mb-4">
-                  <Badge variant="secondary">{voice?.name || t('noVoice', locale)}</Badge>
+                  <Badge variant="secondary">{voice?.name || t('dashboard.noVoice')}</Badge>
                   <Badge variant="outline">{assistant.model}</Badge>
                 </div>
 
@@ -236,7 +235,7 @@ export default function AssistantsPage() {
                     onClick={() => handleEdit(assistant)}
                   >
                     <Edit className="h-3 w-3 mr-2" />
-                    {t('edit', locale)}
+                    {t('dashboard.edit')}
                   </Button>
                   <Button
                     variant="outline"
@@ -253,9 +252,9 @@ export default function AssistantsPage() {
       ) : (
         <EmptyState
           icon={Bot}
-          title={t('noAssistantsTitle', locale)}
-          description={t('createFirstAssistantDesc', locale)}
-          actionLabel={t('createAssistantBtn', locale)}
+          title={t('dashboard.noAssistantsTitle')}
+          description={t('dashboard.createFirstAssistantDesc')}
+          actionLabel={t('dashboard.createAssistantBtn')}
           onAction={() => setShowTemplateSelector(true)}
         />
       )}
@@ -277,31 +276,31 @@ export default function AssistantsPage() {
       >
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>{editingAssistant ? t('editAssistantTitle', locale) : t('createAssistantTitle', locale)} {t('assistant', locale)}</DialogTitle>
+            <DialogTitle>{editingAssistant ? t('dashboard.editAssistantTitle') : t('dashboard.createAssistantTitle')} {t('dashboard.assistant')}</DialogTitle>
             <DialogDescription>
-              {t('configureSettings', locale)}
+              {t('dashboard.configureSettings')}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div>
-              <Label htmlFor="name">{t('nameRequired', locale)}</Label>
+              <Label htmlFor="name">{t('dashboard.nameRequired')}</Label>
               <Input
                 id="name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder={t('customerSupportBot', locale)}
+                placeholder={t('dashboard.customerSupportBot')}
               />
             </div>
 
             <div>
-              <Label htmlFor="voice">{t('voiceRequired', locale)}</Label>
+              <Label htmlFor="voice">{t('dashboard.voiceRequired')}</Label>
               <Select
                 value={formData.voiceId}
                 onValueChange={(value) => setFormData({ ...formData, voiceId: value })}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder={t('selectVoiceLabel', locale)} />
+                  <SelectValue placeholder={t('dashboard.selectVoiceLabel')} />
                 </SelectTrigger>
                 <SelectContent>
                   {voices.map((voice) => (
@@ -314,7 +313,7 @@ export default function AssistantsPage() {
             </div>
 
             <div>
-              <Label htmlFor="model">{t('aiModelLabel', locale)}</Label>
+              <Label htmlFor="model">{t('dashboard.aiModelLabel')}</Label>
               <Select
                 value={formData.model}
                 onValueChange={(value) => setFormData({ ...formData, model: value })}
@@ -330,23 +329,23 @@ export default function AssistantsPage() {
             </div>
 
             <div>
-              <Label htmlFor="prompt">{t('systemPromptRequired', locale)}</Label>
+              <Label htmlFor="prompt">{t('dashboard.systemPromptRequired')}</Label>
               <Textarea
                 id="prompt"
                 rows={6}
                 value={formData.systemPrompt}
                 onChange={(e) => setFormData({ ...formData, systemPrompt: e.target.value })}
-                placeholder={t('systemPromptPlaceholder', locale)}
+                placeholder={t('dashboard.systemPromptPlaceholder')}
               />
             </div>
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t">
             <Button variant="outline" onClick={() => setShowCreateModal(false)}>
-              {t('cancel', locale)}
+              {t('dashboard.cancel')}
             </Button>
             <Button onClick={editingAssistant ? handleUpdate : handleCreate}>
-              {editingAssistant ? t('updateAssistantBtn', locale) : t('createAssistantBtn', locale)}
+              {editingAssistant ? t('dashboard.updateAssistantBtn') : t('dashboard.createAssistantBtn')}
             </Button>
           </div>
         </DialogContent>

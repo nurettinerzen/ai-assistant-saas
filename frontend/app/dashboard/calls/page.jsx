@@ -24,19 +24,18 @@ import { Phone, Search, Download, Filter } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast } from '@/lib/toast';
 import { formatDate, formatDuration, formatCurrency, formatPhone } from '@/lib/utils';
-import { t, getCurrentLanguage } from '@/lib/translations';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function CallsPage() {
+  const { t } = useLanguage();
   const [calls, setCalls] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedCall, setSelectedCall] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
-  const [locale, setLocale] = useState('en');
 
   useEffect(() => {
-    setLocale(getCurrentLanguage());
     loadCalls();
   }, [statusFilter]);
 
@@ -50,7 +49,7 @@ export default function CallsPage() {
       const response = await apiClient.calls.getAll(params);
       setCalls(response.data.calls || []);
     } catch (error) {
-      toast.error(t('saveError', locale));
+      toast.error(t('dashboard.saveError'));
     } finally {
       setLoading(false);
     }
@@ -66,9 +65,9 @@ export default function CallsPage() {
       document.body.appendChild(link);
       link.click();
       link.remove();
-      toast.success(t('saveSuccess', locale));
+      toast.success(t('dashboard.saveSuccess'));
     } catch (error) {
-      toast.error(t('saveError', locale));
+      toast.error(t('dashboard.saveError'));
     }
   };
 
@@ -96,12 +95,12 @@ export default function CallsPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-neutral-900">{t('callHistoryTitle', locale)}</h1>
-          <p className="text-neutral-600 mt-1">{t('viewAndAnalyze', locale)}</p>
+          <h1 className="text-3xl font-bold text-neutral-900">{t('dashboard.callHistoryTitle')}</h1>
+          <p className="text-neutral-600 mt-1">{t('dashboard.viewAndAnalyze')}</p>
         </div>
         <Button onClick={handleExport} variant="outline">
           <Download className="h-4 w-4 mr-2" />
-          {t('exportCSV', locale)}
+          {t('dashboard.exportCSV')}
         </Button>
       </div>
 
@@ -110,7 +109,7 @@ export default function CallsPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
           <Input
-            placeholder={t('searchByPhone', locale)}
+            placeholder={t('dashboard.searchByPhone')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
@@ -122,11 +121,11 @@ export default function CallsPage() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">{t('allStatus', locale)}</SelectItem>
-            <SelectItem value="completed">{t('completed', locale)}</SelectItem>
-            <SelectItem value="failed">{t('failed', locale)}</SelectItem>
-            <SelectItem value="in-progress">{t('inProgress', locale)}</SelectItem>
-            <SelectItem value="queued">{t('queued', locale)}</SelectItem>
+            <SelectItem value="all">{t('dashboard.allStatus')}</SelectItem>
+            <SelectItem value="completed">{t('dashboard.completed')}</SelectItem>
+            <SelectItem value="failed">{t('dashboard.failed')}</SelectItem>
+            <SelectItem value="in-progress">{t('dashboard.inProgress')}</SelectItem>
+            <SelectItem value="queued">{t('dashboard.queued')}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -147,22 +146,22 @@ export default function CallsPage() {
               <thead className="bg-neutral-50 border-b border-neutral-200">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    {t('phoneNumberLabel', locale)}
+                    {t('dashboard.phoneNumberLabel')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    {t('assistantLabel', locale)}
+                    {t('dashboard.assistantLabel')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    {t('durationLabel', locale)}
+                    {t('dashboard.durationLabel')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    {t('costLabel', locale)}
+                    {t('dashboard.costLabel')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    {t('dateLabel', locale)}
+                    {t('dashboard.dateLabel')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    {t('statusLabel', locale)}
+                    {t('dashboard.statusLabel')}
                   </th>
                 </tr>
               </thead>
@@ -214,11 +213,11 @@ export default function CallsPage() {
         <div className="bg-white rounded-xl border border-neutral-200 p-8">
           <EmptyState
             icon={Phone}
-            title={searchQuery || statusFilter !== 'all' ? t('noDataYet', locale) : t('noCallsYetTitle', locale)}
+            title={searchQuery || statusFilter !== 'all' ? t('dashboard.noDataYet') : t('dashboard.noCallsYetTitle')}
             description={
               searchQuery || statusFilter !== 'all'
-                ? t('thisActionCannot', locale)
-                : t('callHistoryAppear', locale)
+                ? t('dashboard.thisActionCannot')
+                : t('dashboard.callHistoryAppear')
             }
           />
         </div>

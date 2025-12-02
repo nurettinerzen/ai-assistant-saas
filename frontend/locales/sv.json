@@ -1,20 +1,20 @@
 {
   "common": {
-    "signIn": "Sign In",
-    "createAccount": "Create Account",
+    "signIn": "",
+    "createAccount": "",
     "google": "Google",
-    "language": "English",
-    "login": "Login",
-    "signup": "Sign Up",
-    "logout": "Logout",
-    "save": "Save",
-    "cancel": "Cancel",
-    "delete": "Delete",
-    "edit": "Edit",
-    "back": "Back",
-    "next": "Next",
-    "complete": "Complete",
-    "loading": "Loading..."
+    "language": "Svenska",
+    "login": "Logga in",
+    "signup": "Registrera dig",
+    "logout": "Logga ut",
+    "save": "Spara",
+    "cancel": "Avbryt",
+    "delete": "Radera",
+    "edit": "Redigera",
+    "back": "Tillbaka",
+    "next": "Nästa",
+    "complete": "Slutför",
+    "loading": "Laddar..."
   },
   "landing": {
     "hero": {
@@ -24,58 +24,51 @@
       "watch": "Watch Demo"
     },
     "features": {
-      "title": "Everything You Need",
-      "voice": "Natural Voice",
-      "voiceDesc": "Human-like conversations",
-      "analytics": "Advanced Analytics",
-      "analyticsDesc": "Track every call",
-      "integration": "Easy Integration",
-      "integrationDesc": "Connect with your tools"
+      "title": "Allt du behöver",
+      "voice": "Naturlig röst",
+      "voiceDesc": "Mänskliga samtal",
+      "analytics": "Avancerad analys",
+      "analyticsDesc": "Spåra varje samtal",
+      "integration": "Enkel integration",
+      "integrationDesc": "Anslut dina verktyg"
     },
     "testimonials": {
-      "title": "Loved by Businesses",
-      "titleHighlight": "Worldwide",
-      "subtitle": "See what our customers have to say"
+      "title": "",
+      "titleHighlight": "",
+      "subtitle": ""
     },
     "cta": {
-      "title": "Ready to Transform Your Business?",
-      "subtitle": "Join thousands of businesses already using TELYX.AI to automate and scale",
-      "startTrial": "Start Free Trial",
-      "talkToSales": "Talk to Sales"
+      "title": "",
+      "subtitle": "",
+      "startTrial": "",
+      "talkToSales": ""
     },
     "footer": {
-      "tagline": "AI-powered phone assistant for modern businesses",
-      "product": "Product",
-      "features": "Features",
-      "pricing": "Pricing",
-      "solutions": "Solutions",
-      "company": "Company",
-      "contact": "Contact",
-      "about": "About Us",
-      "blog": "Blog",
-      "legal": "Legal",
-      "privacy": "Privacy Policy",
-      "terms": "Terms of Service",
-      "copyright": "© 2024 TELYX.AI. All rights reserved."
+      "tagline": "",
+      "product": "",
+      "features": "",
+      "pricing": "",
+      "solutions": "",
+      "company": "",
+      "contact": "",
+      "about": "",
+      "blog": "",
+      "legal": "",
+      "privacy": "",
+      "terms": "",
+      "copyright": ""
     }
   },
   "auth": {
-    "loginTitle": "Welcome back",
-    "loginSubtitle": "Sign in to your account",
-    "signupTitle": "Create your account",
-    "signupSubtitle": "Start building AI assistants today",
-    "email": "Email",
-    "emailPlaceholder": "you@example.com",
-    "password": "Password",
-    "passwordPlaceholder": "••••••••",
-    "fullName": "Full Name",
-    "businessName": "Business Name",
-    "businessNamePlaceholder": "Your business name",
-    "continueWith": "Or continue with",
-    "alreadyHaveAccount": "Already have an account?",
-    "dontHaveAccount": "Don't have an account?",
-    "forgotPassword": "Forgot password?",
-    "businessType": "What type of business do you have?",
+    "loginTitle": "Välkommen tillbaka",
+    "signupTitle": "Skapa ditt konto",
+    "email": "E-post",
+    "password": "Lösenord",
+    "fullName": "Fullständigt namn",
+    "continueWith": "Eller fortsätt med",
+    "alreadyHaveAccount": "Har du redan ett konto?",
+    "dontHaveAccount": "Har du inget konto?",
+    "forgotPassword": "Glömt lösenord?",
     "businessTypes": {
       "restaurant": "Restaurant/Cafe",
       "restaurantDesc": "Take reservations and manage bookings",
@@ -88,6 +81,12 @@
       "other": "Other",
       "otherDesc": "General business needs"
     },
+    "loginSubtitle": "Sign in to your account",
+    "signupSubtitle": "Start building AI assistants today",
+    "emailPlaceholder": "you@example.com",
+    "passwordPlaceholder": "••••••••",
+    "businessNamePlaceholder": "Your business name",
+    "businessType": "What type of business do you have?",
     "freeTrial": "14-day free trial",
     "noCreditCard": "No credit card required",
     "cancelAnytime": "Cancel anytime",
@@ -106,42 +105,34 @@
     "resendCode": "Resend Code",
     "mustBe8Chars": "Must be at least 8 characters"
   },
-  "navigation": {
-    "solutions": "Solutions",
-    "features": "Features",
-    "pricing": "Pricing",
-    "contact": "Contact Sales",
-    "register": "Register",
-    "getStarted": "Get Started"
-  },
   "dashboard": {
-    "overview": "Dashboard",
-    "assistants": "Assistants",
-    "calls": "Calls",
-    "analytics": "Analytics",
-    "knowledgeBase": "Knowledge Base",
-    "subscription": "Subscription",
-    "settings": "Settings",
-    "navBuild": "Build",
-    "navAssistants": "Assistants",
-    "navKnowledgeBase": "Knowledge Base",
-    "navVoices": "Voices",
-    "navChatWidget": "Chat Widget",
-    "navDeploy": "Deploy",
-    "navPhoneNumbers": "Phone Numbers",
-    "navIntegrations": "Integrations",
-    "navMonitor": "Monitor",
-    "navDashboard": "Dashboard",
-    "navCalls": "Calls",
-    "navAnalytics": "Analytics",
+    "overview": "Instrumentpanel",
+    "assistants": "Assistenter",
+    "calls": "Samtal",
+    "analytics": "Analys",
+    "knowledgeBase": "Kunskapsbas",
+    "subscription": "Prenumeration",
+    "settings": "Inställningar",
+    "navBuild": "Bygg",
+    "navAssistants": "Assistenter",
+    "navKnowledgeBase": "Kunskapsbas",
+    "navVoices": "Röster",
+    "navChatWidget": "Chattwidget",
+    "navDeploy": "Distribuera",
+    "navPhoneNumbers": "Telefonnummer",
+    "navIntegrations": "Integrationer",
+    "navMonitor": "Övervaka",
+    "navDashboard": "Instrumentpanel",
+    "navCalls": "Samtal",
+    "navAnalytics": "Analys",
     "navSystem": "System",
-    "navSettings": "Settings",
-    "navSubscription": "Subscription",
-    "navCostCalculator": "Cost Calculator",
-    "availableCredits": "Available Credits",
-    "addCredits": "Add Credits",
-    "profileSettings": "Profile Settings",
-    "logOut": "Log Out",
+    "navSettings": "Inställningar",
+    "navSubscription": "Prenumeration",
+    "navCostCalculator": "Kostnadskalkylator",
+    "availableCredits": "Tillgängliga krediter",
+    "addCredits": "Lägg till krediter",
+    "profileSettings": "Profilinställningar",
+    "logOut": "Logga ut",
     "aboutVoiceSelection": "About Voice Selection",
     "actionsTableHeader": "Actions",
     "activeLabel": "Active",
@@ -477,28 +468,36 @@
   },
   "onboarding": {
     "step1": {
-      "title": "Choose Language",
-      "description": "Select your preferred language"
+      "title": "Välj språk",
+      "description": "Välj ditt föredragna språk"
     },
     "step2": {
-      "title": "Choose Industry",
-      "description": "Tell us about your business"
+      "title": "Välj bransch",
+      "description": "Berätta om ditt företag"
     },
     "step3": {
-      "title": "Pick Your Voice",
-      "description": "Select your assistant's voice"
+      "title": "Välj röst",
+      "description": "Välj din assistents röst"
     },
     "step4": {
-      "title": "Add Training",
-      "description": "Create your first greeting"
+      "title": "Lägg till träning",
+      "description": "Skapa din första hälsning"
     },
     "step5": {
-      "title": "Test Assistant",
-      "description": "Try it out!"
+      "title": "Testa assistent",
+      "description": "Prova det!"
     },
     "step6": {
-      "title": "Complete",
-      "description": "You're all set!"
+      "title": "Klar",
+      "description": "Du är redo!"
     }
+  },
+  "navigation": {
+    "solutions": "",
+    "features": "",
+    "pricing": "",
+    "contact": "",
+    "register": "",
+    "getStarted": ""
   }
 }

@@ -1,20 +1,20 @@
 {
   "common": {
-    "signIn": "Sign In",
-    "createAccount": "Create Account",
+    "signIn": "",
+    "createAccount": "",
     "google": "Google",
-    "language": "English",
-    "login": "Login",
-    "signup": "Sign Up",
-    "logout": "Logout",
-    "save": "Save",
-    "cancel": "Cancel",
-    "delete": "Delete",
-    "edit": "Edit",
-    "back": "Back",
-    "next": "Next",
-    "complete": "Complete",
-    "loading": "Loading..."
+    "language": "Português",
+    "login": "Entrar",
+    "signup": "Cadastrar",
+    "logout": "Sair",
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "delete": "Excluir",
+    "edit": "Editar",
+    "back": "Voltar",
+    "next": "Próximo",
+    "complete": "Concluir",
+    "loading": "Carregando..."
   },
   "landing": {
     "hero": {
@@ -24,58 +24,51 @@
       "watch": "Watch Demo"
     },
     "features": {
-      "title": "Everything You Need",
-      "voice": "Natural Voice",
-      "voiceDesc": "Human-like conversations",
-      "analytics": "Advanced Analytics",
-      "analyticsDesc": "Track every call",
-      "integration": "Easy Integration",
-      "integrationDesc": "Connect with your tools"
+      "title": "Tudo que você precisa",
+      "voice": "Voz natural",
+      "voiceDesc": "Conversas como humanos",
+      "analytics": "Análise avançada",
+      "analyticsDesc": "Rastreie cada chamada",
+      "integration": "Integração fácil",
+      "integrationDesc": "Conecte suas ferramentas"
     },
     "testimonials": {
-      "title": "Loved by Businesses",
-      "titleHighlight": "Worldwide",
-      "subtitle": "See what our customers have to say"
+      "title": "",
+      "titleHighlight": "",
+      "subtitle": ""
     },
     "cta": {
-      "title": "Ready to Transform Your Business?",
-      "subtitle": "Join thousands of businesses already using TELYX.AI to automate and scale",
-      "startTrial": "Start Free Trial",
-      "talkToSales": "Talk to Sales"
+      "title": "",
+      "subtitle": "",
+      "startTrial": "",
+      "talkToSales": ""
     },
     "footer": {
-      "tagline": "AI-powered phone assistant for modern businesses",
-      "product": "Product",
-      "features": "Features",
-      "pricing": "Pricing",
-      "solutions": "Solutions",
-      "company": "Company",
-      "contact": "Contact",
-      "about": "About Us",
-      "blog": "Blog",
-      "legal": "Legal",
-      "privacy": "Privacy Policy",
-      "terms": "Terms of Service",
-      "copyright": "© 2024 TELYX.AI. All rights reserved."
+      "tagline": "",
+      "product": "",
+      "features": "",
+      "pricing": "",
+      "solutions": "",
+      "company": "",
+      "contact": "",
+      "about": "",
+      "blog": "",
+      "legal": "",
+      "privacy": "",
+      "terms": "",
+      "copyright": ""
     }
   },
   "auth": {
-    "loginTitle": "Welcome back",
-    "loginSubtitle": "Sign in to your account",
-    "signupTitle": "Create your account",
-    "signupSubtitle": "Start building AI assistants today",
+    "loginTitle": "Bem-vindo de volta",
+    "signupTitle": "Crie sua conta",
     "email": "Email",
-    "emailPlaceholder": "you@example.com",
-    "password": "Password",
-    "passwordPlaceholder": "••••••••",
-    "fullName": "Full Name",
-    "businessName": "Business Name",
-    "businessNamePlaceholder": "Your business name",
-    "continueWith": "Or continue with",
-    "alreadyHaveAccount": "Already have an account?",
-    "dontHaveAccount": "Don't have an account?",
-    "forgotPassword": "Forgot password?",
-    "businessType": "What type of business do you have?",
+    "password": "Senha",
+    "fullName": "Nome completo",
+    "continueWith": "Ou continuar com",
+    "alreadyHaveAccount": "Já tem uma conta?",
+    "dontHaveAccount": "Não tem uma conta?",
+    "forgotPassword": "Esqueceu a senha?",
     "businessTypes": {
       "restaurant": "Restaurant/Cafe",
       "restaurantDesc": "Take reservations and manage bookings",
@@ -88,6 +81,12 @@
       "other": "Other",
       "otherDesc": "General business needs"
     },
+    "loginSubtitle": "Sign in to your account",
+    "signupSubtitle": "Start building AI assistants today",
+    "emailPlaceholder": "you@example.com",
+    "passwordPlaceholder": "••••••••",
+    "businessNamePlaceholder": "Your business name",
+    "businessType": "What type of business do you have?",
     "freeTrial": "14-day free trial",
     "noCreditCard": "No credit card required",
     "cancelAnytime": "Cancel anytime",
@@ -106,42 +105,34 @@
     "resendCode": "Resend Code",
     "mustBe8Chars": "Must be at least 8 characters"
   },
-  "navigation": {
-    "solutions": "Solutions",
-    "features": "Features",
-    "pricing": "Pricing",
-    "contact": "Contact Sales",
-    "register": "Register",
-    "getStarted": "Get Started"
-  },
   "dashboard": {
-    "overview": "Dashboard",
-    "assistants": "Assistants",
-    "calls": "Calls",
-    "analytics": "Analytics",
-    "knowledgeBase": "Knowledge Base",
-    "subscription": "Subscription",
-    "settings": "Settings",
-    "navBuild": "Build",
-    "navAssistants": "Assistants",
-    "navKnowledgeBase": "Knowledge Base",
-    "navVoices": "Voices",
-    "navChatWidget": "Chat Widget",
-    "navDeploy": "Deploy",
-    "navPhoneNumbers": "Phone Numbers",
-    "navIntegrations": "Integrations",
-    "navMonitor": "Monitor",
-    "navDashboard": "Dashboard",
-    "navCalls": "Calls",
-    "navAnalytics": "Analytics",
-    "navSystem": "System",
-    "navSettings": "Settings",
-    "navSubscription": "Subscription",
-    "navCostCalculator": "Cost Calculator",
-    "availableCredits": "Available Credits",
-    "addCredits": "Add Credits",
-    "profileSettings": "Profile Settings",
-    "logOut": "Log Out",
+    "overview": "Painel",
+    "assistants": "Assistentes",
+    "calls": "Chamadas",
+    "analytics": "Análise",
+    "knowledgeBase": "Base de conhecimento",
+    "subscription": "Assinatura",
+    "settings": "Configurações",
+    "navBuild": "Construir",
+    "navAssistants": "Assistentes",
+    "navKnowledgeBase": "Base de conhecimento",
+    "navVoices": "Vozes",
+    "navChatWidget": "Widget de chat",
+    "navDeploy": "Implantar",
+    "navPhoneNumbers": "Números de telefone",
+    "navIntegrations": "Integrações",
+    "navMonitor": "Monitorar",
+    "navDashboard": "Painel",
+    "navCalls": "Chamadas",
+    "navAnalytics": "Análise",
+    "navSystem": "Sistema",
+    "navSettings": "Configurações",
+    "navSubscription": "Assinatura",
+    "navCostCalculator": "Calculadora de custos",
+    "availableCredits": "Créditos disponíveis",
+    "addCredits": "Adicionar créditos",
+    "profileSettings": "Configurações de perfil",
+    "logOut": "Sair",
     "aboutVoiceSelection": "About Voice Selection",
     "actionsTableHeader": "Actions",
     "activeLabel": "Active",
@@ -477,28 +468,36 @@
   },
   "onboarding": {
     "step1": {
-      "title": "Choose Language",
-      "description": "Select your preferred language"
+      "title": "Escolher idioma",
+      "description": "Selecione seu idioma preferido"
     },
     "step2": {
-      "title": "Choose Industry",
-      "description": "Tell us about your business"
+      "title": "Escolher setor",
+      "description": "Conte-nos sobre seu negócio"
     },
     "step3": {
-      "title": "Pick Your Voice",
-      "description": "Select your assistant's voice"
+      "title": "Escolher voz",
+      "description": "Selecione a voz do seu assistente"
     },
     "step4": {
-      "title": "Add Training",
-      "description": "Create your first greeting"
+      "title": "Adicionar treinamento",
+      "description": "Crie sua primeira saudação"
     },
     "step5": {
-      "title": "Test Assistant",
-      "description": "Try it out!"
+      "title": "Testar assistente",
+      "description": "Experimente!"
     },
     "step6": {
-      "title": "Complete",
-      "description": "You're all set!"
+      "title": "Concluído",
+      "description": "Você está pronto!"
     }
+  },
+  "navigation": {
+    "solutions": "",
+    "features": "",
+    "pricing": "",
+    "contact": "",
+    "register": "",
+    "getStarted": ""
   }
 }

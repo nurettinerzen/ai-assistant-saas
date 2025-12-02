@@ -37,57 +37,45 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import LanguageSwitcher from './LanguageSwitcher';
-import { t, getCurrentLanguage } from '@/lib/translations';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function Sidebar({ user, credits }) {
   const pathname = usePathname();
+  const { t } = useLanguage();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState([]);
-  const [locale, setLocale] = useState('en');
-
-  useEffect(() => {
-    setLocale(getCurrentLanguage());
-    
-    // Listen for language changes
-    const handleStorageChange = () => {
-      setLocale(getCurrentLanguage());
-    };
-    
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
 
   const NAVIGATION = [
     {
-      labelKey: 'navBuild',
+      label: t('dashboard.navBuild'),
       items: [
-        { icon: Bot, labelKey: 'navAssistants', href: '/dashboard/assistant' },
-        { icon: BookOpen, labelKey: 'navKnowledgeBase', href: '/dashboard/knowledge' },
-        { icon: Mic, labelKey: 'navVoices', href: '/dashboard/voices' },
-        { icon: MessageSquare, labelKey: 'navChatWidget', href: '/dashboard/chat-widget' },
+        { icon: Bot, label: t('dashboard.navAssistants'), href: '/dashboard/assistant' },
+        { icon: BookOpen, label: t('dashboard.navKnowledgeBase'), href: '/dashboard/knowledge' },
+        { icon: Mic, label: t('dashboard.navVoices'), href: '/dashboard/voices' },
+        { icon: MessageSquare, label: t('dashboard.navChatWidget'), href: '/dashboard/chat-widget' },
       ],
     },
     {
-      labelKey: 'navDeploy',
+      label: t('dashboard.navDeploy'),
       items: [
-        { icon: PhoneCall, labelKey: 'navPhoneNumbers', href: '/dashboard/phone-numbers' },
-        { icon: Puzzle, labelKey: 'navIntegrations', href: '/dashboard/integrations' },
+        { icon: PhoneCall, label: t('dashboard.navPhoneNumbers'), href: '/dashboard/phone-numbers' },
+        { icon: Puzzle, label: t('dashboard.navIntegrations'), href: '/dashboard/integrations' },
       ],
     },
     {
-      labelKey: 'navMonitor',
+      label: t('dashboard.navMonitor'),
       items: [
-        { icon: LayoutDashboard, labelKey: 'navDashboard', href: '/dashboard' },
-        { icon: Phone, labelKey: 'navCalls', href: '/dashboard/calls' },
-        { icon: BarChart3, labelKey: 'navAnalytics', href: '/dashboard/analytics' },
+        { icon: LayoutDashboard, label: t('dashboard.navDashboard'), href: '/dashboard' },
+        { icon: Phone, label: t('dashboard.navCalls'), href: '/dashboard/calls' },
+        { icon: BarChart3, label: t('dashboard.navAnalytics'), href: '/dashboard/analytics' },
       ],
     },
     {
-      labelKey: 'navSystem',
+      label: t('dashboard.navSystem'),
       items: [
-        { icon: Calculator, labelKey: 'navCostCalculator', href: '/dashboard/cost-calculator' },
-        { icon: Settings, labelKey: 'navSettings', href: '/dashboard/settings' },
-        { icon: CreditCard, labelKey: 'navSubscription', href: '/dashboard/subscription' },
+        { icon: Calculator, label: t('dashboard.navCostCalculator'), href: '/dashboard/cost-calculator' },
+        { icon: Settings, label: t('dashboard.navSettings'), href: '/dashboard/settings' },
+        { icon: CreditCard, label: t('dashboard.navSubscription'), href: '/dashboard/subscription' },
       ],
     },
   ];
@@ -121,11 +109,11 @@ export default function Sidebar({ user, credits }) {
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4 px-3">
         {NAVIGATION.map((section) => {
-          const sectionLabel = t(section.labelKey, locale);
+          const sectionLabel = section.label;
           const isCollapsed = collapsedSections.includes(sectionLabel);
           
           return (
-            <div key={section.labelKey} className="mb-6">
+            <div key={section.label} className="mb-6">
               {/* Section header */}
               <button
                 onClick={() => toggleSection(sectionLabel)}
@@ -159,7 +147,7 @@ export default function Sidebar({ user, credits }) {
                         )}
                       >
                         <Icon className="h-5 w-5 flex-shrink-0" />
-                        <span>{t(item.labelKey, locale)}</span>
+                        <span>{item.label}</span>
                       </Link>
                     );
                   })}
@@ -174,11 +162,11 @@ export default function Sidebar({ user, credits }) {
       {credits !== undefined && (
         <div className="px-6 py-3 border-t border-neutral-200">
           <div className="bg-primary-50 rounded-lg p-3">
-            <p className="text-xs text-neutral-600 mb-1">{t('availableCredits', locale)}</p>
+            <p className="text-xs text-neutral-600 mb-1">{t('dashboard.availableCredits')}</p>
             <p className="text-2xl font-bold text-primary-600">${credits.toFixed(2)}</p>
             <Link href="/dashboard/subscription">
               <Button variant="link" size="sm" className="p-0 h-auto text-xs mt-1">
-                {t('addCredits', locale)}
+                {t('dashboard.addCredits')}
               </Button>
             </Link>
           </div>
@@ -216,13 +204,13 @@ export default function Sidebar({ user, credits }) {
             <DropdownMenuItem asChild>
               <Link href="/dashboard/settings" className="cursor-pointer">
                 <User className="h-4 w-4 mr-2" />
-                {t('profileSettings', locale)}
+                {t('dashboard.profileSettings')}
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-600">
               <LogOut className="h-4 w-4 mr-2" />
-              {t('logOut', locale)}
+              {t('dashboard.logOut')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Phone, Loader2 } from 'lucide-react';
@@ -8,23 +8,19 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast, Toaster } from 'sonner';
-import { getCurrentLanguage, t } from '@/lib/translations';
+import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
-  const [locale, setLocale] = useState('en');
   const [formData, setFormData] = useState({
     email: '',
     password: '',
   });
-
-  useEffect(() => {
-    setLocale(getCurrentLanguage());
-  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -49,13 +45,13 @@ export default function LoginPage() {
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
 
-      toast.success(t('loginSuccess', locale)); // Bunu da ekle translations'a
+      toast.success('Login successful!');
       
       // Redirect to dashboard
       router.push('/dashboard');
     } catch (error) {
       console.error('Login error:', error);
-      const errorMsg = error.response?.data?.error || error.response?.data?.message || error.message || t('invalidEmailOrPassword', locale);
+      const errorMsg = error.response?.data?.error || error.response?.data?.message || error.message || 'Invalid email or password';
       toast.error(errorMsg);
     } finally {
       setLoading(false);
@@ -70,7 +66,7 @@ export default function LoginPage() {
   };
 
   const handleGoogleLogin = () => {
-    toast.info(t('googleSignInComingSoon', locale));
+    toast.info('Google Sign-In coming soon!');
   };
 
   return (
@@ -93,16 +89,16 @@ export default function LoginPage() {
           {/* Header */}
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-neutral-900 mb-2">
-              {t('loginTitle', locale)}
+              {t('auth.loginTitle')}
             </h1>
-            <p className="text-neutral-600">{t('loginSubtitle', locale)}</p>
+            <p className="text-neutral-600">{t('auth.loginSubtitle')}</p>
           </div>
 
           {/* Login Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Email */}
             <div>
-              <Label htmlFor="email">{t('email', locale)}</Label>
+              <Label htmlFor="email">{t('auth.email')}</Label>
               <Input
                 id="email"
                 name="email"
@@ -110,14 +106,14 @@ export default function LoginPage() {
                 required
                 value={formData.email}
                 onChange={handleChange}
-                placeholder="you@example.com"
+                placeholder={t('auth.emailPlaceholder')}
                 className="mt-1"
               />
             </div>
 
             {/* Password */}
             <div>
-              <Label htmlFor="password">{t('password', locale)}</Label>
+              <Label htmlFor="password">{t('auth.password')}</Label>
               <Input
                 id="password"
                 name="password"
@@ -125,7 +121,7 @@ export default function LoginPage() {
                 required
                 value={formData.password}
                 onChange={handleChange}
-                placeholder="••••••••"
+                placeholder={t('auth.passwordPlaceholder')}
                 className="mt-1"
               />
             </div>
@@ -136,7 +132,7 @@ export default function LoginPage() {
                   href="/forgot-password"
                   className="text-xs text-primary-600 hover:underline"
                 >
-                  {t('forgotPassword', locale)}
+                  {t('auth.forgotPassword')}
                 </Link>
             </div>
 
@@ -145,10 +141,10 @@ export default function LoginPage() {
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  {t('loading', locale)}
+                  {t('common.loading')}
                 </>
               ) : (
-                t('signIn', locale)
+                t('common.signIn')
               )}
             </Button>
           </form>
@@ -160,7 +156,7 @@ export default function LoginPage() {
             </div>
             <div className="relative flex justify-center text-sm">
               <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-2 text-xs text-neutral-500">
-              {t('orContinueWith', locale)}
+              {t('auth.continueWith')}
             </span>
             </div>
           </div>
@@ -190,14 +186,14 @@ export default function LoginPage() {
                 d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
               />
             </svg>
-            Google
+            {t('common.google')}
           </Button>
 
           {/* Sign Up Link */}
           <p className="text-center text-sm text-neutral-600 mt-6">
-            {t('dontHaveAccount', locale)}{' '}
+            {t('auth.dontHaveAccount')}{' '}
             <Link href="/signup" className="text-primary-600 font-medium hover:underline">
-              {t('signUp', locale)}
+              {t('common.signup')}
             </Link>
           </p>
         </div>
