@@ -42,10 +42,10 @@ export default function PhoneNumbersPage() {
   // 🔧 Load subscription to check plan
   const loadSubscription = async () => {
     try {
-      const response = await apiClient.subscription.get();
+      const response = await apiClient.subscription.getCurrent();
       const sub = response.data.subscription;
       setSubscription(sub);
-      
+
       // Check if FREE plan
       if (sub?.plan === 'FREE') {
         setIsLocked(true);
@@ -89,7 +89,7 @@ export default function PhoneNumbersPage() {
 
     try {
       await toastHelpers.async(
-        apiClient.phoneNumbers.release(phoneNumber.id),
+        apiClient.phoneNumbers.delete(phoneNumber.id),
         t('dashboard.releasingNumber'),
         t('dashboard.phoneNumberReleased')
       );

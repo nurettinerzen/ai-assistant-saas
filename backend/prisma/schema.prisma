@@ -88,9 +88,10 @@ model Business {
   bookingIntegration     BookingIntegration?
   reservationIntegration ReservationIntegration?
   erpIntegration         ErpIntegration?
-  integrations           Integration[]          
+  integrations           Integration[]
   assistants             Assistant[]
   knowledgeBase          KnowledgeBase[]
+  provisionedPhoneNumbers PhoneNumber[] @relation("BusinessPhoneNumbers")
 
   @@index([name])
 }
@@ -123,25 +124,85 @@ model Assistant {
   id              String   @id @default(cuid())
   businessId      Int
   business        Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  
+
   // Assistant Details
   name            String
   voiceId         String
   systemPrompt    String   @db.Text
   model           String   @default("gpt-4")
-  
+
   // VAPI Integration
   vapiAssistantId String?  @unique
-  
+
   // Status
   isActive        Boolean  @default(true)
-  
+
+  // Relations
+  phoneNumbers    PhoneNumber[]
+
   // Timestamps
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   @@index([businessId])
   @@index([isActive])
+}
+
+// ============================================================================
+// PHONE NUMBERS (BYOC - BRING YOUR OWN CARRIER)
+// ============================================================================
+
+model PhoneNumber {
+  id              String   @id @default(cuid())
+  businessId      Int
+  business        Business @relation("BusinessPhoneNumbers", fields: [businessId], references: [id], onDelete: Cascade)
+
+  // Number Details
+  phoneNumber     String   @unique
+  countryCode     String   // "US", "TR", etc.
+  provider        PhoneProvider
+
+  // Provider-specific IDs
+  vapiPhoneId     String?  @unique  // For VAPI numbers
+  netgsmNumberId  String?  // For Netgsm numbers
+
+  // SIP Configuration (for BYOC)
+  sipUsername     String?
+  sipPassword     String?
+  sipServer       String?
+
+  // Assignment
+  assistantId     String?
+  assistant       Assistant? @relation(fields: [assistantId], references: [id])
+
+  // Status
+  status          PhoneStatus @default(ACTIVE)
+
+  // Billing
+  monthlyCost     Float    // In USD
+  nextBillingDate DateTime?
+
+  // Timestamps
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([businessId])
+  @@index([phoneNumber])
+  @@index([status])
+  @@index([assistantId])
+}
+
+enum PhoneProvider {
+  VAPI      // USA and VAPI-supported countries
+  NETGSM    // Turkey
+  TWILIO    // Future
+  CUSTOM    // Customer's own SIP trunk
+}
+
+enum PhoneStatus {
+  ACTIVE
+  SUSPENDED
+  CANCELLED
 }
 
 // ============================================================================
