@@ -47,35 +47,35 @@ export default function Sidebar({ user, credits }) {
 
   const NAVIGATION = [
     {
-      label: t('dashboard.navBuild'),
+      label: t('sidebarBuild'),
       items: [
-        { icon: Bot, label: t('dashboard.navAssistants'), href: '/dashboard/assistant' },
-        { icon: BookOpen, label: t('dashboard.navKnowledgeBase'), href: '/dashboard/knowledge' },
-        { icon: Mic, label: t('dashboard.navVoices'), href: '/dashboard/voices' },
-        { icon: MessageSquare, label: t('dashboard.navChatWidget'), href: '/dashboard/chat-widget' },
+        { icon: Bot, label: t('sidebarAssistants'), href: '/dashboard/assistant' },
+        { icon: BookOpen, label: t('sidebarKnowledge'), href: '/dashboard/knowledge' },
+        { icon: Mic, label: t('sidebarVoices'), href: '/dashboard/voices' },
+        { icon: MessageSquare, label: t('sidebarChatWidget'), href: '/dashboard/chat-widget' },
       ],
     },
     {
-      label: t('dashboard.navDeploy'),
+      label: t('sidebarDeploy'),
       items: [
-        { icon: PhoneCall, label: t('dashboard.navPhoneNumbers'), href: '/dashboard/phone-numbers' },
-        { icon: Puzzle, label: t('dashboard.navIntegrations'), href: '/dashboard/integrations' },
+        { icon: PhoneCall, label: t('sidebarPhoneNumbers'), href: '/dashboard/phone-numbers' },
+        { icon: Puzzle, label: t('sidebarIntegrations'), href: '/dashboard/integrations' },
       ],
     },
     {
-      label: t('dashboard.navMonitor'),
+      label: t('sidebarMonitor'),
       items: [
-        { icon: LayoutDashboard, label: t('dashboard.navDashboard'), href: '/dashboard' },
-        { icon: Phone, label: t('dashboard.navCalls'), href: '/dashboard/calls' },
-        { icon: BarChart3, label: t('dashboard.navAnalytics'), href: '/dashboard/analytics' },
+        { icon: LayoutDashboard, label: t('sidebarDashboard'), href: '/dashboard' },
+        { icon: Phone, label: t('sidebarCalls'), href: '/dashboard/calls' },
+        { icon: BarChart3, label: t('sidebarAnalytics'), href: '/dashboard/analytics' },
       ],
     },
     {
-      label: t('dashboard.navSystem'),
+      label: t('sidebarSystem'),
       items: [
-        { icon: Calculator, label: t('dashboard.navCostCalculator'), href: '/dashboard/cost-calculator' },
-        { icon: Settings, label: t('dashboard.navSettings'), href: '/dashboard/settings' },
-        { icon: CreditCard, label: t('dashboard.navSubscription'), href: '/dashboard/subscription' },
+        { icon: Calculator, label: t('sidebarCostCalculator'), href: '/dashboard/cost-calculator' },
+        { icon: Settings, label: t('sidebarSettings'), href: '/dashboard/settings' },
+        { icon: CreditCard, label: t('sidebarSubscription'), href: '/dashboard/subscription' },
       ],
     },
   ];
@@ -162,11 +162,11 @@ export default function Sidebar({ user, credits }) {
       {credits !== undefined && (
         <div className="px-6 py-3 border-t border-neutral-200">
           <div className="bg-primary-50 rounded-lg p-3">
-            <p className="text-xs text-neutral-600 mb-1">{t('dashboard.availableCredits')}</p>
+            <p className="text-xs text-neutral-600 mb-1">{t('availableCredits')}</p>
             <p className="text-2xl font-bold text-primary-600">${credits.toFixed(2)}</p>
             <Link href="/dashboard/subscription">
               <Button variant="link" size="sm" className="p-0 h-auto text-xs mt-1">
-                {t('dashboard.addCredits')}
+                {t('addCredits')}
               </Button>
             </Link>
           </div>
@@ -204,13 +204,13 @@ export default function Sidebar({ user, credits }) {
             <DropdownMenuItem asChild>
               <Link href="/dashboard/settings" className="cursor-pointer">
                 <User className="h-4 w-4 mr-2" />
-                {t('dashboard.profileSettings')}
+                {t('profileSettings')}
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-600">
               <LogOut className="h-4 w-4 mr-2" />
-              {t('dashboard.logOut')}
+              {t('logOut')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

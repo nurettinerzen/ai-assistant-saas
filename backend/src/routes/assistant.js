@@ -82,13 +82,9 @@ router.post('/', authenticateToken, async (req, res) => {
     const defaultVoiceForLanguage = language === 'TR' ? 'Md4RAnfKt9kVIbvqUxly' : 'Yg7C1g7suzNt5TisIqkZ';
     const elevenLabsVoiceId = VOICE_MAPPING[voiceId] || defaultVoiceForLanguage;
 
-    // Add language instruction based on selected language
-    const languageInstructions = {
-      'TR': 'Sen bir Türkçe konuşan AI asistansın. SADECE TÜRKÇE konuş. Kullanıcı ne dilde konuşursa konuşsun, sen her zaman Türkçe yanıt ver. Doğal, akıcı ve profesyonel bir şekilde Türkçe konuş.',
-      'EN': 'You are an English-speaking AI assistant. Always respond in English. Speak naturally, fluently, and professionally.'
-    };
+    // Add universal language instruction - AI will match the customer's language
+    const languageInstruction = 'You are an AI assistant. Always respond in the SAME LANGUAGE the customer uses. If they speak Turkish, respond in Turkish. If they speak Spanish, respond in Spanish. If they speak French, respond in French. Match their language exactly. Speak naturally, fluently, and professionally in whatever language they choose.';
 
-    const languageInstruction = languageInstructions[language] || languageInstructions['EN'];
     const fullSystemPrompt = `${languageInstruction}\n\n${systemPrompt}`;
 
     // Default first message (eğer gönderilmemişse)
@@ -372,13 +368,9 @@ router.put('/:id', authenticateToken, async (req, res) => {
 
     const elevenLabsVoiceId = VOICE_MAPPING[voiceId] || VOICE_MAPPING['tr-m-cihan'];
 
-    // Language instructions
-    const languageInstructions = {
-      'TR': 'Sen bir Türkçe konuşan AI asistansın. SADECE TÜRKÇE konuş. Kullanıcı ne dilde konuşursa konuşsun, sen her zaman Türkçe yanıt ver. Doğal, akıcı ve profesyonel bir şekilde Türkçe konuş.',
-      'EN': 'You are an English-speaking AI assistant. Always respond in English. Speak naturally, fluently, and professionally.'
-    };
+    // Universal language instruction - AI will match the customer's language
+    const languageInstruction = 'You are an AI assistant. Always respond in the SAME LANGUAGE the customer uses. If they speak Turkish, respond in Turkish. If they speak Spanish, respond in Spanish. If they speak French, respond in French. Match their language exactly. Speak naturally, fluently, and professionally in whatever language they choose.';
 
-    const languageInstruction = languageInstructions[language] || languageInstructions['EN'];
     const fullSystemPrompt = `${languageInstruction}\n\n${systemPrompt}`;
 
     // Update in database

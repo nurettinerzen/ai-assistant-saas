@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { translations } from '@/lib/translations';
 
 const LanguageContext = createContext();
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -43,10 +44,10 @@ export function LanguageProvider({ children }) {
 
   const processQueue = useCallback(async () => {
     if (queue.current.length === 0 || locale === 'en') return;
-    
+
     const texts = [...new Set(queue.current)];
     queue.current = [];
-    
+
     const uncached = texts.filter(t => !getCache(t, locale));
     if (uncached.length === 0) return;
 
@@ -56,9 +57,9 @@ export function LanguageProvider({ children }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ texts: uncached, targetLang: locale })
       });
-      
+
       const data = await response.json();
-      
+
       if (data.translations) {
         uncached.forEach((text, i) => {
           if (data.translations[i]) {
@@ -81,27 +82,42 @@ export function LanguageProvider({ children }) {
 
   const tr = useCallback((text) => {
     if (!text || locale === 'en') return text;
-    
+
     const cached = getCache(text, locale);
     if (cached) return cached;
-    
+
     // Add to queue
     if (!queue.current.includes(text)) {
       queue.current.push(text);
       if (timer.current) clearTimeout(timer.current);
       timer.current = setTimeout(processQueue, 100);
     }
-    
+
     return text;
   }, [locale, processQueue]);
 
   const t = useCallback((key) => {
     if (!key) return '';
+
+    // Look up the key in translations object
+    const englishText = translations[key];
+
+    // If key exists in translations, use it
+    if (englishText) {
+      return tr(englishText);
+    }
+
+    // Fallback: handle dotted keys (e.g., "dashboard.navBuild")
+    // This is for backward compatibility - convert to readable text
     if (key.includes('.')) {
       const last = key.split('.').pop();
       const readable = last.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).trim();
+      console.warn(`Translation key not found: ${key}, using fallback: ${readable}`);
       return tr(readable);
     }
+
+    // Last resort: return the key itself
+    console.warn(`Translation key not found: ${key}`);
     return tr(key);
   }, [tr]);
 
