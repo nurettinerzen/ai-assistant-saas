@@ -219,6 +219,125 @@ class NetgsmService {
   }
 
   /**
+   * Send SMS message
+   * @param {string} phoneNumber - Recipient phone number (Turkish format)
+   * @param {string} message - Message content
+   * @param {string} header - Optional SMS header (default from env)
+   * @returns {Promise<Object>} Send result
+   */
+  async sendSMS(phoneNumber, message, header = null) {
+    try {
+      // Clean and format phone number for Turkish SMS
+      // Remove any non-digit characters
+      let cleanedNumber = phoneNumber.replace(/\D/g, '');
+
+      // If it starts with +90, remove it
+      if (cleanedNumber.startsWith('90')) {
+        cleanedNumber = cleanedNumber.substring(2);
+      }
+
+      // If it starts with 0, remove it
+      if (cleanedNumber.startsWith('0')) {
+        cleanedNumber = cleanedNumber.substring(1);
+      }
+
+      // Use header from parameter or environment
+      const msgHeader = header || process.env.NETGSM_MSGHEADER || 'TELYX';
+
+      // Netgsm SMS API endpoint
+      const response = await this.client.get('/sms/send/get', {
+        params: {
+          usercode: this.username,
+          password: this.password,
+          gsmno: cleanedNumber,
+          message: message,
+          msgheader: msgHeader,
+          dil: 'TR' // Turkish language for proper character encoding
+        }
+      });
+
+      // Netgsm returns response codes as plain text
+      const responseCode = response.data.toString().trim();
+
+      // Check response code
+      // 00: Success, 01: Missing parameter, 02: Invalid credentials, etc.
+      if (responseCode === '00' || responseCode.startsWith('00')) {
+        return {
+          success: true,
+          messageId: responseCode,
+          message: 'SMS sent successfully'
+        };
+      } else {
+        const errorMessages = {
+          '01': 'Missing parameter',
+          '02': 'Invalid username or password',
+          '20': 'Message text not provided',
+          '30': 'Invalid header',
+          '40': 'Invalid phone number',
+          '50': 'Insufficient credit',
+          '70': 'Invalid character in message'
+        };
+
+        throw new Error(errorMessages[responseCode] || `SMS send failed with code: ${responseCode}`);
+      }
+
+    } catch (error) {
+      console.error('❌ Netgsm send SMS error:', error.response?.data || error.message);
+      throw new Error(`Failed to send SMS: ${error.message}`);
+    }
+  }
+
+  /**
+   * Send SMS to multiple recipients
+   * @param {Array<string>} phoneNumbers - Array of phone numbers
+   * @param {string} message - Message content
+   * @param {string} header - Optional SMS header
+   * @returns {Promise<Object>} Send result
+   */
+  async sendBulkSMS(phoneNumbers, message, header = null) {
+    try {
+      // Clean and format all phone numbers
+      const cleanedNumbers = phoneNumbers.map(num => {
+        let cleaned = num.replace(/\D/g, '');
+        if (cleaned.startsWith('90')) cleaned = cleaned.substring(2);
+        if (cleaned.startsWith('0')) cleaned = cleaned.substring(1);
+        return cleaned;
+      });
+
+      const msgHeader = header || process.env.NETGSM_MSGHEADER || 'TELYX';
+
+      // For bulk SMS, use comma-separated numbers
+      const response = await this.client.get('/sms/send/get', {
+        params: {
+          usercode: this.username,
+          password: this.password,
+          gsmno: cleanedNumbers.join(','),
+          message: message,
+          msgheader: msgHeader,
+          dil: 'TR'
+        }
+      });
+
+      const responseCode = response.data.toString().trim();
+
+      if (responseCode === '00' || responseCode.startsWith('00')) {
+        return {
+          success: true,
+          messageId: responseCode,
+          recipientCount: phoneNumbers.length,
+          message: 'Bulk SMS sent successfully'
+        };
+      } else {
+        throw new Error(`Bulk SMS send failed with code: ${responseCode}`);
+      }
+
+    } catch (error) {
+      console.error('❌ Netgsm bulk SMS error:', error.response?.data || error.message);
+      throw new Error(`Failed to send bulk SMS: ${error.message}`);
+    }
+  }
+
+  /**
    * Format phone number to E.164 format
    * @param {string} number - Raw number (e.g., "8501234567")
    * @returns {string} Formatted number (e.g., "+908501234567")
