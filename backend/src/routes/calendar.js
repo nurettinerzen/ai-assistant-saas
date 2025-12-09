@@ -1,6 +1,7 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticateToken, requireRole } from '../middleware/auth.js';
+import googleCalendarService from '../services/google-calendar.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -431,5 +432,124 @@ function generateTimeSlots(openTime, closeTime, duration, buffer, existingAppoin
   
   return slots;
 }
+
+// ==================== GOOGLE CALENDAR INTEGRATION ====================
+
+// Initiate Google Calendar OAuth flow
+router.get('/google/auth', authenticateToken, async (req, res) => {
+  try {
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${process.env.BACKEND_URL}/api/calendar/google/callback`;
+
+    if (!clientId || !clientSecret) {
+      return res.status(500).json({
+        error: 'Google Calendar not configured. Please set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in environment variables.'
+      });
+    }
+
+    const oauth2Client = googleCalendarService.createOAuth2Client(clientId, clientSecret, redirectUri);
+    const authUrl = googleCalendarService.getAuthUrl(oauth2Client);
+
+    // Include businessId in state parameter for callback
+    const authUrlWithState = authUrl + `&state=${req.businessId}`;
+
+    res.json({
+      authUrl: authUrlWithState,
+      message: 'Please visit the auth URL to connect Google Calendar'
+    });
+  } catch (error) {
+    console.error('Google Calendar auth error:', error);
+    res.status(500).json({ error: 'Failed to start Google Calendar OAuth' });
+  }
+});
+
+// Handle Google Calendar OAuth callback
+router.get('/google/callback', async (req, res) => {
+  try {
+    const { code, state } = req.query;
+
+    if (!code) {
+      return res.redirect(`${process.env.FRONTEND_URL}/dashboard/integrations?error=no-code`);
+    }
+
+    const businessId = parseInt(state);
+
+    if (!businessId) {
+      return res.redirect(`${process.env.FRONTEND_URL}/dashboard/integrations?error=no-business-id`);
+    }
+
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${process.env.BACKEND_URL}/api/calendar/google/callback`;
+
+    // Exchange code for tokens
+    const oauth2Client = googleCalendarService.createOAuth2Client(clientId, clientSecret, redirectUri);
+    const tokens = await googleCalendarService.getTokens(oauth2Client, code);
+
+    // Save to Integration table
+    await prisma.integration.upsert({
+      where: {
+        businessId_type: {
+          businessId,
+          type: 'GOOGLE_CALENDAR'
+        }
+      },
+      update: {
+        credentials: tokens,
+        isActive: true,
+        connected: true
+      },
+      create: {
+        businessId,
+        type: 'GOOGLE_CALENDAR',
+        credentials: tokens,
+        isActive: true,
+        connected: true
+      }
+    });
+
+    console.log(`✅ Google Calendar connected for business ${businessId}`);
+    res.redirect(`${process.env.FRONTEND_URL}/dashboard/integrations?success=google-calendar`);
+  } catch (error) {
+    console.error('Google Calendar callback error:', error);
+    res.redirect(`${process.env.FRONTEND_URL}/dashboard/integrations?error=google-calendar`);
+  }
+});
+
+// Disconnect Google Calendar
+router.post('/google/disconnect', authenticateToken, async (req, res) => {
+  try {
+    // Find the integration
+    const integration = await prisma.integration.findFirst({
+      where: {
+        businessId: req.businessId,
+        type: 'GOOGLE_CALENDAR'
+      }
+    });
+
+    if (!integration) {
+      return res.status(404).json({ error: 'Google Calendar not connected' });
+    }
+
+    // Mark as inactive
+    await prisma.integration.update({
+      where: { id: integration.id },
+      data: {
+        isActive: false,
+        connected: false
+      }
+    });
+
+    console.log(`✅ Google Calendar disconnected for business ${req.businessId}`);
+    res.json({
+      success: true,
+      message: 'Google Calendar disconnected successfully'
+    });
+  } catch (error) {
+    console.error('Google Calendar disconnect error:', error);
+    res.status(500).json({ error: 'Failed to disconnect Google Calendar' });
+  }
+});
 
 export default router;
