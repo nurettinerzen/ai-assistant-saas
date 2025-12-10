@@ -1,7 +1,7 @@
 /**
  * Integrations Page
- * Manage third-party integrations (Stripe, Zapier, etc.)
- * BUG FIX 4: Sektöre göre entegrasyonlar göster
+ * Manage third-party integrations with business type-based filtering
+ * Shows relevant integrations based on business model (Restaurant, E-commerce, Clinic, Salon, etc.)
  */
 
 'use client';
@@ -35,104 +35,90 @@ import {
   Calendar,
   CalendarDays,
   BarChart3,
-  Smartphone
+  Smartphone,
+  ShoppingCart,
+  Utensils,
+  Scissors,
+  Stethoscope,
+  Package,
+  Mail,
+  Hash
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast, toastHelpers } from '@/lib/toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 
-// Sektöre göre önerilen entegrasyonlar
-const INDUSTRY_INTEGRATIONS = {
-  RESTAURANT: ['calendly', 'google-calendar', 'whatsapp', 'google-sheets'],
-  SALON: ['calendly', 'google-calendar', 'whatsapp', 'google-sheets'],
-  ECOMMERCE: ['hubspot', 'zapier', 'google-sheets', 'stripe'],
-  SERVICE: ['calendly', 'hubspot', 'google-calendar', 'zapier'],
-  OTHER: ['zapier', 'google-sheets', 'google-calendar', 'calendly']
+// Icon mapping for integrations
+const INTEGRATION_ICONS = {
+  GOOGLE_CALENDAR: CalendarDays,
+  WHATSAPP: Smartphone,
+  CALENDLY: Calendar,
+  SHOPIFY: ShoppingCart,
+  WOOCOMMERCE: ShoppingCart,
+  STRIPE_PAYMENTS: CreditCard,
+  SQUARE: CreditCard,
+  OPENTABLE: Utensils,
+  TOAST_POS: Utensils,
+  SIMPLEPRACTICE: Stethoscope,
+  ZOCDOC: Stethoscope,
+  BOOKSY: Scissors,
+  FRESHA: Scissors,
+  SHIPSTATION: Package,
+  KLAVIYO: Mail,
+  MAILCHIMP: Mail,
+  HUBSPOT: Target,
+  SALESFORCE: Cloud,
+  GOOGLE_SHEETS: BarChart3,
+  ZAPIER: Zap,
+  SLACK: MessageSquare,
+  TWILIO_SMS: MessageSquare,
+  SENDGRID_EMAIL: Mail,
+  CUSTOM: Hash
 };
 
-const AVAILABLE_INTEGRATIONS = [
-  {
-    id: 'stripe',
-    name: 'Stripe',
-    icon: CreditCard,
-    category: 'paymentsCategory',
-    docsUrl: 'https://stripe.com/docs',
-    color: 'text-purple-600',
-    bgColor: 'bg-purple-100',
-  },
-  {
-    id: 'zapier',
-    name: 'Zapier',
-    icon: Zap,
-    category: 'automationCategory',
-    docsUrl: 'https://zapier.com',
-    color: 'text-orange-600',
-    bgColor: 'bg-orange-100',
-  },
-  {
-    id: 'slack',
-    name: 'Slack',
-    icon: MessageSquare,
-    category: 'communicationCategory',
-    docsUrl: 'https://slack.com/api',
-    color: 'text-purple-600',
-    bgColor: 'bg-purple-100',
-  },
-  {
-    id: 'hubspot',
-    name: 'HubSpot',
-    icon: Target,
-    category: 'crmCategory',
-    docsUrl: 'https://developers.hubspot.com',
-    color: 'text-orange-600',
-    bgColor: 'bg-orange-100',
-  },
-  {
-    id: 'salesforce',
-    name: 'Salesforce',
-    icon: Cloud,
-    category: 'crmCategory',
-    docsUrl: 'https://developer.salesforce.com',
-    color: 'text-blue-600',
-    bgColor: 'bg-blue-100',
-  },
-  {
-    id: 'calendly',
-    name: 'Calendly',
-    icon: Calendar,
-    category: 'schedulingCategory',
-    docsUrl: 'https://developer.calendly.com',
-    color: 'text-blue-600',
-    bgColor: 'bg-blue-100',
-  },
-  {
-    id: 'google-calendar',
-    name: 'Google Calendar',
-    icon: CalendarDays,
-    category: 'schedulingCategory',
-    docsUrl: 'https://developers.google.com/calendar',
-    color: 'text-blue-600',
-    bgColor: 'bg-blue-100',
-  },
-  {
-    id: 'google-sheets',
-    name: 'Google Sheets',
-    icon: BarChart3,
-    category: 'crmCategory',
-    docsUrl: 'https://developers.google.com/sheets',
-    color: 'text-green-600',
-    bgColor: 'bg-green-100',
-  },
-  {
-    id: 'whatsapp',
-    name: 'WhatsApp Business',
-    icon: Smartphone,
-    category: 'communicationCategory',
-    docsUrl: 'https://developers.facebook.com/docs/whatsapp',
-    color: 'text-green-600',
-    bgColor: 'bg-green-100',
-  },
-];
+// Color mapping for categories
+const CATEGORY_COLORS = {
+  scheduling: { icon: 'text-blue-600', bg: 'bg-blue-100' },
+  communication: { icon: 'text-green-600', bg: 'bg-green-100' },
+  payments: { icon: 'text-purple-600', bg: 'bg-purple-100' },
+  ecommerce: { icon: 'text-orange-600', bg: 'bg-orange-100' },
+  reservations: { icon: 'text-red-600', bg: 'bg-red-100' },
+  pos: { icon: 'text-yellow-600', bg: 'bg-yellow-100' },
+  healthcare: { icon: 'text-teal-600', bg: 'bg-teal-100' },
+  booking: { icon: 'text-pink-600', bg: 'bg-pink-100' },
+  shipping: { icon: 'text-indigo-600', bg: 'bg-indigo-100' },
+  marketing: { icon: 'text-rose-600', bg: 'bg-rose-100' },
+  crm: { icon: 'text-cyan-600', bg: 'bg-cyan-100' },
+  data: { icon: 'text-emerald-600', bg: 'bg-emerald-100' },
+  automation: { icon: 'text-amber-600', bg: 'bg-amber-100' }
+};
+
+// Documentation URLs
+const INTEGRATION_DOCS = {
+  GOOGLE_CALENDAR: 'https://developers.google.com/calendar',
+  WHATSAPP: 'https://developers.facebook.com/docs/whatsapp',
+  CALENDLY: 'https://developer.calendly.com',
+  SHOPIFY: 'https://shopify.dev',
+  WOOCOMMERCE: 'https://woocommerce.com/documentation',
+  STRIPE_PAYMENTS: 'https://stripe.com/docs',
+  SQUARE: 'https://developer.squareup.com',
+  OPENTABLE: 'https://platform.opentable.com',
+  TOAST_POS: 'https://doc.toasttab.com',
+  SIMPLEPRACTICE: 'https://developers.simplepractice.com',
+  ZOCDOC: 'https://www.zocdoc.com/about/developers',
+  BOOKSY: 'https://developers.booksy.com',
+  FRESHA: 'https://www.fresha.com/developers',
+  SHIPSTATION: 'https://www.shipstation.com/docs/api',
+  KLAVIYO: 'https://developers.klaviyo.com',
+  MAILCHIMP: 'https://mailchimp.com/developer',
+  HUBSPOT: 'https://developers.hubspot.com',
+  SALESFORCE: 'https://developer.salesforce.com',
+  GOOGLE_SHEETS: 'https://developers.google.com/sheets',
+  ZAPIER: 'https://zapier.com/developer',
+  SLACK: 'https://api.slack.com',
+  TWILIO_SMS: 'https://www.twilio.com/docs/sms',
+  SENDGRID_EMAIL: 'https://docs.sendgrid.com'
+};
 
 export default function IntegrationsPage() {
   const { t } = useLanguage();
@@ -151,31 +137,19 @@ export default function IntegrationsPage() {
   });
 
   useEffect(() => {
-    loadBusinessInfo();
     loadIntegrations();
     loadWhatsAppStatus();
   }, []);
 
-  // Load business type
-  const loadBusinessInfo = async () => {
-    try {
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
-      if (user.businessId) {
-        const response = await apiClient.business.get(user.businessId);
-        const type = response.data.business?.businessType || 'OTHER';
-        setBusinessType(type);
-      }
-    } catch (error) {
-      console.error('Failed to load business info:', error);
-    }
-  };
-
+  // Load available integrations (filtered by business type)
   const loadIntegrations = async () => {
     setLoading(true);
     try {
-      const response = await apiClient.integrations.getAll();
+      const response = await apiClient.get('/api/integrations/available');
       setIntegrations(response.data.integrations || []);
+      setBusinessType(response.data.businessType || 'OTHER');
     } catch (error) {
+      console.error('Failed to load integrations:', error);
       toast.error(t('saveError'));
     } finally {
       setLoading(false);
@@ -247,57 +221,60 @@ export default function IntegrationsPage() {
     }
   };
 
-  const handleConnect = async (integrationId) => {
+  const handleConnect = async (integration) => {
     try {
       // WhatsApp - Show modal
-      if (integrationId === 'whatsapp') {
+      if (integration.type === 'WHATSAPP') {
         setWhatsappModalOpen(true);
         return;
       }
 
       // OAuth integrations
-      if (integrationId === 'google-calendar') {
-        const response = await apiClient.get(`/api/calendar/google/auth`);
+      if (integration.type === 'GOOGLE_CALENDAR') {
+        const response = await apiClient.get('/api/calendar/google/auth');
         window.location.href = response.data.authUrl;
         return;
       }
 
       // Other OAuth integrations
-      if (['calendly', 'hubspot', 'google-sheets'].includes(integrationId)) {
+      const oauthIntegrations = ['CALENDLY', 'HUBSPOT', 'GOOGLE_SHEETS', 'SALESFORCE'];
+      if (oauthIntegrations.includes(integration.type)) {
+        const integrationId = integration.type.toLowerCase().replace('_', '-');
         const response = await apiClient.get(`/integrations/${integrationId}/auth`);
         window.location.href = response.data.authUrl;
         return;
       }
 
-      // Other integrations
-      await toastHelpers.async(
-        apiClient.integrations.connect(integrationId, {}),
-        t('connectingText'),
-        t('integrationConnected')
-      );
-      loadIntegrations();
+      // Other integrations - show coming soon
+      toast.info(`${integration.name} integration coming soon!`);
     } catch (error) {
-      // Error handled
+      toast.error('Failed to connect integration');
     }
   };
 
-  const handleDisconnect = async (integrationId) => {
+  const handleDisconnect = async (integration) => {
     if (!confirm(t('disconnectConfirm'))) return;
 
     try {
-      await toastHelpers.async(
-        apiClient.integrations.disconnect(integrationId),
-        t('disconnectingText'),
-        t('integrationDisconnected')
-      );
-      loadIntegrations();
+      if (integration.type === 'WHATSAPP') {
+        await handleWhatsAppDisconnect();
+      } else {
+        const integrationId = integration.type.toLowerCase().replace('_', '-');
+        await toastHelpers.async(
+          apiClient.integrations.disconnect(integrationId),
+          t('disconnectingText'),
+          t('integrationDisconnected')
+        );
+        loadIntegrations();
+      }
     } catch (error) {
       // Error handled
     }
   };
 
-  const handleTest = async (integrationId) => {
+  const handleTest = async (integration) => {
     try {
+      const integrationId = integration.type.toLowerCase().replace('_', '-');
       await toastHelpers.async(
         apiClient.integrations.test(integrationId),
         t('testingConnection'),
@@ -308,62 +285,174 @@ export default function IntegrationsPage() {
     }
   };
 
-  const isConnected = (integrationId) => {
-    // Special handling for WhatsApp
-    if (integrationId === 'whatsapp') {
-      return whatsappStatus?.connected || false;
-    }
-    return integrations.some((i) => i.provider === integrationId && i.connected);
+  // Get icon component for integration
+  const getIntegrationIcon = (type) => {
+    return INTEGRATION_ICONS[type] || Hash;
   };
 
-  // Check if integration is recommended for this business
-  const isRecommended = (integrationId) => {
-    const recommended = INDUSTRY_INTEGRATIONS[businessType] || [];
-    return recommended.includes(integrationId);
+  // Get color scheme for category
+  const getCategoryColors = (category) => {
+    return CATEGORY_COLORS[category] || { icon: 'text-neutral-600', bg: 'bg-neutral-100' };
   };
 
-  // Sort: recommended first, then alphabetically
-  const sortedIntegrations = [...AVAILABLE_INTEGRATIONS].sort((a, b) => {
-    const aRecommended = isRecommended(a.id);
-    const bRecommended = isRecommended(b.id);
-    if (aRecommended && !bRecommended) return -1;
-    if (!aRecommended && bRecommended) return 1;
-    return a.name.localeCompare(b.name);
-  });
+  // Get documentation URL
+  const getDocsUrl = (type) => {
+    return INTEGRATION_DOCS[type] || '#';
+  };
 
-  const getDescription = (id) => {
-    const descMap = {
-      stripe: 'stripeDesc2',
-      zapier: 'zapierDesc2',
-      slack: 'slackDesc',
-      hubspot: 'hubspotDesc2',
-      salesforce: 'salesforceDesc',
-      calendly: 'calendlyDesc',
-      'google-calendar': 'googleCalendarDesc',
-      'google-sheets': 'Basit CRM olarak kullanın - aramaları otomatik kaydedin',
-      whatsapp: 'whatsappDesc',
+  // Get business type display name
+  const getBusinessTypeDisplay = (type) => {
+    const typeMap = {
+      RESTAURANT: 'Restaurant',
+      SALON: 'Salon/Spa',
+      ECOMMERCE: 'E-commerce',
+      CLINIC: 'Clinic/Healthcare',
+      SERVICE: 'Service Business',
+      OTHER: 'General'
     };
-    return t(descMap[id] || '') || descMap[id];
+    return typeMap[type] || type;
+  };
+
+  // Group integrations by priority
+  const groupedIntegrations = {
+    ESSENTIAL: integrations.filter(i => i.priority === 'ESSENTIAL'),
+    RECOMMENDED: integrations.filter(i => i.priority === 'RECOMMENDED'),
+    OPTIONAL: integrations.filter(i => i.priority === 'OPTIONAL')
+  };
+
+  // Render integration card
+  const renderIntegrationCard = (integration) => {
+    const Icon = getIntegrationIcon(integration.type);
+    const colors = getCategoryColors(integration.category);
+    const docsUrl = getDocsUrl(integration.type);
+
+    return (
+      <div
+        key={integration.type}
+        className={`bg-white rounded-xl border p-6 hover:shadow-md transition-shadow ${
+          integration.priority === 'ESSENTIAL'
+            ? 'border-primary-300 bg-primary-50/30'
+            : 'border-neutral-200'
+        }`}
+      >
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className={`p-3 rounded-lg ${colors.bg}`}>
+              <Icon className={`h-6 w-6 ${colors.icon}`} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-semibold text-neutral-900">{integration.name}</h3>
+                {integration.priority === 'ESSENTIAL' && (
+                  <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                )}
+              </div>
+              <Badge variant="secondary" className="text-xs mt-1">
+                {integration.category}
+              </Badge>
+            </div>
+          </div>
+          {integration.connected && (
+            <div className="p-1 bg-green-100 rounded-full">
+              <Check className="h-4 w-4 text-green-600" />
+            </div>
+          )}
+        </div>
+
+        {/* Priority Badge */}
+        {integration.priority === 'ESSENTIAL' && (
+          <div className="mb-3 px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-md inline-flex items-center gap-1">
+            <Star className="h-3 w-3 fill-blue-700" />
+            Essential for your business
+          </div>
+        )}
+        {integration.priority === 'RECOMMENDED' && (
+          <div className="mb-3 px-2 py-1 bg-green-100 text-green-700 text-xs rounded-md inline-flex items-center gap-1">
+            <CheckCircle2 className="h-3 w-3" />
+            Recommended for you
+          </div>
+        )}
+
+        {/* Category-specific description */}
+        <p className="text-sm text-neutral-600 mb-4 line-clamp-2">
+          {getCategoryDescription(integration.type, integration.category)}
+        </p>
+
+        <div className="flex gap-2">
+          {integration.connected ? (
+            <>
+              {integration.type === 'WHATSAPP' && whatsappStatus?.phoneNumberId && (
+                <div className="flex-1 text-xs text-neutral-600 mb-2">
+                  Phone ID: {whatsappStatus.phoneNumberId.substring(0, 15)}...
+                </div>
+              )}
+              {integration.type !== 'WHATSAPP' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => handleTest(integration)}
+                >
+                  Test
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleDisconnect(integration)}
+              >
+                Disconnect
+              </Button>
+            </>
+          ) : (
+            <Button
+              size="sm"
+              className="flex-1"
+              onClick={() => handleConnect(integration)}
+            >
+              Connect
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            asChild
+          >
+            <a
+              href={docsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <ExternalLink className="h-4 w-4" />
+            </a>
+          </Button>
+        </div>
+      </div>
+    );
   };
 
   return (
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-neutral-900">{t('integrationsTitle2')}</h1>
+        <h1 className="text-3xl font-bold text-neutral-900">Integrations</h1>
         <p className="text-neutral-600 mt-1">
-          {t('connectTelyx')}
+          Connect your tools and platforms to enhance your AI assistant
         </p>
         {/* Business type indicator */}
         {businessType && (
-          <p className="text-sm text-primary-600 mt-2 flex items-center gap-2">
-            <Target className="h-4 w-4" />
-            {t('industry')}: {t(`industry${businessType.charAt(0) + businessType.slice(1).toLowerCase()}`)}
-          </p>
+          <div className="mt-3 flex items-center gap-2">
+            <Badge variant="outline" className="text-sm">
+              <Target className="h-4 w-4 mr-1" />
+              {getBusinessTypeDisplay(businessType)} Business
+            </Badge>
+            <p className="text-xs text-neutral-500">
+              Showing integrations optimized for your business type
+            </p>
+          </div>
         )}
       </div>
 
-      {/* Integrations grid */}
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -380,115 +469,82 @@ export default function IntegrationsPage() {
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {sortedIntegrations.map((integration) => {
-            const connected = isConnected(integration.id);
-            const recommended = isRecommended(integration.id);
-            return (
-              <div
-                key={integration.id}
-                className={`bg-white rounded-xl border p-6 hover:shadow-md transition-shadow ${
-                  recommended ? 'border-primary-300 bg-primary-50/30' : 'border-neutral-200'
-                }`}
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className={`p-3 rounded-lg ${integration.bgColor}`}>
-                      <integration.icon className={`h-6 w-6 ${integration.color}`} />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-neutral-900">{integration.name}</h3>
-                        {recommended && (
-                          <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
-                        )}
-                      </div>
-                      <Badge variant="secondary" className="text-xs mt-1">
-                        {t(integration.category)}
-                      </Badge>
-                    </div>
-                  </div>
-                  {connected && (
-                    <div className="p-1 bg-green-100 rounded-full">
-                      <Check className="h-4 w-4 text-green-600" />
-                    </div>
-                  )}
-                </div>
-
-                {recommended && (
-                  <div className="mb-3 px-2 py-1 bg-primary-100 text-primary-700 text-xs rounded-md inline-flex items-center gap-1">
-                    <Star className="h-3 w-3 fill-primary-700" />
-                    {t('recommendedForYou') || 'Sizin için önerilen'}
-                  </div>
-                )}
-
-                <p className="text-sm text-neutral-600 mb-4">{getDescription(integration.id)}</p>
-
-                <div className="flex gap-2">
-                  {connected ? (
-                    <>
-                      {integration.id === 'whatsapp' && whatsappStatus?.phoneNumberId && (
-                        <div className="flex-1 text-xs text-neutral-600 mb-2">
-                          Phone ID: {whatsappStatus.phoneNumberId.substring(0, 15)}...
-                        </div>
-                      )}
-                      {integration.id !== 'whatsapp' && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex-1"
-                          onClick={() => handleTest(integration.id)}
-                        >
-                          {t('testBtn2')}
-                        </Button>
-                      )}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => integration.id === 'whatsapp' ? handleWhatsAppDisconnect() : handleDisconnect(integration.id)}
-                      >
-                        {t('disconnectBtn')}
-                      </Button>
-                    </>
-                  ) : (
-                    <Button
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => handleConnect(integration.id)}
-                    >
-                      {t('connectBtn')}
-                    </Button>
-                  )}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    asChild
-                  >
-                    <a
-                      href={integration.docsUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                    </a>
-                  </Button>
-                </div>
+        <>
+          {/* Essential Integrations */}
+          {groupedIntegrations.ESSENTIAL.length > 0 && (
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-xl font-semibold text-neutral-900 flex items-center gap-2">
+                  <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />
+                  Essential Integrations
+                </h2>
+                <p className="text-sm text-neutral-600 mt-1">
+                  Core integrations critical for your business type
+                </p>
               </div>
-            );
-          })}
-        </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {groupedIntegrations.ESSENTIAL.map(renderIntegrationCard)}
+              </div>
+            </div>
+          )}
+
+          {/* Recommended Integrations */}
+          {groupedIntegrations.RECOMMENDED.length > 0 && (
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-xl font-semibold text-neutral-900 flex items-center gap-2">
+                  <CheckCircle2 className="h-5 w-5 text-green-600" />
+                  Recommended Integrations
+                </h2>
+                <p className="text-sm text-neutral-600 mt-1">
+                  Popular integrations that complement your workflow
+                </p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {groupedIntegrations.RECOMMENDED.map(renderIntegrationCard)}
+              </div>
+            </div>
+          )}
+
+          {/* Optional Integrations */}
+          {groupedIntegrations.OPTIONAL.length > 0 && (
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-xl font-semibold text-neutral-900">
+                  More Integrations
+                </h2>
+                <p className="text-sm text-neutral-600 mt-1">
+                  Additional integrations you can explore
+                </p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {groupedIntegrations.OPTIONAL.map(renderIntegrationCard)}
+              </div>
+            </div>
+          )}
+
+          {/* Empty state */}
+          {integrations.length === 0 && (
+            <EmptyState
+              icon={Puzzle}
+              title="No integrations available"
+              description="Contact support to enable custom integrations for your business"
+            />
+          )}
+        </>
       )}
 
       {/* Info banner */}
       <div className="bg-primary-50 border border-primary-200 rounded-xl p-6">
         <h3 className="text-sm font-semibold text-primary-900 mb-2">
-          {t('needCustomIntegration')}
+          Need a custom integration?
         </h3>
         <p className="text-sm text-primary-700 mb-3">
-          {t('customIntegrationDesc')}
+          We can build custom integrations for your specific tools and workflows.
+          Contact our sales team to discuss your requirements.
         </p>
         <Button variant="outline" size="sm">
-          {t('contactSalesBtn')}
+          Contact Sales
         </Button>
       </div>
 
@@ -611,4 +667,34 @@ export default function IntegrationsPage() {
       </Dialog>
     </div>
   );
+}
+
+// Helper function to get category descriptions
+function getCategoryDescription(type, category) {
+  const descriptions = {
+    GOOGLE_CALENDAR: 'Sync appointments and manage your schedule seamlessly',
+    WHATSAPP: 'AI-powered customer conversations via WhatsApp Business API',
+    CALENDLY: 'Automated appointment scheduling and booking',
+    SHOPIFY: 'Connect your Shopify store for order management',
+    WOOCOMMERCE: 'Integrate your WooCommerce store for seamless operations',
+    STRIPE_PAYMENTS: 'Secure payment processing and transaction management',
+    SQUARE: 'Accept payments and manage your point of sale',
+    OPENTABLE: 'Manage restaurant reservations from OpenTable',
+    TOAST_POS: 'Restaurant point of sale and order management',
+    SIMPLEPRACTICE: 'Practice management for healthcare professionals',
+    ZOCDOC: 'Patient booking and scheduling platform',
+    BOOKSY: 'Salon and spa booking platform integration',
+    FRESHA: 'Beauty and wellness booking management',
+    SHIPSTATION: 'Shipping and fulfillment automation',
+    KLAVIYO: 'Email marketing and customer engagement',
+    MAILCHIMP: 'Email campaigns and marketing automation',
+    HUBSPOT: 'CRM and marketing automation platform',
+    SALESFORCE: 'Enterprise CRM and customer management',
+    GOOGLE_SHEETS: 'Use as a simple CRM - auto-save call logs',
+    ZAPIER: 'Connect thousands of apps with automation',
+    SLACK: 'Team communication and notifications',
+    TWILIO_SMS: 'SMS notifications and messaging',
+    SENDGRID_EMAIL: 'Email delivery and transactional emails'
+  };
+  return descriptions[type] || `${category} integration`;
 }
