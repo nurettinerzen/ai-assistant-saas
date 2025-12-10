@@ -604,13 +604,63 @@ router.get('/google-sheets/callback', async (req, res) => {
 });
 
 /* ============================================================
-   WHATSAPP BUSINESS INTEGRATION
+   WHATSAPP BUSINESS INTEGRATION - MULTI-TENANT
 ============================================================ */
 
 router.post('/whatsapp/connect', async (req, res) => {
   try {
-    const { accessToken, phoneNumberId } = req.body;
+    const { accessToken, phoneNumberId, verifyToken } = req.body;
 
+    // Validate required fields
+    if (!accessToken || !phoneNumberId || !verifyToken) {
+      return res.status(400).json({
+        error: 'Access token, phone number ID, and verify token are required'
+      });
+    }
+
+    // Validate access token with Meta API
+    try {
+      const metaResponse = await axios.get(
+        `https://graph.facebook.com/v18.0/${phoneNumberId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`
+          }
+        }
+      );
+
+      if (!metaResponse.data || !metaResponse.data.id) {
+        return res.status(401).json({
+          error: 'Invalid access token or phone number ID'
+        });
+      }
+    } catch (metaError) {
+      console.error('Meta API validation error:', metaError.response?.data);
+      return res.status(401).json({
+        error: 'Failed to validate credentials with Meta. Please check your access token and phone number ID.',
+        details: metaError.response?.data?.error?.message
+      });
+    }
+
+    // Encrypt the access token before storage
+    const { encrypt } = await import('../utils/encryption.js');
+    const encryptedAccessToken = encrypt(accessToken);
+
+    // Generate webhook URL for this business
+    const webhookUrl = `${process.env.BACKEND_URL || 'http://localhost:3001'}/api/whatsapp/webhook`;
+
+    // Store in Business model for direct access
+    await prisma.business.update({
+      where: { id: req.businessId },
+      data: {
+        whatsappPhoneNumberId: phoneNumberId,
+        whatsappAccessToken: encryptedAccessToken,
+        whatsappVerifyToken: verifyToken,
+        whatsappWebhookUrl: webhookUrl
+      }
+    });
+
+    // Also store in Integration model for consistency
     await prisma.integration.upsert({
       where: {
         businessId_type: {
@@ -619,21 +669,94 @@ router.post('/whatsapp/connect', async (req, res) => {
         }
       },
       update: {
-        credentials: { accessToken, phoneNumberId },
-        connected: true
+        credentials: {
+          phoneNumberId,
+          verifyToken,
+          webhookUrl
+        },
+        connected: true,
+        isActive: true
       },
       create: {
         businessId: req.businessId,
         type: 'WHATSAPP',
-        credentials: { accessToken, phoneNumberId },
-        connected: true
+        credentials: {
+          phoneNumberId,
+          verifyToken,
+          webhookUrl
+        },
+        connected: true,
+        isActive: true
       }
     });
 
-    res.json({ success: true, message: 'WhatsApp connected successfully' });
+    res.json({
+      success: true,
+      message: 'WhatsApp connected successfully',
+      webhookUrl,
+      phoneNumberId
+    });
   } catch (error) {
     console.error('WhatsApp connect error:', error);
     res.status(500).json({ error: 'Failed to connect WhatsApp' });
+  }
+});
+
+router.post('/whatsapp/disconnect', async (req, res) => {
+  try {
+    // Remove from Business model
+    await prisma.business.update({
+      where: { id: req.businessId },
+      data: {
+        whatsappPhoneNumberId: null,
+        whatsappAccessToken: null,
+        whatsappVerifyToken: null,
+        whatsappWebhookUrl: null
+      }
+    });
+
+    // Mark as disconnected in Integration model
+    await prisma.integration.updateMany({
+      where: {
+        businessId: req.businessId,
+        type: 'WHATSAPP'
+      },
+      data: {
+        connected: false,
+        isActive: false
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'WhatsApp disconnected successfully'
+    });
+  } catch (error) {
+    console.error('WhatsApp disconnect error:', error);
+    res.status(500).json({ error: 'Failed to disconnect WhatsApp' });
+  }
+});
+
+router.get('/whatsapp/status', async (req, res) => {
+  try {
+    const business = await prisma.business.findUnique({
+      where: { id: req.businessId },
+      select: {
+        whatsappPhoneNumberId: true,
+        whatsappWebhookUrl: true
+      }
+    });
+
+    const isConnected = !!business?.whatsappPhoneNumberId;
+
+    res.json({
+      connected: isConnected,
+      phoneNumberId: business?.whatsappPhoneNumberId || null,
+      webhookUrl: business?.whatsappWebhookUrl || null
+    });
+  } catch (error) {
+    console.error('WhatsApp status error:', error);
+    res.status(500).json({ error: 'Failed to get WhatsApp status' });
   }
 });
 
@@ -641,20 +764,35 @@ router.post('/whatsapp/send', async (req, res) => {
   try {
     const { recipientPhone, message } = req.body;
 
-    const integration = await prisma.integration.findFirst({
-      where: {
-        businessId: req.businessId,
-        type: 'WHATSAPP',
-        connected: true
+    if (!recipientPhone || !message) {
+      return res.status(400).json({
+        error: 'Recipient phone and message are required'
+      });
+    }
+
+    const business = await prisma.business.findUnique({
+      where: { id: req.businessId },
+      select: {
+        whatsappPhoneNumberId: true,
+        whatsappAccessToken: true
       }
     });
 
-    if (!integration) {
+    if (!business?.whatsappPhoneNumberId || !business?.whatsappAccessToken) {
       return res.status(404).json({ error: 'WhatsApp not connected' });
     }
 
-    const { accessToken, phoneNumberId } = integration.credentials;
-    const result = await whatsappService.sendMessage(accessToken, phoneNumberId, recipientPhone, message);
+    // Decrypt access token
+    const { decrypt } = await import('../utils/encryption.js');
+    const accessToken = decrypt(business.whatsappAccessToken);
+
+    // Send message via WhatsApp service
+    const result = await whatsappService.sendMessage(
+      accessToken,
+      business.whatsappPhoneNumberId,
+      recipientPhone,
+      message
+    );
 
     res.json({ success: true, result });
   } catch (error) {

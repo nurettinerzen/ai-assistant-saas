@@ -9,8 +9,18 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import EmptyState from '@/components/EmptyState';
-import { Puzzle, Check, ExternalLink, Star } from 'lucide-react';
+import { Puzzle, Check, ExternalLink, Star, Copy, CheckCircle2 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast, toastHelpers } from '@/lib/toast';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -96,9 +106,20 @@ export default function IntegrationsPage() {
   const [loading, setLoading] = useState(true);
   const [businessType, setBusinessType] = useState('OTHER');
 
+  // WhatsApp connection state
+  const [whatsappModalOpen, setWhatsappModalOpen] = useState(false);
+  const [whatsappStatus, setWhatsappStatus] = useState(null);
+  const [whatsappLoading, setWhatsappLoading] = useState(false);
+  const [whatsappForm, setWhatsappForm] = useState({
+    accessToken: '',
+    phoneNumberId: '',
+    verifyToken: ''
+  });
+
   useEffect(() => {
     loadBusinessInfo();
     loadIntegrations();
+    loadWhatsAppStatus();
   }, []);
 
   // 🔧 Load business type
@@ -127,21 +148,92 @@ export default function IntegrationsPage() {
     }
   };
 
+  // Load WhatsApp connection status
+  const loadWhatsAppStatus = async () => {
+    try {
+      const response = await apiClient.get('/api/integrations/whatsapp/status');
+      setWhatsappStatus(response.data);
+    } catch (error) {
+      console.error('Failed to load WhatsApp status:', error);
+    }
+  };
+
+  // Handle WhatsApp connection
+  const handleWhatsAppConnect = async () => {
+    if (!whatsappForm.accessToken || !whatsappForm.phoneNumberId || !whatsappForm.verifyToken) {
+      toast.error('Please fill in all fields');
+      return;
+    }
+
+    setWhatsappLoading(true);
+    try {
+      const response = await apiClient.post('/api/integrations/whatsapp/connect', whatsappForm);
+
+      if (response.data.success) {
+        toast.success('WhatsApp connected successfully!');
+        setWhatsappModalOpen(false);
+        setWhatsappForm({
+          accessToken: '',
+          phoneNumberId: '',
+          verifyToken: ''
+        });
+        await loadWhatsAppStatus();
+        await loadIntegrations();
+      }
+    } catch (error) {
+      const errorMsg = error.response?.data?.error || 'Failed to connect WhatsApp';
+      toast.error(errorMsg);
+    } finally {
+      setWhatsappLoading(false);
+    }
+  };
+
+  // Handle WhatsApp disconnection
+  const handleWhatsAppDisconnect = async () => {
+    if (!confirm('Are you sure you want to disconnect WhatsApp?')) return;
+
+    try {
+      await toastHelpers.async(
+        apiClient.post('/api/integrations/whatsapp/disconnect'),
+        'Disconnecting WhatsApp...',
+        'WhatsApp disconnected successfully'
+      );
+      await loadWhatsAppStatus();
+      await loadIntegrations();
+    } catch (error) {
+      // Error handled by toastHelpers
+    }
+  };
+
+  // Copy webhook URL to clipboard
+  const copyWebhookUrl = () => {
+    if (whatsappStatus?.webhookUrl) {
+      navigator.clipboard.writeText(whatsappStatus.webhookUrl);
+      toast.success('Webhook URL copied to clipboard!');
+    }
+  };
+
   const handleConnect = async (integrationId) => {
     try {
+      // WhatsApp - Show modal
+      if (integrationId === 'whatsapp') {
+        setWhatsappModalOpen(true);
+        return;
+      }
+
       // OAuth integrations
       if (integrationId === 'google-calendar') {
-  const response = await apiClient.get(`/api/calendar/google/auth`);  // /api EKLE!
-  window.location.href = response.data.authUrl;
-  return;
-}
+        const response = await apiClient.get(`/api/calendar/google/auth`);
+        window.location.href = response.data.authUrl;
+        return;
+      }
 
-// Diğer OAuth integrations
-if (['calendly', 'hubspot', 'google-sheets'].includes(integrationId)) {
-  const response = await apiClient.get(`/integrations/${integrationId}/auth`);
-  window.location.href = response.data.authUrl;
-  return;
-}
+      // Other OAuth integrations
+      if (['calendly', 'hubspot', 'google-sheets'].includes(integrationId)) {
+        const response = await apiClient.get(`/integrations/${integrationId}/auth`);
+        window.location.href = response.data.authUrl;
+        return;
+      }
 
       // Other integrations
       await toastHelpers.async(
@@ -183,6 +275,10 @@ if (['calendly', 'hubspot', 'google-sheets'].includes(integrationId)) {
   };
 
   const isConnected = (integrationId) => {
+    // Special handling for WhatsApp
+    if (integrationId === 'whatsapp') {
+      return whatsappStatus?.connected || false;
+    }
     return integrations.some((i) => i.provider === integrationId && i.connected);
   };
 
@@ -293,18 +389,25 @@ if (['calendly', 'hubspot', 'google-sheets'].includes(integrationId)) {
                 <div className="flex gap-2">
                   {connected ? (
                     <>
+                      {integration.id === 'whatsapp' && whatsappStatus?.phoneNumberId && (
+                        <div className="flex-1 text-xs text-neutral-600 mb-2">
+                          Phone ID: {whatsappStatus.phoneNumberId.substring(0, 15)}...
+                        </div>
+                      )}
+                      {integration.id !== 'whatsapp' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => handleTest(integration.id)}
+                        >
+                          {t('testBtn2')}
+                        </Button>
+                      )}
                       <Button
                         variant="outline"
                         size="sm"
-                        className="flex-1"
-                        onClick={() => handleTest(integration.id)}
-                      >
-                        {t('testBtn2')}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDisconnect(integration.id)}
+                        onClick={() => integration.id === 'whatsapp' ? handleWhatsAppDisconnect() : handleDisconnect(integration.id)}
                       >
                         {t('disconnectBtn')}
                       </Button>
@@ -350,6 +453,124 @@ if (['calendly', 'hubspot', 'google-sheets'].includes(integrationId)) {
           {t('contactSalesBtn')}
         </Button>
       </div>
+
+      {/* WhatsApp Connection Modal */}
+      <Dialog open={whatsappModalOpen} onOpenChange={setWhatsappModalOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Connect WhatsApp Business API</DialogTitle>
+            <DialogDescription>
+              Connect your WhatsApp Business API to enable AI-powered conversations with your customers.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {/* Setup Instructions */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h4 className="font-semibold text-sm text-blue-900 mb-3">Setup Instructions:</h4>
+              <ol className="space-y-2 text-sm text-blue-800 list-decimal list-inside">
+                <li>Go to <a href="https://business.facebook.com" target="_blank" rel="noopener noreferrer" className="underline">Meta Business Suite</a></li>
+                <li>Navigate to WhatsApp API Settings</li>
+                <li>Create a permanent access token</li>
+                <li>Copy your Phone Number ID</li>
+                <li>Create a verify token (any secure random string)</li>
+                <li>Configure the webhook URL shown below</li>
+              </ol>
+            </div>
+
+            {/* Form Fields */}
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="accessToken">Access Token *</Label>
+                <Input
+                  id="accessToken"
+                  type="password"
+                  placeholder="Enter your WhatsApp access token"
+                  value={whatsappForm.accessToken}
+                  onChange={(e) => setWhatsappForm({ ...whatsappForm, accessToken: e.target.value })}
+                />
+                <p className="text-xs text-neutral-500">This will be encrypted and stored securely</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="phoneNumberId">Phone Number ID *</Label>
+                <Input
+                  id="phoneNumberId"
+                  type="text"
+                  placeholder="Enter your phone number ID"
+                  value={whatsappForm.phoneNumberId}
+                  onChange={(e) => setWhatsappForm({ ...whatsappForm, phoneNumberId: e.target.value })}
+                />
+                <p className="text-xs text-neutral-500">Found in your WhatsApp Business API settings</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="verifyToken">Verify Token *</Label>
+                <Input
+                  id="verifyToken"
+                  type="text"
+                  placeholder="Create a secure verify token"
+                  value={whatsappForm.verifyToken}
+                  onChange={(e) => setWhatsappForm({ ...whatsappForm, verifyToken: e.target.value })}
+                />
+                <p className="text-xs text-neutral-500">Use this same token when configuring the webhook in Meta</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Webhook URL (Read-only)</Label>
+                <div className="flex gap-2">
+                  <Input
+                    type="text"
+                    readOnly
+                    value={whatsappStatus?.webhookUrl || `${window.location.origin}/api/whatsapp/webhook`}
+                    className="bg-neutral-50"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={copyWebhookUrl}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+                <p className="text-xs text-neutral-500">
+                  Configure this URL in your Meta Business Suite webhook settings
+                </p>
+              </div>
+            </div>
+
+            {/* Connection Status */}
+            {whatsappStatus?.connected && (
+              <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                <CheckCircle2 className="h-5 w-5 text-green-600" />
+                <div>
+                  <p className="text-sm font-medium text-green-900">Currently Connected</p>
+                  <p className="text-xs text-green-700">
+                    Phone Number ID: {whatsappStatus.phoneNumberId}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setWhatsappModalOpen(false)}
+              disabled={whatsappLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleWhatsAppConnect}
+              disabled={whatsappLoading}
+            >
+              {whatsappLoading ? 'Connecting...' : 'Connect WhatsApp'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
