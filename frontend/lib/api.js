@@ -94,6 +94,7 @@ export const apiClient = {
     create: (data) => api.post('/api/assistants', data),
     update: (id, data) => api.put(`/api/assistants/${id}`, data),
     delete: (id) => api.delete(`/api/assistants/${id}`),
+    getTemplates: (language) => api.get('/api/assistants/templates', { params: { language } }),
   },
 
   // Calls
@@ -161,6 +162,12 @@ export const apiClient = {
   // Voices
   voices: {
     getAll: () => api.get('/api/voices'),
+  },
+
+  // Business
+  business: {
+    get: (businessId) => api.get(`/api/business/${businessId}`),
+    update: (businessId, data) => api.put(`/api/business/${businessId}`, data),
   },
 
   // Phone Numbers
