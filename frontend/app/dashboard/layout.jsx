@@ -1,13 +1,7 @@
-/**
- * Dashboard Layout
- * Main layout wrapper with sidebar navigation
- * UPDATE EXISTING FILE: frontend/app/dashboard/layout.jsx
- */
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation'; // usePathname ekle
 import Sidebar from '@/components/Sidebar';
 import { apiClient } from '@/lib/api';
 import { Toaster } from 'sonner';
@@ -15,6 +9,7 @@ import OnboardingWizard from '@/components/OnboardingWizard';
 
 export default function DashboardLayout({ children }) {
   const router = useRouter();
+  const pathname = usePathname(); // EKLE
   const [user, setUser] = useState(null);
   const [credits, setCredits] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -30,8 +25,18 @@ export default function DashboardLayout({ children }) {
 
     // Load user data
     loadUserData();
-
   }, [router]);
+
+  // 🔥 YENİ: Ayrı useEffect - Sidebar scroll position'ını koru
+  useEffect(() => {
+    const sidebar = document.querySelector('[data-sidebar-nav]');
+    if (sidebar) {
+      const scrollPos = sessionStorage.getItem('sidebar-scroll');
+      if (scrollPos) {
+        sidebar.scrollTop = parseInt(scrollPos);
+      }
+    }
+  }, [pathname]);
 
   const loadUserData = async () => {
     try {
@@ -55,11 +60,11 @@ export default function DashboardLayout({ children }) {
   };
 
   const handleOnboardingComplete = () => {
-  localStorage.setItem('onboarding_completed', 'true');
-  setShowOnboarding(false);
-  // Reload data to show new assistant
-  window.location.reload();
-};
+    localStorage.setItem('onboarding_completed', 'true');
+    setShowOnboarding(false);
+    // Reload data to show new assistant
+    window.location.reload();
+  };
 
   if (loading) {
     return (
@@ -78,7 +83,7 @@ export default function DashboardLayout({ children }) {
       <Sidebar user={user} credits={credits} />
 
       {/* Main content */}
-      <div className="flex-1 lg:ml-64 overflow-auto">
+      <div className="flex-1 lg:ml-64 overflow-auto h-screen">
         <main className="p-6 lg:p-8">
           {children}
         </main>
