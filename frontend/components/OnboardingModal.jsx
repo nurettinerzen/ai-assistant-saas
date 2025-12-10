@@ -9,7 +9,21 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import VoiceDemo from './VoiceDemo';
-import { ChevronRight, ChevronLeft, Check, Play, Loader2 } from 'lucide-react';
+import {
+  ChevronRight,
+  ChevronLeft,
+  Check,
+  Play,
+  Loader2,
+  UtensilsCrossed,
+  Scissors,
+  ShoppingCart,
+  Briefcase,
+  Package,
+  Mic2,
+  FileText,
+  Sparkles
+} from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -49,11 +63,11 @@ export function OnboardingModal({ open, onClose }) {
   ];
 
   const INDUSTRIES = [
-    { id: 'RESTAURANT', icon: '🍴', name: tr('Restaurant') },
-    { id: 'SALON', icon: '💇', name: tr('Salon & Spa') },
-    { id: 'ECOMMERCE', icon: '🛒', name: tr('E-commerce') },
-    { id: 'SERVICE', icon: '💼', name: tr('Professional Services') },
-    { id: 'OTHER', icon: '📦', name: tr('Other') }
+    { id: 'RESTAURANT', icon: UtensilsCrossed, name: tr('Restaurant'), color: 'text-orange-600', bgColor: 'bg-orange-100' },
+    { id: 'SALON', icon: Scissors, name: tr('Salon & Spa'), color: 'text-pink-600', bgColor: 'bg-pink-100' },
+    { id: 'ECOMMERCE', icon: ShoppingCart, name: tr('E-commerce'), color: 'text-blue-600', bgColor: 'bg-blue-100' },
+    { id: 'SERVICE', icon: Briefcase, name: tr('Professional Services'), color: 'text-purple-600', bgColor: 'bg-purple-100' },
+    { id: 'OTHER', icon: Package, name: tr('Other'), color: 'text-gray-600', bgColor: 'bg-gray-100' }
   ];
 
   const PROMPTS = {
@@ -163,18 +177,23 @@ export function OnboardingModal({ open, onClose }) {
         <div className="min-h-[300px]">
           {step === 1 && (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {INDUSTRIES.map((industry) => (
-                <Card
-                  key={industry.id}
-                  className={`p-6 cursor-pointer hover:shadow-lg transition-all ${
-                    data.industry === industry.id ? 'ring-2 ring-purple-600 bg-purple-50' : ''
-                  }`}
-                  onClick={() => handleIndustrySelect(industry.id)}
-                >
-                  <div className="text-4xl mb-3 text-center">{industry.icon}</div>
-                  <h3 className="text-lg font-semibold text-center">{industry.name}</h3>
-                </Card>
-              ))}
+              {INDUSTRIES.map((industry) => {
+                const Icon = industry.icon;
+                return (
+                  <Card
+                    key={industry.id}
+                    className={`p-6 cursor-pointer hover:shadow-lg transition-all ${
+                      data.industry === industry.id ? 'ring-2 ring-purple-600 bg-purple-50' : ''
+                    }`}
+                    onClick={() => handleIndustrySelect(industry.id)}
+                  >
+                    <div className={`p-4 rounded-lg ${industry.bgColor} mb-3 w-fit mx-auto`}>
+                      <Icon className={`h-8 w-8 ${industry.color}`} />
+                    </div>
+                    <h3 className="text-lg font-semibold text-center">{industry.name}</h3>
+                  </Card>
+                );
+              })}
             </div>
           )}
 
@@ -212,7 +231,10 @@ export function OnboardingModal({ open, onClose }) {
           {step === 3 && (
             <div className="space-y-6">
               <div>
-                <Label className="text-base font-semibold">🎙️ {tr('Greeting Message')}</Label>
+                <Label className="text-base font-semibold flex items-center gap-2">
+                  <Mic2 className="h-4 w-4" />
+                  {tr('Greeting Message')}
+                </Label>
                 <p className="text-sm text-gray-500 mb-2">{tr('The first sentence your assistant will say')}</p>
                 <textarea
                   value={data.firstMessage}
@@ -222,7 +244,10 @@ export function OnboardingModal({ open, onClose }) {
                 />
               </div>
               <div>
-                <Label className="text-base font-semibold">📋 {tr('Assistant Instructions')}</Label>
+                <Label className="text-base font-semibold flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  {tr('Assistant Instructions')}
+                </Label>
                 <p className="text-sm text-gray-500 mb-2">{tr('Instructions for how your assistant should behave')}</p>
                 <textarea
                   value={data.systemPrompt}
@@ -249,9 +274,9 @@ export function OnboardingModal({ open, onClose }) {
           {step === 5 && (
             <div className="text-center py-8">
               <div className="w-24 h-24 mx-auto mb-6 bg-green-100 rounded-full flex items-center justify-center">
-                <Check className="w-12 h-12 text-green-600" />
+                <Sparkles className="w-12 h-12 text-green-600" />
               </div>
-              <h3 className="text-2xl font-bold mb-3">🎉 {tr('All Set!')}</h3>
+              <h3 className="text-2xl font-bold mb-3">{tr('All Set!')}</h3>
               <p className="text-gray-600 mb-6">{tr('Your AI assistant is ready to use.')}</p>
             </div>
           )}

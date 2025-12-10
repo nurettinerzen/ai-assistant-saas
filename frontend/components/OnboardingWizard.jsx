@@ -23,14 +23,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
-import { Check, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Check, ChevronRight, ChevronLeft, Mic } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast } from '@/lib/toast';
 
 const STEPS = [
   {
     id: 1,
-    title: 'Welcome to Telyx! 👋',
+    title: 'Welcome to Telyx',
     description: 'Let\'s set up your first AI assistant in 4 easy steps',
   },
   {
@@ -123,7 +123,7 @@ export default function OnboardingWizard({ isOpen, onComplete }) {
         },
       });
 
-      toast.success('Assistant created successfully! 🎉');
+      toast.success('Assistant created successfully!');
       
       // Mark onboarding as complete
       localStorage.setItem('onboarding_completed', 'true');
@@ -158,7 +158,11 @@ export default function OnboardingWizard({ isOpen, onComplete }) {
         <div className="min-h-[300px]">
           {currentStep === 1 && (
             <div className="text-center py-8">
-              <div className="text-6xl mb-6">🚀</div>
+              <div className="mb-6 flex justify-center">
+                <div className="w-20 h-20 bg-gradient-primary rounded-full flex items-center justify-center">
+                  <Mic className="h-10 w-10 text-white" />
+                </div>
+              </div>
               <h3 className="text-2xl font-bold text-neutral-900 mb-3">
                 Ready to build your first AI assistant?
               </h3>
