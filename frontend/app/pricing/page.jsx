@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { Check, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -54,57 +56,113 @@ export default function PricingPage() {
 };
 
   return (
-    <div style={{ padding: '50px', maxWidth: '1200px', margin: '0 auto' }}>
-      <h1 style={{ textAlign: 'center', marginBottom: '50px' }}>Choose Your Plan</h1>
-      
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px' }}>
-        
-        {/* Free Trial */}
-        <div style={{ border: '2px solid #e5e7eb', borderRadius: '10px', padding: '30px', background: 'white' }}>
-          <h2 style={{ marginBottom: '10px' }}>Free Trial</h2>
-          <p style={{ fontSize: '40px', fontWeight: 'bold', margin: '20px 0' }}>$0<span style={{ fontSize: '16px', fontWeight: 'normal' }}>/month</span></p>
-          <ul style={{ listStyle: 'none', padding: 0, marginBottom: '30px' }}>
-            <li style={{ padding: '10px 0', borderBottom: '1px solid #f0f0f0' }}>✅ AI Assistant</li>
-            <li style={{ padding: '10px 0', borderBottom: '1px solid #f0f0f0' }}>✅ Basic Training</li>
-            <li style={{ padding: '10px 0', borderBottom: '1px solid #f0f0f0' }}>❌ Phone Number</li>
-            <li style={{ padding: '10px 0', borderBottom: '1px solid #f0f0f0' }}>❌ Advanced Features</li>
-          </ul>
-          <button disabled style={{ width: '100%', padding: '15px', background: '#e5e7eb', color: '#666', border: 'none', borderRadius: '5px', cursor: 'not-allowed' }}>Current Plan</button>
+    <div className="min-h-screen bg-gray-50 py-12 px-4">
+      <div className="max-w-7xl mx-auto">
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">Choose Your Plan</h1>
+          <p className="text-lg text-gray-600">Select the perfect plan for your business needs</p>
         </div>
 
-        {/* Basic Plan */}
-        <div style={{ border: '3px solid #4f46e5', borderRadius: '10px', padding: '30px', background: 'white', position: 'relative' }}>
-          <div style={{ position: 'absolute', top: '-15px', left: '50%', transform: 'translateX(-50%)', background: '#4f46e5', color: 'white', padding: '5px 20px', borderRadius: '20px', fontSize: '12px' }}>RECOMMENDED</div>
-          <h2 style={{ marginBottom: '10px' }}>Basic Plan</h2>
-          <p style={{ fontSize: '40px', fontWeight: 'bold', margin: '20px 0' }}>$29<span style={{ fontSize: '16px', fontWeight: 'normal' }}>/month</span></p>
-          <ul style={{ listStyle: 'none', padding: 0, marginBottom: '30px' }}>
-            <li style={{ padding: '10px 0', borderBottom: '1px solid #f0f0f0' }}>✅ AI Assistant</li>
-            <li style={{ padding: '10px 0', borderBottom: '1px solid #f0f0f0' }}>✅ Unlimited Training</li>
-            <li style={{ padding: '10px 0', borderBottom: '1px solid #f0f0f0' }}>✅ 1 Phone Number</li>
-            <li style={{ padding: '10px 0', borderBottom: '1px solid #f0f0f0' }}>✅ Call Analytics</li>
-          </ul>
-          <button 
-            onClick={handleSubscribe}
-            disabled={loading}
-            style={{ width: '100%', padding: '15px', background: '#4f46e5', color: 'white', border: 'none', borderRadius: '5px', cursor: loading ? 'not-allowed' : 'pointer', fontSize: '16px', fontWeight: 'bold' }}
-          >
-            {loading ? 'Processing...' : 'Subscribe Now'}
-          </button>
-        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
 
-        {/* Pro Plan */}
-        <div style={{ border: '2px solid #e5e7eb', borderRadius: '10px', padding: '30px', background: 'white' }}>
-          <h2 style={{ marginBottom: '10px' }}>Pro Plan</h2>
-          <p style={{ fontSize: '40px', fontWeight: 'bold', margin: '20px 0' }}>$79<span style={{ fontSize: '16px', fontWeight: 'normal' }}>/month</span></p>
-          <ul style={{ listStyle: 'none', padding: 0, marginBottom: '30px' }}>
-            <li style={{ padding: '10px 0', borderBottom: '1px solid #f0f0f0' }}>✅ Everything in Basic</li>
-            <li style={{ padding: '10px 0', borderBottom: '1px solid #f0f0f0' }}>✅ 3 Phone Numbers</li>
-            <li style={{ padding: '10px 0', borderBottom: '1px solid #f0f0f0' }}>✅ Advanced Analytics</li>
-            <li style={{ padding: '10px 0', borderBottom: '1px solid #f0f0f0' }}>✅ Priority Support</li>
-          </ul>
-          <button disabled style={{ width: '100%', padding: '15px', background: '#e5e7eb', color: '#666', border: 'none', borderRadius: '5px', cursor: 'not-allowed' }}>Coming Soon</button>
-        </div>
+          {/* Free Trial */}
+          <div className="bg-white rounded-xl border-2 border-gray-200 p-8 shadow-sm">
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Free Trial</h2>
+            <div className="mb-6">
+              <span className="text-5xl font-bold text-gray-900">$0</span>
+              <span className="text-gray-600 ml-2">/month</span>
+            </div>
+            <ul className="space-y-4 mb-8">
+              <li className="flex items-center gap-3">
+                <Check className="h-5 w-5 text-green-600 flex-shrink-0" />
+                <span className="text-gray-700">AI Assistant</span>
+              </li>
+              <li className="flex items-center gap-3">
+                <Check className="h-5 w-5 text-green-600 flex-shrink-0" />
+                <span className="text-gray-700">Basic Training</span>
+              </li>
+              <li className="flex items-center gap-3">
+                <X className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                <span className="text-gray-400">Phone Number</span>
+              </li>
+              <li className="flex items-center gap-3">
+                <X className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                <span className="text-gray-400">Advanced Features</span>
+              </li>
+            </ul>
+            <Button variant="outline" disabled className="w-full">
+              Current Plan
+            </Button>
+          </div>
 
+          {/* Basic Plan */}
+          <div className="bg-white rounded-xl border-3 border-primary p-8 shadow-lg relative transform scale-105">
+            <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-primary px-6 py-1 rounded-full">
+              <span className="text-sm font-semibold text-white">RECOMMENDED</span>
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Basic Plan</h2>
+            <div className="mb-6">
+              <span className="text-5xl font-bold text-gray-900">$29</span>
+              <span className="text-gray-600 ml-2">/month</span>
+            </div>
+            <ul className="space-y-4 mb-8">
+              <li className="flex items-center gap-3">
+                <Check className="h-5 w-5 text-green-600 flex-shrink-0" />
+                <span className="text-gray-700">AI Assistant</span>
+              </li>
+              <li className="flex items-center gap-3">
+                <Check className="h-5 w-5 text-green-600 flex-shrink-0" />
+                <span className="text-gray-700">Unlimited Training</span>
+              </li>
+              <li className="flex items-center gap-3">
+                <Check className="h-5 w-5 text-green-600 flex-shrink-0" />
+                <span className="text-gray-700">1 Phone Number</span>
+              </li>
+              <li className="flex items-center gap-3">
+                <Check className="h-5 w-5 text-green-600 flex-shrink-0" />
+                <span className="text-gray-700">Call Analytics</span>
+              </li>
+            </ul>
+            <Button
+              onClick={handleSubscribe}
+              disabled={loading}
+              className="w-full"
+            >
+              {loading ? 'Processing...' : 'Subscribe Now'}
+            </Button>
+          </div>
+
+          {/* Pro Plan */}
+          <div className="bg-white rounded-xl border-2 border-gray-200 p-8 shadow-sm">
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Pro Plan</h2>
+            <div className="mb-6">
+              <span className="text-5xl font-bold text-gray-900">$79</span>
+              <span className="text-gray-600 ml-2">/month</span>
+            </div>
+            <ul className="space-y-4 mb-8">
+              <li className="flex items-center gap-3">
+                <Check className="h-5 w-5 text-green-600 flex-shrink-0" />
+                <span className="text-gray-700">Everything in Basic</span>
+              </li>
+              <li className="flex items-center gap-3">
+                <Check className="h-5 w-5 text-green-600 flex-shrink-0" />
+                <span className="text-gray-700">3 Phone Numbers</span>
+              </li>
+              <li className="flex items-center gap-3">
+                <Check className="h-5 w-5 text-green-600 flex-shrink-0" />
+                <span className="text-gray-700">Advanced Analytics</span>
+              </li>
+              <li className="flex items-center gap-3">
+                <Check className="h-5 w-5 text-green-600 flex-shrink-0" />
+                <span className="text-gray-700">Priority Support</span>
+              </li>
+            </ul>
+            <Button variant="outline" disabled className="w-full">
+              Coming Soon
+            </Button>
+          </div>
+
+        </div>
       </div>
     </div>
   );

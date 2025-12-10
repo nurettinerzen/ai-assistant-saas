@@ -1,7 +1,7 @@
 /**
  * Integrations Page
  * Manage third-party integrations (Stripe, Zapier, etc.)
- * 🔧 BUG FIX 4: Sektöre göre entegrasyonlar göster
+ * BUG FIX 4: Sektöre göre entegrasyonlar göster
  */
 
 'use client';
@@ -20,12 +20,28 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import EmptyState from '@/components/EmptyState';
-import { Puzzle, Check, ExternalLink, Star, Copy, CheckCircle2 } from 'lucide-react';
+import {
+  Puzzle,
+  Check,
+  ExternalLink,
+  Star,
+  Copy,
+  CheckCircle2,
+  CreditCard,
+  Zap,
+  MessageSquare,
+  Target,
+  Cloud,
+  Calendar,
+  CalendarDays,
+  BarChart3,
+  Smartphone
+} from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast, toastHelpers } from '@/lib/toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 
-// 🔧 Sektöre göre önerilen entegrasyonlar
+// Sektöre göre önerilen entegrasyonlar
 const INDUSTRY_INTEGRATIONS = {
   RESTAURANT: ['calendly', 'google-calendar', 'whatsapp', 'google-sheets'],
   SALON: ['calendly', 'google-calendar', 'whatsapp', 'google-sheets'],
@@ -38,65 +54,83 @@ const AVAILABLE_INTEGRATIONS = [
   {
     id: 'stripe',
     name: 'Stripe',
-    icon: '💳',
+    icon: CreditCard,
     category: 'paymentsCategory',
     docsUrl: 'https://stripe.com/docs',
+    color: 'text-purple-600',
+    bgColor: 'bg-purple-100',
   },
   {
     id: 'zapier',
     name: 'Zapier',
-    icon: '⚡',
+    icon: Zap,
     category: 'automationCategory',
     docsUrl: 'https://zapier.com',
+    color: 'text-orange-600',
+    bgColor: 'bg-orange-100',
   },
   {
     id: 'slack',
     name: 'Slack',
-    icon: '💬',
+    icon: MessageSquare,
     category: 'communicationCategory',
     docsUrl: 'https://slack.com/api',
+    color: 'text-purple-600',
+    bgColor: 'bg-purple-100',
   },
   {
     id: 'hubspot',
     name: 'HubSpot',
-    icon: '🎯',
+    icon: Target,
     category: 'crmCategory',
     docsUrl: 'https://developers.hubspot.com',
+    color: 'text-orange-600',
+    bgColor: 'bg-orange-100',
   },
   {
     id: 'salesforce',
     name: 'Salesforce',
-    icon: '☁️',
+    icon: Cloud,
     category: 'crmCategory',
     docsUrl: 'https://developer.salesforce.com',
+    color: 'text-blue-600',
+    bgColor: 'bg-blue-100',
   },
   {
     id: 'calendly',
     name: 'Calendly',
-    icon: '📅',
+    icon: Calendar,
     category: 'schedulingCategory',
     docsUrl: 'https://developer.calendly.com',
+    color: 'text-blue-600',
+    bgColor: 'bg-blue-100',
   },
   {
     id: 'google-calendar',
     name: 'Google Calendar',
-    icon: '🗓️',
+    icon: CalendarDays,
     category: 'schedulingCategory',
     docsUrl: 'https://developers.google.com/calendar',
+    color: 'text-blue-600',
+    bgColor: 'bg-blue-100',
   },
   {
     id: 'google-sheets',
     name: 'Google Sheets',
-    icon: '📊',
+    icon: BarChart3,
     category: 'crmCategory',
     docsUrl: 'https://developers.google.com/sheets',
+    color: 'text-green-600',
+    bgColor: 'bg-green-100',
   },
   {
     id: 'whatsapp',
     name: 'WhatsApp Business',
-    icon: '📱',
+    icon: Smartphone,
     category: 'communicationCategory',
     docsUrl: 'https://developers.facebook.com/docs/whatsapp',
+    color: 'text-green-600',
+    bgColor: 'bg-green-100',
   },
 ];
 
@@ -122,7 +156,7 @@ export default function IntegrationsPage() {
     loadWhatsAppStatus();
   }, []);
 
-  // 🔧 Load business type
+  // Load business type
   const loadBusinessInfo = async () => {
     try {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -282,13 +316,13 @@ export default function IntegrationsPage() {
     return integrations.some((i) => i.provider === integrationId && i.connected);
   };
 
-  // 🔧 Check if integration is recommended for this business
+  // Check if integration is recommended for this business
   const isRecommended = (integrationId) => {
     const recommended = INDUSTRY_INTEGRATIONS[businessType] || [];
     return recommended.includes(integrationId);
   };
 
-  // 🔧 Sort: recommended first, then alphabetically
+  // Sort: recommended first, then alphabetically
   const sortedIntegrations = [...AVAILABLE_INTEGRATIONS].sort((a, b) => {
     const aRecommended = isRecommended(a.id);
     const bRecommended = isRecommended(b.id);
@@ -322,8 +356,9 @@ export default function IntegrationsPage() {
         </p>
         {/* Business type indicator */}
         {businessType && (
-          <p className="text-sm text-primary-600 mt-2">
-            📌 📌 {t('industry')}: {t(`industry${businessType.charAt(0) + businessType.slice(1).toLowerCase()}`)}
+          <p className="text-sm text-primary-600 mt-2 flex items-center gap-2">
+            <Target className="h-4 w-4" />
+            {t('industry')}: {t(`industry${businessType.charAt(0) + businessType.slice(1).toLowerCase()}`)}
           </p>
         )}
       </div>
@@ -358,7 +393,9 @@ export default function IntegrationsPage() {
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <div className="text-4xl">{integration.icon}</div>
+                    <div className={`p-3 rounded-lg ${integration.bgColor}`}>
+                      <integration.icon className={`h-6 w-6 ${integration.color}`} />
+                    </div>
                     <div>
                       <div className="flex items-center gap-2">
                         <h3 className="font-semibold text-neutral-900">{integration.name}</h3>
@@ -379,8 +416,9 @@ export default function IntegrationsPage() {
                 </div>
 
                 {recommended && (
-                  <div className="mb-3 px-2 py-1 bg-primary-100 text-primary-700 text-xs rounded-md inline-block">
-                    ⭐ {t('recommendedForYou') || 'Sizin için önerilen'}
+                  <div className="mb-3 px-2 py-1 bg-primary-100 text-primary-700 text-xs rounded-md inline-flex items-center gap-1">
+                    <Star className="h-3 w-3 fill-primary-700" />
+                    {t('recommendedForYou') || 'Sizin için önerilen'}
                   </div>
                 )}
 
