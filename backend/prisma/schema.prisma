@@ -44,6 +44,8 @@ model Business {
   googleSheetName         String?
   createdAt               DateTime                @default(now())
   updatedAt               DateTime                @updatedAt
+  ownerPhone              String?
+  ownerWhatsApp           String?
   aiTrainings             AiTraining[]
   appointments            Appointment[]
   assistants              Assistant[]
@@ -169,8 +171,10 @@ model Integration {
   lastSync    DateTime?
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
+  connected   Boolean?        @default(false)
   business    Business        @relation(fields: [businessId], references: [id])
 
+  @@unique([businessId, type])
   @@index([businessId])
   @@index([type])
 }

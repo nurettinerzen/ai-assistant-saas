@@ -6,6 +6,44 @@ import vapiService from '../services/vapi.js';
 const router = express.Router();
 const prisma = new PrismaClient();
 
+const CREATE_APPOINTMENT_TOOL = {
+  type: "function",
+  function: {
+    name: "create_appointment",
+    description: "Creates appointment when customer requests booking. Use this when customer wants to schedule an appointment or reservation.",
+    parameters: {
+      type: "object",
+      properties: {
+        date: {
+          type: "string",
+          description: "Appointment date in YYYY-MM-DD format"
+        },
+        time: {
+          type: "string",
+          description: "Appointment time in HH:MM 24-hour format (e.g., 14:00)"
+        },
+        customer_name: {
+          type: "string",
+          description: "Customer's full name"
+        },
+        customer_phone: {
+          type: "string",
+          description: "Customer's phone number"
+        },
+        service_type: {
+          type: "string",
+          description: "Type of service requested (optional)"
+        }
+      },
+      required: ["date", "time", "customer_phone"]
+    }
+  },
+  server: {
+    url: `${process.env.BACKEND_URL || 'https://marin-methoxy-suzette.ngrok-free.dev'}/api/vapi/functions`,
+    timeoutSeconds: 20
+  }
+};
+
 router.use(authenticateToken);
 
 // GET /api/assistants - List all assistants
@@ -84,14 +122,22 @@ router.post('/', authenticateToken, async (req, res) => {
 
     // Add universal language instruction - AI will match the customer's language
     const languageInstruction = 'You are an AI assistant. Always respond in the SAME LANGUAGE the customer uses. If they speak Turkish, respond in Turkish. If they speak Spanish, respond in Spanish. If they speak French, respond in French. Match their language exactly. Speak naturally, fluently, and professionally in whatever language they choose.';
-
-    const fullSystemPrompt = `${languageInstruction}\n\n${systemPrompt}`;
+    const today = new Date().toLocaleDateString('en-US', { 
+  weekday: 'long', 
+  year: 'numeric', 
+  month: 'long', 
+  day: 'numeric' 
+});
+const dateContext = `\n\nIMPORTANT: Today's date is ${today}. Use this for all date calculations.`;
+    const fullSystemPrompt = `${languageInstruction}${dateContext}\n\n${systemPrompt}`;
 
     // Default first message (eğer gönderilmemişse)
     const defaultFirstMessage = language === 'TR'
       ? `Merhaba, ben ${name}, size nasıl yardımcı olabilirim?`
       : `Hi, I'm ${name}, how can I help you?`;
     const finalFirstMessage = firstMessage || defaultFirstMessage;
+
+    console.log('📤 VAPI Request - tools:', JSON.stringify([CREATE_APPOINTMENT_TOOL], null, 2));
 
     // VAPI'de YENİ assistant oluştur
     const vapiResponse = await fetch('https://api.vapi.ai/assistant', {
@@ -119,7 +165,8 @@ router.post('/', authenticateToken, async (req, res) => {
               role: 'system',
               content: fullSystemPrompt
             }
-          ]
+          ],
+          tools: [CREATE_APPOINTMENT_TOOL]
         },
         
         // Voice - 11Labs
@@ -143,7 +190,8 @@ router.post('/', authenticateToken, async (req, res) => {
     }
 
     const vapiAssistant = await vapiResponse.json();
-    console.log('✅ VAPI Assistant created:', vapiAssistant.id);
+console.log('✅ VAPI Assistant created:', vapiAssistant.id);
+console.log('✅ VAPI Response:', JSON.stringify(vapiAssistant, null, 2));
 
     // ✅ YENİ: Database'e VAPI'den dönen assistant ID'yi kaydet
     const assistant = await prisma.assistant.create({
@@ -156,6 +204,11 @@ router.post('/', authenticateToken, async (req, res) => {
         vapiAssistantId: vapiAssistant.id,  // ✅ VAPI'den dönen YENİ assistant ID
       },
     });
+
+    await prisma.business.update({
+  where: { id: businessId },
+  data: { vapiAssistantId: vapiAssistant.id }
+});
 
     res.json({
       message: 'Assistant created successfully',

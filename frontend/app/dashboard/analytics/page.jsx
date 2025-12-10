@@ -1,6 +1,6 @@
 /**
- * Analytics Dashboard with Sentiment Analysis
- * Comprehensive call analytics with AI-powered insights
+ * Analytics Dashboard - UPDATED WITH CHAT & APPOINTMENTS
+ * Replace your existing analytics page.jsx with this
  */
 
 'use client';
@@ -24,12 +24,13 @@ import {
   Smile,
   Meh,
   Frown,
-  Download
+  Download,
+  MessageCircle,
+  CalendarCheck
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
 import { formatDuration } from '@/lib/utils';
-import { getCurrentLanguage } from '@/lib/translations';
 import {
   LineChart,
   Line,
@@ -52,6 +53,11 @@ const SENTIMENT_COLORS = {
   negative: '#ef4444'
 };
 
+const CHANNEL_COLORS = {
+  phone: '#4f46e5',
+  chat: '#10b981'
+};
+
 export default function AnalyticsPage() {
   const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
@@ -61,9 +67,6 @@ export default function AnalyticsPage() {
   const [peakHours, setPeakHours] = useState([]);
 
   useEffect(() => {
-  }, []);
-
-  useEffect(() => {
     loadAnalytics();
   }, [timeRange]);
 
@@ -71,10 +74,10 @@ export default function AnalyticsPage() {
     setLoading(true);
     try {
       const [overviewRes, callsRes, peakRes] = await Promise.all([
-        apiClient.get(`/analytics/overview?range=${timeRange}`),
-        apiClient.get('/analytics/calls?limit=10'),
-        apiClient.get('/analytics/peak-hours')
-      ]);
+  apiClient.get(`/api/analytics/overview?range=${timeRange}`),
+  apiClient.get('/api/analytics/calls?limit=10'),
+  apiClient.get('/api/analytics/peak-hours')
+]);
 
       setAnalytics(overviewRes.data);
       setRecentCalls(callsRes.data.calls || []);
@@ -100,6 +103,12 @@ export default function AnalyticsPage() {
     { name: 'Negative', value: parseFloat(analytics.sentimentBreakdown.negative), color: SENTIMENT_COLORS.negative }
   ] : [];
 
+  // 🔥 NEW: Prepare channel data for pie chart
+  const channelData = analytics?.channelStats ? [
+    { name: 'Phone', value: analytics.channelStats.phone.count, percentage: analytics.channelStats.phone.percentage, color: CHANNEL_COLORS.phone },
+    { name: 'Chat', value: analytics.channelStats.chat.count, percentage: analytics.channelStats.chat.percentage, color: CHANNEL_COLORS.chat }
+  ].filter(item => item.value > 0) : [];
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -120,7 +129,7 @@ export default function AnalyticsPage() {
         <div>
           <h1 className="text-3xl font-bold text-neutral-900">📊 Analytics</h1>
           <p className="text-neutral-600 mt-1">
-            Detailed insights into your call performance
+            Detailed insights into your performance across all channels
           </p>
         </div>
         <div className="flex gap-3">
@@ -145,7 +154,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         <div className="bg-white rounded-xl border border-neutral-200 p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="p-2 bg-primary-100 rounded-lg">
@@ -159,6 +168,35 @@ export default function AnalyticsPage() {
           <p className="text-sm text-neutral-600">Total Calls</p>
         </div>
 
+        {/* 🔥 NEW: Chat Messages Card */}
+        <div className="bg-white rounded-xl border border-neutral-200 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-2 bg-green-100 rounded-lg">
+              <MessageCircle className="h-5 w-5 text-green-600" />
+            </div>
+          </div>
+          <h3 className="text-2xl font-bold text-neutral-900">
+            {analytics?.totalChatMessages || 0}
+          </h3>
+          <p className="text-sm text-neutral-600">Chat Messages</p>
+        </div>
+
+        {/* 🔥 NEW: Appointments Card */}
+        <div className="bg-white rounded-xl border border-neutral-200 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-2 bg-purple-100 rounded-lg">
+              <CalendarCheck className="h-5 w-5 text-purple-600" />
+            </div>
+          </div>
+          <h3 className="text-2xl font-bold text-neutral-900">
+            {analytics?.totalAppointments || 0}
+          </h3>
+          <p className="text-sm text-neutral-600">Appointments</p>
+          <p className="text-xs text-neutral-500 mt-1">
+            {analytics?.appointmentRate || 0}% conversion rate
+          </p>
+        </div>
+
         <div className="bg-white rounded-xl border border-neutral-200 p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="p-2 bg-blue-100 rounded-lg">
@@ -169,18 +207,6 @@ export default function AnalyticsPage() {
             {analytics?.totalMinutes || 0}m
           </h3>
           <p className="text-sm text-neutral-600">Total Minutes</p>
-        </div>
-
-        <div className="bg-white rounded-xl border border-neutral-200 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <TrendingUp className="h-5 w-5 text-green-600" />
-            </div>
-          </div>
-          <h3 className="text-2xl font-bold text-neutral-900">
-            {formatDuration(analytics?.avgDuration || 0)}
-          </h3>
-          <p className="text-sm text-neutral-600">Avg Duration</p>
         </div>
 
         <div className="bg-white rounded-xl border border-neutral-200 p-6">
@@ -198,26 +224,70 @@ export default function AnalyticsPage() {
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Calls Trend Chart */}
+        {/* Multi-Channel Activity Chart */}
         <div className="bg-white rounded-xl border border-neutral-200 p-6">
-          <h3 className="text-lg font-semibold mb-4">Calls Over Time</h3>
+          <h3 className="text-lg font-semibold mb-4">Activity Over Time</h3>
           <ResponsiveContainer width="100%" height={250}>
             <LineChart data={analytics?.callsOverTime || []}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="date" />
               <YAxis />
               <Tooltip />
+              <Legend />
               <Line 
                 type="monotone" 
                 dataKey="calls" 
-                stroke="#4f46e5" 
+                stroke={CHANNEL_COLORS.phone}
                 strokeWidth={2}
-                dot={{ fill: '#4f46e5' }}
+                name="Phone Calls"
+              />
+              <Line 
+                type="monotone" 
+                dataKey="chats" 
+                stroke={CHANNEL_COLORS.chat}
+                strokeWidth={2}
+                name="Chat Messages"
+              />
+              <Line 
+                type="monotone" 
+                dataKey="appointments" 
+                stroke="#a855f7"
+                strokeWidth={2}
+                name="Appointments"
               />
             </LineChart>
           </ResponsiveContainer>
         </div>
 
+        {/* 🔥 NEW: Channel Distribution */}
+        <div className="bg-white rounded-xl border border-neutral-200 p-6">
+          <h3 className="text-lg font-semibold mb-4">Channel Distribution</h3>
+          <div className="flex items-center justify-center">
+            <ResponsiveContainer width="100%" height={250}>
+              <PieChart>
+                <Pie
+                  data={channelData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={(entry) => `${entry.name} ${entry.percentage}%`}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {channelData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      {/* Sentiment & Peak Hours Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Sentiment Distribution */}
         <div className="bg-white rounded-xl border border-neutral-200 p-6">
           <h3 className="text-lg font-semibold mb-4">Sentiment Analysis</h3>
@@ -243,20 +313,20 @@ export default function AnalyticsPage() {
             </ResponsiveContainer>
           </div>
         </div>
-      </div>
 
-      {/* Peak Hours Chart */}
-      <div className="bg-white rounded-xl border border-neutral-200 p-6">
-        <h3 className="text-lg font-semibold mb-4">Peak Calling Hours</h3>
-        <ResponsiveContainer width="100%" height={250}>
-          <BarChart data={peakHours}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="hour" />
-            <YAxis />
-            <Tooltip />
-            <Bar dataKey="calls" fill="#4f46e5" />
-          </BarChart>
-        </ResponsiveContainer>
+        {/* Peak Hours Chart */}
+        <div className="bg-white rounded-xl border border-neutral-200 p-6">
+          <h3 className="text-lg font-semibold mb-4">Peak Activity Hours</h3>
+          <ResponsiveContainer width="100%" height={250}>
+            <BarChart data={peakHours}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="hour" />
+              <YAxis />
+              <Tooltip />
+              <Bar dataKey="calls" fill="#4f46e5" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       </div>
 
       {/* Recent Calls Table */}
@@ -335,21 +405,6 @@ export default function AnalyticsPage() {
           </table>
         </div>
       </div>
-
-      {/* Status Distribution */}
-      {analytics?.statusDistribution && analytics.statusDistribution.length > 0 && (
-        <div className="bg-white rounded-xl border border-neutral-200 p-6">
-          <h3 className="text-lg font-semibold mb-4">Call Status Distribution</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {analytics.statusDistribution.map((item, index) => (
-              <div key={index} className="text-center">
-                <div className="text-2xl font-bold text-neutral-900">{item.value}</div>
-                <div className="text-sm text-neutral-600 capitalize">{item.status}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

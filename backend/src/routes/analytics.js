@@ -25,36 +25,89 @@ router.get('/overview', authenticateToken, async (req, res) => {
       orderBy: { createdAt: 'asc' }
     });
 
+    // 🔥 NEW: Get appointments in range
+    const appointments = await prisma.appointment.findMany({
+      where: {
+        businessId,
+        createdAt: { gte: startDate }
+      }
+    });
+
+    // 🔥 NEW: Get chat messages (if you have a ChatMessage model)
+    let chatMessages = [];
+    try {
+      chatMessages = await prisma.chatMessage.findMany({
+        where: {
+          businessId,
+          createdAt: { gte: startDate }
+        }
+      });
+    } catch (error) {
+      console.log('ChatMessage model not found, skipping chat metrics');
+    }
+
     // Get assistants
     const assistants = await prisma.assistant.findMany({
       where: { businessId, isActive: true }
     });
 
-    // Calculate stats
+    // Calculate PHONE stats
     const totalCalls = calls.length;
     const totalDuration = calls.reduce((sum, call) => sum + (call.duration || 0), 0);
     const avgDuration = totalCalls > 0 ? Math.round(totalDuration / totalCalls) : 0;
     const completedCalls = calls.filter(c => c.status === 'completed').length;
     const successRate = totalCalls > 0 ? ((completedCalls / totalCalls) * 100).toFixed(1) : 0;
-    const totalCost = totalDuration * 0.01; // $0.01 per second example
+    const totalCost = totalDuration * 0.01;
 
-    // Calls over time
+    // 🔥 NEW: Calculate CHAT stats
+    const totalChatMessages = chatMessages.length;
+    const chatConversations = [...new Set(chatMessages.map(m => m.sessionId || m.userId))].length;
+
+    // 🔥 NEW: Calculate APPOINTMENT stats
+    const totalAppointments = appointments.length;
+    const confirmedAppointments = appointments.filter(a => a.status === 'CONFIRMED').length;
+    const appointmentRate = totalCalls > 0 ? ((totalAppointments / totalCalls) * 100).toFixed(1) : 0;
+
+    // Calls over time WITH appointments and chats
     const callsByDate = {};
+    const appointmentsByDate = {};
+    const chatsByDate = {};
+    
     for (let i = 0; i < days; i++) {
       const date = new Date();
       date.setDate(date.getDate() - (days - i - 1));
       const dateStr = date.toISOString().split('T')[0];
       callsByDate[dateStr] = 0;
+      appointmentsByDate[dateStr] = 0;
+      chatsByDate[dateStr] = 0;
     }
+    
     calls.forEach(call => {
       const dateStr = call.createdAt.toISOString().split('T')[0];
       if (callsByDate[dateStr] !== undefined) {
         callsByDate[dateStr]++;
       }
     });
-    const callsOverTime = Object.entries(callsByDate).map(([date, calls]) => ({
+
+    appointments.forEach(apt => {
+      const dateStr = apt.createdAt.toISOString().split('T')[0];
+      if (appointmentsByDate[dateStr] !== undefined) {
+        appointmentsByDate[dateStr]++;
+      }
+    });
+
+    chatMessages.forEach(msg => {
+      const dateStr = msg.createdAt.toISOString().split('T')[0];
+      if (chatsByDate[dateStr] !== undefined) {
+        chatsByDate[dateStr]++;
+      }
+    });
+
+    const callsOverTime = Object.keys(callsByDate).map((date) => ({
       date: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      calls
+      calls: callsByDate[date],
+      appointments: appointmentsByDate[date] || 0,
+      chats: chatsByDate[date] || 0
     }));
 
     // Status distribution
@@ -129,7 +182,19 @@ router.get('/overview', authenticateToken, async (req, res) => {
       negative: totalSentiment > 0 ? ((sentimentCount.negative / totalSentiment) * 100).toFixed(1) : 0
     };
 
+    // 🔥 NEW: Channel distribution
+    const channelStats = {
+      phone: { count: totalCalls, percentage: 100 },
+      chat: { count: totalChatMessages, percentage: 0 },
+      total: totalCalls + totalChatMessages
+    };
+    if (channelStats.total > 0) {
+      channelStats.phone.percentage = parseFloat(((totalCalls / channelStats.total) * 100).toFixed(1));
+      channelStats.chat.percentage = parseFloat(((totalChatMessages / channelStats.total) * 100).toFixed(1));
+    }
+
     res.json({
+      // Original metrics
       totalCalls,
       totalMinutes: Math.round(totalDuration / 60),
       avgDuration,
@@ -140,7 +205,19 @@ router.get('/overview', authenticateToken, async (req, res) => {
       statusDistribution,
       durationDistribution,
       assistantPerformance,
-      costOverTime
+      costOverTime,
+      
+      // 🔥 NEW: Chat metrics
+      totalChatMessages,
+      chatConversations,
+      
+      // 🔥 NEW: Appointment metrics
+      totalAppointments,
+      confirmedAppointments,
+      appointmentRate: parseFloat(appointmentRate),
+      
+      // 🔥 NEW: Channel stats
+      channelStats
     });
   } catch (error) {
     console.error('Error fetching analytics:', error);
@@ -229,7 +306,7 @@ router.get('/calls/:callId', authenticateToken, async (req, res) => {
 router.get('/trends', authenticateToken, async (req, res) => {
   try {
     const { businessId } = req;
-    const { period = 'daily' } = req.query; // daily, weekly, monthly
+    const { period = 'daily' } = req.query;
 
     const days = period === 'daily' ? 30 : period === 'weekly' ? 90 : 365;
     const startDate = new Date();
@@ -254,7 +331,7 @@ router.get('/trends', authenticateToken, async (req, res) => {
         weekStart.setDate(weekStart.getDate() - weekStart.getDay());
         key = weekStart.toISOString().split('T')[0];
       } else {
-        key = call.createdAt.toISOString().substring(0, 7); // YYYY-MM
+        key = call.createdAt.toISOString().substring(0, 7);
       }
 
       if (!trends[key]) {
