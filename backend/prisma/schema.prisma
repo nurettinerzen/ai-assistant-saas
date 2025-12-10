@@ -166,17 +166,19 @@ model CallLog {
 }
 
 model Integration {
-  id          Int             @id @default(autoincrement())
+  id          Int                   @id @default(autoincrement())
   businessId  Int
   type        IntegrationType
   credentials Json
-  isActive    Boolean         @default(true)
-  syncEnabled Boolean         @default(true)
+  isActive    Boolean               @default(true)
+  syncEnabled Boolean               @default(true)
   lastSync    DateTime?
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-  connected   Boolean?        @default(false)
-  business    Business        @relation(fields: [businessId], references: [id])
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  connected   Boolean?              @default(false)
+  relevantFor BusinessType[]        @default([])
+  priority    IntegrationPriority?  @default(OPTIONAL)
+  business    Business              @relation(fields: [businessId], references: [id])
 
   @@unique([businessId, type])
   @@index([businessId])
@@ -387,6 +389,7 @@ enum BusinessType {
   RESTAURANT
   SALON
   ECOMMERCE
+  CLINIC
   SERVICE
   OTHER
 }
@@ -442,7 +445,26 @@ enum IntegrationType {
   HUBSPOT
   ZAPIER
   WHATSAPP
+  GOOGLE_SHEETS
+  SLACK
+  SALESFORCE
+  WOOCOMMERCE
+  TOAST_POS
+  SQUARE
+  SIMPLEPRACTICE
+  ZOCDOC
+  BOOKSY
+  FRESHA
+  SHIPSTATION
+  KLAVIYO
+  MAILCHIMP
   CUSTOM
+}
+
+enum IntegrationPriority {
+  ESSENTIAL
+  RECOMMENDED
+  OPTIONAL
 }
 
 enum AppointmentStatus {

@@ -44,7 +44,7 @@ router.get('/:businessId', authenticateToken, verifyBusinessAccess, async (req, 
 // Update business settings
 router.put('/:businessId', authenticateToken, verifyBusinessAccess, requireRole(['OWNER', 'ADMIN']), async (req, res) => {
   try {
-    const { name, vapiPhoneNumber, vapiAssistantId, gender, tone, language } = req.body;
+    const { name, vapiPhoneNumber, vapiAssistantId, gender, tone, language, businessType } = req.body;
 
     // 🌍 Validate language if provided
     if (language && !SUPPORTED_LANGUAGES.includes(language.toUpperCase())) {
@@ -131,6 +131,7 @@ const voiceId = voiceMap[voiceKey] || voiceMap.male_professional;
           vapiAssistantId: vapiAssistant.id,
           vapiVoiceGender: gender?.toUpperCase(),
           vapiTone: tone?.toUpperCase(),
+          ...(businessType && { businessType: businessType.toUpperCase() }),
         },
       });
 
@@ -144,6 +145,7 @@ const voiceId = voiceMap[voiceKey] || voiceMap.male_professional;
         ...(name && { name }),
         ...(vapiPhoneNumber !== undefined && { vapiPhoneNumber }),
         ...(vapiAssistantId !== undefined && { vapiAssistantId }),
+        ...(businessType && { businessType: businessType.toUpperCase() }),
       },
     });
 
