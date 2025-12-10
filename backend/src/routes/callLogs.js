@@ -11,14 +11,60 @@ router.use(authenticateToken);
 router.get('/', async (req, res) => {
   try {
     const { businessId } = req;
+    const { status, search, limit = 100 } = req.query;
+
+    // Build where clause
+    const where = { businessId };
+
+    if (status && status !== 'all') {
+      where.status = status;
+    }
+
+    if (search) {
+      // Search in transcript text, caller ID, or call ID
+      where.OR = [
+        {
+          transcriptText: {
+            contains: search,
+            mode: 'insensitive'
+          }
+        },
+        {
+          callerId: {
+            contains: search,
+            mode: 'insensitive'
+          }
+        },
+        {
+          callId: {
+            contains: search,
+            mode: 'insensitive'
+          }
+        }
+      ];
+    }
 
     const callLogs = await prisma.callLog.findMany({
-      where: { businessId },
+      where,
       orderBy: { createdAt: 'desc' },
-      take: 100 // Limit to last 100 calls
+      take: parseInt(limit)
     });
 
-    res.json(callLogs);
+    // Return with formatted data for frontend
+    const formattedCalls = callLogs.map(call => ({
+      id: call.id,
+      callId: call.callId,
+      phoneNumber: call.callerId,
+      duration: call.duration,
+      status: call.status,
+      createdAt: call.createdAt,
+      sentiment: call.sentiment,
+      summary: call.summary,
+      hasRecording: !!call.recordingUrl,
+      hasTranscript: !!call.transcript || !!call.transcriptText,
+    }));
+
+    res.json({ calls: formattedCalls });
   } catch (error) {
     console.error('Get call logs error:', error);
     res.status(500).json({ error: 'Failed to fetch call logs' });
@@ -43,7 +89,39 @@ router.get('/:id', async (req, res) => {
       return res.status(403).json({ error: 'Access denied' });
     }
 
-    res.json(callLog);
+    // Return full call details including transcript, recording, and analysis
+    const response = {
+      id: callLog.id,
+      callId: callLog.callId,
+      phoneNumber: callLog.callerId,
+      duration: callLog.duration,
+      recordingDuration: callLog.recordingDuration,
+      status: callLog.status,
+      createdAt: callLog.createdAt,
+      updatedAt: callLog.updatedAt,
+
+      // Recording
+      recordingUrl: callLog.recordingUrl,
+
+      // Transcript
+      transcript: callLog.transcript, // JSON array of messages
+      transcriptText: callLog.transcriptText,
+
+      // AI Analysis
+      summary: callLog.summary,
+      sentiment: callLog.sentiment,
+      sentimentScore: callLog.sentimentScore,
+      keyTopics: callLog.keyTopics,
+      actionItems: callLog.actionItems,
+      keyPoints: callLog.keyPoints,
+
+      // Legacy fields
+      intent: callLog.intent,
+      taskCompleted: callLog.taskCompleted,
+      followUpNeeded: callLog.followUpNeeded,
+    };
+
+    res.json(response);
   } catch (error) {
     console.error('Get call log error:', error);
     res.status(500).json({ error: 'Failed to fetch call log' });

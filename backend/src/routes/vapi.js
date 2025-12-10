@@ -11,6 +11,7 @@ import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import usageTracking from '../services/usageTracking.js';
 import aiAnalysis from '../services/aiAnalysis.js';
+import callAnalysis from '../services/callAnalysis.js';
 import googleCalendarService from '../services/google-calendar.js';
 import netgsmService from '../services/netgsm.js';
 import whatsappService from '../services/whatsapp.js';
@@ -104,8 +105,7 @@ async function handleCallEnded(event) {
     const callId = call?.id || event.callId;
     const assistantId = call?.assistantId || event.assistantId;
     const duration = call?.duration || event.duration || 0; // in seconds
-    const transcript = call?.transcript || event.transcript || '';
-    const recordingUrl = call?.recordingUrl || event.recordingUrl;
+    const recordingUrl = call?.recordingUrl || event.recordingUrl || call?.artifact?.recordingUrl;
     const status = call?.endedReason || event.endedReason || 'completed';
 
     if (!callId) {
@@ -130,14 +130,69 @@ async function handleCallEnded(event) {
       return;
     }
 
+    // Parse transcript messages from VAPI format
+    let transcriptMessages = [];
+    let transcriptText = '';
+
+    if (call?.messages && Array.isArray(call.messages)) {
+      // VAPI provides messages array with role, content, timestamp
+      transcriptMessages = call.messages
+        .filter(msg => msg.role === 'assistant' || msg.role === 'user')
+        .map(msg => ({
+          speaker: msg.role === 'assistant' ? 'assistant' : 'user',
+          text: msg.content || '',
+          timestamp: msg.timestamp || new Date().toISOString()
+        }));
+
+      transcriptText = callAnalysis.extractTranscriptText(transcriptMessages);
+    } else if (call?.transcript) {
+      // Fallback to plain text transcript
+      transcriptText = call.transcript;
+    } else if (event.transcript) {
+      transcriptText = event.transcript;
+    }
+
+    // Perform AI analysis for calls with transcripts
+    let analysis = {
+      summary: null,
+      keyTopics: [],
+      actionItems: [],
+      sentiment: 'neutral',
+      sentimentScore: 0.5,
+    };
+
+    const plan = business.subscription?.plan;
+    const shouldAnalyze = (plan === 'PROFESSIONAL' || plan === 'ENTERPRISE') &&
+                          (transcriptMessages.length > 0 || transcriptText.length > 0);
+
+    if (shouldAnalyze) {
+      console.log('🤖 Running AI analysis for call:', callId);
+      try {
+        if (transcriptMessages.length > 0) {
+          analysis = await callAnalysis.analyzeCall(transcriptMessages, duration);
+        } else if (transcriptText.length > 0) {
+          analysis.summary = await callAnalysis.generateQuickSummary(transcriptText);
+        }
+      } catch (analysisError) {
+        console.error('⚠️ AI analysis failed (non-critical):', analysisError);
+      }
+    }
+
     // Update call log with final data
     const callLog = await prisma.callLog.upsert({
       where: { callId },
       update: {
         duration,
-        transcript,
-        recordingUrl,
+        transcript: transcriptMessages.length > 0 ? transcriptMessages : null,
+        transcriptText: transcriptText || null,
+        recordingUrl: recordingUrl || null,
+        recordingDuration: duration || null,
         status: status === 'completed' ? 'answered' : status,
+        summary: analysis.summary,
+        keyTopics: analysis.keyTopics,
+        actionItems: analysis.actionItems,
+        sentiment: analysis.sentiment,
+        sentimentScore: analysis.sentimentScore,
         updatedAt: new Date()
       },
       create: {
@@ -145,31 +200,28 @@ async function handleCallEnded(event) {
         callId,
         callerId: call?.customer?.number || 'Unknown',
         duration,
-        transcript,
-        recordingUrl,
+        transcript: transcriptMessages.length > 0 ? transcriptMessages : null,
+        transcriptText: transcriptText || null,
+        recordingUrl: recordingUrl || null,
+        recordingDuration: duration || null,
         status: status === 'completed' ? 'answered' : status,
+        summary: analysis.summary,
+        keyTopics: analysis.keyTopics,
+        actionItems: analysis.actionItems,
+        sentiment: analysis.sentiment,
+        sentimentScore: analysis.sentimentScore,
         createdAt: new Date()
       }
     });
 
-    console.log(`✅ Call ended logged: ${callId} (${duration}s)`);
+    console.log(`✅ Call ended logged: ${callId} (${duration}s) with AI analysis`);
 
     // Track usage (minutes and call count)
     if (duration > 0) {
       await usageTracking.trackCallUsage(business.id, duration, {
         callId,
-        transcript,
+        transcript: transcriptText,
         status
-      });
-    }
-
-    // Queue AI analysis for PRO+ plans
-    const plan = business.subscription?.plan;
-    if ((plan === 'PROFESSIONAL' || plan === 'ENTERPRISE') && transcript) {
-      console.log('🤖 Queueing AI analysis for PRO plan...');
-      // Run AI analysis in background (don't await)
-      aiAnalysis.analyzeCall(callLog.id).catch(err => {
-        console.error('AI analysis error:', err);
       });
     }
   } catch (error) {
