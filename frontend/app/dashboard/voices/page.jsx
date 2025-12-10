@@ -16,6 +16,26 @@ import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
 import { useLanguage } from '@/contexts/LanguageContext';
 
+// Language code to accent name mapping
+const LANGUAGE_TO_ACCENT = {
+  'TR': 'Turkish',
+  'EN': 'American',
+  'DE': 'German',
+  'FR': 'French',
+  'ES': 'Spanish',
+  'IT': 'Italian',
+  'PT': 'Portuguese',
+  'RU': 'Russian',
+  'AR': 'Arabic',
+  'JA': 'Japanese',
+  'KO': 'Korean',
+  'ZH': 'Chinese',
+  'HI': 'Hindi',
+  'NL': 'Dutch',
+  'PL': 'Polish',
+  'SV': 'Swedish',
+};
+
 export default function VoicesPage() {
   const { t, locale } = useLanguage();
   const [voices, setVoices] = useState([]);
@@ -25,14 +45,14 @@ export default function VoicesPage() {
   const [languageFilter, setLanguageFilter] = useState('all');
   const [selectedVoice, setSelectedVoice] = useState(null);
   const [businessLanguage, setBusinessLanguage] = useState('EN');
-  
+
 
   useEffect(() => {
     loadBusinessLanguage();
     loadVoices();
   }, []);
 
-  // 🔧 BUG FIX 3: Business language'a göre ses filtrele
+  // Load business language and auto-filter based on UI locale or business language
   const loadBusinessLanguage = async () => {
     try {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -40,8 +60,11 @@ export default function VoicesPage() {
         const response = await apiClient.business.get(user.businessId);
         const language = response.data.business?.language || 'EN';
         setBusinessLanguage(language);
-        // Auto-set language filter based on business language
-        setLanguageFilter(language === 'TR' ? 'Turkish' : 'American');
+
+        // Auto-set language filter: prioritize UI locale, fallback to business language
+        const preferredLang = locale?.toUpperCase() || language;
+        const accentName = LANGUAGE_TO_ACCENT[preferredLang] || LANGUAGE_TO_ACCENT[language] || 'American';
+        setLanguageFilter(accentName);
       }
     } catch (error) {
       console.error('Failed to load business language:', error);
@@ -86,6 +109,11 @@ export default function VoicesPage() {
     const matchesLanguage = languageFilter === 'all' || voice.accent === languageFilter;
     return matchesSearch && matchesGender && matchesLanguage;
   });
+
+  // Separate recommended voices (matching business language or UI locale)
+  const preferredAccent = LANGUAGE_TO_ACCENT[locale?.toUpperCase()] || LANGUAGE_TO_ACCENT[businessLanguage] || 'American';
+  const recommendedVoices = filteredVoices.filter(voice => voice.accent === preferredAccent);
+  const otherVoices = filteredVoices.filter(voice => voice.accent !== preferredAccent);
 
   return (
     <div className="space-y-6">
@@ -168,17 +196,61 @@ export default function VoicesPage() {
         </div>
       ) : filteredVoices.length > 0 ? (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredVoices.map((voice) => (
-              <VoiceCard
-                key={voice.id}
-                voice={voice}
-                onSelect={handleSelectVoice}
-                isSelected={selectedVoice?.id === voice.id}
-                locale={locale}
-              />
-            ))}
-          </div>
+          {/* Recommended Voices Section */}
+          {recommendedVoices.length > 0 && languageFilter === 'all' && (
+            <div>
+              <h2 className="text-xl font-semibold text-neutral-900 mb-4">
+                {t('recommendedForYou')} ({preferredAccent})
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
+                {recommendedVoices.map((voice) => (
+                  <VoiceCard
+                    key={voice.id}
+                    voice={voice}
+                    onSelect={handleSelectVoice}
+                    isSelected={selectedVoice?.id === voice.id}
+                    locale={locale}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Other Voices Section */}
+          {otherVoices.length > 0 && languageFilter === 'all' && (
+            <div>
+              <h2 className="text-xl font-semibold text-neutral-900 mb-4">
+                {t('otherLanguages')}
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {otherVoices.map((voice) => (
+                  <VoiceCard
+                    key={voice.id}
+                    voice={voice}
+                    onSelect={handleSelectVoice}
+                    isSelected={selectedVoice?.id === voice.id}
+                    locale={locale}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* All voices when language filter is active */}
+          {languageFilter !== 'all' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {filteredVoices.map((voice) => (
+                <VoiceCard
+                  key={voice.id}
+                  voice={voice}
+                  onSelect={handleSelectVoice}
+                  isSelected={selectedVoice?.id === voice.id}
+                  locale={locale}
+                />
+              ))}
+            </div>
+          )}
+
           <div className="text-center text-sm text-neutral-500">
             {t('showing')} {filteredVoices.length} {t('of')} {voices.length} {t('voices')}
           </div>

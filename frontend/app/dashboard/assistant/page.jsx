@@ -34,8 +34,47 @@ import { formatDate } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useLanguage } from '@/contexts/LanguageContext';
 
+// Language code to accent name mapping
+const LANGUAGE_TO_ACCENT = {
+  'tr': 'Turkish',
+  'en': 'American',
+  'de': 'German',
+  'fr': 'French',
+  'es': 'Spanish',
+  'it': 'Italian',
+  'pt': 'Portuguese',
+  'ru': 'Russian',
+  'ar': 'Arabic',
+  'ja': 'Japanese',
+  'ko': 'Korean',
+  'zh': 'Chinese',
+  'hi': 'Hindi',
+  'nl': 'Dutch',
+  'pl': 'Polish',
+  'sv': 'Swedish',
+};
+
+const LANGUAGE_NAMES = {
+  'tr': 'Turkish',
+  'en': 'English',
+  'de': 'German',
+  'fr': 'French',
+  'es': 'Spanish',
+  'it': 'Italian',
+  'pt': 'Portuguese',
+  'ru': 'Russian',
+  'ar': 'Arabic',
+  'ja': 'Japanese',
+  'ko': 'Korean',
+  'zh': 'Chinese',
+  'hi': 'Hindi',
+  'nl': 'Dutch',
+  'pl': 'Polish',
+  'sv': 'Swedish',
+};
+
 export default function AssistantsPage() {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const [assistants, setAssistants] = useState([]);
   const [voices, setVoices] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -43,11 +82,13 @@ export default function AssistantsPage() {
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingAssistant, setEditingAssistant] = useState(null);
+  const [businessLanguage, setBusinessLanguage] = useState('en');
   const [formData, setFormData] = useState({
     name: '',
     voiceId: '',
     systemPrompt: '',
     model: 'gpt-4',
+    language: locale || 'en',
   });
 
   useEffect(() => {
@@ -57,18 +98,34 @@ export default function AssistantsPage() {
   const loadData = async () => {
     setLoading(true);
     try {
+      // Get business language
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      if (user.businessId) {
+        try {
+          const businessRes = await apiClient.business.get(user.businessId);
+          const language = businessRes.data.business?.language?.toLowerCase() || 'en';
+          setBusinessLanguage(language);
+          // Set default language in form
+          setFormData(prev => ({ ...prev, language }));
+        } catch (error) {
+          console.error('Failed to load business language:', error);
+        }
+      }
+
       const [assistantsRes, voicesRes] = await Promise.all([
         apiClient.assistants.getAll(),
         apiClient.voices.getAll(),
       ]);
       setAssistants(assistantsRes.data.assistants || []);
-      
-      // voices object olarak geliyor, düz array'e çevir
+
+      // Flatten all language voices into single array with language property
       const voiceData = voicesRes.data.voices || {};
-const allVoices = [
-  ...(voiceData.tr || []),
-  ...(voiceData.en || [])
-      ];
+      const allVoices = [];
+      Object.keys(voiceData).forEach(lang => {
+        if (Array.isArray(voiceData[lang])) {
+          allVoices.push(...voiceData[lang].map(v => ({ ...v, language: lang })));
+        }
+      });
       setVoices(allVoices);
     } catch (error) {
       toast.error(t('saveError'));
@@ -84,6 +141,7 @@ const allVoices = [
         voiceId: '',
         systemPrompt: template.prompt,
         model: 'gpt-4',
+        language: template.language || businessLanguage || 'en',
       });
     } else {
       setFormData({
@@ -91,6 +149,7 @@ const allVoices = [
         voiceId: '',
         systemPrompt: '',
         model: 'gpt-4',
+        language: businessLanguage || 'en',
       });
     }
     setShowCreateModal(true);
@@ -115,11 +174,15 @@ const allVoices = [
 
   const handleEdit = (assistant) => {
     setEditingAssistant(assistant);
+    // Try to infer language from voice if not stored
+    const voice = voices.find(v => v.id === assistant.voiceId);
+    const inferredLang = voice?.language || businessLanguage || 'en';
     setFormData({
       name: assistant.name,
       voiceId: assistant.voiceId,
       systemPrompt: assistant.systemPrompt,
       model: assistant.model || 'gpt-4',
+      language: assistant.language || inferredLang,
     });
     setShowCreateModal(true);
   };
@@ -149,9 +212,15 @@ const allVoices = [
   };
 
   const resetForm = () => {
-    setFormData({ name: '', voiceId: '', systemPrompt: '', model: 'gpt-4' });
+    setFormData({ name: '', voiceId: '', systemPrompt: '', model: 'gpt-4', language: businessLanguage || 'en' });
     setEditingAssistant(null);
   };
+
+  // Filter voices by selected language
+  const filteredVoices = voices.filter(voice => {
+    const selectedAccent = LANGUAGE_TO_ACCENT[formData.language];
+    return voice.accent === selectedAccent;
+  });
 
   const filteredAssistants = assistants.filter((a) =>
     a.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -264,6 +333,7 @@ const allVoices = [
         isOpen={showTemplateSelector}
         onClose={() => setShowTemplateSelector(false)}
         onSelectTemplate={handleTemplateSelect}
+        selectedLanguage={businessLanguage}
       />
 
       {/* Create/Edit modal */}
@@ -294,6 +364,39 @@ const allVoices = [
             </div>
 
             <div>
+              <Label htmlFor="language">{t('assistantLanguage')}</Label>
+              <Select
+                value={formData.language}
+                onValueChange={(value) => setFormData({ ...formData, language: value, voiceId: '' })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="tr">Turkish</SelectItem>
+                  <SelectItem value="en">English</SelectItem>
+                  <SelectItem value="de">German</SelectItem>
+                  <SelectItem value="fr">French</SelectItem>
+                  <SelectItem value="es">Spanish</SelectItem>
+                  <SelectItem value="it">Italian</SelectItem>
+                  <SelectItem value="pt">Portuguese</SelectItem>
+                  <SelectItem value="ru">Russian</SelectItem>
+                  <SelectItem value="ar">Arabic</SelectItem>
+                  <SelectItem value="ja">Japanese</SelectItem>
+                  <SelectItem value="ko">Korean</SelectItem>
+                  <SelectItem value="zh">Chinese</SelectItem>
+                  <SelectItem value="hi">Hindi</SelectItem>
+                  <SelectItem value="nl">Dutch</SelectItem>
+                  <SelectItem value="pl">Polish</SelectItem>
+                  <SelectItem value="sv">Swedish</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-neutral-500 mt-1">
+                {t('voicesFilteredByLanguage')}
+              </p>
+            </div>
+
+            <div>
               <Label htmlFor="voice">{t('voiceRequired')}</Label>
               <Select
                 value={formData.voiceId}
@@ -303,11 +406,17 @@ const allVoices = [
                   <SelectValue placeholder={t('selectVoiceLabel')} />
                 </SelectTrigger>
                 <SelectContent>
-                  {voices.map((voice) => (
-                    <SelectItem key={voice.id} value={voice.id}>
-                      {voice.name} ({voice.gender})
-                    </SelectItem>
-                  ))}
+                  {filteredVoices.length > 0 ? (
+                    filteredVoices.map((voice) => (
+                      <SelectItem key={voice.id} value={voice.id}>
+                        {voice.name} ({voice.gender})
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <div className="px-2 py-1 text-sm text-neutral-500">
+                      {t('noVoicesForLanguage')}
+                    </div>
+                  )}
                 </SelectContent>
               </Select>
             </div>
