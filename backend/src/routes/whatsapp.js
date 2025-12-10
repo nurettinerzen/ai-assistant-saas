@@ -2,13 +2,11 @@ import express from 'express';
 import axios from 'axios';
 import OpenAI from 'openai';
 import { PrismaClient } from '@prisma/client';
+import { decrypt } from '../utils/encryption.js';
+import { webhookRateLimiter } from '../middleware/rateLimiter.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
-
-const WHATSAPP_TOKEN = process.env.WHATSAPP_ACCESS_TOKEN;
-const PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID;
-const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
 
 // OpenAI client
 let openai;
@@ -24,53 +22,99 @@ const getOpenAI = () => {
 // In-memory conversation history (geçici - sonra database'e taşıyacağız)
 const conversations = new Map();
 
-// Webhook verification (Meta'nın ilk kurulumda çağırdığı)
-router.get('/webhook', (req, res) => {
+// Webhook verification (Meta's initial setup verification)
+// Multi-tenant: Verifies against any business's verify token
+router.get('/webhook', webhookRateLimiter.middleware(), async (req, res) => {
   const mode = req.query['hub.mode'];
   const token = req.query['hub.verify_token'];
   const challenge = req.query['hub.challenge'];
 
   if (mode && token) {
-    if (mode === 'subscribe' && token === VERIFY_TOKEN) {
-      console.log('✅ Webhook verified');
-      res.status(200).send(challenge);
+    if (mode === 'subscribe') {
+      // Check if any business has this verify token
+      const business = await prisma.business.findFirst({
+        where: {
+          whatsappVerifyToken: token
+        }
+      });
+
+      if (business) {
+        console.log(`✅ Webhook verified for business: ${business.name} (ID: ${business.id})`);
+        res.status(200).send(challenge);
+      } else {
+        console.log('❌ Webhook verification failed: Invalid verify token');
+        res.sendStatus(403);
+      }
     } else {
       res.sendStatus(403);
     }
+  } else {
+    res.sendStatus(400);
   }
 });
 
-// Webhook - Incoming messages
-router.post('/webhook', async (req, res) => {
+// Webhook - Incoming messages (Multi-tenant)
+router.post('/webhook', webhookRateLimiter.middleware(), async (req, res) => {
   console.log('🔔 WEBHOOK RECEIVED:', JSON.stringify(req.body, null, 2));
-  
+
   try {
     const body = req.body;
 
-    // Meta'dan gelen mesaj kontrolü
+    // Validate webhook payload from Meta
     if (body.object === 'whatsapp_business_account') {
       const entry = body.entry?.[0];
       const changes = entry?.changes?.[0];
       const value = changes?.value;
 
-      // Mesaj varsa
+      // Get the phone number ID to identify which business this message is for
+      const phoneNumberId = value?.metadata?.phone_number_id;
+
+      if (!phoneNumberId) {
+        console.error('❌ No phone number ID in webhook payload');
+        return res.sendStatus(400);
+      }
+
+      // Find the business by phone number ID
+      const business = await prisma.business.findFirst({
+        where: {
+          whatsappPhoneNumberId: phoneNumberId
+        },
+        include: {
+          assistants: {
+            where: { isActive: true },
+            orderBy: { createdAt: 'desc' },
+            take: 1
+          }
+        }
+      });
+
+      if (!business) {
+        console.error(`❌ No business found for phone number ID: ${phoneNumberId}`);
+        return res.sendStatus(404);
+      }
+
+      console.log(`✅ Message for business: ${business.name} (ID: ${business.id})`);
+
+      // Process incoming messages
       if (value?.messages && value.messages.length > 0) {
         const message = value.messages[0];
-        const from = message.from; // Gönderen numarası
-        const messageBody = message.text?.body; // Mesaj içeriği
+        const from = message.from; // Sender's phone number
+        const messageBody = message.text?.body; // Message content
         const messageId = message.id;
 
         console.log('📩 WhatsApp message received:', {
+          businessId: business.id,
+          businessName: business.name,
           from,
           message: messageBody,
           id: messageId
         });
 
-        // AI cevap oluştur
-        const aiResponse = await generateAIResponse(from, messageBody);
-        
-        // Cevabı gönder
-        await sendWhatsAppMessage(from, aiResponse);
+        // Generate AI response using business's assistant
+        const aiResponse = await generateAIResponse(business, from, messageBody);
+
+        // Send response using business's credentials
+        await sendWhatsAppMessage(business, from, aiResponse);
       }
 
       res.sendStatus(200);
@@ -83,14 +127,18 @@ router.post('/webhook', async (req, res) => {
   }
 });
 
-// WhatsApp mesaj gönderme fonksiyonu
-async function sendWhatsAppMessage(to, text) {
+// WhatsApp message sending function (Multi-tenant)
+async function sendWhatsAppMessage(business, to, text) {
   try {
+    // Decrypt the access token
+    const accessToken = decrypt(business.whatsappAccessToken);
+    const phoneNumberId = business.whatsappPhoneNumberId;
+
     const response = await axios({
       method: 'POST',
-      url: `https://graph.facebook.com/v22.0/${PHONE_NUMBER_ID}/messages`,
+      url: `https://graph.facebook.com/v22.0/${phoneNumberId}/messages`,
       headers: {
-        'Authorization': `Bearer ${WHATSAPP_TOKEN}`,
+        'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json'
       },
       data: {
@@ -103,7 +151,7 @@ async function sendWhatsAppMessage(to, text) {
       }
     });
 
-    console.log('✅ WhatsApp message sent:', response.data);
+    console.log(`✅ WhatsApp message sent for business ${business.name}:`, response.data);
     return response.data;
   } catch (error) {
     console.error('❌ Error sending WhatsApp message:', error.response?.data || error.message);
@@ -111,28 +159,25 @@ async function sendWhatsAppMessage(to, text) {
   }
 }
 
-// AI response generator with Assistant system prompt
-async function generateAIResponse(phoneNumber, userMessage) {
+// AI response generator with Assistant system prompt (Multi-tenant)
+async function generateAIResponse(business, phoneNumber, userMessage) {
   try {
     const client = getOpenAI();
 
-    // 🔥 YENİ: İlk aktif assistant'ı bul
-    const assistant = await prisma.assistant.findFirst({
-      where: { isActive: true },
-      orderBy: { createdAt: 'desc' }
-    });
+    // Get the business's active assistant
+    const assistant = business.assistants?.[0];
 
-    // System prompt'u belirle
+    // Determine system prompt
     let systemPrompt;
     let assistantName = 'Assistant';
 
     if (assistant) {
       systemPrompt = assistant.systemPrompt;
       assistantName = assistant.name;
-      console.log(`🤖 Using assistant: ${assistantName} (ID: ${assistant.id})`);
+      console.log(`🤖 Using assistant: ${assistantName} (ID: ${assistant.id}) for business: ${business.name}`);
     } else {
-      // Fallback: Assistant yoksa default prompt
-      systemPrompt = `You are a professional customer service representative.
+      // Fallback: No assistant configured for this business
+      systemPrompt = `You are a professional customer service representative for ${business.name}.
 
 CRITICAL RULES:
 - NEVER mention that you are an AI, bot, or artificial intelligence
@@ -145,27 +190,30 @@ CRITICAL RULES:
 Your name is Customer Support Team.
 Remember: You are a real person helping customers.`;
       assistantName = 'Customer Support Team';
-      console.log('⚠️ No assistant found, using default prompt');
+      console.log(`⚠️ No assistant found for business ${business.name}, using default prompt`);
     }
 
-    // Conversation history'yi al (yoksa oluştur)
-    if (!conversations.has(phoneNumber)) {
-      conversations.set(phoneNumber, []);
-    }
-    const history = conversations.get(phoneNumber);
+    // Conversation history key includes business ID to separate conversations per business
+    const conversationKey = `${business.id}:${phoneNumber}`;
 
-    // Kullanıcı mesajını ekle
+    // Get conversation history (create if doesn't exist)
+    if (!conversations.has(conversationKey)) {
+      conversations.set(conversationKey, []);
+    }
+    const history = conversations.get(conversationKey);
+
+    // Add user message to history
     history.push({
       role: 'user',
       content: userMessage
     });
 
-    // OpenAI'ye gönder
+    // Send to OpenAI
     const completion = await client.chat.completions.create({
       model: assistant?.model || 'gpt-4o-mini',
       messages: [
         { role: 'system', content: systemPrompt },
-        ...history.slice(-10) // Son 10 mesajı gönder (context limit için)
+        ...history.slice(-10) // Last 10 messages (for context limit)
       ],
       temperature: 0.7,
       max_tokens: 500
@@ -173,23 +221,32 @@ Remember: You are a real person helping customers.`;
 
     const aiResponse = completion.choices[0].message.content;
 
-    // AI cevabını history'ye ekle
+    // Add AI response to history
     history.push({
       role: 'assistant',
       content: aiResponse
     });
 
-    // History'yi sınırla (son 20 mesaj)
+    // Limit history (last 20 messages)
     if (history.length > 20) {
-      conversations.set(phoneNumber, history.slice(-20));
+      conversations.set(conversationKey, history.slice(-20));
     }
 
-    console.log('🤖 AI Response generated:', aiResponse);
+    console.log(`🤖 AI Response generated for business ${business.name}:`, aiResponse);
     return aiResponse;
 
   } catch (error) {
     console.error('❌ Error generating AI response:', error);
-    return 'Üzgünüm, şu anda bir sorun yaşıyorum. Lütfen daha sonra tekrar deneyin.';
+    // Return error message in business's language
+    const language = business.language || 'EN';
+    const errorMessages = {
+      'EN': 'Sorry, I\'m experiencing an issue right now. Please try again later.',
+      'TR': 'Üzgünüm, şu anda bir sorun yaşıyorum. Lütfen daha sonra tekrar deneyin.',
+      'ES': 'Lo siento, estoy experimentando un problema en este momento. Por favor, inténtelo de nuevo más tarde.',
+      'FR': 'Désolé, je rencontre un problème en ce moment. Veuillez réessayer plus tard.',
+      'DE': 'Entschuldigung, ich habe gerade ein Problem. Bitte versuchen Sie es später erneut.'
+    };
+    return errorMessages[language] || errorMessages['EN'];
   }
 }
 
