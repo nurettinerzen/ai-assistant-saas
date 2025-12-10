@@ -107,25 +107,31 @@ export default function Sidebar({ user, credits }) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-4 px-3">
-        {NAVIGATION.map((section) => {
-          const sectionLabel = section.label;
-          const isCollapsed = collapsedSections.includes(sectionLabel);
-          
-          return (
-            <div key={section.label} className="mb-6">
-              {/* Section header */}
-              <button
-                onClick={() => toggleSection(sectionLabel)}
-                className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold text-neutral-500 uppercase tracking-wider hover:text-neutral-700 transition-colors"
-              >
-                <span>{sectionLabel}</span>
-                {isCollapsed ? (
-                  <ChevronRight className="h-3 w-3" />
-                ) : (
-                  <ChevronDown className="h-3 w-3" />
-                )}
-              </button>
+      <nav 
+  data-sidebar-nav
+  onScroll={(e) => {
+    sessionStorage.setItem('sidebar-scroll', e.target.scrollTop);
+  }}
+  className="flex-1 overflow-y-auto py-4 px-3"
+>
+  {NAVIGATION.map((section) => {
+    const sectionLabel = section.label;
+    const isCollapsed = collapsedSections.includes(sectionLabel);
+    
+    return (
+      <div key={section.label} className="mb-6">
+        {/* Section header */}
+        <button
+          onClick={() => toggleSection(sectionLabel)}
+          className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold text-neutral-500 uppercase tracking-wider hover:text-neutral-700 transition-colors"
+        >
+          <span>{sectionLabel}</span>
+          {isCollapsed ? (
+            <ChevronRight className="h-3 w-3" />
+          ) : (
+            <ChevronDown className="h-3 w-3" />
+          )}
+        </button>
 
               {/* Section items */}
               {!isCollapsed && (
@@ -244,9 +250,9 @@ export default function Sidebar({ user, credits }) {
       )}
 
       {/* Desktop sidebar */}
-      <div className="hidden lg:block w-64 h-screen bg-white border-r border-neutral-200 fixed left-0 top-0">
-        <SidebarContent />
-      </div>
+<div className="hidden lg:block w-64 bg-white border-r border-neutral-200 fixed left-0 top-0 bottom-0 overflow-hidden">
+  <SidebarContent />
+</div>
     </>
   );
 }
