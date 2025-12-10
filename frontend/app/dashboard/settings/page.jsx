@@ -12,7 +12,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-import { User, Bell, CreditCard, AlertTriangle } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { User, Bell, CreditCard, AlertTriangle, Building2 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast, toastHelpers } from '@/lib/toast';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -21,6 +28,8 @@ export default function SettingsPage() {
   const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState({ name: '', email: '', company: '' });
+  const [businessType, setBusinessType] = useState('OTHER');
+  const [businessId, setBusinessId] = useState(null);
   const [notifications, setNotifications] = useState({
     emailOnCall: true,
     emailOnLimit: true,
@@ -40,13 +49,22 @@ export default function SettingsPage() {
   const loadSettings = async () => {
     setLoading(true);
     try {
-      const [profileRes, notificationsRes] = await Promise.all([
+      // Get user info to fetch business
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const userBusinessId = user.businessId;
+      setBusinessId(userBusinessId);
+
+      const [profileRes, notificationsRes, businessRes] = await Promise.all([
         apiClient.settings.getProfile(),
         apiClient.settings.getNotifications(),
+        userBusinessId ? apiClient.business.get(userBusinessId) : Promise.resolve({ data: { business: { businessType: 'OTHER' } } })
       ]);
+
       setProfile(profileRes.data);
       setNotifications(notificationsRes.data);
+      setBusinessType(businessRes.data.businessType || businessRes.data.business?.businessType || 'OTHER');
     } catch (error) {
+      console.error('Load settings error:', error);
       toast.error(t('saveError'));
     } finally {
       setLoading(false);
@@ -74,6 +92,24 @@ export default function SettingsPage() {
       );
     } catch (error) {
       // Error handled
+    }
+  };
+
+  const handleSaveBusinessType = async () => {
+    if (!businessId) {
+      toast.error('Business ID not found');
+      return;
+    }
+
+    try {
+      await toastHelpers.async(
+        apiClient.put(`/api/business/${businessId}`, { businessType }),
+        'Updating business type...',
+        'Business type updated successfully! Integrations page will now show relevant integrations.'
+      );
+    } catch (error) {
+      console.error('Update business type error:', error);
+      toast.error('Failed to update business type');
     }
   };
 
@@ -160,6 +196,57 @@ export default function SettingsPage() {
 
         <div className="flex justify-end mt-6">
           <Button onClick={handleSaveProfile}>{t('saveChangesBtn')}</Button>
+        </div>
+      </div>
+
+      {/* Business Type Section */}
+      <div className="bg-white rounded-xl border border-neutral-200 p-6 shadow-sm">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="p-2 bg-primary-100 rounded-lg">
+            <Building2 className="h-5 w-5 text-primary-600" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-neutral-900">Business Type</h2>
+            <p className="text-sm text-neutral-500">
+              Configure your business type to see relevant integrations
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="businessType">Business Type</Label>
+            <Select value={businessType} onValueChange={setBusinessType}>
+              <SelectTrigger id="businessType" className="w-full">
+                <SelectValue placeholder="Select your business type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="RESTAURANT">Restaurant</SelectItem>
+                <SelectItem value="SALON">Salon/Spa</SelectItem>
+                <SelectItem value="ECOMMERCE">E-commerce</SelectItem>
+                <SelectItem value="CLINIC">Clinic/Healthcare</SelectItem>
+                <SelectItem value="SERVICE">Service Business</SelectItem>
+                <SelectItem value="OTHER">Other</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-neutral-500 mt-2">
+              This helps us show you the most relevant integrations and features for your business
+            </p>
+          </div>
+
+          {/* Business type specific info */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h3 className="text-sm font-semibold text-blue-900 mb-2">
+              {getBusinessTypeTitle(businessType)}
+            </h3>
+            <p className="text-sm text-blue-700">
+              {getBusinessTypeDescription(businessType)}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex justify-end mt-6">
+          <Button onClick={handleSaveBusinessType}>Save Business Type</Button>
         </div>
       </div>
 
@@ -304,4 +391,29 @@ export default function SettingsPage() {
       </div>
     </div>
   );
+}
+
+// Helper functions for business type information
+function getBusinessTypeTitle(type) {
+  const titles = {
+    RESTAURANT: 'Restaurant Business',
+    SALON: 'Salon & Spa Business',
+    ECOMMERCE: 'E-commerce Business',
+    CLINIC: 'Healthcare & Clinic',
+    SERVICE: 'Service Business',
+    OTHER: 'General Business'
+  };
+  return titles[type] || 'Business Type';
+}
+
+function getBusinessTypeDescription(type) {
+  const descriptions = {
+    RESTAURANT: 'Your integrations page will prioritize tools like OpenTable, Toast POS, Google Calendar for reservations, and WhatsApp for customer communication.',
+    SALON: 'Your integrations page will focus on Booksy, Fresha, Square payments, Google Calendar for appointments, and WhatsApp for appointment reminders.',
+    ECOMMERCE: 'Your integrations page will highlight Shopify, WooCommerce, Stripe payments, ShipStation for shipping, and marketing tools like Klaviyo.',
+    CLINIC: 'Your integrations page will emphasize SimplePractice, Zocdoc, Google Calendar for appointments, WhatsApp for patient communication, and healthcare-specific tools.',
+    SERVICE: 'Your integrations page will show Calendly, HubSpot CRM, Google Calendar, and automation tools to streamline your service delivery.',
+    OTHER: 'You will see all available integrations. Consider selecting a more specific business type to get personalized recommendations.'
+  };
+  return descriptions[type] || 'Select your business type to see personalized integrations.';
 }

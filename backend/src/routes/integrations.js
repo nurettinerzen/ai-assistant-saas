@@ -8,6 +8,7 @@ import googleCalendarService from '../services/google-calendar.js';
 import hubspotService from '../services/hubspot.js';
 import googleSheetsService from '../services/google-sheets.js';
 import whatsappService from '../services/whatsapp.js';
+import { getFilteredIntegrations, getIntegrationPriority } from '../config/integrationMetadata.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -37,6 +38,65 @@ router.get('/', async (req, res) => {
   } catch (error) {
     console.error('Get integrations error:', error);
     res.status(500).json({ error: 'Failed to fetch integrations' });
+  }
+});
+
+/* ============================================================
+   GET AVAILABLE INTEGRATIONS (FILTERED BY BUSINESS TYPE)
+============================================================ */
+router.get('/available', async (req, res) => {
+  try {
+    // Get business type
+    const business = await prisma.business.findUnique({
+      where: { id: req.businessId },
+      select: {
+        businessType: true,
+        whatsappPhoneNumberId: true
+      }
+    });
+
+    const businessType = business?.businessType || 'OTHER';
+
+    // Get filtered integrations based on business type
+    const availableIntegrations = getFilteredIntegrations(businessType);
+
+    // Get connected integrations from database
+    const connectedIntegrations = await prisma.integration.findMany({
+      where: { businessId: req.businessId },
+      select: { type: true, connected: true, isActive: true }
+    });
+
+    // Create a map of connected integrations
+    const connectedMap = {};
+    connectedIntegrations.forEach(integration => {
+      connectedMap[integration.type] = {
+        connected: integration.connected,
+        isActive: integration.isActive
+      };
+    });
+
+    // Special handling for WhatsApp (stored directly in Business model)
+    const whatsappConnected = !!business?.whatsappPhoneNumberId;
+    connectedMap['WHATSAPP'] = {
+      connected: whatsappConnected,
+      isActive: whatsappConnected
+    };
+
+    // Merge available integrations with connection status
+    const integrationsWithStatus = availableIntegrations.map(integration => ({
+      ...integration,
+      connected: connectedMap[integration.type]?.connected || false,
+      isActive: connectedMap[integration.type]?.isActive || false
+    }));
+
+    res.json({
+      businessType,
+      integrations: integrationsWithStatus
+    });
+
+  } catch (error) {
+    console.error('Get available integrations error:', error);
+    res.status(500).json({ error: 'Failed to fetch available integrations' });
   }
 });
 
