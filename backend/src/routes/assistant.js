@@ -525,6 +525,8 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 // GET /api/assistants/templates - Get assistant templates
 router.get('/templates', authenticateToken, async (req, res) => {
   try {
+    const { language } = req.query; // Optional language filter
+
     const templates = [
       // English Templates
       {
@@ -613,7 +615,12 @@ HER ZAMAN TÜRKÇE KONUŞ.`
       }
     ];
 
-    res.json({ templates });
+    // Filter by language if specified
+    const filteredTemplates = language
+      ? templates.filter(t => t.language?.toUpperCase() === language.toUpperCase())
+      : templates;
+
+    res.json({ templates: filteredTemplates });
   } catch (error) {
     console.error('Error fetching templates:', error);
     res.status(500).json({ error: 'Failed to fetch templates' });
