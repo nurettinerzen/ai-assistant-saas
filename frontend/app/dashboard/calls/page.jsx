@@ -17,12 +17,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import CallDetailModal from '@/components/CallDetailModal';
-import CallDetailsModal from '@/components/CallDetailsModal';
+import TranscriptModal from '@/components/TranscriptModal';
 import EmptyState from '@/components/EmptyState';
-import { Phone, Search, Download, Filter } from 'lucide-react';
+import { Phone, Search, Download, Filter, FileText, Play, Volume2 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
-import { toast } from '@/lib/toast';
+import { toast } from 'sonner';
 import { formatDate, formatDuration, formatCurrency, formatPhone } from '@/lib/utils';
 import { useLanguage } from '@/contexts/LanguageContext';
 
@@ -32,8 +31,8 @@ export default function CallsPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [selectedCall, setSelectedCall] = useState(null);
-  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedCallId, setSelectedCallId] = useState(null);
+  const [showTranscriptModal, setShowTranscriptModal] = useState(false);
 
   useEffect(() => {
     loadCalls();
@@ -46,14 +45,28 @@ export default function CallsPage() {
       if (statusFilter !== 'all') {
         params.status = statusFilter;
       }
+      if (searchQuery) {
+        params.search = searchQuery;
+      }
       const response = await apiClient.calls.getAll(params);
       setCalls(response.data.calls || []);
     } catch (error) {
-      toast.error(t('saveError'));
+      toast.error('Failed to load calls');
     } finally {
       setLoading(false);
     }
   };
+
+  // Reload calls when search query changes (with debounce)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchQuery !== '') {
+        loadCalls();
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const handleExport = async () => {
     try {
@@ -65,29 +78,32 @@ export default function CallsPage() {
       document.body.appendChild(link);
       link.click();
       link.remove();
-      toast.success(t('saveSuccess'));
+      toast.success('Calls exported successfully');
     } catch (error) {
-      toast.error(t('saveError'));
+      toast.error('Failed to export calls');
     }
   };
 
-  const handleCallClick = (call) => {
-    setSelectedCall(call);
-    setShowDetailModal(true);
+  const handleViewTranscript = (callId) => {
+    setSelectedCallId(callId);
+    setShowTranscriptModal(true);
   };
 
-  const filteredCalls = calls.filter((call) => {
-    const matchesSearch =
-      call.phoneNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      call.assistantName?.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesSearch;
-  });
+  const filteredCalls = calls;
 
   const statusColors = {
     completed: 'bg-green-100 text-green-800',
+    answered: 'bg-green-100 text-green-800',
     failed: 'bg-red-100 text-red-800',
     'in-progress': 'bg-blue-100 text-blue-800',
+    in_progress: 'bg-blue-100 text-blue-800',
     queued: 'bg-amber-100 text-amber-800',
+  };
+
+  const sentimentColors = {
+    positive: 'bg-green-100 text-green-800',
+    neutral: 'bg-gray-100 text-gray-800',
+    negative: 'bg-red-100 text-red-800',
   };
 
   return (
@@ -95,12 +111,12 @@ export default function CallsPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-neutral-900">{t('callHistoryTitle')}</h1>
-          <p className="text-neutral-600 mt-1">{t('viewAndAnalyze')}</p>
+          <h1 className="text-3xl font-bold text-neutral-900">Call History</h1>
+          <p className="text-neutral-600 mt-1">View call recordings, transcripts, and AI analysis</p>
         </div>
         <Button onClick={handleExport} variant="outline">
           <Download className="h-4 w-4 mr-2" />
-          {t('exportCSV')}
+          Export CSV
         </Button>
       </div>
 
@@ -109,7 +125,7 @@ export default function CallsPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
           <Input
-            placeholder={t('searchByPhone')}
+            placeholder="Search by phone number, call ID, or transcript..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
@@ -121,11 +137,11 @@ export default function CallsPage() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">{t('allStatus')}</SelectItem>
-            <SelectItem value="completed">{t('completed')}</SelectItem>
-            <SelectItem value="failed">{t('failed')}</SelectItem>
-            <SelectItem value="in-progress">{t('inProgress')}</SelectItem>
-            <SelectItem value="queued">{t('queued')}</SelectItem>
+            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="answered">Answered</SelectItem>
+            <SelectItem value="completed">Completed</SelectItem>
+            <SelectItem value="failed">Failed</SelectItem>
+            <SelectItem value="in_progress">In Progress</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -146,22 +162,25 @@ export default function CallsPage() {
               <thead className="bg-neutral-50 border-b border-neutral-200">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    {t('phoneNumberLabel')}
+                    Phone Number
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    {t('assistantLabel')}
+                    Date & Time
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    {t('durationLabel')}
+                    Duration
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    {t('costLabel')}
+                    Status
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    {t('dateLabel')}
+                    Sentiment
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    {t('statusLabel')}
+                    Summary
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                    Actions
                   </th>
                 </tr>
               </thead>
@@ -169,25 +188,11 @@ export default function CallsPage() {
                 {filteredCalls.map((call) => (
                   <tr
                     key={call.id}
-                    onClick={() => handleCallClick(call)}
-                    className="hover:bg-neutral-50 cursor-pointer transition-colors"
+                    className="hover:bg-neutral-50 transition-colors"
                   >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-neutral-900">
                         {formatPhone(call.phoneNumber)}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-neutral-600">{call.assistantName}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-neutral-600">
-                        {formatDuration(call.duration)}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-neutral-600">
-                        {formatCurrency(call.cost)}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -199,9 +204,61 @@ export default function CallsPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-neutral-600">
+                        {formatDuration(call.duration)}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
                       <Badge className={statusColors[call.status] || 'bg-neutral-100 text-neutral-800'}>
-                        {t(call.status, locale)}
+                        {call.status}
                       </Badge>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {call.sentiment ? (
+                        <Badge className={sentimentColors[call.sentiment] || sentimentColors.neutral}>
+                          {call.sentiment.charAt(0).toUpperCase() + call.sentiment.slice(1)}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-neutral-400">-</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 max-w-xs">
+                      <div className="text-sm text-neutral-600 truncate" title={call.summary}>
+                        {call.summary || <span className="text-neutral-400">-</span>}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        {call.hasRecording && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewTranscript(call.id);
+                            }}
+                            title="Play recording"
+                          >
+                            <Volume2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {call.hasTranscript && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewTranscript(call.id);
+                            }}
+                            title="View transcript"
+                          >
+                            <FileText className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {!call.hasRecording && !call.hasTranscript && (
+                          <span className="text-xs text-neutral-400">No data</span>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -213,21 +270,24 @@ export default function CallsPage() {
         <div className="bg-white rounded-xl border border-neutral-200 p-8">
           <EmptyState
             icon={Phone}
-            title={searchQuery || statusFilter !== 'all' ? t('noDataYet') : t('noCallsYetTitle')}
+            title={searchQuery || statusFilter !== 'all' ? 'No calls found' : 'No calls yet'}
             description={
               searchQuery || statusFilter !== 'all'
-                ? t('thisActionCannot')
-                : t('callHistoryAppear')
+                ? 'Try adjusting your search or filters'
+                : 'Call history will appear here once you receive calls'
             }
           />
         </div>
       )}
 
-      {/* Call detail modal */}
-      <CallDetailModal
-        call={selectedCall}
-        isOpen={showDetailModal}
-        onClose={() => setShowDetailModal(false)}
+      {/* Transcript modal */}
+      <TranscriptModal
+        callId={selectedCallId}
+        isOpen={showTranscriptModal}
+        onClose={() => {
+          setShowTranscriptModal(false);
+          setSelectedCallId(null);
+        }}
       />
     </div>
   );

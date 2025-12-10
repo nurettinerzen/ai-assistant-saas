@@ -141,23 +141,28 @@ model Subscription {
 }
 
 model CallLog {
-  id             Int      @id @default(autoincrement())
-  businessId     Int
-  callId         String   @unique
-  callerId       String?
-  duration       Int?
-  status         String
-  transcript     String?
-  recordingUrl   String?
-  intent         String?
-  sentiment      String?
-  summary        String?
-  keyPoints      String[] @default([])
-  taskCompleted  Boolean?
-  followUpNeeded Boolean?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  business       Business @relation(fields: [businessId], references: [id])
+  id                Int      @id @default(autoincrement())
+  businessId        Int
+  callId            String   @unique
+  callerId          String?
+  duration          Int?
+  status            String
+  transcript        Json?    // Array of {speaker, text, timestamp}
+  transcriptText    String?  @db.Text // Plain text for search
+  recordingUrl      String?  @db.Text
+  recordingDuration Int?     // Duration in seconds
+  intent            String?
+  sentiment         String?  // 'positive', 'neutral', 'negative'
+  sentimentScore    Float?   // 0.0 to 1.0
+  summary           String?  @db.Text
+  keyPoints         String[] @default([])
+  keyTopics         String[] @default([]) // ['appointment', 'pricing', 'availability']
+  actionItems       String[] @default([]) // ['Schedule follow-up', 'Send email']
+  taskCompleted     Boolean?
+  followUpNeeded    Boolean?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  business          Business @relation(fields: [businessId], references: [id])
 
   @@index([businessId])
   @@index([callId])
