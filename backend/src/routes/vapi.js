@@ -277,7 +277,9 @@ router.post('/functions', async (req, res) => {
     for (const toolCall of message.toolCalls) {
       const { id: toolCallId, function: func } = toolCall;
       const functionName = func?.name;
-      const functionArgs = func?.arguments ? JSON.parse(func.arguments) : {};
+      const functionArgs = typeof func.arguments === 'string' 
+  ? JSON.parse(func.arguments) 
+  : func.arguments;
 
       console.log(`📞 Processing function: ${functionName}`, functionArgs);
 
@@ -534,9 +536,7 @@ async function handleCreateAppointment(args, vapiMessage) {
               dateTime: endDateTime.toISOString(),
               timeZone: 'Europe/Istanbul'
             },
-            attendees: [
-              { email: customer_name, displayName: customer_name }
-            ],
+          
             reminders: {
               useDefault: false,
               overrides: [
@@ -555,6 +555,35 @@ async function handleCreateAppointment(args, vapiMessage) {
         // Continue anyway - we'll still save to database
       }
     }
+
+    if (business.ownerWhatsApp) {
+  try {
+    console.log('📱 Sending WhatsApp notification to:', business.ownerWhatsApp);
+    
+    const axios = (await import('axios')).default;
+    
+    await axios({
+      method: 'POST',
+      url: `https://graph.facebook.com/v22.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
+      headers: {
+        'Authorization': `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      data: {
+        messaging_product: 'whatsapp',
+        to: business.ownerWhatsApp,
+        type: 'text',
+        text: {
+          body: `🎉 *New Appointment!*\n\nCustomer: ${customer_name}\nPhone: ${customer_phone}\nDate: ${date}\nTime: ${time}\nService: ${service_type || 'Not specified'}`
+        }
+      }
+    });
+    
+    console.log('✅ WhatsApp notification sent successfully');
+  } catch (whatsappError) {
+    console.error('❌ WhatsApp notification failed:', whatsappError.response?.data || whatsappError.message);
+  }
+}
 
     // Save appointment to database (local copy)
     const appointment = await prisma.appointment.create({

@@ -28,6 +28,7 @@ export default function ChatWidget({
   const [conversationHistory, setConversationHistory] = useState([]);
   const { t } = useLanguage();
   const messagesEndRef = useRef(null);
+  const inputRef = useRef(null);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -45,6 +46,12 @@ useEffect(() => {
     }]);
   }
 }, [isOpen, t]);
+
+useEffect(() => {
+  if (!isLoading && isOpen) {
+    inputRef.current?.focus();
+  }
+}, [isLoading, isOpen]);
 
   const sendMessage = async () => {
     const text = inputValue.trim();
@@ -93,6 +100,8 @@ useEffect(() => {
       }]);
     } finally {
       setIsLoading(false);
+      // Auto-focus input after sending
+      inputRef.current?.focus();
     }
   };
 
@@ -177,6 +186,7 @@ useEffect(() => {
           <div className="p-3 border-t border-gray-200 bg-white shrink-0">
             <div className="flex gap-2">
               <Input
+                ref={inputRef}
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyPress={handleKeyPress}

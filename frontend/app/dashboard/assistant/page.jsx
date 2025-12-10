@@ -65,9 +65,9 @@ export default function AssistantsPage() {
       
       // voices object olarak geliyor, düz array'e çevir
       const voiceData = voicesRes.data.voices || {};
-      const allVoices = [
-        ...(voiceData.turkish || []),
-        ...(voiceData.english || [])
+const allVoices = [
+  ...(voiceData.tr || []),
+  ...(voiceData.en || [])
       ];
       setVoices(allVoices);
     } catch (error) {
