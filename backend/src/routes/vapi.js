@@ -16,6 +16,7 @@ import googleCalendarService from '../services/google-calendar.js';
 import netgsmService from '../services/netgsm.js';
 import whatsappService from '../services/whatsapp.js';
 import trendyolService from '../services/trendyol.js';
+import cargoAggregator from '../services/cargo-aggregator.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -359,6 +360,10 @@ router.post('/functions', async (req, res) => {
 
           case 'get_cargo_tracking':
             result = await handleGetCargoTracking(functionArgs, message);
+            break;
+
+          case 'track_shipment':
+            result = await handleTrackShipment(functionArgs, message);
             break;
 
           default:
@@ -1128,6 +1133,96 @@ async function handleGetCargoTracking(args, vapiMessage) {
     return {
       success: false,
       message: 'Kargo sorgulanırken bir hata oluştu. Lütfen daha sonra tekrar deneyin.'
+    };
+  }
+}
+
+// ============================================================================
+// CARGO TRACKING FUNCTION HANDLER
+// ============================================================================
+
+/**
+ * Handle track_shipment function call
+ * Tracks shipment status using connected cargo carriers
+ * @param {Object} args - Function arguments from VAPI
+ * @param {Object} vapiMessage - VAPI message object
+ */
+async function handleTrackShipment(args, vapiMessage) {
+  try {
+    const { tracking_number, carrier } = args;
+
+    console.log('📦 Tracking shipment:', { tracking_number, carrier });
+
+    // Validate required parameters
+    if (!tracking_number) {
+      return {
+        result: 'error',
+        message: 'Takip numarası gerekli. Lütfen kargo takip numaranızı söyleyin.'
+      };
+    }
+
+    // Get business from VAPI call
+    const business = await getBusinessFromVapiCall(vapiMessage);
+
+    // Track shipment using cargo aggregator
+    const trackingResult = await cargoAggregator.trackShipment(
+      business.id,
+      tracking_number,
+      carrier || null
+    );
+
+    // Log tracking request
+    console.log(`📦 Tracking result for ${tracking_number}:`, {
+      success: trackingResult.success,
+      carrier: trackingResult.carrier,
+      status: trackingResult.status
+    });
+
+    // Format response for AI
+    if (!trackingResult.success) {
+      // Handle different error codes
+      if (trackingResult.code === 'NO_INTEGRATION') {
+        return {
+          result: 'no_integration',
+          message: 'Şu an kargo takip sistemine bağlantımız bulunmuyor. Lütfen doğrudan kargo firmasının web sitesinden takip edin.'
+        };
+      }
+
+      if (trackingResult.code === 'NOT_FOUND') {
+        return {
+          result: 'not_found',
+          message: 'Bu takip numarasıyla kargo bulunamadı. Lütfen takip numarasını kontrol edip tekrar söyleyin.'
+        };
+      }
+
+      return {
+        result: 'error',
+        message: trackingResult.error || 'Kargo takip sorgusu başarısız oldu. Lütfen daha sonra tekrar deneyin.'
+      };
+    }
+
+    // Format success message
+    const formattedMessage = cargoAggregator.formatTrackingForAI(trackingResult);
+
+    return {
+      result: 'success',
+      message: formattedMessage,
+      data: {
+        carrier: trackingResult.carrier,
+        carrierName: trackingResult.carrierName,
+        trackingNumber: trackingResult.trackingNumber,
+        status: trackingResult.status,
+        statusText: trackingResult.statusText,
+        lastLocation: trackingResult.lastLocation,
+        estimatedDelivery: trackingResult.estimatedDelivery
+      }
+    };
+
+  } catch (error) {
+    console.error('❌ Track shipment error:', error);
+    return {
+      result: 'error',
+      message: 'Kargo takip sorgusu sırasında bir hata oluştu. Lütfen daha sonra tekrar deneyin.'
     };
   }
 }

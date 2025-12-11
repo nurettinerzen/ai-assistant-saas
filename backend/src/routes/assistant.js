@@ -2,6 +2,7 @@ import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticateToken } from '../middleware/auth.js';
 import vapiService from '../services/vapi.js';
+import cargoAggregator from '../services/cargo-aggregator.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -122,6 +123,37 @@ const GET_CARGO_TRACKING_TOOL = {
   }
 };
 
+// ============================================================
+// CARGO TRACKING TOOL
+// ============================================================
+
+const TRACK_SHIPMENT_TOOL = {
+  type: "function",
+  function: {
+    name: "track_shipment",
+    description: "Müşterinin kargo takip numarası ile gönderisinin durumunu sorgular. Müşteri kargo firmasını belirtmezse otomatik bulunur. Tracks customer's shipment status by tracking number.",
+    parameters: {
+      type: "object",
+      properties: {
+        tracking_number: {
+          type: "string",
+          description: "Kargo takip numarası / Shipment tracking number"
+        },
+        carrier: {
+          type: "string",
+          enum: ["yurtici", "aras", "mng"],
+          description: "Kargo firması (opsiyonel). Belirtilmezse tüm bağlı firmalar denenir. / Cargo carrier (optional). If not specified, all connected carriers will be tried."
+        }
+      },
+      required: ["tracking_number"]
+    }
+  },
+  server: {
+    url: `${process.env.BACKEND_URL || 'https://marin-methoxy-suzette.ngrok-free.dev'}/api/vapi/functions`,
+    timeoutSeconds: 15
+  }
+};
+
 /**
  * Get active tools for a business based on their integrations
  * @param {number} businessId - Business ID
@@ -148,10 +180,12 @@ async function getActiveToolsForBusiness(businessId) {
       tools.push(GET_CARGO_TRACKING_TOOL);
     }
 
-    // Add more integration checks here for future tools
-    // Example:
-    // const shopifyIntegration = await prisma.integration.findUnique({ ... });
-    // if (shopifyIntegration && shopifyIntegration.isActive) { tools.push(SHOPIFY_TOOLS); }
+    // Check if business has cargo integration
+    const hasCargoIntegration = await cargoAggregator.hasCargoIntegration(businessId);
+    if (hasCargoIntegration) {
+      tools.push(TRACK_SHIPMENT_TOOL);
+      console.log(`📦 Cargo integration found, adding TRACK_SHIPMENT_TOOL for business ${businessId}`);
+    }
 
   } catch (error) {
     console.error('❌ Error getting active tools for business:', error);
@@ -256,7 +290,7 @@ const dateContext = `\n\nIMPORTANT: Today's date is ${today}. Use this for all d
 
     // Get active tools based on business integrations
     const activeTools = await getActiveToolsForBusiness(businessId);
-    console.log('📤 VAPI Request - tools:', JSON.stringify(activeTools, null, 2));
+    console.log('📤 VAPI Request - tools:', activeTools.map(t => t.function.name));
 
     // VAPI'de YENİ assistant oluştur
     const vapiResponse = await fetch('https://api.vapi.ai/assistant', {
