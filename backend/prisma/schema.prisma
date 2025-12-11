@@ -463,6 +463,9 @@ enum IntegrationType {
   SHIPSTATION
   KLAVIYO
   MAILCHIMP
+  YURTICI_KARGO
+  ARAS_KARGO
+  MNG_KARGO
   TRENDYOL
   CUSTOM
 }
@@ -493,6 +496,11 @@ enum ShippingCarrier {
   FEDEX
   USPS
   DHL
+  YURTICI
+  ARAS
+  MNG
+  PTT
+  SURAT
   OTHER
 }
 

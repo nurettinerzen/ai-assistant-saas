@@ -42,7 +42,8 @@ import {
   Stethoscope,
   Package,
   Mail,
-  Hash
+  Hash,
+  Truck
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast, toastHelpers } from '@/lib/toast';
@@ -74,6 +75,9 @@ const INTEGRATION_ICONS = {
   TWILIO_SMS: MessageSquare,
   SENDGRID_EMAIL: Mail,
   TRENDYOL: ShoppingCart,
+  YURTICI_KARGO: Truck,
+  ARAS_KARGO: Truck,
+  MNG_KARGO: Truck,
   CUSTOM: Hash
 };
 
@@ -88,6 +92,7 @@ const CATEGORY_COLORS = {
   healthcare: { icon: 'text-teal-600', bg: 'bg-teal-100' },
   booking: { icon: 'text-pink-600', bg: 'bg-pink-100' },
   shipping: { icon: 'text-indigo-600', bg: 'bg-indigo-100' },
+  cargo: { icon: 'text-orange-600', bg: 'bg-orange-100' },
   marketing: { icon: 'text-rose-600', bg: 'bg-rose-100' },
   crm: { icon: 'text-cyan-600', bg: 'bg-cyan-100' },
   data: { icon: 'text-emerald-600', bg: 'bg-emerald-100' },
@@ -119,7 +124,10 @@ const INTEGRATION_DOCS = {
   SLACK: 'https://api.slack.com',
   TWILIO_SMS: 'https://www.twilio.com/docs/sms',
   SENDGRID_EMAIL: 'https://docs.sendgrid.com',
-  TRENDYOL: 'https://developers.trendyol.com'
+  TRENDYOL: 'https://developers.trendyol.com',
+  YURTICI_KARGO: 'https://www.yurticikargo.com/tr/kurumsal/entegrasyon',
+  ARAS_KARGO: 'https://www.araskargo.com.tr/kurumsal/entegrasyon',
+  MNG_KARGO: 'https://www.mngkargo.com.tr/entegrasyon'
 };
 
 export default function IntegrationsPage() {
@@ -149,10 +157,25 @@ export default function IntegrationsPage() {
     apiSecret: ''
   });
 
+  // Cargo integration state
+  const [cargoModalOpen, setCargoModalOpen] = useState(false);
+  const [activeCargoCarrier, setActiveCargoCarrier] = useState(null);
+  const [cargoLoading, setCargoLoading] = useState(false);
+  const [cargoStatus, setCargoStatus] = useState({});
+  const [cargoForm, setCargoForm] = useState({
+    // Yurtici fields
+    customerCode: '',
+    username: '',
+    password: '',
+    // MNG fields
+    apiKey: ''
+  });
+
   useEffect(() => {
     loadIntegrations();
     loadWhatsAppStatus();
     loadTrendyolStatus();
+    loadCargoStatus();
   }, []);
 
   // Load available integrations (filtered by business type)
@@ -178,6 +201,118 @@ export default function IntegrationsPage() {
     } catch (error) {
       console.error('Failed to load WhatsApp status:', error);
     }
+  };
+
+  // Load Cargo integrations status
+  const loadCargoStatus = async () => {
+    try {
+      const response = await apiClient.get('/api/cargo/connected');
+      const statusMap = {};
+      if (response.data.carriers) {
+        response.data.carriers.forEach(carrier => {
+          statusMap[carrier.carrier] = carrier;
+        });
+      }
+      setCargoStatus(statusMap);
+    } catch (error) {
+      console.error('Failed to load cargo status:', error);
+    }
+  };
+
+  // Handle cargo connection
+  const handleCargoConnect = async () => {
+    if (!activeCargoCarrier) return;
+
+    // Validate fields based on carrier
+    if (activeCargoCarrier === 'yurtici' || activeCargoCarrier === 'aras') {
+      if (!cargoForm.customerCode || !cargoForm.username || !cargoForm.password) {
+        toast.error('Please fill in all required fields');
+        return;
+      }
+    } else if (activeCargoCarrier === 'mng') {
+      if (!cargoForm.apiKey) {
+        toast.error('API Key is required');
+        return;
+      }
+    }
+
+    setCargoLoading(true);
+    try {
+      const endpoint = `/api/cargo/${activeCargoCarrier}/connect`;
+      const payload = activeCargoCarrier === 'mng'
+        ? { apiKey: cargoForm.apiKey, customerId: cargoForm.customerCode }
+        : { customerCode: cargoForm.customerCode, username: cargoForm.username, password: cargoForm.password };
+
+      const response = await apiClient.post(endpoint, payload);
+
+      if (response.data.success) {
+        toast.success(`${getCarrierName(activeCargoCarrier)} connected successfully!`);
+        setCargoModalOpen(false);
+        resetCargoForm();
+        await loadCargoStatus();
+        await loadIntegrations();
+      }
+    } catch (error) {
+      const errorMsg = error.response?.data?.error || 'Connection failed';
+      toast.error(errorMsg);
+    } finally {
+      setCargoLoading(false);
+    }
+  };
+
+  // Handle cargo disconnection
+  const handleCargoDisconnect = async (carrier) => {
+    if (!confirm(`Are you sure you want to disconnect ${getCarrierName(carrier)}?`)) return;
+
+    try {
+      await apiClient.post(`/api/cargo/${carrier}/disconnect`);
+      toast.success(`${getCarrierName(carrier)} disconnected`);
+      await loadCargoStatus();
+      await loadIntegrations();
+    } catch (error) {
+      toast.error('Failed to disconnect');
+    }
+  };
+
+  // Test cargo connection
+  const handleCargoTest = async (carrier) => {
+    try {
+      const response = await apiClient.post(`/api/cargo/${carrier}/test`);
+      if (response.data.success) {
+        toast.success('Connection test successful!');
+      } else {
+        toast.error(response.data.error || 'Connection test failed');
+      }
+    } catch (error) {
+      toast.error('Connection test failed');
+    }
+  };
+
+  // Reset cargo form
+  const resetCargoForm = () => {
+    setCargoForm({
+      customerCode: '',
+      username: '',
+      password: '',
+      apiKey: ''
+    });
+    setActiveCargoCarrier(null);
+  };
+
+  // Get carrier display name
+  const getCarrierName = (carrier) => {
+    const names = {
+      yurtici: 'Yurtiçi Kargo',
+      aras: 'Aras Kargo',
+      mng: 'MNG Kargo'
+    };
+    return names[carrier] || carrier;
+  };
+
+  // Open cargo modal for specific carrier
+  const openCargoModal = (carrier) => {
+    setActiveCargoCarrier(carrier);
+    setCargoModalOpen(true);
   };
 
   // Handle WhatsApp connection
@@ -325,6 +460,20 @@ export default function IntegrationsPage() {
         return;
       }
 
+      // Cargo integrations - Show modal
+      if (integration.type === 'YURTICI_KARGO') {
+        openCargoModal('yurtici');
+        return;
+      }
+      if (integration.type === 'ARAS_KARGO') {
+        openCargoModal('aras');
+        return;
+      }
+      if (integration.type === 'MNG_KARGO') {
+        openCargoModal('mng');
+        return;
+      }
+
       // OAuth integrations
       if (integration.type === 'GOOGLE_CALENDAR') {
         const response = await apiClient.get('/api/calendar/google/auth');
@@ -356,6 +505,12 @@ export default function IntegrationsPage() {
         await handleWhatsAppDisconnect();
       } else if (integration.type === 'TRENDYOL') {
         await handleTrendyolDisconnect();
+      } else if (integration.type === 'YURTICI_KARGO') {
+        await handleCargoDisconnect('yurtici');
+      } else if (integration.type === 'ARAS_KARGO') {
+        await handleCargoDisconnect('aras');
+      } else if (integration.type === 'MNG_KARGO') {
+        await handleCargoDisconnect('mng');
       } else {
         const integrationId = integration.type.toLowerCase().replace('_', '-');
         await toastHelpers.async(
@@ -871,6 +1026,124 @@ export default function IntegrationsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Cargo Integration Modal */}
+      <Dialog open={cargoModalOpen} onOpenChange={(open) => {
+        setCargoModalOpen(open);
+        if (!open) resetCargoForm();
+      }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {activeCargoCarrier && `Connect ${getCarrierName(activeCargoCarrier)}`}
+            </DialogTitle>
+            <DialogDescription>
+              Connect your cargo integration to enable AI-powered shipment tracking for your customers.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* Different form fields based on carrier */}
+            {(activeCargoCarrier === 'yurtici' || activeCargoCarrier === 'aras') && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="customerCode">Customer Code / Musteri Kodu *</Label>
+                  <Input
+                    id="customerCode"
+                    type="text"
+                    placeholder="Enter your customer code"
+                    value={cargoForm.customerCode}
+                    onChange={(e) => setCargoForm({ ...cargoForm, customerCode: e.target.value })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="cargoUsername">Username / Kullanici Adi *</Label>
+                  <Input
+                    id="cargoUsername"
+                    type="text"
+                    placeholder="Enter your username"
+                    value={cargoForm.username}
+                    onChange={(e) => setCargoForm({ ...cargoForm, username: e.target.value })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="cargoPassword">Password / Sifre *</Label>
+                  <Input
+                    id="cargoPassword"
+                    type="password"
+                    placeholder="Enter your password"
+                    value={cargoForm.password}
+                    onChange={(e) => setCargoForm({ ...cargoForm, password: e.target.value })}
+                  />
+                  <p className="text-xs text-neutral-500">This will be encrypted and stored securely</p>
+                </div>
+              </>
+            )}
+
+            {activeCargoCarrier === 'mng' && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="mngApiKey">API Key *</Label>
+                  <Input
+                    id="mngApiKey"
+                    type="password"
+                    placeholder="Enter your MNG API Key"
+                    value={cargoForm.apiKey}
+                    onChange={(e) => setCargoForm({ ...cargoForm, apiKey: e.target.value })}
+                  />
+                  <p className="text-xs text-neutral-500">Your MNG Kargo API key from the developer portal</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="mngCustomerId">Customer ID (Optional)</Label>
+                  <Input
+                    id="mngCustomerId"
+                    type="text"
+                    placeholder="Enter your customer ID if applicable"
+                    value={cargoForm.customerCode}
+                    onChange={(e) => setCargoForm({ ...cargoForm, customerCode: e.target.value })}
+                  />
+                </div>
+              </>
+            )}
+
+            {/* Info box */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h4 className="font-semibold text-sm text-blue-900 mb-2">
+                <Truck className="h-4 w-4 inline mr-1" />
+                What does this integration do?
+              </h4>
+              <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
+                <li>AI assistant can track shipments for your customers</li>
+                <li>Customers can ask "Where is my cargo?" and get instant status</li>
+                <li>Automatic carrier detection when tracking number is provided</li>
+                <li>Works with phone calls and chat conversations</li>
+              </ul>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setCargoModalOpen(false);
+                resetCargoForm();
+              }}
+              disabled={cargoLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCargoConnect}
+              disabled={cargoLoading}
+            >
+              {cargoLoading ? 'Connecting...' : `Connect ${activeCargoCarrier ? getCarrierName(activeCargoCarrier) : ''}`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -898,6 +1171,9 @@ function getCategoryDescription(type, category) {
     SALESFORCE: 'Enterprise CRM and customer management',
     GOOGLE_SHEETS: 'Use as a simple CRM - auto-save call logs',
     ZAPIER: 'Connect thousands of apps with automation',
+    YURTICI_KARGO: 'Yurtiçi Kargo ile kargo takip entegrasyonu - AI asistanınız müşteri kargolarını takip edebilir',
+    ARAS_KARGO: 'Aras Kargo ile kargo takip entegrasyonu - Otomatik kargo durumu sorgulama',
+    MNG_KARGO: 'MNG Kargo ile kargo takip entegrasyonu - Anlık kargo bilgisi',
     SLACK: 'Team communication and notifications',
     TWILIO_SMS: 'SMS notifications and messaging',
     SENDGRID_EMAIL: 'Email delivery and transactional emails',
