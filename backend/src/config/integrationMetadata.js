@@ -348,6 +348,21 @@ export const INTEGRATION_METADATA = {
     },
     name: 'SendGrid',
     category: 'communication'
+  },
+
+  // Trendyol - Turkish E-commerce Marketplace
+  TRENDYOL: {
+    relevantFor: ['ECOMMERCE'],
+    priority: {
+      ECOMMERCE: 'ESSENTIAL',
+      RESTAURANT: 'OPTIONAL',
+      CLINIC: 'OPTIONAL',
+      SALON: 'OPTIONAL',
+      SERVICE: 'OPTIONAL',
+      OTHER: 'OPTIONAL'
+    },
+    name: 'Trendyol',
+    category: 'ecommerce'
   }
 };
 
