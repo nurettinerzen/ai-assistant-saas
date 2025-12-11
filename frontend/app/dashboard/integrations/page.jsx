@@ -136,9 +136,37 @@ export default function IntegrationsPage() {
     verifyToken: ''
   });
 
+  // Shopify connection state
+  const [shopifyModalOpen, setShopifyModalOpen] = useState(false);
+  const [shopifyStatus, setShopifyStatus] = useState(null);
+  const [shopifyLoading, setShopifyLoading] = useState(false);
+  const [shopifyForm, setShopifyForm] = useState({
+    shopUrl: '',
+    accessToken: ''
+  });
+
+  // WooCommerce connection state
+  const [woocommerceModalOpen, setWoocommerceModalOpen] = useState(false);
+  const [woocommerceStatus, setWoocommerceStatus] = useState(null);
+  const [woocommerceLoading, setWoocommerceLoading] = useState(false);
+  const [woocommerceForm, setWoocommerceForm] = useState({
+    siteUrl: '',
+    consumerKey: '',
+    consumerSecret: ''
+  });
+
+  // Zapier/Webhook connection state
+  const [webhookModalOpen, setWebhookModalOpen] = useState(false);
+  const [webhookStatus, setWebhookStatus] = useState(null);
+  const [webhookLoading, setWebhookLoading] = useState(false);
+  const [copiedField, setCopiedField] = useState(null);
+
   useEffect(() => {
     loadIntegrations();
     loadWhatsAppStatus();
+    loadShopifyStatus();
+    loadWooCommerceStatus();
+    loadWebhookStatus();
   }, []);
 
   // Load available integrations (filtered by business type)
@@ -163,6 +191,36 @@ export default function IntegrationsPage() {
       setWhatsappStatus(response.data);
     } catch (error) {
       console.error('Failed to load WhatsApp status:', error);
+    }
+  };
+
+  // Load Shopify connection status
+  const loadShopifyStatus = async () => {
+    try {
+      const response = await apiClient.get('/api/shopify/status');
+      setShopifyStatus(response.data);
+    } catch (error) {
+      console.error('Failed to load Shopify status:', error);
+    }
+  };
+
+  // Load WooCommerce connection status
+  const loadWooCommerceStatus = async () => {
+    try {
+      const response = await apiClient.get('/api/woocommerce/status');
+      setWoocommerceStatus(response.data);
+    } catch (error) {
+      console.error('Failed to load WooCommerce status:', error);
+    }
+  };
+
+  // Load Webhook/Zapier connection status
+  const loadWebhookStatus = async () => {
+    try {
+      const response = await apiClient.get('/api/webhook/status');
+      setWebhookStatus(response.data);
+    } catch (error) {
+      console.error('Failed to load Webhook status:', error);
     }
   };
 
@@ -221,11 +279,196 @@ export default function IntegrationsPage() {
     }
   };
 
+  // ============ SHOPIFY HANDLERS ============
+
+  // Handle Shopify connection
+  const handleShopifyConnect = async () => {
+    if (!shopifyForm.shopUrl || !shopifyForm.accessToken) {
+      toast.error('Please fill in all fields');
+      return;
+    }
+
+    setShopifyLoading(true);
+    try {
+      const response = await apiClient.post('/api/shopify/connect', shopifyForm);
+
+      if (response.data.success) {
+        toast.success(`Connected to ${response.data.shop?.name || 'Shopify'}!`);
+        setShopifyModalOpen(false);
+        setShopifyForm({ shopUrl: '', accessToken: '' });
+        await loadShopifyStatus();
+        await loadIntegrations();
+      }
+    } catch (error) {
+      const errorMsg = error.response?.data?.error || 'Failed to connect Shopify';
+      toast.error(errorMsg);
+    } finally {
+      setShopifyLoading(false);
+    }
+  };
+
+  // Handle Shopify disconnection
+  const handleShopifyDisconnect = async () => {
+    if (!confirm('Are you sure you want to disconnect Shopify?')) return;
+
+    try {
+      await toastHelpers.async(
+        apiClient.post('/api/shopify/disconnect'),
+        'Disconnecting Shopify...',
+        'Shopify disconnected successfully'
+      );
+      await loadShopifyStatus();
+      await loadIntegrations();
+    } catch (error) {
+      // Error handled by toastHelpers
+    }
+  };
+
+  // ============ WOOCOMMERCE HANDLERS ============
+
+  // Handle WooCommerce connection
+  const handleWooCommerceConnect = async () => {
+    if (!woocommerceForm.siteUrl || !woocommerceForm.consumerKey || !woocommerceForm.consumerSecret) {
+      toast.error('Please fill in all fields');
+      return;
+    }
+
+    setWoocommerceLoading(true);
+    try {
+      const response = await apiClient.post('/api/woocommerce/connect', woocommerceForm);
+
+      if (response.data.success) {
+        toast.success(`Connected to ${response.data.store?.name || 'WooCommerce'}!`);
+        setWoocommerceModalOpen(false);
+        setWoocommerceForm({ siteUrl: '', consumerKey: '', consumerSecret: '' });
+        await loadWooCommerceStatus();
+        await loadIntegrations();
+      }
+    } catch (error) {
+      const errorMsg = error.response?.data?.error || 'Failed to connect WooCommerce';
+      toast.error(errorMsg);
+    } finally {
+      setWoocommerceLoading(false);
+    }
+  };
+
+  // Handle WooCommerce disconnection
+  const handleWooCommerceDisconnect = async () => {
+    if (!confirm('Are you sure you want to disconnect WooCommerce?')) return;
+
+    try {
+      await toastHelpers.async(
+        apiClient.post('/api/woocommerce/disconnect'),
+        'Disconnecting WooCommerce...',
+        'WooCommerce disconnected successfully'
+      );
+      await loadWooCommerceStatus();
+      await loadIntegrations();
+    } catch (error) {
+      // Error handled by toastHelpers
+    }
+  };
+
+  // ============ WEBHOOK/ZAPIER HANDLERS ============
+
+  // Setup Webhook
+  const handleWebhookSetup = async () => {
+    setWebhookLoading(true);
+    try {
+      const response = await apiClient.post('/api/webhook/setup');
+
+      if (response.data.success) {
+        toast.success('Webhook activated successfully!');
+        await loadWebhookStatus();
+        await loadIntegrations();
+        // Fetch full config to show URL
+        const configResponse = await apiClient.get('/api/webhook/config');
+        setWebhookStatus({ ...webhookStatus, ...configResponse.data });
+      }
+    } catch (error) {
+      const errorMsg = error.response?.data?.error || 'Failed to setup webhook';
+      toast.error(errorMsg);
+    } finally {
+      setWebhookLoading(false);
+    }
+  };
+
+  // Disable Webhook
+  const handleWebhookDisable = async () => {
+    if (!confirm('Are you sure you want to disable the webhook?')) return;
+
+    try {
+      await toastHelpers.async(
+        apiClient.post('/api/webhook/disable'),
+        'Disabling webhook...',
+        'Webhook disabled successfully'
+      );
+      await loadWebhookStatus();
+      await loadIntegrations();
+    } catch (error) {
+      // Error handled by toastHelpers
+    }
+  };
+
+  // Regenerate Webhook Secret
+  const handleWebhookRegenerate = async () => {
+    if (!confirm('Are you sure? This will invalidate the current webhook URL.')) return;
+
+    setWebhookLoading(true);
+    try {
+      const response = await apiClient.post('/api/webhook/regenerate');
+
+      if (response.data.success) {
+        toast.success('Webhook URL regenerated!');
+        const configResponse = await apiClient.get('/api/webhook/config');
+        setWebhookStatus({ ...webhookStatus, ...configResponse.data });
+      }
+    } catch (error) {
+      const errorMsg = error.response?.data?.error || 'Failed to regenerate webhook';
+      toast.error(errorMsg);
+    } finally {
+      setWebhookLoading(false);
+    }
+  };
+
+  // Copy to clipboard helper
+  const copyToClipboard = (text, field) => {
+    navigator.clipboard.writeText(text);
+    setCopiedField(field);
+    toast.success('Copied to clipboard!');
+    setTimeout(() => setCopiedField(null), 2000);
+  };
+
   const handleConnect = async (integration) => {
     try {
       // WhatsApp - Show modal
       if (integration.type === 'WHATSAPP') {
         setWhatsappModalOpen(true);
+        return;
+      }
+
+      // Shopify - Show modal
+      if (integration.type === 'SHOPIFY') {
+        setShopifyModalOpen(true);
+        return;
+      }
+
+      // WooCommerce - Show modal
+      if (integration.type === 'WOOCOMMERCE') {
+        setWoocommerceModalOpen(true);
+        return;
+      }
+
+      // Zapier/Webhook - Show modal
+      if (integration.type === 'ZAPIER') {
+        // If not configured, set it up first
+        if (!webhookStatus?.configured) {
+          await handleWebhookSetup();
+        }
+        // Fetch full config before showing modal
+        const configResponse = await apiClient.get('/api/webhook/config');
+        setWebhookStatus({ ...webhookStatus, ...configResponse.data });
+        setWebhookModalOpen(true);
         return;
       }
 
@@ -258,6 +501,12 @@ export default function IntegrationsPage() {
     try {
       if (integration.type === 'WHATSAPP') {
         await handleWhatsAppDisconnect();
+      } else if (integration.type === 'SHOPIFY') {
+        await handleShopifyDisconnect();
+      } else if (integration.type === 'WOOCOMMERCE') {
+        await handleWooCommerceDisconnect();
+      } else if (integration.type === 'ZAPIER') {
+        await handleWebhookDisable();
       } else {
         const integrationId = integration.type.toLowerCase().replace('_', '-');
         await toastHelpers.async(
@@ -661,6 +910,306 @@ export default function IntegrationsPage() {
               disabled={whatsappLoading}
             >
               {whatsappLoading ? 'Connecting...' : 'Connect WhatsApp'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Shopify Connection Modal */}
+      <Dialog open={shopifyModalOpen} onOpenChange={setShopifyModalOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Connect Shopify Store</DialogTitle>
+            <DialogDescription>
+              Connect your Shopify store to enable order tracking and inventory management through AI.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {/* Setup Instructions */}
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <h4 className="font-semibold text-sm text-green-900 mb-3">How to get your Access Token:</h4>
+              <ol className="space-y-2 text-sm text-green-800 list-decimal list-inside">
+                <li>Go to Shopify Admin → Settings → Apps and sales channels</li>
+                <li>Click "Develop apps" → "Create an app"</li>
+                <li>Configure Admin API scopes: read_orders, read_products, read_inventory</li>
+                <li>Install the app and copy the Admin API access token</li>
+              </ol>
+            </div>
+
+            {/* Form Fields */}
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="shopifyShopUrl">Shop URL *</Label>
+                <Input
+                  id="shopifyShopUrl"
+                  type="text"
+                  placeholder="mystore.myshopify.com"
+                  value={shopifyForm.shopUrl}
+                  onChange={(e) => setShopifyForm({ ...shopifyForm, shopUrl: e.target.value })}
+                />
+                <p className="text-xs text-neutral-500">Your Shopify store URL (without https://)</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="shopifyAccessToken">Admin API Access Token *</Label>
+                <Input
+                  id="shopifyAccessToken"
+                  type="password"
+                  placeholder="shpat_xxxxxxxxxxxxxxxxxxxxx"
+                  value={shopifyForm.accessToken}
+                  onChange={(e) => setShopifyForm({ ...shopifyForm, accessToken: e.target.value })}
+                />
+                <p className="text-xs text-neutral-500">This will be encrypted and stored securely</p>
+              </div>
+            </div>
+
+            {/* Connection Status */}
+            {shopifyStatus?.connected && (
+              <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                <CheckCircle2 className="h-5 w-5 text-green-600" />
+                <div>
+                  <p className="text-sm font-medium text-green-900">Currently Connected</p>
+                  <p className="text-xs text-green-700">
+                    Store: {shopifyStatus.shopName || shopifyStatus.shopDomain}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShopifyModalOpen(false)}
+              disabled={shopifyLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleShopifyConnect}
+              disabled={shopifyLoading}
+            >
+              {shopifyLoading ? 'Connecting...' : 'Connect Shopify'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* WooCommerce Connection Modal */}
+      <Dialog open={woocommerceModalOpen} onOpenChange={setWoocommerceModalOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Connect WooCommerce Store</DialogTitle>
+            <DialogDescription>
+              Connect your WooCommerce store to enable order tracking and inventory management through AI.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {/* Setup Instructions */}
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+              <h4 className="font-semibold text-sm text-purple-900 mb-3">How to get your API Keys:</h4>
+              <ol className="space-y-2 text-sm text-purple-800 list-decimal list-inside">
+                <li>Go to WordPress Admin → WooCommerce → Settings → Advanced → REST API</li>
+                <li>Click "Add key" to create a new API key</li>
+                <li>Set Description: "Telyx.ai Integration"</li>
+                <li>Select User and set Permissions to "Read"</li>
+                <li>Click "Generate API key" and copy both keys</li>
+              </ol>
+            </div>
+
+            {/* Form Fields */}
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="wooSiteUrl">Site URL *</Label>
+                <Input
+                  id="wooSiteUrl"
+                  type="text"
+                  placeholder="https://mystore.com"
+                  value={woocommerceForm.siteUrl}
+                  onChange={(e) => setWoocommerceForm({ ...woocommerceForm, siteUrl: e.target.value })}
+                />
+                <p className="text-xs text-neutral-500">Your WordPress/WooCommerce site URL</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="wooConsumerKey">Consumer Key *</Label>
+                <Input
+                  id="wooConsumerKey"
+                  type="text"
+                  placeholder="ck_xxxxxxxxxxxxxxxxxxxxxxxx"
+                  value={woocommerceForm.consumerKey}
+                  onChange={(e) => setWoocommerceForm({ ...woocommerceForm, consumerKey: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="wooConsumerSecret">Consumer Secret *</Label>
+                <Input
+                  id="wooConsumerSecret"
+                  type="password"
+                  placeholder="cs_xxxxxxxxxxxxxxxxxxxxxxxx"
+                  value={woocommerceForm.consumerSecret}
+                  onChange={(e) => setWoocommerceForm({ ...woocommerceForm, consumerSecret: e.target.value })}
+                />
+                <p className="text-xs text-neutral-500">Both keys will be encrypted and stored securely</p>
+              </div>
+            </div>
+
+            {/* Connection Status */}
+            {woocommerceStatus?.connected && (
+              <div className="flex items-center gap-2 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                <CheckCircle2 className="h-5 w-5 text-purple-600" />
+                <div>
+                  <p className="text-sm font-medium text-purple-900">Currently Connected</p>
+                  <p className="text-xs text-purple-700">
+                    Store: {woocommerceStatus.storeName || woocommerceStatus.siteUrl}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setWoocommerceModalOpen(false)}
+              disabled={woocommerceLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleWooCommerceConnect}
+              disabled={woocommerceLoading}
+            >
+              {woocommerceLoading ? 'Connecting...' : 'Connect WooCommerce'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Zapier/Webhook Modal */}
+      <Dialog open={webhookModalOpen} onOpenChange={setWebhookModalOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Zapier / Webhook Integration</DialogTitle>
+            <DialogDescription>
+              Connect any system via webhook. Use with Zapier, Make.com, or your custom integrations.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {webhookStatus?.configured ? (
+              <>
+                {/* Webhook URL */}
+                <div className="space-y-2">
+                  <Label>Your Webhook URL</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="text"
+                      readOnly
+                      value={webhookStatus.webhookUrl || ''}
+                      className="bg-neutral-50 font-mono text-sm"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => copyToClipboard(webhookStatus.webhookUrl, 'url')}
+                    >
+                      {copiedField === 'url' ? <CheckCircle2 className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-neutral-500">Send POST requests to this URL with your order/inventory data</p>
+                </div>
+
+                {/* Usage Instructions */}
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                  <h4 className="font-semibold text-sm text-orange-900 mb-3">Supported Webhook Formats:</h4>
+                  <div className="space-y-3 text-sm text-orange-800">
+                    <div>
+                      <p className="font-medium">Order Notification:</p>
+                      <pre className="bg-orange-100 p-2 rounded text-xs mt-1 overflow-x-auto">
+{`{
+  "type": "order",
+  "action": "created",
+  "order": {
+    "id": "ORD-123",
+    "customer_name": "John Doe",
+    "customer_phone": "+905551234567",
+    "status": "processing",
+    "total": 250.00
+  }
+}`}
+                      </pre>
+                    </div>
+                    <div>
+                      <p className="font-medium">Inventory Update:</p>
+                      <pre className="bg-orange-100 p-2 rounded text-xs mt-1 overflow-x-auto">
+{`{
+  "type": "inventory",
+  "product": {
+    "sku": "PROD-001",
+    "name": "Product Name",
+    "stock": 50
+  }
+}`}
+                      </pre>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={handleWebhookRegenerate}
+                    disabled={webhookLoading}
+                    className="flex-1"
+                  >
+                    {webhookLoading ? 'Regenerating...' : 'Regenerate URL'}
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={handleWebhookDisable}
+                    disabled={webhookLoading}
+                    className="flex-1"
+                  >
+                    Disable Webhook
+                  </Button>
+                </div>
+
+                {/* Stats */}
+                {webhookStatus.stats && (
+                  <div className="flex gap-4 p-3 bg-neutral-50 rounded-lg">
+                    <div>
+                      <p className="text-xs text-neutral-500">Recent Webhooks (24h)</p>
+                      <p className="text-lg font-semibold">{webhookStatus.stats.recentWebhooks || 0}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-neutral-500">Total Orders</p>
+                      <p className="text-lg font-semibold">{webhookStatus.stats.totalOrders || 0}</p>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-neutral-600 mb-4">Click "Activate Webhook" to get your unique webhook URL</p>
+                <Button onClick={handleWebhookSetup} disabled={webhookLoading}>
+                  {webhookLoading ? 'Activating...' : 'Activate Webhook'}
+                </Button>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setWebhookModalOpen(false)}
+            >
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>

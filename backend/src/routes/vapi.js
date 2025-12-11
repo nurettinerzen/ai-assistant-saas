@@ -15,6 +15,10 @@ import callAnalysis from '../services/callAnalysis.js';
 import googleCalendarService from '../services/google-calendar.js';
 import netgsmService from '../services/netgsm.js';
 import whatsappService from '../services/whatsapp.js';
+// E-commerce integrations
+import shopifyService from '../services/shopify.js';
+import woocommerceService from '../services/woocommerce.js';
+import webhookService from '../services/webhook.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -345,6 +349,19 @@ router.post('/functions', async (req, res) => {
 
           case 'send_order_notification':
             result = await handleSendOrderNotification(functionArgs, message);
+            break;
+
+          // E-commerce functions
+          case 'check_order_status':
+            result = await handleCheckOrderStatus(functionArgs, message);
+            break;
+
+          case 'get_product_stock':
+            result = await handleGetProductStock(functionArgs, message);
+            break;
+
+          case 'get_tracking_info':
+            result = await handleGetTrackingInfo(functionArgs, message);
             break;
 
           default:
@@ -784,6 +801,457 @@ async function handleSendOrderNotification(args, vapiMessage) {
     return {
       success: false,
       message: error.message || 'Failed to send order notification. Please try again.'
+    };
+  }
+}
+
+// ============================================================================
+// E-COMMERCE FUNCTION HANDLERS
+// ============================================================================
+
+/**
+ * Get list of active e-commerce integrations for a business
+ */
+async function getActiveEcommerceIntegrations(businessId) {
+  const integrations = await prisma.integration.findMany({
+    where: {
+      businessId,
+      isActive: true,
+      connected: true,
+      type: {
+        in: ['SHOPIFY', 'WOOCOMMERCE', 'ZAPIER']
+      }
+    }
+  });
+
+  return integrations.map(i => i.type);
+}
+
+/**
+ * Handle check_order_status function call
+ * Searches across all connected e-commerce platforms
+ */
+async function handleCheckOrderStatus(args, vapiMessage) {
+  try {
+    const { order_number, customer_phone, customer_email } = args;
+
+    console.log('🔍 Checking order status:', { order_number, customer_phone, customer_email });
+
+    // Get business
+    const business = await getBusinessFromVapiCall(vapiMessage);
+    const businessId = business.id;
+
+    // Get active e-commerce integrations
+    const activeIntegrations = await getActiveEcommerceIntegrations(businessId);
+
+    console.log(`📦 Active e-commerce integrations: ${activeIntegrations.join(', ')}`);
+
+    let orderResult = null;
+    let orderSource = null;
+
+    // Search by order number
+    if (order_number) {
+      // Try Shopify
+      if (!orderResult && activeIntegrations.includes('SHOPIFY')) {
+        try {
+          const shopifyResult = await shopifyService.getOrderByNumber(businessId, order_number);
+          if (shopifyResult.success) {
+            orderResult = shopifyResult.order;
+            orderSource = 'Shopify';
+          }
+        } catch (e) {
+          console.log('Shopify search failed:', e.message);
+        }
+      }
+
+      // Try WooCommerce
+      if (!orderResult && activeIntegrations.includes('WOOCOMMERCE')) {
+        try {
+          const wooResult = await woocommerceService.getOrderByNumber(businessId, order_number);
+          if (wooResult.success) {
+            orderResult = wooResult.order;
+            orderSource = 'WooCommerce';
+          }
+        } catch (e) {
+          console.log('WooCommerce search failed:', e.message);
+        }
+      }
+
+      // Try Webhook (Zapier)
+      if (!orderResult && activeIntegrations.includes('ZAPIER')) {
+        try {
+          const webhookResult = await webhookService.getOrderByExternalId(businessId, order_number);
+          if (webhookResult.success) {
+            orderResult = webhookResult.order;
+            orderSource = webhookResult.order.source || 'Webhook';
+          }
+        } catch (e) {
+          console.log('Webhook search failed:', e.message);
+        }
+      }
+    }
+
+    // If not found by order number, try phone
+    if (!orderResult && customer_phone) {
+      if (!orderResult && activeIntegrations.includes('SHOPIFY')) {
+        try {
+          const result = await shopifyService.getOrderByPhone(businessId, customer_phone);
+          if (result.success) {
+            orderResult = result.order;
+            orderSource = 'Shopify';
+          }
+        } catch (e) {}
+      }
+
+      if (!orderResult && activeIntegrations.includes('WOOCOMMERCE')) {
+        try {
+          const result = await woocommerceService.getOrderByPhone(businessId, customer_phone);
+          if (result.success) {
+            orderResult = result.order;
+            orderSource = 'WooCommerce';
+          }
+        } catch (e) {}
+      }
+
+      if (!orderResult && activeIntegrations.includes('ZAPIER')) {
+        try {
+          const result = await webhookService.getOrderByPhone(businessId, customer_phone);
+          if (result.success) {
+            orderResult = result.order;
+            orderSource = result.order.source || 'Webhook';
+          }
+        } catch (e) {}
+      }
+    }
+
+    // If not found by phone, try email
+    if (!orderResult && customer_email) {
+      if (!orderResult && activeIntegrations.includes('SHOPIFY')) {
+        try {
+          const result = await shopifyService.getOrderByEmail(businessId, customer_email);
+          if (result.success) {
+            orderResult = result.order;
+            orderSource = 'Shopify';
+          }
+        } catch (e) {}
+      }
+
+      if (!orderResult && activeIntegrations.includes('WOOCOMMERCE')) {
+        try {
+          const result = await woocommerceService.getOrderByEmail(businessId, customer_email);
+          if (result.success) {
+            orderResult = result.order;
+            orderSource = 'WooCommerce';
+          }
+        } catch (e) {}
+      }
+
+      if (!orderResult && activeIntegrations.includes('ZAPIER')) {
+        try {
+          const result = await webhookService.getOrderByEmail(businessId, customer_email);
+          if (result.success) {
+            orderResult = result.order;
+            orderSource = result.order.source || 'Webhook';
+          }
+        } catch (e) {}
+      }
+    }
+
+    // Format response
+    if (!orderResult) {
+      const notFoundMessage = business.language === 'TR'
+        ? 'Sipariş bulunamadı. Lütfen sipariş numaranızı veya telefon numaranızı kontrol edin.'
+        : 'Order not found. Please check your order number or phone number.';
+
+      return {
+        success: false,
+        result: 'not_found',
+        message: notFoundMessage
+      };
+    }
+
+    console.log(`✅ Order found from ${orderSource}: ${orderResult.orderNumber}`);
+
+    // Build response message
+    const isTurkish = business.language === 'TR';
+    let responseMessage;
+
+    if (isTurkish) {
+      responseMessage = `Sipariş ${orderResult.orderNumber} bulundu. `;
+      responseMessage += `Sipariş durumu: ${orderResult.statusText}. `;
+      if (orderResult.tracking?.number) {
+        responseMessage += `Kargo takip numarası: ${orderResult.tracking.number}. `;
+        responseMessage += `Kargo firması: ${orderResult.tracking.company}. `;
+      } else if (orderResult.fulfillmentStatus === 'unfulfilled') {
+        responseMessage += `Siparişiniz hazırlanıyor. `;
+      }
+      responseMessage += `Toplam tutar: ${orderResult.totalPrice} ${orderResult.currency}.`;
+    } else {
+      responseMessage = `Order ${orderResult.orderNumber} found. `;
+      responseMessage += `Status: ${orderResult.statusText}. `;
+      if (orderResult.tracking?.number) {
+        responseMessage += `Tracking number: ${orderResult.tracking.number}. `;
+        responseMessage += `Carrier: ${orderResult.tracking.company}. `;
+      } else if (orderResult.fulfillmentStatus === 'unfulfilled') {
+        responseMessage += `Your order is being prepared. `;
+      }
+      responseMessage += `Total: ${orderResult.totalPrice} ${orderResult.currency}.`;
+    }
+
+    return {
+      success: true,
+      result: 'found',
+      message: responseMessage,
+      order: {
+        orderNumber: orderResult.orderNumber,
+        status: orderResult.status,
+        statusText: orderResult.statusText,
+        totalPrice: orderResult.totalPrice,
+        currency: orderResult.currency,
+        tracking: orderResult.tracking,
+        items: orderResult.items?.map(i => i.title).join(', ')
+      },
+      source: orderSource
+    };
+
+  } catch (error) {
+    console.error('❌ Check order status error:', error);
+    return {
+      success: false,
+      message: error.message || 'Sipariş bilgisi alınamadı. Lütfen daha sonra tekrar deneyin.'
+    };
+  }
+}
+
+/**
+ * Handle get_product_stock function call
+ * Checks product availability across all connected platforms
+ */
+async function handleGetProductStock(args, vapiMessage) {
+  try {
+    const { product_name, product_sku } = args;
+
+    console.log('🔍 Checking product stock:', { product_name, product_sku });
+
+    // Validate input
+    if (!product_name && !product_sku) {
+      return {
+        success: false,
+        message: 'Product name or SKU is required'
+      };
+    }
+
+    // Get business
+    const business = await getBusinessFromVapiCall(vapiMessage);
+    const businessId = business.id;
+
+    // Get active e-commerce integrations
+    const activeIntegrations = await getActiveEcommerceIntegrations(businessId);
+
+    let productResult = null;
+    let productSource = null;
+
+    const searchTerm = product_name || product_sku;
+
+    // Try Shopify
+    if (!productResult && activeIntegrations.includes('SHOPIFY')) {
+      try {
+        const result = await shopifyService.getProductByTitle(businessId, searchTerm);
+        if (result.success) {
+          productResult = result.product;
+          productSource = 'Shopify';
+        }
+      } catch (e) {
+        console.log('Shopify product search failed:', e.message);
+      }
+    }
+
+    // Try WooCommerce
+    if (!productResult && activeIntegrations.includes('WOOCOMMERCE')) {
+      try {
+        const result = await woocommerceService.getProductByName(businessId, searchTerm);
+        if (result.success) {
+          productResult = result.product;
+          productSource = 'WooCommerce';
+        }
+      } catch (e) {
+        console.log('WooCommerce product search failed:', e.message);
+      }
+    }
+
+    // Try Webhook inventory
+    if (!productResult && activeIntegrations.includes('ZAPIER')) {
+      try {
+        const result = await webhookService.getProductStock(businessId, searchTerm);
+        if (result.success) {
+          productResult = result.product;
+          productSource = 'Inventory';
+        }
+      } catch (e) {
+        console.log('Webhook product search failed:', e.message);
+      }
+    }
+
+    // Format response
+    if (!productResult) {
+      const notFoundMessage = business.language === 'TR'
+        ? `"${searchTerm}" adlı ürün bulunamadı.`
+        : `Product "${searchTerm}" not found.`;
+
+      return {
+        success: false,
+        result: 'not_found',
+        message: notFoundMessage
+      };
+    }
+
+    console.log(`✅ Product found from ${productSource}: ${productResult.title}`);
+
+    // Build response message
+    const isTurkish = business.language === 'TR';
+    let responseMessage;
+
+    if (productResult.available) {
+      if (isTurkish) {
+        responseMessage = `${productResult.title} stokta mevcut. `;
+        if (productResult.totalStock) {
+          responseMessage += `Mevcut stok: ${productResult.totalStock} adet. `;
+        }
+        if (productResult.variants?.length > 1) {
+          const availableVariants = productResult.variants.filter(v => v.available);
+          responseMessage += `Mevcut seçenekler: ${availableVariants.map(v => v.title).join(', ')}.`;
+        }
+      } else {
+        responseMessage = `${productResult.title} is in stock. `;
+        if (productResult.totalStock) {
+          responseMessage += `Available quantity: ${productResult.totalStock}. `;
+        }
+        if (productResult.variants?.length > 1) {
+          const availableVariants = productResult.variants.filter(v => v.available);
+          responseMessage += `Available options: ${availableVariants.map(v => v.title).join(', ')}.`;
+        }
+      }
+    } else {
+      if (isTurkish) {
+        responseMessage = `Üzgünüm, ${productResult.title} şu anda stokta yok.`;
+      } else {
+        responseMessage = `Sorry, ${productResult.title} is currently out of stock.`;
+      }
+    }
+
+    return {
+      success: true,
+      result: productResult.available ? 'in_stock' : 'out_of_stock',
+      message: responseMessage,
+      product: {
+        title: productResult.title,
+        available: productResult.available,
+        stock: productResult.totalStock,
+        variants: productResult.variants?.map(v => ({
+          title: v.title,
+          available: v.available,
+          stock: v.stock
+        }))
+      },
+      source: productSource
+    };
+
+  } catch (error) {
+    console.error('❌ Get product stock error:', error);
+    return {
+      success: false,
+      message: error.message || 'Ürün bilgisi alınamadı. Lütfen daha sonra tekrar deneyin.'
+    };
+  }
+}
+
+/**
+ * Handle get_tracking_info function call
+ * Gets shipping/tracking information for an order
+ */
+async function handleGetTrackingInfo(args, vapiMessage) {
+  try {
+    const { order_number, tracking_number } = args;
+
+    console.log('🔍 Getting tracking info:', { order_number, tracking_number });
+
+    // Get business
+    const business = await getBusinessFromVapiCall(vapiMessage);
+
+    // First try to find the order
+    if (order_number) {
+      const orderResult = await handleCheckOrderStatus({ order_number }, vapiMessage);
+
+      if (orderResult.success && orderResult.order?.tracking) {
+        const tracking = orderResult.order.tracking;
+        const isTurkish = business.language === 'TR';
+
+        let responseMessage;
+        if (isTurkish) {
+          responseMessage = `Sipariş ${orderResult.order.orderNumber} için kargo bilgisi: `;
+          responseMessage += `Kargo firması: ${tracking.company}. `;
+          responseMessage += `Takip numarası: ${tracking.number}. `;
+          if (tracking.url) {
+            responseMessage += `Kargonuzu takip etmek için kargo firmasının web sitesini ziyaret edebilirsiniz.`;
+          }
+        } else {
+          responseMessage = `Tracking info for order ${orderResult.order.orderNumber}: `;
+          responseMessage += `Carrier: ${tracking.company}. `;
+          responseMessage += `Tracking number: ${tracking.number}. `;
+          if (tracking.url) {
+            responseMessage += `You can track your package on the carrier's website.`;
+          }
+        }
+
+        return {
+          success: true,
+          message: responseMessage,
+          tracking
+        };
+      }
+
+      if (orderResult.success && !orderResult.order?.tracking) {
+        const isTurkish = business.language === 'TR';
+        return {
+          success: true,
+          result: 'not_shipped',
+          message: isTurkish
+            ? `Sipariş ${orderResult.order.orderNumber} henüz kargoya verilmedi. Siparişiniz hazırlanıyor.`
+            : `Order ${orderResult.order.orderNumber} has not been shipped yet. Your order is being prepared.`
+        };
+      }
+    }
+
+    // If we have a tracking number but no order
+    if (tracking_number) {
+      const isTurkish = business.language === 'TR';
+      return {
+        success: true,
+        result: 'tracking_only',
+        message: isTurkish
+          ? `Takip numaranız: ${tracking_number}. Bu numarayla kargo firmasının web sitesinden kargonuzu takip edebilirsiniz.`
+          : `Your tracking number is: ${tracking_number}. You can track your package using this number on the carrier's website.`,
+        tracking: {
+          number: tracking_number
+        }
+      };
+    }
+
+    const notFoundMessage = business.language === 'TR'
+      ? 'Kargo bilgisi bulunamadı. Lütfen sipariş numaranızı kontrol edin.'
+      : 'Tracking information not found. Please check your order number.';
+
+    return {
+      success: false,
+      result: 'not_found',
+      message: notFoundMessage
+    };
+
+  } catch (error) {
+    console.error('❌ Get tracking info error:', error);
+    return {
+      success: false,
+      message: error.message || 'Kargo bilgisi alınamadı.'
     };
   }
 }
