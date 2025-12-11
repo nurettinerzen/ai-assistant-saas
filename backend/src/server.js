@@ -41,6 +41,10 @@ import cargoRoutes from './routes/cargo.js';
 import parasutRoutes from './routes/parasut.js';
 import iyzicoRoutes from './routes/iyzico.js';
 import emailRoutes from './routes/email.js';
+// E-commerce integrations
+import shopifyRoutes from './routes/shopify.js';
+import woocommerceRoutes from './routes/woocommerce.js';
+import webhookRoutes from './routes/webhook.js';
 
 
 // Import jobs
@@ -65,6 +69,7 @@ app.use(cors({
 // ⚠️ WEBHOOK ROUTES - RAW BODY (BEFORE express.json())
 app.use('/api/subscription/webhook', express.raw({ type: 'application/json' }));
 app.use('/api/vapi/webhook', express.json()); // VAPI webhook needs parsed JSON
+app.use('/api/webhook/incoming', express.json()); // External webhooks (Zapier, etc.)
 
 // ✅ OTHER ROUTES - JSON PARSE
 app.use(express.json());
@@ -112,6 +117,10 @@ app.use('/api/cargo', cargoRoutes);
 app.use('/api/parasut', parasutRoutes);
 app.use('/api/iyzico', iyzicoRoutes);
 app.use('/api/email', emailRoutes);
+// E-commerce integrations
+app.use('/api/shopify', shopifyRoutes);
+app.use('/api/woocommerce', woocommerceRoutes);
+app.use('/api/webhook', webhookRoutes);
 
 
 // Error handling middleware

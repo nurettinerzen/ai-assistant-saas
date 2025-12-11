@@ -19,6 +19,10 @@ import trendyolService from '../services/trendyol.js';
 import cargoAggregator from '../services/cargo-aggregator.js';
 import parasutService from '../services/parasut.js';
 import iyzicoService from '../services/iyzico.js';
+// E-commerce integrations
+import shopifyService from '../services/shopify.js';
+import woocommerceService from '../services/woocommerce.js';
+import webhookService from '../services/webhook.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -351,7 +355,7 @@ router.post('/functions', async (req, res) => {
             result = await handleSendOrderNotification(functionArgs, message);
             break;
 
-          // Trendyol E-commerce Functions
+          // E-commerce functions (Trendyol, Shopify, WooCommerce, Webhook)
           case 'check_order_status':
             result = await handleCheckOrderStatus(functionArgs, message);
             break;
@@ -384,6 +388,10 @@ router.post('/functions', async (req, res) => {
 
           case 'check_payment_status':
             result = await handleCheckPaymentStatus(functionArgs, message);
+            break;
+
+          case 'get_tracking_info':
+            result = await handleGetTrackingInfo(functionArgs, message);
             break;
 
           default:
@@ -828,114 +836,296 @@ async function handleSendOrderNotification(args, vapiMessage) {
 }
 
 // ============================================================================
-// TRENDYOL E-COMMERCE FUNCTION HANDLERS
+// E-COMMERCE FUNCTION HANDLERS (Trendyol, Shopify, WooCommerce, Webhook)
 // ============================================================================
 
 /**
+ * Get list of active e-commerce integrations for a business
+ */
+async function getActiveEcommerceIntegrations(businessId) {
+  const integrations = await prisma.integration.findMany({
+    where: {
+      businessId,
+      isActive: true,
+      connected: true,
+      type: {
+        in: ['TRENDYOL', 'SHOPIFY', 'WOOCOMMERCE', 'ZAPIER']
+      }
+    }
+  });
+
+  return integrations.map(i => i.type);
+}
+
+/**
  * Handle check_order_status function call
- * Queries Trendyol for order status by order number or customer phone
+ * Searches across all connected e-commerce platforms (Trendyol, Shopify, WooCommerce, Webhook)
  */
 async function handleCheckOrderStatus(args, vapiMessage) {
   try {
-    const { order_number, customer_phone } = args;
+    const { order_number, customer_phone, customer_email } = args;
 
-    console.log('📦 Checking order status:', { order_number, customer_phone });
+    console.log('🔍 Checking order status:', { order_number, customer_phone, customer_email });
 
     // Validate - at least one parameter required
-    if (!order_number && !customer_phone) {
+    if (!order_number && !customer_phone && !customer_email) {
       return {
         success: false,
-        message: 'Sipariş numarası veya telefon numarası gerekli. Lütfen birini belirtin.'
+        message: 'Sipariş numarası, telefon numarası veya e-posta gerekli. Lütfen birini belirtin.'
       };
     }
 
-    // Get business from VAPI call
+    // Get business
     const business = await getBusinessFromVapiCall(vapiMessage);
+    const businessId = business.id;
 
-    let order = null;
-    let orders = [];
+    // Get active e-commerce integrations
+    const activeIntegrations = await getActiveEcommerceIntegrations(businessId);
 
-    // Search by order number (more precise)
+    console.log(`📦 Active e-commerce integrations: ${activeIntegrations.join(', ')}`);
+
+    let orderResult = null;
+    let orderSource = null;
+
+    // Search by order number
     if (order_number) {
-      order = await trendyolService.getOrderByNumber(business.id, order_number);
+      // Try Trendyol first (Turkish market priority)
+      if (!orderResult && activeIntegrations.includes('TRENDYOL')) {
+        try {
+          const trendyolOrder = await trendyolService.getOrderByNumber(businessId, order_number);
+          if (trendyolOrder) {
+            // Format Trendyol order to common format
+            const productList = trendyolOrder.lines.map(line => `${line.productName} (${line.quantity} adet)`).join(', ');
+            let message = `Sipariş ${trendyolOrder.orderNumber}: ${trendyolOrder.statusText}. `;
+            message += `Ürünler: ${productList}. `;
 
-      if (!order) {
-        return {
-          success: false,
-          message: `${order_number} numaralı sipariş bulunamadı. Lütfen sipariş numarasını kontrol edin.`
-        };
+            if (trendyolOrder.status === 'Shipped' && trendyolOrder.cargoProviderName) {
+              message += `Kargo: ${trendyolOrder.cargoProviderName}`;
+              if (trendyolOrder.cargoTrackingNumber) {
+                message += `, Takip No: ${trendyolOrder.cargoTrackingNumber}`;
+              }
+              message += '. ';
+            }
+
+            if (trendyolOrder.estimatedDelivery) {
+              const deliveryDate = new Date(trendyolOrder.estimatedDelivery).toLocaleDateString('tr-TR');
+              message += `Tahmini teslimat: ${deliveryDate}.`;
+            }
+
+            return {
+              success: true,
+              message,
+              orderNumber: trendyolOrder.orderNumber,
+              status: trendyolOrder.status,
+              statusText: trendyolOrder.statusText,
+              cargoCompany: trendyolOrder.cargoProviderName,
+              trackingNumber: trendyolOrder.cargoTrackingNumber,
+              source: 'Trendyol'
+            };
+          }
+        } catch (e) {
+          console.log('Trendyol search failed:', e.message);
+        }
+      }
+
+      // Try Shopify
+      if (!orderResult && activeIntegrations.includes('SHOPIFY')) {
+        try {
+          const shopifyResult = await shopifyService.getOrderByNumber(businessId, order_number);
+          if (shopifyResult.success) {
+            orderResult = shopifyResult.order;
+            orderSource = 'Shopify';
+          }
+        } catch (e) {
+          console.log('Shopify search failed:', e.message);
+        }
+      }
+
+      // Try WooCommerce
+      if (!orderResult && activeIntegrations.includes('WOOCOMMERCE')) {
+        try {
+          const wooResult = await woocommerceService.getOrderByNumber(businessId, order_number);
+          if (wooResult.success) {
+            orderResult = wooResult.order;
+            orderSource = 'WooCommerce';
+          }
+        } catch (e) {
+          console.log('WooCommerce search failed:', e.message);
+        }
+      }
+
+      // Try Webhook (Zapier)
+      if (!orderResult && activeIntegrations.includes('ZAPIER')) {
+        try {
+          const webhookResult = await webhookService.getOrderByExternalId(businessId, order_number);
+          if (webhookResult.success) {
+            orderResult = webhookResult.order;
+            orderSource = webhookResult.order.source || 'Webhook';
+          }
+        } catch (e) {
+          console.log('Webhook search failed:', e.message);
+        }
       }
     }
-    // Search by phone number (may return multiple orders)
-    else if (customer_phone) {
-      orders = await trendyolService.getOrdersByCustomerPhone(business.id, customer_phone);
 
-      if (orders.length === 0) {
-        return {
-          success: false,
-          message: `${customer_phone} numarasına ait sipariş bulunamadı.`
-        };
+    // If not found by order number, try phone
+    if (!orderResult && customer_phone) {
+      // Try Trendyol
+      if (!orderResult && activeIntegrations.includes('TRENDYOL')) {
+        try {
+          const orders = await trendyolService.getOrdersByCustomerPhone(businessId, customer_phone);
+          if (orders && orders.length > 0) {
+            const order = orders[0];
+            const productList = order.lines.map(line => line.productName).join(', ');
+            let message;
+
+            if (orders.length > 1) {
+              message = `${orders.length} sipariş bulundu. En son siparişiniz: ${order.orderNumber} numaralı sipariş, durumu: ${order.statusText}. Ürünler: ${productList}. ${orders.length - 1} tane daha eski siparişiniz var.`;
+            } else {
+              message = `Sipariş ${order.orderNumber}: ${order.statusText}. Ürünler: ${productList}.`;
+            }
+
+            return {
+              success: true,
+              message,
+              orderNumber: order.orderNumber,
+              status: order.status,
+              statusText: order.statusText,
+              totalOrders: orders.length,
+              source: 'Trendyol'
+            };
+          }
+        } catch (e) {
+          console.log('Trendyol phone search failed:', e.message);
+        }
       }
 
-      // If multiple orders, get the most recent one
-      if (orders.length > 1) {
-        order = orders[0]; // Already sorted by date (most recent first)
-        const otherOrderCount = orders.length - 1;
+      if (!orderResult && activeIntegrations.includes('SHOPIFY')) {
+        try {
+          const result = await shopifyService.getOrderByPhone(businessId, customer_phone);
+          if (result.success) {
+            orderResult = result.order;
+            orderSource = 'Shopify';
+          }
+        } catch (e) {}
+      }
 
-        // Build response message for multiple orders
-        const productList = order.lines.map(line => line.productName).join(', ');
-        const message = `${orders.length} sipariş bulundu. En son siparişiniz: ${order.orderNumber} numaralı sipariş, durumu: ${order.statusText}. Ürünler: ${productList}. ${otherOrderCount} tane daha eski siparişiniz var.`;
+      if (!orderResult && activeIntegrations.includes('WOOCOMMERCE')) {
+        try {
+          const result = await woocommerceService.getOrderByPhone(businessId, customer_phone);
+          if (result.success) {
+            orderResult = result.order;
+            orderSource = 'WooCommerce';
+          }
+        } catch (e) {}
+      }
 
-        return {
-          success: true,
-          message,
-          orderNumber: order.orderNumber,
-          status: order.status,
-          statusText: order.statusText,
-          totalOrders: orders.length
-        };
-      } else {
-        order = orders[0];
+      if (!orderResult && activeIntegrations.includes('ZAPIER')) {
+        try {
+          const result = await webhookService.getOrderByPhone(businessId, customer_phone);
+          if (result.success) {
+            orderResult = result.order;
+            orderSource = result.order.source || 'Webhook';
+          }
+        } catch (e) {}
       }
     }
 
-    // Format response message
-    const productList = order.lines.map(line => `${line.productName} (${line.quantity} adet)`).join(', ');
-    let message = `Sipariş ${order.orderNumber}: ${order.statusText}. `;
-    message += `Ürünler: ${productList}. `;
-
-    // Add cargo info if shipped
-    if (order.status === 'Shipped' && order.cargoProviderName) {
-      message += `Kargo: ${order.cargoProviderName}`;
-      if (order.cargoTrackingNumber) {
-        message += `, Takip No: ${order.cargoTrackingNumber}`;
+    // If not found by phone, try email
+    if (!orderResult && customer_email) {
+      if (!orderResult && activeIntegrations.includes('SHOPIFY')) {
+        try {
+          const result = await shopifyService.getOrderByEmail(businessId, customer_email);
+          if (result.success) {
+            orderResult = result.order;
+            orderSource = 'Shopify';
+          }
+        } catch (e) {}
       }
-      message += '. ';
+
+      if (!orderResult && activeIntegrations.includes('WOOCOMMERCE')) {
+        try {
+          const result = await woocommerceService.getOrderByEmail(businessId, customer_email);
+          if (result.success) {
+            orderResult = result.order;
+            orderSource = 'WooCommerce';
+          }
+        } catch (e) {}
+      }
+
+      if (!orderResult && activeIntegrations.includes('ZAPIER')) {
+        try {
+          const result = await webhookService.getOrderByEmail(businessId, customer_email);
+          if (result.success) {
+            orderResult = result.order;
+            orderSource = result.order.source || 'Webhook';
+          }
+        } catch (e) {}
+      }
     }
 
-    // Add estimated delivery if available
-    if (order.estimatedDelivery) {
-      const deliveryDate = new Date(order.estimatedDelivery).toLocaleDateString('tr-TR');
-      message += `Tahmini teslimat: ${deliveryDate}.`;
+    // Format response
+    if (!orderResult) {
+      const notFoundMessage = business.language === 'TR'
+        ? 'Sipariş bulunamadı. Lütfen sipariş numaranızı veya telefon numaranızı kontrol edin.'
+        : 'Order not found. Please check your order number or phone number.';
+
+      return {
+        success: false,
+        result: 'not_found',
+        message: notFoundMessage
+      };
     }
 
-    console.log(`✅ Order status retrieved: ${order.orderNumber} - ${order.status}`);
+    console.log(`✅ Order found from ${orderSource}: ${orderResult.orderNumber}`);
+
+    // Build response message
+    const isTurkish = business.language === 'TR';
+    let responseMessage;
+
+    if (isTurkish) {
+      responseMessage = `Sipariş ${orderResult.orderNumber} bulundu. `;
+      responseMessage += `Sipariş durumu: ${orderResult.statusText}. `;
+      if (orderResult.tracking?.number) {
+        responseMessage += `Kargo takip numarası: ${orderResult.tracking.number}. `;
+        responseMessage += `Kargo firması: ${orderResult.tracking.company}. `;
+      } else if (orderResult.fulfillmentStatus === 'unfulfilled') {
+        responseMessage += `Siparişiniz hazırlanıyor. `;
+      }
+      responseMessage += `Toplam tutar: ${orderResult.totalPrice} ${orderResult.currency}.`;
+    } else {
+      responseMessage = `Order ${orderResult.orderNumber} found. `;
+      responseMessage += `Status: ${orderResult.statusText}. `;
+      if (orderResult.tracking?.number) {
+        responseMessage += `Tracking number: ${orderResult.tracking.number}. `;
+        responseMessage += `Carrier: ${orderResult.tracking.company}. `;
+      } else if (orderResult.fulfillmentStatus === 'unfulfilled') {
+        responseMessage += `Your order is being prepared. `;
+      }
+      responseMessage += `Total: ${orderResult.totalPrice} ${orderResult.currency}.`;
+    }
 
     return {
       success: true,
-      message,
-      orderNumber: order.orderNumber,
-      status: order.status,
-      statusText: order.statusText,
-      cargoCompany: order.cargoProviderName,
-      trackingNumber: order.cargoTrackingNumber
+      result: 'found',
+      message: responseMessage,
+      order: {
+        orderNumber: orderResult.orderNumber,
+        status: orderResult.status,
+        statusText: orderResult.statusText,
+        totalPrice: orderResult.totalPrice,
+        currency: orderResult.currency,
+        tracking: orderResult.tracking,
+        items: orderResult.items?.map(i => i.title).join(', ')
+      },
+      source: orderSource
     };
 
   } catch (error) {
     console.error('❌ Check order status error:', error);
 
     // User-friendly error message
-    if (error.message.includes('not found') || error.message.includes('inactive')) {
+    if (error.message?.includes('not found') || error.message?.includes('inactive')) {
       return {
         success: false,
         message: 'Şu an sipariş bilgisine ulaşamıyorum. Lütfen daha sonra tekrar deneyin veya müşteri hizmetleriyle iletişime geçin.'
@@ -944,118 +1134,228 @@ async function handleCheckOrderStatus(args, vapiMessage) {
 
     return {
       success: false,
-      message: 'Sipariş sorgulanırken bir hata oluştu. Lütfen daha sonra tekrar deneyin.'
+      message: error.message || 'Sipariş sorgulanırken bir hata oluştu. Lütfen daha sonra tekrar deneyin.'
     };
   }
 }
 
 /**
  * Handle get_product_stock function call
- * Queries Trendyol for product stock information
+ * Checks product availability across all connected platforms (Trendyol, Shopify, WooCommerce, Webhook)
  */
 async function handleGetProductStock(args, vapiMessage) {
   try {
-    const { product_name, barcode } = args;
+    const { product_name, barcode, product_sku } = args;
 
-    console.log('📦 Getting product stock:', { product_name, barcode });
+    console.log('🔍 Checking product stock:', { product_name, barcode, product_sku });
 
-    // Validate - product_name is required
-    if (!product_name && !barcode) {
+    // Validate input
+    if (!product_name && !barcode && !product_sku) {
       return {
         success: false,
-        message: 'Ürün adı veya barkod numarası gerekli.'
+        message: 'Ürün adı, barkod veya SKU gerekli.'
       };
     }
 
-    // Get business from VAPI call
+    // Get business
     const business = await getBusinessFromVapiCall(vapiMessage);
+    const businessId = business.id;
 
-    let stockResult;
+    // Get active e-commerce integrations
+    const activeIntegrations = await getActiveEcommerceIntegrations(businessId);
 
-    // Search by barcode (more precise)
-    if (barcode) {
-      stockResult = await trendyolService.getProductStock(business.id, barcode);
+    let productResult = null;
+    let productSource = null;
 
-      if (!stockResult.success) {
-        // Fall back to name search if barcode not found
-        if (product_name) {
-          stockResult = await trendyolService.searchProducts(business.id, product_name);
+    const searchTerm = product_name || product_sku;
+
+    // Try Trendyol first (Turkish market priority)
+    if (activeIntegrations.includes('TRENDYOL')) {
+      try {
+        let stockResult;
+
+        // Search by barcode (more precise)
+        if (barcode) {
+          stockResult = await trendyolService.getProductStock(businessId, barcode);
+
+          if (!stockResult.success && product_name) {
+            stockResult = await trendyolService.searchProducts(businessId, product_name);
+          }
+        } else if (searchTerm) {
+          stockResult = await trendyolService.searchProducts(businessId, searchTerm);
+        }
+
+        // Handle barcode search result
+        if (stockResult?.barcode) {
+          const message = stockResult.stockQuantity > 0
+            ? `${stockResult.productName} ürünü stokta mevcut. ${stockResult.stockQuantity} adet var. Fiyatı: ${stockResult.price} TL.`
+            : `${stockResult.productName} ürünü şu an stokta yok.`;
+
+          return {
+            success: true,
+            message,
+            productName: stockResult.productName,
+            barcode: stockResult.barcode,
+            stockQuantity: stockResult.stockQuantity,
+            price: stockResult.price,
+            inStock: stockResult.stockQuantity > 0,
+            source: 'Trendyol'
+          };
+        }
+
+        // Handle name search result (multiple products)
+        if (stockResult?.products && stockResult.products.length > 0) {
+          const products = stockResult.products;
+
+          if (products.length === 1) {
+            const product = products[0];
+            const message = product.stockQuantity > 0
+              ? `${product.productName} ürünü stokta mevcut. ${product.stockQuantity} adet var. Fiyatı: ${product.price} TL.`
+              : `${product.productName} ürünü şu an stokta yok.`;
+
+            return {
+              success: true,
+              message,
+              productName: product.productName,
+              stockQuantity: product.stockQuantity,
+              price: product.price,
+              inStock: product.stockQuantity > 0,
+              source: 'Trendyol'
+            };
+          }
+
+          const inStockProducts = products.filter(p => p.stockQuantity > 0);
+          let message;
+
+          if (inStockProducts.length > 0) {
+            const productList = inStockProducts.slice(0, 3).map(p =>
+              `${p.productName} (${p.stockQuantity} adet, ${p.price} TL)`
+            ).join(', ');
+            message = `"${searchTerm}" için ${inStockProducts.length} ürün stokta bulundu: ${productList}.`;
+          } else {
+            message = `"${searchTerm}" ile eşleşen ürünler şu an stokta yok.`;
+          }
+
+          return {
+            success: true,
+            message,
+            matchCount: products.length,
+            inStockCount: inStockProducts.length,
+            source: 'Trendyol'
+          };
+        }
+      } catch (e) {
+        console.log('Trendyol product search failed:', e.message);
+      }
+    }
+
+    // Try Shopify
+    if (!productResult && activeIntegrations.includes('SHOPIFY')) {
+      try {
+        const result = await shopifyService.getProductByTitle(businessId, searchTerm);
+        if (result.success) {
+          productResult = result.product;
+          productSource = 'Shopify';
+        }
+      } catch (e) {
+        console.log('Shopify product search failed:', e.message);
+      }
+    }
+
+    // Try WooCommerce
+    if (!productResult && activeIntegrations.includes('WOOCOMMERCE')) {
+      try {
+        const result = await woocommerceService.getProductByName(businessId, searchTerm);
+        if (result.success) {
+          productResult = result.product;
+          productSource = 'WooCommerce';
+        }
+      } catch (e) {
+        console.log('WooCommerce product search failed:', e.message);
+      }
+    }
+
+    // Try Webhook inventory
+    if (!productResult && activeIntegrations.includes('ZAPIER')) {
+      try {
+        const result = await webhookService.getProductStock(businessId, searchTerm);
+        if (result.success) {
+          productResult = result.product;
+          productSource = 'Inventory';
+        }
+      } catch (e) {
+        console.log('Webhook product search failed:', e.message);
+      }
+    }
+
+    // Format response
+    if (!productResult) {
+      const notFoundMessage = business.language === 'TR'
+        ? `"${searchTerm}" adlı ürün bulunamadı.`
+        : `Product "${searchTerm}" not found.`;
+
+      return {
+        success: false,
+        result: 'not_found',
+        message: notFoundMessage
+      };
+    }
+
+    console.log(`✅ Product found from ${productSource}: ${productResult.title}`);
+
+    // Build response message
+    const isTurkish = business.language === 'TR';
+    let responseMessage;
+
+    if (productResult.available) {
+      if (isTurkish) {
+        responseMessage = `${productResult.title} stokta mevcut. `;
+        if (productResult.totalStock) {
+          responseMessage += `Mevcut stok: ${productResult.totalStock} adet. `;
+        }
+        if (productResult.variants?.length > 1) {
+          const availableVariants = productResult.variants.filter(v => v.available);
+          responseMessage += `Mevcut seçenekler: ${availableVariants.map(v => v.title).join(', ')}.`;
+        }
+      } else {
+        responseMessage = `${productResult.title} is in stock. `;
+        if (productResult.totalStock) {
+          responseMessage += `Available quantity: ${productResult.totalStock}. `;
+        }
+        if (productResult.variants?.length > 1) {
+          const availableVariants = productResult.variants.filter(v => v.available);
+          responseMessage += `Available options: ${availableVariants.map(v => v.title).join(', ')}.`;
         }
       }
     } else {
-      // Search by product name
-      stockResult = await trendyolService.searchProducts(business.id, product_name);
-    }
-
-    // Handle barcode search result
-    if (stockResult.barcode) {
-      const message = stockResult.stockQuantity > 0
-        ? `${stockResult.productName} ürünü stokta mevcut. ${stockResult.stockQuantity} adet var. Fiyatı: ${stockResult.price} TL.`
-        : `${stockResult.productName} ürünü şu an stokta yok.`;
-
-      return {
-        success: true,
-        message,
-        productName: stockResult.productName,
-        barcode: stockResult.barcode,
-        stockQuantity: stockResult.stockQuantity,
-        price: stockResult.price,
-        inStock: stockResult.stockQuantity > 0
-      };
-    }
-
-    // Handle name search result (multiple products)
-    if (stockResult.products && stockResult.products.length > 0) {
-      const products = stockResult.products;
-
-      // If single match, return details
-      if (products.length === 1) {
-        const product = products[0];
-        const message = product.stockQuantity > 0
-          ? `${product.productName} ürünü stokta mevcut. ${product.stockQuantity} adet var. Fiyatı: ${product.price} TL.`
-          : `${product.productName} ürünü şu an stokta yok.`;
-
-        return {
-          success: true,
-          message,
-          productName: product.productName,
-          stockQuantity: product.stockQuantity,
-          price: product.price,
-          inStock: product.stockQuantity > 0
-        };
-      }
-
-      // Multiple matches - list them
-      const inStockProducts = products.filter(p => p.stockQuantity > 0);
-      let message;
-
-      if (inStockProducts.length > 0) {
-        const productList = inStockProducts.slice(0, 3).map(p =>
-          `${p.productName} (${p.stockQuantity} adet, ${p.price} TL)`
-        ).join(', ');
-        message = `"${product_name}" için ${inStockProducts.length} ürün stokta bulundu: ${productList}.`;
+      if (isTurkish) {
+        responseMessage = `Üzgünüm, ${productResult.title} şu anda stokta yok.`;
       } else {
-        message = `"${product_name}" ile eşleşen ürünler şu an stokta yok.`;
+        responseMessage = `Sorry, ${productResult.title} is currently out of stock.`;
       }
-
-      return {
-        success: true,
-        message,
-        matchCount: products.length,
-        inStockCount: inStockProducts.length
-      };
     }
 
-    // No products found
     return {
-      success: false,
-      message: `"${product_name}" ile eşleşen ürün bulunamadı.`
+      success: true,
+      result: productResult.available ? 'in_stock' : 'out_of_stock',
+      message: responseMessage,
+      product: {
+        title: productResult.title,
+        available: productResult.available,
+        stock: productResult.totalStock,
+        variants: productResult.variants?.map(v => ({
+          title: v.title,
+          available: v.available,
+          stock: v.stock
+        }))
+      },
+      source: productSource
     };
 
   } catch (error) {
     console.error('❌ Get product stock error:', error);
 
-    if (error.message.includes('not found') || error.message.includes('inactive')) {
+    if (error.message?.includes('not found') || error.message?.includes('inactive')) {
       return {
         success: false,
         message: 'Şu an stok bilgisine ulaşamıyorum. Lütfen daha sonra tekrar deneyin.'
@@ -1064,14 +1364,14 @@ async function handleGetProductStock(args, vapiMessage) {
 
     return {
       success: false,
-      message: 'Stok sorgulanırken bir hata oluştu. Lütfen daha sonra tekrar deneyin.'
+      message: error.message || 'Stok sorgulanırken bir hata oluştu. Lütfen daha sonra tekrar deneyin.'
     };
   }
 }
 
 /**
  * Handle get_cargo_tracking function call
- * Gets cargo/shipment tracking information for an order
+ * Gets cargo/shipment tracking information for an order (Trendyol)
  */
 async function handleGetCargoTracking(args, vapiMessage) {
   try {
@@ -1143,7 +1443,7 @@ async function handleGetCargoTracking(args, vapiMessage) {
   } catch (error) {
     console.error('❌ Get cargo tracking error:', error);
 
-    if (error.message.includes('not found') || error.message.includes('inactive')) {
+    if (error.message?.includes('not found') || error.message?.includes('inactive')) {
       return {
         success: false,
         message: 'Şu an kargo bilgisine ulaşamıyorum. Lütfen daha sonra tekrar deneyin.'
@@ -1243,6 +1543,81 @@ async function handleTrackShipment(args, vapiMessage) {
     return {
       result: 'error',
       message: 'Kargo takip sorgusu sırasında bir hata oluştu. Lütfen daha sonra tekrar deneyin.'
+    };
+  }
+}
+
+/**
+ * Handle get_tracking_info function call
+ * Gets shipping/tracking information for an order (Shopify, WooCommerce, Webhook)
+ */
+async function handleGetTrackingInfo(args, vapiMessage) {
+  try {
+    const { order_number, tracking_number } = args;
+
+    console.log('🔍 Getting tracking info:', { order_number, tracking_number });
+
+    // Get business
+    const business = await getBusinessFromVapiCall(vapiMessage);
+
+    // First try to find the order
+    if (order_number) {
+      const orderResult = await handleCheckOrderStatus({ order_number }, vapiMessage);
+
+      if (orderResult.success && orderResult.order?.tracking) {
+        const tracking = orderResult.order.tracking;
+        const isTurkish = business.language === 'TR';
+
+        let responseMessage;
+        if (isTurkish) {
+          responseMessage = `Sipariş ${orderResult.order.orderNumber} için kargo bilgisi: `;
+          responseMessage += `Kargo firması: ${tracking.company}. `;
+          responseMessage += `Takip numarası: ${tracking.number}. `;
+          if (tracking.url) {
+            responseMessage += `Kargonuzu takip etmek için kargo firmasının web sitesini ziyaret edebilirsiniz.`;
+          }
+        } else {
+          responseMessage = `Tracking info for order ${orderResult.order.orderNumber}: `;
+          responseMessage += `Carrier: ${tracking.company}. `;
+          responseMessage += `Tracking number: ${tracking.number}. `;
+          if (tracking.url) {
+            responseMessage += `You can track your package on the carrier's website.`;
+          }
+        }
+
+        return {
+          success: true,
+          message: responseMessage,
+          tracking
+        };
+      }
+
+      if (orderResult.success && !orderResult.order?.tracking) {
+        const isTurkish = business.language === 'TR';
+        return {
+          success: true,
+          result: 'not_shipped',
+          message: isTurkish
+            ? `Sipariş ${orderResult.order.orderNumber} henüz kargoya verilmedi. Siparişiniz hazırlanıyor.`
+            : `Order ${orderResult.order.orderNumber} has not been shipped yet. Your order is being prepared.`
+        };
+      }
+    }
+
+    // Order not found
+    const isTurkish = business.language === 'TR';
+    return {
+      success: false,
+      message: isTurkish
+        ? 'Sipariş bulunamadı. Lütfen sipariş numarasını kontrol edin.'
+        : 'Order not found. Please check the order number.'
+    };
+
+  } catch (error) {
+    console.error('❌ Get tracking info error:', error);
+    return {
+      success: false,
+      message: error.message || 'Kargo bilgisi alınamadı. Lütfen daha sonra tekrar deneyin.'
     };
   }
 }
@@ -1608,6 +1983,37 @@ async function handleCheckPaymentStatus(args, vapiMessage) {
     return {
       result: 'error',
       message: 'Odeme durumu sorgulama sirasinda bir hata olustu. Lutfen tekrar deneyin.'
+=======
+    // If we have a tracking number but no order
+    if (tracking_number) {
+      const isTurkish = business.language === 'TR';
+      return {
+        success: true,
+        result: 'tracking_only',
+        message: isTurkish
+          ? `Takip numaranız: ${tracking_number}. Bu numarayla kargo firmasının web sitesinden kargonuzu takip edebilirsiniz.`
+          : `Your tracking number is: ${tracking_number}. You can track your package using this number on the carrier's website.`,
+        tracking: {
+          number: tracking_number
+        }
+      };
+    }
+
+    const notFoundMessage = business.language === 'TR'
+      ? 'Kargo bilgisi bulunamadı. Lütfen sipariş numaranızı kontrol edin.'
+      : 'Tracking information not found. Please check your order number.';
+
+    return {
+      success: false,
+      result: 'not_found',
+      message: notFoundMessage
+    };
+
+  } catch (error) {
+    console.error('❌ Get tracking info error:', error);
+    return {
+      success: false,
+      message: error.message || 'Kargo bilgisi alınamadı.'
     };
   }
 }
