@@ -2,6 +2,7 @@ import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticateToken } from '../middleware/auth.js';
 import vapiService from '../services/vapi.js';
+import cargoAggregator from '../services/cargo-aggregator.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -43,6 +44,156 @@ const CREATE_APPOINTMENT_TOOL = {
     timeoutSeconds: 20
   }
 };
+
+// ============================================================
+// TRENDYOL E-COMMERCE TOOLS
+// ============================================================
+
+const CHECK_ORDER_STATUS_TOOL = {
+  type: "function",
+  function: {
+    name: "check_order_status",
+    description: "Müşterinin sipariş durumunu sorgular. Müşteri sipariş numarası veya telefon numarası verebilir. Sipariş durumu, kargo bilgisi ve teslimat tahmini döndürür.",
+    parameters: {
+      type: "object",
+      properties: {
+        order_number: {
+          type: "string",
+          description: "Trendyol sipariş numarası (örn: 123456789)"
+        },
+        customer_phone: {
+          type: "string",
+          description: "Müşterinin telefon numarası (örn: 5551234567)"
+        }
+      },
+      required: []
+    }
+  },
+  server: {
+    url: `${process.env.BACKEND_URL || 'https://marin-methoxy-suzette.ngrok-free.dev'}/api/vapi/functions`,
+    timeoutSeconds: 30
+  }
+};
+
+const GET_PRODUCT_STOCK_TOOL = {
+  type: "function",
+  function: {
+    name: "get_product_stock",
+    description: "Ürünün stok durumunu ve fiyatını sorgular. Müşteri ürün adı veya barkod numarası verebilir.",
+    parameters: {
+      type: "object",
+      properties: {
+        product_name: {
+          type: "string",
+          description: "Ürün adı veya arama kelimesi"
+        },
+        barcode: {
+          type: "string",
+          description: "Ürün barkod numarası (opsiyonel, daha kesin sonuç için)"
+        }
+      },
+      required: ["product_name"]
+    }
+  },
+  server: {
+    url: `${process.env.BACKEND_URL || 'https://marin-methoxy-suzette.ngrok-free.dev'}/api/vapi/functions`,
+    timeoutSeconds: 20
+  }
+};
+
+const GET_CARGO_TRACKING_TOOL = {
+  type: "function",
+  function: {
+    name: "get_cargo_tracking",
+    description: "Siparişin kargo takip bilgisini getirir. Kargo firması, takip numarası ve güncel durumu döndürür.",
+    parameters: {
+      type: "object",
+      properties: {
+        order_number: {
+          type: "string",
+          description: "Trendyol sipariş numarası"
+        }
+      },
+      required: ["order_number"]
+    }
+  },
+  server: {
+    url: `${process.env.BACKEND_URL || 'https://marin-methoxy-suzette.ngrok-free.dev'}/api/vapi/functions`,
+    timeoutSeconds: 20
+  }
+};
+
+// ============================================================
+// CARGO TRACKING TOOL
+// ============================================================
+
+const TRACK_SHIPMENT_TOOL = {
+  type: "function",
+  function: {
+    name: "track_shipment",
+    description: "Müşterinin kargo takip numarası ile gönderisinin durumunu sorgular. Müşteri kargo firmasını belirtmezse otomatik bulunur. Tracks customer's shipment status by tracking number.",
+    parameters: {
+      type: "object",
+      properties: {
+        tracking_number: {
+          type: "string",
+          description: "Kargo takip numarası / Shipment tracking number"
+        },
+        carrier: {
+          type: "string",
+          enum: ["yurtici", "aras", "mng"],
+          description: "Kargo firması (opsiyonel). Belirtilmezse tüm bağlı firmalar denenir. / Cargo carrier (optional). If not specified, all connected carriers will be tried."
+        }
+      },
+      required: ["tracking_number"]
+    }
+  },
+  server: {
+    url: `${process.env.BACKEND_URL || 'https://marin-methoxy-suzette.ngrok-free.dev'}/api/vapi/functions`,
+    timeoutSeconds: 15
+  }
+};
+
+/**
+ * Get active tools for a business based on their integrations
+ * @param {number} businessId - Business ID
+ * @returns {Promise<Array>} Array of VAPI tool definitions
+ */
+async function getActiveToolsForBusiness(businessId) {
+  const tools = [CREATE_APPOINTMENT_TOOL]; // Default tool always available
+
+  try {
+    // Check for Trendyol integration
+    const trendyolIntegration = await prisma.integration.findUnique({
+      where: {
+        businessId_type: {
+          businessId,
+          type: 'TRENDYOL'
+        }
+      }
+    });
+
+    if (trendyolIntegration && trendyolIntegration.isActive && trendyolIntegration.connected) {
+      console.log(`✅ Trendyol integration active for business ${businessId} - adding e-commerce tools`);
+      tools.push(CHECK_ORDER_STATUS_TOOL);
+      tools.push(GET_PRODUCT_STOCK_TOOL);
+      tools.push(GET_CARGO_TRACKING_TOOL);
+    }
+
+    // Check if business has cargo integration
+    const hasCargoIntegration = await cargoAggregator.hasCargoIntegration(businessId);
+    if (hasCargoIntegration) {
+      tools.push(TRACK_SHIPMENT_TOOL);
+      console.log(`📦 Cargo integration found, adding TRACK_SHIPMENT_TOOL for business ${businessId}`);
+    }
+
+  } catch (error) {
+    console.error('❌ Error getting active tools for business:', error);
+    // Return default tools on error
+  }
+
+  return tools;
+}
 
 router.use(authenticateToken);
 
@@ -137,7 +288,9 @@ const dateContext = `\n\nIMPORTANT: Today's date is ${today}. Use this for all d
       : `Hi, I'm ${name}, how can I help you?`;
     const finalFirstMessage = firstMessage || defaultFirstMessage;
 
-    console.log('📤 VAPI Request - tools:', JSON.stringify([CREATE_APPOINTMENT_TOOL], null, 2));
+    // Get active tools based on business integrations
+    const activeTools = await getActiveToolsForBusiness(businessId);
+    console.log('📤 VAPI Request - tools:', activeTools.map(t => t.function.name));
 
     // VAPI'de YENİ assistant oluştur
     const vapiResponse = await fetch('https://api.vapi.ai/assistant', {
@@ -148,14 +301,14 @@ const dateContext = `\n\nIMPORTANT: Today's date is ${today}. Use this for all d
       },
       body: JSON.stringify({
         name: `${name} - ${Date.now()}`,
-        
+
         // Transcriber - 11Labs
         transcriber: {
           provider: '11labs',
           model: 'scribe_v1',
           language: language === 'TR' ? 'tr' : 'en',
         },
-        
+
         // Model
         model: {
           provider: 'openai',
@@ -166,7 +319,7 @@ const dateContext = `\n\nIMPORTANT: Today's date is ${today}. Use this for all d
               content: fullSystemPrompt
             }
           ],
-          tools: [CREATE_APPOINTMENT_TOOL]
+          tools: activeTools
         },
         
         // Voice - 11Labs

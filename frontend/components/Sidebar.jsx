@@ -25,6 +25,7 @@ import {
   LogOut,
   User,
   MessageSquare,
+  Mail,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -59,6 +60,7 @@ export default function Sidebar({ user, credits }) {
       label: t('sidebarDeploy'),
       items: [
         { icon: PhoneCall, label: t('sidebarPhoneNumbers'), href: '/dashboard/phone-numbers' },
+        { icon: Mail, label: 'Email Inbox', href: '/dashboard/email' },
         { icon: Puzzle, label: t('sidebarIntegrations'), href: '/dashboard/integrations' },
       ],
     },
