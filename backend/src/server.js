@@ -36,10 +36,12 @@ import costCalculatorRoutes from './routes/costCalculator.js';
 import webhooksRoutes from './routes/webhooks.js';
 import chatRoutes from './routes/chat.js';
 import whatsappRoutes from './routes/whatsapp.js';
+import emailRoutes from './routes/email.js';
 
 
 // Import jobs
 import { initMonthlyResetJob } from './jobs/monthlyReset.js';
+import { initEmailSyncJob } from './jobs/emailSync.js';
 
 dotenv.config();
 
@@ -101,6 +103,7 @@ app.use('/api/cost-calculator', costCalculatorRoutes);
 app.use('/api/webhooks', webhooksRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
+app.use('/api/email', emailRoutes);
 
 
 // Error handling middleware
@@ -116,6 +119,7 @@ app.use((err, req, res, next) => {
 if (process.env.NODE_ENV !== 'test') {
   console.log('\n🚀 Initializing background jobs...');
   initMonthlyResetJob();
+  initEmailSyncJob();
   console.log('✅ Background jobs initialized\n');
 }
 
