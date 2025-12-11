@@ -73,6 +73,7 @@ const INTEGRATION_ICONS = {
   SLACK: MessageSquare,
   TWILIO_SMS: MessageSquare,
   SENDGRID_EMAIL: Mail,
+  TRENDYOL: ShoppingCart,
   CUSTOM: Hash
 };
 
@@ -117,7 +118,8 @@ const INTEGRATION_DOCS = {
   ZAPIER: 'https://zapier.com/developer',
   SLACK: 'https://api.slack.com',
   TWILIO_SMS: 'https://www.twilio.com/docs/sms',
-  SENDGRID_EMAIL: 'https://docs.sendgrid.com'
+  SENDGRID_EMAIL: 'https://docs.sendgrid.com',
+  TRENDYOL: 'https://developers.trendyol.com'
 };
 
 export default function IntegrationsPage() {
@@ -136,9 +138,21 @@ export default function IntegrationsPage() {
     verifyToken: ''
   });
 
+  // Trendyol connection state
+  const [trendyolModalOpen, setTrendyolModalOpen] = useState(false);
+  const [trendyolStatus, setTrendyolStatus] = useState(null);
+  const [trendyolLoading, setTrendyolLoading] = useState(false);
+  const [trendyolTestLoading, setTrendyolTestLoading] = useState(false);
+  const [trendyolForm, setTrendyolForm] = useState({
+    supplierId: '',
+    apiKey: '',
+    apiSecret: ''
+  });
+
   useEffect(() => {
     loadIntegrations();
     loadWhatsAppStatus();
+    loadTrendyolStatus();
   }, []);
 
   // Load available integrations (filtered by business type)
@@ -221,11 +235,93 @@ export default function IntegrationsPage() {
     }
   };
 
+  // Load Trendyol connection status
+  const loadTrendyolStatus = async () => {
+    try {
+      const response = await apiClient.get('/api/trendyol/status');
+      setTrendyolStatus(response.data);
+    } catch (error) {
+      console.error('Failed to load Trendyol status:', error);
+    }
+  };
+
+  // Handle Trendyol connection
+  const handleTrendyolConnect = async () => {
+    if (!trendyolForm.supplierId || !trendyolForm.apiKey || !trendyolForm.apiSecret) {
+      toast.error('Lütfen tüm alanları doldurun');
+      return;
+    }
+
+    setTrendyolLoading(true);
+    try {
+      const response = await apiClient.post('/api/trendyol/connect', trendyolForm);
+
+      if (response.data.success) {
+        toast.success('Trendyol hesabı başarıyla bağlandı!');
+        setTrendyolModalOpen(false);
+        setTrendyolForm({
+          supplierId: '',
+          apiKey: '',
+          apiSecret: ''
+        });
+        await loadTrendyolStatus();
+        await loadIntegrations();
+      }
+    } catch (error) {
+      const errorMsg = error.response?.data?.error || 'Trendyol bağlantısı başarısız';
+      toast.error(errorMsg);
+    } finally {
+      setTrendyolLoading(false);
+    }
+  };
+
+  // Handle Trendyol connection test
+  const handleTrendyolTest = async () => {
+    setTrendyolTestLoading(true);
+    try {
+      const response = await apiClient.post('/api/trendyol/test');
+
+      if (response.data.success) {
+        toast.success('Trendyol bağlantısı çalışıyor!');
+      } else {
+        toast.error(response.data.message || 'Bağlantı testi başarısız');
+      }
+    } catch (error) {
+      const errorMsg = error.response?.data?.error || 'Bağlantı testi başarısız';
+      toast.error(errorMsg);
+    } finally {
+      setTrendyolTestLoading(false);
+    }
+  };
+
+  // Handle Trendyol disconnection
+  const handleTrendyolDisconnect = async () => {
+    if (!confirm('Trendyol bağlantısını kesmek istediğinize emin misiniz?')) return;
+
+    try {
+      await toastHelpers.async(
+        apiClient.post('/api/trendyol/disconnect'),
+        'Trendyol bağlantısı kesiliyor...',
+        'Trendyol bağlantısı kesildi'
+      );
+      await loadTrendyolStatus();
+      await loadIntegrations();
+    } catch (error) {
+      // Error handled by toastHelpers
+    }
+  };
+
   const handleConnect = async (integration) => {
     try {
       // WhatsApp - Show modal
       if (integration.type === 'WHATSAPP') {
         setWhatsappModalOpen(true);
+        return;
+      }
+
+      // Trendyol - Show modal
+      if (integration.type === 'TRENDYOL') {
+        setTrendyolModalOpen(true);
         return;
       }
 
@@ -258,6 +354,8 @@ export default function IntegrationsPage() {
     try {
       if (integration.type === 'WHATSAPP') {
         await handleWhatsAppDisconnect();
+      } else if (integration.type === 'TRENDYOL') {
+        await handleTrendyolDisconnect();
       } else {
         const integrationId = integration.type.toLowerCase().replace('_', '-');
         await toastHelpers.async(
@@ -274,6 +372,11 @@ export default function IntegrationsPage() {
 
   const handleTest = async (integration) => {
     try {
+      if (integration.type === 'TRENDYOL') {
+        await handleTrendyolTest();
+        return;
+      }
+
       const integrationId = integration.type.toLowerCase().replace('_', '-');
       await toastHelpers.async(
         apiClient.integrations.test(integrationId),
@@ -665,6 +768,109 @@ export default function IntegrationsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Trendyol Connection Modal */}
+      <Dialog open={trendyolModalOpen} onOpenChange={setTrendyolModalOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Trendyol Satıcı Hesabı Bağla</DialogTitle>
+            <DialogDescription>
+              Trendyol mağazanızı bağlayarak AI asistanınızın sipariş durumu ve stok bilgisi sorgulamasını sağlayın.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {/* Setup Instructions */}
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+              <h4 className="font-semibold text-sm text-orange-900 mb-3">Kurulum Adımları:</h4>
+              <ol className="space-y-2 text-sm text-orange-800 list-decimal list-inside">
+                <li><a href="https://partner.trendyol.com" target="_blank" rel="noopener noreferrer" className="underline">Trendyol Partner Portal</a>'a giriş yapın</li>
+                <li>Entegrasyon Bilgileri sayfasına gidin</li>
+                <li>API Key ve API Secret bilgilerini kopyalayın</li>
+                <li>Supplier ID (Satıcı ID) bilgisini not alın</li>
+                <li>Bilgileri aşağıdaki alanlara girin</li>
+              </ol>
+            </div>
+
+            {/* Form Fields */}
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="supplierId">Supplier ID (Satıcı ID) *</Label>
+                <Input
+                  id="supplierId"
+                  type="text"
+                  placeholder="Örn: 123456"
+                  value={trendyolForm.supplierId}
+                  onChange={(e) => setTrendyolForm({ ...trendyolForm, supplierId: e.target.value })}
+                />
+                <p className="text-xs text-neutral-500">Trendyol Partner Portal'da Entegrasyon Bilgileri sayfasında bulunur</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="apiKey">API Key *</Label>
+                <Input
+                  id="apiKey"
+                  type="text"
+                  placeholder="API Key'inizi girin"
+                  value={trendyolForm.apiKey}
+                  onChange={(e) => setTrendyolForm({ ...trendyolForm, apiKey: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="apiSecret">API Secret *</Label>
+                <Input
+                  id="apiSecret"
+                  type="password"
+                  placeholder="API Secret'ınızı girin"
+                  value={trendyolForm.apiSecret}
+                  onChange={(e) => setTrendyolForm({ ...trendyolForm, apiSecret: e.target.value })}
+                />
+                <p className="text-xs text-neutral-500">Bu bilgi güvenli şekilde saklanacaktır</p>
+              </div>
+            </div>
+
+            {/* Features Info */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h4 className="font-semibold text-sm text-blue-900 mb-2">Bağlandığınızda AI asistanınız:</h4>
+              <ul className="space-y-1 text-sm text-blue-800">
+                <li>• Müşterilere sipariş durumu bilgisi verebilecek</li>
+                <li>• Kargo takip bilgisi sorgulayabilecek</li>
+                <li>• Ürün stok durumunu kontrol edebilecek</li>
+              </ul>
+            </div>
+
+            {/* Connection Status */}
+            {trendyolStatus?.connected && (
+              <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                <CheckCircle2 className="h-5 w-5 text-green-600" />
+                <div>
+                  <p className="text-sm font-medium text-green-900">Bağlantı Aktif</p>
+                  <p className="text-xs text-green-700">
+                    Son senkronizasyon: {trendyolStatus.lastSync ? new Date(trendyolStatus.lastSync).toLocaleString('tr-TR') : 'Henüz yapılmadı'}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setTrendyolModalOpen(false)}
+              disabled={trendyolLoading}
+            >
+              İptal
+            </Button>
+            <Button
+              onClick={handleTrendyolConnect}
+              disabled={trendyolLoading}
+            >
+              {trendyolLoading ? 'Bağlanıyor...' : 'Trendyol\'u Bağla'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -694,7 +900,8 @@ function getCategoryDescription(type, category) {
     ZAPIER: 'Connect thousands of apps with automation',
     SLACK: 'Team communication and notifications',
     TWILIO_SMS: 'SMS notifications and messaging',
-    SENDGRID_EMAIL: 'Email delivery and transactional emails'
+    SENDGRID_EMAIL: 'Email delivery and transactional emails',
+    TRENDYOL: 'Trendyol mağazanızı bağlayın - sipariş ve stok sorgulama'
   };
   return descriptions[type] || `${category} integration`;
 }
