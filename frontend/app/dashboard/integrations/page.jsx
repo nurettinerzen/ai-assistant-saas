@@ -42,7 +42,9 @@ import {
   Stethoscope,
   Package,
   Mail,
-  Hash
+  Hash,
+  Inbox,
+  RefreshCw
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast, toastHelpers } from '@/lib/toast';
@@ -136,10 +138,67 @@ export default function IntegrationsPage() {
     verifyToken: ''
   });
 
+  // Email integration state
+  const [emailStatus, setEmailStatus] = useState(null);
+  const [emailLoading, setEmailLoading] = useState(false);
+
   useEffect(() => {
     loadIntegrations();
     loadWhatsAppStatus();
+    loadEmailStatus();
   }, []);
+
+  // Load Email connection status
+  const loadEmailStatus = async () => {
+    try {
+      const response = await apiClient.get('/api/email/status');
+      setEmailStatus(response.data);
+    } catch (error) {
+      console.error('Failed to load email status:', error);
+    }
+  };
+
+  // Handle Gmail connection
+  const handleGmailConnect = async () => {
+    try {
+      setEmailLoading(true);
+      const response = await apiClient.get('/api/email/gmail/auth');
+      window.location.href = response.data.authUrl;
+    } catch (error) {
+      const errorMsg = error.response?.data?.error || 'Failed to connect Gmail';
+      toast.error(errorMsg);
+      setEmailLoading(false);
+    }
+  };
+
+  // Handle Outlook connection
+  const handleOutlookConnect = async () => {
+    try {
+      setEmailLoading(true);
+      const response = await apiClient.get('/api/email/outlook/auth');
+      window.location.href = response.data.authUrl;
+    } catch (error) {
+      const errorMsg = error.response?.data?.error || 'Failed to connect Outlook';
+      toast.error(errorMsg);
+      setEmailLoading(false);
+    }
+  };
+
+  // Handle Email disconnection
+  const handleEmailDisconnect = async () => {
+    if (!confirm('Are you sure you want to disconnect your email?')) return;
+
+    try {
+      setEmailLoading(true);
+      await apiClient.post('/api/email/disconnect');
+      toast.success('Email disconnected successfully');
+      await loadEmailStatus();
+    } catch (error) {
+      toast.error('Failed to disconnect email');
+    } finally {
+      setEmailLoading(false);
+    }
+  };
 
   // Load available integrations (filtered by business type)
   const loadIntegrations = async () => {
@@ -448,6 +507,182 @@ export default function IntegrationsPage() {
             </Badge>
             <p className="text-xs text-neutral-500">
               Showing integrations optimized for your business type
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Email Channel Section */}
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-xl font-semibold text-neutral-900 flex items-center gap-2">
+            <Inbox className="h-5 w-5 text-blue-600" />
+            Email Channel
+          </h2>
+          <p className="text-sm text-neutral-600 mt-1">
+            Connect your email to let AI assist with customer emails
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Gmail Card */}
+          <div className={`bg-white rounded-xl border p-6 hover:shadow-md transition-shadow ${
+            emailStatus?.connected && emailStatus?.provider === 'GMAIL'
+              ? 'border-green-300 bg-green-50/30'
+              : 'border-neutral-200'
+          }`}>
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-lg bg-red-100">
+                  <svg className="h-6 w-6" viewBox="0 0 24 24">
+                    <path fill="#EA4335" d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/>
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-neutral-900">Gmail</h3>
+                  <Badge variant="secondary" className="text-xs mt-1">
+                    Email Channel
+                  </Badge>
+                </div>
+              </div>
+              {emailStatus?.connected && emailStatus?.provider === 'GMAIL' && (
+                <div className="p-1 bg-green-100 rounded-full">
+                  <Check className="h-4 w-4 text-green-600" />
+                </div>
+              )}
+            </div>
+
+            <p className="text-sm text-neutral-600 mb-4">
+              Connect your Gmail account to let AI handle customer emails with draft responses for your review.
+            </p>
+
+            {emailStatus?.connected && emailStatus?.provider === 'GMAIL' ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 p-2 rounded-lg">
+                  <CheckCircle2 className="h-4 w-4" />
+                  <span>Connected: {emailStatus.email}</span>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => window.location.href = '/dashboard/email'}
+                  >
+                    <Inbox className="h-4 w-4 mr-1" />
+                    Open Inbox
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleEmailDisconnect}
+                    disabled={emailLoading}
+                  >
+                    Disconnect
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Button
+                size="sm"
+                className="w-full"
+                onClick={handleGmailConnect}
+                disabled={emailLoading || (emailStatus?.connected && emailStatus?.provider !== 'GMAIL')}
+              >
+                {emailLoading ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    Connecting...
+                  </>
+                ) : (
+                  'Connect Gmail'
+                )}
+              </Button>
+            )}
+          </div>
+
+          {/* Microsoft 365 / Outlook Card */}
+          <div className={`bg-white rounded-xl border p-6 hover:shadow-md transition-shadow ${
+            emailStatus?.connected && emailStatus?.provider === 'OUTLOOK'
+              ? 'border-green-300 bg-green-50/30'
+              : 'border-neutral-200'
+          }`}>
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-lg bg-blue-100">
+                  <svg className="h-6 w-6" viewBox="0 0 24 24">
+                    <path fill="#0078D4" d="M24 7.387v10.478c0 .23-.08.424-.238.576-.16.154-.353.231-.584.231h-8.462v-6.462H24v-4.823zm-10.154 4.59v6.695H1.231V7.387h12.615v4.59zm0-11.039v5.449H0V.938h13.846zm10.154 0v5.449h-9.231V.938h9.231z"/>
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-neutral-900">Microsoft 365</h3>
+                  <Badge variant="secondary" className="text-xs mt-1">
+                    Email Channel
+                  </Badge>
+                </div>
+              </div>
+              {emailStatus?.connected && emailStatus?.provider === 'OUTLOOK' && (
+                <div className="p-1 bg-green-100 rounded-full">
+                  <Check className="h-4 w-4 text-green-600" />
+                </div>
+              )}
+            </div>
+
+            <p className="text-sm text-neutral-600 mb-4">
+              Connect your Outlook/Microsoft 365 account for AI-assisted email management.
+            </p>
+
+            {emailStatus?.connected && emailStatus?.provider === 'OUTLOOK' ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 p-2 rounded-lg">
+                  <CheckCircle2 className="h-4 w-4" />
+                  <span>Connected: {emailStatus.email}</span>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => window.location.href = '/dashboard/email'}
+                  >
+                    <Inbox className="h-4 w-4 mr-1" />
+                    Open Inbox
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleEmailDisconnect}
+                    disabled={emailLoading}
+                  >
+                    Disconnect
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Button
+                size="sm"
+                className="w-full"
+                onClick={handleOutlookConnect}
+                disabled={emailLoading || (emailStatus?.connected && emailStatus?.provider !== 'OUTLOOK')}
+              >
+                {emailLoading ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    Connecting...
+                  </>
+                ) : (
+                  'Connect Outlook'
+                )}
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Note about email integration */}
+        {emailStatus?.connected && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <p className="text-sm text-blue-800">
+              <strong>How it works:</strong> When customers email you, our AI will read the message and create a draft response. You can review, edit, and send from your Email Inbox dashboard.
             </p>
           </div>
         )}
