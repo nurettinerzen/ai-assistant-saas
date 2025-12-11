@@ -68,6 +68,7 @@ model Business {
   emailIntegration        EmailIntegration?
   emailThreads            EmailThread[]
   emailDrafts             EmailDraft[]
+  webhookConfig           WebhookConfig?
 
   @@index([name])
 }
@@ -672,4 +673,80 @@ model EmailDraft {
   @@index([threadId])
   @@index([businessId])
   @@index([status])
+}
+
+// ============================================================================
+// WEBHOOK INTEGRATION TABLES
+// ============================================================================
+
+model WebhookConfig {
+  id            Int       @id @default(autoincrement())
+  businessId    Int       @unique
+  webhookSecret String    @unique @default(cuid())
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  business      Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([webhookSecret])
+}
+
+model WebhookLog {
+  id          Int       @id @default(autoincrement())
+  businessId  Int
+  type        String    // order, inventory, shipment, custom
+  action      String?   // created, updated, deleted
+  payload     Json
+  status      String    @default("received") // received, processed, failed
+  errorMessage String?
+  processedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([businessId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model WebhookOrder {
+  id              Int       @id @default(autoincrement())
+  businessId      Int
+  externalId      String
+  customerName    String?
+  customerPhone   String?
+  customerEmail   String?
+  status          String    @default("pending")
+  statusText      String?
+  totalAmount     Float?
+  currency        String    @default("TRY")
+  items           Json?
+  trackingNumber  String?
+  trackingCarrier String?
+  trackingUrl     String?
+  source          String    @default("webhook") // zapier, make, custom
+  rawPayload      Json?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([businessId, externalId])
+  @@index([businessId])
+  @@index([customerPhone])
+  @@index([customerEmail])
+  @@index([externalId])
+}
+
+model WebhookInventory {
+  id          Int       @id @default(autoincrement())
+  businessId  Int
+  externalId  String?
+  productName String
+  sku         String?
+  stock       Int       @default(0)
+  source      String    @default("webhook")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([businessId, sku])
+  @@index([businessId])
+  @@index([sku])
 }
