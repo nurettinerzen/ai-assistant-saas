@@ -65,6 +65,9 @@ model Business {
   shippingInfos           ShippingInfo[]
   subscription            Subscription?
   users                   User[]
+  emailIntegration        EmailIntegration?
+  emailThreads            EmailThread[]
+  emailDrafts             EmailDraft[]
 
   @@index([name])
 }
@@ -549,4 +552,124 @@ enum BookingPlatform {
   VAGARO
   SCHEDULICITY
   CUSTOM
+}
+
+// ==================== EMAIL CHANNEL MODELS ====================
+
+enum EmailProvider {
+  GMAIL
+  OUTLOOK
+}
+
+enum EmailThreadStatus {
+  PENDING_REPLY
+  DRAFT_READY
+  REPLIED
+  CLOSED
+}
+
+enum EmailMessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum EmailMessageStatus {
+  RECEIVED
+  DRAFT
+  APPROVED
+  SENT
+}
+
+enum EmailDraftStatus {
+  PENDING_REVIEW
+  APPROVED
+  SENT
+  REJECTED
+}
+
+model EmailIntegration {
+  id            Int           @id @default(autoincrement())
+  businessId    Int           @unique
+  provider      EmailProvider
+  email         String        // Connected email address
+  credentials   Json          // access_token, refresh_token, expiry
+  connected     Boolean       @default(true)
+  lastSyncedAt  DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  business      Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([provider])
+}
+
+model EmailThread {
+  id            String            @id @default(cuid())
+  businessId    Int
+  threadId      String            // Gmail/Outlook thread ID
+  subject       String
+  customerEmail String
+  customerName  String?
+  status        EmailThreadStatus @default(PENDING_REPLY)
+  lastMessageAt DateTime
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  business      Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  messages      EmailMessage[]
+  drafts        EmailDraft[]
+
+  @@unique([businessId, threadId])
+  @@index([businessId])
+  @@index([status])
+  @@index([lastMessageAt])
+}
+
+model EmailMessage {
+  id           String                @id @default(cuid())
+  threadId     String
+  messageId    String                // Gmail/Outlook message ID
+  direction    EmailMessageDirection
+  fromEmail    String
+  fromName     String?
+  toEmail      String
+  subject      String
+  bodyText     String?               @db.Text
+  bodyHtml     String?               @db.Text
+  attachments  Json?                 // [{name, size, mimeType}]
+  isDraft      Boolean               @default(false)
+  status       EmailMessageStatus    @default(RECEIVED)
+  sentAt       DateTime?
+  receivedAt   DateTime?
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  thread       EmailThread           @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  drafts       EmailDraft[]
+
+  @@unique([threadId, messageId])
+  @@index([threadId])
+  @@index([direction])
+  @@index([status])
+}
+
+model EmailDraft {
+  id               String           @id @default(cuid())
+  messageId        String?          // Which message this is replying to
+  threadId         String
+  businessId       Int
+  generatedContent String           @db.Text  // AI-generated draft
+  editedContent    String?          @db.Text  // User's edited version
+  status           EmailDraftStatus @default(PENDING_REVIEW)
+  reviewedAt       DateTime?
+  reviewedBy       Int?             // User ID who reviewed
+  sentAt           DateTime?
+  sentMessageId    String?          // ID of sent message
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  thread           EmailThread      @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  message          EmailMessage?    @relation(fields: [messageId], references: [id])
+  business         Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([threadId])
+  @@index([businessId])
+  @@index([status])
 }
