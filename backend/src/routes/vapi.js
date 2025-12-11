@@ -1983,7 +1983,6 @@ async function handleCheckPaymentStatus(args, vapiMessage) {
     return {
       result: 'error',
       message: 'Odeme durumu sorgulama sirasinda bir hata olustu. Lutfen tekrar deneyin.'
-=======
     // If we have a tracking number but no order
     if (tracking_number) {
       const isTurkish = business.language === 'TR';

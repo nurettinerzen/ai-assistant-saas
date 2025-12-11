@@ -831,7 +831,6 @@ export default function IntegrationsPage() {
     setTimeout(() => setCopiedField(null), 2000);
   };
 
->>>>>>> origin/claude/add-ecommerce-integrations-01BYcaPrXeqwnT6fdMyfGEFw
   const handleConnect = async (integration) => {
     try {
       // WhatsApp - Show modal
