@@ -1,0 +1,329 @@
+/**
+ * Email Aggregator Service
+ * Provides a unified interface for Gmail and Outlook
+ */
+
+import { PrismaClient } from '@prisma/client';
+import gmailService from './gmail.js';
+import outlookService from './outlook.js';
+
+const prisma = new PrismaClient();
+
+class EmailAggregatorService {
+  /**
+   * Get the connected email provider for a business
+   */
+  async getProvider(businessId) {
+    const integration = await prisma.emailIntegration.findUnique({
+      where: { businessId }
+    });
+
+    if (!integration || !integration.connected) {
+      return null;
+    }
+
+    return integration.provider; // 'GMAIL' or 'OUTLOOK'
+  }
+
+  /**
+   * Get the email integration details
+   */
+  async getIntegration(businessId) {
+    return await prisma.emailIntegration.findUnique({
+      where: { businessId }
+    });
+  }
+
+  /**
+   * Get the appropriate service based on provider
+   */
+  getService(provider) {
+    if (provider === 'GMAIL') {
+      return gmailService;
+    } else if (provider === 'OUTLOOK') {
+      return outlookService;
+    }
+    throw new Error(`Unknown email provider: ${provider}`);
+  }
+
+  /**
+   * Get auth URL for a provider
+   */
+  getAuthUrl(provider, businessId) {
+    const service = this.getService(provider);
+    return service.getAuthUrl(businessId);
+  }
+
+  /**
+   * Handle OAuth callback
+   */
+  async handleCallback(provider, code, businessId) {
+    const service = this.getService(provider);
+    return await service.handleCallback(code, businessId);
+  }
+
+  /**
+   * Get messages from connected provider
+   */
+  async getMessages(businessId, options = {}) {
+    const provider = await this.getProvider(businessId);
+    if (!provider) {
+      throw new Error('No email provider connected');
+    }
+
+    const service = this.getService(provider);
+    return await service.getMessages(businessId, options);
+  }
+
+  /**
+   * Get single message
+   */
+  async getMessage(businessId, messageId) {
+    const provider = await this.getProvider(businessId);
+    if (!provider) {
+      throw new Error('No email provider connected');
+    }
+
+    const service = this.getService(provider);
+    return await service.getMessage(businessId, messageId);
+  }
+
+  /**
+   * Get thread (conversation)
+   */
+  async getThread(businessId, threadId) {
+    const provider = await this.getProvider(businessId);
+    if (!provider) {
+      throw new Error('No email provider connected');
+    }
+
+    const service = this.getService(provider);
+    return await service.getThread(businessId, threadId);
+  }
+
+  /**
+   * Send message
+   */
+  async sendMessage(businessId, to, subject, body, options = {}) {
+    const provider = await this.getProvider(businessId);
+    if (!provider) {
+      throw new Error('No email provider connected');
+    }
+
+    const service = this.getService(provider);
+    return await service.sendMessage(businessId, to, subject, body, options);
+  }
+
+  /**
+   * Mark message as read
+   */
+  async markAsRead(businessId, messageId) {
+    const provider = await this.getProvider(businessId);
+    if (!provider) {
+      throw new Error('No email provider connected');
+    }
+
+    const service = this.getService(provider);
+    return await service.markAsRead(businessId, messageId);
+  }
+
+  /**
+   * Sync new messages
+   */
+  async syncNewMessages(businessId) {
+    const provider = await this.getProvider(businessId);
+    if (!provider) {
+      throw new Error('No email provider connected');
+    }
+
+    const service = this.getService(provider);
+    return await service.syncNewMessages(businessId);
+  }
+
+  /**
+   * Disconnect email
+   */
+  async disconnect(businessId) {
+    const provider = await this.getProvider(businessId);
+    if (!provider) {
+      throw new Error('No email provider connected');
+    }
+
+    const service = this.getService(provider);
+    return await service.disconnect(businessId);
+  }
+
+  /**
+   * Check if any email provider is connected
+   */
+  async isConnected(businessId) {
+    const provider = await this.getProvider(businessId);
+    return provider !== null;
+  }
+
+  /**
+   * Get connection status
+   */
+  async getStatus(businessId) {
+    const integration = await this.getIntegration(businessId);
+
+    if (!integration) {
+      return {
+        connected: false,
+        provider: null,
+        email: null
+      };
+    }
+
+    return {
+      connected: integration.connected,
+      provider: integration.provider,
+      email: integration.email,
+      lastSyncedAt: integration.lastSyncedAt
+    };
+  }
+
+  /**
+   * Save message to database
+   */
+  async saveMessageToDb(businessId, message, direction = 'INBOUND') {
+    const integration = await this.getIntegration(businessId);
+    const connectedEmail = integration?.email;
+
+    // Determine customer email
+    const customerEmail = direction === 'INBOUND'
+      ? message.from.email
+      : message.to.split(',')[0].trim();
+
+    // Find or create thread
+    let thread = await prisma.emailThread.findFirst({
+      where: {
+        businessId,
+        threadId: message.threadId
+      }
+    });
+
+    if (!thread) {
+      thread = await prisma.emailThread.create({
+        data: {
+          businessId,
+          threadId: message.threadId,
+          subject: message.subject,
+          customerEmail,
+          customerName: direction === 'INBOUND' ? message.from.name : null,
+          status: 'PENDING_REPLY',
+          lastMessageAt: new Date(message.date)
+        }
+      });
+    } else {
+      // Update thread
+      await prisma.emailThread.update({
+        where: { id: thread.id },
+        data: {
+          lastMessageAt: new Date(message.date),
+          status: direction === 'INBOUND' ? 'PENDING_REPLY' : thread.status
+        }
+      });
+    }
+
+    // Check if message already exists
+    const existingMessage = await prisma.emailMessage.findFirst({
+      where: {
+        threadId: thread.id,
+        messageId: message.messageId
+      }
+    });
+
+    if (existingMessage) {
+      return { thread, message: existingMessage, isNew: false };
+    }
+
+    // Create message
+    const savedMessage = await prisma.emailMessage.create({
+      data: {
+        threadId: thread.id,
+        messageId: message.messageId,
+        direction,
+        fromEmail: message.from.email,
+        fromName: message.from.name,
+        toEmail: message.to,
+        subject: message.subject,
+        bodyText: message.bodyText,
+        bodyHtml: message.bodyHtml,
+        attachments: message.attachments,
+        status: direction === 'INBOUND' ? 'RECEIVED' : 'SENT',
+        receivedAt: direction === 'INBOUND' ? new Date(message.date) : null,
+        sentAt: direction === 'OUTBOUND' ? new Date(message.date) : null
+      }
+    });
+
+    return { thread, message: savedMessage, isNew: true };
+  }
+
+  /**
+   * Get threads from database
+   */
+  async getThreadsFromDb(businessId, options = {}) {
+    const { status, limit = 20, offset = 0 } = options;
+
+    const where = { businessId };
+    if (status) {
+      where.status = status;
+    }
+
+    const threads = await prisma.emailThread.findMany({
+      where,
+      include: {
+        messages: {
+          orderBy: { createdAt: 'desc' },
+          take: 1
+        },
+        drafts: {
+          where: { status: 'PENDING_REVIEW' },
+          take: 1
+        }
+      },
+      orderBy: { lastMessageAt: 'desc' },
+      take: limit,
+      skip: offset
+    });
+
+    const total = await prisma.emailThread.count({ where });
+
+    return { threads, total };
+  }
+
+  /**
+   * Get thread from database with all messages
+   */
+  async getThreadFromDb(businessId, threadId) {
+    const thread = await prisma.emailThread.findFirst({
+      where: {
+        businessId,
+        id: threadId
+      },
+      include: {
+        messages: {
+          orderBy: { createdAt: 'asc' }
+        },
+        drafts: {
+          orderBy: { createdAt: 'desc' }
+        }
+      }
+    });
+
+    return thread;
+  }
+
+  /**
+   * Update thread status
+   */
+  async updateThreadStatus(threadId, status) {
+    return await prisma.emailThread.update({
+      where: { id: threadId },
+      data: { status }
+    });
+  }
+}
+
+export default new EmailAggregatorService();

@@ -36,10 +36,20 @@ import costCalculatorRoutes from './routes/costCalculator.js';
 import webhooksRoutes from './routes/webhooks.js';
 import chatRoutes from './routes/chat.js';
 import whatsappRoutes from './routes/whatsapp.js';
+import trendyolRoutes from './routes/trendyol.js';
+import cargoRoutes from './routes/cargo.js';
+import parasutRoutes from './routes/parasut.js';
+import iyzicoRoutes from './routes/iyzico.js';
+import emailRoutes from './routes/email.js';
+// E-commerce integrations
+import shopifyRoutes from './routes/shopify.js';
+import woocommerceRoutes from './routes/woocommerce.js';
+import webhookRoutes from './routes/webhook.js';
 
 
 // Import jobs
 import { initMonthlyResetJob } from './jobs/monthlyReset.js';
+import { initEmailSyncJob } from './jobs/emailSync.js';
 
 dotenv.config();
 
@@ -59,6 +69,7 @@ app.use(cors({
 // ⚠️ WEBHOOK ROUTES - RAW BODY (BEFORE express.json())
 app.use('/api/subscription/webhook', express.raw({ type: 'application/json' }));
 app.use('/api/vapi/webhook', express.json()); // VAPI webhook needs parsed JSON
+app.use('/api/webhook/incoming', express.json()); // External webhooks (Zapier, etc.)
 
 // ✅ OTHER ROUTES - JSON PARSE
 app.use(express.json());
@@ -101,6 +112,15 @@ app.use('/api/cost-calculator', costCalculatorRoutes);
 app.use('/api/webhooks', webhooksRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
+app.use('/api/trendyol', trendyolRoutes);
+app.use('/api/cargo', cargoRoutes);
+app.use('/api/parasut', parasutRoutes);
+app.use('/api/iyzico', iyzicoRoutes);
+app.use('/api/email', emailRoutes);
+// E-commerce integrations
+app.use('/api/shopify', shopifyRoutes);
+app.use('/api/woocommerce', woocommerceRoutes);
+app.use('/api/webhook', webhookRoutes);
 
 
 // Error handling middleware
@@ -116,6 +136,7 @@ app.use((err, req, res, next) => {
 if (process.env.NODE_ENV !== 'test') {
   console.log('\n🚀 Initializing background jobs...');
   initMonthlyResetJob();
+  initEmailSyncJob();
   console.log('✅ Background jobs initialized\n');
 }
 

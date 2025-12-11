@@ -65,6 +65,10 @@ model Business {
   shippingInfos           ShippingInfo[]
   subscription            Subscription?
   users                   User[]
+  emailIntegration        EmailIntegration?
+  emailThreads            EmailThread[]
+  emailDrafts             EmailDraft[]
+  webhookConfig           WebhookConfig?
 
   @@index([name])
 }
@@ -463,6 +467,12 @@ enum IntegrationType {
   SHIPSTATION
   KLAVIYO
   MAILCHIMP
+  YURTICI_KARGO
+  ARAS_KARGO
+  MNG_KARGO
+  TRENDYOL
+  PARASUT
+  IYZICO
   CUSTOM
 }
 
@@ -492,6 +502,11 @@ enum ShippingCarrier {
   FEDEX
   USPS
   DHL
+  YURTICI
+  ARAS
+  MNG
+  PTT
+  SURAT
   OTHER
 }
 
@@ -538,4 +553,200 @@ enum BookingPlatform {
   VAGARO
   SCHEDULICITY
   CUSTOM
+}
+
+// ==================== EMAIL CHANNEL MODELS ====================
+
+enum EmailProvider {
+  GMAIL
+  OUTLOOK
+}
+
+enum EmailThreadStatus {
+  PENDING_REPLY
+  DRAFT_READY
+  REPLIED
+  CLOSED
+}
+
+enum EmailMessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum EmailMessageStatus {
+  RECEIVED
+  DRAFT
+  APPROVED
+  SENT
+}
+
+enum EmailDraftStatus {
+  PENDING_REVIEW
+  APPROVED
+  SENT
+  REJECTED
+}
+
+model EmailIntegration {
+  id            Int           @id @default(autoincrement())
+  businessId    Int           @unique
+  provider      EmailProvider
+  email         String        // Connected email address
+  credentials   Json          // access_token, refresh_token, expiry
+  connected     Boolean       @default(true)
+  lastSyncedAt  DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  business      Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([provider])
+}
+
+model EmailThread {
+  id            String            @id @default(cuid())
+  businessId    Int
+  threadId      String            // Gmail/Outlook thread ID
+  subject       String
+  customerEmail String
+  customerName  String?
+  status        EmailThreadStatus @default(PENDING_REPLY)
+  lastMessageAt DateTime
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  business      Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  messages      EmailMessage[]
+  drafts        EmailDraft[]
+
+  @@unique([businessId, threadId])
+  @@index([businessId])
+  @@index([status])
+  @@index([lastMessageAt])
+}
+
+model EmailMessage {
+  id           String                @id @default(cuid())
+  threadId     String
+  messageId    String                // Gmail/Outlook message ID
+  direction    EmailMessageDirection
+  fromEmail    String
+  fromName     String?
+  toEmail      String
+  subject      String
+  bodyText     String?               @db.Text
+  bodyHtml     String?               @db.Text
+  attachments  Json?                 // [{name, size, mimeType}]
+  isDraft      Boolean               @default(false)
+  status       EmailMessageStatus    @default(RECEIVED)
+  sentAt       DateTime?
+  receivedAt   DateTime?
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  thread       EmailThread           @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  drafts       EmailDraft[]
+
+  @@unique([threadId, messageId])
+  @@index([threadId])
+  @@index([direction])
+  @@index([status])
+}
+
+model EmailDraft {
+  id               String           @id @default(cuid())
+  messageId        String?          // Which message this is replying to
+  threadId         String
+  businessId       Int
+  generatedContent String           @db.Text  // AI-generated draft
+  editedContent    String?          @db.Text  // User's edited version
+  status           EmailDraftStatus @default(PENDING_REVIEW)
+  reviewedAt       DateTime?
+  reviewedBy       Int?             // User ID who reviewed
+  sentAt           DateTime?
+  sentMessageId    String?          // ID of sent message
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  thread           EmailThread      @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  message          EmailMessage?    @relation(fields: [messageId], references: [id])
+  business         Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([threadId])
+  @@index([businessId])
+  @@index([status])
+}
+
+// ============================================================================
+// WEBHOOK INTEGRATION TABLES
+// ============================================================================
+
+model WebhookConfig {
+  id            Int       @id @default(autoincrement())
+  businessId    Int       @unique
+  webhookSecret String    @unique @default(cuid())
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  business      Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([webhookSecret])
+}
+
+model WebhookLog {
+  id          Int       @id @default(autoincrement())
+  businessId  Int
+  type        String    // order, inventory, shipment, custom
+  action      String?   // created, updated, deleted
+  payload     Json
+  status      String    @default("received") // received, processed, failed
+  errorMessage String?
+  processedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([businessId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model WebhookOrder {
+  id              Int       @id @default(autoincrement())
+  businessId      Int
+  externalId      String
+  customerName    String?
+  customerPhone   String?
+  customerEmail   String?
+  status          String    @default("pending")
+  statusText      String?
+  totalAmount     Float?
+  currency        String    @default("TRY")
+  items           Json?
+  trackingNumber  String?
+  trackingCarrier String?
+  trackingUrl     String?
+  source          String    @default("webhook") // zapier, make, custom
+  rawPayload      Json?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([businessId, externalId])
+  @@index([businessId])
+  @@index([customerPhone])
+  @@index([customerEmail])
+  @@index([externalId])
+}
+
+model WebhookInventory {
+  id          Int       @id @default(autoincrement())
+  businessId  Int
+  externalId  String?
+  productName String
+  sku         String?
+  stock       Int       @default(0)
+  source      String    @default("webhook")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([businessId, sku])
+  @@index([businessId])
+  @@index([sku])
 }

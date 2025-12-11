@@ -15,6 +15,14 @@ import callAnalysis from '../services/callAnalysis.js';
 import googleCalendarService from '../services/google-calendar.js';
 import netgsmService from '../services/netgsm.js';
 import whatsappService from '../services/whatsapp.js';
+import trendyolService from '../services/trendyol.js';
+import cargoAggregator from '../services/cargo-aggregator.js';
+import parasutService from '../services/parasut.js';
+import iyzicoService from '../services/iyzico.js';
+// E-commerce integrations
+import shopifyService from '../services/shopify.js';
+import woocommerceService from '../services/woocommerce.js';
+import webhookService from '../services/webhook.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -345,6 +353,45 @@ router.post('/functions', async (req, res) => {
 
           case 'send_order_notification':
             result = await handleSendOrderNotification(functionArgs, message);
+            break;
+
+          // E-commerce functions (Trendyol, Shopify, WooCommerce, Webhook)
+          case 'check_order_status':
+            result = await handleCheckOrderStatus(functionArgs, message);
+            break;
+
+          case 'get_product_stock':
+            result = await handleGetProductStock(functionArgs, message);
+            break;
+
+          case 'get_cargo_tracking':
+            result = await handleGetCargoTracking(functionArgs, message);
+            break;
+
+          case 'track_shipment':
+            result = await handleTrackShipment(functionArgs, message);
+            break;
+
+          // Parasut (Accounting) Functions
+          case 'check_invoice_status':
+            result = await handleCheckInvoiceStatus(functionArgs, message);
+            break;
+
+          case 'check_account_balance':
+            result = await handleCheckAccountBalance(functionArgs, message);
+            break;
+
+          // iyzico (Payment) Functions
+          case 'check_refund_status':
+            result = await handleCheckRefundStatus(functionArgs, message);
+            break;
+
+          case 'check_payment_status':
+            result = await handleCheckPaymentStatus(functionArgs, message);
+            break;
+
+          case 'get_tracking_info':
+            result = await handleGetTrackingInfo(functionArgs, message);
             break;
 
           default:
@@ -786,6 +833,1326 @@ async function handleSendOrderNotification(args, vapiMessage) {
       message: error.message || 'Failed to send order notification. Please try again.'
     };
   }
+}
+
+// ============================================================================
+// E-COMMERCE FUNCTION HANDLERS (Trendyol, Shopify, WooCommerce, Webhook)
+// ============================================================================
+
+/**
+ * Get list of active e-commerce integrations for a business
+ */
+async function getActiveEcommerceIntegrations(businessId) {
+  const integrations = await prisma.integration.findMany({
+    where: {
+      businessId,
+      isActive: true,
+      connected: true,
+      type: {
+        in: ['TRENDYOL', 'SHOPIFY', 'WOOCOMMERCE', 'ZAPIER']
+      }
+    }
+  });
+
+  return integrations.map(i => i.type);
+}
+
+/**
+ * Handle check_order_status function call
+ * Searches across all connected e-commerce platforms (Trendyol, Shopify, WooCommerce, Webhook)
+ */
+async function handleCheckOrderStatus(args, vapiMessage) {
+  try {
+    const { order_number, customer_phone, customer_email } = args;
+
+    console.log('🔍 Checking order status:', { order_number, customer_phone, customer_email });
+
+    // Validate - at least one parameter required
+    if (!order_number && !customer_phone && !customer_email) {
+      return {
+        success: false,
+        message: 'Sipariş numarası, telefon numarası veya e-posta gerekli. Lütfen birini belirtin.'
+      };
+    }
+
+    // Get business
+    const business = await getBusinessFromVapiCall(vapiMessage);
+    const businessId = business.id;
+
+    // Get active e-commerce integrations
+    const activeIntegrations = await getActiveEcommerceIntegrations(businessId);
+
+    console.log(`📦 Active e-commerce integrations: ${activeIntegrations.join(', ')}`);
+
+    let orderResult = null;
+    let orderSource = null;
+
+    // Search by order number
+    if (order_number) {
+      // Try Trendyol first (Turkish market priority)
+      if (!orderResult && activeIntegrations.includes('TRENDYOL')) {
+        try {
+          const trendyolOrder = await trendyolService.getOrderByNumber(businessId, order_number);
+          if (trendyolOrder) {
+            // Format Trendyol order to common format
+            const productList = trendyolOrder.lines.map(line => `${line.productName} (${line.quantity} adet)`).join(', ');
+            let message = `Sipariş ${trendyolOrder.orderNumber}: ${trendyolOrder.statusText}. `;
+            message += `Ürünler: ${productList}. `;
+
+            if (trendyolOrder.status === 'Shipped' && trendyolOrder.cargoProviderName) {
+              message += `Kargo: ${trendyolOrder.cargoProviderName}`;
+              if (trendyolOrder.cargoTrackingNumber) {
+                message += `, Takip No: ${trendyolOrder.cargoTrackingNumber}`;
+              }
+              message += '. ';
+            }
+
+            if (trendyolOrder.estimatedDelivery) {
+              const deliveryDate = new Date(trendyolOrder.estimatedDelivery).toLocaleDateString('tr-TR');
+              message += `Tahmini teslimat: ${deliveryDate}.`;
+            }
+
+            return {
+              success: true,
+              message,
+              orderNumber: trendyolOrder.orderNumber,
+              status: trendyolOrder.status,
+              statusText: trendyolOrder.statusText,
+              cargoCompany: trendyolOrder.cargoProviderName,
+              trackingNumber: trendyolOrder.cargoTrackingNumber,
+              source: 'Trendyol'
+            };
+          }
+        } catch (e) {
+          console.log('Trendyol search failed:', e.message);
+        }
+      }
+
+      // Try Shopify
+      if (!orderResult && activeIntegrations.includes('SHOPIFY')) {
+        try {
+          const shopifyResult = await shopifyService.getOrderByNumber(businessId, order_number);
+          if (shopifyResult.success) {
+            orderResult = shopifyResult.order;
+            orderSource = 'Shopify';
+          }
+        } catch (e) {
+          console.log('Shopify search failed:', e.message);
+        }
+      }
+
+      // Try WooCommerce
+      if (!orderResult && activeIntegrations.includes('WOOCOMMERCE')) {
+        try {
+          const wooResult = await woocommerceService.getOrderByNumber(businessId, order_number);
+          if (wooResult.success) {
+            orderResult = wooResult.order;
+            orderSource = 'WooCommerce';
+          }
+        } catch (e) {
+          console.log('WooCommerce search failed:', e.message);
+        }
+      }
+
+      // Try Webhook (Zapier)
+      if (!orderResult && activeIntegrations.includes('ZAPIER')) {
+        try {
+          const webhookResult = await webhookService.getOrderByExternalId(businessId, order_number);
+          if (webhookResult.success) {
+            orderResult = webhookResult.order;
+            orderSource = webhookResult.order.source || 'Webhook';
+          }
+        } catch (e) {
+          console.log('Webhook search failed:', e.message);
+        }
+      }
+    }
+
+    // If not found by order number, try phone
+    if (!orderResult && customer_phone) {
+      // Try Trendyol
+      if (!orderResult && activeIntegrations.includes('TRENDYOL')) {
+        try {
+          const orders = await trendyolService.getOrdersByCustomerPhone(businessId, customer_phone);
+          if (orders && orders.length > 0) {
+            const order = orders[0];
+            const productList = order.lines.map(line => line.productName).join(', ');
+            let message;
+
+            if (orders.length > 1) {
+              message = `${orders.length} sipariş bulundu. En son siparişiniz: ${order.orderNumber} numaralı sipariş, durumu: ${order.statusText}. Ürünler: ${productList}. ${orders.length - 1} tane daha eski siparişiniz var.`;
+            } else {
+              message = `Sipariş ${order.orderNumber}: ${order.statusText}. Ürünler: ${productList}.`;
+            }
+
+            return {
+              success: true,
+              message,
+              orderNumber: order.orderNumber,
+              status: order.status,
+              statusText: order.statusText,
+              totalOrders: orders.length,
+              source: 'Trendyol'
+            };
+          }
+        } catch (e) {
+          console.log('Trendyol phone search failed:', e.message);
+        }
+      }
+
+      if (!orderResult && activeIntegrations.includes('SHOPIFY')) {
+        try {
+          const result = await shopifyService.getOrderByPhone(businessId, customer_phone);
+          if (result.success) {
+            orderResult = result.order;
+            orderSource = 'Shopify';
+          }
+        } catch (e) {}
+      }
+
+      if (!orderResult && activeIntegrations.includes('WOOCOMMERCE')) {
+        try {
+          const result = await woocommerceService.getOrderByPhone(businessId, customer_phone);
+          if (result.success) {
+            orderResult = result.order;
+            orderSource = 'WooCommerce';
+          }
+        } catch (e) {}
+      }
+
+      if (!orderResult && activeIntegrations.includes('ZAPIER')) {
+        try {
+          const result = await webhookService.getOrderByPhone(businessId, customer_phone);
+          if (result.success) {
+            orderResult = result.order;
+            orderSource = result.order.source || 'Webhook';
+          }
+        } catch (e) {}
+      }
+    }
+
+    // If not found by phone, try email
+    if (!orderResult && customer_email) {
+      if (!orderResult && activeIntegrations.includes('SHOPIFY')) {
+        try {
+          const result = await shopifyService.getOrderByEmail(businessId, customer_email);
+          if (result.success) {
+            orderResult = result.order;
+            orderSource = 'Shopify';
+          }
+        } catch (e) {}
+      }
+
+      if (!orderResult && activeIntegrations.includes('WOOCOMMERCE')) {
+        try {
+          const result = await woocommerceService.getOrderByEmail(businessId, customer_email);
+          if (result.success) {
+            orderResult = result.order;
+            orderSource = 'WooCommerce';
+          }
+        } catch (e) {}
+      }
+
+      if (!orderResult && activeIntegrations.includes('ZAPIER')) {
+        try {
+          const result = await webhookService.getOrderByEmail(businessId, customer_email);
+          if (result.success) {
+            orderResult = result.order;
+            orderSource = result.order.source || 'Webhook';
+          }
+        } catch (e) {}
+      }
+    }
+
+    // Format response
+    if (!orderResult) {
+      const notFoundMessage = business.language === 'TR'
+        ? 'Sipariş bulunamadı. Lütfen sipariş numaranızı veya telefon numaranızı kontrol edin.'
+        : 'Order not found. Please check your order number or phone number.';
+
+      return {
+        success: false,
+        result: 'not_found',
+        message: notFoundMessage
+      };
+    }
+
+    console.log(`✅ Order found from ${orderSource}: ${orderResult.orderNumber}`);
+
+    // Build response message
+    const isTurkish = business.language === 'TR';
+    let responseMessage;
+
+    if (isTurkish) {
+      responseMessage = `Sipariş ${orderResult.orderNumber} bulundu. `;
+      responseMessage += `Sipariş durumu: ${orderResult.statusText}. `;
+      if (orderResult.tracking?.number) {
+        responseMessage += `Kargo takip numarası: ${orderResult.tracking.number}. `;
+        responseMessage += `Kargo firması: ${orderResult.tracking.company}. `;
+      } else if (orderResult.fulfillmentStatus === 'unfulfilled') {
+        responseMessage += `Siparişiniz hazırlanıyor. `;
+      }
+      responseMessage += `Toplam tutar: ${orderResult.totalPrice} ${orderResult.currency}.`;
+    } else {
+      responseMessage = `Order ${orderResult.orderNumber} found. `;
+      responseMessage += `Status: ${orderResult.statusText}. `;
+      if (orderResult.tracking?.number) {
+        responseMessage += `Tracking number: ${orderResult.tracking.number}. `;
+        responseMessage += `Carrier: ${orderResult.tracking.company}. `;
+      } else if (orderResult.fulfillmentStatus === 'unfulfilled') {
+        responseMessage += `Your order is being prepared. `;
+      }
+      responseMessage += `Total: ${orderResult.totalPrice} ${orderResult.currency}.`;
+    }
+
+    return {
+      success: true,
+      result: 'found',
+      message: responseMessage,
+      order: {
+        orderNumber: orderResult.orderNumber,
+        status: orderResult.status,
+        statusText: orderResult.statusText,
+        totalPrice: orderResult.totalPrice,
+        currency: orderResult.currency,
+        tracking: orderResult.tracking,
+        items: orderResult.items?.map(i => i.title).join(', ')
+      },
+      source: orderSource
+    };
+
+  } catch (error) {
+    console.error('❌ Check order status error:', error);
+
+    // User-friendly error message
+    if (error.message?.includes('not found') || error.message?.includes('inactive')) {
+      return {
+        success: false,
+        message: 'Şu an sipariş bilgisine ulaşamıyorum. Lütfen daha sonra tekrar deneyin veya müşteri hizmetleriyle iletişime geçin.'
+      };
+    }
+
+    return {
+      success: false,
+      message: error.message || 'Sipariş sorgulanırken bir hata oluştu. Lütfen daha sonra tekrar deneyin.'
+    };
+  }
+}
+
+/**
+ * Handle get_product_stock function call
+ * Checks product availability across all connected platforms (Trendyol, Shopify, WooCommerce, Webhook)
+ */
+async function handleGetProductStock(args, vapiMessage) {
+  try {
+    const { product_name, barcode, product_sku } = args;
+
+    console.log('🔍 Checking product stock:', { product_name, barcode, product_sku });
+
+    // Validate input
+    if (!product_name && !barcode && !product_sku) {
+      return {
+        success: false,
+        message: 'Ürün adı, barkod veya SKU gerekli.'
+      };
+    }
+
+    // Get business
+    const business = await getBusinessFromVapiCall(vapiMessage);
+    const businessId = business.id;
+
+    // Get active e-commerce integrations
+    const activeIntegrations = await getActiveEcommerceIntegrations(businessId);
+
+    let productResult = null;
+    let productSource = null;
+
+    const searchTerm = product_name || product_sku;
+
+    // Try Trendyol first (Turkish market priority)
+    if (activeIntegrations.includes('TRENDYOL')) {
+      try {
+        let stockResult;
+
+        // Search by barcode (more precise)
+        if (barcode) {
+          stockResult = await trendyolService.getProductStock(businessId, barcode);
+
+          if (!stockResult.success && product_name) {
+            stockResult = await trendyolService.searchProducts(businessId, product_name);
+          }
+        } else if (searchTerm) {
+          stockResult = await trendyolService.searchProducts(businessId, searchTerm);
+        }
+
+        // Handle barcode search result
+        if (stockResult?.barcode) {
+          const message = stockResult.stockQuantity > 0
+            ? `${stockResult.productName} ürünü stokta mevcut. ${stockResult.stockQuantity} adet var. Fiyatı: ${stockResult.price} TL.`
+            : `${stockResult.productName} ürünü şu an stokta yok.`;
+
+          return {
+            success: true,
+            message,
+            productName: stockResult.productName,
+            barcode: stockResult.barcode,
+            stockQuantity: stockResult.stockQuantity,
+            price: stockResult.price,
+            inStock: stockResult.stockQuantity > 0,
+            source: 'Trendyol'
+          };
+        }
+
+        // Handle name search result (multiple products)
+        if (stockResult?.products && stockResult.products.length > 0) {
+          const products = stockResult.products;
+
+          if (products.length === 1) {
+            const product = products[0];
+            const message = product.stockQuantity > 0
+              ? `${product.productName} ürünü stokta mevcut. ${product.stockQuantity} adet var. Fiyatı: ${product.price} TL.`
+              : `${product.productName} ürünü şu an stokta yok.`;
+
+            return {
+              success: true,
+              message,
+              productName: product.productName,
+              stockQuantity: product.stockQuantity,
+              price: product.price,
+              inStock: product.stockQuantity > 0,
+              source: 'Trendyol'
+            };
+          }
+
+          const inStockProducts = products.filter(p => p.stockQuantity > 0);
+          let message;
+
+          if (inStockProducts.length > 0) {
+            const productList = inStockProducts.slice(0, 3).map(p =>
+              `${p.productName} (${p.stockQuantity} adet, ${p.price} TL)`
+            ).join(', ');
+            message = `"${searchTerm}" için ${inStockProducts.length} ürün stokta bulundu: ${productList}.`;
+          } else {
+            message = `"${searchTerm}" ile eşleşen ürünler şu an stokta yok.`;
+          }
+
+          return {
+            success: true,
+            message,
+            matchCount: products.length,
+            inStockCount: inStockProducts.length,
+            source: 'Trendyol'
+          };
+        }
+      } catch (e) {
+        console.log('Trendyol product search failed:', e.message);
+      }
+    }
+
+    // Try Shopify
+    if (!productResult && activeIntegrations.includes('SHOPIFY')) {
+      try {
+        const result = await shopifyService.getProductByTitle(businessId, searchTerm);
+        if (result.success) {
+          productResult = result.product;
+          productSource = 'Shopify';
+        }
+      } catch (e) {
+        console.log('Shopify product search failed:', e.message);
+      }
+    }
+
+    // Try WooCommerce
+    if (!productResult && activeIntegrations.includes('WOOCOMMERCE')) {
+      try {
+        const result = await woocommerceService.getProductByName(businessId, searchTerm);
+        if (result.success) {
+          productResult = result.product;
+          productSource = 'WooCommerce';
+        }
+      } catch (e) {
+        console.log('WooCommerce product search failed:', e.message);
+      }
+    }
+
+    // Try Webhook inventory
+    if (!productResult && activeIntegrations.includes('ZAPIER')) {
+      try {
+        const result = await webhookService.getProductStock(businessId, searchTerm);
+        if (result.success) {
+          productResult = result.product;
+          productSource = 'Inventory';
+        }
+      } catch (e) {
+        console.log('Webhook product search failed:', e.message);
+      }
+    }
+
+    // Format response
+    if (!productResult) {
+      const notFoundMessage = business.language === 'TR'
+        ? `"${searchTerm}" adlı ürün bulunamadı.`
+        : `Product "${searchTerm}" not found.`;
+
+      return {
+        success: false,
+        result: 'not_found',
+        message: notFoundMessage
+      };
+    }
+
+    console.log(`✅ Product found from ${productSource}: ${productResult.title}`);
+
+    // Build response message
+    const isTurkish = business.language === 'TR';
+    let responseMessage;
+
+    if (productResult.available) {
+      if (isTurkish) {
+        responseMessage = `${productResult.title} stokta mevcut. `;
+        if (productResult.totalStock) {
+          responseMessage += `Mevcut stok: ${productResult.totalStock} adet. `;
+        }
+        if (productResult.variants?.length > 1) {
+          const availableVariants = productResult.variants.filter(v => v.available);
+          responseMessage += `Mevcut seçenekler: ${availableVariants.map(v => v.title).join(', ')}.`;
+        }
+      } else {
+        responseMessage = `${productResult.title} is in stock. `;
+        if (productResult.totalStock) {
+          responseMessage += `Available quantity: ${productResult.totalStock}. `;
+        }
+        if (productResult.variants?.length > 1) {
+          const availableVariants = productResult.variants.filter(v => v.available);
+          responseMessage += `Available options: ${availableVariants.map(v => v.title).join(', ')}.`;
+        }
+      }
+    } else {
+      if (isTurkish) {
+        responseMessage = `Üzgünüm, ${productResult.title} şu anda stokta yok.`;
+      } else {
+        responseMessage = `Sorry, ${productResult.title} is currently out of stock.`;
+      }
+    }
+
+    return {
+      success: true,
+      result: productResult.available ? 'in_stock' : 'out_of_stock',
+      message: responseMessage,
+      product: {
+        title: productResult.title,
+        available: productResult.available,
+        stock: productResult.totalStock,
+        variants: productResult.variants?.map(v => ({
+          title: v.title,
+          available: v.available,
+          stock: v.stock
+        }))
+      },
+      source: productSource
+    };
+
+  } catch (error) {
+    console.error('❌ Get product stock error:', error);
+
+    if (error.message?.includes('not found') || error.message?.includes('inactive')) {
+      return {
+        success: false,
+        message: 'Şu an stok bilgisine ulaşamıyorum. Lütfen daha sonra tekrar deneyin.'
+      };
+    }
+
+    return {
+      success: false,
+      message: error.message || 'Stok sorgulanırken bir hata oluştu. Lütfen daha sonra tekrar deneyin.'
+    };
+  }
+}
+
+/**
+ * Handle get_cargo_tracking function call
+ * Gets cargo/shipment tracking information for an order (Trendyol)
+ */
+async function handleGetCargoTracking(args, vapiMessage) {
+  try {
+    const { order_number } = args;
+
+    console.log('📦 Getting cargo tracking:', { order_number });
+
+    // Validate
+    if (!order_number) {
+      return {
+        success: false,
+        message: 'Sipariş numarası gerekli.'
+      };
+    }
+
+    // Get business from VAPI call
+    const business = await getBusinessFromVapiCall(vapiMessage);
+
+    // Get cargo tracking info
+    const cargoInfo = await trendyolService.getCargoTracking(business.id, order_number);
+
+    if (!cargoInfo.success) {
+      return {
+        success: false,
+        message: cargoInfo.message || 'Kargo bilgisi alınamadı.'
+      };
+    }
+
+    // Build response message based on status
+    let message = `Sipariş ${cargoInfo.orderNumber}: ${cargoInfo.statusText}. `;
+
+    if (cargoInfo.status === 'Shipped' || cargoInfo.status === 'Delivered') {
+      message += `Kargo firması: ${cargoInfo.cargoCompany || 'Belirtilmemiş'}. `;
+
+      if (cargoInfo.trackingNumber) {
+        message += `Takip numarası: ${cargoInfo.trackingNumber}. `;
+      }
+
+      if (cargoInfo.trackingUrl) {
+        message += `Kargo takibi için kargoyu ${cargoInfo.cargoCompany} sitesinden takip edebilirsiniz. `;
+      }
+    } else if (cargoInfo.status === 'Created' || cargoInfo.status === 'Picking') {
+      message += 'Siparişiniz henüz kargoya verilmedi. Hazırlanıyor. ';
+    } else if (cargoInfo.status === 'Delivered') {
+      message += 'Siparişiniz teslim edildi. ';
+    } else if (cargoInfo.status === 'Cancelled') {
+      message += 'Siparişiniz iptal edilmiş. ';
+    }
+
+    // Add product info
+    if (cargoInfo.lines && cargoInfo.lines.length > 0) {
+      const productList = cargoInfo.lines.map(line => line.productName).join(', ');
+      message += `Ürünler: ${productList}.`;
+    }
+
+    console.log(`✅ Cargo tracking retrieved: ${order_number}`);
+
+    return {
+      success: true,
+      message,
+      orderNumber: cargoInfo.orderNumber,
+      status: cargoInfo.status,
+      statusText: cargoInfo.statusText,
+      cargoCompany: cargoInfo.cargoCompany,
+      trackingNumber: cargoInfo.trackingNumber,
+      trackingUrl: cargoInfo.trackingUrl
+    };
+
+  } catch (error) {
+    console.error('❌ Get cargo tracking error:', error);
+
+    if (error.message?.includes('not found') || error.message?.includes('inactive')) {
+      return {
+        success: false,
+        message: 'Şu an kargo bilgisine ulaşamıyorum. Lütfen daha sonra tekrar deneyin.'
+      };
+    }
+
+    return {
+      success: false,
+      message: 'Kargo sorgulanırken bir hata oluştu. Lütfen daha sonra tekrar deneyin.'
+    };
+  }
+}
+
+// ============================================================================
+// CARGO TRACKING FUNCTION HANDLER
+// ============================================================================
+
+/**
+ * Handle track_shipment function call
+ * Tracks shipment status using connected cargo carriers
+ * @param {Object} args - Function arguments from VAPI
+ * @param {Object} vapiMessage - VAPI message object
+ */
+async function handleTrackShipment(args, vapiMessage) {
+  try {
+    const { tracking_number, carrier } = args;
+
+    console.log('📦 Tracking shipment:', { tracking_number, carrier });
+
+    // Validate required parameters
+    if (!tracking_number) {
+      return {
+        result: 'error',
+        message: 'Takip numarası gerekli. Lütfen kargo takip numaranızı söyleyin.'
+      };
+    }
+
+    // Get business from VAPI call
+    const business = await getBusinessFromVapiCall(vapiMessage);
+
+    // Track shipment using cargo aggregator
+    const trackingResult = await cargoAggregator.trackShipment(
+      business.id,
+      tracking_number,
+      carrier || null
+    );
+
+    // Log tracking request
+    console.log(`📦 Tracking result for ${tracking_number}:`, {
+      success: trackingResult.success,
+      carrier: trackingResult.carrier,
+      status: trackingResult.status
+    });
+
+    // Format response for AI
+    if (!trackingResult.success) {
+      // Handle different error codes
+      if (trackingResult.code === 'NO_INTEGRATION') {
+        return {
+          result: 'no_integration',
+          message: 'Şu an kargo takip sistemine bağlantımız bulunmuyor. Lütfen doğrudan kargo firmasının web sitesinden takip edin.'
+        };
+      }
+
+      if (trackingResult.code === 'NOT_FOUND') {
+        return {
+          result: 'not_found',
+          message: 'Bu takip numarasıyla kargo bulunamadı. Lütfen takip numarasını kontrol edip tekrar söyleyin.'
+        };
+      }
+
+      return {
+        result: 'error',
+        message: trackingResult.error || 'Kargo takip sorgusu başarısız oldu. Lütfen daha sonra tekrar deneyin.'
+      };
+    }
+
+    // Format success message
+    const formattedMessage = cargoAggregator.formatTrackingForAI(trackingResult);
+
+    return {
+      result: 'success',
+      message: formattedMessage,
+      data: {
+        carrier: trackingResult.carrier,
+        carrierName: trackingResult.carrierName,
+        trackingNumber: trackingResult.trackingNumber,
+        status: trackingResult.status,
+        statusText: trackingResult.statusText,
+        lastLocation: trackingResult.lastLocation,
+        estimatedDelivery: trackingResult.estimatedDelivery
+      }
+    };
+
+  } catch (error) {
+    console.error('❌ Track shipment error:', error);
+    return {
+      result: 'error',
+      message: 'Kargo takip sorgusu sırasında bir hata oluştu. Lütfen daha sonra tekrar deneyin.'
+    };
+  }
+}
+
+/**
+ * Handle get_tracking_info function call
+ * Gets shipping/tracking information for an order (Shopify, WooCommerce, Webhook)
+ */
+async function handleGetTrackingInfo(args, vapiMessage) {
+  try {
+    const { order_number, tracking_number } = args;
+
+    console.log('🔍 Getting tracking info:', { order_number, tracking_number });
+
+    // Get business
+    const business = await getBusinessFromVapiCall(vapiMessage);
+
+    // First try to find the order
+    if (order_number) {
+      const orderResult = await handleCheckOrderStatus({ order_number }, vapiMessage);
+
+      if (orderResult.success && orderResult.order?.tracking) {
+        const tracking = orderResult.order.tracking;
+        const isTurkish = business.language === 'TR';
+
+        let responseMessage;
+        if (isTurkish) {
+          responseMessage = `Sipariş ${orderResult.order.orderNumber} için kargo bilgisi: `;
+          responseMessage += `Kargo firması: ${tracking.company}. `;
+          responseMessage += `Takip numarası: ${tracking.number}. `;
+          if (tracking.url) {
+            responseMessage += `Kargonuzu takip etmek için kargo firmasının web sitesini ziyaret edebilirsiniz.`;
+          }
+        } else {
+          responseMessage = `Tracking info for order ${orderResult.order.orderNumber}: `;
+          responseMessage += `Carrier: ${tracking.company}. `;
+          responseMessage += `Tracking number: ${tracking.number}. `;
+          if (tracking.url) {
+            responseMessage += `You can track your package on the carrier's website.`;
+          }
+        }
+
+        return {
+          success: true,
+          message: responseMessage,
+          tracking
+        };
+      }
+
+      if (orderResult.success && !orderResult.order?.tracking) {
+        const isTurkish = business.language === 'TR';
+        return {
+          success: true,
+          result: 'not_shipped',
+          message: isTurkish
+            ? `Sipariş ${orderResult.order.orderNumber} henüz kargoya verilmedi. Siparişiniz hazırlanıyor.`
+            : `Order ${orderResult.order.orderNumber} has not been shipped yet. Your order is being prepared.`
+        };
+      }
+    }
+
+    // Order not found
+    const isTurkish = business.language === 'TR';
+    return {
+      success: false,
+      message: isTurkish
+        ? 'Sipariş bulunamadı. Lütfen sipariş numarasını kontrol edin.'
+        : 'Order not found. Please check the order number.'
+    };
+
+  } catch (error) {
+    console.error('❌ Get tracking info error:', error);
+    return {
+      success: false,
+      message: error.message || 'Kargo bilgisi alınamadı. Lütfen daha sonra tekrar deneyin.'
+    };
+  }
+}
+
+// ============================================================================
+// PARASUT (ACCOUNTING) FUNCTION HANDLERS
+// ============================================================================
+
+/**
+ * Handle check_invoice_status function call
+ * Queries invoice status from Parasut
+ */
+async function handleCheckInvoiceStatus(args, vapiMessage) {
+  try {
+    const { invoice_number, customer_name } = args;
+
+    console.log('📄 Checking invoice status:', { invoice_number, customer_name });
+
+    // Validate - at least one parameter required
+    if (!invoice_number && !customer_name) {
+      return {
+        result: 'error',
+        message: 'Fatura numarasi veya musteri adi gerekli.'
+      };
+    }
+
+    // Get business from VAPI call
+    const business = await getBusinessFromVapiCall(vapiMessage);
+
+    // Check if Parasut is connected
+    const parasutIntegration = business.integrations.find(
+      i => i.type === 'PARASUT' && i.isActive
+    );
+
+    if (!parasutIntegration) {
+      return {
+        result: 'not_connected',
+        message: 'Parasut entegrasyonu bagli degil. Lutfen yoneticinize basvurun.'
+      };
+    }
+
+    let result;
+
+    if (invoice_number) {
+      // Search by invoice number
+      result = await parasutService.getInvoiceByNumber(business.id, invoice_number);
+
+      if (result.success && result.invoice) {
+        const inv = result.invoice;
+        const formattedAmount = parasutService.formatMoney(inv.totalAmount);
+
+        return {
+          result: 'success',
+          message: `${inv.number} numarali faturaniz ${inv.date} tarihli, toplam ${formattedAmount} TL. Durum: ${inv.statusText}.${inv.dueDate ? ` Vade: ${inv.dueDate}` : ''}`
+        };
+      } else {
+        return {
+          result: 'not_found',
+          message: 'Bu numarali fatura bulunamadi.'
+        };
+      }
+    } else if (customer_name) {
+      // Search by customer name
+      result = await parasutService.getInvoicesByCustomer(business.id, customer_name);
+
+      if (result.success && result.invoices && result.invoices.length > 0) {
+        const invoices = result.invoices;
+
+        if (invoices.length === 1) {
+          const inv = invoices[0];
+          const formattedAmount = parasutService.formatMoney(inv.totalAmount);
+
+          return {
+            result: 'success',
+            message: `${result.customerName} adina ${inv.number} numarali fatura bulundu. Tarih: ${inv.date}, Tutar: ${formattedAmount} TL. Durum: ${inv.statusText}.`
+          };
+        } else {
+          // Multiple invoices found
+          const latestInvoice = invoices[0]; // Most recent
+          const formattedAmount = parasutService.formatMoney(latestInvoice.totalAmount);
+          const unpaidCount = invoices.filter(i => i.status !== 'paid').length;
+
+          let message = `${result.customerName} adina ${invoices.length} fatura bulundu.`;
+          message += ` En son fatura ${latestInvoice.number}, ${formattedAmount} TL, ${latestInvoice.statusText}.`;
+
+          if (unpaidCount > 0) {
+            message += ` ${unpaidCount} adet odenmemis fatura var.`;
+          }
+
+          return {
+            result: 'success',
+            message: message
+          };
+        }
+      } else {
+        return {
+          result: 'not_found',
+          message: `${customer_name} adina fatura bulunamadi.`
+        };
+      }
+    }
+
+    return {
+      result: 'error',
+      message: 'Fatura bilgisi alinamadi.'
+    };
+
+  } catch (error) {
+    console.error('❌ Check invoice status error:', error);
+    return {
+      result: 'error',
+      message: 'Fatura sorgulama sirasinda bir hata olustu. Lutfen tekrar deneyin.'
+    };
+  }
+}
+/**
+ * Handle check_account_balance function call
+ * Queries contact (cari) balance from Parasut
+ */
+async function handleCheckAccountBalance(args, vapiMessage) {
+  try {
+    const { contact_name } = args;
+
+    console.log('💰 Checking account balance:', { contact_name });
+
+    if (!contact_name) {
+      return {
+        result: 'error',
+        message: 'Cari hesap adi gerekli.'
+      };
+    }
+
+    // Get business from VAPI call
+    const business = await getBusinessFromVapiCall(vapiMessage);
+
+    // Check if Parasut is connected
+    const parasutIntegration = business.integrations.find(
+      i => i.type === 'PARASUT' && i.isActive
+    );
+
+    if (!parasutIntegration) {
+      return {
+        result: 'not_connected',
+        message: 'Parasut entegrasyonu bagli degil. Lutfen yoneticinize basvurun.'
+      };
+    }
+
+    // First find contact by name
+    const contactResult = await parasutService.getContactByName(business.id, contact_name);
+
+    if (!contactResult.success || !contactResult.contact) {
+      return {
+        result: 'not_found',
+        message: `${contact_name} adinda cari hesap bulunamadi.`
+      };
+    }
+
+    // Get balance for this contact
+    const balanceResult = await parasutService.getContactBalance(business.id, contactResult.contact.id);
+
+    if (balanceResult.success && balanceResult.contact) {
+      const contact = balanceResult.contact;
+
+      let message = `${contact.name} cari bakiyesi: ${contact.balanceText}.`;
+
+      if (contact.lastTransaction) {
+        const lastDate = new Date(contact.lastTransaction).toLocaleDateString('tr-TR');
+        message += ` Son islem: ${lastDate}.`;
+      }
+
+      return {
+        result: 'success',
+        message: message
+      };
+    }
+
+    return {
+      result: 'error',
+      message: 'Bakiye bilgisi alinamadi.'
+    };
+
+  } catch (error) {
+    console.error('❌ Check account balance error:', error);
+    return {
+      result: 'error',
+      message: 'Bakiye sorgulama sirasinda bir hata olustu. Lutfen tekrar deneyin.'
+    };
+  }
+}
+
+// ============================================================================
+// IYZICO (PAYMENT) FUNCTION HANDLERS
+// ============================================================================
+
+/**
+ * Handle check_refund_status function call
+ * Queries refund status from iyzico
+ */
+async function handleCheckRefundStatus(args, vapiMessage) {
+  try {
+    const { order_number, payment_id } = args;
+
+    console.log('💳 Checking refund status:', { order_number, payment_id });
+
+    // Validate - at least one parameter required
+    if (!order_number && !payment_id) {
+      return {
+        result: 'error',
+        message: 'Siparis numarasi veya odeme ID gerekli.'
+      };
+    }
+
+    // Get business from VAPI call
+    const business = await getBusinessFromVapiCall(vapiMessage);
+
+    // Check if iyzico is connected
+    const iyzicoIntegration = business.integrations.find(
+      i => i.type === 'IYZICO' && i.isActive
+    );
+
+    if (!iyzicoIntegration) {
+      return {
+        result: 'not_connected',
+        message: 'iyzico odeme entegrasyonu bagli degil. Lutfen yoneticinize basvurun.'
+      };
+    }
+
+    // First get payment to find paymentId
+    let targetPaymentId = payment_id;
+
+    if (!targetPaymentId && order_number) {
+      const paymentResult = await iyzicoService.getPaymentByConversationId(business.id, order_number);
+
+      if (!paymentResult.success) {
+        return {
+          result: 'not_found',
+          message: `${order_number} numarali siparis icin odeme bulunamadi.`
+        };
+      }
+
+      targetPaymentId = paymentResult.payment.paymentId;
+    }
+
+    // Get refund status
+    const result = await iyzicoService.getRefundStatus(business.id, targetPaymentId);
+
+    if (result.success) {
+      if (result.hasRefund && result.refund) {
+        const refund = result.refund;
+        const formattedAmount = iyzicoService.formatMoney(refund.refundAmount);
+
+        let message = '';
+        if (refund.refundStatus === 'REFUNDED') {
+          message = `Iadeniz tamamlandi. ${formattedAmount} TL tutari`;
+          if (refund.refundDate) {
+            const refundDate = new Date(refund.refundDate).toLocaleDateString('tr-TR');
+            message += ` ${refundDate} tarihinde`;
+          }
+          message += ` kartiniza iade edildi.`;
+        } else {
+          message = `Iade talebiniz isleme alindi. ${formattedAmount} TL tutarindaki iade 3-5 is gunu icinde kartiniza yansiyacak.`;
+        }
+
+        return {
+          result: 'success',
+          message: message
+        };
+      } else {
+        return {
+          result: 'no_refund',
+          message: 'Bu siparis icin iade talebi bulunmuyor. Iade talebinde bulunmak ister misiniz?'
+        };
+      }
+    }
+
+    return {
+      result: 'error',
+      message: result.error || 'Iade durumu alinamadi.'
+    };
+
+  } catch (error) {
+    console.error('❌ Check refund status error:', error);
+    return {
+      result: 'error',
+      message: 'Iade durumu sorgulama sirasinda bir hata olustu. Lutfen tekrar deneyin.'
+    };
+  }
+}
+
+/**
+ * Handle check_payment_status function call
+ * Queries payment status from iyzico
+ */
+async function handleCheckPaymentStatus(args, vapiMessage) {
+  try {
+    const { order_number, payment_id } = args;
+
+    console.log('💳 Checking payment status:', { order_number, payment_id });
+
+    // Validate - at least one parameter required
+    if (!order_number && !payment_id) {
+      return {
+        result: 'error',
+        message: 'Siparis numarasi veya odeme ID gerekli.'
+      };
+    }
+
+    // Get business from VAPI call
+    const business = await getBusinessFromVapiCall(vapiMessage);
+
+    // Check if iyzico is connected
+    const iyzicoIntegration = business.integrations.find(
+      i => i.type === 'IYZICO' && i.isActive
+    );
+
+    if (!iyzicoIntegration) {
+      return {
+        result: 'not_connected',
+        message: 'iyzico odeme entegrasyonu bagli degil. Lutfen yoneticinize basvurun.'
+      };
+    }
+
+    let result;
+
+    if (payment_id) {
+      result = await iyzicoService.getPaymentDetail(business.id, payment_id);
+    } else if (order_number) {
+      result = await iyzicoService.getPaymentByConversationId(business.id, order_number);
+    }
+
+    if (result.success && result.payment) {
+      const payment = result.payment;
+      const formattedAmount = iyzicoService.formatMoney(payment.paidPrice);
+
+      let message = '';
+
+      if (payment.status === 'SUCCESS') {
+        const paymentDate = payment.paymentDate
+          ? new Date(payment.paymentDate).toLocaleDateString('tr-TR')
+          : 'bilinmiyor';
+
+        message = `${order_number || payment.conversationId} siparisinin odemesi ${paymentDate} tarihinde basariyla alindi.`;
+        message += ` ${formattedAmount} TL, **** ${payment.cardLastFour} numarali kartinizdan cekildi.`;
+      } else if (payment.status === 'FAILURE') {
+        message = `${order_number || payment.conversationId} siparisi icin odeme basarisiz oldu.`;
+      } else {
+        message = `${order_number || payment.conversationId} siparisi odeme durumu: ${payment.statusText}.`;
+      }
+
+      return {
+        result: 'success',
+        message: message
+      };
+    }
+
+    return {
+      result: 'not_found',
+      message: 'Bu bilgilerle eslesen odeme bulunamadi.'
+    };
+
+  } catch (error) {
+    console.error('❌ Check payment status error:', error);
+    return {
+      result: 'error',
+      message: 'Odeme durumu sorgulama sirasinda bir hata olustu. Lutfen tekrar deneyin.'
+=======
+    // If we have a tracking number but no order
+    if (tracking_number) {
+      const isTurkish = business.language === 'TR';
+      return {
+        success: true,
+        result: 'tracking_only',
+        message: isTurkish
+          ? `Takip numaranız: ${tracking_number}. Bu numarayla kargo firmasının web sitesinden kargonuzu takip edebilirsiniz.`
+          : `Your tracking number is: ${tracking_number}. You can track your package using this number on the carrier's website.`,
+        tracking: {
+          number: tracking_number
+        }
+      };
+    }
+
+    const notFoundMessage = business.language === 'TR'
+      ? 'Kargo bilgisi bulunamadı. Lütfen sipariş numaranızı kontrol edin.'
+      : 'Tracking information not found. Please check your order number.';
+
+    return {
+      success: false,
+      result: 'not_found',
+      message: notFoundMessage
+    };
+
+  } catch (error) {
+    console.error('❌ Get tracking info error:', error);
+    return {
+      success: false,
+      message: error.message || 'Kargo bilgisi alınamadı.'
+    };
+  }
+}
+
+// ============================================================================
+// VAPI TOOL DEFINITIONS
+// ============================================================================
+// These are the tool definitions that should be added to VAPI assistants
+// when the respective integrations are active
+
+export const PARASUT_TOOLS = [
+  {
+    type: 'function',
+    function: {
+      name: 'check_invoice_status',
+      description: 'Musterinin fatura durumunu sorgular. Fatura numarasi veya musteri adiyla arama yapar.',
+      parameters: {
+        type: 'object',
+        properties: {
+          invoice_number: {
+            type: 'string',
+            description: 'Fatura numarasi (orn: FTR-2025-001)'
+          },
+          customer_name: {
+            type: 'string',
+            description: 'Musteri veya sirket adi'
+          }
+        },
+        required: []
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'check_account_balance',
+      description: 'Cari hesap bakiyesini sorgular. Musteri veya tedarikçinin bakiye durumunu ogrenmek icin kullanilir.',
+      parameters: {
+        type: 'object',
+        properties: {
+          contact_name: {
+            type: 'string',
+            description: 'Cari adi (musteri veya tedarikci)'
+          }
+        },
+        required: ['contact_name']
+      }
+    }
+  }
+];
+
+export const IYZICO_TOOLS = [
+  {
+    type: 'function',
+    function: {
+      name: 'check_refund_status',
+      description: 'Musterinin iade talebinin durumunu sorgular. Siparis numarasi veya odeme ID ile arama yapar.',
+      parameters: {
+        type: 'object',
+        properties: {
+          order_number: {
+            type: 'string',
+            description: 'Siparis numarasi'
+          },
+          payment_id: {
+            type: 'string',
+            description: 'iyzico odeme ID'
+          }
+        },
+        required: []
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'check_payment_status',
+      description: 'Musterinin odeme durumunu sorgular.',
+      parameters: {
+        type: 'object',
+        properties: {
+          order_number: {
+            type: 'string',
+            description: 'Siparis numarasi'
+          },
+          payment_id: {
+            type: 'string',
+            description: 'Odeme ID'
+          }
+        },
+        required: []
+      }
+    }
+  }
+];
+
+/**
+ * Get active tools for a business based on their integrations
+ * @param {number} businessId - Business ID
+ * @returns {Promise<Array>} Array of active tools
+ */
+export async function getActiveToolsForBusiness(businessId) {
+  const tools = [];
+
+  // Get business with integrations
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    include: {
+      integrations: {
+        where: { isActive: true }
+      }
+    }
+  });
+
+  if (!business) {
+    return tools;
+  }
+
+  // Check for Parasut integration
+  const hasParasut = business.integrations.some(
+    i => i.type === 'PARASUT' && i.connected
+  );
+
+  if (hasParasut) {
+    tools.push(...PARASUT_TOOLS);
+    console.log('✅ Parasut tools added for business:', businessId);
+  }
+
+  // Check for iyzico integration
+  const hasIyzico = business.integrations.some(
+    i => i.type === 'IYZICO' && i.connected
+  );
+
+  if (hasIyzico) {
+    tools.push(...IYZICO_TOOLS);
+    console.log('✅ iyzico tools added for business:', businessId);
+  }
+
+  return tools;
 }
 
 export default router;
