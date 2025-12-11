@@ -43,7 +43,11 @@ import {
   Package,
   Mail,
   Hash,
-  Truck
+  Truck,
+  Calculator,
+  Wallet,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast, toastHelpers } from '@/lib/toast';
@@ -78,6 +82,8 @@ const INTEGRATION_ICONS = {
   YURTICI_KARGO: Truck,
   ARAS_KARGO: Truck,
   MNG_KARGO: Truck,
+  PARASUT: Calculator,
+  IYZICO: Wallet,
   CUSTOM: Hash
 };
 
@@ -96,7 +102,8 @@ const CATEGORY_COLORS = {
   marketing: { icon: 'text-rose-600', bg: 'bg-rose-100' },
   crm: { icon: 'text-cyan-600', bg: 'bg-cyan-100' },
   data: { icon: 'text-emerald-600', bg: 'bg-emerald-100' },
-  automation: { icon: 'text-amber-600', bg: 'bg-amber-100' }
+  automation: { icon: 'text-amber-600', bg: 'bg-amber-100' },
+  accounting: { icon: 'text-slate-600', bg: 'bg-slate-100' }
 };
 
 // Documentation URLs
@@ -127,7 +134,9 @@ const INTEGRATION_DOCS = {
   TRENDYOL: 'https://developers.trendyol.com',
   YURTICI_KARGO: 'https://www.yurticikargo.com/tr/kurumsal/entegrasyon',
   ARAS_KARGO: 'https://www.araskargo.com.tr/kurumsal/entegrasyon',
-  MNG_KARGO: 'https://www.mngkargo.com.tr/entegrasyon'
+  MNG_KARGO: 'https://www.mngkargo.com.tr/entegrasyon',
+  PARASUT: 'https://apidocs.parasut.com',
+  IYZICO: 'https://dev.iyzipay.com'
 };
 
 export default function IntegrationsPage() {
@@ -171,11 +180,27 @@ export default function IntegrationsPage() {
     apiKey: ''
   });
 
+  // iyzico connection state
+  const [iyzicoModalOpen, setIyzicoModalOpen] = useState(false);
+  const [iyzicoStatus, setIyzicoStatus] = useState(null);
+  const [iyzicoLoading, setIyzicoLoading] = useState(false);
+  const [iyzicoForm, setIyzicoForm] = useState({
+    apiKey: '',
+    secretKey: '',
+    environment: 'sandbox'
+  });
+  const [showIyzicoSecret, setShowIyzicoSecret] = useState(false);
+
+  // Parasut connection state
+  const [parasutStatus, setParasutStatus] = useState(null);
+
   useEffect(() => {
     loadIntegrations();
     loadWhatsAppStatus();
     loadTrendyolStatus();
     loadCargoStatus();
+    loadIyzicoStatus();
+    loadParasutStatus();
   }, []);
 
   // Load available integrations (filtered by business type)
@@ -315,6 +340,26 @@ export default function IntegrationsPage() {
     setCargoModalOpen(true);
   };
 
+  // Load iyzico connection status
+  const loadIyzicoStatus = async () => {
+    try {
+      const response = await apiClient.get('/api/iyzico/status');
+      setIyzicoStatus(response.data);
+    } catch (error) {
+      console.error('Failed to load iyzico status:', error);
+    }
+  };
+
+  // Load Parasut connection status
+  const loadParasutStatus = async () => {
+    try {
+      const response = await apiClient.get('/api/parasut/status');
+      setParasutStatus(response.data);
+    } catch (error) {
+      console.error('Failed to load Parasut status:', error);
+    }
+  };
+
   // Handle WhatsApp connection
   const handleWhatsAppConnect = async () => {
     if (!whatsappForm.accessToken || !whatsappForm.phoneNumberId || !whatsappForm.verifyToken) {
@@ -356,6 +401,70 @@ export default function IntegrationsPage() {
         'WhatsApp disconnected successfully'
       );
       await loadWhatsAppStatus();
+      await loadIntegrations();
+    } catch (error) {
+      // Error handled by toastHelpers
+    }
+  };
+
+  // Handle iyzico connection
+  const handleIyzicoConnect = async () => {
+    if (!iyzicoForm.apiKey || !iyzicoForm.secretKey) {
+      toast.error('Please fill in API Key and Secret Key');
+      return;
+    }
+
+    setIyzicoLoading(true);
+    try {
+      const response = await apiClient.post('/api/iyzico/connect', iyzicoForm);
+
+      if (response.data.success) {
+        toast.success('iyzico connected successfully!');
+        setIyzicoModalOpen(false);
+        setIyzicoForm({
+          apiKey: '',
+          secretKey: '',
+          environment: 'sandbox'
+        });
+        await loadIyzicoStatus();
+        await loadIntegrations();
+      }
+    } catch (error) {
+      const errorMsg = error.response?.data?.error || 'Failed to connect iyzico';
+      toast.error(errorMsg);
+    } finally {
+      setIyzicoLoading(false);
+    }
+  };
+
+  // Handle iyzico disconnection
+  const handleIyzicoDisconnect = async () => {
+    if (!confirm('Are you sure you want to disconnect iyzico?')) return;
+
+    try {
+      await toastHelpers.async(
+        apiClient.post('/api/iyzico/disconnect'),
+        'Disconnecting iyzico...',
+        'iyzico disconnected successfully'
+      );
+      await loadIyzicoStatus();
+      await loadIntegrations();
+    } catch (error) {
+      // Error handled by toastHelpers
+    }
+  };
+
+  // Handle Parasut disconnection
+  const handleParasutDisconnect = async () => {
+    if (!confirm('Are you sure you want to disconnect Parasut?')) return;
+
+    try {
+      await toastHelpers.async(
+        apiClient.post('/api/parasut/disconnect'),
+        'Disconnecting Parasut...',
+        'Parasut disconnected successfully'
+      );
+      await loadParasutStatus();
       await loadIntegrations();
     } catch (error) {
       // Error handled by toastHelpers
@@ -474,6 +583,19 @@ export default function IntegrationsPage() {
         return;
       }
 
+      // iyzico - Show modal
+      if (integration.type === 'IYZICO') {
+        setIyzicoModalOpen(true);
+        return;
+      }
+
+      // Parasut - OAuth flow
+      if (integration.type === 'PARASUT') {
+        const response = await apiClient.get('/api/parasut/auth');
+        window.location.href = response.data.authUrl;
+        return;
+      }
+
       // OAuth integrations
       if (integration.type === 'GOOGLE_CALENDAR') {
         const response = await apiClient.get('/api/calendar/google/auth');
@@ -511,6 +633,10 @@ export default function IntegrationsPage() {
         await handleCargoDisconnect('aras');
       } else if (integration.type === 'MNG_KARGO') {
         await handleCargoDisconnect('mng');
+      } else if (integration.type === 'IYZICO') {
+        await handleIyzicoDisconnect();
+      } else if (integration.type === 'PARASUT') {
+        await handleParasutDisconnect();
       } else {
         const integrationId = integration.type.toLowerCase().replace('_', '-');
         await toastHelpers.async(
@@ -1144,6 +1270,110 @@ export default function IntegrationsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* iyzico Connection Modal */}
+      <Dialog open={iyzicoModalOpen} onOpenChange={setIyzicoModalOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Connect iyzico Payment Gateway</DialogTitle>
+            <DialogDescription>
+              Connect your iyzico account to enable payment and refund status tracking.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {/* Setup Instructions */}
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+              <h4 className="font-semibold text-sm text-purple-900 mb-3">Setup Instructions:</h4>
+              <ol className="space-y-2 text-sm text-purple-800 list-decimal list-inside">
+                <li>Log in to your <a href="https://merchant.iyzipay.com" target="_blank" rel="noopener noreferrer" className="underline">iyzico Merchant Panel</a></li>
+                <li>Go to Settings &gt; API Settings</li>
+                <li>Copy your API Key and Secret Key</li>
+                <li>Select the appropriate environment (Sandbox for testing)</li>
+              </ol>
+            </div>
+
+            {/* Form Fields */}
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="iyzicoApiKey">API Key *</Label>
+                <Input
+                  id="iyzicoApiKey"
+                  type="text"
+                  placeholder="Enter your iyzico API Key"
+                  value={iyzicoForm.apiKey}
+                  onChange={(e) => setIyzicoForm({ ...iyzicoForm, apiKey: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="iyzicoSecretKey">Secret Key *</Label>
+                <div className="relative">
+                  <Input
+                    id="iyzicoSecretKey"
+                    type={showIyzicoSecret ? 'text' : 'password'}
+                    placeholder="Enter your iyzico Secret Key"
+                    value={iyzicoForm.secretKey}
+                    onChange={(e) => setIyzicoForm({ ...iyzicoForm, secretKey: e.target.value })}
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowIyzicoSecret(!showIyzicoSecret)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-700"
+                  >
+                    {showIyzicoSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                <p className="text-xs text-neutral-500">This will be encrypted and stored securely</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="iyzicoEnvironment">Environment *</Label>
+                <select
+                  id="iyzicoEnvironment"
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-md text-sm"
+                  value={iyzicoForm.environment}
+                  onChange={(e) => setIyzicoForm({ ...iyzicoForm, environment: e.target.value })}
+                >
+                  <option value="sandbox">Sandbox (Testing)</option>
+                  <option value="production">Production (Live)</option>
+                </select>
+                <p className="text-xs text-neutral-500">Use Sandbox for testing before going live</p>
+              </div>
+            </div>
+
+            {/* Connection Status */}
+            {iyzicoStatus?.connected && (
+              <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                <CheckCircle2 className="h-5 w-5 text-green-600" />
+                <div>
+                  <p className="text-sm font-medium text-green-900">Currently Connected</p>
+                  <p className="text-xs text-green-700">
+                    Environment: {iyzicoStatus.environment === 'production' ? 'Production' : 'Sandbox'}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIyzicoModalOpen(false)}
+              disabled={iyzicoLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleIyzicoConnect}
+              disabled={iyzicoLoading}
+            >
+              {iyzicoLoading ? 'Connecting...' : 'Connect iyzico'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -1177,7 +1407,9 @@ function getCategoryDescription(type, category) {
     SLACK: 'Team communication and notifications',
     TWILIO_SMS: 'SMS notifications and messaging',
     SENDGRID_EMAIL: 'Email delivery and transactional emails',
-    TRENDYOL: 'Trendyol mağazanızı bağlayın - sipariş ve stok sorgulama'
+    TRENDYOL: 'Trendyol mağazanızı bağlayın - sipariş ve stok sorgulama',
+    PARASUT: 'Turkish accounting software - Invoice and contact management',
+    IYZICO: 'Turkish payment gateway - Payment and refund tracking'
   };
   return descriptions[type] || `${category} integration`;
 }

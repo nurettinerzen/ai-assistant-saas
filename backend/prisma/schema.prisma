@@ -467,6 +467,8 @@ enum IntegrationType {
   ARAS_KARGO
   MNG_KARGO
   TRENDYOL
+  PARASUT
+  IYZICO
   CUSTOM
 }
 
