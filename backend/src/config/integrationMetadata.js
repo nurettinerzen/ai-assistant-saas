@@ -348,6 +348,36 @@ export const INTEGRATION_METADATA = {
     },
     name: 'SendGrid',
     category: 'communication'
+  },
+
+  // Parasut - Accounting (Turkish market)
+  PARASUT: {
+    relevantFor: ['ECOMMERCE', 'SERVICE', 'RESTAURANT', 'SALON', 'CLINIC', 'OTHER'],
+    priority: {
+      ECOMMERCE: 'RECOMMENDED',
+      SERVICE: 'RECOMMENDED',
+      RESTAURANT: 'RECOMMENDED',
+      SALON: 'RECOMMENDED',
+      CLINIC: 'RECOMMENDED',
+      OTHER: 'RECOMMENDED'
+    },
+    name: 'Parasut Muhasebe',
+    category: 'accounting'
+  },
+
+  // iyzico - Payment (Turkish market)
+  IYZICO: {
+    relevantFor: ['ECOMMERCE', 'SERVICE', 'RESTAURANT', 'SALON', 'CLINIC', 'OTHER'],
+    priority: {
+      ECOMMERCE: 'ESSENTIAL',
+      SERVICE: 'RECOMMENDED',
+      RESTAURANT: 'RECOMMENDED',
+      SALON: 'RECOMMENDED',
+      CLINIC: 'RECOMMENDED',
+      OTHER: 'OPTIONAL'
+    },
+    name: 'iyzico Odeme',
+    category: 'payments'
   }
 };
 
