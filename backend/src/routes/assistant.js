@@ -2,6 +2,7 @@ import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticateToken } from '../middleware/auth.js';
 import vapiService from '../services/vapi.js';
+import cargoAggregator from '../services/cargo-aggregator.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -43,6 +44,62 @@ const CREATE_APPOINTMENT_TOOL = {
     timeoutSeconds: 20
   }
 };
+
+const TRACK_SHIPMENT_TOOL = {
+  type: "function",
+  function: {
+    name: "track_shipment",
+    description: "Müşterinin kargo takip numarası ile gönderisinin durumunu sorgular. Müşteri kargo firmasını belirtmezse otomatik bulunur. Tracks customer's shipment status by tracking number.",
+    parameters: {
+      type: "object",
+      properties: {
+        tracking_number: {
+          type: "string",
+          description: "Kargo takip numarası / Shipment tracking number"
+        },
+        carrier: {
+          type: "string",
+          enum: ["yurtici", "aras", "mng"],
+          description: "Kargo firması (opsiyonel). Belirtilmezse tüm bağlı firmalar denenir. / Cargo carrier (optional). If not specified, all connected carriers will be tried."
+        }
+      },
+      required: ["tracking_number"]
+    }
+  },
+  server: {
+    url: `${process.env.BACKEND_URL || 'https://marin-methoxy-suzette.ngrok-free.dev'}/api/vapi/functions`,
+    timeoutSeconds: 15
+  }
+};
+
+/**
+ * Get active tools for a business based on their integrations
+ * @param {number} businessId - Business ID
+ * @returns {Promise<Array>} Array of VAPI tools to enable
+ */
+async function getActiveToolsForBusiness(businessId) {
+  const tools = [CREATE_APPOINTMENT_TOOL]; // Always include appointment tool
+
+  try {
+    // Check if business has cargo integration
+    const hasCargoIntegration = await cargoAggregator.hasCargoIntegration(businessId);
+    if (hasCargoIntegration) {
+      tools.push(TRACK_SHIPMENT_TOOL);
+      console.log(`📦 Cargo integration found, adding TRACK_SHIPMENT_TOOL for business ${businessId}`);
+    }
+
+    // Future: Add more integrations here
+    // const hasTrendyolIntegration = await checkTrendyolIntegration(businessId);
+    // if (hasTrendyolIntegration) {
+    //   tools.push(CHECK_ORDER_STATUS_TOOL);
+    // }
+
+  } catch (error) {
+    console.error('Error getting active tools for business:', error);
+  }
+
+  return tools;
+}
 
 router.use(authenticateToken);
 
@@ -137,7 +194,9 @@ const dateContext = `\n\nIMPORTANT: Today's date is ${today}. Use this for all d
       : `Hi, I'm ${name}, how can I help you?`;
     const finalFirstMessage = firstMessage || defaultFirstMessage;
 
-    console.log('📤 VAPI Request - tools:', JSON.stringify([CREATE_APPOINTMENT_TOOL], null, 2));
+    // Get active tools based on business integrations
+    const activeTools = await getActiveToolsForBusiness(businessId);
+    console.log('📤 VAPI Request - tools:', activeTools.map(t => t.function.name));
 
     // VAPI'de YENİ assistant oluştur
     const vapiResponse = await fetch('https://api.vapi.ai/assistant', {
@@ -148,14 +207,14 @@ const dateContext = `\n\nIMPORTANT: Today's date is ${today}. Use this for all d
       },
       body: JSON.stringify({
         name: `${name} - ${Date.now()}`,
-        
+
         // Transcriber - 11Labs
         transcriber: {
           provider: '11labs',
           model: 'scribe_v1',
           language: language === 'TR' ? 'tr' : 'en',
         },
-        
+
         // Model
         model: {
           provider: 'openai',
@@ -166,7 +225,7 @@ const dateContext = `\n\nIMPORTANT: Today's date is ${today}. Use this for all d
               content: fullSystemPrompt
             }
           ],
-          tools: [CREATE_APPOINTMENT_TOOL]
+          tools: activeTools
         },
         
         // Voice - 11Labs

@@ -36,6 +36,7 @@ import costCalculatorRoutes from './routes/costCalculator.js';
 import webhooksRoutes from './routes/webhooks.js';
 import chatRoutes from './routes/chat.js';
 import whatsappRoutes from './routes/whatsapp.js';
+import cargoRoutes from './routes/cargo.js';
 
 
 // Import jobs
@@ -101,6 +102,7 @@ app.use('/api/cost-calculator', costCalculatorRoutes);
 app.use('/api/webhooks', webhooksRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
+app.use('/api/cargo', cargoRoutes);
 
 
 // Error handling middleware
