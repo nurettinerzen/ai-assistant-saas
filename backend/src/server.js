@@ -36,6 +36,10 @@ import costCalculatorRoutes from './routes/costCalculator.js';
 import webhooksRoutes from './routes/webhooks.js';
 import chatRoutes from './routes/chat.js';
 import whatsappRoutes from './routes/whatsapp.js';
+// E-commerce integrations
+import shopifyRoutes from './routes/shopify.js';
+import woocommerceRoutes from './routes/woocommerce.js';
+import webhookRoutes from './routes/webhook.js';
 
 
 // Import jobs
@@ -59,6 +63,7 @@ app.use(cors({
 // ⚠️ WEBHOOK ROUTES - RAW BODY (BEFORE express.json())
 app.use('/api/subscription/webhook', express.raw({ type: 'application/json' }));
 app.use('/api/vapi/webhook', express.json()); // VAPI webhook needs parsed JSON
+app.use('/api/webhook/incoming', express.json()); // External webhooks (Zapier, etc.)
 
 // ✅ OTHER ROUTES - JSON PARSE
 app.use(express.json());
@@ -101,6 +106,10 @@ app.use('/api/cost-calculator', costCalculatorRoutes);
 app.use('/api/webhooks', webhooksRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
+// E-commerce integrations
+app.use('/api/shopify', shopifyRoutes);
+app.use('/api/woocommerce', woocommerceRoutes);
+app.use('/api/webhook', webhookRoutes);
 
 
 // Error handling middleware
