@@ -15,6 +15,8 @@ import callAnalysis from '../services/callAnalysis.js';
 import googleCalendarService from '../services/google-calendar.js';
 import netgsmService from '../services/netgsm.js';
 import whatsappService from '../services/whatsapp.js';
+import parasutService from '../services/parasut.js';
+import iyzicoService from '../services/iyzico.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -345,6 +347,24 @@ router.post('/functions', async (req, res) => {
 
           case 'send_order_notification':
             result = await handleSendOrderNotification(functionArgs, message);
+            break;
+
+          // Parasut (Accounting) Functions
+          case 'check_invoice_status':
+            result = await handleCheckInvoiceStatus(functionArgs, message);
+            break;
+
+          case 'check_account_balance':
+            result = await handleCheckAccountBalance(functionArgs, message);
+            break;
+
+          // iyzico (Payment) Functions
+          case 'check_refund_status':
+            result = await handleCheckRefundStatus(functionArgs, message);
+            break;
+
+          case 'check_payment_status':
+            result = await handleCheckPaymentStatus(functionArgs, message);
             break;
 
           default:
@@ -786,6 +806,509 @@ async function handleSendOrderNotification(args, vapiMessage) {
       message: error.message || 'Failed to send order notification. Please try again.'
     };
   }
+}
+
+// ============================================================================
+// PARASUT (ACCOUNTING) FUNCTION HANDLERS
+// ============================================================================
+
+/**
+ * Handle check_invoice_status function call
+ * Queries invoice status from Parasut
+ */
+async function handleCheckInvoiceStatus(args, vapiMessage) {
+  try {
+    const { invoice_number, customer_name } = args;
+
+    console.log('📄 Checking invoice status:', { invoice_number, customer_name });
+
+    // Validate - at least one parameter required
+    if (!invoice_number && !customer_name) {
+      return {
+        result: 'error',
+        message: 'Fatura numarasi veya musteri adi gerekli.'
+      };
+    }
+
+    // Get business from VAPI call
+    const business = await getBusinessFromVapiCall(vapiMessage);
+
+    // Check if Parasut is connected
+    const parasutIntegration = business.integrations.find(
+      i => i.type === 'PARASUT' && i.isActive
+    );
+
+    if (!parasutIntegration) {
+      return {
+        result: 'not_connected',
+        message: 'Parasut entegrasyonu bagli degil. Lutfen yoneticinize basvurun.'
+      };
+    }
+
+    let result;
+
+    if (invoice_number) {
+      // Search by invoice number
+      result = await parasutService.getInvoiceByNumber(business.id, invoice_number);
+
+      if (result.success && result.invoice) {
+        const inv = result.invoice;
+        const formattedAmount = parasutService.formatMoney(inv.totalAmount);
+
+        return {
+          result: 'success',
+          message: `${inv.number} numarali faturaniz ${inv.date} tarihli, toplam ${formattedAmount} TL. Durum: ${inv.statusText}.${inv.dueDate ? ` Vade: ${inv.dueDate}` : ''}`
+        };
+      } else {
+        return {
+          result: 'not_found',
+          message: 'Bu numarali fatura bulunamadi.'
+        };
+      }
+    } else if (customer_name) {
+      // Search by customer name
+      result = await parasutService.getInvoicesByCustomer(business.id, customer_name);
+
+      if (result.success && result.invoices && result.invoices.length > 0) {
+        const invoices = result.invoices;
+
+        if (invoices.length === 1) {
+          const inv = invoices[0];
+          const formattedAmount = parasutService.formatMoney(inv.totalAmount);
+
+          return {
+            result: 'success',
+            message: `${result.customerName} adina ${inv.number} numarali fatura bulundu. Tarih: ${inv.date}, Tutar: ${formattedAmount} TL. Durum: ${inv.statusText}.`
+          };
+        } else {
+          // Multiple invoices found
+          const latestInvoice = invoices[0]; // Most recent
+          const formattedAmount = parasutService.formatMoney(latestInvoice.totalAmount);
+          const unpaidCount = invoices.filter(i => i.status !== 'paid').length;
+
+          let message = `${result.customerName} adina ${invoices.length} fatura bulundu.`;
+          message += ` En son fatura ${latestInvoice.number}, ${formattedAmount} TL, ${latestInvoice.statusText}.`;
+
+          if (unpaidCount > 0) {
+            message += ` ${unpaidCount} adet odenmemis fatura var.`;
+          }
+
+          return {
+            result: 'success',
+            message: message
+          };
+        }
+      } else {
+        return {
+          result: 'not_found',
+          message: `${customer_name} adina fatura bulunamadi.`
+        };
+      }
+    }
+
+    return {
+      result: 'error',
+      message: 'Fatura bilgisi alinamadi.'
+    };
+
+  } catch (error) {
+    console.error('❌ Check invoice status error:', error);
+    return {
+      result: 'error',
+      message: 'Fatura sorgulama sirasinda bir hata olustu. Lutfen tekrar deneyin.'
+    };
+  }
+}
+
+/**
+ * Handle check_account_balance function call
+ * Queries contact (cari) balance from Parasut
+ */
+async function handleCheckAccountBalance(args, vapiMessage) {
+  try {
+    const { contact_name } = args;
+
+    console.log('💰 Checking account balance:', { contact_name });
+
+    if (!contact_name) {
+      return {
+        result: 'error',
+        message: 'Cari hesap adi gerekli.'
+      };
+    }
+
+    // Get business from VAPI call
+    const business = await getBusinessFromVapiCall(vapiMessage);
+
+    // Check if Parasut is connected
+    const parasutIntegration = business.integrations.find(
+      i => i.type === 'PARASUT' && i.isActive
+    );
+
+    if (!parasutIntegration) {
+      return {
+        result: 'not_connected',
+        message: 'Parasut entegrasyonu bagli degil. Lutfen yoneticinize basvurun.'
+      };
+    }
+
+    // First find contact by name
+    const contactResult = await parasutService.getContactByName(business.id, contact_name);
+
+    if (!contactResult.success || !contactResult.contact) {
+      return {
+        result: 'not_found',
+        message: `${contact_name} adinda cari hesap bulunamadi.`
+      };
+    }
+
+    // Get balance for this contact
+    const balanceResult = await parasutService.getContactBalance(business.id, contactResult.contact.id);
+
+    if (balanceResult.success && balanceResult.contact) {
+      const contact = balanceResult.contact;
+
+      let message = `${contact.name} cari bakiyesi: ${contact.balanceText}.`;
+
+      if (contact.lastTransaction) {
+        const lastDate = new Date(contact.lastTransaction).toLocaleDateString('tr-TR');
+        message += ` Son islem: ${lastDate}.`;
+      }
+
+      return {
+        result: 'success',
+        message: message
+      };
+    }
+
+    return {
+      result: 'error',
+      message: 'Bakiye bilgisi alinamadi.'
+    };
+
+  } catch (error) {
+    console.error('❌ Check account balance error:', error);
+    return {
+      result: 'error',
+      message: 'Bakiye sorgulama sirasinda bir hata olustu. Lutfen tekrar deneyin.'
+    };
+  }
+}
+
+// ============================================================================
+// IYZICO (PAYMENT) FUNCTION HANDLERS
+// ============================================================================
+
+/**
+ * Handle check_refund_status function call
+ * Queries refund status from iyzico
+ */
+async function handleCheckRefundStatus(args, vapiMessage) {
+  try {
+    const { order_number, payment_id } = args;
+
+    console.log('💳 Checking refund status:', { order_number, payment_id });
+
+    // Validate - at least one parameter required
+    if (!order_number && !payment_id) {
+      return {
+        result: 'error',
+        message: 'Siparis numarasi veya odeme ID gerekli.'
+      };
+    }
+
+    // Get business from VAPI call
+    const business = await getBusinessFromVapiCall(vapiMessage);
+
+    // Check if iyzico is connected
+    const iyzicoIntegration = business.integrations.find(
+      i => i.type === 'IYZICO' && i.isActive
+    );
+
+    if (!iyzicoIntegration) {
+      return {
+        result: 'not_connected',
+        message: 'iyzico odeme entegrasyonu bagli degil. Lutfen yoneticinize basvurun.'
+      };
+    }
+
+    // First get payment to find paymentId
+    let targetPaymentId = payment_id;
+
+    if (!targetPaymentId && order_number) {
+      const paymentResult = await iyzicoService.getPaymentByConversationId(business.id, order_number);
+
+      if (!paymentResult.success) {
+        return {
+          result: 'not_found',
+          message: `${order_number} numarali siparis icin odeme bulunamadi.`
+        };
+      }
+
+      targetPaymentId = paymentResult.payment.paymentId;
+    }
+
+    // Get refund status
+    const result = await iyzicoService.getRefundStatus(business.id, targetPaymentId);
+
+    if (result.success) {
+      if (result.hasRefund && result.refund) {
+        const refund = result.refund;
+        const formattedAmount = iyzicoService.formatMoney(refund.refundAmount);
+
+        let message = '';
+        if (refund.refundStatus === 'REFUNDED') {
+          message = `Iadeniz tamamlandi. ${formattedAmount} TL tutari`;
+          if (refund.refundDate) {
+            const refundDate = new Date(refund.refundDate).toLocaleDateString('tr-TR');
+            message += ` ${refundDate} tarihinde`;
+          }
+          message += ` kartiniza iade edildi.`;
+        } else {
+          message = `Iade talebiniz isleme alindi. ${formattedAmount} TL tutarindaki iade 3-5 is gunu icinde kartiniza yansiyacak.`;
+        }
+
+        return {
+          result: 'success',
+          message: message
+        };
+      } else {
+        return {
+          result: 'no_refund',
+          message: 'Bu siparis icin iade talebi bulunmuyor. Iade talebinde bulunmak ister misiniz?'
+        };
+      }
+    }
+
+    return {
+      result: 'error',
+      message: result.error || 'Iade durumu alinamadi.'
+    };
+
+  } catch (error) {
+    console.error('❌ Check refund status error:', error);
+    return {
+      result: 'error',
+      message: 'Iade durumu sorgulama sirasinda bir hata olustu. Lutfen tekrar deneyin.'
+    };
+  }
+}
+
+/**
+ * Handle check_payment_status function call
+ * Queries payment status from iyzico
+ */
+async function handleCheckPaymentStatus(args, vapiMessage) {
+  try {
+    const { order_number, payment_id } = args;
+
+    console.log('💳 Checking payment status:', { order_number, payment_id });
+
+    // Validate - at least one parameter required
+    if (!order_number && !payment_id) {
+      return {
+        result: 'error',
+        message: 'Siparis numarasi veya odeme ID gerekli.'
+      };
+    }
+
+    // Get business from VAPI call
+    const business = await getBusinessFromVapiCall(vapiMessage);
+
+    // Check if iyzico is connected
+    const iyzicoIntegration = business.integrations.find(
+      i => i.type === 'IYZICO' && i.isActive
+    );
+
+    if (!iyzicoIntegration) {
+      return {
+        result: 'not_connected',
+        message: 'iyzico odeme entegrasyonu bagli degil. Lutfen yoneticinize basvurun.'
+      };
+    }
+
+    let result;
+
+    if (payment_id) {
+      result = await iyzicoService.getPaymentDetail(business.id, payment_id);
+    } else if (order_number) {
+      result = await iyzicoService.getPaymentByConversationId(business.id, order_number);
+    }
+
+    if (result.success && result.payment) {
+      const payment = result.payment;
+      const formattedAmount = iyzicoService.formatMoney(payment.paidPrice);
+
+      let message = '';
+
+      if (payment.status === 'SUCCESS') {
+        const paymentDate = payment.paymentDate
+          ? new Date(payment.paymentDate).toLocaleDateString('tr-TR')
+          : 'bilinmiyor';
+
+        message = `${order_number || payment.conversationId} siparisinin odemesi ${paymentDate} tarihinde basariyla alindi.`;
+        message += ` ${formattedAmount} TL, **** ${payment.cardLastFour} numarali kartinizdan cekildi.`;
+      } else if (payment.status === 'FAILURE') {
+        message = `${order_number || payment.conversationId} siparisi icin odeme basarisiz oldu.`;
+      } else {
+        message = `${order_number || payment.conversationId} siparisi odeme durumu: ${payment.statusText}.`;
+      }
+
+      return {
+        result: 'success',
+        message: message
+      };
+    }
+
+    return {
+      result: 'not_found',
+      message: 'Bu bilgilerle eslesen odeme bulunamadi.'
+    };
+
+  } catch (error) {
+    console.error('❌ Check payment status error:', error);
+    return {
+      result: 'error',
+      message: 'Odeme durumu sorgulama sirasinda bir hata olustu. Lutfen tekrar deneyin.'
+    };
+  }
+}
+
+// ============================================================================
+// VAPI TOOL DEFINITIONS
+// ============================================================================
+// These are the tool definitions that should be added to VAPI assistants
+// when the respective integrations are active
+
+export const PARASUT_TOOLS = [
+  {
+    type: 'function',
+    function: {
+      name: 'check_invoice_status',
+      description: 'Musterinin fatura durumunu sorgular. Fatura numarasi veya musteri adiyla arama yapar.',
+      parameters: {
+        type: 'object',
+        properties: {
+          invoice_number: {
+            type: 'string',
+            description: 'Fatura numarasi (orn: FTR-2025-001)'
+          },
+          customer_name: {
+            type: 'string',
+            description: 'Musteri veya sirket adi'
+          }
+        },
+        required: []
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'check_account_balance',
+      description: 'Cari hesap bakiyesini sorgular. Musteri veya tedarikçinin bakiye durumunu ogrenmek icin kullanilir.',
+      parameters: {
+        type: 'object',
+        properties: {
+          contact_name: {
+            type: 'string',
+            description: 'Cari adi (musteri veya tedarikci)'
+          }
+        },
+        required: ['contact_name']
+      }
+    }
+  }
+];
+
+export const IYZICO_TOOLS = [
+  {
+    type: 'function',
+    function: {
+      name: 'check_refund_status',
+      description: 'Musterinin iade talebinin durumunu sorgular. Siparis numarasi veya odeme ID ile arama yapar.',
+      parameters: {
+        type: 'object',
+        properties: {
+          order_number: {
+            type: 'string',
+            description: 'Siparis numarasi'
+          },
+          payment_id: {
+            type: 'string',
+            description: 'iyzico odeme ID'
+          }
+        },
+        required: []
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'check_payment_status',
+      description: 'Musterinin odeme durumunu sorgular.',
+      parameters: {
+        type: 'object',
+        properties: {
+          order_number: {
+            type: 'string',
+            description: 'Siparis numarasi'
+          },
+          payment_id: {
+            type: 'string',
+            description: 'Odeme ID'
+          }
+        },
+        required: []
+      }
+    }
+  }
+];
+
+/**
+ * Get active tools for a business based on their integrations
+ * @param {number} businessId - Business ID
+ * @returns {Promise<Array>} Array of active tools
+ */
+export async function getActiveToolsForBusiness(businessId) {
+  const tools = [];
+
+  // Get business with integrations
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    include: {
+      integrations: {
+        where: { isActive: true }
+      }
+    }
+  });
+
+  if (!business) {
+    return tools;
+  }
+
+  // Check for Parasut integration
+  const hasParasut = business.integrations.some(
+    i => i.type === 'PARASUT' && i.connected
+  );
+
+  if (hasParasut) {
+    tools.push(...PARASUT_TOOLS);
+    console.log('✅ Parasut tools added for business:', businessId);
+  }
+
+  // Check for iyzico integration
+  const hasIyzico = business.integrations.some(
+    i => i.type === 'IYZICO' && i.connected
+  );
+
+  if (hasIyzico) {
+    tools.push(...IYZICO_TOOLS);
+    console.log('✅ iyzico tools added for business:', businessId);
+  }
+
+  return tools;
 }
 
 export default router;
