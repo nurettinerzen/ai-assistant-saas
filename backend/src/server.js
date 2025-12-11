@@ -40,10 +40,12 @@ import trendyolRoutes from './routes/trendyol.js';
 import cargoRoutes from './routes/cargo.js';
 import parasutRoutes from './routes/parasut.js';
 import iyzicoRoutes from './routes/iyzico.js';
+import emailRoutes from './routes/email.js';
 
 
 // Import jobs
 import { initMonthlyResetJob } from './jobs/monthlyReset.js';
+import { initEmailSyncJob } from './jobs/emailSync.js';
 
 dotenv.config();
 
@@ -109,6 +111,7 @@ app.use('/api/trendyol', trendyolRoutes);
 app.use('/api/cargo', cargoRoutes);
 app.use('/api/parasut', parasutRoutes);
 app.use('/api/iyzico', iyzicoRoutes);
+app.use('/api/email', emailRoutes);
 
 
 // Error handling middleware
@@ -124,6 +127,7 @@ app.use((err, req, res, next) => {
 if (process.env.NODE_ENV !== 'test') {
   console.log('\n🚀 Initializing background jobs...');
   initMonthlyResetJob();
+  initEmailSyncJob();
   console.log('✅ Background jobs initialized\n');
 }
 
