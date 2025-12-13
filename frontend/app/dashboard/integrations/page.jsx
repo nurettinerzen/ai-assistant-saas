@@ -206,7 +206,8 @@ export default function IntegrationsPage() {
   const [shopifyLoading, setShopifyLoading] = useState(false);
   const [shopifyForm, setShopifyForm] = useState({
     shopUrl: '',
-    accessToken: ''
+    accessToken: '',
+    method: 'manual' // 'manual' or 'oauth'
   });
 
   // WooCommerce connection state
@@ -688,13 +689,53 @@ export default function IntegrationsPage() {
       if (response.data.success) {
         toast.success(`Connected to ${response.data.shop?.name || 'Shopify'}!`);
         setShopifyModalOpen(false);
-        setShopifyForm({ shopUrl: '', accessToken: '' });
+        setShopifyForm({ shopUrl: '', accessToken: '', method: 'manual' });
         await loadShopifyStatus();
         await loadIntegrations();
       }
     } catch (error) {
       const errorMsg = error.response?.data?.error || 'Failed to connect Shopify';
       toast.error(errorMsg);
+    } finally {
+      setShopifyLoading(false);
+    }
+  };
+
+  // Handle Shopify OAuth connection
+  const handleShopifyOAuthConnect = async () => {
+    if (!shopifyForm.shopUrl) {
+      toast.error('Please enter your shop URL');
+      return;
+    }
+
+    // Format shop URL
+    let shopDomain = shopifyForm.shopUrl.trim()
+      .replace('https://', '')
+      .replace('http://', '')
+      .replace(/\/$/, '');
+
+    if (!shopDomain.includes('.myshopify.com')) {
+      shopDomain = `${shopDomain}.myshopify.com`;
+    }
+
+    setShopifyLoading(true);
+    try {
+      const response = await apiClient.get(`/api/shopify/auth?shop=${encodeURIComponent(shopDomain)}`);
+
+      if (response.data.authUrl) {
+        // Redirect to Shopify OAuth
+        window.location.href = response.data.authUrl;
+      } else if (response.data.useManualMethod) {
+        toast.error('OAuth not configured. Please use manual token method.');
+        setShopifyForm({ ...shopifyForm, method: 'manual' });
+      }
+    } catch (error) {
+      const errorMsg = error.response?.data?.error || 'Failed to start OAuth flow';
+      toast.error(errorMsg);
+
+      if (error.response?.data?.useManualMethod) {
+        setShopifyForm({ ...shopifyForm, method: 'manual' });
+      }
     } finally {
       setShopifyLoading(false);
     }
@@ -716,6 +757,7 @@ export default function IntegrationsPage() {
       // Error handled by toastHelpers
     }
   };
+
   // ============ WOOCOMMERCE HANDLERS ============
 
   // Handle WooCommerce connection
@@ -1540,6 +1582,79 @@ export default function IntegrationsPage() {
             <DialogTitle>Trendyol Satıcı Hesabı Bağla</DialogTitle>
             <DialogDescription>
               Trendyol mağazanızı bağlayarak AI asistanınızın sipariş durumu ve stok bilgisi sorgulamasını sağlayın.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+              <h4 className="font-semibold text-sm text-orange-900 mb-3">Kurulum Adımları:</h4>
+              <ol className="space-y-2 text-sm text-orange-800 list-decimal list-inside">
+                <li><a href="https://partner.trendyol.com" target="_blank" rel="noopener noreferrer" className="underline">Trendyol Partner Portal</a>&apos;a giriş yapın</li>
+                <li>Entegrasyon Bilgileri sayfasına gidin</li>
+                <li>API Key ve API Secret bilgilerini kopyalayın</li>
+                <li>Supplier ID (Satıcı ID) bilgisini not alın</li>
+              </ol>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="supplierId">Supplier ID (Satıcı ID) *</Label>
+                <Input
+                  id="supplierId"
+                  type="text"
+                  placeholder="Örn: 123456"
+                  value={trendyolForm.supplierId}
+                  onChange={(e) => setTrendyolForm({ ...trendyolForm, supplierId: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="trendyolApiKey">API Key *</Label>
+                <Input
+                  id="trendyolApiKey"
+                  type="text"
+                  placeholder="API Key'inizi girin"
+                  value={trendyolForm.apiKey}
+                  onChange={(e) => setTrendyolForm({ ...trendyolForm, apiKey: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="trendyolApiSecret">API Secret *</Label>
+                <Input
+                  id="trendyolApiSecret"
+                  type="password"
+                  placeholder="API Secret'ınızı girin"
+                  value={trendyolForm.apiSecret}
+                  onChange={(e) => setTrendyolForm({ ...trendyolForm, apiSecret: e.target.value })}
+                />
+              </div>
+            </div>
+
+            {trendyolStatus?.connected && (
+              <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                <CheckCircle2 className="h-5 w-5 text-green-600" />
+                <div>
+                  <p className="text-sm font-medium text-green-900">Bağlantı Aktif</p>
+                  <p className="text-xs text-green-700">
+                    Son senkronizasyon: {trendyolStatus.lastSync ? new Date(trendyolStatus.lastSync).toLocaleString('tr-TR') : 'Henüz yapılmadı'}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTrendyolModalOpen(false)} disabled={trendyolLoading}>
+              İptal
+            </Button>
+            <Button onClick={handleTrendyolConnect} disabled={trendyolLoading}>
+              {trendyolLoading ? 'Bağlanıyor...' : 'Trendyol\'u Bağla'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Shopify Connection Modal */}
       <Dialog open={shopifyModalOpen} onOpenChange={setShopifyModalOpen}>
         <DialogContent className="max-w-2xl">
@@ -1551,104 +1666,96 @@ export default function IntegrationsPage() {
           </DialogHeader>
 
           <div className="space-y-6 py-4">
-            {/* Setup Instructions */}
-            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-              <h4 className="font-semibold text-sm text-orange-900 mb-3">Kurulum Adımları:</h4>
-              <ol className="space-y-2 text-sm text-orange-800 list-decimal list-inside">
-                <li><a href="https://partner.trendyol.com" target="_blank" rel="noopener noreferrer" className="underline">Trendyol Partner Portal</a>'a giriş yapın</li>
-                <li>Entegrasyon Bilgileri sayfasına gidin</li>
-                <li>API Key ve API Secret bilgilerini kopyalayın</li>
-                <li>Supplier ID (Satıcı ID) bilgisini not alın</li>
-                <li>Bilgileri aşağıdaki alanlara girin</li>
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <h4 className="font-semibold text-sm text-green-900 mb-3">How to get your Access Token:</h4>
-              <ol className="space-y-2 text-sm text-green-800 list-decimal list-inside">
-                <li>Go to Shopify Admin → Settings → Apps and sales channels</li>
-                <li>Click "Develop apps" → "Create an app"</li>
-                <li>Configure Admin API scopes: read_orders, read_products, read_inventory</li>
-                <li>Install the app and copy the Admin API access token</li>
-              </ol>
-            </div>
-
-            {/* Form Fields */}
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="supplierId">Supplier ID (Satıcı ID) *</Label>
-                <Input
-                  id="supplierId"
-                  type="text"
-                  placeholder="Örn: 123456"
-                  value={trendyolForm.supplierId}
-                  onChange={(e) => setTrendyolForm({ ...trendyolForm, supplierId: e.target.value })}
-                />
-                <p className="text-xs text-neutral-500">Trendyol Partner Portal'da Entegrasyon Bilgileri sayfasında bulunur</p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="apiKey">API Key *</Label>
-                <Input
-                  id="apiKey"
-                  type="text"
-                  placeholder="API Key'inizi girin"
-                  value={trendyolForm.apiKey}
-                  onChange={(e) => setTrendyolForm({ ...trendyolForm, apiKey: e.target.value })}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="apiSecret">API Secret *</Label>
-                <Input
-                  id="apiSecret"
-                  type="password"
-                  placeholder="API Secret'ınızı girin"
-                  value={trendyolForm.apiSecret}
-                  onChange={(e) => setTrendyolForm({ ...trendyolForm, apiSecret: e.target.value })}
-                />
-                <p className="text-xs text-neutral-500">Bu bilgi güvenli şekilde saklanacaktır</p>
+            {/* Connection Method Tabs */}
+            <div className="border-b border-neutral-200">
+              <div className="flex gap-4">
+                <button
+                  onClick={() => setShopifyForm({ ...shopifyForm, method: 'manual' })}
+                  className={`pb-2 px-1 text-sm font-medium border-b-2 transition-colors ${
+                    (!shopifyForm.method || shopifyForm.method === 'manual')
+                      ? 'border-primary-600 text-primary-600'
+                      : 'border-transparent text-neutral-500 hover:text-neutral-700'
+                  }`}
+                >
+                  Manual Token (Custom App)
+                </button>
+                <button
+                  onClick={() => setShopifyForm({ ...shopifyForm, method: 'oauth' })}
+                  className={`pb-2 px-1 text-sm font-medium border-b-2 transition-colors ${
+                    shopifyForm.method === 'oauth'
+                      ? 'border-primary-600 text-primary-600'
+                      : 'border-transparent text-neutral-500 hover:text-neutral-700'
+                  }`}
+                >
+                  OAuth (Partner App)
+                </button>
               </div>
             </div>
 
-            {/* Features Info */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h4 className="font-semibold text-sm text-blue-900 mb-2">Bağlandığınızda AI asistanınız:</h4>
-              <ul className="space-y-1 text-sm text-blue-800">
-                <li>• Müşterilere sipariş durumu bilgisi verebilecek</li>
-                <li>• Kargo takip bilgisi sorgulayabilecek</li>
-                <li>• Ürün stok durumunu kontrol edebilecek</li>
-              </ul>
-            </div>
+            {/* Manual Token Method */}
+            {(!shopifyForm.method || shopifyForm.method === 'manual') && (
+              <>
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <h4 className="font-semibold text-sm text-green-900 mb-3">How to get your Access Token:</h4>
+                  <ol className="space-y-2 text-sm text-green-800 list-decimal list-inside">
+                    <li>Go to Shopify Admin → Settings → Apps and sales channels</li>
+                    <li>Click &quot;Develop apps&quot; → &quot;Create an app&quot;</li>
+                    <li>Configure Admin API scopes: read_orders, read_products, read_inventory</li>
+                    <li>Install the app and copy the Admin API access token</li>
+                  </ol>
+                </div>
 
-            {/* Connection Status */}
-            {trendyolStatus?.connected && (
-              <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-                <CheckCircle2 className="h-5 w-5 text-green-600" />
-                <div>
-                  <p className="text-sm font-medium text-green-900">Bağlantı Aktif</p>
-                  <p className="text-xs text-green-700">
-                    Son senkronizasyon: {trendyolStatus.lastSync ? new Date(trendyolStatus.lastSync).toLocaleString('tr-TR') : 'Henüz yapılmadı'}
-                <Label htmlFor="shopifyShopUrl">Shop URL *</Label>
-                <Input
-                  id="shopifyShopUrl"
-                  type="text"
-                  placeholder="mystore.myshopify.com"
-                  value={shopifyForm.shopUrl}
-                  onChange={(e) => setShopifyForm({ ...shopifyForm, shopUrl: e.target.value })}
-                />
-                <p className="text-xs text-neutral-500">Your Shopify store URL (without https://)</p>
-              </div>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="shopifyShopUrl">Shop URL *</Label>
+                    <Input
+                      id="shopifyShopUrl"
+                      type="text"
+                      placeholder="mystore.myshopify.com"
+                      value={shopifyForm.shopUrl}
+                      onChange={(e) => setShopifyForm({ ...shopifyForm, shopUrl: e.target.value })}
+                    />
+                    <p className="text-xs text-neutral-500">Your Shopify store URL (without https://)</p>
+                  </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="shopifyAccessToken">Admin API Access Token *</Label>
-                <Input
-                  id="shopifyAccessToken"
-                  type="password"
-                  placeholder="shpat_xxxxxxxxxxxxxxxxxxxxx"
-                  value={shopifyForm.accessToken}
-                  onChange={(e) => setShopifyForm({ ...shopifyForm, accessToken: e.target.value })}
-                />
-                <p className="text-xs text-neutral-500">This will be encrypted and stored securely</p>
-              </div>
-            </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="shopifyAccessToken">Admin API Access Token *</Label>
+                    <Input
+                      id="shopifyAccessToken"
+                      type="password"
+                      placeholder="shpat_xxxxxxxxxxxxxxxxxxxxx"
+                      value={shopifyForm.accessToken}
+                      onChange={(e) => setShopifyForm({ ...shopifyForm, accessToken: e.target.value })}
+                    />
+                    <p className="text-xs text-neutral-500">This will be encrypted and stored securely</p>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* OAuth Method */}
+            {shopifyForm.method === 'oauth' && (
+              <>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h4 className="font-semibold text-sm text-blue-900 mb-3">OAuth Flow:</h4>
+                  <p className="text-sm text-blue-800">
+                    Enter your store URL and click &quot;Connect via Shopify&quot;. You&apos;ll be redirected to Shopify to authorize the connection.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="shopifyOAuthUrl">Shop URL *</Label>
+                  <Input
+                    id="shopifyOAuthUrl"
+                    type="text"
+                    placeholder="mystore.myshopify.com"
+                    value={shopifyForm.shopUrl}
+                    onChange={(e) => setShopifyForm({ ...shopifyForm, shopUrl: e.target.value })}
+                  />
+                  <p className="text-xs text-neutral-500">Your Shopify store URL (e.g., mystore.myshopify.com)</p>
+                </div>
+              </>
+            )}
 
             {/* Connection Status */}
             {shopifyStatus?.connected && (
@@ -1664,20 +1771,19 @@ export default function IntegrationsPage() {
             )}
           </div>
 
-          <DialogFooter className="gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setTrendyolModalOpen(false)}
-              disabled={trendyolLoading}
-            >
-              İptal
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShopifyModalOpen(false)} disabled={shopifyLoading}>
+              Cancel
             </Button>
-            <Button
-              onClick={handleTrendyolConnect}
-              disabled={trendyolLoading}
-            >
-              {trendyolLoading ? 'Bağlanıyor...' : 'Trendyol\'u Bağla'}
-            </Button>
+            {shopifyForm.method === 'oauth' ? (
+              <Button onClick={handleShopifyOAuthConnect} disabled={shopifyLoading || !shopifyForm.shopUrl}>
+                {shopifyLoading ? 'Connecting...' : 'Connect via Shopify'}
+              </Button>
+            ) : (
+              <Button onClick={handleShopifyConnect} disabled={shopifyLoading}>
+                {shopifyLoading ? 'Connecting...' : 'Connect Shopify'}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1787,11 +1893,6 @@ export default function IntegrationsPage() {
                 resetCargoForm();
               }}
               disabled={cargoLoading}
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShopifyModalOpen(false)}
-              disabled={shopifyLoading}
             >
               Cancel
             </Button>
@@ -1800,22 +1901,11 @@ export default function IntegrationsPage() {
               disabled={cargoLoading}
             >
               {cargoLoading ? 'Connecting...' : `Connect ${activeCargoCarrier ? getCarrierName(activeCargoCarrier) : ''}`}
-              onClick={handleShopifyConnect}
-              disabled={shopifyLoading}
-            >
-              {shopifyLoading ? 'Connecting...' : 'Connect Shopify'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* iyzico Connection Modal */}
-      <Dialog open={iyzicoModalOpen} onOpenChange={setIyzicoModalOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Connect iyzico Payment Gateway</DialogTitle>
-            <DialogDescription>
-              Connect your iyzico account to enable payment and refund status tracking.
       {/* WooCommerce Connection Modal */}
       <Dialog open={woocommerceModalOpen} onOpenChange={setWoocommerceModalOpen}>
         <DialogContent className="max-w-2xl">
@@ -1827,34 +1917,19 @@ export default function IntegrationsPage() {
           </DialogHeader>
 
           <div className="space-y-6 py-4">
-            {/* Setup Instructions */}
             <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-              <h4 className="font-semibold text-sm text-purple-900 mb-3">Setup Instructions:</h4>
-              <ol className="space-y-2 text-sm text-purple-800 list-decimal list-inside">
-                <li>Log in to your <a href="https://merchant.iyzipay.com" target="_blank" rel="noopener noreferrer" className="underline">iyzico Merchant Panel</a></li>
-                <li>Go to Settings &gt; API Settings</li>
-                <li>Copy your API Key and Secret Key</li>
-                <li>Select the appropriate environment (Sandbox for testing)</li>
               <h4 className="font-semibold text-sm text-purple-900 mb-3">How to get your API Keys:</h4>
               <ol className="space-y-2 text-sm text-purple-800 list-decimal list-inside">
                 <li>Go to WordPress Admin → WooCommerce → Settings → Advanced → REST API</li>
-                <li>Click "Add key" to create a new API key</li>
-                <li>Set Description: "Telyx.ai Integration"</li>
-                <li>Select User and set Permissions to "Read"</li>
-                <li>Click "Generate API key" and copy both keys</li>
+                <li>Click &quot;Add key&quot; to create a new API key</li>
+                <li>Set Description: &quot;Telyx.ai Integration&quot;</li>
+                <li>Select User and set Permissions to &quot;Read&quot;</li>
+                <li>Click &quot;Generate API key&quot; and copy both keys</li>
               </ol>
             </div>
 
-            {/* Form Fields */}
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="iyzicoApiKey">API Key *</Label>
-                <Input
-                  id="iyzicoApiKey"
-                  type="text"
-                  placeholder="Enter your iyzico API Key"
-                  value={iyzicoForm.apiKey}
-                  onChange={(e) => setIyzicoForm({ ...iyzicoForm, apiKey: e.target.value })}
                 <Label htmlFor="wooSiteUrl">Site URL *</Label>
                 <Input
                   id="wooSiteUrl"
@@ -1878,39 +1953,6 @@ export default function IntegrationsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="iyzicoSecretKey">Secret Key *</Label>
-                <div className="relative">
-                  <Input
-                    id="iyzicoSecretKey"
-                    type={showIyzicoSecret ? 'text' : 'password'}
-                    placeholder="Enter your iyzico Secret Key"
-                    value={iyzicoForm.secretKey}
-                    onChange={(e) => setIyzicoForm({ ...iyzicoForm, secretKey: e.target.value })}
-                    className="pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowIyzicoSecret(!showIyzicoSecret)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-700"
-                  >
-                    {showIyzicoSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-                <p className="text-xs text-neutral-500">This will be encrypted and stored securely</p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="iyzicoEnvironment">Environment *</Label>
-                <select
-                  id="iyzicoEnvironment"
-                  className="w-full px-3 py-2 border border-neutral-300 rounded-md text-sm"
-                  value={iyzicoForm.environment}
-                  onChange={(e) => setIyzicoForm({ ...iyzicoForm, environment: e.target.value })}
-                >
-                  <option value="sandbox">Sandbox (Testing)</option>
-                  <option value="production">Production (Live)</option>
-                </select>
-                <p className="text-xs text-neutral-500">Use Sandbox for testing before going live</p>
                 <Label htmlFor="wooConsumerSecret">Consumer Secret *</Label>
                 <Input
                   id="wooConsumerSecret"
@@ -1923,14 +1965,6 @@ export default function IntegrationsPage() {
               </div>
             </div>
 
-            {/* Connection Status */}
-            {iyzicoStatus?.connected && (
-              <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-                <CheckCircle2 className="h-5 w-5 text-green-600" />
-                <div>
-                  <p className="text-sm font-medium text-green-900">Currently Connected</p>
-                  <p className="text-xs text-green-700">
-                    Environment: {iyzicoStatus.environment === 'production' ? 'Production' : 'Sandbox'}
             {woocommerceStatus?.connected && (
               <div className="flex items-center gap-2 p-3 bg-purple-50 border border-purple-200 rounded-lg">
                 <CheckCircle2 className="h-5 w-5 text-purple-600" />
@@ -1947,18 +1981,12 @@ export default function IntegrationsPage() {
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setIyzicoModalOpen(false)}
-              disabled={iyzicoLoading}
               onClick={() => setWoocommerceModalOpen(false)}
               disabled={woocommerceLoading}
             >
               Cancel
             </Button>
             <Button
-              onClick={handleIyzicoConnect}
-              disabled={iyzicoLoading}
-            >
-              {iyzicoLoading ? 'Connecting...' : 'Connect iyzico'}
               onClick={handleWooCommerceConnect}
               disabled={woocommerceLoading}
             >

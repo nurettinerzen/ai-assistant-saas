@@ -638,6 +638,220 @@ class ParasutService {
       maximumFractionDigits: 2
     }).format(amount);
   }
+
+  // ============================================================================
+  // OVERDUE INVOICES (For Batch Collection Calls)
+  // ============================================================================
+
+  /**
+   * Get overdue invoices with customer contact info
+   * @param {number} businessId - Business ID
+   * @param {Object} filters - Filter options
+   * @param {number} filters.minDaysOverdue - Minimum days past due date (default: 1)
+   * @param {number} filters.maxDaysOverdue - Maximum days past due date (optional)
+   * @param {number} filters.minAmount - Minimum invoice amount (optional)
+   * @param {number} filters.maxAmount - Maximum invoice amount (optional)
+   * @param {number} filters.page - Page number
+   * @param {number} filters.limit - Items per page
+   * @returns {Promise<Object>} Overdue invoices with customer details
+   */
+  async getOverdueInvoices(businessId, filters = {}) {
+    try {
+      const {
+        minDaysOverdue = 1,
+        maxDaysOverdue,
+        minAmount,
+        maxAmount,
+        page = 1,
+        limit = 50
+      } = filters;
+
+      // Calculate date threshold
+      const today = new Date();
+      const maxDueDate = new Date(today);
+      maxDueDate.setDate(maxDueDate.getDate() - minDaysOverdue);
+
+      // Build query params
+      const params = new URLSearchParams();
+      params.append('filter[status]', 'open'); // Only unpaid invoices
+      params.append('filter[due_date]', `<=${maxDueDate.toISOString().split('T')[0]}`);
+      params.append('include', 'contact');
+      params.append('page[number]', page.toString());
+      params.append('page[size]', limit.toString());
+      params.append('sort', 'due_date'); // Oldest first
+
+      const endpoint = `/sales_invoices?${params.toString()}`;
+      const response = await this.apiRequest(businessId, endpoint, { method: 'GET' });
+
+      // Process and filter invoices
+      const overdueInvoices = [];
+
+      for (const invoice of response.data || []) {
+        const attrs = invoice.attributes;
+        const dueDate = new Date(attrs.due_date);
+        const daysOverdue = Math.floor((today - dueDate) / (1000 * 60 * 60 * 24));
+        const amount = parseFloat(attrs.net_total) || 0;
+
+        // Apply filters
+        if (maxDaysOverdue && daysOverdue > maxDaysOverdue) continue;
+        if (minAmount && amount < minAmount) continue;
+        if (maxAmount && amount > maxAmount) continue;
+
+        // Get customer info from included data
+        const contactRel = invoice.relationships?.contact?.data;
+        let customer = null;
+
+        if (contactRel && response.included) {
+          const contactData = response.included.find(
+            i => i.type === 'contacts' && i.id === contactRel.id
+          );
+
+          if (contactData) {
+            customer = {
+              id: contactData.id,
+              name: contactData.attributes.name,
+              phone: contactData.attributes.phone,
+              email: contactData.attributes.email
+            };
+          }
+        }
+
+        // Only include invoices with valid customer phone
+        if (!customer?.phone) {
+          console.log(`Skipping invoice ${attrs.invoice_no}: No customer phone`);
+          continue;
+        }
+
+        overdueInvoices.push({
+          id: invoice.id,
+          number: attrs.invoice_no || `INV-${invoice.id}`,
+          dueDate: attrs.due_date,
+          daysOverdue,
+          amount,
+          currency: attrs.currency || 'TRY',
+          description: attrs.description || '',
+          customer
+        });
+      }
+
+      // Sort by days overdue (most overdue first)
+      overdueInvoices.sort((a, b) => b.daysOverdue - a.daysOverdue);
+
+      return {
+        success: true,
+        invoices: overdueInvoices,
+        total: overdueInvoices.length,
+        filters: {
+          minDaysOverdue,
+          maxDaysOverdue,
+          minAmount,
+          maxAmount
+        },
+        meta: response.meta
+      };
+    } catch (error) {
+      console.error('Get overdue invoices error:', error.response?.data || error.message);
+      return {
+        success: false,
+        error: error.message,
+        invoices: []
+      };
+    }
+  }
+
+  /**
+   * Get single contact with phone for collection call
+   * @param {number} businessId - Business ID
+   * @param {string} contactId - Contact ID
+   * @returns {Promise<Object>} Contact with phone details
+   */
+  async getContactForCollection(businessId, contactId) {
+    try {
+      const endpoint = `/contacts/${contactId}`;
+      const response = await this.apiRequest(businessId, endpoint, { method: 'GET' });
+
+      const contact = response.data;
+      const attrs = contact.attributes;
+
+      if (!attrs.phone) {
+        return {
+          success: false,
+          error: 'Contact has no phone number'
+        };
+      }
+
+      return {
+        success: true,
+        contact: {
+          id: contact.id,
+          name: attrs.name,
+          phone: attrs.phone,
+          email: attrs.email,
+          balance: parseFloat(attrs.balance) || 0
+        }
+      };
+    } catch (error) {
+      console.error('Get contact for collection error:', error.response?.data || error.message);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  /**
+   * Get summary statistics for overdue invoices
+   * @param {number} businessId - Business ID
+   * @returns {Promise<Object>} Summary stats
+   */
+  async getOverdueSummary(businessId) {
+    try {
+      const result = await this.getOverdueInvoices(businessId, {
+        minDaysOverdue: 1,
+        limit: 100
+      });
+
+      if (!result.success) {
+        return result;
+      }
+
+      const invoices = result.invoices;
+      const totalAmount = invoices.reduce((sum, inv) => sum + inv.amount, 0);
+      const avgDaysOverdue = invoices.length > 0
+        ? Math.round(invoices.reduce((sum, inv) => sum + inv.daysOverdue, 0) / invoices.length)
+        : 0;
+
+      // Group by days overdue
+      const byAge = {
+        '1-7': invoices.filter(i => i.daysOverdue >= 1 && i.daysOverdue <= 7),
+        '8-15': invoices.filter(i => i.daysOverdue >= 8 && i.daysOverdue <= 15),
+        '16-30': invoices.filter(i => i.daysOverdue >= 16 && i.daysOverdue <= 30),
+        '30+': invoices.filter(i => i.daysOverdue > 30)
+      };
+
+      return {
+        success: true,
+        summary: {
+          totalInvoices: invoices.length,
+          totalAmount,
+          totalAmountFormatted: `${this.formatMoney(totalAmount)} TRY`,
+          avgDaysOverdue,
+          byAge: {
+            '1-7': { count: byAge['1-7'].length, amount: byAge['1-7'].reduce((s, i) => s + i.amount, 0) },
+            '8-15': { count: byAge['8-15'].length, amount: byAge['8-15'].reduce((s, i) => s + i.amount, 0) },
+            '16-30': { count: byAge['16-30'].length, amount: byAge['16-30'].reduce((s, i) => s + i.amount, 0) },
+            '30+': { count: byAge['30+'].length, amount: byAge['30+'].reduce((s, i) => s + i.amount, 0) }
+          }
+        }
+      };
+    } catch (error) {
+      console.error('Get overdue summary error:', error.message);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
 }
 
 export default new ParasutService();

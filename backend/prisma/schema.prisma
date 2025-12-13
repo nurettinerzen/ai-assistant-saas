@@ -750,3 +750,130 @@ model WebhookInventory {
   @@index([businessId])
   @@index([sku])
 }
+
+// ============================================================================
+// BATCH CALL / COLLECTION CAMPAIGN TABLES
+// ============================================================================
+
+enum CampaignChannel {
+  PHONE
+  WHATSAPP
+}
+
+enum CampaignStatus {
+  PENDING
+  RUNNING
+  PAUSED
+  COMPLETED
+  CANCELLED
+  FAILED
+}
+
+enum CampaignCallStatus {
+  PENDING
+  QUEUED
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  NO_ANSWER
+  BUSY
+  VOICEMAIL
+  SKIPPED
+}
+
+enum CampaignCallOutcome {
+  PAYMENT_PROMISED    // Ödeme sözü aldı
+  PARTIAL_PAYMENT     // Kısmi ödeme yapacak
+  PAYMENT_REFUSED     // Ödeme reddetti
+  DISPUTE             // İtiraz var
+  CALLBACK_REQUESTED  // Geri arama istedi
+  WRONG_NUMBER        // Yanlış numara
+  NOT_AVAILABLE       // Müsait değil
+  NO_RESPONSE         // Cevap yok
+  OTHER               // Diğer
+}
+
+model Campaign {
+  id              Int             @id @default(autoincrement())
+  businessId      Int
+  name            String?
+  channel         CampaignChannel
+  status          CampaignStatus  @default(PENDING)
+
+  // Statistics
+  totalCalls      Int             @default(0)
+  completedCalls  Int             @default(0)
+  successfulCalls Int             @default(0)
+  failedCalls     Int             @default(0)
+
+  // Configuration
+  maxConcurrent   Int             @default(5)    // Max concurrent calls
+  callDelay       Int             @default(5)    // Seconds between calls
+  maxRetries      Int             @default(2)    // Max retry attempts per call
+
+  // Script/Prompt for AI
+  collectionScript String?        @db.Text       // Custom script for this campaign
+
+  // Timestamps
+  startedAt       DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  // Relations
+  calls           CampaignCall[]
+
+  @@index([businessId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model CampaignCall {
+  id              Int                   @id @default(autoincrement())
+  campaignId      Int
+
+  // Customer Info
+  customerName    String
+  customerPhone   String
+  customerEmail   String?
+
+  // Invoice Info (from Paraşüt)
+  invoiceId       String?               // Paraşüt invoice ID
+  invoiceNumber   String?
+  invoiceAmount   Float
+  invoiceCurrency String                @default("TRY")
+  daysOverdue     Int
+
+  // Call Status
+  status          CampaignCallStatus    @default(PENDING)
+  outcome         CampaignCallOutcome?
+  retryCount      Int                   @default(0)
+
+  // VAPI Integration
+  vapiCallId      String?               @unique
+
+  // Call Details
+  startedAt       DateTime?
+  completedAt     DateTime?
+  duration        Int?                  // Duration in seconds
+
+  // Results
+  transcript      Json?                 // Call transcript from VAPI
+  transcriptText  String?               @db.Text
+  summary         String?               @db.Text
+  paymentDate     DateTime?             // Promised payment date
+  paymentAmount   Float?                // Promised payment amount
+  notes           String?               @db.Text
+
+  // Timestamps
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  // Relations
+  campaign        Campaign              @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@index([status])
+  @@index([customerPhone])
+  @@index([vapiCallId])
+}
