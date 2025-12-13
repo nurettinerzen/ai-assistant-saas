@@ -3,10 +3,11 @@
 // ============================================================================
 // FILE: backend/src/routes/shopify.js
 //
-// Handles Shopify integration connect/disconnect and API endpoints
+// Handles Shopify OAuth integration and API endpoints
 // ============================================================================
 
 import express from 'express';
+import crypto from 'crypto';
 import { PrismaClient } from '@prisma/client';
 import { authenticateToken } from '../middleware/auth.js';
 import shopifyService from '../services/shopify.js';
@@ -14,7 +15,194 @@ import shopifyService from '../services/shopify.js';
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// All routes require authentication
+// OAuth state storage (in production, use Redis)
+const oauthStates = new Map();
+
+// ============================================================================
+// OAUTH ROUTES (Public - No Auth Required)
+// ============================================================================
+
+/**
+ * GET /api/shopify/auth
+ * Initiate Shopify OAuth flow
+ * Query params: shop (required), businessId (required)
+ */
+router.get('/auth', async (req, res) => {
+  try {
+    const { shop, businessId } = req.query;
+
+    if (!shop) {
+      return res.status(400).json({ error: 'Shop URL is required' });
+    }
+
+    if (!businessId) {
+      return res.status(400).json({ error: 'Business ID is required' });
+    }
+
+    // Normalize shop URL
+    let shopDomain = shop.trim().toLowerCase();
+    if (!shopDomain.includes('.myshopify.com')) {
+      shopDomain = shopDomain.replace(/^https?:\/\//, '').split('/')[0];
+      if (!shopDomain.endsWith('.myshopify.com')) {
+        shopDomain = `${shopDomain}.myshopify.com`;
+      }
+    } else {
+      shopDomain = shopDomain.replace(/^https?:\/\//, '').split('/')[0];
+    }
+
+    // Generate state for CSRF protection
+    const state = crypto.randomBytes(16).toString('hex');
+
+    // Store state with businessId (expires in 10 minutes)
+    oauthStates.set(state, {
+      businessId,
+      shop: shopDomain,
+      createdAt: Date.now()
+    });
+
+    // Clean up old states (older than 10 minutes)
+    for (const [key, value] of oauthStates.entries()) {
+      if (Date.now() - value.createdAt > 10 * 60 * 1000) {
+        oauthStates.delete(key);
+      }
+    }
+
+    const SHOPIFY_API_KEY = process.env.SHOPIFY_API_KEY;
+    const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001';
+    const scopes = 'read_orders,read_products,read_inventory,read_customers';
+    const redirectUri = `${BACKEND_URL}/api/shopify/callback`;
+
+    const authUrl = `https://${shopDomain}/admin/oauth/authorize?` +
+      `client_id=${SHOPIFY_API_KEY}` +
+      `&scope=${scopes}` +
+      `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+      `&state=${state}`;
+
+    console.log(`🔗 Shopify OAuth initiated for shop: ${shopDomain}, businessId: ${businessId}`);
+
+    res.redirect(authUrl);
+
+  } catch (error) {
+    console.error('❌ Shopify OAuth init error:', error);
+    const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+    res.redirect(`${FRONTEND_URL}/dashboard/integrations?shopify=error&message=${encodeURIComponent(error.message)}`);
+  }
+});
+
+/**
+ * GET /api/shopify/callback
+ * Handle Shopify OAuth callback
+ */
+router.get('/callback', async (req, res) => {
+  const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+
+  try {
+    const { code, shop, state, hmac } = req.query;
+
+    if (!code || !shop || !state) {
+      console.error('❌ Missing OAuth parameters');
+      return res.redirect(`${FRONTEND_URL}/dashboard/integrations?shopify=error&message=Missing+parameters`);
+    }
+
+    // Verify state
+    const storedState = oauthStates.get(state);
+    if (!storedState) {
+      console.error('❌ Invalid or expired state');
+      return res.redirect(`${FRONTEND_URL}/dashboard/integrations?shopify=error&message=Invalid+state`);
+    }
+
+    // Get businessId and clean up state
+    const { businessId } = storedState;
+    oauthStates.delete(state);
+
+    // Exchange code for access token
+    const SHOPIFY_API_KEY = process.env.SHOPIFY_API_KEY;
+    const SHOPIFY_API_SECRET = process.env.SHOPIFY_API_SECRET;
+
+    const tokenResponse = await fetch(`https://${shop}/admin/oauth/access_token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        client_id: SHOPIFY_API_KEY,
+        client_secret: SHOPIFY_API_SECRET,
+        code
+      })
+    });
+
+    if (!tokenResponse.ok) {
+      const errorText = await tokenResponse.text();
+      console.error('❌ Failed to exchange code for token:', errorText);
+      return res.redirect(`${FRONTEND_URL}/dashboard/integrations?shopify=error&message=Token+exchange+failed`);
+    }
+
+    const tokenData = await tokenResponse.json();
+    const accessToken = tokenData.access_token;
+
+    // Get shop info
+    const shopInfoResponse = await fetch(`https://${shop}/admin/api/2024-01/shop.json`, {
+      headers: { 'X-Shopify-Access-Token': accessToken }
+    });
+
+    let shopInfo = { name: shop, domain: shop };
+    if (shopInfoResponse.ok) {
+      const shopData = await shopInfoResponse.json();
+      shopInfo = shopData.shop;
+    }
+
+    // Save integration
+    await prisma.integration.upsert({
+      where: {
+        businessId_type: {
+          businessId,
+          type: 'SHOPIFY'
+        }
+      },
+      update: {
+        credentials: {
+          shopUrl: shop,
+          accessToken,
+          shopName: shopInfo.name,
+          shopDomain: shopInfo.domain,
+          shopId: shopInfo.id,
+          email: shopInfo.email,
+          oauthConnected: true
+        },
+        connected: true,
+        isActive: true,
+        lastSync: new Date()
+      },
+      create: {
+        businessId,
+        type: 'SHOPIFY',
+        credentials: {
+          shopUrl: shop,
+          accessToken,
+          shopName: shopInfo.name,
+          shopDomain: shopInfo.domain,
+          shopId: shopInfo.id,
+          email: shopInfo.email,
+          oauthConnected: true
+        },
+        connected: true,
+        isActive: true
+      }
+    });
+
+    console.log(`✅ Shopify OAuth completed for business ${businessId}: ${shopInfo.name}`);
+
+    res.redirect(`${FRONTEND_URL}/dashboard/integrations?shopify=success&shop=${encodeURIComponent(shopInfo.name)}`);
+
+  } catch (error) {
+    console.error('❌ Shopify OAuth callback error:', error);
+    res.redirect(`${FRONTEND_URL}/dashboard/integrations?shopify=error&message=${encodeURIComponent(error.message)}`);
+  }
+});
+
+// ============================================================================
+// AUTHENTICATED ROUTES
+// ============================================================================
+
+// All routes below require authentication
 router.use(authenticateToken);
 
 // ============================================================================

@@ -113,7 +113,7 @@ export default function IntegrationsPage() {
   const [shopifyModalOpen, setShopifyModalOpen] = useState(false);
   const [shopifyStatus, setShopifyStatus] = useState(null);
   const [shopifyLoading, setShopifyLoading] = useState(false);
-  const [shopifyForm, setShopifyForm] = useState({ shopUrl: '', accessToken: '' });
+  const [shopifyForm, setShopifyForm] = useState({ shopUrl: '' });
 
   // WooCommerce state
   const [woocommerceModalOpen, setWoocommerceModalOpen] = useState(false);
@@ -138,6 +138,24 @@ export default function IntegrationsPage() {
     loadShopifyStatus();
     loadWooCommerceStatus();
     loadWebhookStatus();
+
+    // Handle OAuth callback results
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const shopifyResult = params.get('shopify');
+      const shopName = params.get('shop');
+      const errorMessage = params.get('message');
+
+      if (shopifyResult === 'success') {
+        toast.success(`Shopify connected successfully${shopName ? `: ${shopName}` : ''}!`);
+        // Clean up URL
+        window.history.replaceState({}, '', window.location.pathname);
+      } else if (shopifyResult === 'error') {
+        toast.error(`Failed to connect Shopify${errorMessage ? `: ${decodeURIComponent(errorMessage)}` : ''}`);
+        // Clean up URL
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    }
   }, []);
 
   // Load functions
@@ -421,26 +439,33 @@ export default function IntegrationsPage() {
     } catch (error) { toast.error('Failed to disconnect'); }
   };
 
-  const handleShopifyConnect = async () => {
-    if (!shopifyForm.shopUrl || !shopifyForm.accessToken) {
-      toast.error('Please fill in all fields');
+  const handleShopifyConnect = () => {
+    if (!shopifyForm.shopUrl) {
+      toast.error('Please enter your shop URL');
       return;
     }
-    setShopifyLoading(true);
-    try {
-      const response = await apiClient.post('/api/shopify/connect', shopifyForm);
-      if (response.data.success) {
-        toast.success(`Connected to ${response.data.shop?.name || 'Shopify'}!`);
-        setShopifyModalOpen(false);
-        setShopifyForm({ shopUrl: '', accessToken: '' });
-        await loadShopifyStatus();
-        await loadIntegrations();
-      }
-    } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to connect Shopify');
-    } finally {
-      setShopifyLoading(false);
+
+    // Get businessId from localStorage
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const businessId = user.businessId;
+
+    if (!businessId) {
+      toast.error('Business ID not found. Please log in again.');
+      return;
     }
+
+    setShopifyLoading(true);
+
+    // Normalize shop URL
+    let shopUrl = shopifyForm.shopUrl.trim().toLowerCase();
+    shopUrl = shopUrl.replace(/^https?:\/\//, '').split('/')[0];
+    if (!shopUrl.includes('.myshopify.com')) {
+      shopUrl = shopUrl.replace('.myshopify.com', '');
+    }
+
+    // Redirect to OAuth endpoint
+    const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+    window.location.href = `${BACKEND_URL}/api/shopify/auth?shop=${encodeURIComponent(shopUrl)}&businessId=${businessId}`;
   };
 
   const handleShopifyDisconnect = async () => {
@@ -1016,32 +1041,56 @@ export default function IntegrationsPage() {
       </Dialog>
 
       {/* Shopify Modal */}
-      <Dialog open={shopifyModalOpen} onOpenChange={setShopifyModalOpen}>
-        <DialogContent className="max-w-2xl">
+      <Dialog open={shopifyModalOpen} onOpenChange={(open) => { setShopifyModalOpen(open); if (!open) setShopifyLoading(false); }}>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Connect Shopify Store</DialogTitle>
-            <DialogDescription>Connect your Shopify store for order tracking and inventory management.</DialogDescription>
+            <DialogTitle className="flex items-center gap-2">
+              <ShoppingCart className="h-5 w-5 text-green-600" />
+              Connect Shopify Store
+            </DialogTitle>
+            <DialogDescription>Connect your Shopify store with one click using OAuth.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>Shop URL *</Label>
-              <Input type="text" placeholder="mystore.myshopify.com" value={shopifyForm.shopUrl} onChange={(e) => setShopifyForm({ ...shopifyForm, shopUrl: e.target.value })} />
-              <p className="text-xs text-neutral-500">Your Shopify store URL (without https://)</p>
+              <div className="flex gap-2">
+                <Input
+                  type="text"
+                  placeholder="mystore"
+                  value={shopifyForm.shopUrl}
+                  onChange={(e) => setShopifyForm({ ...shopifyForm, shopUrl: e.target.value })}
+                  className="flex-1"
+                />
+                <span className="flex items-center text-sm text-neutral-500">.myshopify.com</span>
+              </div>
+              <p className="text-xs text-neutral-500">Enter your Shopify store name (the part before .myshopify.com)</p>
             </div>
-            <div className="space-y-2">
-              <Label>Admin API Access Token *</Label>
-              <Input type="password" placeholder="shpat_xxxxxxxxxxxxxxxxxxxxx" value={shopifyForm.accessToken} onChange={(e) => setShopifyForm({ ...shopifyForm, accessToken: e.target.value })} />
-            </div>
+
             {shopifyStatus?.connected && (
               <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
                 <CheckCircle2 className="h-5 w-5 text-green-600" />
                 <p className="text-sm font-medium text-green-900">Connected: {shopifyStatus.shopName || shopifyStatus.shopDomain}</p>
               </div>
             )}
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h4 className="text-sm font-medium text-blue-900 mb-2">How it works:</h4>
+              <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
+                <li>Enter your store name and click Connect</li>
+                <li>You'll be redirected to Shopify to authorize</li>
+                <li>After approving, you'll return here automatically</li>
+              </ol>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShopifyModalOpen(false)} disabled={shopifyLoading}>Cancel</Button>
-            <Button onClick={handleShopifyConnect} disabled={shopifyLoading}>{shopifyLoading ? 'Connecting...' : 'Connect Shopify'}</Button>
+            <Button onClick={handleShopifyConnect} disabled={shopifyLoading || !shopifyForm.shopUrl}>
+              {shopifyLoading ? (
+                <><RefreshCw className="h-4 w-4 mr-2 animate-spin" />Connecting...</>
+              ) : (
+                <><ExternalLink className="h-4 w-4 mr-2" />Connect with Shopify</>
+              )}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
