@@ -42,34 +42,32 @@ model Business {
   googleSheetId           String?
   googleSheetLastSync     DateTime?
   googleSheetName         String?
-  createdAt               DateTime                @default(now())
-  updatedAt               DateTime                @updatedAt
-  ownerPhone              String?
-  ownerWhatsApp           String?
   whatsappPhoneNumberId   String?
   whatsappAccessToken     String?
   whatsappVerifyToken     String?
   whatsappWebhookUrl      String?
-  timezone                String                  @default("Europe/Istanbul")
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
+  ownerPhone              String?
+  ownerWhatsApp           String?
   aiTrainings             AiTraining[]
   appointments            Appointment[]
   assistants              Assistant[]
   bookingIntegration      BookingIntegration?
   businessHours           BusinessHours?
   callLogs                CallLog[]
-  emailDrafts             EmailDraft[]
-  emailIntegration        EmailIntegration?
-  emailThreads            EmailThread[]
   erpIntegration          ErpIntegration?
   integrations            Integration[]
   knowledgeBase           KnowledgeBase[]
-  orders                  Order[]
   provisionedPhoneNumbers PhoneNumber[]           @relation("BusinessPhoneNumbers")
   products                Product[]
   reservationIntegration  ReservationIntegration?
   shippingInfos           ShippingInfo[]
   subscription            Subscription?
   users                   User[]
+  emailIntegration        EmailIntegration?
+  emailThreads            EmailThread[]
+  emailDrafts             EmailDraft[]
   webhookConfig           WebhookConfig?
 
   @@index([name])
@@ -153,21 +151,21 @@ model CallLog {
   callerId          String?
   duration          Int?
   status            String
-  recordingUrl      String?
+  transcript        Json?    // Array of {speaker, text, timestamp}
+  transcriptText    String?  @db.Text // Plain text for search
+  recordingUrl      String?  @db.Text
+  recordingDuration Int?     // Duration in seconds
   intent            String?
-  sentiment         String?
-  summary           String?
+  sentiment         String?  // 'positive', 'neutral', 'negative'
+  sentimentScore    Float?   // 0.0 to 1.0
+  summary           String?  @db.Text
   keyPoints         String[] @default([])
+  keyTopics         String[] @default([]) // ['appointment', 'pricing', 'availability']
+  actionItems       String[] @default([]) // ['Schedule follow-up', 'Send email']
   taskCompleted     Boolean?
   followUpNeeded    Boolean?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
-  transcriptText    String?
-  keyTopics         String[] @default([])
-  actionItems       String[] @default([])
-  sentimentScore    Float?
-  recordingDuration Int?
-  transcript        Json?
   business          Business @relation(fields: [businessId], references: [id])
 
   @@index([businessId])
@@ -177,43 +175,23 @@ model CallLog {
 }
 
 model Integration {
-  id          Int                  @id @default(autoincrement())
+  id          Int                   @id @default(autoincrement())
   businessId  Int
   type        IntegrationType
   credentials Json
-  isActive    Boolean              @default(true)
-  syncEnabled Boolean              @default(true)
+  isActive    Boolean               @default(true)
+  syncEnabled Boolean               @default(true)
   lastSync    DateTime?
-  createdAt   DateTime             @default(now())
-  updatedAt   DateTime             @updatedAt
-  connected   Boolean?             @default(false)
-  relevantFor BusinessType[]       @default([])
-  priority    IntegrationPriority? @default(OPTIONAL)
-  business    Business             @relation(fields: [businessId], references: [id])
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  connected   Boolean?              @default(false)
+  relevantFor BusinessType[]        @default([])
+  priority    IntegrationPriority?  @default(OPTIONAL)
+  business    Business              @relation(fields: [businessId], references: [id])
 
   @@unique([businessId, type])
   @@index([businessId])
   @@index([type])
-}
-
-model Order {
-  id            String    @id @default(cuid())
-  businessId    Int
-  customerName  String
-  customerPhone String
-  items         String
-  totalAmount   Float?
-  notes         String?
-  orderType     String    @default("PICKUP")
-  status        String    @default("PENDING")
-  source        String    @default("WHATSAPP")
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  pickupTime    DateTime?
-  business      Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
-
-  @@index([businessId])
-  @@index([status])
 }
 
 model BusinessHours {
@@ -325,27 +303,26 @@ model AiTraining {
 }
 
 model KnowledgeBase {
-  id              String          @id @default(cuid())
-  businessId      Int
-  type            KnowledgeType
-  title           String
-  content         String?
-  fileName        String?
-  fileSize        Int?
-  mimeType        String?
-  filePath        String?
-  url             String?
-  crawlDepth      Int?
-  pageCount       Int?
-  lastCrawled     DateTime?
-  question        String?
-  answer          String?
-  category        String?
-  status          KnowledgeStatus @default(PROCESSING)
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-  vapiKnowledgeId String?
-  business        Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  id          String          @id @default(cuid())
+  businessId  Int
+  type        KnowledgeType
+  title       String
+  content     String?
+  fileName    String?
+  fileSize    Int?
+  mimeType    String?
+  filePath    String?
+  url         String?
+  crawlDepth  Int?
+  pageCount   Int?
+  lastCrawled DateTime?
+  question    String?
+  answer      String?
+  category    String?
+  status      KnowledgeStatus @default(PROCESSING)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  business    Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
   @@index([businessId])
   @@index([type])
@@ -411,165 +388,6 @@ model BookingIntegration {
   @@index([businessId])
 }
 
-model EmailIntegration {
-  id           Int           @id @default(autoincrement())
-  businessId   Int           @unique
-  provider     EmailProvider
-  email        String
-  credentials  Json
-  connected    Boolean       @default(true)
-  lastSyncedAt DateTime?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  business     Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
-
-  @@index([businessId])
-  @@index([provider])
-}
-
-model EmailThread {
-  id            String            @id @default(cuid())
-  businessId    Int
-  threadId      String
-  subject       String
-  customerEmail String
-  customerName  String?
-  status        EmailThreadStatus @default(PENDING_REPLY)
-  lastMessageAt DateTime
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
-  drafts        EmailDraft[]
-  messages      EmailMessage[]
-  business      Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
-
-  @@unique([businessId, threadId])
-  @@index([businessId])
-  @@index([status])
-  @@index([lastMessageAt])
-}
-
-model EmailMessage {
-  id          String                @id @default(cuid())
-  threadId    String
-  messageId   String
-  direction   EmailMessageDirection
-  fromEmail   String
-  fromName    String?
-  toEmail     String
-  subject     String
-  bodyText    String?
-  bodyHtml    String?
-  attachments Json?
-  isDraft     Boolean               @default(false)
-  status      EmailMessageStatus    @default(RECEIVED)
-  sentAt      DateTime?
-  receivedAt  DateTime?
-  createdAt   DateTime              @default(now())
-  updatedAt   DateTime              @updatedAt
-  drafts      EmailDraft[]
-  thread      EmailThread           @relation(fields: [threadId], references: [id], onDelete: Cascade)
-
-  @@unique([threadId, messageId])
-  @@index([threadId])
-  @@index([direction])
-  @@index([status])
-}
-
-model EmailDraft {
-  id               String           @id @default(cuid())
-  messageId        String?
-  threadId         String
-  businessId       Int
-  generatedContent String
-  editedContent    String?
-  status           EmailDraftStatus @default(PENDING_REVIEW)
-  reviewedAt       DateTime?
-  reviewedBy       Int?
-  sentAt           DateTime?
-  sentMessageId    String?
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
-  business         Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  message          EmailMessage?    @relation(fields: [messageId], references: [id])
-  thread           EmailThread      @relation(fields: [threadId], references: [id], onDelete: Cascade)
-
-  @@index([threadId])
-  @@index([businessId])
-  @@index([status])
-}
-
-model WebhookConfig {
-  id            Int      @id @default(autoincrement())
-  businessId    Int      @unique
-  webhookSecret String   @unique @default(cuid())
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  business      Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-
-  @@index([businessId])
-  @@index([webhookSecret])
-}
-
-model WebhookLog {
-  id           Int       @id @default(autoincrement())
-  businessId   Int
-  type         String
-  action       String?
-  payload      Json
-  status       String    @default("received")
-  errorMessage String?
-  processedAt  DateTime?
-  createdAt    DateTime  @default(now())
-
-  @@index([businessId])
-  @@index([type])
-  @@index([createdAt])
-}
-
-model WebhookOrder {
-  id              Int      @id @default(autoincrement())
-  businessId      Int
-  externalId      String
-  customerName    String?
-  customerPhone   String?
-  customerEmail   String?
-  status          String   @default("pending")
-  statusText      String?
-  totalAmount     Float?
-  currency        String   @default("TRY")
-  items           Json?
-  trackingNumber  String?
-  trackingCarrier String?
-  trackingUrl     String?
-  source          String   @default("webhook")
-  rawPayload      Json?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  @@unique([businessId, externalId])
-  @@index([businessId])
-  @@index([customerPhone])
-  @@index([customerEmail])
-  @@index([externalId])
-}
-
-model WebhookInventory {
-  id          Int      @id @default(autoincrement())
-  businessId  Int
-  externalId  String?
-  productName String
-  sku         String?
-  stock       Int      @default(0)
-  source      String   @default("webhook")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@unique([businessId, sku])
-  @@index([businessId])
-  @@index([sku])
-}
-
 enum UserRole {
   OWNER
   ADMIN
@@ -580,9 +398,9 @@ enum BusinessType {
   RESTAURANT
   SALON
   ECOMMERCE
+  CLINIC
   SERVICE
   OTHER
-  CLINIC
 }
 
 enum VoiceGender {
@@ -635,9 +453,8 @@ enum IntegrationType {
   GOOGLE_CALENDAR
   HUBSPOT
   ZAPIER
-  CUSTOM
-  GOOGLE_SHEETS
   WHATSAPP
+  GOOGLE_SHEETS
   SLACK
   SALESFORCE
   WOOCOMMERCE
@@ -656,10 +473,7 @@ enum IntegrationType {
   TRENDYOL
   PARASUT
   IYZICO
-  GMAIL
-  OUTLOOK
-  NETGSM_SMS
-  HEPSIBURADA
+  CUSTOM
 }
 
 enum IntegrationPriority {
@@ -688,12 +502,12 @@ enum ShippingCarrier {
   FEDEX
   USPS
   DHL
-  OTHER
   YURTICI
   ARAS
   MNG
   PTT
   SURAT
+  OTHER
 }
 
 enum ShippingStatus {
@@ -741,6 +555,8 @@ enum BookingPlatform {
   CUSTOM
 }
 
+// ==================== EMAIL CHANNEL MODELS ====================
+
 enum EmailProvider {
   GMAIL
   OUTLOOK
@@ -770,4 +586,294 @@ enum EmailDraftStatus {
   APPROVED
   SENT
   REJECTED
+}
+
+model EmailIntegration {
+  id            Int           @id @default(autoincrement())
+  businessId    Int           @unique
+  provider      EmailProvider
+  email         String        // Connected email address
+  credentials   Json          // access_token, refresh_token, expiry
+  connected     Boolean       @default(true)
+  lastSyncedAt  DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  business      Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([provider])
+}
+
+model EmailThread {
+  id            String            @id @default(cuid())
+  businessId    Int
+  threadId      String            // Gmail/Outlook thread ID
+  subject       String
+  customerEmail String
+  customerName  String?
+  status        EmailThreadStatus @default(PENDING_REPLY)
+  lastMessageAt DateTime
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  business      Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  messages      EmailMessage[]
+  drafts        EmailDraft[]
+
+  @@unique([businessId, threadId])
+  @@index([businessId])
+  @@index([status])
+  @@index([lastMessageAt])
+}
+
+model EmailMessage {
+  id           String                @id @default(cuid())
+  threadId     String
+  messageId    String                // Gmail/Outlook message ID
+  direction    EmailMessageDirection
+  fromEmail    String
+  fromName     String?
+  toEmail      String
+  subject      String
+  bodyText     String?               @db.Text
+  bodyHtml     String?               @db.Text
+  attachments  Json?                 // [{name, size, mimeType}]
+  isDraft      Boolean               @default(false)
+  status       EmailMessageStatus    @default(RECEIVED)
+  sentAt       DateTime?
+  receivedAt   DateTime?
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  thread       EmailThread           @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  drafts       EmailDraft[]
+
+  @@unique([threadId, messageId])
+  @@index([threadId])
+  @@index([direction])
+  @@index([status])
+}
+
+model EmailDraft {
+  id               String           @id @default(cuid())
+  messageId        String?          // Which message this is replying to
+  threadId         String
+  businessId       Int
+  generatedContent String           @db.Text  // AI-generated draft
+  editedContent    String?          @db.Text  // User's edited version
+  status           EmailDraftStatus @default(PENDING_REVIEW)
+  reviewedAt       DateTime?
+  reviewedBy       Int?             // User ID who reviewed
+  sentAt           DateTime?
+  sentMessageId    String?          // ID of sent message
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  thread           EmailThread      @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  message          EmailMessage?    @relation(fields: [messageId], references: [id])
+  business         Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([threadId])
+  @@index([businessId])
+  @@index([status])
+}
+
+// ============================================================================
+// WEBHOOK INTEGRATION TABLES
+// ============================================================================
+
+model WebhookConfig {
+  id            Int       @id @default(autoincrement())
+  businessId    Int       @unique
+  webhookSecret String    @unique @default(cuid())
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  business      Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([webhookSecret])
+}
+
+model WebhookLog {
+  id          Int       @id @default(autoincrement())
+  businessId  Int
+  type        String    // order, inventory, shipment, custom
+  action      String?   // created, updated, deleted
+  payload     Json
+  status      String    @default("received") // received, processed, failed
+  errorMessage String?
+  processedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([businessId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model WebhookOrder {
+  id              Int       @id @default(autoincrement())
+  businessId      Int
+  externalId      String
+  customerName    String?
+  customerPhone   String?
+  customerEmail   String?
+  status          String    @default("pending")
+  statusText      String?
+  totalAmount     Float?
+  currency        String    @default("TRY")
+  items           Json?
+  trackingNumber  String?
+  trackingCarrier String?
+  trackingUrl     String?
+  source          String    @default("webhook") // zapier, make, custom
+  rawPayload      Json?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([businessId, externalId])
+  @@index([businessId])
+  @@index([customerPhone])
+  @@index([customerEmail])
+  @@index([externalId])
+}
+
+model WebhookInventory {
+  id          Int       @id @default(autoincrement())
+  businessId  Int
+  externalId  String?
+  productName String
+  sku         String?
+  stock       Int       @default(0)
+  source      String    @default("webhook")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([businessId, sku])
+  @@index([businessId])
+  @@index([sku])
+}
+
+// ============================================================================
+// BATCH CALL / COLLECTION CAMPAIGN TABLES
+// ============================================================================
+
+enum CampaignChannel {
+  PHONE
+  WHATSAPP
+}
+
+enum CampaignStatus {
+  PENDING
+  RUNNING
+  PAUSED
+  COMPLETED
+  CANCELLED
+  FAILED
+}
+
+enum CampaignCallStatus {
+  PENDING
+  QUEUED
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  NO_ANSWER
+  BUSY
+  VOICEMAIL
+  SKIPPED
+}
+
+enum CampaignCallOutcome {
+  PAYMENT_PROMISED    // Ödeme sözü aldı
+  PARTIAL_PAYMENT     // Kısmi ödeme yapacak
+  PAYMENT_REFUSED     // Ödeme reddetti
+  DISPUTE             // İtiraz var
+  CALLBACK_REQUESTED  // Geri arama istedi
+  WRONG_NUMBER        // Yanlış numara
+  NOT_AVAILABLE       // Müsait değil
+  NO_RESPONSE         // Cevap yok
+  OTHER               // Diğer
+}
+
+model Campaign {
+  id              Int             @id @default(autoincrement())
+  businessId      Int
+  name            String?
+  channel         CampaignChannel
+  status          CampaignStatus  @default(PENDING)
+
+  // Statistics
+  totalCalls      Int             @default(0)
+  completedCalls  Int             @default(0)
+  successfulCalls Int             @default(0)
+  failedCalls     Int             @default(0)
+
+  // Configuration
+  maxConcurrent   Int             @default(5)    // Max concurrent calls
+  callDelay       Int             @default(5)    // Seconds between calls
+  maxRetries      Int             @default(2)    // Max retry attempts per call
+
+  // Script/Prompt for AI
+  collectionScript String?        @db.Text       // Custom script for this campaign
+
+  // Timestamps
+  startedAt       DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  // Relations
+  calls           CampaignCall[]
+
+  @@index([businessId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model CampaignCall {
+  id              Int                   @id @default(autoincrement())
+  campaignId      Int
+
+  // Customer Info
+  customerName    String
+  customerPhone   String
+  customerEmail   String?
+
+  // Invoice Info (from Paraşüt)
+  invoiceId       String?               // Paraşüt invoice ID
+  invoiceNumber   String?
+  invoiceAmount   Float
+  invoiceCurrency String                @default("TRY")
+  daysOverdue     Int
+
+  // Call Status
+  status          CampaignCallStatus    @default(PENDING)
+  outcome         CampaignCallOutcome?
+  retryCount      Int                   @default(0)
+
+  // VAPI Integration
+  vapiCallId      String?               @unique
+
+  // Call Details
+  startedAt       DateTime?
+  completedAt     DateTime?
+  duration        Int?                  // Duration in seconds
+
+  // Results
+  transcript      Json?                 // Call transcript from VAPI
+  transcriptText  String?               @db.Text
+  summary         String?               @db.Text
+  paymentDate     DateTime?             // Promised payment date
+  paymentAmount   Float?                // Promised payment amount
+  notes           String?               @db.Text
+
+  // Timestamps
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  // Relations
+  campaign        Campaign              @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@index([status])
+  @@index([customerPhone])
+  @@index([vapiCallId])
 }

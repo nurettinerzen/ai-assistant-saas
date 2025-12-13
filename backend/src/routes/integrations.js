@@ -981,6 +981,284 @@ router.post('/whatsapp/send', async (req, res) => {
 });
 
 /* ============================================================
+   SHOPIFY INTEGRATION
+============================================================ */
+
+router.post('/shopify/connect', async (req, res) => {
+  try {
+    const { shopUrl, accessToken } = req.body;
+
+    if (!shopUrl || !accessToken) {
+      return res.status(400).json({
+        error: 'Shop URL and Access Token are required'
+      });
+    }
+
+    // Import and test connection
+    const shopifyService = (await import('../services/shopify.js')).default;
+
+    try {
+      const testResult = await shopifyService.testConnection({ shopUrl, accessToken });
+
+      if (!testResult.success) {
+        return res.status(400).json({
+          error: testResult.error || 'Connection test failed'
+        });
+      }
+
+      // Save to Integration model
+      await prisma.integration.upsert({
+        where: {
+          businessId_type: {
+            businessId: req.businessId,
+            type: 'SHOPIFY'
+          }
+        },
+        update: {
+          credentials: { shopUrl, accessToken },
+          connected: true,
+          isActive: true
+        },
+        create: {
+          businessId: req.businessId,
+          type: 'SHOPIFY',
+          credentials: { shopUrl, accessToken },
+          connected: true,
+          isActive: true
+        }
+      });
+
+      res.json({
+        success: true,
+        message: 'Shopify connected successfully',
+        shop: testResult.shop
+      });
+    } catch (testError) {
+      console.error('Shopify test error:', testError);
+      return res.status(400).json({
+        error: testError.message || 'Failed to connect to Shopify'
+      });
+    }
+  } catch (error) {
+    console.error('Shopify connect error:', error);
+    res.status(500).json({ error: 'Failed to connect Shopify' });
+  }
+});
+
+router.post('/shopify/disconnect', async (req, res) => {
+  try {
+    await prisma.integration.updateMany({
+      where: {
+        businessId: req.businessId,
+        type: 'SHOPIFY'
+      },
+      data: {
+        connected: false,
+        isActive: false
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'Shopify disconnected successfully'
+    });
+  } catch (error) {
+    console.error('Shopify disconnect error:', error);
+    res.status(500).json({ error: 'Failed to disconnect Shopify' });
+  }
+});
+
+router.get('/shopify/status', async (req, res) => {
+  try {
+    const integration = await prisma.integration.findFirst({
+      where: {
+        businessId: req.businessId,
+        type: 'SHOPIFY'
+      },
+      select: {
+        connected: true,
+        isActive: true,
+        lastSync: true,
+        credentials: true
+      }
+    });
+
+    res.json({
+      connected: integration?.connected && integration?.isActive || false,
+      shopUrl: integration?.credentials?.shopUrl || null,
+      lastSync: integration?.lastSync || null
+    });
+  } catch (error) {
+    console.error('Shopify status error:', error);
+    res.status(500).json({ error: 'Failed to get Shopify status' });
+  }
+});
+
+/* ============================================================
+   WOOCOMMERCE INTEGRATION
+============================================================ */
+
+router.post('/woocommerce/connect', async (req, res) => {
+  try {
+    const { siteUrl, consumerKey, consumerSecret } = req.body;
+
+    if (!siteUrl || !consumerKey || !consumerSecret) {
+      return res.status(400).json({
+        error: 'Site URL, Consumer Key, and Consumer Secret are required'
+      });
+    }
+
+    // Import and test connection
+    const woocommerceService = (await import('../services/woocommerce.js')).default;
+
+    try {
+      const testResult = await woocommerceService.testConnection({ siteUrl, consumerKey, consumerSecret });
+
+      if (!testResult.success) {
+        return res.status(400).json({
+          error: testResult.error || 'Connection test failed'
+        });
+      }
+
+      // Save to Integration model
+      await prisma.integration.upsert({
+        where: {
+          businessId_type: {
+            businessId: req.businessId,
+            type: 'WOOCOMMERCE'
+          }
+        },
+        update: {
+          credentials: { siteUrl, consumerKey, consumerSecret },
+          connected: true,
+          isActive: true
+        },
+        create: {
+          businessId: req.businessId,
+          type: 'WOOCOMMERCE',
+          credentials: { siteUrl, consumerKey, consumerSecret },
+          connected: true,
+          isActive: true
+        }
+      });
+
+      res.json({
+        success: true,
+        message: 'WooCommerce connected successfully',
+        store: testResult.store
+      });
+    } catch (testError) {
+      console.error('WooCommerce test error:', testError);
+      return res.status(400).json({
+        error: testError.message || 'Failed to connect to WooCommerce'
+      });
+    }
+  } catch (error) {
+    console.error('WooCommerce connect error:', error);
+    res.status(500).json({ error: 'Failed to connect WooCommerce' });
+  }
+});
+
+router.post('/woocommerce/disconnect', async (req, res) => {
+  try {
+    await prisma.integration.updateMany({
+      where: {
+        businessId: req.businessId,
+        type: 'WOOCOMMERCE'
+      },
+      data: {
+        connected: false,
+        isActive: false
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'WooCommerce disconnected successfully'
+    });
+  } catch (error) {
+    console.error('WooCommerce disconnect error:', error);
+    res.status(500).json({ error: 'Failed to disconnect WooCommerce' });
+  }
+});
+
+router.get('/woocommerce/status', async (req, res) => {
+  try {
+    const integration = await prisma.integration.findFirst({
+      where: {
+        businessId: req.businessId,
+        type: 'WOOCOMMERCE'
+      },
+      select: {
+        connected: true,
+        isActive: true,
+        lastSync: true,
+        credentials: true
+      }
+    });
+
+    res.json({
+      connected: integration?.connected && integration?.isActive || false,
+      siteUrl: integration?.credentials?.siteUrl || null,
+      lastSync: integration?.lastSync || null
+    });
+  } catch (error) {
+    console.error('WooCommerce status error:', error);
+    res.status(500).json({ error: 'Failed to get WooCommerce status' });
+  }
+});
+
+/* ============================================================
+   GENERIC INTEGRATION STATUS
+============================================================ */
+
+router.get('/status', async (req, res) => {
+  try {
+    const integrations = await prisma.integration.findMany({
+      where: { businessId: req.businessId },
+      select: {
+        type: true,
+        connected: true,
+        isActive: true,
+        lastSync: true
+      }
+    });
+
+    // Also check WhatsApp from Business model
+    const business = await prisma.business.findUnique({
+      where: { id: req.businessId },
+      select: { whatsappPhoneNumberId: true }
+    });
+
+    const statusMap = {};
+    integrations.forEach(i => {
+      statusMap[i.type] = {
+        connected: i.connected && i.isActive,
+        lastSync: i.lastSync
+      };
+    });
+
+    // Add WhatsApp status
+    statusMap['WHATSAPP'] = {
+      connected: !!business?.whatsappPhoneNumberId,
+      lastSync: null
+    };
+
+    res.json({
+      integrations: statusMap,
+      ecommerce: {
+        hasShopify: statusMap['SHOPIFY']?.connected || false,
+        hasWooCommerce: statusMap['WOOCOMMERCE']?.connected || false,
+        hasPlatform: (statusMap['SHOPIFY']?.connected || statusMap['WOOCOMMERCE']?.connected) || false
+      }
+    });
+  } catch (error) {
+    console.error('Integration status error:', error);
+    res.status(500).json({ error: 'Failed to get integration status' });
+  }
+});
+
+/* ============================================================
    ZAPIER WEBHOOK CONFIGURATION
 ============================================================ */
 

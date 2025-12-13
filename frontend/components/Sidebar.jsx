@@ -26,6 +26,8 @@ import {
   User,
   MessageSquare,
   Mail,
+  Receipt,
+  Megaphone,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -70,6 +72,13 @@ export default function Sidebar({ user, credits }) {
         { icon: LayoutDashboard, label: t('sidebarDashboard'), href: '/dashboard' },
         { icon: Phone, label: t('sidebarCalls'), href: '/dashboard/calls' },
         { icon: BarChart3, label: t('sidebarAnalytics'), href: '/dashboard/analytics' },
+      ],
+    },
+    {
+      label: 'Tahsilat',
+      items: [
+        { icon: Receipt, label: 'Vadesi Geçenler', href: '/dashboard/collections' },
+        { icon: Megaphone, label: 'Kampanyalar', href: '/dashboard/campaigns' },
       ],
     },
     {

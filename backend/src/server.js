@@ -45,6 +45,9 @@ import emailRoutes from './routes/email.js';
 import shopifyRoutes from './routes/shopify.js';
 import woocommerceRoutes from './routes/woocommerce.js';
 import webhookRoutes from './routes/webhook.js';
+// Batch call / Collection campaigns
+import batchCallRoutes from './routes/batch-call.js';
+import { processAllQueues } from './services/batch-call.js';
 
 
 // Import jobs
@@ -121,6 +124,7 @@ app.use('/api/email', emailRoutes);
 app.use('/api/shopify', shopifyRoutes);
 app.use('/api/woocommerce', woocommerceRoutes);
 app.use('/api/webhook', webhookRoutes);
+app.use('/api/batch-call', batchCallRoutes);
 
 
 // Error handling middleware
@@ -137,6 +141,15 @@ if (process.env.NODE_ENV !== 'test') {
   console.log('\n🚀 Initializing background jobs...');
   initMonthlyResetJob();
   initEmailSyncJob();
+
+  // Batch Call Queue Worker - processes collection campaigns every 10 seconds
+  setInterval(() => {
+    processAllQueues().catch(err => {
+      console.error('Batch call queue error:', err);
+    });
+  }, 10000);
+  console.log('📞 Batch call queue worker started (10s interval)');
+
   console.log('✅ Background jobs initialized\n');
 }
 

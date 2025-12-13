@@ -282,4 +282,61 @@ router.get('/contacts/search/:name', async (req, res) => {
   }
 });
 
+// ============================================================================
+// Overdue Invoices (For Batch Collection Calls)
+// ============================================================================
+
+/**
+ * Get overdue invoices with customer phone numbers
+ * GET /api/parasut/overdue
+ * Query params:
+ *   - minDays: Minimum days overdue (default: 1)
+ *   - maxDays: Maximum days overdue (optional)
+ *   - minAmount: Minimum invoice amount (optional)
+ *   - maxAmount: Maximum invoice amount (optional)
+ *   - page: Page number
+ *   - limit: Items per page
+ */
+router.get('/overdue', async (req, res) => {
+  try {
+    const { minDays, maxDays, minAmount, maxAmount, page, limit } = req.query;
+
+    const result = await parasutService.getOverdueInvoices(req.businessId, {
+      minDaysOverdue: minDays ? parseInt(minDays) : 1,
+      maxDaysOverdue: maxDays ? parseInt(maxDays) : undefined,
+      minAmount: minAmount ? parseFloat(minAmount) : undefined,
+      maxAmount: maxAmount ? parseFloat(maxAmount) : undefined,
+      page: page ? parseInt(page) : 1,
+      limit: limit ? parseInt(limit) : 50
+    });
+
+    res.json(result);
+  } catch (error) {
+    console.error('Get overdue invoices error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get overdue invoices',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * Get overdue invoices summary statistics
+ * GET /api/parasut/overdue/summary
+ */
+router.get('/overdue/summary', async (req, res) => {
+  try {
+    const result = await parasutService.getOverdueSummary(req.businessId);
+    res.json(result);
+  } catch (error) {
+    console.error('Get overdue summary error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get overdue summary',
+      message: error.message
+    });
+  }
+});
+
 export default router;
