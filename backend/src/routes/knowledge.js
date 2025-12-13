@@ -536,10 +536,11 @@ async function crawlURL(entryId, url) {
       if (entry?.business?.vapiAssistantId) {
         try {
           const vapiResponse = await vapiKnowledgeService.uploadUrl(
-            entry.business.vapiAssistantId,
-            url,
-            result.title || url
-          );
+  entry.business.vapiAssistantId,
+  url,
+  result.title || url,
+  result.content  // Crawl edilmiş içerik
+);
           vapiKnowledgeId = vapiResponse.id;
           console.log(`✅ URL uploaded to VAPI: ${vapiKnowledgeId}`);
         } catch (vapiError) {

@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "html-to-text": "^9.0.5",
+    "iyzipay": "^2.0.64",
+    "soap": "^1.6.1"
+  }
+}

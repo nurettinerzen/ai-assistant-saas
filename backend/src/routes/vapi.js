@@ -31,13 +31,11 @@ const prisma = new PrismaClient();
 router.post('/webhook', async (req, res) => {
   try {
     const event = req.body;
-    console.log('📞 VAPI Webhook received:', event.type || event.event);
+    const eventType = event.type || event.event || event.message?.type;
+    console.log('📞 VAPI Webhook received:', eventType);
 
     // Acknowledge receipt immediately
     res.status(200).json({ received: true });
-
-    // Handle different event types
-    const eventType = event.type || event.event;
 
     switch (eventType) {
       case 'call.started':
@@ -370,6 +368,14 @@ router.post('/functions', async (req, res) => {
 
           case 'track_shipment':
             result = await handleTrackShipment(functionArgs, message);
+            break;
+
+          case 'create_order':
+            result = await handleCreateOrder(functionArgs, message);
+            break;
+
+          case 'update_order':
+            result = await handleUpdateOrder(functionArgs, message);
             break;
 
           // Parasut (Accounting) Functions
@@ -1808,6 +1814,291 @@ async function handleCheckAccountBalance(args, vapiMessage) {
   }
 }
 
+// ============================================================
+// ORDER HANDLERS (Restaurant/Food)
+// ============================================================
+
+async function handleCreateOrder(args, vapiMessage) {
+  try {
+    const { items, customer_name, order_type = 'PICKUP', delivery_address, pickup_time, notes } = args;
+    console.log('📦 Create order args:', { items, customer_name, order_type, pickup_time, notes });
+    
+    // Get business from call
+    const call = vapiMessage?.call;
+    const assistantId = call?.assistantId;
+    
+    if (!assistantId) {
+      return { success: false, message: 'Business bilgisi alınamadı.' };
+    }
+
+    // Find business by VAPI assistant ID
+    const business = await prisma.business.findFirst({
+      where: { vapiAssistantId: assistantId }
+    });
+
+    if (!business) {
+      return { success: false, message: 'İşletme bulunamadı.' };
+    }
+
+    // Get customer phone from call
+    const customerPhone = call?.customer?.number || 'unknown';
+    const customerName = customer_name || call?.customer?.name || 'Müşteri';
+
+    // Calculate pickup time if provided
+    let pickupDateTime = null;
+    if (pickup_time) {
+      const now = new Date();
+      // Support both Turkish and English
+      const hoursMatch = pickup_time.match(/(\d+)\s*(saat|hour|hr)/i);
+      const minutesMatch = pickup_time.match(/(\d+)\s*(dakika|minute|min)/i);
+      
+      if (hoursMatch || minutesMatch) {
+        pickupDateTime = new Date(now);
+        if (hoursMatch) pickupDateTime.setHours(pickupDateTime.getHours() + parseInt(hoursMatch[1]));
+        if (minutesMatch) pickupDateTime.setMinutes(pickupDateTime.getMinutes() + parseInt(minutesMatch[1]));
+        console.log('⏰ Pickup time calculated:', pickupDateTime, 'from:', pickup_time);
+      } else if (pickup_time.match(/^\d{1,2}:\d{2}$/)) {
+        const [hours, minutes] = pickup_time.split(':').map(Number);
+        pickupDateTime = new Date(now);
+        pickupDateTime.setHours(hours, minutes, 0, 0);
+        if (pickupDateTime < now) pickupDateTime.setDate(pickupDateTime.getDate() + 1);
+      }
+    }
+
+    // Create order in database
+    const order = await prisma.order.create({
+      data: {
+        businessId: business.id,
+        customerName: customerName,
+        customerPhone: customerPhone,
+        items: items,
+        pickupTime: pickupDateTime,
+        orderType: order_type,
+        notes: delivery_address ? `Adres: ${delivery_address}. ${notes || ''}` : notes,
+        status: 'PENDING',
+        source: 'PHONE'
+      }
+    });
+
+    console.log('✅ VAPI Order created:', order.id);
+
+    // Format pickup time
+    const pickupTimeStr = pickupDateTime 
+      ? pickupDateTime.toLocaleTimeString('tr-TR', { 
+          timeZone: business.timezone || 'Europe/Istanbul',
+          hour: '2-digit', 
+          minute: '2-digit' 
+        })
+      : null;
+
+    // Send notification to business owner
+    const ownerPhone = business.ownerWhatsApp || business.ownerPhone;
+    if (ownerPhone && business.whatsappAccessToken) {
+      const isTR = business.language === 'TR';
+      const tz = business.timezone || 'Europe/Istanbul';
+      
+      const notificationMessage = isTR
+        ? `🔔 YENİ SİPARİŞ (Telefon)!\n\n📦 Sipariş No: ${order.id.slice(-8).toUpperCase()}\n👤 Müşteri: ${customerName}\n📱 Tel: ${customerPhone}\n🍽️ Sipariş: ${items}\n📍 Tür: ${order_type === 'DELIVERY' ? 'Paket Servis' : 'Gel Al'}\n${pickupTimeStr ? `⏰ Alım Saati: ${pickupTimeStr}\n` : ''}\n🕐 Sipariş Zamanı: ${new Date().toLocaleString('tr-TR', { timeZone: tz })}`
+        : `🔔 NEW ORDER (Phone)!\n\n📦 Order #: ${order.id.slice(-8).toUpperCase()}\n👤 Customer: ${customerName}\n📱 Phone: ${customerPhone}\n🍽️ Items: ${items}\n📍 Type: ${order_type === 'DELIVERY' ? 'Delivery' : 'Pickup'}\n${pickupTimeStr ? `⏰ Pickup Time: ${pickupTimeStr}\n` : ''}\n🕐 Order Time: ${new Date().toLocaleString('en-US', { timeZone: tz })}`;
+
+      try {
+        await sendOwnerWhatsAppNotification(business, ownerPhone, notificationMessage);
+      } catch (notifError) {
+        console.error('❌ Failed to send owner notification:', notifError.message);
+      }
+    }
+
+    const isTR = business.language === 'TR';
+    return {
+      success: true,
+      orderId: order.id.slice(-8).toUpperCase(),
+      message: isTR 
+        ? `Sipariş alındı. Sipariş numaranız: ${order.id.slice(-8).toUpperCase()}`
+        : `Order received. Your order number is: ${order.id.slice(-8).toUpperCase()}`
+    };
+
+  } catch (error) {
+    console.error('❌ VAPI Create order error:', error);
+    return { success: false, message: 'Sipariş oluşturulurken bir hata oluştu.' };
+  }
+}
+
+async function handleUpdateOrder(args, vapiMessage) {
+  try {
+    const { order_id, pickup_time, new_items, cancel, notes } = args;
+    
+    const call = vapiMessage?.call;
+    const assistantId = call?.assistantId;
+    
+    if (!assistantId) {
+      return { success: false, message: 'Business bilgisi alınamadı.' };
+    }
+
+    const business = await prisma.business.findFirst({
+      where: { vapiAssistantId: assistantId }
+    });
+
+    if (!business) {
+      return { success: false, message: 'İşletme bulunamadı.' };
+    }
+
+    const customerPhone = call?.customer?.number || 'unknown';
+    const isTR = business.language === 'TR';
+
+    // Find order
+    let order = null;
+    
+    if (order_id) {
+      const orders = await prisma.order.findMany({
+        where: {
+          businessId: business.id,
+          OR: [
+            { id: order_id },
+            { id: { endsWith: order_id.toUpperCase() } },
+            { id: { endsWith: order_id.toLowerCase() } }
+          ]
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 1
+      });
+      if (orders.length > 0) order = orders[0];
+    }
+
+    if (!order) {
+      order = await prisma.order.findFirst({
+        where: {
+          businessId: business.id,
+          customerPhone: customerPhone,
+          status: { not: 'CANCELLED' }
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+    }
+
+    if (!order) {
+      return { success: false, message: isTR ? 'Sipariş bulunamadı.' : 'Order not found.' };
+    }
+
+    // Handle cancellation
+    if (cancel) {
+      await prisma.order.update({
+        where: { id: order.id },
+        data: { status: 'CANCELLED' }
+      });
+
+      const ownerPhone = business.ownerWhatsApp || business.ownerPhone;
+      if (ownerPhone && business.whatsappAccessToken) {
+        const cancelMsg = isTR
+          ? `❌ SİPARİŞ İPTAL (Telefon)\n\n📦 Sipariş No: ${order.id.slice(-8).toUpperCase()}\n👤 Müşteri: ${order.customerName}\n🍽️ İptal Edilen: ${order.items}`
+          : `❌ ORDER CANCELLED (Phone)\n\n📦 Order #: ${order.id.slice(-8).toUpperCase()}\n👤 Customer: ${order.customerName}\n🍽️ Cancelled: ${order.items}`;
+        await sendOwnerWhatsAppNotification(business, ownerPhone, cancelMsg);
+      }
+
+      return { success: true, message: isTR ? 'Sipariş iptal edildi.' : 'Order cancelled.' };
+    }
+
+    // Calculate pickup time
+    let pickupDateTime = null;
+    if (pickup_time) {
+      const now = new Date();
+      const hoursMatch = pickup_time.match(/(\d+)\s*saat/i);
+      const minutesMatch = pickup_time.match(/(\d+)\s*dakika/i);
+      
+      if (hoursMatch || minutesMatch) {
+        pickupDateTime = new Date(now);
+        if (hoursMatch) pickupDateTime.setHours(pickupDateTime.getHours() + parseInt(hoursMatch[1]));
+        if (minutesMatch) pickupDateTime.setMinutes(pickupDateTime.getMinutes() + parseInt(minutesMatch[1]));
+      } else if (pickup_time.match(/^\d{1,2}:\d{2}$/)) {
+        const [hours, minutes] = pickup_time.split(':').map(Number);
+        pickupDateTime = new Date(now);
+        pickupDateTime.setHours(hours, minutes, 0, 0);
+        if (pickupDateTime < now) pickupDateTime.setDate(pickupDateTime.getDate() + 1);
+      }
+    }
+
+    // Build update data
+    const updateData = {};
+    if (pickupDateTime) updateData.pickupTime = pickupDateTime;
+    if (new_items) updateData.items = new_items;
+    if (notes) updateData.notes = order.notes ? `${order.notes}. ${notes}` : notes;
+
+    await prisma.order.update({
+      where: { id: order.id },
+      data: updateData
+    });
+
+    const pickupTimeStr = pickupDateTime 
+      ? pickupDateTime.toLocaleTimeString('tr-TR', { 
+          timeZone: business.timezone || 'Europe/Istanbul',
+          hour: '2-digit', 
+          minute: '2-digit' 
+        })
+      : null;
+
+    // Notify owner
+    const ownerPhone = business.ownerWhatsApp || business.ownerPhone;
+    if (ownerPhone && business.whatsappAccessToken) {
+      let updateMsg = isTR
+        ? `🔄 SİPARİŞ GÜNCELLENDİ (Telefon)\n\n📦 Sipariş No: ${order.id.slice(-8).toUpperCase()}\n👤 Müşteri: ${order.customerName}`
+        : `🔄 ORDER UPDATED (Phone)\n\n📦 Order #: ${order.id.slice(-8).toUpperCase()}\n👤 Customer: ${order.customerName}`;
+      
+      if (pickupTimeStr) updateMsg += isTR ? `\n⏰ Yeni Alım Saati: ${pickupTimeStr}` : `\n⏰ New Pickup Time: ${pickupTimeStr}`;
+      if (new_items) updateMsg += isTR ? `\n🍽️ Yeni Sipariş: ${new_items}` : `\n🍽️ New Items: ${new_items}`;
+
+      await sendOwnerWhatsAppNotification(business, ownerPhone, updateMsg);
+    }
+
+    return {
+      success: true,
+      message: pickupTimeStr 
+        ? (isTR ? `Siparişiniz güncellendi. Alım saati: ${pickupTimeStr}` : `Order updated. Pickup time: ${pickupTimeStr}`)
+        : (isTR ? 'Siparişiniz güncellendi.' : 'Order updated.')
+    };
+
+  } catch (error) {
+    console.error('❌ VAPI Update order error:', error);
+    return { success: false, message: 'Sipariş güncellenirken bir hata oluştu.' };
+  }
+}
+
+// Helper function to send WhatsApp notification to owner
+async function sendOwnerWhatsAppNotification(business, ownerPhone, message) {
+  const { decrypt } = await import('../utils/encryption.js');
+  
+  const accessToken = decrypt(business.whatsappAccessToken);
+  
+  if (!accessToken) {
+    console.error('❌ WhatsApp token decrypt failed');
+    return;
+  }
+  
+  if (!business.whatsappPhoneNumberId) {
+    console.error('❌ WhatsApp Phone Number ID missing');
+    return;
+  }
+
+  console.log('📱 Sending WhatsApp notification...');
+  console.log('   Phone Number ID:', business.whatsappPhoneNumberId);
+  console.log('   To:', ownerPhone);
+
+  const axios = (await import('axios')).default;
+  await axios.post(
+    `https://graph.facebook.com/v18.0/${business.whatsappPhoneNumberId}/messages`,
+    {
+      messaging_product: 'whatsapp',
+      to: ownerPhone.replace(/\D/g, ''),
+      type: 'text',
+      text: { body: message }
+    },
+    {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    }
+  );
+}
+
 // ============================================================================
 // IYZICO (PAYMENT) FUNCTION HANDLERS
 // ============================================================================
@@ -1981,38 +2272,8 @@ async function handleCheckPaymentStatus(args, vapiMessage) {
   } catch (error) {
     console.error('❌ Check payment status error:', error);
     return {
-      result: 'error',
-      message: 'Odeme durumu sorgulama sirasinda bir hata olustu. Lutfen tekrar deneyin.'
-    // If we have a tracking number but no order
-    if (tracking_number) {
-      const isTurkish = business.language === 'TR';
-      return {
-        success: true,
-        result: 'tracking_only',
-        message: isTurkish
-          ? `Takip numaranız: ${tracking_number}. Bu numarayla kargo firmasının web sitesinden kargonuzu takip edebilirsiniz.`
-          : `Your tracking number is: ${tracking_number}. You can track your package using this number on the carrier's website.`,
-        tracking: {
-          number: tracking_number
-        }
-      };
-    }
-
-    const notFoundMessage = business.language === 'TR'
-      ? 'Kargo bilgisi bulunamadı. Lütfen sipariş numaranızı kontrol edin.'
-      : 'Tracking information not found. Please check your order number.';
-
-    return {
-      success: false,
-      result: 'not_found',
-      message: notFoundMessage
-    };
-
-  } catch (error) {
-    console.error('❌ Get tracking info error:', error);
-    return {
-      success: false,
-      message: error.message || 'Kargo bilgisi alınamadı.'
+      result: "error",
+      message: "Odeme durumu sorgulama sirasinda bir hata olustu. Lutfen tekrar deneyin."
     };
   }
 }

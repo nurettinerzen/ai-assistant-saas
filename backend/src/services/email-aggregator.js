@@ -140,18 +140,47 @@ class EmailAggregatorService {
     return await service.syncNewMessages(businessId);
   }
 
-  /**
-   * Disconnect email
-   */
-  async disconnect(businessId) {
-    const provider = await this.getProvider(businessId);
-    if (!provider) {
-      throw new Error('No email provider connected');
-    }
-
-    const service = this.getService(provider);
-    return await service.disconnect(businessId);
+/**
+ * Disconnect email
+ */
+async disconnect(businessId) {
+  const provider = await this.getProvider(businessId);
+  if (!provider) {
+    throw new Error('No email provider connected');
   }
+
+  // Eski thread ve mesajları sil
+  await prisma.emailMessage.deleteMany({
+    where: {
+      thread: {
+        businessId: businessId
+      }
+    }
+  });
+
+  await prisma.emailDraft.deleteMany({
+    where: {
+      businessId: businessId
+    }
+  });
+
+  await prisma.emailThread.deleteMany({
+    where: {
+      businessId: businessId
+    }
+  });
+
+  // Integration'ı güncelle
+  await prisma.emailIntegration.update({
+    where: { businessId },
+    data: { 
+      connected: false,
+      lastSyncedAt: null
+    }
+  });
+
+  return { success: true };
+}
 
   /**
    * Check if any email provider is connected

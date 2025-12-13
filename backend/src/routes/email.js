@@ -347,28 +347,32 @@ router.post('/drafts/:draftId/send', authenticateToken, async (req, res) => {
       options
     );
 
-    // Mark draft as sent
-    await emailAI.markDraftSent(req.params.draftId, result.messageId);
-
-    // Update thread status
-    await emailAggregator.updateThreadStatus(thread.id, 'REPLIED');
-
     // Save the sent message to database
-    await prisma.emailMessage.create({
-      data: {
-        threadId: thread.id,
-        messageId: result.messageId || `sent-${Date.now()}`,
-        direction: 'OUTBOUND',
-        fromEmail: integration.email,
-        fromName: null,
-        toEmail: thread.customerEmail,
-        subject: `Re: ${thread.subject}`,
-        bodyText: content,
-        bodyHtml: content,
-        status: 'SENT',
-        sentAt: new Date()
-      }
-    });
+await prisma.emailMessage.upsert({
+  where: {
+    threadId_messageId: {
+      threadId: thread.id,
+      messageId: result.messageId || `sent-${Date.now()}-${Math.random().toString(36).substring(7)}`
+    }
+  },
+  update: {
+    status: 'SENT',
+    sentAt: new Date()
+  },
+  create: {
+    threadId: thread.id,
+    messageId: result.messageId || `sent-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+    direction: 'OUTBOUND',
+    fromEmail: integration.email,
+    fromName: null,
+    toEmail: thread.customerEmail,
+    subject: `Re: ${thread.subject}`,
+    bodyText: content,
+    bodyHtml: content,
+    status: 'SENT',
+    sentAt: new Date()
+  }
+});
 
     res.json({
       success: true,

@@ -154,6 +154,95 @@ const TRACK_SHIPMENT_TOOL = {
   }
 };
 
+// ============================================================
+// ORDER TOOLS (Restaurant/Food)
+// ============================================================
+
+const CREATE_ORDER_TOOL = {
+  type: "function",
+  function: {
+    name: "create_order",
+    description: "Creates a new food/product order. ONLY use when customer specifies WHAT they want to order (specific products/items). If customer just says 'I want to order' without specifying items, ASK what they want first.",
+    parameters: {
+      type: "object",
+      properties: {
+        items: {
+          type: "string",
+          description: "Order items with quantities (e.g., '2x Doner Plate, 1x Ayran')"
+        },
+        customer_name: {
+          type: "string",
+          description: "Customer's name"
+        },
+        customer_phone: {
+          type: "string",
+          description: "Customer's phone number"
+        },
+        order_type: {
+          type: "string",
+          description: "PICKUP or DELIVERY",
+          enum: ["PICKUP", "DELIVERY"]
+        },
+        pickup_time: {
+          type: "string",
+          description: "When customer wants to pick up (e.g., '3 saat sonra', '18:00', 'hemen')"
+        },
+        delivery_address: {
+          type: "string",
+          description: "Delivery address (required for delivery orders)"
+        },
+        notes: {
+          type: "string",
+          description: "Special requests or notes"
+        }
+      },
+      required: ["items", "customer_name"]
+    }
+  },
+  server: {
+    url: `${process.env.BACKEND_URL || 'https://marin-methoxy-suzette.ngrok-free.dev'}/api/vapi/functions`,
+    timeoutSeconds: 20
+  }
+};
+
+const UPDATE_ORDER_TOOL = {
+  type: "function",
+  function: {
+    name: "update_order",
+    description: "Updates an existing order. Use when customer wants to change pickup time, items, or cancel order.",
+    parameters: {
+      type: "object",
+      properties: {
+        order_id: {
+          type: "string",
+          description: "Order ID or last 8 characters of order number"
+        },
+        pickup_time: {
+          type: "string",
+          description: "New pickup time in HH:MM format or relative like '3 saat sonra'"
+        },
+        new_items: {
+          type: "string",
+          description: "Updated order items (replaces existing)"
+        },
+        cancel: {
+          type: "boolean",
+          description: "Set to true to cancel the order"
+        },
+        notes: {
+          type: "string",
+          description: "Additional notes"
+        }
+      },
+      required: ["order_id"]
+    }
+  },
+  server: {
+    url: `${process.env.BACKEND_URL || 'https://marin-methoxy-suzette.ngrok-free.dev'}/api/vapi/functions`,
+    timeoutSeconds: 20
+  }
+};
+
 /**
  * Get active tools for a business based on their integrations
  * @param {number} businessId - Business ID
@@ -185,6 +274,18 @@ async function getActiveToolsForBusiness(businessId) {
     if (hasCargoIntegration) {
       tools.push(TRACK_SHIPMENT_TOOL);
       console.log(`📦 Cargo integration found, adding TRACK_SHIPMENT_TOOL for business ${businessId}`);
+    }
+
+    // Check business type for order tools
+    const business = await prisma.business.findUnique({
+      where: { id: businessId },
+      select: { businessType: true }
+    });
+    
+    if (business && ['RESTAURANT'].includes(business.businessType)) {
+      tools.push(CREATE_ORDER_TOOL);
+      tools.push(UPDATE_ORDER_TOOL);
+      console.log(`🍽️ Order tools added for business ${businessId} (${business.businessType})`);
     }
 
   } catch (error) {
@@ -223,7 +324,7 @@ router.get('/', authenticateToken, async (req, res) => {
 router.post('/', authenticateToken, async (req, res) => {
   try {
     const businessId = req.businessId;
-    const { name, voiceId, firstMessage, systemPrompt, model, language, industry } = req.body;
+    const { name, voiceId, firstMessage, systemPrompt, model, language, industry, timezone } = req.body;
 
     // Check subscription limits
     const subscription = await prisma.subscription.findUnique({
@@ -273,13 +374,21 @@ router.post('/', authenticateToken, async (req, res) => {
 
     // Add universal language instruction - AI will match the customer's language
     const languageInstruction = 'You are an AI assistant. Always respond in the SAME LANGUAGE the customer uses. If they speak Turkish, respond in Turkish. If they speak Spanish, respond in Spanish. If they speak French, respond in French. Match their language exactly. Speak naturally, fluently, and professionally in whatever language they choose.';
-    const today = new Date().toLocaleDateString('en-US', { 
-  weekday: 'long', 
-  year: 'numeric', 
-  month: 'long', 
-  day: 'numeric' 
-});
-const dateContext = `\n\nIMPORTANT: Today's date is ${today}. Use this for all date calculations.`;
+    const businessTimezone = timezone || 'Europe/Istanbul';
+    const now = new Date();
+    const dateFormatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: businessTimezone,
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+    const formattedDateTime = dateFormatter.format(now);
+    const dateContext = `\n\nIMPORTANT: Current date and time is ${formattedDateTime} (${businessTimezone} timezone). Use this for all date and time calculations.`;
+
     const fullSystemPrompt = `${languageInstruction}${dateContext}\n\n${systemPrompt}`;
 
     // Default first message (eğer gönderilmemişse)
@@ -359,9 +468,13 @@ console.log('✅ VAPI Response:', JSON.stringify(vapiAssistant, null, 2));
     });
 
     await prisma.business.update({
-  where: { id: businessId },
-  data: { vapiAssistantId: vapiAssistant.id }
-});
+      where: { id: businessId },
+      data: { 
+        vapiAssistantId: vapiAssistant.id,
+        ...(timezone && { timezone }),
+        ...(industry && { businessType: industry })
+      }
+    });
 
     res.json({
       message: 'Assistant created successfully',
@@ -436,9 +549,14 @@ router.put('/update', async (req, res) => {
       return res.status(400).json({ error: 'No assistant found. Create one first.' });
     }
 
-    // 🔥 YENİ: AI TRAINING'LERİ ÇEK
+// 🔥 YENİ: AI TRAINING'LERİ ÇEK
     const trainings = await prisma.aiTraining.findMany({
       where: { businessId }
+    });
+
+    // 🔥 YENİ: KNOWLEDGE BASE'İ ÇEK
+    const knowledgeItems = await prisma.knowledgeBase.findMany({
+      where: { businessId, status: 'ACTIVE' }
     });
 
     // 🔥 YENİ: TRAINING'LERİ SİSTEM PROMPT'A EKLE
@@ -451,6 +569,31 @@ router.put('/update', async (req, res) => {
         fullInstructions += `Category: ${training.category || 'General'}\n`;
         fullInstructions += `Instructions: ${training.instructions}\n\n`;
       });
+    }
+
+    // 🔥 YENİ: KNOWLEDGE BASE İÇERİĞİNİ EKLE
+    if (knowledgeItems.length > 0) {
+      const kbByType = { URL: [], DOCUMENT: [], FAQ: [] };
+      
+      for (const item of knowledgeItems) {
+        if (item.type === 'FAQ' && item.question && item.answer) {
+          kbByType.FAQ.push(`Q: ${item.question}\nA: ${item.answer}`);
+        } else if (item.content) {
+          kbByType[item.type]?.push(`[${item.title}]: ${item.content.substring(0, 1000)}`);
+        }
+      }
+
+      if (kbByType.FAQ.length > 0) {
+        fullInstructions += '\n\n=== FREQUENTLY ASKED QUESTIONS ===\n' + kbByType.FAQ.join('\n\n');
+      }
+      if (kbByType.URL.length > 0) {
+        fullInstructions += '\n\n=== WEBSITE CONTENT ===\n' + kbByType.URL.join('\n\n');
+      }
+      if (kbByType.DOCUMENT.length > 0) {
+        fullInstructions += '\n\n=== DOCUMENTS ===\n' + kbByType.DOCUMENT.join('\n\n');
+      }
+      
+      console.log('📚 Knowledge Base items added:', knowledgeItems.length);
     }
 
     // Database'i güncelle
@@ -467,12 +610,16 @@ router.put('/update', async (req, res) => {
       }
     });
 
-    // 🔥 YENİ: VAPI'Yİ GÜNCELLE (TRAINING DAHİL)
+// 🔥 YENİ: VAPI'Yİ GÜNCELLE (TRAINING DAHİL)
+    const activeTools = await getActiveToolsForBusiness(businessId);
+    console.log('📤 Updating VAPI with tools:', activeTools.map(t => t.function.name));
+    
     const config = {
       voiceId: updatedBusiness.vapiVoiceId || '21m00Tcm4TlvDq8ikWAM',
       speed: updatedBusiness.vapiSpeed || 1.0,
       customGreeting: updatedBusiness.customGreeting,
-      customInstructions: fullInstructions
+      customInstructions: fullInstructions,
+      tools: activeTools
     };
 
     await vapiService.updateAssistant(business.vapiAssistantId, config);
@@ -577,7 +724,37 @@ router.put('/:id', authenticateToken, async (req, res) => {
     // Universal language instruction - AI will match the customer's language
     const languageInstruction = 'You are an AI assistant. Always respond in the SAME LANGUAGE the customer uses. If they speak Turkish, respond in Turkish. If they speak Spanish, respond in Spanish. If they speak French, respond in French. Match their language exactly. Speak naturally, fluently, and professionally in whatever language they choose.';
 
-    const fullSystemPrompt = `${languageInstruction}\n\n${systemPrompt}`;
+    // 🔥 KNOWLEDGE BASE İÇERİĞİNİ ÇEK
+    const knowledgeItems = await prisma.knowledgeBase.findMany({
+      where: { businessId, status: 'ACTIVE' }
+    });
+
+    let knowledgeContext = '';
+    if (knowledgeItems.length > 0) {
+      const kbByType = { URL: [], DOCUMENT: [], FAQ: [] };
+      
+      for (const item of knowledgeItems) {
+        if (item.type === 'FAQ' && item.question && item.answer) {
+          kbByType.FAQ.push(`Q: ${item.question}\nA: ${item.answer}`);
+        } else if (item.content) {
+          kbByType[item.type]?.push(`[${item.title}]: ${item.content.substring(0, 1000)}`);
+        }
+      }
+
+      if (kbByType.FAQ.length > 0) {
+        knowledgeContext += '\n\n=== FREQUENTLY ASKED QUESTIONS ===\n' + kbByType.FAQ.join('\n\n');
+      }
+      if (kbByType.URL.length > 0) {
+        knowledgeContext += '\n\n=== WEBSITE CONTENT ===\n' + kbByType.URL.join('\n\n');
+      }
+      if (kbByType.DOCUMENT.length > 0) {
+        knowledgeContext += '\n\n=== DOCUMENTS ===\n' + kbByType.DOCUMENT.join('\n\n');
+      }
+      
+      console.log('📚 Knowledge Base items added:', knowledgeItems.length);
+    }
+
+    const fullSystemPrompt = `${languageInstruction}\n\n${systemPrompt}${knowledgeContext}`;
 
     // Update in database
     const updatedAssistant = await prisma.assistant.update({
@@ -590,9 +767,13 @@ router.put('/:id', authenticateToken, async (req, res) => {
       },
     });
 
-    // ✅ YENİ: VAPI'deki assistant'ı da güncelle (PATCH - bu sefer doğru, çünkü kendi assistant'ını güncelliyor)
+// ✅ YENİ: VAPI'deki assistant'ı da güncelle (PATCH)
     if (assistant.vapiAssistantId) {
-      await fetch(`https://api.vapi.ai/assistant/${assistant.vapiAssistantId}`, {
+      // Get active tools for this business
+      const activeTools = await getActiveToolsForBusiness(businessId);
+      console.log('📤 VAPI Update - tools:', activeTools.map(t => t.function.name));
+
+      const vapiResponse = await fetch(`https://api.vapi.ai/assistant/${assistant.vapiAssistantId}`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${process.env.VAPI_PRIVATE_KEY}`,
@@ -608,7 +789,8 @@ router.put('/:id', authenticateToken, async (req, res) => {
                 role: 'system',
                 content: fullSystemPrompt
               }
-            ]
+            ],
+            tools: activeTools
           },
           voice: {
             provider: '11labs',
@@ -619,6 +801,12 @@ router.put('/:id', authenticateToken, async (req, res) => {
             : `Hi, I'm ${name}. How can I help you today?`,
         }),
       });
+
+      if (!vapiResponse.ok) {
+        console.error('❌ VAPI update failed:', await vapiResponse.text());
+      } else {
+        console.log('✅ VAPI Assistant updated with tools');
+      }
     }
 
     res.json({

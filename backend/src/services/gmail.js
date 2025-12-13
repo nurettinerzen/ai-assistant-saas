@@ -58,25 +58,24 @@ class GmailService {
       const userInfo = await oauth2.userinfo.get();
       const email = userInfo.data.email;
 
-      // Save to database
-      await prisma.emailIntegration.upsert({
-        where: { businessId },
-        update: {
-          provider: 'GMAIL',
-          email,
-          credentials: tokens,
-          connected: true,
-          lastSyncedAt: new Date()
-        },
-        create: {
-          businessId,
-          provider: 'GMAIL',
-          email,
-          credentials: tokens,
-          connected: true,
-          lastSyncedAt: new Date()
-        }
-      });
+await prisma.emailIntegration.upsert({
+  where: { businessId },
+  update: {
+    provider: 'GMAIL',
+    email,
+    credentials: tokens,
+    connected: true
+    // lastSyncedAt kaldırıldı - ilk sync'te 7 gün getirecek
+  },
+  create: {
+    businessId,
+    provider: 'GMAIL',
+    email,
+    credentials: tokens,
+    connected: true
+    // lastSyncedAt kaldırıldı - ilk sync'te 7 gün getirecek
+  }
+});
 
       console.log(`Gmail connected for business ${businessId}: ${email}`);
       return { success: true, email };
@@ -293,62 +292,75 @@ class GmailService {
     }
   }
 
-  /**
-   * Sync new messages since last sync
-   */
-  async syncNewMessages(businessId) {
-    try {
-      const integration = await prisma.emailIntegration.findUnique({
-        where: { businessId }
-      });
+/**
+ * Sync new messages since last sync
+ */
+async syncNewMessages(businessId) {
+  try {
+    const integration = await prisma.emailIntegration.findUnique({
+      where: { businessId }
+    });
 
-      if (!integration) {
-        throw new Error('Gmail not connected');
-      }
-
-      const lastSync = integration.lastSyncedAt;
-      let query = 'in:inbox';
-
-      if (lastSync) {
-        const timestamp = Math.floor(lastSync.getTime() / 1000);
-        query += ` after:${timestamp}`;
-      }
-
-      const { messages } = await this.getMessages(businessId, {
-        maxResults: 50,
-        query,
-        labelIds: ['INBOX']
-      });
-
-      // Update last sync time
-      await prisma.emailIntegration.update({
-        where: { businessId },
-        data: { lastSyncedAt: new Date() }
-      });
-
-      return messages;
-    } catch (error) {
-      console.error('Sync messages error:', error);
-      throw error;
+    if (!integration) {
+      throw new Error('Gmail not connected');
     }
-  }
 
-  /**
-   * Disconnect Gmail
-   */
-  async disconnect(businessId) {
-    try {
-      await prisma.emailIntegration.update({
-        where: { businessId },
-        data: { connected: false }
-      });
+    const lastSync = integration.lastSyncedAt;
+    let query = 'in:inbox';
 
-      return { success: true };
-    } catch (error) {
-      console.error('Disconnect error:', error);
-      throw error;
+        // DEBUG LOGS
+    console.log('=== GMAIL SYNC DEBUG ===');
+    console.log('lastSync from DB:', lastSync);
+    console.log('Date.now():', Date.now());
+    console.log('Current date:', new Date().toISOString());
+
+    if (lastSync) {
+      const timestamp = Math.floor(lastSync.getTime() / 1000);
+      query += ` after:${timestamp}`;
+    } else {
+      // İlk sync: son 7 günün maillerini getir
+      const sevenDaysAgo = Math.floor((Date.now() - 7 * 24 * 60 * 60 * 1000) / 1000);
+      query += ` after:${sevenDaysAgo}`;
     }
+
+    const { messages } = await this.getMessages(businessId, {
+      maxResults: 50,
+      query,
+      labelIds: ['INBOX']
+    });
+
+    // Update last sync time
+    await prisma.emailIntegration.update({
+      where: { businessId },
+      data: { lastSyncedAt: new Date() }
+    });
+
+    return messages;
+  } catch (error) {
+    console.error('Sync messages error:', error);
+    throw error;
   }
+}
+
+/**
+ * Disconnect Gmail
+ */
+async disconnect(businessId) {
+  try {
+    await prisma.emailIntegration.update({
+      where: { businessId },
+      data: { 
+        connected: false,
+        lastSyncedAt: null  // ← BUNU EKLE
+      }
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error('Disconnect error:', error);
+    throw error;
+  }
+}
 
   /**
    * Parse Gmail message to standard format

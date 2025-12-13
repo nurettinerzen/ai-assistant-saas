@@ -97,23 +97,23 @@ class OutlookService {
       };
 
       await prisma.emailIntegration.upsert({
-        where: { businessId },
-        update: {
-          provider: 'OUTLOOK',
-          email,
-          credentials,
-          connected: true,
-          lastSyncedAt: new Date()
-        },
-        create: {
-          businessId,
-          provider: 'OUTLOOK',
-          email,
-          credentials,
-          connected: true,
-          lastSyncedAt: new Date()
-        }
-      });
+  where: { businessId },
+  update: {
+    provider: 'OUTLOOK',
+    email,
+    credentials,
+    connected: true
+    // lastSyncedAt kaldırıldı
+  },
+  create: {
+    businessId,
+    provider: 'OUTLOOK',
+    email,
+    credentials,
+    connected: true
+    // lastSyncedAt kaldırıldı
+  }
+});
 
       console.log(`Outlook connected for business ${businessId}: ${email}`);
       return { success: true, email };
@@ -371,44 +371,59 @@ class OutlookService {
   }
 
   /**
-   * Sync new messages since last sync
-   */
-  async syncNewMessages(businessId) {
-    try {
-      const integration = await prisma.emailIntegration.findUnique({
-        where: { businessId }
-      });
+ * Sync new messages since last sync
+ */
+async syncNewMessages(businessId) {
+  try {
+    const integration = await prisma.emailIntegration.findUnique({
+      where: { businessId }
+    });
 
-      if (!integration) {
-        throw new Error('Outlook not connected');
-      }
-
-      const lastSync = integration.lastSyncedAt;
-      let filter = '';
-
-      if (lastSync) {
-        const isoDate = lastSync.toISOString();
-        filter = `receivedDateTime ge ${isoDate}`;
-      }
-
-      const { messages } = await this.getMessages(businessId, {
-        maxResults: 50,
-        filter
-      });
-
-      // Update last sync time
-      await prisma.emailIntegration.update({
-        where: { businessId },
-        data: { lastSyncedAt: new Date() }
-      });
-
-      return messages;
-    } catch (error) {
-      console.error('Sync messages error:', error);
-      throw error;
+    if (!integration) {
+      throw new Error('Outlook not connected');
     }
-  }
 
+    const lastSync = integration.lastSyncedAt;
+    let filter = '';
+
+    // DEBUG LOGS
+    console.log('=== OUTLOOK SYNC DEBUG ===');
+    console.log('lastSync from DB:', lastSync);
+    console.log('Date.now():', Date.now());
+
+    if (lastSync) {
+      const isoDate = lastSync.toISOString();
+      filter = `receivedDateTime ge ${isoDate}`;
+      console.log('Using lastSync filter:', filter);
+    } else {
+      // İlk sync: son 7 günün maillerini getir
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      filter = `receivedDateTime ge ${sevenDaysAgo.toISOString()}`;
+      console.log('Using 7 days ago filter:', filter);
+    }
+
+    console.log('Final filter:', filter);
+    console.log('==========================');
+
+    const { messages } = await this.getMessages(businessId, {
+      maxResults: 50,
+      filter
+    });
+
+    console.log('Messages fetched:', messages?.length || 0);
+
+    // Update last sync time
+    await prisma.emailIntegration.update({
+      where: { businessId },
+      data: { lastSyncedAt: new Date() }
+    });
+
+    return messages;
+  } catch (error) {
+    console.error('Sync messages error:', error);
+    throw error;
+  }
+}
   /**
    * Disconnect Outlook
    */

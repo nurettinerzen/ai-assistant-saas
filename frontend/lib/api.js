@@ -37,7 +37,8 @@ api.interceptors.response.use(
     
     // Handle specific status codes
     if (error.response?.status === 401) {
-      // Sadece token varsa ve geçersizse logout yap
+      // WhatsApp connect hatası Meta'dan geliyor, logout yapma
+      const isWhatsAppConnect = error.config?.url?.includes('/whatsapp/connect');
       // Login sayfasında zaten olabilir, o yüzden redirect yapma
       const token = localStorage.getItem('token');
       const isLoginPage = typeof window !== 'undefined' && window.location.pathname === '/login';

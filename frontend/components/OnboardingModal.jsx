@@ -38,7 +38,8 @@ export function OnboardingModal({ open, onClose }) {
     industry: '',
     voice: null,
     firstMessage: '',
-    systemPrompt: ''
+    systemPrompt: '',
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
   });
 
   useEffect(() => {
@@ -68,6 +69,25 @@ export function OnboardingModal({ open, onClose }) {
     { id: 'ECOMMERCE', icon: ShoppingCart, name: tr('E-commerce'), color: 'text-blue-600', bgColor: 'bg-blue-100' },
     { id: 'SERVICE', icon: Briefcase, name: tr('Professional Services'), color: 'text-purple-600', bgColor: 'bg-purple-100' },
     { id: 'OTHER', icon: Package, name: tr('Other'), color: 'text-gray-600', bgColor: 'bg-gray-100' }
+  ];
+
+  const TIMEZONES = [
+    { id: 'America/Los_Angeles', name: '(UTC-8) Los Angeles, Pacific Time' },
+    { id: 'America/Denver', name: '(UTC-7) Denver, Mountain Time' },
+    { id: 'America/Chicago', name: '(UTC-6) Chicago, Central Time' },
+    { id: 'America/New_York', name: '(UTC-5) New York, Eastern Time' },
+    { id: 'America/Toronto', name: '(UTC-5) Toronto, Canada' },
+    { id: 'America/Sao_Paulo', name: '(UTC-3) São Paulo, Brazil' },
+    { id: 'Europe/London', name: '(UTC+0) London, UK' },
+    { id: 'Europe/Paris', name: '(UTC+1) Paris, France' },
+    { id: 'Europe/Berlin', name: '(UTC+1) Berlin, Germany' },
+    { id: 'Europe/Istanbul', name: '(UTC+3) Istanbul, Turkey' },
+    { id: 'Europe/Moscow', name: '(UTC+3) Moscow, Russia' },
+    { id: 'Asia/Dubai', name: '(UTC+4) Dubai, UAE' },
+    { id: 'Asia/Kolkata', name: '(UTC+5:30) Mumbai, India' },
+    { id: 'Asia/Singapore', name: '(UTC+8) Singapore' },
+    { id: 'Asia/Tokyo', name: '(UTC+9) Tokyo, Japan' },
+    { id: 'Australia/Sydney', name: '(UTC+11) Sydney, Australia' }
   ];
 
   const PROMPTS = {
@@ -123,7 +143,8 @@ export function OnboardingModal({ open, onClose }) {
             firstMessage: data.firstMessage,
             systemPrompt: data.systemPrompt,
             language: locale.toUpperCase(),
-            industry: data.industry
+            industry: data.industry,
+            timezone: data.timezone
           },
           { headers: { Authorization: `Bearer ${token}` } }
         );
@@ -171,31 +192,49 @@ export function OnboardingModal({ open, onClose }) {
                 <div className={`w-12 h-1 mx-2 ${s.id < step ? 'bg-green-500' : 'bg-gray-200'}`}></div>
               )}
             </div>
-          ))}
-        </div>
+      ))}
+    </div>
 
-        <div className="min-h-[300px]">
-          {step === 1 && (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {INDUSTRIES.map((industry) => {
-                const Icon = industry.icon;
-                return (
-                  <Card
-                    key={industry.id}
-                    className={`p-6 cursor-pointer hover:shadow-lg transition-all ${
-                      data.industry === industry.id ? 'ring-2 ring-purple-600 bg-purple-50' : ''
-                    }`}
-                    onClick={() => handleIndustrySelect(industry.id)}
-                  >
-                    <div className={`p-4 rounded-lg ${industry.bgColor} mb-3 w-fit mx-auto`}>
-                      <Icon className={`h-8 w-8 ${industry.color}`} />
-                    </div>
-                    <h3 className="text-lg font-semibold text-center">{industry.name}</h3>
-                  </Card>
-                );
-              })}
-            </div>
-          )}
+    <div className="min-h-[300px]">
+
+        {step === 1 && (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        {INDUSTRIES.map((industry) => {
+          const Icon = industry.icon;
+          return (
+            <Card
+              key={industry.id}
+              className={`p-6 cursor-pointer hover:shadow-lg transition-all ${
+                data.industry === industry.id ? 'ring-2 ring-purple-600 bg-purple-50' : ''
+              }`}
+              onClick={() => handleIndustrySelect(industry.id)}
+            >
+              <div className={`p-4 rounded-lg ${industry.bgColor} mb-3 w-fit mx-auto`}>
+                <Icon className={`h-8 w-8 ${industry.color}`} />
+              </div>
+              <h3 className="text-lg font-semibold text-center">{industry.name}</h3>
+            </Card>
+          );
+        })}
+      </div>
+      
+      {/* Timezone Selection */}
+      <div>
+        <Label className="text-base font-semibold">{tr('Business Timezone')}</Label>
+        <p className="text-sm text-gray-500 mb-2">{tr('Select your business operating timezone')}</p>
+        <select
+          value={data.timezone}
+          onChange={(e) => setData({ ...data, timezone: e.target.value })}
+          className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none"
+        >
+          {TIMEZONES.map((tz) => (
+            <option key={tz.id} value={tz.id}>{tz.name}</option>
+          ))}
+        </select>
+      </div>
+    </div>
+)}
 
           {step === 2 && (
             <div className="grid grid-cols-2 gap-4">

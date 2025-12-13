@@ -260,14 +260,14 @@ export default function KnowledgeBasePage() {
                       <td className="px-6 py-4">
                         <Badge
                           className={
-                            doc.status === 'ready'
-                              ? 'bg-green-100 text-green-800'
-                              : doc.status === 'processing'
-                              ? 'bg-blue-100 text-blue-800'
-                              : 'bg-red-100 text-red-800'
+                            doc.status === 'ACTIVE' || doc.status === 'ready'
+                          ? 'bg-green-100 text-green-800'
+                          : doc.status === 'PROCESSING' || doc.status === 'processing'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-red-100 text-red-800'
                           }
                         >
-                          {t(doc.status === 'ready' ? 'ready' : doc.status === 'processing' ? 'processing2' : 'failed', locale)}
+                          {t((doc.status === 'ACTIVE' || doc.status === 'ready') ? 'ready' : (doc.status === 'PROCESSING' || doc.status === 'processing') ? 'processing2' : 'failed')}
                         </Badge>
                       </td>
                       <td className="px-6 py-4 text-sm text-neutral-600">
@@ -379,14 +379,14 @@ export default function KnowledgeBasePage() {
                       <td className="px-6 py-4">
                         <Badge
                           className={
-                            url.status === 'ready'
+                            url.status === 'ACTIVE' || url.status === 'ready'
                               ? 'bg-green-100 text-green-800'
-                              : url.status === 'crawling'
-                              ? 'bg-blue-100 text-blue-800'
-                              : 'bg-red-100 text-red-800'
+                              : url.status === 'PROCESSING' || url.status === 'crawling'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-red-100 text-red-800'
                           }
                         >
-                          {t(url.status === 'ready' ? 'ready' : url.status === 'crawling' ? 'crawling2' : 'failed', locale)}
+                        {t((url.status === 'ACTIVE' || url.status === 'ready') ? 'ready' : (url.status === 'PROCESSING' || url.status === 'crawling') ? 'crawling2' : 'failed')}
                         </Badge>
                       </td>
                       <td className="px-6 py-4 text-sm text-neutral-600">{url.pageCount}</td>

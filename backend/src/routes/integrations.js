@@ -9,6 +9,7 @@ import hubspotService from '../services/hubspot.js';
 import googleSheetsService from '../services/google-sheets.js';
 import whatsappService from '../services/whatsapp.js';
 import { getFilteredIntegrations, getIntegrationPriority } from '../config/integrationMetadata.js';
+import axios from 'axios';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -550,6 +551,118 @@ router.get('/google-calendar/callback', async (req, res) => {
 });
 
 /* ============================================================
+   GOOGLE CALENDAR - TEST & DISCONNECT
+============================================================ */
+
+router.post('/google-calendar/test', async (req, res) => {
+  try {
+    const integration = await prisma.integration.findFirst({
+      where: {
+        businessId: req.businessId,
+        type: 'GOOGLE_CALENDAR'
+      }
+    });
+
+    if (!integration || !integration.connected) {
+      return res.status(404).json({ success: false, error: 'Google Calendar not connected' });
+    }
+
+    // Test by listing calendars
+    const credentials = integration.credentials;
+    const calendars = await googleCalendarService.listCalendars(
+      credentials.access_token,
+      credentials.refresh_token,
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET
+    );
+
+    res.json({ 
+      success: true, 
+      message: 'Google Calendar bağlantısı aktif',
+      calendarsCount: calendars?.length || 0
+    });
+  } catch (error) {
+    console.error('Google Calendar test error:', error);
+    res.status(500).json({ success: false, error: 'Test failed - token may be expired' });
+  }
+});
+
+router.post('/google-calendar/disconnect', async (req, res) => {
+  try {
+    await prisma.integration.updateMany({
+      where: {
+        businessId: req.businessId,
+        type: 'GOOGLE_CALENDAR'
+      },
+      data: {
+        connected: false,
+        isActive: false
+      }
+    });
+
+    res.json({ success: true, message: 'Google Calendar disconnected' });
+  } catch (error) {
+    console.error('Google Calendar disconnect error:', error);
+    res.status(500).json({ error: 'Failed to disconnect' });
+  }
+});
+
+/* ============================================================
+   GOOGLE SHEETS - TEST & DISCONNECT
+============================================================ */
+
+router.post('/google-sheets/test', async (req, res) => {
+  try {
+    const integration = await prisma.integration.findFirst({
+      where: {
+        businessId: req.businessId,
+        type: 'GOOGLE_SHEETS'
+      }
+    });
+
+    if (!integration || !integration.connected) {
+      return res.status(404).json({ success: false, error: 'Google Sheets not connected' });
+    }
+
+    // Test by checking token validity
+    const credentials = integration.credentials;
+    
+    // Simple test - if we have tokens, connection is valid
+    if (credentials.access_token) {
+      res.json({ 
+        success: true, 
+        message: 'Google Sheets bağlantısı aktif'
+      });
+    } else {
+      res.status(400).json({ success: false, error: 'Invalid credentials' });
+    }
+  } catch (error) {
+    console.error('Google Sheets test error:', error);
+    res.status(500).json({ success: false, error: 'Test failed' });
+  }
+});
+
+router.post('/google-sheets/disconnect', async (req, res) => {
+  try {
+    await prisma.integration.updateMany({
+      where: {
+        businessId: req.businessId,
+        type: 'GOOGLE_SHEETS'
+      },
+      data: {
+        connected: false,
+        isActive: false
+      }
+    });
+
+    res.json({ success: true, message: 'Google Sheets disconnected' });
+  } catch (error) {
+    console.error('Google Sheets disconnect error:', error);
+    res.status(500).json({ error: 'Failed to disconnect' });
+  }
+});
+
+/* ============================================================
    HUBSPOT INTEGRATION (OAuth)
 ============================================================ */
 
@@ -678,6 +791,12 @@ router.post('/whatsapp/connect', async (req, res) => {
       });
     }
 
+    console.log('Validating with Meta:', {
+      phoneNumberId,
+      tokenLength: accessToken?.length,
+      tokenStart: accessToken?.substring(0, 20)
+    });
+
     // Validate access token with Meta API
     try {
       const metaResponse = await axios.get(
@@ -695,8 +814,8 @@ router.post('/whatsapp/connect', async (req, res) => {
         });
       }
     } catch (metaError) {
-      console.error('Meta API validation error:', metaError.response?.data);
-      return res.status(401).json({
+      console.error('Meta API validation error:', metaError.response?.data || metaError.message || metaError);
+      return res.status(400).json({
         error: 'Failed to validate credentials with Meta. Please check your access token and phone number ID.',
         details: metaError.response?.data?.error?.message
       });
@@ -896,6 +1015,160 @@ router.post('/zapier/connect', async (req, res) => {
   } catch (error) {
     console.error('Zapier connect error:', error);
     res.status(500).json({ error: 'Failed to configure Zapier' });
+  }
+});
+
+/* ============================================================
+   NETGSM SMS INTEGRATION (API Key)
+============================================================ */
+
+router.post('/netgsm/connect', async (req, res) => {
+  try {
+    const { username, password, header } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({
+        error: 'Kullanıcı adı ve şifre gerekli'
+      });
+    }
+
+    // Test connection with NetGSM credit check
+    try {
+      const testResponse = await axios.get(
+        `https://api.netgsm.com.tr/balance/list/get?usercode=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
+      );
+
+      // NetGSM returns error codes as text
+      const responseText = testResponse.data.toString();
+      if (responseText.startsWith('30') || responseText.startsWith('40') || responseText.startsWith('70')) {
+        return res.status(400).json({
+          error: 'Geçersiz NetGSM bilgileri',
+          code: responseText
+        });
+      }
+    } catch (testError) {
+      return res.status(400).json({
+        error: 'NetGSM bağlantı testi başarısız'
+      });
+    }
+
+    // Save credentials
+    await prisma.integration.upsert({
+      where: {
+        businessId_type: { businessId: req.businessId, type: 'NETGSM_SMS' }
+      },
+      update: {
+        credentials: { username, password, header: header || '' },
+        connected: true,
+        isActive: true
+      },
+      create: {
+        businessId: req.businessId,
+        type: 'NETGSM_SMS',
+        credentials: { username, password, header: header || '' },
+        connected: true,
+        isActive: true
+      }
+    });
+
+    console.log(`✅ NetGSM connected for business ${req.businessId}`);
+    res.json({ success: true, message: 'NetGSM bağlandı' });
+  } catch (error) {
+    console.error('NetGSM connect error:', error);
+    res.status(500).json({ error: 'NetGSM bağlantısı başarısız' });
+  }
+});
+
+router.post('/netgsm/disconnect', async (req, res) => {
+  try {
+    await prisma.integration.updateMany({
+      where: {
+        businessId: req.businessId,
+        type: 'NETGSM_SMS'
+      },
+      data: {
+        connected: false,
+        isActive: false
+      }
+    });
+
+    res.json({ success: true, message: 'NetGSM bağlantısı kesildi' });
+  } catch (error) {
+    console.error('NetGSM disconnect error:', error);
+    res.status(500).json({ error: 'Bağlantı kesilemedi' });
+  }
+});
+
+router.get('/netgsm/status', async (req, res) => {
+  try {
+    const integration = await prisma.integration.findFirst({
+      where: {
+        businessId: req.businessId,
+        type: 'NETGSM_SMS'
+      }
+    });
+
+    if (!integration) {
+      return res.json({ connected: false });
+    }
+
+    res.json({
+      connected: integration.connected,
+      isActive: integration.isActive,
+      header: integration.credentials?.header || null
+    });
+  } catch (error) {
+    console.error('NetGSM status error:', error);
+    res.status(500).json({ error: 'Durum alınamadı' });
+  }
+});
+
+router.post('/netgsm/send', async (req, res) => {
+  try {
+    const { phone, message } = req.body;
+
+    if (!phone || !message) {
+      return res.status(400).json({ error: 'Telefon ve mesaj gerekli' });
+    }
+
+    const integration = await prisma.integration.findFirst({
+      where: {
+        businessId: req.businessId,
+        type: 'NETGSM_SMS',
+        isActive: true
+      }
+    });
+
+    if (!integration) {
+      return res.status(404).json({ error: 'NetGSM bağlantısı bulunamadı' });
+    }
+
+    const { username, password, header } = integration.credentials;
+
+    // Send SMS via NetGSM
+    const response = await axios.get(
+      `https://api.netgsm.com.tr/sms/send/get?usercode=${encodeURIComponent(username)}` +
+      `&password=${encodeURIComponent(password)}` +
+      `&gsmno=${encodeURIComponent(phone)}` +
+      `&message=${encodeURIComponent(message)}` +
+      `&msgheader=${encodeURIComponent(header || 'TELYX')}`
+    );
+
+    const responseText = response.data.toString();
+
+    // Check for success (00 or 01 prefix means success)
+    if (responseText.startsWith('00') || responseText.startsWith('01')) {
+      res.json({ success: true, messageId: responseText });
+    } else {
+      res.status(400).json({ 
+        success: false, 
+        error: 'SMS gönderilemedi',
+        code: responseText 
+      });
+    }
+  } catch (error) {
+    console.error('NetGSM send error:', error);
+    res.status(500).json({ error: 'SMS gönderme hatası' });
   }
 });
 
