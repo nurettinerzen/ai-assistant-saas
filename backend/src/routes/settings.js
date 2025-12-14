@@ -9,7 +9,7 @@ const prisma = new PrismaClient();
 router.get('/profile', authenticateToken, async (req, res) => {
   try {
     const userId = req.userId;
-const businessId = req.businessId;
+    const businessId = req.businessId;
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -27,6 +27,8 @@ const businessId = req.businessId;
         name: true,
         businessType: true,
         language: true,
+        country: true,
+        timezone: true,
       },
     });
 
@@ -34,7 +36,11 @@ const businessId = req.businessId;
       where: { businessId },
     });
 
+    // Return in format frontend expects
     res.json({
+      name: user?.email?.split('@')[0] || '', // User name from email
+      email: user?.email || '',
+      company: business?.name || '',  // Business name as company
       user,
       business,
       subscription,
@@ -48,20 +54,29 @@ const businessId = req.businessId;
 // PUT /api/settings/profile
 router.put('/profile', authenticateToken, async (req, res) => {
   try {
-    const { businessId } = req.user;
-    const { businessName, language } = req.body;
+    const businessId = req.businessId;
+    const { name, email, company, businessName, language } = req.body;
+
+    // Update business name - accept both 'company' and 'businessName' for compatibility
+    const newBusinessName = company || businessName;
+
+    const updateData = {};
+    if (newBusinessName) updateData.name = newBusinessName;
+    if (language) updateData.language = language;
 
     const updatedBusiness = await prisma.business.update({
       where: { id: businessId },
-      data: {
-        name: businessName,
-        language,
-      },
+      data: updateData,
     });
+
+    console.log(`✅ Business updated: ${updatedBusiness.name} (ID: ${businessId})`);
 
     res.json({
       message: 'Profile updated successfully',
       business: updatedBusiness,
+      name: name || '',
+      email: email || '',
+      company: updatedBusiness.name,
     });
   } catch (error) {
     console.error('Error updating profile:', error);

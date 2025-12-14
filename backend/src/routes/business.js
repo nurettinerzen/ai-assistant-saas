@@ -139,6 +139,9 @@ const voiceId = voiceMap[voiceKey] || voiceMap.male_professional;
     }
 
     // Normal update (assistant zaten var)
+    // Also accept region fields from settings page
+    const { country, timezone } = req.body;
+
     const updatedBusiness = await prisma.business.update({
       where: { id: req.businessId },
       data: {
@@ -146,9 +149,13 @@ const voiceId = voiceMap[voiceKey] || voiceMap.male_professional;
         ...(vapiPhoneNumber !== undefined && { vapiPhoneNumber }),
         ...(vapiAssistantId !== undefined && { vapiAssistantId }),
         ...(businessType && { businessType: businessType.toUpperCase() }),
+        ...(language && { language: language.toUpperCase() }),
+        ...(country && { country: country.toUpperCase() }),
+        ...(timezone && { timezone }),
       },
     });
 
+    console.log(`✅ Business updated: ${updatedBusiness.name}, type: ${updatedBusiness.businessType}`);
     res.json(updatedBusiness);
   } catch (error) {
     console.error('Update business error:', error);

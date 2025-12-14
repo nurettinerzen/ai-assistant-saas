@@ -21,14 +21,30 @@ const prisma = new PrismaClient();
 router.post('/webhook', async (req, res) => {
   try {
     const event = req.body;
-    console.log('📞 VAPI Webhook received:', event.type || event.event);
+
+    // VAPI sends events in different formats:
+    // 1. { type: "call.started", call: {...} }
+    // 2. { message: { type: "status-update", status: "ended", ... } }
+    const eventType = event.type || event.event || event.message?.type;
+    const messageStatus = event.message?.status;
+
+    console.log('📞 VAPI Webhook received:', eventType, messageStatus ? `(status: ${messageStatus})` : '');
+    console.log('📞 Full event:', JSON.stringify(event, null, 2));
 
     // Acknowledge receipt immediately
     res.status(200).json({ received: true });
 
-    // Handle different event types
-    const eventType = event.type || event.event;
+    // Handle status-update type (VAPI's newer format)
+    if (eventType === 'status-update') {
+      if (messageStatus === 'ended') {
+        await handleCallEnded(event);
+      } else if (messageStatus === 'in-progress' || messageStatus === 'ringing') {
+        await handleCallStarted(event);
+      }
+      return;
+    }
 
+    // Handle legacy event types
     switch (eventType) {
       case 'call.started':
       case 'call-start':
@@ -60,9 +76,10 @@ router.post('/webhook', async (req, res) => {
 // Handle call started
 async function handleCallStarted(event) {
   try {
-    const { call } = event;
-    const callId = call?.id || event.callId;
-    const assistantId = call?.assistantId || event.assistantId;
+    // Support both formats: { call: {...} } and { message: { call: {...} } }
+    const call = event.call || event.message?.call;
+    const callId = call?.id || event.callId || event.message?.call?.id;
+    const assistantId = call?.assistantId || event.assistantId || event.message?.call?.assistantId;
 
     if (!callId) {
       console.warn('⚠️ No call ID in call.started event');
@@ -99,12 +116,17 @@ async function handleCallStarted(event) {
 // Handle call ended
 async function handleCallEnded(event) {
   try {
-    const { call } = event;
-    const callId = call?.id || event.callId;
-    const assistantId = call?.assistantId || event.assistantId;
-    const duration = call?.duration || event.duration || 0; // in seconds
-    const recordingUrl = call?.recordingUrl || event.recordingUrl || call?.artifact?.recordingUrl;
-    const status = call?.endedReason || event.endedReason || 'completed';
+    // Support both formats: { call: {...} } and { message: { call: {...} } }
+    const call = event.call || event.message?.call;
+    const message = event.message;
+
+    const callId = call?.id || event.callId || message?.call?.id;
+    const assistantId = call?.assistantId || event.assistantId || message?.call?.assistantId;
+    const duration = call?.duration || event.duration || message?.durationSeconds || 0; // in seconds
+    const recordingUrl = call?.recordingUrl || event.recordingUrl || call?.artifact?.recordingUrl || message?.artifact?.recordingUrl;
+    const status = call?.endedReason || event.endedReason || message?.endedReason || 'completed';
+
+    console.log(`📞 handleCallEnded - callId: ${callId}, duration: ${duration}s, status: ${status}`);
 
     if (!callId) {
       console.warn('⚠️ No call ID in call.ended event');
@@ -129,26 +151,32 @@ async function handleCallEnded(event) {
     }
 
     // Parse transcript messages from VAPI format
+    // VAPI can send transcript in different locations
     let transcriptMessages = [];
     let transcriptText = '';
 
-    if (call?.messages && Array.isArray(call.messages)) {
+    const messagesSource = call?.messages || message?.messages || message?.artifact?.messages;
+    const transcriptSource = call?.transcript || message?.transcript || message?.artifact?.transcript;
+
+    if (messagesSource && Array.isArray(messagesSource)) {
       // VAPI provides messages array with role, content, timestamp
-      transcriptMessages = call.messages
+      transcriptMessages = messagesSource
         .filter(msg => msg.role === 'assistant' || msg.role === 'user')
         .map(msg => ({
           speaker: msg.role === 'assistant' ? 'assistant' : 'user',
-          text: msg.content || '',
-          timestamp: msg.timestamp || new Date().toISOString()
+          text: msg.content || msg.message || '',
+          timestamp: msg.timestamp || msg.time || new Date().toISOString()
         }));
 
       transcriptText = callAnalysis.extractTranscriptText(transcriptMessages);
-    } else if (call?.transcript) {
+    } else if (transcriptSource) {
       // Fallback to plain text transcript
-      transcriptText = call.transcript;
+      transcriptText = typeof transcriptSource === 'string' ? transcriptSource : JSON.stringify(transcriptSource);
     } else if (event.transcript) {
       transcriptText = event.transcript;
     }
+
+    console.log(`📞 Transcript parsed: ${transcriptMessages.length} messages, ${transcriptText.length} chars`);
 
     // Perform AI analysis for calls with transcripts
     let analysis = {
