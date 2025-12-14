@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { User, Bell, CreditCard, AlertTriangle, Building2 } from 'lucide-react';
+import { User, Bell, CreditCard, AlertTriangle, Building2, Globe } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast, toastHelpers } from '@/lib/toast';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -28,6 +28,7 @@ export default function SettingsPage() {
   const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState({ name: '', email: '', company: '' });
+  const [region, setRegion] = useState({ language: 'TR', country: 'TR', timezone: 'Europe/Istanbul' });
   const [businessType, setBusinessType] = useState('OTHER');
   const [businessId, setBusinessId] = useState(null);
   const [notifications, setNotifications] = useState({
@@ -60,9 +61,24 @@ export default function SettingsPage() {
         userBusinessId ? apiClient.business.get(userBusinessId) : Promise.resolve({ data: { business: { businessType: 'OTHER' } } })
       ]);
 
-      setProfile(profileRes.data);
-      setNotifications(notificationsRes.data);
-      setBusinessType(businessRes.data.businessType || businessRes.data.business?.businessType || 'OTHER');
+      setProfile({
+        name: profileRes.data?.name || '',
+        email: profileRes.data?.email || '',
+        company: profileRes.data?.company || ''
+      });
+      setNotifications({
+        emailOnCall: notificationsRes.data?.emailOnCall ?? true,
+        emailOnLimit: notificationsRes.data?.emailOnLimit ?? true,
+        weeklySummary: notificationsRes.data?.weeklySummary ?? true,
+        smsNotifications: notificationsRes.data?.smsNotifications ?? false
+      });
+      const bizData = businessRes.data?.business || businessRes.data || {};
+      setBusinessType(bizData.businessType || 'OTHER');
+      setRegion({
+        language: bizData.language || 'TR',
+        country: bizData.country || 'TR',
+        timezone: bizData.timezone || 'Europe/Istanbul'
+      });
     } catch (error) {
       console.error('Load settings error:', error);
       toast.error(t('saveError'));
@@ -110,6 +126,24 @@ export default function SettingsPage() {
     } catch (error) {
       console.error('Update business type error:', error);
       toast.error('Failed to update business type');
+    }
+  };
+
+  const handleSaveRegion = async () => {
+    if (!businessId) {
+      toast.error('Business ID not found');
+      return;
+    }
+
+    try {
+      await toastHelpers.async(
+        apiClient.put(`/api/business/${businessId}`, region),
+        t('savingRegion') || 'Saving region settings...',
+        t('regionUpdated') || 'Region settings updated successfully!'
+      );
+    } catch (error) {
+      console.error('Update region error:', error);
+      toast.error(t('regionUpdateFailed') || 'Failed to update region settings');
     }
   };
 
@@ -247,6 +281,77 @@ export default function SettingsPage() {
 
         <div className="flex justify-end mt-6">
           <Button onClick={handleSaveBusinessType}>Save Business Type</Button>
+        </div>
+      </div>
+
+      {/* Region & Language Section */}
+      <div className="bg-white rounded-xl border border-neutral-200 p-6 shadow-sm">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="p-2 bg-primary-100 rounded-lg">
+            <Globe className="h-5 w-5 text-primary-600" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-neutral-900">{t('regionSettings') || 'Region & Language'}</h2>
+            <p className="text-sm text-neutral-500">{t('regionDescription') || 'Configure your business location and language preferences'}</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <Label htmlFor="language">{t('language') || 'Language'}</Label>
+            <Select value={region.language} onValueChange={(val) => setRegion({...region, language: val})}>
+              <SelectTrigger id="language" className="w-full">
+                <SelectValue placeholder="Select language" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="TR">Türkçe</SelectItem>
+                <SelectItem value="EN">English</SelectItem>
+                <SelectItem value="DE">Deutsch</SelectItem>
+                <SelectItem value="ES">Español</SelectItem>
+                <SelectItem value="FR">Français</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="country">{t('country') || 'Country'}</Label>
+            <Select value={region.country} onValueChange={(val) => setRegion({...region, country: val})}>
+              <SelectTrigger id="country" className="w-full">
+                <SelectValue placeholder="Select country" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="TR">Türkiye</SelectItem>
+                <SelectItem value="US">United States</SelectItem>
+                <SelectItem value="DE">Germany</SelectItem>
+                <SelectItem value="GB">United Kingdom</SelectItem>
+                <SelectItem value="FR">France</SelectItem>
+                <SelectItem value="ES">Spain</SelectItem>
+                <SelectItem value="NL">Netherlands</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="timezone">{t('timezone') || 'Timezone'}</Label>
+            <Select value={region.timezone} onValueChange={(val) => setRegion({...region, timezone: val})}>
+              <SelectTrigger id="timezone" className="w-full">
+                <SelectValue placeholder="Select timezone" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Europe/Istanbul">(UTC+3) Istanbul</SelectItem>
+                <SelectItem value="Europe/London">(UTC+0) London</SelectItem>
+                <SelectItem value="Europe/Paris">(UTC+1) Paris</SelectItem>
+                <SelectItem value="Europe/Berlin">(UTC+1) Berlin</SelectItem>
+                <SelectItem value="America/New_York">(UTC-5) New York</SelectItem>
+                <SelectItem value="America/Los_Angeles">(UTC-8) Los Angeles</SelectItem>
+                <SelectItem value="Asia/Dubai">(UTC+4) Dubai</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="flex justify-end mt-6">
+          <Button onClick={handleSaveRegion}>{t('saveRegion') || 'Save Region Settings'}</Button>
         </div>
       </div>
 

@@ -606,21 +606,21 @@ class BatchCallService {
 
     const vapiCallId = call?.id;
     if (!vapiCallId) {
-      console.error('No call ID in webhook');
+      console.log('ℹ️ No call ID in webhook - skipping batch call update');
       return;
     }
 
-    // Find the campaign call
-    const campaignCall = await prisma.campaignCall.findUnique({
+    // Find the campaign call by vapiCallId
+    const campaignCall = await prisma.campaignCall.findFirst({
       where: { vapiCallId }
     });
 
     if (!campaignCall) {
-      console.log(`No campaign call found for VAPI call ${vapiCallId}`);
+      // Not a batch/campaign call - this is normal for regular inbound calls
       return;
     }
 
-    console.log(`📞 Call ended for campaign call ${campaignCall.id}`);
+    console.log(`📞 Batch call ended for campaign call ${campaignCall.id}`);
 
     // Extract call data
     const duration = call.duration || 0;
@@ -835,12 +835,14 @@ class BatchCallService {
   // ============================================================================
 
   /**
-   * Build collection call system prompt
+   * Build collection call system prompt based on business language
    */
   buildCollectionPrompt(call, business, campaign) {
     const customScript = campaign.collectionScript || '';
+    const lang = business.language || 'TR';
 
-    return `Sen ${business.name} şirketinin tahsilat asistanısın.
+    if (lang === 'TR') {
+      return `Sen ${business.name} şirketinin tahsilat asistanısın.
 Şu anda ${call.customerName} ile görüşüyorsun.
 
 MÜŞTERİ BİLGİLERİ:
@@ -866,13 +868,55 @@ KURALLAR:
 ${customScript ? `EK TALİMATLAR:\n${customScript}` : ''}
 
 Konuşmayı Türkçe yap.`;
+    } else {
+      return `You are the collection assistant of ${business.name}.
+You are currently speaking with ${call.customerName}.
+
+CUSTOMER INFORMATION:
+- Name: ${call.customerName}
+- Invoice No: ${call.invoiceNumber || 'Unknown'}
+- Amount Due: ${call.invoiceAmount.toLocaleString('en-US')} ${call.invoiceCurrency}
+- Days Overdue: ${call.daysOverdue} days
+
+TASKS:
+1. Introduce yourself politely (${business.name} collections department)
+2. Remind about the unpaid invoice
+3. Ask about payment status
+4. Get a payment plan or date
+5. Thank them and close the conversation
+
+RULES:
+- Never be threatening or rude
+- Be professional and understanding
+- Take note if customer disputes
+- If payment is promised, clarify the date and amount
+- Keep the call under 2-3 minutes
+
+${customScript ? `ADDITIONAL INSTRUCTIONS:\n${customScript}` : ''}
+
+Speak in English.`;
+    }
   }
 
   /**
-   * Get first message for collection call
+   * Get first message for collection call based on business language
    */
-  getFirstMessage(call, business) {
-    return `Merhaba ${call.customerName}, ben ${business.name}'den arıyorum. ${call.invoiceAmount.toLocaleString('tr-TR')} TL tutarındaki faturanızla ilgili sizinle görüşmek istiyordum. Uygun bir zamanda mısınız?`;
+  getFirstMessage(call, business, campaignType = 'COLLECTION') {
+    const lang = business.language || 'TR';
+
+    if (lang === 'TR') {
+      if (campaignType === 'COLLECTION') {
+        return `Merhaba ${call.customerName}, ben ${business.name}'den arıyorum. ${call.invoiceAmount.toLocaleString('tr-TR')} ${call.invoiceCurrency} tutarındaki faturanızla ilgili sizinle görüşmek istiyordum. Uygun musunuz?`;
+      }
+      // Default TR message
+      return `Merhaba ${call.customerName}, ben ${business.name}'den arıyorum. Size nasıl yardımcı olabilirim?`;
+    } else {
+      // English and other languages
+      if (campaignType === 'COLLECTION') {
+        return `Hello ${call.customerName}, I'm calling from ${business.name}. I wanted to discuss your invoice of ${call.invoiceAmount.toLocaleString('en-US')} ${call.invoiceCurrency}. Is this a good time?`;
+      }
+      return `Hello ${call.customerName}, I'm calling from ${business.name}. How can I help you?`;
+    }
   }
 
   /**

@@ -36,6 +36,8 @@ export function OnboardingModal({ open, onClose }) {
   const [availableVoices, setAvailableVoices] = useState([]);
   const [data, setData] = useState({
     industry: '',
+    language: locale?.toUpperCase() || 'TR',
+    country: 'TR',
     voice: null,
     firstMessage: '',
     systemPrompt: '',
@@ -47,13 +49,15 @@ export function OnboardingModal({ open, onClose }) {
       try {
         const response = await axios.get(`${API_URL}/api/voices`);
         const voiceData = response.data.voices;
-        setAvailableVoices(voiceData[locale] || voiceData['en'] || []);
+        // Use data.language instead of locale for voice selection
+        const langKey = data.language?.toLowerCase() || locale || 'tr';
+        setAvailableVoices(voiceData[langKey] || voiceData['en'] || []);
       } catch (error) {
         console.error('Failed to fetch voices:', error);
       }
     };
     fetchVoices();
-  }, [locale]);
+  }, [locale, data.language]);
 
   const STEPS = [
     { id: 1, title: tr('Choose Industry'), description: tr('Tell us about your business') },
@@ -71,17 +75,36 @@ export function OnboardingModal({ open, onClose }) {
     { id: 'OTHER', icon: Package, name: tr('Other'), color: 'text-gray-600', bgColor: 'bg-gray-100' }
   ];
 
+  const COUNTRIES = [
+    { id: 'TR', name: 'Türkiye', timezone: 'Europe/Istanbul' },
+    { id: 'US', name: 'United States', timezone: 'America/New_York' },
+    { id: 'GB', name: 'United Kingdom', timezone: 'Europe/London' },
+    { id: 'DE', name: 'Germany', timezone: 'Europe/Berlin' },
+    { id: 'FR', name: 'France', timezone: 'Europe/Paris' },
+    { id: 'ES', name: 'Spain', timezone: 'Europe/Madrid' },
+    { id: 'NL', name: 'Netherlands', timezone: 'Europe/Amsterdam' },
+    { id: 'AE', name: 'UAE', timezone: 'Asia/Dubai' }
+  ];
+
+  const LANGUAGES = [
+    { id: 'TR', name: 'Türkçe' },
+    { id: 'EN', name: 'English' },
+    { id: 'DE', name: 'Deutsch' },
+    { id: 'ES', name: 'Español' },
+    { id: 'FR', name: 'Français' }
+  ];
+
   const TIMEZONES = [
-    { id: 'America/Los_Angeles', name: '(UTC-8) Los Angeles, Pacific Time' },
-    { id: 'America/Denver', name: '(UTC-7) Denver, Mountain Time' },
-    { id: 'America/Chicago', name: '(UTC-6) Chicago, Central Time' },
-    { id: 'America/New_York', name: '(UTC-5) New York, Eastern Time' },
-    { id: 'America/Toronto', name: '(UTC-5) Toronto, Canada' },
-    { id: 'America/Sao_Paulo', name: '(UTC-3) São Paulo, Brazil' },
+    { id: 'Europe/Istanbul', name: '(UTC+3) Istanbul, Turkey' },
     { id: 'Europe/London', name: '(UTC+0) London, UK' },
     { id: 'Europe/Paris', name: '(UTC+1) Paris, France' },
     { id: 'Europe/Berlin', name: '(UTC+1) Berlin, Germany' },
-    { id: 'Europe/Istanbul', name: '(UTC+3) Istanbul, Turkey' },
+    { id: 'America/New_York', name: '(UTC-5) New York, Eastern Time' },
+    { id: 'America/Los_Angeles', name: '(UTC-8) Los Angeles, Pacific Time' },
+    { id: 'America/Chicago', name: '(UTC-6) Chicago, Central Time' },
+    { id: 'America/Denver', name: '(UTC-7) Denver, Mountain Time' },
+    { id: 'America/Toronto', name: '(UTC-5) Toronto, Canada' },
+    { id: 'America/Sao_Paulo', name: '(UTC-3) São Paulo, Brazil' },
     { id: 'Europe/Moscow', name: '(UTC+3) Moscow, Russia' },
     { id: 'Asia/Dubai', name: '(UTC+4) Dubai, UAE' },
     { id: 'Asia/Kolkata', name: '(UTC+5:30) Mumbai, India' },
@@ -103,7 +126,15 @@ export function OnboardingModal({ open, onClose }) {
   };
 
   const handleVoiceSelect = (voice) => {
-    const greeting = tr("Hi, I'm " + voice.name + ", how can I help you?");
+    // Language-based default greeting
+    const greetings = {
+      TR: `Merhaba, ben ${voice.name}. Size nasıl yardımcı olabilirim?`,
+      EN: `Hello, I'm ${voice.name}. How can I help you today?`,
+      DE: `Hallo, ich bin ${voice.name}. Wie kann ich Ihnen helfen?`,
+      ES: `Hola, soy ${voice.name}. ¿Cómo puedo ayudarle?`,
+      FR: `Bonjour, je suis ${voice.name}. Comment puis-je vous aider?`
+    };
+    const greeting = greetings[data.language] || greetings.TR;
     setData({ ...data, voice, firstMessage: greeting });
   };
 
@@ -142,7 +173,8 @@ export function OnboardingModal({ open, onClose }) {
             voiceId: data.voice.id,
             firstMessage: data.firstMessage,
             systemPrompt: data.systemPrompt,
-            language: locale.toUpperCase(),
+            language: data.language,
+            country: data.country,
             industry: data.industry,
             timezone: data.timezone
           },
@@ -199,26 +231,69 @@ export function OnboardingModal({ open, onClose }) {
 
         {step === 1 && (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        {INDUSTRIES.map((industry) => {
-          const Icon = industry.icon;
-          return (
-            <Card
-              key={industry.id}
-              className={`p-6 cursor-pointer hover:shadow-lg transition-all ${
-                data.industry === industry.id ? 'ring-2 ring-purple-600 bg-purple-50' : ''
+      {/* Language Selection */}
+      <div>
+        <Label className="text-base font-semibold">{tr('Language')}</Label>
+        <p className="text-sm text-gray-500 mb-2">{tr('Select assistant language')}</p>
+        <div className="grid grid-cols-5 gap-2">
+          {LANGUAGES.map((lang) => (
+            <button
+              key={lang.id}
+              type="button"
+              onClick={() => setData({ ...data, language: lang.id })}
+              className={`p-3 border rounded-lg text-center transition-all ${
+                data.language === lang.id ? 'ring-2 ring-purple-600 bg-purple-50 border-purple-600' : 'hover:bg-gray-50'
               }`}
-              onClick={() => handleIndustrySelect(industry.id)}
             >
-              <div className={`p-4 rounded-lg ${industry.bgColor} mb-3 w-fit mx-auto`}>
-                <Icon className={`h-8 w-8 ${industry.color}`} />
-              </div>
-              <h3 className="text-lg font-semibold text-center">{industry.name}</h3>
-            </Card>
-          );
-        })}
+              <span className="font-medium">{lang.name}</span>
+            </button>
+          ))}
+        </div>
       </div>
-      
+
+      {/* Country Selection */}
+      <div>
+        <Label className="text-base font-semibold">{tr('Country')}</Label>
+        <p className="text-sm text-gray-500 mb-2">{tr('Select your business location')}</p>
+        <select
+          value={data.country}
+          onChange={(e) => {
+            const country = COUNTRIES.find(c => c.id === e.target.value);
+            setData({ ...data, country: e.target.value, timezone: country?.timezone || data.timezone });
+          }}
+          className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none"
+        >
+          {COUNTRIES.map((country) => (
+            <option key={country.id} value={country.id}>{country.name}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Industry Selection */}
+      <div>
+        <Label className="text-base font-semibold">{tr('Business Type')}</Label>
+        <p className="text-sm text-gray-500 mb-2">{tr('Tell us about your business')}</p>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          {INDUSTRIES.map((industry) => {
+            const Icon = industry.icon;
+            return (
+              <Card
+                key={industry.id}
+                className={`p-6 cursor-pointer hover:shadow-lg transition-all ${
+                  data.industry === industry.id ? 'ring-2 ring-purple-600 bg-purple-50' : ''
+                }`}
+                onClick={() => handleIndustrySelect(industry.id)}
+              >
+                <div className={`p-4 rounded-lg ${industry.bgColor} mb-3 w-fit mx-auto`}>
+                  <Icon className={`h-8 w-8 ${industry.color}`} />
+                </div>
+                <h3 className="text-lg font-semibold text-center">{industry.name}</h3>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Timezone Selection */}
       <div>
         <Label className="text-base font-semibold">{tr('Business Timezone')}</Label>

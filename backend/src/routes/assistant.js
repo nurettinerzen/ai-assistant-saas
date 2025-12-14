@@ -296,6 +296,61 @@ async function getActiveToolsForBusiness(businessId) {
   return tools;
 }
 
+// ============================================================
+// ASSISTANT DEFAULTS BY LANGUAGE
+// ============================================================
+const ASSISTANT_DEFAULTS = {
+  TR: {
+    voice: 'tr-f-ecem',
+    firstMessage: 'Merhaba, ben {name}. Size nasıl yardımcı olabilirim?',
+    systemPromptPrefix: 'Sen yardımcı bir asistansın. Türkçe konuş. Kibar ve profesyonel ol.'
+  },
+  EN: {
+    voice: 'en-f-kayla',
+    firstMessage: "Hello, I'm {name}. How can I help you today?",
+    systemPromptPrefix: 'You are a helpful assistant. Speak in English. Be polite and professional.'
+  },
+  DE: {
+    voice: 'en-f-kayla', // Will use English voice as fallback
+    firstMessage: "Hallo, ich bin {name}. Wie kann ich Ihnen helfen?",
+    systemPromptPrefix: 'Du bist ein hilfreicher Assistent. Sprich auf Deutsch. Sei höflich und professionell.'
+  },
+  ES: {
+    voice: 'en-f-kayla',
+    firstMessage: "Hola, soy {name}. ¿Cómo puedo ayudarle?",
+    systemPromptPrefix: 'Eres un asistente útil. Habla en español. Sé educado y profesional.'
+  }
+};
+
+/**
+ * Get formatted date/time string for a timezone
+ * @param {string} timezone - IANA timezone string
+ * @param {string} language - Language code (TR, EN, etc.)
+ * @returns {string} Formatted date/time context string
+ */
+function getDateTimeContext(timezone, language = 'TR') {
+  const now = new Date();
+  const locale = language === 'TR' ? 'tr-TR' : 'en-US';
+
+  const options = {
+    timeZone: timezone,
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: language !== 'TR'
+  };
+
+  const formattedDateTime = now.toLocaleString(locale, options);
+
+  if (language === 'TR') {
+    return `\n\nÖNEMLİ: Şu anki tarih ve saat: ${formattedDateTime} (${timezone} saat dilimi). Tüm tarih ve saat hesaplamalarında bunu kullan.`;
+  }
+  return `\n\nIMPORTANT: Current date and time is ${formattedDateTime} (${timezone} timezone). Use this for all date and time calculations.`;
+}
+
 router.use(authenticateToken);
 
 // GET /api/assistants - List all assistants
@@ -324,7 +379,7 @@ router.get('/', authenticateToken, async (req, res) => {
 router.post('/', authenticateToken, async (req, res) => {
   try {
     const businessId = req.businessId;
-    const { name, voiceId, firstMessage, systemPrompt, model, language, industry, timezone } = req.body;
+    const { name, voiceId, firstMessage, systemPrompt, model, language, country, industry, timezone } = req.body;
 
     // Check subscription limits
     const subscription = await prisma.subscription.findUnique({
@@ -372,29 +427,28 @@ router.post('/', authenticateToken, async (req, res) => {
     const defaultVoiceForLanguage = language === 'TR' ? 'Md4RAnfKt9kVIbvqUxly' : 'Yg7C1g7suzNt5TisIqkZ';
     const elevenLabsVoiceId = VOICE_MAPPING[voiceId] || defaultVoiceForLanguage;
 
-    // Add universal language instruction - AI will match the customer's language
-    const languageInstruction = 'You are an AI assistant. Always respond in the SAME LANGUAGE the customer uses. If they speak Turkish, respond in Turkish. If they speak Spanish, respond in Spanish. If they speak French, respond in French. Match their language exactly. Speak naturally, fluently, and professionally in whatever language they choose.';
-    const businessTimezone = timezone || 'Europe/Istanbul';
-    const now = new Date();
-    const dateFormatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: businessTimezone,
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
+    // Get business info for language/timezone defaults
+    const business = await prisma.business.findUnique({
+      where: { id: businessId },
+      select: { language: true, timezone: true, country: true }
     });
-    const formattedDateTime = dateFormatter.format(now);
-    const dateContext = `\n\nIMPORTANT: Current date and time is ${formattedDateTime} (${businessTimezone} timezone). Use this for all date and time calculations.`;
+
+    const lang = language?.toUpperCase() || business?.language || 'TR';
+    const businessTimezone = timezone || business?.timezone || 'Europe/Istanbul';
+    const defaults = ASSISTANT_DEFAULTS[lang] || ASSISTANT_DEFAULTS.TR;
+
+    // Language-specific instruction
+    const languageInstruction = lang === 'TR'
+      ? 'Sen bir yapay zeka asistanısın. Müşterinin kullandığı dilde cevap ver. Eğer Türkçe konuşurlarsa Türkçe, İngilizce konuşurlarsa İngilizce yanıt ver. Dillerini tam olarak eşleştir. Doğal, akıcı ve profesyonel konuş.'
+      : 'You are an AI assistant. Always respond in the SAME LANGUAGE the customer uses. If they speak Turkish, respond in Turkish. If they speak Spanish, respond in Spanish. Match their language exactly. Speak naturally, fluently, and professionally in whatever language they choose.';
+
+    // Get date/time context in the right language
+    const dateContext = getDateTimeContext(businessTimezone, lang);
 
     const fullSystemPrompt = `${languageInstruction}${dateContext}\n\n${systemPrompt}`;
 
-    // Default first message (eğer gönderilmemişse)
-    const defaultFirstMessage = language === 'TR'
-      ? `Merhaba, ben ${name}, size nasıl yardımcı olabilirim?`
-      : `Hi, I'm ${name}, how can I help you?`;
+    // Default first message based on language (use defaults from ASSISTANT_DEFAULTS)
+    const defaultFirstMessage = defaults.firstMessage.replace('{name}', name);
     const finalFirstMessage = firstMessage || defaultFirstMessage;
 
     // Get active tools based on business integrations
@@ -464,15 +518,19 @@ console.log('✅ VAPI Response:', JSON.stringify(vapiAssistant, null, 2));
         systemPrompt: fullSystemPrompt,
         model: model || 'gpt-4',
         vapiAssistantId: vapiAssistant.id,  // ✅ VAPI'den dönen YENİ assistant ID
+        timezone: businessTimezone,
+        firstMessage: finalFirstMessage,
       },
     });
 
     await prisma.business.update({
       where: { id: businessId },
-      data: { 
+      data: {
         vapiAssistantId: vapiAssistant.id,
         ...(timezone && { timezone }),
-        ...(industry && { businessType: industry })
+        ...(industry && { businessType: industry }),
+        ...(country && { country }),
+        ...(lang && { language: lang })
       }
     });
 

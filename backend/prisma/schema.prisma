@@ -25,7 +25,9 @@ model User {
 model Business {
   id                      Int                     @id @default(autoincrement())
   name                    String
-  language                String                  @default("EN")
+  language                String                  @default("TR")  // Uygulama dili
+  country                 String                  @default("TR")  // Bölge kodu (TR, US, DE...)
+  timezone                String                  @default("Europe/Istanbul")
   phoneNumbers            String[]                @default([])
   vapiPhoneNumber         String?
   vapiAssistantId         String?
@@ -82,6 +84,8 @@ model Assistant {
   model           String        @default("gpt-4")
   vapiAssistantId String?       @unique
   isActive        Boolean       @default(true)
+  timezone        String?       // Business timezone for date/time context
+  firstMessage    String?       // Custom first message
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
   business        Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)

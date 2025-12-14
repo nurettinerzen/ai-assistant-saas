@@ -12,6 +12,7 @@ import { PrismaClient } from '@prisma/client';
 import usageTracking from '../services/usageTracking.js';
 import callAnalysis from '../services/callAnalysis.js';
 import { getActiveToolsForVAPI, executeTool } from '../tools/index.js';
+import batchCallService from '../services/batch-call.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -220,6 +221,24 @@ async function handleCallEnded(event) {
         transcript: transcriptText,
         status
       });
+    }
+
+    // Handle batch call / campaign call updates
+    try {
+      await batchCallService.handleCallWebhook({
+        type: 'call.ended',
+        call: {
+          id: callId,
+          duration,
+          transcript: transcriptMessages,
+          transcriptText,
+          endedReason: status,
+          summary: analysis.summary
+        }
+      });
+    } catch (batchError) {
+      // Non-critical - batch call update failed but regular call log is saved
+      console.log('ℹ️ No batch call found for this call ID (normal for regular calls)');
     }
   } catch (error) {
     console.error('❌ Error handling call ended:', error);
