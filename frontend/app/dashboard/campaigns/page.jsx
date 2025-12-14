@@ -69,7 +69,7 @@ export default function CampaignsPage() {
   const [loading, setLoading] = useState(true);
   const [campaigns, setCampaigns] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 });
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
   const [actionLoading, setActionLoading] = useState(null);
 
   // Auto-refresh for running campaigns
@@ -97,7 +97,7 @@ export default function CampaignsPage() {
     if (showLoader) setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (statusFilter) params.append('status', statusFilter);
+      if (statusFilter && statusFilter !== 'ALL') params.append('status', statusFilter);
 
       const response = await apiClient.get(`/api/batch-call/campaigns?${params.toString()}`);
       setCampaigns(response.data.campaigns || []);
@@ -286,7 +286,7 @@ export default function CampaignsPage() {
             <SelectValue placeholder="Tüm Durumlar" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Tüm Durumlar</SelectItem>
+            <SelectItem value="ALL">Tüm Durumlar</SelectItem>
             <SelectItem value="PENDING">Bekliyor</SelectItem>
             <SelectItem value="RUNNING">Çalışıyor</SelectItem>
             <SelectItem value="PAUSED">Duraklatıldı</SelectItem>

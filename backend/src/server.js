@@ -149,7 +149,6 @@ if (process.env.NODE_ENV !== 'test') {
     });
   }, 10000);
   console.log('📞 Batch call queue worker started (10s interval)');
-
   console.log('✅ Background jobs initialized\n');
 }
 

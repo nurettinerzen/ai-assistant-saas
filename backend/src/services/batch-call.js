@@ -507,13 +507,14 @@ class BatchCallService {
       throw new Error('VAPI API key not configured');
     }
 
-    const assistantId = business.assistants?.[0]?.vapiAssistantId || business.vapiAssistantId;
+    const activeAssistant = business.assistants?.find(a => a.isActive) || business.assistants?.[0];
+    const assistantId = activeAssistant?.vapiAssistantId || business.vapiAssistantId;
 
     // Build dynamic system prompt for collection call
     const collectionPrompt = this.buildCollectionPrompt(call, business, campaign);
 
     // Get phone number to call from
-    const fromPhoneId = business.vapiPhoneNumber;
+    const fromPhoneId = process.env.VAPI_PHONE_NUMBER_ID || business.vapiPhoneNumber;
     if (!fromPhoneId) {
       throw new Error('No VAPI phone number configured');
     }
@@ -532,12 +533,9 @@ class BatchCallService {
           assistantOverrides: {
             firstMessage: this.getFirstMessage(call, business),
             model: {
-              messages: [
-                {
-                  role: 'system',
-                  content: collectionPrompt
-                }
-              ]
+              provider: 'openai',
+              model: 'gpt-4',
+              messages: [{ role: "system", content: this.buildCollectionPrompt(call, business, campaign) }]
             }
           },
           metadata: {
@@ -841,24 +839,6 @@ class BatchCallService {
     const customScript = campaign.collectionScript || '';
     const lang = business.language || 'TR';
 
-    // Format currency for better readability
-    const formatCurrency = (amount, currency, lang) => {
-      if (lang === 'TR') {
-        const formatted = (amount || 0).toLocaleString('tr-TR');
-        if (currency === 'TRY' || currency === 'TL') return `${formatted} Türk Lirası`;
-        if (currency === 'USD') return `${formatted} Amerikan Doları`;
-        if (currency === 'EUR') return `${formatted} Euro`;
-        return `${formatted} ${currency}`;
-      } else {
-        const formatted = (amount || 0).toLocaleString('en-US');
-        if (currency === 'TRY' || currency === 'TL') return `${formatted} Turkish Lira`;
-        return `${formatted} ${currency}`;
-      }
-    };
-
-    const amountText = formatCurrency(call.invoiceAmount, call.invoiceCurrency || 'TRY', lang);
-    const daysOverdue = call.daysOverdue || 0;
-
     if (lang === 'TR') {
       return `Sen ${business.name} şirketinin tahsilat asistanısın.
 Şu anda ${call.customerName} ile görüşüyorsun.
@@ -866,8 +846,8 @@ class BatchCallService {
 MÜŞTERİ BİLGİLERİ:
 - İsim: ${call.customerName}
 - Fatura No: ${call.invoiceNumber || 'Bilinmiyor'}
-- Borç Tutarı: ${amountText}
-- Gecikme Süresi: ${daysOverdue} gün
+- Borç Tutarı: ${call.invoiceAmount.toLocaleString('tr-TR')} ${call.invoiceCurrency === 'TRY' ? 'Türk Lirası' : call.invoiceCurrency}
+- Gecikme: ${call.daysOverdue} gün gecikmiş
 
 GÖREV:
 1. Kendini kibarca tanıt (${business.name} tahsilat departmanı)
@@ -893,8 +873,8 @@ You are currently speaking with ${call.customerName}.
 CUSTOMER INFORMATION:
 - Name: ${call.customerName}
 - Invoice No: ${call.invoiceNumber || 'Unknown'}
-- Amount Due: ${amountText}
-- Days Overdue: ${daysOverdue} days
+- Amount Due: ${call.invoiceAmount.toLocaleString('en-US')} ${call.invoiceCurrency === 'TRY' ? 'Türk Lirası' : call.invoiceCurrency}
+- Days Overdue: ${call.daysOverdue} days
 
 TASKS:
 1. Introduce yourself politely (${business.name} collections department)
@@ -921,33 +901,17 @@ Speak in English.`;
    */
   getFirstMessage(call, business, campaignType = 'COLLECTION') {
     const lang = business.language || 'TR';
-    // Format currency for better TTS pronunciation
-    const formatCurrency = (amount, currency, lang) => {
-      if (lang === 'TR') {
-        const formatted = amount.toLocaleString('tr-TR');
-        if (currency === 'TRY' || currency === 'TL') return `${formatted} Türk Lirası`;
-        if (currency === 'USD') return `${formatted} Amerikan Doları`;
-        if (currency === 'EUR') return `${formatted} Euro`;
-        return `${formatted} ${currency}`;
-      } else {
-        const formatted = amount.toLocaleString('en-US');
-        if (currency === 'TRY' || currency === 'TL') return `${formatted} Turkish Lira`;
-        return `${formatted} ${currency}`;
-      }
-    };
-
-    const amountText = formatCurrency(call.invoiceAmount || 0, call.invoiceCurrency || 'TRY', lang);
 
     if (lang === 'TR') {
       if (campaignType === 'COLLECTION') {
-        return `Merhaba ${call.customerName}, ben ${business.name} şirketinden arıyorum. ${amountText} tutarındaki faturanızla ilgili sizinle görüşmek istiyordum. Uygun musunuz?`;
+        return `Merhaba ${call.customerName}, ben ${business.name}'den arıyorum. ${call.invoiceAmount.toLocaleString('tr-TR')} ${call.invoiceCurrency === 'TRY' ? 'Türk Lirası' : call.invoiceCurrency} tutarındaki faturanızla ilgili sizinle görüşmek istiyordum. Uygun musunuz?`;
       }
       // Default TR message
-      return `Merhaba ${call.customerName}, ben ${business.name} şirketinden arıyorum. Size nasıl yardımcı olabilirim?`;
+      return `Merhaba ${call.customerName}, ben ${business.name}'den arıyorum. Size nasıl yardımcı olabilirim?`;
     } else {
       // English and other languages
       if (campaignType === 'COLLECTION') {
-        return `Hello ${call.customerName}, I'm calling from ${business.name}. I wanted to discuss your invoice of ${amountText}. Is this a good time?`;
+        return `Hello ${call.customerName}, I'm calling from ${business.name}. I wanted to discuss your invoice of ${call.invoiceAmount.toLocaleString('en-US')} ${call.invoiceCurrency === 'TRY' ? 'Türk Lirası' : call.invoiceCurrency}. Is this a good time?`;
       }
       return `Hello ${call.customerName}, I'm calling from ${business.name}. How can I help you?`;
     }

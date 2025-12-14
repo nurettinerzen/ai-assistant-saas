@@ -812,7 +812,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
       console.log('📚 Knowledge Base items added:', knowledgeItems.length);
     }
 
-    const fullSystemPrompt = `${languageInstruction}\n\n${systemPrompt}${knowledgeContext}`;
+    const fullSystemPrompt = `${systemPrompt}${knowledgeContext}`;
 
     // Update in database
     const updatedAssistant = await prisma.assistant.update({
