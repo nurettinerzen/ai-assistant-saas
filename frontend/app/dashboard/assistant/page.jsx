@@ -33,6 +33,7 @@ import { apiClient } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { usePermissions } from '@/hooks/usePermissions';
 
 // Language code to accent name mapping
 const LANGUAGE_TO_ACCENT = {
@@ -75,6 +76,7 @@ const LANGUAGE_NAMES = {
 
 export default function AssistantsPage() {
   const { t, locale } = useLanguage();
+  const { can } = usePermissions();
   const [assistants, setAssistants] = useState([]);
   const [voices, setVoices] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -234,10 +236,12 @@ export default function AssistantsPage() {
           <h1 className="text-3xl font-bold text-neutral-900">{t('assistantsTitle')}</h1>
           <p className="text-neutral-600 mt-1">{t('createManageAssistants')}</p>
         </div>
+{can('assistants:create') && (
         <Button onClick={() => setShowTemplateSelector(true)}>
           <Plus className="h-4 w-4 mr-2" />
           {t('newAssistant')}
         </Button>
+        )}
       </div>
 
       {/* Search */}
@@ -297,6 +301,7 @@ export default function AssistantsPage() {
                 </div>
 
                 <div className="flex gap-2">
+                  {can('assistants:edit') && (
                   <Button
                     variant="outline"
                     size="sm"
@@ -306,6 +311,8 @@ export default function AssistantsPage() {
                     <Edit className="h-3 w-3 mr-2" />
                     {t('edit')}
                   </Button>
+                  )}
+                  {can('assistants:edit') && (
                   <Button
                     variant="outline"
                     size="sm"
@@ -313,6 +320,7 @@ export default function AssistantsPage() {
                   >
                     <Trash2 className="h-3 w-3" />
                   </Button>
+                  )}
                 </div>
               </div>
             );

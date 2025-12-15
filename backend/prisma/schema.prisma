@@ -9,16 +9,41 @@ datasource db {
 }
 
 model User {
-  id         Int      @id @default(autoincrement())
-  email      String   @unique
-  password   String
-  role       UserRole @default(MEMBER)
-  businessId Int
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  business   Business @relation(fields: [businessId], references: [id])
+  id                Int          @id @default(autoincrement())
+  email             String       @unique
+  password          String
+  name              String?
+  role              UserRole     @default(STAFF)
+  businessId        Int
+  invitedById       Int?
+  invitedAt         DateTime?
+  acceptedAt        DateTime?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  business          Business     @relation(fields: [businessId], references: [id])
+  invitedBy         User?        @relation("UserInvitations", fields: [invitedById], references: [id])
+  invitedUsers      User[]       @relation("UserInvitations")
+  sentInvitations   Invitation[] @relation("InvitedByUser")
 
   @@index([businessId])
+  @@index([email])
+}
+
+model Invitation {
+  id          Int       @id @default(autoincrement())
+  email       String
+  businessId  Int
+  role        UserRole
+  token       String    @unique
+  invitedById Int
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  business    Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  invitedBy   User      @relation("InvitedByUser", fields: [invitedById], references: [id])
+
+  @@index([businessId])
+  @@index([token])
   @@index([email])
 }
 
@@ -71,6 +96,7 @@ model Business {
   emailThreads            EmailThread[]
   emailDrafts             EmailDraft[]
   webhookConfig           WebhookConfig?
+  invitations             Invitation[]
 
   @@index([name])
 }
@@ -394,8 +420,8 @@ model BookingIntegration {
 
 enum UserRole {
   OWNER
-  ADMIN
-  MEMBER
+  MANAGER
+  STAFF
 }
 
 enum BusinessType {

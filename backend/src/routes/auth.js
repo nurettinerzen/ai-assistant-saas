@@ -61,9 +61,9 @@ router.post('/register', async (req, res) => {
       return { user, business, subscription };
     });
 
-    // Generate JWT token
+    // Generate JWT token (include role for quick access)
     const token = jwt.sign(
-      { userId: result.user.id, email: result.user.email },
+      { userId: result.user.id, email: result.user.email, businessId: result.business.id, role: result.user.role },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -74,6 +74,7 @@ router.post('/register', async (req, res) => {
       user: {
         id: result.user.id,
         email: result.user.email,
+        name: result.user.name,
         role: result.user.role,
         businessId: result.user.businessId,
       },
@@ -168,9 +169,9 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Generate JWT token
+    // Generate JWT token (include role for quick access)
     const token = jwt.sign(
-      { userId: user.id, email: user.email },
+      { userId: user.id, email: user.email, businessId: user.businessId, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );

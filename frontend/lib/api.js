@@ -186,6 +186,19 @@ export const apiClient = {
     requestCall: (data) => api.post('/api/demo/request-call', data),
     submitFeedback: (data) => api.post('/api/demo/feedback', data),
   },
+
+  // Team Management
+  team: {
+    getMembers: () => api.get('/api/team'),
+    updateRole: (userId, role) => api.put(`/api/team/${userId}/role`, { role }),
+    removeMember: (userId) => api.delete(`/api/team/${userId}`),
+    getInvitations: () => api.get('/api/team/invitations'),
+    sendInvite: (data) => api.post('/api/team/invite', data),
+    cancelInvite: (id) => api.delete(`/api/team/invitations/${id}`),
+    resendInvite: (id) => api.post(`/api/team/invitations/${id}/resend`),
+    getInvitationByToken: (token) => api.get(`/api/team/invitation/${token}`),
+    acceptInvitation: (token, data) => api.post(`/api/team/invitation/${token}/accept`, data),
+  },
 };
 
 export default api;

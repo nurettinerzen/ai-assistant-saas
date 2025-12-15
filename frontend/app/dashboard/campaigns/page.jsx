@@ -51,6 +51,7 @@ import {
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast } from '@/lib/toast';
+import { usePermissions } from '@/hooks/usePermissions';
 
 // Campaign status colors
 const STATUS_CONFIG = {
@@ -64,6 +65,7 @@ const STATUS_CONFIG = {
 
 export default function CampaignsPage() {
   const router = useRouter();
+  const { can } = usePermissions();
 
   // State
   const [loading, setLoading] = useState(true);
@@ -211,12 +213,14 @@ export default function CampaignsPage() {
             Yenile
           </Button>
 
+          {can('campaigns:create') && (
           <Link href="/dashboard/collections">
             <Button>
               <Plus className="h-4 w-4 mr-2" />
               Yeni Kampanya
             </Button>
           </Link>
+          )}
         </div>
       </div>
 
@@ -410,7 +414,7 @@ export default function CampaignsPage() {
                               </Button>
                             </Link>
 
-                            {campaign.status === 'PENDING' && (
+                            {can('campaigns:control') && campaign.status === 'PENDING' && (
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -425,7 +429,7 @@ export default function CampaignsPage() {
                               </Button>
                             )}
 
-                            {campaign.status === 'RUNNING' && (
+                            {can('campaigns:control') && campaign.status === 'RUNNING' && (
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -440,7 +444,7 @@ export default function CampaignsPage() {
                               </Button>
                             )}
 
-                            {campaign.status === 'PAUSED' && (
+                            {can('campaigns:control') && campaign.status === 'PAUSED' && (
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -455,7 +459,7 @@ export default function CampaignsPage() {
                               </Button>
                             )}
 
-                            {['PENDING', 'RUNNING', 'PAUSED'].includes(campaign.status) && (
+                            {can('campaigns:control') && ['PENDING', 'RUNNING', 'PAUSED'].includes(campaign.status) && (
                               <Button
                                 variant="ghost"
                                 size="sm"

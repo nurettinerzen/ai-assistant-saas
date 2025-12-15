@@ -1,6 +1,7 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticateToken } from '../middleware/auth.js';
+import { checkPermission, requireOwner } from '../middleware/permissions.js';
 import OpenTableService from '../services/openTableService.js';
 import BooksyService from '../services/booksyService.js';
 import calendlyService from '../services/calendly.js';
@@ -107,8 +108,8 @@ router.get('/available', async (req, res) => {
    ERP INTEGRATION
 ============================================================ */
 
-// Connect ERP
-router.post('/erp/connect', async (req, res) => {
+// Connect ERP (Owner only)
+router.post('/erp/connect', requireOwner, async (req, res) => {
   try {
     const { type, apiEndpoint, apiKey, username, password, companyCode, realtimeMode } = req.body;
 
@@ -151,8 +152,8 @@ router.post('/erp/connect', async (req, res) => {
   }
 });
 
-// Disconnect ERP
-router.post('/erp/disconnect', async (req, res) => {
+// Disconnect ERP (Owner only)
+router.post('/erp/disconnect', requireOwner, async (req, res) => {
   try {
     await prisma.erpIntegration.update({
       where: { businessId: req.businessId },
@@ -780,7 +781,7 @@ router.get('/google-sheets/callback', async (req, res) => {
    WHATSAPP BUSINESS INTEGRATION - MULTI-TENANT
 ============================================================ */
 
-router.post('/whatsapp/connect', async (req, res) => {
+router.post('/whatsapp/connect', requireOwner, async (req, res) => {
   try {
     const { accessToken, phoneNumberId, verifyToken } = req.body;
 
@@ -881,7 +882,7 @@ router.post('/whatsapp/connect', async (req, res) => {
   }
 });
 
-router.post('/whatsapp/disconnect', async (req, res) => {
+router.post('/whatsapp/disconnect', requireOwner, async (req, res) => {
   try {
     // Remove from Business model
     await prisma.business.update({
@@ -984,7 +985,7 @@ router.post('/whatsapp/send', async (req, res) => {
    SHOPIFY INTEGRATION
 ============================================================ */
 
-router.post('/shopify/connect', async (req, res) => {
+router.post('/shopify/connect', requireOwner, async (req, res) => {
   try {
     const { shopUrl, accessToken } = req.body;
 
@@ -1045,7 +1046,7 @@ router.post('/shopify/connect', async (req, res) => {
   }
 });
 
-router.post('/shopify/disconnect', async (req, res) => {
+router.post('/shopify/disconnect', requireOwner, async (req, res) => {
   try {
     await prisma.integration.updateMany({
       where: {
@@ -1098,7 +1099,7 @@ router.get('/shopify/status', async (req, res) => {
    WOOCOMMERCE INTEGRATION
 ============================================================ */
 
-router.post('/woocommerce/connect', async (req, res) => {
+router.post('/woocommerce/connect', requireOwner, async (req, res) => {
   try {
     const { siteUrl, consumerKey, consumerSecret } = req.body;
 
@@ -1159,7 +1160,7 @@ router.post('/woocommerce/connect', async (req, res) => {
   }
 });
 
-router.post('/woocommerce/disconnect', async (req, res) => {
+router.post('/woocommerce/disconnect', requireOwner, async (req, res) => {
   try {
     await prisma.integration.updateMany({
       where: {
@@ -1300,7 +1301,7 @@ router.post('/zapier/connect', async (req, res) => {
    NETGSM SMS INTEGRATION (API Key)
 ============================================================ */
 
-router.post('/netgsm/connect', async (req, res) => {
+router.post('/netgsm/connect', requireOwner, async (req, res) => {
   try {
     const { username, password, header } = req.body;
 
@@ -1357,7 +1358,7 @@ router.post('/netgsm/connect', async (req, res) => {
   }
 });
 
-router.post('/netgsm/disconnect', async (req, res) => {
+router.post('/netgsm/disconnect', requireOwner, async (req, res) => {
   try {
     await prisma.integration.updateMany({
       where: {

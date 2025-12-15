@@ -5,6 +5,7 @@
 
 import express from 'express';
 import { authenticateToken } from '../middleware/auth.js';
+import { checkPermission } from '../middleware/permissions.js';
 import batchCallService from '../services/batch-call.js';
 
 const router = express.Router();
@@ -29,7 +30,7 @@ router.use(authenticateToken);
  *   collectionScript?: string
  * }
  */
-router.post('/campaigns', async (req, res) => {
+router.post('/campaigns', checkPermission('campaigns:create'), async (req, res) => {
   try {
     const result = await batchCallService.createCampaign(req.businessId, req.body);
     res.status(201).json(result);
@@ -148,7 +149,7 @@ router.get('/campaigns/:id/calls', async (req, res) => {
  * Start a campaign
  * POST /api/batch-call/campaigns/:id/start
  */
-router.post('/campaigns/:id/start', async (req, res) => {
+router.post('/campaigns/:id/start', checkPermission('campaigns:control'), async (req, res) => {
   try {
     const campaignId = parseInt(req.params.id);
     const result = await batchCallService.startCampaign(campaignId, req.businessId);
@@ -166,7 +167,7 @@ router.post('/campaigns/:id/start', async (req, res) => {
  * Pause a running campaign
  * POST /api/batch-call/campaigns/:id/pause
  */
-router.post('/campaigns/:id/pause', async (req, res) => {
+router.post('/campaigns/:id/pause', checkPermission('campaigns:control'), async (req, res) => {
   try {
     const campaignId = parseInt(req.params.id);
     const result = await batchCallService.pauseCampaign(campaignId, req.businessId);
@@ -184,7 +185,7 @@ router.post('/campaigns/:id/pause', async (req, res) => {
  * Resume a paused campaign
  * POST /api/batch-call/campaigns/:id/resume
  */
-router.post('/campaigns/:id/resume', async (req, res) => {
+router.post('/campaigns/:id/resume', checkPermission('campaigns:control'), async (req, res) => {
   try {
     const campaignId = parseInt(req.params.id);
     const result = await batchCallService.resumeCampaign(campaignId, req.businessId);
@@ -202,7 +203,7 @@ router.post('/campaigns/:id/resume', async (req, res) => {
  * Cancel a campaign
  * POST /api/batch-call/campaigns/:id/cancel
  */
-router.post('/campaigns/:id/cancel', async (req, res) => {
+router.post('/campaigns/:id/cancel', checkPermission('campaigns:control'), async (req, res) => {
   try {
     const campaignId = parseInt(req.params.id);
     const result = await batchCallService.cancelCampaign(campaignId, req.businessId);

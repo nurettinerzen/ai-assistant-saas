@@ -48,6 +48,8 @@ import webhookRoutes from './routes/webhook.js';
 // Batch call / Collection campaigns
 import batchCallRoutes from './routes/batch-call.js';
 import { processAllQueues } from './services/batch-call.js';
+// Team management
+import teamRoutes from './routes/team.js';
 
 
 // Import jobs
@@ -125,6 +127,7 @@ app.use('/api/shopify', shopifyRoutes);
 app.use('/api/woocommerce', woocommerceRoutes);
 app.use('/api/webhook', webhookRoutes);
 app.use('/api/batch-call', batchCallRoutes);
+app.use('/api/team', teamRoutes);
 
 
 // Error handling middleware

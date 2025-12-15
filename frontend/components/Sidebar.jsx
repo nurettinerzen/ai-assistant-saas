@@ -28,6 +28,7 @@ import {
   Mail,
   Receipt,
   Megaphone,
+  Users,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -84,6 +85,7 @@ export default function Sidebar({ user, credits }) {
     {
       label: t('sidebarSystem'),
       items: [
+        { icon: Users, label: 'Ekip', href: '/dashboard/team' },
         { icon: Calculator, label: t('sidebarCostCalculator'), href: '/dashboard/cost-calculator' },
         { icon: Settings, label: t('sidebarSettings'), href: '/dashboard/settings' },
         { icon: CreditCard, label: t('sidebarSubscription'), href: '/dashboard/subscription' },

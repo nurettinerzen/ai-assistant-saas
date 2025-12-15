@@ -1,6 +1,7 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticateToken } from '../middleware/auth.js';
+import { checkPermission } from '../middleware/permissions.js';
 import vapiService from '../services/vapi.js';
 import cargoAggregator from '../services/cargo-aggregator.js';
 
@@ -376,7 +377,7 @@ router.get('/', authenticateToken, async (req, res) => {
 });
 
 // POST /api/assistants - Create new assistant
-router.post('/', authenticateToken, async (req, res) => {
+router.post('/', authenticateToken, checkPermission('assistants:create'), async (req, res) => {
   try {
     const businessId = req.businessId;
     const { name, voiceId, firstMessage, systemPrompt, model, language, country, industry, timezone } = req.body;
@@ -738,7 +739,7 @@ router.get('/voices', async (req, res) => {
 });
 
 // PUT /api/assistants/:id - Update assistant
-router.put('/:id', authenticateToken, async (req, res) => {
+router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async (req, res) => {
   try {
     const businessId = req.businessId;
     const { id } = req.params;
@@ -878,7 +879,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
 });
 
 // DELETE /api/assistants/:id - Delete assistant
-router.delete('/:id', authenticateToken, async (req, res) => {
+router.delete('/:id', authenticateToken, checkPermission('assistants:edit'), async (req, res) => {
   try {
     const businessId = req.businessId;
     const { id } = req.params;
