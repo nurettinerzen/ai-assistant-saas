@@ -321,12 +321,14 @@ export default function CampaignsPage() {
               <p className="text-neutral-600 mt-1 mb-4">
                 Vadesi geçen faturalardan bir kampanya oluşturun
               </p>
+              {can('campaigns:create') && (
               <Link href="/dashboard/collections">
                 <Button>
                   <Plus className="h-4 w-4 mr-2" />
                   Kampanya Oluştur
                 </Button>
               </Link>
+              )}
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -459,7 +461,7 @@ export default function CampaignsPage() {
                               </Button>
                             )}
 
-                            {can('campaigns:control') && ['PENDING', 'RUNNING', 'PAUSED'].includes(campaign.status) && (
+                            {can('campaigns:delete') && ['PENDING', 'RUNNING', 'PAUSED'].includes(campaign.status) && (
                               <Button
                                 variant="ghost"
                                 size="sm"

@@ -23,9 +23,11 @@ import { User, Bell, CreditCard, AlertTriangle, Building2, Globe } from 'lucide-
 import { apiClient } from '@/lib/api';
 import { toast, toastHelpers } from '@/lib/toast';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { usePermissions } from '@/hooks/usePermissions';
 
 export default function SettingsPage() {
   const { t } = useLanguage();
+  const { can } = usePermissions();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState({ name: '', email: '', company: '' });
   const [region, setRegion] = useState({ language: 'TR', country: 'TR', timezone: 'Europe/Istanbul' });
@@ -234,6 +236,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Business Type Section */}
+      {can('settings:edit') && (
       <div className="bg-white rounded-xl border border-neutral-200 p-6 shadow-sm">
         <div className="flex items-center gap-3 mb-6">
           <div className="p-2 bg-primary-100 rounded-lg">
@@ -283,8 +286,10 @@ export default function SettingsPage() {
           <Button onClick={handleSaveBusinessType}>Save Business Type</Button>
         </div>
       </div>
+      )}
 
       {/* Region & Language Section */}
+      {can('settings:edit') && (
       <div className="bg-white rounded-xl border border-neutral-200 p-6 shadow-sm">
         <div className="flex items-center gap-3 mb-6">
           <div className="p-2 bg-primary-100 rounded-lg">
@@ -354,6 +359,7 @@ export default function SettingsPage() {
           <Button onClick={handleSaveRegion}>{t('saveRegion') || 'Save Region Settings'}</Button>
         </div>
       </div>
+      )}
 
       {/* Notifications Section */}
       <div className="bg-white rounded-xl border border-neutral-200 p-6 shadow-sm">

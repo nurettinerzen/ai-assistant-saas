@@ -312,7 +312,7 @@ export default function AssistantsPage() {
                     {t('edit')}
                   </Button>
                   )}
-                  {can('assistants:edit') && (
+                  {can('assistants:delete') && (
                   <Button
                     variant="outline"
                     size="sm"

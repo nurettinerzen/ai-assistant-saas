@@ -26,9 +26,11 @@ import { apiClient } from '@/lib/api';
 import { toast, Toaster } from 'sonner';
 import { formatDate, formatFileSize } from '@/lib/utils';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { usePermissions } from '@/hooks/usePermissions';
 
 export default function KnowledgeBasePage() {
   const { t } = useLanguage();
+  const { can } = usePermissions();
   const [documents, setDocuments] = useState([]);
   const [faqs, setFaqs] = useState([]);
   const [urls, setUrls] = useState([]);
@@ -226,12 +228,14 @@ export default function KnowledgeBasePage() {
 
         {/* Documents Tab */}
         <TabsContent value="documents" className="space-y-4">
+          {can('knowledge:edit') && (
           <div className="flex justify-end items-center">
             <Button onClick={() => setShowDocModal(true)}>
               <Plus className="h-4 w-4 mr-2" />
               {t('addDocument')}
             </Button>
           </div>
+          )}
 
           {documents.length > 0 ? (
             <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
@@ -274,6 +278,7 @@ export default function KnowledgeBasePage() {
                         {formatDate(doc.uploadedAt, 'short')}
                       </td>
                       <td className="px-6 py-4">
+                        {can('knowledge:delete') && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -281,6 +286,7 @@ export default function KnowledgeBasePage() {
                         >
                           <Trash2 className="h-4 w-4 text-red-600" />
                         </Button>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -300,12 +306,14 @@ export default function KnowledgeBasePage() {
 
         {/* FAQs Tab */}
         <TabsContent value="faqs" className="space-y-4">
+          {can('knowledge:edit') && (
           <div className="flex justify-end">
             <Button onClick={() => setShowFaqModal(true)}>
               <Plus className="h-4 w-4 mr-2" />
               {t('addFaqBtn')}
             </Button>
           </div>
+          )}
 
           {faqs.length > 0 ? (
             <div className="space-y-3">
@@ -313,6 +321,7 @@ export default function KnowledgeBasePage() {
                 <div key={faq.id} className="bg-white rounded-xl border border-neutral-200 p-6">
                   <div className="flex justify-between items-start mb-3">
                     <h3 className="font-semibold text-neutral-900">{faq.question}</h3>
+                    {can('knowledge:delete') && (
                     <Button
                       variant="ghost"
                       size="sm"
@@ -320,6 +329,7 @@ export default function KnowledgeBasePage() {
                     >
                       <Trash2 className="h-4 w-4 text-red-600" />
                     </Button>
+                    )}
                   </div>
                   <p className="text-sm text-neutral-600 mb-2">{faq.answer}</p>
                   {faq.category && (
@@ -341,12 +351,14 @@ export default function KnowledgeBasePage() {
 
         {/* URLs Tab */}
         <TabsContent value="urls" className="space-y-4">
+          {can('knowledge:edit') && (
           <div className="flex justify-end">
             <Button onClick={() => setShowUrlModal(true)}>
               <Plus className="h-4 w-4 mr-2" />
               {t('addUrlBtn')}
             </Button>
           </div>
+          )}
 
           {urls.length > 0 ? (
             <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
@@ -394,6 +406,7 @@ export default function KnowledgeBasePage() {
                         {url.lastCrawled ? formatDate(url.lastCrawled, 'short') : 'N/A'}
                       </td>
                       <td className="px-6 py-4">
+                        {can('knowledge:delete') && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -401,6 +414,7 @@ export default function KnowledgeBasePage() {
                         >
                           <Trash2 className="h-4 w-4 text-red-600" />
                         </Button>
+                        )}
                       </td>
                     </tr>
                   ))}

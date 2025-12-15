@@ -7,36 +7,51 @@ import { useState, useEffect, useCallback } from 'react';
 
 // Permission definitions - must match backend
 const ROLE_PERMISSIONS = {
-  OWNER: ['*'], // Full access
+  OWNER: ['*'], // Full access - includes all permissions
   MANAGER: [
     'dashboard:view',
     'assistants:view', 'assistants:create', 'assistants:edit',
+    // 'assistants:delete' - NOT for MANAGER
     'calls:view', 'calls:download',
     'campaigns:view', 'campaigns:create', 'campaigns:control',
-    'knowledge:view', 'knowledge:edit',
+    // 'campaigns:delete' - NOT for MANAGER
+    'knowledge:view', 'knowledge:edit', 'knowledge:delete',
     'integrations:view',
+    // 'integrations:connect', 'integrations:disconnect' - NOT for MANAGER
     'email:view', 'email:send',
     'whatsapp:view',
     'widget:view', 'widget:edit',
     'settings:view', 'settings:edit',
     'team:view', 'team:invite',
+    // 'team:role_change', 'team:remove' - NOT for MANAGER
+    // 'billing:view', 'billing:edit' - NOT for MANAGER
     'analytics:view',
     'phone:view',
-    'voices:view'
+    'voices:view',
+    'collections:view', 'collections:create'
   ],
   STAFF: [
     'dashboard:view',
     'assistants:view',
+    // NO create, edit, delete for assistants
     'calls:view', 'calls:download',
     'campaigns:view',
+    // NO create, control, delete for campaigns
     'knowledge:view',
+    // NO edit, delete for knowledge
+    // NO integrations:view - STAFF cannot see integrations
     'email:view', 'email:send',
     'whatsapp:view',
     'widget:view',
+    // NO widget:edit
     'settings:view',
+    // NO settings:edit
+    // NO team:view - STAFF cannot see team
+    // NO billing:view
     'analytics:view',
     'phone:view',
-    'voices:view'
+    'voices:view',
+    'collections:view'
   ]
 };
 

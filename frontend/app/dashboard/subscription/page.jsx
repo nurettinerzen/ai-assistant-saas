@@ -15,6 +15,8 @@ import { apiClient } from '@/lib/api';
 import { toast, toastHelpers } from '@/lib/toast';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { usePermissions } from '@/hooks/usePermissions';
+import { AlertCircle } from 'lucide-react';
 
 const PLANS = [
   {
@@ -68,12 +70,17 @@ const PLANS = [
 
 export default function SubscriptionPage() {
   const { t, locale } = useLanguage();
+  const { can } = usePermissions();
   const [loading, setLoading] = useState(true);
   const [subscription, setSubscription] = useState(null);
   const [billingHistory, setBillingHistory] = useState([]);
 
   useEffect(() => {
-    loadData();
+    if (can('billing:view')) {
+      loadData();
+    } else {
+      setLoading(false);
+    }
   }, []);
 
   const loadData = async () => {
@@ -110,6 +117,17 @@ export default function SubscriptionPage() {
   const usagePercent = subscription
     ? (subscription.creditsUsed / subscription.creditsLimit) * 100
     : 0;
+
+  // Check permission for billing
+  if (!can('billing:view')) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] text-center">
+        <AlertCircle className="h-16 w-16 text-neutral-300 mb-4" />
+        <h2 className="text-xl font-semibold text-neutral-700 mb-2">{t('accessDenied') || 'Erişim Engellendi'}</h2>
+        <p className="text-neutral-500">{t('noBillingPermission') || 'Bu sayfayı görüntüleme yetkiniz yok.'}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -174,9 +192,11 @@ export default function SubscriptionPage() {
                   : t('limitReachedUpgrade')}
               </p>
             </div>
+            {can('billing:manage') && (
             <Button className="w-full mt-4" variant="outline">
               {t('addCreditsBtn')}
             </Button>
+            )}
           </div>
         </div>
       )}
@@ -229,7 +249,7 @@ export default function SubscriptionPage() {
                 <Button
                   className="w-full"
                   variant={isCurrentPlan ? 'outline' : 'default'}
-                  disabled={isCurrentPlan}
+                  disabled={isCurrentPlan || !can('billing:manage')}
                   onClick={() => handleUpgrade(plan.id)}
                 >
                   {isCurrentPlan ? t('currentPlanBtn') : t('upgradeBtn')}

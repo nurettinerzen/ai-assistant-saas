@@ -42,53 +42,56 @@ import {
 import { cn } from '@/lib/utils';
 import LanguageSwitcher from './LanguageSwitcher';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { usePermissions } from '@/hooks/usePermissions';
 
 export default function Sidebar({ user, credits }) {
   const pathname = usePathname();
   const { t } = useLanguage();
+  const { can } = usePermissions();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState([]);
 
+  // Navigation items with permission requirements
   const NAVIGATION = [
     {
       label: t('sidebarBuild'),
       items: [
-        { icon: Bot, label: t('sidebarAssistants'), href: '/dashboard/assistant' },
-        { icon: BookOpen, label: t('sidebarKnowledge'), href: '/dashboard/knowledge' },
-        { icon: Mic, label: t('sidebarVoices'), href: '/dashboard/voices' },
-        { icon: MessageSquare, label: t('sidebarChatWidget'), href: '/dashboard/chat-widget' },
+        { icon: Bot, label: t('sidebarAssistants'), href: '/dashboard/assistant', permission: 'assistants:view' },
+        { icon: BookOpen, label: t('sidebarKnowledge'), href: '/dashboard/knowledge', permission: 'knowledge:view' },
+        { icon: Mic, label: t('sidebarVoices'), href: '/dashboard/voices', permission: 'voices:view' },
+        { icon: MessageSquare, label: t('sidebarChatWidget'), href: '/dashboard/chat-widget', permission: 'widget:view' },
       ],
     },
     {
       label: t('sidebarDeploy'),
       items: [
-        { icon: PhoneCall, label: t('sidebarPhoneNumbers'), href: '/dashboard/phone-numbers' },
-        { icon: Mail, label: 'Email Inbox', href: '/dashboard/email' },
-        { icon: Puzzle, label: t('sidebarIntegrations'), href: '/dashboard/integrations' },
+        { icon: PhoneCall, label: t('sidebarPhoneNumbers'), href: '/dashboard/phone-numbers', permission: 'phone:view' },
+        { icon: Mail, label: 'Email Inbox', href: '/dashboard/email', permission: 'email:view' },
+        { icon: Puzzle, label: t('sidebarIntegrations'), href: '/dashboard/integrations', permission: 'integrations:view' },
       ],
     },
     {
       label: t('sidebarMonitor'),
       items: [
-        { icon: LayoutDashboard, label: t('sidebarDashboard'), href: '/dashboard' },
-        { icon: Phone, label: t('sidebarCalls'), href: '/dashboard/calls' },
-        { icon: BarChart3, label: t('sidebarAnalytics'), href: '/dashboard/analytics' },
+        { icon: LayoutDashboard, label: t('sidebarDashboard'), href: '/dashboard', permission: 'dashboard:view' },
+        { icon: Phone, label: t('sidebarCalls'), href: '/dashboard/calls', permission: 'calls:view' },
+        { icon: BarChart3, label: t('sidebarAnalytics'), href: '/dashboard/analytics', permission: 'analytics:view' },
       ],
     },
     {
       label: 'Tahsilat',
       items: [
-        { icon: Receipt, label: 'Vadesi Geçenler', href: '/dashboard/collections' },
-        { icon: Megaphone, label: 'Kampanyalar', href: '/dashboard/campaigns' },
+        { icon: Receipt, label: 'Vadesi Geçenler', href: '/dashboard/collections', permission: 'collections:view' },
+        { icon: Megaphone, label: 'Kampanyalar', href: '/dashboard/campaigns', permission: 'campaigns:view' },
       ],
     },
     {
       label: t('sidebarSystem'),
       items: [
-        { icon: Users, label: 'Ekip', href: '/dashboard/team' },
-        { icon: Calculator, label: t('sidebarCostCalculator'), href: '/dashboard/cost-calculator' },
-        { icon: Settings, label: t('sidebarSettings'), href: '/dashboard/settings' },
-        { icon: CreditCard, label: t('sidebarSubscription'), href: '/dashboard/subscription' },
+        { icon: Users, label: 'Ekip', href: '/dashboard/team', permission: 'team:view' },
+        { icon: Calculator, label: t('sidebarCostCalculator'), href: '/dashboard/cost-calculator', permission: 'dashboard:view' },
+        { icon: Settings, label: t('sidebarSettings'), href: '/dashboard/settings', permission: 'settings:view' },
+        { icon: CreditCard, label: t('sidebarSubscription'), href: '/dashboard/subscription', permission: 'billing:view' },
       ],
     },
   ];
@@ -146,10 +149,12 @@ export default function Sidebar({ user, credits }) {
           )}
         </button>
 
-              {/* Section items */}
+              {/* Section items - filtered by permissions */}
               {!isCollapsed && (
                 <div className="space-y-1 mt-1">
-                  {section.items.map((item) => {
+                  {section.items
+                    .filter((item) => !item.permission || can(item.permission))
+                    .map((item) => {
                     const Icon = item.icon;
                     const isActive = pathname === item.href;
 

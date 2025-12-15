@@ -28,6 +28,7 @@ import {
 import { apiClient } from '@/lib/api';
 import { toast, toastHelpers } from '@/lib/toast';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { usePermissions } from '@/hooks/usePermissions';
 
 const INTEGRATION_ICONS = {
   GOOGLE_CALENDAR: CalendarDays, WHATSAPP: Smartphone, CALENDLY: Calendar,
@@ -72,6 +73,7 @@ const INTEGRATION_DOCS = {
 
 export default function IntegrationsPage() {
   const { t } = useLanguage();
+  const { can } = usePermissions();
   const [integrations, setIntegrations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [businessType, setBusinessType] = useState('OTHER');
@@ -730,10 +732,14 @@ const handleShopifyConnect = async () => {
           {integration.connected ? (
             <>
               <Button variant="outline" size="sm" className="flex-1" onClick={() => handleTest(integration)}>Test</Button>
+              {can('integrations:connect') && (
               <Button variant="outline" size="sm" onClick={() => handleDisconnect(integration)}>Disconnect</Button>
+              )}
             </>
           ) : (
+            can('integrations:connect') && (
             <Button size="sm" className="flex-1" onClick={() => handleConnect(integration)}>Connect</Button>
+            )
           )}
           <Button variant="ghost" size="sm" asChild>
             <a href={docsUrl} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-4 w-4" /></a>
@@ -794,13 +800,17 @@ const handleShopifyConnect = async () => {
                   <Button variant="outline" size="sm" className="flex-1" onClick={() => window.location.href = '/dashboard/email'}>
                     <Inbox className="h-4 w-4 mr-1" />Open Inbox
                   </Button>
+                  {can('integrations:connect') && (
                   <Button variant="outline" size="sm" onClick={handleEmailDisconnect} disabled={emailLoading}>Disconnect</Button>
+                  )}
                 </div>
               </div>
             ) : (
+              can('integrations:connect') && (
               <Button size="sm" className="w-full" onClick={handleGmailConnect} disabled={emailLoading || (emailStatus?.connected && emailStatus?.provider !== 'GMAIL')}>
                 {emailLoading ? <><RefreshCw className="h-4 w-4 mr-2 animate-spin" />Connecting...</> : 'Connect Gmail'}
               </Button>
+              )
             )}
           </div>
 
@@ -830,13 +840,17 @@ const handleShopifyConnect = async () => {
                   <Button variant="outline" size="sm" className="flex-1" onClick={() => window.location.href = '/dashboard/email'}>
                     <Inbox className="h-4 w-4 mr-1" />Open Inbox
                   </Button>
+                  {can('integrations:connect') && (
                   <Button variant="outline" size="sm" onClick={handleEmailDisconnect} disabled={emailLoading}>Disconnect</Button>
+                  )}
                 </div>
               </div>
             ) : (
+              can('integrations:connect') && (
               <Button size="sm" className="w-full" onClick={handleOutlookConnect} disabled={emailLoading || (emailStatus?.connected && emailStatus?.provider !== 'OUTLOOK')}>
                 {emailLoading ? <><RefreshCw className="h-4 w-4 mr-2 animate-spin" />Connecting...</> : 'Connect Outlook'}
               </Button>
+              )
             )}
           </div>
         </div>
