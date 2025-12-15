@@ -231,6 +231,57 @@ export const INTEGRATION_METADATA = {
     authType: 'api_key'
   },
 
+  IKAS: {
+    relevantFor: ['ECOMMERCE'],
+    priority: {
+      ECOMMERCE: 'ESSENTIAL',
+      RESTAURANT: 'OPTIONAL',
+      CLINIC: 'OPTIONAL',
+      SALON: 'OPTIONAL',
+      SERVICE: 'OPTIONAL',
+      OTHER: 'OPTIONAL'
+    },
+    name: 'ikas',
+    description: 'ikas e-ticaret platformu entegrasyonu',
+    category: 'ecommerce',
+    authType: 'oauth',
+    region: 'TR'
+  },
+
+  IDEASOFT: {
+    relevantFor: ['ECOMMERCE'],
+    priority: {
+      ECOMMERCE: 'ESSENTIAL',
+      RESTAURANT: 'OPTIONAL',
+      CLINIC: 'OPTIONAL',
+      SALON: 'OPTIONAL',
+      SERVICE: 'OPTIONAL',
+      OTHER: 'OPTIONAL'
+    },
+    name: 'Ideasoft',
+    description: 'Ideasoft e-ticaret platformu entegrasyonu',
+    category: 'ecommerce',
+    authType: 'oauth',
+    region: 'TR'
+  },
+
+  TICIMAX: {
+    relevantFor: ['ECOMMERCE'],
+    priority: {
+      ECOMMERCE: 'ESSENTIAL',
+      RESTAURANT: 'OPTIONAL',
+      CLINIC: 'OPTIONAL',
+      SALON: 'OPTIONAL',
+      SERVICE: 'OPTIONAL',
+      OTHER: 'OPTIONAL'
+    },
+    name: 'Ticimax',
+    description: 'Ticimax e-ticaret platformu entegrasyonu',
+    category: 'ecommerce',
+    authType: 'api_key',
+    region: 'TR'
+  },
+
   // ============================================================================
   // CARGO / SHIPPING - TURKEY
   // ============================================================================

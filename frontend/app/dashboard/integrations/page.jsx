@@ -39,7 +39,8 @@ const INTEGRATION_ICONS = {
   HUBSPOT: Target, SALESFORCE: Cloud, GOOGLE_SHEETS: BarChart3, ZAPIER: Zap,
   SLACK: MessageSquare, TWILIO_SMS: MessageSquare, SENDGRID_EMAIL: Mail,
   TRENDYOL: ShoppingCart, YURTICI_KARGO: Truck, ARAS_KARGO: Truck,
-  MNG_KARGO: Truck, PARASUT: Calculator, IYZICO: Wallet, CUSTOM: Hash
+  MNG_KARGO: Truck, PARASUT: Calculator, IYZICO: Wallet, CUSTOM: Hash,
+  IKAS: ShoppingCart, IDEASOFT: ShoppingCart, TICIMAX: ShoppingCart
 };
 
 const CATEGORY_COLORS = {
@@ -68,7 +69,10 @@ const INTEGRATION_DOCS = {
   TRENDYOL: 'https://developers.trendyol.com',
   PARASUT: 'https://apidocs.parasut.com',
   IYZICO: 'https://dev.iyzipay.com',
-  ZAPIER: 'https://zapier.com/developer'
+  ZAPIER: 'https://zapier.com/developer',
+  IKAS: 'https://ikas.dev',
+  IDEASOFT: 'https://apidoc.ideasoft.dev',
+  TICIMAX: 'https://www.ticimax.com'
 };
 
 export default function IntegrationsPage() {
@@ -129,6 +133,24 @@ export default function IntegrationsPage() {
   const [webhookLoading, setWebhookLoading] = useState(false);
   const [copiedField, setCopiedField] = useState(null);
 
+  // ikas state
+  const [ikasModalOpen, setIkasModalOpen] = useState(false);
+  const [ikasStatus, setIkasStatus] = useState(null);
+  const [ikasLoading, setIkasLoading] = useState(false);
+  const [ikasForm, setIkasForm] = useState({ storeName: '', clientId: '', clientSecret: '' });
+
+  // Ideasoft state
+  const [ideasoftModalOpen, setIdeasoftModalOpen] = useState(false);
+  const [ideasoftStatus, setIdeasoftStatus] = useState(null);
+  const [ideasoftLoading, setIdeasoftLoading] = useState(false);
+  const [ideasoftForm, setIdeasoftForm] = useState({ storeDomain: '', clientId: '', clientSecret: '' });
+
+  // Ticimax state
+  const [ticimaxModalOpen, setTicimaxModalOpen] = useState(false);
+  const [ticimaxStatus, setTicimaxStatus] = useState(null);
+  const [ticimaxLoading, setTicimaxLoading] = useState(false);
+  const [ticimaxForm, setTicimaxForm] = useState({ siteUrl: '', uyeKodu: '' });
+
   useEffect(() => {
     loadIntegrations();
     loadWhatsAppStatus();
@@ -140,6 +162,9 @@ export default function IntegrationsPage() {
     loadShopifyStatus();
     loadWooCommerceStatus();
     loadWebhookStatus();
+    loadIkasStatus();
+    loadIdeasoftStatus();
+    loadTicimaxStatus();
 
     // Handle OAuth callback results
     if (typeof window !== 'undefined') {
@@ -239,6 +264,27 @@ export default function IntegrationsPage() {
       const response = await apiClient.get('/api/webhook/status');
       setWebhookStatus(response.data);
     } catch (error) { console.error('Failed to load Webhook status:', error); }
+  };
+
+  const loadIkasStatus = async () => {
+    try {
+      const response = await apiClient.get('/api/integrations/ikas/status');
+      setIkasStatus(response.data);
+    } catch (error) { console.error('Failed to load ikas status:', error); }
+  };
+
+  const loadIdeasoftStatus = async () => {
+    try {
+      const response = await apiClient.get('/api/integrations/ideasoft/status');
+      setIdeasoftStatus(response.data);
+    } catch (error) { console.error('Failed to load Ideasoft status:', error); }
+  };
+
+  const loadTicimaxStatus = async () => {
+    try {
+      const response = await apiClient.get('/api/integrations/ticimax/status');
+      setTicimaxStatus(response.data);
+    } catch (error) { console.error('Failed to load Ticimax status:', error); }
   };
 
   // Handler functions
@@ -573,6 +619,75 @@ const handleShopifyConnect = async () => {
     }
   };
 
+  // ikas handlers
+  const handleIkasConnect = async () => {
+    if (!ikasForm.storeName || !ikasForm.clientId || !ikasForm.clientSecret) {
+      toast.error('Lütfen tüm alanları doldurun');
+      return;
+    }
+    setIkasLoading(true);
+    try {
+      const response = await apiClient.post('/api/integrations/ikas/connect', ikasForm);
+      if (response.data.success) {
+        toast.success('ikas bağlandı!');
+        setIkasModalOpen(false);
+        setIkasForm({ storeName: '', clientId: '', clientSecret: '' });
+        await loadIkasStatus();
+        await loadIntegrations();
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Bağlantı başarısız');
+    } finally {
+      setIkasLoading(false);
+    }
+  };
+
+  // Ideasoft handlers
+  const handleIdeasoftConnect = async () => {
+    if (!ideasoftForm.storeDomain || !ideasoftForm.clientId || !ideasoftForm.clientSecret) {
+      toast.error('Lütfen tüm alanları doldurun');
+      return;
+    }
+    setIdeasoftLoading(true);
+    try {
+      const response = await apiClient.post('/api/integrations/ideasoft/connect', ideasoftForm);
+      if (response.data.success) {
+        toast.success('Ideasoft bağlandı!');
+        setIdeasoftModalOpen(false);
+        setIdeasoftForm({ storeDomain: '', clientId: '', clientSecret: '' });
+        await loadIdeasoftStatus();
+        await loadIntegrations();
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Bağlantı başarısız');
+    } finally {
+      setIdeasoftLoading(false);
+    }
+  };
+
+  // Ticimax handlers
+  const handleTicimaxConnect = async () => {
+    if (!ticimaxForm.siteUrl || !ticimaxForm.uyeKodu) {
+      toast.error('Lütfen tüm alanları doldurun');
+      return;
+    }
+    setTicimaxLoading(true);
+    try {
+      const response = await apiClient.post('/api/integrations/ticimax/connect', ticimaxForm);
+      if (response.data.success) {
+        toast.success('Ticimax bağlandı!');
+        setTicimaxModalOpen(false);
+        setTicimaxForm({ siteUrl: '', uyeKodu: '' });
+        await loadTicimaxStatus();
+        await loadIntegrations();
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Bağlantı başarısız');
+    } finally {
+      setTicimaxLoading(false);
+    }
+  };
+
   const handleConnect = async (integration) => {
     try {
       if (integration.type === 'WHATSAPP') { setWhatsappModalOpen(true); return; }
@@ -600,6 +715,9 @@ const handleShopifyConnect = async () => {
         window.location.href = response.data.authUrl;
         return;
       }
+      if (integration.type === 'IKAS') { setIkasModalOpen(true); return; }
+      if (integration.type === 'IDEASOFT') { setIdeasoftModalOpen(true); return; }
+      if (integration.type === 'TICIMAX') { setTicimaxModalOpen(true); return; }
       toast.info(`${integration.name} coming soon!`);
     } catch (error) {
       toast.error('Failed to connect');
@@ -630,6 +748,24 @@ const handleShopifyConnect = async () => {
       toast.success('Google Sheets disconnected');
       await loadIntegrations();
     }
+    else if (integration.type === 'IKAS') {
+      await apiClient.post('/api/integrations/ikas/disconnect');
+      toast.success('ikas bağlantısı kesildi');
+      await loadIkasStatus();
+      await loadIntegrations();
+    }
+    else if (integration.type === 'IDEASOFT') {
+      await apiClient.post('/api/integrations/ideasoft/disconnect');
+      toast.success('Ideasoft bağlantısı kesildi');
+      await loadIdeasoftStatus();
+      await loadIntegrations();
+    }
+    else if (integration.type === 'TICIMAX') {
+      await apiClient.post('/api/integrations/ticimax/disconnect');
+      toast.success('Ticimax bağlantısı kesildi');
+      await loadTicimaxStatus();
+      await loadIntegrations();
+    }
   } catch (error) { 
     toast.error('Failed to disconnect');
   }
@@ -653,6 +789,24 @@ const handleShopifyConnect = async () => {
     if (integration.type === 'GOOGLE_SHEETS') {
       const response = await apiClient.post('/api/integrations/google-sheets/test');
       if (response.data.success) toast.success('Google Sheets bağlantısı aktif!');
+      else toast.error('Test failed');
+      return;
+    }
+    if (integration.type === 'IKAS') {
+      const response = await apiClient.post('/api/integrations/ikas/test');
+      if (response.data.success) toast.success('ikas bağlantısı aktif!');
+      else toast.error('Test failed');
+      return;
+    }
+    if (integration.type === 'IDEASOFT') {
+      const response = await apiClient.post('/api/integrations/ideasoft/test');
+      if (response.data.success) toast.success('Ideasoft bağlantısı aktif!');
+      else toast.error('Test failed');
+      return;
+    }
+    if (integration.type === 'TICIMAX') {
+      const response = await apiClient.post('/api/integrations/ticimax/test');
+      if (response.data.success) toast.success('Ticimax bağlantısı aktif!');
       else toast.error('Test failed');
       return;
     }
@@ -688,7 +842,10 @@ const handleShopifyConnect = async () => {
       MNG_KARGO: 'MNG Kargo ile kargo takip entegrasyonu',
       PARASUT: 'Turkish accounting - Invoice and contact management',
       IYZICO: 'Turkish payment gateway - Payment and refund tracking',
-      ZAPIER: 'Connect thousands of apps with automation'
+      ZAPIER: 'Connect thousands of apps with automation',
+      IKAS: 'ikas e-ticaret platformu - sipariş ve stok sorgulama',
+      IDEASOFT: 'Ideasoft e-ticaret platformu - sipariş ve stok sorgulama',
+      TICIMAX: 'Ticimax e-ticaret platformu - sipariş ve stok sorgulama'
     };
     return descriptions[type] || 'Integration';
   };
@@ -1180,6 +1337,194 @@ const handleShopifyConnect = async () => {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setWebhookModalOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ikas Modal */}
+      <Dialog open={ikasModalOpen} onOpenChange={setIkasModalOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShoppingCart className="h-5 w-5 text-orange-600" />
+              ikas Mağaza Bağlantısı
+            </DialogTitle>
+            <DialogDescription>ikas e-ticaret platformunuzu bağlayarak AI asistanınızın sipariş durumu ve stok bilgisi sorgulamasını sağlayın.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Mağaza Adı *</Label>
+              <div className="flex gap-2">
+                <Input
+                  type="text"
+                  placeholder="magazam"
+                  value={ikasForm.storeName}
+                  onChange={(e) => setIkasForm({ ...ikasForm, storeName: e.target.value })}
+                  className="flex-1"
+                />
+                <span className="flex items-center text-sm text-neutral-500">.myikas.com</span>
+              </div>
+              <p className="text-xs text-neutral-500">Mağaza adınızı girin (magazam.myikas.com için &quot;magazam&quot;)</p>
+            </div>
+            <div className="space-y-2">
+              <Label>Client ID *</Label>
+              <Input
+                type="text"
+                placeholder="Client ID'nizi girin"
+                value={ikasForm.clientId}
+                onChange={(e) => setIkasForm({ ...ikasForm, clientId: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Client Secret *</Label>
+              <Input
+                type="password"
+                placeholder="Client Secret'ınızı girin"
+                value={ikasForm.clientSecret}
+                onChange={(e) => setIkasForm({ ...ikasForm, clientSecret: e.target.value })}
+              />
+            </div>
+            {ikasStatus?.connected && (
+              <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                <CheckCircle2 className="h-5 w-5 text-green-600" />
+                <p className="text-sm font-medium text-green-900">Bağlı: {ikasStatus.storeName}</p>
+              </div>
+            )}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h4 className="text-sm font-medium text-blue-900 mb-2">API bilgilerinizi nereden bulabilirsiniz:</h4>
+              <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
+                <li>ikas mağaza panelinize giriş yapın</li>
+                <li>Ayarlar &gt; API &amp; Entegrasyonlar bölümüne gidin</li>
+                <li>Yeni bir API uygulaması oluşturun veya mevcut olanı kullanın</li>
+                <li>Client ID ve Client Secret bilgilerini kopyalayın</li>
+              </ol>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIkasModalOpen(false)} disabled={ikasLoading}>İptal</Button>
+            <Button onClick={handleIkasConnect} disabled={ikasLoading}>
+              {ikasLoading ? <><RefreshCw className="h-4 w-4 mr-2 animate-spin" />Bağlanıyor...</> : "ikas'ı Bağla"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Ideasoft Modal */}
+      <Dialog open={ideasoftModalOpen} onOpenChange={setIdeasoftModalOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShoppingCart className="h-5 w-5 text-blue-600" />
+              Ideasoft Mağaza Bağlantısı
+            </DialogTitle>
+            <DialogDescription>Ideasoft e-ticaret platformunuzu bağlayarak AI asistanınızın sipariş durumu ve stok bilgisi sorgulamasını sağlayın.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Mağaza Domain *</Label>
+              <Input
+                type="text"
+                placeholder="www.magazam.com"
+                value={ideasoftForm.storeDomain}
+                onChange={(e) => setIdeasoftForm({ ...ideasoftForm, storeDomain: e.target.value })}
+              />
+              <p className="text-xs text-neutral-500">Mağazanızın tam domain adresini girin</p>
+            </div>
+            <div className="space-y-2">
+              <Label>Client ID *</Label>
+              <Input
+                type="text"
+                placeholder="Client ID'nizi girin"
+                value={ideasoftForm.clientId}
+                onChange={(e) => setIdeasoftForm({ ...ideasoftForm, clientId: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Client Secret *</Label>
+              <Input
+                type="password"
+                placeholder="Client Secret'ınızı girin"
+                value={ideasoftForm.clientSecret}
+                onChange={(e) => setIdeasoftForm({ ...ideasoftForm, clientSecret: e.target.value })}
+              />
+            </div>
+            {ideasoftStatus?.connected && (
+              <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                <CheckCircle2 className="h-5 w-5 text-green-600" />
+                <p className="text-sm font-medium text-green-900">Bağlı: {ideasoftStatus.storeDomain}</p>
+              </div>
+            )}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h4 className="text-sm font-medium text-blue-900 mb-2">API bilgilerinizi nereden bulabilirsiniz:</h4>
+              <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
+                <li>Ideasoft yönetim panelinize giriş yapın</li>
+                <li>Ayarlar &gt; API Ayarları bölümüne gidin</li>
+                <li>OAuth bilgilerinizi oluşturun veya mevcut olanı kullanın</li>
+                <li>Client ID ve Client Secret bilgilerini kopyalayın</li>
+              </ol>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIdeasoftModalOpen(false)} disabled={ideasoftLoading}>İptal</Button>
+            <Button onClick={handleIdeasoftConnect} disabled={ideasoftLoading}>
+              {ideasoftLoading ? <><RefreshCw className="h-4 w-4 mr-2 animate-spin" />Bağlanıyor...</> : "Ideasoft'u Bağla"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Ticimax Modal */}
+      <Dialog open={ticimaxModalOpen} onOpenChange={setTicimaxModalOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShoppingCart className="h-5 w-5 text-purple-600" />
+              Ticimax Mağaza Bağlantısı
+            </DialogTitle>
+            <DialogDescription>Ticimax e-ticaret platformunuzu bağlayarak AI asistanınızın sipariş durumu ve stok bilgisi sorgulamasını sağlayın.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Site URL *</Label>
+              <Input
+                type="text"
+                placeholder="www.magazam.com"
+                value={ticimaxForm.siteUrl}
+                onChange={(e) => setTicimaxForm({ ...ticimaxForm, siteUrl: e.target.value })}
+              />
+              <p className="text-xs text-neutral-500">Mağazanızın tam site adresini girin</p>
+            </div>
+            <div className="space-y-2">
+              <Label>Yetki Kodu (API Key) *</Label>
+              <Input
+                type="password"
+                placeholder="Yetki kodunuzu girin"
+                value={ticimaxForm.uyeKodu}
+                onChange={(e) => setTicimaxForm({ ...ticimaxForm, uyeKodu: e.target.value })}
+              />
+              <p className="text-xs text-neutral-500">Ticimax panelinden aldığınız API yetki kodunu girin</p>
+            </div>
+            {ticimaxStatus?.connected && (
+              <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                <CheckCircle2 className="h-5 w-5 text-green-600" />
+                <p className="text-sm font-medium text-green-900">Bağlı: {ticimaxStatus.siteUrl}</p>
+              </div>
+            )}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h4 className="text-sm font-medium text-blue-900 mb-2">API bilgilerinizi nereden bulabilirsiniz:</h4>
+              <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
+                <li>Ticimax yönetim panelinize giriş yapın</li>
+                <li>Ayarlar &gt; Servis Ayarları bölümüne gidin</li>
+                <li>Web Servis Entegrasyonu sekmesini açın</li>
+                <li>Yetki kodunuzu (UyeKodu) kopyalayın</li>
+              </ol>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTicimaxModalOpen(false)} disabled={ticimaxLoading}>İptal</Button>
+            <Button onClick={handleTicimaxConnect} disabled={ticimaxLoading}>
+              {ticimaxLoading ? <><RefreshCw className="h-4 w-4 mr-2 animate-spin" />Bağlanıyor...</> : "Ticimax'ı Bağla"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

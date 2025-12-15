@@ -1439,15 +1439,447 @@ router.post('/netgsm/send', async (req, res) => {
     if (responseText.startsWith('00') || responseText.startsWith('01')) {
       res.json({ success: true, messageId: responseText });
     } else {
-      res.status(400).json({ 
-        success: false, 
+      res.status(400).json({
+        success: false,
         error: 'SMS gönderilemedi',
-        code: responseText 
+        code: responseText
       });
     }
   } catch (error) {
     console.error('NetGSM send error:', error);
     res.status(500).json({ error: 'SMS gönderme hatası' });
+  }
+});
+
+/* ============================================================
+   IKAS E-COMMERCE INTEGRATION
+============================================================ */
+
+router.post('/ikas/connect', checkPermission('integrations:connect'), async (req, res) => {
+  try {
+    const { storeName, clientId, clientSecret } = req.body;
+
+    if (!storeName || !clientId || !clientSecret) {
+      return res.status(400).json({
+        error: 'Store Name, Client ID ve Client Secret gerekli'
+      });
+    }
+
+    // Import and test connection
+    const IkasService = (await import('../services/integrations/ecommerce/ikas.service.js')).default;
+    const ikasService = new IkasService();
+
+    try {
+      const testResult = await ikasService.testConnection({ storeName, clientId, clientSecret });
+
+      if (!testResult.success) {
+        return res.status(400).json({
+          error: testResult.message || 'Bağlantı testi başarısız'
+        });
+      }
+
+      // Save to Integration model
+      await prisma.integration.upsert({
+        where: {
+          businessId_type: {
+            businessId: req.businessId,
+            type: 'IKAS'
+          }
+        },
+        update: {
+          credentials: { storeName, clientId, clientSecret },
+          connected: true,
+          isActive: true
+        },
+        create: {
+          businessId: req.businessId,
+          type: 'IKAS',
+          credentials: { storeName, clientId, clientSecret },
+          connected: true,
+          isActive: true
+        }
+      });
+
+      console.log(`✅ ikas connected for business ${req.businessId}`);
+      res.json({
+        success: true,
+        message: 'ikas bağlantısı başarılı',
+        storeName
+      });
+    } catch (testError) {
+      console.error('ikas test error:', testError);
+      return res.status(400).json({
+        error: testError.message || 'ikas bağlantısı başarısız'
+      });
+    }
+  } catch (error) {
+    console.error('ikas connect error:', error);
+    res.status(500).json({ error: 'ikas bağlantısı başarısız' });
+  }
+});
+
+router.post('/ikas/disconnect', checkPermission('integrations:connect'), async (req, res) => {
+  try {
+    await prisma.integration.updateMany({
+      where: {
+        businessId: req.businessId,
+        type: 'IKAS'
+      },
+      data: {
+        connected: false,
+        isActive: false
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'ikas bağlantısı kesildi'
+    });
+  } catch (error) {
+    console.error('ikas disconnect error:', error);
+    res.status(500).json({ error: 'Bağlantı kesilemedi' });
+  }
+});
+
+router.get('/ikas/status', async (req, res) => {
+  try {
+    const integration = await prisma.integration.findFirst({
+      where: {
+        businessId: req.businessId,
+        type: 'IKAS'
+      },
+      select: {
+        connected: true,
+        isActive: true,
+        lastSync: true,
+        credentials: true
+      }
+    });
+
+    res.json({
+      connected: integration?.connected && integration?.isActive || false,
+      storeName: integration?.credentials?.storeName || null,
+      lastSync: integration?.lastSync || null
+    });
+  } catch (error) {
+    console.error('ikas status error:', error);
+    res.status(500).json({ error: 'Durum alınamadı' });
+  }
+});
+
+router.post('/ikas/test', async (req, res) => {
+  try {
+    const integration = await prisma.integration.findFirst({
+      where: {
+        businessId: req.businessId,
+        type: 'IKAS'
+      }
+    });
+
+    if (!integration || !integration.connected) {
+      return res.status(404).json({ success: false, error: 'ikas bağlı değil' });
+    }
+
+    const IkasService = (await import('../services/integrations/ecommerce/ikas.service.js')).default;
+    const ikasService = new IkasService(integration.credentials);
+    const testResult = await ikasService.testConnection(integration.credentials);
+
+    if (testResult.success) {
+      res.json({ success: true, message: 'ikas bağlantısı aktif' });
+    } else {
+      res.status(400).json({ success: false, error: testResult.message });
+    }
+  } catch (error) {
+    console.error('ikas test error:', error);
+    res.status(500).json({ success: false, error: 'Test başarısız' });
+  }
+});
+
+/* ============================================================
+   IDEASOFT E-COMMERCE INTEGRATION
+============================================================ */
+
+router.post('/ideasoft/connect', checkPermission('integrations:connect'), async (req, res) => {
+  try {
+    const { storeDomain, clientId, clientSecret } = req.body;
+
+    if (!storeDomain || !clientId || !clientSecret) {
+      return res.status(400).json({
+        error: 'Store Domain, Client ID ve Client Secret gerekli'
+      });
+    }
+
+    // Import and test connection
+    const IdeasoftService = (await import('../services/integrations/ecommerce/ideasoft.service.js')).default;
+    const ideasoftService = new IdeasoftService();
+
+    try {
+      const testResult = await ideasoftService.testConnection({ storeDomain, clientId, clientSecret });
+
+      if (!testResult.success) {
+        return res.status(400).json({
+          error: testResult.message || 'Bağlantı testi başarısız'
+        });
+      }
+
+      // Save to Integration model
+      await prisma.integration.upsert({
+        where: {
+          businessId_type: {
+            businessId: req.businessId,
+            type: 'IDEASOFT'
+          }
+        },
+        update: {
+          credentials: { storeDomain, clientId, clientSecret },
+          connected: true,
+          isActive: true
+        },
+        create: {
+          businessId: req.businessId,
+          type: 'IDEASOFT',
+          credentials: { storeDomain, clientId, clientSecret },
+          connected: true,
+          isActive: true
+        }
+      });
+
+      console.log(`✅ Ideasoft connected for business ${req.businessId}`);
+      res.json({
+        success: true,
+        message: 'Ideasoft bağlantısı başarılı',
+        storeDomain
+      });
+    } catch (testError) {
+      console.error('Ideasoft test error:', testError);
+      return res.status(400).json({
+        error: testError.message || 'Ideasoft bağlantısı başarısız'
+      });
+    }
+  } catch (error) {
+    console.error('Ideasoft connect error:', error);
+    res.status(500).json({ error: 'Ideasoft bağlantısı başarısız' });
+  }
+});
+
+router.post('/ideasoft/disconnect', checkPermission('integrations:connect'), async (req, res) => {
+  try {
+    await prisma.integration.updateMany({
+      where: {
+        businessId: req.businessId,
+        type: 'IDEASOFT'
+      },
+      data: {
+        connected: false,
+        isActive: false
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'Ideasoft bağlantısı kesildi'
+    });
+  } catch (error) {
+    console.error('Ideasoft disconnect error:', error);
+    res.status(500).json({ error: 'Bağlantı kesilemedi' });
+  }
+});
+
+router.get('/ideasoft/status', async (req, res) => {
+  try {
+    const integration = await prisma.integration.findFirst({
+      where: {
+        businessId: req.businessId,
+        type: 'IDEASOFT'
+      },
+      select: {
+        connected: true,
+        isActive: true,
+        lastSync: true,
+        credentials: true
+      }
+    });
+
+    res.json({
+      connected: integration?.connected && integration?.isActive || false,
+      storeDomain: integration?.credentials?.storeDomain || null,
+      lastSync: integration?.lastSync || null
+    });
+  } catch (error) {
+    console.error('Ideasoft status error:', error);
+    res.status(500).json({ error: 'Durum alınamadı' });
+  }
+});
+
+router.post('/ideasoft/test', async (req, res) => {
+  try {
+    const integration = await prisma.integration.findFirst({
+      where: {
+        businessId: req.businessId,
+        type: 'IDEASOFT'
+      }
+    });
+
+    if (!integration || !integration.connected) {
+      return res.status(404).json({ success: false, error: 'Ideasoft bağlı değil' });
+    }
+
+    const IdeasoftService = (await import('../services/integrations/ecommerce/ideasoft.service.js')).default;
+    const ideasoftService = new IdeasoftService(integration.credentials);
+    const testResult = await ideasoftService.testConnection(integration.credentials);
+
+    if (testResult.success) {
+      res.json({ success: true, message: 'Ideasoft bağlantısı aktif' });
+    } else {
+      res.status(400).json({ success: false, error: testResult.message });
+    }
+  } catch (error) {
+    console.error('Ideasoft test error:', error);
+    res.status(500).json({ success: false, error: 'Test başarısız' });
+  }
+});
+
+/* ============================================================
+   TICIMAX E-COMMERCE INTEGRATION
+============================================================ */
+
+router.post('/ticimax/connect', checkPermission('integrations:connect'), async (req, res) => {
+  try {
+    const { siteUrl, uyeKodu } = req.body;
+
+    if (!siteUrl || !uyeKodu) {
+      return res.status(400).json({
+        error: 'Site URL ve Yetki Kodu (API Key) gerekli'
+      });
+    }
+
+    // Import and test connection
+    const TicimaxService = (await import('../services/integrations/ecommerce/ticimax.service.js')).default;
+    const ticimaxService = new TicimaxService();
+
+    try {
+      const testResult = await ticimaxService.testConnection({ siteUrl, uyeKodu });
+
+      if (!testResult.success) {
+        return res.status(400).json({
+          error: testResult.message || 'Bağlantı testi başarısız'
+        });
+      }
+
+      // Save to Integration model
+      await prisma.integration.upsert({
+        where: {
+          businessId_type: {
+            businessId: req.businessId,
+            type: 'TICIMAX'
+          }
+        },
+        update: {
+          credentials: { siteUrl, uyeKodu },
+          connected: true,
+          isActive: true
+        },
+        create: {
+          businessId: req.businessId,
+          type: 'TICIMAX',
+          credentials: { siteUrl, uyeKodu },
+          connected: true,
+          isActive: true
+        }
+      });
+
+      console.log(`✅ Ticimax connected for business ${req.businessId}`);
+      res.json({
+        success: true,
+        message: 'Ticimax bağlantısı başarılı',
+        siteUrl
+      });
+    } catch (testError) {
+      console.error('Ticimax test error:', testError);
+      return res.status(400).json({
+        error: testError.message || 'Ticimax bağlantısı başarısız'
+      });
+    }
+  } catch (error) {
+    console.error('Ticimax connect error:', error);
+    res.status(500).json({ error: 'Ticimax bağlantısı başarısız' });
+  }
+});
+
+router.post('/ticimax/disconnect', checkPermission('integrations:connect'), async (req, res) => {
+  try {
+    await prisma.integration.updateMany({
+      where: {
+        businessId: req.businessId,
+        type: 'TICIMAX'
+      },
+      data: {
+        connected: false,
+        isActive: false
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'Ticimax bağlantısı kesildi'
+    });
+  } catch (error) {
+    console.error('Ticimax disconnect error:', error);
+    res.status(500).json({ error: 'Bağlantı kesilemedi' });
+  }
+});
+
+router.get('/ticimax/status', async (req, res) => {
+  try {
+    const integration = await prisma.integration.findFirst({
+      where: {
+        businessId: req.businessId,
+        type: 'TICIMAX'
+      },
+      select: {
+        connected: true,
+        isActive: true,
+        lastSync: true,
+        credentials: true
+      }
+    });
+
+    res.json({
+      connected: integration?.connected && integration?.isActive || false,
+      siteUrl: integration?.credentials?.siteUrl || null,
+      lastSync: integration?.lastSync || null
+    });
+  } catch (error) {
+    console.error('Ticimax status error:', error);
+    res.status(500).json({ error: 'Durum alınamadı' });
+  }
+});
+
+router.post('/ticimax/test', async (req, res) => {
+  try {
+    const integration = await prisma.integration.findFirst({
+      where: {
+        businessId: req.businessId,
+        type: 'TICIMAX'
+      }
+    });
+
+    if (!integration || !integration.connected) {
+      return res.status(404).json({ success: false, error: 'Ticimax bağlı değil' });
+    }
+
+    const TicimaxService = (await import('../services/integrations/ecommerce/ticimax.service.js')).default;
+    const ticimaxService = new TicimaxService(integration.credentials);
+    const testResult = await ticimaxService.testConnection(integration.credentials);
+
+    if (testResult.success) {
+      res.json({ success: true, message: 'Ticimax bağlantısı aktif' });
+    } else {
+      res.status(400).json({ success: false, error: testResult.message });
+    }
+  } catch (error) {
+    console.error('Ticimax test error:', error);
+    res.status(500).json({ success: false, error: 'Test başarısız' });
   }
 });
 

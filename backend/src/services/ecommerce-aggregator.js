@@ -4,6 +4,9 @@
  * Provides unified interface for e-commerce operations across platforms:
  * - Shopify
  * - WooCommerce
+ * - ikas (Turkish e-commerce)
+ * - Ideasoft (Turkish e-commerce)
+ * - Ticimax (Turkish e-commerce)
  *
  * Each business can have ONE e-commerce platform connected.
  * This aggregator automatically routes requests to the correct platform.
@@ -12,13 +15,19 @@
 import { PrismaClient } from '@prisma/client';
 import shopifyService from './shopify.js';
 import woocommerceService from './woocommerce.js';
+import IkasService from './integrations/ecommerce/ikas.service.js';
+import IdeasoftService from './integrations/ecommerce/ideasoft.service.js';
+import TicimaxService from './integrations/ecommerce/ticimax.service.js';
 
 const prisma = new PrismaClient();
 
 // Supported platforms
 const PLATFORMS = {
   SHOPIFY: 'SHOPIFY',
-  WOOCOMMERCE: 'WOOCOMMERCE'
+  WOOCOMMERCE: 'WOOCOMMERCE',
+  IKAS: 'IKAS',
+  IDEASOFT: 'IDEASOFT',
+  TICIMAX: 'TICIMAX'
 };
 
 /**
@@ -30,7 +39,7 @@ async function getActivePlatform(businessId) {
   const integrations = await prisma.integration.findMany({
     where: {
       businessId,
-      type: { in: [PLATFORMS.SHOPIFY, PLATFORMS.WOOCOMMERCE] },
+      type: { in: [PLATFORMS.SHOPIFY, PLATFORMS.WOOCOMMERCE, PLATFORMS.IKAS, PLATFORMS.IDEASOFT, PLATFORMS.TICIMAX] },
       isActive: true,
       connected: true
     }
@@ -57,6 +66,12 @@ function getService(platform) {
       return shopifyService;
     case PLATFORMS.WOOCOMMERCE:
       return woocommerceService;
+    case PLATFORMS.IKAS:
+      return new IkasService();
+    case PLATFORMS.IDEASOFT:
+      return new IdeasoftService();
+    case PLATFORMS.TICIMAX:
+      return new TicimaxService();
     default:
       return null;
   }
@@ -221,6 +236,11 @@ export async function getProductByName(businessId, productName) {
 
   if (platformInfo.platform === PLATFORMS.SHOPIFY) {
     result = await service.getProductByTitle(businessId, productName);
+  } else if (platformInfo.platform === PLATFORMS.IKAS ||
+             platformInfo.platform === PLATFORMS.IDEASOFT ||
+             platformInfo.platform === PLATFORMS.TICIMAX) {
+    // Turkish e-commerce platforms use getProductStock
+    result = await service.getProductStock(businessId, productName);
   } else {
     result = await service.getProductByName(businessId, productName);
   }

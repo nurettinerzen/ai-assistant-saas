@@ -503,6 +503,9 @@ enum IntegrationType {
   TRENDYOL
   PARASUT
   IYZICO
+  IKAS
+  IDEASOFT
+  TICIMAX
   CUSTOM
 }
 
