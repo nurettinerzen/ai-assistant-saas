@@ -12,6 +12,7 @@
 
 import { PrismaClient } from '@prisma/client';
 import axios from 'axios';
+import { getDateTimeContext } from '../utils/dateTime.js';
 
 const prisma = new PrismaClient();
 
@@ -838,9 +839,15 @@ class BatchCallService {
   buildCollectionPrompt(call, business, campaign) {
     const customScript = campaign.collectionScript || '';
     const lang = business.language || 'TR';
+    const timezone = business.timezone || 'Europe/Istanbul';
+
+    // Get dynamic date/time context
+    const dateTimeContext = getDateTimeContext(timezone, lang);
 
     if (lang === 'TR') {
-      return `Sen ${business.name} şirketinin tahsilat asistanısın.
+      return `${dateTimeContext}
+
+Sen ${business.name} şirketinin tahsilat asistanısın.
 Şu anda ${call.customerName} ile görüşüyorsun.
 
 MÜŞTERİ BİLGİLERİ:
@@ -867,7 +874,9 @@ ${customScript ? `EK TALİMATLAR:\n${customScript}` : ''}
 
 Konuşmayı Türkçe yap.`;
     } else {
-      return `You are the collection assistant of ${business.name}.
+      return `${dateTimeContext}
+
+You are the collection assistant of ${business.name}.
 You are currently speaking with ${call.customerName}.
 
 CUSTOMER INFORMATION:

@@ -16,6 +16,7 @@ router.get('/profile', authenticateToken, async (req, res) => {
       select: {
         id: true,
         email: true,
+        name: true,
         role: true,
       },
     });
@@ -38,7 +39,7 @@ router.get('/profile', authenticateToken, async (req, res) => {
 
     // Return in format frontend expects
     res.json({
-      name: user?.email?.split('@')[0] || '', // User name from email
+      name: user?.name || '', // User's actual name
       email: user?.email || '',
       company: business?.name || '',  // Business name as company
       user,
@@ -54,29 +55,56 @@ router.get('/profile', authenticateToken, async (req, res) => {
 // PUT /api/settings/profile
 router.put('/profile', authenticateToken, async (req, res) => {
   try {
+    const userId = req.userId;
     const businessId = req.businessId;
-    const { name, email, company, businessName, language } = req.body;
+    const { name, email, company, businessName, language, businessType, country, timezone } = req.body;
 
-    // Update business name - accept both 'company' and 'businessName' for compatibility
+    // Update user name if provided
+    let updatedUser = null;
+    if (name !== undefined) {
+      updatedUser = await prisma.user.update({
+        where: { id: userId },
+        data: { name },
+        select: { id: true, email: true, name: true, role: true }
+      });
+    }
+
+    // Update business - accept both 'company' and 'businessName' for compatibility
     const newBusinessName = company || businessName;
 
-    const updateData = {};
-    if (newBusinessName) updateData.name = newBusinessName;
-    if (language) updateData.language = language;
+    const businessUpdateData = {};
+    if (newBusinessName !== undefined) businessUpdateData.name = newBusinessName;
+    if (language !== undefined) businessUpdateData.language = language.toUpperCase();
+    if (businessType !== undefined) businessUpdateData.businessType = businessType.toUpperCase();
+    if (country !== undefined) businessUpdateData.country = country.toUpperCase();
+    if (timezone !== undefined) businessUpdateData.timezone = timezone;
 
-    const updatedBusiness = await prisma.business.update({
-      where: { id: businessId },
-      data: updateData,
+    let updatedBusiness = null;
+    if (Object.keys(businessUpdateData).length > 0) {
+      updatedBusiness = await prisma.business.update({
+        where: { id: businessId },
+        data: businessUpdateData,
+      });
+      console.log(`✅ Business updated: ${updatedBusiness.name} (ID: ${businessId})`, businessUpdateData);
+    }
+
+    // Fetch current state to return
+    const currentUser = updatedUser || await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, name: true, role: true }
     });
 
-    console.log(`✅ Business updated: ${updatedBusiness.name} (ID: ${businessId})`);
+    const currentBusiness = updatedBusiness || await prisma.business.findUnique({
+      where: { id: businessId }
+    });
 
     res.json({
       message: 'Profile updated successfully',
-      business: updatedBusiness,
-      name: name || '',
-      email: email || '',
-      company: updatedBusiness.name,
+      user: currentUser,
+      business: currentBusiness,
+      name: currentUser?.name || '',
+      email: currentUser?.email || '',
+      company: currentBusiness?.name || '',
     });
   } catch (error) {
     console.error('Error updating profile:', error);

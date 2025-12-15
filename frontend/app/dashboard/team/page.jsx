@@ -81,9 +81,11 @@ export default function TeamPage() {
   const loadData = async () => {
     setLoading(true);
     try {
+      // Always try to load both members and invitations
+      // Backend will handle permission checks
       const [membersRes, invitationsRes] = await Promise.all([
         apiClient.team.getMembers(),
-        can('team:invite') ? apiClient.team.getInvitations() : Promise.resolve({ data: { invitations: [] } }),
+        apiClient.team.getInvitations().catch(() => ({ data: { invitations: [] } })),
       ]);
 
       setMembers(membersRes.data.members || []);
@@ -105,8 +107,39 @@ export default function TeamPage() {
 
     setInviting(true);
     try {
-      await apiClient.team.sendInvite(inviteForm);
-      toast.success('Davet gönderildi');
+      const response = await apiClient.team.sendInvite(inviteForm);
+      const inviteLink = response.data.inviteLink;
+
+      // Show success with link
+      if (inviteLink) {
+        toast.success(
+          <div className="space-y-2">
+            <p>Davet oluşturuldu!</p>
+            <p className="text-xs text-neutral-600">Email henüz gönderilmiyor. Linki manuel paylaşın:</p>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={inviteLink}
+                readOnly
+                className="text-xs bg-neutral-100 p-1 rounded flex-1"
+              />
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(inviteLink);
+                  toast.success('Link kopyalandı!');
+                }}
+                className="text-xs bg-primary-600 text-white px-2 py-1 rounded"
+              >
+                Kopyala
+              </button>
+            </div>
+          </div>,
+          { duration: 15000 }
+        );
+      } else {
+        toast.success('Davet gönderildi');
+      }
+
       setInviteModalOpen(false);
       setInviteForm({ email: '', role: 'STAFF' });
       loadData();

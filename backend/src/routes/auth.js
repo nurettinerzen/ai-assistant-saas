@@ -90,6 +90,7 @@ router.post('/register', async (req, res) => {
 router.post("/signup", async (req, res) => {
   try {
     const { email, password, fullName } = req.body;
+    // Use fullName for both user name and initial business name
     const businessName = fullName || "My Business";
     if (!email || !password) {
       return res.status(400).json({ error: "All fields are required" });
@@ -107,7 +108,7 @@ router.post("/signup", async (req, res) => {
         data: {
           email,
           password: hashedPassword,
-
+          name: fullName || null, // Save user's full name
           role: "OWNER",
           businessId: business.id
         }
@@ -130,7 +131,7 @@ router.post("/signup", async (req, res) => {
     );
     res.status(201).json({
       token,
-      user: { id: result.user.id, email: result.user.email, name: result.user.name, role: result.user.role },
+      user: { id: result.user.id, email: result.user.email, name: result.user.name, role: result.user.role, businessId: result.business.id },
       business: { id: result.business.id, name: result.business.name }
     });
   } catch (error) {
