@@ -50,44 +50,44 @@ export default function SettingsPage() {
   }, []);
 
   const loadSettings = async () => {
-    setLoading(true);
-    try {
-      // Get user info to fetch business
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
-      const userBusinessId = user.businessId;
-      setBusinessId(userBusinessId);
+  setLoading(true);
+  try {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    setBusinessId(user.businessId);
 
-      const [profileRes, notificationsRes, businessRes] = await Promise.all([
-        apiClient.settings.getProfile(),
-        apiClient.settings.getNotifications(),
-        userBusinessId ? apiClient.business.get(userBusinessId) : Promise.resolve({ data: { business: { businessType: 'OTHER' } } })
-      ]);
+    const [profileRes, notificationsRes] = await Promise.all([
+      apiClient.settings.getProfile(),
+      apiClient.settings.getNotifications(),
+    ]);
 
-      setProfile({
-        name: profileRes.data?.name || '',
-        email: profileRes.data?.email || '',
-        company: profileRes.data?.company || ''
-      });
-      setNotifications({
-        emailOnCall: notificationsRes.data?.emailOnCall ?? true,
-        emailOnLimit: notificationsRes.data?.emailOnLimit ?? true,
-        weeklySummary: notificationsRes.data?.weeklySummary ?? true,
-        smsNotifications: notificationsRes.data?.smsNotifications ?? false
-      });
-      const bizData = businessRes.data?.business || businessRes.data || {};
-      setBusinessType(bizData.businessType || 'OTHER');
-      setRegion({
-        language: bizData.language || 'TR',
-        country: bizData.country || 'TR',
-        timezone: bizData.timezone || 'Europe/Istanbul'
-      });
-    } catch (error) {
-      console.error('Load settings error:', error);
-      toast.error(t('saveError'));
-    } finally {
-      setLoading(false);
-    }
-  };
+    setProfile({
+      name: profileRes.data?.name || '',
+      email: profileRes.data?.email || '',
+      company: profileRes.data?.company || ''
+    });
+    
+    setNotifications({
+      emailOnCall: notificationsRes.data?.emailOnCall ?? true,
+      emailOnLimit: notificationsRes.data?.emailOnLimit ?? true,
+      weeklySummary: notificationsRes.data?.weeklySummary ?? true,
+      smsNotifications: notificationsRes.data?.smsNotifications ?? false
+    });
+    
+    // Business bilgisini profileRes'ten al
+    const bizData = profileRes.data?.business || {};
+    setBusinessType(bizData.businessType || 'OTHER');
+    setRegion({
+      language: bizData.language || 'TR',
+      country: bizData.country || 'TR',
+      timezone: bizData.timezone || 'Europe/Istanbul'
+    });
+  } catch (error) {
+    console.error('Load settings error:', error);
+    toast.error(t('saveError'));
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleSaveProfile = async () => {
     try {
@@ -114,40 +114,30 @@ export default function SettingsPage() {
   };
 
   const handleSaveBusinessType = async () => {
-    if (!businessId) {
-      toast.error('Business ID not found');
-      return;
-    }
-
-    try {
-      await toastHelpers.async(
-        apiClient.put(`/api/business/${businessId}`, { businessType }),
-        'Updating business type...',
-        'Business type updated successfully! Integrations page will now show relevant integrations.'
-      );
-    } catch (error) {
-      console.error('Update business type error:', error);
-      toast.error('Failed to update business type');
-    }
-  };
+  try {
+    await toastHelpers.async(
+      apiClient.settings.updateProfile({ businessType }),
+      'Updating business type...',
+      'Business type updated successfully!'
+    );
+  } catch (error) {
+    console.error('Update business type error:', error);
+    toast.error('Failed to update business type');
+  }
+};
 
   const handleSaveRegion = async () => {
-    if (!businessId) {
-      toast.error('Business ID not found');
-      return;
-    }
-
-    try {
-      await toastHelpers.async(
-        apiClient.put(`/api/business/${businessId}`, region),
-        t('savingRegion') || 'Saving region settings...',
-        t('regionUpdated') || 'Region settings updated successfully!'
-      );
-    } catch (error) {
-      console.error('Update region error:', error);
-      toast.error(t('regionUpdateFailed') || 'Failed to update region settings');
-    }
-  };
+  try {
+    await toastHelpers.async(
+      apiClient.settings.updateProfile(region),
+      t('savingRegion') || 'Saving region settings...',
+      t('regionUpdated') || 'Region settings updated successfully!'
+    );
+  } catch (error) {
+    console.error('Update region error:', error);
+    toast.error(t('regionUpdateFailed') || 'Failed to update region settings');
+  }
+};
 
   const handleChangePassword = async () => {
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
