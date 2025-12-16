@@ -27,22 +27,6 @@ export const INTEGRATION_METADATA = {
     authType: 'oauth'
   },
 
-  CALENDLY: {
-    relevantFor: ['RESTAURANT', 'CLINIC', 'SALON', 'SERVICE'],
-    priority: {
-      RESTAURANT: 'RECOMMENDED',
-      CLINIC: 'RECOMMENDED',
-      SALON: 'RECOMMENDED',
-      SERVICE: 'RECOMMENDED',
-      ECOMMERCE: 'OPTIONAL',
-      OTHER: 'OPTIONAL'
-    },
-    name: 'Calendly',
-    description: 'Online randevu planlama',
-    category: 'scheduling',
-    authType: 'oauth'
-  },
-
   // ============================================================================
   // COMMUNICATION
   // ============================================================================
@@ -81,55 +65,6 @@ export const INTEGRATION_METADATA = {
     category: 'communication',
     authType: 'api_key',
     region: 'TR'
-  },
-
-  TWILIO_SMS: {
-    relevantFor: ['RESTAURANT', 'CLINIC', 'SALON', 'SERVICE'],
-    priority: {
-      RESTAURANT: 'OPTIONAL',
-      CLINIC: 'OPTIONAL',
-      SALON: 'OPTIONAL',
-      SERVICE: 'OPTIONAL',
-      ECOMMERCE: 'OPTIONAL',
-      OTHER: 'OPTIONAL'
-    },
-    name: 'Twilio SMS',
-    description: 'Uluslararası SMS bildirimleri',
-    category: 'communication',
-    authType: 'api_key',
-    region: 'US'
-  },
-
-  SLACK: {
-    relevantFor: ['SERVICE', 'ECOMMERCE', 'OTHER'],
-    priority: {
-      SERVICE: 'OPTIONAL',
-      ECOMMERCE: 'OPTIONAL',
-      OTHER: 'OPTIONAL',
-      RESTAURANT: 'OPTIONAL',
-      CLINIC: 'OPTIONAL',
-      SALON: 'OPTIONAL'
-    },
-    name: 'Slack',
-    description: 'Ekip iletişimi ve bildirimler',
-    category: 'communication',
-    authType: 'oauth'
-  },
-
-  SENDGRID_EMAIL: {
-    relevantFor: ['ECOMMERCE', 'SERVICE', 'CLINIC'],
-    priority: {
-      ECOMMERCE: 'OPTIONAL',
-      SERVICE: 'OPTIONAL',
-      CLINIC: 'OPTIONAL',
-      RESTAURANT: 'OPTIONAL',
-      SALON: 'OPTIONAL',
-      OTHER: 'OPTIONAL'
-    },
-    name: 'SendGrid',
-    description: 'Toplu email gönderimi',
-    category: 'communication',
-    authType: 'api_key'
   },
 
   // ============================================================================
@@ -240,40 +175,6 @@ export const INTEGRATION_METADATA = {
     region: 'TR'
   },
 
-  STRIPE_PAYMENTS: {
-    relevantFor: ['ECOMMERCE', 'SALON', 'SERVICE'],
-    priority: {
-      ECOMMERCE: 'RECOMMENDED',
-      SALON: 'RECOMMENDED',
-      SERVICE: 'RECOMMENDED',
-      RESTAURANT: 'OPTIONAL',
-      CLINIC: 'OPTIONAL',
-      OTHER: 'OPTIONAL'
-    },
-    name: 'Stripe',
-    description: 'Uluslararası ödeme altyapısı',
-    category: 'payments',
-    authType: 'api_key',
-    region: 'US'
-  },
-
-  SQUARE: {
-    relevantFor: ['RESTAURANT', 'SALON', 'ECOMMERCE'],
-    priority: {
-      RESTAURANT: 'RECOMMENDED',
-      SALON: 'RECOMMENDED',
-      ECOMMERCE: 'OPTIONAL',
-      CLINIC: 'OPTIONAL',
-      SERVICE: 'OPTIONAL',
-      OTHER: 'OPTIONAL'
-    },
-    name: 'Square',
-    description: 'POS ve ödeme sistemi',
-    category: 'payments',
-    authType: 'oauth',
-    region: 'US'
-  },
-
   // ============================================================================
   // ACCOUNTING
   // ============================================================================
@@ -296,40 +197,8 @@ export const INTEGRATION_METADATA = {
   },
 
   // ============================================================================
-  // CRM
+  // DATA
   // ============================================================================
-
-  HUBSPOT: {
-    relevantFor: ['ECOMMERCE', 'SERVICE'],
-    priority: {
-      ECOMMERCE: 'RECOMMENDED',
-      SERVICE: 'RECOMMENDED',
-      RESTAURANT: 'OPTIONAL',
-      CLINIC: 'OPTIONAL',
-      SALON: 'OPTIONAL',
-      OTHER: 'RECOMMENDED'
-    },
-    name: 'HubSpot',
-    description: 'CRM ve pazarlama otomasyonu',
-    category: 'crm',
-    authType: 'oauth'
-  },
-
-  SALESFORCE: {
-    relevantFor: ['SERVICE', 'ECOMMERCE'],
-    priority: {
-      SERVICE: 'OPTIONAL',
-      ECOMMERCE: 'OPTIONAL',
-      RESTAURANT: 'OPTIONAL',
-      CLINIC: 'OPTIONAL',
-      SALON: 'OPTIONAL',
-      OTHER: 'OPTIONAL'
-    },
-    name: 'Salesforce',
-    description: 'Kurumsal CRM',
-    category: 'crm',
-    authType: 'oauth'
-  },
 
   GOOGLE_SHEETS: {
     relevantFor: ['RESTAURANT', 'SALON', 'SERVICE', 'CLINIC', 'ECOMMERCE', 'OTHER'],
@@ -347,168 +216,6 @@ export const INTEGRATION_METADATA = {
     authType: 'oauth'
   },
 
-  // ============================================================================
-  // BOOKING & RESERVATIONS
-  // ============================================================================
-
-  OPENTABLE: {
-    relevantFor: ['RESTAURANT'],
-    priority: {
-      RESTAURANT: 'RECOMMENDED',
-      ECOMMERCE: 'OPTIONAL',
-      CLINIC: 'OPTIONAL',
-      SALON: 'OPTIONAL',
-      SERVICE: 'OPTIONAL',
-      OTHER: 'OPTIONAL'
-    },
-    name: 'OpenTable',
-    description: 'Restoran rezervasyonu',
-    category: 'reservations',
-    authType: 'api_key'
-  },
-
-  TOAST_POS: {
-    relevantFor: ['RESTAURANT'],
-    priority: {
-      RESTAURANT: 'RECOMMENDED',
-      ECOMMERCE: 'OPTIONAL',
-      CLINIC: 'OPTIONAL',
-      SALON: 'OPTIONAL',
-      SERVICE: 'OPTIONAL',
-      OTHER: 'OPTIONAL'
-    },
-    name: 'Toast POS',
-    description: 'Restoran POS sistemi',
-    category: 'pos',
-    authType: 'api_key',
-    region: 'US'
-  },
-
-  BOOKSY: {
-    relevantFor: ['SALON'],
-    priority: {
-      SALON: 'ESSENTIAL',
-      RESTAURANT: 'OPTIONAL',
-      ECOMMERCE: 'OPTIONAL',
-      CLINIC: 'OPTIONAL',
-      SERVICE: 'OPTIONAL',
-      OTHER: 'OPTIONAL'
-    },
-    name: 'Booksy',
-    description: 'Kuaför/salon randevu sistemi',
-    category: 'booking',
-    authType: 'api_key'
-  },
-
-  FRESHA: {
-    relevantFor: ['SALON'],
-    priority: {
-      SALON: 'RECOMMENDED',
-      RESTAURANT: 'OPTIONAL',
-      ECOMMERCE: 'OPTIONAL',
-      CLINIC: 'OPTIONAL',
-      SERVICE: 'OPTIONAL',
-      OTHER: 'OPTIONAL'
-    },
-    name: 'Fresha',
-    description: 'Güzellik ve wellness randevu',
-    category: 'booking',
-    authType: 'api_key'
-  },
-
-  // ============================================================================
-  // HEALTHCARE
-  // ============================================================================
-
-  SIMPLEPRACTICE: {
-    relevantFor: ['CLINIC'],
-    priority: {
-      CLINIC: 'RECOMMENDED',
-      RESTAURANT: 'OPTIONAL',
-      ECOMMERCE: 'OPTIONAL',
-      SALON: 'OPTIONAL',
-      SERVICE: 'OPTIONAL',
-      OTHER: 'OPTIONAL'
-    },
-    name: 'SimplePractice',
-    description: 'Sağlık pratik yönetimi',
-    category: 'healthcare',
-    authType: 'oauth',
-    region: 'US'
-  },
-
-  ZOCDOC: {
-    relevantFor: ['CLINIC'],
-    priority: {
-      CLINIC: 'RECOMMENDED',
-      RESTAURANT: 'OPTIONAL',
-      ECOMMERCE: 'OPTIONAL',
-      SALON: 'OPTIONAL',
-      SERVICE: 'OPTIONAL',
-      OTHER: 'OPTIONAL'
-    },
-    name: 'Zocdoc',
-    description: 'Hasta randevu platformu',
-    category: 'healthcare',
-    authType: 'api_key',
-    region: 'US'
-  },
-
-  // ============================================================================
-  // MARKETING
-  // ============================================================================
-
-  KLAVIYO: {
-    relevantFor: ['ECOMMERCE'],
-    priority: {
-      ECOMMERCE: 'RECOMMENDED',
-      RESTAURANT: 'OPTIONAL',
-      CLINIC: 'OPTIONAL',
-      SALON: 'OPTIONAL',
-      SERVICE: 'OPTIONAL',
-      OTHER: 'OPTIONAL'
-    },
-    name: 'Klaviyo',
-    description: 'E-ticaret email pazarlama',
-    category: 'marketing',
-    authType: 'api_key'
-  },
-
-  MAILCHIMP: {
-    relevantFor: ['ECOMMERCE', 'SERVICE'],
-    priority: {
-      ECOMMERCE: 'OPTIONAL',
-      SERVICE: 'OPTIONAL',
-      RESTAURANT: 'OPTIONAL',
-      CLINIC: 'OPTIONAL',
-      SALON: 'OPTIONAL',
-      OTHER: 'OPTIONAL'
-    },
-    name: 'Mailchimp',
-    description: 'Email pazarlama',
-    category: 'marketing',
-    authType: 'oauth'
-  },
-
-  // ============================================================================
-  // AUTOMATION
-  // ============================================================================
-
-  ZAPIER: {
-    relevantFor: ['RESTAURANT', 'SALON', 'SERVICE', 'CLINIC', 'ECOMMERCE', 'OTHER'],
-    priority: {
-      RESTAURANT: 'OPTIONAL',
-      SALON: 'OPTIONAL',
-      SERVICE: 'OPTIONAL',
-      CLINIC: 'OPTIONAL',
-      ECOMMERCE: 'RECOMMENDED',
-      OTHER: 'RECOMMENDED'
-    },
-    name: 'Zapier',
-    description: 'Otomasyon ve entegrasyon',
-    category: 'automation',
-    authType: 'webhook'
-  }
 };
 
 // ============================================================================
