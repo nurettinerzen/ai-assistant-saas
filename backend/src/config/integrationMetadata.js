@@ -158,24 +158,6 @@ export const INTEGRATION_METADATA = {
   // PAYMENTS
   // ============================================================================
 
-  IYZICO: {
-    relevantFor: ['ECOMMERCE', 'SERVICE', 'RESTAURANT', 'SALON', 'CLINIC', 'OTHER'],
-    priority: {
-      ECOMMERCE: 'ESSENTIAL',
-      SERVICE: 'RECOMMENDED',
-      RESTAURANT: 'RECOMMENDED',
-      SALON: 'RECOMMENDED',
-      CLINIC: 'RECOMMENDED',
-      OTHER: 'OPTIONAL'
-    },
-    name: 'iyzico',
-    description: 'Türkiye ödeme altyapısı',
-    category: 'payments',
-    authType: 'api_key',
-    region: 'TR'
-  },
-
-  // ============================================================================
   // ACCOUNTING
   // ============================================================================
 
