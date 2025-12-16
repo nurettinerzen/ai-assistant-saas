@@ -72,23 +72,30 @@ export default function TemplateSelector({ isOpen, onClose, onSelectTemplate, se
       setLoading(true);
       try {
         // Load business info to get type and language
-        let lang = selectedLanguage || 'tr';
+        let lang = 'tr'; // Default to Turkish
         let bizType = null;
         const user = JSON.parse(localStorage.getItem('user') || '{}');
 
         if (user.businessId) {
           try {
             const response = await apiClient.business.get(user.businessId);
-            const business = response.data.business || response.data;
+            // API returns business directly, not wrapped in { business: ... }
+            const business = response.data;
             const businessLang = business?.language?.toLowerCase();
             if (businessLang) {
-              lang = selectedLanguage || businessLang;
+              lang = businessLang;
             }
             bizType = business?.businessType;
             setBusinessType(bizType);
+            console.log('🏢 Business info loaded:', { language: businessLang, businessType: bizType });
           } catch (error) {
             console.error('Failed to load business info:', error);
           }
+        }
+
+        // Use selectedLanguage prop only if explicitly provided and different from business language
+        if (selectedLanguage && selectedLanguage !== 'en') {
+          lang = selectedLanguage;
         }
 
         // Load templates with the correct language
@@ -96,14 +103,18 @@ export default function TemplateSelector({ isOpen, onClose, onSelectTemplate, se
         const response = await apiClient.assistants.getTemplates(lang);
         let allTemplates = response.data.templates || [];
 
+        console.log('📋 All templates received:', allTemplates.length, allTemplates.map(t => ({ name: t.name, industry: t.industry, language: t.language })));
+
         // Filter by business type if set and not OTHER
         if (bizType && bizType !== 'OTHER') {
           const targetIndustry = BUSINESS_TYPE_TO_INDUSTRY[bizType.toUpperCase()];
+          console.log('🔍 Filtering for industry:', targetIndustry, 'from businessType:', bizType);
           if (targetIndustry) {
             allTemplates = allTemplates.filter(t => t.industry === targetIndustry);
           }
         }
 
+        console.log('✅ Filtered templates:', allTemplates.length);
         setTemplates(allTemplates);
       } catch (error) {
         console.error('Failed to load templates:', error);

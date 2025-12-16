@@ -12,6 +12,9 @@ const memoryCache = new Map();
 // Track pending translations to avoid duplicate requests
 const pendingTranslations = new Set();
 
+// Track texts that have been requested (even if not yet translated)
+const requestedTexts = new Set();
+
 const getCache = (text, locale) => {
   const key = `${locale}:${text}`;
 
@@ -45,16 +48,25 @@ const setCache = (text, locale, translation) => {
 
 export function LanguageProvider({ children }) {
   const [locale, setLocale] = useState('en');
-  const [updateCounter, setUpdateCounter] = useState(0);
+  const [, forceUpdate] = useState(0);
   const queue = useRef([]);
   const timer = useRef(null);
   const isProcessing = useRef(false);
+  const updateTimer = useRef(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('locale') || 'en';
       setLocale(saved);
     }
+  }, []);
+
+  // Debounced update trigger - only triggers once after all translations complete
+  const triggerUpdate = useCallback(() => {
+    if (updateTimer.current) clearTimeout(updateTimer.current);
+    updateTimer.current = setTimeout(() => {
+      forceUpdate(n => n + 1);
+    }, 500); // Wait 500ms after last translation before re-rendering
   }, []);
 
   // Stable processQueue function - doesn't depend on locale from closure
@@ -65,10 +77,13 @@ export function LanguageProvider({ children }) {
     const texts = [...new Set(queue.current)];
     queue.current = [];
 
-    // Filter out already cached and pending translations
+    // Filter out already cached, pending, and previously requested translations
     const uncached = texts.filter(t => {
       const key = `${currentLocale}:${t}`;
-      return !getCache(t, currentLocale) && !pendingTranslations.has(key);
+      if (getCache(t, currentLocale)) return false;
+      if (pendingTranslations.has(key)) return false;
+      if (requestedTexts.has(key)) return false;
+      return true;
     });
 
     if (uncached.length === 0) {
@@ -76,8 +91,12 @@ export function LanguageProvider({ children }) {
       return;
     }
 
-    // Mark as pending
-    uncached.forEach(t => pendingTranslations.add(`${currentLocale}:${t}`));
+    // Mark as pending AND requested (requested persists even after completion)
+    uncached.forEach(t => {
+      const key = `${currentLocale}:${t}`;
+      pendingTranslations.add(key);
+      requestedTexts.add(key);
+    });
 
     try {
       const response = await fetch(`${API_URL}/api/translate`, {
@@ -98,29 +117,31 @@ export function LanguageProvider({ children }) {
               hasNewTranslations = true;
             }
           }
-          // Remove from pending
+          // Remove from pending (but keep in requestedTexts)
           pendingTranslations.delete(`${currentLocale}:${text}`);
         });
 
-        // Only trigger update if we actually got new translations
+        // Debounced update - don't trigger immediately
         if (hasNewTranslations) {
-          setUpdateCounter(n => n + 1);
+          triggerUpdate();
         }
       }
     } catch (e) {
       console.error('Translation error:', e);
-      // Remove from pending on error
+      // Remove from pending on error (but keep in requestedTexts to prevent retry)
       uncached.forEach(t => pendingTranslations.delete(`${currentLocale}:${t}`));
     } finally {
       isProcessing.current = false;
     }
-  }, []);
+  }, [triggerUpdate]);
 
   const changeLocale = useCallback((newLocale) => {
     setLocale(newLocale);
     if (typeof window !== 'undefined') {
       localStorage.setItem('locale', newLocale);
     }
+    // Clear requested texts when locale changes so new translations can be fetched
+    requestedTexts.clear();
   }, []);
 
   // Stable tr function - uses ref to access current locale
@@ -136,8 +157,8 @@ export function LanguageProvider({ children }) {
 
     const key = `${currentLocale}:${text}`;
 
-    // Skip if already pending
-    if (pendingTranslations.has(key)) {
+    // Skip if already pending or previously requested
+    if (pendingTranslations.has(key) || requestedTexts.has(key)) {
       return text;
     }
 
@@ -145,7 +166,7 @@ export function LanguageProvider({ children }) {
     if (!queue.current.includes(text)) {
       queue.current.push(text);
       if (timer.current) clearTimeout(timer.current);
-      timer.current = setTimeout(() => processQueue(currentLocale), 150);
+      timer.current = setTimeout(() => processQueue(currentLocale), 200);
     }
 
     return text;
