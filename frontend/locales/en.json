@@ -862,6 +862,7 @@
       "viewReportsActionDesc": "Check analytics",
       "keyMetrics": "Key Metrics",
       "last7DaysOverview": "Last 7 days performance overview",
+      "fromLastWeek": "from last week",
       "chatMessages": "Chat Messages",
       "avgDuration": "Avg Duration",
       "totalCost": "Total Cost",

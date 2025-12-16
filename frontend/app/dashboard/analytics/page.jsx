@@ -30,7 +30,7 @@ import {
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
-import { formatDuration } from '@/lib/utils';
+import { formatDuration, formatDate } from '@/lib/utils';
 import {
   LineChart,
   Line,
@@ -59,7 +59,7 @@ const CHANNEL_COLORS = {
 };
 
 export default function AnalyticsPage() {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState('30d');
   const [analytics, setAnalytics] = useState(null);
@@ -230,7 +230,7 @@ export default function AnalyticsPage() {
           <ResponsiveContainer width="100%" height={250}>
             <LineChart data={analytics?.callsOverTime || []}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
+              <XAxis dataKey="date" tickFormatter={(date) => formatDate(date, 'chart', locale)} />
               <YAxis />
               <Tooltip />
               <Legend />
@@ -358,10 +358,10 @@ export default function AnalyticsPage() {
                 recentCalls.map((call) => (
                   <tr key={call.id} className="border-t border-neutral-100">
                     <td className="p-3 text-sm text-neutral-900">
-                      {new Date(call.createdAt).toLocaleString()}
+                      {formatDate(call.createdAt, 'long', locale)}
                     </td>
                     <td className="p-3 text-sm text-neutral-900">
-                      {call.callerId || 'Unknown'}
+                      {call.callerId || t('dashboard.overviewPage.unknownCaller')}
                     </td>
                     <td className="p-3 text-sm text-neutral-900">
                       {formatDuration(call.duration)}

@@ -2,11 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { getIntlLocale } from '@/lib/utils';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 export default function CalendarPage() {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -287,7 +289,7 @@ export default function CalendarPage() {
                   {appointments.map(apt => (
                     <tr key={apt.id} style={{ borderBottom: '1px solid #e0e0e0' }}>
                       <td style={{ padding: '15px' }}>
-                        {new Date(apt.appointmentDate).toLocaleString('en-US', {
+                        {new Date(apt.appointmentDate).toLocaleString(getIntlLocale(locale), {
                           month: 'short',
                           day: 'numeric',
                           year: 'numeric',

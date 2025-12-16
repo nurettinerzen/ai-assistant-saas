@@ -33,7 +33,7 @@ import {
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
-import { formatDate, formatDuration, formatCurrency } from '@/lib/utils';
+import { formatDate, formatDuration, formatCurrency, getIntlLocale } from '@/lib/utils';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function DashboardPage() {
@@ -68,7 +68,7 @@ export default function DashboardPage() {
 
   // Format current date
   const getCurrentDate = () => {
-    return new Date().toLocaleDateString(locale, {
+    return new Date().toLocaleDateString(getIntlLocale(locale), {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -506,7 +506,7 @@ export default function DashboardPage() {
                           {formatDuration(call.duration)}
                         </span>
                         <span className="text-neutral-500">
-                          {formatDate(call.createdAt, 'relative')}
+                          {formatDate(call.createdAt, 'relative', locale)}
                         </span>
                       </div>
                     </div>

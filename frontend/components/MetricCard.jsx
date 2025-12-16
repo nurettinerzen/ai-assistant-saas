@@ -6,6 +6,7 @@
 import React from 'react';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import Sparkline from './Sparkline';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function MetricCard({
   label,
@@ -17,6 +18,8 @@ export default function MetricCard({
   color = 'primary',
   loading = false,
 }) {
+  const { t } = useLanguage();
+
   const colorClasses = {
     primary: { bg: 'bg-primary-50', text: 'text-primary-600', sparkline: '#4f46e5' },
     success: { bg: 'bg-green-50', text: 'text-green-600', sparkline: '#10b981' },
@@ -85,7 +88,7 @@ export default function MetricCard({
             {getTrendIcon()}
             {trendValue}
           </span>
-          <span className="text-xs text-neutral-500">from last week</span>
+          <span className="text-xs text-neutral-500">{t('dashboard.overviewPage.fromLastWeek')}</span>
         </div>
       )}
     </div>

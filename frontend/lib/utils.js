@@ -60,61 +60,122 @@ export function formatDuration(seconds) {
 }
 
 /**
+ * Map locale code to Intl locale
+ */
+export function getIntlLocale(locale) {
+  const localeMap = {
+    'tr': 'tr-TR',
+    'en': 'en-US',
+    'de': 'de-DE',
+    'fr': 'fr-FR',
+    'es': 'es-ES',
+    'it': 'it-IT',
+    'pt': 'pt-PT',
+    'nl': 'nl-NL',
+    'ru': 'ru-RU',
+    'ar': 'ar-SA',
+    'ja': 'ja-JP',
+    'ko': 'ko-KR',
+    'zh': 'zh-CN',
+    'hi': 'hi-IN',
+    'pl': 'pl-PL',
+    'sv': 'sv-SE',
+  };
+  return localeMap[locale] || 'tr-TR';
+}
+
+/**
  * Format date to various formats
  * @param {string|Date} date - Date to format
- * @param {string} format - 'short', 'long', 'time', 'relative'
+ * @param {string} format - 'short', 'long', 'time', 'relative', 'chart'
+ * @param {string} locale - Locale code (tr, en, etc.)
  */
-export function formatDate(date, format = 'short') {
+export function formatDate(date, format = 'short', locale = 'tr') {
   if (!date) return '';
-  
+
   const d = new Date(date);
-  
+
   if (isNaN(d.getTime())) return 'Invalid Date';
-  
+
+  const intlLocale = getIntlLocale(locale);
+
   if (format === 'short') {
-    // Jan 15, 2025
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    // 15 Oca 2025 (TR) or Jan 15, 2025 (EN)
+    return d.toLocaleDateString(intlLocale, { month: 'short', day: 'numeric', year: 'numeric' });
   } else if (format === 'long') {
-    // January 15, 2025 at 3:45 PM
-    return d.toLocaleDateString('en-US', { 
-      month: 'long', 
-      day: 'numeric', 
+    // 15 Ocak 2025 15:45 (TR) or January 15, 2025 at 3:45 PM (EN)
+    return d.toLocaleDateString(intlLocale, {
+      month: 'long',
+      day: 'numeric',
       year: 'numeric',
       hour: 'numeric',
       minute: '2-digit',
     });
   } else if (format === 'time') {
-    // 3:45 PM
-    return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    // 15:45 (TR) or 3:45 PM (EN)
+    return d.toLocaleTimeString(intlLocale, { hour: 'numeric', minute: '2-digit' });
+  } else if (format === 'chart') {
+    // Short format for chart axis: 15 Ara (TR) or Dec 15 (EN)
+    return d.toLocaleDateString(intlLocale, { month: 'short', day: 'numeric' });
   } else if (format === 'relative') {
     // 2 hours ago, 3 days ago, etc.
-    return getRelativeTime(d);
+    return getRelativeTime(d, locale);
   }
-  
-  return d.toLocaleDateString();
+
+  return d.toLocaleDateString(intlLocale);
 }
 
 /**
  * Get relative time (e.g., "2 hours ago")
  */
-function getRelativeTime(date) {
+function getRelativeTime(date, locale = 'tr') {
   const now = new Date();
   const diffMs = now - date;
   const diffSecs = Math.floor(diffMs / 1000);
   const diffMins = Math.floor(diffSecs / 60);
   const diffHours = Math.floor(diffMins / 60);
   const diffDays = Math.floor(diffHours / 24);
-  
+
+  // Locale-aware relative time labels
+  const labels = {
+    tr: {
+      justNow: 'Az önce',
+      minuteAgo: 'dakika önce',
+      hourAgo: 'saat önce',
+      dayAgo: 'gün önce',
+    },
+    en: {
+      justNow: 'Just now',
+      minuteAgo: 'minute ago',
+      minutesAgo: 'minutes ago',
+      hourAgo: 'hour ago',
+      hoursAgo: 'hours ago',
+      dayAgo: 'day ago',
+      daysAgo: 'days ago',
+    },
+  };
+
+  const l = labels[locale] || labels['tr'];
+
   if (diffSecs < 60) {
-    return 'Just now';
+    return l.justNow;
   } else if (diffMins < 60) {
-    return `${diffMins} ${diffMins === 1 ? 'minute' : 'minutes'} ago`;
+    if (locale === 'tr') {
+      return `${diffMins} ${l.minuteAgo}`;
+    }
+    return `${diffMins} ${diffMins === 1 ? l.minuteAgo : l.minutesAgo}`;
   } else if (diffHours < 24) {
-    return `${diffHours} ${diffHours === 1 ? 'hour' : 'hours'} ago`;
+    if (locale === 'tr') {
+      return `${diffHours} ${l.hourAgo}`;
+    }
+    return `${diffHours} ${diffHours === 1 ? l.hourAgo : l.hoursAgo}`;
   } else if (diffDays < 7) {
-    return `${diffDays} ${diffDays === 1 ? 'day' : 'days'} ago`;
+    if (locale === 'tr') {
+      return `${diffDays} ${l.dayAgo}`;
+    }
+    return `${diffDays} ${diffDays === 1 ? l.dayAgo : l.daysAgo}`;
   } else {
-    return formatDate(date, 'short');
+    return formatDate(date, 'short', locale);
   }
 }
 
