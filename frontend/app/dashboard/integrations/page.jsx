@@ -697,18 +697,18 @@ const handleIdeasoftConnect = async () => {
 
   const getCategoryDescription = (type) => {
     const descriptions = {
-      GOOGLE_CALENDAR: 'Sync appointments and manage your schedule',
-      WHATSAPP: 'AI-powered customer conversations via WhatsApp',
-      SHOPIFY: 'Connect your Shopify store for order management',
-      WOOCOMMERCE: 'Integrate your WooCommerce store',
-      PARASUT: 'Turkish accounting - Invoice and contact management',
-      IYZICO: 'Turkish payment gateway - Payment and refund tracking',
-      ZAPIER: 'Connect thousands of apps with automation',
-      IKAS: 'ikas e-ticaret platformu - sipariş ve stok sorgulama',
-      IDEASOFT: 'Ideasoft e-ticaret platformu - sipariş ve stok sorgulama',
-      TICIMAX: 'Ticimax e-ticaret platformu - sipariş ve stok sorgulama'
+      GOOGLE_CALENDAR: t('syncAppointments'),
+      WHATSAPP: t('whatsappConversations'),
+      SHOPIFY: t('shopifyConnect'),
+      WOOCOMMERCE: t('woocommerceConnect'),
+      PARASUT: t('parasutConnect'),
+      IYZICO: t('iyzicoConnect'),
+      ZAPIER: t('zapierConnect'),
+      IKAS: t('ikasConnect'),
+      IDEASOFT: t('ideasoftConnect'),
+      TICIMAX: t('ticimaxConnect')
     };
-    return descriptions[type] || 'Integration';
+    return descriptions[type] || t('integrationsTitle');
   };
 
   // E-commerce platforms list
@@ -774,13 +774,13 @@ const handleIdeasoftConnect = async () => {
 
         {integration.priority === 'ESSENTIAL' && (
           <div className="mb-3 px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-md inline-flex items-center gap-1">
-            <Star className="h-3 w-3 fill-blue-700" />Essential for your business
+            <Star className="h-3 w-3 fill-blue-700" />{t('essentialForBusiness')}
           </div>
         )}
 
         {disabled && (
           <div className="mb-3 px-2 py-1 bg-amber-100 text-amber-700 text-xs rounded-md">
-            {getEcommercePlatformName(connectedEcommerce)} zaten bağlı. Değiştirmek için önce bağlantıyı kesin.
+            {getEcommercePlatformName(connectedEcommerce)} {t('platformAlreadyConnected')}
           </div>
         )}
 
@@ -789,15 +789,15 @@ const handleIdeasoftConnect = async () => {
         <div className="flex gap-2">
           {integration.connected ? (
             <>
-              <Button variant="outline" size="sm" className="flex-1" onClick={() => handleTest(integration)}>Test</Button>
+              <Button variant="outline" size="sm" className="flex-1" onClick={() => handleTest(integration)}>{t('testIntegration')}</Button>
               {can('integrations:connect') && (
-              <Button variant="outline" size="sm" onClick={() => handleDisconnect(integration)}>Disconnect</Button>
+              <Button variant="outline" size="sm" onClick={() => handleDisconnect(integration)}>{t('disconnectIntegration')}</Button>
               )}
             </>
           ) : (
             can('integrations:connect') && (
             <Button size="sm" className="flex-1" onClick={() => handleConnect(integration)} disabled={disabled}>
-              {disabled ? 'Disabled' : 'Connect'}
+              {disabled ? t('disabledIntegration') : t('connectIntegration')}
             </Button>
             )
           )}
@@ -813,12 +813,12 @@ const handleIdeasoftConnect = async () => {
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-neutral-900">Integrations</h1>
-        <p className="text-neutral-600 mt-1">Connect your tools and platforms to enhance your AI assistant</p>
+        <h1 className="text-3xl font-bold text-neutral-900">{t('integrationsPageTitle')}</h1>
+        <p className="text-neutral-600 mt-1">{t('integrationsPageDesc')}</p>
         {businessType && (
           <div className="mt-3 flex items-center gap-2">
             <Badge variant="outline" className="text-sm">
-              <Target className="h-4 w-4 mr-1" />{getBusinessTypeDisplay(businessType)} Business
+              <Target className="h-4 w-4 mr-1" />{getBusinessTypeDisplay(businessType)}
             </Badge>
           </div>
         )}
@@ -828,9 +828,9 @@ const handleIdeasoftConnect = async () => {
       <div className="space-y-4">
         <div>
           <h2 className="text-xl font-semibold text-neutral-900 flex items-center gap-2">
-            <Inbox className="h-5 w-5 text-blue-600" />Email Channel
+            <Inbox className="h-5 w-5 text-blue-600" />{t('emailChannel')}
           </h2>
-          <p className="text-sm text-neutral-600 mt-1">Connect your email to let AI assist with customer emails</p>
+          <p className="text-sm text-neutral-600 mt-1">{t('emailChannelDesc')}</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -843,32 +843,32 @@ const handleIdeasoftConnect = async () => {
                 </div>
                 <div>
                   <h3 className="font-semibold text-neutral-900">Gmail</h3>
-                  <Badge variant="secondary" className="text-xs mt-1">Email Channel</Badge>
+                  <Badge variant="secondary" className="text-xs mt-1">{t('emailChannel')}</Badge>
                 </div>
               </div>
               {emailStatus?.connected && emailStatus?.provider === 'GMAIL' && (
                 <div className="p-1 bg-green-100 rounded-full"><Check className="h-4 w-4 text-green-600" /></div>
               )}
             </div>
-            <p className="text-sm text-neutral-600 mb-4">Connect Gmail for AI-assisted email management.</p>
+            <p className="text-sm text-neutral-600 mb-4">{t('gmailDesc')}</p>
             {emailStatus?.connected && emailStatus?.provider === 'GMAIL' ? (
               <div className="space-y-3">
                 <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 p-2 rounded-lg">
-                  <CheckCircle2 className="h-4 w-4" /><span>Connected: {emailStatus.email}</span>
+                  <CheckCircle2 className="h-4 w-4" /><span>{t('connected')}: {emailStatus.email}</span>
                 </div>
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" className="flex-1" onClick={() => window.location.href = '/dashboard/email'}>
-                    <Inbox className="h-4 w-4 mr-1" />Open Inbox
+                    <Inbox className="h-4 w-4 mr-1" />{t('openInbox')}
                   </Button>
                   {can('integrations:connect') && (
-                  <Button variant="outline" size="sm" onClick={handleEmailDisconnect} disabled={emailLoading}>Disconnect</Button>
+                  <Button variant="outline" size="sm" onClick={handleEmailDisconnect} disabled={emailLoading}>{t('disconnectIntegration')}</Button>
                   )}
                 </div>
               </div>
             ) : (
               can('integrations:connect') && (
               <Button size="sm" className="w-full" onClick={handleGmailConnect} disabled={emailLoading || (emailStatus?.connected && emailStatus?.provider !== 'GMAIL')}>
-                {emailLoading ? <><RefreshCw className="h-4 w-4 mr-2 animate-spin" />Connecting...</> : 'Connect Gmail'}
+                {emailLoading ? <><RefreshCw className="h-4 w-4 mr-2 animate-spin" />{t('connectingText')}</> : t('connectGmail')}
               </Button>
               )
             )}
@@ -883,32 +883,32 @@ const handleIdeasoftConnect = async () => {
                 </div>
                 <div>
                   <h3 className="font-semibold text-neutral-900">Microsoft 365</h3>
-                  <Badge variant="secondary" className="text-xs mt-1">Email Channel</Badge>
+                  <Badge variant="secondary" className="text-xs mt-1">{t('emailChannel')}</Badge>
                 </div>
               </div>
               {emailStatus?.connected && emailStatus?.provider === 'OUTLOOK' && (
                 <div className="p-1 bg-green-100 rounded-full"><Check className="h-4 w-4 text-green-600" /></div>
               )}
             </div>
-            <p className="text-sm text-neutral-600 mb-4">Connect Outlook for AI-assisted email management.</p>
+            <p className="text-sm text-neutral-600 mb-4">{t('outlookDesc')}</p>
             {emailStatus?.connected && emailStatus?.provider === 'OUTLOOK' ? (
               <div className="space-y-3">
                 <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 p-2 rounded-lg">
-                  <CheckCircle2 className="h-4 w-4" /><span>Connected: {emailStatus.email}</span>
+                  <CheckCircle2 className="h-4 w-4" /><span>{t('connected')}: {emailStatus.email}</span>
                 </div>
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" className="flex-1" onClick={() => window.location.href = '/dashboard/email'}>
-                    <Inbox className="h-4 w-4 mr-1" />Open Inbox
+                    <Inbox className="h-4 w-4 mr-1" />{t('openInbox')}
                   </Button>
                   {can('integrations:connect') && (
-                  <Button variant="outline" size="sm" onClick={handleEmailDisconnect} disabled={emailLoading}>Disconnect</Button>
+                  <Button variant="outline" size="sm" onClick={handleEmailDisconnect} disabled={emailLoading}>{t('disconnectIntegration')}</Button>
                   )}
                 </div>
               </div>
             ) : (
               can('integrations:connect') && (
               <Button size="sm" className="w-full" onClick={handleOutlookConnect} disabled={emailLoading || (emailStatus?.connected && emailStatus?.provider !== 'OUTLOOK')}>
-                {emailLoading ? <><RefreshCw className="h-4 w-4 mr-2 animate-spin" />Connecting...</> : 'Connect Outlook'}
+                {emailLoading ? <><RefreshCw className="h-4 w-4 mr-2 animate-spin" />{t('connectingText')}</> : t('connectOutlook')}
               </Button>
               )
             )}
@@ -933,7 +933,7 @@ const handleIdeasoftConnect = async () => {
           {groupedIntegrations.ESSENTIAL.length > 0 && (
             <div className="space-y-4">
               <h2 className="text-xl font-semibold text-neutral-900 flex items-center gap-2">
-                <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />Essential Integrations
+                <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />{t('essentialIntegrations')}
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {groupedIntegrations.ESSENTIAL.map(renderIntegrationCard)}
@@ -944,7 +944,7 @@ const handleIdeasoftConnect = async () => {
           {groupedIntegrations.RECOMMENDED.length > 0 && (
             <div className="space-y-4">
               <h2 className="text-xl font-semibold text-neutral-900 flex items-center gap-2">
-                <CheckCircle2 className="h-5 w-5 text-green-600" />Recommended Integrations
+                <CheckCircle2 className="h-5 w-5 text-green-600" />{t('recommendedIntegrations')}
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {groupedIntegrations.RECOMMENDED.map(renderIntegrationCard)}
@@ -954,7 +954,7 @@ const handleIdeasoftConnect = async () => {
 
           {groupedIntegrations.OPTIONAL.length > 0 && (
             <div className="space-y-4">
-              <h2 className="text-xl font-semibold text-neutral-900">More Integrations</h2>
+              <h2 className="text-xl font-semibold text-neutral-900">{t('moreIntegrations')}</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {groupedIntegrations.OPTIONAL.map(renderIntegrationCard)}
               </div>
@@ -962,7 +962,7 @@ const handleIdeasoftConnect = async () => {
           )}
 
           {integrations.length === 0 && (
-            <EmptyState icon={Puzzle} title="No integrations available" description="Contact support to enable custom integrations" />
+            <EmptyState icon={Puzzle} title={t('noIntegrationsAvailable')} description={t('contactSupportIntegrations')} />
           )}
         </>
       )}
