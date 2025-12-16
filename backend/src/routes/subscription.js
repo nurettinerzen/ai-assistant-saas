@@ -3,8 +3,8 @@
 // ============================================================================
 // FILE: backend/src/routes/subscription.js
 //
-// REPLACE your existing subscription.js with this file
-// Enhanced with phone provisioning, plan limits, and better webhook handling
+// Enhanced with iyzico support for Turkish customers
+// Stripe for global customers, iyzico for Turkey (TR)
 // ============================================================================
 
 import express from 'express';
@@ -13,16 +13,19 @@ import { authenticateToken, verifyBusinessAccess } from '../middleware/auth.js';
 import Stripe from 'stripe';
 import vapiPhoneNumber from '../services/vapiPhoneNumber.js';
 import emailService from '../services/emailService.js';
+import iyzicoSubscription from '../services/iyzicoSubscription.js';
+import paymentProvider from '../services/paymentProvider.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-// Plan configurations
+// Plan configurations with both Stripe and iyzico pricing
 const PLAN_CONFIG = {
   FREE: {
     name: 'FREE',
     price: 0,
+    priceTRY: 0,
     minutesLimit: 0,
     callsLimit: 0,
     assistantsLimit: 0,
@@ -31,7 +34,9 @@ const PLAN_CONFIG = {
   STARTER: {
     name: 'STARTER',
     stripePriceId: process.env.STRIPE_STARTER_PRICE_ID || 'price_starter',
+    iyzicoPlanRef: process.env.IYZICO_STARTER_PLAN_REF,
     price: 27,
+    priceTRY: 899,
     minutesLimit: 300,
     callsLimit: 50,
     assistantsLimit: 1,
@@ -40,7 +45,9 @@ const PLAN_CONFIG = {
   PROFESSIONAL: {
     name: 'PROFESSIONAL',
     stripePriceId: process.env.STRIPE_PRO_PRICE_ID || 'price_professional',
+    iyzicoPlanRef: process.env.IYZICO_PROFESSIONAL_PLAN_REF,
     price: 77,
+    priceTRY: 2599,
     minutesLimit: 1500,
     callsLimit: -1, // unlimited
     assistantsLimit: 2,
@@ -49,7 +56,9 @@ const PLAN_CONFIG = {
   ENTERPRISE: {
     name: 'ENTERPRISE',
     stripePriceId: process.env.STRIPE_ENTERPRISE_PRICE_ID || 'price_enterprise',
+    iyzicoPlanRef: process.env.IYZICO_ENTERPRISE_PLAN_REF,
     price: 199,
+    priceTRY: 6799,
     minutesLimit: -1, // unlimited
     callsLimit: -1,
     assistantsLimit: 5,
@@ -307,6 +316,57 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
 });
 
 // ============================================================================
+// IYZICO WEBHOOK
+// ============================================================================
+
+router.post('/iyzico-webhook', express.json(), async (req, res) => {
+  console.log('📥 iyzico webhook received:', req.body);
+
+  try {
+    const result = await iyzicoSubscription.processWebhook(req.body);
+
+    if (result.success) {
+      res.json({ received: true });
+    } else {
+      console.error('❌ iyzico webhook processing failed:', result.error);
+      res.status(400).json({ error: result.error });
+    }
+  } catch (error) {
+    console.error('❌ iyzico webhook error:', error);
+    res.status(500).json({ error: 'Webhook handler failed' });
+  }
+});
+
+// ============================================================================
+// IYZICO CHECKOUT CALLBACK (redirect after payment)
+// ============================================================================
+
+router.get('/iyzico-callback', async (req, res) => {
+  const { token } = req.query;
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+
+  if (!token) {
+    return res.redirect(`${frontendUrl}/pricing?error=missing_token`);
+  }
+
+  try {
+    // Retrieve checkout result
+    const result = await iyzicoSubscription.retrieveCheckoutFormResult(token);
+
+    if (result.success && result.subscriptionStatus === 'ACTIVE') {
+      console.log('✅ iyzico subscription activated via callback');
+      return res.redirect(`${frontendUrl}/dashboard/assistant?success=true&provider=iyzico`);
+    } else {
+      console.log('❌ iyzico checkout failed:', result);
+      return res.redirect(`${frontendUrl}/pricing?error=payment_failed`);
+    }
+  } catch (error) {
+    console.error('iyzico callback error:', error);
+    return res.redirect(`${frontendUrl}/pricing?error=callback_failed`);
+  }
+});
+
+// ============================================================================
 // AUTHENTICATED ROUTES
 // ============================================================================
 
@@ -379,7 +439,7 @@ router.get('/current', verifyBusinessAccess, async (req, res) => {
   }
 });
 
-// Get available plans
+// Get available plans - includes both Stripe and iyzico pricing
 router.get('/plans', async (req, res) => {
   try {
     const plans = [
@@ -387,6 +447,8 @@ router.get('/plans', async (req, res) => {
         id: 'FREE',
         name: 'Free',
         price: 0,
+        priceTRY: 0,
+        currency: 'USD',
         interval: 'month',
         features: [
           'Web voice test only (60s limit)',
@@ -402,8 +464,11 @@ router.get('/plans', async (req, res) => {
         id: 'STARTER',
         name: 'Starter',
         price: 27,
+        priceTRY: 899,
+        currency: 'USD',
         interval: 'month',
         stripePriceId: PLAN_CONFIG.STARTER.stripePriceId,
+        iyzicoPlanRef: PLAN_CONFIG.STARTER.iyzicoPlanRef,
         popular: true,
         features: [
           '1 AI assistant',
@@ -421,8 +486,11 @@ router.get('/plans', async (req, res) => {
         id: 'PROFESSIONAL',
         name: 'Professional',
         price: 77,
+        priceTRY: 2599,
+        currency: 'USD',
         interval: 'month',
         stripePriceId: PLAN_CONFIG.PROFESSIONAL.stripePriceId,
+        iyzicoPlanRef: PLAN_CONFIG.PROFESSIONAL.iyzicoPlanRef,
         bestValue: true,
         features: [
           '2 AI assistants',
@@ -441,8 +509,11 @@ router.get('/plans', async (req, res) => {
         id: 'ENTERPRISE',
         name: 'Enterprise',
         price: 199,
+        priceTRY: 6799,
+        currency: 'USD',
         interval: 'month',
         stripePriceId: PLAN_CONFIG.ENTERPRISE.stripePriceId,
+        iyzicoPlanRef: PLAN_CONFIG.ENTERPRISE.iyzicoPlanRef,
         features: [
           '5 AI assistants',
           '10 phone numbers',
@@ -464,16 +535,82 @@ router.get('/plans', async (req, res) => {
   }
 });
 
-// Create checkout session
+// Get payment provider for current business
+router.get('/payment-provider', verifyBusinessAccess, async (req, res) => {
+  try {
+    const { businessId } = req.user;
+    const provider = await paymentProvider.getProviderForBusiness(businessId);
+
+    const business = await prisma.business.findUnique({
+      where: { id: businessId },
+      select: { country: true }
+    });
+
+    res.json({
+      provider,
+      country: business?.country || 'US',
+      isIyzico: provider === 'iyzi co',
+      isStripe: provider === 'stripe'
+    });
+  } catch (error) {
+    console.error('Get payment provider error:', error);
+    res.status(500).json({ error: 'Failed to get payment provider' });
+  }
+});
+
+// Create checkout session - Automatically selects Stripe or iyzico based on country
 router.post('/create-checkout', verifyBusinessAccess, async (req, res) => {
   try {
     const { businessId } = req.user;
-    const { priceId, planId } = req.body;
+    const { priceId, planId, forceProvider } = req.body;
 
     if (!priceId && !planId) {
       return res.status(400).json({ error: 'Price ID or Plan ID required' });
     }
 
+    // Get business to determine provider
+    const user = await prisma.user.findFirst({
+      where: { businessId },
+      include: { business: true }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Determine payment provider (can be forced or auto-detected)
+    const provider = forceProvider || paymentProvider.getProviderForCountry(user.business.country);
+
+    console.log(`💳 Creating checkout for business ${businessId} with provider: ${provider} (country: ${user.business.country})`);
+
+    // ========== IYZICO CHECKOUT ==========
+    if (provider === 'iyzico') {
+      const finalPlanId = planId || Object.keys(PLAN_CONFIG).find(
+        key => PLAN_CONFIG[key].stripePriceId === priceId
+      );
+
+      if (!finalPlanId || finalPlanId === 'FREE') {
+        return res.status(400).json({ error: 'Invalid plan for iyzico' });
+      }
+
+      const result = await iyzicoSubscription.initializeCheckoutForm(businessId, finalPlanId);
+
+      if (!result.success) {
+        return res.status(400).json({
+          error: 'Failed to initialize iyzico checkout',
+          details: result.error
+        });
+      }
+
+      return res.json({
+        provider: 'iyzico',
+        checkoutFormContent: result.checkoutFormContent,
+        token: result.token,
+        tokenExpireTime: result.tokenExpireTime
+      });
+    }
+
+    // ========== STRIPE CHECKOUT ==========
     // Get price ID from plan ID if not provided
     let finalPriceId = priceId;
     if (!finalPriceId && planId) {
@@ -482,15 +619,6 @@ router.post('/create-checkout', verifyBusinessAccess, async (req, res) => {
 
     if (!finalPriceId) {
       return res.status(400).json({ error: 'Invalid plan or price ID' });
-    }
-
-    const user = await prisma.user.findFirst({
-      where: { businessId },
-      include: { business: true }
-    });
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
     }
 
     // Get or create Stripe customer
@@ -517,11 +645,13 @@ router.post('/create-checkout', verifyBusinessAccess, async (req, res) => {
         create: {
           businessId,
           stripeCustomerId,
+          paymentProvider: 'stripe',
           plan: 'FREE',
           status: 'INCOMPLETE'
         },
         update: {
-          stripeCustomerId
+          stripeCustomerId,
+          paymentProvider: 'stripe'
         }
       });
     }
@@ -538,7 +668,7 @@ router.post('/create-checkout', verifyBusinessAccess, async (req, res) => {
           quantity: 1
         }
       ],
-      success_url: `${frontendUrl}/dashboard/assistant?success=true`,
+      success_url: `${frontendUrl}/dashboard/assistant?success=true&provider=stripe`,
       cancel_url: `${frontendUrl}/pricing?canceled=true`,
       metadata: {
         businessId: businessId.toString(),
@@ -547,6 +677,7 @@ router.post('/create-checkout', verifyBusinessAccess, async (req, res) => {
     });
 
     res.json({
+      provider: 'stripe',
       sessionUrl: session.url,
       sessionId: session.id
     });
@@ -559,7 +690,7 @@ router.post('/create-checkout', verifyBusinessAccess, async (req, res) => {
   }
 });
 
-// Cancel subscription
+// Cancel subscription - supports both Stripe and iyzico
 router.post('/cancel', verifyBusinessAccess, async (req, res) => {
   try {
     const { businessId } = req.user;
@@ -568,7 +699,35 @@ router.post('/cancel', verifyBusinessAccess, async (req, res) => {
       where: { businessId }
     });
 
-    if (!subscription?.stripeSubscriptionId) {
+    if (!subscription) {
+      return res.status(400).json({ error: 'No subscription found' });
+    }
+
+    // Handle based on payment provider
+    if (subscription.paymentProvider === 'iyzico' && subscription.iyzicoSubscriptionId) {
+      // Cancel iyzico subscription
+      const result = await iyzicoSubscription.cancelSubscription(subscription.iyzicoSubscriptionId);
+
+      if (!result.success) {
+        return res.status(400).json({ error: result.error || 'Failed to cancel iyzico subscription' });
+      }
+
+      await prisma.subscription.update({
+        where: { businessId },
+        data: {
+          cancelAtPeriodEnd: true
+        }
+      });
+
+      return res.json({
+        success: true,
+        provider: 'iyzico',
+        message: 'Aboneliğiniz iptal edildi'
+      });
+    }
+
+    // Stripe cancellation
+    if (!subscription.stripeSubscriptionId) {
       return res.status(400).json({ error: 'No active subscription' });
     }
 
@@ -585,8 +744,9 @@ router.post('/cancel', verifyBusinessAccess, async (req, res) => {
       }
     });
 
-    res.json({ 
+    res.json({
       success: true,
+      provider: 'stripe',
       message: 'Subscription will be canceled at the end of the current period'
     });
   } catch (error) {
@@ -604,7 +764,22 @@ router.post('/reactivate', verifyBusinessAccess, async (req, res) => {
       where: { businessId }
     });
 
-    if (!subscription?.stripeSubscriptionId) {
+    if (!subscription) {
+      return res.status(400).json({ error: 'No subscription found' });
+    }
+
+    // Handle based on payment provider
+    if (subscription.paymentProvider === 'iyzico') {
+      // iyzico doesn't support reactivation the same way
+      // User needs to create a new subscription
+      return res.status(400).json({
+        error: 'iyzico subscriptions cannot be reactivated. Please create a new subscription.',
+        needsNewSubscription: true
+      });
+    }
+
+    // Stripe reactivation
+    if (!subscription.stripeSubscriptionId) {
       return res.status(400).json({ error: 'No subscription found' });
     }
 
@@ -620,7 +795,7 @@ router.post('/reactivate', verifyBusinessAccess, async (req, res) => {
       }
     });
 
-    res.json({ 
+    res.json({
       success: true,
       message: 'Subscription reactivated'
     });

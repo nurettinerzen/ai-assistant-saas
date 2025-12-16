@@ -147,31 +147,41 @@ model PhoneNumber {
 }
 
 model Subscription {
-  id                   Int                @id @default(autoincrement())
-  businessId           Int                @unique
-  plan                 SubscriptionPlan   @default(FREE)
-  status               SubscriptionStatus @default(TRIAL)
-  stripeCustomerId     String?
-  stripeSubscriptionId String?            @unique
-  stripePriceId        String?
-  currentPeriodStart   DateTime?
-  currentPeriodEnd     DateTime?
-  cancelAtPeriodEnd    Boolean            @default(false)
-  minutesUsed          Int                @default(0)
-  callsThisMonth       Int                @default(0)
-  assistantsCreated    Int                @default(0)
-  phoneNumbersUsed     Int                @default(0)
-  minutesLimit         Int                @default(0)
-  callsLimit           Int                @default(0)
-  assistantsLimit      Int                @default(0)
-  phoneNumbersLimit    Int                @default(0)
-  createdAt            DateTime           @default(now())
-  updatedAt            DateTime           @updatedAt
-  business             Business           @relation(fields: [businessId], references: [id])
+  id                      Int                @id @default(autoincrement())
+  businessId              Int                @unique
+  plan                    SubscriptionPlan   @default(FREE)
+  status                  SubscriptionStatus @default(TRIAL)
+  paymentProvider         String?            @default("stripe") // "stripe" or "iyzico"
+  // Stripe fields
+  stripeCustomerId        String?
+  stripeSubscriptionId    String?            @unique
+  stripePriceId           String?
+  // iyzico fields
+  iyzicoCustomerId        String?
+  iyzicoSubscriptionId    String?            @unique
+  iyzicoReferenceCode     String?            @unique
+  iyzicoPricingPlanId     String?
+  iyzicoCardToken         String?
+  // Common fields
+  currentPeriodStart      DateTime?
+  currentPeriodEnd        DateTime?
+  cancelAtPeriodEnd       Boolean            @default(false)
+  minutesUsed             Int                @default(0)
+  callsThisMonth          Int                @default(0)
+  assistantsCreated       Int                @default(0)
+  phoneNumbersUsed        Int                @default(0)
+  minutesLimit            Int                @default(0)
+  callsLimit              Int                @default(0)
+  assistantsLimit         Int                @default(0)
+  phoneNumbersLimit       Int                @default(0)
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+  business                Business           @relation(fields: [businessId], references: [id])
 
   @@index([businessId])
   @@index([plan])
   @@index([status])
+  @@index([paymentProvider])
 }
 
 model CallLog {

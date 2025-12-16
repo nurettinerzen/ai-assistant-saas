@@ -122,13 +122,17 @@ export const apiClient = {
     changePassword: (data) => api.post('/api/settings/change-password', data),
   },
 
-  // Subscription
+  // Subscription - supports both Stripe and iyzico
   subscription: {
     getCurrent: () => api.get('/api/subscription'),
     getPlans: () => api.get('/api/subscription/plans'),
+    getPaymentProvider: () => api.get('/api/subscription/payment-provider'),
+    createCheckout: (data) => api.post('/api/subscription/create-checkout', data),
     upgrade: (planId) => api.post('/api/subscription/upgrade', { planId }),
     cancel: () => api.post('/api/subscription/cancel'),
+    reactivate: () => api.post('/api/subscription/reactivate'),
     getBillingHistory: () => api.get('/api/subscription/billing-history'),
+    createPortalSession: () => api.post('/api/subscription/create-portal-session'),
   },
 
   // Integrations
