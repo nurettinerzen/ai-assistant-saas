@@ -1,504 +1,559 @@
 {
   "common": {
-    "signIn": "Giriş Yap",
-    "createAccount": "Hesap Oluştur",
+    "signIn": "Giris Yap",
+    "createAccount": "Hesap Olustur",
     "google": "Google",
-    "language": "Türkçe",
-    "login": "Giriş Yap",
-    "signup": "Kayıt Ol",
-    "logout": "Çıkış Yap",
+    "language": "Turkce",
+    "login": "Giris Yap",
+    "signup": "Kayit Ol",
+    "logout": "Cikis Yap",
     "save": "Kaydet",
-    "cancel": "İptal",
+    "cancel": "Iptal",
     "delete": "Sil",
-    "edit": "Düzenle",
+    "edit": "Duzenle",
     "back": "Geri",
-    "next": "İleri",
+    "next": "Ileri",
     "complete": "Tamamla",
-    "loading": "Yükleniyor..."
+    "loading": "Yukleniyor..."
   },
   "landing": {
     "hero": {
-      "title": "İnsan Gibi Konuşan AI Telefon Asistanları",
-      "subtitle": "Akıllı AI asistanlarla telefon desteğinizi otomatikleştirin",
-      "cta": "Ücretsiz Deneyin",
-      "watch": "Demo İzle"
+      "badge": "AI Musteri Hizmetleri Platformu",
+      "title": "AI ile Musteri Hizmetlerini Otomatiklestirin",
+      "subtitle": "WhatsApp, Telefon, Chat ve Email - 7/24 AI destekli musteri hizmeti",
+      "cta": "Ucretsiz Basla",
+      "watch": "Demo Izle"
     },
-    "features": {
-      "title": "İhtiyacınız Olan Her Şey",
-      "voice": "Doğal Ses",
-      "voiceDesc": "İnsan gibi konuşmalar",
-      "analytics": "Gelişmiş Analitik",
-      "analyticsDesc": "Her aramayı takip edin",
-      "integration": "Kolay Entegrasyon",
-      "integrationDesc": "Araçlarınızla bağlanın"
+    "channels": {
+      "title": "Tum Kanallar Tek Platformda",
+      "subtitle": "Musterilerinizle iletisim kurdugunuz tum kanallari AI ile otomatiklestirin",
+      "phone": {
+        "title": "AI Telefon Gorusmeleri",
+        "desc": "Gelen ve giden aramalar icin 7/24 AI destekli telefon asistani"
+      },
+      "whatsapp": {
+        "title": "WhatsApp Business",
+        "desc": "Otomatik mesajlasma ve musteri destegi"
+      },
+      "chat": {
+        "title": "Web Chat Widget",
+        "desc": "Site ici canli destek ve satis asistani"
+      },
+      "email": {
+        "title": "Email Otomasyonu",
+        "desc": "Gmail ve Outlook entegrasyonu ile otomatik yanit"
+      }
     },
-    "testimonials": {
-      "title": "İşletmeler Tarafından Seviliyor",
-      "titleHighlight": "Dünya Çapında",
-      "subtitle": "Müşterilerimizin söylediklerini görün"
+    "sectors": {
+      "title": "Her Sektor Icin AI Cozumleri",
+      "subtitle": "Sektorunuze ozel AI asistanlar ile isletmenizi buyutun",
+      "ecommerce": {
+        "title": "E-ticaret",
+        "feature1": "Siparis sorgulama",
+        "feature2": "Stok bilgisi",
+        "feature3": "Iade takibi"
+      },
+      "restaurant": {
+        "title": "Restoran",
+        "feature1": "Rezervasyon alma",
+        "feature2": "Menu bilgisi"
+      },
+      "salon": {
+        "title": "Kuafor/Salon",
+        "feature1": "Randevu yonetimi"
+      },
+      "support": {
+        "title": "Genel Destek",
+        "feature1": "Musteri destegi",
+        "feature2": "SSS yanitlama"
+      },
+      "learnMore": "Daha fazla bilgi"
+    },
+    "integrations": {
+      "title": "Populer Entegrasyonlar",
+      "subtitle": "Kullandiginiz araclarla sorunsuz entegrasyon"
+    },
+    "howItWorks": {
+      "title": "Nasil Calisir?",
+      "subtitle": "4 basit adimda AI musteri hizmetlerinizi baslatin",
+      "step1": {
+        "title": "Hesap Olustur",
+        "desc": "Hesap olusturun ve isletme bilgilerinizi girin"
+      },
+      "step2": {
+        "title": "Kanallari Bagla",
+        "desc": "WhatsApp, Email ve diger kanallarinizi baglayin"
+      },
+      "step3": {
+        "title": "AI'yi Ozellestir",
+        "desc": "AI asistaninizi isletmenize gore egitip ozellestirin"
+      },
+      "step4": {
+        "title": "7/24 Hizmet",
+        "desc": "Otomatik musteri hizmeti baslasin!"
+      }
+    },
+    "demo": {
+      "title": "Canli Demo Deneyin",
+      "subtitle": "AI asistanimizi simdi test edin ve gucunu kesfet",
+      "formTitle": "Demo Aramasi Al",
+      "formSubtitle": "AI asistanimiz sizi arayip yeteneklerini gostersin",
+      "nameLabel": "Ad Soyad",
+      "namePlaceholder": "Adiniz Soyadiniz",
+      "emailLabel": "E-posta",
+      "emailPlaceholder": "ornek@email.com",
+      "phoneLabel": "Telefon",
+      "phonePlaceholder": "+90 5XX XXX XX XX",
+      "submitButton": "Demo Talep Et",
+      "consent": "Gonderdiginizde, AI asistanimizdan demo aramasi almayi kabul edersiniz",
+      "successMessage": "Talebiniz alindi! AI asistanimiz kisa surede sizi arayacak.",
+      "errorMessage": "Bir hata olustu. Lutfen tekrar deneyin.",
+      "feature1": {
+        "title": "Dogal Konusma",
+        "desc": "Insan gibi diyalog ve baglam anlayisi"
+      },
+      "feature2": {
+        "title": "Aninda Yanit",
+        "desc": "500ms gecikme ile gercek zamanli etkilesim"
+      },
+      "feature3": {
+        "title": "Akilli Yonlendirme",
+        "desc": "Gerektiginde temsilciye aktarim"
+      }
     },
     "cta": {
-      "title": "İşinizi Dönüştürmeye Hazır mısınız?",
-      "subtitle": "Otomatikleştirmek ve ölçeklendirmek için TELYX.AI kullanan binlerce işletmeye katılın",
-      "startTrial": "Ücretsiz Denemeyi Başlat",
-      "talkToSales": "Satış Ekibiyle Konuş"
+      "title": "Hemen Baslayin - 14 Gun Ucretsiz",
+      "subtitle": "Kredi karti gerektirmez. Istediginiz zaman iptal edin.",
+      "startTrial": "Ucretsiz Baslat",
+      "talkToSales": "Satis ile Konusun"
     },
     "footer": {
-      "tagline": "Modern işletmeler için AI destekli telefon asistanı",
-      "product": "Ürün",
-      "features": "Özellikler",
-      "pricing": "Fiyatlandırma",
-      "solutions": "Çözümler",
-      "company": "Şirket",
-      "contact": "İletişim",
-      "about": "Hakkımızda",
+      "tagline": "Modern isletmeler icin AI destekli musteri hizmetleri",
+      "product": "Urun",
+      "features": "Ozellikler",
+      "pricing": "Fiyatlandirma",
+      "integrations": "Entegrasyonlar",
+      "solutions": "Cozumler",
+      "company": "Sirket",
+      "contact": "Iletisim",
+      "about": "Hakkimizda",
+      "careers": "Kariyer",
       "blog": "Blog",
+      "resources": "Kaynaklar",
+      "help": "Yardim",
+      "api": "API Dokumantasyonu",
       "legal": "Yasal",
-      "privacy": "Gizlilik Politikası",
-      "terms": "Hizmet Şartları",
-      "copyright": "© 2024 TELYX.AI. Tüm hakları saklıdır."
+      "privacy": "Gizlilik Politikasi",
+      "terms": "Kullanim Kosullari",
+      "copyright": "2024 Telyx.ai - Tum haklari saklidir."
+    }
+  },
+  "navigation": {
+    "solutions": "Cozumler",
+    "features": "Ozellikler",
+    "pricing": "Fiyatlar",
+    "contact": "Iletisim",
+    "getStarted": "Ucretsiz Basla",
+    "solutionsEcommerce": "E-ticaret",
+    "solutionsRestaurant": "Restoran",
+    "solutionsSalon": "Kuafor/Salon",
+    "solutionsSupport": "Musteri Destegi"
+  },
+  "pricing": {
+    "title": "Fiyatlandirma",
+    "subtitle": "Isletmeniz icin en uygun plani secin",
+    "trial": "14 gun ucretsiz deneme - Kredi karti gerekmez",
+    "recommended": "Onerilen",
+    "cta": "Basla",
+    "questions": "Sorulariniz mi var?",
+    "contactUs": "Bize ulasin",
+    "starter": {
+      "name": "Starter",
+      "desc": "Kucuk isletmeler icin ideal baslangic paketi",
+      "feature1": "1 AI Asistan",
+      "feature2": "Sinirsiz egitim",
+      "feature3": "1 Telefon Numarasi",
+      "feature4": "300 Dakika/Ay",
+      "feature5": "Temel Analitik",
+      "feature6": "Email Destegi"
+    },
+    "professional": {
+      "name": "Professional",
+      "desc": "Buyuyen isletmeler icin gelismis ozellikler",
+      "feature1": "2 AI Asistan",
+      "feature2": "Sinirsiz egitim",
+      "feature3": "3 Telefon Numarasi",
+      "feature4": "1500 Dakika/Ay",
+      "feature5": "Gelismis Analitik",
+      "feature6": "Oncelikli Destek",
+      "feature7": "API Erisimi"
+    },
+    "enterprise": {
+      "name": "Enterprise",
+      "desc": "Buyuk olcekli isletmeler icin tam cozum",
+      "feature1": "5 AI Asistan",
+      "feature2": "Sinirsiz her sey",
+      "feature3": "10 Telefon Numarasi",
+      "feature4": "Ozel Ses Klonlama",
+      "feature5": "White-label Secenegi",
+      "feature6": "Ozel Hesap Yoneticisi",
+      "feature7": "SLA Garantisi"
+    }
+  },
+  "features": {
+    "hero": {
+      "title": "Guclu Ozellikler",
+      "subtitle": "Musteri hizmetlerinizi otomatiklestirmek icin ihtiyaciniz olan her sey"
+    },
+    "multichannel": {
+      "title": "Cok Kanalli Destek",
+      "desc": "Tum iletisim kanallarinizi tek platformda yonetin",
+      "item1": "WhatsApp Business entegrasyonu",
+      "item2": "AI telefon gorusmeleri",
+      "item3": "Web chat widget",
+      "item4": "Email otomasyonu"
+    },
+    "ai": {
+      "title": "AI Asistan",
+      "desc": "GPT-4 tabanli akilli musteri hizmeti",
+      "item1": "Dogal dil isleme",
+      "item2": "Baglam anlayisi",
+      "item3": "Coklu dil destegi",
+      "item4": "Surekli ogrenme"
+    },
+    "ecommerce": {
+      "title": "E-ticaret Entegrasyonlari",
+      "desc": "Populer e-ticaret platformlari ile entegre calisin",
+      "item1": "ikas entegrasyonu",
+      "item2": "Shopify entegrasyonu",
+      "item3": "WooCommerce entegrasyonu",
+      "item4": "Ticimax entegrasyonu"
+    },
+    "calendar": {
+      "title": "Takvim Entegrasyonu",
+      "desc": "Randevu ve rezervasyonlari otomatik yonetin",
+      "item1": "Google Calendar senkronizasyonu",
+      "item2": "Otomatik randevu olusturma",
+      "item3": "Hatirlatma bildirimleri"
+    },
+    "languages": {
+      "title": "Coklu Dil Destegi",
+      "desc": "16 farkli dilde musteri hizmeti sunun",
+      "item1": "Turkce ve Ingilizce",
+      "item2": "Arapca, Almanca, Fransizca",
+      "item3": "Ve daha fazlasi..."
+    },
+    "analytics": {
+      "title": "Gercek Zamanli Dashboard",
+      "desc": "Performansinizi anlik takip edin",
+      "item1": "Arama istatistikleri",
+      "item2": "Musteri memnuniyeti",
+      "item3": "Detayli raporlar"
+    },
+    "cta": {
+      "title": "Hazir misiniz?",
+      "subtitle": "Hemen baslayin ve AI ile musteri hizmetlerinizi donusturun",
+      "start": "Ucretsiz Basla",
+      "contact": "Iletisime Gecin"
+    }
+  },
+  "solutions": {
+    "hero": {
+      "title": "Sektorel Cozumler",
+      "subtitle": "Sektorunuze ozel tasarlanmis AI cozumleri"
+    },
+    "learnMore": "Detayli Bilgi",
+    "startFree": "Ucretsiz Basla",
+    "contactSales": "Satis ile Gorusun",
+    "ecommerce": {
+      "title": "E-ticaret icin AI",
+      "desc": "Siparis takibi, stok bilgisi ve iade islemleri icin 7/24 otomatik destek",
+      "feature1": "Siparis durumu sorgulama",
+      "feature2": "Stok ve urun bilgisi",
+      "feature3": "Iade/degisim sureci",
+      "hero": {
+        "title": "E-ticaret icin AI Asistan",
+        "subtitle": "Musterilerinize 7/24 siparis takibi, stok bilgisi ve iade destegi sunun"
+      },
+      "useCases": {
+        "title": "Kullanim Senaryolari"
+      },
+      "useCase1": {
+        "title": "Siparis Sorgulama",
+        "desc": "Musteriler siparis durumlarini aninda ogrenebilir"
+      },
+      "useCase2": {
+        "title": "Kargo Takibi",
+        "desc": "Gercek zamanli kargo ve teslimat bilgisi"
+      },
+      "useCase3": {
+        "title": "Iade Islemleri",
+        "desc": "Kolay iade talebi olusturma ve takip"
+      },
+      "useCase4": {
+        "title": "Urun Bilgisi",
+        "desc": "Stok durumu ve urun detaylari hakkinda bilgi"
+      },
+      "integrations": {
+        "title": "E-ticaret Entegrasyonlari",
+        "subtitle": "Populer e-ticaret platformlari ile sorunsuz entegrasyon"
+      },
+      "cta": {
+        "title": "E-ticaret Musterilerinize 7/24 Destek Sunun",
+        "subtitle": "ikas, Shopify ve diger platformlarla entegre AI asistan"
+      }
+    },
+    "restaurant": {
+      "title": "Restoranlar icin AI",
+      "desc": "Rezervasyon alma, menu bilgisi ve musteri sorulari icin akilli asistan",
+      "feature1": "Otomatik rezervasyon alma",
+      "feature2": "Menu ve fiyat bilgisi",
+      "feature3": "Calisma saatleri bildirimi",
+      "hero": {
+        "title": "Restoranlar icin AI Asistan",
+        "subtitle": "Rezervasyonlarinizi otomatiklestirin, musterilerinizi memnun edin"
+      },
+      "useCases": {
+        "title": "Kullanim Senaryolari"
+      },
+      "useCase1": {
+        "title": "Rezervasyon Yonetimi",
+        "desc": "7/24 otomatik masa rezervasyonu alma"
+      },
+      "useCase2": {
+        "title": "Menu Bilgisi",
+        "desc": "Yemekler, fiyatlar ve ozel diyet secenekleri"
+      },
+      "useCase3": {
+        "title": "Calisma Saatleri",
+        "desc": "Acik/kapali saatleri ve ozel gun bilgileri"
+      },
+      "useCase4": {
+        "title": "Geri Bildirim",
+        "desc": "Musteri yorumlari ve sikayetleri toplama"
+      },
+      "cta": {
+        "title": "Restoran Rezervasyonlarinizi Otomatiklestirin",
+        "subtitle": "Google Calendar entegrasyonu ile sorunsuz rezervasyon yonetimi"
+      }
+    },
+    "salon": {
+      "title": "Kuafor/Salon icin AI",
+      "desc": "Randevu planlama ve hizmet bilgileri icin 7/24 asistan",
+      "feature1": "Online randevu alma",
+      "feature2": "Hizmet ve fiyat bilgisi",
+      "feature3": "Hatirlatma mesajlari",
+      "hero": {
+        "title": "Kuafor ve Salonlar icin AI Asistan",
+        "subtitle": "Randevularinizi otomatiklestirin, musterilerinize daha iyi hizmet verin"
+      },
+      "useCases": {
+        "title": "Kullanim Senaryolari"
+      },
+      "useCase1": {
+        "title": "Randevu Planlama",
+        "desc": "7/24 online randevu alma ve degistirme"
+      },
+      "useCase2": {
+        "title": "Hatirlatmalar",
+        "desc": "Otomatik randevu hatirlatma mesajlari"
+      },
+      "useCase3": {
+        "title": "Personel Yonetimi",
+        "desc": "Uygun personel ve zaman dilimi eslestirme"
+      },
+      "useCase4": {
+        "title": "Hizmet Bilgisi",
+        "desc": "Hizmetler, sureler ve fiyatlar hakkinda bilgi"
+      },
+      "cta": {
+        "title": "Salon Randevularinizi Kolaylastirin",
+        "subtitle": "Takvim entegrasyonu ile otomatik randevu yonetimi"
+      }
+    },
+    "support": {
+      "title": "Musteri Destegi icin AI",
+      "desc": "Genel sorular ve SSS yanitlama icin akilli destek",
+      "feature1": "SSS otomatik yanitlama",
+      "feature2": "Talep olusturma",
+      "feature3": "Temsilciye aktarim",
+      "hero": {
+        "title": "Musteri Destegi icin AI Asistan",
+        "subtitle": "Musteri sorularini 7/24 otomatik yanitlayin"
+      },
+      "useCases": {
+        "title": "Kullanim Senaryolari"
+      },
+      "useCase1": {
+        "title": "SSS Yanitlama",
+        "desc": "Sik sorulan sorulara aninda yanit"
+      },
+      "useCase2": {
+        "title": "Talep Olusturma",
+        "desc": "Destek talebi acma ve takip etme"
+      },
+      "useCase3": {
+        "title": "7/24 Hizmet",
+        "desc": "Mesai saatleri disinda da kesintisiz destek"
+      },
+      "useCase4": {
+        "title": "Performans Takibi",
+        "desc": "Cozulen sorunlar ve musteri memnuniyeti"
+      },
+      "cta": {
+        "title": "Musteri Desteginizi Guclendirin",
+        "subtitle": "AI ile musteri memnuniyetini artirin"
+      }
+    },
+    "cta": {
+      "title": "Sektorunuzu Goremdiniz mi?",
+      "subtitle": "AI asistanlarimiz her sektore uyarlanabilir. Ihtiyaclarinizi konusalim.",
+      "contact": "Bizimle Iletisime Gecin"
+    }
+  },
+  "contact": {
+    "hero": {
+      "title": "Bizimle Iletisime Gecin",
+      "subtitle": "Size en uygun AI cozumunu bulmak icin buradayiz"
+    },
+    "successMessage": "Mesajiniz gonderildi! En kisa surede donus yapacagiz.",
+    "errorMessage": "Bir hata olustu. Lutfen tekrar deneyin.",
+    "form": {
+      "title": "Bize Mesaj Gonderin",
+      "success": "Tesekkurler! 24 saat icinde size donus yapacagiz.",
+      "name": "Ad Soyad",
+      "namePlaceholder": "Adiniz Soyadiniz",
+      "email": "E-posta",
+      "emailPlaceholder": "ornek@email.com",
+      "company": "Sirket Adi",
+      "companyPlaceholder": "Sirketinizin adi",
+      "phone": "Telefon",
+      "phonePlaceholder": "+90 5XX XXX XX XX",
+      "businessType": "Isletme Turu",
+      "selectType": "Secin...",
+      "types": {
+        "ecommerce": "E-ticaret",
+        "restaurant": "Restoran/Kafe",
+        "salon": "Kuafor/Salon",
+        "service": "Hizmet Isletmesi",
+        "other": "Diger"
+      },
+      "message": "Mesaj",
+      "messagePlaceholder": "Size nasil yardimci olabiliriz?",
+      "submit": "Mesaj Gonder"
+    },
+    "info": {
+      "title": "Iletisim Bilgileri",
+      "email": "E-posta",
+      "phone": "Telefon",
+      "hours": "Calisma Saatleri",
+      "hoursValue": "Pzt-Cum: 09:00 - 18:00"
+    },
+    "response": {
+      "title": "Hizli Yanit",
+      "text": "Ekibimiz genellikle is saatleri icerisinde 1 saat icinde yanit verir. Acil konular icin lutfen bizi dogrudan arayin."
     }
   },
   "auth": {
-    "loginTitle": "Tekrar hoş geldiniz",
-    "loginSubtitle": "Hesabınıza giriş yapın",
-    "signupTitle": "Hesabınızı oluşturun",
-    "signupSubtitle": "Bugün AI asistanları oluşturmaya başlayın",
+    "loginTitle": "Tekrar hos geldiniz",
+    "loginSubtitle": "Hesabiniza giris yapin",
+    "signupTitle": "Hesabinizi olusturun",
+    "signupSubtitle": "Bugun AI asistanlari olusturmaya baslayin",
     "email": "E-posta",
     "emailPlaceholder": "ornek@email.com",
-    "password": "Şifre",
-    "passwordPlaceholder": "••••••••",
+    "password": "Sifre",
+    "passwordPlaceholder": "********",
     "fullName": "Ad Soyad",
-    "businessName": "İşletme Adı",
-    "businessNamePlaceholder": "İşletme adınız",
-    "continueWith": "Veya şununla devam edin",
-    "alreadyHaveAccount": "Zaten hesabınız var mı?",
-    "dontHaveAccount": "Hesabınız yok mu?",
-    "forgotPassword": "Şifrenizi mi unuttunuz?",
-    "businessType": "Ne tür bir işletmeniz var?",
+    "businessName": "Isletme Adi",
+    "businessNamePlaceholder": "Isletme adiniz",
+    "continueWith": "Veya sunun ile devam edin",
+    "alreadyHaveAccount": "Zaten hesabiniz var mi?",
+    "dontHaveAccount": "Hesabiniz yok mu?",
+    "forgotPassword": "Sifrenizi mi unuttunuz?",
+    "businessType": "Ne tur bir isletmeniz var?",
     "businessTypes": {
       "restaurant": "Restoran/Kafe",
-      "restaurantDesc": "Rezervasyon alın ve yönetin",
-      "salon": "Kuaför/Spa/Berber",
-      "salonDesc": "Güzellik hizmetleri için randevu planlayın",
+      "restaurantDesc": "Rezervasyon alin ve yonetin",
+      "salon": "Kuafor/Spa/Berber",
+      "salonDesc": "Guzellik hizmetleri icin randevu planlayin",
       "ecommerce": "E-ticaret/Perakende",
       "ecommerceDesc": "Envanter ve kargo takibi",
-      "service": "Hizmet İşletmesi",
-      "serviceDesc": "Onarım, danışmanlık vb. için randevular",
-      "other": "Diğer",
-      "otherDesc": "Genel işletme ihtiyaçları"
+      "service": "Hizmet Isletmesi",
+      "serviceDesc": "Onarim, danismanlik vb. icin randevular",
+      "other": "Diger",
+      "otherDesc": "Genel isletme ihtiyaclari"
     },
-    "freeTrial": "14 günlük ücretsiz deneme",
-    "noCreditCard": "Kredi kartı gerekmez",
-    "cancelAnytime": "İstediğiniz zaman iptal edin",
-    "creatingAccount": "Hesap oluşturuluyor...",
-    "signingIn": "Giriş yapılıyor...",
-    "pleaseFillAllFields": "Lütfen tüm alanları doldurun",
-    "passwordMinLength": "Şifre en az 8 karakter olmalıdır",
-    "verificationCodeSent": "Doğrulama kodu e-postanıza gönderildi",
-    "signupFailed": "Kayıt başarısız. Lütfen tekrar deneyin",
-    "verificationFailed": "Geçersiz doğrulama kodu",
-    "verifyEmail": "E-postayı Doğrula",
-    "verificationCode": "Doğrulama Kodu",
-    "verificationCodeSentTo": "6 haneli kodu şu adrese gönderdik",
-    "verifying": "Doğrulanıyor...",
-    "didntReceiveCode": "Kodu almadınız mı?",
-    "resendCode": "Kodu Tekrar Gönder",
-    "mustBe8Chars": "En az 8 karakter olmalıdır"
-  },
-  "navigation": {
-    "solutions": "Çözümler",
-    "features": "Özellikler",
-    "pricing": "Fiyatlandırma",
-    "contact": "Satış İletişim",
-    "register": "Kayıt Ol",
-    "getStarted": "Başlayın"
+    "freeTrial": "14 gunluk ucretsiz deneme",
+    "noCreditCard": "Kredi karti gerekmez",
+    "cancelAnytime": "Istediginiz zaman iptal edin",
+    "creatingAccount": "Hesap olusturuluyor...",
+    "signingIn": "Giris yapiliyor...",
+    "pleaseFillAllFields": "Lutfen tum alanlari doldurun",
+    "passwordMinLength": "Sifre en az 8 karakter olmalidir",
+    "verificationCodeSent": "Dogrulama kodu e-postaniza gonderildi",
+    "signupFailed": "Kayit basarisiz. Lutfen tekrar deneyin",
+    "verificationFailed": "Gecersiz dogrulama kodu",
+    "verifyEmail": "E-postayi Dogrula",
+    "verificationCode": "Dogrulama Kodu",
+    "verificationCodeSentTo": "6 haneli kodu su adrese gonderdik",
+    "verifying": "Dogrulaniyor...",
+    "didntReceiveCode": "Kodu almadiniz mi?",
+    "resendCode": "Kodu Tekrar Gonder",
+    "mustBe8Chars": "En az 8 karakter olmalidir"
   },
   "dashboard": {
     "overview": "Panel",
     "assistants": "Asistanlar",
     "calls": "Aramalar",
     "analytics": "Analitik",
-    "knowledgeBase": "Bilgi Bankası",
+    "knowledgeBase": "Bilgi Bankasi",
     "subscription": "Abonelik",
     "settings": "Ayarlar",
-    "navBuild": "Oluştur",
+    "navBuild": "Olustur",
     "navAssistants": "Asistanlar",
-    "navKnowledgeBase": "Bilgi Bankası",
+    "navKnowledgeBase": "Bilgi Bankasi",
     "navVoices": "Sesler",
-    "navChatWidget": "Sohbet Aracı",
-    "navDeploy": "Yayınla",
-    "navPhoneNumbers": "Telefon Numaraları",
+    "navChatWidget": "Sohbet Araci",
+    "navDeploy": "Yayinla",
+    "navPhoneNumbers": "Telefon Numaralari",
     "navIntegrations": "Entegrasyonlar",
-    "navMonitor": "İzle",
+    "navMonitor": "Izle",
     "navDashboard": "Panel",
     "navCalls": "Aramalar",
     "navAnalytics": "Analitik",
     "navSystem": "Sistem",
     "navSettings": "Ayarlar",
     "navSubscription": "Abonelik",
-    "navCostCalculator": "Maliyet Hesaplayıcı",
-    "availableCredits": "Kullanılabilir Kredi",
+    "navCostCalculator": "Maliyet Hesaplayici",
+    "availableCredits": "Kullanilabilir Kredi",
     "addCredits": "Kredi Ekle",
-    "profileSettings": "Profil Ayarları",
-    "logOut": "Çıkış Yap",
-    "aboutVoiceSelection": "Ses Seçimi Hakkında",
-    "actionsTableHeader": "İşlemler",
-    "activeLabel": "Aktif",
-    "addCreditsBtn": "Kredi Ekle",
-    "addDocument": "Doküman Ekle",
-    "addFaqBtn": "SSS Ekle",
-    "addFaqTitle": "Sık Sorulan Soru Ekle",
-    "addFaqsDesc": "Yaygın sorular ve cevaplar ekleyin",
-    "addKnowledgeBase": "Bilgi Bankasına Ekle",
-    "addUrlBtn": "URL Ekle",
-    "addUrlSubmit": "URL Ekle",
-    "addUrlTitle": "Bilgi Bankasına URL Ekle",
-    "addUrlsDesc": "URL'lerden içerik içe aktar",
-    "addingUrl": "URL ekleniyor...",
-    "aiModelLabel": "AI Modeli",
-    "alertApproachingLimit": "Kullanım limitine yaklaşıyorsunuz",
-    "allGenders": "Tüm Cinsiyetler",
-    "allLanguages": "Tüm Diller",
-    "allStatus": "Tüm Durumlar",
-    "amountHeader": "Tutar",
-    "answerPlaceholder": "Cevabı girin",
-    "answerRequired": "Cevap gereklidir",
-    "assistant": "Asistan",
-    "assistantColonLabel": "Asistan:",
-    "assistantCreatedSuccess": "Asistan başarıyla oluşturuldu",
-    "assistantDeletedSuccess": "Asistan başarıyla silindi",
-    "assistantLabel": "Asistan",
-    "assistantUpdatedSuccess": "Asistan başarıyla güncellendi",
-    "assistantsTitle": "AI Asistanlar",
-    "availablePlans": "Mevcut Planlar",
-    "avgDurationLabel2": "Ort. Süre",
-    "basicPlan": "Basic Plan",
-    "billingCycleLabel": "Billing Cycle",
-    "billingHistoryTitle": "Billing History",
-    "billingInformationTitle": "Billing Information",
-    "businessLanguage": "Business Language",
-    "callHistoryAppear": "Arama geçmişiniz burada görünecek",
-    "callHistoryTitle": "Call History",
-    "callsOverTime": "Zaman İçinde Aramalar",
-    "cancel": "Cancel",
-    "categoryOptional": "Category Optional",
-    "categoryPlaceholder": "Enter category",
-    "changePasswordBtn": "Şifreyi Değiştir",
-    "changingPassword": "Changing Password",
-    "clickToChange": "Click To Change",
-    "clickToUpload": "Click To Upload",
-    "companyNameOptional": "Company Name Optional",
-    "completed": "Completed",
-    "configureSettings": "Configure Settings",
-    "configureUpdates": "Configure Updates",
-    "confirmNewPassword": "Yeni Şifreyi Onayla",
-    "connectBtn": "Connect",
-    "connectTelyx": "Connect Telyx",
-    "connectingText": "Connecting Text",
-    "contactSales": "Contact Sales",
-    "contactSalesBtn": "Contact Sales",
-    "costLabel": "Cost",
-    "crawlDepthDesc": "Crawl Depth description",
-    "crawlDepthLabel": "Crawl Depth",
-    "crawlWebsiteDesc": "Crawl Website description",
-    "createAssistantBtn": "Create Assistant",
-    "createAssistantTitle": "Create Assistant",
-    "createFaqBtn": "Create Faq",
-    "createFaqDesc": "Create Faq description",
-    "createFirstAssistantDesc": "Create First Assistant description",
-    "createManageAssistants": "Create Manage Assistants",
-    "creatingFaq": "Creating Faq",
-    "creditUsageLabel": "Credit Usage",
-    "creditsIncluded": "Credits Included",
-    "creditsLabel": "Credits",
-    "criticalAlertsViaSms": "Critical Alerts Via Sms",
-    "currentPasswordLabel": "Mevcut Şifre",
-    "currentPlanBtn": "Current Plan",
-    "currentPlanLabel": "Mevcut Plan",
-    "customIntegrationDesc": "Custom Integration description",
-    "customerSupportBot": "Customer Support Bot",
-    "dangerZoneTitle": "Tehlike Bölgesi",
-    "dashboardTitle": "Panel",
-    "dateHeader": "Date",
-    "dateLabel": "Tarih",
-    "deleteAccountBtn": "Hesabı Sil",
-    "deleteAccountWarning2": "Hesabınızı sildiğinizde geri dönüş yoktur",
-    "deleteError": "Delete error",
-    "deletingText": "Deleting Text",
-    "descriptionHeader": "Description",
-    "disconnectBtn": "Disconnect",
-    "disconnectConfirm": "Disconnect Confirm",
-    "disconnectingText": "Disconnecting Text",
-    "documentDeleted": "Document Deleted",
-    "documentUploadedSuccess": "Document Uploaded successfully",
-    "documentsLabel": "Documents",
-    "documentsTab": "Dokümanlar",
-    "downloadBtn": "Download",
-    "durationLabel": "Süre",
-    "edit": "Edit",
-    "editAssistantTitle": "Edit Assistant",
-    "emailAddressLabel": "Email Address",
-    "emailOnNewCall": "Email On New Call",
-    "enterKnowledgeBaseName": "Enter Knowledge Base Name",
-    "enterUrl": "Enter Url",
-    "enterprisePlan": "Enterprise Plan",
-    "exportCSV": "Export C S V",
-    "failed": "Failed",
-    "failedToAddUrl": "Failed To Add Url",
-    "failedToCreateFaq": "Failed To Create Faq",
-    "failedToDeleteDocument": "Failed To Delete Document",
-    "failedToDeleteFaq": "Failed To Delete Faq",
-    "failedToDeleteUrl": "Failed To Delete Url",
-    "failedToLoadVoices": "Failed To Load Voices",
-    "faqCreated": "Faq Created",
-    "faqDeleted": "Faq Deleted",
-    "faqsTab": "SSS",
-    "female": "Female",
-    "fillAllRequired": "Fill All Required",
-    "fillQuestionAnswer": "Fill Question Answer",
-    "freePlanLabel": "Free Plan",
-    "fullNameLabel": "Ad Soyad",
-    "getNumberToStartDesc": "Get Number To Start description",
-    "getPhoneNumberBtn": "Get Phone Number",
-    "inProgress": "In Progress",
-    "industry": "Industry",
-    "initiatingTestCall": "Initiating Test Call",
-    "integrationConnected": "Integration Connected",
-    "integrationDisconnected": "Integration Disconnected",
-    "integrationWorking": "Integration Working",
-    "integrationsTitle2": "Integrations Title2",
-    "invoiceHeader": "Invoice",
-    "knowledgeBaseName": "Knowledge Base Name",
-    "knowledgeBaseNamePlaceholder": "Enter knowledge base name",
-    "knowledgeBaseTitle": "Bilgi Bankası",
-    "last7Days": "Son 7 Gün",
-    "lastCrawledHeader": "Last Crawled",
-    "latestCallActivity": "Son Arama Aktivitesi",
-    "limitReachedUpgrade": "Limit Reached Upgrade",
-    "loadingChart": "Grafik yükleniyor...",
-    "male": "Male",
-    "manageAccountPreferences": "Manage Account Preferences",
-    "managePasswordLabel": "Manage Password",
-    "managePhoneNumbers": "Manage Phone Numbers",
-    "managePlanBilling": "Planınızı ve faturalandırmanızı yönetin",
-    "monitorPerformance": "Asistan performansınızı izleyin",
-    "monthlyCostColonLabel": "Monthly Cost Colon",
-    "monthlyCostLabel": "Monthly Cost",
-    "monthlyLabel": "Monthly",
-    "mostPopular": "Most Popular",
-    "nameRequired": "Name Required",
-    "nameTableHeader": "Name Table",
-    "needCustomIntegration": "Need Custom Integration",
-    "newAssistant": "Yeni Asistan",
-    "newPasswordLabel": "Yeni Şifre",
-    "nextBillingLabel": "Next Billing",
-    "noAssistantsTitle": "No Assistants",
-    "noBillingHistory": "No  billing history",
-    "noCallDataYet": "Henüz arama verisi yok",
-    "noCallsYetTitle": "Henüz arama yok",
-    "noDataYet": "No  data yet",
-    "noDocumentsTitle": "No Documents",
-    "noFaqsTitle": "No Faqs",
-    "noPhoneNumbersTitle": "No Phone Numbers",
-    "noUrlsTitle": "No Urls",
-    "noVoice": "No  voice",
-    "noVoicesFound": "No  voices found",
-    "notAssignedLabel": "Not Assigned",
-    "notificationPreferencesUpdated": "Bildirim tercihleri güncellendi",
-    "notificationsTitle": "Notifications",
-    "notifyOnCall": "No tify on call",
-    "numberWillReturn": "Number Will Return",
-    "of": "Of",
-    "pagesTableHeader": "Pages Table",
-    "passwordChangedSuccess": "Şifre başarıyla değiştirildi",
-    "passwordMinLength": "Şifre en az 8 karakter olmalı",
-    "passwordsDoNotMatch2": "Şifreler eşleşmiyor",
-    "pdfDocxTxtCsv": "Pdf Docx Txt Csv",
-    "perMonthLabel2": "Per Month Label2",
-    "phoneLimitReached": "Phone Limit Reached",
-    "phoneNumber": "Phone Number",
-    "phoneNumberBillingDesc": "Phone Number Billing description",
-    "phoneNumberLabel": "Telefon Numarası",
-    "phoneNumberReleased": "Phone Number Released",
-    "phoneNumbersLockedDesc": "Phone Numbers Locked description",
-    "phoneNumbersTitle2": "Phone Numbers Title2",
-    "phoneNumbersUsed": "Phone Numbers Used",
-    "planFeatures": "Plan Features",
-    "planQuestion": "Plan Question",
-    "planUpgradedSuccess": "Plan Upgraded successfully",
-    "processingUpgrade": "Processing Upgrade",
-    "professionalPlan": "Professional Plan",
-    "profileInformation": "Profile Information",
-    "profileUpdatedSuccess": "Profil başarıyla güncellendi",
-    "provisionedLabel": "Provisioned",
-    "questionPlaceholder": "Soruyu girin",
-    "questionRequired": "Soru gereklidir",
-    "queued": "Queued",
-    "receiveWeeklyReports": "Receive Weekly Reports",
-    "recentCallsTitle": "Son Aramalar",
-    "recommendedForYou": "Recommended For You",
-    "releaseNumberConfirm": "Release Number Confirm",
-    "releasingNumber": "Releasing Number",
-    "remaining": "Remaining",
-    "runningLowOnCredits": "Running Low On Credits",
-    "saveBtn": "Kaydet",
-    "saveChangesBtn": "Save Changes",
-    "saveError": "Save error",
-    "savePreferencesBtn": "Save Preferences",
-    "saveSuccess": "Save successfully",
-    "savingPreferences": "Tercihler kaydediliyor...",
-    "savingProfile": "Profil kaydediliyor...",
-    "searchAssistants": "Search Assistants",
-    "searchByPhone": "Search By Phone",
-    "searchVoices": "Sesleri ara...",
-    "securityTitle": "Security",
-    "selectFileToUpload": "Select File To Upload",
-    "selectVoiceLabel": "Select Voice",
-    "selected": "Selected",
-    "settingsTitle2": "Settings Title2",
-    "showing": "Showing",
-    "sizeTableHeader": "Size Table",
-    "smsNotificationsLabel": "Sms Notifications",
-    "startMakingCalls": "Burada veri görmek için arama yapmaya başlayın",
-    "statusColonLabel": "Status Colon",
-    "statusHeader": "Status",
-    "statusLabel": "Durum",
-    "statusTableHeader": "Status Table",
-    "subscriptionTitle2": "Abonelik",
-    "successRateLabel": "Başarı Oranı",
-    "systemPromptPlaceholder": "Enter system prompt",
-    "systemPromptRequired": "System Prompt Required",
-    "testBtn": "Test",
-    "testBtn2": "Test Btn2",
-    "testCallStarted": "Test Call Started",
-    "testingConnection": "Testing Connection",
-    "thisActionCannot": "This Action Cannot",
-    "totalCallsLabel": "Toplam Aramalar",
-    "totalCostLabel": "Total Cost",
-    "trainWithDocuments": "Train With Documents",
-    "tryAdjustingFilters": "Try Adjusting Filters",
-    "typeTableHeader": "Type Table",
-    "unlimited": "Unlimited",
-    "updateAssistantBtn": "Update Assistant",
-    "updatePersonalDetails": "Update Personal Details",
-    "upgrade": "Upgrade",
-    "upgradeBtn": "Upgrade",
-    "upgradeConfirm": "Upgrade Confirm",
-    "upgradeToGetPhone": "Upgrade To Get Phone",
-    "uploadDocumentsDesc": "Upload Documents description",
-    "uploadDocumentsLabel": "Upload Documents",
-    "uploadFailed": "Upload Failed",
-    "uploadedTableHeader": "Uploaded Table",
-    "uploadingText": "Uploading Text",
-    "urlAddedCrawling": "Url Added Crawling",
-    "urlDeleted": "Url Deleted",
-    "urlTableHeader": "Url Table",
-    "urlsTab": "URL'ler",
-    "usageLimitAlerts": "Usage Limit Alerts",
-    "usedThisMonth": "Used This Month",
-    "viewAll": "View All",
-    "viewAllCalls": "Tüm Aramaları Görüntüle",
-    "viewAndAnalyze": "View And Analyze",
-    "voiceRequired": "Voice Required",
-    "voiceSelectionInfo": "Voice Selection Info",
-    "voices": "Voices",
-    "voicesDescription": "Voices descriptionription",
-    "websiteUrlPlaceholder": "Enter website url",
-    "websiteUrlRequired": "Website Url Required",
-    "weeklySummaryLabel": "Weekly Summary",
-    "avgDurationLabel": "Ortalama Süre",
-    "billingHistory": "Fatura Geçmişi",
-    "businessNameLabel": "İşletme Adı",
-    "businessTypeLabel": "İşletme Türü",
-    "callDuration": "Arama Süresi",
-    "callId": "Arama ID",
-    "callStatus": "Arama Durumu",
-    "callsTitle": "Arama Geçmişi",
-    "cancelBtn": "İptal",
-    "cancelPlan": "Planı İptal Et",
-    "choosePlan": "Plan Seç",
-    "costCalculatorTitle": "Maliyet Hesaplayıcı",
-    "createAssistant": "Asistan Oluştur",
-    "createdAtHeader": "Oluşturulma Tarihi",
-    "deleteAccountWarning": "Bu işlem geri alınamaz",
-    "deleteBtn": "Sil",
-    "deleteFaqConfirm": "Bu SSS'yi silmek istediğinizden emin misiniz?",
-    "editBtn": "Düzenle",
-    "emailLabel": "E-posta",
-    "estimatedCostLabel": "Tahmini Aylık Maliyet",
-    "filterByGender": "Cinsiyete Göre Filtrele",
-    "filterByLanguage": "Dile Göre Filtrele",
-    "filterByStatus": "Duruma Göre Filtrele",
-    "genderLabel": "Cinsiyet",
-    "industryLabel": "Sektör",
-    "integrationsTitle": "Entegrasyonlar",
-    "languageLabel": "Dil",
-    "last30Days": "Son 30 Gün",
-    "listenRecording": "Kaydı Dinle",
-    "loadingAssistants": "Asistanlar yükleniyor...",
-    "loadingCalls": "Aramalar yükleniyor...",
-    "loadingData": "Veriler yükleniyor...",
-    "loadingIntegrations": "Entegrasyonlar yükleniyor...",
-    "loadingKnowledge": "Bilgi bankası yükleniyor...",
-    "loadingNumbers": "Telefon numaraları yükleniyor...",
-    "loadingSettings": "Ayarlar yükleniyor...",
-    "loadingSubscription": "Abonelik yükleniyor...",
-    "loadingVoices": "Sesler yükleniyor...",
-    "monthlyCallsLabel": "Aylık Aramalar",
-    "nextBillingDate": "Sonraki Fatura Tarihi",
-    "noAssistantsYet": "Henüz asistan yok",
-    "noDocumentsYet": "Henüz doküman eklenmedi",
-    "noFaqsYet": "Henüz SSS eklenmedi",
-    "noIntegrationsYet": "Henüz entegrasyon yapılandırılmadı",
-    "noKnowledgeYet": "Henüz bilgi bankası içeriği yok",
-    "noNumbersYet": "Henüz telefon numarası eklenmedi",
-    "noUrlsYet": "Henüz URL eklenmedi",
-    "notificationPreferences": "Bildirim Tercihleri",
-    "passwordsDoNotMatch": "Şifreler eşleşmiyor",
-    "phoneNumbersTitle": "Telefon Numaraları",
-    "previewVoice": "Sesi Önizle",
-    "renewalDate": "Yenileme Tarihi",
-    "saveChanges": "Değişiklikleri Kaydet",
-    "selectAssistant": "Asistan Seç",
-    "selectIndustry": "Sektörünüzü seçin",
-    "selectVoice": "Ses Seç",
-    "settingsTitle": "Ayarlar",
-    "subscriptionTitle": "Abonelik",
-    "totalCreditsLabel": "Toplam Krediler",
-    "updateBtn": "Güncelle",
-    "upgradePlan": "Planı Yükselt",
-    "uploadDocument": "Doküman Yükle",
-    "uploadingDocument": "Doküman yükleniyor...",
-    "viewDetails": "Detayları Görüntüle",
-    "voicePreview": "Ses Önizlemesi",
-    "voicesTitle": "Ses Kütüphanesi",
-    "welcomeBack": "Tekrar hoş geldiniz"
+    "profileSettings": "Profil Ayarlari",
+    "logOut": "Cikis Yap"
   },
   "onboarding": {
     "step1": {
-      "title": "Dil Seçin",
-      "description": "Tercih ettiğiniz dili seçin"
+      "title": "Dil Secin",
+      "description": "Tercih ettiginiz dili secin"
     },
     "step2": {
-      "title": "Sektör Seçin",
-      "description": "İşletmeniz hakkında bilgi verin"
+      "title": "Sektor Secin",
+      "description": "Isletmeniz hakkinda bilgi verin"
     },
     "step3": {
-      "title": "Ses Seçin",
-      "description": "Asistanınızın sesini seçin"
+      "title": "Ses Secin",
+      "description": "Asistaninizin sesini secin"
     },
     "step4": {
-      "title": "Eğitim Ekle",
-      "description": "İlk karşılama mesajınızı oluşturun"
+      "title": "Egitim Ekle",
+      "description": "Ilk karsilama mesajinizi olusturun"
     },
     "step5": {
-      "title": "Asistanı Test Et",
+      "title": "Asistani Test Et",
       "description": "Deneyin!"
     },
     "step6": {
       "title": "Tamamla",
-      "description": "Hazırsınız!"
+      "description": "Hazirsiniz!"
     }
   }
 }

@@ -1,12 +1,22 @@
+'use client';
+
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, Play } from 'lucide-react';
+import Link from 'next/link';
 import { Button } from './ui/button';
 import { WaveformAnimation } from './animations/WaveformAnimation';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 export const Hero = () => {
   const { t } = useLanguage();
+
+  const scrollToDemo = () => {
+    const demoSection = document.getElementById('live-demo');
+    if (demoSection) {
+      demoSection.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
@@ -30,7 +40,7 @@ export const Hero = () => {
             className="inline-block mb-6"
           >
             <span className="px-5 py-2.5 bg-primary/10 text-primary rounded-full text-sm font-semibold border border-primary/20 shadow-sm">
-              AI Voice Agents Platform
+              {t('landing.hero.badge')}
             </span>
           </motion.div>
 
@@ -39,7 +49,7 @@ export const Hero = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3, duration: 0.8 }}
-            className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-bold text-foreground leading-[1.1] mb-6"
+            className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold text-foreground leading-[1.1] mb-6"
           >
             {t('landing.hero.title')}
           </motion.h1>
@@ -61,21 +71,23 @@ export const Hero = () => {
             transition={{ delay: 0.6, duration: 0.7 }}
             className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16"
           >
-            <Button 
+            <Link href="/signup">
+              <Button
+                size="lg"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-blue-lg group px-8 py-6 text-lg h-auto"
+              >
+                {t('landing.hero.cta')}
+                <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+              </Button>
+            </Link>
+            <Button
               size="lg"
-              onClick={() => window.location.href = '/register'}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-blue-lg group px-8 py-6 text-lg h-auto"
-            >
-              {t('landing.hero.cta')}
-              <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
-            </Button>
-            <Button 
-              size="lg" 
               variant="outline"
-              onClick={() => window.location.href = '/contact'}
+              onClick={scrollToDemo}
               className="border-2 border-border hover:border-primary hover:bg-primary/5 group px-8 py-6 text-lg h-auto"
             >
-              {t('landing.cta.talkToSales')}
+              <Play className="mr-2 h-5 w-5" />
+              {t('landing.hero.watch')}
             </Button>
           </motion.div>
         </motion.div>

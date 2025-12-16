@@ -1,12 +1,19 @@
 'use client';
 
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 import Navigation from '@/components/Navigation';
+import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Card } from '@/components/ui/card';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { toast } from 'sonner';
+import { Mail, Phone, Clock, Send, Check } from 'lucide-react';
 
 export default function ContactPage() {
+  const { t } = useLanguage();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -15,195 +22,250 @@ export default function ContactPage() {
     businessType: '',
     message: ''
   });
-
+  const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Here you would typically send to an API
-    console.log('Contact form submitted:', formData);
-    setSubmitted(true);
-    setTimeout(() => setSubmitted(false), 5000);
+    setLoading(true);
+
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/contact`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (response.ok) {
+        setSubmitted(true);
+        toast.success(t('contact.successMessage'));
+        setFormData({
+          name: '',
+          email: '',
+          company: '',
+          phone: '',
+          businessType: '',
+          message: ''
+        });
+      } else {
+        toast.error(t('contact.errorMessage'));
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error(t('contact.errorMessage'));
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
       <Navigation />
-      
+
       {/* Hero Section */}
-      <section className="pt-32 pb-20">
+      <section className="pt-32 pb-16">
         <div className="container mx-auto px-4">
           <div className="text-center max-w-3xl mx-auto">
-            <h1 className="text-5xl md:text-6xl font-bold mb-6 animate-fade-in-up">
-              Let's Talk About
-              <span className="gradient-text"> Your Business</span>
-            </h1>
-            <p className="text-xl text-gray-600 mb-8 animate-fade-in-up">
-              Our team is here to help you find the perfect AI solution for your needs
-            </p>
+            <motion.h1
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+              className="text-5xl md:text-6xl font-bold mb-6"
+            >
+              {t('contact.hero.title')}
+            </motion.h1>
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+              className="text-xl text-gray-600"
+            >
+              {t('contact.hero.subtitle')}
+            </motion.p>
           </div>
         </div>
       </section>
 
       {/* Contact Section */}
-      <section className="py-20">
+      <section className="py-16">
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-2 gap-12 max-w-6xl mx-auto">
             {/* Contact Form */}
-            <div className="glass rounded-3xl p-8">
-              <h2 className="text-3xl font-bold mb-6">Send us a message</h2>
-              
-              {submitted && (
-                <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg text-green-800 flex items-center gap-2">
-                  <svg className="h-5 w-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  <span>Thank you! We will get back to you within 24 hours.</span>
-                </div>
-              )}
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6 }}
+            >
+              <Card className="p-8 bg-white border-gray-100">
+                <h2 className="text-2xl font-bold mb-6">{t('contact.form.title')}</h2>
 
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div>
-                  <Label htmlFor="name">Full Name *</Label>
-                  <Input
-                    id="name"
-                    type="text"
-                    required
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="mt-2"
-                  />
-                </div>
+                {submitted && (
+                  <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg text-green-800 flex items-center gap-2">
+                    <Check className="h-5 w-5 flex-shrink-0" />
+                    <span>{t('contact.form.success')}</span>
+                  </div>
+                )}
 
-                <div>
-                  <Label htmlFor="email">Email *</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    required
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="mt-2"
-                  />
-                </div>
+                <form onSubmit={handleSubmit} className="space-y-5">
+                  <div>
+                    <Label htmlFor="name">{t('contact.form.name')} *</Label>
+                    <Input
+                      id="name"
+                      type="text"
+                      required
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      className="mt-2"
+                      placeholder={t('contact.form.namePlaceholder')}
+                    />
+                  </div>
 
-                <div>
-                  <Label htmlFor="company">Company Name</Label>
-                  <Input
-                    id="company"
-                    type="text"
-                    value={formData.company}
-                    onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-                    className="mt-2"
-                  />
-                </div>
+                  <div>
+                    <Label htmlFor="email">{t('contact.form.email')} *</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      required
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      className="mt-2"
+                      placeholder={t('contact.form.emailPlaceholder')}
+                    />
+                  </div>
 
-                <div>
-                  <Label htmlFor="phone">Phone Number</Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="mt-2"
-                  />
-                </div>
+                  <div>
+                    <Label htmlFor="company">{t('contact.form.company')}</Label>
+                    <Input
+                      id="company"
+                      type="text"
+                      value={formData.company}
+                      onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+                      className="mt-2"
+                      placeholder={t('contact.form.companyPlaceholder')}
+                    />
+                  </div>
 
-                <div>
-                  <Label htmlFor="businessType">Business Type</Label>
-                  <select
-                    id="businessType"
-                    value={formData.businessType}
-                    onChange={(e) => setFormData({ ...formData, businessType: e.target.value })}
-                    className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  <div>
+                    <Label htmlFor="phone">{t('contact.form.phone')}</Label>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      className="mt-2"
+                      placeholder={t('contact.form.phonePlaceholder')}
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="businessType">{t('contact.form.businessType')}</Label>
+                    <select
+                      id="businessType"
+                      value={formData.businessType}
+                      onChange={(e) => setFormData({ ...formData, businessType: e.target.value })}
+                      className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    >
+                      <option value="">{t('contact.form.selectType')}</option>
+                      <option value="ecommerce">{t('contact.form.types.ecommerce')}</option>
+                      <option value="restaurant">{t('contact.form.types.restaurant')}</option>
+                      <option value="salon">{t('contact.form.types.salon')}</option>
+                      <option value="service">{t('contact.form.types.service')}</option>
+                      <option value="other">{t('contact.form.types.other')}</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="message">{t('contact.form.message')} *</Label>
+                    <textarea
+                      id="message"
+                      required
+                      rows={4}
+                      value={formData.message}
+                      onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                      className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                      placeholder={t('contact.form.messagePlaceholder')}
+                    />
+                  </div>
+
+                  <Button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full bg-gradient-to-r from-indigo-600 to-blue-500 hover:from-indigo-700 hover:to-blue-600"
+                    size="lg"
                   >
-                    <option value="">Select...</option>
-                    <option value="restaurant">Restaurant/Cafe</option>
-                    <option value="salon">Salon/Spa</option>
-                    <option value="ecommerce">E-commerce</option>
-                    <option value="service">Service Business</option>
-                    <option value="other">Other</option>
-                  </select>
-                </div>
-
-                <div>
-                  <Label htmlFor="message">Message *</Label>
-                  <textarea
-                    id="message"
-                    required
-                    rows={4}
-                    value={formData.message}
-                    onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                    className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
-                </div>
-
-                <Button
-                  type="submit"
-                  className="w-full bg-gradient-to-r from-indigo-600 to-blue-500 hover:from-indigo-700 hover:to-blue-600"
-                  size="lg"
-                >
-                  Send Message
-                </Button>
-              </form>
-            </div>
+                    {loading ? (
+                      t('common.loading')
+                    ) : (
+                      <>
+                        <Send className="w-4 h-4 mr-2" />
+                        {t('contact.form.submit')}
+                      </>
+                    )}
+                  </Button>
+                </form>
+              </Card>
+            </motion.div>
 
             {/* Contact Info */}
-            <div className="space-y-8">
-              <div className="glass rounded-3xl p-8">
-                <h3 className="text-2xl font-bold mb-6">Get in Touch</h3>
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6 }}
+              className="space-y-6"
+            >
+              <Card className="p-8 bg-white border-gray-100">
+                <h3 className="text-xl font-bold mb-6">{t('contact.info.title')}</h3>
                 <div className="space-y-6">
-                  <div className="flex items-start space-x-4">
+                  <div className="flex items-start gap-4">
                     <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-blue-500 rounded-xl flex items-center justify-center flex-shrink-0">
-                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                      </svg>
+                      <Mail className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                      <h4 className="font-semibold mb-1">Email</h4>
-                      <p className="text-gray-600">sales@telyx.ai</p>
+                      <h4 className="font-semibold mb-1">{t('contact.info.email')}</h4>
+                      <a href="mailto:info@telyx.ai" className="text-gray-600 hover:text-primary">
+                        info@telyx.ai
+                      </a>
                     </div>
                   </div>
 
-                  <div className="flex items-start space-x-4">
+                  <div className="flex items-start gap-4">
                     <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center flex-shrink-0">
-                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                      </svg>
+                      <Phone className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                      <h4 className="font-semibold mb-1">Phone</h4>
-                      <p className="text-gray-600">+1 (555) 123-4567</p>
+                      <h4 className="font-semibold mb-1">{t('contact.info.phone')}</h4>
+                      <a href="tel:+14245275089" className="text-gray-600 hover:text-primary">
+                        +1 424 527 5089
+                      </a>
                     </div>
                   </div>
 
-                  <div className="flex items-start space-x-4">
+                  <div className="flex items-start gap-4">
                     <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl flex items-center justify-center flex-shrink-0">
-                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
+                      <Clock className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                      <h4 className="font-semibold mb-1">Business Hours</h4>
-                      <p className="text-gray-600">Mon-Fri: 9am - 6pm EST</p>
+                      <h4 className="font-semibold mb-1">{t('contact.info.hours')}</h4>
+                      <p className="text-gray-600">{t('contact.info.hoursValue')}</p>
                     </div>
                   </div>
                 </div>
-              </div>
+              </Card>
 
-              <div className="glass rounded-3xl p-8">
-                <h3 className="text-2xl font-bold mb-4">Quick Response</h3>
-                <p className="text-gray-600 mb-4">
-                  Our sales team typically responds within 1 hour during business hours.
-                </p>
+              <Card className="p-8 bg-white border-gray-100">
+                <h3 className="text-xl font-bold mb-4">{t('contact.response.title')}</h3>
                 <p className="text-gray-600">
-                  For urgent inquiries, please call us directly.
+                  {t('contact.response.text')}
                 </p>
-              </div>
-            </div>
+              </Card>
+            </motion.div>
           </div>
         </div>
       </section>
+
+      <Footer />
     </div>
   );
 }

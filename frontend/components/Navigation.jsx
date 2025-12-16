@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -14,24 +15,15 @@ export default function Navigation() {
   const [activeDropdown, setActiveDropdown] = useState(null);
 
   const navigation = [
+    { name: t('navigation.features'), href: '/features' },
     {
       name: t('navigation.solutions'),
       href: '/solutions',
       items: [
-        { name: 'Restaurant & Cafe', href: '/solutions#restaurant' },
-        { name: 'Salon & Spa', href: '/solutions#salon' },
-        { name: 'E-commerce', href: '/solutions#ecommerce' },
-        { name: 'Service Business', href: '/solutions#service' },
-      ]
-    },
-    {
-      name: t('navigation.features'),
-      href: '/features',
-      items: [
-        { name: 'AI Voice Assistant', href: '/features#voice' },
-        { name: 'Smart Calendar', href: '/features#calendar' },
-        { name: 'Inventory Management', href: '/features#inventory' },
-        { name: 'Analytics', href: '/features#analytics' },
+        { nameKey: 'navigation.solutionsEcommerce', href: '/solutions/ecommerce' },
+        { nameKey: 'navigation.solutionsRestaurant', href: '/solutions/restaurant' },
+        { nameKey: 'navigation.solutionsSalon', href: '/solutions/salon' },
+        { nameKey: 'navigation.solutionsSupport', href: '/solutions/support' },
       ]
     },
     { name: t('navigation.pricing'), href: '/pricing' },
@@ -58,13 +50,11 @@ export default function Navigation() {
               >
                 <Link
                   href={item.href}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary transition-colors rounded-lg hover:bg-gray-50"
+                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary transition-colors rounded-lg hover:bg-gray-50 flex items-center"
                 >
                   {item.name}
                   {item.items && (
-                    <svg className="inline-block ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
+                    <ChevronDown className="ml-1 w-4 h-4" />
                   )}
                 </Link>
 
@@ -73,11 +63,11 @@ export default function Navigation() {
                   <div className="absolute top-full left-0 mt-2 w-64 glass rounded-xl shadow-xl border border-white/20 overflow-hidden animate-fade-in">
                     {item.items.map((subItem) => (
                       <Link
-                        key={subItem.name}
+                        key={subItem.nameKey}
                         href={subItem.href}
                         className="block px-4 py-3 text-sm text-gray-700 hover:bg-primary/10 hover:text-primary transition-colors"
                       >
-                        {subItem.name}
+                        {t(subItem.nameKey)}
                       </Link>
                     ))}
                   </div>
@@ -94,9 +84,9 @@ export default function Navigation() {
                 {t('common.signIn')}
               </Button>
             </Link>
-            <Link href="/register">
+            <Link href="/signup">
               <Button size="sm" className="bg-gradient-to-r from-indigo-600 to-blue-500 hover:from-indigo-700 hover:to-blue-600">
-                {t('navigation.register')}
+                {t('navigation.getStarted')}
               </Button>
             </Link>
           </div>
@@ -132,12 +122,12 @@ export default function Navigation() {
                   <div className="ml-4 space-y-1">
                     {item.items.map((subItem) => (
                       <Link
-                        key={subItem.name}
+                        key={subItem.nameKey}
                         href={subItem.href}
                         className="block px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-lg"
                         onClick={() => setMobileMenuOpen(false)}
                       >
-                        {subItem.name}
+                        {t(subItem.nameKey)}
                       </Link>
                     ))}
                   </div>
@@ -151,7 +141,7 @@ export default function Navigation() {
                   {t('common.signIn')}
                 </Button>
               </Link>
-              <Link href="/register">
+              <Link href="/signup">
                 <Button className="w-full bg-gradient-to-r from-indigo-600 to-blue-500">
                   {t('navigation.getStarted')}
                 </Button>

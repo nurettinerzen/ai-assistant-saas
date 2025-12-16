@@ -18,45 +18,440 @@
   },
   "landing": {
     "hero": {
-      "title": "AI Phone Assistants That Sound Human",
-      "subtitle": "Automate your phone support with intelligent AI assistants",
-      "cta": "Start Free Trial",
+      "badge": "AI Customer Service Platform",
+      "title": "Automate Customer Service with AI",
+      "subtitle": "WhatsApp, Phone, Chat and Email - 24/7 AI-powered customer service",
+      "cta": "Get Started Free",
       "watch": "Watch Demo"
     },
-    "features": {
-      "title": "Everything You Need",
-      "voice": "Natural Voice",
-      "voiceDesc": "Human-like conversations",
-      "analytics": "Advanced Analytics",
-      "analyticsDesc": "Track every call",
-      "integration": "Easy Integration",
-      "integrationDesc": "Connect with your tools"
+    "channels": {
+      "title": "All Channels in One Platform",
+      "subtitle": "Automate all your customer communication channels with AI",
+      "phone": {
+        "title": "AI Phone Calls",
+        "desc": "24/7 AI-powered phone assistant for inbound and outbound calls"
+      },
+      "whatsapp": {
+        "title": "WhatsApp Business",
+        "desc": "Automated messaging and customer support"
+      },
+      "chat": {
+        "title": "Web Chat Widget",
+        "desc": "On-site live support and sales assistant"
+      },
+      "email": {
+        "title": "Email Automation",
+        "desc": "Auto-reply with Gmail and Outlook integration"
+      }
     },
-    "testimonials": {
-      "title": "Loved by Businesses",
-      "titleHighlight": "Worldwide",
-      "subtitle": "See what our customers have to say"
+    "sectors": {
+      "title": "AI Solutions for Every Industry",
+      "subtitle": "Grow your business with industry-specific AI assistants",
+      "ecommerce": {
+        "title": "E-commerce",
+        "feature1": "Order tracking",
+        "feature2": "Stock information",
+        "feature3": "Return tracking"
+      },
+      "restaurant": {
+        "title": "Restaurant",
+        "feature1": "Reservation booking",
+        "feature2": "Menu information"
+      },
+      "salon": {
+        "title": "Salon/Spa",
+        "feature1": "Appointment management"
+      },
+      "support": {
+        "title": "General Support",
+        "feature1": "Customer support",
+        "feature2": "FAQ answering"
+      },
+      "learnMore": "Learn more"
+    },
+    "integrations": {
+      "title": "Popular Integrations",
+      "subtitle": "Seamless integration with the tools you use"
+    },
+    "howItWorks": {
+      "title": "How It Works",
+      "subtitle": "Start your AI customer service in 4 simple steps",
+      "step1": {
+        "title": "Create Account",
+        "desc": "Create your account and enter your business information"
+      },
+      "step2": {
+        "title": "Connect Channels",
+        "desc": "Connect your WhatsApp, Email and other channels"
+      },
+      "step3": {
+        "title": "Customize AI",
+        "desc": "Train and customize your AI assistant for your business"
+      },
+      "step4": {
+        "title": "24/7 Service",
+        "desc": "Let automated customer service begin!"
+      }
+    },
+    "demo": {
+      "title": "Try Live Demo",
+      "subtitle": "Test our AI assistant now and discover its power",
+      "formTitle": "Get a Demo Call",
+      "formSubtitle": "Let our AI assistant call you and show its capabilities",
+      "nameLabel": "Full Name",
+      "namePlaceholder": "Your Full Name",
+      "emailLabel": "Email",
+      "emailPlaceholder": "example@email.com",
+      "phoneLabel": "Phone",
+      "phonePlaceholder": "+1 XXX XXX XXXX",
+      "submitButton": "Request Demo",
+      "consent": "By submitting, you agree to receive a demo call from our AI assistant",
+      "successMessage": "Request received! Our AI assistant will call you shortly.",
+      "errorMessage": "An error occurred. Please try again.",
+      "feature1": {
+        "title": "Natural Conversation",
+        "desc": "Human-like dialogue and context understanding"
+      },
+      "feature2": {
+        "title": "Instant Response",
+        "desc": "Real-time interaction with 500ms latency"
+      },
+      "feature3": {
+        "title": "Smart Routing",
+        "desc": "Transfer to agent when needed"
+      }
     },
     "cta": {
-      "title": "Ready to Transform Your Business?",
-      "subtitle": "Join thousands of businesses already using TELYX.AI to automate and scale",
-      "startTrial": "Start Free Trial",
+      "title": "Start Now - 14 Days Free",
+      "subtitle": "No credit card required. Cancel anytime.",
+      "startTrial": "Start Free",
       "talkToSales": "Talk to Sales"
     },
     "footer": {
-      "tagline": "AI-powered phone assistant for modern businesses",
+      "tagline": "AI-powered customer service for modern businesses",
       "product": "Product",
       "features": "Features",
       "pricing": "Pricing",
+      "integrations": "Integrations",
       "solutions": "Solutions",
       "company": "Company",
       "contact": "Contact",
       "about": "About Us",
+      "careers": "Careers",
       "blog": "Blog",
+      "resources": "Resources",
+      "help": "Help",
+      "api": "API Docs",
       "legal": "Legal",
       "privacy": "Privacy Policy",
       "terms": "Terms of Service",
-      "copyright": "© 2024 TELYX.AI. All rights reserved."
+      "copyright": "2024 Telyx.ai - All rights reserved."
+    }
+  },
+  "navigation": {
+    "solutions": "Solutions",
+    "features": "Features",
+    "pricing": "Pricing",
+    "contact": "Contact",
+    "getStarted": "Get Started Free",
+    "solutionsEcommerce": "E-commerce",
+    "solutionsRestaurant": "Restaurant",
+    "solutionsSalon": "Salon/Spa",
+    "solutionsSupport": "Customer Support"
+  },
+  "pricing": {
+    "title": "Pricing",
+    "subtitle": "Choose the best plan for your business",
+    "trial": "14-day free trial - No credit card required",
+    "recommended": "Recommended",
+    "cta": "Get Started",
+    "questions": "Have questions?",
+    "contactUs": "Contact us",
+    "starter": {
+      "name": "Starter",
+      "desc": "Ideal starter package for small businesses",
+      "feature1": "1 AI Assistant",
+      "feature2": "Unlimited training",
+      "feature3": "1 Phone Number",
+      "feature4": "300 Minutes/Month",
+      "feature5": "Basic Analytics",
+      "feature6": "Email Support"
+    },
+    "professional": {
+      "name": "Professional",
+      "desc": "Advanced features for growing businesses",
+      "feature1": "2 AI Assistants",
+      "feature2": "Unlimited training",
+      "feature3": "3 Phone Numbers",
+      "feature4": "1500 Minutes/Month",
+      "feature5": "Advanced Analytics",
+      "feature6": "Priority Support",
+      "feature7": "API Access"
+    },
+    "enterprise": {
+      "name": "Enterprise",
+      "desc": "Complete solution for large-scale businesses",
+      "feature1": "5 AI Assistants",
+      "feature2": "Unlimited everything",
+      "feature3": "10 Phone Numbers",
+      "feature4": "Custom Voice Cloning",
+      "feature5": "White-label Option",
+      "feature6": "Dedicated Account Manager",
+      "feature7": "SLA Guarantee"
+    }
+  },
+  "features": {
+    "hero": {
+      "title": "Powerful Features",
+      "subtitle": "Everything you need to automate your customer service"
+    },
+    "multichannel": {
+      "title": "Multi-Channel Support",
+      "desc": "Manage all your communication channels in one platform",
+      "item1": "WhatsApp Business integration",
+      "item2": "AI phone calls",
+      "item3": "Web chat widget",
+      "item4": "Email automation"
+    },
+    "ai": {
+      "title": "AI Assistant",
+      "desc": "GPT-4 based intelligent customer service",
+      "item1": "Natural language processing",
+      "item2": "Context understanding",
+      "item3": "Multi-language support",
+      "item4": "Continuous learning"
+    },
+    "ecommerce": {
+      "title": "E-commerce Integrations",
+      "desc": "Integrate with popular e-commerce platforms",
+      "item1": "ikas integration",
+      "item2": "Shopify integration",
+      "item3": "WooCommerce integration",
+      "item4": "Ticimax integration"
+    },
+    "calendar": {
+      "title": "Calendar Integration",
+      "desc": "Automatically manage appointments and reservations",
+      "item1": "Google Calendar sync",
+      "item2": "Automatic appointment creation",
+      "item3": "Reminder notifications"
+    },
+    "languages": {
+      "title": "Multi-Language Support",
+      "desc": "Provide customer service in 16 different languages",
+      "item1": "Turkish and English",
+      "item2": "Arabic, German, French",
+      "item3": "And more..."
+    },
+    "analytics": {
+      "title": "Real-Time Dashboard",
+      "desc": "Track your performance instantly",
+      "item1": "Call statistics",
+      "item2": "Customer satisfaction",
+      "item3": "Detailed reports"
+    },
+    "cta": {
+      "title": "Ready to Start?",
+      "subtitle": "Get started now and transform your customer service with AI",
+      "start": "Get Started Free",
+      "contact": "Contact Us"
+    }
+  },
+  "solutions": {
+    "hero": {
+      "title": "Industry Solutions",
+      "subtitle": "AI solutions designed specifically for your industry"
+    },
+    "learnMore": "Learn More",
+    "startFree": "Get Started Free",
+    "contactSales": "Talk to Sales",
+    "ecommerce": {
+      "title": "AI for E-commerce",
+      "desc": "24/7 automated support for order tracking, stock info and returns",
+      "feature1": "Order status tracking",
+      "feature2": "Stock and product info",
+      "feature3": "Return/exchange process",
+      "hero": {
+        "title": "AI Assistant for E-commerce",
+        "subtitle": "Provide your customers 24/7 order tracking, stock info and return support"
+      },
+      "useCases": {
+        "title": "Use Cases"
+      },
+      "useCase1": {
+        "title": "Order Tracking",
+        "desc": "Customers can instantly check their order status"
+      },
+      "useCase2": {
+        "title": "Shipping Tracking",
+        "desc": "Real-time shipping and delivery information"
+      },
+      "useCase3": {
+        "title": "Return Processing",
+        "desc": "Easy return request creation and tracking"
+      },
+      "useCase4": {
+        "title": "Product Information",
+        "desc": "Stock status and product details"
+      },
+      "integrations": {
+        "title": "E-commerce Integrations",
+        "subtitle": "Seamless integration with popular e-commerce platforms"
+      },
+      "cta": {
+        "title": "Provide 24/7 Support to Your E-commerce Customers",
+        "subtitle": "AI assistant integrated with ikas, Shopify and other platforms"
+      }
+    },
+    "restaurant": {
+      "title": "AI for Restaurants",
+      "desc": "Smart assistant for reservations, menu info and customer queries",
+      "feature1": "Automatic reservation booking",
+      "feature2": "Menu and price info",
+      "feature3": "Business hours notification",
+      "hero": {
+        "title": "AI Assistant for Restaurants",
+        "subtitle": "Automate your reservations, delight your customers"
+      },
+      "useCases": {
+        "title": "Use Cases"
+      },
+      "useCase1": {
+        "title": "Reservation Management",
+        "desc": "24/7 automatic table reservation booking"
+      },
+      "useCase2": {
+        "title": "Menu Information",
+        "desc": "Dishes, prices and special dietary options"
+      },
+      "useCase3": {
+        "title": "Business Hours",
+        "desc": "Open/closed hours and special day information"
+      },
+      "useCase4": {
+        "title": "Feedback",
+        "desc": "Collect customer reviews and complaints"
+      },
+      "cta": {
+        "title": "Automate Your Restaurant Reservations",
+        "subtitle": "Seamless reservation management with Google Calendar integration"
+      }
+    },
+    "salon": {
+      "title": "AI for Salons",
+      "desc": "24/7 assistant for appointment scheduling and service information",
+      "feature1": "Online appointment booking",
+      "feature2": "Service and price info",
+      "feature3": "Reminder messages",
+      "hero": {
+        "title": "AI Assistant for Salons",
+        "subtitle": "Automate your appointments, serve your customers better"
+      },
+      "useCases": {
+        "title": "Use Cases"
+      },
+      "useCase1": {
+        "title": "Appointment Scheduling",
+        "desc": "24/7 online appointment booking and rescheduling"
+      },
+      "useCase2": {
+        "title": "Reminders",
+        "desc": "Automatic appointment reminder messages"
+      },
+      "useCase3": {
+        "title": "Staff Management",
+        "desc": "Match available staff and time slots"
+      },
+      "useCase4": {
+        "title": "Service Information",
+        "desc": "Information about services, durations and prices"
+      },
+      "cta": {
+        "title": "Simplify Your Salon Appointments",
+        "subtitle": "Automatic appointment management with calendar integration"
+      }
+    },
+    "support": {
+      "title": "AI for Customer Support",
+      "desc": "Smart support for general queries and FAQ answering",
+      "feature1": "Automatic FAQ answering",
+      "feature2": "Ticket creation",
+      "feature3": "Agent transfer",
+      "hero": {
+        "title": "AI Assistant for Customer Support",
+        "subtitle": "Automatically answer customer questions 24/7"
+      },
+      "useCases": {
+        "title": "Use Cases"
+      },
+      "useCase1": {
+        "title": "FAQ Answering",
+        "desc": "Instant answers to frequently asked questions"
+      },
+      "useCase2": {
+        "title": "Ticket Creation",
+        "desc": "Create and track support tickets"
+      },
+      "useCase3": {
+        "title": "24/7 Service",
+        "desc": "Uninterrupted support even outside business hours"
+      },
+      "useCase4": {
+        "title": "Performance Tracking",
+        "desc": "Resolved issues and customer satisfaction"
+      },
+      "cta": {
+        "title": "Strengthen Your Customer Support",
+        "subtitle": "Increase customer satisfaction with AI"
+      }
+    },
+    "cta": {
+      "title": "Don't See Your Industry?",
+      "subtitle": "Our AI assistants can be adapted to any industry. Let's discuss your needs.",
+      "contact": "Contact Us"
+    }
+  },
+  "contact": {
+    "hero": {
+      "title": "Get in Touch",
+      "subtitle": "We're here to help you find the right AI solution"
+    },
+    "successMessage": "Message sent! We'll get back to you soon.",
+    "errorMessage": "An error occurred. Please try again.",
+    "form": {
+      "title": "Send us a Message",
+      "success": "Thank you! We'll get back to you within 24 hours.",
+      "name": "Full Name",
+      "namePlaceholder": "Your Full Name",
+      "email": "Email",
+      "emailPlaceholder": "example@email.com",
+      "company": "Company Name",
+      "companyPlaceholder": "Your company name",
+      "phone": "Phone",
+      "phonePlaceholder": "+1 XXX XXX XXXX",
+      "businessType": "Business Type",
+      "selectType": "Select...",
+      "types": {
+        "ecommerce": "E-commerce",
+        "restaurant": "Restaurant/Cafe",
+        "salon": "Salon/Spa",
+        "service": "Service Business",
+        "other": "Other"
+      },
+      "message": "Message",
+      "messagePlaceholder": "How can we help you?",
+      "submit": "Send Message"
+    },
+    "info": {
+      "title": "Contact Information",
+      "email": "Email",
+      "phone": "Phone",
+      "hours": "Business Hours",
+      "hoursValue": "Mon-Fri: 9:00 AM - 6:00 PM"
+    },
+    "response": {
+      "title": "Quick Response",
+      "text": "Our team typically responds within 1 hour during business hours. For urgent matters, please call us directly."
     }
   },
   "auth": {
@@ -67,7 +462,7 @@
     "email": "Email",
     "emailPlaceholder": "you@example.com",
     "password": "Password",
-    "passwordPlaceholder": "••••••••",
+    "passwordPlaceholder": "********",
     "fullName": "Full Name",
     "businessName": "Business Name",
     "businessNamePlaceholder": "Your business name",
@@ -106,14 +501,6 @@
     "resendCode": "Resend Code",
     "mustBe8Chars": "Must be at least 8 characters"
   },
-  "navigation": {
-    "solutions": "Solutions",
-    "features": "Features",
-    "pricing": "Pricing",
-    "contact": "Contact Sales",
-    "register": "Register",
-    "getStarted": "Get Started"
-  },
   "dashboard": {
     "overview": "Dashboard",
     "assistants": "Assistants",
@@ -141,403 +528,32 @@
     "availableCredits": "Available Credits",
     "addCredits": "Add Credits",
     "profileSettings": "Profile Settings",
-    "logOut": "Log Out",
-    "aboutVoiceSelection": "About Voice Selection",
-    "actionsTableHeader": "Actions",
-    "activeLabel": "Active",
-    "addCreditsBtn": "Add Credits",
-    "addDocument": "Add Document",
-    "addFaqBtn": "Add FAQ",
-    "addFaqTitle": "Add Frequently Asked Question",
-    "addFaqsDesc": "Add common questions and answers",
-    "addKnowledgeBase": "Add to Knowledge Base",
-    "addUrlBtn": "Add URL",
-    "addUrlSubmit": "Add URL",
-    "addUrlTitle": "Add URL to Knowledge Base",
-    "addUrlsDesc": "Import content from URLs",
-    "addingUrl": "Adding URL...",
-    "aiModelLabel": "AI Model",
-    "alertApproachingLimit": "Approaching usage limit",
-    "allGenders": "All Genders",
-    "allLanguages": "All Languages",
-    "allStatus": "All Status",
-    "amountHeader": "Amount",
-    "answerPlaceholder": "Enter the answer",
-    "answerRequired": "Answer is required",
-    "assistant": "Assistant",
-    "assistantColonLabel": "Assistant:",
-    "assistantCreatedSuccess": "Assistant created successfully",
-    "assistantDeletedSuccess": "Assistant deleted successfully",
-    "assistantLabel": "Assistant",
-    "assistantUpdatedSuccess": "Assistant updated successfully",
-    "assistantsTitle": "AI Assistants",
-    "availablePlans": "Available Plans",
-    "avgDurationLabel2": "Avg Duration",
-    "basicPlan": "Basic Plan",
-    "billingCycleLabel": "Billing Cycle",
-    "billingHistoryTitle": "Billing History",
-    "billingInformationTitle": "Billing Information",
-    "businessLanguage": "Business Language",
-    "callHistoryAppear": "Your call history will appear here",
-    "callHistoryTitle": "Call History",
-    "callsOverTime": "Calls Over Time",
-    "cancel": "Cancel",
-    "categoryOptional": "Category Optional",
-    "categoryPlaceholder": "Enter category",
-    "changePasswordBtn": "Change Password",
-    "changingPassword": "Changing Password",
-    "clickToChange": "Click To Change",
-    "clickToUpload": "Click To Upload",
-    "companyNameOptional": "Company Name Optional",
-    "completed": "Completed",
-    "configureSettings": "Configure Settings",
-    "configureUpdates": "Configure Updates",
-    "confirmNewPassword": "Confirm New Password",
-    "connectBtn": "Connect",
-    "connectTelyx": "Connect Telyx",
-    "connectingText": "Connecting Text",
-    "contactSales": "Contact Sales",
-    "contactSalesBtn": "Contact Sales",
-    "costLabel": "Cost",
-    "crawlDepthDesc": "Crawl Depth description",
-    "crawlDepthLabel": "Crawl Depth",
-    "crawlWebsiteDesc": "Crawl Website description",
-    "createAssistantBtn": "Create Assistant",
-    "createAssistantTitle": "Create Assistant",
-    "createFaqBtn": "Create Faq",
-    "createFaqDesc": "Create Faq description",
-    "createFirstAssistantDesc": "Create First Assistant description",
-    "createManageAssistants": "Create Manage Assistants",
-    "creatingFaq": "Creating Faq",
-    "creditUsageLabel": "Credit Usage",
-    "creditsIncluded": "Credits Included",
-    "creditsLabel": "Credits",
-    "criticalAlertsViaSms": "Critical Alerts Via Sms",
-    "currentPasswordLabel": "Current Password",
-    "currentPlanBtn": "Current Plan",
-    "currentPlanLabel": "Current Plan",
-    "customIntegrationDesc": "Custom Integration description",
-    "customerSupportBot": "Customer Support Bot",
-    "dangerZoneTitle": "Danger Zone",
-    "dashboardTitle": "Dashboard",
-    "dateHeader": "Date",
-    "dateLabel": "Date",
-    "deleteAccountBtn": "Delete Account",
-    "deleteAccountWarning2": "Once you delete your account, there is no going back",
-    "deleteError": "Delete error",
-    "deletingText": "Deleting Text",
-    "descriptionHeader": "Description",
-    "disconnectBtn": "Disconnect",
-    "disconnectConfirm": "Disconnect Confirm",
-    "disconnectingText": "Disconnecting Text",
-    "documentDeleted": "Document Deleted",
-    "documentUploadedSuccess": "Document Uploaded successfully",
-    "documentsLabel": "Documents",
-    "documentsTab": "Documents",
-    "downloadBtn": "Download",
-    "durationLabel": "Duration",
-    "edit": "Edit",
-    "editAssistantTitle": "Edit Assistant",
-    "emailAddressLabel": "Email Address",
-    "emailOnNewCall": "Email On New Call",
-    "enterKnowledgeBaseName": "Enter Knowledge Base Name",
-    "enterUrl": "Enter Url",
-    "enterprisePlan": "Enterprise Plan",
-    "exportCSV": "Export C S V",
-    "failed": "Failed",
-    "failedToAddUrl": "Failed To Add Url",
-    "failedToCreateFaq": "Failed To Create Faq",
-    "failedToDeleteDocument": "Failed To Delete Document",
-    "failedToDeleteFaq": "Failed To Delete Faq",
-    "failedToDeleteUrl": "Failed To Delete Url",
-    "failedToLoadVoices": "Failed To Load Voices",
-    "faqCreated": "Faq Created",
-    "faqDeleted": "Faq Deleted",
-    "faqsTab": "FAQs",
-    "female": "Female",
-    "fillAllRequired": "Fill All Required",
-    "fillQuestionAnswer": "Fill Question Answer",
-    "freePlanLabel": "Free Plan",
-    "fullNameLabel": "Full Name",
-    "getNumberToStartDesc": "Get Number To Start description",
-    "getPhoneNumberBtn": "Get Phone Number",
-    "inProgress": "In Progress",
-    "industry": "Industry",
-    "initiatingTestCall": "Initiating Test Call",
-    "integrationConnected": "Integration Connected",
-    "integrationDisconnected": "Integration Disconnected",
-    "integrationWorking": "Integration Working",
-    "integrationsTitle2": "Integrations Title2",
-    "invoiceHeader": "Invoice",
-    "knowledgeBaseName": "Knowledge Base Name",
-    "knowledgeBaseNamePlaceholder": "Enter knowledge base name",
-    "knowledgeBaseTitle": "Knowledge Base",
-    "last7Days": "Last 7 Days",
-    "lastCrawledHeader": "Last Crawled",
-    "latestCallActivity": "Latest Call Activity",
-    "limitReachedUpgrade": "Limit Reached Upgrade",
-    "loadingChart": "Loading chart...",
-    "male": "Male",
-    "manageAccountPreferences": "Manage Account Preferences",
-    "managePasswordLabel": "Manage Password",
-    "managePhoneNumbers": "Manage Phone Numbers",
-    "managePlanBilling": "Manage your plan and billing",
-    "monitorPerformance": "Monitor your assistant performance",
-    "monthlyCostColonLabel": "Monthly Cost Colon",
-    "monthlyCostLabel": "Monthly Cost",
-    "monthlyLabel": "Monthly",
-    "mostPopular": "Most Popular",
-    "nameRequired": "Name Required",
-    "nameTableHeader": "Name Table",
-    "needCustomIntegration": "Need Custom Integration",
-    "newAssistant": "New Assistant",
-    "newPasswordLabel": "New Password",
-    "nextBillingLabel": "Next Billing",
-    "noAssistantsTitle": "No Assistants",
-    "noBillingHistory": "No  billing history",
-    "noCallDataYet": "No call data available yet",
-    "noCallsYetTitle": "No calls yet",
-    "noDataYet": "No  data yet",
-    "noDocumentsTitle": "No Documents",
-    "noFaqsTitle": "No Faqs",
-    "noPhoneNumbersTitle": "No Phone Numbers",
-    "noUrlsTitle": "No Urls",
-    "noVoice": "No  voice",
-    "noVoicesFound": "No  voices found",
-    "notAssignedLabel": "Not Assigned",
-    "notificationPreferencesUpdated": "Notification preferences updated",
-    "notificationsTitle": "Notifications",
-    "notifyOnCall": "No tify on call",
-    "numberWillReturn": "Number Will Return",
-    "of": "Of",
-    "pagesTableHeader": "Pages Table",
-    "passwordChangedSuccess": "Password changed successfully",
-    "passwordMinLength": "Password must be at least 8 characters",
-    "passwordsDoNotMatch2": "Passwords do not match",
-    "pdfDocxTxtCsv": "Pdf Docx Txt Csv",
-    "perMonthLabel2": "Per Month Label2",
-    "phoneLimitReached": "Phone Limit Reached",
-    "phoneNumber": "Phone Number",
-    "phoneNumberBillingDesc": "Phone Number Billing description",
-    "phoneNumberLabel": "Phone Number",
-    "phoneNumberReleased": "Phone Number Released",
-    "phoneNumbersLockedDesc": "Phone Numbers Locked description",
-    "phoneNumbersTitle2": "Phone Numbers Title2",
-    "phoneNumbersUsed": "Phone Numbers Used",
-    "planFeatures": "Plan Features",
-    "planQuestion": "Plan Question",
-    "planUpgradedSuccess": "Plan Upgraded successfully",
-    "processingUpgrade": "Processing Upgrade",
-    "professionalPlan": "Professional Plan",
-    "profileInformation": "Profile Information",
-    "profileUpdatedSuccess": "Profile updated successfully",
-    "provisionedLabel": "Provisioned",
-    "questionPlaceholder": "Enter the question",
-    "questionRequired": "Question is required",
-    "queued": "Queued",
-    "receiveWeeklyReports": "Receive Weekly Reports",
-    "recentCallsTitle": "Recent Calls",
-    "recommendedForYou": "Recommended For You",
-    "releaseNumberConfirm": "Release Number Confirm",
-    "releasingNumber": "Releasing Number",
-    "remaining": "Remaining",
-    "runningLowOnCredits": "Running Low On Credits",
-    "saveBtn": "Save",
-    "saveChangesBtn": "Save Changes",
-    "saveError": "Save error",
-    "savePreferencesBtn": "Save Preferences",
-    "saveSuccess": "Save successfully",
-    "savingPreferences": "Saving preferences...",
-    "savingProfile": "Saving profile...",
-    "searchAssistants": "Search Assistants",
-    "searchByPhone": "Search By Phone",
-    "searchVoices": "Search voices...",
-    "securityTitle": "Security",
-    "selectFileToUpload": "Select File To Upload",
-    "selectVoiceLabel": "Select Voice",
-    "selected": "Selected",
-    "settingsTitle2": "Settings Title2",
-    "showing": "Showing",
-    "sizeTableHeader": "Size Table",
-    "smsNotificationsLabel": "Sms Notifications",
-    "startMakingCalls": "Start making calls to see data here",
-    "statusColonLabel": "Status Colon",
-    "statusHeader": "Status",
-    "statusLabel": "Status",
-    "statusTableHeader": "Status Table",
-    "subscriptionTitle2": "Subscription",
-    "successRateLabel": "Success Rate",
-    "systemPromptPlaceholder": "Enter system prompt",
-    "systemPromptRequired": "System Prompt Required",
-    "testBtn": "Test",
-    "testBtn2": "Test Btn2",
-    "testCallStarted": "Test Call Started",
-    "testingConnection": "Testing Connection",
-    "thisActionCannot": "This Action Cannot",
-    "totalCallsLabel": "Total Calls",
-    "totalCostLabel": "Total Cost",
-    "trainWithDocuments": "Train With Documents",
-    "tryAdjustingFilters": "Try Adjusting Filters",
-    "typeTableHeader": "Type Table",
-    "unlimited": "Unlimited",
-    "updateAssistantBtn": "Update Assistant",
-    "updatePersonalDetails": "Update Personal Details",
-    "upgrade": "Upgrade",
-    "upgradeBtn": "Upgrade",
-    "upgradeConfirm": "Upgrade Confirm",
-    "upgradeToGetPhone": "Upgrade To Get Phone",
-    "uploadDocumentsDesc": "Upload Documents description",
-    "uploadDocumentsLabel": "Upload Documents",
-    "uploadFailed": "Upload Failed",
-    "uploadedTableHeader": "Uploaded Table",
-    "uploadingText": "Uploading Text",
-    "urlAddedCrawling": "Url Added Crawling",
-    "urlDeleted": "Url Deleted",
-    "urlTableHeader": "Url Table",
-    "urlsTab": "URLs",
-    "usageLimitAlerts": "Usage Limit Alerts",
-    "usedThisMonth": "Used This Month",
-    "viewAll": "View All",
-    "viewAllCalls": "View All Calls",
-    "viewAndAnalyze": "View And Analyze",
-    "voiceRequired": "Voice Required",
-    "voiceSelectionInfo": "Voice Selection Info",
-    "voices": "Voices",
-    "voicesDescription": "Voices descriptionription",
-    "websiteUrlPlaceholder": "Enter website url",
-    "websiteUrlRequired": "Website Url Required",
-    "weeklySummaryLabel": "Weekly Summary",
-    "avgDurationLabel": "Average Duration",
-    "billingHistory": "Billing History",
-    "businessNameLabel": "Business Name",
-    "businessTypeLabel": "Business Type",
-    "callDuration": "Call Duration",
-    "callId": "Call ID",
-    "callStatus": "Call Status",
-    "callsTitle": "Call History",
-    "cancelBtn": "Cancel",
-    "cancelPlan": "Cancel Plan",
-    "choosePlan": "Choose Plan",
-    "costCalculatorTitle": "Cost Calculator",
-    "createAssistant": "Create Assistant",
-    "createdAtHeader": "Created At",
-    "deleteAccountWarning": "This action cannot be undone",
-    "deleteBtn": "Delete",
-    "deleteFaqConfirm": "Are you sure you want to delete this FAQ?",
-    "editBtn": "Edit",
-    "emailLabel": "Email",
-    "estimatedCostLabel": "Estimated Monthly Cost",
-    "filterByGender": "Filter by Gender",
-    "filterByLanguage": "Filter by Language",
-    "filterByStatus": "Filter by Status",
-    "genderLabel": "Gender",
-    "industryLabel": "Industry",
-    "integrationsTitle": "Integrations",
-    "languageLabel": "Language",
-    "last30Days": "Last 30 Days",
-    "listenRecording": "Listen to Recording",
-    "loadingAssistants": "Loading assistants...",
-    "loadingCalls": "Loading calls...",
-    "loadingData": "Loading data...",
-    "loadingIntegrations": "Loading integrations...",
-    "loadingKnowledge": "Loading knowledge base...",
-    "loadingNumbers": "Loading phone numbers...",
-    "loadingSettings": "Loading settings...",
-    "loadingSubscription": "Loading subscription...",
-    "loadingVoices": "Loading voices...",
-    "monthlyCallsLabel": "Monthly Calls",
-    "nextBillingDate": "Next Billing Date",
-    "noAssistantsYet": "No assistants yet",
-    "noDocumentsYet": "No documents added yet",
-    "noFaqsYet": "No FAQs added yet",
-    "noIntegrationsYet": "No integrations configured yet",
-    "noKnowledgeYet": "No knowledge base content yet",
-    "noNumbersYet": "No phone numbers added yet",
-    "noUrlsYet": "No URLs added yet",
-    "notificationPreferences": "Notification Preferences",
-    "passwordsDoNotMatch": "Passwords do not match",
-    "phoneNumbersTitle": "Phone Numbers",
-    "previewVoice": "Preview Voice",
-    "renewalDate": "Renewal Date",
-    "saveChanges": "Save Changes",
-    "selectAssistant": "Select Assistant",
-    "selectIndustry": "Select your industry",
-    "selectVoice": "Select Voice",
-    "settingsTitle": "Settings",
-    "subscriptionTitle": "Subscription",
-    "totalCreditsLabel": "Total Credits",
-    "updateBtn": "Update",
-    "upgradePlan": "Upgrade Plan",
-    "uploadDocument": "Upload Document",
-    "uploadingDocument": "Uploading document...",
-    "viewDetails": "View Details",
-    "voicePreview": "Voice Preview",
-    "voicesTitle": "Voice Library",
-    "welcomeBack": "Welcome back",
-    "goodMorning": "Good morning",
-    "goodAfternoon": "Good afternoon",
-    "goodEvening": "Good evening",
-    "dashboardWelcomeMessage": "Here's a quick overview of your AI assistant's performance",
-    "viewAnalytics": "View Analytics",
-    "keyMetrics": "Key Metrics",
-    "last7DaysOverview": "Last 7 days performance overview",
-    "totalCalls": "Total Calls",
-    "chatMessages": "Chat Messages",
-    "avgDuration": "Avg Duration",
-    "totalCost": "Total Cost",
-    "appointments": "Appointments",
-    "quickActions": "Quick Actions",
-    "systemStatus": "System Status",
-    "activeAssistants": "Active Assistants",
-    "running": "running",
-    "integrations": "Integrations",
-    "connected": "connected",
-    "phoneNumbers": "Phone Numbers",
-    "provisioned": "provisioned",
-    "systemHealth": "System Health",
-    "allSystemsGo": "All systems operational",
-    "recentActivity": "Recent Activity",
-    "latestCallsAndMessages": "Latest calls and messages from the past 24 hours",
-    "noRecentActivity": "No Recent Activity",
-    "activityWillAppear": "Your recent calls and messages will appear here",
-    "setupNewAI": "Set up a new AI agent",
-    "buyPhoneNumber": "Buy Phone Number",
-    "getNewNumber": "Get a new number",
-    "connectIntegration": "Connect Integration",
-    "linkExternalTools": "Link external tools",
-    "browseCallHistory": "Browse call history",
-    "unknownCaller": "Unknown Caller",
-    "noAssistant": "No Assistant",
-    "failedToLoad": "Failed to load dashboard data"
+    "logOut": "Log Out"
   },
   "onboarding": {
-    "step1": { "title": "Choose Language", "description": "Select your preferred language" },
-    "step2": { "title": "Choose Industry", "description": "Tell us about your business" },
-    "step3": { "title": "Pick Your Voice", "description": "Select your assistant's voice" },
-    "step4": { "title": "Add Training", "description": "Create your first greeting" },
-    "step5": { "title": "Test Assistant", "description": "Try it out!" },
-    "step6": { "title": "Complete", "description": "You're all set!" },
-    "industries": { "restaurant": "Restaurant", "salon": "Salon/Spa", "ecommerce": "E-commerce", "service": "Professional Services", "other": "Other" },
-    "prompts": {
-      "RESTAURANT": "You are a restaurant assistant. Take reservations, provide menu information, share working hours, answer customer questions.",
-      "SALON": "You are a salon assistant. Book appointments, provide information about services and prices, share available times.",
-      "ECOMMERCE": "You are an e-commerce assistant. Provide stock information, order status updates, explain return and exchange processes.",
-      "SERVICE": "You are a professional service assistant. Book appointments, provide service information, help with pricing.",
-      "OTHER": "You are a business assistant. Answer customer questions, provide information, be helpful."
+    "step1": {
+      "title": "Choose Language",
+      "description": "Select your preferred language"
     },
-    "defaultGreeting": "Hi, I'm {name}, how can I help you?",
-    "greetingLabel": "Greeting Message",
-    "greetingDesc": "The first sentence your assistant will say when answering",
-    "greetingPlaceholder": "Hi, how can I help you?",
-    "instructionsLabel": "Assistant Instructions",
-    "instructionsDesc": "Instructions for how your assistant should behave",
-    "voicePreviewSoon": "Voice preview coming soon",
-    "creatingAssistant": "Creating assistant...",
-    "assistantCreated": "Assistant created!",
-    "assistantFailed": "Failed to create assistant",
-    "allSet": "All Set!",
-    "readyToUse": "Your AI assistant is ready to use.",
-    "completed": "Completed!",
-    "error": "An error occurred"
+    "step2": {
+      "title": "Choose Industry",
+      "description": "Tell us about your business"
+    },
+    "step3": {
+      "title": "Pick Your Voice",
+      "description": "Select your assistant's voice"
+    },
+    "step4": {
+      "title": "Add Training",
+      "description": "Create your first greeting"
+    },
+    "step5": {
+      "title": "Test Assistant",
+      "description": "Try it out!"
+    },
+    "step6": {
+      "title": "Complete",
+      "description": "You're all set!"
+    }
   }
 }
