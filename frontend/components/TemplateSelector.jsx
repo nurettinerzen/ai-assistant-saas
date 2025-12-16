@@ -39,14 +39,16 @@ const INDUSTRY_ICONS = {
   'Professional': Briefcase,
 };
 
-// Map business types to template industries
+// Map business types (from Prisma enum) to template industries
 const BUSINESS_TYPE_TO_INDUSTRY = {
   'RESTAURANT': 'Restaurant',
   'SALON': 'Salon',
   'ECOMMERCE': 'E-commerce',
   'E-COMMERCE': 'E-commerce',
-  'SUPPORT': 'Support',
+  'CLINIC': 'Healthcare',
+  'SERVICE': 'Support',
   'HEALTHCARE': 'Healthcare',
+  'SUPPORT': 'Support',
   'REAL_ESTATE': 'Real Estate',
   'PROFESSIONAL': 'Professional',
   'OTHER': null, // Show all for OTHER
