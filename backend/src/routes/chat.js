@@ -25,7 +25,7 @@ const getOpenAI = () => {
 };
 
 // POST /api/chat/widget - Public endpoint for widget
-router.post('/', async (req, res) => {
+router.post('/widget', async (req, res) => {
   console.log('📨 Chat request received:', {
     body: req.body,
     businessId: req.businessId,
