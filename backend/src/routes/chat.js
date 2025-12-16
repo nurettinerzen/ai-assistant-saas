@@ -25,7 +25,12 @@ const getOpenAI = () => {
 };
 
 // POST /api/chat/widget - Public endpoint for widget
-router.post('/widget', async (req, res) => {
+router.post('/', async (req, res) => {
+  console.log('📨 Chat request received:', {
+    body: req.body,
+    businessId: req.businessId,
+    headers: req.headers.authorization ? 'Auth present' : 'No auth'
+  });
   try {
     const { assistantId, message, conversationHistory = [] } = req.body;
 

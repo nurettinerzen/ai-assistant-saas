@@ -41,9 +41,12 @@ export const BUSINESS_TYPE_TOOLS = {
 // Integration type -> tools that require it
 // Tools are only enabled if the business has the corresponding integration active
 export const INTEGRATION_REQUIRED_TOOLS = {
-  'GOOGLE_CALENDAR': [],  // create_appointment works without it (saves to DB)
+  'GOOGLE_CALENDAR': [],
   'SHOPIFY': ['check_order_status', 'get_product_stock', 'get_tracking_info'],
-  'WOOCOMMERCE': ['check_order_status', 'get_product_stock', 'get_tracking_info']
+  'WOOCOMMERCE': ['check_order_status', 'get_product_stock', 'get_tracking_info'],
+  'IKAS': ['check_order_status', 'get_product_stock', 'get_tracking_info'],
+  'IDEASOFT': ['check_order_status', 'get_product_stock', 'get_tracking_info'],
+  'TICIMAX': ['check_order_status', 'get_product_stock', 'get_tracking_info']
 };
 
 // Tools that work without any specific integration

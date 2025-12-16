@@ -1595,6 +1595,155 @@ router.post('/ikas/test', async (req, res) => {
   }
 });
 
+// =============================================
+// İDEASOFT OAuth FLOW (Yeni - Minimal UX için)
+// =============================================
+
+// Adım 1: OAuth başlat - kullanıcıyı İdeasoft'a yönlendir
+router.post('/ideasoft/auth', authenticateToken, async (req, res) => {
+  try {
+    const { storeUrl, clientId, clientSecret } = req.body;
+    
+    if (!storeUrl || !clientId || !clientSecret) {
+      return res.status(400).json({ error: 'Store URL, Client ID and Client Secret required' });
+    }
+    
+    // Store URL'i normalize et
+    let normalizedUrl = storeUrl.trim();
+    if (!normalizedUrl.startsWith('http')) {
+      normalizedUrl = 'https://' + normalizedUrl;
+    }
+    normalizedUrl = normalizedUrl.replace(/\/$/, '');
+    
+    // State token oluştur (CSRF koruması)
+    const state = require('crypto').randomBytes(32).toString('hex');
+    
+    // Geçici olarak credentials'ı sakla (5 dakika TTL)
+    global.ideasoftPendingAuth = global.ideasoftPendingAuth || {};
+    global.ideasoftPendingAuth[state] = {
+      businessId: req.businessId,
+      storeUrl: normalizedUrl,
+      clientId,
+      clientSecret,
+      createdAt: Date.now()
+    };
+    
+    // 5 dakika sonra temizle
+    setTimeout(() => {
+      if (global.ideasoftPendingAuth) {
+        delete global.ideasoftPendingAuth[state];
+      }
+    }, 5 * 60 * 1000);
+    
+    // Callback URL
+    const redirectUri = 'https://marin-methoxy-suzette.ngrok-free.dev/api/integrations/ideasoft/callback';
+    
+    // İdeasoft authorization URL
+    const authUrl = `${normalizedUrl}/oauth/authorize?` + new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      response_type: 'code',
+      state: state
+    }).toString();
+    
+    console.log('🔗 İdeasoft OAuth URL generated:', authUrl);
+    res.json({ authUrl });
+    
+  } catch (error) {
+    console.error('İdeasoft auth error:', error);
+    res.status(500).json({ error: 'Failed to initiate İdeasoft auth' });
+  }
+});
+
+// Adım 2: OAuth callback - İdeasoft'tan code al, token'a çevir
+router.get('/ideasoft/callback', async (req, res) => {
+  try {
+    const { code, state, error: oauthError } = req.query;
+    
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    
+    if (oauthError) {
+      console.error('İdeasoft OAuth denied:', oauthError);
+      return res.redirect(`${frontendUrl}/dashboard/integrations?error=ideasoft_denied`);
+    }
+    
+    if (!code || !state) {
+      return res.redirect(`${frontendUrl}/dashboard/integrations?error=ideasoft_invalid`);
+    }
+    
+    // State'i doğrula
+    const pending = global.ideasoftPendingAuth?.[state];
+    if (!pending) {
+      return res.redirect(`${frontendUrl}/dashboard/integrations?error=ideasoft_expired`);
+    }
+    
+    const { businessId, storeUrl, clientId, clientSecret } = pending;
+    delete global.ideasoftPendingAuth[state];
+    
+    // Code'u token'a çevir
+    const redirectUri = 'https://marin-methoxy-suzette.ngrok-free.dev/api/integrations/ideasoft/callback';
+    
+    console.log('🔄 Exchanging code for token...');
+    
+    const tokenResponse = await axios.post(`${storeUrl}/oauth/token`, 
+      new URLSearchParams({
+        grant_type: 'authorization_code',
+        client_id: clientId,
+        client_secret: clientSecret,
+        code: code,
+        redirect_uri: redirectUri
+      }).toString(),
+      {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      }
+    );
+    
+    const { access_token, refresh_token, expires_in } = tokenResponse.data;
+    
+    console.log('✅ İdeasoft token received');
+    
+    // Integration kaydet
+    const credentials = {
+      storeDomain: storeUrl,
+      clientId,
+      clientSecret,
+      accessToken: access_token,
+      refreshToken: refresh_token || null,
+      tokenExpiresAt: expires_in ? new Date(Date.now() + expires_in * 1000).toISOString() : null
+    };
+    
+    await prisma.integration.upsert({
+      where: {
+        businessId_type: {
+          businessId: businessId,
+          type: 'IDEASOFT'
+        }
+      },
+      update: {
+        credentials: credentials,
+        connected: true,
+        isActive: true,
+        updatedAt: new Date()
+      },
+      create: {
+        businessId: businessId,
+        type: 'IDEASOFT',
+        credentials: credentials,
+        connected: true,
+        isActive: true
+      }
+    });
+    
+    console.log(`✅ İdeasoft connected for business ${businessId}`);
+    res.redirect(`${frontendUrl}/dashboard/integrations?success=ideasoft`);
+    
+  } catch (error) {
+    console.error('İdeasoft callback error:', error.response?.data || error.message);
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    res.redirect(`${frontendUrl}/dashboard/integrations?error=ideasoft_token_failed`);
+  }
+});
+
 /* ============================================================
    IDEASOFT E-COMMERCE INTEGRATION
 ============================================================ */

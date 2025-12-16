@@ -197,7 +197,7 @@ class IkasService {
   // ORDER FUNCTIONS
   // ============================================================================
 
-  /**
+/**
    * Get order by order number
    */
   async getOrderByNumber(businessId, orderNumber) {
@@ -205,7 +205,7 @@ class IkasService {
       console.log(`🔍 ikas: Searching order by number: ${orderNumber}`);
 
       const query = `
-        query listOrder($orderNumber: String) {
+        query listOrder($orderNumber: StringFilterInput) {
           listOrder(orderNumber: $orderNumber, pagination: { page: 1, limit: 10 }) {
             data {
               id
@@ -228,23 +228,15 @@ class IkasService {
                 phone
                 addressLine1
                 addressLine2
-                city
-                district
                 postalCode
-                country
               }
               orderLineItems {
                 id
-                productName
-                variantName
                 quantity
                 finalPrice
-              }
-              shipments {
-                trackingNumber
-                trackingUrl
-                cargoCompany
-                status
+                variant {
+                  name
+                }
               }
             }
             count
@@ -252,7 +244,9 @@ class IkasService {
         }
       `;
 
-      const data = await this.graphqlQuery(businessId, query, { orderNumber });
+      const data = await this.graphqlQuery(businessId, query, { 
+        orderNumber: { eq: orderNumber } 
+      });
       const orders = data.listOrder?.data || [];
 
       if (orders.length === 0) {
@@ -710,10 +704,7 @@ class IkasService {
   // HELPER FUNCTIONS
   // ============================================================================
 
-  /**
-   * Normalize order to standard format
-   */
-  normalizeOrder(order) {
+normalizeOrder(order) {
     const statusMap = {
       'WAITING_PAYMENT': 'Ödeme Bekleniyor',
       'WAITING_APPROVAL': 'Onay Bekleniyor',
@@ -731,8 +722,6 @@ class IkasService {
         ? `${order.shippingAddress.firstName || ''} ${order.shippingAddress.lastName || ''}`.trim()
         : 'Bilinmiyor');
 
-    const shipment = order.shipments?.[0];
-
     return {
       id: order.id,
       orderNumber: order.orderNumber,
@@ -746,24 +735,15 @@ class IkasService {
       createdAt: order.createdAt,
       updatedAt: order.updatedAt,
       items: (order.orderLineItems || []).map(item => ({
-        title: item.productName,
-        variantTitle: item.variantName,
+        title: item.variant?.name || 'Ürün',
         quantity: item.quantity,
         price: item.finalPrice
       })),
       shippingAddress: order.shippingAddress ? {
         address: `${order.shippingAddress.addressLine1 || ''} ${order.shippingAddress.addressLine2 || ''}`.trim(),
-        city: order.shippingAddress.city,
-        district: order.shippingAddress.district,
-        postalCode: order.shippingAddress.postalCode,
-        country: order.shippingAddress.country
+        postalCode: order.shippingAddress.postalCode
       } : null,
-      tracking: shipment ? {
-        company: shipment.cargoCompany || 'Kargo',
-        number: shipment.trackingNumber,
-        url: shipment.trackingUrl,
-        status: shipment.status
-      } : null,
+      tracking: null,
       source: 'ikas'
     };
   }

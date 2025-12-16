@@ -521,27 +521,29 @@ const handleShopifyConnect = async () => {
   };
 
   // Ideasoft handlers
-  const handleIdeasoftConnect = async () => {
-    if (!ideasoftForm.storeDomain || !ideasoftForm.clientId || !ideasoftForm.clientSecret) {
-      toast.error('Lütfen tüm alanları doldurun');
-      return;
-    }
+const handleIdeasoftConnect = async () => {
+  if (!ideasoftForm.storeDomain || !ideasoftForm.clientId || !ideasoftForm.clientSecret) {
+    toast.error('Lütfen tüm alanları doldurun');
+    return;
+  }
+  
+  try {
     setIdeasoftLoading(true);
-    try {
-      const response = await apiClient.post('/api/integrations/ideasoft/connect', ideasoftForm);
-      if (response.data.success) {
-        toast.success('Ideasoft bağlandı!');
-        setIdeasoftModalOpen(false);
-        setIdeasoftForm({ storeDomain: '', clientId: '', clientSecret: '' });
-        await loadIdeasoftStatus();
-        await loadIntegrations();
-      }
-    } catch (error) {
-      toast.error(error.response?.data?.error || 'Bağlantı başarısız');
-    } finally {
-      setIdeasoftLoading(false);
-    }
-  };
+    
+    const response = await apiClient.post('/integrations/ideasoft/auth', {
+      storeUrl: ideasoftForm.storeDomain,  // storeDomain'i storeUrl olarak gönder
+      clientId: ideasoftForm.clientId,
+      clientSecret: ideasoftForm.clientSecret
+    });
+    
+    // Kullanıcıyı İdeasoft'a yönlendir
+    window.location.href = response.data.authUrl;
+    
+  } catch (error) {
+    toast.error('Bağlantı başlatılamadı: ' + (error.response?.data?.error || error.message));
+    setIdeasoftLoading(false);
+  }
+};
 
   // Ticimax handlers
   const handleTicimaxConnect = async () => {
@@ -1217,9 +1219,18 @@ const handleShopifyConnect = async () => {
               <h4 className="text-sm font-medium text-blue-900 mb-2">API bilgilerinizi nereden bulabilirsiniz:</h4>
               <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
                 <li>ikas mağaza panelinize giriş yapın</li>
-                <li>Ayarlar &gt; API &amp; Entegrasyonlar bölümüne gidin</li>
-                <li>Yeni bir API uygulaması oluşturun veya mevcut olanı kullanın</li>
-                <li>Client ID ve Client Secret bilgilerini kopyalayın</li>
+                <li>Sol menüden <strong>Uygulamalar → Uygulamalarım</strong> sayfasına gidin</li>
+                <li><strong>Daha Fazla</strong> butonuna tıklayın ve <strong>Özel Uygulamalarınızı Yönetin</strong> seçin</li>
+                <li>Sağ üstten <strong>Özel Uygulama Oluştur</strong> butonuna tıklayın</li>
+                <li>Uygulama adını girin (örn: Telyx.ai) ve gerekli izinleri seçin:
+                  <ul>
+                    <li>Siparişleri Görüntüleme</li>
+                    <li>Müşterileri Görüntüleme</li>
+                    <li>Ürünleri Görüntüleme</li>
+                  </ul>
+                </li>
+                <li>Kaydet'e tıklayın - <strong>Client ID</strong> ve <strong>Client Secret</strong> otomatik oluşturulacak</li>
+                <li>Bu bilgileri kopyalayıp ilgili alana yapıştırın</li>
               </ol>
             </div>
           </div>
@@ -1280,10 +1291,19 @@ const handleShopifyConnect = async () => {
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <h4 className="text-sm font-medium text-blue-900 mb-2">API bilgilerinizi nereden bulabilirsiniz:</h4>
               <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
-                <li>Ideasoft yönetim panelinize giriş yapın</li>
-                <li>Ayarlar &gt; API Ayarları bölümüne gidin</li>
-                <li>OAuth bilgilerinizi oluşturun veya mevcut olanı kullanın</li>
-                <li>Client ID ve Client Secret bilgilerini kopyalayın</li>
+              <li>İdeasoft yönetim panelinize giriş yapın</li>
+              <li>Üst menüden <strong>Entegrasyonlar → API</strong> bölümüne gidin</li>
+              <li>Sol taraftan <strong>Ekle</strong> butonuna tıklayın</li>
+              <li>Açılan formda:
+                <ul>
+                  <li><strong>Adı:</strong> Telyx.ai</li>
+                  <li><strong>Yönlendirme Adresi:</strong> <code>https://marin-methoxy-suzette.ngrok-free.dev/api/integrations/ideasoft/callback</code></li>
+                </ul>
+              </li>
+              <li><strong>Kaydet</strong>'e tıklayın</li>
+              <li><strong>İzin Yönetimi</strong>'ne tıklayın ve izinleri aktif edin</li>
+              <li>Oluşan <strong>Client ID</strong> ve <strong>Client Secret</strong> bilgilerini aşağıya girin</li>
+              <li><strong>Yetkilendir</strong> butonuna tıklayın - İdeasoft'a yönlendirileceksiniz</li>
               </ol>
             </div>
           </div>
@@ -1336,10 +1356,24 @@ const handleShopifyConnect = async () => {
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <h4 className="text-sm font-medium text-blue-900 mb-2">API bilgilerinizi nereden bulabilirsiniz:</h4>
               <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
-                <li>Ticimax yönetim panelinize giriş yapın</li>
-                <li>Ayarlar &gt; Servis Ayarları bölümüne gidin</li>
-                <li>Web Servis Entegrasyonu sekmesini açın</li>
-                <li>Yetki kodunuzu (UyeKodu) kopyalayın</li>
+              <li>Ticimax yönetim panelinize giriş yapın</li>
+              <li>Sağ üst menüden <strong>Ayarlar → WS Yetki Kodu Yönetimi</strong> sekmesine gidin</li>
+              <li>Sol üstten <strong>Yeni Ekle</strong> butonuna tıklayın</li>
+              <li>Açılan formda:
+                <ul>
+                  <li><strong>Yetki Kodu Tanım:</strong> Telyx.ai</li>
+                  <li><strong>Yetki Kodu Oluştur</strong> butonuna tıklayın</li>
+                </ul>
+              </li>
+              <li>Aşağıdaki tüm yetkileri <strong>aktif</strong> hale getirin (X'leri tıklayarak yeşil yapın):
+                <ul>
+                  <li>Ürün Listele, Ürün Düzenle</li>
+                  <li>Sipariş Listele, Sipariş Düzenle</li>
+                  <li>Üye Listele</li>
+                </ul>
+              </li>
+              <li><strong>Kaydet</strong>'e tıklayın</li>
+              <li>Oluşan <strong>Yetki Kodu</strong>'nu kopyalayıp ilgili alana yapıştırın</li>
               </ol>
             </div>
           </div>
