@@ -77,7 +77,7 @@ export default function SettingsPage() {
       });
     } catch (error) {
       console.error('Load settings error:', error);
-      toast.error(t('saveError'));
+      toast.error(t('errors.generic'));
     } finally {
       setLoading(false);
     }
@@ -87,8 +87,8 @@ export default function SettingsPage() {
     try {
       await toastHelpers.async(
         apiClient.settings.updateProfile(profile),
-        t('savingProfile'),
-        t('profileUpdatedSuccess')
+        t('dashboard.settingsPage.savingProfile'),
+        t('dashboard.settingsPage.profileUpdatedSuccess')
       );
     } catch (error) {
       // Error handled
@@ -99,8 +99,8 @@ export default function SettingsPage() {
     try {
       await toastHelpers.async(
         apiClient.settings.updateNotifications(notifications),
-        t('savingPreferences'),
-        t('notificationPreferencesUpdated')
+        t('dashboard.settingsPage.savingPreferences'),
+        t('dashboard.settingsPage.notificationPreferencesUpdated')
       );
     } catch (error) {
       // Error handled
@@ -111,22 +111,22 @@ export default function SettingsPage() {
   try {
     await toastHelpers.async(
       apiClient.settings.updateProfile(region),
-      t('savingRegion') || 'Saving region settings...',
-      t('regionUpdated') || 'Region settings updated successfully!'
+      t('dashboard.settingsPage.savingRegion'),
+      t('dashboard.settingsPage.regionUpdated')
     );
   } catch (error) {
     console.error('Update region error:', error);
-    toast.error(t('regionUpdateFailed') || 'Failed to update region settings');
+    toast.error(t('dashboard.settingsPage.regionUpdateFailed'));
   }
 };
 
   const handleChangePassword = async () => {
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      toast.error(t('passwordsDoNotMatch2'));
+      toast.error(t('dashboard.settingsPage.passwordsDoNotMatch'));
       return;
     }
     if (passwordForm.newPassword.length < 8) {
-      toast.error(t('passwordMinLength'));
+      toast.error(t('errors.passwordTooShort'));
       return;
     }
 
@@ -136,8 +136,8 @@ export default function SettingsPage() {
           currentPassword: passwordForm.currentPassword,
           newPassword: passwordForm.newPassword,
         }),
-        t('changingPassword'),
-        t('passwordChangedSuccess')
+        t('dashboard.settingsPage.changingPassword'),
+        t('dashboard.settingsPage.passwordChangedSuccess')
       );
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
     } catch (error) {
@@ -157,8 +157,8 @@ export default function SettingsPage() {
     <div className="space-y-8 max-w-4xl">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-neutral-900">{t('settingsTitle2')}</h1>
-        <p className="text-neutral-600 mt-1">{t('manageAccountPreferences')}</p>
+        <h1 className="text-3xl font-bold text-neutral-900">{t('dashboard.settingsPage.title')}</h1>
+        <p className="text-neutral-600 mt-1">{t('dashboard.settingsPage.manageAccountPreferences')}</p>
       </div>
 
       {/* Profile Section */}
@@ -168,14 +168,14 @@ export default function SettingsPage() {
             <User className="h-5 w-5 text-primary-600" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-neutral-900">{t('profileInformation')}</h2>
-            <p className="text-sm text-neutral-500">{t('updatePersonalDetails')}</p>
+            <h2 className="text-lg font-semibold text-neutral-900">{t('dashboard.settingsPage.profileInformation')}</h2>
+            <p className="text-sm text-neutral-500">{t('dashboard.settingsPage.updatePersonalDetails')}</p>
           </div>
         </div>
 
         <div className="space-y-4">
           <div>
-            <Label htmlFor="name">{t('fullNameLabel')}</Label>
+            <Label htmlFor="name">{t('dashboard.settingsPage.fullNameLabel')}</Label>
             <Input
               id="name"
               value={profile.name}
@@ -183,7 +183,7 @@ export default function SettingsPage() {
             />
           </div>
           <div>
-            <Label htmlFor="email">{t('emailAddressLabel')}</Label>
+            <Label htmlFor="email">{t('dashboard.settingsPage.emailAddressLabel')}</Label>
             <Input
               id="email"
               type="email"
@@ -192,7 +192,7 @@ export default function SettingsPage() {
             />
           </div>
           <div>
-            <Label htmlFor="company">{t('companyNameOptional')}</Label>
+            <Label htmlFor="company">{t('dashboard.settingsPage.companyNameOptional')}</Label>
             <Input
               id="company"
               value={profile.company || ''}
@@ -202,7 +202,7 @@ export default function SettingsPage() {
         </div>
 
         <div className="flex justify-end mt-6">
-          <Button onClick={handleSaveProfile}>{t('saveChangesBtn')}</Button>
+          <Button onClick={handleSaveProfile}>{t('dashboard.settingsPage.saveChangesBtn')}</Button>
         </div>
       </div>
 
@@ -218,17 +218,17 @@ export default function SettingsPage() {
             <Globe className="h-5 w-5 text-primary-600" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-neutral-900">{t('regionSettings') || 'Region & Language'}</h2>
-            <p className="text-sm text-neutral-500">{t('regionDescription') || 'Configure your business location and language preferences'}</p>
+            <h2 className="text-lg font-semibold text-neutral-900">{t('dashboard.settingsPage.regionSettings')}</h2>
+            <p className="text-sm text-neutral-500">{t('dashboard.settingsPage.regionDescription')}</p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <Label htmlFor="language">{t('language') || 'Language'}</Label>
+            <Label htmlFor="language">{t('dashboard.settingsPage.language')}</Label>
             <Select value={region.language} onValueChange={(val) => setRegion({...region, language: val})}>
               <SelectTrigger id="language" className="w-full">
-                <SelectValue placeholder="Select language" />
+                <SelectValue placeholder={t('dashboard.settingsPage.selectLanguage')} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="TR">Türkçe</SelectItem>
@@ -241,10 +241,10 @@ export default function SettingsPage() {
           </div>
 
           <div>
-            <Label htmlFor="country">{t('country') || 'Country'}</Label>
+            <Label htmlFor="country">{t('dashboard.settingsPage.country')}</Label>
             <Select value={region.country} onValueChange={(val) => setRegion({...region, country: val})}>
               <SelectTrigger id="country" className="w-full">
-                <SelectValue placeholder="Select country" />
+                <SelectValue placeholder={t('dashboard.settingsPage.selectCountry')} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="TR">Türkiye</SelectItem>
@@ -259,10 +259,10 @@ export default function SettingsPage() {
           </div>
 
           <div>
-            <Label htmlFor="timezone">{t('timezone') || 'Timezone'}</Label>
+            <Label htmlFor="timezone">{t('dashboard.settingsPage.timezone')}</Label>
             <Select value={region.timezone} onValueChange={(val) => setRegion({...region, timezone: val})}>
               <SelectTrigger id="timezone" className="w-full">
-                <SelectValue placeholder="Select timezone" />
+                <SelectValue placeholder={t('dashboard.settingsPage.selectTimezone')} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="Europe/Istanbul">(UTC+3) Istanbul</SelectItem>
@@ -278,7 +278,7 @@ export default function SettingsPage() {
         </div>
 
         <div className="flex justify-end mt-6">
-          <Button onClick={handleSaveRegion}>{t('saveRegion') || 'Save Region Settings'}</Button>
+          <Button onClick={handleSaveRegion}>{t('dashboard.settingsPage.saveRegion')}</Button>
         </div>
       </div>
       )}
@@ -290,16 +290,16 @@ export default function SettingsPage() {
             <Bell className="h-5 w-5 text-primary-600" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-neutral-900">{t('notificationsTitle')}</h2>
-            <p className="text-sm text-neutral-500">{t('configureUpdates')}</p>
+            <h2 className="text-lg font-semibold text-neutral-900">{t('dashboard.settingsPage.notificationsTitle')}</h2>
+            <p className="text-sm text-neutral-500">{t('dashboard.settingsPage.configureUpdates')}</p>
           </div>
         </div>
 
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium text-neutral-900">{t('emailOnNewCall')}</p>
-              <p className="text-sm text-neutral-500">{t('notifyOnCall')}</p>
+              <p className="font-medium text-neutral-900">{t('dashboard.settingsPage.emailOnNewCall')}</p>
+              <p className="text-sm text-neutral-500">{t('dashboard.settingsPage.notifyOnCall')}</p>
             </div>
             <Switch
               checked={notifications.emailOnCall}
@@ -313,8 +313,8 @@ export default function SettingsPage() {
 
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium text-neutral-900">{t('usageLimitAlerts')}</p>
-              <p className="text-sm text-neutral-500">{t('alertApproachingLimit')}</p>
+              <p className="font-medium text-neutral-900">{t('dashboard.settingsPage.usageLimitAlerts')}</p>
+              <p className="text-sm text-neutral-500">{t('dashboard.settingsPage.alertApproachingLimit')}</p>
             </div>
             <Switch
               checked={notifications.emailOnLimit}
@@ -328,8 +328,8 @@ export default function SettingsPage() {
 
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium text-neutral-900">{t('weeklySummaryLabel')}</p>
-              <p className="text-sm text-neutral-500">{t('receiveWeeklyReports')}</p>
+              <p className="font-medium text-neutral-900">{t('dashboard.settingsPage.weeklySummaryLabel')}</p>
+              <p className="text-sm text-neutral-500">{t('dashboard.settingsPage.receiveWeeklyReports')}</p>
             </div>
             <Switch
               checked={notifications.weeklySummary}
@@ -343,8 +343,8 @@ export default function SettingsPage() {
 
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium text-neutral-900">{t('smsNotificationsLabel')}</p>
-              <p className="text-sm text-neutral-500">{t('criticalAlertsViaSms')}</p>
+              <p className="font-medium text-neutral-900">{t('dashboard.settingsPage.smsNotificationsLabel')}</p>
+              <p className="text-sm text-neutral-500">{t('dashboard.settingsPage.criticalAlertsViaSms')}</p>
             </div>
             <Switch
               checked={notifications.smsNotifications}
@@ -356,7 +356,7 @@ export default function SettingsPage() {
         </div>
 
         <div className="flex justify-end mt-6">
-          <Button onClick={handleSaveNotifications}>{t('savePreferencesBtn')}</Button>
+          <Button onClick={handleSaveNotifications}>{t('dashboard.settingsPage.savePreferencesBtn')}</Button>
         </div>
       </div>
 
@@ -367,14 +367,14 @@ export default function SettingsPage() {
             <AlertTriangle className="h-5 w-5 text-primary-600" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-neutral-900">{t('securityTitle')}</h2>
-            <p className="text-sm text-neutral-500">{t('managePasswordLabel')}</p>
+            <h2 className="text-lg font-semibold text-neutral-900">{t('dashboard.settingsPage.securityTitle')}</h2>
+            <p className="text-sm text-neutral-500">{t('dashboard.settingsPage.managePasswordLabel')}</p>
           </div>
         </div>
 
         <div className="space-y-4">
           <div>
-            <Label htmlFor="currentPassword">{t('currentPasswordLabel')}</Label>
+            <Label htmlFor="currentPassword">{t('dashboard.settingsPage.currentPasswordLabel')}</Label>
             <Input
               id="currentPassword"
               type="password"
@@ -385,7 +385,7 @@ export default function SettingsPage() {
             />
           </div>
           <div>
-            <Label htmlFor="newPassword">{t('newPasswordLabel')}</Label>
+            <Label htmlFor="newPassword">{t('dashboard.settingsPage.newPasswordLabel')}</Label>
             <Input
               id="newPassword"
               type="password"
@@ -394,7 +394,7 @@ export default function SettingsPage() {
             />
           </div>
           <div>
-            <Label htmlFor="confirmPassword">{t('confirmNewPassword')}</Label>
+            <Label htmlFor="confirmPassword">{t('dashboard.settingsPage.confirmNewPassword')}</Label>
             <Input
               id="confirmPassword"
               type="password"
@@ -407,7 +407,7 @@ export default function SettingsPage() {
         </div>
 
         <div className="flex justify-end mt-6">
-          <Button onClick={handleChangePassword}>{t('changePasswordBtn')}</Button>
+          <Button onClick={handleChangePassword}>{t('dashboard.settingsPage.changePasswordBtn')}</Button>
         </div>
       </div>
 
@@ -415,12 +415,12 @@ export default function SettingsPage() {
       <div className="bg-red-50 border-2 border-red-200 rounded-xl p-6">
         <div className="flex items-center gap-3 mb-4">
           <AlertTriangle className="h-5 w-5 text-red-600" />
-          <h2 className="text-lg font-semibold text-red-900">{t('dangerZoneTitle')}</h2>
+          <h2 className="text-lg font-semibold text-red-900">{t('dashboard.settingsPage.dangerZoneTitle')}</h2>
         </div>
         <p className="text-sm text-red-700 mb-4">
-          {t('deleteAccountWarning2')}
+          {t('dashboard.settingsPage.deleteAccountWarning')}
         </p>
-        <Button variant="destructive">{t('deleteAccountBtn')}</Button>
+        <Button variant="destructive">{t('dashboard.settingsPage.deleteAccountBtn')}</Button>
       </div>
     </div>
   );

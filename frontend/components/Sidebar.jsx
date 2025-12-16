@@ -54,44 +54,44 @@ export default function Sidebar({ user, credits }) {
   // Navigation items with permission requirements
   const NAVIGATION = [
     {
-      label: t('sidebarBuild'),
+      label: t('dashboard.sidebar.build'),
       items: [
-        { icon: Bot, label: t('sidebarAssistants'), href: '/dashboard/assistant', permission: 'assistants:view' },
-        { icon: BookOpen, label: t('sidebarKnowledge'), href: '/dashboard/knowledge', permission: 'knowledge:view' },
-        { icon: Mic, label: t('sidebarVoices'), href: '/dashboard/voices', permission: 'voices:view' },
-        { icon: MessageSquare, label: t('sidebarChatWidget'), href: '/dashboard/chat-widget', permission: 'widget:view' },
+        { icon: Bot, label: t('dashboard.sidebar.assistants'), href: '/dashboard/assistant', permission: 'assistants:view' },
+        { icon: BookOpen, label: t('dashboard.sidebar.knowledgeBase'), href: '/dashboard/knowledge', permission: 'knowledge:view' },
+        { icon: Mic, label: t('dashboard.sidebar.voices'), href: '/dashboard/voices', permission: 'voices:view' },
+        { icon: MessageSquare, label: t('dashboard.sidebar.chatWidget'), href: '/dashboard/chat-widget', permission: 'widget:view' },
       ],
     },
     {
-      label: t('sidebarDeploy'),
+      label: t('dashboard.sidebar.deploy'),
       items: [
-        { icon: PhoneCall, label: t('sidebarPhoneNumbers'), href: '/dashboard/phone-numbers', permission: 'phone:view' },
-        { icon: Mail, label: 'Email Inbox', href: '/dashboard/email', permission: 'email:view' },
-        { icon: Puzzle, label: t('sidebarIntegrations'), href: '/dashboard/integrations', permission: 'integrations:view' },
+        { icon: PhoneCall, label: t('dashboard.sidebar.phoneNumbers'), href: '/dashboard/phone-numbers', permission: 'phone:view' },
+        { icon: Mail, label: t('dashboard.sidebar.emailInbox'), href: '/dashboard/email', permission: 'email:view' },
+        { icon: Puzzle, label: t('dashboard.sidebar.integrations'), href: '/dashboard/integrations', permission: 'integrations:view' },
       ],
     },
     {
-      label: t('sidebarMonitor'),
+      label: t('dashboard.sidebar.monitor'),
       items: [
-        { icon: LayoutDashboard, label: t('sidebarDashboard'), href: '/dashboard', permission: 'dashboard:view' },
-        { icon: Phone, label: t('sidebarCalls'), href: '/dashboard/calls', permission: 'calls:view' },
-        { icon: BarChart3, label: t('sidebarAnalytics'), href: '/dashboard/analytics', permission: 'analytics:view' },
+        { icon: LayoutDashboard, label: t('dashboard.sidebar.overview'), href: '/dashboard', permission: 'dashboard:view' },
+        { icon: Phone, label: t('dashboard.sidebar.calls'), href: '/dashboard/calls', permission: 'calls:view' },
+        { icon: BarChart3, label: t('dashboard.sidebar.analytics'), href: '/dashboard/analytics', permission: 'analytics:view' },
       ],
     },
     {
-      label: 'Tahsilat',
+      label: t('dashboard.sidebar.collections'),
       items: [
-        { icon: Receipt, label: 'Vadesi Geçenler', href: '/dashboard/collections', permission: 'collections:view' },
-        { icon: Megaphone, label: 'Kampanyalar', href: '/dashboard/campaigns', permission: 'campaigns:view' },
+        { icon: Receipt, label: t('dashboard.sidebar.overduePayments'), href: '/dashboard/collections', permission: 'collections:view' },
+        { icon: Megaphone, label: t('dashboard.sidebar.campaigns'), href: '/dashboard/campaigns', permission: 'campaigns:view' },
       ],
     },
     {
-      label: t('sidebarSystem'),
+      label: t('dashboard.sidebar.system'),
       items: [
-        { icon: Users, label: 'Ekip', href: '/dashboard/team', permission: 'team:view' },
-        { icon: Calculator, label: t('sidebarCostCalculator'), href: '/dashboard/cost-calculator', permission: 'dashboard:view' },
-        { icon: Settings, label: t('sidebarSettings'), href: '/dashboard/settings', permission: 'settings:view' },
-        { icon: CreditCard, label: t('sidebarSubscription'), href: '/dashboard/subscription', permission: 'billing:view' },
+        { icon: Users, label: t('dashboard.sidebar.team'), href: '/dashboard/team', permission: 'team:view' },
+        { icon: Calculator, label: t('dashboard.sidebar.costCalculator'), href: '/dashboard/cost-calculator', permission: 'dashboard:view' },
+        { icon: Settings, label: t('dashboard.sidebar.settings'), href: '/dashboard/settings', permission: 'settings:view' },
+        { icon: CreditCard, label: t('dashboard.sidebar.subscription'), href: '/dashboard/subscription', permission: 'billing:view' },
       ],
     },
   ];
@@ -186,11 +186,11 @@ export default function Sidebar({ user, credits }) {
       {credits !== undefined && (
         <div className="px-6 py-3 border-t border-neutral-200">
           <div className="bg-primary-50 rounded-lg p-3">
-            <p className="text-xs text-neutral-600 mb-1">{t('availableCredits')}</p>
+            <p className="text-xs text-neutral-600 mb-1">{t('dashboard.credits.available')}</p>
             <p className="text-2xl font-bold text-primary-600">${credits.toFixed(2)}</p>
             <Link href="/dashboard/subscription">
               <Button variant="link" size="sm" className="p-0 h-auto text-xs mt-1">
-                {t('addCredits')}
+                {t('dashboard.credits.add')}
               </Button>
             </Link>
           </div>
@@ -228,13 +228,13 @@ export default function Sidebar({ user, credits }) {
             <DropdownMenuItem asChild>
               <Link href="/dashboard/settings" className="cursor-pointer">
                 <User className="h-4 w-4 mr-2" />
-                {t('profileSettings')}
+                {t('dashboard.profileSettings')}
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-600">
               <LogOut className="h-4 w-4 mr-2" />
-              {t('logOut')}
+              {t('dashboard.logOut')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

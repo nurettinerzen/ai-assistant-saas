@@ -51,7 +51,7 @@ export default function CallsPage() {
       const response = await apiClient.calls.getAll(params);
       setCalls(response.data.calls || []);
     } catch (error) {
-      toast.error('Failed to load calls');
+      toast.error(t('dashboard.callsPage.failedToLoadCalls'));
     } finally {
       setLoading(false);
     }
@@ -78,9 +78,9 @@ export default function CallsPage() {
       document.body.appendChild(link);
       link.click();
       link.remove();
-      toast.success('Calls exported successfully');
+      toast.success(t('dashboard.callsPage.callsExportedSuccess'));
     } catch (error) {
-      toast.error('Failed to export calls');
+      toast.error(t('dashboard.callsPage.failedToExportCalls'));
     }
   };
 
@@ -111,12 +111,12 @@ export default function CallsPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-neutral-900">Call History</h1>
-          <p className="text-neutral-600 mt-1">View call recordings, transcripts, and AI analysis</p>
+          <h1 className="text-3xl font-bold text-neutral-900">{t('dashboard.callsPage.title')}</h1>
+          <p className="text-neutral-600 mt-1">{t('dashboard.callsPage.description')}</p>
         </div>
         <Button onClick={handleExport} variant="outline">
           <Download className="h-4 w-4 mr-2" />
-          Export CSV
+          {t('dashboard.callsPage.exportCSV')}
         </Button>
       </div>
 
@@ -125,7 +125,7 @@ export default function CallsPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
           <Input
-            placeholder="Search by phone number, call ID, or transcript..."
+            placeholder={t('dashboard.callsPage.searchByPhone')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
@@ -137,11 +137,11 @@ export default function CallsPage() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="answered">Answered</SelectItem>
-            <SelectItem value="completed">Completed</SelectItem>
-            <SelectItem value="failed">Failed</SelectItem>
-            <SelectItem value="in_progress">In Progress</SelectItem>
+            <SelectItem value="all">{t('dashboard.callsPage.allStatus')}</SelectItem>
+            <SelectItem value="answered">{t('dashboard.callsPage.answered')}</SelectItem>
+            <SelectItem value="completed">{t('dashboard.callsPage.completed')}</SelectItem>
+            <SelectItem value="failed">{t('dashboard.callsPage.failed')}</SelectItem>
+            <SelectItem value="in_progress">{t('dashboard.callsPage.inProgress')}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -162,25 +162,25 @@ export default function CallsPage() {
               <thead className="bg-neutral-50 border-b border-neutral-200">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    Phone Number
+                    {t('dashboard.callsPage.phoneNumber')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    Date & Time
+                    {t('dashboard.callsPage.dateTime')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    Duration
+                    {t('dashboard.callsPage.duration')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    Status
+                    {t('dashboard.callsPage.status')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    Sentiment
+                    {t('dashboard.callsPage.sentiment')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    Summary
+                    {t('dashboard.callsPage.summary')}
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    Actions
+                    {t('dashboard.callsPage.actions')}
                   </th>
                 </tr>
               </thead>
@@ -237,7 +237,7 @@ export default function CallsPage() {
                               e.stopPropagation();
                               handleViewTranscript(call.id);
                             }}
-                            title="Play recording"
+                            title={t('dashboard.callsPage.playRecording')}
                           >
                             <Volume2 className="h-4 w-4" />
                           </Button>
@@ -250,13 +250,13 @@ export default function CallsPage() {
                               e.stopPropagation();
                               handleViewTranscript(call.id);
                             }}
-                            title="View transcript"
+                            title={t('dashboard.callsPage.viewTranscript')}
                           >
                             <FileText className="h-4 w-4" />
                           </Button>
                         )}
                         {!call.hasRecording && !call.hasTranscript && (
-                          <span className="text-xs text-neutral-400">No data</span>
+                          <span className="text-xs text-neutral-400">{t('dashboard.callsPage.noData')}</span>
                         )}
                       </div>
                     </td>
@@ -270,11 +270,11 @@ export default function CallsPage() {
         <div className="bg-white rounded-xl border border-neutral-200 p-8">
           <EmptyState
             icon={Phone}
-            title={searchQuery || statusFilter !== 'all' ? 'No calls found' : 'No calls yet'}
+            title={searchQuery || statusFilter !== 'all' ? t('dashboard.callsPage.noCallsFound') : t('dashboard.callsPage.noCalls')}
             description={
               searchQuery || statusFilter !== 'all'
-                ? 'Try adjusting your search or filters'
-                : 'Call history will appear here once you receive calls'
+                ? t('dashboard.callsPage.tryAdjustingFilters')
+                : t('dashboard.callsPage.callsWillAppear')
             }
           />
         </div>

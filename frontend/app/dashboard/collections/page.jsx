@@ -59,9 +59,11 @@ import {
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast } from '@/lib/toast';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function CollectionsPage() {
   const router = useRouter();
+  const { t } = useLanguage();
 
   // State
   const [loading, setLoading] = useState(true);
@@ -125,7 +127,7 @@ export default function CollectionsPage() {
       setSummary(summaryRes.data);
     } catch (error) {
       console.error('Failed to load overdue data:', error);
-      toast.error('Vadesi geçen faturalar yüklenemedi');
+      toast.error(t('dashboard.collectionsPage.errors.loadInvoicesFailed'));
     } finally {
       setLoading(false);
     }
@@ -136,7 +138,7 @@ export default function CollectionsPage() {
       const response = await apiClient.get('/api/parasut/auth');
       window.location.href = response.data.authUrl;
     } catch (error) {
-      toast.error('Paraşüt bağlantısı başlatılamadı');
+      toast.error(t('dashboard.collectionsPage.errors.parasutConnectionFailed'));
     }
   };
 
@@ -158,7 +160,7 @@ export default function CollectionsPage() {
 
   const handleCreateCampaign = async () => {
     if (selectedCustomers.length === 0) {
-      toast.error('En az bir müşteri seçmelisiniz');
+      toast.error(t('dashboard.collectionsPage.errors.selectAtLeastOneCustomer'));
       return;
     }
 
@@ -178,13 +180,13 @@ export default function CollectionsPage() {
         }));
 
       const response = await apiClient.post('/api/batch-call/campaigns', {
-        name: campaignForm.name || `Tahsilat - ${new Date().toLocaleDateString('tr-TR')}`,
+        name: campaignForm.name || `${t('dashboard.collectionsPage.defaultCampaignName')} - ${new Date().toLocaleDateString('tr-TR')}`,
         channel: campaignForm.channel,
         customers,
       });
 
       if (response.data.success) {
-        toast.success('Kampanya oluşturuldu!');
+        toast.success(t('dashboard.collectionsPage.campaignCreated'));
         setShowCampaignModal(false);
         setSelectedCustomers([]);
         setCampaignForm({ name: '', channel: 'PHONE' });
@@ -193,7 +195,7 @@ export default function CollectionsPage() {
         router.push(`/dashboard/campaigns/${response.data.campaign.id}`);
       }
     } catch (error) {
-      const errorMsg = error.response?.data?.error || 'Kampanya oluşturulamadı';
+      const errorMsg = error.response?.data?.error || t('dashboard.collectionsPage.errors.campaignCreationFailed');
       toast.error(errorMsg);
     } finally {
       setCreatingCampaign(false);
@@ -218,9 +220,9 @@ export default function CollectionsPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-neutral-900">Vadesi Geçen Faturalar</h1>
+          <h1 className="text-3xl font-bold text-neutral-900">{t('dashboard.collectionsPage.title')}</h1>
           <p className="text-neutral-600 mt-1">
-            Paraşüt hesabınızı bağlayarak vadesi geçen faturalarınızı görüntüleyin
+            {t('dashboard.collectionsPage.notConnected.description')}
           </p>
         </div>
 
@@ -228,28 +230,27 @@ export default function CollectionsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <LinkIcon className="h-5 w-5 text-primary-600" />
-              Paraşüt Bağlantısı Gerekli
+              {t('dashboard.collectionsPage.notConnected.cardTitle')}
             </CardTitle>
             <CardDescription>
-              Vadesi geçen faturalarınızı görüntülemek ve tahsilat kampanyaları oluşturmak için
-              Paraşüt muhasebe yazılımınızı bağlamanız gerekmektedir.
+              {t('dashboard.collectionsPage.notConnected.cardDescription')}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h4 className="font-semibold text-sm text-blue-900 mb-2">Bağlantı sonrası yapabilecekleriniz:</h4>
+                <h4 className="font-semibold text-sm text-blue-900 mb-2">{t('dashboard.collectionsPage.notConnected.featuresTitle')}</h4>
                 <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
-                  <li>Vadesi geçen tüm faturaları tek ekranda görüntüleme</li>
-                  <li>Müşterilere toplu AI telefon araması başlatma</li>
-                  <li>Tahsilat sonuçlarını takip etme</li>
-                  <li>Ödeme sözü alan müşterileri raporlama</li>
+                  <li>{t('dashboard.collectionsPage.notConnected.feature1')}</li>
+                  <li>{t('dashboard.collectionsPage.notConnected.feature2')}</li>
+                  <li>{t('dashboard.collectionsPage.notConnected.feature3')}</li>
+                  <li>{t('dashboard.collectionsPage.notConnected.feature4')}</li>
                 </ul>
               </div>
 
               <Button onClick={handleConnectParasut} className="w-full">
                 <ExternalLink className="h-4 w-4 mr-2" />
-                Paraşüt'e Bağlan
+                {t('dashboard.collectionsPage.notConnected.connectButton')}
               </Button>
             </div>
           </CardContent>
@@ -263,22 +264,22 @@ export default function CollectionsPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-neutral-900">Vadesi Geçen Faturalar</h1>
+          <h1 className="text-3xl font-bold text-neutral-900">{t('dashboard.collectionsPage.title')}</h1>
           <p className="text-neutral-600 mt-1">
-            Paraşüt'ten alınan vadesi geçmiş faturalar
+            {t('dashboard.collectionsPage.description')}
           </p>
         </div>
 
         <div className="flex gap-2">
           <Button variant="outline" onClick={loadOverdueData} disabled={loading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Yenile
+            {t('dashboard.collectionsPage.refreshButton')}
           </Button>
 
           {selectedCustomers.length > 0 && (
             <Button onClick={() => setShowCampaignModal(true)}>
               <Play className="h-4 w-4 mr-2" />
-              Kampanya Başlat ({selectedCustomers.length})
+              {t('dashboard.collectionsPage.startCampaignButton')} ({selectedCustomers.length})
             </Button>
           )}
         </div>
@@ -294,7 +295,7 @@ export default function CollectionsPage() {
                   <Receipt className="h-6 w-6 text-red-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-neutral-600">Toplam Fatura</p>
+                  <p className="text-sm text-neutral-600">{t('dashboard.collectionsPage.summary.totalInvoices')}</p>
                   <p className="text-2xl font-bold">{summary.totalInvoices || 0}</p>
                 </div>
               </div>
@@ -308,7 +309,7 @@ export default function CollectionsPage() {
                   <DollarSign className="h-6 w-6 text-orange-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-neutral-600">Toplam Tutar</p>
+                  <p className="text-sm text-neutral-600">{t('dashboard.collectionsPage.summary.totalAmount')}</p>
                   <p className="text-2xl font-bold">{formatCurrency(summary.totalAmount || 0)}</p>
                 </div>
               </div>
@@ -322,7 +323,7 @@ export default function CollectionsPage() {
                   <Users className="h-6 w-6 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-neutral-600">Müşteri Sayısı</p>
+                  <p className="text-sm text-neutral-600">{t('dashboard.collectionsPage.summary.customerCount')}</p>
                   <p className="text-2xl font-bold">{summary.uniqueCustomers || 0}</p>
                 </div>
               </div>
@@ -336,8 +337,8 @@ export default function CollectionsPage() {
                   <Clock className="h-6 w-6 text-purple-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-neutral-600">Ort. Gecikme</p>
-                  <p className="text-2xl font-bold">{summary.avgDaysOverdue || 0} gün</p>
+                  <p className="text-sm text-neutral-600">{t('dashboard.collectionsPage.summary.avgDelay')}</p>
+                  <p className="text-2xl font-bold">{summary.avgDaysOverdue || 0} {t('dashboard.collectionsPage.summary.days')}</p>
                 </div>
               </div>
             </CardContent>
@@ -350,13 +351,13 @@ export default function CollectionsPage() {
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <Filter className="h-5 w-5" />
-            Filtreler
+            {t('dashboard.collectionsPage.filters.title')}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="space-y-2">
-              <Label>Min. Gecikme (Gün)</Label>
+              <Label>{t('dashboard.collectionsPage.filters.minDays')}</Label>
               <Input
                 type="number"
                 min="0"
@@ -367,18 +368,18 @@ export default function CollectionsPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Max. Gecikme (Gün)</Label>
+              <Label>{t('dashboard.collectionsPage.filters.maxDays')}</Label>
               <Input
                 type="number"
                 min="0"
                 value={filters.maxDays}
                 onChange={(e) => setFilters({ ...filters, maxDays: e.target.value })}
-                placeholder="Tümü"
+                placeholder={t('dashboard.collectionsPage.filters.all')}
               />
             </div>
 
             <div className="space-y-2">
-              <Label>Min. Tutar (TL)</Label>
+              <Label>{t('dashboard.collectionsPage.filters.minAmount')}</Label>
               <Input
                 type="number"
                 min="0"
@@ -389,20 +390,20 @@ export default function CollectionsPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Max. Tutar (TL)</Label>
+              <Label>{t('dashboard.collectionsPage.filters.maxAmount')}</Label>
               <Input
                 type="number"
                 min="0"
                 value={filters.maxAmount}
                 onChange={(e) => setFilters({ ...filters, maxAmount: e.target.value })}
-                placeholder="Tümü"
+                placeholder={t('dashboard.collectionsPage.filters.all')}
               />
             </div>
           </div>
 
           <Button onClick={loadOverdueData} className="mt-4" disabled={loading}>
             <Filter className="h-4 w-4 mr-2" />
-            Filtrele
+            {t('dashboard.collectionsPage.filters.applyButton')}
           </Button>
         </CardContent>
       </Card>
@@ -411,10 +412,10 @@ export default function CollectionsPage() {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">Fatura Listesi</CardTitle>
+            <CardTitle className="text-lg">{t('dashboard.collectionsPage.table.title')}</CardTitle>
             {overdueInvoices.length > 0 && (
               <Button variant="outline" size="sm" onClick={handleSelectAll}>
-                {selectedCustomers.length === overdueInvoices.length ? 'Seçimi Kaldır' : 'Tümünü Seç'}
+                {selectedCustomers.length === overdueInvoices.length ? t('dashboard.collectionsPage.table.unselectAll') : t('dashboard.collectionsPage.table.selectAll')}
               </Button>
             )}
           </div>
@@ -427,9 +428,9 @@ export default function CollectionsPage() {
           ) : overdueInvoices.length === 0 ? (
             <div className="text-center py-12">
               <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-neutral-900">Vadesi geçmiş fatura yok!</h3>
+              <h3 className="text-lg font-semibold text-neutral-900">{t('dashboard.collectionsPage.table.noOverdueTitle')}</h3>
               <p className="text-neutral-600 mt-1">
-                Tüm faturalarınız zamanında ödenmiş görünüyor.
+                {t('dashboard.collectionsPage.table.noOverdueDesc')}
               </p>
             </div>
           ) : (
@@ -445,12 +446,12 @@ export default function CollectionsPage() {
                         className="rounded border-neutral-300"
                       />
                     </TableHead>
-                    <TableHead>Müşteri</TableHead>
-                    <TableHead>Fatura No</TableHead>
-                    <TableHead>Tutar</TableHead>
-                    <TableHead>Gecikme</TableHead>
-                    <TableHead>Telefon</TableHead>
-                    <TableHead>Durum</TableHead>
+                    <TableHead>{t('dashboard.collectionsPage.table.customer')}</TableHead>
+                    <TableHead>{t('dashboard.collectionsPage.table.invoiceNo')}</TableHead>
+                    <TableHead>{t('dashboard.collectionsPage.table.amount')}</TableHead>
+                    <TableHead>{t('dashboard.collectionsPage.table.delay')}</TableHead>
+                    <TableHead>{t('dashboard.collectionsPage.table.phone')}</TableHead>
+                    <TableHead>{t('dashboard.collectionsPage.table.status')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -474,25 +475,25 @@ export default function CollectionsPage() {
                       </TableCell>
                       <TableCell>
                         <Badge className={getOverdueBadgeColor(invoice.daysOverdue)}>
-                          {invoice.daysOverdue} gün
+                          {invoice.daysOverdue} {t('dashboard.collectionsPage.table.days')}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-neutral-600">
                         {invoice.customerPhone || (
                           <span className="text-red-500 text-sm flex items-center gap-1">
                             <AlertCircle className="h-3 w-3" />
-                            Telefon yok
+                            {t('dashboard.collectionsPage.table.noPhone')}
                           </span>
                         )}
                       </TableCell>
                       <TableCell>
                         {invoice.hasPhone ? (
                           <Badge variant="outline" className="text-green-600 border-green-600">
-                            Aranabilir
+                            {t('dashboard.collectionsPage.table.callable')}
                           </Badge>
                         ) : (
                           <Badge variant="outline" className="text-red-600 border-red-600">
-                            Telefon Gerekli
+                            {t('dashboard.collectionsPage.table.phoneRequired')}
                           </Badge>
                         )}
                       </TableCell>
@@ -509,25 +510,25 @@ export default function CollectionsPage() {
       <Dialog open={showCampaignModal} onOpenChange={setShowCampaignModal}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Tahsilat Kampanyası Oluştur</DialogTitle>
+            <DialogTitle>{t('dashboard.collectionsPage.modal.title')}</DialogTitle>
             <DialogDescription>
-              Seçilen {selectedCustomers.length} müşteriye toplu arama kampanyası başlatın.
+              {t('dashboard.collectionsPage.modal.description')} {selectedCustomers.length} {t('dashboard.collectionsPage.modal.customersSelected')}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="campaignName">Kampanya Adı</Label>
+              <Label htmlFor="campaignName">{t('dashboard.collectionsPage.modal.campaignName')}</Label>
               <Input
                 id="campaignName"
-                placeholder="Örn: Ocak 2024 Tahsilat"
+                placeholder={t('dashboard.collectionsPage.modal.campaignNamePlaceholder')}
                 value={campaignForm.name}
                 onChange={(e) => setCampaignForm({ ...campaignForm, name: e.target.value })}
               />
             </div>
 
             <div className="space-y-2">
-              <Label>Kanal</Label>
+              <Label>{t('dashboard.collectionsPage.modal.channel')}</Label>
               <Select
                 value={campaignForm.channel}
                 onValueChange={(value) => setCampaignForm({ ...campaignForm, channel: value })}
@@ -539,13 +540,13 @@ export default function CollectionsPage() {
                   <SelectItem value="PHONE">
                     <div className="flex items-center gap-2">
                       <Phone className="h-4 w-4" />
-                      Telefon Araması
+                      {t('dashboard.collectionsPage.modal.phoneCall')}
                     </div>
                   </SelectItem>
                   <SelectItem value="WHATSAPP">
                     <div className="flex items-center gap-2">
                       <MessageSquare className="h-4 w-4" />
-                      WhatsApp
+                      {t('dashboard.collectionsPage.modal.whatsapp')}
                     </div>
                   </SelectItem>
                 </SelectContent>
@@ -554,14 +555,14 @@ export default function CollectionsPage() {
 
             {/* Summary */}
             <div className="bg-neutral-50 rounded-lg p-4 space-y-2">
-              <h4 className="font-semibold text-sm">Kampanya Özeti</h4>
+              <h4 className="font-semibold text-sm">{t('dashboard.collectionsPage.modal.summaryTitle')}</h4>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div>
-                  <span className="text-neutral-600">Müşteri:</span>
+                  <span className="text-neutral-600">{t('dashboard.collectionsPage.modal.customer')}:</span>
                   <span className="ml-2 font-medium">{selectedCustomers.length}</span>
                 </div>
                 <div>
-                  <span className="text-neutral-600">Toplam Tutar:</span>
+                  <span className="text-neutral-600">{t('dashboard.collectionsPage.modal.totalAmount')}:</span>
                   <span className="ml-2 font-medium">
                     {formatCurrency(
                       overdueInvoices
@@ -575,11 +576,11 @@ export default function CollectionsPage() {
 
             {/* Info */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h4 className="font-semibold text-sm text-blue-900 mb-2">Bilgi</h4>
+              <h4 className="font-semibold text-sm text-blue-900 mb-2">{t('dashboard.collectionsPage.modal.infoTitle')}</h4>
               <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
-                <li>AI asistanınız seçilen müşterileri sırayla arayacak</li>
-                <li>Her görüşme kaydedilecek ve sonuçlar raporlanacak</li>
-                <li>Kampanyayı istediğiniz zaman duraklatabilirsiniz</li>
+                <li>{t('dashboard.collectionsPage.modal.info1')}</li>
+                <li>{t('dashboard.collectionsPage.modal.info2')}</li>
+                <li>{t('dashboard.collectionsPage.modal.info3')}</li>
               </ul>
             </div>
           </div>
@@ -590,7 +591,7 @@ export default function CollectionsPage() {
               onClick={() => setShowCampaignModal(false)}
               disabled={creatingCampaign}
             >
-              İptal
+              {t('dashboard.collectionsPage.modal.cancel')}
             </Button>
             <Button
               onClick={handleCreateCampaign}
@@ -599,12 +600,12 @@ export default function CollectionsPage() {
               {creatingCampaign ? (
                 <>
                   <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                  Oluşturuluyor...
+                  {t('dashboard.collectionsPage.modal.creating')}
                 </>
               ) : (
                 <>
                   <Play className="h-4 w-4 mr-2" />
-                  Kampanya Oluştur
+                  {t('dashboard.collectionsPage.modal.createButton')}
                 </>
               )}
             </Button>
