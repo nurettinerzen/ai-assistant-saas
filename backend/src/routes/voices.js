@@ -12,11 +12,14 @@ const ELEVENLABS_BASE_URL = 'https://api.elevenlabs.io/v1';
 // voice_id refers to actual 11Labs voice IDs
 const VOICE_LIBRARY = {
   // TURKISH - using actual 11Labs Turkish voices
-  tr: [
-    { id: 'tr-m-cihan', voice_id: 'cjVigY5qzO86Huf0OWal', name: 'Cihan', accent: 'Turkish', gender: 'male', description: 'Profesyonel erkek ses', provider: '11labs' },
-    { id: 'tr-m-kaan', voice_id: 'TxGEqnHWrfWFTfGW9XjX', name: 'Kaan', accent: 'Turkish', gender: 'male', description: 'Samimi erkek ses', provider: '11labs' },
-    { id: 'tr-f-ecem', voice_id: 'XrExE9yKIg1WjnnlVkGX', name: 'Ecem', accent: 'Turkish', gender: 'female', description: 'Genç kadın ses', provider: '11labs' },
-    { id: 'tr-f-aslihan', voice_id: 'pFZP5JQG7iQjIQuC4Bku', name: 'Aslıhan', accent: 'Turkish', gender: 'female', description: 'Profesyonel kadın ses', provider: '11labs' }
+tr: [
+    { id: 'tr-m-cihan', voice_id: 'Md4RAnfKt9kVIbvqUxly', name: 'Cihan', accent: 'Turkish', gender: 'male', description: 'Profesyonel erkek ses', provider: '11labs', preview_url: 'https://storage.googleapis.com/eleven-public-prod/database/user/EssLD6WbhOTGIoaNSeoJVncYe812/voices/Md4RAnfKt9kVIbvqUxly/64c78a1e-1ffb-434e-8572-c5bb9f18e2c4.mp3' },
+    { id: 'tr-m-yunus', voice_id: 'Q5n6GDIjpN0pLOlycRFT', name: 'Yunus', accent: 'Turkish', gender: 'male', description: 'Karizmatik erkek ses', provider: '11labs', preview_url: 'https://storage.googleapis.com/eleven-public-prod/database/user/hmBU2trKB2hw1VCZYKUk7n9zfwP2/voices/Q5n6GDIjpN0pLOlycRFT/b01f7a6e-3e30-47a0-8b9f-d6987e25163c.mp3' },
+    { id: 'tr-m-murat', voice_id: 'xouejoTN10DvXRSlXvmB', name: 'Murat', accent: 'Turkish', gender: 'male', description: 'Deneyimli erkek ses', provider: '11labs', preview_url: 'https://storage.googleapis.com/eleven-public-prod/database/user/oprsCAF2LpPdjUiJs7W6JHIjxMg2/voices/xouejoTN10DvXRSlXvmB/18070134-9ffe-4e87-907b-96a6410d5b7d.mp3' },
+    { id: 'tr-m-sukru', voice_id: 'pMQM2vAjnEa9PmfDvgkY', name: 'Şükrü', accent: 'Turkish', gender: 'male', description: 'Güvenilir erkek ses', provider: '11labs', preview_url: 'https://storage.googleapis.com/eleven-public-prod/database/workspace/e38d0dd07ef84d7f82003e8028ade68f/voices/pMQM2vAjnEa9PmfDvgkY/ikMvxEZK1IAvzge4BY0u.mp3' },
+    { id: 'tr-f-aslihan', voice_id: '973ByT3y0FasCLLTLBAL', name: 'Aslıhan', accent: 'Turkish', gender: 'female', description: 'Profesyonel kadın ses', provider: '11labs', preview_url: 'https://storage.googleapis.com/eleven-public-prod/database/user/yOsT3S9G9JaOe6iwHGTc6MTQDH73/voices/973ByT3y0FasCLLTLBAL/d0253eca-154c-498e-84b4-d107b1938168.mp3' },
+    { id: 'tr-f-ecem', voice_id: 'PVbzZmwmdI99VcmuRK7G', name: 'Ecem', accent: 'Turkish', gender: 'female', description: 'Genç kadın ses', provider: '11labs', preview_url: 'https://storage.googleapis.com/eleven-public-prod/database/user/sIiYnRQWXKRCtsXHgjdLDc6NSZW2/voices/PVbzZmwmdI99VcmuRK7G/d005c731-034f-4288-ac0c-1b607a69a405.mp3' },
+    { id: 'tr-f-gokce', voice_id: 'oPC5I9GKjMReiaM29gjY', name: 'Gökçe', accent: 'Turkish', gender: 'female', description: 'Sıcak kadın ses', provider: '11labs', preview_url: 'https://storage.googleapis.com/eleven-public-prod/database/user/vVKic6viINPymeEg3vbDtuIJ0LZ2/voices/oPC5I9GKjMReiaM29gjY/TCHpvhpoS2nZ7wcuT6Py.mp3' }
   ],
 
   // ENGLISH - using actual 11Labs English voices
@@ -185,6 +188,11 @@ async function getPreviewUrl(voiceId) {
 async function enrichVoicesWithPreviews(voices) {
   const enrichedVoices = await Promise.all(
     voices.map(async (voice) => {
+      // First check if preview_url already exists in voice object
+      if (voice.preview_url) {
+        return { ...voice, sampleUrl: voice.preview_url };
+      }
+      // Otherwise try to fetch from 11Labs API
       if (voice.voice_id) {
         const sampleUrl = await getPreviewUrl(voice.voice_id);
         return { ...voice, sampleUrl };

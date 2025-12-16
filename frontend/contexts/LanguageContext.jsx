@@ -1,33 +1,21 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { translations } from '@/lib/translations';
 
 const LanguageContext = createContext();
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-// Global in-memory cache (persists across renders)
-const memoryCache = new Map();
-
-// Track pending translations to avoid duplicate requests
-const pendingTranslations = new Set();
+// Cache
+const cache = {};
 
 const getCache = (text, locale) => {
   const key = `${locale}:${text}`;
-
-  // Check memory cache first (fastest)
-  if (memoryCache.has(key)) {
-    return memoryCache.get(key);
-  }
-
-  // Check localStorage
+  if (cache[key]) return cache[key];
   if (typeof window !== 'undefined') {
     try {
       const stored = localStorage.getItem(`tr_${key}`);
-      if (stored) {
-        memoryCache.set(key, stored); // Populate memory cache
-        return stored;
-      }
+      if (stored) { cache[key] = stored; return stored; }
     } catch(e) {}
   }
   return null;
@@ -35,20 +23,17 @@ const getCache = (text, locale) => {
 
 const setCache = (text, locale, translation) => {
   const key = `${locale}:${text}`;
-  memoryCache.set(key, translation);
+  cache[key] = translation;
   if (typeof window !== 'undefined') {
-    try {
-      localStorage.setItem(`tr_${key}`, translation);
-    } catch(e) {}
+    try { localStorage.setItem(`tr_${key}`, translation); } catch(e) {}
   }
 };
 
 export function LanguageProvider({ children }) {
   const [locale, setLocale] = useState('en');
-  const [updateCounter, setUpdateCounter] = useState(0);
+  const [, forceUpdate] = useState(0);
   const queue = useRef([]);
   const timer = useRef(null);
-  const isProcessing = useRef(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -57,99 +42,59 @@ export function LanguageProvider({ children }) {
     }
   }, []);
 
-  // Stable processQueue function - doesn't depend on locale from closure
-  const processQueue = useCallback(async (currentLocale) => {
-    if (queue.current.length === 0 || currentLocale === 'en' || isProcessing.current) return;
+  const processQueue = useCallback(async () => {
+    if (queue.current.length === 0 || locale === 'en') return;
 
-    isProcessing.current = true;
     const texts = [...new Set(queue.current)];
     queue.current = [];
 
-    // Filter out already cached and pending translations
-    const uncached = texts.filter(t => {
-      const key = `${currentLocale}:${t}`;
-      return !getCache(t, currentLocale) && !pendingTranslations.has(key);
-    });
-
-    if (uncached.length === 0) {
-      isProcessing.current = false;
-      return;
-    }
-
-    // Mark as pending
-    uncached.forEach(t => pendingTranslations.add(`${currentLocale}:${t}`));
+    const uncached = texts.filter(t => !getCache(t, locale));
+    if (uncached.length === 0) return;
 
     try {
       const response = await fetch(`${API_URL}/api/translate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ texts: uncached, targetLang: currentLocale })
+        body: JSON.stringify({ texts: uncached, targetLang: locale })
       });
 
       const data = await response.json();
 
       if (data.translations) {
-        let hasNewTranslations = false;
         uncached.forEach((text, i) => {
           if (data.translations[i]) {
-            const existingCache = getCache(text, currentLocale);
-            if (!existingCache) {
-              setCache(text, currentLocale, data.translations[i]);
-              hasNewTranslations = true;
-            }
+            setCache(text, locale, data.translations[i]);
           }
-          // Remove from pending
-          pendingTranslations.delete(`${currentLocale}:${text}`);
         });
-
-        // Only trigger update if we actually got new translations
-        if (hasNewTranslations) {
-          setUpdateCounter(n => n + 1);
-        }
+        forceUpdate(n => n + 1);
       }
     } catch (e) {
       console.error('Translation error:', e);
-      // Remove from pending on error
-      uncached.forEach(t => pendingTranslations.delete(`${currentLocale}:${t}`));
-    } finally {
-      isProcessing.current = false;
     }
-  }, []);
+  }, [locale]);
 
-  const changeLocale = useCallback((newLocale) => {
+  const changeLocale = (newLocale) => {
     setLocale(newLocale);
     if (typeof window !== 'undefined') {
       localStorage.setItem('locale', newLocale);
     }
-  }, []);
-
-  // Stable tr function - uses ref to access current locale
-  const localeRef = useRef(locale);
-  localeRef.current = locale;
+  };
 
   const tr = useCallback((text) => {
-    if (!text || localeRef.current === 'en') return text;
+    if (!text || locale === 'en') return text;
 
-    const currentLocale = localeRef.current;
-    const cached = getCache(text, currentLocale);
+    const cached = getCache(text, locale);
     if (cached) return cached;
 
-    const key = `${currentLocale}:${text}`;
-
-    // Skip if already pending
-    if (pendingTranslations.has(key)) {
-      return text;
-    }
-
-    // Add to queue if not already there
+    // Add to queue
     if (!queue.current.includes(text)) {
       queue.current.push(text);
       if (timer.current) clearTimeout(timer.current);
-      timer.current = setTimeout(() => processQueue(currentLocale), 150);
+      timer.current = setTimeout(processQueue, 500);
     }
 
     return text;
-  }, [processQueue]); // Only depends on stable processQueue
+  }, [locale, processQueue]);
 
   const t = useCallback((key) => {
     if (!key) return '';
@@ -163,26 +108,21 @@ export function LanguageProvider({ children }) {
     }
 
     // Fallback: handle dotted keys (e.g., "dashboard.navBuild")
+    // This is for backward compatibility - convert to readable text
     if (key.includes('.')) {
       const last = key.split('.').pop();
       const readable = last.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).trim();
+      console.warn(`Translation key not found: ${key}, using fallback: ${readable}`);
       return tr(readable);
     }
 
     // Last resort: return the key itself
+    console.warn(`Translation key not found: ${key}`);
     return tr(key);
-  }, [tr]); // Only depends on stable tr
-
-  // Memoize context value to prevent unnecessary re-renders
-  const contextValue = useMemo(() => ({
-    locale,
-    changeLocale,
-    tr,
-    t
-  }), [locale, changeLocale, tr, t]);
+  }, [tr]);
 
   return (
-    <LanguageContext.Provider value={contextValue}>
+    <LanguageContext.Provider value={{ locale, changeLocale, tr, t }}>
       {children}
     </LanguageContext.Provider>
   );
