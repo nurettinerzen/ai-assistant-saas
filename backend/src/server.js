@@ -29,7 +29,6 @@ import phoneNumberRoutes from './routes/phoneNumber.js';
 import vapiRoutes from './routes/vapi.js'; // Updated VAPI routes
 import dashboardRoutes from './routes/dashboard.js';
 import settingsRoutes from './routes/settings.js';
-import translateRoutes from './routes/translate.js';
 import voicesRoutes from './routes/voices.js';
 import knowledgeRoutes from './routes/knowledge.js';
 import analyticsRoutes from './routes/analytics.js';
@@ -108,7 +107,6 @@ app.use('/api/vapi', vapiRoutes); // Updated VAPI routes
 app.use('/api', demoRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/settings', settingsRoutes);
-app.use('/api/translate', translateRoutes);
 app.use('/api/voices', voicesRoutes);
 app.use('/api/knowledge', knowledgeRoutes);
 app.use('/api/analytics', analyticsRoutes);

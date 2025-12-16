@@ -356,7 +356,7 @@ export default function DashboardPage() {
                 <Plug className="h-5 w-5 text-neutral-600" />
                 <div>
                   <div className="text-sm font-medium text-neutral-900">
-                    {t('integrations') || 'Integrations'}
+                    {t('dashboard.sidebar.integrations') || 'Integrations'}
                   </div>
                   <div className="text-xs text-neutral-500">
                     {systemStatus.connectedIntegrations} {t('connected') || 'connected'}
