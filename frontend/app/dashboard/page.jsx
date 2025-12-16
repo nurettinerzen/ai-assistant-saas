@@ -51,9 +51,9 @@ export default function DashboardPage() {
   // Get current time of day for greeting
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return t('goodMorning') || 'Good morning';
-    if (hour < 18) return t('goodAfternoon') || 'Good afternoon';
-    return t('goodEvening') || 'Good evening';
+    if (hour < 12) return t('dashboard.overviewPage.goodMorning');
+    if (hour < 18) return t('dashboard.overviewPage.goodAfternoon');
+    return t('dashboard.overviewPage.goodEvening');
   };
 
   // Get user name from localStorage
@@ -104,7 +104,7 @@ export default function DashboardPage() {
       });
     } catch (error) {
       console.error('Failed to load dashboard:', error);
-      toast.error(t('failedToLoad') || 'Failed to load dashboard data');
+      toast.error(t('dashboard.overviewPage.failedToLoad'));
     } finally {
       setLoading(false);
     }
@@ -137,8 +137,7 @@ export default function DashboardPage() {
             </h1>
             <p className="text-primary-100 text-sm">{getCurrentDate()}</p>
             <p className="text-white/90 mt-3">
-              {t('dashboardWelcomeMessage') ||
-                "Here's a quick overview of your AI assistant's performance"}
+              {t('dashboard.overviewPage.dashboardWelcomeMessage')}
             </p>
           </div>
           <div className="flex gap-3">
@@ -148,7 +147,7 @@ export default function DashboardPage() {
               className="bg-white/10 hover:bg-white/20 text-white border-white/20"
             >
               <BarChart3 className="h-4 w-4 mr-2" />
-              {t('viewAnalytics') || 'View Analytics'}
+              {t('dashboard.overviewPage.viewAnalytics')}
             </Button>
           </div>
         </div>
@@ -159,17 +158,17 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-xl font-semibold text-neutral-900">
-              {t('keyMetrics') || 'Key Metrics'}
+              {t('dashboard.overviewPage.keyMetrics')}
             </h2>
             <p className="text-sm text-neutral-600">
-              {t('last7DaysOverview') || 'Last 7 days performance overview'}
+              {t('dashboard.overviewPage.last7DaysOverview')}
             </p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <MetricCard
-            label={t('totalCalls') || 'Total Calls'}
+            label={t('dashboard.overviewPage.totalCalls')}
             value={stats?.totalCalls || 0}
             icon={Phone}
             trend={stats?.totalCalls > 10 ? 'up' : stats?.totalCalls > 0 ? 'neutral' : 'down'}
@@ -179,7 +178,7 @@ export default function DashboardPage() {
             loading={loading}
           />
           <MetricCard
-            label={t('chatMessages') || 'Chat Messages'}
+            label={t('dashboard.overviewPage.chatMessages')}
             value={stats?.totalChatMessages || 0}
             icon={MessageCircle}
             trend={
@@ -195,7 +194,7 @@ export default function DashboardPage() {
             loading={loading}
           />
           <MetricCard
-            label={t('avgDuration') || 'Avg Duration'}
+            label={t('dashboard.overviewPage.avgDuration')}
             value={formatDuration(stats?.avgDuration || 0)}
             icon={Clock}
             trend="neutral"
@@ -205,7 +204,7 @@ export default function DashboardPage() {
             loading={loading}
           />
           <MetricCard
-            label={t('totalCost') || 'Total Cost'}
+            label={t('dashboard.overviewPage.totalCost')}
             value={formatCurrency(stats?.totalCost || 0)}
             icon={DollarSign}
             trend={stats?.totalCost > 0 ? 'up' : 'neutral'}
@@ -215,7 +214,7 @@ export default function DashboardPage() {
             loading={loading}
           />
           <MetricCard
-            label={t('successRate') || 'Success Rate'}
+            label={t('dashboard.overviewPage.successRate')}
             value={`${stats?.successRate || 0}%`}
             icon={TrendingUp}
             trend={stats?.successRate >= 90 ? 'up' : 'down'}
@@ -225,7 +224,7 @@ export default function DashboardPage() {
             loading={loading}
           />
           <MetricCard
-            label={t('appointments') || 'Appointments'}
+            label={t('dashboard.overviewPage.appointments')}
             value={stats?.totalAppointments || 0}
             icon={CalendarCheck}
             trend={stats?.totalAppointments > 0 ? 'up' : 'neutral'}
@@ -242,7 +241,7 @@ export default function DashboardPage() {
         {/* Quick Actions */}
         <div className="lg:col-span-2 bg-white rounded-xl border border-neutral-200 p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-neutral-900 mb-4">
-            {t('quickActions') || 'Quick Actions'}
+            {t('dashboard.overviewPage.quickActions')}
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Button
@@ -255,9 +254,9 @@ export default function DashboardPage() {
                   <Bot className="h-5 w-5 text-primary-600" />
                 </div>
                 <div className="text-left">
-                  <div className="font-semibold">{t('createAssistant') || 'Create Assistant'}</div>
+                  <div className="font-semibold">{t('dashboard.overviewPage.createAssistant')}</div>
                   <div className="text-xs text-neutral-500">
-                    {t('setupNewAI') || 'Set up a new AI agent'}
+                    {t('dashboard.overviewPage.setupNewAI')}
                   </div>
                 </div>
               </div>
@@ -273,9 +272,9 @@ export default function DashboardPage() {
                   <Phone className="h-5 w-5 text-green-600" />
                 </div>
                 <div className="text-left">
-                  <div className="font-semibold">{t('buyPhoneNumber') || 'Buy Phone Number'}</div>
+                  <div className="font-semibold">{t('dashboard.overviewPage.buyPhoneNumber')}</div>
                   <div className="text-xs text-neutral-500">
-                    {t('getNewNumber') || 'Get a new number'}
+                    {t('dashboard.overviewPage.getNewNumber')}
                   </div>
                 </div>
               </div>
@@ -292,10 +291,10 @@ export default function DashboardPage() {
                 </div>
                 <div className="text-left">
                   <div className="font-semibold">
-                    {t('connectIntegration') || 'Connect Integration'}
+                    {t('dashboard.overviewPage.connectIntegration')}
                   </div>
                   <div className="text-xs text-neutral-500">
-                    {t('linkExternalTools') || 'Link external tools'}
+                    {t('dashboard.overviewPage.linkExternalTools')}
                   </div>
                 </div>
               </div>
@@ -311,9 +310,9 @@ export default function DashboardPage() {
                   <PhoneCall className="h-5 w-5 text-blue-600" />
                 </div>
                 <div className="text-left">
-                  <div className="font-semibold">{t('viewAllCalls') || 'View All Calls'}</div>
+                  <div className="font-semibold">{t('dashboard.overviewPage.viewAllCalls')}</div>
                   <div className="text-xs text-neutral-500">
-                    {t('browseCallHistory') || 'Browse call history'}
+                    {t('dashboard.overviewPage.latestCallActivity')}
                   </div>
                 </div>
               </div>
@@ -324,7 +323,7 @@ export default function DashboardPage() {
         {/* Status Indicators */}
         <div className="bg-white rounded-xl border border-neutral-200 p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-neutral-900 mb-4">
-            {t('systemStatus') || 'System Status'}
+            {t('dashboard.overviewPage.systemStatus')}
           </h3>
           <div className="space-y-4">
             <div className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg">
@@ -332,10 +331,10 @@ export default function DashboardPage() {
                 <Bot className="h-5 w-5 text-neutral-600" />
                 <div>
                   <div className="text-sm font-medium text-neutral-900">
-                    {t('activeAssistants') || 'Active Assistants'}
+                    {t('dashboard.overviewPage.activeAssistantsLabel')}
                   </div>
                   <div className="text-xs text-neutral-500">
-                    {systemStatus.activeAssistants} {t('running') || 'running'}
+                    {systemStatus.activeAssistants} {t('dashboard.overviewPage.running')}
                   </div>
                 </div>
               </div>
@@ -356,10 +355,10 @@ export default function DashboardPage() {
                 <Plug className="h-5 w-5 text-neutral-600" />
                 <div>
                   <div className="text-sm font-medium text-neutral-900">
-                    {t('integrations') || 'Integrations'}
+                    {t('dashboard.overviewPage.integrations')}
                   </div>
                   <div className="text-xs text-neutral-500">
-                    {systemStatus.connectedIntegrations} {t('connected') || 'connected'}
+                    {systemStatus.connectedIntegrations} {t('dashboard.overviewPage.connected')}
                   </div>
                 </div>
               </div>
@@ -380,10 +379,10 @@ export default function DashboardPage() {
                 <Phone className="h-5 w-5 text-neutral-600" />
                 <div>
                   <div className="text-sm font-medium text-neutral-900">
-                    {t('phoneNumbers') || 'Phone Numbers'}
+                    {t('dashboard.overviewPage.phoneNumbers')}
                   </div>
                   <div className="text-xs text-neutral-500">
-                    {systemStatus.phoneNumbers} {t('provisioned') || 'provisioned'}
+                    {systemStatus.phoneNumbers} {t('dashboard.overviewPage.provisioned')}
                   </div>
                 </div>
               </div>
@@ -404,9 +403,9 @@ export default function DashboardPage() {
                 <CheckCircle2 className="h-5 w-5 text-green-600" />
                 <div>
                   <div className="text-sm font-medium text-green-900">
-                    {t('systemHealth') || 'System Health'}
+                    {t('dashboard.overviewPage.systemHealth')}
                   </div>
-                  <div className="text-xs text-green-600">{t('allSystemsGo') || 'All systems operational'}</div>
+                  <div className="text-xs text-green-600">{t('dashboard.overviewPage.allSystemsGo')}</div>
                 </div>
               </div>
               <Zap className="h-5 w-5 text-green-600" />
@@ -422,10 +421,10 @@ export default function DashboardPage() {
             <div>
               <h2 className="text-lg font-semibold text-neutral-900 flex items-center gap-2">
                 <Activity className="h-5 w-5 text-primary-600" />
-                {t('recentActivity') || 'Recent Activity'}
+                {t('dashboard.overviewPage.recentActivity')}
               </h2>
               <p className="text-sm text-neutral-500 mt-1">
-                {t('latestCallsAndMessages') || 'Latest calls and messages from the past 24 hours'}
+                {t('dashboard.overviewPage.latestCallsAndMessages')}
               </p>
             </div>
             <Button
@@ -434,7 +433,7 @@ export default function DashboardPage() {
               onClick={() => router.push('/dashboard/calls')}
               className="text-primary-600 hover:text-primary-700 hover:bg-primary-50"
             >
-              {t('viewAll') || 'View All'}
+              {t('dashboard.overviewPage.viewAll')}
               <ArrowRight className="h-4 w-4 ml-1" />
             </Button>
           </div>
@@ -481,7 +480,7 @@ export default function DashboardPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <p className="font-semibold text-neutral-900">
-                          {call.phoneNumber || t('unknownCaller') || 'Unknown Caller'}
+                          {call.phoneNumber || t('dashboard.overviewPage.unknownCaller')}
                         </p>
                         <Badge
                           variant="secondary"
@@ -500,7 +499,7 @@ export default function DashboardPage() {
                       <div className="flex items-center gap-4 text-sm text-neutral-600">
                         <span className="flex items-center gap-1">
                           <Bot className="h-3.5 w-3.5" />
-                          {call.assistantName || t('noAssistant') || 'No Assistant'}
+                          {call.assistantName || t('dashboard.overviewPage.noAssistant')}
                         </span>
                         <span className="flex items-center gap-1">
                           <Clock className="h-3.5 w-3.5" />
@@ -522,10 +521,8 @@ export default function DashboardPage() {
           <div className="p-12">
             <EmptyState
               icon={PhoneCall}
-              title={t('noRecentActivity') || 'No Recent Activity'}
-              description={
-                t('activityWillAppear') || 'Your recent calls and messages will appear here'
-              }
+              title={t('dashboard.overviewPage.noRecentActivity')}
+              description={t('dashboard.overviewPage.activityWillAppear')}
             />
           </div>
         )}

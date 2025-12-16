@@ -54,10 +54,10 @@ export default function CostCalculatorPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
           <Calculator className="h-8 w-8 text-primary" />
-          {t('costCalculatorTitle')}
+          {t('dashboard.costCalculatorPage.title')}
         </h1>
         <p className="text-muted-foreground mt-2">
-          {t('costCalculatorDesc')}
+          {t('dashboard.costCalculatorPage.description')}
         </p>
       </div>
 
@@ -67,7 +67,7 @@ export default function CostCalculatorPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Phone className="h-5 w-5" />
-              {t('expectedCalls')}
+              {t('dashboard.costCalculatorPage.expectedCalls')}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-8">
@@ -75,7 +75,7 @@ export default function CostCalculatorPage() {
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <label className="text-sm font-medium">
-                  {t('expectedCalls')}
+                  {t('dashboard.costCalculatorPage.expectedCalls')}
                 </label>
                 <span className="text-2xl font-bold text-primary">
                   {callsPerMonth.toLocaleString()}
@@ -101,10 +101,10 @@ export default function CostCalculatorPage() {
               <div className="flex justify-between items-center">
                 <label className="text-sm font-medium flex items-center gap-2">
                   <Clock className="h-4 w-4" />
-                  {t('avgCallDurationLabel')}
+                  {t('dashboard.costCalculatorPage.avgCallDurationLabel')}
                 </label>
                 <span className="text-2xl font-bold text-primary">
-                  {avgDuration} {t('minutesLabel')}
+                  {avgDuration} {t('dashboard.costCalculatorPage.minutesLabel')}
                 </span>
               </div>
               <Slider
@@ -125,11 +125,11 @@ export default function CostCalculatorPage() {
             {/* Summary */}
             <div className="p-4 bg-muted rounded-lg">
               <div className="text-sm text-muted-foreground mb-1">
-                {t('costBreakdown')}
+                {t('dashboard.costCalculatorPage.costBreakdown')}
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span>{t('baseFee')}</span>
+                  <span>{t('dashboard.costCalculatorPage.baseFee')}</span>
                   <span>$29.00</span>
                 </div>
                 <div className="flex justify-between">
@@ -148,16 +148,16 @@ export default function CostCalculatorPage() {
             <CardContent className="pt-6">
               <div className="text-center">
                 <p className="text-sm text-muted-foreground mb-2">
-                  {t('yourEstimatedCost')}
+                  {t('dashboard.costCalculatorPage.yourEstimatedCost')}
                 </p>
                 <div className="flex items-baseline justify-center gap-1">
                   <span className="text-5xl font-bold text-primary">
                     ${calculation?.breakdown?.totalCost?.toFixed(2) || '29.00'}
                   </span>
-                  <span className="text-muted-foreground">{t('perMonthLabel')}</span>
+                  <span className="text-muted-foreground">{t('dashboard.subscriptionPage.perMonth')}</span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">
-                  {callsPerMonth.toLocaleString()} {t('callsPerMonth')}
+                  {callsPerMonth.toLocaleString()} {t('dashboard.costCalculatorPage.callsPerMonth')}
                 </p>
               </div>
             </CardContent>
@@ -168,14 +168,14 @@ export default function CostCalculatorPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Users className="h-5 w-5" />
-                {t('vsHiringEmployee')}
+                {t('dashboard.costCalculatorPage.vsHiringEmployee')}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 <div className="flex items-center justify-between p-3 bg-red-50 dark:bg-red-950/20 rounded-lg">
                   <span className="text-red-600 dark:text-red-400">
-                    {t('employeeCost')}
+                    {t('dashboard.costCalculatorPage.employeeCost')}
                   </span>
                   <span className="text-xl font-bold text-red-600 dark:text-red-400">
                     $2,500/mo
@@ -184,7 +184,7 @@ export default function CostCalculatorPage() {
 
                 <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-950/20 rounded-lg">
                   <span className="text-green-600 dark:text-green-400">
-                    {t('youSave')}
+                    {t('dashboard.costCalculatorPage.youSave')}
                   </span>
                   <span className="text-2xl font-bold text-green-600 dark:text-green-400">
                     ${calculation?.comparison?.savings?.toFixed(2) || '0.00'}/mo
@@ -194,7 +194,7 @@ export default function CostCalculatorPage() {
                 <div className="text-center pt-2">
                   <span className="inline-flex items-center gap-1 text-green-600 dark:text-green-400 font-medium">
                     <TrendingDown className="h-4 w-4" />
-                    {calculation?.comparison?.savingsPercentage || 0}% {t('cheaper')}
+                    {calculation?.comparison?.savingsPercentage || 0}% {t('dashboard.costCalculatorPage.cheaper')}
                   </span>
                 </div>
               </div>
@@ -202,13 +202,13 @@ export default function CostCalculatorPage() {
           </Card>
 
           {/* CTA */}
-          <Button 
+          <Button
             className="w-full h-14 text-lg gap-2"
             onClick={() => {
               window.location.href = '/dashboard/subscription';
             }}
           >
-            {t('startFreeTrial')}
+            {t('dashboard.costCalculatorPage.startFreeTrial')}
             <ArrowRight className="h-5 w-5" />
           </Button>
         </div>

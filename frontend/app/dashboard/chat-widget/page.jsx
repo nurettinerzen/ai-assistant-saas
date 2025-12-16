@@ -84,7 +84,7 @@ export default function ChatWidgetPage() {
       assistantId
     };
     localStorage.setItem('chatWidgetSettings', JSON.stringify(settings));
-    toast.success('Settings saved successfully!');
+    toast.success(t('dashboard.chatWidgetPage.settingsSaved'));
   };
 
   const generateEmbedCode = () => {
@@ -286,7 +286,7 @@ export default function ChatWidgetPage() {
   const copyEmbedCode = () => {
     const code = generateEmbedCode();
     navigator.clipboard.writeText(code);
-    toast.success('Embed code copied to clipboard!');
+    toast.success(t('dashboard.chatWidgetPage.embedCodeCopied'));
   };
 
   if (loading) {
@@ -301,9 +301,9 @@ export default function ChatWidgetPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-neutral-900">Chat Widget</h1>
+        <h1 className="text-3xl font-bold text-neutral-900">{t('dashboard.chatWidgetPage.title')}</h1>
         <p className="text-neutral-600 mt-1">
-          Add a voice chat widget to your website
+          {t('dashboard.chatWidgetPage.description')}
         </p>
       </div>
 
@@ -314,9 +314,9 @@ export default function ChatWidgetPage() {
           <Card className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-semibold">Enable Widget</h3>
+                <h3 className="text-lg font-semibold">{t('dashboard.chatWidgetPage.enableWidget')}</h3>
                 <p className="text-sm text-gray-600 mt-1">
-                  Activate the chat widget on your website
+                  {t('dashboard.chatWidgetPage.enableWidgetDesc')}
                 </p>
               </div>
               <Switch
@@ -328,10 +328,10 @@ export default function ChatWidgetPage() {
 
           {/* Assistant Selection */}
           <Card className="p-6">
-            <Label htmlFor="assistant">Select Assistant</Label>
+            <Label htmlFor="assistant">{t('dashboard.chatWidgetPage.selectAssistant')}</Label>
             <Select value={assistantId} onValueChange={setAssistantId}>
               <SelectTrigger className="mt-2">
-                <SelectValue placeholder="Choose an assistant" />
+                <SelectValue placeholder={t('dashboard.chatWidgetPage.chooseAssistant')} />
               </SelectTrigger>
               <SelectContent>
                 {assistants.map((assistant) => (
@@ -342,33 +342,33 @@ export default function ChatWidgetPage() {
               </SelectContent>
             </Select>
             <p className="text-xs text-gray-500 mt-2">
-              {assistants.length === 0 ? 'No assistants found. Create one first.' : 'This assistant will handle the chat'}
+              {assistants.length === 0 ? t('dashboard.chatWidgetPage.noAssistantsFound') : t('dashboard.chatWidgetPage.assistantWillHandle')}
             </p>
           </Card>
 
           {/* Appearance */}
           <Card className="p-6 space-y-4">
-            <h3 className="text-lg font-semibold">Appearance</h3>
+            <h3 className="text-lg font-semibold">{t('dashboard.chatWidgetPage.appearance')}</h3>
 
             {/* Position */}
             <div>
-              <Label htmlFor="position">Position</Label>
+              <Label htmlFor="position">{t('dashboard.chatWidgetPage.position')}</Label>
               <Select value={position} onValueChange={setPosition}>
                 <SelectTrigger className="mt-2">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="bottom-right">Bottom Right</SelectItem>
-                  <SelectItem value="bottom-left">Bottom Left</SelectItem>
-                  <SelectItem value="top-right">Top Right</SelectItem>
-                  <SelectItem value="top-left">Top Left</SelectItem>
+                  <SelectItem value="bottom-right">{t('dashboard.chatWidgetPage.bottomRight')}</SelectItem>
+                  <SelectItem value="bottom-left">{t('dashboard.chatWidgetPage.bottomLeft')}</SelectItem>
+                  <SelectItem value="top-right">{t('dashboard.chatWidgetPage.topRight')}</SelectItem>
+                  <SelectItem value="top-left">{t('dashboard.chatWidgetPage.topLeft')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             {/* Primary Color */}
             <div>
-              <Label htmlFor="color">Primary Color</Label>
+              <Label htmlFor="color">{t('dashboard.chatWidgetPage.primaryColor')}</Label>
               <div className="flex gap-2 mt-2">
                 <Input
                   id="color"
@@ -389,12 +389,12 @@ export default function ChatWidgetPage() {
 
             {/* Button Text */}
             <div>
-              <Label htmlFor="buttonText">Button Text</Label>
+              <Label htmlFor="buttonText">{t('dashboard.chatWidgetPage.buttonText')}</Label>
               <Input
                 id="buttonText"
                 value={buttonText}
                 onChange={(e) => setButtonText(e.target.value)}
-                placeholder="Talk to us"
+                placeholder={t('dashboard.chatWidgetPage.buttonTextPlaceholder')}
                 className="mt-2"
               />
             </div>
@@ -402,9 +402,9 @@ export default function ChatWidgetPage() {
             {/* Show Branding */}
             <div className="flex items-center justify-between">
               <div>
-                <Label>Show "Powered by Telyx"</Label>
+                <Label>{t('dashboard.chatWidgetPage.showBranding')}</Label>
                 <p className="text-xs text-gray-500 mt-1">
-                  Remove branding on Pro plan
+                  {t('dashboard.chatWidgetPage.showBrandingDesc')}
                 </p>
               </div>
               <Switch
@@ -417,7 +417,7 @@ export default function ChatWidgetPage() {
           {/* Actions */}
           <div className="flex gap-3">
             <Button onClick={saveSettings} className="flex-1">
-              Save Settings
+              {t('dashboard.chatWidgetPage.saveSettings')}
             </Button>
             <Button
               onClick={() => setShowPreview(!showPreview)}
@@ -425,7 +425,7 @@ export default function ChatWidgetPage() {
               className="flex-1"
             >
               <Eye className="h-4 w-4 mr-2" />
-              {showPreview ? 'Hide' : 'Preview'}
+              {showPreview ? t('dashboard.chatWidgetPage.hide') : t('dashboard.chatWidgetPage.preview')}
             </Button>
           </div>
         </div>
@@ -434,60 +434,60 @@ export default function ChatWidgetPage() {
         <div className="space-y-6">
           <Card className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Embed Code</h3>
+              <h3 className="text-lg font-semibold">{t('dashboard.chatWidgetPage.embedCode')}</h3>
               <Button onClick={copyEmbedCode} variant="outline" size="sm">
                 <Copy className="h-4 w-4 mr-2" />
-                Copy
+                {t('dashboard.chatWidgetPage.copy')}
               </Button>
             </div>
             <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg text-xs overflow-x-auto">
               <code>{generateEmbedCode()}</code>
             </pre>
             <p className="text-xs text-gray-500 mt-2">
-              Paste this code before the closing &lt;/body&gt; tag on your website
+              {t('dashboard.chatWidgetPage.embedCodeInstructions')}
             </p>
           </Card>
 
           {/* Instructions */}
           <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-3">How to Install</h3>
+            <h3 className="text-lg font-semibold mb-3">{t('dashboard.chatWidgetPage.howToInstall')}</h3>
             <ol className="space-y-3 text-sm text-gray-700">
               <li className="flex items-start gap-2">
                 <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary-600 text-white flex items-center justify-center text-xs font-bold">
                   1
                 </span>
-                <span>Copy the embed code above</span>
+                <span>{t('dashboard.chatWidgetPage.step1')}</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary-600 text-white flex items-center justify-center text-xs font-bold">
                   2
                 </span>
-                <span>Paste it into your website's HTML, just before the closing &lt;/body&gt; tag</span>
+                <span>{t('dashboard.chatWidgetPage.step2')}</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary-600 text-white flex items-center justify-center text-xs font-bold">
                   3
                 </span>
-                <span>The widget will appear on your website automatically</span>
+                <span>{t('dashboard.chatWidgetPage.step3')}</span>
               </li>
             </ol>
           </Card>
 
           {/* Stats (placeholder) */}
           <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-3">Widget Analytics</h3>
+            <h3 className="text-lg font-semibold mb-3">{t('dashboard.chatWidgetPage.widgetAnalytics')}</h3>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-2xl font-bold text-primary-600">0</p>
-                <p className="text-xs text-gray-600">Conversations</p>
+                <p className="text-xs text-gray-600">{t('dashboard.chatWidgetPage.conversations')}</p>
               </div>
               <div>
                 <p className="text-2xl font-bold text-primary-600">0</p>
-                <p className="text-xs text-gray-600">Avg. Duration</p>
+                <p className="text-xs text-gray-600">{t('dashboard.chatWidgetPage.avgDuration')}</p>
               </div>
             </div>
             <p className="text-xs text-gray-500 mt-3">
-              Analytics coming soon
+              {t('dashboard.chatWidgetPage.analyticsComingSoon')}
             </p>
           </Card>
         </div>

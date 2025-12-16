@@ -82,7 +82,7 @@ export default function VoicesPage() {
       setVoices(allVoices);
     } catch (error) {
       console.error('Failed to load voices:', error);
-      toast.error(t('failedToLoadVoices'));
+      toast.error(t('dashboard.voicesPage.failedToLoadVoices'));
     }
   }, []);
 
@@ -110,7 +110,7 @@ export default function VoicesPage() {
 
   const handleSelectVoice = (voice) => {
     setSelectedVoice(voice);
-    toast.success(`${t('selected')}: ${voice.name}`);
+    toast.success(`${t('dashboard.voicesPage.selected')}: ${voice.name}`);
   };
 
   // Get the preferred accent based on business language
@@ -131,14 +131,14 @@ export default function VoicesPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-neutral-900">{t('voices')}</h1>
+        <h1 className="text-3xl font-bold text-neutral-900">{t('dashboard.voicesPage.title')}</h1>
         <p className="text-neutral-600 mt-1">
-          {t('voicesDescription')}
+          {t('dashboard.voicesPage.description')}
         </p>
-        {/* 🔧 Business language indicator */}
+        {/* Business language indicator */}
         {businessLanguage && (
           <p className="text-sm text-primary-600 mt-2">
-            📌 {t('businessLanguage')}: {businessLanguage === 'TR' ? 'Türkçe' : 'English'}
+            {t('dashboard.voicesPage.businessLanguage')}: {businessLanguage === 'TR' ? 'Türkçe' : 'English'}
           </p>
         )}
       </div>
@@ -148,7 +148,7 @@ export default function VoicesPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
           <Input
-            placeholder={t('searchVoices')}
+            placeholder={t('dashboard.voicesPage.searchVoices')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
@@ -159,9 +159,9 @@ export default function VoicesPage() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">{t('allGenders')}</SelectItem>
-            <SelectItem value="male">{t('male')}</SelectItem>
-            <SelectItem value="female">{t('female')}</SelectItem>
+            <SelectItem value="all">{t('dashboard.voicesPage.allGenders')}</SelectItem>
+            <SelectItem value="male">{t('dashboard.voicesPage.male')}</SelectItem>
+            <SelectItem value="female">{t('dashboard.voicesPage.female')}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -196,15 +196,15 @@ export default function VoicesPage() {
           </div>
 
           <div className="text-center text-sm text-neutral-500">
-            {t('showing')} {filteredVoices.length} {preferredAccent} {t('voices')}
+            {t('dashboard.voicesPage.showing')} {filteredVoices.length} {preferredAccent} {t('dashboard.sidebar.voices')}
           </div>
         </>
       ) : (
         <div className="bg-white rounded-xl border border-neutral-200 p-8">
           <EmptyState
             icon={Mic}
-            title={t('noVoicesFound')}
-            description={t('tryAdjustingFilters')}
+            title={t('dashboard.voicesPage.noVoicesFound')}
+            description={t('dashboard.voicesPage.tryAdjustingFilters')}
           />
         </div>
       )}
@@ -212,10 +212,10 @@ export default function VoicesPage() {
       {/* Info banner */}
       <div className="bg-primary-50 border border-primary-200 rounded-xl p-6">
         <h3 className="text-sm font-semibold text-primary-900 mb-2">
-          {t('aboutVoiceSelection')}
+          {t('dashboard.voicesPage.aboutVoiceSelection')}
         </h3>
         <p className="text-sm text-primary-700">
-          {t('voiceSelectionInfo')}
+          {t('dashboard.voicesPage.voiceSelectionInfo')}
         </p>
       </div>
     </div>

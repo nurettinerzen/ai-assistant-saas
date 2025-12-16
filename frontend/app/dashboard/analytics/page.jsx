@@ -84,16 +84,16 @@ export default function AnalyticsPage() {
       setPeakHours(peakRes.data.peakHours || []);
     } catch (error) {
       console.error('Failed to load analytics:', error);
-      toast.error('Failed to load analytics');
+      toast.error(t('dashboard.analyticsPage.failedToLoad'));
     } finally {
       setLoading(false);
     }
   };
 
   const TIME_RANGES = [
-    { value: '7d', label: 'Last 7 Days' },
-    { value: '30d', label: 'Last 30 Days' },
-    { value: '90d', label: 'Last 90 Days' },
+    { value: '7d', label: t('dashboard.analyticsPage.last7Days') },
+    { value: '30d', label: t('dashboard.analyticsPage.last30Days') },
+    { value: '90d', label: t('dashboard.analyticsPage.last90Days') },
   ];
 
   // Prepare sentiment data for pie chart
@@ -127,9 +127,9 @@ export default function AnalyticsPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-neutral-900">Analytics</h1>
+          <h1 className="text-3xl font-bold text-neutral-900">{t('dashboard.analyticsPage.title')}</h1>
           <p className="text-neutral-600 mt-1">
-            Detailed insights into your performance across all channels
+            {t('dashboard.analyticsPage.description')}
           </p>
         </div>
         <div className="flex gap-3">
@@ -148,7 +148,7 @@ export default function AnalyticsPage() {
           </Select>
           <Button variant="outline" size="sm">
             <Download className="h-4 w-4 mr-2" />
-            Export
+            {t('dashboard.analyticsPage.export')}
           </Button>
         </div>
       </div>
@@ -165,10 +165,10 @@ export default function AnalyticsPage() {
           <h3 className="text-2xl font-bold text-neutral-900">
             {analytics?.totalCalls || 0}
           </h3>
-          <p className="text-sm text-neutral-600">Total Calls</p>
+          <p className="text-sm text-neutral-600">{t('dashboard.analyticsPage.totalCalls')}</p>
         </div>
 
-        {/* 🔥 NEW: Chat Messages Card */}
+        {/* Chat Messages Card */}
         <div className="bg-white rounded-xl border border-neutral-200 p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="p-2 bg-green-100 rounded-lg">
@@ -178,10 +178,10 @@ export default function AnalyticsPage() {
           <h3 className="text-2xl font-bold text-neutral-900">
             {analytics?.totalChatMessages || 0}
           </h3>
-          <p className="text-sm text-neutral-600">Chat Messages</p>
+          <p className="text-sm text-neutral-600">{t('dashboard.analyticsPage.chatMessages')}</p>
         </div>
 
-        {/* 🔥 NEW: Appointments Card */}
+        {/* Appointments Card */}
         <div className="bg-white rounded-xl border border-neutral-200 p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="p-2 bg-purple-100 rounded-lg">
@@ -191,9 +191,9 @@ export default function AnalyticsPage() {
           <h3 className="text-2xl font-bold text-neutral-900">
             {analytics?.totalAppointments || 0}
           </h3>
-          <p className="text-sm text-neutral-600">Appointments</p>
+          <p className="text-sm text-neutral-600">{t('dashboard.analyticsPage.appointments')}</p>
           <p className="text-xs text-neutral-500 mt-1">
-            {analytics?.appointmentRate || 0}% conversion rate
+            {analytics?.appointmentRate || 0}% {t('dashboard.analyticsPage.conversionRate')}
           </p>
         </div>
 
@@ -206,7 +206,7 @@ export default function AnalyticsPage() {
           <h3 className="text-2xl font-bold text-neutral-900">
             {analytics?.totalMinutes || 0}m
           </h3>
-          <p className="text-sm text-neutral-600">Total Minutes</p>
+          <p className="text-sm text-neutral-600">{t('dashboard.analyticsPage.totalMinutes')}</p>
         </div>
 
         <div className="bg-white rounded-xl border border-neutral-200 p-6">
@@ -218,7 +218,7 @@ export default function AnalyticsPage() {
           <h3 className="text-2xl font-bold text-neutral-900">
             {analytics?.successRate || 0}%
           </h3>
-          <p className="text-sm text-neutral-600">Success Rate</p>
+          <p className="text-sm text-neutral-600">{t('dashboard.analyticsPage.successRate')}</p>
         </div>
       </div>
 
@@ -226,7 +226,7 @@ export default function AnalyticsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Multi-Channel Activity Chart */}
         <div className="bg-white rounded-xl border border-neutral-200 p-6">
-          <h3 className="text-lg font-semibold mb-4">Activity Over Time</h3>
+          <h3 className="text-lg font-semibold mb-4">{t('dashboard.analyticsPage.activityOverTime')}</h3>
           <ResponsiveContainer width="100%" height={250}>
             <LineChart data={analytics?.callsOverTime || []}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -234,34 +234,34 @@ export default function AnalyticsPage() {
               <YAxis />
               <Tooltip />
               <Legend />
-              <Line 
-                type="monotone" 
-                dataKey="calls" 
+              <Line
+                type="monotone"
+                dataKey="calls"
                 stroke={CHANNEL_COLORS.phone}
                 strokeWidth={2}
-                name="Phone Calls"
+                name={t('dashboard.analyticsPage.phoneCalls')}
               />
-              <Line 
-                type="monotone" 
-                dataKey="chats" 
+              <Line
+                type="monotone"
+                dataKey="chats"
                 stroke={CHANNEL_COLORS.chat}
                 strokeWidth={2}
-                name="Chat Messages"
+                name={t('dashboard.analyticsPage.chatMessages')}
               />
-              <Line 
-                type="monotone" 
-                dataKey="appointments" 
+              <Line
+                type="monotone"
+                dataKey="appointments"
                 stroke="#a855f7"
                 strokeWidth={2}
-                name="Appointments"
+                name={t('dashboard.analyticsPage.appointments')}
               />
             </LineChart>
           </ResponsiveContainer>
         </div>
 
-        {/* 🔥 NEW: Channel Distribution */}
+        {/* Channel Distribution */}
         <div className="bg-white rounded-xl border border-neutral-200 p-6">
-          <h3 className="text-lg font-semibold mb-4">Channel Distribution</h3>
+          <h3 className="text-lg font-semibold mb-4">{t('dashboard.analyticsPage.channelDistribution')}</h3>
           <div className="flex items-center justify-center">
             <ResponsiveContainer width="100%" height={250}>
               <PieChart>
@@ -290,7 +290,7 @@ export default function AnalyticsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Sentiment Distribution */}
         <div className="bg-white rounded-xl border border-neutral-200 p-6">
-          <h3 className="text-lg font-semibold mb-4">Sentiment Analysis</h3>
+          <h3 className="text-lg font-semibold mb-4">{t('dashboard.analyticsPage.sentimentAnalysis')}</h3>
           <div className="flex items-center justify-center">
             <ResponsiveContainer width="100%" height={250}>
               <PieChart>
@@ -316,7 +316,7 @@ export default function AnalyticsPage() {
 
         {/* Peak Hours Chart */}
         <div className="bg-white rounded-xl border border-neutral-200 p-6">
-          <h3 className="text-lg font-semibold mb-4">Peak Activity Hours</h3>
+          <h3 className="text-lg font-semibold mb-4">{t('dashboard.analyticsPage.peakActivityHours')}</h3>
           <ResponsiveContainer width="100%" height={250}>
             <BarChart data={peakHours}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -331,25 +331,25 @@ export default function AnalyticsPage() {
 
       {/* Recent Calls Table */}
       <div className="bg-white rounded-xl border border-neutral-200 p-6">
-        <h3 className="text-lg font-semibold mb-4">Recent Calls</h3>
+        <h3 className="text-lg font-semibold mb-4">{t('dashboard.analyticsPage.recentCalls')}</h3>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-neutral-50">
               <tr>
                 <th className="text-left p-3 text-sm font-medium text-neutral-700">
-                  Date & Time
+                  {t('dashboard.analyticsPage.dateTime')}
                 </th>
                 <th className="text-left p-3 text-sm font-medium text-neutral-700">
-                  Caller
+                  {t('dashboard.analyticsPage.caller')}
                 </th>
                 <th className="text-left p-3 text-sm font-medium text-neutral-700">
-                  Duration
+                  {t('dashboard.analyticsPage.duration')}
                 </th>
                 <th className="text-left p-3 text-sm font-medium text-neutral-700">
-                  Sentiment
+                  {t('dashboard.analyticsPage.sentiment')}
                 </th>
                 <th className="text-left p-3 text-sm font-medium text-neutral-700">
-                  Status
+                  {t('dashboard.analyticsPage.status')}
                 </th>
               </tr>
             </thead>
@@ -397,7 +397,7 @@ export default function AnalyticsPage() {
               ) : (
                 <tr>
                   <td colSpan={5} className="p-8 text-center text-neutral-500">
-                    No calls yet
+                    {t('dashboard.analyticsPage.noCallsYet')}
                   </td>
                 </tr>
               )}

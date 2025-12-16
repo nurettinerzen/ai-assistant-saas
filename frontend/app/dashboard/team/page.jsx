@@ -64,8 +64,10 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/components/ui/tabs';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function TeamPage() {
+  const { t } = useLanguage();
   const { can, isOwner, user } = usePermissions();
   const [members, setMembers] = useState([]);
   const [invitations, setInvitations] = useState([]);
@@ -92,7 +94,7 @@ export default function TeamPage() {
       setInvitations(invitationsRes.data.invitations || []);
     } catch (error) {
       console.error('Failed to load team data:', error);
-      toast.error('Ekip verileri yüklenemedi');
+      toast.error(t('dashboard.teamPage.errors.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -101,7 +103,7 @@ export default function TeamPage() {
   const handleInvite = async (e) => {
     e.preventDefault();
     if (!inviteForm.email) {
-      toast.error('Email adresi gerekli');
+      toast.error(t('dashboard.teamPage.errors.emailRequired'));
       return;
     }
 
@@ -114,8 +116,8 @@ export default function TeamPage() {
       if (inviteLink) {
         toast.success(
           <div className="space-y-2">
-            <p>Davet oluşturuldu!</p>
-            <p className="text-xs text-neutral-600">Email henüz gönderilmiyor. Linki manuel paylaşın:</p>
+            <p>{t('dashboard.teamPage.invite.created')}</p>
+            <p className="text-xs text-neutral-600">{t('dashboard.teamPage.invite.manualShare')}</p>
             <div className="flex items-center gap-2">
               <input
                 type="text"
@@ -126,25 +128,25 @@ export default function TeamPage() {
               <button
                 onClick={() => {
                   navigator.clipboard.writeText(inviteLink);
-                  toast.success('Link kopyalandı!');
+                  toast.success(t('dashboard.teamPage.invite.linkCopied'));
                 }}
                 className="text-xs bg-primary-600 text-white px-2 py-1 rounded"
               >
-                Kopyala
+                {t('dashboard.teamPage.invite.copy')}
               </button>
             </div>
           </div>,
           { duration: 15000 }
         );
       } else {
-        toast.success('Davet gönderildi');
+        toast.success(t('dashboard.teamPage.invite.sent'));
       }
 
       setInviteModalOpen(false);
       setInviteForm({ email: '', role: 'STAFF' });
       loadData();
     } catch (error) {
-      const message = error.response?.data?.error || 'Davet gönderilemedi';
+      const message = error.response?.data?.error || t('dashboard.teamPage.errors.inviteFailed');
       toast.error(message);
     } finally {
       setInviting(false);
@@ -154,25 +156,26 @@ export default function TeamPage() {
   const handleRoleChange = async (userId, newRole) => {
     try {
       await apiClient.team.updateRole(userId, newRole);
-      toast.success('Rol güncellendi');
+      toast.success(t('dashboard.teamPage.members.roleUpdated'));
       loadData();
     } catch (error) {
-      const message = error.response?.data?.error || 'Rol güncellenemedi';
+      const message = error.response?.data?.error || t('dashboard.teamPage.errors.roleUpdateFailed');
       toast.error(message);
     }
   };
 
   const handleRemoveMember = async (userId, memberName) => {
-    if (!confirm(`${memberName || 'Bu kullanıcıyı'} ekipten çıkarmak istediğinize emin misiniz?`)) {
+    const confirmMessage = `${memberName || t('dashboard.teamPage.members.thisUser')} ${t('dashboard.teamPage.members.removeConfirm')}`;
+    if (!confirm(confirmMessage)) {
       return;
     }
 
     try {
       await apiClient.team.removeMember(userId);
-      toast.success('Kullanıcı ekipten çıkarıldı');
+      toast.success(t('dashboard.teamPage.members.removed'));
       loadData();
     } catch (error) {
-      const message = error.response?.data?.error || 'Kullanıcı ekipten çıkarılamadı';
+      const message = error.response?.data?.error || t('dashboard.teamPage.errors.removeFailed');
       toast.error(message);
     }
   };
@@ -180,20 +183,20 @@ export default function TeamPage() {
   const handleCancelInvite = async (inviteId) => {
     try {
       await apiClient.team.cancelInvite(inviteId);
-      toast.success('Davet iptal edildi');
+      toast.success(t('dashboard.teamPage.invitations.cancelled'));
       loadData();
     } catch (error) {
-      toast.error('Davet iptal edilemedi');
+      toast.error(t('dashboard.teamPage.errors.cancelFailed'));
     }
   };
 
   const handleResendInvite = async (inviteId) => {
     try {
       await apiClient.team.resendInvite(inviteId);
-      toast.success('Davet yeniden gönderildi');
+      toast.success(t('dashboard.teamPage.invitations.resent'));
       loadData();
     } catch (error) {
-      toast.error('Davet yeniden gönderilemedi');
+      toast.error(t('dashboard.teamPage.errors.resendFailed'));
     }
   };
 
@@ -210,8 +213,8 @@ export default function TeamPage() {
     return (
       <div className="flex flex-col items-center justify-center h-[60vh] text-center">
         <AlertCircle className="h-16 w-16 text-neutral-300 mb-4" />
-        <h2 className="text-xl font-semibold text-neutral-700 mb-2">Erişim Engellendi</h2>
-        <p className="text-neutral-500">Bu sayfayı görüntüleme yetkiniz yok.</p>
+        <h2 className="text-xl font-semibold text-neutral-700 mb-2">{t('dashboard.teamPage.accessDenied.title')}</h2>
+        <p className="text-neutral-500">{t('dashboard.teamPage.accessDenied.message')}</p>
       </div>
     );
   }
@@ -221,13 +224,13 @@ export default function TeamPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900">Ekip Yönetimi</h1>
-          <p className="text-neutral-600 mt-1">Ekip üyelerinizi yönetin ve yeni davetler gönderin</p>
+          <h1 className="text-2xl font-bold text-neutral-900">{t('dashboard.teamPage.title')}</h1>
+          <p className="text-neutral-600 mt-1">{t('dashboard.teamPage.description')}</p>
         </div>
         {can('team:invite') && (
           <Button onClick={() => setInviteModalOpen(true)}>
             <UserPlus className="h-4 w-4 mr-2" />
-            Davet Gönder
+            {t('dashboard.teamPage.sendInvite')}
           </Button>
         )}
       </div>
@@ -241,7 +244,7 @@ export default function TeamPage() {
                 <Users className="h-6 w-6 text-primary-600" />
               </div>
               <div>
-                <p className="text-sm text-neutral-600">Toplam Üye</p>
+                <p className="text-sm text-neutral-600">{t('dashboard.teamPage.stats.totalMembers')}</p>
                 <p className="text-2xl font-bold">{members.length}</p>
               </div>
             </div>
@@ -255,7 +258,7 @@ export default function TeamPage() {
                 <Mail className="h-6 w-6 text-blue-600" />
               </div>
               <div>
-                <p className="text-sm text-neutral-600">Bekleyen Davet</p>
+                <p className="text-sm text-neutral-600">{t('dashboard.teamPage.stats.pendingInvites')}</p>
                 <p className="text-2xl font-bold">{invitations.length}</p>
               </div>
             </div>
@@ -269,7 +272,7 @@ export default function TeamPage() {
                 <Shield className="h-6 w-6 text-purple-600" />
               </div>
               <div>
-                <p className="text-sm text-neutral-600">Senin Rolün</p>
+                <p className="text-sm text-neutral-600">{t('dashboard.teamPage.stats.yourRole')}</p>
                 <p className="text-2xl font-bold">{getRoleDisplayName(user?.role)}</p>
               </div>
             </div>
@@ -280,10 +283,10 @@ export default function TeamPage() {
       {/* Tabs */}
       <Tabs defaultValue="members" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="members">Ekip Üyeleri ({members.length})</TabsTrigger>
+          <TabsTrigger value="members">{t('dashboard.teamPage.tabs.members')} ({members.length})</TabsTrigger>
           {can('team:invite') && (
             <TabsTrigger value="invitations">
-              Bekleyen Davetler ({invitations.length})
+              {t('dashboard.teamPage.tabs.pendingInvites')} ({invitations.length})
             </TabsTrigger>
           )}
         </TabsList>
@@ -292,9 +295,9 @@ export default function TeamPage() {
         <TabsContent value="members">
           <Card>
             <CardHeader>
-              <CardTitle>Ekip Üyeleri</CardTitle>
+              <CardTitle>{t('dashboard.teamPage.members.title')}</CardTitle>
               <CardDescription>
-                İşletmenize erişimi olan tüm kullanıcılar
+                {t('dashboard.teamPage.members.description')}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -304,17 +307,17 @@ export default function TeamPage() {
                 </div>
               ) : members.length === 0 ? (
                 <div className="text-center py-8 text-neutral-500">
-                  Henüz ekip üyesi yok
+                  {t('dashboard.teamPage.members.noMembers')}
                 </div>
               ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Kullanıcı</TableHead>
-                      <TableHead>Rol</TableHead>
-                      <TableHead>Katılma Tarihi</TableHead>
-                      <TableHead>Davet Eden</TableHead>
-                      {isOwner && <TableHead className="text-right">İşlemler</TableHead>}
+                      <TableHead>{t('dashboard.teamPage.members.tableHeaders.user')}</TableHead>
+                      <TableHead>{t('dashboard.teamPage.members.tableHeaders.role')}</TableHead>
+                      <TableHead>{t('dashboard.teamPage.members.tableHeaders.joinedAt')}</TableHead>
+                      <TableHead>{t('dashboard.teamPage.members.tableHeaders.invitedBy')}</TableHead>
+                      {isOwner && <TableHead className="text-right">{t('dashboard.teamPage.members.tableHeaders.actions')}</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -328,7 +331,7 @@ export default function TeamPage() {
                               </span>
                             </div>
                             <div>
-                              <p className="font-medium">{member.name || 'İsimsiz'}</p>
+                              <p className="font-medium">{member.name || t('dashboard.teamPage.members.unnamed')}</p>
                               <p className="text-sm text-neutral-500">{member.email}</p>
                             </div>
                           </div>
@@ -343,8 +346,8 @@ export default function TeamPage() {
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="MANAGER">Yönetici</SelectItem>
-                                <SelectItem value="STAFF">Personel</SelectItem>
+                                <SelectItem value="MANAGER">{t('dashboard.teamPage.roles.manager')}</SelectItem>
+                                <SelectItem value="STAFF">{t('dashboard.teamPage.roles.staff')}</SelectItem>
                               </SelectContent>
                             </Select>
                           ) : (
@@ -378,7 +381,7 @@ export default function TeamPage() {
                                     onClick={() => handleRemoveMember(member.id, member.name)}
                                   >
                                     <Trash2 className="h-4 w-4 mr-2" />
-                                    Ekipten Çıkar
+                                    {t('dashboard.teamPage.members.removeFromTeam')}
                                   </DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
@@ -399,9 +402,9 @@ export default function TeamPage() {
           <TabsContent value="invitations">
             <Card>
               <CardHeader>
-                <CardTitle>Bekleyen Davetler</CardTitle>
+                <CardTitle>{t('dashboard.teamPage.invitations.title')}</CardTitle>
                 <CardDescription>
-                  Henüz kabul edilmemiş davetler
+                  {t('dashboard.teamPage.invitations.description')}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -411,18 +414,18 @@ export default function TeamPage() {
                   </div>
                 ) : invitations.length === 0 ? (
                   <div className="text-center py-8 text-neutral-500">
-                    Bekleyen davet yok
+                    {t('dashboard.teamPage.invitations.noPending')}
                   </div>
                 ) : (
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Rol</TableHead>
-                        <TableHead>Gönderilme Tarihi</TableHead>
-                        <TableHead>Son Geçerlilik</TableHead>
-                        <TableHead>Davet Eden</TableHead>
-                        <TableHead className="text-right">İşlemler</TableHead>
+                        <TableHead>{t('dashboard.teamPage.invitations.tableHeaders.email')}</TableHead>
+                        <TableHead>{t('dashboard.teamPage.invitations.tableHeaders.role')}</TableHead>
+                        <TableHead>{t('dashboard.teamPage.invitations.tableHeaders.sentAt')}</TableHead>
+                        <TableHead>{t('dashboard.teamPage.invitations.tableHeaders.expiresAt')}</TableHead>
+                        <TableHead>{t('dashboard.teamPage.invitations.tableHeaders.invitedBy')}</TableHead>
+                        <TableHead className="text-right">{t('dashboard.teamPage.invitations.tableHeaders.actions')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -483,26 +486,26 @@ export default function TeamPage() {
       <Dialog open={inviteModalOpen} onOpenChange={setInviteModalOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Ekibe Davet Gönder</DialogTitle>
+            <DialogTitle>{t('dashboard.teamPage.inviteModal.title')}</DialogTitle>
             <DialogDescription>
-              Yeni bir ekip üyesi davet edin. Davet linki email adresine gönderilecek.
+              {t('dashboard.teamPage.inviteModal.description')}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleInvite}>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email Adresi</Label>
+                <Label htmlFor="email">{t('dashboard.teamPage.inviteModal.emailLabel')}</Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="ornek@email.com"
+                  placeholder={t('dashboard.teamPage.inviteModal.emailPlaceholder')}
                   value={inviteForm.email}
                   onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="role">Rol</Label>
+                <Label htmlFor="role">{t('dashboard.teamPage.inviteModal.roleLabel')}</Label>
                 <Select
                   value={inviteForm.role}
                   onValueChange={(value) => setInviteForm({ ...inviteForm, role: value })}
@@ -513,17 +516,17 @@ export default function TeamPage() {
                   <SelectContent>
                     <SelectItem value="MANAGER">
                       <div className="flex flex-col">
-                        <span>Yönetici</span>
+                        <span>{t('dashboard.teamPage.roles.manager')}</span>
                         <span className="text-xs text-neutral-500">
-                          Asistan oluşturma, kampanya yönetimi, ekip daveti
+                          {t('dashboard.teamPage.inviteModal.managerDesc')}
                         </span>
                       </div>
                     </SelectItem>
                     <SelectItem value="STAFF">
                       <div className="flex flex-col">
-                        <span>Personel</span>
+                        <span>{t('dashboard.teamPage.roles.staff')}</span>
                         <span className="text-xs text-neutral-500">
-                          Sadece görüntüleme ve temel işlemler
+                          {t('dashboard.teamPage.inviteModal.staffDesc')}
                         </span>
                       </div>
                     </SelectItem>
@@ -533,18 +536,18 @@ export default function TeamPage() {
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setInviteModalOpen(false)}>
-                İptal
+                {t('common.cancel')}
               </Button>
               <Button type="submit" disabled={inviting}>
                 {inviting ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                    Gönderiliyor...
+                    {t('dashboard.teamPage.inviteModal.sending')}
                   </>
                 ) : (
                   <>
                     <UserPlus className="h-4 w-4 mr-2" />
-                    Davet Gönder
+                    {t('dashboard.teamPage.sendInvite')}
                   </>
                 )}
               </Button>

@@ -38,12 +38,12 @@ import { toast } from '@/lib/toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { formatDistanceToNow } from 'date-fns';
 
-// Status badge colors
+// Status badge colors - labels will use translation
 const STATUS_COLORS = {
-  PENDING_REPLY: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Awaiting Reply' },
-  DRAFT_READY: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'Draft Ready' },
-  REPLIED: { bg: 'bg-green-100', text: 'text-green-800', label: 'Replied' },
-  CLOSED: { bg: 'bg-neutral-100', text: 'text-neutral-800', label: 'Closed' }
+  PENDING_REPLY: { bg: 'bg-yellow-100', text: 'text-yellow-800', key: 'awaitingReply' },
+  DRAFT_READY: { bg: 'bg-blue-100', text: 'text-blue-800', key: 'draftReady' },
+  REPLIED: { bg: 'bg-green-100', text: 'text-green-800', key: 'replied' },
+  CLOSED: { bg: 'bg-neutral-100', text: 'text-neutral-800', key: 'closed' }
 };
 
 export default function EmailDashboardPage() {
@@ -110,7 +110,7 @@ export default function EmailDashboardPage() {
       }
     } catch (error) {
       console.error('Failed to load thread:', error);
-      toast.error('Failed to load thread details');
+      toast.error(t('dashboard.emailPage.failedToLoadThread'));
     }
   }, []);
 
@@ -132,13 +132,13 @@ export default function EmailDashboardPage() {
     setSyncing(true);
     try {
       const response = await apiClient.post('/api/email/sync');
-      toast.success(response.data.message || 'Emails synced successfully');
+      toast.success(response.data.message || t('dashboard.emailPage.emailsSyncedSuccess'));
       await Promise.all([loadThreads(), loadStats()]);
       if (selectedThread) {
         await loadThreadDetails(selectedThread.id);
       }
     } catch (error) {
-      toast.error('Failed to sync emails');
+      toast.error(t('dashboard.emailPage.failedToSyncEmails'));
     } finally {
       setSyncing(false);
     }
@@ -161,12 +161,12 @@ export default function EmailDashboardPage() {
     setSending(true);
     try {
       await apiClient.post(`/api/email/drafts/${activeDraft.id}/send`);
-      toast.success('Email sent successfully!');
+      toast.success(t('dashboard.emailPage.emailSentSuccess'));
       await Promise.all([loadThreads(), loadStats()]);
       await loadThreadDetails(selectedThread.id);
       setIsEditing(false);
     } catch (error) {
-      toast.error('Failed to send email');
+      toast.error(t('dashboard.emailPage.failedToSendEmail'));
     } finally {
       setSending(false);
     }
@@ -182,10 +182,10 @@ export default function EmailDashboardPage() {
     setRegenerating(true);
     try {
       await apiClient.post(`/api/email/drafts/${activeDraft.id}/regenerate`, { feedback });
-      toast.success('Draft regenerated');
+      toast.success(t('dashboard.emailPage.draftRegenerated'));
       await loadThreadDetails(selectedThread.id);
     } catch (error) {
-      toast.error('Failed to regenerate draft');
+      toast.error(t('dashboard.emailPage.failedToRegenerateDraft'));
     } finally {
       setRegenerating(false);
     }
@@ -197,11 +197,11 @@ export default function EmailDashboardPage() {
 
     try {
       await apiClient.post(`/api/email/threads/${selectedThread.id}/close`);
-      toast.success('Thread closed');
+      toast.success(t('dashboard.emailPage.threadClosed'));
       await loadThreads();
       setSelectedThread(null);
     } catch (error) {
-      toast.error('Failed to close thread');
+      toast.error(t('dashboard.emailPage.failedToCloseThread'));
     }
   };
 
@@ -226,9 +226,9 @@ export default function EmailDashboardPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-neutral-900">Email Inbox</h1>
+          <h1 className="text-3xl font-bold text-neutral-900">{t('dashboard.emailPage.title')}</h1>
           <p className="text-neutral-600 mt-1">
-            AI-assisted email management
+            {t('dashboard.emailPage.description')}
           </p>
         </div>
 
@@ -237,13 +237,13 @@ export default function EmailDashboardPage() {
             <Mail className="h-8 w-8 text-blue-600" />
           </div>
           <h2 className="text-xl font-semibold text-neutral-900 mb-2">
-            Connect Your Email
+            {t('dashboard.emailPage.connectYourEmail')}
           </h2>
           <p className="text-neutral-600 mb-6 max-w-md mx-auto">
-            Connect your Gmail or Microsoft 365 account to start receiving AI-assisted email responses.
+            {t('dashboard.emailPage.connectEmailDesc')}
           </p>
           <Button onClick={() => window.location.href = '/dashboard/integrations'}>
-            Go to Integrations
+            {t('dashboard.emailPage.goToIntegrations')}
           </Button>
         </div>
       </div>
@@ -255,18 +255,18 @@ export default function EmailDashboardPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-neutral-900">Email Inbox</h1>
+          <h1 className="text-3xl font-bold text-neutral-900">{t('dashboard.emailPage.title')}</h1>
           <p className="text-neutral-600 mt-1">
             {emailStatus?.email && (
               <span className="text-sm">
-                Connected: <span className="font-medium">{emailStatus.email}</span>
+                {t('dashboard.emailPage.connected')}: <span className="font-medium">{emailStatus.email}</span>
               </span>
             )}
           </p>
         </div>
         <Button onClick={handleSync} disabled={syncing}>
           <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
-          {syncing ? 'Syncing...' : 'Sync Emails'}
+          {syncing ? t('dashboard.emailPage.syncing') : t('dashboard.emailPage.syncEmails')}
         </Button>
       </div>
 
@@ -280,7 +280,7 @@ export default function EmailDashboardPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-neutral-900">{stats.pendingCount}</p>
-                <p className="text-sm text-neutral-600">Pending Reply</p>
+                <p className="text-sm text-neutral-600">{t('dashboard.emailPage.pendingReply')}</p>
               </div>
             </div>
           </div>
@@ -291,7 +291,7 @@ export default function EmailDashboardPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-neutral-900">{stats.draftReadyCount}</p>
-                <p className="text-sm text-neutral-600">Drafts Ready</p>
+                <p className="text-sm text-neutral-600">{t('dashboard.emailPage.draftsReady')}</p>
               </div>
             </div>
           </div>
@@ -302,7 +302,7 @@ export default function EmailDashboardPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-neutral-900">{stats.repliedTodayCount}</p>
-                <p className="text-sm text-neutral-600">Replied Today</p>
+                <p className="text-sm text-neutral-600">{t('dashboard.emailPage.repliedToday')}</p>
               </div>
             </div>
           </div>
@@ -313,7 +313,7 @@ export default function EmailDashboardPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-neutral-900">{stats.totalThreads}</p>
-                <p className="text-sm text-neutral-600">Total Threads</p>
+                <p className="text-sm text-neutral-600">{t('dashboard.emailPage.totalThreads')}</p>
               </div>
             </div>
           </div>
@@ -325,7 +325,7 @@ export default function EmailDashboardPage() {
         {/* Thread List */}
         <div className="lg:col-span-1 bg-white rounded-xl border border-neutral-200 overflow-hidden">
           <div className="p-4 border-b border-neutral-200">
-            <h2 className="font-semibold text-neutral-900">Conversations</h2>
+            <h2 className="font-semibold text-neutral-900">{t('dashboard.emailPage.conversations')}</h2>
           </div>
           <div className="divide-y divide-neutral-100 max-h-[600px] overflow-y-auto">
             {loading ? (
@@ -335,8 +335,8 @@ export default function EmailDashboardPage() {
             ) : threads.length === 0 ? (
               <div className="p-8 text-center text-neutral-500">
                 <Mail className="h-8 w-8 mx-auto mb-2 text-neutral-400" />
-                <p>No conversations yet</p>
-                <p className="text-sm mt-1">Sync your emails to get started</p>
+                <p>{t('dashboard.emailPage.noConversations')}</p>
+                <p className="text-sm mt-1">{t('dashboard.emailPage.syncToGetStarted')}</p>
               </div>
             ) : (
               threads.map((thread) => {
@@ -362,11 +362,11 @@ export default function EmailDashboardPage() {
                         </p>
                         <div className="flex items-center gap-2 mt-2">
                           <Badge className={`${statusStyle.bg} ${statusStyle.text} text-xs`}>
-                            {statusStyle.label}
+                            {t(`dashboard.emailPage.status.${statusStyle.key}`)}
                           </Badge>
                           {hasDraft && (
                             <Badge className="bg-purple-100 text-purple-800 text-xs">
-                              AI Draft
+                              {t('dashboard.emailPage.aiDraft')}
                             </Badge>
                           )}
                         </div>
@@ -397,7 +397,7 @@ export default function EmailDashboardPage() {
                       {selectedThread.subject}
                     </h2>
                     <p className="text-sm text-neutral-600 mt-1">
-                      From: {selectedThread.customerName || selectedThread.customerEmail}
+                      {t('dashboard.emailPage.from')}: {selectedThread.customerName || selectedThread.customerEmail}
                       {selectedThread.customerName && (
                         <span className="text-neutral-400"> &lt;{selectedThread.customerEmail}&gt;</span>
                       )}
@@ -410,14 +410,14 @@ export default function EmailDashboardPage() {
                     disabled={selectedThread.status === 'CLOSED'}
                   >
                     <X className="h-4 w-4 mr-1" />
-                    Close
+                    {t('common.close')}
                   </Button>
                 </div>
               </div>
 
               {/* Messages */}
               <div className="bg-white rounded-xl border border-neutral-200 p-4 max-h-[300px] overflow-y-auto">
-                <h3 className="font-medium text-neutral-900 mb-4">Conversation</h3>
+                <h3 className="font-medium text-neutral-900 mb-4">{t('dashboard.emailPage.conversation')}</h3>
                 <div className="space-y-4">
                   {selectedThread.messages?.map((message) => (
                     <div
@@ -435,7 +435,7 @@ export default function EmailDashboardPage() {
                               {message.fromName || message.fromEmail}
                             </span>
                           ) : (
-                            <span className="text-blue-700">You</span>
+                            <span className="text-blue-700">{t('dashboard.emailPage.you')}</span>
                           )}
                         </span>
                         <span className="text-xs text-neutral-500">
@@ -466,7 +466,7 @@ export default function EmailDashboardPage() {
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="font-medium text-neutral-900 flex items-center gap-2">
                       <Pencil className="h-4 w-4 text-blue-600" />
-                      AI Draft Response
+                      {t('dashboard.emailPage.aiDraftResponse')}
                     </h3>
                     <div className="flex items-center gap-2">
                       <Button
@@ -476,7 +476,7 @@ export default function EmailDashboardPage() {
                         disabled={regenerating}
                       >
                         <RotateCcw className={`h-4 w-4 mr-1 ${regenerating ? 'animate-spin' : ''}`} />
-                        Regenerate
+                        {t('dashboard.emailPage.regenerate')}
                       </Button>
                       <Button
                         variant="outline"
@@ -484,7 +484,7 @@ export default function EmailDashboardPage() {
                         onClick={() => setIsEditing(!isEditing)}
                       >
                         <Pencil className="h-4 w-4 mr-1" />
-                        {isEditing ? 'Preview' : 'Edit'}
+                        {isEditing ? t('common.preview') : t('common.edit')}
                       </Button>
                     </div>
                   </div>
@@ -494,7 +494,7 @@ export default function EmailDashboardPage() {
                       value={editedContent}
                       onChange={(e) => setEditedContent(e.target.value)}
                       className="min-h-[200px] font-mono text-sm"
-                      placeholder="Edit your response..."
+                      placeholder={t('dashboard.emailPage.editResponsePlaceholder')}
                     />
                   ) : (
                     <div className="bg-neutral-50 rounded-lg p-4 min-h-[200px] text-sm whitespace-pre-wrap">
@@ -504,7 +504,7 @@ export default function EmailDashboardPage() {
 
                   <div className="flex items-center justify-between mt-4 pt-4 border-t border-neutral-200">
                     <p className="text-xs text-neutral-500">
-                      Review and edit the AI-generated response before sending
+                      {t('dashboard.emailPage.reviewBeforeSending')}
                     </p>
                     <div className="flex gap-2">
                       <Button
@@ -517,11 +517,11 @@ export default function EmailDashboardPage() {
                           }
                         }}
                       >
-                        Reset
+                        {t('common.reset')}
                       </Button>
                       <Button onClick={handleSendDraft} disabled={sending}>
                         <Send className={`h-4 w-4 mr-2 ${sending ? 'animate-pulse' : ''}`} />
-                        {sending ? 'Sending...' : 'Send Email'}
+                        {sending ? t('dashboard.emailPage.sending') : t('dashboard.emailPage.sendEmail')}
                       </Button>
                     </div>
                   </div>
@@ -534,9 +534,9 @@ export default function EmailDashboardPage() {
                   <div className="flex items-start gap-3">
                     <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
                     <div>
-                      <h3 className="font-medium text-yellow-900">No Draft Available</h3>
+                      <h3 className="font-medium text-yellow-900">{t('dashboard.emailPage.noDraftAvailable')}</h3>
                       <p className="text-sm text-yellow-700 mt-1">
-                        Sync your emails to generate an AI draft response for this conversation.
+                        {t('dashboard.emailPage.syncToGenerateDraft')}
                       </p>
                     </div>
                   </div>
@@ -547,7 +547,7 @@ export default function EmailDashboardPage() {
               {selectedThread.status === 'CLOSED' && (
                 <div className="bg-neutral-100 border border-neutral-200 rounded-xl p-4 text-center">
                   <CheckCircle2 className="h-8 w-8 mx-auto text-neutral-400 mb-2" />
-                  <p className="text-neutral-600">This conversation has been closed</p>
+                  <p className="text-neutral-600">{t('dashboard.emailPage.conversationClosed')}</p>
                 </div>
               )}
             </>
@@ -555,10 +555,10 @@ export default function EmailDashboardPage() {
             <div className="bg-white rounded-xl border border-neutral-200 p-12 text-center">
               <MessageSquare className="h-12 w-12 mx-auto text-neutral-300 mb-4" />
               <h3 className="text-lg font-medium text-neutral-900 mb-2">
-                Select a Conversation
+                {t('dashboard.emailPage.selectConversation')}
               </h3>
               <p className="text-neutral-600">
-                Choose a conversation from the list to view details and manage responses
+                {t('dashboard.emailPage.selectConversationDesc')}
               </p>
             </div>
           )}
