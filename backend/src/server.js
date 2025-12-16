@@ -9,6 +9,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+dotenv.config();
 
 // Import routes
 import authRoutes from './routes/auth.js';
@@ -36,8 +37,6 @@ import costCalculatorRoutes from './routes/costCalculator.js';
 import webhooksRoutes from './routes/webhooks.js';
 import chatRoutes from './routes/chat.js';
 import whatsappRoutes from './routes/whatsapp.js';
-import trendyolRoutes from './routes/trendyol.js';
-import cargoRoutes from './routes/cargo.js';
 import parasutRoutes from './routes/parasut.js';
 import iyzicoRoutes from './routes/iyzico.js';
 import emailRoutes from './routes/email.js';
@@ -117,8 +116,6 @@ app.use('/api/cost-calculator', costCalculatorRoutes);
 app.use('/api/webhooks', webhooksRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
-app.use('/api/trendyol', trendyolRoutes);
-app.use('/api/cargo', cargoRoutes);
 app.use('/api/parasut', parasutRoutes);
 app.use('/api/iyzico', iyzicoRoutes);
 app.use('/api/email', emailRoutes);

@@ -8,6 +8,7 @@ import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import OpenAI from 'openai';
 import { getActiveTools, executeTool } from '../tools/index.js';
+import { getDateTimeContext } from '../utils/dateTime.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -40,7 +41,7 @@ router.post('/widget', async (req, res) => {
             integrations: {
               where: { isActive: true }
             }
-          }
+          },
         }
       }
     });
@@ -50,6 +51,11 @@ router.post('/widget', async (req, res) => {
     }
 
     const business = assistant.business;
+    const timezone = business?.timezone || 'Europe/Istanbul';
+    const language = business?.language || 'TR';
+
+    // Get dynamic date/time context for this request
+    const dateTimeContext = getDateTimeContext(timezone, language);
 
     // Get active tools for this business from central tool system
     const tools = getActiveTools(business);
@@ -62,7 +68,7 @@ router.post('/widget', async (req, res) => {
 
 ${assistant.systemPrompt || 'You are a helpful customer service assistant. Be friendly, concise, and helpful.'}
 
-IMPORTANT: Today's date is ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}.
+${dateTimeContext}
 
 When a customer wants to book an appointment:
 1. Ask for their name if not provided

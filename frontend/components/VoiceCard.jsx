@@ -75,7 +75,7 @@ export default function VoiceCard({ voice, onSelect, isSelected }) {
       </div>
 
       {/* Play button */}
-      {voice.sampleUrl && (
+      {voice.sampleUrl ? (
         <>
           <Button
             variant="outline"
@@ -103,6 +103,16 @@ export default function VoiceCard({ voice, onSelect, isSelected }) {
             className="hidden"
           />
         </>
+      ) : (
+        <Button
+          variant="outline"
+          size="sm"
+          disabled
+          className="w-full opacity-50"
+        >
+          <Play className="h-4 w-4 mr-2" />
+          Sample Not Available
+        </Button>
       )}
     </div>
   );

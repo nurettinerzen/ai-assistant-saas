@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Progress } from '@/components/ui/progress';
 import {
   Select,
   SelectContent,
@@ -22,7 +23,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Progress } from '@/components/ui/progress';
 import { Check, ChevronRight, ChevronLeft, Mic } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast } from '@/lib/toast';
@@ -31,20 +31,25 @@ const STEPS = [
   {
     id: 1,
     title: 'Welcome to Telyx',
-    description: 'Let\'s set up your first AI assistant in 4 easy steps',
+    description: 'Let\'s set up your business and first AI assistant',
   },
   {
     id: 2,
-    title: 'Basic Information',
-    description: 'Tell us about your assistant',
+    title: 'Business Information',
+    description: 'Tell us about your business',
   },
   {
     id: 3,
+    title: 'Assistant Setup',
+    description: 'Name your AI assistant',
+  },
+  {
+    id: 4,
     title: 'Select Voice',
     description: 'Choose how your assistant sounds',
   },
   {
-    id: 4,
+    id: 5,
     title: 'Configure Behavior',
     description: 'Define your assistant\'s personality',
   },
@@ -54,16 +59,16 @@ export default function OnboardingWizard({ isOpen, onComplete }) {
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    name: '',
     businessType: '',
+    name: '',
     voiceId: '',
     systemPrompt: '',
   });
   const [voices, setVoices] = useState([]);
 
-  // Load voices for step 3
+  // Load voices for step 4
   React.useEffect(() => {
-    if (currentStep === 3 && voices.length === 0) {
+    if (currentStep === 4 && voices.length === 0) {
       loadVoices();
     }
   }, [currentStep]);
@@ -71,7 +76,12 @@ export default function OnboardingWizard({ isOpen, onComplete }) {
   const loadVoices = async () => {
     try {
       const response = await apiClient.voices.getAll();
-      setVoices(response.data.voices || []);
+      // Backend returns { voices: { tr: [...], en: [...], ... } }
+      const voicesData = response.data.voices || {};
+
+      // Get Turkish voices by default for onboarding (can be enhanced later based on user preference)
+      const turkishVoices = voicesData['tr'] || [];
+      setVoices(turkishVoices);
     } catch (error) {
       toast.error('Failed to load voices');
     }
@@ -83,20 +93,24 @@ export default function OnboardingWizard({ isOpen, onComplete }) {
 
   const handleNext = () => {
     // Validate current step
-    if (currentStep === 2 && (!formData.name || !formData.businessType)) {
-      toast.error('Please fill in all required fields');
+    if (currentStep === 2 && !formData.businessType) {
+      toast.error('Please select your business type');
       return;
     }
-    if (currentStep === 3 && !formData.voiceId) {
+    if (currentStep === 3 && !formData.name) {
+      toast.error('Please enter an assistant name');
+      return;
+    }
+    if (currentStep === 4 && !formData.voiceId) {
       toast.error('Please select a voice');
       return;
     }
-    if (currentStep === 4 && !formData.systemPrompt) {
+    if (currentStep === 5 && !formData.systemPrompt) {
       toast.error('Please provide a system prompt');
       return;
     }
 
-    if (currentStep < 4) {
+    if (currentStep < 5) {
       setCurrentStep(currentStep + 1);
     } else {
       handleComplete();
@@ -112,6 +126,14 @@ export default function OnboardingWizard({ isOpen, onComplete }) {
   const handleComplete = async () => {
     setLoading(true);
     try {
+      // First, update business type
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      if (user.businessId) {
+        await apiClient.put(`/api/business/${user.businessId}`, {
+          businessType: formData.businessType.toUpperCase()
+        });
+      }
+
       // Create the assistant
       await apiClient.assistants.create({
         name: formData.name,
@@ -123,14 +145,14 @@ export default function OnboardingWizard({ isOpen, onComplete }) {
         },
       });
 
-      toast.success('Assistant created successfully!');
-      
+      toast.success('Setup completed successfully!');
+
       // Mark onboarding as complete
       localStorage.setItem('onboarding_completed', 'true');
-      
+
       onComplete();
     } catch (error) {
-      toast.error('Failed to create assistant');
+      toast.error('Failed to complete setup');
     } finally {
       setLoading(false);
     }
@@ -175,6 +197,34 @@ export default function OnboardingWizard({ isOpen, onComplete }) {
           {currentStep === 2 && (
             <div className="space-y-4">
               <div>
+                <Label htmlFor="businessType">What type of business do you have? *</Label>
+                <Select
+                  value={formData.businessType}
+                  onValueChange={(value) => handleInputChange('businessType', value)}
+                >
+                  <SelectTrigger className="mt-2">
+                    <SelectValue placeholder="Select your business type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="restaurant">Restaurant / Food Service</SelectItem>
+                    <SelectItem value="ecommerce">E-commerce / Online Store</SelectItem>
+                    <SelectItem value="healthcare">Healthcare / Medical</SelectItem>
+                    <SelectItem value="realestate">Real Estate</SelectItem>
+                    <SelectItem value="salon">Salon / Beauty Services</SelectItem>
+                    <SelectItem value="professional">Professional Services</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-neutral-500 mt-2">
+                  This helps us customize your AI assistant for your industry.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {currentStep === 3 && (
+            <div className="space-y-4">
+              <div>
                 <Label htmlFor="name">Assistant Name *</Label>
                 <Input
                   id="name"
@@ -182,31 +232,14 @@ export default function OnboardingWizard({ isOpen, onComplete }) {
                   value={formData.name}
                   onChange={(e) => handleInputChange('name', e.target.value)}
                 />
-              </div>
-
-              <div>
-                <Label htmlFor="businessType">Business Type *</Label>
-                <Select
-                  value={formData.businessType}
-                  onValueChange={(value) => handleInputChange('businessType', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select your industry" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="restaurant">Restaurant</SelectItem>
-                    <SelectItem value="retail">Retail / E-commerce</SelectItem>
-                    <SelectItem value="healthcare">Healthcare</SelectItem>
-                    <SelectItem value="realestate">Real Estate</SelectItem>
-                    <SelectItem value="professional">Professional Services</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
+                <p className="text-xs text-neutral-500 mt-2">
+                  Give your assistant a friendly name that your customers will recognize.
+                </p>
               </div>
             </div>
           )}
 
-          {currentStep === 3 && (
+          {currentStep === 4 && (
             <div className="space-y-4">
               <div>
                 <Label>Select a Voice *</Label>
@@ -237,7 +270,7 @@ export default function OnboardingWizard({ isOpen, onComplete }) {
             </div>
           )}
 
-          {currentStep === 4 && (
+          {currentStep === 5 && (
             <div className="space-y-4">
               <div>
                 <Label htmlFor="systemPrompt">System Prompt *</Label>
@@ -269,8 +302,8 @@ export default function OnboardingWizard({ isOpen, onComplete }) {
 
           <Button onClick={handleNext} disabled={loading}>
             {loading ? (
-              'Creating...'
-            ) : currentStep === 4 ? (
+              'Setting up...'
+            ) : currentStep === 5 ? (
               'Complete Setup'
             ) : (
               <>

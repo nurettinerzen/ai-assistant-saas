@@ -5,9 +5,8 @@
 
 import OpenAI from 'openai';
 import { PrismaClient } from '@prisma/client';
-import googleCalendarService from './google-calendar.js';
-import trendyolService from './trendyol.js';
-import cargoAggregator from './cargo-aggregator.js';
+import { getDateTimeContext } from '../utils/dateTime.js';
+import { getActiveTools, executeTool } from '../tools/index.js';
 
 const prisma = new PrismaClient();
 
@@ -16,107 +15,10 @@ const openai = new OpenAI({
 });
 
 // ============================================================
-// TOOL DEFINITIONS (Same as WhatsApp/Chat)
+// TOOL DEFINITIONS - Using Central Tool System
 // ============================================================
-
-const EMAIL_TOOLS = [
-  {
-    type: "function",
-    function: {
-      name: "create_appointment",
-      description: "Creates an appointment/reservation when customer requests booking via email.",
-      parameters: {
-        type: "object",
-        properties: {
-          date: { type: "string", description: "Appointment date in YYYY-MM-DD format" },
-          time: { type: "string", description: "Appointment time in HH:MM 24-hour format" },
-          customer_name: { type: "string", description: "Customer's full name" },
-          customer_email: { type: "string", description: "Customer's email address" },
-          customer_phone: { type: "string", description: "Customer's phone number" },
-          service_type: { type: "string", description: "Type of service requested" },
-          notes: { type: "string", description: "Special requests or notes" }
-        },
-        required: ["date", "time", "customer_name", "customer_email"]
-      }
-    }
-  },
-  {
-    type: "function",
-    function: {
-      name: "check_order_status",
-      description: "Check the status of a customer's e-commerce order.",
-      parameters: {
-        type: "object",
-        properties: {
-          order_number: { type: "string", description: "Order number or ID" },
-          customer_email: { type: "string", description: "Customer's email address" }
-        },
-        required: []
-      }
-    }
-  },
-  {
-    type: "function",
-    function: {
-      name: "track_shipment",
-      description: "Track a shipment/cargo by tracking number.",
-      parameters: {
-        type: "object",
-        properties: {
-          tracking_number: { type: "string", description: "Cargo tracking number" },
-          carrier: { type: "string", description: "Cargo carrier name", enum: ["yurtici", "aras", "mng"] }
-        },
-        required: ["tracking_number"]
-      }
-    }
-  },
-  {
-    type: "function",
-    function: {
-      name: "get_product_stock",
-      description: "Check product stock/availability.",
-      parameters: {
-        type: "object",
-        properties: {
-          product_name: { type: "string", description: "Product name or description" },
-          barcode: { type: "string", description: "Product barcode if known" }
-        },
-        required: ["product_name"]
-      }
-    }
-  }
-];
-
-// Get active tools based on business type
-function getActiveTools(business) {
-  const tools = [];
-  const businessType = business.businessType || 'OTHER';
-  const integrations = business.integrations || [];
-
-  // APPOINTMENT - Salon, Clinic, Service, Other
-  if (['SALON', 'CLINIC', 'SERVICE', 'OTHER'].includes(businessType)) {
-    tools.push(EMAIL_TOOLS[0]); // create_appointment
-  }
-
-  // ECOMMERCE tools - check status, stock, tracking
-  if (businessType === 'ECOMMERCE') {
-    const hasTrendyol = integrations.some(i => i.type === 'TRENDYOL' && i.isActive && i.connected);
-    if (hasTrendyol) {
-      tools.push(EMAIL_TOOLS[1]); // check_order_status
-      tools.push(EMAIL_TOOLS[3]); // get_product_stock
-    }
-    
-    // Cargo tracking
-    const hasCargo = integrations.some(i => 
-      ['YURTICI_KARGO', 'ARAS_KARGO', 'MNG_KARGO'].includes(i.type) && i.isActive && i.connected
-    );
-    if (hasCargo) {
-      tools.push(EMAIL_TOOLS[2]); // track_shipment
-    }
-  }
-
-  return tools;
-}
+// Tools are now managed centrally in ../tools/index.js
+// This ensures consistency across all channels (Chat, WhatsApp, Email, Phone)
 
 class EmailAIService {
   /**
@@ -274,190 +176,18 @@ class EmailAIService {
   }
 
   /**
-   * Execute tool call
+   * Execute tool call using central tool system
    */
   async executeToolCall(business, functionName, args, customerEmail) {
-    switch (functionName) {
-      case 'create_appointment':
-        return await this.handleCreateAppointment(args, business, customerEmail);
-      case 'check_order_status':
-        return await this.handleCheckOrderStatus(args, business, customerEmail);
-      case 'track_shipment':
-        return await this.handleTrackShipment(args, business);
-      case 'get_product_stock':
-        return await this.handleGetProductStock(args, business);
-      default:
-        return { success: false, message: `Unknown function: ${functionName}` };
-    }
+    // Use central tool system for consistency across all channels
+    return await executeTool(functionName, args, business, {
+      channel: 'EMAIL',
+      customerEmail
+    });
   }
 
-  /**
-   * Handle create appointment
-   */
-  async handleCreateAppointment(args, business, customerEmail) {
-    try {
-      const { date, time, customer_name, customer_phone, service_type, notes } = args;
-
-      let appointmentDateTime;
-      try {
-        appointmentDateTime = new Date(`${date}T${time}`);
-        if (isNaN(appointmentDateTime.getTime())) throw new Error('Invalid');
-      } catch {
-        return { success: false, message: 'Invalid date/time format' };
-      }
-
-      // Check for Google Calendar integration
-      const calendarIntegration = business.integrations?.find(
-        i => i.type === 'GOOGLE_CALENDAR' && i.isActive
-      );
-
-      let calendarEventId = null;
-      if (calendarIntegration?.credentials) {
-        try {
-          const { access_token, refresh_token } = calendarIntegration.credentials;
-          const duration = business.bookingDuration || 30;
-          const endDateTime = new Date(appointmentDateTime.getTime() + duration * 60000);
-
-          const event = await googleCalendarService.createEvent(
-            access_token, refresh_token,
-            process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET,
-            {
-              summary: `${service_type || 'Appointment'} - ${customer_name}`,
-              description: `Email: ${customerEmail}\nPhone: ${customer_phone || 'N/A'}\n${notes || ''}`,
-              start: { dateTime: appointmentDateTime.toISOString(), timeZone: business.timezone || 'UTC' },
-              end: { dateTime: endDateTime.toISOString(), timeZone: business.timezone || 'UTC' }
-            }
-          );
-          calendarEventId = event.id;
-        } catch (e) {
-          console.error('Calendar error:', e);
-        }
-      }
-
-      // Save to database
-      await prisma.appointment.create({
-        data: {
-          businessId: business.id,
-          customerName: customer_name,
-          customerPhone: customer_phone || customerEmail,
-          appointmentDate: appointmentDateTime,
-          duration: business.bookingDuration || 30,
-          serviceType: service_type,
-          notes: `Via Email. ${notes || ''}`,
-          status: 'CONFIRMED'
-        }
-      });
-
-      const isTR = business.language === 'TR';
-      return {
-        success: true,
-        message: isTR
-          ? `Randevu oluşturuldu: ${date} saat ${time}`
-          : `Appointment created for ${date} at ${time}`
-      };
-    } catch (error) {
-      console.error('Create appointment error:', error);
-      return { success: false, message: 'Failed to create appointment' };
-    }
-  }
-
-  /**
-   * Handle check order status (E-commerce)
-   */
-  async handleCheckOrderStatus(args, business, customerEmail) {
-    try {
-      const { order_number } = args;
-      
-      const trendyolIntegration = business.integrations?.find(
-        i => i.type === 'TRENDYOL' && i.isActive && i.connected
-      );
-
-      if (!trendyolIntegration) {
-        return { success: false, message: 'E-commerce integration not configured' };
-      }
-
-      // Query Trendyol API
-      const result = await trendyolService.getOrderStatus(business.id, order_number || customerEmail);
-
-      if (result.success) {
-        return {
-          success: true,
-          order_number: result.orderNumber,
-          status: result.status,
-          items: result.items,
-          shipping_status: result.shippingStatus,
-          tracking_number: result.trackingNumber
-        };
-      }
-
-      return { success: false, message: 'Order not found' };
-    } catch (error) {
-      console.error('Check order status error:', error);
-      return { success: false, message: 'Failed to check order status' };
-    }
-  }
-
-  /**
-   * Handle track shipment
-   */
-  async handleTrackShipment(args, business) {
-    try {
-      const { tracking_number, carrier } = args;
-
-      const result = await cargoAggregator.trackShipment(business.id, tracking_number, carrier);
-
-      if (result.success) {
-        return {
-          success: true,
-          carrier: result.carrier,
-          status: result.status,
-          location: result.location,
-          estimated_delivery: result.estimatedDelivery,
-          history: result.history?.slice(0, 3) // Last 3 updates
-        };
-      }
-
-      return { success: false, message: 'Shipment not found' };
-    } catch (error) {
-      console.error('Track shipment error:', error);
-      return { success: false, message: 'Failed to track shipment' };
-    }
-  }
-
-  /**
-   * Handle get product stock
-   */
-  async handleGetProductStock(args, business) {
-    try {
-      const { product_name, barcode } = args;
-
-      const trendyolIntegration = business.integrations?.find(
-        i => i.type === 'TRENDYOL' && i.isActive && i.connected
-      );
-
-      if (!trendyolIntegration) {
-        return { success: false, message: 'E-commerce integration not configured' };
-      }
-
-      const result = await trendyolService.searchProduct(business.id, product_name, barcode);
-
-      if (result.success && result.products?.length > 0) {
-        const product = result.products[0];
-        return {
-          success: true,
-          product_name: product.title,
-          in_stock: product.quantity > 0,
-          quantity: product.quantity,
-          price: product.salePrice
-        };
-      }
-
-      return { success: false, message: 'Product not found' };
-    } catch (error) {
-      console.error('Get product stock error:', error);
-      return { success: false, message: 'Failed to check stock' };
-    }
-  }
+  // NOTE: Tool execution is now handled by the central tool system (../tools/index.js)
+  // This ensures consistency across all channels: Chat, WhatsApp, Email, Phone
 
   /**
    * Build Knowledge Base context
@@ -497,18 +227,12 @@ class EmailAIService {
       ? 'Her zaman Türkçe yanıt ver.'
       : 'Always respond in English.';
 
-    const now = new Date();
-    const dateStr = now.toLocaleDateString(language === 'TR' ? 'tr-TR' : 'en-US', { 
-      timeZone: timezone,
-      weekday: 'long', 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
-    });
+    // Get dynamic date/time context using central utility
+    const dateTimeContext = getDateTimeContext(timezone, language);
 
     return `You are an AI email assistant for ${businessName}, a ${businessType.toLowerCase()} business.
 
-DATE/TIME: ${dateStr} (${timezone})
+${dateTimeContext}
 
 ${assistantPrompt ? `Business Instructions:\n${assistantPrompt}\n` : ''}
 

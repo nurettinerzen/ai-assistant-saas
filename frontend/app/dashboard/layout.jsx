@@ -25,7 +25,8 @@ export default function DashboardLayout({ children }) {
 
     // Load user data
     loadUserData();
-  }, [router]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 🔥 YENİ: Ayrı useEffect - Sidebar scroll position'ını koru
   useEffect(() => {

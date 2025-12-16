@@ -105,7 +105,7 @@ useEffect(() => {
     }
   };
 
-  const handleKeyPress = (e) => {
+  const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
@@ -189,12 +189,13 @@ useEffect(() => {
                 ref={inputRef}
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
-                onKeyPress={handleKeyPress}
+                onKeyDown={handleKeyDown}
                 placeholder="Type a message..."
                 disabled={isLoading}
                 className="flex-1 rounded-full border-gray-300 focus:border-primary-500"
               />
               <Button
+                type="button"
                 onClick={sendMessage}
                 disabled={isLoading || !inputValue.trim()}
                 size="icon"

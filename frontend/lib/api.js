@@ -162,7 +162,8 @@ export const apiClient = {
 
   // Voices
   voices: {
-    getAll: () => api.get('/api/voices'),
+    getAll: (options = {}) => api.get('/api/voices', { params: options }),
+    getSample: (voiceId) => api.get(`/api/voices/sample/${voiceId}`),
   },
 
   // Business

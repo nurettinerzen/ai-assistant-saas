@@ -11,6 +11,7 @@ import { PrismaClient } from '@prisma/client';
 import { decrypt } from '../utils/encryption.js';
 import { webhookRateLimiter } from '../middleware/rateLimiter.js';
 import { getActiveTools, executeTool } from '../tools/index.js';
+import { getDateTimeContext } from '../utils/dateTime.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -308,17 +309,16 @@ async function processWithToolLoop(client, messages, tools, business, context, m
  * Build system prompt for the assistant
  */
 function buildSystemPrompt(business, assistant) {
-  const today = new Date().toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
+  const timezone = business?.timezone || 'Europe/Istanbul';
+  const language = business?.language || 'TR';
+
+  // Get dynamic date/time context for this request
+  const dateTimeContext = getDateTimeContext(timezone, language);
 
   if (assistant?.systemPrompt) {
     return `${assistant.systemPrompt}
 
-IMPORTANT: Today's date is ${today}.
+${dateTimeContext}
 
 When a customer wants to:
 - Book an appointment: Ask for their name, phone, preferred date/time, and service type (if applicable), then use the create_appointment function
@@ -339,7 +339,7 @@ CRITICAL RULES:
 - Keep responses concise (2-3 sentences max)
 - If you don't know something, say "Let me check that for you"
 
-IMPORTANT: Today's date is ${today}.
+${dateTimeContext}
 
 Your name is Customer Support Team.
 Remember: You are a real person helping customers.`;

@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { User, Bell, CreditCard, AlertTriangle, Building2, Globe } from 'lucide-react';
+import { User, Bell, AlertTriangle, Globe } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast, toastHelpers } from '@/lib/toast';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -31,8 +31,6 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState({ name: '', email: '', company: '' });
   const [region, setRegion] = useState({ language: 'TR', country: 'TR', timezone: 'Europe/Istanbul' });
-  const [businessType, setBusinessType] = useState('OTHER');
-  const [businessId, setBusinessId] = useState(null);
   const [notifications, setNotifications] = useState({
     emailOnCall: true,
     emailOnLimit: true,
@@ -50,44 +48,40 @@ export default function SettingsPage() {
   }, []);
 
   const loadSettings = async () => {
-  setLoading(true);
-  try {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    setBusinessId(user.businessId);
+    setLoading(true);
+    try {
+      const [profileRes, notificationsRes] = await Promise.all([
+        apiClient.settings.getProfile(),
+        apiClient.settings.getNotifications(),
+      ]);
 
-    const [profileRes, notificationsRes] = await Promise.all([
-      apiClient.settings.getProfile(),
-      apiClient.settings.getNotifications(),
-    ]);
+      setProfile({
+        name: profileRes.data?.name || '',
+        email: profileRes.data?.email || '',
+        company: profileRes.data?.company || ''
+      });
 
-    setProfile({
-      name: profileRes.data?.name || '',
-      email: profileRes.data?.email || '',
-      company: profileRes.data?.company || ''
-    });
-    
-    setNotifications({
-      emailOnCall: notificationsRes.data?.emailOnCall ?? true,
-      emailOnLimit: notificationsRes.data?.emailOnLimit ?? true,
-      weeklySummary: notificationsRes.data?.weeklySummary ?? true,
-      smsNotifications: notificationsRes.data?.smsNotifications ?? false
-    });
-    
-    // Business bilgisini profileRes'ten al
-    const bizData = profileRes.data?.business || {};
-    setBusinessType(bizData.businessType || 'OTHER');
-    setRegion({
-      language: bizData.language || 'TR',
-      country: bizData.country || 'TR',
-      timezone: bizData.timezone || 'Europe/Istanbul'
-    });
-  } catch (error) {
-    console.error('Load settings error:', error);
-    toast.error(t('saveError'));
-  } finally {
-    setLoading(false);
-  }
-};
+      setNotifications({
+        emailOnCall: notificationsRes.data?.emailOnCall ?? true,
+        emailOnLimit: notificationsRes.data?.emailOnLimit ?? true,
+        weeklySummary: notificationsRes.data?.weeklySummary ?? true,
+        smsNotifications: notificationsRes.data?.smsNotifications ?? false
+      });
+
+      // Business bilgisini profileRes'ten al
+      const bizData = profileRes.data?.business || {};
+      setRegion({
+        language: bizData.language || 'TR',
+        country: bizData.country || 'TR',
+        timezone: bizData.timezone || 'Europe/Istanbul'
+      });
+    } catch (error) {
+      console.error('Load settings error:', error);
+      toast.error(t('saveError'));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSaveProfile = async () => {
     try {
@@ -112,19 +106,6 @@ export default function SettingsPage() {
       // Error handled
     }
   };
-
-  const handleSaveBusinessType = async () => {
-  try {
-    await toastHelpers.async(
-      apiClient.settings.updateProfile({ businessType }),
-      'Updating business type...',
-      'Business type updated successfully!'
-    );
-  } catch (error) {
-    console.error('Update business type error:', error);
-    toast.error('Failed to update business type');
-  }
-};
 
   const handleSaveRegion = async () => {
   try {
@@ -225,58 +206,9 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* Business Type Section */}
-      {can('settings:edit') && (
-      <div className="bg-white rounded-xl border border-neutral-200 p-6 shadow-sm">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="p-2 bg-primary-100 rounded-lg">
-            <Building2 className="h-5 w-5 text-primary-600" />
-          </div>
-          <div>
-            <h2 className="text-lg font-semibold text-neutral-900">Business Type</h2>
-            <p className="text-sm text-neutral-500">
-              Configure your business type to see relevant integrations
-            </p>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <div>
-            <Label htmlFor="businessType">Business Type</Label>
-            <Select value={businessType} onValueChange={setBusinessType}>
-              <SelectTrigger id="businessType" className="w-full">
-                <SelectValue placeholder="Select your business type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="RESTAURANT">Restaurant</SelectItem>
-                <SelectItem value="SALON">Salon/Spa</SelectItem>
-                <SelectItem value="ECOMMERCE">E-commerce</SelectItem>
-                <SelectItem value="CLINIC">Clinic/Healthcare</SelectItem>
-                <SelectItem value="SERVICE">Service Business</SelectItem>
-                <SelectItem value="OTHER">Other</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-neutral-500 mt-2">
-              This helps us show you the most relevant integrations and features for your business
-            </p>
-          </div>
-
-          {/* Business type specific info */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h3 className="text-sm font-semibold text-blue-900 mb-2">
-              {getBusinessTypeTitle(businessType)}
-            </h3>
-            <p className="text-sm text-blue-700">
-              {getBusinessTypeDescription(businessType)}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex justify-end mt-6">
-          <Button onClick={handleSaveBusinessType}>Save Business Type</Button>
-        </div>
-      </div>
-      )}
+      {/* Business Type Section - Removed
+         Business type is now set during onboarding and cannot be changed afterwards.
+         This prevents confusion and ensures integrations remain consistent. */}
 
       {/* Region & Language Section */}
       {can('settings:edit') && (
@@ -494,27 +426,3 @@ export default function SettingsPage() {
   );
 }
 
-// Helper functions for business type information
-function getBusinessTypeTitle(type) {
-  const titles = {
-    RESTAURANT: 'Restaurant Business',
-    SALON: 'Salon & Spa Business',
-    ECOMMERCE: 'E-commerce Business',
-    CLINIC: 'Healthcare & Clinic',
-    SERVICE: 'Service Business',
-    OTHER: 'General Business'
-  };
-  return titles[type] || 'Business Type';
-}
-
-function getBusinessTypeDescription(type) {
-  const descriptions = {
-    RESTAURANT: 'Your integrations page will prioritize tools like OpenTable, Toast POS, Google Calendar for reservations, and WhatsApp for customer communication.',
-    SALON: 'Your integrations page will focus on Booksy, Fresha, Square payments, Google Calendar for appointments, and WhatsApp for appointment reminders.',
-    ECOMMERCE: 'Your integrations page will highlight Shopify, WooCommerce, Stripe payments, ShipStation for shipping, and marketing tools like Klaviyo.',
-    CLINIC: 'Your integrations page will emphasize SimplePractice, Zocdoc, Google Calendar for appointments, WhatsApp for patient communication, and healthcare-specific tools.',
-    SERVICE: 'Your integrations page will show Calendly, HubSpot CRM, Google Calendar, and automation tools to streamline your service delivery.',
-    OTHER: 'You will see all available integrations. Consider selecting a more specific business type to get personalized recommendations.'
-  };
-  return descriptions[type] || 'Select your business type to see personalized integrations.';
-}

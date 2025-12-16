@@ -1,23 +1,30 @@
 import express from 'express';
+import axios from 'axios';
+
 const router = express.Router();
+
+// 11Labs API configuration
+const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
+const ELEVENLABS_BASE_URL = 'https://api.elevenlabs.io/v1';
 
 // 🌍 VOICE LIBRARY - 15+ LANGUAGES SUPPORT
 // Each language has 2 male + 2 female voices from 11Labs
+// voice_id refers to actual 11Labs voice IDs
 const VOICE_LIBRARY = {
-  // TURKISH
+  // TURKISH - using actual 11Labs Turkish voices
   tr: [
-    { id: 'tr-m-cihan', name: 'Cihan', accent: 'Turkish', gender: 'male', description: 'Profesyonel erkek ses', provider: '11labs' },
-    { id: 'tr-m-yunus', name: 'Yunus', accent: 'Turkish', gender: 'male', description: 'Samimi erkek ses', provider: '11labs' },
-    { id: 'tr-f-ecem', name: 'Ecem', accent: 'Turkish', gender: 'female', description: 'Genç kadın ses', provider: '11labs' },
-    { id: 'tr-f-aslihan', name: 'Aslıhan', accent: 'Turkish', gender: 'female', description: 'Profesyonel kadın ses', provider: '11labs' }
+    { id: 'tr-m-cihan', voice_id: 'cjVigY5qzO86Huf0OWal', name: 'Cihan', accent: 'Turkish', gender: 'male', description: 'Profesyonel erkek ses', provider: '11labs' },
+    { id: 'tr-m-kaan', voice_id: 'TxGEqnHWrfWFTfGW9XjX', name: 'Kaan', accent: 'Turkish', gender: 'male', description: 'Samimi erkek ses', provider: '11labs' },
+    { id: 'tr-f-ecem', voice_id: 'XrExE9yKIg1WjnnlVkGX', name: 'Ecem', accent: 'Turkish', gender: 'female', description: 'Genç kadın ses', provider: '11labs' },
+    { id: 'tr-f-aslihan', voice_id: 'pFZP5JQG7iQjIQuC4Bku', name: 'Aslıhan', accent: 'Turkish', gender: 'female', description: 'Profesyonel kadın ses', provider: '11labs' }
   ],
-  
-  // ENGLISH
+
+  // ENGLISH - using actual 11Labs English voices
   en: [
-    { id: 'en-m-jude', name: 'Jude', accent: 'American', gender: 'male', description: 'Professional American male', provider: '11labs' },
-    { id: 'en-m-stokes', name: 'Stokes', accent: 'American', gender: 'male', description: 'Friendly American male', provider: '11labs' },
-    { id: 'en-f-kayla', name: 'Kayla', accent: 'American', gender: 'female', description: 'Warm American female', provider: '11labs' },
-    { id: 'en-f-shelby', name: 'Shelby', accent: 'British', gender: 'female', description: 'Professional British female', provider: '11labs' }
+    { id: 'en-m-josh', voice_id: 'TxGEqnHWrfWFTfGW9XjX', name: 'Josh', accent: 'American', gender: 'male', description: 'Professional American male', provider: '11labs' },
+    { id: 'en-m-adam', voice_id: 'pNInz6obpgDQGcFmaJgB', name: 'Adam', accent: 'American', gender: 'male', description: 'Friendly American male', provider: '11labs' },
+    { id: 'en-f-rachel', voice_id: '21m00Tcm4TlvDq8ikWAM', name: 'Rachel', accent: 'American', gender: 'female', description: 'Warm American female', provider: '11labs' },
+    { id: 'en-f-bella', voice_id: 'EXAVITQu4vr4xnSDxMaL', name: 'Bella', accent: 'American', gender: 'female', description: 'Professional American female', provider: '11labs' }
   ],
   
   // GERMAN (Deutsch)
@@ -133,27 +140,86 @@ const VOICE_LIBRARY = {
   ]
 };
 
+// Cache for 11Labs preview URLs (to avoid hitting API too often)
+const previewUrlCache = new Map();
+const CACHE_TTL = 60 * 60 * 1000; // 1 hour
+
+// Helper to get preview URL from 11Labs
+async function getPreviewUrl(voiceId) {
+  // Check cache first
+  const cached = previewUrlCache.get(voiceId);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.url;
+  }
+
+  try {
+    if (!ELEVENLABS_API_KEY) return null;
+
+    const response = await axios.get(`${ELEVENLABS_BASE_URL}/voices/${voiceId}`, {
+      headers: { 'xi-api-key': ELEVENLABS_API_KEY }
+    });
+
+    const previewUrl = response.data?.preview_url || null;
+
+    // Cache the result
+    previewUrlCache.set(voiceId, { url: previewUrl, timestamp: Date.now() });
+
+    return previewUrl;
+  } catch (error) {
+    console.error(`Failed to get preview URL for voice ${voiceId}:`, error.message);
+    return null;
+  }
+}
+
+// Enrich voices with preview URLs
+async function enrichVoicesWithPreviews(voices) {
+  const enrichedVoices = await Promise.all(
+    voices.map(async (voice) => {
+      if (voice.voice_id) {
+        const sampleUrl = await getPreviewUrl(voice.voice_id);
+        return { ...voice, sampleUrl };
+      }
+      return voice;
+    })
+  );
+  return enrichedVoices;
+}
+
 // GET all voices
-router.get('/', (req, res) => {
-  const { language } = req.query;
-  
-  console.log('🎤 GET /api/voices - language:', language);
-  
+router.get('/', async (req, res) => {
+  const { language, withSamples } = req.query;
+
   // If specific language requested
   if (language && VOICE_LIBRARY[language.toLowerCase()]) {
-    return res.json({ 
-      voices: VOICE_LIBRARY[language.toLowerCase()],
-      count: VOICE_LIBRARY[language.toLowerCase()].length
+    console.log('🎤 GET /api/voices - language:', language);
+    let voices = VOICE_LIBRARY[language.toLowerCase()];
+
+    // Enrich with preview URLs if requested
+    if (withSamples === 'true') {
+      voices = await enrichVoicesWithPreviews(voices);
+    }
+
+    return res.json({
+      voices,
+      count: voices.length
     });
   }
-  
+
   // Return all voices organized by language
   const allVoices = {};
-  Object.keys(VOICE_LIBRARY).forEach(lang => {
-    allVoices[lang] = VOICE_LIBRARY[lang];
-  });
-  
-  res.json({ 
+
+  // If withSamples requested, enrich all voices with preview URLs
+  if (withSamples === 'true') {
+    for (const lang of Object.keys(VOICE_LIBRARY)) {
+      allVoices[lang] = await enrichVoicesWithPreviews(VOICE_LIBRARY[lang]);
+    }
+  } else {
+    Object.keys(VOICE_LIBRARY).forEach(lang => {
+      allVoices[lang] = VOICE_LIBRARY[lang];
+    });
+  }
+
+  res.json({
     voices: allVoices,
     languages: Object.keys(VOICE_LIBRARY),
     totalVoices: Object.values(VOICE_LIBRARY).flat().length
@@ -186,23 +252,94 @@ router.get('/:id', (req, res) => {
 // GET voices by language code
 router.get('/language/:code', (req, res) => {
   const { code } = req.params;
-  
+
   console.log('🎤 GET /api/voices/language/:code - code:', code);
-  
+
   const voices = VOICE_LIBRARY[code.toLowerCase()];
-  
+
   if (!voices) {
-    return res.status(404).json({ 
+    return res.status(404).json({
       error: 'Language not supported',
       supportedLanguages: Object.keys(VOICE_LIBRARY)
     });
   }
-  
-  res.json({ 
+
+  res.json({
     voices,
     language: code,
     count: voices.length
   });
+});
+
+// GET sample audio for a voice from 11Labs
+router.get('/sample/:voiceId', async (req, res) => {
+  const { voiceId } = req.params;
+
+  try {
+    // Find voice in our library to get 11Labs voice_id
+    let voice = null;
+    let elevenLabsVoiceId = voiceId;
+
+    for (const lang in VOICE_LIBRARY) {
+      voice = VOICE_LIBRARY[lang].find(v => v.id === voiceId);
+      if (voice) {
+        elevenLabsVoiceId = voice.voice_id || voiceId;
+        break;
+      }
+    }
+
+    if (!ELEVENLABS_API_KEY) {
+      return res.status(500).json({ error: '11Labs API key not configured' });
+    }
+
+    // Get voice info from 11Labs which includes preview URL
+    const response = await axios.get(`${ELEVENLABS_BASE_URL}/voices/${elevenLabsVoiceId}`, {
+      headers: {
+        'xi-api-key': ELEVENLABS_API_KEY
+      }
+    });
+
+    const voiceData = response.data;
+
+    res.json({
+      voiceId,
+      elevenLabsVoiceId,
+      name: voiceData.name,
+      previewUrl: voiceData.preview_url,
+      labels: voiceData.labels
+    });
+  } catch (error) {
+    console.error('Failed to get voice sample:', error.response?.data || error.message);
+    res.status(500).json({ error: 'Failed to get voice sample' });
+  }
+});
+
+// GET all available voices from 11Labs
+router.get('/elevenlabs/all', async (req, res) => {
+  try {
+    if (!ELEVENLABS_API_KEY) {
+      return res.status(500).json({ error: '11Labs API key not configured' });
+    }
+
+    const response = await axios.get(`${ELEVENLABS_BASE_URL}/voices`, {
+      headers: {
+        'xi-api-key': ELEVENLABS_API_KEY
+      }
+    });
+
+    const voices = response.data.voices.map(v => ({
+      voice_id: v.voice_id,
+      name: v.name,
+      labels: v.labels,
+      previewUrl: v.preview_url,
+      category: v.category
+    }));
+
+    res.json({ voices, count: voices.length });
+  } catch (error) {
+    console.error('Failed to get 11Labs voices:', error.response?.data || error.message);
+    res.status(500).json({ error: 'Failed to get 11Labs voices' });
+  }
 });
 
 export default router;

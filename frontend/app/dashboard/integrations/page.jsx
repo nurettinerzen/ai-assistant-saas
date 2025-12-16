@@ -22,7 +22,7 @@ import EmptyState from '@/components/EmptyState';
 import {
   Puzzle, Check, ExternalLink, Star, Copy, CheckCircle2, CreditCard, Zap,
   MessageSquare, Target, Cloud, Calendar, CalendarDays, BarChart3, Smartphone,
-  ShoppingCart, Utensils, Scissors, Stethoscope, Package, Mail, Hash, Truck,
+  ShoppingCart, Utensils, Scissors, Stethoscope, Package, Mail, Hash,
   Calculator, Wallet, Eye, EyeOff, Inbox, RefreshCw
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
@@ -38,8 +38,7 @@ const INTEGRATION_ICONS = {
   FRESHA: Scissors, SHIPSTATION: Package, KLAVIYO: Mail, MAILCHIMP: Mail,
   HUBSPOT: Target, SALESFORCE: Cloud, GOOGLE_SHEETS: BarChart3, ZAPIER: Zap,
   SLACK: MessageSquare, TWILIO_SMS: MessageSquare, SENDGRID_EMAIL: Mail,
-  TRENDYOL: ShoppingCart, YURTICI_KARGO: Truck, ARAS_KARGO: Truck,
-  MNG_KARGO: Truck, PARASUT: Calculator, IYZICO: Wallet, CUSTOM: Hash,
+  PARASUT: Calculator, IYZICO: Wallet, CUSTOM: Hash,
   IKAS: ShoppingCart, IDEASOFT: ShoppingCart, TICIMAX: ShoppingCart
 };
 
@@ -53,7 +52,6 @@ const CATEGORY_COLORS = {
   healthcare: { icon: 'text-teal-600', bg: 'bg-teal-100' },
   booking: { icon: 'text-pink-600', bg: 'bg-pink-100' },
   shipping: { icon: 'text-indigo-600', bg: 'bg-indigo-100' },
-  cargo: { icon: 'text-orange-600', bg: 'bg-orange-100' },
   marketing: { icon: 'text-rose-600', bg: 'bg-rose-100' },
   crm: { icon: 'text-cyan-600', bg: 'bg-cyan-100' },
   data: { icon: 'text-emerald-600', bg: 'bg-emerald-100' },
@@ -66,7 +64,6 @@ const INTEGRATION_DOCS = {
   WHATSAPP: 'https://developers.facebook.com/docs/whatsapp',
   SHOPIFY: 'https://shopify.dev',
   WOOCOMMERCE: 'https://woocommerce.com/documentation',
-  TRENDYOL: 'https://developers.trendyol.com',
   PARASUT: 'https://apidocs.parasut.com',
   IYZICO: 'https://dev.iyzipay.com',
   ZAPIER: 'https://zapier.com/developer',
@@ -88,18 +85,6 @@ export default function IntegrationsPage() {
   const [whatsappLoading, setWhatsappLoading] = useState(false);
   const [whatsappForm, setWhatsappForm] = useState({ accessToken: '', phoneNumberId: '', verifyToken: '' });
 
-  // Trendyol state
-  const [trendyolModalOpen, setTrendyolModalOpen] = useState(false);
-  const [trendyolStatus, setTrendyolStatus] = useState(null);
-  const [trendyolLoading, setTrendyolLoading] = useState(false);
-  const [trendyolForm, setTrendyolForm] = useState({ supplierId: '', apiKey: '', apiSecret: '' });
-
-  // Cargo state
-  const [cargoModalOpen, setCargoModalOpen] = useState(false);
-  const [activeCargoCarrier, setActiveCargoCarrier] = useState(null);
-  const [cargoLoading, setCargoLoading] = useState(false);
-  const [cargoStatus, setCargoStatus] = useState({});
-  const [cargoForm, setCargoForm] = useState({ customerCode: '', username: '', password: '', apiKey: '' });
 
   // iyzico state
   const [iyzicoModalOpen, setIyzicoModalOpen] = useState(false);
@@ -154,8 +139,6 @@ export default function IntegrationsPage() {
   useEffect(() => {
     loadIntegrations();
     loadWhatsAppStatus();
-    loadTrendyolStatus();
-    loadCargoStatus();
     loadIyzicoStatus();
     loadParasutStatus();
     loadEmailStatus();
@@ -206,23 +189,6 @@ export default function IntegrationsPage() {
     } catch (error) { console.error('Failed to load WhatsApp status:', error); }
   };
 
-  const loadTrendyolStatus = async () => {
-    try {
-      const response = await apiClient.get('/api/trendyol/status');
-      setTrendyolStatus(response.data);
-    } catch (error) { console.error('Failed to load Trendyol status:', error); }
-  };
-
-  const loadCargoStatus = async () => {
-    try {
-      const response = await apiClient.get('/api/cargo/connected');
-      const statusMap = {};
-      if (response.data.carriers) {
-        response.data.carriers.forEach(carrier => { statusMap[carrier.carrier] = carrier; });
-      }
-      setCargoStatus(statusMap);
-    } catch (error) { console.error('Failed to load cargo status:', error); }
-  };
 
   const loadIyzicoStatus = async () => {
     try {
@@ -356,94 +322,6 @@ export default function IntegrationsPage() {
     } catch (error) { toast.error('Failed to disconnect'); }
   };
 
-  const handleTrendyolConnect = async () => {
-    if (!trendyolForm.supplierId || !trendyolForm.apiKey || !trendyolForm.apiSecret) {
-      toast.error('Lütfen tüm alanları doldurun');
-      return;
-    }
-    setTrendyolLoading(true);
-    try {
-      const response = await apiClient.post('/api/trendyol/connect', trendyolForm);
-      if (response.data.success) {
-        toast.success('Trendyol bağlandı!');
-        setTrendyolModalOpen(false);
-        setTrendyolForm({ supplierId: '', apiKey: '', apiSecret: '' });
-        await loadTrendyolStatus();
-        await loadIntegrations();
-      }
-    } catch (error) {
-      toast.error(error.response?.data?.error || 'Bağlantı başarısız');
-    } finally {
-      setTrendyolLoading(false);
-    }
-  };
-
-  const handleTrendyolDisconnect = async () => {
-    if (!confirm('Trendyol bağlantısını kesmek istediğinize emin misiniz?')) return;
-    try {
-      await apiClient.post('/api/trendyol/disconnect');
-      toast.success('Trendyol bağlantısı kesildi');
-      await loadTrendyolStatus();
-      await loadIntegrations();
-    } catch (error) { toast.error('Bağlantı kesilemedi'); }
-  };
-
-  const getCarrierName = (carrier) => {
-    const names = { yurtici: 'Yurtiçi Kargo', aras: 'Aras Kargo', mng: 'MNG Kargo' };
-    return names[carrier] || carrier;
-  };
-
-  const openCargoModal = (carrier) => {
-    setActiveCargoCarrier(carrier);
-    setCargoModalOpen(true);
-  };
-
-  const resetCargoForm = () => {
-    setCargoForm({ customerCode: '', username: '', password: '', apiKey: '' });
-    setActiveCargoCarrier(null);
-  };
-
-  const handleCargoConnect = async () => {
-    if (!activeCargoCarrier) return;
-    if ((activeCargoCarrier === 'yurtici' || activeCargoCarrier === 'aras') &&
-        (!cargoForm.customerCode || !cargoForm.username || !cargoForm.password)) {
-      toast.error('Please fill in all required fields');
-      return;
-    }
-    if (activeCargoCarrier === 'mng' && !cargoForm.apiKey) {
-      toast.error('API Key is required');
-      return;
-    }
-    setCargoLoading(true);
-    try {
-      const endpoint = `/api/cargo/${activeCargoCarrier}/connect`;
-      const payload = activeCargoCarrier === 'mng'
-        ? { apiKey: cargoForm.apiKey, customerId: cargoForm.customerCode }
-        : { customerCode: cargoForm.customerCode, username: cargoForm.username, password: cargoForm.password };
-      const response = await apiClient.post(endpoint, payload);
-      if (response.data.success) {
-        toast.success(`${getCarrierName(activeCargoCarrier)} connected!`);
-        setCargoModalOpen(false);
-        resetCargoForm();
-        await loadCargoStatus();
-        await loadIntegrations();
-      }
-    } catch (error) {
-      toast.error(error.response?.data?.error || 'Connection failed');
-    } finally {
-      setCargoLoading(false);
-    }
-  };
-
-  const handleCargoDisconnect = async (carrier) => {
-    if (!confirm(`Disconnect ${getCarrierName(carrier)}?`)) return;
-    try {
-      await apiClient.post(`/api/cargo/${carrier}/disconnect`);
-      toast.success(`${getCarrierName(carrier)} disconnected`);
-      await loadCargoStatus();
-      await loadIntegrations();
-    } catch (error) { toast.error('Failed to disconnect'); }
-  };
 
   const handleIyzicoConnect = async () => {
     if (!iyzicoForm.apiKey || !iyzicoForm.secretKey) {
@@ -691,10 +569,6 @@ const handleShopifyConnect = async () => {
   const handleConnect = async (integration) => {
     try {
       if (integration.type === 'WHATSAPP') { setWhatsappModalOpen(true); return; }
-      if (integration.type === 'TRENDYOL') { setTrendyolModalOpen(true); return; }
-      if (integration.type === 'YURTICI_KARGO') { openCargoModal('yurtici'); return; }
-      if (integration.type === 'ARAS_KARGO') { openCargoModal('aras'); return; }
-      if (integration.type === 'MNG_KARGO') { openCargoModal('mng'); return; }
       if (integration.type === 'IYZICO') { setIyzicoModalOpen(true); return; }
       if (integration.type === 'PARASUT') {
         const response = await apiClient.get('/api/parasut/auth');
@@ -728,10 +602,6 @@ const handleShopifyConnect = async () => {
   if (!confirm('Disconnect this integration?')) return;
   try {
     if (integration.type === 'WHATSAPP') await handleWhatsAppDisconnect();
-    else if (integration.type === 'TRENDYOL') await handleTrendyolDisconnect();
-    else if (integration.type === 'YURTICI_KARGO') await handleCargoDisconnect('yurtici');
-    else if (integration.type === 'ARAS_KARGO') await handleCargoDisconnect('aras');
-    else if (integration.type === 'MNG_KARGO') await handleCargoDisconnect('mng');
     else if (integration.type === 'IYZICO') await handleIyzicoDisconnect();
     else if (integration.type === 'PARASUT') await handleParasutDisconnect();
     else if (integration.type === 'SHOPIFY') await handleShopifyDisconnect();
@@ -773,13 +643,6 @@ const handleShopifyConnect = async () => {
 
   const handleTest = async (integration) => {
   try {
-    if (integration.type === 'TRENDYOL') {
-      const response = await apiClient.post('/api/trendyol/test');
-      if (response.data.success) toast.success('Connection working!');
-      else toast.error('Test failed');
-      return;
-    }
-    // ↓↓↓ BU İKİSİNİ EKLE ↓↓↓
     if (integration.type === 'GOOGLE_CALENDAR') {
       const response = await apiClient.post('/api/integrations/google-calendar/test');
       if (response.data.success) toast.success('Google Calendar bağlantısı aktif!');
@@ -836,10 +699,6 @@ const handleShopifyConnect = async () => {
       WHATSAPP: 'AI-powered customer conversations via WhatsApp',
       SHOPIFY: 'Connect your Shopify store for order management',
       WOOCOMMERCE: 'Integrate your WooCommerce store',
-      TRENDYOL: 'Trendyol mağazanızı bağlayın - sipariş ve stok sorgulama',
-      YURTICI_KARGO: 'Yurtiçi Kargo ile kargo takip entegrasyonu',
-      ARAS_KARGO: 'Aras Kargo ile kargo takip entegrasyonu',
-      MNG_KARGO: 'MNG Kargo ile kargo takip entegrasyonu',
       PARASUT: 'Turkish accounting - Invoice and contact management',
       IYZICO: 'Turkish payment gateway - Payment and refund tracking',
       ZAPIER: 'Connect thousands of apps with automation',
@@ -850,13 +709,47 @@ const handleShopifyConnect = async () => {
     return descriptions[type] || 'Integration';
   };
 
+  // E-commerce platforms list
+  const ECOMMERCE_PLATFORMS = ['SHOPIFY', 'WOOCOMMERCE', 'IKAS', 'IDEASOFT', 'TICIMAX'];
+
+  // Check which e-commerce platform is connected
+  const getConnectedEcommercePlatform = () => {
+    if (shopifyStatus?.connected) return 'SHOPIFY';
+    if (woocommerceStatus?.connected) return 'WOOCOMMERCE';
+    if (ikasStatus?.connected) return 'IKAS';
+    if (ideasoftStatus?.connected) return 'IDEASOFT';
+    if (ticimaxStatus?.connected) return 'TICIMAX';
+    return null;
+  };
+
+  const connectedEcommerce = getConnectedEcommercePlatform();
+
+  // Check if a platform should be disabled (another e-commerce is connected)
+  const isEcommerceDisabled = (type) => {
+    if (!ECOMMERCE_PLATFORMS.includes(type)) return false;
+    return connectedEcommerce && connectedEcommerce !== type;
+  };
+
+  // Get platform name for display
+  const getEcommercePlatformName = (type) => {
+    const names = {
+      SHOPIFY: 'Shopify',
+      WOOCOMMERCE: 'WooCommerce',
+      IKAS: 'ikas',
+      IDEASOFT: 'Ideasoft',
+      TICIMAX: 'Ticimax'
+    };
+    return names[type] || type;
+  };
+
   const renderIntegrationCard = (integration) => {
     const Icon = getIntegrationIcon(integration.type);
     const colors = getCategoryColors(integration.category);
     const docsUrl = getDocsUrl(integration.type);
+    const disabled = isEcommerceDisabled(integration.type);
 
     return (
-      <div key={integration.type} className={`bg-white rounded-xl border p-6 hover:shadow-md transition-shadow ${integration.priority === 'ESSENTIAL' ? 'border-primary-300 bg-primary-50/30' : 'border-neutral-200'}`}>
+      <div key={integration.type} className={`bg-white rounded-xl border p-6 transition-shadow ${disabled ? 'opacity-60 bg-neutral-50' : 'hover:shadow-md'} ${integration.priority === 'ESSENTIAL' ? 'border-primary-300 bg-primary-50/30' : 'border-neutral-200'}`}>
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className={`p-3 rounded-lg ${colors.bg}`}>
@@ -864,7 +757,7 @@ const handleShopifyConnect = async () => {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-semibold text-neutral-900">{integration.name}</h3>
+                <h3 className={`font-semibold ${disabled ? 'text-neutral-500' : 'text-neutral-900'}`}>{integration.name}</h3>
                 {integration.priority === 'ESSENTIAL' && <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />}
               </div>
               <Badge variant="secondary" className="text-xs mt-1">{integration.category}</Badge>
@@ -883,6 +776,12 @@ const handleShopifyConnect = async () => {
           </div>
         )}
 
+        {disabled && (
+          <div className="mb-3 px-2 py-1 bg-amber-100 text-amber-700 text-xs rounded-md">
+            {getEcommercePlatformName(connectedEcommerce)} zaten bağlı. Değiştirmek için önce bağlantıyı kesin.
+          </div>
+        )}
+
         <p className="text-sm text-neutral-600 mb-4 line-clamp-2">{getCategoryDescription(integration.type)}</p>
 
         <div className="flex gap-2">
@@ -895,7 +794,9 @@ const handleShopifyConnect = async () => {
             </>
           ) : (
             can('integrations:connect') && (
-            <Button size="sm" className="flex-1" onClick={() => handleConnect(integration)}>Connect</Button>
+            <Button size="sm" className="flex-1" onClick={() => handleConnect(integration)} disabled={disabled}>
+              {disabled ? 'Disabled' : 'Connect'}
+            </Button>
             )
           )}
           <Button variant="ghost" size="sm" asChild>
@@ -1095,84 +996,6 @@ const handleShopifyConnect = async () => {
           <DialogFooter>
             <Button variant="outline" onClick={() => setWhatsappModalOpen(false)} disabled={whatsappLoading}>Cancel</Button>
             <Button onClick={handleWhatsAppConnect} disabled={whatsappLoading}>{whatsappLoading ? 'Connecting...' : 'Connect WhatsApp'}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Trendyol Modal */}
-      <Dialog open={trendyolModalOpen} onOpenChange={setTrendyolModalOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Trendyol Satıcı Hesabı Bağla</DialogTitle>
-            <DialogDescription>Trendyol mağazanızı bağlayarak AI asistanınızın sipariş durumu ve stok bilgisi sorgulamasını sağlayın.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Supplier ID (Satıcı ID) *</Label>
-              <Input type="text" placeholder="Örn: 123456" value={trendyolForm.supplierId} onChange={(e) => setTrendyolForm({ ...trendyolForm, supplierId: e.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <Label>API Key *</Label>
-              <Input type="text" placeholder="API Key'inizi girin" value={trendyolForm.apiKey} onChange={(e) => setTrendyolForm({ ...trendyolForm, apiKey: e.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <Label>API Secret *</Label>
-              <Input type="password" placeholder="API Secret'ınızı girin" value={trendyolForm.apiSecret} onChange={(e) => setTrendyolForm({ ...trendyolForm, apiSecret: e.target.value })} />
-            </div>
-            {trendyolStatus?.connected && (
-              <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-                <CheckCircle2 className="h-5 w-5 text-green-600" />
-                <p className="text-sm font-medium text-green-900">Bağlantı Aktif</p>
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setTrendyolModalOpen(false)} disabled={trendyolLoading}>İptal</Button>
-            <Button onClick={handleTrendyolConnect} disabled={trendyolLoading}>{trendyolLoading ? 'Bağlanıyor...' : "Trendyol'u Bağla"}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Cargo Modal */}
-      <Dialog open={cargoModalOpen} onOpenChange={(open) => { setCargoModalOpen(open); if (!open) resetCargoForm(); }}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{activeCargoCarrier && `Connect ${getCarrierName(activeCargoCarrier)}`}</DialogTitle>
-            <DialogDescription>Connect your cargo integration for AI-powered shipment tracking.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            {(activeCargoCarrier === 'yurtici' || activeCargoCarrier === 'aras') && (
-              <>
-                <div className="space-y-2">
-                  <Label>Customer Code *</Label>
-                  <Input type="text" placeholder="Enter your customer code" value={cargoForm.customerCode} onChange={(e) => setCargoForm({ ...cargoForm, customerCode: e.target.value })} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Username *</Label>
-                  <Input type="text" placeholder="Enter your username" value={cargoForm.username} onChange={(e) => setCargoForm({ ...cargoForm, username: e.target.value })} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Password *</Label>
-                  <Input type="password" placeholder="Enter your password" value={cargoForm.password} onChange={(e) => setCargoForm({ ...cargoForm, password: e.target.value })} />
-                </div>
-              </>
-            )}
-            {activeCargoCarrier === 'mng' && (
-              <>
-                <div className="space-y-2">
-                  <Label>API Key *</Label>
-                  <Input type="password" placeholder="Enter your MNG API Key" value={cargoForm.apiKey} onChange={(e) => setCargoForm({ ...cargoForm, apiKey: e.target.value })} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Customer ID (Optional)</Label>
-                  <Input type="text" placeholder="Enter your customer ID" value={cargoForm.customerCode} onChange={(e) => setCargoForm({ ...cargoForm, customerCode: e.target.value })} />
-                </div>
-              </>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setCargoModalOpen(false); resetCargoForm(); }} disabled={cargoLoading}>Cancel</Button>
-            <Button onClick={handleCargoConnect} disabled={cargoLoading}>{cargoLoading ? 'Connecting...' : `Connect ${activeCargoCarrier ? getCarrierName(activeCargoCarrier) : ''}`}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
