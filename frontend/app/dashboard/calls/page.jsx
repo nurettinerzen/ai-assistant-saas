@@ -26,7 +26,7 @@ import { formatDate, formatDuration, formatCurrency, formatPhone } from '@/lib/u
 import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function CallsPage() {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const [calls, setCalls] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -197,10 +197,10 @@ export default function CallsPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-neutral-600">
-                        {formatDate(call.createdAt, 'short')}
+                        {formatDate(call.createdAt, 'short', locale)}
                       </div>
                       <div className="text-xs text-neutral-400">
-                        {formatDate(call.createdAt, 'time')}
+                        {formatDate(call.createdAt, 'time', locale)}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
