@@ -84,13 +84,13 @@ export default function AssistantsPage() {
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingAssistant, setEditingAssistant] = useState(null);
-  const [businessLanguage, setBusinessLanguage] = useState('en');
+  const [businessLanguage, setBusinessLanguage] = useState('tr'); // Default to Turkish
   const [formData, setFormData] = useState({
     name: '',
     voiceId: '',
     systemPrompt: '',
     model: 'gpt-4',
-    language: locale || 'en',
+    language: locale || 'tr',
   });
 
   useEffect(() => {
@@ -100,17 +100,19 @@ export default function AssistantsPage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      // Get business language
+      // Get business info (language and type)
       const user = JSON.parse(localStorage.getItem('user') || '{}');
       if (user.businessId) {
         try {
           const businessRes = await apiClient.business.get(user.businessId);
-          const language = businessRes.data.business?.language?.toLowerCase() || 'en';
+          // API returns business directly, not wrapped in { business: ... }
+          const business = businessRes.data;
+          const language = business?.language?.toLowerCase() || 'tr';
           setBusinessLanguage(language);
           // Set default language in form
           setFormData(prev => ({ ...prev, language }));
         } catch (error) {
-          console.error('Failed to load business language:', error);
+          console.error('Failed to load business info:', error);
         }
       }
 
@@ -143,7 +145,7 @@ export default function AssistantsPage() {
         voiceId: '',
         systemPrompt: template.prompt,
         model: 'gpt-4',
-        language: template.language || businessLanguage || 'en',
+        language: template.language || businessLanguage || 'tr',
       });
     } else {
       setFormData({
@@ -151,7 +153,7 @@ export default function AssistantsPage() {
         voiceId: '',
         systemPrompt: '',
         model: 'gpt-4',
-        language: businessLanguage || 'en',
+        language: businessLanguage || 'tr',
       });
     }
     setShowCreateModal(true);
@@ -214,7 +216,7 @@ export default function AssistantsPage() {
   };
 
   const resetForm = () => {
-    setFormData({ name: '', voiceId: '', systemPrompt: '', model: 'gpt-4', language: businessLanguage || 'en' });
+    setFormData({ name: '', voiceId: '', systemPrompt: '', model: 'gpt-4', language: businessLanguage || 'tr' });
     setEditingAssistant(null);
   };
 
