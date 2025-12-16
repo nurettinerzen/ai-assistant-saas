@@ -65,13 +65,42 @@ export default function OnboardingWizard({ isOpen, onComplete }) {
     systemPrompt: '',
   });
   const [voices, setVoices] = useState([]);
+  const [businessTypeFromDB, setBusinessTypeFromDB] = useState(null);
+  const [businessLanguage, setBusinessLanguage] = useState('tr');
 
-  // Load voices for step 4
+  // Load business info on mount
   React.useEffect(() => {
-    if (currentStep === 4 && voices.length === 0) {
+    loadBusinessInfo();
+  }, []);
+
+  const loadBusinessInfo = async () => {
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      if (user.businessId) {
+        const response = await apiClient.business.get(user.businessId);
+        const business = response.data;
+        // Check if business type is already set (not OTHER or empty)
+        if (business.businessType && business.businessType !== 'OTHER') {
+          setBusinessTypeFromDB(business.businessType);
+          setFormData(prev => ({ ...prev, businessType: business.businessType.toLowerCase() }));
+        }
+        // Get business language for voice selection
+        if (business.language) {
+          setBusinessLanguage(business.language.toLowerCase());
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load business info:', error);
+    }
+  };
+
+  // Load voices for step 4 (or step 3 if business type already set)
+  React.useEffect(() => {
+    const voiceStep = businessTypeFromDB ? 3 : 4;
+    if (currentStep === voiceStep && voices.length === 0) {
       loadVoices();
     }
-  }, [currentStep]);
+  }, [currentStep, businessTypeFromDB]);
 
   const loadVoices = async () => {
     try {
@@ -79,38 +108,62 @@ export default function OnboardingWizard({ isOpen, onComplete }) {
       // Backend returns { voices: { tr: [...], en: [...], ... } }
       const voicesData = response.data.voices || {};
 
-      // Get Turkish voices by default for onboarding (can be enhanced later based on user preference)
-      const turkishVoices = voicesData['tr'] || [];
-      setVoices(turkishVoices);
+      // Get voices based on business language
+      const langVoices = voicesData[businessLanguage] || voicesData['tr'] || [];
+      setVoices(langVoices);
     } catch (error) {
       toast.error('Failed to load voices');
     }
   };
+
+  // Calculate actual steps based on whether business type is already set
+  const getActualSteps = () => {
+    if (businessTypeFromDB) {
+      // Skip step 2 (Business Type) - return steps without it
+      return STEPS.filter(step => step.id !== 2);
+    }
+    return STEPS;
+  };
+
+  const actualSteps = getActualSteps();
+
+  // Map current step to actual step ID
+  const getCurrentStepId = () => {
+    if (businessTypeFromDB) {
+      // When business type is set: step 1 = Welcome, step 2 = Assistant Name, step 3 = Voice, step 4 = Behavior
+      const stepMapping = { 1: 1, 2: 3, 3: 4, 4: 5 };
+      return stepMapping[currentStep] || currentStep;
+    }
+    return currentStep;
+  };
+
+  const currentStepId = getCurrentStepId();
+  const totalSteps = actualSteps.length;
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleNext = () => {
-    // Validate current step
-    if (currentStep === 2 && !formData.businessType) {
+    // Validate current step based on actual step ID
+    if (currentStepId === 2 && !formData.businessType) {
       toast.error('Please select your business type');
       return;
     }
-    if (currentStep === 3 && !formData.name) {
+    if (currentStepId === 3 && !formData.name) {
       toast.error('Please enter an assistant name');
       return;
     }
-    if (currentStep === 4 && !formData.voiceId) {
+    if (currentStepId === 4 && !formData.voiceId) {
       toast.error('Please select a voice');
       return;
     }
-    if (currentStep === 5 && !formData.systemPrompt) {
+    if (currentStepId === 5 && !formData.systemPrompt) {
       toast.error('Please provide a system prompt');
       return;
     }
 
-    if (currentStep < 5) {
+    if (currentStep < totalSteps) {
       setCurrentStep(currentStep + 1);
     } else {
       handleComplete();
@@ -158,27 +211,30 @@ export default function OnboardingWizard({ isOpen, onComplete }) {
     }
   };
 
-  const progress = (currentStep / STEPS.length) * 100;
+  const progress = (currentStep / totalSteps) * 100;
+
+  // Get step info by actual step ID
+  const currentStepInfo = STEPS.find(s => s.id === currentStepId) || STEPS[0];
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onComplete()}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{STEPS[currentStep - 1].title}</DialogTitle>
-          <DialogDescription>{STEPS[currentStep - 1].description}</DialogDescription>
+          <DialogTitle>{currentStepInfo.title}</DialogTitle>
+          <DialogDescription>{currentStepInfo.description}</DialogDescription>
         </DialogHeader>
 
         {/* Progress bar */}
         <div className="mb-6">
           <Progress value={progress} className="h-2" />
           <p className="text-xs text-neutral-500 mt-2 text-right">
-            Step {currentStep} of {STEPS.length}
+            Step {currentStep} of {totalSteps}
           </p>
         </div>
 
         {/* Step content */}
         <div className="min-h-[300px]">
-          {currentStep === 1 && (
+          {currentStepId === 1 && (
             <div className="text-center py-8">
               <div className="mb-6 flex justify-center">
                 <div className="w-20 h-20 bg-gradient-primary rounded-full flex items-center justify-center">
@@ -194,7 +250,7 @@ export default function OnboardingWizard({ isOpen, onComplete }) {
             </div>
           )}
 
-          {currentStep === 2 && (
+          {currentStepId === 2 && (
             <div className="space-y-4">
               <div>
                 <Label htmlFor="businessType">What type of business do you have? *</Label>
@@ -222,7 +278,7 @@ export default function OnboardingWizard({ isOpen, onComplete }) {
             </div>
           )}
 
-          {currentStep === 3 && (
+          {currentStepId === 3 && (
             <div className="space-y-4">
               <div>
                 <Label htmlFor="name">Assistant Name *</Label>
@@ -239,7 +295,7 @@ export default function OnboardingWizard({ isOpen, onComplete }) {
             </div>
           )}
 
-          {currentStep === 4 && (
+          {currentStepId === 4 && (
             <div className="space-y-4">
               <div>
                 <Label>Select a Voice *</Label>
@@ -270,7 +326,7 @@ export default function OnboardingWizard({ isOpen, onComplete }) {
             </div>
           )}
 
-          {currentStep === 5 && (
+          {currentStepId === 5 && (
             <div className="space-y-4">
               <div>
                 <Label htmlFor="systemPrompt">System Prompt *</Label>
@@ -303,7 +359,7 @@ export default function OnboardingWizard({ isOpen, onComplete }) {
           <Button onClick={handleNext} disabled={loading}>
             {loading ? (
               'Setting up...'
-            ) : currentStep === 5 ? (
+            ) : currentStep === totalSteps ? (
               'Complete Setup'
             ) : (
               <>

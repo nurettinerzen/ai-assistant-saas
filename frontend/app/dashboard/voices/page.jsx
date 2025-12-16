@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -45,28 +45,25 @@ export default function VoicesPage() {
   const [selectedVoice, setSelectedVoice] = useState(null);
   const [businessLanguage, setBusinessLanguage] = useState('TR');
 
+  // Prevent multiple API calls
+  const hasFetchedRef = useRef(false);
 
-  useEffect(() => {
-    loadBusinessLanguage();
-    loadVoices();
-  }, []);
-
-  // Load business language
-  const loadBusinessLanguage = async () => {
+  // Load business language - memoized to prevent recreation
+  const loadBusinessLanguage = useCallback(async () => {
     try {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
       if (user.businessId) {
         const response = await apiClient.business.get(user.businessId);
-        const language = response.data.business?.language || 'TR';
+        const language = response.data.language || response.data.business?.language || 'TR';
         setBusinessLanguage(language);
       }
     } catch (error) {
       console.error('Failed to load business language:', error);
     }
-  };
+  }, []);
 
-  const loadVoices = async () => {
-    setLoading(true);
+  // Load voices - memoized to prevent recreation
+  const loadVoices = useCallback(async () => {
     try {
       // Request voices with sample URLs from 11Labs
       const response = await apiClient.voices.getAll({ withSamples: 'true' });
@@ -86,10 +83,30 @@ export default function VoicesPage() {
     } catch (error) {
       console.error('Failed to load voices:', error);
       toast.error(t('failedToLoadVoices'));
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [t]);
+
+  // Single useEffect for initial data loading - runs only once
+  useEffect(() => {
+    // Prevent duplicate calls in strict mode or hot reload
+    if (hasFetchedRef.current) return;
+    hasFetchedRef.current = true;
+
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        // Load both in parallel
+        await Promise.all([
+          loadBusinessLanguage(),
+          loadVoices()
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [loadBusinessLanguage, loadVoices]);
 
   const handleSelectVoice = (voice) => {
     setSelectedVoice(voice);

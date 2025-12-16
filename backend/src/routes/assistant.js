@@ -4,6 +4,7 @@ import { authenticateToken } from '../middleware/auth.js';
 import { checkPermission } from '../middleware/permissions.js';
 import vapiService from '../services/vapi.js';
 import cargoAggregator from '../services/cargo-aggregator.js';
+import { removeStaticDateTimeFromPrompt } from '../utils/dateTime.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -360,7 +361,7 @@ router.get('/', authenticateToken, async (req, res) => {
     const businessId = req.businessId;
 
     const assistants = await prisma.assistant.findMany({
-      where: { 
+      where: {
         businessId,
         isActive: true,
       },
@@ -369,7 +370,13 @@ router.get('/', authenticateToken, async (req, res) => {
       },
     });
 
-    res.json({ assistants });
+    // Clean system prompts - remove dynamic date/time lines for UI display
+    const cleanedAssistants = assistants.map(assistant => ({
+      ...assistant,
+      systemPrompt: removeStaticDateTimeFromPrompt(assistant.systemPrompt)
+    }));
+
+    res.json({ assistants: cleanedAssistants });
   } catch (error) {
     console.error('Error fetching assistants:', error);
     res.status(500).json({ error: 'Failed to fetch assistants' });

@@ -153,20 +153,30 @@ async function getPreviewUrl(voiceId) {
   }
 
   try {
-    if (!ELEVENLABS_API_KEY) return null;
+    if (!ELEVENLABS_API_KEY) {
+      console.warn('⚠️ ELEVENLABS_API_KEY not configured - voice previews unavailable');
+      return null;
+    }
 
     const response = await axios.get(`${ELEVENLABS_BASE_URL}/voices/${voiceId}`, {
-      headers: { 'xi-api-key': ELEVENLABS_API_KEY }
+      headers: { 'xi-api-key': ELEVENLABS_API_KEY },
+      timeout: 5000 // 5 second timeout
     });
 
     const previewUrl = response.data?.preview_url || null;
 
-    // Cache the result
+    // Cache the result (even if null to avoid repeated failed requests)
     previewUrlCache.set(voiceId, { url: previewUrl, timestamp: Date.now() });
+
+    if (previewUrl) {
+      console.log(`🎤 Got preview URL for voice ${voiceId}`);
+    }
 
     return previewUrl;
   } catch (error) {
-    console.error(`Failed to get preview URL for voice ${voiceId}:`, error.message);
+    console.error(`❌ Failed to get preview URL for voice ${voiceId}:`, error.message);
+    // Cache the failure to avoid repeated requests
+    previewUrlCache.set(voiceId, { url: null, timestamp: Date.now() });
     return null;
   }
 }

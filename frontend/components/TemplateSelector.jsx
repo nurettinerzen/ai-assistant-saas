@@ -46,39 +46,41 @@ export default function TemplateSelector({ isOpen, onClose, onSelectTemplate, se
   const [businessLanguage, setBusinessLanguage] = useState('en');
 
   useEffect(() => {
-    if (isOpen) {
-      loadTemplates();
-      loadBusinessLanguage();
-    }
-  }, [isOpen, selectedLanguage]);
+    const init = async () => {
+      if (isOpen) {
+        setLoading(true);
+        try {
+          // First load business language
+          let lang = selectedLanguage || locale || 'tr';
+          const user = JSON.parse(localStorage.getItem('user') || '{}');
+          if (user.businessId) {
+            try {
+              const response = await apiClient.business.get(user.businessId);
+              const business = response.data.business || response.data;
+              const businessLang = business?.language?.toLowerCase();
+              if (businessLang) {
+                lang = selectedLanguage || businessLang;
+                setBusinessLanguage(businessLang);
+              }
+            } catch (error) {
+              console.error('Failed to load business language:', error);
+            }
+          }
 
-  const loadBusinessLanguage = async () => {
-    try {
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
-      if (user.businessId) {
-        const response = await apiClient.business.get(user.businessId);
-        const language = response.data.business?.language?.toLowerCase() || 'en';
-        setBusinessLanguage(language);
+          // Then load templates with the correct language
+          console.log('🎯 Loading templates for language:', lang);
+          const response = await apiClient.assistants.getTemplates(lang);
+          setTemplates(response.data.templates || []);
+        } catch (error) {
+          console.error('Failed to load templates:', error);
+          setTemplates([]);
+        } finally {
+          setLoading(false);
+        }
       }
-    } catch (error) {
-      console.error('Failed to load business language:', error);
-    }
-  };
-
-  const loadTemplates = async () => {
-    setLoading(true);
-    try {
-      // Use selectedLanguage if provided, otherwise use locale or business language
-      const lang = selectedLanguage || locale || businessLanguage;
-      const response = await apiClient.assistants.getTemplates(lang);
-      setTemplates(response.data.templates || []);
-    } catch (error) {
-      console.error('Failed to load templates:', error);
-      setTemplates([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+    init();
+  }, [isOpen, selectedLanguage, locale]);
 
   const filteredTemplates = templates.filter(
     (template) =>

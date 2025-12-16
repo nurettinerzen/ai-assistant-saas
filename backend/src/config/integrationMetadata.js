@@ -63,37 +63,8 @@ export const INTEGRATION_METADATA = {
     authType: 'api_key'
   },
 
-  GMAIL: {
-    relevantFor: ['RESTAURANT', 'ECOMMERCE', 'CLINIC', 'SALON', 'SERVICE', 'OTHER'],
-    priority: {
-      RESTAURANT: 'RECOMMENDED',
-      ECOMMERCE: 'RECOMMENDED',
-      CLINIC: 'RECOMMENDED',
-      SALON: 'RECOMMENDED',
-      SERVICE: 'RECOMMENDED',
-      OTHER: 'RECOMMENDED'
-    },
-    name: 'Gmail',
-    description: 'Email okuma ve gönderme',
-    category: 'communication',
-    authType: 'oauth'
-  },
-
-  OUTLOOK: {
-    relevantFor: ['RESTAURANT', 'ECOMMERCE', 'CLINIC', 'SALON', 'SERVICE', 'OTHER'],
-    priority: {
-      RESTAURANT: 'OPTIONAL',
-      ECOMMERCE: 'OPTIONAL',
-      CLINIC: 'RECOMMENDED',
-      SALON: 'OPTIONAL',
-      SERVICE: 'RECOMMENDED',
-      OTHER: 'OPTIONAL'
-    },
-    name: 'Outlook / Microsoft 365',
-    description: 'Microsoft email ve takvim',
-    category: 'communication',
-    authType: 'oauth'
-  },
+  // Note: Gmail and Outlook are handled in a separate "Email Channel" section in frontend
+  // They are not included here to avoid duplicate cards
 
   NETGSM_SMS: {
     relevantFor: ['RESTAURANT', 'ECOMMERCE', 'CLINIC', 'SALON', 'SERVICE', 'OTHER'],
@@ -162,42 +133,8 @@ export const INTEGRATION_METADATA = {
   },
 
   // ============================================================================
-  // E-COMMERCE & MARKETPLACE
+  // E-COMMERCE
   // ============================================================================
-
-  TRENDYOL: {
-    relevantFor: ['ECOMMERCE'],
-    priority: {
-      ECOMMERCE: 'ESSENTIAL',
-      RESTAURANT: 'OPTIONAL',
-      CLINIC: 'OPTIONAL',
-      SALON: 'OPTIONAL',
-      SERVICE: 'OPTIONAL',
-      OTHER: 'OPTIONAL'
-    },
-    name: 'Trendyol',
-    description: 'Trendyol mağaza entegrasyonu',
-    category: 'ecommerce',
-    authType: 'api_key',
-    region: 'TR'
-  },
-
-  HEPSIBURADA: {
-    relevantFor: ['ECOMMERCE'],
-    priority: {
-      ECOMMERCE: 'ESSENTIAL',
-      RESTAURANT: 'OPTIONAL',
-      CLINIC: 'OPTIONAL',
-      SALON: 'OPTIONAL',
-      SERVICE: 'OPTIONAL',
-      OTHER: 'OPTIONAL'
-    },
-    name: 'Hepsiburada',
-    description: 'Hepsiburada mağaza entegrasyonu',
-    category: 'ecommerce',
-    authType: 'api_key',
-    region: 'TR'
-  },
 
   SHOPIFY: {
     relevantFor: ['ECOMMERCE'],
@@ -280,78 +217,6 @@ export const INTEGRATION_METADATA = {
     category: 'ecommerce',
     authType: 'api_key',
     region: 'TR'
-  },
-
-  // ============================================================================
-  // CARGO / SHIPPING - TURKEY
-  // ============================================================================
-
-  YURTICI_KARGO: {
-    relevantFor: ['ECOMMERCE'],
-    priority: {
-      ECOMMERCE: 'ESSENTIAL',
-      RESTAURANT: 'OPTIONAL',
-      CLINIC: 'OPTIONAL',
-      SALON: 'OPTIONAL',
-      SERVICE: 'OPTIONAL',
-      OTHER: 'OPTIONAL'
-    },
-    name: 'Yurtiçi Kargo',
-    description: 'Yurtiçi Kargo gönderi takibi',
-    category: 'shipping',
-    authType: 'api_key',
-    region: 'TR'
-  },
-
-  ARAS_KARGO: {
-    relevantFor: ['ECOMMERCE'],
-    priority: {
-      ECOMMERCE: 'ESSENTIAL',
-      RESTAURANT: 'OPTIONAL',
-      CLINIC: 'OPTIONAL',
-      SALON: 'OPTIONAL',
-      SERVICE: 'OPTIONAL',
-      OTHER: 'OPTIONAL'
-    },
-    name: 'Aras Kargo',
-    description: 'Aras Kargo gönderi takibi',
-    category: 'shipping',
-    authType: 'api_key',
-    region: 'TR'
-  },
-
-  MNG_KARGO: {
-    relevantFor: ['ECOMMERCE'],
-    priority: {
-      ECOMMERCE: 'ESSENTIAL',
-      RESTAURANT: 'OPTIONAL',
-      CLINIC: 'OPTIONAL',
-      SALON: 'OPTIONAL',
-      SERVICE: 'OPTIONAL',
-      OTHER: 'OPTIONAL'
-    },
-    name: 'MNG Kargo',
-    description: 'MNG Kargo gönderi takibi',
-    category: 'shipping',
-    authType: 'api_key',
-    region: 'TR'
-  },
-
-  SHIPSTATION: {
-    relevantFor: ['ECOMMERCE'],
-    priority: {
-      ECOMMERCE: 'RECOMMENDED',
-      RESTAURANT: 'OPTIONAL',
-      CLINIC: 'OPTIONAL',
-      SALON: 'OPTIONAL',
-      SERVICE: 'OPTIONAL',
-      OTHER: 'OPTIONAL'
-    },
-    name: 'ShipStation',
-    description: 'Uluslararası kargo yönetimi',
-    category: 'shipping',
-    authType: 'api_key',
-    region: 'US'
   },
 
   // ============================================================================
