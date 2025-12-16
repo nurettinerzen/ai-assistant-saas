@@ -6,7 +6,7 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import EmptyState from '@/components/EmptyState';
@@ -34,26 +34,37 @@ export default function PhoneNumbersPage() {
   const [subscription, setSubscription] = useState(null);
   const [isLocked, setIsLocked] = useState(false);
 
+  // Prevent multiple API calls in strict mode
+  const hasFetchedRef = useRef(false);
+
   useEffect(() => {
-    loadSubscription();
-    loadPhoneNumbers();
-  }, []);
+    if (hasFetchedRef.current) return;
+    hasFetchedRef.current = true;
 
-  // 🔧 Load subscription to check plan
-  const loadSubscription = async () => {
-    try {
-      const response = await apiClient.subscription.getCurrent();
-      const sub = response.data.subscription;
-      setSubscription(sub);
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        // Load subscription
+        const subResponse = await apiClient.subscription.getCurrent();
+        const sub = subResponse.data.subscription;
+        setSubscription(sub);
+        if (sub?.plan === 'FREE') {
+          setIsLocked(true);
+        }
 
-      // Check if FREE plan
-      if (sub?.plan === 'FREE') {
-        setIsLocked(true);
+        // Load phone numbers
+        const phoneResponse = await apiClient.phoneNumbers.getAll();
+        setPhoneNumbers(phoneResponse.data.phoneNumbers || []);
+      } catch (error) {
+        console.error('Failed to load data:', error);
+        toast.error('Failed to load phone numbers');
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Failed to load subscription:', error);
-    }
-  };
+    };
+
+    loadData();
+  }, []);
 
   const loadPhoneNumbers = async () => {
     setLoading(true);
@@ -61,7 +72,7 @@ export default function PhoneNumbersPage() {
       const response = await apiClient.phoneNumbers.getAll();
       setPhoneNumbers(response.data.phoneNumbers || []);
     } catch (error) {
-      toast.error(t('saveError'));
+      toast.error('Failed to load phone numbers');
     } finally {
       setLoading(false);
     }

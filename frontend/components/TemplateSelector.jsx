@@ -1,9 +1,10 @@
 /**
  * TemplateSelector Component
- * Modal with assistant templates for quick creation
+ * Modal with assistant templates filtered by business type
+ * Shows only relevant template + Start from Scratch option
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -12,7 +13,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { apiClient } from '@/lib/api';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -23,8 +23,9 @@ import {
   Stethoscope,
   Home,
   Briefcase,
-  Search,
+  Plus,
   Loader2,
+  Sparkles,
 } from 'lucide-react';
 
 // Icon mapping for template industries
@@ -38,55 +39,81 @@ const INDUSTRY_ICONS = {
   'Professional': Briefcase,
 };
 
+// Map business types to template industries
+const BUSINESS_TYPE_TO_INDUSTRY = {
+  'RESTAURANT': 'Restaurant',
+  'SALON': 'Salon',
+  'ECOMMERCE': 'E-commerce',
+  'E-COMMERCE': 'E-commerce',
+  'SUPPORT': 'Support',
+  'HEALTHCARE': 'Healthcare',
+  'REAL_ESTATE': 'Real Estate',
+  'PROFESSIONAL': 'Professional',
+  'OTHER': null, // Show all for OTHER
+};
+
 export default function TemplateSelector({ isOpen, onClose, onSelectTemplate, selectedLanguage }) {
-  const { t, locale } = useLanguage();
-  const [searchQuery, setSearchQuery] = useState('');
+  const { t } = useLanguage();
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [businessLanguage, setBusinessLanguage] = useState('en');
+  const [businessType, setBusinessType] = useState(null);
+  const hasFetchedRef = useRef(false);
 
   useEffect(() => {
-    const init = async () => {
-      if (isOpen) {
-        setLoading(true);
-        try {
-          // First load business language
-          let lang = selectedLanguage || locale || 'tr';
-          const user = JSON.parse(localStorage.getItem('user') || '{}');
-          if (user.businessId) {
-            try {
-              const response = await apiClient.business.get(user.businessId);
-              const business = response.data.business || response.data;
-              const businessLang = business?.language?.toLowerCase();
-              if (businessLang) {
-                lang = selectedLanguage || businessLang;
-                setBusinessLanguage(businessLang);
-              }
-            } catch (error) {
-              console.error('Failed to load business language:', error);
-            }
-          }
+    if (!isOpen) {
+      hasFetchedRef.current = false;
+      return;
+    }
 
-          // Then load templates with the correct language
-          console.log('🎯 Loading templates for language:', lang);
-          const response = await apiClient.assistants.getTemplates(lang);
-          setTemplates(response.data.templates || []);
-        } catch (error) {
-          console.error('Failed to load templates:', error);
-          setTemplates([]);
-        } finally {
-          setLoading(false);
+    if (hasFetchedRef.current) return;
+    hasFetchedRef.current = true;
+
+    const init = async () => {
+      setLoading(true);
+      try {
+        // Load business info to get type and language
+        let lang = selectedLanguage || 'tr';
+        let bizType = null;
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+        if (user.businessId) {
+          try {
+            const response = await apiClient.business.get(user.businessId);
+            const business = response.data.business || response.data;
+            const businessLang = business?.language?.toLowerCase();
+            if (businessLang) {
+              lang = selectedLanguage || businessLang;
+            }
+            bizType = business?.businessType;
+            setBusinessType(bizType);
+          } catch (error) {
+            console.error('Failed to load business info:', error);
+          }
         }
+
+        // Load templates with the correct language
+        console.log('🎯 Loading templates for language:', lang, 'businessType:', bizType);
+        const response = await apiClient.assistants.getTemplates(lang);
+        let allTemplates = response.data.templates || [];
+
+        // Filter by business type if set and not OTHER
+        if (bizType && bizType !== 'OTHER') {
+          const targetIndustry = BUSINESS_TYPE_TO_INDUSTRY[bizType.toUpperCase()];
+          if (targetIndustry) {
+            allTemplates = allTemplates.filter(t => t.industry === targetIndustry);
+          }
+        }
+
+        setTemplates(allTemplates);
+      } catch (error) {
+        console.error('Failed to load templates:', error);
+        setTemplates([]);
+      } finally {
+        setLoading(false);
       }
     };
     init();
-  }, [isOpen, selectedLanguage, locale]);
-
-  const filteredTemplates = templates.filter(
-    (template) =>
-      template.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      template.description?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  }, [isOpen, selectedLanguage]);
 
   const handleSelectTemplate = (template) => {
     onSelectTemplate({
@@ -99,7 +126,7 @@ export default function TemplateSelector({ isOpen, onClose, onSelectTemplate, se
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>{t('chooseTemplate')}</DialogTitle>
           <DialogDescription>
@@ -107,73 +134,91 @@ export default function TemplateSelector({ isOpen, onClose, onSelectTemplate, se
           </DialogDescription>
         </DialogHeader>
 
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
-          <Input
-            placeholder={t('searchTemplates')}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-
-        {/* Templates grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto flex-1 pr-2">
+        {/* Templates */}
+        <div className="space-y-4 py-4">
           {loading ? (
-            <div className="col-span-2 flex items-center justify-center py-12">
+            <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
             </div>
-          ) : filteredTemplates.length > 0 ? (
-            filteredTemplates.map((template) => {
-              const Icon = INDUSTRY_ICONS[template.industry] || Briefcase;
-              return (
-                <div
-                  key={template.id}
-                  className="border border-neutral-200 rounded-lg p-6 hover:border-primary-300 hover:bg-primary-50/50 cursor-pointer transition-all group"
-                  onClick={() => handleSelectTemplate(template)}
-                >
-                  <div className="flex items-start gap-4">
-                    <div className="p-3 bg-primary-100 rounded-lg group-hover:bg-primary-200 transition-colors">
-                      <Icon className="h-6 w-6 text-primary-600" />
-                    </div>
+          ) : (
+            <>
+              {/* Recommended template based on business type */}
+              {templates.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-sm text-primary-600">
+                    <Sparkles className="h-4 w-4" />
+                    <span>{t('recommendedForYou') || 'Recommended for your business'}</span>
+                  </div>
+                  {templates.map((template) => {
+                    const Icon = INDUSTRY_ICONS[template.industry] || Briefcase;
+                    return (
+                      <div
+                        key={template.id}
+                        className="border-2 border-primary-200 bg-primary-50/50 rounded-lg p-6 hover:border-primary-400 hover:bg-primary-50 cursor-pointer transition-all group"
+                        onClick={() => handleSelectTemplate(template)}
+                      >
+                        <div className="flex items-start gap-4">
+                          <div className="p-3 bg-primary-100 rounded-lg group-hover:bg-primary-200 transition-colors">
+                            <Icon className="h-6 w-6 text-primary-600" />
+                          </div>
 
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-semibold text-neutral-900">
-                          {template.name}
-                        </h3>
-                        <Badge variant="secondary" className="text-xs">
-                          {template.language}
-                        </Badge>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h3 className="font-semibold text-neutral-900">
+                                {template.name}
+                              </h3>
+                              <Badge variant="secondary" className="text-xs bg-primary-100 text-primary-700">
+                                {template.language}
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-neutral-600">
+                              {template.description}
+                            </p>
+                          </div>
+                        </div>
                       </div>
-                      <p className="text-sm text-neutral-600">
-                        {template.description}
-                      </p>
-                    </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Divider */}
+              <div className="relative py-4">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-neutral-200" />
+                </div>
+                <div className="relative flex justify-center">
+                  <span className="bg-white px-3 text-sm text-neutral-500">
+                    {t('or') || 'or'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Start from scratch option */}
+              <div
+                className="border border-neutral-200 rounded-lg p-6 hover:border-neutral-400 hover:bg-neutral-50 cursor-pointer transition-all group"
+                onClick={() => {
+                  onSelectTemplate(null);
+                  onClose();
+                }}
+              >
+                <div className="flex items-start gap-4">
+                  <div className="p-3 bg-neutral-100 rounded-lg group-hover:bg-neutral-200 transition-colors">
+                    <Plus className="h-6 w-6 text-neutral-600" />
+                  </div>
+
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-neutral-900">
+                      {t('startFromScratch') || 'Start from Scratch'}
+                    </h3>
+                    <p className="text-sm text-neutral-600">
+                      {t('createCustomAssistant') || 'Create a fully custom assistant with your own configuration'}
+                    </p>
                   </div>
                 </div>
-              );
-            })
-          ) : (
-            <div className="col-span-2 text-center py-12 text-neutral-500">
-              {t('noTemplatesFound')}
-            </div>
+              </div>
+            </>
           )}
-        </div>
-
-        {/* Blank template option */}
-        <div className="border-t border-neutral-200 pt-4 mt-4">
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={() => {
-              onSelectTemplate(null);
-              onClose();
-            }}
-          >
-            Start from Scratch
-          </Button>
         </div>
       </DialogContent>
     </Dialog>

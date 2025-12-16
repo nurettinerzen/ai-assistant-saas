@@ -62,30 +62,6 @@ export default function VoicesPage() {
     }
   }, []);
 
-  // Load voices - memoized to prevent recreation
-  const loadVoices = useCallback(async () => {
-    try {
-      // Request voices with sample URLs from 11Labs
-      const response = await apiClient.voices.getAll({ withSamples: 'true' });
-      // Backend returns { voices: { tr: [...], en: [...], de: [...], ... } }
-      const voicesData = response.data.voices || {};
-      const allVoices = [];
-
-      // Flatten all language voices into single array
-      Object.keys(voicesData).forEach(lang => {
-        if (Array.isArray(voicesData[lang])) {
-          allVoices.push(...voicesData[lang].map(v => ({ ...v, language: lang })));
-        }
-      });
-
-      console.log('🎤 Loaded voices:', allVoices.length, 'from', Object.keys(voicesData).length, 'languages');
-      setVoices(allVoices);
-    } catch (error) {
-      console.error('Failed to load voices:', error);
-      toast.error(t('failedToLoadVoices'));
-    }
-  }, [t]);
-
   // Single useEffect for initial data loading - runs only once
   useEffect(() => {
     // Prevent duplicate calls in strict mode or hot reload
@@ -95,18 +71,32 @@ export default function VoicesPage() {
     const loadData = async () => {
       setLoading(true);
       try {
-        // Load both in parallel
-        await Promise.all([
-          loadBusinessLanguage(),
-          loadVoices()
-        ]);
+        // Load business language
+        await loadBusinessLanguage();
+
+        // Load voices
+        const response = await apiClient.voices.getAll({ withSamples: 'true' });
+        const voicesData = response.data.voices || {};
+        const allVoices = [];
+
+        Object.keys(voicesData).forEach(lang => {
+          if (Array.isArray(voicesData[lang])) {
+            allVoices.push(...voicesData[lang].map(v => ({ ...v, language: lang })));
+          }
+        });
+
+        console.log('🎤 Loaded voices:', allVoices.length, 'from', Object.keys(voicesData).length, 'languages');
+        setVoices(allVoices);
+      } catch (error) {
+        console.error('Failed to load data:', error);
+        toast.error('Failed to load voices');
       } finally {
         setLoading(false);
       }
     };
 
     loadData();
-  }, [loadBusinessLanguage, loadVoices]);
+  }, [loadBusinessLanguage]);
 
   const handleSelectVoice = (voice) => {
     setSelectedVoice(voice);
