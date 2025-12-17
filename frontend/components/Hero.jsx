@@ -71,12 +71,12 @@ export const Hero = () => {
             transition={{ delay: 0.6, duration: 0.7 }}
             className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16"
           >
-            <Link href="/signup">
+            <Link href="/waitlist">
               <Button
                 size="lg"
                 className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-blue-lg group px-8 py-6 text-lg h-auto"
               >
-                {t('landing.hero.cta')}
+                {t('landing.hero.ctaWaitlist')}
                 <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
               </Button>
             </Link>

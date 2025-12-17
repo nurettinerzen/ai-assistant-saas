@@ -84,9 +84,9 @@ export default function Navigation() {
                 {t('common.signIn')}
               </Button>
             </Link>
-            <Link href="/signup">
+            <Link href="/waitlist">
               <Button size="sm" className="bg-gradient-to-r from-indigo-600 to-blue-500 hover:from-indigo-700 hover:to-blue-600">
-                {t('navigation.getStarted')}
+                {t('navigation.applyEarlyAccess')}
               </Button>
             </Link>
           </div>
@@ -141,9 +141,9 @@ export default function Navigation() {
                   {t('common.signIn')}
                 </Button>
               </Link>
-              <Link href="/signup">
+              <Link href="/waitlist">
                 <Button className="w-full bg-gradient-to-r from-indigo-600 to-blue-500">
-                  {t('navigation.getStarted')}
+                  {t('navigation.applyEarlyAccess')}
                 </Button>
               </Link>
             </div>

@@ -52,9 +52,9 @@ export default function Home() {
             {t('landing.cta.subtitle')}
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/signup">
+            <Link href="/waitlist">
               <Button size="lg" className="bg-white text-indigo-600 hover:bg-gray-100 shadow-xl text-lg px-8 py-6">
-                {t('landing.cta.startTrial')}
+                {t('landing.cta.applyEarlyAccess')}
               </Button>
             </Link>
             <Link href="/contact">

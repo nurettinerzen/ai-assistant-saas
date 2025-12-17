@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Phone, Mail, Lock, User, Loader2 } from 'lucide-react';
+import { Phone, Mail, Lock, User, Loader2, Ticket } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast, Toaster } from 'sonner';
 import { OnboardingModal } from '@/components/OnboardingModal';
@@ -22,6 +22,7 @@ export default function SignupPage() {
     email: '',
     password: '',
     fullName: '',
+    inviteCode: '',
   });
 
   const handleSignup = async (e) => {
@@ -31,6 +32,12 @@ export default function SignupPage() {
     try {
       if (!formData.email || !formData.password || !formData.fullName) {
         toast.error(t('auth.pleaseFillAllFields'));
+        setLoading(false);
+        return;
+      }
+
+      if (!formData.inviteCode) {
+        toast.error(t('invite.codeRequired'));
         setLoading(false);
         return;
       }
@@ -48,7 +55,16 @@ export default function SignupPage() {
       setShowOnboarding(true);
     } catch (error) {
       console.error('Signup error:', error);
-      toast.error(error.response?.data?.error || t('auth.signupFailed'));
+      // Handle invite code specific errors
+      if (error.response?.data?.code === 'INVITE_REQUIRED' ||
+          error.response?.data?.code === 'INVALID_CODE' ||
+          error.response?.data?.code === 'CODE_USED' ||
+          error.response?.data?.code === 'CODE_EXPIRED' ||
+          error.response?.data?.code === 'EMAIL_MISMATCH') {
+        toast.error(t('invite.codeRequired'));
+      } else {
+        toast.error(error.response?.data?.error || t('auth.signupFailed'));
+      }
     } finally {
       setLoading(false);
     }
@@ -132,6 +148,28 @@ export default function SignupPage() {
                 />
               </div>
               <p className="text-xs text-gray-500 mt-1">{t('auth.mustBe8Chars')}</p>
+            </div>
+
+            <div>
+              <Label htmlFor="inviteCode">{t('invite.codeLabel')}</Label>
+              <div className="relative">
+                <Ticket className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <Input
+                  id="inviteCode"
+                  type="text"
+                  placeholder={t('invite.codePlaceholder')}
+                  className="pl-10"
+                  value={formData.inviteCode}
+                  onChange={(e) => setFormData({ ...formData, inviteCode: e.target.value.toUpperCase() })}
+                  required
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                {t('invite.noCode')}{' '}
+                <Link href="/waitlist" className="text-indigo-600 hover:underline font-medium">
+                  {t('invite.applyEarlyAccess')}
+                </Link>
+              </p>
             </div>
 
             <Button type="submit" className="w-full" disabled={loading}>

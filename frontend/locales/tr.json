@@ -46,6 +46,7 @@
       "title": "AI ile Müşteri Hizmetlerini Otomatikleştirin",
       "subtitle": "WhatsApp, Telefon, Chat ve Email - 7/24 AI destekli müşteri hizmeti",
       "cta": "Ücretsiz Başla",
+      "ctaWaitlist": "Erken Erişim İçin Başvur",
       "watch": "Demo İzle"
     },
     "channels": {
@@ -149,6 +150,7 @@
       "title": "Hemen Başlayın - 14 Gün Ücretsiz",
       "subtitle": "Kredi kartı gerektirmez. İstediğiniz zaman iptal edin.",
       "startTrial": "Ücretsiz Başlat",
+      "applyEarlyAccess": "Erken Erişim İçin Başvur",
       "talkToSales": "Satış ile Konuşun"
     },
     "footer": {
@@ -178,6 +180,7 @@
     "pricing": "Fiyatlar",
     "contact": "İletişim",
     "getStarted": "Ücretsiz Başla",
+    "applyEarlyAccess": "Erken Erişim İçin Başvur",
     "solutionsEcommerce": "E-ticaret",
     "solutionsRestaurant": "Restoran",
     "solutionsSalon": "Kuaför/Salon",
@@ -190,6 +193,7 @@
     "trial": "14 gün ücretsiz deneme - Kredi kartı gerekmez",
     "recommended": "Önerilen",
     "cta": "Başla",
+    "ctaWaitlist": "Erken Erişim İçin Başvur",
     "questions": "Sorularınız mı var?",
     "contactUs": "Bize ulaşın",
     "starter": {
@@ -279,6 +283,7 @@
       "title": "Hazır mısınız?",
       "subtitle": "Hemen başlayın ve AI ile müşteri hizmetlerinizi dönüştürün",
       "start": "Ücretsiz Başla",
+      "applyEarlyAccess": "Erken Erişim İçin Başvur",
       "contact": "İletişime Geçin"
     }
   },
@@ -1481,6 +1486,25 @@
     "ecommerceSupportDesc": "Sipariş takibi ve müşteri desteği",
     "startFromScratch": "Sıfırdan Başla",
     "createCustomAssistant": "Kendi yapılandırmanızla tamamen özel bir asistan oluşturun"
+  },
+  "waitlist": {
+    "title": "Erken Erişim İçin Başvurun",
+    "subtitle": "Telyx.ai'yi ilk deneyenlerden olun",
+    "name": "Ad Soyad",
+    "email": "E-posta",
+    "company": "Şirket Adı",
+    "businessType": "İşletme Türü",
+    "message": "Mesajınız (Opsiyonel)",
+    "submit": "Başvur",
+    "success": "Başvurunuz alındı! En kısa sürede sizinle iletişime geçeceğiz.",
+    "alreadyApplied": "Bu e-posta ile zaten başvuru yapılmış."
+  },
+  "invite": {
+    "codeLabel": "Davet Kodu",
+    "codePlaceholder": "Davet kodunuzu girin",
+    "codeRequired": "Geçerli bir davet kodu gereklidir",
+    "noCode": "Davet kodunuz yok mu?",
+    "applyEarlyAccess": "Erken erişim için başvurun"
   },
   "integrations": {
     "whatsapp": {

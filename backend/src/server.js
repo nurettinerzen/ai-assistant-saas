@@ -48,6 +48,8 @@ import batchCallRoutes from './routes/batch-call.js';
 import { processAllQueues } from './services/batch-call.js';
 // Team management
 import teamRoutes from './routes/team.js';
+// Waitlist
+import waitlistRoutes from './routes/waitlist.js';
 
 
 // Import jobs
@@ -123,6 +125,7 @@ app.use('/api/woocommerce', woocommerceRoutes);
 app.use('/api/webhook', webhookRoutes);
 app.use('/api/batch-call', batchCallRoutes);
 app.use('/api/team', teamRoutes);
+app.use('/api/waitlist', waitlistRoutes);
 
 
 // Error handling middleware

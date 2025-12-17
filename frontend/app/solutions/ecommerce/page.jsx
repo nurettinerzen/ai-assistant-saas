@@ -60,7 +60,7 @@ export default function EcommerceSolutionPage() {
               <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
                 {t('solutions.ecommerce.hero.subtitle')}
               </p>
-              <Link href="/signup">
+              <Link href="/waitlist">
                 <Button size="lg" className="bg-gradient-to-r from-indigo-600 to-blue-500 hover:from-indigo-700 hover:to-blue-600">
                   {t('solutions.startFree')}
                 </Button>
@@ -142,7 +142,7 @@ export default function EcommerceSolutionPage() {
               {t('solutions.ecommerce.cta.subtitle')}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/signup">
+              <Link href="/waitlist">
                 <Button size="lg" className="bg-gradient-to-r from-indigo-600 to-blue-500 hover:from-indigo-700 hover:to-blue-600">
                   {t('solutions.startFree')}
                 </Button>

@@ -136,7 +136,7 @@ export default function PricingPage() {
                   ))}
                 </ul>
 
-                <Link href="/signup" className="block">
+                <Link href="/waitlist" className="block">
                   <Button
                     className={`w-full ${
                       plan.popular
@@ -146,7 +146,7 @@ export default function PricingPage() {
                     variant={plan.popular ? 'default' : 'outline'}
                     size="lg"
                   >
-                    {t('pricing.cta')}
+                    {t('pricing.ctaWaitlist')}
                   </Button>
                 </Link>
               </div>

@@ -46,6 +46,7 @@
       "title": "Automate Customer Service with AI",
       "subtitle": "WhatsApp, Phone, Chat and Email - 24/7 AI-powered customer service",
       "cta": "Get Started Free",
+      "ctaWaitlist": "Apply for Early Access",
       "watch": "Watch Demo"
     },
     "channels": {
@@ -149,6 +150,7 @@
       "title": "Start Now - 14 Days Free",
       "subtitle": "No credit card required. Cancel anytime.",
       "startTrial": "Start Free",
+      "applyEarlyAccess": "Apply for Early Access",
       "talkToSales": "Talk to Sales"
     },
     "footer": {
@@ -178,6 +180,7 @@
     "pricing": "Pricing",
     "contact": "Contact",
     "getStarted": "Get Started Free",
+    "applyEarlyAccess": "Apply for Early Access",
     "solutionsEcommerce": "E-commerce",
     "solutionsRestaurant": "Restaurant",
     "solutionsSalon": "Salon/Spa",
@@ -190,6 +193,7 @@
     "trial": "14-day free trial - No credit card required",
     "recommended": "Recommended",
     "cta": "Get Started",
+    "ctaWaitlist": "Apply for Early Access",
     "questions": "Have questions?",
     "contactUs": "Contact us",
     "starter": {
@@ -279,6 +283,7 @@
       "title": "Ready to Start?",
       "subtitle": "Get started now and transform your customer service with AI",
       "start": "Get Started Free",
+      "applyEarlyAccess": "Apply for Early Access",
       "contact": "Contact Us"
     }
   },
@@ -1481,6 +1486,25 @@
     "ecommerceSupportDesc": "Order tracking and customer support",
     "startFromScratch": "Start from Scratch",
     "createCustomAssistant": "Create a fully custom assistant with your own configuration"
+  },
+  "waitlist": {
+    "title": "Apply for Early Access",
+    "subtitle": "Be among the first to try Telyx.ai",
+    "name": "Full Name",
+    "email": "Email",
+    "company": "Company Name",
+    "businessType": "Business Type",
+    "message": "Your Message (Optional)",
+    "submit": "Apply",
+    "success": "Application received! We'll contact you soon.",
+    "alreadyApplied": "An application with this email already exists."
+  },
+  "invite": {
+    "codeLabel": "Invite Code",
+    "codePlaceholder": "Enter your invite code",
+    "codeRequired": "A valid invite code is required",
+    "noCode": "Don't have an invite code?",
+    "applyEarlyAccess": "Apply for early access"
   },
   "integrations": {
     "whatsapp": {

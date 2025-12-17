@@ -920,3 +920,36 @@ model CampaignCall {
   @@index([customerPhone])
   @@index([vapiCallId])
 }
+
+// ============================================================================
+// INVITE CODE & WAITLIST TABLES
+// ============================================================================
+
+model InviteCode {
+  id          String    @id @default(cuid())
+  code        String    @unique
+  email       String?   // Optional: for specific email
+  used        Boolean   @default(false)
+  usedBy      String?   // User ID who used
+  usedAt      DateTime?
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime?
+  createdById String?   // Who created this code
+
+  @@index([code])
+  @@index([used])
+}
+
+model WaitlistEntry {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  company      String?
+  businessType String?
+  message      String?
+  status       String   @default("pending") // pending, approved, rejected
+  createdAt    DateTime @default(now())
+
+  @@index([email])
+  @@index([status])
+}

@@ -86,15 +86,46 @@ router.post('/register', async (req, res) => {
 });
 
 
-// Signup (alias for register)
+// Signup (alias for register) - Requires invite code
 router.post("/signup", async (req, res) => {
   try {
-    const { email, password, fullName } = req.body;
-    // Use fullName for both user name and initial business name
-    const businessName = fullName || "My Business";
+    const { email, password, fullName, inviteCode } = req.body;
+
+    // Validation
     if (!email || !password) {
       return res.status(400).json({ error: "All fields are required" });
     }
+
+    // Check invite code
+    if (!inviteCode) {
+      return res.status(403).json({ error: "Invalid invite code", code: "INVITE_REQUIRED" });
+    }
+
+    // Verify invite code
+    const invite = await prisma.inviteCode.findUnique({
+      where: { code: inviteCode }
+    });
+
+    if (!invite) {
+      return res.status(403).json({ error: "Invalid invite code", code: "INVALID_CODE" });
+    }
+
+    if (invite.used) {
+      return res.status(403).json({ error: "This invite code has already been used", code: "CODE_USED" });
+    }
+
+    if (invite.expiresAt && new Date(invite.expiresAt) < new Date()) {
+      return res.status(403).json({ error: "This invite code has expired", code: "CODE_EXPIRED" });
+    }
+
+    // If invite is for specific email, check it
+    if (invite.email && invite.email.toLowerCase() !== email.toLowerCase()) {
+      return res.status(403).json({ error: "This invite code is not valid for this email", code: "EMAIL_MISMATCH" });
+    }
+
+    // Use fullName for both user name and initial business name
+    const businessName = fullName || "My Business";
+
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
       return res.status(400).json({ error: "Email already registered" });
@@ -122,6 +153,17 @@ router.post("/signup", async (req, res) => {
           minutesUsed: 0
         }
       });
+
+      // Mark invite code as used
+      await tx.inviteCode.update({
+        where: { id: invite.id },
+        data: {
+          used: true,
+          usedBy: String(user.id),
+          usedAt: new Date()
+        }
+      });
+
       return { user, business };
     });
     const token = jwt.sign(
