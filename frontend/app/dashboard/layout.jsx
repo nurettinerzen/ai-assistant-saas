@@ -46,8 +46,21 @@ export default function DashboardLayout({ children }) {
       setUser(userResponse.data);
 
       // Check if onboarding is needed
-      if (userResponse.data.onboardingCompleted === false) {
-        setShowOnboarding(true);
+      // Team members (non-owners) who were invited should skip onboarding
+      const userData = userResponse.data;
+      if (userData.onboardingCompleted === false) {
+        // If user was invited (has acceptedAt) or is not owner, skip onboarding
+        const isInvitedMember = userData.acceptedAt || (userData.role && userData.role !== 'OWNER');
+        if (isInvitedMember) {
+          // Auto-complete onboarding for invited members
+          try {
+            await apiClient.onboarding.complete();
+          } catch (err) {
+            console.warn('Auto-complete onboarding failed:', err);
+          }
+        } else {
+          setShowOnboarding(true);
+        }
       }
 
       // Load subscription/credits - hatası olsa bile devam et

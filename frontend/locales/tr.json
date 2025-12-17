@@ -1197,7 +1197,7 @@
       "topLeft": "Sol Üst",
       "primaryColor": "Ana Renk",
       "buttonText": "Buton Metni",
-      "buttonTextPlaceholder": "Bizimle konuşun",
+      "buttonTextPlaceholder": "Bize Yazın",
       "showBranding": "\"Powered by Telyx\" Göster",
       "showBrandingDesc": "Pro planda markayı kaldırabilirsiniz",
       "brandingProOnly": "Markayı kaldırmak için Pro plana yükseltin",
@@ -1217,7 +1217,7 @@
       "analyticsComingSoon": "Analitik yakında",
       "settingsSaved": "Ayarlar başarıyla kaydedildi!",
       "embedCodeCopied": "Gömme kodu panoya kopyalandı!",
-      "defaultButtonText": "Bizimle Konuşun",
+      "defaultButtonText": "Bize Yazın",
       "defaultWelcomeMessage": "Merhaba! Size nasıl yardımcı olabilirim?",
       "defaultPlaceholder": "Mesajınızı yazın..."
     },

@@ -544,6 +544,7 @@ router.post('/invitation/:token/accept', async (req, res) => {
       const hashedPassword = await bcrypt.hash(password, 10);
 
       // Create new user
+      // Team members don't need onboarding since they're joining an existing business
       user = await prisma.user.create({
         data: {
           email: invitation.email,
@@ -553,7 +554,8 @@ router.post('/invitation/:token/accept', async (req, res) => {
           businessId: invitation.businessId,
           invitedById: invitation.invitedById,
           invitedAt: invitation.createdAt,
-          acceptedAt: new Date()
+          acceptedAt: new Date(),
+          onboardingCompleted: true // Skip onboarding for invited team members
         }
       });
     }

@@ -14,12 +14,12 @@ import { useLanguage } from '@/contexts/LanguageContext';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-export default function ChatWidget({ 
-  assistantId, 
+export default function ChatWidget({
+  assistantId,
   position = 'bottom-right',
   primaryColor = '#6366f1',
   showBranding = true,
-  buttonText = 'Chat with us'
+  buttonText
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([]);
@@ -27,6 +27,9 @@ export default function ChatWidget({
   const [isLoading, setIsLoading] = useState(false);
   const [conversationHistory, setConversationHistory] = useState([]);
   const { t } = useLanguage();
+
+  // Use translated default if buttonText is not provided
+  const displayButtonText = buttonText || t('dashboard.chatWidgetPage.defaultButtonText');
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -36,16 +39,15 @@ export default function ChatWidget({
   }, [messages]);
 
   // Add welcome message when chat opens
-  // Add welcome message when chat opens
-useEffect(() => {
-  if (isOpen && messages.length === 0) {
-    setMessages([{
-      role: 'assistant',
-      content: t('chat.welcome', 'Hello! How can I help you today?'),
-      timestamp: new Date()
-    }]);
-  }
-}, [isOpen, t]);
+  useEffect(() => {
+    if (isOpen && messages.length === 0) {
+      setMessages([{
+        role: 'assistant',
+        content: t('dashboard.chatWidgetPage.defaultWelcomeMessage'),
+        timestamp: new Date()
+      }]);
+    }
+  }, [isOpen, t]);
 
 useEffect(() => {
   if (!isLoading && isOpen) {
@@ -134,7 +136,7 @@ useEffect(() => {
           >
             <div className="flex items-center gap-2">
               <MessageCircle className="h-5 w-5" />
-              <span className="font-semibold">{buttonText}</span>
+              <span className="font-semibold">{displayButtonText}</span>
             </div>
             <button
               onClick={() => setIsOpen(false)}
@@ -190,7 +192,7 @@ useEffect(() => {
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Type a message..."
+                placeholder={t('dashboard.chatWidgetPage.defaultPlaceholder')}
                 disabled={isLoading}
                 className="flex-1 rounded-full border-gray-300 focus:border-primary-500"
               />
@@ -227,7 +229,7 @@ useEffect(() => {
         onClick={() => setIsOpen(!isOpen)}
         className="rounded-full p-4 text-white shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
         style={{ backgroundColor: primaryColor }}
-        aria-label={buttonText}
+        aria-label={displayButtonText}
       >
         {isOpen ? (
           <X className="h-6 w-6" />
