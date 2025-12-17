@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,6 @@ import { Label } from '@/components/ui/label';
 import { Phone, Mail, Lock, User, Loader2, Ticket } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast, Toaster } from 'sonner';
-import { OnboardingModal } from '@/components/OnboardingModal';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { useLanguage } from '@/contexts/LanguageContext';
 
@@ -17,13 +16,36 @@ export default function SignupPage() {
   const router = useRouter();
   const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     fullName: '',
     inviteCode: '',
   });
+
+  // Check if user is already logged in
+  useEffect(() => {
+    const checkExistingAuth = async () => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const response = await apiClient.get('/api/auth/me');
+          // User is authenticated, redirect to dashboard
+          // Dashboard will handle onboarding if needed
+          router.push('/dashboard');
+          return;
+        } catch (error) {
+          // Token is invalid, remove it
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+        }
+      }
+      setCheckingAuth(false);
+    };
+
+    checkExistingAuth();
+  }, [router]);
 
   const handleSignup = async (e) => {
     e.preventDefault();
@@ -52,7 +74,8 @@ export default function SignupPage() {
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
       toast.success('Account created!');
-      setShowOnboarding(true);
+      // Redirect to dashboard, which will show onboarding modal
+      router.push('/dashboard');
     } catch (error) {
       console.error('Signup error:', error);
       // Handle invite code specific errors
@@ -70,12 +93,13 @@ export default function SignupPage() {
     }
   };
 
-  const handleOnboardingComplete = () => {
-    router.push('/dashboard');
-  };
-
-  if (showOnboarding) {
-    return <OnboardingModal open={true} onClose={handleOnboardingComplete} />;
+  // Show loading while checking auth
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+      </div>
+    );
   }
 
   return (
