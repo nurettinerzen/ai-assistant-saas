@@ -193,7 +193,7 @@ export default function LoginPage() {
           <p className="text-center text-sm text-neutral-600 mt-6">
             {t('auth.dontHaveAccount')}{' '}
             <Link href="/waitlist" className="text-primary-600 font-medium hover:underline">
-              {t('waitlist.applyEarlyAccess')}
+              {t('navigation.applyEarlyAccess')}
             </Link>
           </p>
         </div>
