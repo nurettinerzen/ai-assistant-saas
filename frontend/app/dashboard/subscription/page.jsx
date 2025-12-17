@@ -1,19 +1,18 @@
 /**
  * Subscription Page
  * View current plan, usage, and upgrade options
- * UPDATE EXISTING FILE: frontend/app/dashboard/subscription/page.jsx
  */
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Check, CreditCard, TrendingUp, X } from 'lucide-react';
+import { Check, CreditCard, TrendingUp, X, Loader2 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
-import { toast, toastHelpers } from '@/lib/toast';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { toast } from '@/lib/toast';
+import { formatDate } from '@/lib/utils';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import { AlertCircle } from 'lucide-react';
@@ -51,8 +50,12 @@ export default function SubscriptionPage() {
   const { t, locale } = useLanguage();
   const { can } = usePermissions();
   const [loading, setLoading] = useState(true);
+  const [upgrading, setUpgrading] = useState(false);
   const [subscription, setSubscription] = useState(null);
   const [billingHistory, setBillingHistory] = useState([]);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [checkoutFormHtml, setCheckoutFormHtml] = useState('');
+  const checkoutContainerRef = useRef(null);
   const [userCountry, setUserCountry] = useState(() => {
     // Initial detection from browser locale
     if (typeof navigator !== 'undefined') {
@@ -68,10 +71,53 @@ export default function SubscriptionPage() {
   const isTurkishUser = userCountry === 'TR' || userCountry === 'Turkey' || locale === 'tr';
   const currencySymbol = isTurkishUser ? '₺' : '$';
 
+  // Format currency based on user's country
+  const formatPrice = (amount) => {
+    if (isTurkishUser) {
+      return `₺${amount.toLocaleString('tr-TR')}`;
+    }
+    return `$${amount.toLocaleString('en-US')}`;
+  };
+
   // Get price based on user's country
   const getPlanPrice = (plan) => {
     return isTurkishUser ? plan.priceTRY : plan.priceUSD;
   };
+
+  // Handle iyzico checkout form rendering
+  useEffect(() => {
+    if (showPaymentModal && checkoutFormHtml && checkoutContainerRef.current) {
+      const container = checkoutContainerRef.current;
+      container.innerHTML = checkoutFormHtml;
+
+      // Execute scripts in the checkout form
+      const scripts = container.getElementsByTagName('script');
+      Array.from(scripts).forEach(oldScript => {
+        const newScript = document.createElement('script');
+        Array.from(oldScript.attributes).forEach(attr => {
+          newScript.setAttribute(attr.name, attr.value);
+        });
+        newScript.text = oldScript.text;
+        oldScript.parentNode?.replaceChild(newScript, oldScript);
+      });
+    }
+  }, [showPaymentModal, checkoutFormHtml]);
+
+  // Check for success/error in URL params (after payment callback)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('success') === 'true') {
+      toast.success(t('dashboard.subscriptionPage.upgradeSuccess') || 'Plan başarıyla yükseltildi!');
+      // Clean URL
+      window.history.replaceState({}, '', window.location.pathname);
+      // Reload subscription data
+      loadData();
+    } else if (params.get('error')) {
+      const errorMsg = params.get('message') || t('dashboard.subscriptionPage.upgradeFailed') || 'Ödeme başarısız oldu';
+      toast.error(decodeURIComponent(errorMsg));
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
 
   useEffect(() => {
     if (can('billing:view')) {
@@ -113,18 +159,34 @@ export default function SubscriptionPage() {
 
   const handleUpgrade = async (planId) => {
     const planName = t(`pricing.${planId}.name`);
-    if (!confirm(`${t('dashboard.subscriptionPage.upgradeConfirm')} ${planName} ${t('dashboard.subscriptionPage.plan')}`)) return;
+    if (!confirm(`${t('dashboard.subscriptionPage.upgradeConfirm') || 'Planı yükseltmek istediğinize emin misiniz?'} ${planName}`)) return;
 
     try {
-      await toastHelpers.async(
-        apiClient.subscription.upgrade(planId),
-        t('dashboard.subscriptionPage.processingUpgrade'),
-        t('dashboard.subscriptionPage.upgradeSuccess')
-      );
-      loadData();
+      setUpgrading(true);
+      const response = await apiClient.subscription.upgrade(planId);
+
+      // Check if iyzico checkout form is returned
+      if (response.data?.checkoutFormContent) {
+        setCheckoutFormHtml(response.data.checkoutFormContent);
+        setShowPaymentModal(true);
+      } else if (response.data?.sessionUrl) {
+        // Stripe redirect
+        window.location.href = response.data.sessionUrl;
+      } else {
+        toast.success(t('dashboard.subscriptionPage.upgradeSuccess') || 'Plan başarıyla yükseltildi!');
+        loadData();
+      }
     } catch (error) {
-      // Error handled
+      console.error('Upgrade error:', error);
+      toast.error(error.response?.data?.error || t('dashboard.subscriptionPage.upgradeFailed') || 'Ödeme başlatılamadı');
+    } finally {
+      setUpgrading(false);
     }
+  };
+
+  const closePaymentModal = () => {
+    setShowPaymentModal(false);
+    setCheckoutFormHtml('');
   };
 
   const usagePercent = subscription
@@ -165,7 +227,7 @@ export default function SubscriptionPage() {
               <div className="flex justify-between text-sm">
                 <span className="text-neutral-600">{t('dashboard.subscriptionPage.monthlyCost')}</span>
                 <span className="font-semibold text-neutral-900">
-                  {formatCurrency(subscription.price || 0)}
+                  {formatPrice(subscription.price || (isTurkishUser ? (subscription.priceTRY || 0) : (subscription.priceUSD || 0)))}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
@@ -174,12 +236,14 @@ export default function SubscriptionPage() {
                   {subscription.billingCycle || t('dashboard.subscriptionPage.monthly')}
                 </span>
               </div>
+              {subscription.currentPeriodEnd && (
               <div className="flex justify-between text-sm">
                 <span className="text-neutral-600">{t('dashboard.subscriptionPage.nextBilling')}</span>
                 <span className="font-medium text-neutral-900">
-                  {formatDate(subscription.nextBillingDate, 'short')}
+                  {formatDate(subscription.currentPeriodEnd || subscription.nextBillingDate, 'short')}
                 </span>
               </div>
+              )}
             </div>
           </div>
 
@@ -205,11 +269,7 @@ export default function SubscriptionPage() {
                   : t('dashboard.subscriptionPage.limitReached')}
               </p>
             </div>
-            {can('billing:manage') && (
-            <Button className="w-full mt-4" variant="outline">
-              {t('dashboard.subscriptionPage.addCredits')}
-            </Button>
-            )}
+            {/* Kredi Ekle butonu kaldırıldı - henüz aktif değil */}
           </div>
         </div>
       )}
@@ -262,10 +322,19 @@ export default function SubscriptionPage() {
                 <Button
                   className="w-full"
                   variant={isCurrentPlan ? 'outline' : 'default'}
-                  disabled={isCurrentPlan || !can('billing:manage')}
+                  disabled={isCurrentPlan || !can('billing:manage') || upgrading}
                   onClick={() => handleUpgrade(plan.id)}
                 >
-                  {isCurrentPlan ? t('dashboard.subscriptionPage.currentPlanBtn') : t('dashboard.subscriptionPage.upgradeBtn')}
+                  {upgrading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {t('dashboard.subscriptionPage.processing') || 'İşleniyor...'}
+                    </>
+                  ) : isCurrentPlan ? (
+                    t('dashboard.subscriptionPage.currentPlanBtn')
+                  ) : (
+                    t('dashboard.subscriptionPage.upgradeBtn')
+                  )}
                 </Button>
               </div>
             );
@@ -273,7 +342,8 @@ export default function SubscriptionPage() {
         </div>
       </div>
 
-      {/* Billing history */}
+      {/* Billing history - Hidden until real invoices are available */}
+      {/*
       <div className="bg-white rounded-xl border border-neutral-200 shadow-sm">
         <div className="p-6 border-b border-neutral-200">
           <div className="flex items-center gap-3">
@@ -281,70 +351,33 @@ export default function SubscriptionPage() {
             <h2 className="text-lg font-semibold text-neutral-900">{t('dashboard.subscriptionPage.billingHistory')}</h2>
           </div>
         </div>
-
-        {billingHistory.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-neutral-50 border-b border-neutral-200">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">
-                    {t('dashboard.subscriptionPage.date')}
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">
-                    {t('dashboard.subscriptionPage.description')}
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">
-                    {t('dashboard.subscriptionPage.amount')}
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">
-                    {t('dashboard.subscriptionPage.status')}
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">
-                    {t('dashboard.subscriptionPage.invoice')}
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-200">
-                {billingHistory.map((invoice) => (
-                  <tr key={invoice.id}>
-                    <td className="px-6 py-4 text-sm text-neutral-900">
-                      {formatDate(invoice.date, 'short')}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-neutral-600">
-                      {invoice.description}
-                    </td>
-                    <td className="px-6 py-4 text-sm font-medium text-neutral-900">
-                      {formatCurrency(invoice.amount)}
-                    </td>
-                    <td className="px-6 py-4">
-                      <Badge
-                        className={
-                          invoice.status === 'paid'
-                            ? 'bg-green-100 text-green-800'
-                            : invoice.status === 'pending'
-                            ? 'bg-amber-100 text-amber-800'
-                            : 'bg-red-100 text-red-800'
-                        }
-                      >
-                        {invoice.status === 'paid' ? t('dashboard.subscriptionPage.paid') : t('dashboard.subscriptionPage.pending')}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-4">
-                      <Button variant="link" size="sm" className="p-0 h-auto">
-                        {t('dashboard.subscriptionPage.download')}
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="p-8 text-center text-sm text-neutral-500">
-            {t('dashboard.subscriptionPage.noBillingHistory')}
-          </div>
-        )}
+        <div className="p-8 text-center text-sm text-neutral-500">
+          {t('dashboard.subscriptionPage.noBillingHistory')}
+        </div>
       </div>
+      */}
+
+      {/* iyzico Payment Modal */}
+      {showPaymentModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-auto">
+            <div className="flex justify-between items-center p-4 border-b border-neutral-200">
+              <h3 className="text-lg font-semibold text-neutral-900">
+                {t('dashboard.subscriptionPage.payment') || 'Ödeme'}
+              </h3>
+              <button
+                onClick={closePaymentModal}
+                className="text-neutral-500 hover:text-neutral-700 transition-colors p-1"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-4">
+              <div ref={checkoutContainerRef} id="iyzico-checkout-container" />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

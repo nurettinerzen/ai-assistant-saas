@@ -182,17 +182,14 @@ export default function Sidebar({ user, credits }) {
         })}
       </nav>
 
-      {/* Credits display */}
+      {/* Credits display - Kredi Ekle butonu kaldırıldı */}
       {credits !== undefined && (
         <div className="px-6 py-3 border-t border-neutral-200">
           <div className="bg-primary-50 rounded-lg p-3">
             <p className="text-xs text-neutral-600 mb-1">{t('dashboard.credits.available')}</p>
-            <p className="text-2xl font-bold text-primary-600">${credits.toFixed(2)}</p>
-            <Link href="/dashboard/subscription">
-              <Button variant="link" size="sm" className="p-0 h-auto text-xs mt-1">
-                {t('dashboard.credits.add')}
-              </Button>
-            </Link>
+            <p className="text-2xl font-bold text-primary-600">
+              {credits} {t('dashboard.credits.unit') || 'kredi'}
+            </p>
           </div>
         </div>
       )}
