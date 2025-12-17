@@ -141,7 +141,6 @@ export function OnboardingModal({ open, onClose }) {
   const handleComplete = async () => {
     setLoading(true);
     try {
-      localStorage.setItem('onboarding_completed', 'true');
       toast.success(t('onboarding.messages.completed'));
       onClose();
     } catch (error) {
@@ -204,7 +203,12 @@ export function OnboardingModal({ open, onClose }) {
 
   return (
     <Dialog open={open} onOpenChange={() => {}}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent
+        className="max-w-3xl max-h-[90vh] overflow-y-auto [&>button]:hidden"
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle className="text-2xl">{STEPS[step - 1]?.title}</DialogTitle>
           <p className="text-gray-600">{STEPS[step - 1]?.description}</p>

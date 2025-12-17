@@ -50,6 +50,8 @@ import { processAllQueues } from './services/batch-call.js';
 import teamRoutes from './routes/team.js';
 // Waitlist
 import waitlistRoutes from './routes/waitlist.js';
+// Onboarding
+import onboardingRoutes from './routes/onboarding.js';
 
 
 // Import jobs
@@ -126,6 +128,7 @@ app.use('/api/webhook', webhookRoutes);
 app.use('/api/batch-call', batchCallRoutes);
 app.use('/api/team', teamRoutes);
 app.use('/api/waitlist', waitlistRoutes);
+app.use('/api/onboarding', onboardingRoutes);
 
 
 // Error handling middleware

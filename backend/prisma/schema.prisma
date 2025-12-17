@@ -9,21 +9,22 @@ datasource db {
 }
 
 model User {
-  id                Int          @id @default(autoincrement())
-  email             String       @unique
-  password          String
-  name              String?
-  role              UserRole     @default(STAFF)
-  businessId        Int
-  invitedById       Int?
-  invitedAt         DateTime?
-  acceptedAt        DateTime?
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
-  business          Business     @relation(fields: [businessId], references: [id])
-  invitedBy         User?        @relation("UserInvitations", fields: [invitedById], references: [id])
-  invitedUsers      User[]       @relation("UserInvitations")
-  sentInvitations   Invitation[] @relation("InvitedByUser")
+  id                  Int          @id @default(autoincrement())
+  email               String       @unique
+  password            String
+  name                String?
+  role                UserRole     @default(STAFF)
+  businessId          Int
+  invitedById         Int?
+  invitedAt           DateTime?
+  acceptedAt          DateTime?
+  onboardingCompleted Boolean      @default(false)
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  business            Business     @relation(fields: [businessId], references: [id])
+  invitedBy           User?        @relation("UserInvitations", fields: [invitedById], references: [id])
+  invitedUsers        User[]       @relation("UserInvitations")
+  sentInvitations     Invitation[] @relation("InvitedByUser")
 
   @@index([businessId])
   @@index([email])

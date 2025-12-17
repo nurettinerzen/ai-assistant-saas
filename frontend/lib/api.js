@@ -204,6 +204,11 @@ export const apiClient = {
     getInvitationByToken: (token) => api.get(`/api/team/invitation/${token}`),
     acceptInvitation: (token, data) => api.post(`/api/team/invitation/${token}/accept`, data),
   },
+
+  // Onboarding
+  onboarding: {
+    complete: () => api.post('/api/onboarding/complete'),
+  },
 };
 
 export default api;

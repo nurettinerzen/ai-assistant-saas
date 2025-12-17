@@ -1,17 +1,19 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter, usePathname } from 'next/navigation'; // usePathname ekle
+import { useRouter, usePathname } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
 import { apiClient } from '@/lib/api';
 import { Toaster } from 'sonner';
+import { OnboardingModal } from '@/components/OnboardingModal';
 
 export default function DashboardLayout({ children }) {
   const router = useRouter();
-  const pathname = usePathname(); // EKLE
+  const pathname = usePathname();
   const [user, setUser] = useState(null);
   const [credits, setCredits] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
     // Check authentication
@@ -39,9 +41,14 @@ export default function DashboardLayout({ children }) {
 
   const loadUserData = async () => {
     try {
-      // Load user profile
-      const userResponse = await apiClient.settings.getProfile();
+      // Load user profile from /api/auth/me (includes onboardingCompleted)
+      const userResponse = await apiClient.get('/api/auth/me');
       setUser(userResponse.data);
+
+      // Check if onboarding is needed
+      if (userResponse.data.onboardingCompleted === false) {
+        setShowOnboarding(true);
+      }
 
       // Load subscription/credits - hatası olsa bile devam et
       try {
@@ -59,6 +66,17 @@ export default function DashboardLayout({ children }) {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleOnboardingComplete = async () => {
+    try {
+      await apiClient.onboarding.complete();
+      setShowOnboarding(false);
+      // Reload to refresh user data
+      window.location.reload();
+    } catch (error) {
+      console.error('Failed to complete onboarding:', error);
     }
   };
 
@@ -87,6 +105,11 @@ export default function DashboardLayout({ children }) {
 
       {/* Toast notifications */}
       <Toaster position="top-right" richColors />
+
+      {/* Onboarding Modal */}
+      {showOnboarding && (
+        <OnboardingModal open={showOnboarding} onClose={handleOnboardingComplete} />
+      )}
     </div>
   );
 }

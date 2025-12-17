@@ -238,7 +238,15 @@ router.get('/me', authenticateToken, async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.userId },
-      include: {
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        businessId: true,
+        onboardingCompleted: true,
+        createdAt: true,
+        updatedAt: true,
         business: {
           include: {
             subscription: true,
@@ -251,8 +259,7 @@ router.get('/me', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const { password: _, ...userWithoutPassword } = user;
-    res.json(userWithoutPassword);
+    res.json(user);
   } catch (error) {
     console.error('Get user error:', error);
     res.status(500).json({ error: 'Failed to fetch user data' });
