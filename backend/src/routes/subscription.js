@@ -338,32 +338,96 @@ router.post('/iyzico-webhook', express.json(), async (req, res) => {
 });
 
 // ============================================================================
-// IYZICO CHECKOUT CALLBACK (redirect after payment)
+// IYZICO PAYMENT CALLBACK (Simple checkout - not subscription)
 // ============================================================================
 
-router.get('/iyzico-callback', async (req, res) => {
-  const { token } = req.query;
+router.post('/iyzico-payment-callback', async (req, res) => {
+  const { token } = req.body;
+  const { planId, businessId } = req.query;
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+
+  console.log('📥 iyzico payment callback received:', { token, planId, businessId });
 
   if (!token) {
     return res.redirect(`${frontendUrl}/pricing?error=missing_token`);
   }
 
   try {
-    // Retrieve checkout result
-    const result = await iyzicoSubscription.retrieveCheckoutFormResult(token);
+    // Retrieve checkout form result
+    const Iyzipay = (await import('iyzipay')).default;
+    const iyzipay = new Iyzipay({
+      apiKey: process.env.IYZICO_API_KEY,
+      secretKey: process.env.IYZICO_SECRET_KEY,
+      uri: process.env.IYZICO_BASE_URL || 'https://sandbox-api.iyzipay.com'
+    });
 
-    if (result.success && result.subscriptionStatus === 'ACTIVE') {
-      console.log('✅ iyzico subscription activated via callback');
-      return res.redirect(`${frontendUrl}/dashboard/assistant?success=true&provider=iyzico`);
-    } else {
-      console.log('❌ iyzico checkout failed:', result);
-      return res.redirect(`${frontendUrl}/pricing?error=payment_failed`);
-    }
+    const request = {
+      locale: Iyzipay.LOCALE.TR,
+      conversationId: `callback-${Date.now()}`,
+      token: token
+    };
+
+    iyzipay.checkoutForm.retrieve(request, async (err, result) => {
+      if (err) {
+        console.error('iyzico retrieve error:', err);
+        return res.redirect(`${frontendUrl}/pricing?error=payment_failed`);
+      }
+
+      console.log('iyzico payment result:', result.status, result.paymentStatus);
+
+      if (result.status === 'success' && result.paymentStatus === 'SUCCESS') {
+        // Payment successful - activate subscription
+        const planConfig = PLAN_CONFIG[planId];
+
+        if (planConfig && businessId) {
+          await prisma.subscription.upsert({
+            where: { businessId: parseInt(businessId) },
+            create: {
+              businessId: parseInt(businessId),
+              paymentProvider: 'iyzico',
+              iyzicoPaymentId: result.paymentId,
+              plan: planId,
+              status: 'ACTIVE',
+              currentPeriodStart: new Date(),
+              currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+              minutesLimit: planConfig.minutesLimit,
+              callsLimit: planConfig.callsLimit,
+              assistantsLimit: planConfig.assistantsLimit,
+              phoneNumbersLimit: planConfig.phoneNumbersLimit
+            },
+            update: {
+              paymentProvider: 'iyzico',
+              iyzicoPaymentId: result.paymentId,
+              plan: planId,
+              status: 'ACTIVE',
+              currentPeriodStart: new Date(),
+              currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+              minutesLimit: planConfig.minutesLimit,
+              callsLimit: planConfig.callsLimit,
+              assistantsLimit: planConfig.assistantsLimit,
+              phoneNumbersLimit: planConfig.phoneNumbersLimit
+            }
+          });
+
+          console.log('✅ iyzico payment successful, plan activated:', planId);
+        }
+
+        return res.redirect(`${frontendUrl}/dashboard/assistant?success=true&provider=iyzico`);
+      } else {
+        console.log('❌ iyzico payment failed:', result.errorMessage);
+        return res.redirect(`${frontendUrl}/pricing?error=payment_failed&message=${encodeURIComponent(result.errorMessage || 'Ödeme başarısız')}`);
+      }
+    });
   } catch (error) {
     console.error('iyzico callback error:', error);
     return res.redirect(`${frontendUrl}/pricing?error=callback_failed`);
   }
+});
+
+// Legacy callback (subscription-based - disabled)
+router.get('/iyzico-callback', async (req, res) => {
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  return res.redirect(`${frontendUrl}/pricing?error=subscription_disabled`);
 });
 
 // ============================================================================
@@ -802,6 +866,196 @@ router.post('/reactivate', verifyBusinessAccess, async (req, res) => {
   } catch (error) {
     console.error('Reactivate subscription error:', error);
     res.status(500).json({ error: 'Failed to reactivate subscription' });
+  }
+});
+
+// ============================================================================
+// UPGRADE ENDPOINT - Simplified for frontend compatibility
+// ============================================================================
+
+router.post('/upgrade', verifyBusinessAccess, async (req, res) => {
+  try {
+    const { businessId } = req.user;
+    const { planId } = req.body;
+
+    if (!planId) {
+      return res.status(400).json({ error: 'Plan ID is required' });
+    }
+
+    // Normalize planId to uppercase
+    const normalizedPlanId = planId.toUpperCase();
+
+    if (!PLAN_CONFIG[normalizedPlanId] || normalizedPlanId === 'FREE') {
+      return res.status(400).json({ error: 'Invalid plan ID' });
+    }
+
+    // Get user and business info
+    const user = await prisma.user.findFirst({
+      where: { businessId },
+      include: { business: true }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Determine payment provider based on country
+    const provider = paymentProvider.getProviderForCountry(user.business.country);
+
+    console.log(`💳 Upgrade request for business ${businessId}, plan: ${normalizedPlanId}, provider: ${provider}`);
+
+    // ========== IYZICO CHECKOUT (Simple Payment - Subscription disabled for now) ==========
+    if (provider === 'iyzico') {
+      const planConfig = PLAN_CONFIG[normalizedPlanId];
+      const price = planConfig.priceTRY;
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      const backendUrl = process.env.BACKEND_URL || 'http://localhost:3001';
+
+      // Use iyzico checkout form initialize (standard payment, not subscription)
+      const Iyzipay = (await import('iyzipay')).default;
+      const iyzipay = new Iyzipay({
+        apiKey: process.env.IYZICO_API_KEY,
+        secretKey: process.env.IYZICO_SECRET_KEY,
+        uri: process.env.IYZICO_BASE_URL || 'https://sandbox-api.iyzipay.com'
+      });
+
+      const request = {
+        locale: Iyzipay.LOCALE.TR,
+        conversationId: `${businessId}-${Date.now()}`,
+        price: price.toString(),
+        paidPrice: price.toString(),
+        currency: Iyzipay.CURRENCY.TRY,
+        basketId: `basket_${businessId}_${Date.now()}`,
+        paymentGroup: Iyzipay.PAYMENT_GROUP.PRODUCT,
+        callbackUrl: `${backendUrl}/api/subscription/iyzico-payment-callback?planId=${normalizedPlanId}&businessId=${businessId}`,
+        buyer: {
+          id: user.id.toString(),
+          name: user.name?.split(' ')[0] || 'Ad',
+          surname: user.name?.split(' ').slice(1).join(' ') || 'Soyad',
+          email: user.email,
+          identityNumber: '11111111111',
+          registrationAddress: 'Türkiye',
+          ip: req.ip || req.headers['x-forwarded-for'] || '127.0.0.1',
+          city: 'Istanbul',
+          country: 'Turkey'
+        },
+        shippingAddress: {
+          contactName: user.name || 'Müşteri',
+          city: 'Istanbul',
+          country: 'Turkey',
+          address: 'Türkiye'
+        },
+        billingAddress: {
+          contactName: user.name || 'Müşteri',
+          city: 'Istanbul',
+          country: 'Turkey',
+          address: 'Türkiye'
+        },
+        basketItems: [
+          {
+            id: normalizedPlanId,
+            name: `Telyx.ai ${normalizedPlanId.charAt(0) + normalizedPlanId.slice(1).toLowerCase()} Plan - 1 Aylık`,
+            category1: 'Subscription',
+            itemType: Iyzipay.BASKET_ITEM_TYPE.VIRTUAL,
+            price: price.toString()
+          }
+        ]
+      };
+
+      return new Promise((resolve) => {
+        iyzipay.checkoutFormInitialize.create(request, (err, result) => {
+          if (err || result.status !== 'success') {
+            console.error('iyzico error:', err || result);
+            return resolve(res.status(400).json({
+              error: result?.errorMessage || 'Ödeme başlatılamadı'
+            }));
+          }
+
+          resolve(res.json({
+            provider: 'iyzico',
+            checkoutFormContent: result.checkoutFormContent,
+            token: result.token,
+            tokenExpireTime: result.tokenExpireTime
+          }));
+        });
+      });
+    }
+
+    // ========== STRIPE CHECKOUT ==========
+    const planConfig = PLAN_CONFIG[normalizedPlanId];
+    const priceId = planConfig.stripePriceId;
+
+    if (!priceId) {
+      return res.status(400).json({ error: 'Stripe price not configured for this plan' });
+    }
+
+    // Get or create Stripe customer
+    let stripeCustomerId;
+    const existingSub = await prisma.subscription.findUnique({
+      where: { businessId }
+    });
+
+    if (existingSub?.stripeCustomerId) {
+      stripeCustomerId = existingSub.stripeCustomerId;
+    } else {
+      const customer = await stripe.customers.create({
+        email: user.email,
+        name: user.business.name,
+        metadata: {
+          businessId: businessId.toString()
+        }
+      });
+      stripeCustomerId = customer.id;
+
+      // Save customer ID
+      await prisma.subscription.upsert({
+        where: { businessId },
+        create: {
+          businessId,
+          stripeCustomerId,
+          paymentProvider: 'stripe',
+          plan: 'FREE',
+          status: 'INCOMPLETE'
+        },
+        update: {
+          stripeCustomerId,
+          paymentProvider: 'stripe'
+        }
+      });
+    }
+
+    // Create Stripe checkout session
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const session = await stripe.checkout.sessions.create({
+      customer: stripeCustomerId,
+      mode: 'subscription',
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1
+        }
+      ],
+      success_url: `${frontendUrl}/dashboard/assistant?success=true&provider=stripe`,
+      cancel_url: `${frontendUrl}/pricing?canceled=true`,
+      metadata: {
+        businessId: businessId.toString(),
+        priceId: priceId,
+        planId: normalizedPlanId
+      }
+    });
+
+    return res.json({
+      provider: 'stripe',
+      sessionUrl: session.url,
+      sessionId: session.id
+    });
+  } catch (error) {
+    console.error('Upgrade error:', error);
+    res.status(500).json({
+      error: 'Upgrade failed',
+      details: error.message
+    });
   }
 });
 
