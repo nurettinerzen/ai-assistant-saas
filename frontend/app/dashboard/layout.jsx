@@ -43,12 +43,16 @@ export default function DashboardLayout({ children }) {
       const userResponse = await apiClient.settings.getProfile();
       setUser(userResponse.data);
 
-      // Load subscription/credits
-      const subResponse = await apiClient.subscription.getCurrent();
-      setCredits(subResponse.data.credits || 0);
+      // Load subscription/credits - hatası olsa bile devam et
+      try {
+        const subResponse = await apiClient.subscription.getCurrent();
+        setCredits(subResponse.data.credits || 0);
+      } catch (subError) {
+        console.warn('Failed to load subscription:', subError);
+        setCredits(0);
+      }
     } catch (error) {
       console.error('Failed to load user data:', error);
-      // If unauthorized, redirect to login
       if (error.response?.status === 401) {
         localStorage.removeItem('token');
         router.push('/login');
