@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { toast } from 'sonner';
-import { Mail, Phone, Clock, Send, Check } from 'lucide-react';
+import { Mail, Clock, Send, Check } from 'lucide-react';
 
 export default function ContactPage() {
   const { t } = useLanguage();
@@ -226,18 +226,6 @@ export default function ContactPage() {
                       <h4 className="font-semibold mb-1">{t('contact.info.email')}</h4>
                       <a href="mailto:info@telyx.ai" className="text-gray-600 hover:text-primary">
                         info@telyx.ai
-                      </a>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center flex-shrink-0">
-                      <Phone className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <h4 className="font-semibold mb-1">{t('contact.info.phone')}</h4>
-                      <a href="tel:+14245275089" className="text-gray-600 hover:text-primary">
-                        +1 424 527 5089
                       </a>
                     </div>
                   </div>

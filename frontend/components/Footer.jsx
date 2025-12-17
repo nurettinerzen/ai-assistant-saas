@@ -10,18 +10,16 @@ export const Footer = () => {
   const footerLinks = {
     company: [
       { labelKey: 'landing.footer.about', href: '/about' },
-      { labelKey: 'landing.footer.contact', href: '/contact' },
-      { labelKey: 'landing.footer.careers', href: '/careers' }
+      { labelKey: 'landing.footer.contact', href: '/contact' }
     ],
     product: [
       { labelKey: 'landing.footer.features', href: '/features' },
       { labelKey: 'landing.footer.pricing', href: '/pricing' },
-      { labelKey: 'landing.footer.integrations', href: '/features#integrations' }
+      { labelKey: 'landing.footer.integrations', href: '/integrations' }
     ],
     resources: [
-      { labelKey: 'landing.footer.blog', href: '/blog' },
       { labelKey: 'landing.footer.help', href: '/help' },
-      { labelKey: 'landing.footer.api', href: '/api-docs' }
+      { labelKey: 'landing.footer.api', href: '/docs/api' }
     ],
     legal: [
       { labelKey: 'landing.footer.privacy', href: '/privacy' },

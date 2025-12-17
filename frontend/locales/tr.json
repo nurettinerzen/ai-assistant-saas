@@ -96,7 +96,8 @@
     },
     "integrations": {
       "title": "Popüler Entegrasyonlar",
-      "subtitle": "Kullandığınız araçlarla sorunsuz entegrasyon"
+      "subtitle": "Kullandığınız araçlarla sorunsuz entegrasyon",
+      "viewAll": "Tüm Entegrasyonları Gör"
     },
     "howItWorks": {
       "title": "Nasıl Çalışır?",
@@ -255,7 +256,7 @@
       "desc": "Popüler e-ticaret platformları ile entegre çalışın",
       "item1": "ikas entegrasyonu",
       "item2": "Shopify entegrasyonu",
-      "item3": "WooCommerce entegrasyonu",
+      "item3": "IdeaSoft entegrasyonu",
       "item4": "Ticimax entegrasyonu"
     },
     "calendar": {
@@ -1697,6 +1698,199 @@
       "next": "İleri",
       "complete": "Tamamla",
       "loading": "Yükleniyor..."
+    }
+  },
+  "about": {
+    "hero": {
+      "title": "Telyx.ai Hakkında",
+      "subtitle": "Yapay zeka ile müşteri hizmetlerini dönüştürüyoruz"
+    },
+    "story": {
+      "title": "Hikayemiz",
+      "content": "Telyx.ai, küçük ve orta ölçekli işletmelerin müşteri hizmetlerini yapay zeka ile dönüştürmek amacıyla kuruldu. Türkiye'deki KOBİ'lerin büyük şirketlerle aynı kalitede müşteri deneyimi sunabilmesi gerektiğine inanıyoruz."
+    },
+    "mission": {
+      "title": "Misyonumuz",
+      "content": "Her işletmenin 7/24 profesyonel müşteri hizmeti sunabilmesini sağlamak."
+    },
+    "whyTurkey": {
+      "title": "Neden Türkiye?",
+      "content": "Türkiye'nin dinamik KOBİ ekosistemi, yenilikçi çözümlere açık yapısı ve dijital dönüşüme olan ihtiyacı ile başlamak için ideal bir pazar. Türkiye'de kanıtladıktan sonra global pazarlara açılmayı hedefliyoruz."
+    },
+    "team": {
+      "title": "Ekibimiz",
+      "content": "Küçük ama tutkulu bir ekip olarak, her gün işletmelerin müşteri deneyimini iyileştirmek için çalışıyoruz."
+    },
+    "cta": {
+      "title": "Bize Katılın",
+      "subtitle": "Erken erişim için başvurun ve AI destekli müşteri hizmetlerinin gücünü keşfedin.",
+      "button": "Erken Erişim İçin Başvurun"
+    }
+  },
+  "help": {
+    "badge": "Yardım Merkezi",
+    "hero": {
+      "title": "Sıkça Sorulan Sorular",
+      "subtitle": "Telyx.ai hakkında merak ettikleriniz"
+    },
+    "faq": {
+      "q1": "Telyx.ai nedir?",
+      "a1": "Telyx.ai, işletmelerin telefon, WhatsApp, chat ve e-posta kanallarından gelen müşteri taleplerini yapay zeka ile otomatik yanıtlamasını sağlayan bir platformdur.",
+      "q2": "Hangi kanalları destekliyorsunuz?",
+      "a2": "Telefon (AI sesli yanıt), WhatsApp Business, web chat widget ve e-posta kanallarını destekliyoruz.",
+      "q3": "Kurulum ne kadar sürer?",
+      "a3": "Temel kurulum 10 dakika içinde tamamlanabilir. Asistanınızı oluşturduktan sonra hemen kullanmaya başlayabilirsiniz.",
+      "q4": "Türkçe dışında hangi dilleri destekliyorsunuz?",
+      "a4": "16 farklı dili destekliyoruz: Türkçe, İngilizce, Almanca, Fransızca, İspanyolca, İtalyanca, Portekizce, Rusça, Arapça, Japonca, Korece, Çince, Hintçe, Felemenkçe, Lehçe ve İsveççe.",
+      "q5": "E-ticaret sitemle entegre çalışır mı?",
+      "a5": "Evet, İkas, Ticimax, İdeasoft ve Shopify ile entegre çalışıyoruz. Müşterileriniz sipariş durumu sorgulayabilir.",
+      "q6": "Fiyatlandırma nasıl çalışıyor?",
+      "a6": "Aylık abonelik modeliyle çalışıyoruz. Detaylar için fiyatlandırma sayfamızı ziyaret edin.",
+      "q7": "Ücretsiz deneme var mı?",
+      "a7": "Şu an erken erişim dönemindeyiz. Waitlist'e kaydolarak öncelikli erişim sağlayabilirsiniz.",
+      "q8": "Verilerim güvende mi?",
+      "a8": "Evet, tüm veriler şifrelenmiş olarak saklanır ve KVKK'ya uygun şekilde işlenir.",
+      "q9": "Destek nasıl alabilirim?",
+      "a9": "info@telyx.ai adresinden bize ulaşabilirsiniz."
+    },
+    "contact": {
+      "title": "Başka Sorunuz mu Var?",
+      "text": "Bize e-posta gönderin, en kısa sürede yanıt verelim."
+    }
+  },
+  "apiDocs": {
+    "title": "API Dokümantasyonu",
+    "comingSoon": "API dokümantasyonumuz yakında yayınlanacak.",
+    "contactText": "Erken erişim için bize ulaşın:",
+    "backToHome": "Ana Sayfaya Dön"
+  },
+  "privacy": {
+    "title": "Gizlilik Politikası",
+    "lastUpdated": "Son güncelleme: 16 Aralık 2024",
+    "sections": {
+      "dataCollected": {
+        "title": "Toplanan Veriler",
+        "content": "Hizmetlerimizi kullanırken aşağıdaki verileri topluyoruz:\n• Kimlik bilgileri (ad, soyad, e-posta adresi)\n• İletişim bilgileri (telefon numarası, adres)\n• Kullanım verileri (sayfa görüntülemeleri, tıklamalar)\n• Cihaz bilgileri (IP adresi, tarayıcı türü)"
+      },
+      "dataUsage": {
+        "title": "Verilerin Kullanım Amacı",
+        "content": "Toplanan veriler aşağıdaki amaçlarla kullanılır:\n• Hizmet sunumu ve iyileştirmesi\n• Müşteri desteği sağlama\n• İletişim ve bilgilendirme\n• Yasal yükümlülüklerin yerine getirilmesi"
+      },
+      "dataStorage": {
+        "title": "Verilerin Saklanması",
+        "content": "Verileriniz:\n• Güvenli sunucularda şifrelenmiş olarak saklanır\n• Sadece gerekli süre boyunca tutulur\n• Endüstri standardı güvenlik önlemleriyle korunur"
+      },
+      "thirdParty": {
+        "title": "Üçüncü Taraflarla Paylaşım",
+        "content": "Verileriniz aşağıdaki durumlarda paylaşılabilir:\n• Hizmet sağlayıcılar (ödeme işlemcileri, altyapı sağlayıcıları)\n• Yasal zorunluluklar ve mahkeme kararları\n• İzninizle diğer üçüncü taraflar"
+      },
+      "cookies": {
+        "title": "Çerezler",
+        "content": "Web sitemizde aşağıdaki çerezleri kullanıyoruz:\n• Oturum çerezleri (giriş durumu)\n• Analitik çerezleri (site kullanımı)\n• Tercih çerezleri (dil seçimi)"
+      },
+      "userRights": {
+        "title": "Kullanıcı Hakları (KVKK)",
+        "content": "KVKK kapsamında aşağıdaki haklara sahipsiniz:\n• Verileriniz hakkında bilgi edinme\n• Yanlış verilerin düzeltilmesini talep etme\n• Verilerinizin silinmesini talep etme\n• Veri işlemeye itiraz etme\n• Veri taşınabilirliği talep etme"
+      },
+      "contact": {
+        "title": "İletişim",
+        "content": "Gizlilik politikamız hakkında sorularınız için:\nE-posta: info@telyx.ai"
+      }
+    }
+  },
+  "terms": {
+    "title": "Kullanım Koşulları",
+    "lastUpdated": "Son güncelleme: 16 Aralık 2024",
+    "sections": {
+      "serviceDefinition": {
+        "title": "Hizmet Tanımı",
+        "content": "Telyx.ai, işletmelere yapay zeka destekli müşteri hizmetleri platformu sunan bir SaaS (Hizmet Olarak Yazılım) ürünüdür. Platform, telefon, WhatsApp, chat ve e-posta kanallarından müşteri taleplerini otomatik olarak yanıtlar."
+      },
+      "accountCreation": {
+        "title": "Hesap Oluşturma",
+        "content": "Hizmetimizi kullanmak için:\n• Doğru ve güncel bilgiler sağlamalısınız\n• Hesap güvenliğinden siz sorumlusunuz\n• Şifrenizi gizli tutmalısınız\n• Yetkisiz erişimi derhal bildirmelisiniz"
+      },
+      "acceptableUse": {
+        "title": "Kabul Edilebilir Kullanım",
+        "content": "Hizmetimizi kullanırken:\n• Yasal amaçlarla kullanmalısınız\n• Spam veya kötüye kullanım yasaktır\n• Başkalarının haklarını ihlal etmemelisiniz\n• Güvenlik önlemlerini atlatmaya çalışmamalısınız"
+      },
+      "paymentTerms": {
+        "title": "Ödeme Koşulları",
+        "content": "Ödeme koşulları:\n• Aylık veya yıllık abonelik seçenekleri mevcuttur\n• Ödemeler otomatik olarak yenilenir\n• İptal, bir sonraki fatura döneminden geçerli olur\n• İade politikamız 14 gün içinde geçerlidir"
+      },
+      "intellectualProperty": {
+        "title": "Fikri Mülkiyet",
+        "content": "• Platform ve tüm içerik Telyx.ai'ye aittir\n• Kullanıcılar yüklediği içeriklerin haklarını korur\n• Platform lisansı, kişisel/ticari kullanım içindir\n• Tersine mühendislik yasaktır"
+      },
+      "liability": {
+        "title": "Sorumluluk Sınırları",
+        "content": "Telyx.ai:\n• Hizmet kesintilerinden dolayı garanti vermez\n• Dolaylı zararlardan sorumlu değildir\n• Maksimum sorumluluk ödenen abonelik ücreti ile sınırlıdır\n• Üçüncü taraf entegrasyonlarından sorumlu değildir"
+      },
+      "termination": {
+        "title": "Fesih",
+        "content": "Hesap kapatma:\n• İstediğiniz zaman hesabınızı kapatabilirsiniz\n• İhlal durumunda hesabınız askıya alınabilir\n• Kapatma sonrası verileriniz 30 gün içinde silinir\n• Yasal yükümlülükler için gerekli veriler saklanabilir"
+      },
+      "changes": {
+        "title": "Değişiklikler",
+        "content": "Bu kullanım koşulları:\n• Önceden bildirimle güncellenebilir\n• Önemli değişiklikler e-posta ile bildirilir\n• Kullanmaya devam etmek kabul anlamına gelir"
+      },
+      "contact": {
+        "title": "İletişim",
+        "content": "Kullanım koşulları hakkında sorularınız için:\nE-posta: info@telyx.ai"
+      }
+    }
+  },
+  "integrationsPage": {
+    "hero": {
+      "title": "Entegrasyonlar",
+      "subtitle": "Kullandığınız araçlarla sorunsuz çalışın"
+    },
+    "categories": {
+      "ecommerce": "E-Ticaret",
+      "calendar": "Takvim",
+      "email": "E-Posta",
+      "accounting": "Muhasebe",
+      "payment": "Ödeme",
+      "sms": "SMS"
+    },
+    "ikas": {
+      "desc": "Türkiye'nin önde gelen e-ticaret altyapısı ile sipariş ve müşteri yönetimi"
+    },
+    "ticimax": {
+      "desc": "E-ticaret siparişlerinizi otomatik takip edin"
+    },
+    "ideasoft": {
+      "desc": "Türkiye'nin köklü e-ticaret platformu entegrasyonu"
+    },
+    "shopify": {
+      "desc": "Global e-ticaret platformu ile tam entegrasyon"
+    },
+    "googleCalendar": {
+      "desc": "Randevuları otomatik oluşturun ve yönetin"
+    },
+    "gmail": {
+      "desc": "Google Workspace ile e-posta entegrasyonu"
+    },
+    "outlook": {
+      "desc": "Microsoft 365 ile e-posta yönetimi"
+    },
+    "parasut": {
+      "desc": "Fatura ve cari hesap takibi"
+    },
+    "iyzico": {
+      "desc": "Türkiye'nin lider ödeme altyapısı"
+    },
+    "stripe": {
+      "desc": "Global ödeme işlemleri"
+    },
+    "netgsm": {
+      "desc": "SMS bildirimleri ve doğrulama"
+    },
+    "cta": {
+      "title": "Hemen Başlayın",
+      "subtitle": "Tüm entegrasyonları ücretsiz kullanmaya başlayın",
+      "button": "Erken Erişim İçin Başvurun",
+      "contact": "İletişime Geçin"
     }
   }
 }

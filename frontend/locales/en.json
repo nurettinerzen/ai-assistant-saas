@@ -96,7 +96,8 @@
     },
     "integrations": {
       "title": "Popular Integrations",
-      "subtitle": "Seamless integration with the tools you use"
+      "subtitle": "Seamless integration with the tools you use",
+      "viewAll": "View All Integrations"
     },
     "howItWorks": {
       "title": "How It Works",
@@ -255,7 +256,7 @@
       "desc": "Integrate with popular e-commerce platforms",
       "item1": "ikas integration",
       "item2": "Shopify integration",
-      "item3": "WooCommerce integration",
+      "item3": "IdeaSoft integration",
       "item4": "Ticimax integration"
     },
     "calendar": {
@@ -1697,6 +1698,199 @@
       "next": "Next",
       "complete": "Complete",
       "loading": "Loading..."
+    }
+  },
+  "about": {
+    "hero": {
+      "title": "About Telyx.ai",
+      "subtitle": "Transforming customer service with artificial intelligence"
+    },
+    "story": {
+      "title": "Our Story",
+      "content": "Telyx.ai was founded to transform customer service for small and medium-sized businesses with artificial intelligence. We believe that SMBs should be able to provide the same quality customer experience as large enterprises."
+    },
+    "mission": {
+      "title": "Our Mission",
+      "content": "To enable every business to provide 24/7 professional customer service."
+    },
+    "whyTurkey": {
+      "title": "Why Turkey?",
+      "content": "Turkey's dynamic SMB ecosystem, openness to innovative solutions, and need for digital transformation make it an ideal market to start. After proving ourselves in Turkey, we aim to expand to global markets."
+    },
+    "team": {
+      "title": "Our Team",
+      "content": "As a small but passionate team, we work every day to improve the customer experience of businesses."
+    },
+    "cta": {
+      "title": "Join Us",
+      "subtitle": "Apply for early access and discover the power of AI-powered customer service.",
+      "button": "Apply for Early Access"
+    }
+  },
+  "help": {
+    "badge": "Help Center",
+    "hero": {
+      "title": "Frequently Asked Questions",
+      "subtitle": "Everything you need to know about Telyx.ai"
+    },
+    "faq": {
+      "q1": "What is Telyx.ai?",
+      "a1": "Telyx.ai is a platform that enables businesses to automatically respond to customer requests from phone, WhatsApp, chat, and email channels using artificial intelligence.",
+      "q2": "Which channels do you support?",
+      "a2": "We support phone (AI voice response), WhatsApp Business, web chat widget, and email channels.",
+      "q3": "How long does setup take?",
+      "a3": "Basic setup can be completed within 10 minutes. You can start using your assistant immediately after creating it.",
+      "q4": "Which languages do you support besides English?",
+      "a4": "We support 16 different languages: Turkish, English, German, French, Spanish, Italian, Portuguese, Russian, Arabic, Japanese, Korean, Chinese, Hindi, Dutch, Polish, and Swedish.",
+      "q5": "Does it integrate with my e-commerce site?",
+      "a5": "Yes, we integrate with ikas, Ticimax, Ideasoft, and Shopify. Your customers can check their order status.",
+      "q6": "How does pricing work?",
+      "a6": "We operate on a monthly subscription model. Visit our pricing page for details.",
+      "q7": "Is there a free trial?",
+      "a7": "We are currently in early access. You can get priority access by signing up for the waitlist.",
+      "q8": "Is my data secure?",
+      "a8": "Yes, all data is stored encrypted and processed in compliance with GDPR.",
+      "q9": "How can I get support?",
+      "a9": "You can reach us at info@telyx.ai."
+    },
+    "contact": {
+      "title": "Have Another Question?",
+      "text": "Send us an email and we'll get back to you shortly."
+    }
+  },
+  "apiDocs": {
+    "title": "API Documentation",
+    "comingSoon": "Our API documentation will be published soon.",
+    "contactText": "Contact us for early access:",
+    "backToHome": "Back to Home"
+  },
+  "privacy": {
+    "title": "Privacy Policy",
+    "lastUpdated": "Last updated: December 16, 2024",
+    "sections": {
+      "dataCollected": {
+        "title": "Data Collected",
+        "content": "When using our services, we collect the following data:\n• Identity information (name, email address)\n• Contact information (phone number, address)\n• Usage data (page views, clicks)\n• Device information (IP address, browser type)"
+      },
+      "dataUsage": {
+        "title": "Purpose of Data Usage",
+        "content": "Collected data is used for the following purposes:\n• Service delivery and improvement\n• Providing customer support\n• Communication and notifications\n• Fulfilling legal obligations"
+      },
+      "dataStorage": {
+        "title": "Data Storage",
+        "content": "Your data:\n• Is stored encrypted on secure servers\n• Is kept only for the necessary duration\n• Is protected with industry-standard security measures"
+      },
+      "thirdParty": {
+        "title": "Third-Party Sharing",
+        "content": "Your data may be shared in the following cases:\n• Service providers (payment processors, infrastructure providers)\n• Legal requirements and court orders\n• Other third parties with your consent"
+      },
+      "cookies": {
+        "title": "Cookies",
+        "content": "We use the following cookies on our website:\n• Session cookies (login status)\n• Analytics cookies (site usage)\n• Preference cookies (language selection)"
+      },
+      "userRights": {
+        "title": "User Rights (GDPR)",
+        "content": "Under GDPR, you have the following rights:\n• Right to be informed about your data\n• Right to request correction of inaccurate data\n• Right to request deletion of your data\n• Right to object to data processing\n• Right to data portability"
+      },
+      "contact": {
+        "title": "Contact",
+        "content": "For questions about our privacy policy:\nEmail: info@telyx.ai"
+      }
+    }
+  },
+  "terms": {
+    "title": "Terms of Service",
+    "lastUpdated": "Last updated: December 16, 2024",
+    "sections": {
+      "serviceDefinition": {
+        "title": "Service Definition",
+        "content": "Telyx.ai is a SaaS (Software as a Service) product that provides businesses with an AI-powered customer service platform. The platform automatically responds to customer requests from phone, WhatsApp, chat, and email channels."
+      },
+      "accountCreation": {
+        "title": "Account Creation",
+        "content": "To use our service:\n• You must provide accurate and current information\n• You are responsible for account security\n• You must keep your password confidential\n• You must report unauthorized access immediately"
+      },
+      "acceptableUse": {
+        "title": "Acceptable Use",
+        "content": "When using our service:\n• You must use it for legal purposes\n• Spam or abuse is prohibited\n• You must not violate others' rights\n• You must not attempt to bypass security measures"
+      },
+      "paymentTerms": {
+        "title": "Payment Terms",
+        "content": "Payment terms:\n• Monthly or annual subscription options are available\n• Payments are automatically renewed\n• Cancellation takes effect from the next billing period\n• Our refund policy is valid within 14 days"
+      },
+      "intellectualProperty": {
+        "title": "Intellectual Property",
+        "content": "• The platform and all content belong to Telyx.ai\n• Users retain rights to content they upload\n• Platform license is for personal/commercial use\n• Reverse engineering is prohibited"
+      },
+      "liability": {
+        "title": "Liability Limitations",
+        "content": "Telyx.ai:\n• Does not guarantee against service interruptions\n• Is not responsible for indirect damages\n• Maximum liability is limited to subscription fees paid\n• Is not responsible for third-party integrations"
+      },
+      "termination": {
+        "title": "Termination",
+        "content": "Account closure:\n• You can close your account at any time\n• Your account may be suspended for violations\n• Your data is deleted within 30 days after closure\n• Necessary data may be retained for legal obligations"
+      },
+      "changes": {
+        "title": "Changes",
+        "content": "These terms of service:\n• May be updated with prior notice\n• Important changes are notified via email\n• Continued use means acceptance"
+      },
+      "contact": {
+        "title": "Contact",
+        "content": "For questions about terms of service:\nEmail: info@telyx.ai"
+      }
+    }
+  },
+  "integrationsPage": {
+    "hero": {
+      "title": "Integrations",
+      "subtitle": "Work seamlessly with the tools you use"
+    },
+    "categories": {
+      "ecommerce": "E-Commerce",
+      "calendar": "Calendar",
+      "email": "Email",
+      "accounting": "Accounting",
+      "payment": "Payment",
+      "sms": "SMS"
+    },
+    "ikas": {
+      "desc": "Order and customer management with Turkey's leading e-commerce infrastructure"
+    },
+    "ticimax": {
+      "desc": "Automatically track your e-commerce orders"
+    },
+    "ideasoft": {
+      "desc": "Integration with Turkey's established e-commerce platform"
+    },
+    "shopify": {
+      "desc": "Full integration with the global e-commerce platform"
+    },
+    "googleCalendar": {
+      "desc": "Automatically create and manage appointments"
+    },
+    "gmail": {
+      "desc": "Email integration with Google Workspace"
+    },
+    "outlook": {
+      "desc": "Email management with Microsoft 365"
+    },
+    "parasut": {
+      "desc": "Invoice and account tracking"
+    },
+    "iyzico": {
+      "desc": "Turkey's leading payment infrastructure"
+    },
+    "stripe": {
+      "desc": "Global payment processing"
+    },
+    "netgsm": {
+      "desc": "SMS notifications and verification"
+    },
+    "cta": {
+      "title": "Get Started",
+      "subtitle": "Start using all integrations for free",
+      "button": "Apply for Early Access",
+      "contact": "Contact Us"
     }
   }
 }
