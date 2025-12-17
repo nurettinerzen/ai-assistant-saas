@@ -196,7 +196,7 @@ export default function VoicesPage() {
           </div>
 
           <div className="text-center text-sm text-neutral-500">
-            {t('dashboard.voicesPage.showing')} {filteredVoices.length} {preferredAccent} {t('dashboard.sidebar.voices')}
+            {t('dashboard.voicesPage.showing')} {filteredVoices.length} {t(`dashboard.voicesPage.accents.${preferredAccent}`)} {t('dashboard.sidebar.voices')}
           </div>
         </>
       ) : (

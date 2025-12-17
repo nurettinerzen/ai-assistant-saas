@@ -819,7 +819,33 @@
       "aboutVoiceSelection": "Ses Seçimi Hakkında",
       "voiceSelectionInfo": "Doğal sesli ses kütüphanemizden seçin. Her ses farklı diller ve kullanım durumları için optimize edilmiştir.",
       "businessLanguage": "İşletme Dili",
-      "failedToLoadVoices": "Sesler yüklenemedi"
+      "failedToLoadVoices": "Sesler yüklenemedi",
+      "playSample": "Örnek Dinle",
+      "pauseSample": "Durdur",
+      "sampleNotAvailable": "Örnek Mevcut Değil",
+      "genders": {
+        "male": "Erkek",
+        "female": "Kadın"
+      },
+      "accents": {
+        "Turkish": "Türkçe",
+        "American": "Amerikan",
+        "British": "İngiliz",
+        "German": "Almanca",
+        "French": "Fransızca",
+        "Spanish": "İspanyolca",
+        "Italian": "İtalyanca",
+        "Portuguese": "Portekizce",
+        "Russian": "Rusça",
+        "Arabic": "Arapça",
+        "Japanese": "Japonca",
+        "Korean": "Korece",
+        "Chinese": "Çince",
+        "Hindi": "Hintçe",
+        "Dutch": "Felemenkçe",
+        "Polish": "Lehçe",
+        "Swedish": "İsveççe"
+      }
     },
     "overviewPage": {
       "title": "Genel Bakış",
@@ -989,7 +1015,30 @@
       "creditsIncluded": "kredi dahil",
       "currentPlanBtn": "Mevcut Plan",
       "upgradeBtn": "Yükselt",
-      "noBillingHistory": "Henüz fatura geçmişi yok"
+      "noBillingHistory": "Henüz fatura geçmişi yok",
+      "upgradeConfirm": "Planı yükseltmek istediğinize emin misiniz?",
+      "plan": "planına",
+      "processingUpgrade": "Yükseltme işleniyor...",
+      "upgradeSuccess": "Plan başarıyla yükseltildi!",
+      "monthlyCost": "Aylık Maliyet",
+      "billingCycle": "Faturalandırma Döngüsü",
+      "monthly": "Aylık",
+      "nextBilling": "Sonraki Fatura",
+      "creditUsage": "Kredi Kullanımı",
+      "usedThisMonth": "Bu Ay Kullanılan",
+      "credits": "kredi",
+      "remaining": "kalan",
+      "runningLow": "Kredileriniz azalıyor",
+      "limitReached": "Kredi limitine ulaşıldı",
+      "addCredits": "Kredi Ekle",
+      "accessDenied": "Erişim Reddedildi",
+      "noBillingPermission": "Faturalandırma bilgilerini görüntüleme yetkiniz yok.",
+      "date": "Tarih",
+      "status": "Durum",
+      "invoice": "Fatura",
+      "download": "İndir",
+      "paid": "Ödendi",
+      "pending": "Beklemede"
     },
     "analyticsPage": {
       "title": "Analitik",
@@ -1225,6 +1274,80 @@
     "collectionsPage": {
       "title": "Vadesi Geçen Ödemeler",
       "description": "Tahsilat bekleyen faturaları yönetin",
+      "refreshButton": "Yenile",
+      "startCampaignButton": "Kampanya Başlat",
+      "notConnected": {
+        "description": "Tahsilat modülü Paraşüt entegrasyonu gerektirir",
+        "cardTitle": "Paraşüt'ü Bağlayın",
+        "cardDescription": "Vadesi geçen faturaları otomatik takip etmek için Paraşüt hesabınızı bağlayın",
+        "featuresTitle": "Bu Özelliklerle Neler Yapabilirsiniz?",
+        "feature1": "Vadesi geçen faturaları otomatik listeleyin",
+        "feature2": "AI ile müşterileri arayın",
+        "feature3": "Toplu tahsilat kampanyaları oluşturun",
+        "feature4": "Ödeme hatırlatmaları gönderin",
+        "connectButton": "Paraşüt'e Bağlan"
+      },
+      "summary": {
+        "totalInvoices": "Toplam Fatura",
+        "totalAmount": "Toplam Tutar",
+        "customerCount": "Müşteri Sayısı",
+        "avgDelay": "Ort. Gecikme",
+        "days": "gün"
+      },
+      "filters": {
+        "title": "Filtreler",
+        "minDays": "Min. Gecikme (Gün)",
+        "maxDays": "Maks. Gecikme (Gün)",
+        "minAmount": "Min. Tutar",
+        "maxAmount": "Maks. Tutar",
+        "all": "Tümü",
+        "applyButton": "Filtrele"
+      },
+      "table": {
+        "title": "Vadesi Geçen Faturalar",
+        "selectAll": "Tümünü Seç",
+        "unselectAll": "Seçimi Kaldır",
+        "customer": "Müşteri",
+        "invoiceNo": "Fatura No",
+        "amount": "Tutar",
+        "delay": "Gecikme",
+        "days": "gün",
+        "phone": "Telefon",
+        "status": "Durum",
+        "noPhone": "Telefon Yok",
+        "callable": "Aranabilir",
+        "phoneRequired": "Telefon Gerekli",
+        "noOverdueTitle": "Vadesi Geçen Fatura Yok",
+        "noOverdueDesc": "Tüm faturalarınız zamanında ödenmiş görünüyor"
+      },
+      "modal": {
+        "title": "Kampanya Oluştur",
+        "description": "Seçilen müşteriler için bir tahsilat kampanyası oluşturun.",
+        "customersSelected": "müşteri seçildi",
+        "campaignName": "Kampanya Adı",
+        "campaignNamePlaceholder": "Örn: Aralık Tahsilatı",
+        "channel": "İletişim Kanalı",
+        "phoneCall": "Telefon Araması",
+        "whatsapp": "WhatsApp Mesajı",
+        "summaryTitle": "Özet",
+        "customer": "Müşteri",
+        "totalAmount": "Toplam Tutar",
+        "infoTitle": "Bilgi",
+        "info1": "Kampanya başladığında müşteriler sırayla aranacak",
+        "info2": "Her arama AI asistan tarafından yapılacak",
+        "info3": "Kampanya durumunu canlı olarak takip edebilirsiniz",
+        "cancel": "İptal",
+        "creating": "Oluşturuluyor...",
+        "createButton": "Kampanyayı Oluştur"
+      },
+      "defaultCampaignName": "Tahsilat Kampanyası",
+      "errors": {
+        "loadInvoicesFailed": "Faturalar yüklenemedi",
+        "parasutConnectionFailed": "Paraşüt bağlantısı başarısız",
+        "selectAtLeastOneCustomer": "En az bir müşteri seçin",
+        "campaignCreationFailed": "Kampanya oluşturulamadı"
+      },
+      "campaignCreated": "Kampanya başarıyla oluşturuldu",
       "refreshData": "Verileri Yenile",
       "startCampaign": "Kampanya Başlat",
       "lastSynced": "Son Senkronizasyon",
@@ -1273,7 +1396,6 @@
       "refreshing": "Yenileniyor...",
       "dataRefreshed": "Veriler yenilendi",
       "failedToRefresh": "Veriler yenilenemedi",
-      "campaignCreated": "Kampanya oluşturuldu",
       "failedToCreateCampaign": "Kampanya oluşturulamadı",
       "callInitiated": "Arama başlatıldı",
       "failedToInitiateCall": "Arama başlatılamadı",
@@ -1286,6 +1408,84 @@
     "teamPage": {
       "title": "Ekip Yönetimi",
       "description": "Ekip üyelerini ve izinlerini yönetin",
+      "sendInvite": "Davet Gönder",
+      "stats": {
+        "totalMembers": "Toplam Üye",
+        "pendingInvites": "Bekleyen Davetler",
+        "yourRole": "Rolünüz"
+      },
+      "tabs": {
+        "members": "Üyeler",
+        "pendingInvites": "Bekleyen Davetler"
+      },
+      "members": {
+        "title": "Ekip Üyeleri",
+        "description": "İşletmenize erişimi olan tüm kullanıcıları yönetin",
+        "noMembers": "Henüz ekip üyesi yok",
+        "unnamed": "İsimsiz",
+        "roleUpdated": "Rol güncellendi",
+        "thisUser": "bu kullanıcıyı",
+        "removeConfirm": "ekipten kaldırmak istediğinize emin misiniz?",
+        "removed": "Üye kaldırıldı",
+        "removeFromTeam": "Ekipten Kaldır",
+        "tableHeaders": {
+          "user": "Kullanıcı",
+          "role": "Rol",
+          "joinedAt": "Katılım Tarihi",
+          "invitedBy": "Davet Eden",
+          "actions": "İşlemler"
+        }
+      },
+      "invitations": {
+        "title": "Bekleyen Davetler",
+        "description": "Onay bekleyen ekip davetlerini yönetin",
+        "noPending": "Bekleyen davet yok",
+        "cancelled": "Davet iptal edildi",
+        "resent": "Davet yeniden gönderildi",
+        "tableHeaders": {
+          "email": "E-posta",
+          "role": "Rol",
+          "sentAt": "Gönderilme Tarihi",
+          "expiresAt": "Son Geçerlilik",
+          "invitedBy": "Davet Eden",
+          "actions": "İşlemler"
+        }
+      },
+      "inviteModal": {
+        "title": "Ekip Üyesi Davet Et",
+        "description": "Ekibinize yeni bir üye davet edin",
+        "emailLabel": "E-posta Adresi",
+        "emailPlaceholder": "ornek@sirket.com",
+        "roleLabel": "Rol",
+        "managerDesc": "Asistan ve aramaları yönetebilir",
+        "staffDesc": "Aramaları görüntüleyebilir",
+        "sending": "Gönderiliyor..."
+      },
+      "invite": {
+        "created": "Davet oluşturuldu",
+        "manualShare": "Linki manuel olarak paylaşabilirsiniz:",
+        "linkCopied": "Link kopyalandı",
+        "copy": "Kopyala",
+        "sent": "Davet gönderildi"
+      },
+      "roles": {
+        "owner": "Sahip",
+        "manager": "Müdür",
+        "staff": "Personel"
+      },
+      "accessDenied": {
+        "title": "Erişim Reddedildi",
+        "message": "Bu sayfayı görüntüleme yetkiniz yok."
+      },
+      "errors": {
+        "loadFailed": "Ekip verileri yüklenemedi",
+        "emailRequired": "E-posta adresi zorunludur",
+        "inviteFailed": "Davet gönderilemedi",
+        "roleUpdateFailed": "Rol güncellenemedi",
+        "removeFailed": "Üye kaldırılamadı",
+        "cancelFailed": "Davet iptal edilemedi",
+        "resendFailed": "Davet yeniden gönderilemedi"
+      },
       "inviteMember": "Üye Davet Et",
       "teamMembers": "Ekip Üyeleri",
       "pendingInvitations": "Bekleyen Davetler",

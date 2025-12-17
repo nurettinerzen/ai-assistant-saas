@@ -819,7 +819,33 @@
       "aboutVoiceSelection": "About Voice Selection",
       "voiceSelectionInfo": "Choose from our library of natural-sounding voices. Each voice is optimized for different languages and use cases.",
       "businessLanguage": "Business Language",
-      "failedToLoadVoices": "Failed to load voices"
+      "failedToLoadVoices": "Failed to load voices",
+      "playSample": "Play Sample",
+      "pauseSample": "Pause",
+      "sampleNotAvailable": "Sample Not Available",
+      "genders": {
+        "male": "Male",
+        "female": "Female"
+      },
+      "accents": {
+        "Turkish": "Turkish",
+        "American": "American",
+        "British": "British",
+        "German": "German",
+        "French": "French",
+        "Spanish": "Spanish",
+        "Italian": "Italian",
+        "Portuguese": "Portuguese",
+        "Russian": "Russian",
+        "Arabic": "Arabic",
+        "Japanese": "Japanese",
+        "Korean": "Korean",
+        "Chinese": "Chinese",
+        "Hindi": "Hindi",
+        "Dutch": "Dutch",
+        "Polish": "Polish",
+        "Swedish": "Swedish"
+      }
     },
     "overviewPage": {
       "title": "Overview",
@@ -989,7 +1015,30 @@
       "creditsIncluded": "credits included",
       "currentPlanBtn": "Current Plan",
       "upgradeBtn": "Upgrade",
-      "noBillingHistory": "No billing history yet"
+      "noBillingHistory": "No billing history yet",
+      "upgradeConfirm": "Are you sure you want to upgrade to",
+      "plan": "plan?",
+      "processingUpgrade": "Processing upgrade...",
+      "upgradeSuccess": "Plan upgraded successfully!",
+      "monthlyCost": "Monthly Cost",
+      "billingCycle": "Billing Cycle",
+      "monthly": "Monthly",
+      "nextBilling": "Next Billing",
+      "creditUsage": "Credit Usage",
+      "usedThisMonth": "Used This Month",
+      "credits": "credits",
+      "remaining": "remaining",
+      "runningLow": "Running low on credits",
+      "limitReached": "Credit limit reached",
+      "addCredits": "Add Credits",
+      "accessDenied": "Access Denied",
+      "noBillingPermission": "You don't have permission to view billing information.",
+      "date": "Date",
+      "status": "Status",
+      "invoice": "Invoice",
+      "download": "Download",
+      "paid": "Paid",
+      "pending": "Pending"
     },
     "analyticsPage": {
       "title": "Analytics",
@@ -1184,6 +1233,80 @@
     "collectionsPage": {
       "title": "Overdue Payments",
       "description": "Manage invoices awaiting collection",
+      "refreshButton": "Refresh",
+      "startCampaignButton": "Start Campaign",
+      "notConnected": {
+        "description": "Collections module requires Parasut integration",
+        "cardTitle": "Connect Parasut",
+        "cardDescription": "Connect your Parasut account to automatically track overdue invoices",
+        "featuresTitle": "What You Can Do With This Feature",
+        "feature1": "Automatically list overdue invoices",
+        "feature2": "Call customers with AI",
+        "feature3": "Create batch collection campaigns",
+        "feature4": "Send payment reminders",
+        "connectButton": "Connect to Parasut"
+      },
+      "summary": {
+        "totalInvoices": "Total Invoices",
+        "totalAmount": "Total Amount",
+        "customerCount": "Customer Count",
+        "avgDelay": "Avg. Delay",
+        "days": "days"
+      },
+      "filters": {
+        "title": "Filters",
+        "minDays": "Min. Days Overdue",
+        "maxDays": "Max. Days Overdue",
+        "minAmount": "Min. Amount",
+        "maxAmount": "Max. Amount",
+        "all": "All",
+        "applyButton": "Apply Filter"
+      },
+      "table": {
+        "title": "Overdue Invoices",
+        "selectAll": "Select All",
+        "unselectAll": "Unselect All",
+        "customer": "Customer",
+        "invoiceNo": "Invoice No",
+        "amount": "Amount",
+        "delay": "Delay",
+        "days": "days",
+        "phone": "Phone",
+        "status": "Status",
+        "noPhone": "No Phone",
+        "callable": "Callable",
+        "phoneRequired": "Phone Required",
+        "noOverdueTitle": "No Overdue Invoices",
+        "noOverdueDesc": "All your invoices appear to be paid on time"
+      },
+      "modal": {
+        "title": "Create Campaign",
+        "description": "Create a collection campaign for selected customers.",
+        "customersSelected": "customers selected",
+        "campaignName": "Campaign Name",
+        "campaignNamePlaceholder": "E.g., December Collections",
+        "channel": "Communication Channel",
+        "phoneCall": "Phone Call",
+        "whatsapp": "WhatsApp Message",
+        "summaryTitle": "Summary",
+        "customer": "Customer",
+        "totalAmount": "Total Amount",
+        "infoTitle": "Information",
+        "info1": "Customers will be called sequentially when campaign starts",
+        "info2": "Each call will be made by AI assistant",
+        "info3": "You can track campaign status in real-time",
+        "cancel": "Cancel",
+        "creating": "Creating...",
+        "createButton": "Create Campaign"
+      },
+      "defaultCampaignName": "Collection Campaign",
+      "errors": {
+        "loadInvoicesFailed": "Failed to load invoices",
+        "parasutConnectionFailed": "Parasut connection failed",
+        "selectAtLeastOneCustomer": "Select at least one customer",
+        "campaignCreationFailed": "Failed to create campaign"
+      },
+      "campaignCreated": "Campaign created successfully",
       "refreshData": "Refresh Data",
       "startCampaign": "Start Campaign",
       "lastSynced": "Last Synced",
@@ -1232,7 +1355,6 @@
       "refreshing": "Refreshing...",
       "dataRefreshed": "Data refreshed",
       "failedToRefresh": "Failed to refresh data",
-      "campaignCreated": "Campaign created",
       "failedToCreateCampaign": "Failed to create campaign",
       "callInitiated": "Call initiated",
       "failedToInitiateCall": "Failed to initiate call",
@@ -1245,6 +1367,84 @@
     "teamPage": {
       "title": "Team Management",
       "description": "Manage team members and permissions",
+      "sendInvite": "Send Invite",
+      "stats": {
+        "totalMembers": "Total Members",
+        "pendingInvites": "Pending Invites",
+        "yourRole": "Your Role"
+      },
+      "tabs": {
+        "members": "Members",
+        "pendingInvites": "Pending Invites"
+      },
+      "members": {
+        "title": "Team Members",
+        "description": "Manage all users who have access to your business",
+        "noMembers": "No team members yet",
+        "unnamed": "Unnamed",
+        "roleUpdated": "Role updated",
+        "thisUser": "this user",
+        "removeConfirm": "from the team. Are you sure?",
+        "removed": "Member removed",
+        "removeFromTeam": "Remove from Team",
+        "tableHeaders": {
+          "user": "User",
+          "role": "Role",
+          "joinedAt": "Joined At",
+          "invitedBy": "Invited By",
+          "actions": "Actions"
+        }
+      },
+      "invitations": {
+        "title": "Pending Invitations",
+        "description": "Manage pending team invitations",
+        "noPending": "No pending invitations",
+        "cancelled": "Invitation cancelled",
+        "resent": "Invitation resent",
+        "tableHeaders": {
+          "email": "Email",
+          "role": "Role",
+          "sentAt": "Sent At",
+          "expiresAt": "Expires At",
+          "invitedBy": "Invited By",
+          "actions": "Actions"
+        }
+      },
+      "inviteModal": {
+        "title": "Invite Team Member",
+        "description": "Invite a new member to your team",
+        "emailLabel": "Email Address",
+        "emailPlaceholder": "example@company.com",
+        "roleLabel": "Role",
+        "managerDesc": "Can manage assistants and calls",
+        "staffDesc": "Can view calls",
+        "sending": "Sending..."
+      },
+      "invite": {
+        "created": "Invitation created",
+        "manualShare": "You can share the link manually:",
+        "linkCopied": "Link copied",
+        "copy": "Copy",
+        "sent": "Invitation sent"
+      },
+      "roles": {
+        "owner": "Owner",
+        "manager": "Manager",
+        "staff": "Staff"
+      },
+      "accessDenied": {
+        "title": "Access Denied",
+        "message": "You don't have permission to view this page."
+      },
+      "errors": {
+        "loadFailed": "Failed to load team data",
+        "emailRequired": "Email address is required",
+        "inviteFailed": "Failed to send invitation",
+        "roleUpdateFailed": "Failed to update role",
+        "removeFailed": "Failed to remove member",
+        "cancelFailed": "Failed to cancel invitation",
+        "resendFailed": "Failed to resend invitation"
+      },
       "inviteMember": "Invite Member",
       "teamMembers": "Team Members",
       "pendingInvitations": "Pending Invitations",

@@ -7,8 +7,10 @@ import React, { useState, useRef } from 'react';
 import { Play, Pause, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function VoiceCard({ voice, onSelect, isSelected }) {
+  const { t } = useLanguage();
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef(null);
 
@@ -57,10 +59,10 @@ export default function VoiceCard({ voice, onSelect, isSelected }) {
         
         <div className="flex flex-wrap gap-2 mb-3">
           <Badge variant="secondary" className="text-xs">
-            {voice.gender}
+            {t(`dashboard.voicesPage.genders.${voice.gender?.toLowerCase()}`) || voice.gender}
           </Badge>
           <Badge variant="outline" className="text-xs">
-            {voice.accent}
+            {t(`dashboard.voicesPage.accents.${voice.accent}`) || voice.accent}
           </Badge>
           {voice.language && (
             <Badge variant="outline" className="text-xs">
@@ -86,12 +88,12 @@ export default function VoiceCard({ voice, onSelect, isSelected }) {
             {isPlaying ? (
               <>
                 <Pause className="h-4 w-4 mr-2" />
-                Pause Sample
+                {t('dashboard.voicesPage.pauseSample')}
               </>
             ) : (
               <>
                 <Play className="h-4 w-4 mr-2" />
-                Play Sample
+                {t('dashboard.voicesPage.playSample')}
               </>
             )}
           </Button>
@@ -111,7 +113,7 @@ export default function VoiceCard({ voice, onSelect, isSelected }) {
           className="w-full opacity-50"
         >
           <Play className="h-4 w-4 mr-2" />
-          Sample Not Available
+          {t('dashboard.voicesPage.sampleNotAvailable')}
         </Button>
       )}
     </div>

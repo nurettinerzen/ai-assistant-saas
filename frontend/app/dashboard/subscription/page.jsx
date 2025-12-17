@@ -18,21 +18,19 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import { AlertCircle } from 'lucide-react';
 
-// USD to TRY conversion rate (can be updated dynamically if needed)
-const USD_TO_TRY = 35;
-
-// Prices in USD (base currency)
-const PLANS_USD = [
+// Prices in both currencies
+const PLANS = [
   {
     id: 'starter',
     name: 'Starter',
     priceUSD: 29,
-    priceTRY: 299,
+    priceTRY: 899,
     credits: 100,
     features: [
-      '100 call credits/month',
       '1 AI assistant',
+      'Unlimited training',
       '1 phone number',
+      '300 minutes/month',
       'Basic analytics',
       'Email support',
     ],
@@ -42,16 +40,17 @@ const PLANS_USD = [
     id: 'professional',
     name: 'Professional',
     priceUSD: 79,
-    priceTRY: 799,
+    priceTRY: 2599,
     credits: 500,
     popular: true,
     features: [
-      '500 call credits/month',
-      'Unlimited assistants',
-      '5 phone numbers',
+      '2 AI assistants',
+      'Unlimited training',
+      '3 phone numbers',
+      '1500 minutes/month',
       'Advanced analytics',
       'Priority support',
-      'Custom voices',
+      'API access',
     ],
     notIncluded: ['Dedicated account manager', 'SLA guarantee'],
   },
@@ -59,17 +58,16 @@ const PLANS_USD = [
     id: 'enterprise',
     name: 'Enterprise',
     priceUSD: 199,
-    priceTRY: 1999,
+    priceTRY: 6799,
     credits: 2000,
     features: [
-      '2000+ call credits/month',
+      '5 AI assistants',
       'Unlimited everything',
-      'Advanced analytics',
-      'Priority support',
-      'Custom voices',
+      '10 phone numbers',
+      'Custom voice cloning',
+      'White-label option',
       'Dedicated account manager',
-      '99.9% SLA guarantee',
-      'Custom integrations',
+      'SLA guarantee',
     ],
     notIncluded: [],
   },
@@ -81,10 +79,19 @@ export default function SubscriptionPage() {
   const [loading, setLoading] = useState(true);
   const [subscription, setSubscription] = useState(null);
   const [billingHistory, setBillingHistory] = useState([]);
-  const [userCountry, setUserCountry] = useState('US');
+  const [userCountry, setUserCountry] = useState(() => {
+    // Initial detection from browser locale
+    if (typeof navigator !== 'undefined') {
+      const lang = navigator.language || navigator.userLanguage;
+      if (lang === 'tr' || lang === 'tr-TR' || lang.startsWith('tr-')) {
+        return 'TR';
+      }
+    }
+    return 'US';
+  });
 
-  // Determine currency based on user's country
-  const isTurkishUser = userCountry === 'TR';
+  // Determine currency based on user's country or locale
+  const isTurkishUser = userCountry === 'TR' || userCountry === 'Turkey' || locale === 'tr';
   const currencySymbol = isTurkishUser ? '₺' : '$';
 
   // Get price based on user's country
@@ -111,9 +118,18 @@ export default function SubscriptionPage() {
       setSubscription(subRes.data);
       setBillingHistory(billingRes.data.history || []);
 
-      // Get user's country from business settings
-      const country = profileRes.data?.business?.country || 'US';
-      setUserCountry(country);
+      // Get user's country from business settings or profile
+      const businessCountry = profileRes.data?.business?.country;
+      const userProfileCountry = profileRes.data?.country;
+      const country = businessCountry || userProfileCountry;
+
+      // Only update if we got a valid country from API
+      if (country) {
+        setUserCountry(country);
+      }
+
+      // Debug log
+      console.log('Subscription page - userCountry:', country, 'isTurkish:', country === 'TR' || country === 'Turkey');
     } catch (error) {
       toast.error(t('errors.generic'));
     } finally {
@@ -122,7 +138,7 @@ export default function SubscriptionPage() {
   };
 
   const handleUpgrade = async (planId) => {
-    const planName = PLANS_USD.find((p) => p.id === planId)?.name;
+    const planName = PLANS.find((p) => p.id === planId)?.name;
     if (!confirm(`${t('dashboard.subscriptionPage.upgradeConfirm')} ${planName} ${t('dashboard.subscriptionPage.plan')}?`)) return;
 
     try {
@@ -228,7 +244,7 @@ export default function SubscriptionPage() {
       <div>
         <h2 className="text-2xl font-bold text-neutral-900 mb-6">{t('dashboard.subscriptionPage.availablePlans')}</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {PLANS_USD.map((plan) => {
+          {PLANS.map((plan) => {
             const isCurrentPlan = subscription?.planId === plan.id;
             return (
               <div
