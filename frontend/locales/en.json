@@ -1557,5 +1557,85 @@
       "accounting": "Accounting",
       "email": "Email"
     }
+  },
+  "onboarding": {
+    "steps": {
+      "chooseIndustry": "Choose Industry",
+      "pickVoice": "Pick Your Voice",
+      "addTraining": "Add Training",
+      "testAssistant": "Test Assistant",
+      "complete": "Complete"
+    },
+    "descriptions": {
+      "tellUsAboutBusiness": "Tell us about your business",
+      "selectAssistantVoice": "Select your assistant voice",
+      "createFirstGreeting": "Create your first greeting",
+      "tryItOut": "Try it out!",
+      "allSet": "You are all set!"
+    },
+    "labels": {
+      "language": "Language",
+      "selectAssistantLanguage": "Select assistant language",
+      "country": "Country",
+      "selectBusinessLocation": "Select your business location",
+      "businessType": "Business Type",
+      "businessTimezone": "Business Timezone",
+      "selectBusinessTimezone": "Select your business operating timezone",
+      "greetingMessage": "Greeting Message",
+      "greetingMessageDesc": "The first sentence your assistant will say",
+      "assistantInstructions": "Assistant Instructions",
+      "assistantInstructionsDesc": "Instructions for how your assistant should behave"
+    },
+    "industries": {
+      "restaurant": "Restaurant",
+      "salonSpa": "Salon & Spa",
+      "ecommerce": "E-commerce",
+      "professionalServices": "Professional Services",
+      "other": "Other"
+    },
+    "prompts": {
+      "restaurant": "You are a restaurant assistant. Take reservations, provide menu information, share working hours, answer customer questions.",
+      "salon": "You are a salon assistant. Book appointments, provide information about services and prices, share available times.",
+      "ecommerce": "You are an e-commerce assistant. Provide stock information, order status updates, explain return and exchange processes.",
+      "service": "You are a professional service assistant. Book appointments, provide service information, help with pricing.",
+      "other": "You are a business assistant. Answer customer questions, provide information, be helpful."
+    },
+    "voice": {
+      "male": "Male",
+      "female": "Female",
+      "previewComingSoon": "Voice preview coming soon"
+    },
+    "voiceDemo": {
+      "title": "Test Your AI Assistant",
+      "description": "Click the button below to start a voice conversation with your AI assistant",
+      "createAssistantFirst": "Please create an assistant first to test",
+      "startVoiceTest": "Start Voice Test",
+      "endCall": "End Call",
+      "allowMicrophone": "Make sure to allow microphone access when prompted",
+      "callStatus": {
+        "starting": "Starting call...",
+        "started": "Call started! Speak now...",
+        "ended": "Call ended",
+        "speaking": "Assistant is speaking...",
+        "listening": "Listening..."
+      }
+    },
+    "messages": {
+      "completed": "Completed!",
+      "assistantCreated": "Assistant created!",
+      "failedToCreate": "Failed to create assistant",
+      "error": "An error occurred",
+      "creatingAssistant": "Creating assistant..."
+    },
+    "final": {
+      "allSet": "All Set!",
+      "assistantReady": "Your AI assistant is ready to use."
+    },
+    "buttons": {
+      "back": "Back",
+      "next": "Next",
+      "complete": "Complete",
+      "loading": "Loading..."
+    }
   }
 }
