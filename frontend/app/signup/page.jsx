@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,12 @@ import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function SignupPage() {
   const router = useRouter();
+  useEffect(() => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    router.push('/dashboard');
+  }
+}, [router]);
   const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
