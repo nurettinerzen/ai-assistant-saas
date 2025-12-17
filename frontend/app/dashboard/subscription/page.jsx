@@ -18,11 +18,16 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import { AlertCircle } from 'lucide-react';
 
-const PLANS = [
+// USD to TRY conversion rate (can be updated dynamically if needed)
+const USD_TO_TRY = 35;
+
+// Prices in USD (base currency)
+const PLANS_USD = [
   {
     id: 'starter',
     name: 'Starter',
-    price: 29,
+    priceUSD: 29,
+    priceTRY: 299,
     credits: 100,
     features: [
       '100 call credits/month',
@@ -36,7 +41,8 @@ const PLANS = [
   {
     id: 'professional',
     name: 'Professional',
-    price: 99,
+    priceUSD: 79,
+    priceTRY: 799,
     credits: 500,
     popular: true,
     features: [
@@ -52,7 +58,8 @@ const PLANS = [
   {
     id: 'enterprise',
     name: 'Enterprise',
-    price: 299,
+    priceUSD: 199,
+    priceTRY: 1999,
     credits: 2000,
     features: [
       '2000+ call credits/month',
@@ -74,6 +81,16 @@ export default function SubscriptionPage() {
   const [loading, setLoading] = useState(true);
   const [subscription, setSubscription] = useState(null);
   const [billingHistory, setBillingHistory] = useState([]);
+  const [userCountry, setUserCountry] = useState('US');
+
+  // Determine currency based on user's country
+  const isTurkishUser = userCountry === 'TR';
+  const currencySymbol = isTurkishUser ? '₺' : '$';
+
+  // Get price based on user's country
+  const getPlanPrice = (plan) => {
+    return isTurkishUser ? plan.priceTRY : plan.priceUSD;
+  };
 
   useEffect(() => {
     if (can('billing:view')) {
@@ -86,12 +103,17 @@ export default function SubscriptionPage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [subRes, billingRes] = await Promise.all([
+      const [subRes, billingRes, profileRes] = await Promise.all([
         apiClient.subscription.getCurrent(),
         apiClient.subscription.getBillingHistory(),
+        apiClient.settings.getProfile(),
       ]);
       setSubscription(subRes.data);
       setBillingHistory(billingRes.data.history || []);
+
+      // Get user's country from business settings
+      const country = profileRes.data?.business?.country || 'US';
+      setUserCountry(country);
     } catch (error) {
       toast.error(t('errors.generic'));
     } finally {
@@ -100,7 +122,7 @@ export default function SubscriptionPage() {
   };
 
   const handleUpgrade = async (planId) => {
-    const planName = PLANS.find((p) => p.id === planId)?.name;
+    const planName = PLANS_USD.find((p) => p.id === planId)?.name;
     if (!confirm(`${t('dashboard.subscriptionPage.upgradeConfirm')} ${planName} ${t('dashboard.subscriptionPage.plan')}?`)) return;
 
     try {
@@ -206,7 +228,7 @@ export default function SubscriptionPage() {
       <div>
         <h2 className="text-2xl font-bold text-neutral-900 mb-6">{t('dashboard.subscriptionPage.availablePlans')}</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {PLANS.map((plan) => {
+          {PLANS_USD.map((plan) => {
             const isCurrentPlan = subscription?.planId === plan.id;
             return (
               <div
@@ -225,7 +247,7 @@ export default function SubscriptionPage() {
                   <h3 className="text-xl font-bold text-neutral-900 mb-2">{plan.name}</h3>
                   <div className="flex items-baseline justify-center gap-1">
                     <span className="text-4xl font-bold text-neutral-900">
-                      ${plan.price}
+                      {currencySymbol}{getPlanPrice(plan)}
                     </span>
                     <span className="text-neutral-500">{t('dashboard.subscriptionPage.perMonth')}</span>
                   </div>

@@ -19,29 +19,58 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Copy, ExternalLink, Code, Eye } from 'lucide-react';
+import { Copy, ExternalLink, Code, Eye, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import ChatWidget from '@/components/ChatWidget';
 import axios from 'axios';
+import { apiClient } from '@/lib/api';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 export default function ChatWidgetPage() {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const [isEnabled, setIsEnabled] = useState(false);
   const [position, setPosition] = useState('bottom-right');
   const [primaryColor, setPrimaryColor] = useState('#6366f1');
   const [showBranding, setShowBranding] = useState(true);
-  const [buttonText, setButtonText] = useState('Talk to us');
+  const [buttonText, setButtonText] = useState('');
+  const [welcomeMessage, setWelcomeMessage] = useState('');
+  const [placeholderText, setPlaceholderText] = useState('');
   const [showPreview, setShowPreview] = useState(false);
   const [assistantId, setAssistantId] = useState('');
   const [assistants, setAssistants] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isPro, setIsPro] = useState(false);
+
+  // Set default texts based on current locale
+  useEffect(() => {
+    if (!buttonText) {
+      setButtonText(t('dashboard.chatWidgetPage.defaultButtonText'));
+    }
+    if (!welcomeMessage) {
+      setWelcomeMessage(t('dashboard.chatWidgetPage.defaultWelcomeMessage'));
+    }
+    if (!placeholderText) {
+      setPlaceholderText(t('dashboard.chatWidgetPage.defaultPlaceholder'));
+    }
+  }, [locale]);
 
   useEffect(() => {
     loadAssistants();
     loadSettings();
+    loadSubscription();
   }, []);
+
+  const loadSubscription = async () => {
+    try {
+      const res = await apiClient.subscription.getCurrent();
+      const planId = res.data?.planId || '';
+      // Pro or higher plans can remove branding
+      setIsPro(['professional', 'enterprise'].includes(planId));
+    } catch (error) {
+      console.error('Failed to load subscription:', error);
+    }
+  };
 
   const loadAssistants = async () => {
     try {
@@ -69,7 +98,9 @@ export default function ChatWidgetPage() {
       setPosition(settings.position || 'bottom-right');
       setPrimaryColor(settings.primaryColor || '#6366f1');
       setShowBranding(settings.showBranding !== undefined ? settings.showBranding : true);
-      setButtonText(settings.buttonText || 'Talk to us');
+      if (settings.buttonText) setButtonText(settings.buttonText);
+      if (settings.welcomeMessage) setWelcomeMessage(settings.welcomeMessage);
+      if (settings.placeholderText) setPlaceholderText(settings.placeholderText);
       setAssistantId(settings.assistantId || '');
     }
   };
@@ -79,8 +110,10 @@ export default function ChatWidgetPage() {
       isEnabled,
       position,
       primaryColor,
-      showBranding,
+      showBranding: isPro ? showBranding : true, // Free users always show branding
       buttonText,
+      welcomeMessage,
+      placeholderText,
       assistantId
     };
     localStorage.setItem('chatWidgetSettings', JSON.stringify(settings));
@@ -89,14 +122,21 @@ export default function ChatWidgetPage() {
 
   const generateEmbedCode = () => {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-  
+
   const positionMap = {
     'bottom-right': 'bottom: 20px; right: 20px;',
     'bottom-left': 'bottom: 20px; left: 20px;',
     'top-right': 'top: 20px; right: 20px;',
     'top-left': 'top: 20px; left: 20px;'
   };
-  
+
+  // Use actual values or fallback to translated defaults
+  const actualButtonText = buttonText || t('dashboard.chatWidgetPage.defaultButtonText');
+  const actualWelcomeMessage = welcomeMessage || t('dashboard.chatWidgetPage.defaultWelcomeMessage');
+  const actualPlaceholder = placeholderText || t('dashboard.chatWidgetPage.defaultPlaceholder');
+  // Free users can't disable branding
+  const actualShowBranding = isPro ? showBranding : true;
+
   return `<!-- Telyx.ai Chat Widget -->
 <script>
 (function() {
@@ -105,8 +145,10 @@ export default function ChatWidgetPage() {
     apiUrl: '${apiUrl}',
     position: '${positionMap[position] || positionMap['bottom-right']}',
     primaryColor: '${primaryColor}',
-    buttonText: '${buttonText}',
-    showBranding: ${showBranding}
+    buttonText: '${actualButtonText}',
+    welcomeMessage: '${actualWelcomeMessage}',
+    placeholderText: '${actualPlaceholder}',
+    showBranding: ${actualShowBranding}
   };
 
   // Styles
@@ -192,7 +234,7 @@ export default function ChatWidgetPage() {
       </div>
       <div id="telyx-chat-messages"></div>
       <div id="telyx-chat-input-area">
-        <input id="telyx-chat-input" type="text" placeholder="Type a message..." />
+        <input id="telyx-chat-input" type="text" placeholder="\${CONFIG.placeholderText}" />
         <button id="telyx-send-btn">
           <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
         </button>
@@ -219,7 +261,7 @@ export default function ChatWidgetPage() {
     chatWindow.classList.toggle('open', isOpen);
     btn.style.display = isOpen ? 'none' : 'flex';
     if (isOpen && messagesDiv.children.length === 0) {
-      addMessage('bot', 'Hello! How can I help you today?');
+      addMessage('bot', CONFIG.welcomeMessage);
     }
   };
   closeBtn.onclick = function() {
@@ -402,14 +444,20 @@ export default function ChatWidgetPage() {
             {/* Show Branding */}
             <div className="flex items-center justify-between">
               <div>
-                <Label>{t('dashboard.chatWidgetPage.showBranding')}</Label>
+                <div className="flex items-center gap-2">
+                  <Label>{t('dashboard.chatWidgetPage.showBranding')}</Label>
+                  {!isPro && <Lock className="h-3 w-3 text-gray-400" />}
+                </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  {t('dashboard.chatWidgetPage.showBrandingDesc')}
+                  {isPro
+                    ? t('dashboard.chatWidgetPage.showBrandingDesc')
+                    : t('dashboard.chatWidgetPage.brandingProOnly')}
                 </p>
               </div>
               <Switch
-                checked={showBranding}
+                checked={isPro ? showBranding : true}
                 onCheckedChange={setShowBranding}
+                disabled={!isPro}
               />
             </div>
           </Card>

@@ -689,6 +689,7 @@
     },
     "integrationsPage": {
       "title": "Integrations",
+      "description": "Enhance your assistant by connecting external services",
       "connected": "Connected",
       "notConnected": "Not Connected",
       "connect": "Connect",
@@ -699,7 +700,34 @@
       "connectedIntegrations": "Connected Integrations",
       "needCustomIntegration": "Need a custom integration?",
       "customIntegrationDesc": "We can help you build custom integrations for your specific needs.",
-      "contactSalesBtn": "Contact Sales"
+      "contactSalesBtn": "Contact Sales",
+      "emailChannel": "Email Channel",
+      "emailChannelDesc": "Customer support via email",
+      "gmailDesc": "Connect your Gmail account",
+      "connectGmail": "Connect Gmail",
+      "outlookDesc": "Connect your Microsoft 365 account",
+      "connectOutlook": "Connect Outlook",
+      "recommendedIntegrations": "Recommended Integrations",
+      "essentialIntegrations": "Essential Integrations",
+      "moreIntegrations": "More Integrations",
+      "syncAppointments": "Sync appointments",
+      "parasutConnect": "Accounting integration with Parasut",
+      "whatsappConversations": "Customer conversations via WhatsApp",
+      "shopifyConnect": "Connect your Shopify store",
+      "woocommerceConnect": "Connect your WooCommerce store",
+      "iyzicoConnect": "iyzico payment integration",
+      "zapierConnect": "Connect 5000+ apps with Zapier",
+      "ikasConnect": "ikas e-commerce integration",
+      "ideasoftConnect": "Ideasoft e-commerce integration",
+      "ticimaxConnect": "Ticimax e-commerce integration",
+      "openInbox": "Open Inbox",
+      "connectingText": "Connecting...",
+      "testIntegration": "Test",
+      "essentialForBusiness": "Essential for your business",
+      "platformAlreadyConnected": "already connected",
+      "disabledIntegration": "Unavailable",
+      "noIntegrationsAvailable": "No integrations available",
+      "contactSupportIntegrations": "Contact support for integrations"
     },
     "settingsPage": {
       "title": "Settings",
@@ -1098,7 +1126,12 @@
       "costBreakdown": "Cost Breakdown",
       "baseFee": "Base Fee",
       "usageCost": "Usage Cost",
-      "callsPerMonth": "calls/month"
+      "callsPerMonth": "calls/month",
+      "perMonthShort": "mo",
+      "perMinute": "per minute",
+      "estimatedCost": "Estimated Cost",
+      "monthlyEstimate": "Monthly Estimate",
+      "currency": "Currency"
     },
     "emailPage": {
       "title": "Email Inbox",
@@ -1326,7 +1359,8 @@
       "buttonText": "Button Text",
       "buttonTextPlaceholder": "Talk to us",
       "showBranding": "Show \"Powered by Telyx\"",
-      "showBrandingDesc": "Remove branding on Pro plan",
+      "showBrandingDesc": "You can remove branding on Pro plan",
+      "brandingProOnly": "Upgrade to Pro plan to remove branding",
       "saveSettings": "Save Settings",
       "preview": "Preview",
       "hide": "Hide",
@@ -1342,7 +1376,10 @@
       "avgDuration": "Avg. Duration",
       "analyticsComingSoon": "Analytics coming soon",
       "settingsSaved": "Settings saved successfully!",
-      "embedCodeCopied": "Embed code copied to clipboard!"
+      "embedCodeCopied": "Embed code copied to clipboard!",
+      "defaultButtonText": "Talk to us",
+      "defaultWelcomeMessage": "Hello! How can I help you today?",
+      "defaultPlaceholder": "Type a message..."
     }
   },
   "onboarding": {

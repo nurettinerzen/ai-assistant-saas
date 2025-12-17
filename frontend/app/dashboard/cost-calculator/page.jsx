@@ -6,8 +6,25 @@ import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { DollarSign, Calculator, TrendingDown, Phone, Clock, Users, ArrowRight } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import api from '@/lib/api';
+import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
+
+// Pricing constants
+const USD_TO_TRY = 35;
+const PRICING = {
+  USD: {
+    baseFee: 29,
+    perMinuteRate: 0.10,
+    employeeCost: 2500,
+    symbol: '$'
+  },
+  TRY: {
+    baseFee: 299,
+    perMinuteRate: 3.50,
+    employeeCost: 50000,
+    symbol: '₺'
+  }
+};
 
 export default function CostCalculatorPage() {
   const { t } = useLanguage();
@@ -15,37 +32,64 @@ export default function CostCalculatorPage() {
   const [avgDuration, setAvgDuration] = useState(5);
   const [calculation, setCalculation] = useState(null);
   const [isCalculating, setIsCalculating] = useState(false);
+  const [userCountry, setUserCountry] = useState('US');
+
+  // Determine currency based on user's country
+  const isTurkishUser = userCountry === 'TR';
+  const currency = isTurkishUser ? 'TRY' : 'USD';
+  const pricing = PRICING[currency];
+  const currencySymbol = pricing.symbol;
+
+  useEffect(() => {
+    loadUserCountry();
+  }, []);
 
   useEffect(() => {
     calculateCost();
-  }, [callsPerMonth, avgDuration]);
+  }, [callsPerMonth, avgDuration, currency]);
+
+  const loadUserCountry = async () => {
+    try {
+      const res = await apiClient.settings.getProfile();
+      const country = res.data?.business?.country || 'US';
+      setUserCountry(country);
+    } catch (error) {
+      console.error('Failed to load user country:', error);
+    }
+  };
 
   const calculateCost = async () => {
     setIsCalculating(true);
     try {
-      const response = await api.costCalculator.calculate({
-        callsPerMonth,
-        avgDuration
-      });
-      setCalculation(response.data);
-    } catch (error) {
-      // Fallback calculation if API fails
-      const baseFee = 29;
-      const perMinuteRate = 0.10;
+      // Local calculation with currency-specific pricing
       const totalMinutes = callsPerMonth * avgDuration;
-      const usageCost = totalMinutes * perMinuteRate;
-      const totalCost = baseFee + usageCost;
-      const employeeCost = 2500;
-      const savings = employeeCost - totalCost;
+      const usageCost = totalMinutes * pricing.perMinuteRate;
+      const totalCost = pricing.baseFee + usageCost;
+      const savings = pricing.employeeCost - totalCost;
 
       setCalculation({
         input: { callsPerMonth, avgDuration, totalMinutes },
-        breakdown: { baseFee, perMinuteRate, usageCost, totalCost },
-        comparison: { employeeCost, savings: Math.max(0, savings), savingsPercentage: Math.max(0, Math.round((savings / employeeCost) * 100)) }
+        breakdown: {
+          baseFee: pricing.baseFee,
+          perMinuteRate: pricing.perMinuteRate,
+          usageCost,
+          totalCost
+        },
+        comparison: {
+          employeeCost: pricing.employeeCost,
+          savings: Math.max(0, savings),
+          savingsPercentage: Math.max(0, Math.round((savings / pricing.employeeCost) * 100))
+        }
       });
     } finally {
       setIsCalculating(false);
     }
+  };
+
+  // Format currency
+  const formatMoney = (amount) => {
+    if (amount === undefined || amount === null) return `${currencySymbol}0`;
+    return `${currencySymbol}${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   return (
@@ -130,11 +174,11 @@ export default function CostCalculatorPage() {
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span>{t('dashboard.costCalculatorPage.baseFee')}</span>
-                  <span>$29.00</span>
+                  <span>{formatMoney(pricing.baseFee)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>{calculation?.input?.totalMinutes?.toLocaleString() || 0} min × $0.10</span>
-                  <span>${calculation?.breakdown?.usageCost?.toFixed(2) || '0.00'}</span>
+                  <span>{calculation?.input?.totalMinutes?.toLocaleString() || 0} min × {currencySymbol}{pricing.perMinuteRate.toFixed(2)}</span>
+                  <span>{formatMoney(calculation?.breakdown?.usageCost)}</span>
                 </div>
               </div>
             </div>
@@ -152,7 +196,7 @@ export default function CostCalculatorPage() {
                 </p>
                 <div className="flex items-baseline justify-center gap-1">
                   <span className="text-5xl font-bold text-primary">
-                    ${calculation?.breakdown?.totalCost?.toFixed(2) || '29.00'}
+                    {formatMoney(calculation?.breakdown?.totalCost)}
                   </span>
                   <span className="text-muted-foreground">{t('dashboard.subscriptionPage.perMonth')}</span>
                 </div>
@@ -178,7 +222,7 @@ export default function CostCalculatorPage() {
                     {t('dashboard.costCalculatorPage.employeeCost')}
                   </span>
                   <span className="text-xl font-bold text-red-600 dark:text-red-400">
-                    $2,500/mo
+                    {formatMoney(pricing.employeeCost)}/{t('dashboard.costCalculatorPage.perMonthShort')}
                   </span>
                 </div>
 
@@ -187,7 +231,7 @@ export default function CostCalculatorPage() {
                     {t('dashboard.costCalculatorPage.youSave')}
                   </span>
                   <span className="text-2xl font-bold text-green-600 dark:text-green-400">
-                    ${calculation?.comparison?.savings?.toFixed(2) || '0.00'}/mo
+                    {formatMoney(calculation?.comparison?.savings)}/{t('dashboard.costCalculatorPage.perMonthShort')}
                   </span>
                 </div>
 
