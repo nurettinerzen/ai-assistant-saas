@@ -29,7 +29,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 export function OnboardingModal({ open, onClose }) {
-  const { tr, locale } = useLanguage();
+  const { t, locale } = useLanguage();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [createdAssistantId, setCreatedAssistantId] = useState(null);
@@ -60,19 +60,19 @@ export function OnboardingModal({ open, onClose }) {
   }, [locale, data.language]);
 
   const STEPS = [
-    { id: 1, title: tr('Choose Industry'), description: tr('Tell us about your business') },
-    { id: 2, title: tr('Pick Your Voice'), description: tr('Select your assistant voice') },
-    { id: 3, title: tr('Add Training'), description: tr('Create your first greeting') },
-    { id: 4, title: tr('Test Assistant'), description: tr('Try it out!') },
-    { id: 5, title: tr('Complete'), description: tr('You are all set!') }
+    { id: 1, title: t('onboarding.steps.chooseIndustry'), description: t('onboarding.descriptions.tellUsAboutBusiness') },
+    { id: 2, title: t('onboarding.steps.pickVoice'), description: t('onboarding.descriptions.selectAssistantVoice') },
+    { id: 3, title: t('onboarding.steps.addTraining'), description: t('onboarding.descriptions.createFirstGreeting') },
+    { id: 4, title: t('onboarding.steps.testAssistant'), description: t('onboarding.descriptions.tryItOut') },
+    { id: 5, title: t('onboarding.steps.complete'), description: t('onboarding.descriptions.allSet') }
   ];
 
   const INDUSTRIES = [
-    { id: 'RESTAURANT', icon: UtensilsCrossed, name: tr('Restaurant'), color: 'text-orange-600', bgColor: 'bg-orange-100' },
-    { id: 'SALON', icon: Scissors, name: tr('Salon & Spa'), color: 'text-pink-600', bgColor: 'bg-pink-100' },
-    { id: 'ECOMMERCE', icon: ShoppingCart, name: tr('E-commerce'), color: 'text-blue-600', bgColor: 'bg-blue-100' },
-    { id: 'SERVICE', icon: Briefcase, name: tr('Professional Services'), color: 'text-purple-600', bgColor: 'bg-purple-100' },
-    { id: 'OTHER', icon: Package, name: tr('Other'), color: 'text-gray-600', bgColor: 'bg-gray-100' }
+    { id: 'RESTAURANT', icon: UtensilsCrossed, name: t('onboarding.industries.restaurant'), color: 'text-orange-600', bgColor: 'bg-orange-100' },
+    { id: 'SALON', icon: Scissors, name: t('onboarding.industries.salonSpa'), color: 'text-pink-600', bgColor: 'bg-pink-100' },
+    { id: 'ECOMMERCE', icon: ShoppingCart, name: t('onboarding.industries.ecommerce'), color: 'text-blue-600', bgColor: 'bg-blue-100' },
+    { id: 'SERVICE', icon: Briefcase, name: t('onboarding.industries.professionalServices'), color: 'text-purple-600', bgColor: 'bg-purple-100' },
+    { id: 'OTHER', icon: Package, name: t('onboarding.industries.other'), color: 'text-gray-600', bgColor: 'bg-gray-100' }
   ];
 
   const COUNTRIES = [
@@ -114,11 +114,11 @@ export function OnboardingModal({ open, onClose }) {
   ];
 
   const PROMPTS = {
-    RESTAURANT: tr('You are a restaurant assistant. Take reservations, provide menu information, share working hours, answer customer questions.'),
-    SALON: tr('You are a salon assistant. Book appointments, provide information about services and prices, share available times.'),
-    ECOMMERCE: tr('You are an e-commerce assistant. Provide stock information, order status updates, explain return and exchange processes.'),
-    SERVICE: tr('You are a professional service assistant. Book appointments, provide service information, help with pricing.'),
-    OTHER: tr('You are a business assistant. Answer customer questions, provide information, be helpful.')
+    RESTAURANT: t('onboarding.prompts.restaurant'),
+    SALON: t('onboarding.prompts.salon'),
+    ECOMMERCE: t('onboarding.prompts.ecommerce'),
+    SERVICE: t('onboarding.prompts.service'),
+    OTHER: t('onboarding.prompts.other')
   };
 
   const handleIndustrySelect = (industry) => {
@@ -142,11 +142,11 @@ export function OnboardingModal({ open, onClose }) {
     setLoading(true);
     try {
       localStorage.setItem('onboarding_completed', 'true');
-      toast.success(tr('Completed!'));
+      toast.success(t('onboarding.messages.completed'));
       onClose();
     } catch (error) {
       console.error('Onboarding error:', error);
-      toast.error(tr('An error occurred'));
+      toast.error(t('onboarding.messages.error'));
     } finally {
       setLoading(false);
     }
@@ -181,11 +181,11 @@ export function OnboardingModal({ open, onClose }) {
           { headers: { Authorization: `Bearer ${token}` } }
         );
         setCreatedAssistantId(response.data.assistant?.vapiAssistantId);
-        toast.success(tr('Assistant created!'));
+        toast.success(t('onboarding.messages.assistantCreated'));
         setStep(4);
       } catch (error) {
         console.error('Failed to create assistant:', error);
-        toast.error(tr('Failed to create assistant'));
+        toast.error(t('onboarding.messages.failedToCreate'));
       } finally {
         setLoading(false);
       }
@@ -233,8 +233,8 @@ export function OnboardingModal({ open, onClose }) {
     <div className="space-y-6">
       {/* Language Selection */}
       <div>
-        <Label className="text-base font-semibold">{tr('Language')}</Label>
-        <p className="text-sm text-gray-500 mb-2">{tr('Select assistant language')}</p>
+        <Label className="text-base font-semibold">{t('onboarding.labels.language')}</Label>
+        <p className="text-sm text-gray-500 mb-2">{t('onboarding.labels.selectAssistantLanguage')}</p>
         <div className="grid grid-cols-5 gap-2">
           {LANGUAGES.map((lang) => (
             <button
@@ -253,8 +253,8 @@ export function OnboardingModal({ open, onClose }) {
 
       {/* Country Selection */}
       <div>
-        <Label className="text-base font-semibold">{tr('Country')}</Label>
-        <p className="text-sm text-gray-500 mb-2">{tr('Select your business location')}</p>
+        <Label className="text-base font-semibold">{t('onboarding.labels.country')}</Label>
+        <p className="text-sm text-gray-500 mb-2">{t('onboarding.labels.selectBusinessLocation')}</p>
         <select
           value={data.country}
           onChange={(e) => {
@@ -271,8 +271,8 @@ export function OnboardingModal({ open, onClose }) {
 
       {/* Industry Selection */}
       <div>
-        <Label className="text-base font-semibold">{tr('Business Type')}</Label>
-        <p className="text-sm text-gray-500 mb-2">{tr('Tell us about your business')}</p>
+        <Label className="text-base font-semibold">{t('onboarding.labels.businessType')}</Label>
+        <p className="text-sm text-gray-500 mb-2">{t('onboarding.descriptions.tellUsAboutBusiness')}</p>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           {INDUSTRIES.map((industry) => {
             const Icon = industry.icon;
@@ -296,8 +296,8 @@ export function OnboardingModal({ open, onClose }) {
 
       {/* Timezone Selection */}
       <div>
-        <Label className="text-base font-semibold">{tr('Business Timezone')}</Label>
-        <p className="text-sm text-gray-500 mb-2">{tr('Select your business operating timezone')}</p>
+        <Label className="text-base font-semibold">{t('onboarding.labels.businessTimezone')}</Label>
+        <p className="text-sm text-gray-500 mb-2">{t('onboarding.labels.selectBusinessTimezone')}</p>
         <select
           value={data.timezone}
           onChange={(e) => setData({ ...data, timezone: e.target.value })}
@@ -328,13 +328,13 @@ export function OnboardingModal({ open, onClose }) {
                     </div>
                     <Button variant="ghost" size="sm" onClick={(e) => {
                       e.stopPropagation();
-                      toast.info(tr('Voice preview coming soon'));
+                      toast.info(t('onboarding.voice.previewComingSoon'));
                     }}>
                       <Play className="w-4 h-4" />
                     </Button>
                   </div>
                   <div className="flex gap-2">
-                    <Badge variant="secondary">{voice.gender === 'male' ? tr('Male') : tr('Female')}</Badge>
+                    <Badge variant="secondary">{voice.gender === 'male' ? t('onboarding.voice.male') : t('onboarding.voice.female')}</Badge>
                     <Badge variant="outline">{voice.description}</Badge>
                   </div>
                 </Card>
@@ -347,22 +347,21 @@ export function OnboardingModal({ open, onClose }) {
               <div>
                 <Label className="text-base font-semibold flex items-center gap-2">
                   <Mic2 className="h-4 w-4" />
-                  {tr('Greeting Message')}
+                  {t('onboarding.labels.greetingMessage')}
                 </Label>
-                <p className="text-sm text-gray-500 mb-2">{tr('The first sentence your assistant will say')}</p>
+                <p className="text-sm text-gray-500 mb-2">{t('onboarding.labels.greetingMessageDesc')}</p>
                 <textarea
                   value={data.firstMessage}
                   onChange={(e) => setData({ ...data, firstMessage: e.target.value })}
                   className="w-full min-h-[80px] p-3 border rounded-lg resize-none focus:ring-2 focus:ring-purple-500"
-                  placeholder={tr('Hi, how can I help you?')}
                 />
               </div>
               <div>
                 <Label className="text-base font-semibold flex items-center gap-2">
                   <FileText className="h-4 w-4" />
-                  {tr('Assistant Instructions')}
+                  {t('onboarding.labels.assistantInstructions')}
                 </Label>
-                <p className="text-sm text-gray-500 mb-2">{tr('Instructions for how your assistant should behave')}</p>
+                <p className="text-sm text-gray-500 mb-2">{t('onboarding.labels.assistantInstructionsDesc')}</p>
                 <textarea
                   value={data.systemPrompt}
                   onChange={(e) => setData({ ...data, systemPrompt: e.target.value })}
@@ -379,7 +378,7 @@ export function OnboardingModal({ open, onClose }) {
               ) : (
                 <div className="text-center py-8">
                   <Loader2 className="h-12 w-12 mx-auto text-purple-600 animate-spin mb-4" />
-                  <p className="text-gray-600">{tr('Creating assistant...')}</p>
+                  <p className="text-gray-600">{t('onboarding.messages.creatingAssistant')}</p>
                 </div>
               )}
             </div>
@@ -390,8 +389,8 @@ export function OnboardingModal({ open, onClose }) {
               <div className="w-24 h-24 mx-auto mb-6 bg-green-100 rounded-full flex items-center justify-center">
                 <Sparkles className="w-12 h-12 text-green-600" />
               </div>
-              <h3 className="text-2xl font-bold mb-3">{tr('All Set!')}</h3>
-              <p className="text-gray-600 mb-6">{tr('Your AI assistant is ready to use.')}</p>
+              <h3 className="text-2xl font-bold mb-3">{t('onboarding.final.allSet')}</h3>
+              <p className="text-gray-600 mb-6">{t('onboarding.final.assistantReady')}</p>
             </div>
           )}
         </div>
@@ -399,11 +398,11 @@ export function OnboardingModal({ open, onClose }) {
         <div className="flex items-center justify-between mt-6 pt-6 border-t">
           <Button variant="outline" onClick={prevStep} disabled={step === 1 || loading}>
             <ChevronLeft className="w-4 h-4 mr-1" />
-            {tr('Back')}
+            {t('onboarding.buttons.back')}
           </Button>
           <div className="text-sm text-gray-500">{step} / {STEPS.length}</div>
           <Button onClick={nextStep} disabled={!canProceed() || loading}>
-            {loading ? tr('Loading...') : step === 5 ? tr('Complete') : tr('Next')}
+            {loading ? t('onboarding.buttons.loading') : step === 5 ? t('onboarding.buttons.complete') : t('onboarding.buttons.next')}
             {step < 5 && <ChevronRight className="w-4 h-4 ml-1" />}
           </Button>
         </div>

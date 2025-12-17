@@ -5,7 +5,6 @@ import { useRouter, usePathname } from 'next/navigation'; // usePathname ekle
 import Sidebar from '@/components/Sidebar';
 import { apiClient } from '@/lib/api';
 import { Toaster } from 'sonner';
-import OnboardingWizard from '@/components/OnboardingWizard';
 
 export default function DashboardLayout({ children }) {
   const router = useRouter();
@@ -13,7 +12,6 @@ export default function DashboardLayout({ children }) {
   const [user, setUser] = useState(null);
   const [credits, setCredits] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
     // Check authentication
@@ -60,13 +58,6 @@ export default function DashboardLayout({ children }) {
     }
   };
 
-  const handleOnboardingComplete = () => {
-    localStorage.setItem('onboarding_completed', 'true');
-    setShowOnboarding(false);
-    // Reload data to show new assistant
-    window.location.reload();
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-neutral-50">
@@ -92,14 +83,6 @@ export default function DashboardLayout({ children }) {
 
       {/* Toast notifications */}
       <Toaster position="top-right" richColors />
-
-      {/* Onboarding wizard */}
-      {showOnboarding && (
-        <OnboardingWizard
-          isOpen={showOnboarding}
-          onComplete={handleOnboardingComplete}
-        />
-      )}
     </div>
   );
 }

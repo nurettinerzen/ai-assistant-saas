@@ -1581,5 +1581,85 @@
       "accounting": "Muhasebe",
       "email": "E-posta"
     }
+  },
+  "onboarding": {
+    "steps": {
+      "chooseIndustry": "Sektör Seçin",
+      "pickVoice": "Ses Seçin",
+      "addTraining": "Eğitim Ekle",
+      "testAssistant": "Asistanı Test Et",
+      "complete": "Tamamlandı"
+    },
+    "descriptions": {
+      "tellUsAboutBusiness": "İşletmeniz hakkında bilgi verin",
+      "selectAssistantVoice": "Asistan sesinizi seçin",
+      "createFirstGreeting": "İlk selamlama mesajınızı oluşturun",
+      "tryItOut": "Deneyin!",
+      "allSet": "Hazırsınız!"
+    },
+    "labels": {
+      "language": "Dil",
+      "selectAssistantLanguage": "Asistan dilini seçin",
+      "country": "Ülke",
+      "selectBusinessLocation": "İşletme konumunuzu seçin",
+      "businessType": "İşletme Türü",
+      "businessTimezone": "İşletme Saat Dilimi",
+      "selectBusinessTimezone": "İşletme saat diliminizi seçin",
+      "greetingMessage": "Karşılama Mesajı",
+      "greetingMessageDesc": "Asistanınızın söyleyeceği ilk cümle",
+      "assistantInstructions": "Asistan Talimatları",
+      "assistantInstructionsDesc": "Asistanınızın nasıl davranması gerektiğine dair talimatlar"
+    },
+    "industries": {
+      "restaurant": "Restoran",
+      "salonSpa": "Kuaför & Spa",
+      "ecommerce": "E-ticaret",
+      "professionalServices": "Profesyonel Hizmetler",
+      "other": "Diğer"
+    },
+    "prompts": {
+      "restaurant": "Bir restoran asistanısınız. Rezervasyon alın, menü bilgisi verin, çalışma saatlerini paylaşın, müşteri sorularını yanıtlayın.",
+      "salon": "Bir kuaför asistanısınız. Randevu alın, hizmetler ve fiyatlar hakkında bilgi verin, uygun saatleri paylaşın.",
+      "ecommerce": "Bir e-ticaret asistanısınız. Stok bilgisi verin, sipariş durumu güncellemeleri yapın, iade ve değişim süreçlerini açıklayın.",
+      "service": "Bir profesyonel hizmet asistanısınız. Randevu alın, hizmet bilgisi verin, fiyatlandırma konusunda yardımcı olun.",
+      "other": "Bir işletme asistanısınız. Müşteri sorularını yanıtlayın, bilgi verin, yardımcı olun."
+    },
+    "voice": {
+      "male": "Erkek",
+      "female": "Kadın",
+      "previewComingSoon": "Ses önizleme yakında"
+    },
+    "voiceDemo": {
+      "title": "AI Asistanınızı Test Edin",
+      "description": "AI asistanınızla sesli görüşme başlatmak için aşağıdaki butona tıklayın",
+      "createAssistantFirst": "Test etmek için önce bir asistan oluşturun",
+      "startVoiceTest": "Sesli Testi Başlat",
+      "endCall": "Aramayı Bitir",
+      "allowMicrophone": "İstendiğinde mikrofon erişimine izin vermeyi unutmayın",
+      "callStatus": {
+        "starting": "Arama başlatılıyor...",
+        "started": "Arama başladı! Şimdi konuşun...",
+        "ended": "Arama sona erdi",
+        "speaking": "Asistan konuşuyor...",
+        "listening": "Dinliyor..."
+      }
+    },
+    "messages": {
+      "completed": "Tamamlandı!",
+      "assistantCreated": "Asistan oluşturuldu!",
+      "failedToCreate": "Asistan oluşturulamadı",
+      "error": "Bir hata oluştu",
+      "creatingAssistant": "Asistan oluşturuluyor..."
+    },
+    "final": {
+      "allSet": "Hazırsınız!",
+      "assistantReady": "AI asistanınız kullanıma hazır."
+    },
+    "buttons": {
+      "back": "Geri",
+      "next": "İleri",
+      "complete": "Tamamla",
+      "loading": "Yükleniyor..."
+    }
   }
 }
