@@ -18,58 +18,32 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import { AlertCircle } from 'lucide-react';
 
-// Prices in both currencies
+// Plan configurations - features will be loaded from translations
 const PLANS = [
   {
     id: 'starter',
     name: 'Starter',
     priceUSD: 29,
     priceTRY: 899,
-    credits: 100,
-    features: [
-      '1 AI assistant',
-      'Unlimited training',
-      '1 phone number',
-      '300 minutes/month',
-      'Basic analytics',
-      'Email support',
-    ],
-    notIncluded: ['Priority support', 'Custom voices', 'Advanced analytics'],
+    featureKeys: ['feature1', 'feature2', 'feature3', 'feature4', 'feature5', 'feature6'],
+    notIncludedKeys: [],
   },
   {
     id: 'professional',
     name: 'Professional',
     priceUSD: 79,
     priceTRY: 2599,
-    credits: 500,
     popular: true,
-    features: [
-      '2 AI assistants',
-      'Unlimited training',
-      '3 phone numbers',
-      '1500 minutes/month',
-      'Advanced analytics',
-      'Priority support',
-      'API access',
-    ],
-    notIncluded: ['Dedicated account manager', 'SLA guarantee'],
+    featureKeys: ['feature1', 'feature2', 'feature3', 'feature4', 'feature5', 'feature6', 'feature7'],
+    notIncludedKeys: [],
   },
   {
     id: 'enterprise',
     name: 'Enterprise',
     priceUSD: 199,
     priceTRY: 6799,
-    credits: 2000,
-    features: [
-      '5 AI assistants',
-      'Unlimited everything',
-      '10 phone numbers',
-      'Custom voice cloning',
-      'White-label option',
-      'Dedicated account manager',
-      'SLA guarantee',
-    ],
-    notIncluded: [],
+    featureKeys: ['feature1', 'feature2', 'feature3', 'feature4', 'feature5', 'feature6', 'feature7'],
+    notIncludedKeys: [],
   },
 ];
 
@@ -138,8 +112,8 @@ export default function SubscriptionPage() {
   };
 
   const handleUpgrade = async (planId) => {
-    const planName = PLANS.find((p) => p.id === planId)?.name;
-    if (!confirm(`${t('dashboard.subscriptionPage.upgradeConfirm')} ${planName} ${t('dashboard.subscriptionPage.plan')}?`)) return;
+    const planName = t(`pricing.${planId}.name`);
+    if (!confirm(`${t('dashboard.subscriptionPage.upgradeConfirm')} ${planName} ${t('dashboard.subscriptionPage.plan')}`)) return;
 
     try {
       await toastHelpers.async(
@@ -260,27 +234,27 @@ export default function SubscriptionPage() {
                 )}
 
                 <div className="text-center mb-6">
-                  <h3 className="text-xl font-bold text-neutral-900 mb-2">{plan.name}</h3>
+                  <h3 className="text-xl font-bold text-neutral-900 mb-2">{t(`pricing.${plan.id}.name`)}</h3>
+                  <p className="text-sm text-neutral-600 mb-3">{t(`pricing.${plan.id}.desc`)}</p>
                   <div className="flex items-baseline justify-center gap-1">
                     <span className="text-4xl font-bold text-neutral-900">
-                      {currencySymbol}{getPlanPrice(plan)}
+                      {currencySymbol}{getPlanPrice(plan).toLocaleString()}
                     </span>
                     <span className="text-neutral-500">{t('dashboard.subscriptionPage.perMonth')}</span>
                   </div>
-                  <p className="text-sm text-neutral-600 mt-2">{plan.credits} {t('dashboard.subscriptionPage.creditsIncluded')}</p>
                 </div>
 
                 <ul className="space-y-3 mb-6">
-                  {plan.features.map((feature, i) => (
+                  {plan.featureKeys.map((featureKey, i) => (
                     <li key={i} className="flex items-start gap-2 text-sm">
                       <Check className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
-                      <span className="text-neutral-700">{feature}</span>
+                      <span className="text-neutral-700">{t(`pricing.${plan.id}.${featureKey}`)}</span>
                     </li>
                   ))}
-                  {plan.notIncluded.map((feature, i) => (
+                  {plan.notIncludedKeys?.map((featureKey, i) => (
                     <li key={`not-${i}`} className="flex items-start gap-2 text-sm">
                       <X className="h-4 w-4 text-neutral-300 flex-shrink-0 mt-0.5" />
-                      <span className="text-neutral-400">{feature}</span>
+                      <span className="text-neutral-400">{t(`pricing.${plan.id}.${featureKey}`)}</span>
                     </li>
                   ))}
                 </ul>
