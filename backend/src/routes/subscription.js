@@ -424,10 +424,82 @@ router.post('/iyzico-payment-callback', async (req, res) => {
   }
 });
 
-// Legacy callback (subscription-based - disabled)
+// iyzico Subscription Callback - POST handler for form submission
+router.post('/iyzico-subscription-callback', async (req, res) => {
+  const { token } = req.body;
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+
+  console.log('📥 iyzico subscription callback received:', { token });
+
+  if (!token) {
+    return res.redirect(`${frontendUrl}/dashboard/subscription?status=error&message=missing_token`);
+  }
+
+  try {
+    const Iyzipay = (await import('iyzipay')).default;
+    const iyzipay = new Iyzipay({
+      apiKey: process.env.IYZICO_API_KEY,
+      secretKey: process.env.IYZICO_SECRET_KEY,
+      uri: process.env.IYZICO_BASE_URL || 'https://sandbox-api.iyzipay.com'
+    });
+
+    // Retrieve subscription checkout form result
+    iyzipay.subscriptionCheckoutForm.retrieve({
+      locale: Iyzipay.LOCALE.TR,
+      conversationId: token,
+      token: token
+    }, async (err, result) => {
+      if (err || result.status !== 'success') {
+        console.error('iyzico callback error:', err || result);
+        return res.redirect(`${frontendUrl}/dashboard/subscription?status=error`);
+      }
+
+      console.log('iyzico subscription result:', result);
+
+      // Find subscription by pending token
+      const subscription = await prisma.subscription.findFirst({
+        where: { pendingSubscriptionToken: token }
+      });
+
+      if (subscription) {
+        const planId = subscription.pendingPlanId;
+        const planConfig = PLAN_CONFIG[planId] || PLAN_CONFIG.STARTER;
+
+        await prisma.subscription.update({
+          where: { id: subscription.id },
+          data: {
+            plan: planId,
+            status: 'ACTIVE',
+            paymentProvider: 'iyzico',
+            iyzicoSubscriptionId: result.subscriptionReferenceCode || result.referenceCode,
+            iyzicoReferenceCode: result.subscriptionReferenceCode || result.referenceCode,
+            currentPeriodStart: new Date(),
+            currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+            pendingSubscriptionToken: null,
+            pendingPlanId: null,
+            // Set plan limits
+            minutesLimit: planConfig.minutesLimit,
+            callsLimit: planConfig.callsLimit,
+            assistantsLimit: planConfig.assistantsLimit,
+            phoneNumbersLimit: planConfig.phoneNumbersLimit
+          }
+        });
+
+        console.log('✅ iyzico subscription activated:', planId);
+      }
+
+      return res.redirect(`${frontendUrl}/dashboard/subscription?status=success`);
+    });
+  } catch (error) {
+    console.error('iyzico subscription callback error:', error);
+    return res.redirect(`${frontendUrl}/dashboard/subscription?status=error`);
+  }
+});
+
+// Legacy callback (GET - for backward compatibility)
 router.get('/iyzico-callback', async (req, res) => {
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-  return res.redirect(`${frontendUrl}/pricing?error=subscription_disabled`);
+  return res.redirect(`${frontendUrl}/dashboard/subscription?status=error&message=use_post`);
 });
 
 // ============================================================================
@@ -870,7 +942,7 @@ router.post('/reactivate', verifyBusinessAccess, async (req, res) => {
 });
 
 // ============================================================================
-// UPGRADE ENDPOINT - Simplified for frontend compatibility
+// UPGRADE ENDPOINT - iyzico Subscription API with Plan References
 // ============================================================================
 
 router.post('/upgrade', verifyBusinessAccess, async (req, res) => {
@@ -904,14 +976,18 @@ router.post('/upgrade', verifyBusinessAccess, async (req, res) => {
 
     console.log(`💳 Upgrade request for business ${businessId}, plan: ${normalizedPlanId}, provider: ${provider}`);
 
-    // ========== IYZICO CHECKOUT (Simple Payment - Subscription disabled for now) ==========
+    // ========== IYZICO SUBSCRIPTION API ==========
     if (provider === 'iyzico') {
       const planConfig = PLAN_CONFIG[normalizedPlanId];
-      const price = planConfig.priceTRY;
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-      const backendUrl = process.env.BACKEND_URL || 'http://localhost:3001';
+      const planRef = planConfig.iyzicoPlanRef;
 
-      // Use iyzico checkout form initialize (standard payment, not subscription)
+      if (!planRef) {
+        return res.status(400).json({ error: 'iyzico plan reference not configured' });
+      }
+
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+
+      // Use iyzico Subscription Checkout Form Initialize
       const Iyzipay = (await import('iyzipay')).default;
       const iyzipay = new Iyzipay({
         apiKey: process.env.IYZICO_API_KEY,
@@ -921,55 +997,59 @@ router.post('/upgrade', verifyBusinessAccess, async (req, res) => {
 
       const request = {
         locale: Iyzipay.LOCALE.TR,
-        conversationId: `${businessId}-${Date.now()}`,
-        price: price.toString(),
-        paidPrice: price.toString(),
-        currency: Iyzipay.CURRENCY.TRY,
-        basketId: `basket_${businessId}_${Date.now()}`,
-        paymentGroup: Iyzipay.PAYMENT_GROUP.PRODUCT,
-        callbackUrl: `${backendUrl}/api/subscription/iyzico-payment-callback?planId=${normalizedPlanId}&businessId=${businessId}`,
-        buyer: {
-          id: user.id.toString(),
+        conversationId: `sub_${businessId}_${Date.now()}`,
+        pricingPlanReferenceCode: planRef,
+        subscriptionInitialStatus: 'ACTIVE',
+        callbackUrl: `${frontendUrl}/dashboard/subscription/callback`,
+        customer: {
           name: user.name?.split(' ')[0] || 'Ad',
           surname: user.name?.split(' ').slice(1).join(' ') || 'Soyad',
           email: user.email,
+          gsmNumber: '+905551234567',
           identityNumber: '11111111111',
-          registrationAddress: 'Türkiye',
-          ip: req.ip || req.headers['x-forwarded-for'] || '127.0.0.1',
-          city: 'Istanbul',
-          country: 'Turkey'
-        },
-        shippingAddress: {
-          contactName: user.name || 'Müşteri',
-          city: 'Istanbul',
-          country: 'Turkey',
-          address: 'Türkiye'
-        },
-        billingAddress: {
-          contactName: user.name || 'Müşteri',
-          city: 'Istanbul',
-          country: 'Turkey',
-          address: 'Türkiye'
-        },
-        basketItems: [
-          {
-            id: normalizedPlanId,
-            name: `Telyx.ai ${normalizedPlanId.charAt(0) + normalizedPlanId.slice(1).toLowerCase()} Plan - 1 Aylık`,
-            category1: 'Subscription',
-            itemType: Iyzipay.BASKET_ITEM_TYPE.VIRTUAL,
-            price: price.toString()
+          shippingAddress: {
+            contactName: user.name || 'Müşteri',
+            city: 'Istanbul',
+            country: 'Turkey',
+            address: 'Türkiye'
+          },
+          billingAddress: {
+            contactName: user.name || 'Müşteri',
+            city: 'Istanbul',
+            country: 'Turkey',
+            address: 'Türkiye'
           }
-        ]
+        }
       };
 
-      return new Promise((resolve) => {
-        iyzipay.checkoutFormInitialize.create(request, (err, result) => {
-          if (err || result.status !== 'success') {
-            console.error('iyzico error:', err || result);
-            return resolve(res.status(400).json({
-              error: result?.errorMessage || 'Ödeme başlatılamadı'
-            }));
+      return new Promise(async (resolve) => {
+        iyzipay.subscriptionCheckoutFormInitialize.create(request, async (err, result) => {
+          if (err) {
+            console.error('iyzico subscription error:', err);
+            return resolve(res.status(500).json({ error: 'Abonelik başlatılamadı' }));
           }
+
+          if (result.status !== 'success') {
+            console.error('iyzico subscription failed:', result);
+            return resolve(res.status(400).json({ error: result.errorMessage || 'Abonelik başlatılamadı' }));
+          }
+
+          // Save pending subscription token for callback
+          await prisma.subscription.upsert({
+            where: { businessId },
+            create: {
+              businessId,
+              paymentProvider: 'iyzico',
+              plan: 'FREE',
+              status: 'INCOMPLETE',
+              pendingSubscriptionToken: result.token,
+              pendingPlanId: normalizedPlanId
+            },
+            update: {
+              pendingSubscriptionToken: result.token,
+              pendingPlanId: normalizedPlanId
+            }
+          });
 
           resolve(res.json({
             provider: 'iyzico',

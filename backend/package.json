@@ -12,7 +12,7 @@
     "studio": "npx prisma studio"
   },
   "dependencies": {
-    "@prisma/client": "^5.9.1",
+    "@prisma/client": "^5.22.0",
     "@sendgrid/mail": "^8.1.6",
     "axios": "^1.13.2",
     "bcrypt": "^5.1.1",

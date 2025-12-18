@@ -18,11 +18,12 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { AlertCircle } from 'lucide-react';
 
 // Plan configurations - features will be loaded from translations
+// Updated prices: Starter ₺899, Professional ₺2.599, Enterprise ₺6.799
 const PLANS = [
   {
     id: 'starter',
     name: 'Starter',
-    priceUSD: 29,
+    priceUSD: 27,
     priceTRY: 899,
     featureKeys: ['feature1', 'feature2', 'feature3', 'feature4', 'feature5', 'feature6'],
     notIncludedKeys: [],
@@ -30,7 +31,7 @@ const PLANS = [
   {
     id: 'professional',
     name: 'Professional',
-    priceUSD: 79,
+    priceUSD: 77,
     priceTRY: 2599,
     popular: true,
     featureKeys: ['feature1', 'feature2', 'feature3', 'feature4', 'feature5', 'feature6', 'feature7'],
@@ -106,14 +107,17 @@ export default function SubscriptionPage() {
   // Check for success/error in URL params (after payment callback)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('success') === 'true') {
-      toast.success(t('dashboard.subscriptionPage.upgradeSuccess') || 'Plan başarıyla yükseltildi!');
+    const status = params.get('status');
+    const success = params.get('success');
+
+    if (status === 'success' || success === 'true') {
+      toast.success(t('dashboard.subscriptionPage.upgradeSuccess') || 'Plan basariyla yukseltildi!');
       // Clean URL
       window.history.replaceState({}, '', window.location.pathname);
       // Reload subscription data
       loadData();
-    } else if (params.get('error')) {
-      const errorMsg = params.get('message') || t('dashboard.subscriptionPage.upgradeFailed') || 'Ödeme başarısız oldu';
+    } else if (status === 'error' || params.get('error')) {
+      const errorMsg = params.get('message') || t('dashboard.subscriptionPage.upgradeFailed') || 'Odeme basarisiz oldu';
       toast.error(decodeURIComponent(errorMsg));
       window.history.replaceState({}, '', window.location.pathname);
     }

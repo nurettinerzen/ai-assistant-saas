@@ -163,6 +163,10 @@ model Subscription {
   iyzicoReferenceCode     String?            @unique
   iyzicoPricingPlanId     String?
   iyzicoCardToken         String?
+  iyzicoPaymentId         String?            // For checkout form payments
+  // Pending subscription fields (for callback)
+  pendingSubscriptionToken String?
+  pendingPlanId           String?
   // Common fields
   currentPeriodStart      DateTime?
   currentPeriodEnd        DateTime?
