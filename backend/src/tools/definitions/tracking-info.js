@@ -21,5 +21,5 @@ export default {
     required: [] // At least one should be provided
   },
   allowedBusinessTypes: ['ECOMMERCE'],
-  requiredIntegrations: ['SHOPIFY', 'WOOCOMMERCE', 'ZAPIER'] // At least one required
+  requiredIntegrations: ['SHOPIFY', 'WOOCOMMERCE', 'IKAS', 'IDEASOFT', 'TICIMAX', 'ZAPIER'] // At least one required
 };

@@ -131,7 +131,15 @@ export async function getOrderByPhone(businessId, phone) {
   const service = getService(platformInfo.platform);
   console.log(`🔍 Aggregator: Routing phone lookup to ${platformInfo.platform}`);
 
-  const result = await service.getOrderByPhone(businessId, phone);
+  // Turkish e-commerce platforms use different method names
+  let result;
+  if (platformInfo.platform === PLATFORMS.IKAS ||
+      platformInfo.platform === PLATFORMS.IDEASOFT ||
+      platformInfo.platform === PLATFORMS.TICIMAX) {
+    result = await service.getOrdersByPhone(businessId, phone);
+  } else {
+    result = await service.getOrderByPhone(businessId, phone);
+  }
 
   if (result.success && result.order) {
     result.order.platform = platformInfo.platform;
@@ -160,7 +168,15 @@ export async function getOrderByEmail(businessId, email) {
   const service = getService(platformInfo.platform);
   console.log(`🔍 Aggregator: Routing email lookup to ${platformInfo.platform}`);
 
-  const result = await service.getOrderByEmail(businessId, email);
+  // Turkish e-commerce platforms use different method names
+  let result;
+  if (platformInfo.platform === PLATFORMS.IKAS ||
+      platformInfo.platform === PLATFORMS.IDEASOFT ||
+      platformInfo.platform === PLATFORMS.TICIMAX) {
+    result = await service.getOrdersByEmail(businessId, email);
+  } else {
+    result = await service.getOrderByEmail(businessId, email);
+  }
 
   if (result.success && result.order) {
     result.order.platform = platformInfo.platform;

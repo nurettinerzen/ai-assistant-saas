@@ -25,5 +25,5 @@ export default {
     required: [] // At least one parameter should be provided
   },
   allowedBusinessTypes: ['ECOMMERCE', 'RESTAURANT'],
-  requiredIntegrations: ['TRENDYOL', 'SHOPIFY', 'WOOCOMMERCE', 'ZAPIER'] // At least one required
+  requiredIntegrations: ['SHOPIFY', 'WOOCOMMERCE', 'IKAS', 'IDEASOFT', 'TICIMAX', 'ZAPIER'] // At least one required
 };

@@ -258,9 +258,11 @@ async function processWithToolLoop(client, messages, tools, business, context, m
       responseMessage.tool_calls.map(tc => tc.function.name));
 
     // Add assistant's response with tool_calls to messages
+    // NOTE: Do NOT use responseMessage.content here - it may contain debug text
+    // that we don't want to show to the user (e.g., "Checking order status...")
     messages.push({
       role: 'assistant',
-      content: responseMessage.content,
+      content: null, // Explicitly null - we only want the final response after tools complete
       tool_calls: responseMessage.tool_calls
     });
 
@@ -315,21 +317,64 @@ function buildSystemPrompt(business, assistant) {
   // Get dynamic date/time context for this request
   const dateTimeContext = getDateTimeContext(timezone, language);
 
+  // Tool calling instructions - CRITICAL: No debug info to user
+  const toolInstructions = language === 'TR'
+    ? `
+ARAÇ KULLANIMI KURALLARI:
+- Araç (function) çağırırken kullanıcıya HİÇBİR ŞEY söyleme
+- "Kontrol ediyorum", "Bir saniye", "Bakıyorum" gibi mesajlar GÖNDERME
+- Araç sonucu döndükten sonra SADECE sonucu kullanıcıya açıkla
+- Araç adı, function name veya teknik bilgi ASLA gösterme
+- Doğrudan sonucu paylaş, ara mesaj gönderme
+
+Müşteri istekleri:
+- Randevu almak isterse: İsim, telefon, tarih/saat ve hizmet türünü sor, sonra create_appointment kullan
+- Sipariş durumu sormak isterse: Sipariş numarası veya telefon numarasını sor, sonra check_order_status kullan
+- Ürün stok sormak isterse: Ürün adını sor, sonra get_product_stock kullan
+
+Sonucu müşteriye samimi bir şekilde ilet.`
+    : `
+TOOL USAGE RULES:
+- When calling a tool (function), DO NOT send ANY message to the user
+- DO NOT send messages like "Checking", "One moment", "Let me look"
+- After the tool returns, ONLY explain the result to the user
+- NEVER show tool names, function names or technical information
+- Share the result directly, do not send intermediate messages
+
+Customer requests:
+- To book an appointment: Ask for name, phone, date/time, service type, then use create_appointment
+- To check order status: Ask for order number or phone, then use check_order_status
+- To check product stock: Ask for product name, then use get_product_stock
+
+Confirm the result with the customer in a friendly manner.`;
+
   if (assistant?.systemPrompt) {
     return `${assistant.systemPrompt}
 
 ${dateTimeContext}
 
-When a customer wants to:
-- Book an appointment: Ask for their name, phone, preferred date/time, and service type (if applicable), then use the create_appointment function
-- Check order status: Ask for their order number or phone number, then use the check_order_status function
-- Check product availability: Ask for the product name, then use the get_product_stock function
-
-Always confirm the action result with the customer in a friendly manner.`;
+${toolInstructions}`;
   }
 
   // Fallback prompt
-  return `You are a professional customer service representative for ${business.name}.
+  const fallbackPrompt = language === 'TR'
+    ? `${business.name} için profesyonel bir müşteri temsilcisisiniz.
+
+KRİTİK KURALLAR:
+- Yapay zeka, bot veya asistan olduğunuzu ASLA söylemeyin
+- Gerçek bir çalışan gibi davranın
+- Her zaman Türkçe yanıt verin
+- Sıcak, yardımsever ve profesyonel olun
+- Yanıtları kısa tutun (2-3 cümle)
+- Bilmediğiniz bir şey varsa "Kontrol edip size dönüyorum" deyin
+
+${dateTimeContext}
+
+${toolInstructions}
+
+Adınız Müşteri Hizmetleri.
+Unutmayın: Müşterilere yardım eden gerçek bir kişisiniz.`
+    : `You are a professional customer service representative for ${business.name}.
 
 CRITICAL RULES:
 - NEVER mention that you are an AI, bot, or artificial intelligence
@@ -341,8 +386,12 @@ CRITICAL RULES:
 
 ${dateTimeContext}
 
+${toolInstructions}
+
 Your name is Customer Support Team.
 Remember: You are a real person helping customers.`;
+
+  return fallbackPrompt;
 }
 
 /**

@@ -49,7 +49,7 @@ const PLANS = [
 
 export default function SubscriptionPage() {
   const { t, locale } = useLanguage();
-  const { can } = usePermissions();
+  const { can, loading: permissionsLoading } = usePermissions();
   const [loading, setLoading] = useState(true);
   const [upgrading, setUpgrading] = useState(false);
   const [subscription, setSubscription] = useState(null);
@@ -123,13 +123,19 @@ export default function SubscriptionPage() {
     }
   }, []);
 
+  // Load data when permissions are ready and user has billing:view permission
   useEffect(() => {
+    // Wait for permissions to be loaded from localStorage
+    if (permissionsLoading) {
+      return;
+    }
+
     if (can('billing:view')) {
       loadData();
     } else {
       setLoading(false);
     }
-  }, []);
+  }, [can, permissionsLoading]);
 
   const loadData = async () => {
     setLoading(true);
@@ -196,6 +202,15 @@ export default function SubscriptionPage() {
   const usagePercent = subscription
     ? (subscription.creditsUsed / subscription.creditsLimit) * 100
     : 0;
+
+  // Show loading while permissions are being loaded
+  if (permissionsLoading || loading) {
+    return (
+      <div className="flex items-center justify-center h-[60vh]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+      </div>
+    );
+  }
 
   // Check permission for billing
   if (!can('billing:view')) {

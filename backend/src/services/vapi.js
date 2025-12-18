@@ -112,6 +112,67 @@ const vapiService = {
       console.error('❌ VAPI makeCall error:', error.response?.data || error.message);
       throw error;
     }
+  },
+
+  /**
+   * Buy a phone number from VAPI
+   */
+  async buyPhoneNumber(areaCode = '415') {
+    try {
+      const response = await vapiClient.post('/phone-number/buy', {
+        areaCode,
+        provider: 'twilio'
+      });
+      console.log('✅ VAPI Phone number purchased:', response.data.number);
+      return response.data;
+    } catch (error) {
+      console.error('❌ VAPI buyPhoneNumber error:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  /**
+   * Assign a phone number to an assistant
+   */
+  async assignPhoneNumber(phoneNumberId, assistantId) {
+    try {
+      const response = await vapiClient.patch(`/phone-number/${phoneNumberId}`, {
+        assistantId
+      });
+      console.log('✅ VAPI Phone number assigned to assistant:', assistantId);
+      return response.data;
+    } catch (error) {
+      console.error('❌ VAPI assignPhoneNumber error:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  /**
+   * Update phone number configuration
+   */
+  async updatePhoneNumber(phoneNumberId, updates) {
+    try {
+      const response = await vapiClient.patch(`/phone-number/${phoneNumberId}`, updates);
+      console.log('✅ VAPI Phone number updated:', phoneNumberId);
+      return response.data;
+    } catch (error) {
+      console.error('❌ VAPI updatePhoneNumber error:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  /**
+   * Delete/release a phone number
+   */
+  async deletePhoneNumber(phoneNumberId) {
+    try {
+      await vapiClient.delete(`/phone-number/${phoneNumberId}`);
+      console.log('✅ VAPI Phone number deleted:', phoneNumberId);
+      return true;
+    } catch (error) {
+      console.error('❌ VAPI deletePhoneNumber error:', error.response?.data || error.message);
+      throw error;
+    }
   }
 };
 

@@ -358,13 +358,33 @@ router.patch('/:id/assistant', async (req, res) => {
       return res.status(404).json({ error: 'Assistant not found' });
     }
 
-    // Update in VAPI if phone is connected to VAPI
-    if (phoneNumber.vapiPhoneId && assistant.vapiAssistantId) {
-      await vapiByocService.assignAssistant(phoneNumber.vapiPhoneId, assistant.vapiAssistantId);
-      console.log('✅ Updated in VAPI');
+    if (!assistant.vapiAssistantId) {
+      return res.status(400).json({ error: 'Assistant is not configured with VAPI' });
     }
 
-    // Update in database
+    // Update in VAPI if phone is connected to VAPI
+    // Use the correct service based on provider
+    if (phoneNumber.vapiPhoneId) {
+      try {
+        if (phoneNumber.provider === 'NETGSM') {
+          // BYOC numbers use vapiByocService
+          await vapiByocService.assignAssistant(phoneNumber.vapiPhoneId, assistant.vapiAssistantId);
+          console.log('✅ Updated BYOC number in VAPI');
+        } else {
+          // Native VAPI numbers use vapiService
+          await vapiService.assignPhoneNumber(phoneNumber.vapiPhoneId, assistant.vapiAssistantId);
+          console.log('✅ Updated VAPI number in VAPI');
+        }
+      } catch (vapiError) {
+        console.error('❌ VAPI sync failed:', vapiError);
+        return res.status(500).json({
+          error: 'Failed to sync with VAPI',
+          details: vapiError.message
+        });
+      }
+    }
+
+    // Update in database only after VAPI sync succeeds
     const updated = await prisma.phoneNumber.update({
       where: { id: id },
       data: { assistantId: assistantId }
