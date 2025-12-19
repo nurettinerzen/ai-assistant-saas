@@ -155,14 +155,32 @@ export default function IntegrationsPage() {
       const shopifyResult = params.get('shopify');
       const shopName = params.get('shop');
       const errorMessage = params.get('message');
+      const success = params.get('success');
+      const error = params.get('error');
 
       if (shopifyResult === 'success') {
         toast.success(`Shopify connected successfully${shopName ? `: ${shopName}` : ''}!`);
-        // Clean up URL
         window.history.replaceState({}, '', window.location.pathname);
       } else if (shopifyResult === 'error') {
         toast.error(`Failed to connect Shopify${errorMessage ? `: ${decodeURIComponent(errorMessage)}` : ''}`);
-        // Clean up URL
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+
+      // Google Sheets callback
+      if (success === 'google-sheets') {
+        toast.success('Google Sheets bağlantısı başarılı!');
+        window.history.replaceState({}, '', window.location.pathname);
+      } else if (error === 'google-sheets' || error?.startsWith('google-sheets-')) {
+        toast.error('Google Sheets bağlantısı başarısız oldu');
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+
+      // Google Calendar callback
+      if (success === 'google-calendar') {
+        toast.success('Google Calendar bağlantısı başarılı!');
+        window.history.replaceState({}, '', window.location.pathname);
+      } else if (error === 'google-calendar') {
+        toast.error('Google Calendar bağlantısı başarısız oldu');
         window.history.replaceState({}, '', window.location.pathname);
       }
     }
@@ -592,7 +610,8 @@ const handleIdeasoftConnect = async () => {
         return;
       }
       if (integration.type === 'GOOGLE_SHEETS') {
-        window.location.href = '/dashboard/integrations/google-sheets';
+        const response = await apiClient.get('/api/google-sheets/auth-url');
+        window.location.href = response.data.authUrl;
         return;
       }
       if (integration.type === 'IKAS') { setIkasModalOpen(true); return; }
@@ -793,7 +812,13 @@ const handleIdeasoftConnect = async () => {
         <div className="flex gap-2">
           {integration.connected ? (
             <>
-              <Button variant="outline" size="sm" className="flex-1" onClick={() => handleTest(integration)}>{t('dashboard.integrationsPage.testIntegration')}</Button>
+              {integration.type === 'GOOGLE_SHEETS' ? (
+                <Button variant="outline" size="sm" className="flex-1" onClick={() => window.location.href = '/dashboard/integrations/google-sheets'}>
+                  Yönet
+                </Button>
+              ) : (
+                <Button variant="outline" size="sm" className="flex-1" onClick={() => handleTest(integration)}>{t('dashboard.integrationsPage.testIntegration')}</Button>
+              )}
               {can('integrations:connect') && (
               <Button variant="outline" size="sm" onClick={() => handleDisconnect(integration)}>{t('dashboard.integrationsPage.disconnect')}</Button>
               )}

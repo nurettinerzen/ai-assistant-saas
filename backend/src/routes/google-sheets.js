@@ -90,12 +90,12 @@ router.get('/callback', async (req, res) => {
     const { code, state } = req.query;
 
     if (!code) {
-      return res.redirect(`${process.env.FRONTEND_URL}/dashboard/integrations/google-sheets?error=no-code`);
+      return res.redirect(`${process.env.FRONTEND_URL}/dashboard/integrations?error=google-sheets-no-code`);
     }
 
     const businessId = parseInt(state);
     if (!businessId) {
-      return res.redirect(`${process.env.FRONTEND_URL}/dashboard/integrations/google-sheets?error=invalid-state`);
+      return res.redirect(`${process.env.FRONTEND_URL}/dashboard/integrations?error=google-sheets-invalid-state`);
     }
 
     const { clientId, clientSecret, redirectUri } = getGoogleCredentials();
@@ -138,10 +138,10 @@ router.get('/callback', async (req, res) => {
     });
 
     console.log(`✅ Google Sheets connected for business ${businessId}`);
-    res.redirect(`${process.env.FRONTEND_URL}/dashboard/integrations/google-sheets?success=true`);
+    res.redirect(`${process.env.FRONTEND_URL}/dashboard/integrations?success=google-sheets`);
   } catch (error) {
     console.error('Google Sheets callback error:', error);
-    res.redirect(`${process.env.FRONTEND_URL}/dashboard/integrations/google-sheets?error=callback-failed`);
+    res.redirect(`${process.env.FRONTEND_URL}/dashboard/integrations?error=google-sheets`);
   }
 });
 
