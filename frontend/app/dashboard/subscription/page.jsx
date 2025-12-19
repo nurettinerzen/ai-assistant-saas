@@ -311,9 +311,9 @@ export default function SubscriptionPage() {
               <h2 className="text-lg font-semibold text-neutral-900">{t('dashboard.subscriptionPage.currentPlan')}</h2>
               <Badge className="bg-primary-100 text-primary-800">
                 {subscription.plan === 'FREE' ? t('dashboard.subscriptionPage.freePlan') :
-                 subscription.plan === 'STARTER' ? 'Starter' :
-                 subscription.plan === 'PROFESSIONAL' ? 'Professional' :
-                 subscription.plan === 'ENTERPRISE' ? 'Enterprise' :
+                 subscription.plan === 'STARTER' ? t('dashboard.subscriptionPage.basicPlan') :
+                 subscription.plan === 'PROFESSIONAL' ? t('dashboard.subscriptionPage.professionalPlan') :
+                 subscription.plan === 'ENTERPRISE' ? t('dashboard.subscriptionPage.enterprisePlan') :
                  subscription.planName || t('dashboard.subscriptionPage.freePlan')}
               </Badge>
             </div>
@@ -329,7 +329,7 @@ export default function SubscriptionPage() {
                     }
                     // FREE plan or custom pricing
                     if (subscription.plan === 'FREE') return '₺0';
-                    if (subscription.plan === 'ENTERPRISE') return isTurkishUser ? 'Özel' : 'Custom';
+                    if (subscription.plan === 'ENTERPRISE') return t('dashboard.subscriptionPage.custom');
                     return formatPrice(subscription.price || 0);
                   })()}
                 </span>
@@ -405,7 +405,7 @@ export default function SubscriptionPage() {
                 {isCurrentPlan && (
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2">
                     <Badge className="bg-green-600 text-white">
-                      {isTR ? 'Mevcut Plan' : 'Current Plan'}
+                      {t('dashboard.subscriptionPage.currentPlan')}
                     </Badge>
                   </div>
                 )}
@@ -413,7 +413,7 @@ export default function SubscriptionPage() {
                 {plan.popular && !isCurrentPlan && (
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2">
                     <Badge className="bg-primary-600 text-white">
-                      {isTR ? 'Popüler' : 'Popular'}
+                      {t('dashboard.subscriptionPage.popular')}
                     </Badge>
                   </div>
                 )}
@@ -428,17 +428,17 @@ export default function SubscriptionPage() {
                         <span className="text-3xl font-bold text-neutral-900">
                           ₺{plan.priceTRY.toLocaleString('tr-TR')}
                         </span>
-                        <span className="text-neutral-500">{isTR ? '/ay' : '/month'}</span>
+                        <span className="text-neutral-500">{t('dashboard.subscriptionPage.perMonth')}</span>
                       </>
                     ) : (
                       <span className="text-2xl font-bold text-neutral-900">
-                        {isTR ? 'İletişime Geçin' : 'Contact Us'}
+                        {t('dashboard.subscriptionPage.contactUs')}
                       </span>
                     )}
                   </div>
                   {plan.overageRate && (
                     <p className="text-xs text-neutral-500 mt-2">
-                      {isTR ? `Aşım: ${plan.overageRate} ₺/dk` : `Overage: ${plan.overageRate} ₺/min`}
+                      {t('dashboard.subscriptionPage.overage')}: {plan.overageRate} ₺{t('dashboard.subscriptionPage.perMinute')}
                     </p>
                   )}
                 </div>
@@ -465,7 +465,7 @@ export default function SubscriptionPage() {
                     variant="outline"
                     onClick={() => window.location.href = '/contact'}
                   >
-                    {isTR ? 'Bize Ulaşın' : 'Contact Us'}
+                    {t('dashboard.subscriptionPage.contactUs')}
                   </Button>
                 ) : (
                   <Button
@@ -477,12 +477,12 @@ export default function SubscriptionPage() {
                     {upgrading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        {isTR ? 'İşleniyor...' : 'Processing...'}
+                        {t('dashboard.subscriptionPage.processing')}
                       </>
                     ) : isCurrentPlan ? (
-                      isTR ? 'Mevcut Plan' : 'Current Plan'
+                      t('dashboard.subscriptionPage.currentPlan')
                     ) : (
-                      isTR ? 'Hemen Başla' : 'Get Started'
+                      t('dashboard.subscriptionPage.getStarted')
                     )}
                   </Button>
                 )}

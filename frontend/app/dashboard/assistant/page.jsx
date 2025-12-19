@@ -306,7 +306,7 @@ export default function AssistantsPage() {
                 </p>
 
                 <div className="flex flex-wrap gap-2 mb-4">
-                  <Badge variant="secondary">{voice?.name || 'No Voice'}</Badge>
+                  <Badge variant="secondary">{voice?.name || t('dashboard.voicesPage.noVoicesFound')}</Badge>
                   <Badge variant="outline">{assistant.model}</Badge>
                 </div>
 
@@ -364,7 +364,7 @@ export default function AssistantsPage() {
       >
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>{editingAssistant ? 'Edit' : 'Create'} Assistant</DialogTitle>
+            <DialogTitle>{editingAssistant ? t('common.edit') : t('common.create')} {t('dashboard.assistantsPage.name')}</DialogTitle>
             <DialogDescription>
               {t('dashboard.assistantsPage.configureSettings')}
             </DialogDescription>
@@ -377,7 +377,7 @@ export default function AssistantsPage() {
                 id="name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="e.g., Customer Support Bot"
+                placeholder={locale === 'tr' ? 'örn: Müşteri Destek Asistanı' : 'e.g., Customer Support Bot'}
               />
             </div>
 
@@ -391,22 +391,22 @@ export default function AssistantsPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="tr">Turkish</SelectItem>
-                  <SelectItem value="en">English</SelectItem>
-                  <SelectItem value="de">German</SelectItem>
-                  <SelectItem value="fr">French</SelectItem>
-                  <SelectItem value="es">Spanish</SelectItem>
-                  <SelectItem value="it">Italian</SelectItem>
-                  <SelectItem value="pt">Portuguese</SelectItem>
-                  <SelectItem value="ru">Russian</SelectItem>
-                  <SelectItem value="ar">Arabic</SelectItem>
-                  <SelectItem value="ja">Japanese</SelectItem>
-                  <SelectItem value="ko">Korean</SelectItem>
-                  <SelectItem value="zh">Chinese</SelectItem>
-                  <SelectItem value="hi">Hindi</SelectItem>
-                  <SelectItem value="nl">Dutch</SelectItem>
-                  <SelectItem value="pl">Polish</SelectItem>
-                  <SelectItem value="sv">Swedish</SelectItem>
+                  <SelectItem value="tr">{locale === 'tr' ? 'Türkçe' : 'Turkish'}</SelectItem>
+                  <SelectItem value="en">{locale === 'tr' ? 'İngilizce' : 'English'}</SelectItem>
+                  <SelectItem value="de">{locale === 'tr' ? 'Almanca' : 'German'}</SelectItem>
+                  <SelectItem value="fr">{locale === 'tr' ? 'Fransızca' : 'French'}</SelectItem>
+                  <SelectItem value="es">{locale === 'tr' ? 'İspanyolca' : 'Spanish'}</SelectItem>
+                  <SelectItem value="it">{locale === 'tr' ? 'İtalyanca' : 'Italian'}</SelectItem>
+                  <SelectItem value="pt">{locale === 'tr' ? 'Portekizce' : 'Portuguese'}</SelectItem>
+                  <SelectItem value="ru">{locale === 'tr' ? 'Rusça' : 'Russian'}</SelectItem>
+                  <SelectItem value="ar">{locale === 'tr' ? 'Arapça' : 'Arabic'}</SelectItem>
+                  <SelectItem value="ja">{locale === 'tr' ? 'Japonca' : 'Japanese'}</SelectItem>
+                  <SelectItem value="ko">{locale === 'tr' ? 'Korece' : 'Korean'}</SelectItem>
+                  <SelectItem value="zh">{locale === 'tr' ? 'Çince' : 'Chinese'}</SelectItem>
+                  <SelectItem value="hi">{locale === 'tr' ? 'Hintçe' : 'Hindi'}</SelectItem>
+                  <SelectItem value="nl">{locale === 'tr' ? 'Felemenkçe' : 'Dutch'}</SelectItem>
+                  <SelectItem value="pl">{locale === 'tr' ? 'Lehçe' : 'Polish'}</SelectItem>
+                  <SelectItem value="sv">{locale === 'tr' ? 'İsveççe' : 'Swedish'}</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-xs text-neutral-500 mt-1">
@@ -440,7 +440,7 @@ export default function AssistantsPage() {
             </div>
 
             <div>
-              <Label htmlFor="model">AI Model</Label>
+              <Label htmlFor="model">{locale === 'tr' ? 'AI Modeli' : 'AI Model'}</Label>
               <Select
                 value={formData.model}
                 onValueChange={(value) => setFormData({ ...formData, model: value })}
@@ -457,7 +457,7 @@ export default function AssistantsPage() {
 
             {/* Tone Selector */}
             <div>
-              <Label htmlFor="tone">{locale === 'tr' ? 'İletişim Tonu' : 'Communication Tone'}</Label>
+              <Label htmlFor="tone">{t('dashboard.assistantsPage.communicationTone')}</Label>
               <Select
                 value={formData.tone}
                 onValueChange={(value) => setFormData({ ...formData, tone: value })}
@@ -467,21 +467,17 @@ export default function AssistantsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="professional">
-                    {locale === 'tr' ? 'Profesyonel (Sizli, resmi dil)' : 'Professional (Formal language)'}
+                    {t('dashboard.assistantsPage.toneProf')}
                   </SelectItem>
                   <SelectItem value="friendly">
-                    {locale === 'tr' ? 'Samimi (Senli, rahat dil)' : 'Friendly (Casual language)'}
+                    {t('dashboard.assistantsPage.toneFriendly')}
                   </SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-xs text-neutral-500 mt-1">
                 {formData.tone === 'friendly'
-                  ? (locale === 'tr'
-                      ? 'Asistan müşterilere "sen" diye hitap eder, samimi ama profesyonel konuşur.'
-                      : 'Assistant addresses customers casually, friendly but professional.')
-                  : (locale === 'tr'
-                      ? 'Asistan müşterilere "siz" diye hitap eder, resmi ve kurumsal dil kullanır.'
-                      : 'Assistant addresses customers formally, uses professional language.')}
+                  ? t('dashboard.assistantsPage.toneFriendlyDesc')
+                  : t('dashboard.assistantsPage.toneProfDesc')}
               </p>
             </div>
 
@@ -499,22 +495,15 @@ export default function AssistantsPage() {
             {/* Custom Notes */}
             <div>
               <Label htmlFor="customNotes">
-                {locale === 'tr' ? 'İşletme Özel Bilgileri' : 'Business Specific Information'}
+                {t('dashboard.assistantsPage.customNotes')}
               </Label>
               <Textarea
                 id="customNotes"
                 rows={4}
                 value={formData.customNotes}
                 onChange={(e) => setFormData({ ...formData, customNotes: e.target.value })}
-                placeholder={locale === 'tr'
-                  ? 'Örnek: Pazar günleri kapalıyız. Minimum sipariş tutarı 200 TL. Bayram günlerinde özel menü var...'
-                  : 'Example: We are closed on Sundays. Minimum order is $50. Special menu on holidays...'}
+                placeholder={t('dashboard.assistantsPage.customNotesPlaceholder')}
               />
-              <p className="text-xs text-neutral-500 mt-1">
-                {locale === 'tr'
-                  ? 'Asistanın bilmesi gereken işletmeye özel bilgiler. Bu bilgiler müşteri sorularında kullanılacak.'
-                  : 'Business-specific information the assistant should know. This will be used when answering customer questions.'}
-              </p>
             </div>
           </div>
 

@@ -17,44 +17,112 @@ import batchCallService from '../services/batch-call.js';
 const router = express.Router();
 const prisma = new PrismaClient();
 
+/**
+ * Get formatted date/time string for a business timezone
+ * @param {Object} business - Business object with timezone and language
+ * @returns {string} Formatted date/time context string for prompt
+ */
+function getDynamicDateTimeContext(business) {
+  const now = new Date();
+  const timezone = business.timezone || 'Europe/Istanbul';
+  const lang = business.language || 'TR';
+  const locale = lang === 'TR' ? 'tr-TR' : 'en-US';
+
+  const dateStr = now.toLocaleDateString(locale, {
+    timeZone: timezone,
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+  const timeStr = now.toLocaleTimeString(locale, {
+    timeZone: timezone,
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+
+  if (lang === 'TR') {
+    return `\n\n## GÜNCEL BİLGİLER (ÇEVRİMİÇİ)\n- Bugün: ${dateStr}\n- Şu anki saat: ${timeStr}\n- Saat Dilimi: ${timezone}`;
+  }
+  return `\n\n## CURRENT INFORMATION (LIVE)\n- Today: ${dateStr}\n- Current time: ${timeStr}\n- Timezone: ${timezone}`;
+}
+
 // VAPI webhook endpoint - NO AUTH required (VAPI sends webhooks)
 router.post('/webhook', async (req, res) => {
   try {
     const event = req.body;
     console.log('📞 VAPI Webhook received:', JSON.stringify(event, null, 2).substring(0, 500));
 
-    // Acknowledge receipt immediately
-    res.status(200).json({ received: true });
-
     // Handle different event types
     const eventType = event.message?.type || event.type || event.event;
 
     switch (eventType) {
+      // ========== ASSISTANT REQUEST - Dynamic prompt injection ==========
+      case 'assistant-request': {
+        // This event is fired when a call starts - we can override assistant config
+        const assistantId = event.message?.call?.assistantId || event.call?.assistantId;
+
+        if (assistantId) {
+          const business = await prisma.business.findFirst({
+            where: { vapiAssistantId: assistantId }
+          });
+
+          if (business) {
+            // Generate dynamic date/time context for this call
+            const dynamicContext = getDynamicDateTimeContext(business);
+            console.log('📅 Injecting dynamic date/time for business:', business.name);
+
+            // Return assistant override with dynamic prompt addition
+            return res.status(200).json({
+              assistantOverrides: {
+                model: {
+                  messages: [
+                    {
+                      role: 'system',
+                      content: dynamicContext
+                    }
+                  ]
+                }
+              }
+            });
+          }
+        }
+
+        // No override needed
+        return res.status(200).json({});
+      }
+
       case 'call.started':
       case 'call-start':
+        res.status(200).json({ received: true });
         await handleCallStarted(event);
         break;
 
       case 'call.ended':
       case 'call-end':
       case 'status-update':
+        res.status(200).json({ received: true });
         await handleCallEnded(event);
         break;
 
       case 'call.forwarded':
+        res.status(200).json({ received: true });
         await handleCallForwarded(event);
         break;
 
       case 'call.voicemail':
+        res.status(200).json({ received: true });
         await handleCallVoicemail(event);
         break;
 
       default:
         console.log(`ℹ️ Unhandled VAPI event: ${eventType}`);
+        res.status(200).json({ received: true });
     }
   } catch (error) {
     console.error('❌ VAPI webhook error:', error);
     // Still return 200 to acknowledge receipt
+    res.status(200).json({ received: true });
   }
 });
 

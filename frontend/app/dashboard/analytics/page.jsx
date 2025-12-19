@@ -98,15 +98,15 @@ export default function AnalyticsPage() {
 
   // Prepare sentiment data for pie chart
   const sentimentData = analytics?.sentimentBreakdown ? [
-    { name: 'Positive', value: parseFloat(analytics.sentimentBreakdown.positive), color: SENTIMENT_COLORS.positive },
-    { name: 'Neutral', value: parseFloat(analytics.sentimentBreakdown.neutral), color: SENTIMENT_COLORS.neutral },
-    { name: 'Negative', value: parseFloat(analytics.sentimentBreakdown.negative), color: SENTIMENT_COLORS.negative }
+    { name: t('dashboard.analyticsPage.positive'), value: parseFloat(analytics.sentimentBreakdown.positive), color: SENTIMENT_COLORS.positive },
+    { name: t('dashboard.analyticsPage.neutral'), value: parseFloat(analytics.sentimentBreakdown.neutral), color: SENTIMENT_COLORS.neutral },
+    { name: t('dashboard.analyticsPage.negative'), value: parseFloat(analytics.sentimentBreakdown.negative), color: SENTIMENT_COLORS.negative }
   ] : [];
 
   // 🔥 NEW: Prepare channel data for pie chart
   const channelData = analytics?.channelStats ? [
-    { name: 'Phone', value: analytics.channelStats.phone.count, percentage: analytics.channelStats.phone.percentage, color: CHANNEL_COLORS.phone },
-    { name: 'Chat', value: analytics.channelStats.chat.count, percentage: analytics.channelStats.chat.percentage, color: CHANNEL_COLORS.chat }
+    { name: t('dashboard.analyticsPage.phoneCalls'), value: analytics.channelStats.phone.count, percentage: analytics.channelStats.phone.percentage, color: CHANNEL_COLORS.phone },
+    { name: t('dashboard.overviewPage.chatMessages'), value: analytics.channelStats.chat.count, percentage: analytics.channelStats.chat.percentage, color: CHANNEL_COLORS.chat }
   ].filter(item => item.value > 0) : [];
 
   if (loading) {

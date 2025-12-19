@@ -61,22 +61,35 @@ export function buildAssistantPrompt(assistant, business, integrations = []) {
     prompt += `\n\n## KULLANILAN ARAÇLAR\nŞu işlemleri yapabilirsin: ${integrationNames.join(', ')}`;
   }
 
-  // 8. Dinamik context
+  // 8. Dinamik context - Business timezone kullan
   const now = new Date();
-  const dateStr = now.toLocaleDateString('tr-TR', {
+  const timezone = business.timezone || 'Europe/Istanbul';
+  const locale = business.language === 'TR' ? 'tr-TR' : 'en-US';
+
+  const dateStr = now.toLocaleDateString(locale, {
+    timeZone: timezone,
     weekday: 'long',
     year: 'numeric',
     month: 'long',
     day: 'numeric'
   });
-  const timeStr = now.toLocaleTimeString('tr-TR', {
+  const timeStr = now.toLocaleTimeString(locale, {
+    timeZone: timezone,
     hour: '2-digit',
     minute: '2-digit'
   });
 
-  prompt += `\n\n## GÜNCEL BİLGİLER
+  if (business.language === 'TR') {
+    prompt += `\n\n## GÜNCEL BİLGİLER
 - Bugün: ${dateStr}
-- Saat: ${timeStr}`;
+- Saat: ${timeStr}
+- Saat Dilimi: ${timezone}`;
+  } else {
+    prompt += `\n\n## CURRENT INFORMATION
+- Today: ${dateStr}
+- Time: ${timeStr}
+- Timezone: ${timezone}`;
+  }
 
   // 9. Çalışma saatleri varsa ekle
   if (variables.working_hours) {

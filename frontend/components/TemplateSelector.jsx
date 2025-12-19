@@ -141,9 +141,9 @@ export default function TemplateSelector({ isOpen, onClose, onSelectTemplate, se
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{t('chooseTemplate')}</DialogTitle>
+          <DialogTitle>{t('templates.chooseTemplate')}</DialogTitle>
           <DialogDescription>
-            {t('startWithTemplateOrScratch')}
+            {t('templates.startWithTemplateOrScratch')}
           </DialogDescription>
         </DialogHeader>
 
@@ -160,7 +160,7 @@ export default function TemplateSelector({ isOpen, onClose, onSelectTemplate, se
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-sm text-primary-600">
                     <Sparkles className="h-4 w-4" />
-                    <span>{t('recommendedForYou') || 'Recommended for your business'}</span>
+                    <span>{t('templates.recommendedForYou')}</span>
                   </div>
                   {templates.map((template) => {
                     const Icon = INDUSTRY_ICONS[template.industry] || Briefcase;
@@ -202,7 +202,7 @@ export default function TemplateSelector({ isOpen, onClose, onSelectTemplate, se
                 </div>
                 <div className="relative flex justify-center">
                   <span className="bg-white px-3 text-sm text-neutral-500">
-                    {t('or') || 'or'}
+                    {t('common.or')}
                   </span>
                 </div>
               </div>
@@ -222,10 +222,10 @@ export default function TemplateSelector({ isOpen, onClose, onSelectTemplate, se
 
                   <div className="flex-1">
                     <h3 className="font-semibold text-neutral-900">
-                      {t('startFromScratch') || 'Start from Scratch'}
+                      {t('templates.startFromScratch')}
                     </h3>
                     <p className="text-sm text-neutral-600">
-                      {t('createCustomAssistant') || 'Create a fully custom assistant with your own configuration'}
+                      {t('templates.createCustomAssistant')}
                     </p>
                   </div>
                 </div>

@@ -654,7 +654,15 @@
       "voicesFilteredByLanguage": "Sesler seçilen dile göre filtrelenir",
       "noVoicesForLanguage": "Bu dil için ses bulunamadı",
       "chooseTemplate": "Asistan Şablonu Seçin",
-      "startWithTemplateOrScratch": "Hazır şablonla başlayın veya sıfırdan oluşturun"
+      "startWithTemplateOrScratch": "Hazır şablonla başlayın veya sıfırdan oluşturun",
+      "aiModel": "AI Modeli",
+      "communicationTone": "İletişim Tonu",
+      "toneProf": "Profesyonel (Sizli, resmi dil)",
+      "toneFriendly": "Samimi (Senli, rahat dil)",
+      "toneProfDesc": "Asistan müşterilere \"siz\" diye hitap eder, resmi ve kurumsal dil kullanır.",
+      "toneFriendlyDesc": "Asistan müşterilere \"sen\" diye hitap eder, samimi ama profesyonel konuşur.",
+      "customNotes": "İşletme Özel Bilgiler",
+      "customNotesPlaceholder": "İşletmenize özel bilgiler ekleyin (çalışma saatleri, adres, özel kurallar vb.)"
     },
     "callsPage": {
       "title": "Arama Geçmişi",
@@ -1069,7 +1077,14 @@
       "processingPayment": "Ödeme işleniyor...",
       "redirecting": "Yönlendiriliyor...",
       "subscriptionActivated": "Abonelik Aktifleştirildi",
-      "upgradeFailed": "Yükseltme başarısız oldu"
+      "upgradeFailed": "Yükseltme başarısız oldu",
+      "popular": "Popüler",
+      "contactUs": "Bize Ulaşın",
+      "getStarted": "Hemen Başla",
+      "processing": "İşleniyor...",
+      "overage": "Aşım",
+      "perMinute": "/dk",
+      "custom": "Özel"
     },
     "analyticsPage": {
       "title": "Analitik",
