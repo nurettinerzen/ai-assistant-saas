@@ -255,25 +255,6 @@ class GoogleSheetsService {
         }
       });
 
-      // Auto-resize columns
-      await sheets.spreadsheets.batchUpdate({
-        spreadsheetId: response.data.spreadsheetId,
-        resource: {
-          requests: [
-            {
-              autoResizeDimensions: {
-                dimensions: {
-                  sheetId: 0,
-                  dimension: 'COLUMNS',
-                  startIndex: 0,
-                  endIndex: 7
-                }
-              }
-            }
-          ]
-        }
-      });
-
       return {
         spreadsheetId: response.data.spreadsheetId,
         spreadsheetUrl: response.data.spreadsheetUrl,
