@@ -591,6 +591,10 @@ const handleIdeasoftConnect = async () => {
         window.location.href = response.data.authUrl;
         return;
       }
+      if (integration.type === 'GOOGLE_SHEETS') {
+        window.location.href = '/dashboard/integrations/google-sheets';
+        return;
+      }
       if (integration.type === 'IKAS') { setIkasModalOpen(true); return; }
       if (integration.type === 'IDEASOFT') { setIdeasoftModalOpen(true); return; }
       if (integration.type === 'TICIMAX') { setTicimaxModalOpen(true); return; }

@@ -21,7 +21,7 @@ import calendarRoutes from './routes/calendar.js';
 import inventoryRoutes from './routes/inventory.js';
 import productsRoutes from './routes/products.js';
 import appointmentsRoutes from './routes/appointments.js';
-import googleSheetsRoutes from './routes/googleSheets.js';
+import googleSheetsRoutes from './routes/google-sheets.js';
 import integrationsRoutes from './routes/integrations.js';
 import aiTrainingRoutes from './routes/aiTraining.js';
 import demoRoutes from './routes/demo.js';

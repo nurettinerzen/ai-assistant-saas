@@ -70,6 +70,11 @@ model Business {
   googleSheetId           String?
   googleSheetLastSync     DateTime?
   googleSheetName         String?
+  // Google Sheets OAuth fields
+  googleSheetsAccessToken   String?   @db.Text
+  googleSheetsRefreshToken  String?   @db.Text
+  googleSheetsTokenExpiry   DateTime?
+  googleSheetsConnected     Boolean   @default(false)
   whatsappPhoneNumberId   String?
   whatsappAccessToken     String?
   whatsappVerifyToken     String?
