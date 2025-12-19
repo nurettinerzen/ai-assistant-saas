@@ -145,6 +145,7 @@ export default function SubscriptionPage() {
         apiClient.subscription.getBillingHistory(),
         apiClient.settings.getProfile(),
       ]);
+      console.log('Subscription API response:', subRes.data);
       setSubscription(subRes.data);
       setBillingHistory(billingRes.data.history || []);
 
@@ -239,14 +240,26 @@ export default function SubscriptionPage() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-neutral-900">{t('dashboard.subscriptionPage.currentPlan')}</h2>
               <Badge className="bg-primary-100 text-primary-800">
-                {subscription.planName || t('dashboard.subscriptionPage.freePlan')}
+                {subscription.plan === 'FREE' ? t('dashboard.subscriptionPage.freePlan') :
+                 subscription.plan === 'STARTER' ? 'Starter' :
+                 subscription.plan === 'PROFESSIONAL' ? 'Professional' :
+                 subscription.plan === 'ENTERPRISE' ? 'Enterprise' :
+                 subscription.planName || t('dashboard.subscriptionPage.freePlan')}
               </Badge>
             </div>
             <div className="space-y-3">
               <div className="flex justify-between text-sm">
                 <span className="text-neutral-600">{t('dashboard.subscriptionPage.monthlyCost')}</span>
                 <span className="font-semibold text-neutral-900">
-                  {formatPrice(subscription.price || (isTurkishUser ? (subscription.priceTRY || 0) : (subscription.priceUSD || 0)))}
+                  {(() => {
+                    // Get price from PLANS based on subscription.plan
+                    const currentPlan = PLANS.find(p => p.id.toUpperCase() === subscription.plan);
+                    if (currentPlan) {
+                      return formatPrice(isTurkishUser ? currentPlan.priceTRY : currentPlan.priceUSD);
+                    }
+                    // Fallback to subscription data or 0 for FREE plan
+                    return formatPrice(subscription.price || (isTurkishUser ? (subscription.priceTRY || 0) : (subscription.priceUSD || 0)));
+                  })()}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
