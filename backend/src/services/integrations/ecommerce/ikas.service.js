@@ -234,12 +234,7 @@ class IkasService {
               }
               orderPackages {
                 id
-                trackingNumber
-                trackingUrl
-                status
-                shippingCompany {
-                  name
-                }
+                trackingInfo
               }
               orderLineItems {
                 id
@@ -339,12 +334,7 @@ class IkasService {
                 }
                 orderPackages {
                   id
-                  trackingNumber
-                  trackingUrl
-                  status
-                  shippingCompany {
-                    name
-                  }
+                  trackingInfo
                 }
               }
             }
@@ -401,12 +391,7 @@ class IkasService {
               }
               orderPackages {
                 id
-                trackingNumber
-                trackingUrl
-                status
-                shippingCompany {
-                  name
-                }
+                trackingInfo
               }
             }
           }
@@ -492,12 +477,7 @@ class IkasService {
               }
               orderPackages {
                 id
-                trackingNumber
-                trackingUrl
-                status
-                shippingCompany {
-                  name
-                }
+                trackingInfo
               }
             }
           }
@@ -741,45 +721,24 @@ normalizeOrder(order) {
       'CREATED': 'Oluşturuldu'
     };
 
-    // Package/shipment status mapping
-    const packageStatusMap = {
-      'WAITING': 'Hazırlanıyor',
-      'PREPARING': 'Hazırlanıyor',
-      'READY': 'Hazır',
-      'SHIPPED': 'Kargoya Verildi',
-      'IN_TRANSIT': 'Yolda',
-      'OUT_FOR_DELIVERY': 'Dağıtımda',
-      'DELIVERED': 'Teslim Edildi',
-      'RETURNED': 'İade Edildi',
-      'CANCELLED': 'İptal Edildi'
-    };
-
     const customerName = order.customer
       ? `${order.customer.firstName || ''} ${order.customer.lastName || ''}`.trim()
       : (order.shippingAddress
         ? `${order.shippingAddress.firstName || ''} ${order.shippingAddress.lastName || ''}`.trim()
         : 'Bilinmiyor');
 
-    // Get package info - ikas uses "orderPackages" not "shipments"
-    // Also check for legacy "shipments" field for backward compatibility
-    const orderPackage = order.orderPackages?.[0] || order.shipments?.[0];
+    // Get package info - ikas uses "orderPackages" with "trackingInfo" field
+    const orderPackage = order.orderPackages?.[0];
 
-    // Determine effective status
-    // If package exists and has tracking, show package status; otherwise use order status
-    let effectiveStatus = order.status;
-    let effectiveStatusText = orderStatusMap[order.status] || order.status;
-
-    if (orderPackage?.status) {
-      effectiveStatus = orderPackage.status;
-      effectiveStatusText = packageStatusMap[orderPackage.status] || orderStatusMap[orderPackage.status] || orderPackage.status;
-    }
+    // trackingInfo is a string field containing tracking number/info
+    const trackingInfo = orderPackage?.trackingInfo;
 
     // Debug log for troubleshooting
-    console.log(`📦 ikas normalizeOrder: order.status=${order.status}, package.status=${orderPackage?.status}, trackingNumber=${orderPackage?.trackingNumber}, effectiveStatus=${effectiveStatus}`);
+    console.log(`📦 ikas normalizeOrder: order.status=${order.status}, trackingInfo=${trackingInfo}`);
 
-    // Get tracking info from orderPackages
-    const trackingNumber = orderPackage?.trackingNumber;
-    const cargoCompany = orderPackage?.shippingCompany?.name || orderPackage?.cargoCompany;
+    // Use order.status for effective status (orderPackages doesn't have status field)
+    const effectiveStatus = order.status;
+    const effectiveStatusText = orderStatusMap[order.status] || order.status;
 
     return {
       id: order.id,
@@ -802,12 +761,11 @@ normalizeOrder(order) {
         address: `${order.shippingAddress.addressLine1 || ''} ${order.shippingAddress.addressLine2 || ''}`.trim(),
         postalCode: order.shippingAddress.postalCode
       } : null,
-      tracking: trackingNumber ? {
-        number: trackingNumber,
-        company: cargoCompany || 'Kargo',
-        url: orderPackage?.trackingUrl || null
+      tracking: trackingInfo ? {
+        number: trackingInfo,
+        company: 'Kargo'
       } : null,
-      fulfillmentStatus: orderPackage?.status || 'unfulfilled',
+      fulfillmentStatus: order.status === 'SHIPPED' || order.status === 'DELIVERED' ? order.status.toLowerCase() : 'unfulfilled',
       source: 'ikas'
     };
   }
