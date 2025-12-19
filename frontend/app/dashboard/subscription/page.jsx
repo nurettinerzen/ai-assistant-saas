@@ -396,11 +396,21 @@ export default function SubscriptionPage() {
             return (
               <div
                 key={plan.id}
-                className={`bg-white rounded-xl border-2 p-6 shadow-sm relative ${
-                  plan.popular ? 'border-primary-600 scale-105 z-10' : 'border-neutral-200'
+                className={`bg-white rounded-xl border-2 p-6 shadow-sm relative flex flex-col min-h-[480px] ${
+                  isCurrentPlan ? 'border-green-500 ring-2 ring-green-200' :
+                  plan.popular && !isCurrentPlan ? 'border-primary-600' : 'border-neutral-200'
                 }`}
               >
-                {plan.popular && (
+                {/* Show "Current Plan" badge if this is the current plan */}
+                {isCurrentPlan && (
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                    <Badge className="bg-green-600 text-white">
+                      {isTR ? 'Mevcut Plan' : 'Current Plan'}
+                    </Badge>
+                  </div>
+                )}
+                {/* Show "Popular" badge only if not current plan */}
+                {plan.popular && !isCurrentPlan && (
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2">
                     <Badge className="bg-primary-600 text-white">
                       {isTR ? 'Popüler' : 'Popular'}
@@ -433,7 +443,7 @@ export default function SubscriptionPage() {
                   )}
                 </div>
 
-                <ul className="space-y-2 mb-6">
+                <ul className="space-y-2 mb-6 flex-grow">
                   {plan.features.map((feature, i) => (
                     <li key={i} className="flex items-start gap-2 text-sm">
                       {feature.included ? (
@@ -448,6 +458,7 @@ export default function SubscriptionPage() {
                   ))}
                 </ul>
 
+                <div className="mt-auto">
                 {plan.id === 'ENTERPRISE' ? (
                   <Button
                     className="w-full"
@@ -475,6 +486,7 @@ export default function SubscriptionPage() {
                     )}
                   </Button>
                 )}
+                </div>
               </div>
             );
           })}

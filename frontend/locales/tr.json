@@ -38,7 +38,24 @@
     "showMore": "Daha Fazla Göster",
     "showLess": "Daha Az Göster",
     "seeAll": "Tümünü Gör",
-    "or": "veya"
+    "or": "veya",
+    "connecting": "Bağlanıyor...",
+    "disconnected": "Bağlantı Kesildi",
+    "connected": "Bağlı",
+    "create": "Oluştur",
+    "update": "Güncelle",
+    "copy": "Kopyala",
+    "select": "Seç",
+    "selectAll": "Tümünü Seç",
+    "clear": "Temizle",
+    "apply": "Uygula",
+    "test": "Test Et",
+    "retry": "Tekrar Dene",
+    "continue": "Devam Et",
+    "start": "Başlat",
+    "stop": "Durdur",
+    "pause": "Duraklat",
+    "resume": "Devam Et"
   },
   "landing": {
     "hero": {
@@ -1043,7 +1060,16 @@
       "invoice": "Fatura",
       "download": "İndir",
       "paid": "Ödendi",
-      "pending": "Beklemede"
+      "pending": "Beklemede",
+      "payment": "Ödeme",
+      "paymentFailed": "Ödeme Başarısız",
+      "paymentFailedDesc": "Ödeme işlemi başarısız oldu. Lütfen tekrar deneyin.",
+      "paymentSuccess": "Ödeme Başarılı",
+      "pleaseWait": "Lütfen bekleyin...",
+      "processingPayment": "Ödeme işleniyor...",
+      "redirecting": "Yönlendiriliyor...",
+      "subscriptionActivated": "Abonelik Aktifleştirildi",
+      "upgradeFailed": "Yükseltme başarısız oldu"
     },
     "analyticsPage": {
       "title": "Analitik",
@@ -1164,7 +1190,14 @@
       "failedToDeleteUrl": "URL silinemedi",
       "ready": "hazır",
       "processing": "işleniyor",
-      "crawling": "taranıyor"
+      "crawling": "taranıyor",
+      "saveError": "Kaydetme hatası",
+      "loadError": "Yükleme hatası",
+      "editDocument": "Belgeyi Düzenle",
+      "editFaq": "SSS Düzenle",
+      "editUrl": "URL Düzenle",
+      "questionLabel": "Soru",
+      "answerLabel": "Cevap"
     },
     "costCalculatorPage": {
       "title": "Maliyet Hesaplayıcı",
@@ -1728,7 +1761,10 @@
     "ecommerceSupport": "E-ticaret Desteği",
     "ecommerceSupportDesc": "Sipariş takibi ve müşteri desteği",
     "startFromScratch": "Sıfırdan Başla",
-    "createCustomAssistant": "Kendi yapılandırmanızla tamamen özel bir asistan oluşturun"
+    "createCustomAssistant": "Kendi yapılandırmanızla tamamen özel bir asistan oluşturun",
+    "chooseTemplate": "Şablon Seçin",
+    "startWithTemplateOrScratch": "Hazır bir şablonla başlayın veya sıfırdan oluşturun",
+    "recommendedForYou": "Sizin İçin Önerilen"
   },
   "waitlist": {
     "title": "Erken Erişim İçin Başvurun",

@@ -38,7 +38,24 @@
     "showMore": "Show More",
     "showLess": "Show Less",
     "seeAll": "See All",
-    "or": "or"
+    "or": "or",
+    "connecting": "Connecting...",
+    "disconnected": "Disconnected",
+    "connected": "Connected",
+    "create": "Create",
+    "update": "Update",
+    "copy": "Copy",
+    "select": "Select",
+    "selectAll": "Select All",
+    "clear": "Clear",
+    "apply": "Apply",
+    "test": "Test",
+    "retry": "Retry",
+    "continue": "Continue",
+    "start": "Start",
+    "stop": "Stop",
+    "pause": "Pause",
+    "resume": "Resume"
   },
   "landing": {
     "hero": {
@@ -1043,7 +1060,16 @@
       "invoice": "Invoice",
       "download": "Download",
       "paid": "Paid",
-      "pending": "Pending"
+      "pending": "Pending",
+      "payment": "Payment",
+      "paymentFailed": "Payment Failed",
+      "paymentFailedDesc": "Payment process failed. Please try again.",
+      "paymentSuccess": "Payment Successful",
+      "pleaseWait": "Please wait...",
+      "processingPayment": "Processing payment...",
+      "redirecting": "Redirecting...",
+      "subscriptionActivated": "Subscription Activated",
+      "upgradeFailed": "Upgrade failed"
     },
     "analyticsPage": {
       "title": "Analytics",
@@ -1164,7 +1190,14 @@
       "failedToDeleteUrl": "Failed to delete URL",
       "ready": "ready",
       "processing": "processing",
-      "crawling": "crawling"
+      "crawling": "crawling",
+      "saveError": "Save error",
+      "loadError": "Load error",
+      "editDocument": "Edit Document",
+      "editFaq": "Edit FAQ",
+      "editUrl": "Edit URL",
+      "questionLabel": "Question",
+      "answerLabel": "Answer"
     },
     "costCalculatorPage": {
       "title": "Cost Calculator",
@@ -1728,7 +1761,10 @@
     "ecommerceSupport": "E-commerce Support",
     "ecommerceSupportDesc": "Order tracking and customer support",
     "startFromScratch": "Start from Scratch",
-    "createCustomAssistant": "Create a fully custom assistant with your own configuration"
+    "createCustomAssistant": "Create a fully custom assistant with your own configuration",
+    "chooseTemplate": "Choose Template",
+    "startWithTemplateOrScratch": "Start with a ready template or create from scratch",
+    "recommendedForYou": "Recommended for You"
   },
   "waitlist": {
     "title": "Apply for Early Access",

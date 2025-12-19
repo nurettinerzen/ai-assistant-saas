@@ -1,39 +1,36 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { translations } from '@/lib/translations';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+
+// Import locale JSON files
+import enLocale from '@/locales/en.json';
+import trLocale from '@/locales/tr.json';
 
 const LanguageContext = createContext();
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-// Cache
-const cache = {};
-
-const getCache = (text, locale) => {
-  const key = `${locale}:${text}`;
-  if (cache[key]) return cache[key];
-  if (typeof window !== 'undefined') {
-    try {
-      const stored = localStorage.getItem(`tr_${key}`);
-      if (stored) { cache[key] = stored; return stored; }
-    } catch(e) {}
-  }
-  return null;
+// Locale data map
+const locales = {
+  en: enLocale,
+  tr: trLocale
 };
 
-const setCache = (text, locale, translation) => {
-  const key = `${locale}:${text}`;
-  cache[key] = translation;
-  if (typeof window !== 'undefined') {
-    try { localStorage.setItem(`tr_${key}`, translation); } catch(e) {}
+// Helper function to get nested value from object using dot notation
+const getNestedValue = (obj, path) => {
+  if (!path || !obj) return undefined;
+
+  const keys = path.split('.');
+  let current = obj;
+
+  for (const key of keys) {
+    if (current === undefined || current === null) return undefined;
+    current = current[key];
   }
+
+  return current;
 };
 
 export function LanguageProvider({ children }) {
   const [locale, setLocale] = useState('en');
-  const [, forceUpdate] = useState(0);
-  const queue = useRef([]);
-  const timer = useRef(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -42,37 +39,6 @@ export function LanguageProvider({ children }) {
     }
   }, []);
 
-  const processQueue = useCallback(async () => {
-    if (queue.current.length === 0 || locale === 'en') return;
-
-    const texts = [...new Set(queue.current)];
-    queue.current = [];
-
-    const uncached = texts.filter(t => !getCache(t, locale));
-    if (uncached.length === 0) return;
-
-    try {
-      const response = await fetch(`${API_URL}/api/translate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ texts: uncached, targetLang: locale })
-      });
-
-      const data = await response.json();
-
-      if (data.translations) {
-        uncached.forEach((text, i) => {
-          if (data.translations[i]) {
-            setCache(text, locale, data.translations[i]);
-          }
-        });
-        forceUpdate(n => n + 1);
-      }
-    } catch (e) {
-      console.error('Translation error:', e);
-    }
-  }, [locale]);
-
   const changeLocale = (newLocale) => {
     setLocale(newLocale);
     if (typeof window !== 'undefined') {
@@ -80,46 +46,40 @@ export function LanguageProvider({ children }) {
     }
   };
 
-  const tr = useCallback((text) => {
-    if (!text || locale === 'en') return text;
-
-    const cached = getCache(text, locale);
-    if (cached) return cached;
-
-    // Add to queue
-    if (!queue.current.includes(text)) {
-      queue.current.push(text);
-      if (timer.current) clearTimeout(timer.current);
-      timer.current = setTimeout(processQueue, 500);
-    }
-
-    return text;
-  }, [locale, processQueue]);
-
+  // Translation function - looks up key in locale JSON files
   const t = useCallback((key) => {
     if (!key) return '';
 
-    // Look up the key in translations object
-    const englishText = translations[key];
+    // Get the current locale data
+    const localeData = locales[locale] || locales['en'];
 
-    // If key exists in translations, use it
-    if (englishText) {
-      return tr(englishText);
+    // Try to get the value from current locale
+    let value = getNestedValue(localeData, key);
+
+    // If not found in current locale, fallback to English
+    if (value === undefined && locale !== 'en') {
+      value = getNestedValue(locales['en'], key);
     }
 
-    // Fallback: handle dotted keys (e.g., "dashboard.navBuild")
-    // This is for backward compatibility - convert to readable text
-    if (key.includes('.')) {
-      const last = key.split('.').pop();
-      const readable = last.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).trim();
-      console.warn(`Translation key not found: ${key}, using fallback: ${readable}`);
-      return tr(readable);
+    // If still not found, return the key itself (for debugging)
+    if (value === undefined) {
+      // Only warn in development
+      if (process.env.NODE_ENV === 'development') {
+        console.warn(`Translation key not found: ${key}`);
+      }
+      // Return the last part of the key as readable text
+      const lastPart = key.split('.').pop();
+      return lastPart.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).trim();
     }
 
-    // Last resort: return the key itself
-    console.warn(`Translation key not found: ${key}`);
-    return tr(key);
-  }, [tr]);
+    return value;
+  }, [locale]);
+
+  // Legacy tr function for dynamic translations (API-based)
+  // Kept for backward compatibility but now just returns the text
+  const tr = useCallback((text) => {
+    return text;
+  }, []);
 
   return (
     <LanguageContext.Provider value={{ locale, changeLocale, tr, t }}>
