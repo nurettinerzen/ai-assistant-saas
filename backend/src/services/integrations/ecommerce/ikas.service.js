@@ -204,6 +204,8 @@ class IkasService {
     try {
       console.log(`🔍 ikas: Searching order by number: ${orderNumber}`);
 
+
+
       // Note: ikas Order type doesn't have "shipments" field directly
       // Kargo bilgisi "orderPackages" field'ından alınır
       const query = `
@@ -234,7 +236,11 @@ class IkasService {
               }
               orderPackages {
                 id
-                trackingInfo
+                trackingInfo {
+                    cargoCompany
+                  trackingNumber
+                  trackingLink
+                }
               }
               orderLineItems {
                 id
@@ -334,7 +340,11 @@ class IkasService {
                 }
                 orderPackages {
                   id
-                  trackingInfo
+                  trackingInfo {
+                    cargoCompany
+                  trackingNumber
+                  trackingLink
+                }
                 }
               }
             }
@@ -391,7 +401,11 @@ class IkasService {
               }
               orderPackages {
                 id
-                trackingInfo
+                trackingInfo {
+                    cargoCompany
+                  trackingNumber
+                  trackingLink
+                }
               }
             }
           }
@@ -477,7 +491,11 @@ class IkasService {
               }
               orderPackages {
                 id
-                trackingInfo
+                trackingInfo {
+                    cargoCompany
+                  trackingNumber
+                  trackingLink
+                }
               }
             }
           }
@@ -734,7 +752,7 @@ normalizeOrder(order) {
     const trackingInfo = orderPackage?.trackingInfo;
 
     // Debug log for troubleshooting
-    console.log(`📦 ikas normalizeOrder: order.status=${order.status}, trackingInfo=${trackingInfo}`);
+    console.log(`📦 ikas normalizeOrder: order.status=${order.status}, trackingInfo=${JSON.stringify(trackingInfo)}`);
 
     // Use order.status for effective status (orderPackages doesn't have status field)
     const effectiveStatus = order.status;
@@ -762,8 +780,8 @@ normalizeOrder(order) {
         postalCode: order.shippingAddress.postalCode
       } : null,
       tracking: trackingInfo ? {
-        number: trackingInfo,
-        company: 'Kargo'
+        number: trackingInfo?.trackingNumber || trackingInfo,
+        company: trackingInfo?.cargoCompany || 'Kargo'
       } : null,
       fulfillmentStatus: order.status === 'SHIPPED' || order.status === 'DELIVERED' ? order.status.toLowerCase() : 'unfulfilled',
       source: 'ikas'
