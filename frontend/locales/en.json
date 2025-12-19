@@ -974,7 +974,12 @@
       "upgradeToGetPhone": "Upgrade Your Plan",
       "phoneNumbersLockedDesc": "Phone number feature is available on BASIC and higher plans.",
       "unlimited": "Unlimited",
-      "phoneLimitReached": "Phone number limit reached. Upgrade your plan to add more numbers."
+      "phoneLimitReached": "Phone number limit reached. Upgrade your plan to add more numbers.",
+      "assistant": "Assistant",
+      "status": "Status",
+      "planFeatures": "Plan Features",
+      "numbersUsed": "numbers used",
+      "phoneNumber": "phone number"
     },
     "subscriptionPage": {
       "title": "Subscription",

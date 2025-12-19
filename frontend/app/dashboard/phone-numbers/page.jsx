@@ -18,12 +18,12 @@ import { formatPhone, formatDate } from '@/lib/utils';
 import { useLanguage } from '@/contexts/LanguageContext';
 import Link from 'next/link';
 
-// Plan limitleri
+// Plan limitleri - Backend plan isimlerine uygun
 const PLAN_LIMITS = {
   FREE: { phoneNumbers: 0 },
-  BASIC: { phoneNumbers: 1 },
+  STARTER: { phoneNumbers: 1 },
   PROFESSIONAL: { phoneNumbers: 3 },
-  ENTERPRISE: { phoneNumbers: -1 } // unlimited
+  ENTERPRISE: { phoneNumbers: 10 } // Enterprise has 10 in backend config
 };
 
 export default function PhoneNumbersPage() {
@@ -44,9 +44,10 @@ export default function PhoneNumbersPage() {
     const loadData = async () => {
       setLoading(true);
       try {
-        // Load subscription
+        // Load subscription - API returns subscription directly, not wrapped
         const subResponse = await apiClient.subscription.getCurrent();
-        const sub = subResponse.data.subscription;
+        const sub = subResponse.data;
+        console.log('Phone page - subscription:', sub);
         setSubscription(sub);
         if (sub?.plan === 'FREE') {
           setIsLocked(true);
@@ -258,10 +259,6 @@ export default function PhoneNumbersPage() {
                   <span className="text-neutral-600">{t('dashboard.phoneNumbersPage.status')}</span>
                   <Badge className="bg-green-100 text-green-800">{t('dashboard.phoneNumbersPage.active')}</Badge>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-neutral-600">{t('dashboard.phoneNumbersPage.monthlyCost')}</span>
-                  <span className="font-medium text-neutral-900">$1.00</span>
-                </div>
               </div>
 
               <div className="flex gap-2">
@@ -294,16 +291,6 @@ export default function PhoneNumbersPage() {
             actionLabel={t('dashboard.phoneNumbersPage.getPhoneNumber')}
             onAction={() => setShowProvisionModal(true)}
           />
-        </div>
-      )}
-
-      {/* Info banner */}
-      {phoneNumbers.length > 0 && (
-        <div className="bg-primary-50 border border-primary-200 rounded-xl p-6">
-          <h3 className="text-sm font-semibold text-primary-900 mb-2">{t('dashboard.phoneNumbersPage.billingInformationTitle')}</h3>
-          <p className="text-sm text-primary-700">
-            {t('dashboard.phoneNumbersPage.phoneNumberBillingDesc')}
-          </p>
         </div>
       )}
 

@@ -974,7 +974,12 @@
       "upgradeToGetPhone": "Planınızı Yükseltin",
       "phoneNumbersLockedDesc": "Telefon numarası özelliği BASIC ve üzeri planlarda kullanılabilir.",
       "unlimited": "Sınırsız",
-      "phoneLimitReached": "Telefon numarası limitine ulaşıldı. Daha fazla numara eklemek için planınızı yükseltin."
+      "phoneLimitReached": "Telefon numarası limitine ulaşıldı. Daha fazla numara eklemek için planınızı yükseltin.",
+      "assistant": "Asistan",
+      "status": "Durum",
+      "planFeatures": "Plan Özellikleri",
+      "numbersUsed": "numara kullanılıyor",
+      "phoneNumber": "telefon numarası"
     },
     "subscriptionPage": {
       "title": "Abonelik",
