@@ -52,6 +52,8 @@ import teamRoutes from './routes/team.js';
 import waitlistRoutes from './routes/waitlist.js';
 // Onboarding
 import onboardingRoutes from './routes/onboarding.js';
+// Credits
+import creditsRoutes from './routes/credits.js';
 
 
 // Import jobs
@@ -129,6 +131,7 @@ app.use('/api/batch-call', batchCallRoutes);
 app.use('/api/team', teamRoutes);
 app.use('/api/waitlist', waitlistRoutes);
 app.use('/api/onboarding', onboardingRoutes);
+app.use('/api/credits', creditsRoutes);
 
 
 // Error handling middleware

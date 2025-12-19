@@ -1,6 +1,7 @@
 /**
  * Subscription Page
  * View current plan, usage, and upgrade options
+ * Updated with Credit System support
  */
 
 'use client';
@@ -9,13 +10,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Check, CreditCard, TrendingUp, X, Loader2 } from 'lucide-react';
+import { Check, CreditCard, TrendingUp, X, Loader2, AlertCircle } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast } from '@/lib/toast';
 import { formatDate } from '@/lib/utils';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePermissions } from '@/hooks/usePermissions';
-import { AlertCircle } from 'lucide-react';
+import CreditBalance from '@/components/CreditBalance';
+import BuyCreditModal from '@/components/BuyCreditModal';
 
 // Plan configurations - features will be loaded from translations
 // Updated prices: Starter ₺899, Professional ₺2.599, Enterprise ₺6.799
@@ -57,6 +59,9 @@ export default function SubscriptionPage() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [checkoutFormHtml, setCheckoutFormHtml] = useState('');
   const checkoutContainerRef = useRef(null);
+  // Credit modal state
+  const [creditModalOpen, setCreditModalOpen] = useState(false);
+  const [creditRefreshTrigger, setCreditRefreshTrigger] = useState(0);
   const [userCountry, setUserCountry] = useState(() => {
     // Initial detection from browser locale
     if (typeof navigator !== 'undefined') {
@@ -234,7 +239,7 @@ export default function SubscriptionPage() {
 
       {/* Current plan & usage */}
       {!loading && subscription && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Current plan */}
           <div className="bg-white rounded-xl border border-neutral-200 p-6 shadow-sm">
             <div className="flex items-center justify-between mb-4">
@@ -279,29 +284,12 @@ export default function SubscriptionPage() {
             </div>
           </div>
 
-          {/* Usage */}
-          <div className="bg-white rounded-xl border border-neutral-200 p-6 shadow-sm">
-            <div className="flex items-center gap-3 mb-4">
-              <TrendingUp className="h-5 w-5 text-primary-600" />
-              <h2 className="text-lg font-semibold text-neutral-900">{t('dashboard.subscriptionPage.creditUsage')}</h2>
-            </div>
-            <div className="space-y-3">
-              <div className="flex justify-between text-sm">
-                <span className="text-neutral-600">{t('dashboard.subscriptionPage.usedThisMonth')}</span>
-                <span className="font-semibold text-neutral-900">
-                  {subscription.creditsUsed || 0} / {subscription.creditsLimit || 0} {t('dashboard.subscriptionPage.credits')}
-                </span>
-              </div>
-              <Progress value={usagePercent} className="h-2" />
-              <p className="text-xs text-neutral-500">
-                {usagePercent < 80
-                  ? `${Math.round(100 - usagePercent)}% ${t('dashboard.subscriptionPage.remaining')}`
-                  : usagePercent < 100
-                  ? t('dashboard.subscriptionPage.runningLow')
-                  : t('dashboard.subscriptionPage.limitReached')}
-              </p>
-            </div>
-            {/* Kredi Ekle butonu kaldırıldı - henüz aktif değil */}
+          {/* Credit Balance - YENİ KREDİ SİSTEMİ */}
+          <div className="lg:col-span-2">
+            <CreditBalance
+              onBuyCredit={() => setCreditModalOpen(true)}
+              refreshTrigger={creditRefreshTrigger}
+            />
           </div>
         </div>
       )}
@@ -410,6 +398,18 @@ export default function SubscriptionPage() {
           </div>
         </div>
       )}
+
+      {/* Buy Credit Modal - YENİ KREDİ SİSTEMİ */}
+      <BuyCreditModal
+        isOpen={creditModalOpen}
+        onClose={() => setCreditModalOpen(false)}
+        onSuccess={() => {
+          // Refresh credit balance
+          setCreditRefreshTrigger(prev => prev + 1);
+          // Also reload subscription data
+          loadData();
+        }}
+      />
     </div>
   );
 }

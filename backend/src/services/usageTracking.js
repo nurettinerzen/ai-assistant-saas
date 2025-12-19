@@ -1,9 +1,10 @@
 // ============================================================================
-// USAGE TRACKING SERVICE
+// USAGE TRACKING SERVICE - KREDİ SİSTEMİ İLE GÜNCELLENMİŞ
 // ============================================================================
 // FILE: backend/src/services/usageTracking.js
 //
 // Handles tracking and updating subscription usage (minutes, calls, etc.)
+// Now supports: Package minutes -> Credit minutes -> Overage
 // ============================================================================
 
 import { PrismaClient } from '@prisma/client';
@@ -12,8 +13,9 @@ import emailService from './emailService.js';
 const prisma = new PrismaClient();
 
 /**
- * Track call usage - increment minutes and calls
- * @param {Number} businessId 
+ * Track call usage with credit system
+ * Priority: 1. Package minutes -> 2. Credit minutes -> 3. Overage
+ * @param {Number} businessId
  * @param {Number} durationInSeconds - Call duration in seconds
  * @param {Object} callData - Additional call data (callId, callerId, transcript, etc.)
  */
@@ -22,7 +24,7 @@ export const trackCallUsage = async (businessId, durationInSeconds, callData = {
     console.log(`📊 Tracking call usage for business ${businessId}: ${durationInSeconds}s`);
 
     // Convert seconds to minutes (rounded up)
-    const minutesUsed = Math.ceil(durationInSeconds / 60);
+    const totalMinutes = Math.ceil(durationInSeconds / 60);
 
     // Get current subscription
     const subscription = await prisma.subscription.findUnique({
@@ -51,78 +53,203 @@ export const trackCallUsage = async (businessId, durationInSeconds, callData = {
       return null;
     }
 
-    const plan = subscription.plan;
-    const limits = {
-      FREE: { minutes: 0, calls: 0 },
-      STARTER: { minutes: 300, calls: 50 },
-      PROFESSIONAL: { minutes: 1500, calls: -1 },
-      ENTERPRISE: { minutes: -1, calls: -1 }
-    };
+    // Dakika düşme işlemi - KREDİ SİSTEMİ
+    const result = await deductMinutesWithCredits(businessId, subscription, totalMinutes, callData.callId);
 
-    const planLimits = limits[plan];
+    console.log(`✅ Updated usage: Package=${result.fromPackage}, Credit=${result.fromCredit}, Overage=${result.fromOverage}`);
 
-    // Update subscription usage
-    const updated = await prisma.subscription.update({
+    // Update calls count
+    await prisma.subscription.update({
       where: { businessId },
       data: {
-        minutesUsed: {
-          increment: minutesUsed
-        },
-        callsThisMonth: {
-          increment: 1
-        }
+        callsThisMonth: { increment: 1 }
       }
     });
 
-    console.log(`✅ Updated usage: ${updated.minutesUsed} minutes, ${updated.callsThisMonth} calls`);
-
-    // Check if approaching limits (90% threshold)
-    const minutesPercentage = planLimits.minutes > 0 
-      ? (updated.minutesUsed / planLimits.minutes) * 100 
-      : 0;
-    
-    const callsPercentage = planLimits.calls > 0 
-      ? (updated.callsThisMonth / planLimits.calls) * 100 
-      : 0;
-
-    // Send warning emails at 90% usage
-    if (minutesPercentage >= 90 && minutesPercentage < 100) {
-      await sendLimitWarning(businessId, 'minutes', {
-        used: updated.minutesUsed,
-        limit: planLimits.minutes,
-        percentage: Math.round(minutesPercentage)
-      });
-    }
-
-    if (callsPercentage >= 90 && callsPercentage < 100) {
-      await sendLimitWarning(businessId, 'calls', {
-        used: updated.callsThisMonth,
-        limit: planLimits.calls,
-        percentage: Math.round(callsPercentage)
-      });
-    }
-
-    // If limits exceeded, send immediate notification
-    if (planLimits.minutes > 0 && updated.minutesUsed >= planLimits.minutes) {
-      await sendLimitReached(businessId, 'minutes', {
-        used: updated.minutesUsed,
-        limit: planLimits.minutes
-      });
-    }
-
-    if (planLimits.calls > 0 && updated.callsThisMonth >= planLimits.calls) {
-      await sendLimitReached(businessId, 'calls', {
-        used: updated.callsThisMonth,
-        limit: planLimits.calls
-      });
-    }
-
-    return updated;
+    return result;
   } catch (error) {
     console.error('❌ Error tracking call usage:', error);
     throw error;
   }
 };
+
+/**
+ * Deduct minutes using credit system priority
+ * 1. Package minutes (paket dakikaları)
+ * 2. Credit minutes (satın alınan krediler)
+ * 3. Overage (aşım dakikaları)
+ *
+ * @param {Number} businessId
+ * @param {Object} subscription - Current subscription
+ * @param {Number} minutes - Minutes to deduct
+ * @param {String} vapiCallId - VAPI call ID (optional)
+ */
+async function deductMinutesWithCredits(businessId, subscription, minutes, vapiCallId = null) {
+  let remainingMinutes = minutes;
+  let fromPackage = 0;
+  let fromCredit = 0;
+  let fromOverage = 0;
+
+  // 1. Önce paketten düş
+  const packageRemaining = subscription.minutesLimit - subscription.minutesUsed;
+  if (packageRemaining > 0) {
+    fromPackage = Math.min(remainingMinutes, packageRemaining);
+    remainingMinutes -= fromPackage;
+  }
+
+  // 2. Sonra krediden düş
+  if (remainingMinutes > 0) {
+    const creditRemaining = subscription.creditMinutes - subscription.creditMinutesUsed;
+    if (creditRemaining > 0) {
+      fromCredit = Math.min(remainingMinutes, creditRemaining);
+      remainingMinutes -= fromCredit;
+    }
+  }
+
+  // 3. Kalan aşım olarak kaydet
+  if (remainingMinutes > 0) {
+    fromOverage = remainingMinutes;
+  }
+
+  // DB güncelle
+  const updatedSubscription = await prisma.subscription.update({
+    where: { id: subscription.id },
+    data: {
+      minutesUsed: { increment: fromPackage },
+      creditMinutesUsed: { increment: fromCredit },
+      overageMinutes: { increment: fromOverage }
+    }
+  });
+
+  // Usage log kaydet
+  await prisma.usageLog.create({
+    data: {
+      businessId,
+      type: 'CALL',
+      minutes,
+      source: fromOverage > 0 ? 'OVERAGE' : (fromCredit > 0 ? 'CREDIT' : 'PACKAGE'),
+      vapiCallId,
+      metadata: { fromPackage, fromCredit, fromOverage }
+    }
+  });
+
+  console.log(`📊 Dakika düşüldü: Paket=${fromPackage}, Kredi=${fromCredit}, Aşım=${fromOverage}`);
+
+  // Uyarı kontrolü
+  await checkUsageWarnings(businessId, updatedSubscription);
+
+  // Aşım limit kontrolü
+  if (updatedSubscription.overageMinutes >= updatedSubscription.overageLimit && !updatedSubscription.overageLimitReached) {
+    await prisma.subscription.update({
+      where: { id: subscription.id },
+      data: { overageLimitReached: true }
+    });
+    console.log('⚠️ Aşım limiti aşıldı! Telefon devre dışı.');
+
+    // Email gönder
+    const ownerEmail = subscription.business?.users?.[0]?.email;
+    if (ownerEmail) {
+      try {
+        await emailService.sendOverageLimitReachedEmail(
+          ownerEmail,
+          subscription.business.name,
+          updatedSubscription.overageMinutes,
+          updatedSubscription.overageLimit
+        );
+      } catch (emailError) {
+        console.error('Failed to send overage limit email:', emailError);
+      }
+    }
+  }
+
+  return {
+    totalDeducted: minutes,
+    fromPackage,
+    fromCredit,
+    fromOverage,
+    subscription: updatedSubscription
+  };
+}
+
+/**
+ * Check usage warnings (80% threshold)
+ * @param {Number} businessId
+ * @param {Object} subscription
+ */
+async function checkUsageWarnings(businessId, subscription) {
+  const packageUsagePercent = subscription.minutesLimit > 0
+    ? (subscription.minutesUsed / subscription.minutesLimit) * 100
+    : 0;
+
+  const creditUsagePercent = subscription.creditMinutes > 0
+    ? (subscription.creditMinutesUsed / subscription.creditMinutes) * 100
+    : 0;
+
+  // Paket %80 uyarısı
+  if (packageUsagePercent >= 80 && !subscription.packageWarningAt80) {
+    await prisma.subscription.update({
+      where: { id: subscription.id },
+      data: { packageWarningAt80: true }
+    });
+    console.log('⚠️ Paket %80 uyarısı gönderilecek');
+
+    // Get business for email
+    const business = await prisma.business.findUnique({
+      where: { id: businessId },
+      include: {
+        users: {
+          where: { role: 'OWNER' },
+          take: 1,
+          select: { email: true }
+        }
+      }
+    });
+
+    if (business?.users?.[0]?.email) {
+      try {
+        await sendLimitWarning(businessId, 'package_minutes', {
+          used: subscription.minutesUsed,
+          limit: subscription.minutesLimit,
+          percentage: Math.round(packageUsagePercent)
+        });
+      } catch (err) {
+        console.error('Failed to send package warning email:', err);
+      }
+    }
+  }
+
+  // Kredi %80 uyarısı
+  if (creditUsagePercent >= 80 && !subscription.creditWarningAt80) {
+    await prisma.subscription.update({
+      where: { id: subscription.id },
+      data: { creditWarningAt80: true }
+    });
+    console.log('⚠️ Kredi %80 uyarısı gönderilecek');
+
+    const business = await prisma.business.findUnique({
+      where: { id: businessId },
+      include: {
+        users: {
+          where: { role: 'OWNER' },
+          take: 1,
+          select: { email: true }
+        }
+      }
+    });
+
+    if (business?.users?.[0]?.email) {
+      try {
+        await sendLimitWarning(businessId, 'credit_minutes', {
+          used: subscription.creditMinutesUsed,
+          limit: subscription.creditMinutes,
+          percentage: Math.round(creditUsagePercent)
+        });
+      } catch (err) {
+        console.error('Failed to send credit warning email:', err);
+      }
+    }
+  }
+}
 
 /**
  * Check if a specific limit has been reached
@@ -201,28 +328,21 @@ export const checkLimit = async (businessId, limitType) => {
 };
 
 /**
- * Reset monthly usage counters
+ * Reset monthly usage counters - KREDİ SİSTEMİ GÜNCELLENMİŞ
  * This should be called via cron job on the 1st of each month
+ *
+ * NOT: creditMinutes ve creditMinutesUsed SIFIRLANMAZ (lifetime krediler)
  */
 export const resetMonthlyUsage = async () => {
   try {
     console.log('🔄 Resetting monthly usage for all subscriptions...');
 
-    const result = await prisma.subscription.updateMany({
-      where: {
-        status: 'ACTIVE'
-      },
-      data: {
-        minutesUsed: 0,
-        callsThisMonth: 0
-      }
-    });
-
-    console.log(`✅ Reset usage for ${result.count} subscriptions`);
-
-    // Send "New month, fresh limits!" email to all active subscribers
+    // Get all subscriptions that need processing (period ended)
     const subscriptions = await prisma.subscription.findMany({
-      where: { status: 'ACTIVE' },
+      where: {
+        status: 'ACTIVE',
+        currentPeriodEnd: { lte: new Date() }
+      },
       include: {
         business: {
           select: {
@@ -237,21 +357,82 @@ export const resetMonthlyUsage = async () => {
       }
     });
 
-    for (const sub of subscriptions) {
-      if (sub.business.users[0]?.email) {
-        try {
-          await emailService.sendMonthlyResetEmail(
-            sub.business.users[0].email,
-            sub.business.name,
-            sub.plan
-          );
-        } catch (emailError) {
-          console.error(`Failed to send reset email to ${sub.business.users[0].email}:`, emailError);
+    let processedCount = 0;
+
+    for (const subscription of subscriptions) {
+      try {
+        // 1. Aşım faturası oluştur (eğer aşım varsa)
+        if (subscription.overageMinutes > 0) {
+          const overageAmount = subscription.overageMinutes * subscription.overageRate;
+          console.log(`💰 Aşım faturası: Business ${subscription.businessId}, ${subscription.overageMinutes} dk, ${overageAmount} TL`);
+
+          // TODO: iyzico ile çek
+          // await iyzicoService.chargeCard({
+          //   cardToken: subscription.iyzicoCardToken,
+          //   amount: overageAmount,
+          //   description: `${subscription.overageMinutes} dakika aşım ücreti`
+          // });
+
+          // Usage log kaydet
+          await prisma.usageLog.create({
+            data: {
+              businessId: subscription.businessId,
+              type: 'OVERAGE_CHARGE',
+              minutes: subscription.overageMinutes,
+              source: 'BILLING',
+              metadata: {
+                amount: overageAmount,
+                rate: subscription.overageRate,
+                period: subscription.currentPeriodEnd
+              }
+            }
+          });
         }
+
+        // 2. Yeni dönem tarihlerini hesapla
+        const now = new Date();
+        const nextMonth = new Date(now);
+        nextMonth.setMonth(nextMonth.getMonth() + 1);
+
+        // 3. Aylık değerleri sıfırla
+        // NOT: creditMinutes ve creditMinutesUsed SIFIRLANMAZ!
+        await prisma.subscription.update({
+          where: { id: subscription.id },
+          data: {
+            minutesUsed: 0,                    // Paket dakikaları sıfırla
+            callsThisMonth: 0,                 // Çağrı sayısı sıfırla
+            overageMinutes: 0,                 // Aşım dakikaları sıfırla
+            packageWarningAt80: false,         // Paket uyarısını sıfırla
+            creditWarningAt80: false,          // Kredi uyarısını sıfırla (yeni ay için)
+            overageLimitReached: false,        // Aşım limitini sıfırla
+            currentPeriodStart: now,
+            currentPeriodEnd: nextMonth
+          }
+        });
+
+        processedCount++;
+        console.log(`✅ Business ${subscription.businessId} sıfırlandı`);
+
+        // 4. Email gönder
+        const ownerEmail = subscription.business?.users?.[0]?.email;
+        if (ownerEmail) {
+          try {
+            await emailService.sendMonthlyResetEmail(
+              ownerEmail,
+              subscription.business.name,
+              subscription.plan
+            );
+          } catch (emailError) {
+            console.error(`Failed to send reset email to ${ownerEmail}:`, emailError);
+          }
+        }
+      } catch (subError) {
+        console.error(`❌ Business ${subscription.businessId} sıfırlama hatası:`, subError);
       }
     }
 
-    return result;
+    console.log(`✅ Reset usage for ${processedCount} subscriptions`);
+    return { count: processedCount };
   } catch (error) {
     console.error('❌ Error resetting monthly usage:', error);
     throw error;

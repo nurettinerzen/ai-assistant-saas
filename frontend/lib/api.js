@@ -135,6 +135,17 @@ export const apiClient = {
     createPortalSession: () => api.post('/api/subscription/create-portal-session'),
   },
 
+  // Credits - Kredi Sistemi
+  credits: {
+    getBalance: () => api.get('/api/credits/balance'),
+    getPricing: () => api.get('/api/credits/pricing'),
+    calculate: (minutes) => api.post('/api/credits/calculate', { minutes }),
+    purchase: (minutes) => api.post('/api/credits/purchase', { minutes }),
+    getHistory: (params) => api.get('/api/credits/history', { params }),
+    getUsageLogs: (params) => api.get('/api/credits/usage-logs', { params }),
+    canMakeCall: () => api.get('/api/credits/can-make-call'),
+  },
+
   // Integrations
   integrations: {
     getAll: () => api.get('/api/integrations'),

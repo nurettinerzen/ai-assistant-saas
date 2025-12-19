@@ -98,6 +98,8 @@ model Business {
   emailDrafts             EmailDraft[]
   webhookConfig           WebhookConfig?
   invitations             Invitation[]
+  creditPurchases         CreditPurchase[]
+  usageLogs               UsageLog[]
 
   @@index([name])
 }
@@ -179,6 +181,21 @@ model Subscription {
   callsLimit              Int                @default(0)
   assistantsLimit         Int                @default(0)
   phoneNumbersLimit       Int                @default(0)
+
+  // Kredi sistemi (YENİ)
+  creditMinutes           Int                @default(0)    // Satın alınan toplam kredi dakikaları
+  creditMinutesUsed       Int                @default(0)    // Krediden kullanılan dakikalar
+
+  // Aşım sistemi (YENİ)
+  overageMinutes          Int                @default(0)    // Bu ay aşım dakikaları
+  overageRate             Float              @default(12)   // TL/dk aşım ücreti
+  overageLimit            Int                @default(50)   // Max aşım limiti (dakika)
+
+  // Uyarı durumları (YENİ)
+  packageWarningAt80      Boolean            @default(false)  // Paket %80 uyarısı gönderildi mi
+  creditWarningAt80       Boolean            @default(false)  // Kredi %80 uyarısı gönderildi mi
+  overageLimitReached     Boolean            @default(false)  // Aşım limiti aşıldı mı
+
   createdAt               DateTime           @default(now())
   updatedAt               DateTime           @updatedAt
   business                Business           @relation(fields: [businessId], references: [id])
@@ -957,4 +974,42 @@ model WaitlistEntry {
 
   @@index([email])
   @@index([status])
+}
+
+// ============================================================================
+// KREDİ SİSTEMİ - YENİ MODELLER
+// ============================================================================
+
+model CreditPurchase {
+  id            String   @id @default(cuid())
+  businessId    Int
+  minutes       Int                          // Satın alınan dakika miktarı
+  amount        Float                        // Ödenen tutar (TL)
+  unitPrice     Float                        // Birim fiyat (TL/dk)
+  paymentId     String?                      // iyzico payment ID
+  status        String   @default("PENDING") // PENDING, COMPLETED, FAILED
+  createdAt     DateTime @default(now())
+
+  business      Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model UsageLog {
+  id            String   @id @default(cuid())
+  businessId    Int
+  type          String                       // CALL, WHATSAPP, CHAT, EMAIL
+  minutes       Float                        // Dakika (çağrı için) veya 0 (diğerleri)
+  source        String                       // PACKAGE, CREDIT, OVERAGE
+  vapiCallId    String?                      // VAPI call ID (eğer çağrıysa)
+  metadata      Json?                        // Ek bilgiler (fromPackage, fromCredit, fromOverage)
+  createdAt     DateTime @default(now())
+
+  business      Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([type])
+  @@index([createdAt])
 }
