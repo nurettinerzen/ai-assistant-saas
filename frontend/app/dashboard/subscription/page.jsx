@@ -19,33 +19,98 @@ import { usePermissions } from '@/hooks/usePermissions';
 import CreditBalance from '@/components/CreditBalance';
 import BuyCreditModal from '@/components/BuyCreditModal';
 
-// Plan configurations - features will be loaded from translations
-// Updated prices: Starter ₺899, Professional ₺2.599, Enterprise ₺6.799
+// Plan configurations - Updated with new pricing and features
+// STARTER: ₺299, BASIC: ₺999, PROFESSIONAL: ₺3,499, ENTERPRISE: Custom
 const PLANS = [
   {
-    id: 'starter',
-    name: 'Starter',
-    priceUSD: 27,
-    priceTRY: 899,
-    featureKeys: ['feature1', 'feature2', 'feature3', 'feature4', 'feature5', 'feature6'],
-    notIncludedKeys: [],
+    id: 'STARTER',
+    name: 'Başlangıç',
+    nameEN: 'Starter',
+    priceTRY: 299,
+    minutes: 50,
+    assistants: 1,
+    phoneNumbers: 1,
+    overageRate: 12,
+    features: [
+      { key: 'minutes', included: true },
+      { key: 'assistants', included: true },
+      { key: 'phoneNumbers', included: true },
+      { key: 'phone', included: true },
+      { key: 'analytics', included: true },
+      { key: 'whatsapp', included: false },
+      { key: 'chatWidget', included: false },
+      { key: 'email', included: false },
+      { key: 'ecommerce', included: false },
+      { key: 'calendar', included: false },
+    ],
   },
   {
-    id: 'professional',
-    name: 'Professional',
-    priceUSD: 77,
-    priceTRY: 2599,
+    id: 'BASIC',
+    name: 'Temel',
+    nameEN: 'Basic',
+    priceTRY: 999,
+    minutes: 150,
+    assistants: 3,
+    phoneNumbers: 2,
+    overageRate: 11,
     popular: true,
-    featureKeys: ['feature1', 'feature2', 'feature3', 'feature4', 'feature5', 'feature6', 'feature7'],
-    notIncludedKeys: [],
+    features: [
+      { key: 'minutes', included: true },
+      { key: 'assistants', included: true },
+      { key: 'phoneNumbers', included: true },
+      { key: 'phone', included: true },
+      { key: 'whatsapp', included: true },
+      { key: 'chatWidget', included: true },
+      { key: 'ecommerce', included: true },
+      { key: 'calendar', included: true },
+      { key: 'email', included: false },
+      { key: 'prioritySupport', included: false },
+    ],
   },
   {
-    id: 'enterprise',
-    name: 'Enterprise',
-    priceUSD: 199,
-    priceTRY: 6799,
-    featureKeys: ['feature1', 'feature2', 'feature3', 'feature4', 'feature5', 'feature6', 'feature7'],
-    notIncludedKeys: [],
+    id: 'PROFESSIONAL',
+    name: 'Pro',
+    nameEN: 'Professional',
+    priceTRY: 3499,
+    minutes: 500,
+    assistants: 10,
+    phoneNumbers: 5,
+    overageRate: 10,
+    features: [
+      { key: 'minutes', included: true },
+      { key: 'assistants', included: true },
+      { key: 'phoneNumbers', included: true },
+      { key: 'phone', included: true },
+      { key: 'whatsapp', included: true },
+      { key: 'chatWidget', included: true },
+      { key: 'email', included: true },
+      { key: 'ecommerce', included: true },
+      { key: 'calendar', included: true },
+      { key: 'prioritySupport', included: true },
+      { key: 'apiAccess', included: true },
+    ],
+  },
+  {
+    id: 'ENTERPRISE',
+    name: 'Kurumsal',
+    nameEN: 'Enterprise',
+    priceTRY: null,
+    minutes: null,
+    assistants: null,
+    phoneNumbers: null,
+    overageRate: null,
+    features: [
+      { key: 'customMinutes', included: true },
+      { key: 'unlimitedAssistants', included: true },
+      { key: 'customPhoneNumbers', included: true },
+      { key: 'allChannels', included: true },
+      { key: 'allIntegrations', included: true },
+      { key: 'customOverage', included: true },
+      { key: 'prioritySupport', included: true },
+      { key: 'apiAccess', included: true },
+      { key: 'customTraining', included: true },
+      { key: 'slaGuarantee', included: true },
+    ],
   },
 ];
 
@@ -258,12 +323,14 @@ export default function SubscriptionPage() {
                 <span className="font-semibold text-neutral-900">
                   {(() => {
                     // Get price from PLANS based on subscription.plan
-                    const currentPlan = PLANS.find(p => p.id.toUpperCase() === subscription.plan);
-                    if (currentPlan) {
-                      return formatPrice(isTurkishUser ? currentPlan.priceTRY : currentPlan.priceUSD);
+                    const currentPlan = PLANS.find(p => p.id === subscription.plan);
+                    if (currentPlan && currentPlan.priceTRY !== null) {
+                      return `₺${currentPlan.priceTRY.toLocaleString('tr-TR')}`;
                     }
-                    // Fallback to subscription data or 0 for FREE plan
-                    return formatPrice(subscription.price || (isTurkishUser ? (subscription.priceTRY || 0) : (subscription.priceUSD || 0)));
+                    // FREE plan or custom pricing
+                    if (subscription.plan === 'FREE') return '₺0';
+                    if (subscription.plan === 'ENTERPRISE') return isTurkishUser ? 'Özel' : 'Custom';
+                    return formatPrice(subscription.price || 0);
                   })()}
                 </span>
               </div>
@@ -297,65 +364,117 @@ export default function SubscriptionPage() {
       {/* Pricing plans */}
       <div>
         <h2 className="text-2xl font-bold text-neutral-900 mb-6">{t('dashboard.subscriptionPage.availablePlans')}</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {PLANS.map((plan) => {
-            const isCurrentPlan = subscription?.planId === plan.id;
+            const isCurrentPlan = subscription?.plan === plan.id;
+            const isTR = locale === 'tr';
+
+            // Feature labels
+            const featureLabels = {
+              minutes: isTR ? `${plan.minutes} dakika telefon görüşmesi` : `${plan.minutes} minutes of phone calls`,
+              assistants: isTR ? `${plan.assistants} AI asistan` : `${plan.assistants} AI assistant${plan.assistants > 1 ? 's' : ''}`,
+              phoneNumbers: isTR ? `${plan.phoneNumbers} telefon numarası` : `${plan.phoneNumbers} phone number${plan.phoneNumbers > 1 ? 's' : ''}`,
+              phone: isTR ? 'Telefon AI desteği' : 'Phone AI support',
+              analytics: isTR ? 'Temel analitik' : 'Basic analytics',
+              whatsapp: isTR ? 'WhatsApp entegrasyonu' : 'WhatsApp integration',
+              chatWidget: isTR ? 'Chat widget' : 'Chat widget',
+              email: isTR ? 'E-posta AI' : 'Email AI',
+              ecommerce: isTR ? 'E-ticaret entegrasyonu' : 'E-commerce integration',
+              calendar: isTR ? 'Takvim entegrasyonu' : 'Calendar integration',
+              prioritySupport: isTR ? 'Öncelikli destek' : 'Priority support',
+              apiAccess: isTR ? 'API erişimi' : 'API access',
+              customMinutes: isTR ? 'Özel dakika paketi' : 'Custom minutes package',
+              unlimitedAssistants: isTR ? 'Sınırsız AI asistan' : 'Unlimited AI assistants',
+              customPhoneNumbers: isTR ? 'Özel telefon numarası adedi' : 'Custom phone numbers',
+              allChannels: isTR ? 'Tüm kanallar dahil' : 'All channels included',
+              allIntegrations: isTR ? 'Tüm entegrasyonlar' : 'All integrations',
+              customOverage: isTR ? 'Özel aşım fiyatlandırma' : 'Custom overage pricing',
+              customTraining: isTR ? 'Özel eğitim' : 'Custom training',
+              slaGuarantee: isTR ? 'SLA garantisi' : 'SLA guarantee',
+            };
+
             return (
               <div
                 key={plan.id}
                 className={`bg-white rounded-xl border-2 p-6 shadow-sm relative ${
-                  plan.popular ? 'border-primary-600' : 'border-neutral-200'
+                  plan.popular ? 'border-primary-600 scale-105 z-10' : 'border-neutral-200'
                 }`}
               >
                 {plan.popular && (
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                    <Badge className="bg-primary-600 text-white">{t('dashboard.subscriptionPage.mostPopular')}</Badge>
+                    <Badge className="bg-primary-600 text-white">
+                      {isTR ? 'Popüler' : 'Popular'}
+                    </Badge>
                   </div>
                 )}
 
                 <div className="text-center mb-6">
-                  <h3 className="text-xl font-bold text-neutral-900 mb-2">{t(`pricing.${plan.id}.name`)}</h3>
-                  <p className="text-sm text-neutral-600 mb-3">{t(`pricing.${plan.id}.desc`)}</p>
+                  <h3 className="text-xl font-bold text-neutral-900 mb-2">
+                    {isTR ? plan.name : plan.nameEN}
+                  </h3>
                   <div className="flex items-baseline justify-center gap-1">
-                    <span className="text-4xl font-bold text-neutral-900">
-                      {currencySymbol}{getPlanPrice(plan).toLocaleString()}
-                    </span>
-                    <span className="text-neutral-500">{t('dashboard.subscriptionPage.perMonth')}</span>
+                    {plan.priceTRY !== null ? (
+                      <>
+                        <span className="text-3xl font-bold text-neutral-900">
+                          ₺{plan.priceTRY.toLocaleString('tr-TR')}
+                        </span>
+                        <span className="text-neutral-500">{isTR ? '/ay' : '/month'}</span>
+                      </>
+                    ) : (
+                      <span className="text-2xl font-bold text-neutral-900">
+                        {isTR ? 'İletişime Geçin' : 'Contact Us'}
+                      </span>
+                    )}
                   </div>
+                  {plan.overageRate && (
+                    <p className="text-xs text-neutral-500 mt-2">
+                      {isTR ? `Aşım: ${plan.overageRate} ₺/dk` : `Overage: ${plan.overageRate} ₺/min`}
+                    </p>
+                  )}
                 </div>
 
-                <ul className="space-y-3 mb-6">
-                  {plan.featureKeys.map((featureKey, i) => (
+                <ul className="space-y-2 mb-6">
+                  {plan.features.map((feature, i) => (
                     <li key={i} className="flex items-start gap-2 text-sm">
-                      <Check className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
-                      <span className="text-neutral-700">{t(`pricing.${plan.id}.${featureKey}`)}</span>
-                    </li>
-                  ))}
-                  {plan.notIncludedKeys?.map((featureKey, i) => (
-                    <li key={`not-${i}`} className="flex items-start gap-2 text-sm">
-                      <X className="h-4 w-4 text-neutral-300 flex-shrink-0 mt-0.5" />
-                      <span className="text-neutral-400">{t(`pricing.${plan.id}.${featureKey}`)}</span>
+                      {feature.included ? (
+                        <Check className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
+                      ) : (
+                        <X className="h-4 w-4 text-neutral-300 flex-shrink-0 mt-0.5" />
+                      )}
+                      <span className={feature.included ? 'text-neutral-700' : 'text-neutral-400'}>
+                        {featureLabels[feature.key] || feature.key}
+                      </span>
                     </li>
                   ))}
                 </ul>
 
-                <Button
-                  className="w-full"
-                  variant={isCurrentPlan ? 'outline' : 'default'}
-                  disabled={isCurrentPlan || !can('billing:manage') || upgrading}
-                  onClick={() => handleUpgrade(plan.id)}
-                >
-                  {upgrading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      {t('dashboard.subscriptionPage.processing') || 'İşleniyor...'}
-                    </>
-                  ) : isCurrentPlan ? (
-                    t('dashboard.subscriptionPage.currentPlanBtn')
-                  ) : (
-                    t('dashboard.subscriptionPage.upgradeBtn')
-                  )}
-                </Button>
+                {plan.id === 'ENTERPRISE' ? (
+                  <Button
+                    className="w-full"
+                    variant="outline"
+                    onClick={() => window.location.href = '/contact'}
+                  >
+                    {isTR ? 'Bize Ulaşın' : 'Contact Us'}
+                  </Button>
+                ) : (
+                  <Button
+                    className={`w-full ${plan.popular ? 'bg-gradient-to-r from-indigo-600 to-blue-500 hover:from-indigo-700 hover:to-blue-600' : ''}`}
+                    variant={isCurrentPlan ? 'outline' : (plan.popular ? 'default' : 'outline')}
+                    disabled={isCurrentPlan || !can('billing:manage') || upgrading}
+                    onClick={() => handleUpgrade(plan.id)}
+                  >
+                    {upgrading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        {isTR ? 'İşleniyor...' : 'Processing...'}
+                      </>
+                    ) : isCurrentPlan ? (
+                      isTR ? 'Mevcut Plan' : 'Current Plan'
+                    ) : (
+                      isTR ? 'Hemen Başla' : 'Get Started'
+                    )}
+                  </Button>
+                )}
               </div>
             );
           })}

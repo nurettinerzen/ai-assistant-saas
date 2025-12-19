@@ -15,11 +15,12 @@ export const PLANS = {
     priceTRY: 0,
     minutesLimit: 0,
     callsLimit: 0,
-    assistantsLimit: 0,
+    assistantsLimit: 1,
     phoneNumbersLimit: 0,
-    overageRate: 12,      // TL/dk
+    overageRate: 0,       // Aşım yok
     overageLimit: 0,      // Aşım yok
     features: {
+      phone: false,
       whatsapp: false,
       chatWidget: false,
       email: false,
@@ -34,15 +35,16 @@ export const PLANS = {
     name: 'Başlangıç',
     nameTR: 'Başlangıç',
     nameEN: 'Starter',
-    price: 27,
-    priceTRY: 899,
-    minutesLimit: 300,
-    callsLimit: 50,
+    price: 299,
+    priceTRY: 299,
+    minutesLimit: 50,
+    callsLimit: -1,       // Unlimited calls
     assistantsLimit: 1,
     phoneNumbersLimit: 1,
     overageRate: 12,      // TL/dk
     overageLimit: 50,     // Max 50 dk aşım
     features: {
+      phone: true,
       whatsapp: false,
       chatWidget: false,
       email: false,
@@ -57,15 +59,16 @@ export const PLANS = {
     name: 'Temel',
     nameTR: 'Temel',
     nameEN: 'Basic',
-    price: 30,
+    price: 999,
     priceTRY: 999,
     minutesLimit: 150,
-    callsLimit: 100,
+    callsLimit: -1,       // Unlimited calls
     assistantsLimit: 3,
     phoneNumbersLimit: 2,
     overageRate: 11,      // TL/dk
     overageLimit: 50,     // Max 50 dk aşım
     features: {
+      phone: true,
       whatsapp: true,
       chatWidget: true,
       email: false,
@@ -80,15 +83,16 @@ export const PLANS = {
     name: 'Pro',
     nameTR: 'Profesyonel',
     nameEN: 'Professional',
-    price: 77,
-    priceTRY: 2599,
-    minutesLimit: 1500,
-    callsLimit: -1,       // Unlimited
-    assistantsLimit: 2,
-    phoneNumbersLimit: 3,
+    price: 3499,
+    priceTRY: 3499,
+    minutesLimit: 500,
+    callsLimit: -1,       // Unlimited calls
+    assistantsLimit: 10,
+    phoneNumbersLimit: 5,
     overageRate: 10,      // TL/dk
     overageLimit: 50,     // Max 50 dk aşım
     features: {
+      phone: true,
       whatsapp: true,
       chatWidget: true,
       email: true,
@@ -103,15 +107,16 @@ export const PLANS = {
     name: 'Kurumsal',
     nameTR: 'Kurumsal',
     nameEN: 'Enterprise',
-    price: 199,
-    priceTRY: 6799,
-    minutesLimit: -1,     // Unlimited
+    price: null,          // İletişime geç
+    priceTRY: null,       // İletişime geç
+    minutesLimit: null,   // Custom
     callsLimit: -1,       // Unlimited
-    assistantsLimit: 5,
-    phoneNumbersLimit: 10,
-    overageRate: 8,       // TL/dk
-    overageLimit: 100,    // Max 100 dk aşım
+    assistantsLimit: null, // Sınırsız
+    phoneNumbersLimit: null, // Custom
+    overageRate: null,    // Custom
+    overageLimit: null,   // Custom
     features: {
+      phone: true,
       whatsapp: true,
       chatWidget: true,
       email: true,
@@ -122,7 +127,8 @@ export const PLANS = {
       apiAccess: true,
       customVoice: true,
       whiteLabel: true,
-      dedicatedSupport: true
+      dedicatedSupport: true,
+      slaGuarantee: true
     }
   }
 };
