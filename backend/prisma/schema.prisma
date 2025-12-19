@@ -115,6 +115,8 @@ model Assistant {
   isActive        Boolean       @default(true)
   timezone        String?       // Business timezone for date/time context
   firstMessage    String?       // Custom first message
+  tone            String        @default("professional")  // "friendly" or "professional"
+  customNotes     String?       @db.Text                  // Business-specific notes
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
   business        Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)

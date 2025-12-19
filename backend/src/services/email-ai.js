@@ -7,6 +7,7 @@ import OpenAI from 'openai';
 import { PrismaClient } from '@prisma/client';
 import { getDateTimeContext } from '../utils/dateTime.js';
 import { getActiveTools, executeTool } from '../tools/index.js';
+import { buildAssistantPrompt, getActiveTools as getPromptBuilderTools } from './promptBuilder.js';
 
 const prisma = new PrismaClient();
 
@@ -66,14 +67,17 @@ class EmailAIService {
       // Build Knowledge Base context
       const knowledgeContext = this.buildKnowledgeContext(knowledgeItems);
 
-      // Build the prompt
+      // Build the prompt using central prompt builder
+      const assistant = business.assistants[0] || null;
       const systemPrompt = this.buildSystemPrompt({
         businessName,
         businessType,
         assistantPrompt,
         language,
         timezone,
-        knowledgeContext
+        knowledgeContext,
+        business,
+        assistant
       });
 
       const userPrompt = this.buildUserPrompt({
@@ -221,24 +225,33 @@ class EmailAIService {
 
   /**
    * Build system prompt for draft generation
+   * Now uses the central promptBuilder service
    */
-  buildSystemPrompt({ businessName, businessType, assistantPrompt, language, timezone, knowledgeContext }) {
+  buildSystemPrompt({ businessName, businessType, assistantPrompt, language, timezone, knowledgeContext, business, assistant }) {
     const languageInstruction = language === 'TR'
       ? 'Her zaman Türkçe yanıt ver.'
       : 'Always respond in English.';
 
-    // Get dynamic date/time context using central utility
-    const dateTimeContext = getDateTimeContext(timezone, language);
-
-    return `You are an AI email assistant for ${businessName}, a ${businessType.toLowerCase()} business.
+    // Use central prompt builder if business and assistant are available
+    let basePrompt = '';
+    if (business && assistant) {
+      const activeToolsList = getPromptBuilderTools(business, business.integrations || []);
+      basePrompt = buildAssistantPrompt(assistant, business, activeToolsList);
+    } else {
+      // Fallback to basic prompt
+      const dateTimeContext = getDateTimeContext(timezone, language);
+      basePrompt = `You are an AI email assistant for ${businessName}, a ${businessType?.toLowerCase() || 'general'} business.
 
 ${dateTimeContext}
 
-${assistantPrompt ? `Business Instructions:\n${assistantPrompt}\n` : ''}
+${assistantPrompt ? `Business Instructions:\n${assistantPrompt}\n` : ''}`;
+    }
+
+    return `${basePrompt}
 
 ${knowledgeContext ? `\n=== KNOWLEDGE BASE ===${knowledgeContext}\n` : ''}
 
-Guidelines:
+## EMAIL-SPECIFIC GUIDELINES:
 1. ${languageInstruction}
 2. Be professional but friendly
 3. Address the customer's questions/concerns directly
@@ -316,14 +329,17 @@ Format:
 
       const language = business.language || this.detectLanguage(incomingMessage?.bodyText || thread.subject);
       const knowledgeContext = this.buildKnowledgeContext(knowledgeItems);
+      const assistant = business.assistants[0] || null;
 
       const systemPrompt = this.buildSystemPrompt({
         businessName: business.name,
         businessType: business.businessType,
-        assistantPrompt: business.assistants[0]?.systemPrompt || '',
+        assistantPrompt: assistant?.systemPrompt || '',
         language,
         timezone: business.timezone || 'UTC',
-        knowledgeContext
+        knowledgeContext,
+        business,
+        assistant
       });
 
       let userPrompt = this.buildUserPrompt({

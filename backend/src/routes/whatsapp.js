@@ -12,6 +12,7 @@ import { decrypt } from '../utils/encryption.js';
 import { webhookRateLimiter } from '../middleware/rateLimiter.js';
 import { getActiveTools, executeTool } from '../tools/index.js';
 import { getDateTimeContext } from '../utils/dateTime.js';
+import { buildAssistantPrompt, getActiveTools as getPromptBuilderTools } from '../services/promptBuilder.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -309,13 +310,16 @@ async function processWithToolLoop(client, messages, tools, business, context, m
 
 /**
  * Build system prompt for the assistant
+ * Now uses the central promptBuilder service
  */
 function buildSystemPrompt(business, assistant) {
-  const timezone = business?.timezone || 'Europe/Istanbul';
   const language = business?.language || 'TR';
 
-  // Get dynamic date/time context for this request
-  const dateTimeContext = getDateTimeContext(timezone, language);
+  // Get active tools list for prompt
+  const activeToolsList = getPromptBuilderTools(business, business.integrations || []);
+
+  // Use the central prompt builder
+  const basePrompt = buildAssistantPrompt(assistant || {}, business, activeToolsList);
 
   // Tool calling instructions - CRITICAL: No debug info to user
   const toolInstructions = language === 'TR'
@@ -348,50 +352,9 @@ Customer requests:
 
 Confirm the result with the customer in a friendly manner.`;
 
-  if (assistant?.systemPrompt) {
-    return `${assistant.systemPrompt}
-
-${dateTimeContext}
+  return `${basePrompt}
 
 ${toolInstructions}`;
-  }
-
-  // Fallback prompt
-  const fallbackPrompt = language === 'TR'
-    ? `${business.name} için profesyonel bir müşteri temsilcisisiniz.
-
-KRİTİK KURALLAR:
-- Yapay zeka, bot veya asistan olduğunuzu ASLA söylemeyin
-- Gerçek bir çalışan gibi davranın
-- Her zaman Türkçe yanıt verin
-- Sıcak, yardımsever ve profesyonel olun
-- Yanıtları kısa tutun (2-3 cümle)
-- Bilmediğiniz bir şey varsa "Kontrol edip size dönüyorum" deyin
-
-${dateTimeContext}
-
-${toolInstructions}
-
-Adınız Müşteri Hizmetleri.
-Unutmayın: Müşterilere yardım eden gerçek bir kişisiniz.`
-    : `You are a professional customer service representative for ${business.name}.
-
-CRITICAL RULES:
-- NEVER mention that you are an AI, bot, or artificial intelligence
-- Act as a real human employee
-- ALWAYS respond in the SAME LANGUAGE the customer uses
-- Be warm, helpful, and professional
-- Keep responses concise (2-3 sentences max)
-- If you don't know something, say "Let me check that for you"
-
-${dateTimeContext}
-
-${toolInstructions}
-
-Your name is Customer Support Team.
-Remember: You are a real person helping customers.`;
-
-  return fallbackPrompt;
 }
 
 /**

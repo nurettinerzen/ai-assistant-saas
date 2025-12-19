@@ -5,6 +5,7 @@ import { checkPermission } from '../middleware/permissions.js';
 import vapiService from '../services/vapi.js';
 import cargoAggregator from '../services/cargo-aggregator.js';
 import { removeStaticDateTimeFromPrompt } from '../utils/dateTime.js';
+import { buildAssistantPrompt, getActiveTools as getPromptBuilderTools } from '../services/promptBuilder.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -387,7 +388,7 @@ router.get('/', authenticateToken, async (req, res) => {
 router.post('/', authenticateToken, checkPermission('assistants:create'), async (req, res) => {
   try {
     const businessId = req.businessId;
-    const { name, voiceId, firstMessage, systemPrompt, model, language, country, industry, timezone } = req.body;
+    const { name, voiceId, firstMessage, systemPrompt, model, language, country, industry, timezone, tone, customNotes } = req.body;
 
     // Check subscription limits
     const subscription = await prisma.subscription.findUnique({
@@ -438,22 +439,27 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
     // Get business info for language/timezone defaults
     const business = await prisma.business.findUnique({
       where: { id: businessId },
-      select: { language: true, timezone: true, country: true }
+      include: { integrations: { where: { isActive: true } } }
     });
 
     const lang = language?.toUpperCase() || business?.language || 'TR';
     const businessTimezone = timezone || business?.timezone || 'Europe/Istanbul';
     const defaults = ASSISTANT_DEFAULTS[lang] || ASSISTANT_DEFAULTS.TR;
 
-    // Language-specific instruction
-    const languageInstruction = lang === 'TR'
-      ? 'Sen bir yapay zeka asistanısın. Müşterinin kullandığı dilde cevap ver. Eğer Türkçe konuşurlarsa Türkçe, İngilizce konuşurlarsa İngilizce yanıt ver. Dillerini tam olarak eşleştir. Doğal, akıcı ve profesyonel konuş.'
-      : 'You are an AI assistant. Always respond in the SAME LANGUAGE the customer uses. If they speak Turkish, respond in Turkish. If they speak Spanish, respond in Spanish. Match their language exactly. Speak naturally, fluently, and professionally in whatever language they choose.';
+    // Build full system prompt using promptBuilder
+    // Create temporary assistant object for promptBuilder
+    const tempAssistant = {
+      name,
+      systemPrompt: systemPrompt,
+      tone: tone || 'professional',
+      customNotes: customNotes || null
+    };
 
-    // Get date/time context in the right language
-    const dateContext = getDateTimeContext(businessTimezone, lang);
+    // Get active tools list for prompt builder
+    const activeToolsList = getPromptBuilderTools(business, business.integrations || []);
 
-    const fullSystemPrompt = `${languageInstruction}${dateContext}\n\n${systemPrompt}`;
+    // Use central prompt builder to create the full system prompt
+    const fullSystemPrompt = buildAssistantPrompt(tempAssistant, business, activeToolsList);
 
     // Default first message based on language (use defaults from ASSISTANT_DEFAULTS)
     const defaultFirstMessage = defaults.firstMessage.replace('{name}', name);
@@ -528,6 +534,8 @@ console.log('✅ VAPI Response:', JSON.stringify(vapiAssistant, null, 2));
         vapiAssistantId: vapiAssistant.id,  // ✅ VAPI'den dönen YENİ assistant ID
         timezone: businessTimezone,
         firstMessage: finalFirstMessage,
+        tone: tone || 'professional',  // "friendly" or "professional"
+        customNotes: customNotes || null,  // Business-specific notes
       },
     });
 
@@ -750,7 +758,7 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
   try {
     const businessId = req.businessId;
     const { id } = req.params;
-    const { name, voiceId, systemPrompt, model, language } = req.body;
+    const { name, voiceId, systemPrompt, model, language, tone, customNotes } = req.body;
 
     // Check if assistant belongs to this business
     const assistant = await prisma.assistant.findFirst({
@@ -787,8 +795,11 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
 
     const elevenLabsVoiceId = VOICE_MAPPING[voiceId] || VOICE_MAPPING['tr-m-cihan'];
 
-    // Universal language instruction - AI will match the customer's language
-    const languageInstruction = 'You are an AI assistant. Always respond in the SAME LANGUAGE the customer uses. If they speak Turkish, respond in Turkish. If they speak Spanish, respond in Spanish. If they speak French, respond in French. Match their language exactly. Speak naturally, fluently, and professionally in whatever language they choose.';
+    // Get business info with integrations for promptBuilder
+    const business = await prisma.business.findUnique({
+      where: { id: businessId },
+      include: { integrations: { where: { isActive: true } } }
+    });
 
     // 🔥 KNOWLEDGE BASE İÇERİĞİNİ ÇEK
     const knowledgeItems = await prisma.knowledgeBase.findMany({
@@ -798,7 +809,7 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
     let knowledgeContext = '';
     if (knowledgeItems.length > 0) {
       const kbByType = { URL: [], DOCUMENT: [], FAQ: [] };
-      
+
       for (const item of knowledgeItems) {
         if (item.type === 'FAQ' && item.question && item.answer) {
           kbByType.FAQ.push(`Q: ${item.question}\nA: ${item.answer}`);
@@ -816,11 +827,23 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
       if (kbByType.DOCUMENT.length > 0) {
         knowledgeContext += '\n\n=== DOCUMENTS ===\n' + kbByType.DOCUMENT.join('\n\n');
       }
-      
+
       console.log('📚 Knowledge Base items added:', knowledgeItems.length);
     }
 
-    const fullSystemPrompt = `${systemPrompt}${knowledgeContext}`;
+    // Build full system prompt using promptBuilder
+    const tempAssistant = {
+      name,
+      systemPrompt: systemPrompt,
+      tone: tone || assistant.tone || 'professional',
+      customNotes: customNotes !== undefined ? customNotes : assistant.customNotes
+    };
+
+    // Get active tools list for prompt builder
+    const activeToolsList = getPromptBuilderTools(business, business.integrations || []);
+
+    // Use central prompt builder to create the full system prompt, then add knowledge context
+    const fullSystemPrompt = buildAssistantPrompt(tempAssistant, business, activeToolsList) + knowledgeContext;
 
     // Update in database
     const updatedAssistant = await prisma.assistant.update({
@@ -830,6 +853,8 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
         voiceId,
         systemPrompt: fullSystemPrompt,
         model,
+        tone: tone || assistant.tone || 'professional',  // Keep existing if not provided
+        customNotes: customNotes !== undefined ? customNotes : assistant.customNotes,  // Allow null/empty
       },
     });
 

@@ -9,6 +9,7 @@ import { PrismaClient } from '@prisma/client';
 import OpenAI from 'openai';
 import { getActiveTools, executeTool } from '../tools/index.js';
 import { getDateTimeContext } from '../utils/dateTime.js';
+import { buildAssistantPrompt, getActiveTools as getPromptBuilderTools } from '../services/promptBuilder.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -56,31 +57,41 @@ router.post('/widget', async (req, res) => {
     }
 
     const business = assistant.business;
-    const timezone = business?.timezone || 'Europe/Istanbul';
     const language = business?.language || 'TR';
-
-    // Get dynamic date/time context for this request
-    const dateTimeContext = getDateTimeContext(timezone, language);
 
     // Get active tools for this business from central tool system
     const tools = getActiveTools(business);
 
-    // Build messages array
-    const messages = [
-      {
-        role: 'system',
-        content: `Your name is ${assistant.name}. You work for ${business?.name || 'this business'}.
+    // Get active tools list for prompt builder
+    const activeToolsList = getPromptBuilderTools(business, business.integrations || []);
 
-${assistant.systemPrompt || 'You are a helpful customer service assistant. Be friendly, concise, and helpful.'}
+    // Build system prompt using central prompt builder
+    const systemPromptBase = buildAssistantPrompt(assistant, business, activeToolsList);
 
-${dateTimeContext}
-
+    // Add tool-specific instructions
+    const toolInstructions = language === 'TR'
+      ? `
+Müşteri randevu almak isterse:
+1. İsmini sor (verilmediyse)
+2. Telefon numarasını sor
+3. Hangi hizmeti istediğini sor
+4. Tercih ettiği tarih ve saati sor
+5. create_appointment fonksiyonunu kullanarak randevu oluştur`
+      : `
 When a customer wants to book an appointment:
 1. Ask for their name if not provided
 2. Ask for their phone number if not provided
 3. Ask what service they want (if applicable)
 4. Ask for their preferred date and time
-5. Use the create_appointment function to book it`
+5. Use the create_appointment function to book it`;
+
+    // Build messages array
+    const messages = [
+      {
+        role: 'system',
+        content: `${systemPromptBase}
+
+${toolInstructions}`
       },
       ...conversationHistory.slice(-10).map(msg => ({
         role: msg.role,

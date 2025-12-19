@@ -91,6 +91,8 @@ export default function AssistantsPage() {
     systemPrompt: '',
     model: 'gpt-4',
     language: locale || 'tr',
+    tone: 'professional',  // "friendly" or "professional"
+    customNotes: '',       // Business-specific notes
   });
 
   useEffect(() => {
@@ -146,6 +148,8 @@ export default function AssistantsPage() {
         systemPrompt: template.prompt,
         model: 'gpt-4',
         language: template.language || businessLanguage || 'tr',
+        tone: 'professional',
+        customNotes: '',
       });
     } else {
       setFormData({
@@ -154,6 +158,8 @@ export default function AssistantsPage() {
         systemPrompt: '',
         model: 'gpt-4',
         language: businessLanguage || 'tr',
+        tone: 'professional',
+        customNotes: '',
       });
     }
     setShowCreateModal(true);
@@ -187,6 +193,8 @@ export default function AssistantsPage() {
       systemPrompt: assistant.systemPrompt,
       model: assistant.model || 'gpt-4',
       language: assistant.language || inferredLang,
+      tone: assistant.tone || 'professional',
+      customNotes: assistant.customNotes || '',
     });
     setShowCreateModal(true);
   };
@@ -216,7 +224,7 @@ export default function AssistantsPage() {
   };
 
   const resetForm = () => {
-    setFormData({ name: '', voiceId: '', systemPrompt: '', model: 'gpt-4', language: businessLanguage || 'tr' });
+    setFormData({ name: '', voiceId: '', systemPrompt: '', model: 'gpt-4', language: businessLanguage || 'tr', tone: 'professional', customNotes: '' });
     setEditingAssistant(null);
   };
 
@@ -447,6 +455,36 @@ export default function AssistantsPage() {
               </Select>
             </div>
 
+            {/* Tone Selector */}
+            <div>
+              <Label htmlFor="tone">{locale === 'tr' ? 'İletişim Tonu' : 'Communication Tone'}</Label>
+              <Select
+                value={formData.tone}
+                onValueChange={(value) => setFormData({ ...formData, tone: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="professional">
+                    {locale === 'tr' ? 'Profesyonel (Sizli, resmi dil)' : 'Professional (Formal language)'}
+                  </SelectItem>
+                  <SelectItem value="friendly">
+                    {locale === 'tr' ? 'Samimi (Senli, rahat dil)' : 'Friendly (Casual language)'}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-neutral-500 mt-1">
+                {formData.tone === 'friendly'
+                  ? (locale === 'tr'
+                      ? 'Asistan müşterilere "sen" diye hitap eder, samimi ama profesyonel konuşur.'
+                      : 'Assistant addresses customers casually, friendly but professional.')
+                  : (locale === 'tr'
+                      ? 'Asistan müşterilere "siz" diye hitap eder, resmi ve kurumsal dil kullanır.'
+                      : 'Assistant addresses customers formally, uses professional language.')}
+              </p>
+            </div>
+
             <div>
               <Label htmlFor="prompt">{t('dashboard.assistantsPage.systemPromptRequired')}</Label>
               <Textarea
@@ -456,6 +494,27 @@ export default function AssistantsPage() {
                 onChange={(e) => setFormData({ ...formData, systemPrompt: e.target.value })}
                 placeholder={t('dashboard.assistantsPage.systemPromptPlaceholder')}
               />
+            </div>
+
+            {/* Custom Notes */}
+            <div>
+              <Label htmlFor="customNotes">
+                {locale === 'tr' ? 'İşletme Özel Bilgileri' : 'Business Specific Information'}
+              </Label>
+              <Textarea
+                id="customNotes"
+                rows={4}
+                value={formData.customNotes}
+                onChange={(e) => setFormData({ ...formData, customNotes: e.target.value })}
+                placeholder={locale === 'tr'
+                  ? 'Örnek: Pazar günleri kapalıyız. Minimum sipariş tutarı 200 TL. Bayram günlerinde özel menü var...'
+                  : 'Example: We are closed on Sundays. Minimum order is $50. Special menu on holidays...'}
+              />
+              <p className="text-xs text-neutral-500 mt-1">
+                {locale === 'tr'
+                  ? 'Asistanın bilmesi gereken işletmeye özel bilgiler. Bu bilgiler müşteri sorularında kullanılacak.'
+                  : 'Business-specific information the assistant should know. This will be used when answering customer questions.'}
+              </p>
             </div>
           </div>
 
