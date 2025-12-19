@@ -872,6 +872,26 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
         console.error('❌ VAPI update failed:', await vapiResponse.text());
       } else {
         console.log('✅ VAPI Assistant updated with tools');
+
+        // Sync all phone numbers connected to this assistant in VAPI
+        const connectedPhones = await prisma.phoneNumber.findMany({
+          where: {
+            assistantId: id,
+            vapiPhoneId: { not: null }
+          }
+        });
+
+        if (connectedPhones.length > 0) {
+          console.log(`📞 Syncing ${connectedPhones.length} phone numbers to updated assistant`);
+          for (const phone of connectedPhones) {
+            try {
+              await vapiService.assignPhoneNumber(phone.vapiPhoneId, assistant.vapiAssistantId);
+              console.log(`✅ VAPI Phone ${phone.phoneNumber} synced to assistant`);
+            } catch (syncErr) {
+              console.error(`❌ Failed to sync phone ${phone.phoneNumber}:`, syncErr.message);
+            }
+          }
+        }
       }
     }
 
