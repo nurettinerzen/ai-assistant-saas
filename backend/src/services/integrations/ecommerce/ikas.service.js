@@ -230,6 +230,11 @@ class IkasService {
                 addressLine2
                 postalCode
               }
+              shipments {
+                trackingNumber
+                cargoCompany
+                status
+              }
               orderLineItems {
                 id
                 quantity
@@ -705,7 +710,8 @@ class IkasService {
   // ============================================================================
 
 normalizeOrder(order) {
-    const statusMap = {
+    // Order status mapping
+    const orderStatusMap = {
       'WAITING_PAYMENT': 'Ödeme Bekleniyor',
       'WAITING_APPROVAL': 'Onay Bekleniyor',
       'APPROVED': 'Onaylandı',
@@ -713,7 +719,17 @@ normalizeOrder(order) {
       'SHIPPED': 'Kargoya Verildi',
       'DELIVERED': 'Teslim Edildi',
       'CANCELLED': 'İptal Edildi',
-      'REFUNDED': 'İade Edildi'
+      'REFUNDED': 'İade Edildi',
+      'CREATED': 'Oluşturuldu'
+    };
+
+    // Shipment status mapping (ikas uses different status values for shipments)
+    const shipmentStatusMap = {
+      'WAITING': 'Hazırlanıyor',
+      'PREPARING': 'Hazırlanıyor',
+      'SHIPPED': 'Kargoya Verildi',
+      'DELIVERED': 'Teslim Edildi',
+      'RETURNED': 'İade Edildi'
     };
 
     const customerName = order.customer
@@ -722,20 +738,36 @@ normalizeOrder(order) {
         ? `${order.shippingAddress.firstName || ''} ${order.shippingAddress.lastName || ''}`.trim()
         : 'Bilinmiyor');
 
+    // Get the first shipment if exists
+    const shipment = order.shipments?.[0];
+
+    // If shipment exists and has a status, use it; otherwise use order status
+    // Shipment status takes priority for customer-facing status
+    let effectiveStatus = order.status;
+    let effectiveStatusText = orderStatusMap[order.status] || order.status;
+
+    if (shipment?.status) {
+      effectiveStatus = shipment.status;
+      effectiveStatusText = shipmentStatusMap[shipment.status] || orderStatusMap[shipment.status] || shipment.status;
+    }
+
+    // Debug log for troubleshooting
+    console.log(`📦 ikas normalizeOrder: order.status=${order.status}, shipment.status=${shipment?.status}, effectiveStatus=${effectiveStatus}`);
+
     return {
       id: order.id,
       orderNumber: order.orderNumber,
       customerName,
       customerEmail: order.customer?.email,
       customerPhone: order.customer?.phone || order.shippingAddress?.phone,
-      status: order.status,
-      statusText: statusMap[order.status] || order.status,
+      status: effectiveStatus,
+      statusText: effectiveStatusText,
       totalPrice: order.totalPrice,
       currency: order.currencyCode || 'TRY',
       createdAt: order.createdAt,
       updatedAt: order.updatedAt,
       items: (order.orderLineItems || []).map(item => ({
-        title: item.variant?.name || 'Ürün',
+        title: item.variant?.name || item.productName || 'Ürün',
         quantity: item.quantity,
         price: item.finalPrice
       })),
@@ -743,7 +775,11 @@ normalizeOrder(order) {
         address: `${order.shippingAddress.addressLine1 || ''} ${order.shippingAddress.addressLine2 || ''}`.trim(),
         postalCode: order.shippingAddress.postalCode
       } : null,
-      tracking: null,
+      tracking: shipment?.trackingNumber ? {
+        number: shipment.trackingNumber,
+        company: shipment.cargoCompany || 'Kargo'
+      } : null,
+      fulfillmentStatus: shipment?.status || 'unfulfilled',
       source: 'ikas'
     };
   }
