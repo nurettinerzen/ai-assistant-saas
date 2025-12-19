@@ -204,6 +204,8 @@ class IkasService {
     try {
       console.log(`🔍 ikas: Searching order by number: ${orderNumber}`);
 
+      // Note: ikas Order type doesn't have "shipments" field directly
+      // Kargo bilgisi "orderPackages" field'ından alınır
       const query = `
         query listOrder($orderNumber: StringFilterInput) {
           listOrder(orderNumber: $orderNumber, pagination: { page: 1, limit: 10 }) {
@@ -230,10 +232,14 @@ class IkasService {
                 addressLine2
                 postalCode
               }
-              shipments {
+              orderPackages {
+                id
                 trackingNumber
-                cargoCompany
+                trackingUrl
                 status
+                shippingCompany {
+                  name
+                }
               }
               orderLineItems {
                 id
@@ -331,10 +337,14 @@ class IkasService {
                   quantity
                   finalPrice
                 }
-                shipments {
+                orderPackages {
+                  id
                   trackingNumber
-                  cargoCompany
+                  trackingUrl
                   status
+                  shippingCompany {
+                    name
+                  }
                 }
               }
             }
@@ -389,10 +399,14 @@ class IkasService {
                 quantity
                 finalPrice
               }
-              shipments {
+              orderPackages {
+                id
                 trackingNumber
-                cargoCompany
+                trackingUrl
                 status
+                shippingCompany {
+                  name
+                }
               }
             }
           }
@@ -476,10 +490,14 @@ class IkasService {
                 quantity
                 finalPrice
               }
-              shipments {
+              orderPackages {
+                id
                 trackingNumber
-                cargoCompany
+                trackingUrl
                 status
+                shippingCompany {
+                  name
+                }
               }
             }
           }
@@ -723,13 +741,17 @@ normalizeOrder(order) {
       'CREATED': 'Oluşturuldu'
     };
 
-    // Shipment status mapping (ikas uses different status values for shipments)
-    const shipmentStatusMap = {
+    // Package/shipment status mapping
+    const packageStatusMap = {
       'WAITING': 'Hazırlanıyor',
       'PREPARING': 'Hazırlanıyor',
+      'READY': 'Hazır',
       'SHIPPED': 'Kargoya Verildi',
+      'IN_TRANSIT': 'Yolda',
+      'OUT_FOR_DELIVERY': 'Dağıtımda',
       'DELIVERED': 'Teslim Edildi',
-      'RETURNED': 'İade Edildi'
+      'RETURNED': 'İade Edildi',
+      'CANCELLED': 'İptal Edildi'
     };
 
     const customerName = order.customer
@@ -738,21 +760,26 @@ normalizeOrder(order) {
         ? `${order.shippingAddress.firstName || ''} ${order.shippingAddress.lastName || ''}`.trim()
         : 'Bilinmiyor');
 
-    // Get the first shipment if exists
-    const shipment = order.shipments?.[0];
+    // Get package info - ikas uses "orderPackages" not "shipments"
+    // Also check for legacy "shipments" field for backward compatibility
+    const orderPackage = order.orderPackages?.[0] || order.shipments?.[0];
 
-    // If shipment exists and has a status, use it; otherwise use order status
-    // Shipment status takes priority for customer-facing status
+    // Determine effective status
+    // If package exists and has tracking, show package status; otherwise use order status
     let effectiveStatus = order.status;
     let effectiveStatusText = orderStatusMap[order.status] || order.status;
 
-    if (shipment?.status) {
-      effectiveStatus = shipment.status;
-      effectiveStatusText = shipmentStatusMap[shipment.status] || orderStatusMap[shipment.status] || shipment.status;
+    if (orderPackage?.status) {
+      effectiveStatus = orderPackage.status;
+      effectiveStatusText = packageStatusMap[orderPackage.status] || orderStatusMap[orderPackage.status] || orderPackage.status;
     }
 
     // Debug log for troubleshooting
-    console.log(`📦 ikas normalizeOrder: order.status=${order.status}, shipment.status=${shipment?.status}, effectiveStatus=${effectiveStatus}`);
+    console.log(`📦 ikas normalizeOrder: order.status=${order.status}, package.status=${orderPackage?.status}, trackingNumber=${orderPackage?.trackingNumber}, effectiveStatus=${effectiveStatus}`);
+
+    // Get tracking info from orderPackages
+    const trackingNumber = orderPackage?.trackingNumber;
+    const cargoCompany = orderPackage?.shippingCompany?.name || orderPackage?.cargoCompany;
 
     return {
       id: order.id,
@@ -775,11 +802,12 @@ normalizeOrder(order) {
         address: `${order.shippingAddress.addressLine1 || ''} ${order.shippingAddress.addressLine2 || ''}`.trim(),
         postalCode: order.shippingAddress.postalCode
       } : null,
-      tracking: shipment?.trackingNumber ? {
-        number: shipment.trackingNumber,
-        company: shipment.cargoCompany || 'Kargo'
+      tracking: trackingNumber ? {
+        number: trackingNumber,
+        company: cargoCompany || 'Kargo',
+        url: orderPackage?.trackingUrl || null
       } : null,
-      fulfillmentStatus: shipment?.status || 'unfulfilled',
+      fulfillmentStatus: orderPackage?.status || 'unfulfilled',
       source: 'ikas'
     };
   }
