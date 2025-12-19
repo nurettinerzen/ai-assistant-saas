@@ -100,6 +100,10 @@ model Business {
   invitations             Invitation[]
   creditPurchases         CreditPurchase[]
   usageLogs               UsageLog[]
+  crmWebhook              CrmWebhook?
+  crmOrders               CrmOrder[]
+  crmStocks               CrmStock[]
+  crmTickets              CrmTicket[]
 
   @@index([name])
 }
@@ -1014,4 +1018,87 @@ model UsageLog {
   @@index([businessId])
   @@index([type])
   @@index([createdAt])
+}
+
+// ============================================================================
+// CRM WEBHOOK INTEGRATION TABLES
+// ============================================================================
+
+// CRM Webhook Config
+model CrmWebhook {
+  id            String   @id @default(cuid())
+  businessId    Int      @unique
+  webhookSecret String   @unique @default(cuid())
+  isActive      Boolean  @default(true)
+  lastDataAt    DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  business      Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+}
+
+// CRM Sipariş Verileri
+model CrmOrder {
+  id                String    @id @default(cuid())
+  businessId        Int
+  orderNumber       String
+  customerPhone     String
+  customerName      String?
+  status            String
+  trackingNumber    String?
+  carrier           String?
+  items             Json?
+  totalAmount       Float?
+  estimatedDelivery DateTime?
+  externalUpdatedAt DateTime
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  business          Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, orderNumber])
+  @@index([businessId, customerPhone])
+}
+
+// CRM Stok Verileri
+model CrmStock {
+  id                String    @id @default(cuid())
+  businessId        Int
+  sku               String
+  productName       String
+  inStock           Boolean
+  quantity          Int?
+  price             Float?
+  estimatedRestock  DateTime?
+  externalUpdatedAt DateTime
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  business          Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, sku])
+  @@index([businessId, productName])
+}
+
+// CRM Servis/Arıza Verileri
+model CrmTicket {
+  id                  String    @id @default(cuid())
+  businessId          Int
+  ticketNumber        String
+  customerPhone       String
+  customerName        String?
+  product             String
+  issue               String?
+  status              String
+  notes               String?
+  estimatedCompletion DateTime?
+  cost                Float?
+  externalUpdatedAt   DateTime
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  business            Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, ticketNumber])
+  @@index([businessId, customerPhone])
 }

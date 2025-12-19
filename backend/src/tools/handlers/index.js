@@ -8,6 +8,9 @@
  * - check_order_status: E-commerce order lookup (Shopify/WooCommerce)
  * - get_product_stock: E-commerce product stock (Shopify/WooCommerce)
  * - get_tracking_info: E-commerce shipping tracking (Shopify/WooCommerce)
+ * - check_order_status_crm: CRM order lookup
+ * - check_stock_crm: CRM stock lookup
+ * - check_ticket_status_crm: CRM ticket/service lookup
  */
 
 import appointmentHandler from './appointment.js';
@@ -15,6 +18,10 @@ import orderNotificationHandler from './order-notification.js';
 import orderStatusHandler from './order-status.js';
 import productStockHandler from './product-stock.js';
 import trackingInfoHandler from './tracking-info.js';
+// CRM Handlers
+import crmOrderStatusHandler from './crm-order-status.js';
+import crmStockHandler from './crm-stock.js';
+import crmTicketStatusHandler from './crm-ticket-status.js';
 
 // Tool name -> handler mapping
 const handlers = {
@@ -22,7 +29,11 @@ const handlers = {
   'send_order_notification': orderNotificationHandler,
   'check_order_status': orderStatusHandler,
   'get_product_stock': productStockHandler,
-  'get_tracking_info': trackingInfoHandler
+  'get_tracking_info': trackingInfoHandler,
+  // CRM Handlers
+  'check_order_status_crm': crmOrderStatusHandler,
+  'check_stock_crm': crmStockHandler,
+  'check_ticket_status_crm': crmTicketStatusHandler
 };
 
 export default handlers;
@@ -33,5 +44,9 @@ export {
   orderNotificationHandler,
   orderStatusHandler,
   productStockHandler,
-  trackingInfoHandler
+  trackingInfoHandler,
+  // CRM Handlers
+  crmOrderStatusHandler,
+  crmStockHandler,
+  crmTicketStatusHandler
 };

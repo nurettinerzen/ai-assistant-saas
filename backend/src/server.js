@@ -54,6 +54,9 @@ import waitlistRoutes from './routes/waitlist.js';
 import onboardingRoutes from './routes/onboarding.js';
 // Credits
 import creditsRoutes from './routes/credits.js';
+// CRM Webhook Integration
+import crmWebhookRoutes from './routes/crm-webhook.js';
+import crmRoutes from './routes/crm.js';
 
 
 // Import jobs
@@ -132,6 +135,9 @@ app.use('/api/team', teamRoutes);
 app.use('/api/waitlist', waitlistRoutes);
 app.use('/api/onboarding', onboardingRoutes);
 app.use('/api/credits', creditsRoutes);
+// CRM Webhook Integration
+app.use('/api/webhook/crm', crmWebhookRoutes);
+app.use('/api/crm', crmRoutes);
 
 
 // Error handling middleware

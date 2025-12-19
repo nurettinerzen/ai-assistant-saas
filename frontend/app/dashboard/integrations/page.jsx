@@ -916,6 +916,47 @@ const handleIdeasoftConnect = async () => {
         </div>
       </div>
 
+      {/* Custom CRM Integration Section */}
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-xl font-semibold text-neutral-900 flex items-center gap-2">
+            <Hash className="h-5 w-5 text-purple-600" />Özel CRM Entegrasyonu
+          </h2>
+          <p className="text-sm text-neutral-600 mt-1">Kendi sisteminizden sipariş, stok ve servis bilgileri gönderin.</p>
+        </div>
+
+        <div className="bg-white rounded-xl border border-neutral-200 p-6 hover:shadow-md transition-shadow">
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-lg bg-purple-100">
+                <Hash className="h-6 w-6 text-purple-600" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold text-neutral-900">Özel CRM/ERP Webhook</h3>
+                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">Pro</span>
+                </div>
+                <p className="text-sm text-neutral-500 mt-1">Kendi sisteminizi bağlayın</p>
+              </div>
+            </div>
+          </div>
+
+          <p className="text-sm text-neutral-600 mb-4">
+            Kendi CRM veya ERP sisteminizden sipariş, stok ve servis/arıza bilgilerini
+            Telyx&apos;e gönderin. AI asistanınız bu bilgilere erişerek müşterilerinize
+            otomatik yanıt verebilir.
+          </p>
+
+          <Button
+            size="sm"
+            className="w-full"
+            onClick={() => window.location.href = '/dashboard/integrations/custom-crm'}
+          >
+            Entegrasyonu Yönet
+          </Button>
+        </div>
+      </div>
+
       {/* Integration Lists */}
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

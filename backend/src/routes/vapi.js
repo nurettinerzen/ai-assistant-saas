@@ -441,18 +441,34 @@ async function getBusinessFromVapiCall(vapiMessage) {
  * @returns {Promise<Array>} Array of active tools
  */
 export async function getActiveToolsForBusiness(businessId) {
-  // Get business with integrations
+  // Get business with integrations and CRM webhook
   const business = await prisma.business.findUnique({
     where: { id: businessId },
     include: {
       integrations: {
         where: { isActive: true }
-      }
+      },
+      crmWebhook: true
     }
   });
 
   if (!business) {
     return [];
+  }
+
+  // Get CRM data counts if webhook is active
+  if (business.crmWebhook?.isActive) {
+    const [ordersCount, stockCount, ticketsCount] = await Promise.all([
+      prisma.crmOrder.count({ where: { businessId } }),
+      prisma.crmStock.count({ where: { businessId } }),
+      prisma.crmTicket.count({ where: { businessId } })
+    ]);
+
+    business.crmDataCounts = {
+      orders: ordersCount,
+      stock: stockCount,
+      tickets: ticketsCount
+    };
   }
 
   // Use central tool system
