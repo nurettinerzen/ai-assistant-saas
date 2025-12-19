@@ -326,9 +326,53 @@ router.post('/select', authenticateToken, requireRole(['OWNER', 'ADMIN']), async
   }
 });
 
+// ==================== DETECT SHEETS ENDPOINT ====================
+
+// GET /api/google-sheets/detect-sheets - Detect sheet types in selected spreadsheet
+router.get('/detect-sheets', authenticateToken, async (req, res) => {
+  try {
+    const business = await prisma.business.findUnique({
+      where: { id: req.businessId }
+    });
+
+    if (!business?.googleSheetsConnected) {
+      return res.status(400).json({ error: 'Google Sheets not connected' });
+    }
+
+    if (!business.googleSheetId) {
+      return res.status(400).json({ error: 'No spreadsheet selected' });
+    }
+
+    const { clientId, clientSecret } = getGoogleCredentials();
+    const { accessToken, refreshToken } = await ensureValidToken(business);
+
+    const detected = await googleSheetsService.detectSheets(
+      accessToken,
+      refreshToken,
+      clientId,
+      clientSecret,
+      business.googleSheetId
+    );
+
+    res.json({
+      success: true,
+      spreadsheetTitle: detected.title,
+      detected: {
+        products: detected.products,
+        orders: detected.orders,
+        tickets: detected.tickets
+      },
+      allSheets: detected.allSheets
+    });
+  } catch (error) {
+    console.error('Detect sheets error:', error);
+    res.status(500).json({ error: 'Failed to detect sheets' });
+  }
+});
+
 // ==================== SYNC ENDPOINTS ====================
 
-// POST /api/google-sheets/sync - Sync inventory from spreadsheet
+// POST /api/google-sheets/sync - Sync all data (products, orders, tickets) from spreadsheet
 router.post('/sync', authenticateToken, requireRole(['OWNER', 'ADMIN']), async (req, res) => {
   try {
     const business = await prisma.business.findUnique({
@@ -346,89 +390,232 @@ router.post('/sync', authenticateToken, requireRole(['OWNER', 'ADMIN']), async (
     const { clientId, clientSecret } = getGoogleCredentials();
     const { accessToken, refreshToken } = await ensureValidToken(business);
 
-    // Read inventory from sheet
-    const products = await googleSheetsService.readInventory(
+    // Detect available sheets
+    const detected = await googleSheetsService.detectSheets(
       accessToken,
       refreshToken,
       clientId,
       clientSecret,
-      business.googleSheetId,
-      business.googleSheetName || 'Sheet1'
+      business.googleSheetId
     );
 
-    let imported = 0;
-    let updated = 0;
-    const errors = [];
+    const results = {
+      products: { imported: 0, updated: 0, total: 0, errors: [] },
+      orders: { imported: 0, updated: 0, total: 0, errors: [] },
+      tickets: { imported: 0, updated: 0, total: 0, errors: [] }
+    };
 
-    // Import/update products
-    for (const productData of products) {
+    // ========== SYNC PRODUCTS ==========
+    if (detected.products) {
       try {
-        const existing = await prisma.product.findUnique({
-          where: {
-            businessId_sku: {
-              businessId: req.businessId,
-              sku: productData.sku
-            }
-          }
-        });
+        const products = await googleSheetsService.readProducts(
+          accessToken, refreshToken, clientId, clientSecret,
+          business.googleSheetId, detected.products
+        );
 
-        if (existing) {
-          // Update existing product
-          await prisma.product.update({
-            where: { id: existing.id },
-            data: {
-              name: productData.name,
-              description: productData.description,
-              price: productData.price,
-              stockQuantity: productData.stockQuantity,
-              lowStockThreshold: productData.lowStockThreshold,
-              category: productData.category
-            }
-          });
+        results.products.total = products.length;
 
-          // Log stock change if different
-          if (productData.stockQuantity !== existing.stockQuantity) {
-            await prisma.inventoryLog.create({
-              data: {
-                productId: existing.id,
-                changeType: productData.stockQuantity > existing.stockQuantity ? 'RESTOCK' : 'ADJUSTMENT',
-                quantityChange: Math.abs(productData.stockQuantity - existing.stockQuantity),
-                newQuantity: productData.stockQuantity,
-                note: 'Google Sheets sync'
+        for (const productData of products) {
+          try {
+            const existing = await prisma.product.findUnique({
+              where: {
+                businessId_sku: {
+                  businessId: req.businessId,
+                  sku: productData.sku
+                }
               }
             });
+
+            if (existing) {
+              await prisma.product.update({
+                where: { id: existing.id },
+                data: {
+                  name: productData.name,
+                  description: productData.description,
+                  price: productData.price,
+                  stockQuantity: productData.stockQuantity,
+                  lowStockThreshold: productData.lowStockThreshold,
+                  category: productData.category
+                }
+              });
+
+              if (productData.stockQuantity !== existing.stockQuantity) {
+                await prisma.inventoryLog.create({
+                  data: {
+                    productId: existing.id,
+                    changeType: productData.stockQuantity > existing.stockQuantity ? 'RESTOCK' : 'ADJUSTMENT',
+                    quantityChange: Math.abs(productData.stockQuantity - existing.stockQuantity),
+                    newQuantity: productData.stockQuantity,
+                    note: 'Google Sheets sync'
+                  }
+                });
+              }
+
+              results.products.updated++;
+            } else {
+              const newProduct = await prisma.product.create({
+                data: {
+                  businessId: req.businessId,
+                  sku: productData.sku,
+                  name: productData.name,
+                  description: productData.description,
+                  price: productData.price,
+                  stockQuantity: productData.stockQuantity,
+                  lowStockThreshold: productData.lowStockThreshold,
+                  category: productData.category
+                }
+              });
+
+              await prisma.inventoryLog.create({
+                data: {
+                  productId: newProduct.id,
+                  changeType: 'RESTOCK',
+                  quantityChange: productData.stockQuantity,
+                  newQuantity: productData.stockQuantity,
+                  note: 'Initial import from Google Sheets'
+                }
+              });
+
+              results.products.imported++;
+            }
+          } catch (err) {
+            results.products.errors.push({ sku: productData.sku, error: err.message });
           }
-
-          updated++;
-        } else {
-          // Create new product
-          const newProduct = await prisma.product.create({
-            data: {
-              businessId: req.businessId,
-              sku: productData.sku,
-              name: productData.name,
-              description: productData.description,
-              price: productData.price,
-              stockQuantity: productData.stockQuantity,
-              lowStockThreshold: productData.lowStockThreshold,
-              category: productData.category
-            }
-          });
-
-          await prisma.inventoryLog.create({
-            data: {
-              productId: newProduct.id,
-              changeType: 'RESTOCK',
-              quantityChange: productData.stockQuantity,
-              newQuantity: productData.stockQuantity,
-              note: 'Initial import from Google Sheets'
-            }
-          });
-
-          imported++;
         }
       } catch (err) {
-        errors.push({ sku: productData.sku, error: err.message });
+        console.error('Products sync error:', err);
+      }
+    }
+
+    // ========== SYNC ORDERS ==========
+    if (detected.orders) {
+      try {
+        const orders = await googleSheetsService.readOrders(
+          accessToken, refreshToken, clientId, clientSecret,
+          business.googleSheetId, detected.orders
+        );
+
+        results.orders.total = orders.length;
+
+        for (const orderData of orders) {
+          try {
+            const existing = await prisma.crmOrder.findUnique({
+              where: {
+                businessId_orderNumber: {
+                  businessId: req.businessId,
+                  orderNumber: orderData.orderNumber
+                }
+              }
+            });
+
+            const now = new Date();
+
+            if (existing) {
+              await prisma.crmOrder.update({
+                where: { id: existing.id },
+                data: {
+                  customerPhone: orderData.customerPhone,
+                  customerName: orderData.customerName,
+                  status: orderData.status,
+                  trackingNumber: orderData.trackingNumber || null,
+                  carrier: orderData.carrier || null,
+                  totalAmount: orderData.totalAmount,
+                  estimatedDelivery: orderData.estimatedDelivery,
+                  externalUpdatedAt: now
+                }
+              });
+              results.orders.updated++;
+            } else {
+              await prisma.crmOrder.create({
+                data: {
+                  businessId: req.businessId,
+                  orderNumber: orderData.orderNumber,
+                  customerPhone: orderData.customerPhone,
+                  customerName: orderData.customerName,
+                  status: orderData.status,
+                  trackingNumber: orderData.trackingNumber || null,
+                  carrier: orderData.carrier || null,
+                  totalAmount: orderData.totalAmount,
+                  estimatedDelivery: orderData.estimatedDelivery,
+                  externalCreatedAt: now,
+                  externalUpdatedAt: now
+                }
+              });
+              results.orders.imported++;
+            }
+          } catch (err) {
+            results.orders.errors.push({ orderNumber: orderData.orderNumber, error: err.message });
+          }
+        }
+      } catch (err) {
+        console.error('Orders sync error:', err);
+      }
+    }
+
+    // ========== SYNC TICKETS ==========
+    if (detected.tickets) {
+      try {
+        const tickets = await googleSheetsService.readTickets(
+          accessToken, refreshToken, clientId, clientSecret,
+          business.googleSheetId, detected.tickets
+        );
+
+        results.tickets.total = tickets.length;
+
+        for (const ticketData of tickets) {
+          try {
+            const existing = await prisma.crmTicket.findUnique({
+              where: {
+                businessId_ticketNumber: {
+                  businessId: req.businessId,
+                  ticketNumber: ticketData.ticketNumber
+                }
+              }
+            });
+
+            const now = new Date();
+
+            if (existing) {
+              await prisma.crmTicket.update({
+                where: { id: existing.id },
+                data: {
+                  customerPhone: ticketData.customerPhone,
+                  customerName: ticketData.customerName,
+                  product: ticketData.product || null,
+                  issue: ticketData.issue,
+                  status: ticketData.status,
+                  notes: ticketData.notes || null,
+                  estimatedCompletion: ticketData.estimatedCompletion,
+                  cost: ticketData.cost,
+                  externalUpdatedAt: now
+                }
+              });
+              results.tickets.updated++;
+            } else {
+              await prisma.crmTicket.create({
+                data: {
+                  businessId: req.businessId,
+                  ticketNumber: ticketData.ticketNumber,
+                  customerPhone: ticketData.customerPhone,
+                  customerName: ticketData.customerName,
+                  product: ticketData.product || null,
+                  issue: ticketData.issue,
+                  status: ticketData.status,
+                  notes: ticketData.notes || null,
+                  estimatedCompletion: ticketData.estimatedCompletion,
+                  cost: ticketData.cost,
+                  externalCreatedAt: now,
+                  externalUpdatedAt: now
+                }
+              });
+              results.tickets.imported++;
+            }
+          } catch (err) {
+            results.tickets.errors.push({ ticketNumber: ticketData.ticketNumber, error: err.message });
+          }
+        }
+      } catch (err) {
+        console.error('Tickets sync error:', err);
       }
     }
 
@@ -438,16 +625,23 @@ router.post('/sync', authenticateToken, requireRole(['OWNER', 'ADMIN']), async (
       data: { googleSheetLastSync: new Date() }
     });
 
+    // Clean up empty error arrays
+    if (results.products.errors.length === 0) delete results.products.errors;
+    if (results.orders.errors.length === 0) delete results.orders.errors;
+    if (results.tickets.errors.length === 0) delete results.tickets.errors;
+
     res.json({
       success: true,
-      imported,
-      updated,
-      total: products.length,
-      errors: errors.length > 0 ? errors : undefined
+      detected: {
+        products: detected.products || null,
+        orders: detected.orders || null,
+        tickets: detected.tickets || null
+      },
+      results
     });
   } catch (error) {
     console.error('Sync error:', error);
-    res.status(500).json({ error: 'Failed to sync inventory' });
+    res.status(500).json({ error: 'Failed to sync data' });
   }
 });
 

@@ -1,6 +1,6 @@
 /**
  * Google Sheets Integration Page
- * OAuth-based connection for inventory management via Google Sheets
+ * OAuth-based connection for full CRM sync (Products, Orders, Tickets)
  */
 
 'use client';
@@ -34,7 +34,11 @@ import {
   ArrowLeft,
   Clock,
   AlertCircle,
-  Loader2
+  Loader2,
+  Package,
+  ShoppingCart,
+  Wrench,
+  XCircle
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast } from '@/lib/toast';
@@ -50,6 +54,7 @@ export default function GoogleSheetsPage() {
   const [connecting, setConnecting] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [creatingTemplate, setCreatingTemplate] = useState(false);
+  const [detecting, setDetecting] = useState(false);
 
   const [status, setStatus] = useState({
     connected: false,
@@ -60,6 +65,8 @@ export default function GoogleSheetsPage() {
 
   const [spreadsheets, setSpreadsheets] = useState([]);
   const [spreadsheetInfo, setSpreadsheetInfo] = useState(null);
+  const [detectedSheets, setDetectedSheets] = useState(null);
+  const [syncResults, setSyncResults] = useState(null);
   const [loadingSpreadsheets, setLoadingSpreadsheets] = useState(false);
 
   // Handle OAuth callback results
@@ -69,7 +76,6 @@ export default function GoogleSheetsPage() {
 
     if (success === 'true') {
       toast.success('Google Sheets bağlantısı başarılı!');
-      // Clean URL
       window.history.replaceState({}, '', window.location.pathname);
     } else if (error) {
       const errorMessages = {
@@ -94,10 +100,11 @@ export default function GoogleSheetsPage() {
     }
   }, [status.connected]);
 
-  // Load spreadsheet info when selected
+  // Load spreadsheet info and detect sheets when selected
   useEffect(() => {
     if (status.selectedSpreadsheet) {
       loadSpreadsheetInfo(status.selectedSpreadsheet);
+      detectSheets();
     }
   }, [status.selectedSpreadsheet]);
 
@@ -135,6 +142,20 @@ export default function GoogleSheetsPage() {
     }
   };
 
+  const detectSheets = async () => {
+    try {
+      setDetecting(true);
+      const response = await apiClient.get('/api/google-sheets/detect-sheets');
+      if (response.data.success) {
+        setDetectedSheets(response.data);
+      }
+    } catch (error) {
+      console.error('Failed to detect sheets:', error);
+    } finally {
+      setDetecting(false);
+    }
+  };
+
   const handleConnect = async () => {
     try {
       setConnecting(true);
@@ -161,6 +182,8 @@ export default function GoogleSheetsPage() {
       });
       setSpreadsheets([]);
       setSpreadsheetInfo(null);
+      setDetectedSheets(null);
+      setSyncResults(null);
     } catch (error) {
       toast.error('Bağlantı kesilemedi');
     }
@@ -180,42 +203,30 @@ export default function GoogleSheetsPage() {
           selectedSheet: response.data.spreadsheet.sheet
         }));
         loadSpreadsheetInfo(spreadsheetId);
+        // Detect sheets after selection
+        setTimeout(detectSheets, 500);
       }
     } catch (error) {
       toast.error('Spreadsheet seçilemedi');
     }
   };
 
-  const handleSelectSheet = async (sheetName) => {
-    if (!status.selectedSpreadsheet) return;
-
-    try {
-      const response = await apiClient.post('/api/google-sheets/select', {
-        spreadsheetId: status.selectedSpreadsheet,
-        sheetName
-      });
-
-      if (response.data.success) {
-        toast.success('Sheet seçildi');
-        setStatus(prev => ({
-          ...prev,
-          selectedSheet: sheetName
-        }));
-      }
-    } catch (error) {
-      toast.error('Sheet seçilemedi');
-    }
-  };
-
   const handleSync = async () => {
     try {
       setSyncing(true);
+      setSyncResults(null);
       const response = await apiClient.post('/api/google-sheets/sync');
 
       if (response.data.success) {
+        const { results } = response.data;
+        const totalImported = results.products.imported + results.orders.imported + results.tickets.imported;
+        const totalUpdated = results.products.updated + results.orders.updated + results.tickets.updated;
+
         toast.success(
-          `Senkronizasyon tamamlandı! ${response.data.imported} yeni, ${response.data.updated} güncellendi`
+          `Senkronizasyon tamamlandı: ${results.products.total} ürün, ${results.orders.total} sipariş, ${results.tickets.total} servis kaydı`
         );
+
+        setSyncResults(results);
         setStatus(prev => ({
           ...prev,
           lastSync: new Date().toISOString()
@@ -234,10 +245,8 @@ export default function GoogleSheetsPage() {
       const response = await apiClient.post('/api/google-sheets/create-template');
 
       if (response.data.success) {
-        toast.success('Template oluşturuldu!');
-        // Open the new spreadsheet in a new tab
+        toast.success('Template oluşturuldu! Google Drive\'ınızı kontrol edin.');
         window.open(response.data.spreadsheet.spreadsheetUrl, '_blank');
-        // Reload spreadsheets list
         await loadSpreadsheets();
       }
     } catch (error) {
@@ -281,7 +290,7 @@ export default function GoogleSheetsPage() {
             Google Sheets Entegrasyonu
           </h1>
           <p className="text-neutral-600 mt-1">
-            Ürün ve stok bilgilerinizi Google Sheets ile senkronize edin
+            Ürün, sipariş ve servis bilgilerinizi Google Sheets ile senkronize edin
           </p>
         </div>
       </div>
@@ -345,10 +354,10 @@ export default function GoogleSheetsPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Plus className="h-5 w-5" />
-                Yeni Spreadsheet Oluştur
+                Yeni Template Oluştur
               </CardTitle>
               <CardDescription>
-                Hazır formatlı bir envanter şablonu oluşturun
+                Hazır formatlı bir CRM şablonu oluşturun (Ürünler, Siparişler, Servis)
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -371,7 +380,7 @@ export default function GoogleSheetsPage() {
                   )}
                 </Button>
                 <p className="text-sm text-neutral-500">
-                  Otomatik olarak &quot;Telyx Inventory Template&quot; adında bir spreadsheet oluşturulur
+                  3 sheet&apos;li hazır template: Ürünler, Siparişler, Servis
                 </p>
               </div>
             </CardContent>
@@ -392,7 +401,7 @@ export default function GoogleSheetsPage() {
                 </Button>
               </CardTitle>
               <CardDescription>
-                Envanter verilerinizi okuyacağınız spreadsheet&apos;i seçin
+                CRM verilerinizi okuyacağınız spreadsheet&apos;i seçin
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -416,28 +425,6 @@ export default function GoogleSheetsPage() {
                 </Select>
               </div>
 
-              {/* Sheet Select (if spreadsheet selected) */}
-              {spreadsheetInfo && spreadsheetInfo.sheets && (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Sheet (Sayfa)</label>
-                  <Select
-                    value={status.selectedSheet || ''}
-                    onValueChange={handleSelectSheet}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sheet seçin..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {spreadsheetInfo.sheets.map((sheet) => (
-                        <SelectItem key={sheet.sheetId} value={sheet.title}>
-                          {sheet.title}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
               {/* Selected Spreadsheet Info */}
               {status.selectedSpreadsheet && spreadsheetInfo && (
                 <div className="p-4 bg-neutral-50 rounded-lg">
@@ -445,7 +432,7 @@ export default function GoogleSheetsPage() {
                     <div>
                       <p className="font-medium">{spreadsheetInfo.title}</p>
                       <p className="text-sm text-neutral-500">
-                        Seçili sheet: {status.selectedSheet || 'Belirlenmedi'}
+                        {spreadsheetInfo.sheets?.length || 0} sheet
                       </p>
                     </div>
                     <Button
@@ -464,6 +451,85 @@ export default function GoogleSheetsPage() {
                   </div>
                 </div>
               )}
+
+              {/* Detected Sheets */}
+              {status.selectedSpreadsheet && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium">Tespit Edilen Sheet&apos;ler</label>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={detectSheets}
+                      disabled={detecting}
+                    >
+                      {detecting ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+
+                  {detectedSheets ? (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      {/* Products */}
+                      <div className={`p-3 rounded-lg border ${detectedSheets.detected.products ? 'bg-green-50 border-green-200' : 'bg-neutral-50 border-neutral-200'}`}>
+                        <div className="flex items-center gap-2">
+                          <Package className={`h-4 w-4 ${detectedSheets.detected.products ? 'text-green-600' : 'text-neutral-400'}`} />
+                          <span className="text-sm font-medium">Ürünler</span>
+                          {detectedSheets.detected.products ? (
+                            <CheckCircle2 className="h-4 w-4 text-green-600 ml-auto" />
+                          ) : (
+                            <XCircle className="h-4 w-4 text-neutral-400 ml-auto" />
+                          )}
+                        </div>
+                        <p className="text-xs text-neutral-500 mt-1">
+                          {detectedSheets.detected.products || 'Bulunamadı'}
+                        </p>
+                      </div>
+
+                      {/* Orders */}
+                      <div className={`p-3 rounded-lg border ${detectedSheets.detected.orders ? 'bg-blue-50 border-blue-200' : 'bg-neutral-50 border-neutral-200'}`}>
+                        <div className="flex items-center gap-2">
+                          <ShoppingCart className={`h-4 w-4 ${detectedSheets.detected.orders ? 'text-blue-600' : 'text-neutral-400'}`} />
+                          <span className="text-sm font-medium">Siparişler</span>
+                          {detectedSheets.detected.orders ? (
+                            <CheckCircle2 className="h-4 w-4 text-blue-600 ml-auto" />
+                          ) : (
+                            <XCircle className="h-4 w-4 text-neutral-400 ml-auto" />
+                          )}
+                        </div>
+                        <p className="text-xs text-neutral-500 mt-1">
+                          {detectedSheets.detected.orders || 'Bulunamadı'}
+                        </p>
+                      </div>
+
+                      {/* Tickets */}
+                      <div className={`p-3 rounded-lg border ${detectedSheets.detected.tickets ? 'bg-orange-50 border-orange-200' : 'bg-neutral-50 border-neutral-200'}`}>
+                        <div className="flex items-center gap-2">
+                          <Wrench className={`h-4 w-4 ${detectedSheets.detected.tickets ? 'text-orange-600' : 'text-neutral-400'}`} />
+                          <span className="text-sm font-medium">Servis</span>
+                          {detectedSheets.detected.tickets ? (
+                            <CheckCircle2 className="h-4 w-4 text-orange-600 ml-auto" />
+                          ) : (
+                            <XCircle className="h-4 w-4 text-neutral-400 ml-auto" />
+                          )}
+                        </div>
+                        <p className="text-xs text-neutral-500 mt-1">
+                          {detectedSheets.detected.tickets || 'Bulunamadı'}
+                        </p>
+                      </div>
+                    </div>
+                  ) : detecting ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="h-5 w-5 animate-spin text-neutral-400" />
+                    </div>
+                  ) : (
+                    <p className="text-sm text-neutral-500">Sheet&apos;ler tespit edilmedi</p>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -473,23 +539,30 @@ export default function GoogleSheetsPage() {
               <CardHeader>
                 <CardTitle>Senkronizasyon</CardTitle>
                 <CardDescription>
-                  Spreadsheet verilerini ürün envanterinize aktarın
+                  Spreadsheet verilerini sisteminize aktarın
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <h4 className="text-sm font-medium text-blue-900 mb-2 flex items-center gap-2">
+                {/* Expected Format Info */}
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-3">
+                  <h4 className="text-sm font-medium text-blue-900 flex items-center gap-2">
                     <AlertCircle className="h-4 w-4" />
-                    Beklenen Kolon Formatı
+                    Beklenen Sheet İsimleri ve Kolonlar
                   </h4>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm text-blue-800">
-                    <span className="font-mono bg-blue-100 px-2 py-1 rounded">SKU</span>
-                    <span className="font-mono bg-blue-100 px-2 py-1 rounded">Name</span>
-                    <span className="font-mono bg-blue-100 px-2 py-1 rounded">Description</span>
-                    <span className="font-mono bg-blue-100 px-2 py-1 rounded">Price</span>
-                    <span className="font-mono bg-blue-100 px-2 py-1 rounded">Stock</span>
-                    <span className="font-mono bg-blue-100 px-2 py-1 rounded">MinStock</span>
-                    <span className="font-mono bg-blue-100 px-2 py-1 rounded">Category</span>
+
+                  <div className="space-y-2 text-sm text-blue-800">
+                    <div>
+                      <span className="font-medium">Ürünler:</span>
+                      <span className="font-mono text-xs ml-2">SKU, Name, Description, Price, Stock, MinStock, Category</span>
+                    </div>
+                    <div>
+                      <span className="font-medium">Siparişler:</span>
+                      <span className="font-mono text-xs ml-2">OrderNumber, CustomerPhone, CustomerName, Status, TrackingNumber, Carrier, TotalAmount, EstimatedDelivery</span>
+                    </div>
+                    <div>
+                      <span className="font-medium">Servis:</span>
+                      <span className="font-mono text-xs ml-2">TicketNumber, CustomerPhone, CustomerName, Product, Issue, Status, Notes, EstimatedCompletion, Cost</span>
+                    </div>
                   </div>
                 </div>
 
@@ -502,10 +575,61 @@ export default function GoogleSheetsPage() {
                   ) : (
                     <>
                       <RefreshCw className="h-4 w-4 mr-2" />
-                      Şimdi Senkronize Et
+                      Tümünü Senkronize Et
                     </>
                   )}
                 </Button>
+
+                {/* Sync Results */}
+                {syncResults && (
+                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg space-y-3">
+                    <h4 className="text-sm font-medium text-green-900 flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4" />
+                      Senkronizasyon Sonuçları
+                    </h4>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                      {/* Products Result */}
+                      <div className="p-2 bg-white rounded border">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Package className="h-4 w-4 text-green-600" />
+                          <span className="font-medium">Ürünler</span>
+                        </div>
+                        <div className="text-xs text-neutral-600 space-y-0.5">
+                          <div>{syncResults.products.imported} yeni</div>
+                          <div>{syncResults.products.updated} güncellendi</div>
+                          <div className="text-neutral-400">Toplam: {syncResults.products.total}</div>
+                        </div>
+                      </div>
+
+                      {/* Orders Result */}
+                      <div className="p-2 bg-white rounded border">
+                        <div className="flex items-center gap-2 mb-1">
+                          <ShoppingCart className="h-4 w-4 text-blue-600" />
+                          <span className="font-medium">Siparişler</span>
+                        </div>
+                        <div className="text-xs text-neutral-600 space-y-0.5">
+                          <div>{syncResults.orders.imported} yeni</div>
+                          <div>{syncResults.orders.updated} güncellendi</div>
+                          <div className="text-neutral-400">Toplam: {syncResults.orders.total}</div>
+                        </div>
+                      </div>
+
+                      {/* Tickets Result */}
+                      <div className="p-2 bg-white rounded border">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Wrench className="h-4 w-4 text-orange-600" />
+                          <span className="font-medium">Servis</span>
+                        </div>
+                        <div className="text-xs text-neutral-600 space-y-0.5">
+                          <div>{syncResults.tickets.imported} yeni</div>
+                          <div>{syncResults.tickets.updated} güncellendi</div>
+                          <div className="text-neutral-400">Toplam: {syncResults.tickets.total}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {status.lastSync && (
                   <p className="text-sm text-neutral-500 text-center">
