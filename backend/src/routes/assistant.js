@@ -501,7 +501,7 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
           language: lang?.toLowerCase() || 'tr',
         },
 
-        // Model
+        // Model - language is critical for proper speech
         model: {
           provider: 'openai',
           model: model || 'gpt-4',
@@ -511,16 +511,18 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
               content: fullSystemPrompt
             }
           ],
-          tools: activeTools
+          tools: activeTools,
+          language: lang?.toLowerCase() || 'tr',
         },
-        
-        // Voice - 11Labs
+
+        // Voice - 11Labs with language for proper accent
         voice: {
           provider: '11labs',
           voiceId: elevenLabsVoiceId,
           model: 'eleven_turbo_v2_5',
           stability: 0.5,
           similarityBoost: 0.75,
+          language: lang?.toLowerCase() || 'tr',
         },
         
         // First Message - Müşterinin yazdığı karşılama
@@ -924,11 +926,18 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
                 content: fullSystemPrompt
               }
             ],
-            tools: activeTools
+            tools: activeTools,
+            language: language?.toLowerCase() || business?.language?.toLowerCase() || 'tr',
           },
           voice: {
             provider: '11labs',
-            voiceId: elevenLabsVoiceId
+            voiceId: elevenLabsVoiceId,
+            language: language?.toLowerCase() || business?.language?.toLowerCase() || 'tr',
+          },
+          transcriber: {
+            provider: '11labs',
+            model: 'scribe_v1',
+            language: language?.toLowerCase() || business?.language?.toLowerCase() || 'tr',
           },
           firstMessage: (language?.toUpperCase() === 'TR' || business?.language === 'TR')
             ? `Merhaba, ben ${name}. Size nasıl yardımcı olabilirim?`
