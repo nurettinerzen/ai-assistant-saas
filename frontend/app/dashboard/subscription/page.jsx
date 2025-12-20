@@ -394,6 +394,22 @@ export default function SubscriptionPage() {
             // Only show "Popular" badge if user has no plan or is on FREE plan
             const showPopularBadge = plan.popular && !isCurrentPlan && (!subscription?.plan || subscription?.plan === 'FREE');
 
+            // Plan order for upgrade/downgrade logic
+            const PLAN_ORDER = { FREE: 0, STARTER: 1, BASIC: 2, PROFESSIONAL: 3, ENTERPRISE: 4 };
+            const currentPlanIndex = PLAN_ORDER[subscription?.plan] || 0;
+            const thisPlanIndex = PLAN_ORDER[plan.id];
+            const isUpgrade = thisPlanIndex > currentPlanIndex;
+            const isDowngrade = thisPlanIndex < currentPlanIndex;
+
+            // Button text based on plan comparison
+            const getButtonText = () => {
+              if (plan.id === 'ENTERPRISE') return isTR ? 'Bize Ulaşın' : 'Contact Us';
+              if (isCurrentPlan) return isTR ? 'Mevcut Plan' : 'Current Plan';
+              if (isUpgrade) return isTR ? 'Yükselt' : 'Upgrade';
+              if (isDowngrade) return isTR ? 'Düşür' : 'Downgrade';
+              return isTR ? 'Seç' : 'Select';
+            };
+
             // Feature labels
             const featureLabels = {
               minutes: isTR ? `${plan.minutes} dakika telefon görüşmesi` : `${plan.minutes} minutes of phone calls`,
@@ -499,28 +515,32 @@ export default function SubscriptionPage() {
                 <div className="mt-auto">
                 {plan.id === 'ENTERPRISE' ? (
                   <Button
-                    className="w-full"
+                    className="w-full border-primary-600 text-primary-600 hover:bg-primary-50"
                     variant="outline"
                     onClick={() => window.location.href = '/contact'}
                   >
-                    {t('dashboard.subscriptionPage.contactUs')}
+                    {getButtonText()}
                   </Button>
                 ) : (
                   <Button
-                    className={`w-full ${plan.popular ? 'bg-gradient-to-r from-indigo-600 to-blue-500 hover:from-indigo-700 hover:to-blue-600' : ''}`}
-                    variant={isCurrentPlan ? 'outline' : (plan.popular ? 'default' : 'outline')}
+                    className={`w-full ${
+                      isCurrentPlan
+                        ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed border-neutral-200'
+                        : isUpgrade
+                          ? 'bg-gradient-to-r from-indigo-600 to-blue-500 hover:from-indigo-700 hover:to-blue-600 text-white'
+                          : 'border-neutral-300 text-neutral-700 hover:bg-neutral-50'
+                    }`}
+                    variant={isCurrentPlan ? 'outline' : (isUpgrade ? 'default' : 'outline')}
                     disabled={isCurrentPlan || !can('billing:manage') || upgrading}
                     onClick={() => handleUpgrade(plan.id)}
                   >
                     {upgrading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        {t('dashboard.subscriptionPage.processing')}
+                        {isTR ? 'İşleniyor...' : 'Processing...'}
                       </>
-                    ) : isCurrentPlan ? (
-                      t('dashboard.subscriptionPage.currentPlan')
                     ) : (
-                      t('dashboard.subscriptionPage.getStarted')
+                      getButtonText()
                     )}
                   </Button>
                 )}

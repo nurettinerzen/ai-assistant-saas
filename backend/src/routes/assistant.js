@@ -494,11 +494,11 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
       body: JSON.stringify({
         name: `${name} - ${Date.now()}`,
 
-        // Transcriber - 11Labs
+        // Transcriber - 11Labs (lang is uppercase, convert to lowercase for VAPI)
         transcriber: {
           provider: '11labs',
           model: 'scribe_v1',
-          language: language === 'TR' ? 'tr' : 'en',
+          language: lang?.toLowerCase() || 'tr',
         },
 
         // Model
@@ -930,7 +930,7 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
             provider: '11labs',
             voiceId: elevenLabsVoiceId
           },
-          firstMessage: language === 'TR' 
+          firstMessage: (language?.toUpperCase() === 'TR' || business?.language === 'TR')
             ? `Merhaba, ben ${name}. Size nasıl yardımcı olabilirim?`
             : `Hi, I'm ${name}. How can I help you today?`,
         }),
