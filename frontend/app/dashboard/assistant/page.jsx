@@ -91,7 +91,7 @@ export default function AssistantsPage() {
     systemPrompt: '',
     model: 'gpt-4',
     language: locale || 'tr',
-    tone: 'professional',  // "friendly" or "professional"
+    tone: 'formal',  // "formal" or "casual"
     customNotes: '',       // Business-specific notes
   });
 
@@ -148,7 +148,7 @@ export default function AssistantsPage() {
         systemPrompt: template.prompt,
         model: 'gpt-4',
         language: template.language || businessLanguage || 'tr',
-        tone: 'professional',
+        tone: 'formal',
         customNotes: '',
       });
     } else {
@@ -158,7 +158,7 @@ export default function AssistantsPage() {
         systemPrompt: '',
         model: 'gpt-4',
         language: businessLanguage || 'tr',
-        tone: 'professional',
+        tone: 'formal',
         customNotes: '',
       });
     }
@@ -195,7 +195,7 @@ export default function AssistantsPage() {
       systemPrompt: '', // Keep empty for edit mode
       model: assistant.model || 'gpt-4',
       language: assistant.language || inferredLang,
-      tone: assistant.tone || 'professional',
+      tone: assistant.tone || 'formal',
       customNotes: assistant.customNotes || '',
     });
     setShowCreateModal(true);
@@ -226,7 +226,7 @@ export default function AssistantsPage() {
   };
 
   const resetForm = () => {
-    setFormData({ name: '', voiceId: '', systemPrompt: '', model: 'gpt-4', language: businessLanguage || 'tr', tone: 'professional', customNotes: '' });
+    setFormData({ name: '', voiceId: '', systemPrompt: '', model: 'gpt-4', language: businessLanguage || 'tr', tone: 'formal', customNotes: '' });
     setEditingAssistant(null);
   };
 
@@ -304,7 +304,10 @@ export default function AssistantsPage() {
                 </div>
 
                 <p className="text-sm text-neutral-600 line-clamp-2 mb-4">
-                  {assistant.systemPrompt}
+                  {locale === 'tr' ? 'AI Müşteri Hizmetleri Asistanı' : 'AI Customer Service Assistant'}
+                  {assistant.tone === 'casual' && (
+                    <span className="text-primary-600"> • {locale === 'tr' ? 'Samimi üslup' : 'Friendly tone'}</span>
+                  )}
                 </p>
 
                 <div className="flex flex-wrap gap-2 mb-4">
@@ -483,16 +486,16 @@ export default function AssistantsPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="professional">
+                  <SelectItem value="formal">
                     {t('dashboard.assistantsPage.toneProf')}
                   </SelectItem>
-                  <SelectItem value="friendly">
+                  <SelectItem value="casual">
                     {t('dashboard.assistantsPage.toneFriendly')}
                   </SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-xs text-neutral-500 mt-1">
-                {formData.tone === 'friendly'
+                {formData.tone === 'casual'
                   ? t('dashboard.assistantsPage.toneFriendlyDesc')
                   : t('dashboard.assistantsPage.toneProfDesc')}
               </p>

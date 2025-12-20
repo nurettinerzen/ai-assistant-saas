@@ -21,6 +21,10 @@ import BuyCreditModal from '@/components/BuyCreditModal';
 
 // Plan configurations - Updated with new pricing and features
 // Pricing: TR (₺299, ₺999, ₺3,499) / EN ($29, $79, $199)
+// Standardized feature order for all plans (for easy comparison)
+// 1. minutes, 2. assistants, 3. phoneNumbers, 4. phone, 5. whatsapp,
+// 6. chatWidget, 7. email, 8. ecommerce, 9. calendar, 10. analytics,
+// 11. prioritySupport, 12. apiAccess
 const PLANS = [
   {
     id: 'STARTER',
@@ -40,10 +44,12 @@ const PLANS = [
       { key: 'phone', included: true },
       { key: 'whatsapp', included: true },
       { key: 'chatWidget', included: true },
-      { key: 'analytics', included: true },
+      { key: 'email', included: false },
       { key: 'ecommerce', included: false },
       { key: 'calendar', included: false },
-      { key: 'email', included: false },
+      { key: 'analytics', included: true },
+      { key: 'prioritySupport', included: false },
+      { key: 'apiAccess', included: false },
     ],
   },
   {
@@ -65,10 +71,12 @@ const PLANS = [
       { key: 'phone', included: true },
       { key: 'whatsapp', included: true },
       { key: 'chatWidget', included: true },
+      { key: 'email', included: false },
       { key: 'ecommerce', included: true },
       { key: 'calendar', included: true },
-      { key: 'email', included: false },
+      { key: 'analytics', included: true },
       { key: 'prioritySupport', included: false },
+      { key: 'apiAccess', included: false },
     ],
   },
   {
@@ -92,6 +100,7 @@ const PLANS = [
       { key: 'email', included: true },
       { key: 'ecommerce', included: true },
       { key: 'calendar', included: true },
+      { key: 'analytics', included: true },
       { key: 'prioritySupport', included: true },
       { key: 'apiAccess', included: true },
     ],
@@ -117,11 +126,11 @@ const PLANS = [
       { key: 'email', included: true },
       { key: 'ecommerce', included: true },
       { key: 'calendar', included: true },
+      { key: 'analytics', included: true },
       { key: 'prioritySupport', included: true },
       { key: 'apiAccess', included: true },
       { key: 'customTraining', included: true },
       { key: 'slaGuarantee', included: true },
-      { key: 'customOverage', included: true },
     ],
   },
 ];

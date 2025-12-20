@@ -565,6 +565,26 @@ console.log('✅ VAPI Response:', JSON.stringify(vapiAssistant, null, 2));
       }
     });
 
+    // ✅ Telefon numarası varsa, yeni asistanı otomatik ata
+    try {
+      const phoneNumber = await prisma.phoneNumber.findFirst({
+        where: { businessId }
+      });
+
+      if (phoneNumber && phoneNumber.vapiPhoneId) {
+        console.log('📱 Auto-assigning assistant to phone number:', phoneNumber.phoneNumber);
+        await vapiService.assignPhoneNumber(phoneNumber.vapiPhoneId, vapiAssistant.id);
+        await prisma.phoneNumber.update({
+          where: { id: phoneNumber.id },
+          data: { assistantId: assistant.id }
+        });
+        console.log('✅ Phone number assigned to new assistant');
+      }
+    } catch (phoneError) {
+      console.error('⚠️ Failed to auto-assign phone number:', phoneError);
+      // Don't fail the request, just log the error
+    }
+
     res.json({
       message: 'Assistant created successfully',
       assistant,
