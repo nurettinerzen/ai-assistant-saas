@@ -501,7 +501,7 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
           language: lang?.toLowerCase() || 'tr',
         },
 
-        // Model - language is critical for proper speech
+        // Model - VAPI does not support model.language, language is set via voice and transcriber
         model: {
           provider: 'openai',
           model: model || 'gpt-4',
@@ -512,7 +512,6 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
             }
           ],
           tools: activeTools,
-          language: lang?.toLowerCase() || 'tr',
         },
 
         // Voice - 11Labs with language for proper accent
@@ -927,7 +926,6 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
               }
             ],
             tools: activeTools,
-            language: language?.toLowerCase() || business?.language?.toLowerCase() || 'tr',
           },
           voice: {
             provider: '11labs',
