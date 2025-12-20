@@ -50,6 +50,32 @@ export function getActiveToolsForVAPI(business, serverUrl = null) {
 }
 
 /**
+ * Get active tool definitions for 11Labs Conversational AI
+ * 11Labs format uses webhook-based tools with different structure
+ *
+ * @param {Object} business - Business object with businessType and integrations
+ * @param {string} serverUrl - Optional server URL (defaults to BACKEND_URL)
+ * @returns {Object[]} - Array of tool definitions in 11Labs format
+ */
+export function getActiveToolsForElevenLabs(business, serverUrl = null) {
+  const baseTools = getActiveTools(business);
+  const backendUrl = serverUrl || process.env.BACKEND_URL || 'https://api.aicallcenter.app';
+  const webhookUrl = `${backendUrl}/api/elevenlabs/webhook`;
+
+  // Convert OpenAI format to 11Labs webhook format
+  return baseTools.map(tool => ({
+    type: 'webhook',
+    name: tool.function.name,
+    description: tool.function.description,
+    parameters: tool.function.parameters,
+    webhook: {
+      url: webhookUrl,
+      method: 'POST'
+    }
+  }));
+}
+
+/**
  * Execute a tool
  *
  * @param {string} toolName - Name of the tool to execute
@@ -140,6 +166,7 @@ export { getActiveToolNames } from './utils/business-rules.js';
 export default {
   getActiveTools,
   getActiveToolsForVAPI,
+  getActiveToolsForElevenLabs,
   executeTool,
   getToolDefinition,
   hasTooll,

@@ -114,46 +114,49 @@ model Business {
 }
 
 model Assistant {
-  id              String        @id @default(cuid())
-  businessId      Int
-  name            String
-  voiceId         String
-  systemPrompt    String
-  model           String        @default("gpt-4")
-  vapiAssistantId String?       @unique
-  isActive        Boolean       @default(true)
-  timezone        String?       // Business timezone for date/time context
-  firstMessage    String?       // Custom first message
-  tone            String        @default("professional")  // "friendly" or "professional"
-  customNotes     String?       @db.Text                  // Business-specific notes
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  business        Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  phoneNumbers    PhoneNumber[]
+  id                  String        @id @default(cuid())
+  businessId          Int
+  name                String
+  voiceId             String
+  systemPrompt        String        @db.Text
+  model               String        @default("gpt-4")
+  vapiAssistantId     String?       @unique  // DEPRECATED: Use elevenLabsAgentId
+  elevenLabsAgentId   String?       @unique  // 11Labs Conversational AI Agent ID
+  voiceProvider       String        @default("elevenlabs")  // "elevenlabs" or "vapi" for transition
+  isActive            Boolean       @default(true)
+  timezone            String?       // Business timezone for date/time context
+  firstMessage        String?       // Custom first message
+  tone                String        @default("professional")  // "friendly" or "professional"
+  customNotes         String?       @db.Text                  // Business-specific notes
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  business            Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  phoneNumbers        PhoneNumber[]
 
   @@index([businessId])
   @@index([isActive])
 }
 
 model PhoneNumber {
-  id              String        @id @default(cuid())
-  businessId      Int
-  phoneNumber     String        @unique
-  countryCode     String
-  provider        PhoneProvider
-  vapiPhoneId     String?       @unique
-  netgsmNumberId  String?
-  sipUsername     String?
-  sipPassword     String?
-  sipServer       String?
-  assistantId     String?
-  status          PhoneStatus   @default(ACTIVE)
-  monthlyCost     Float
-  nextBillingDate DateTime?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  assistant       Assistant?    @relation(fields: [assistantId], references: [id])
-  business        Business      @relation("BusinessPhoneNumbers", fields: [businessId], references: [id], onDelete: Cascade)
+  id                      String        @id @default(cuid())
+  businessId              Int
+  phoneNumber             String        @unique
+  countryCode             String
+  provider                PhoneProvider
+  vapiPhoneId             String?       @unique  // DEPRECATED: Use elevenLabsPhoneId
+  elevenLabsPhoneId       String?       @unique  // 11Labs phone number ID
+  netgsmNumberId          String?
+  sipUsername             String?
+  sipPassword             String?
+  sipServer               String?
+  assistantId             String?
+  status                  PhoneStatus   @default(ACTIVE)
+  monthlyCost             Float
+  nextBillingDate         DateTime?
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
+  assistant               Assistant?    @relation(fields: [assistantId], references: [id])
+  business                Business      @relation("BusinessPhoneNumbers", fields: [businessId], references: [id], onDelete: Cascade)
 
   @@index([businessId])
   @@index([phoneNumber])
@@ -489,7 +492,8 @@ enum VoiceTone {
 }
 
 enum PhoneProvider {
-  VAPI
+  VAPI       // DEPRECATED: Use ELEVENLABS
+  ELEVENLABS // 11Labs Conversational AI
   NETGSM
   TWILIO
   CUSTOM

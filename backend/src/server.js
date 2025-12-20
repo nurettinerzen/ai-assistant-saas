@@ -26,7 +26,8 @@ import integrationsRoutes from './routes/integrations.js';
 import aiTrainingRoutes from './routes/aiTraining.js';
 import demoRoutes from './routes/demo.js';
 import phoneNumberRoutes from './routes/phoneNumber.js';
-import vapiRoutes from './routes/vapi.js'; // Updated VAPI routes
+import vapiRoutes from './routes/vapi.js'; // Updated VAPI routes (legacy - keep for backwards compatibility)
+import elevenLabsRoutes from './routes/elevenlabs.js'; // 11Labs Conversational AI routes
 import dashboardRoutes from './routes/dashboard.js';
 import settingsRoutes from './routes/settings.js';
 import voicesRoutes from './routes/voices.js';
@@ -80,7 +81,9 @@ app.use(cors({
 
 // ⚠️ WEBHOOK ROUTES - RAW BODY (BEFORE express.json())
 app.use('/api/subscription/webhook', express.raw({ type: 'application/json' }));
-app.use('/api/vapi/webhook', express.json()); // VAPI webhook needs parsed JSON
+app.use('/api/vapi/webhook', express.json()); // VAPI webhook needs parsed JSON (legacy)
+app.use('/api/elevenlabs/webhook', express.json()); // 11Labs webhook needs parsed JSON
+app.use('/api/elevenlabs/post-call', express.json()); // 11Labs post-call webhook
 app.use('/api/webhook/incoming', express.json()); // External webhooks (Zapier, etc.)
 
 // ✅ OTHER ROUTES - JSON PARSE
@@ -112,7 +115,8 @@ app.use('/api/integrations', integrationsRoutes);
 app.use('/api/ai-training', aiTrainingRoutes);
 app.use('/api/phone-number', phoneNumberRoutes); // NEW
 app.use('/api/phone-numbers', phoneNumberRoutes); // Alias for frontend compatibility
-app.use('/api/vapi', vapiRoutes); // Updated VAPI routes
+app.use('/api/vapi', vapiRoutes); // Legacy VAPI routes (keep for backwards compatibility)
+app.use('/api/elevenlabs', elevenLabsRoutes); // 11Labs Conversational AI routes
 app.use('/api', demoRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/settings', settingsRoutes);

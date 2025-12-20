@@ -11,6 +11,7 @@ import { authenticateToken } from '../middleware/auth.js';
 import netgsmService from '../services/netgsm.js';
 import vapiByocService from '../services/vapiByoc.js';
 import vapiService from '../services/vapi.js';
+import elevenLabsService from '../services/elevenlabs.js';
 
 const router = express.Router();
 
@@ -20,15 +21,19 @@ router.use(authenticateToken);
 // COUNTRY TO PROVIDER MAPPING
 // ============================================================================
 const COUNTRY_PROVIDER_MAP = {
-  'TR': 'NETGSM',  // Turkey → Netgsm
-  'US': 'VAPI',     // USA → VAPI
+  'TR': 'NETGSM_ELEVENLABS',  // Turkey → NetGSM 0850 + 11Labs SIP Trunk
+  'US': 'ELEVENLABS',         // USA → 11Labs (via Twilio import)
   // Future additions:
-  // 'UK': 'TWILIO',
-  // 'CA': 'VAPI',
+  // 'UK': 'ELEVENLABS',
+  // 'CA': 'ELEVENLABS',
 };
 
 const PRICING = {
-  VAPI: {
+  ELEVENLABS: {
+    monthlyCost: 5.00,  // $5/month
+    currency: 'USD'
+  },
+  VAPI: {  // Legacy - deprecated
     monthlyCost: 5.00,  // $5/month
     currency: 'USD'
   },
@@ -151,11 +156,19 @@ router.post('/provision', async (req, res) => {
 
     let result;
 
-    // ========== TURKEY → NETGSM ==========
-    if (provider === 'NETGSM') {
-      result = await provisionNetgsmNumber(businessId, assistantId);
+    // ========== NETGSM + 11LABS SIP TRUNK (Turkey) ==========
+    if (provider === 'NETGSM_ELEVENLABS') {
+      result = await provisionNetgsmElevenLabsNumber(businessId, assistantId);
     }
-    // ========== USA → VAPI ==========
+    // ========== 11LABS (USA - via Twilio) ==========
+    else if (provider === 'ELEVENLABS') {
+      result = await provisionElevenLabsNumber(businessId, assistantId, countryCode);
+    }
+    // ========== NETGSM (Legacy - now uses 11Labs) ==========
+    else if (provider === 'NETGSM') {
+      result = await provisionNetgsmElevenLabsNumber(businessId, assistantId);
+    }
+    // ========== VAPI (Legacy - deprecated) ==========
     else if (provider === 'VAPI') {
       result = await provisionVapiNumber(businessId, assistantId);
     }
@@ -192,10 +205,87 @@ router.post('/provision', async (req, res) => {
 });
 
 // ============================================================================
-// HELPER: PROVISION NETGSM NUMBER (TURKEY)
+// HELPER: PROVISION NETGSM NUMBER + 11LABS SIP TRUNK (TURKEY)
+// ============================================================================
+async function provisionNetgsmElevenLabsNumber(businessId, assistantId) {
+  console.log('🇹🇷 Provisioning Netgsm 0850 number with 11Labs SIP Trunk...');
+
+  // Step 1: Purchase 0850 number from Netgsm
+  const netgsmResult = await netgsmService.purchaseNumber();
+  console.log('✅ Netgsm number purchased:', netgsmResult.phoneNumber);
+
+  // Step 2: Get SIP credentials
+  const sipCredentials = await netgsmService.getSipCredentials(netgsmResult.numberId);
+  console.log('✅ SIP credentials obtained');
+
+  // Step 3: Import to 11Labs as SIP Trunk if assistant is assigned
+  let elevenLabsPhoneId = null;
+  const formattedNumber = netgsmService.formatPhoneNumber(netgsmResult.phoneNumber);
+
+  if (assistantId) {
+    const assistant = await prisma.assistant.findUnique({
+      where: { id: assistantId }
+    });
+
+    if (!assistant || !assistant.elevenLabsAgentId) {
+      throw new Error('Invalid assistant or assistant not configured with 11Labs');
+    }
+
+    // Import to 11Labs as SIP Trunk
+    try {
+      const elevenLabsResult = await elevenLabsService.importSipTrunkNumber({
+        phoneNumber: formattedNumber,
+        sipUri: `sip:${sipCredentials.sipUsername}@${sipCredentials.sipServer}`,
+        sipUsername: sipCredentials.sipUsername,
+        sipPassword: sipCredentials.sipPassword,
+        sipServer: sipCredentials.sipServer,
+        agentId: assistant.elevenLabsAgentId,
+        label: `Netgsm TR - ${formattedNumber}`
+      });
+
+      elevenLabsPhoneId = elevenLabsResult.phone_number_id;
+      console.log('✅ Number imported to 11Labs SIP Trunk:', elevenLabsPhoneId);
+    } catch (error) {
+      console.error('❌ Failed to import to 11Labs:', error.message);
+      throw new Error(`Failed to import phone number to 11Labs: ${error.message}`);
+    }
+  }
+
+  // Step 4: Save to database
+  const phoneNumber = await prisma.phoneNumber.create({
+    data: {
+      businessId: businessId,
+      phoneNumber: formattedNumber,
+      countryCode: 'TR',
+      provider: 'ELEVENLABS',  // Use ELEVENLABS as provider since that's where it's connected
+      netgsmNumberId: netgsmResult.numberId,
+      elevenLabsPhoneId: elevenLabsPhoneId,
+      sipUsername: sipCredentials.sipUsername,
+      sipPassword: sipCredentials.sipPassword,
+      sipServer: sipCredentials.sipServer,
+      assistantId: assistantId,
+      status: 'ACTIVE',
+      monthlyCost: netgsmResult.monthlyCost,
+      nextBillingDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) // 1 year from now
+    }
+  });
+
+  return {
+    id: phoneNumber.id,
+    phoneNumber: phoneNumber.phoneNumber,
+    provider: 'ELEVENLABS',
+    countryCode: 'TR',
+    status: 'ACTIVE',
+    monthlyCost: phoneNumber.monthlyCost,
+    elevenLabsPhoneId: elevenLabsPhoneId
+  };
+}
+
+// ============================================================================
+// HELPER: PROVISION NETGSM NUMBER (LEGACY - VAPI)
 // ============================================================================
 async function provisionNetgsmNumber(businessId, assistantId) {
-  console.log('🇹🇷 Provisioning Netgsm 0850 number...');
+  console.log('🇹🇷 [LEGACY] Provisioning Netgsm 0850 number (VAPI)...');
 
   // Step 1: Purchase 0850 number from Netgsm
   const netgsmResult = await netgsmService.purchaseNumber();
@@ -324,6 +414,135 @@ async function provisionVapiNumber(businessId, assistantId) {
 }
 
 // ============================================================================
+// HELPER: PROVISION 11LABS NUMBER (via Twilio import)
+// ============================================================================
+async function provisionElevenLabsNumber(businessId, assistantId, countryCode = 'US') {
+  console.log(`🎙️ Provisioning 11Labs number for ${countryCode}...`);
+
+  // Get assistant if provided
+  let elevenLabsAgentId = null;
+  if (assistantId) {
+    const assistant = await prisma.assistant.findUnique({
+      where: { id: assistantId }
+    });
+
+    if (!assistant || !assistant.elevenLabsAgentId) {
+      throw new Error('Invalid assistant or assistant not configured with 11Labs');
+    }
+
+    elevenLabsAgentId = assistant.elevenLabsAgentId;
+  }
+
+  // For now, 11Labs requires Twilio phone number to be imported
+  // First, we need to get the phone number from Twilio
+  // This is a simplified version - in production you'd need Twilio SDK
+
+  // Option 1: Use existing Twilio number (user provides it)
+  // Option 2: Buy from Twilio and import to 11Labs
+
+  // For now, we'll create a placeholder entry and let user configure Twilio
+  // The actual 11Labs import happens when Twilio credentials are provided
+
+  const phoneNumber = await prisma.phoneNumber.create({
+    data: {
+      businessId: businessId,
+      phoneNumber: `pending-${Date.now()}`,  // Placeholder until Twilio is configured
+      countryCode: countryCode,
+      provider: 'ELEVENLABS',
+      assistantId: assistantId,
+      status: 'ACTIVE',
+      monthlyCost: PRICING.ELEVENLABS.monthlyCost,
+      nextBillingDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+    }
+  });
+
+  console.log('✅ 11Labs phone number entry created (pending Twilio configuration)');
+
+  return {
+    id: phoneNumber.id,
+    phoneNumber: phoneNumber.phoneNumber,
+    provider: 'ELEVENLABS',
+    countryCode: countryCode,
+    status: 'PENDING_CONFIGURATION',
+    monthlyCost: phoneNumber.monthlyCost,
+    elevenLabsPhoneId: null,
+    message: 'Please configure Twilio credentials to complete phone number setup'
+  };
+}
+
+// ============================================================================
+// IMPORT TWILIO NUMBER TO 11LABS
+// ============================================================================
+router.post('/:id/import-twilio', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { twilioPhoneNumber, twilioAccountSid, twilioAuthToken } = req.body;
+    const businessId = req.businessId;
+
+    console.log('📞 Importing Twilio number to 11Labs:', twilioPhoneNumber);
+
+    // Validate inputs
+    if (!twilioPhoneNumber || !twilioAccountSid || !twilioAuthToken) {
+      return res.status(400).json({
+        error: 'Missing required Twilio credentials',
+        required: ['twilioPhoneNumber', 'twilioAccountSid', 'twilioAuthToken']
+      });
+    }
+
+    // Get phone number record
+    const phoneNumber = await prisma.phoneNumber.findFirst({
+      where: { id, businessId },
+      include: { assistant: true }
+    });
+
+    if (!phoneNumber) {
+      return res.status(404).json({ error: 'Phone number record not found' });
+    }
+
+    // Get agent ID from assistant
+    let agentId = null;
+    if (phoneNumber.assistant?.elevenLabsAgentId) {
+      agentId = phoneNumber.assistant.elevenLabsAgentId;
+    }
+
+    // Import to 11Labs
+    const elevenLabsResult = await elevenLabsService.importPhoneNumber({
+      phoneNumber: twilioPhoneNumber,
+      twilioAccountSid,
+      twilioAuthToken,
+      agentId,
+      label: `Business ${businessId} - ${twilioPhoneNumber}`
+    });
+
+    // Update database
+    const updated = await prisma.phoneNumber.update({
+      where: { id },
+      data: {
+        phoneNumber: twilioPhoneNumber,
+        elevenLabsPhoneId: elevenLabsResult.phone_number_id,
+        status: 'ACTIVE'
+      }
+    });
+
+    console.log('✅ Phone number imported to 11Labs:', elevenLabsResult.phone_number_id);
+
+    res.json({
+      success: true,
+      phoneNumber: updated.phoneNumber,
+      elevenLabsPhoneId: updated.elevenLabsPhoneId,
+      status: 'ACTIVE'
+    });
+
+  } catch (error) {
+    console.error('❌ Import Twilio error:', error);
+    res.status(500).json({
+      error: 'Failed to import Twilio number to 11Labs',
+      details: error.message
+    });
+  }
+});
+
+// ============================================================================
 // UPDATE ASSISTANT ASSIGNMENT
 // ============================================================================
 router.patch('/:id/assistant', async (req, res) => {
@@ -358,13 +577,26 @@ router.patch('/:id/assistant', async (req, res) => {
       return res.status(404).json({ error: 'Assistant not found' });
     }
 
-    if (!assistant.vapiAssistantId) {
-      return res.status(400).json({ error: 'Assistant is not configured with VAPI' });
+    // Check assistant has either 11Labs or VAPI ID
+    if (!assistant.elevenLabsAgentId && !assistant.vapiAssistantId) {
+      return res.status(400).json({ error: 'Assistant is not configured with any voice provider' });
     }
 
-    // Update in VAPI if phone is connected to VAPI
-    // Use the correct service based on provider
-    if (phoneNumber.vapiPhoneId) {
+    // Update in 11Labs if phone is connected to 11Labs
+    if (phoneNumber.elevenLabsPhoneId && assistant.elevenLabsAgentId) {
+      try {
+        await elevenLabsService.updatePhoneNumber(phoneNumber.elevenLabsPhoneId, assistant.elevenLabsAgentId);
+        console.log('✅ Updated phone number in 11Labs');
+      } catch (elevenLabsError) {
+        console.error('❌ 11Labs sync failed:', elevenLabsError);
+        return res.status(500).json({
+          error: 'Failed to sync with 11Labs',
+          details: elevenLabsError.message
+        });
+      }
+    }
+    // Legacy: Update in VAPI if phone is connected to VAPI
+    else if (phoneNumber.vapiPhoneId && assistant.vapiAssistantId) {
       try {
         if (phoneNumber.provider === 'NETGSM') {
           // BYOC numbers use vapiByocService
@@ -438,7 +670,17 @@ router.delete('/:id', async (req, res) => {
       }
     }
 
-    // Remove from VAPI if connected
+    // Remove from 11Labs if connected
+    if (phoneNumber.elevenLabsPhoneId) {
+      try {
+        await elevenLabsService.deletePhoneNumber(phoneNumber.elevenLabsPhoneId);
+        console.log('✅ Removed from 11Labs');
+      } catch (error) {
+        console.error('⚠️ Failed to remove from 11Labs:', error.message);
+      }
+    }
+
+    // Legacy: Remove from VAPI if connected
     if (phoneNumber.vapiPhoneId) {
       try {
         await vapiByocService.removeByocNumber(phoneNumber.vapiPhoneId);
@@ -509,20 +751,39 @@ router.post('/:id/test-call', async (req, res) => {
       return res.status(404).json({ error: 'Phone number not found' });
     }
 
-    if (!phoneNumber.vapiPhoneId) {
+    // Get assistant to find agent ID
+    let assistant = null;
+    if (phoneNumber.assistantId) {
+      assistant = await prisma.assistant.findUnique({
+        where: { id: phoneNumber.assistantId }
+      });
+    }
+
+    let result;
+
+    // Use 11Labs for outbound call
+    if (phoneNumber.elevenLabsPhoneId && assistant?.elevenLabsAgentId) {
+      result = await elevenLabsService.initiateOutboundCall({
+        agentId: assistant.elevenLabsAgentId,
+        phoneNumberId: phoneNumber.elevenLabsPhoneId,
+        toNumber: testPhoneNumber
+      });
+    }
+    // Legacy: Use VAPI
+    else if (phoneNumber.vapiPhoneId) {
+      result = await vapiByocService.testByocNumber(phoneNumber.vapiPhoneId, testPhoneNumber);
+    }
+    else {
       return res.status(400).json({
-        error: 'Phone number not connected to VAPI',
+        error: 'Phone number not connected to any voice provider',
         hint: 'Make sure the number is assigned to an assistant'
       });
     }
 
-    // Make test call via VAPI
-    const result = await vapiByocService.testByocNumber(phoneNumber.vapiPhoneId, testPhoneNumber);
-
     res.json({
       success: true,
       message: 'Test call initiated',
-      callId: result.callId,
+      callId: result.call_sid || result.callId,
       from: phoneNumber.phoneNumber,
       to: testPhoneNumber
     });
@@ -545,25 +806,25 @@ router.get('/countries', (req, res) => {
       code: 'TR',
       name: 'Turkey',
       flag: '🇹🇷',
-      provider: 'NETGSM',
+      provider: 'NETGSM_ELEVENLABS',  // NetGSM 0850 numbers + 11Labs SIP Trunk
       pricing: {
         monthly: PRICING.NETGSM.displayMonthly,
         currency: 'TRY',
         displayCurrency: '₺'
       },
-      features: ['0850 Number', 'SIP Trunk', 'BYOC']
+      features: ['0850 Number', 'NetGSM SIP', '11Labs Voice', 'Natural Turkish']
     },
     {
       code: 'US',
       name: 'United States',
       flag: '🇺🇸',
-      provider: 'VAPI',
+      provider: 'ELEVENLABS',
       pricing: {
-        monthly: PRICING.VAPI.monthlyCost,
+        monthly: PRICING.ELEVENLABS.monthlyCost,
         currency: 'USD',
         displayCurrency: '$'
       },
-      features: ['Local Numbers', 'Direct Integration']
+      features: ['Twilio Numbers', '11Labs Voice', 'Natural English']
     }
   ];
 

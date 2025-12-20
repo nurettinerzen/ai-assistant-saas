@@ -3,11 +3,14 @@ import { PrismaClient } from '@prisma/client';
 import { authenticateToken } from '../middleware/auth.js';
 import { checkPermission } from '../middleware/permissions.js';
 import vapiService from '../services/vapi.js';
+import elevenLabsService, { buildAgentConfig } from '../services/elevenlabs.js';
 import cargoAggregator from '../services/cargo-aggregator.js';
 import { removeStaticDateTimeFromPrompt } from '../utils/dateTime.js';
 import { buildAssistantPrompt, getActiveTools as getPromptBuilderTools } from '../services/promptBuilder.js';
-// ✅ Use central tool system for VAPI tools
-import { getActiveToolsForVAPI } from '../tools/index.js';
+// ✅ Use central tool system for VAPI/11Labs tools
+import { getActiveToolsForVAPI, getActiveToolsForElevenLabs } from '../tools/index.js';
+// ✅ Central voice mapping
+import { getElevenLabsVoiceId } from '../constants/voices.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -17,19 +20,8 @@ const prisma = new PrismaClient();
 // All tool definitions are managed centrally for consistency
 // across all channels: Chat, WhatsApp, Email, Phone (VAPI)
 // ============================================================
-
-/**
- * Get active tools for a business based on their integrations
- * Uses the central tool system for consistent behavior across all channels
- * @param {Object} business - Business object with integrations
- * @returns {Array} Array of VAPI tool definitions with server config
- */
-function getActiveToolsForBusinessVAPI(business) {
-  // Use central tool system - returns tools in VAPI format with server config
-  const tools = getActiveToolsForVAPI(business);
-  console.log(`🔧 [VAPI] Active tools from central system: ${tools.map(t => t.function.name).join(', ') || 'none'}`);
-  return tools;
-}
+// Note: getActiveToolsForVAPI and getActiveToolsForElevenLabs are imported from '../tools/index.js'
+// ============================================================
 
 // ============================================================
 // ASSISTANT DEFAULTS BY LANGUAGE
@@ -156,32 +148,8 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
       });
     }
 
-    // ✅ YENİ: 11Labs Voice ID'leri (VAPI Assistant ID'leri DEĞİL!)
-    const VOICE_MAPPING = {
-      // Turkish voices - 11Labs Voice IDs
-      'tr-m-cihan': 'Md4RAnfKt9kVIbvqUxly',
-      'tr-m-yunus': 'Q5n6GDIjpN0pLOlycRFT',
-      'tr-m-sukru': 'pMQM2vAjnEa9PmfDvgkY',
-      'tr-m-murat': 'xouejoTN10DvXRSlXvmB',
-      'tr-f-ecem': 'PVbzZmwmdI99VcmuRK7G',
-      'tr-f-aslihan': '973ByT3y0FasCLLTLBAL',
-      'tr-f-gokce': 'oPC5I9GKjMReiaM29gjY',
-      'tr-f-auralis': 'X5CGTTx85DmIuopBFHlz',
-      
-      // English voices - 11Labs Voice IDs
-      'en-m-jude': 'Yg7C1g7suzNt5TisIqkZ',
-      'en-m-stokes': 'kHhWB9Fw3aF6ly7JvltC',
-      'en-m-andrew': 'QCOsaFukRxK1IUh7WVlM',
-      'en-m-ollie': 'jRAAK67SEFE9m7ci5DhD',
-      'en-f-kayla': 'aTxZrSrp47xsP6Ot4Kgd',
-      'en-f-shelby': 'rfkTsdZrVWEVhDycUYn9',
-      'en-f-roshni': 'fq1SdXsX6OokE10pJ4Xw',
-      'en-f-meera': '9TwzC887zQyDD4yBthzD'
-    };
-    
-    // Default voice based on language (11Labs default voices)
-    const defaultVoiceForLanguage = language === 'TR' ? 'Md4RAnfKt9kVIbvqUxly' : 'Yg7C1g7suzNt5TisIqkZ';
-    const elevenLabsVoiceId = VOICE_MAPPING[voiceId] || defaultVoiceForLanguage;
+    // Get 11Labs voice ID from central mapping
+    const elevenLabsVoiceId = getElevenLabsVoiceId(voiceId, language);
 
     // Get business info for language/timezone defaults
     const business = await prisma.business.findUnique({
@@ -213,65 +181,58 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
     const finalFirstMessage = firstMessage || defaultFirstMessage;
 
     // Get active tools based on business integrations (using central tool system)
-    const activeTools = getActiveToolsForBusinessVAPI(business);
-    console.log('📤 VAPI Request - tools:', activeTools.map(t => t.function.name));
+    const activeToolsElevenLabs = getActiveToolsForElevenLabs(business);
+    console.log('📤 11Labs Request - tools:', activeToolsElevenLabs.map(t => t.name));
 
-    // VAPI'de YENİ assistant oluştur
-    const vapiResponse = await fetch('https://api.vapi.ai/assistant', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.VAPI_PRIVATE_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
+    // ✅ 11Labs Conversational AI'da YENİ agent oluştur
+    let elevenLabsAgentId = null;
+
+    try {
+      const agentConfig = {
         name: `${name} - ${Date.now()}`,
-
-        // Transcriber - 11Labs (lang is uppercase, convert to lowercase for VAPI)
-        transcriber: {
-          provider: '11labs',
-          model: 'scribe_v1',
-          language: lang?.toLowerCase() || 'tr',
+        conversation_config: {
+          agent: {
+            prompt: {
+              prompt: fullSystemPrompt
+            },
+            first_message: finalFirstMessage,
+            language: lang?.toLowerCase() || 'tr'
+          },
+          tts: {
+            voice_id: elevenLabsVoiceId,
+            model_id: 'eleven_turbo_v2_5',
+            stability: 0.5,
+            similarity_boost: 0.75,
+            optimize_streaming_latency: 3
+          },
+          stt: {
+            provider: 'elevenlabs',
+            model: 'scribe_v1',
+            language: lang?.toLowerCase() || 'tr'
+          },
+          turn: {
+            mode: 'turn_based'
+          }
         },
+        tools: activeToolsElevenLabs,
+        metadata: {
+          telyx_business_id: businessId.toString(),
+          model: model || 'gpt-4'
+        }
+      };
 
-        // Model - VAPI does not support model.language, language is set via voice and transcriber
-        model: {
-          provider: 'openai',
-          model: model || 'gpt-4',
-          messages: [
-            {
-              role: 'system',
-              content: fullSystemPrompt
-            }
-          ],
-          tools: activeTools,
-        },
-
-        // Voice - 11Labs with language for proper accent
-        voice: {
-          provider: '11labs',
-          voiceId: elevenLabsVoiceId,
-          model: 'eleven_turbo_v2_5',
-          stability: 0.5,
-          similarityBoost: 0.75,
-          language: lang?.toLowerCase() || 'tr',
-        },
-        
-        // First Message - Müşterinin yazdığı karşılama
-        firstMessage: finalFirstMessage,
-      }),
-    });
-
-    if (!vapiResponse.ok) {
-      const errorData = await vapiResponse.json();
-      console.error('VAPI Error:', errorData);
-      return res.status(500).json({ error: 'Failed to create VAPI assistant', details: errorData });
+      const elevenLabsResponse = await elevenLabsService.createAgent(agentConfig);
+      elevenLabsAgentId = elevenLabsResponse.agent_id;
+      console.log('✅ 11Labs Agent created:', elevenLabsAgentId);
+    } catch (elevenLabsError) {
+      console.error('❌ 11Labs Agent creation failed:', elevenLabsError.response?.data || elevenLabsError.message);
+      return res.status(500).json({
+        error: 'Failed to create 11Labs agent',
+        details: elevenLabsError.response?.data || elevenLabsError.message
+      });
     }
 
-    const vapiAssistant = await vapiResponse.json();
-console.log('✅ VAPI Assistant created:', vapiAssistant.id);
-console.log('✅ VAPI Response:', JSON.stringify(vapiAssistant, null, 2));
-
-    // ✅ YENİ: Database'e VAPI'den dönen assistant ID'yi kaydet
+    // ✅ Database'e 11Labs'den dönen agent ID'yi kaydet
     const assistant = await prisma.assistant.create({
       data: {
         businessId,
@@ -279,7 +240,8 @@ console.log('✅ VAPI Response:', JSON.stringify(vapiAssistant, null, 2));
         voiceId,  // Frontend'den gelen voiceId (örn: 'tr-m-cihan')
         systemPrompt: fullSystemPrompt,
         model: model || 'gpt-4',
-        vapiAssistantId: vapiAssistant.id,  // ✅ VAPI'den dönen YENİ assistant ID
+        elevenLabsAgentId: elevenLabsAgentId,  // ✅ 11Labs'den dönen YENİ agent ID
+        voiceProvider: 'elevenlabs',
         timezone: businessTimezone,
         firstMessage: finalFirstMessage,
         tone: tone || 'professional',  // "friendly" or "professional"
@@ -290,7 +252,6 @@ console.log('✅ VAPI Response:', JSON.stringify(vapiAssistant, null, 2));
     await prisma.business.update({
       where: { id: businessId },
       data: {
-        vapiAssistantId: vapiAssistant.id,
         ...(timezone && { timezone }),
         ...(industry && { businessType: industry }),
         ...(country && { country }),
@@ -304,9 +265,9 @@ console.log('✅ VAPI Response:', JSON.stringify(vapiAssistant, null, 2));
         where: { businessId }
       });
 
-      if (phoneNumber && phoneNumber.vapiPhoneId) {
+      if (phoneNumber && phoneNumber.elevenLabsPhoneId && elevenLabsAgentId) {
         console.log('📱 Auto-assigning assistant to phone number:', phoneNumber.phoneNumber);
-        await vapiService.assignPhoneNumber(phoneNumber.vapiPhoneId, vapiAssistant.id);
+        await elevenLabsService.updatePhoneNumber(phoneNumber.elevenLabsPhoneId, elevenLabsAgentId);
         await prisma.phoneNumber.update({
           where: { id: phoneNumber.id },
           data: { assistantId: assistant.id }
@@ -455,19 +416,48 @@ router.put('/update', async (req, res) => {
       }
     });
 
-// 🔥 YENİ: VAPI'Yİ GÜNCELLE (TRAINING DAHİL)
-    const activeTools = getActiveToolsForBusinessVAPI(business);
-    console.log('📤 Updating VAPI with tools:', activeTools.map(t => t.function.name));
-    
-    const config = {
-      voiceId: updatedBusiness.vapiVoiceId || '21m00Tcm4TlvDq8ikWAM',
-      speed: updatedBusiness.vapiSpeed || 1.0,
-      customGreeting: updatedBusiness.customGreeting,
-      customInstructions: fullInstructions,
-      tools: activeTools
-    };
+// 🔥 YENİ: 11Labs'i GÜNCELLE (TRAINING DAHİL)
+    // Get active assistant for this business
+    const assistant = await prisma.assistant.findFirst({
+      where: { businessId: business.id, isActive: true }
+    });
 
-    await vapiService.updateAssistant(business.vapiAssistantId, config);
+    if (assistant?.elevenLabsAgentId) {
+      const activeToolsEL = getActiveToolsForElevenLabs(business);
+      console.log('📤 Updating 11Labs with tools:', activeToolsEL.map(t => t.name));
+
+      try {
+        await elevenLabsService.updateAgent(assistant.elevenLabsAgentId, {
+          conversation_config: {
+            agent: {
+              prompt: {
+                prompt: fullInstructions
+              }
+            }
+          },
+          tools: activeToolsEL
+        });
+        console.log('✅ 11Labs agent updated');
+      } catch (elError) {
+        console.error('⚠️ Failed to update 11Labs agent:', elError.message);
+      }
+    }
+
+    // Legacy: Update VAPI if still in use
+    if (business.vapiAssistantId && !assistant?.elevenLabsAgentId) {
+      const activeTools = getActiveToolsForVAPI(business);
+      console.log('📤 Updating VAPI with tools:', activeTools.map(t => t.function.name));
+
+      const config = {
+        voiceId: updatedBusiness.vapiVoiceId || '21m00Tcm4TlvDq8ikWAM',
+        speed: updatedBusiness.vapiSpeed || 1.0,
+        customGreeting: updatedBusiness.customGreeting,
+        customInstructions: fullInstructions,
+        tools: activeTools
+      };
+
+      await vapiService.updateAssistant(business.vapiAssistantId, config);
+    }
 
     console.log('✅ Sending response:', {
       success: true,
@@ -492,15 +482,41 @@ router.post('/test-call', async (req, res) => {
     const { businessId } = req.user;
     const { phoneNumber } = req.body;
 
-    const business = await prisma.business.findUnique({
-      where: { id: businessId }
+    // Get assistant for this business
+    const assistant = await prisma.assistant.findFirst({
+      where: { businessId, isActive: true }
     });
 
-    if (!business.vapiAssistantId) {
+    if (!assistant) {
       return res.status(400).json({ error: 'No assistant configured' });
     }
 
-    const call = await vapiService.makeTestCall(business.vapiAssistantId, phoneNumber);
+    // Get phone number for outbound call
+    const fromPhoneNumber = await prisma.phoneNumber.findFirst({
+      where: { businessId, status: 'ACTIVE' }
+    });
+
+    if (!fromPhoneNumber) {
+      return res.status(400).json({ error: 'No phone number configured' });
+    }
+
+    let call;
+
+    // Use 11Labs for test call
+    if (assistant.elevenLabsAgentId && fromPhoneNumber.elevenLabsPhoneId) {
+      call = await elevenLabsService.initiateOutboundCall({
+        agentId: assistant.elevenLabsAgentId,
+        phoneNumberId: fromPhoneNumber.elevenLabsPhoneId,
+        toNumber: phoneNumber
+      });
+    }
+    // Legacy: Use VAPI
+    else if (assistant.vapiAssistantId) {
+      call = await vapiService.makeTestCall(assistant.vapiAssistantId, phoneNumber);
+    }
+    else {
+      return res.status(400).json({ error: 'No voice provider configured' });
+    }
 
     res.json({
       success: true,
@@ -552,33 +568,14 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
       return res.status(404).json({ error: 'Assistant not found' });
     }
 
-    // ✅ YENİ: 11Labs Voice ID'leri
-    const VOICE_MAPPING = {
-      'tr-m-cihan': 'Md4RAnfKt9kVIbvqUxly',
-      'tr-m-yunus': 'Q5n6GDIjpN0pLOlycRFT',
-      'tr-m-sukru': 'pMQM2vAjnEa9PmfDvgkY',
-      'tr-m-murat': 'xouejoTN10DvXRSlXvmB',
-      'tr-f-ecem': 'PVbzZmwmdI99VcmuRK7G',
-      'tr-f-aslihan': '973ByT3y0FasCLLTLBAL',
-      'tr-f-gokce': 'oPC5I9GKjMReiaM29gjY',
-      'tr-f-auralis': 'X5CGTTx85DmIuopBFHlz',
-      'en-m-jude': 'Yg7C1g7suzNt5TisIqkZ',
-      'en-m-stokes': 'kHhWB9Fw3aF6ly7JvltC',
-      'en-m-andrew': 'QCOsaFukRxK1IUh7WVlM',
-      'en-m-ollie': 'jRAAK67SEFE9m7ci5DhD',
-      'en-f-kayla': 'aTxZrSrp47xsP6Ot4Kgd',
-      'en-f-shelby': 'rfkTsdZrVWEVhDycUYn9',
-      'en-f-roshni': 'fq1SdXsX6OokE10pJ4Xw',
-      'en-f-meera': '9TwzC887zQyDD4yBthzD'
-    };
-
-    const elevenLabsVoiceId = VOICE_MAPPING[voiceId] || VOICE_MAPPING['tr-m-cihan'];
-
     // Get business info with integrations for promptBuilder
     const business = await prisma.business.findUnique({
       where: { id: businessId },
       include: { integrations: { where: { isActive: true } } }
     });
+
+    // Get 11Labs voice ID from central mapping
+    const elevenLabsVoiceId = getElevenLabsVoiceId(voiceId, language || business?.language);
 
     // 🔥 KNOWLEDGE BASE İÇERİĞİNİ ÇEK
     const knowledgeItems = await prisma.knowledgeBase.findMany({
@@ -637,57 +634,50 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
       },
     });
 
-// ✅ YENİ: VAPI'deki assistant'ı da güncelle (PATCH)
-    if (assistant.vapiAssistantId) {
+// ✅ YENİ: 11Labs'deki agent'ı da güncelle (PATCH)
+    if (assistant.elevenLabsAgentId) {
       // Get active tools for this business (using central tool system)
-      const activeTools = getActiveToolsForBusinessVAPI(business);
-      console.log('📤 VAPI Update - tools:', activeTools.map(t => t.function.name));
+      const activeToolsElevenLabs = getActiveToolsForElevenLabs(business);
+      console.log('📤 11Labs Update - tools:', activeToolsElevenLabs.map(t => t.name));
 
-      const vapiResponse = await fetch(`https://api.vapi.ai/assistant/${assistant.vapiAssistantId}`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${process.env.VAPI_PRIVATE_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      try {
+        const lang = language?.toLowerCase() || business?.language?.toLowerCase() || 'tr';
+        const agentUpdateConfig = {
           name,
-          model: {
-            provider: 'openai',
-            model: model || 'gpt-4',
-            messages: [
-              {
-                role: 'system',
-                content: fullSystemPrompt
-              }
-            ],
-            tools: activeTools,
+          conversation_config: {
+            agent: {
+              prompt: {
+                prompt: fullSystemPrompt
+              },
+              first_message: lang === 'tr'
+                ? `Merhaba, ben ${name}. Size nasıl yardımcı olabilirim?`
+                : `Hi, I'm ${name}. How can I help you today?`,
+              language: lang
+            },
+            tts: {
+              voice_id: elevenLabsVoiceId,
+              model_id: 'eleven_turbo_v2_5',
+              stability: 0.5,
+              similarity_boost: 0.75,
+              optimize_streaming_latency: 3
+            },
+            stt: {
+              provider: 'elevenlabs',
+              model: 'scribe_v1',
+              language: lang
+            }
           },
-          voice: {
-            provider: '11labs',
-            voiceId: elevenLabsVoiceId,
-            language: language?.toLowerCase() || business?.language?.toLowerCase() || 'tr',
-          },
-          transcriber: {
-            provider: '11labs',
-            model: 'scribe_v1',
-            language: language?.toLowerCase() || business?.language?.toLowerCase() || 'tr',
-          },
-          firstMessage: (language?.toUpperCase() === 'TR' || business?.language === 'TR')
-            ? `Merhaba, ben ${name}. Size nasıl yardımcı olabilirim?`
-            : `Hi, I'm ${name}. How can I help you today?`,
-        }),
-      });
+          tools: activeToolsElevenLabs
+        };
 
-      if (!vapiResponse.ok) {
-        console.error('❌ VAPI update failed:', await vapiResponse.text());
-      } else {
-        console.log('✅ VAPI Assistant updated with tools');
+        await elevenLabsService.updateAgent(assistant.elevenLabsAgentId, agentUpdateConfig);
+        console.log('✅ 11Labs Agent updated with tools');
 
-        // Sync all phone numbers connected to this assistant in VAPI
+        // Sync all phone numbers connected to this assistant in 11Labs
         const connectedPhones = await prisma.phoneNumber.findMany({
           where: {
             assistantId: id,
-            vapiPhoneId: { not: null }
+            elevenLabsPhoneId: { not: null }
           }
         });
 
@@ -695,13 +685,15 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
           console.log(`📞 Syncing ${connectedPhones.length} phone numbers to updated assistant`);
           for (const phone of connectedPhones) {
             try {
-              await vapiService.assignPhoneNumber(phone.vapiPhoneId, assistant.vapiAssistantId);
-              console.log(`✅ VAPI Phone ${phone.phoneNumber} synced to assistant`);
+              await elevenLabsService.updatePhoneNumber(phone.elevenLabsPhoneId, assistant.elevenLabsAgentId);
+              console.log(`✅ 11Labs Phone ${phone.phoneNumber} synced to agent`);
             } catch (syncErr) {
               console.error(`❌ Failed to sync phone ${phone.phoneNumber}:`, syncErr.message);
             }
           }
         }
+      } catch (updateError) {
+        console.error('❌ 11Labs update failed:', updateError.response?.data || updateError.message);
       }
     }
 
@@ -733,7 +725,17 @@ router.delete('/:id', authenticateToken, checkPermission('assistants:edit'), asy
       return res.status(404).json({ error: 'Assistant not found' });
     }
 
-    // ✅ YENİ: VAPI'den de sil
+    // ✅ YENİ: 11Labs'den de sil
+    if (assistant.elevenLabsAgentId) {
+      try {
+        await elevenLabsService.deleteAgent(assistant.elevenLabsAgentId);
+        console.log('✅ 11Labs Agent deleted:', assistant.elevenLabsAgentId);
+      } catch (elevenLabsError) {
+        console.error('11Labs delete error (continuing anyway):', elevenLabsError);
+      }
+    }
+
+    // Legacy: VAPI'den de sil (eğer varsa)
     if (assistant.vapiAssistantId) {
       try {
         await fetch(`https://api.vapi.ai/assistant/${assistant.vapiAssistantId}`, {
