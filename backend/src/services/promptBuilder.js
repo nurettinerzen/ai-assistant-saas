@@ -61,35 +61,9 @@ export function buildAssistantPrompt(assistant, business, integrations = []) {
     prompt += `\n\n## KULLANILAN ARAÇLAR\nŞu işlemleri yapabilirsin: ${integrationNames.join(', ')}`;
   }
 
-  // 8. Dinamik context - Business timezone kullan
-  const now = new Date();
-  const timezone = business.timezone || 'Europe/Istanbul';
-  const locale = business.language === 'TR' ? 'tr-TR' : 'en-US';
-
-  const dateStr = now.toLocaleDateString(locale, {
-    timeZone: timezone,
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
-  const timeStr = now.toLocaleTimeString(locale, {
-    timeZone: timezone,
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-
-  if (business.language === 'TR') {
-    prompt += `\n\n## GÜNCEL BİLGİLER
-- Bugün: ${dateStr}
-- Saat: ${timeStr}
-- Saat Dilimi: ${timezone}`;
-  } else {
-    prompt += `\n\n## CURRENT INFORMATION
-- Today: ${dateStr}
-- Time: ${timeStr}
-- Timezone: ${timezone}`;
-  }
+  // 8. NOT: Tarih/saat bilgisi burada EKLENMİYOR
+  // Tarih/saat her çağrı başladığında vapi.js'deki assistant-request handler'da
+  // dinamik olarak ekleniyor. Bu sayede her zaman güncel bilgi sağlanıyor.
 
   // 9. Çalışma saatleri varsa ekle
   if (variables.working_hours) {

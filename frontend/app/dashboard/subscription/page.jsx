@@ -95,21 +95,25 @@ const PLANS = [
     name: 'Kurumsal',
     nameEN: 'Enterprise',
     priceTRY: null,
-    minutes: null,
-    assistants: null,
-    phoneNumbers: null,
-    overageRate: null,
+    minutes: 500,  // Base, customizable
+    assistants: 10,  // Base, customizable
+    phoneNumbers: 5,  // Base, customizable
+    overageRate: null,  // Custom
     features: [
-      { key: 'customMinutes', included: true },
-      { key: 'unlimitedAssistants', included: true },
-      { key: 'customPhoneNumbers', included: true },
-      { key: 'allChannels', included: true },
-      { key: 'allIntegrations', included: true },
-      { key: 'customOverage', included: true },
+      { key: 'enterpriseMinutes', included: true },
+      { key: 'enterpriseAssistants', included: true },
+      { key: 'enterprisePhones', included: true },
+      { key: 'phone', included: true },
+      { key: 'whatsapp', included: true },
+      { key: 'chatWidget', included: true },
+      { key: 'email', included: true },
+      { key: 'ecommerce', included: true },
+      { key: 'calendar', included: true },
       { key: 'prioritySupport', included: true },
       { key: 'apiAccess', included: true },
       { key: 'customTraining', included: true },
       { key: 'slaGuarantee', included: true },
+      { key: 'customOverage', included: true },
     ],
   },
 ];
@@ -363,11 +367,15 @@ export default function SubscriptionPage() {
 
       {/* Pricing plans */}
       <div>
-        <h2 className="text-2xl font-bold text-neutral-900 mb-6">{t('dashboard.subscriptionPage.availablePlans')}</h2>
+        <h2 className="text-2xl font-bold text-neutral-900 mb-6">
+          {locale === 'tr' ? 'Planlar' : 'Plans'}
+        </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {PLANS.map((plan) => {
             const isCurrentPlan = subscription?.plan === plan.id;
             const isTR = locale === 'tr';
+            // Only show "Popular" badge if user has no plan or is on FREE plan
+            const showPopularBadge = plan.popular && !isCurrentPlan && (!subscription?.plan || subscription?.plan === 'FREE');
 
             // Feature labels
             const featureLabels = {
@@ -391,6 +399,10 @@ export default function SubscriptionPage() {
               customOverage: isTR ? 'Özel aşım fiyatlandırma' : 'Custom overage pricing',
               customTraining: isTR ? 'Özel eğitim' : 'Custom training',
               slaGuarantee: isTR ? 'SLA garantisi' : 'SLA guarantee',
+              // Enterprise specific
+              enterpriseMinutes: isTR ? '500+ dakika (özelleştirilebilir)' : '500+ minutes (customizable)',
+              enterpriseAssistants: isTR ? '10+ AI asistan (özelleştirilebilir)' : '10+ AI assistants (customizable)',
+              enterprisePhones: isTR ? '5+ telefon numarası (özelleştirilebilir)' : '5+ phone numbers (customizable)',
             };
 
             return (
@@ -409,8 +421,8 @@ export default function SubscriptionPage() {
                     </Badge>
                   </div>
                 )}
-                {/* Show "Popular" badge only if not current plan */}
-                {plan.popular && !isCurrentPlan && (
+                {/* Show "Popular" badge only if user has no plan */}
+                {showPopularBadge && (
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2">
                     <Badge className="bg-primary-600 text-white">
                       {t('dashboard.subscriptionPage.popular')}
@@ -431,14 +443,21 @@ export default function SubscriptionPage() {
                         <span className="text-neutral-500">{t('dashboard.subscriptionPage.perMonth')}</span>
                       </>
                     ) : (
-                      <span className="text-2xl font-bold text-neutral-900">
-                        {t('dashboard.subscriptionPage.contactUs')}
-                      </span>
+                      <>
+                        <span className="text-3xl font-bold text-neutral-900">
+                          {isTR ? '₺Özel' : '$Custom'}
+                        </span>
+                        <span className="text-neutral-500">{t('dashboard.subscriptionPage.perMonth')}</span>
+                      </>
                     )}
                   </div>
-                  {plan.overageRate && (
+                  {plan.overageRate ? (
                     <p className="text-xs text-neutral-500 mt-2">
                       {t('dashboard.subscriptionPage.overage')}: {plan.overageRate} ₺{t('dashboard.subscriptionPage.perMinute')}
+                    </p>
+                  ) : plan.id === 'ENTERPRISE' && (
+                    <p className="text-xs text-neutral-500 mt-2">
+                      {isTR ? 'Aşım: Özel fiyatlandırma' : 'Overage: Custom pricing'}
                     </p>
                   )}
                 </div>

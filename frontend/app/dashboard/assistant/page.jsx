@@ -190,7 +190,9 @@ export default function AssistantsPage() {
     setFormData({
       name: assistant.name,
       voiceId: assistant.voiceId,
-      systemPrompt: assistant.systemPrompt,
+      // Don't show full prompt in edit mode - it contains base rules
+      // User only needs to edit customNotes for business-specific info
+      systemPrompt: '', // Keep empty for edit mode
       model: assistant.model || 'gpt-4',
       language: assistant.language || inferredLang,
       tone: assistant.tone || 'professional',
@@ -481,30 +483,40 @@ export default function AssistantsPage() {
               </p>
             </div>
 
-            <div>
-              <Label htmlFor="prompt">{t('dashboard.assistantsPage.systemPromptRequired')}</Label>
-              <Textarea
-                id="prompt"
-                rows={6}
-                value={formData.systemPrompt}
-                onChange={(e) => setFormData({ ...formData, systemPrompt: e.target.value })}
-                placeholder={t('dashboard.assistantsPage.systemPromptPlaceholder')}
-              />
-            </div>
-
-            {/* Custom Notes */}
+            {/* Custom Notes - Business specific information */}
             <div>
               <Label htmlFor="customNotes">
                 {t('dashboard.assistantsPage.customNotes')}
               </Label>
               <Textarea
                 id="customNotes"
-                rows={4}
+                rows={5}
                 value={formData.customNotes}
                 onChange={(e) => setFormData({ ...formData, customNotes: e.target.value })}
                 placeholder={t('dashboard.assistantsPage.customNotesPlaceholder')}
               />
+              <p className="text-xs text-neutral-500 mt-1">
+                {locale === 'tr'
+                  ? 'Çalışma saatleri, adres, özel kurallar, menü bilgileri vb. asistanın bilmesi gereken bilgiler.'
+                  : 'Working hours, address, special rules, menu info, etc. that the assistant should know.'}
+              </p>
             </div>
+
+            {/* Additional Instructions - Only show for new assistants, hide full prompt for editing */}
+            {!editingAssistant && (
+              <div>
+                <Label htmlFor="prompt">{locale === 'tr' ? 'Ek Talimatlar (Opsiyonel)' : 'Additional Instructions (Optional)'}</Label>
+                <Textarea
+                  id="prompt"
+                  rows={4}
+                  value={formData.systemPrompt}
+                  onChange={(e) => setFormData({ ...formData, systemPrompt: e.target.value })}
+                  placeholder={locale === 'tr'
+                    ? 'Asistanın davranışı için ek talimatlar... (Temel kurallar otomatik eklenir)'
+                    : 'Additional instructions for assistant behavior... (Base rules are added automatically)'}
+                />
+              </div>
+            )}
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t">
