@@ -374,13 +374,28 @@ export default function AssistantsPage() {
 
           <div className="space-y-4">
             <div>
-              <Label htmlFor="name">{t('dashboard.assistantsPage.nameRequired')}</Label>
+              <div className="flex justify-between items-center">
+                <Label htmlFor="name">{t('dashboard.assistantsPage.nameRequired')}</Label>
+                <span className={`text-xs ${formData.name.length > 25 ? 'text-red-500' : 'text-neutral-500'}`}>
+                  {formData.name.length}/25
+                </span>
+              </div>
               <Input
                 id="name"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder={locale === 'tr' ? 'örn: Müşteri Destek Asistanı' : 'e.g., Customer Support Bot'}
+                onChange={(e) => {
+                  if (e.target.value.length <= 25) {
+                    setFormData({ ...formData, name: e.target.value });
+                  }
+                }}
+                maxLength={25}
+                placeholder={locale === 'tr' ? 'örn: Müşteri Destek' : 'e.g., Customer Support'}
               />
+              {formData.name.length >= 20 && (
+                <p className="text-xs text-amber-600 mt-1">
+                  {locale === 'tr' ? 'Karakter limitine yaklaşıyorsunuz' : 'Approaching character limit'}
+                </p>
+              )}
             </div>
 
             <div>

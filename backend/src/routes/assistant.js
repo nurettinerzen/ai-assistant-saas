@@ -390,6 +390,21 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
     const businessId = req.businessId;
     const { name, voiceId, firstMessage, systemPrompt, model, language, country, industry, timezone, tone, customNotes } = req.body;
 
+    // Validate assistant name length (VAPI has 40 char limit, we use 25 for safety)
+    if (!name || name.trim().length === 0) {
+      return res.status(400).json({
+        error: 'Assistant name is required',
+        errorTR: 'Asistan adı zorunludur'
+      });
+    }
+
+    if (name.length > 25) {
+      return res.status(400).json({
+        error: 'Assistant name must be 25 characters or less',
+        errorTR: 'Asistan adı en fazla 25 karakter olabilir'
+      });
+    }
+
     // Check subscription limits
     const subscription = await prisma.subscription.findUnique({
       where: { businessId },
@@ -759,6 +774,14 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
     const businessId = req.businessId;
     const { id } = req.params;
     const { name, voiceId, systemPrompt, model, language, tone, customNotes } = req.body;
+
+    // Validate assistant name length if provided
+    if (name && name.length > 25) {
+      return res.status(400).json({
+        error: 'Assistant name must be 25 characters or less',
+        errorTR: 'Asistan adı en fazla 25 karakter olabilir'
+      });
+    }
 
     // Check if assistant belongs to this business
     const assistant = await prisma.assistant.findFirst({

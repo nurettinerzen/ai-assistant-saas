@@ -20,39 +20,43 @@ import CreditBalance from '@/components/CreditBalance';
 import BuyCreditModal from '@/components/BuyCreditModal';
 
 // Plan configurations - Updated with new pricing and features
-// STARTER: ₺299, BASIC: ₺999, PROFESSIONAL: ₺3,499, ENTERPRISE: Custom
+// Pricing: TR (₺299, ₺999, ₺3,499) / EN ($29, $79, $199)
 const PLANS = [
   {
     id: 'STARTER',
     name: 'Başlangıç',
     nameEN: 'Starter',
     priceTRY: 299,
+    priceUSD: 29,
     minutes: 50,
     assistants: 1,
     phoneNumbers: 1,
-    overageRate: 12,
+    overageRateTRY: 12,
+    overageRateUSD: 0.45,
     features: [
       { key: 'minutes', included: true },
       { key: 'assistants', included: true },
       { key: 'phoneNumbers', included: true },
       { key: 'phone', included: true },
+      { key: 'whatsapp', included: true },
+      { key: 'chatWidget', included: true },
       { key: 'analytics', included: true },
-      { key: 'whatsapp', included: false },
-      { key: 'chatWidget', included: false },
-      { key: 'email', included: false },
       { key: 'ecommerce', included: false },
       { key: 'calendar', included: false },
+      { key: 'email', included: false },
     ],
   },
   {
     id: 'BASIC',
     name: 'Temel',
-    nameEN: 'Basic',
+    nameEN: 'Standard',
     priceTRY: 999,
+    priceUSD: 79,
     minutes: 150,
     assistants: 3,
     phoneNumbers: 2,
-    overageRate: 11,
+    overageRateTRY: 11,
+    overageRateUSD: 0.40,
     popular: true,
     features: [
       { key: 'minutes', included: true },
@@ -72,10 +76,12 @@ const PLANS = [
     name: 'Pro',
     nameEN: 'Professional',
     priceTRY: 3499,
+    priceUSD: 199,
     minutes: 500,
     assistants: 10,
     phoneNumbers: 5,
-    overageRate: 10,
+    overageRateTRY: 10,
+    overageRateUSD: 0.35,
     features: [
       { key: 'minutes', included: true },
       { key: 'assistants', included: true },
@@ -95,10 +101,12 @@ const PLANS = [
     name: 'Kurumsal',
     nameEN: 'Enterprise',
     priceTRY: null,
+    priceUSD: null,
     minutes: 500,  // Base, customizable
     assistants: 10,  // Base, customizable
     phoneNumbers: 5,  // Base, customizable
-    overageRate: null,  // Custom
+    overageRateTRY: null,  // Custom
+    overageRateUSD: null,  // Custom
     features: [
       { key: 'enterpriseMinutes', included: true },
       { key: 'enterpriseAssistants', included: true },
@@ -409,8 +417,7 @@ export default function SubscriptionPage() {
               <div
                 key={plan.id}
                 className={`bg-white rounded-xl border-2 p-6 shadow-sm relative flex flex-col min-h-[480px] ${
-                  isCurrentPlan ? 'border-green-500 ring-2 ring-green-200' :
-                  plan.popular && !isCurrentPlan ? 'border-primary-600' : 'border-neutral-200'
+                  isCurrentPlan ? 'border-green-500 ring-2 ring-green-200' : 'border-neutral-200'
                 }`}
               >
                 {/* Show "Current Plan" badge if this is the current plan */}
@@ -435,10 +442,13 @@ export default function SubscriptionPage() {
                     {isTR ? plan.name : plan.nameEN}
                   </h3>
                   <div className="flex items-baseline justify-center gap-1">
-                    {plan.priceTRY !== null ? (
+                    {(isTR ? plan.priceTRY : plan.priceUSD) !== null ? (
                       <>
                         <span className="text-3xl font-bold text-neutral-900">
-                          ₺{plan.priceTRY.toLocaleString('tr-TR')}
+                          {isTR
+                            ? `₺${plan.priceTRY.toLocaleString('tr-TR')}`
+                            : `$${plan.priceUSD.toLocaleString('en-US')}`
+                          }
                         </span>
                         <span className="text-neutral-500">{t('dashboard.subscriptionPage.perMonth')}</span>
                       </>
@@ -451,9 +461,9 @@ export default function SubscriptionPage() {
                       </>
                     )}
                   </div>
-                  {plan.overageRate ? (
+                  {(isTR ? plan.overageRateTRY : plan.overageRateUSD) ? (
                     <p className="text-xs text-neutral-500 mt-2">
-                      {t('dashboard.subscriptionPage.overage')}: {plan.overageRate} ₺{t('dashboard.subscriptionPage.perMinute')}
+                      {t('dashboard.subscriptionPage.overage')}: {isTR ? plan.overageRateTRY : plan.overageRateUSD} {isTR ? '₺' : '$'}{t('dashboard.subscriptionPage.perMinute')}
                     </p>
                   ) : plan.id === 'ENTERPRISE' && (
                     <p className="text-xs text-neutral-500 mt-2">
