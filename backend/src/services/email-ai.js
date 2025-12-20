@@ -90,7 +90,7 @@ class EmailAIService {
 
       // Get active tools for this business
       const activeTools = getActiveTools(business);
-      console.log('📧 Email AI - Active tools:', activeTools.map(t => t.function.name));
+      console.log(`🔧 [Email] Active tools for business ${business.id}: ${activeTools.map(t => t.function.name).join(', ') || 'none'}`);
 
       // Call OpenAI with tools
       const completionParams = {
@@ -121,9 +121,11 @@ class EmailAIService {
           const functionName = toolCall.function.name;
           const functionArgs = JSON.parse(toolCall.function.arguments);
           
-          console.log('🔧 Executing tool:', functionName, functionArgs);
-          
+          console.log(`🔧 [Email] Executing tool: ${functionName}`, JSON.stringify(functionArgs));
+
           const result = await this.executeToolCall(business, functionName, functionArgs, thread.customerEmail);
+
+          console.log(`🔧 [Email] Tool result for ${functionName}:`, result.success ? 'SUCCESS' : 'FAILED', result);
           
           toolResponses.push({
             role: 'tool',

@@ -29,14 +29,24 @@ export function getActiveTools(business) {
 
 /**
  * Get active tool definitions for VAPI
- * Currently same as OpenAI format, but kept separate for future changes
+ * VAPI format adds a server configuration to each tool for function calling
  *
  * @param {Object} business - Business object with businessType and integrations
- * @returns {Object[]} - Array of tool definitions in VAPI format
+ * @param {string} serverUrl - Optional server URL (defaults to BACKEND_URL)
+ * @returns {Object[]} - Array of tool definitions in VAPI format with server config
  */
-export function getActiveToolsForVAPI(business) {
-  // VAPI uses the same format as OpenAI for now
-  return getActiveTools(business);
+export function getActiveToolsForVAPI(business, serverUrl = null) {
+  const baseTools = getActiveTools(business);
+  const backendUrl = serverUrl || process.env.BACKEND_URL || 'https://api.aicallcenter.app';
+
+  // Add VAPI server configuration to each tool
+  return baseTools.map(tool => ({
+    ...tool,
+    server: {
+      url: `${backendUrl}/api/vapi/functions`,
+      timeoutSeconds: 30
+    }
+  }));
 }
 
 /**

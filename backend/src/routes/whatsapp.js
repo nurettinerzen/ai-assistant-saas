@@ -189,7 +189,7 @@ async function generateAIResponseWithTools(business, phoneNumber, userMessage, c
 
     // Get active tools for this business
     const tools = getActiveTools(business);
-    console.log(`🔧 Active tools for ${business.name}: ${tools.map(t => t.function.name).join(', ') || 'none'}`);
+    console.log(`🔧 [WhatsApp] Active tools for ${business.name}: ${tools.map(t => t.function.name).join(', ') || 'none'}`);
 
     // Process with tool loop
     const finalResponse = await processWithToolLoop(
@@ -279,12 +279,12 @@ async function processWithToolLoop(client, messages, tools, business, context, m
         functionArgs = {};
       }
 
-      console.log(`📞 Executing tool: ${functionName}`, functionArgs);
+      console.log(`🔧 [WhatsApp] Executing tool: ${functionName}`, JSON.stringify(functionArgs));
 
       // Execute tool using central tool system
       const result = await executeTool(functionName, functionArgs, business, context);
 
-      console.log(`✅ Tool result for ${functionName}:`, result.success ? 'SUCCESS' : 'FAILED');
+      console.log(`🔧 [WhatsApp] Tool result for ${functionName}:`, result.success ? 'SUCCESS' : 'FAILED', result);
 
       // Add tool result to messages
       messages.push({

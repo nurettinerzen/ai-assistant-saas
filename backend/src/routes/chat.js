@@ -61,6 +61,7 @@ router.post('/widget', async (req, res) => {
 
     // Get active tools for this business from central tool system
     const tools = getActiveTools(business);
+    console.log(`🔧 [Chat] Active tools for business ${business.id}: ${tools.map(t => t.function.name).join(', ') || 'none'}`);
 
     // Get active tools list for prompt builder
     const activeToolsList = getPromptBuilderTools(business, business.integrations || []);
@@ -127,10 +128,12 @@ ${toolInstructions}`
       const toolName = toolCall.function.name;
       const toolArgs = JSON.parse(toolCall.function.arguments);
 
-      console.log('🔧 Tool call detected:', toolName, toolArgs);
+      console.log(`🔧 [Chat] Executing tool: ${toolName}`, JSON.stringify(toolArgs));
 
       // Execute tool using central tool system
       const result = await executeTool(toolName, toolArgs, business, { channel: 'CHAT' });
+
+      console.log(`🔧 [Chat] Tool result for ${toolName}:`, result.success ? 'SUCCESS' : 'FAILED', result);
 
       // Send result back to AI to generate final response
       const secondMessages = [

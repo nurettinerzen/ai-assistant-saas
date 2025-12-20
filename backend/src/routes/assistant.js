@@ -6,296 +6,28 @@ import vapiService from '../services/vapi.js';
 import cargoAggregator from '../services/cargo-aggregator.js';
 import { removeStaticDateTimeFromPrompt } from '../utils/dateTime.js';
 import { buildAssistantPrompt, getActiveTools as getPromptBuilderTools } from '../services/promptBuilder.js';
+// ✅ Use central tool system for VAPI tools
+import { getActiveToolsForVAPI } from '../tools/index.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
-const CREATE_APPOINTMENT_TOOL = {
-  type: "function",
-  function: {
-    name: "create_appointment",
-    description: "Creates appointment when customer requests booking. Use this when customer wants to schedule an appointment or reservation.",
-    parameters: {
-      type: "object",
-      properties: {
-        date: {
-          type: "string",
-          description: "Appointment date in YYYY-MM-DD format"
-        },
-        time: {
-          type: "string",
-          description: "Appointment time in HH:MM 24-hour format (e.g., 14:00)"
-        },
-        customer_name: {
-          type: "string",
-          description: "Customer's full name"
-        },
-        customer_phone: {
-          type: "string",
-          description: "Customer's phone number"
-        },
-        service_type: {
-          type: "string",
-          description: "Type of service requested (optional)"
-        }
-      },
-      required: ["date", "time", "customer_phone"]
-    }
-  },
-  server: {
-    url: `${process.env.BACKEND_URL || 'https://marin-methoxy-suzette.ngrok-free.dev'}/api/vapi/functions`,
-    timeoutSeconds: 20
-  }
-};
-
 // ============================================================
-// TRENDYOL E-COMMERCE TOOLS
+// TOOL SYSTEM - Now uses central tool system (../tools/index.js)
+// All tool definitions are managed centrally for consistency
+// across all channels: Chat, WhatsApp, Email, Phone (VAPI)
 // ============================================================
-
-const CHECK_ORDER_STATUS_TOOL = {
-  type: "function",
-  function: {
-    name: "check_order_status",
-    description: "Müşterinin sipariş durumunu sorgular. Müşteri sipariş numarası veya telefon numarası verebilir. Sipariş durumu, kargo bilgisi ve teslimat tahmini döndürür.",
-    parameters: {
-      type: "object",
-      properties: {
-        order_number: {
-          type: "string",
-          description: "Trendyol sipariş numarası (örn: 123456789)"
-        },
-        customer_phone: {
-          type: "string",
-          description: "Müşterinin telefon numarası (örn: 5551234567)"
-        }
-      },
-      required: []
-    }
-  },
-  server: {
-    url: `${process.env.BACKEND_URL || 'https://marin-methoxy-suzette.ngrok-free.dev'}/api/vapi/functions`,
-    timeoutSeconds: 30
-  }
-};
-
-const GET_PRODUCT_STOCK_TOOL = {
-  type: "function",
-  function: {
-    name: "get_product_stock",
-    description: "Ürünün stok durumunu ve fiyatını sorgular. Müşteri ürün adı veya barkod numarası verebilir.",
-    parameters: {
-      type: "object",
-      properties: {
-        product_name: {
-          type: "string",
-          description: "Ürün adı veya arama kelimesi"
-        },
-        barcode: {
-          type: "string",
-          description: "Ürün barkod numarası (opsiyonel, daha kesin sonuç için)"
-        }
-      },
-      required: ["product_name"]
-    }
-  },
-  server: {
-    url: `${process.env.BACKEND_URL || 'https://marin-methoxy-suzette.ngrok-free.dev'}/api/vapi/functions`,
-    timeoutSeconds: 20
-  }
-};
-
-const GET_CARGO_TRACKING_TOOL = {
-  type: "function",
-  function: {
-    name: "get_cargo_tracking",
-    description: "Siparişin kargo takip bilgisini getirir. Kargo firması, takip numarası ve güncel durumu döndürür.",
-    parameters: {
-      type: "object",
-      properties: {
-        order_number: {
-          type: "string",
-          description: "Trendyol sipariş numarası"
-        }
-      },
-      required: ["order_number"]
-    }
-  },
-  server: {
-    url: `${process.env.BACKEND_URL || 'https://marin-methoxy-suzette.ngrok-free.dev'}/api/vapi/functions`,
-    timeoutSeconds: 20
-  }
-};
-
-// ============================================================
-// CARGO TRACKING TOOL
-// ============================================================
-
-const TRACK_SHIPMENT_TOOL = {
-  type: "function",
-  function: {
-    name: "track_shipment",
-    description: "Müşterinin kargo takip numarası ile gönderisinin durumunu sorgular. Müşteri kargo firmasını belirtmezse otomatik bulunur. Tracks customer's shipment status by tracking number.",
-    parameters: {
-      type: "object",
-      properties: {
-        tracking_number: {
-          type: "string",
-          description: "Kargo takip numarası / Shipment tracking number"
-        },
-        carrier: {
-          type: "string",
-          enum: ["yurtici", "aras", "mng"],
-          description: "Kargo firması (opsiyonel). Belirtilmezse tüm bağlı firmalar denenir. / Cargo carrier (optional). If not specified, all connected carriers will be tried."
-        }
-      },
-      required: ["tracking_number"]
-    }
-  },
-  server: {
-    url: `${process.env.BACKEND_URL || 'https://marin-methoxy-suzette.ngrok-free.dev'}/api/vapi/functions`,
-    timeoutSeconds: 15
-  }
-};
-
-// ============================================================
-// ORDER TOOLS (Restaurant/Food)
-// ============================================================
-
-const CREATE_ORDER_TOOL = {
-  type: "function",
-  function: {
-    name: "create_order",
-    description: "Creates a new food/product order. ONLY use when customer specifies WHAT they want to order (specific products/items). If customer just says 'I want to order' without specifying items, ASK what they want first.",
-    parameters: {
-      type: "object",
-      properties: {
-        items: {
-          type: "string",
-          description: "Order items with quantities (e.g., '2x Doner Plate, 1x Ayran')"
-        },
-        customer_name: {
-          type: "string",
-          description: "Customer's name"
-        },
-        customer_phone: {
-          type: "string",
-          description: "Customer's phone number"
-        },
-        order_type: {
-          type: "string",
-          description: "PICKUP or DELIVERY",
-          enum: ["PICKUP", "DELIVERY"]
-        },
-        pickup_time: {
-          type: "string",
-          description: "When customer wants to pick up (e.g., '3 saat sonra', '18:00', 'hemen')"
-        },
-        delivery_address: {
-          type: "string",
-          description: "Delivery address (required for delivery orders)"
-        },
-        notes: {
-          type: "string",
-          description: "Special requests or notes"
-        }
-      },
-      required: ["items", "customer_name"]
-    }
-  },
-  server: {
-    url: `${process.env.BACKEND_URL || 'https://marin-methoxy-suzette.ngrok-free.dev'}/api/vapi/functions`,
-    timeoutSeconds: 20
-  }
-};
-
-const UPDATE_ORDER_TOOL = {
-  type: "function",
-  function: {
-    name: "update_order",
-    description: "Updates an existing order. Use when customer wants to change pickup time, items, or cancel order.",
-    parameters: {
-      type: "object",
-      properties: {
-        order_id: {
-          type: "string",
-          description: "Order ID or last 8 characters of order number"
-        },
-        pickup_time: {
-          type: "string",
-          description: "New pickup time in HH:MM format or relative like '3 saat sonra'"
-        },
-        new_items: {
-          type: "string",
-          description: "Updated order items (replaces existing)"
-        },
-        cancel: {
-          type: "boolean",
-          description: "Set to true to cancel the order"
-        },
-        notes: {
-          type: "string",
-          description: "Additional notes"
-        }
-      },
-      required: ["order_id"]
-    }
-  },
-  server: {
-    url: `${process.env.BACKEND_URL || 'https://marin-methoxy-suzette.ngrok-free.dev'}/api/vapi/functions`,
-    timeoutSeconds: 20
-  }
-};
 
 /**
  * Get active tools for a business based on their integrations
- * @param {number} businessId - Business ID
- * @returns {Promise<Array>} Array of VAPI tool definitions
+ * Uses the central tool system for consistent behavior across all channels
+ * @param {Object} business - Business object with integrations
+ * @returns {Array} Array of VAPI tool definitions with server config
  */
-async function getActiveToolsForBusiness(businessId) {
-  const tools = [CREATE_APPOINTMENT_TOOL]; // Default tool always available
-
-  try {
-    // Check for Trendyol integration
-    const trendyolIntegration = await prisma.integration.findUnique({
-      where: {
-        businessId_type: {
-          businessId,
-          type: 'TRENDYOL'
-        }
-      }
-    });
-
-    if (trendyolIntegration && trendyolIntegration.isActive && trendyolIntegration.connected) {
-      console.log(`✅ Trendyol integration active for business ${businessId} - adding e-commerce tools`);
-      tools.push(CHECK_ORDER_STATUS_TOOL);
-      tools.push(GET_PRODUCT_STOCK_TOOL);
-      tools.push(GET_CARGO_TRACKING_TOOL);
-    }
-
-    // Check if business has cargo integration
-    const hasCargoIntegration = await cargoAggregator.hasCargoIntegration(businessId);
-    if (hasCargoIntegration) {
-      tools.push(TRACK_SHIPMENT_TOOL);
-      console.log(`📦 Cargo integration found, adding TRACK_SHIPMENT_TOOL for business ${businessId}`);
-    }
-
-    // Check business type for order tools
-    const business = await prisma.business.findUnique({
-      where: { id: businessId },
-      select: { businessType: true }
-    });
-    
-    if (business && ['RESTAURANT'].includes(business.businessType)) {
-      tools.push(CREATE_ORDER_TOOL);
-      tools.push(UPDATE_ORDER_TOOL);
-      console.log(`🍽️ Order tools added for business ${businessId} (${business.businessType})`);
-    }
-
-  } catch (error) {
-    console.error('❌ Error getting active tools for business:', error);
-    // Return default tools on error
-  }
-
+function getActiveToolsForBusinessVAPI(business) {
+  // Use central tool system - returns tools in VAPI format with server config
+  const tools = getActiveToolsForVAPI(business);
+  console.log(`🔧 [VAPI] Active tools from central system: ${tools.map(t => t.function.name).join(', ') || 'none'}`);
   return tools;
 }
 
@@ -480,8 +212,8 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
     const defaultFirstMessage = defaults.firstMessage.replace('{name}', name);
     const finalFirstMessage = firstMessage || defaultFirstMessage;
 
-    // Get active tools based on business integrations
-    const activeTools = await getActiveToolsForBusiness(businessId);
+    // Get active tools based on business integrations (using central tool system)
+    const activeTools = getActiveToolsForBusinessVAPI(business);
     console.log('📤 VAPI Request - tools:', activeTools.map(t => t.function.name));
 
     // VAPI'de YENİ assistant oluştur
@@ -652,7 +384,10 @@ router.put('/update', async (req, res) => {
     const { voiceId, voiceGender, tone, speed, pitch, customGreeting, customInstructions } = req.body;
 
     const business = await prisma.business.findUnique({
-      where: { id: businessId }
+      where: { id: businessId },
+      include: {
+        integrations: { where: { isActive: true } }
+      }
     });
 
     if (!business.vapiAssistantId) {
@@ -721,7 +456,7 @@ router.put('/update', async (req, res) => {
     });
 
 // 🔥 YENİ: VAPI'Yİ GÜNCELLE (TRAINING DAHİL)
-    const activeTools = await getActiveToolsForBusiness(businessId);
+    const activeTools = getActiveToolsForBusinessVAPI(business);
     console.log('📤 Updating VAPI with tools:', activeTools.map(t => t.function.name));
     
     const config = {
@@ -904,8 +639,8 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
 
 // ✅ YENİ: VAPI'deki assistant'ı da güncelle (PATCH)
     if (assistant.vapiAssistantId) {
-      // Get active tools for this business
-      const activeTools = await getActiveToolsForBusiness(businessId);
+      // Get active tools for this business (using central tool system)
+      const activeTools = getActiveToolsForBusinessVAPI(business);
       console.log('📤 VAPI Update - tools:', activeTools.map(t => t.function.name));
 
       const vapiResponse = await fetch(`https://api.vapi.ai/assistant/${assistant.vapiAssistantId}`, {

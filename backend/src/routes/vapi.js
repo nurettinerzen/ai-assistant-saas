@@ -400,6 +400,7 @@ router.post('/functions', async (req, res) => {
   try {
     const { message } = req.body;
     console.log('📞 VAPI Function Call received:', JSON.stringify(req.body, null, 2));
+    console.log('🔧 [VAPI] Tool call request from VAPI voice assistant');
 
     // Acknowledge receipt immediately
     if (!message || !message.toolCalls || message.toolCalls.length === 0) {
@@ -427,10 +428,12 @@ router.post('/functions', async (req, res) => {
         ? JSON.parse(func.arguments)
         : func.arguments;
 
-      console.log(`📞 Processing function: ${functionName}`, functionArgs);
+      console.log(`🔧 [VAPI] Executing tool: ${functionName}`, JSON.stringify(functionArgs));
 
-      // Execute using central tool system
+      // Execute using central tool system (same as WhatsApp, Chat, Email)
       const result = await executeTool(functionName, functionArgs, business, { channel: 'PHONE' });
+
+      console.log(`🔧 [VAPI] Tool result for ${functionName}:`, result.success ? 'SUCCESS' : 'FAILED', result);
 
       results.push({
         toolCallId,
