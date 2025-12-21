@@ -394,19 +394,35 @@ const elevenLabsService = {
     try {
       // Get current agent config
       const agent = await this.getAgent(agentId);
-      const currentKnowledgeBase = agent.knowledge_base || [];
 
-      // Add new document ID if not already present
-      if (!currentKnowledgeBase.includes(documentId)) {
-        currentKnowledgeBase.push(documentId);
+      // 11Labs uses knowledge_base array with objects containing id and type
+      // Format: [{ type: "file", id: "docId", name: "..." }, ...]
+      const currentKnowledgeBase = agent.conversation_config?.agent?.prompt?.knowledge_base || [];
+
+      console.log('📚 Current knowledge_base:', JSON.stringify(currentKnowledgeBase));
+
+      // Check if document already exists
+      const exists = currentKnowledgeBase.some(kb => kb.id === documentId);
+      if (!exists) {
+        currentKnowledgeBase.push({
+          type: 'file',
+          id: documentId
+        });
       }
 
-      // Update agent with new knowledge base
-      await elevenLabsClient.patch(`/convai/agents/${agentId}`, {
-        knowledge_base: currentKnowledgeBase
+      // Update agent with new knowledge base - nested in conversation_config
+      const response = await elevenLabsClient.patch(`/convai/agents/${agentId}`, {
+        conversation_config: {
+          agent: {
+            prompt: {
+              knowledge_base: currentKnowledgeBase
+            }
+          }
+        }
       });
 
       console.log('✅ 11Labs Knowledge document added to agent:', documentId);
+      console.log('📚 Updated knowledge_base:', JSON.stringify(response.data?.conversation_config?.agent?.prompt?.knowledge_base || []));
       return { success: true };
     } catch (error) {
       console.error('❌ 11Labs addKnowledgeToAgent error:', error.response?.data || error.message);
