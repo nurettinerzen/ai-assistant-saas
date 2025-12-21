@@ -34,8 +34,25 @@ export default function CallsPage() {
   const [selectedCallId, setSelectedCallId] = useState(null);
   const [showTranscriptModal, setShowTranscriptModal] = useState(false);
 
+  // Sync 11Labs conversations when page loads
   useEffect(() => {
-    loadCalls();
+    const syncAndLoad = async () => {
+      try {
+        // Silently sync 11Labs conversations first
+        await apiClient.elevenlabs.syncConversations();
+      } catch (error) {
+        // Ignore sync errors, just continue loading
+        console.log('Sync skipped:', error.message);
+      }
+      loadCalls();
+    };
+    syncAndLoad();
+  }, []);
+
+  useEffect(() => {
+    if (statusFilter !== 'all') {
+      loadCalls();
+    }
   }, [statusFilter]);
 
   const loadCalls = async () => {

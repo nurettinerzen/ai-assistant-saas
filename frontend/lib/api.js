@@ -220,6 +220,11 @@ export const apiClient = {
   onboarding: {
     complete: () => api.post('/api/onboarding/complete'),
   },
+
+  // ElevenLabs
+  elevenlabs: {
+    syncConversations: () => api.post('/api/elevenlabs/sync-conversations'),
+  },
 };
 
 export default api;
