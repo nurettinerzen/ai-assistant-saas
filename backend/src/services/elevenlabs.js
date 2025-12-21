@@ -390,13 +390,13 @@ const elevenLabsService = {
    * @param {string} agentId - Agent ID
    * @param {string} documentId - Knowledge document ID
    */
-  async addKnowledgeToAgent(agentId, documentId) {
+  async addKnowledgeToAgent(agentId, documentId, documentName) {
     try {
       // Get current agent config
       const agent = await this.getAgent(agentId);
 
-      // 11Labs uses knowledge_base array with objects containing id and type
-      // Format: [{ type: "file", id: "docId", name: "..." }, ...]
+      // 11Labs uses knowledge_base array with objects containing id, type, and name
+      // Format: [{ type: "file", id: "docId", name: "Document Name" }, ...]
       const currentKnowledgeBase = agent.conversation_config?.agent?.prompt?.knowledge_base || [];
 
       console.log('📚 Current knowledge_base:', JSON.stringify(currentKnowledgeBase));
@@ -406,7 +406,8 @@ const elevenLabsService = {
       if (!exists) {
         currentKnowledgeBase.push({
           type: 'file',
-          id: documentId
+          id: documentId,
+          name: documentName || `Document ${documentId.substring(0, 8)}`
         });
       }
 
@@ -431,6 +432,54 @@ const elevenLabsService = {
   },
 
   /**
+   * Remove knowledge document from an agent
+   * @param {string} agentId - Agent ID
+   * @param {string} documentId - Knowledge document ID to remove
+   */
+  async removeKnowledgeFromAgent(agentId, documentId) {
+    try {
+      // Get current agent config
+      const agent = await this.getAgent(agentId);
+      const currentKnowledgeBase = agent.conversation_config?.agent?.prompt?.knowledge_base || [];
+
+      // Filter out the document
+      const updatedKnowledgeBase = currentKnowledgeBase.filter(kb => kb.id !== documentId);
+
+      // Update agent
+      await elevenLabsClient.patch(`/convai/agents/${agentId}`, {
+        conversation_config: {
+          agent: {
+            prompt: {
+              knowledge_base: updatedKnowledgeBase
+            }
+          }
+        }
+      });
+
+      console.log('✅ 11Labs Knowledge document removed from agent:', documentId);
+      return { success: true };
+    } catch (error) {
+      console.error('❌ 11Labs removeKnowledgeFromAgent error:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  /**
+   * Delete knowledge document from 11Labs
+   * @param {string} documentId - Knowledge document ID
+   */
+  async deleteKnowledgeDocument(documentId) {
+    try {
+      await elevenLabsClient.delete(`/convai/knowledge-base/${documentId}`);
+      console.log('✅ 11Labs Knowledge document deleted:', documentId);
+      return { success: true };
+    } catch (error) {
+      console.error('❌ 11Labs deleteKnowledgeDocument error:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  /**
    * Get agent details
    * @param {string} agentId - Agent ID
    */
@@ -445,7 +494,6 @@ const elevenLabsService = {
   },
 
   /**
-   * Legacy method for backward compatibility
    * Creates document and adds to agent in one step
    * @param {string} agentId - Agent ID
    * @param {Object} document - { name, content } or { name, url }
@@ -464,8 +512,8 @@ const elevenLabsService = {
         throw new Error('Either url or content is required');
       }
 
-      // Add to agent
-      await this.addKnowledgeToAgent(agentId, knowledgeDoc.id);
+      // Add to agent with document name
+      await this.addKnowledgeToAgent(agentId, knowledgeDoc.id, document.name || knowledgeDoc.name);
 
       return knowledgeDoc;
     } catch (error) {

@@ -215,29 +215,37 @@ async function processDocument(documentId, filePath, ext, businessId) {
       select: { elevenLabsAgentId: true }
     });
 
+    // Get document info for name
+    const document = await prisma.knowledgeBase.findUnique({
+      where: { id: documentId }
+    });
+
+    let elevenLabsDocId = null;
+
     // Upload to 11Labs if assistant exists
     if (assistant?.elevenLabsAgentId) {
       try {
-        const document = await prisma.knowledgeBase.findUnique({
-          where: { id: documentId }
-        });
-        await elevenLabsService.addKnowledgeDocument(assistant.elevenLabsAgentId, {
-          name: document.title,
+        // Use original filename as document name
+        const docName = document.title || document.fileName || `Document_${documentId.substring(0, 8)}`;
+        const elevenLabsDoc = await elevenLabsService.addKnowledgeDocument(assistant.elevenLabsAgentId, {
+          name: docName,
           content: content
         });
-        console.log(`✅ Uploaded to 11Labs knowledge base`);
+        elevenLabsDocId = elevenLabsDoc?.id;
+        console.log(`✅ Uploaded to 11Labs knowledge base: ${elevenLabsDocId}`);
       } catch (elevenLabsError) {
         console.error('11Labs upload failed:', elevenLabsError);
         // Continue even if 11Labs fails
       }
     }
 
-    // Update document with extracted content
+    // Update document with extracted content and 11Labs ID
     await prisma.knowledgeBase.update({
       where: { id: documentId },
       data: {
         content,
-        status: 'ACTIVE'
+        status: 'ACTIVE',
+        ...(elevenLabsDocId && { elevenLabsDocId })
       }
     });
 
@@ -273,8 +281,27 @@ router.delete('/documents/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Document not found' });
     }
 
-    // Note: 11Labs knowledge base items are managed through agent updates
-    // Individual document deletion from 11Labs is handled when agent is re-synced
+    // Delete from 11Labs if we have the document ID
+    if (document.elevenLabsDocId) {
+      try {
+        // Get assistant to remove from agent
+        const assistant = await prisma.assistant.findFirst({
+          where: { businessId, isActive: true },
+          select: { elevenLabsAgentId: true }
+        });
+
+        if (assistant?.elevenLabsAgentId) {
+          // Remove from agent first
+          await elevenLabsService.removeKnowledgeFromAgent(assistant.elevenLabsAgentId, document.elevenLabsDocId);
+        }
+
+        // Then delete the document from 11Labs
+        await elevenLabsService.deleteKnowledgeDocument(document.elevenLabsDocId);
+      } catch (elevenLabsError) {
+        console.error('11Labs delete failed:', elevenLabsError);
+        // Continue even if 11Labs delete fails
+      }
+    }
 
     // Delete file from filesystem
     if (document.filePath) {
@@ -337,15 +364,19 @@ router.post('/faqs', authenticateToken, async (req, res) => {
       select: { elevenLabsAgentId: true }
     });
 
+    let elevenLabsDocId = null;
+
     // Upload to 11Labs if assistant exists
     if (assistant?.elevenLabsAgentId) {
       try {
         const content = `Q: ${question}\nA: ${answer}`;
-        await elevenLabsService.addKnowledgeDocument(assistant.elevenLabsAgentId, {
-          name: `FAQ: ${question.substring(0, 50)}...`,
+        const faqName = `FAQ: ${question.substring(0, 50)}`;
+        const elevenLabsDoc = await elevenLabsService.addKnowledgeDocument(assistant.elevenLabsAgentId, {
+          name: faqName,
           content: content
         });
-        console.log(`✅ FAQ uploaded to 11Labs`);
+        elevenLabsDocId = elevenLabsDoc?.id;
+        console.log(`✅ FAQ uploaded to 11Labs: ${elevenLabsDocId}`);
       } catch (elevenLabsError) {
         console.error('11Labs upload failed:', elevenLabsError);
       }
@@ -359,6 +390,7 @@ router.post('/faqs', authenticateToken, async (req, res) => {
         question,
         answer,
         category,
+        elevenLabsDocId,
         status: 'ACTIVE'
       }
     });
@@ -377,7 +409,7 @@ router.delete('/faqs/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
 
     const faq = await prisma.knowledgeBase.findFirst({
-      where: { 
+      where: {
         id,
         businessId,
         type: 'FAQ'
@@ -386,6 +418,23 @@ router.delete('/faqs/:id', authenticateToken, async (req, res) => {
 
     if (!faq) {
       return res.status(404).json({ error: 'FAQ not found' });
+    }
+
+    // Delete from 11Labs if we have the document ID
+    if (faq.elevenLabsDocId) {
+      try {
+        const assistant = await prisma.assistant.findFirst({
+          where: { businessId, isActive: true },
+          select: { elevenLabsAgentId: true }
+        });
+
+        if (assistant?.elevenLabsAgentId) {
+          await elevenLabsService.removeKnowledgeFromAgent(assistant.elevenLabsAgentId, faq.elevenLabsDocId);
+        }
+        await elevenLabsService.deleteKnowledgeDocument(faq.elevenLabsDocId);
+      } catch (elevenLabsError) {
+        console.error('11Labs delete failed:', elevenLabsError);
+      }
     }
 
     await prisma.knowledgeBase.delete({
@@ -518,23 +567,27 @@ async function crawlURL(entryId, url) {
         select: { elevenLabsAgentId: true }
       });
 
+      let elevenLabsDocId = null;
+
       // Upload to 11Labs if assistant exists - use URL endpoint directly
       if (assistant?.elevenLabsAgentId) {
         try {
-          await elevenLabsService.addKnowledgeDocument(assistant.elevenLabsAgentId, {
+          const elevenLabsDoc = await elevenLabsService.addKnowledgeDocument(assistant.elevenLabsAgentId, {
             name: result.title || url,
             url: url  // Let 11Labs scrape the URL directly
           });
-          console.log(`✅ URL uploaded to 11Labs`);
+          elevenLabsDocId = elevenLabsDoc?.id;
+          console.log(`✅ URL uploaded to 11Labs: ${elevenLabsDocId}`);
         } catch (elevenLabsError) {
           console.error('11Labs URL upload failed:', elevenLabsError);
           // Fallback: try with scraped content
           try {
-            await elevenLabsService.addKnowledgeDocument(assistant.elevenLabsAgentId, {
+            const elevenLabsDoc = await elevenLabsService.addKnowledgeDocument(assistant.elevenLabsAgentId, {
               name: result.title || url,
               content: result.content
             });
-            console.log(`✅ URL content uploaded to 11Labs (fallback)`);
+            elevenLabsDocId = elevenLabsDoc?.id;
+            console.log(`✅ URL content uploaded to 11Labs (fallback): ${elevenLabsDocId}`);
           } catch (fallbackError) {
             console.error('11Labs fallback upload also failed:', fallbackError);
           }
@@ -548,6 +601,7 @@ async function crawlURL(entryId, url) {
           content: result.content,
           pageCount: 1,
           lastCrawled: new Date(),
+          elevenLabsDocId,
           status: 'ACTIVE'
         }
       });
@@ -578,7 +632,7 @@ router.delete('/urls/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
 
     const urlEntry = await prisma.knowledgeBase.findFirst({
-      where: { 
+      where: {
         id,
         businessId,
         type: 'URL'
@@ -587,6 +641,23 @@ router.delete('/urls/:id', authenticateToken, async (req, res) => {
 
     if (!urlEntry) {
       return res.status(404).json({ error: 'URL not found' });
+    }
+
+    // Delete from 11Labs if we have the document ID
+    if (urlEntry.elevenLabsDocId) {
+      try {
+        const assistant = await prisma.assistant.findFirst({
+          where: { businessId, isActive: true },
+          select: { elevenLabsAgentId: true }
+        });
+
+        if (assistant?.elevenLabsAgentId) {
+          await elevenLabsService.removeKnowledgeFromAgent(assistant.elevenLabsAgentId, urlEntry.elevenLabsDocId);
+        }
+        await elevenLabsService.deleteKnowledgeDocument(urlEntry.elevenLabsDocId);
+      } catch (elevenLabsError) {
+        console.error('11Labs delete failed:', elevenLabsError);
+      }
     }
 
     await prisma.knowledgeBase.delete({

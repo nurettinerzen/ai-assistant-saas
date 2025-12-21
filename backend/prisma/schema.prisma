@@ -379,26 +379,27 @@ model AiTraining {
 }
 
 model KnowledgeBase {
-  id          String          @id @default(cuid())
-  businessId  Int
-  type        KnowledgeType
-  title       String
-  content     String?
-  fileName    String?
-  fileSize    Int?
-  mimeType    String?
-  filePath    String?
-  url         String?
-  crawlDepth  Int?
-  pageCount   Int?
-  lastCrawled DateTime?
-  question    String?
-  answer      String?
-  category    String?
-  status      KnowledgeStatus @default(PROCESSING)
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-  business    Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  id              String          @id @default(cuid())
+  businessId      Int
+  type            KnowledgeType
+  title           String
+  content         String?
+  fileName        String?
+  fileSize        Int?
+  mimeType        String?
+  filePath        String?
+  url             String?
+  crawlDepth      Int?
+  pageCount       Int?
+  lastCrawled     DateTime?
+  question        String?
+  answer          String?
+  category        String?
+  elevenLabsDocId String?         // 11Labs knowledge base document ID
+  status          KnowledgeStatus @default(PROCESSING)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  business        Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
   @@index([businessId])
   @@index([type])
