@@ -104,17 +104,21 @@ const elevenLabsService = {
   /**
    * Import a Twilio phone number to 11Labs
    * @param {Object} config - Phone number configuration
+   * @param {string} config.phoneNumber - Phone number in E.164 format
+   * @param {string} config.twilioAccountSid - Twilio Account SID
+   * @param {string} config.twilioAuthToken - Twilio Auth Token
+   * @param {string} config.agentId - 11Labs Agent ID to assign
+   * @param {string} config.label - Optional label for the phone number
    */
   async importPhoneNumber(config) {
     try {
+      // 11Labs API expects 'sid' and 'token' at root level for Twilio
       const response = await elevenLabsClient.post('/convai/phone-numbers/create', {
         phone_number: config.phoneNumber,
-        label: config.label || `Phone - ${config.phoneNumber}`,
+        label: config.label || `Telyx - ${config.phoneNumber}`,
         provider: 'twilio',
-        provider_config: {
-          account_sid: config.twilioAccountSid || process.env.TWILIO_ACCOUNT_SID,
-          auth_token: config.twilioAuthToken || process.env.TWILIO_AUTH_TOKEN
-        },
+        sid: config.twilioAccountSid || process.env.TWILIO_ACCOUNT_SID,
+        token: config.twilioAuthToken || process.env.TWILIO_AUTH_TOKEN,
         agent_id: config.agentId
       });
       console.log('✅ 11Labs Phone number imported:', response.data.phone_number_id);
