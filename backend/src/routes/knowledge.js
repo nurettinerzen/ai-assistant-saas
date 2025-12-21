@@ -8,7 +8,7 @@ import fs from 'fs/promises';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 import { createRequire } from 'module';
-import vapiKnowledgeService from '../services/vapiKnowledge.js';
+import elevenLabsService from '../services/elevenlabs.js';
 
 const require = createRequire(import.meta.url);
 const pdfParse = require('pdf-parse');
@@ -206,30 +206,26 @@ async function processDocument(documentId, filePath, ext, businessId) {
         throw new Error('Unsupported file type');
     }
 
-    // Get business assistant ID
-    const business = await prisma.business.findUnique({
-      where: { id: businessId },
-      select: { vapiAssistantId: true }
+    // Get business assistant with 11Labs agent ID
+    const assistant = await prisma.assistant.findFirst({
+      where: { businessId, isActive: true },
+      select: { elevenLabsAgentId: true }
     });
 
-    let vapiKnowledgeId = null;
-
-    // Upload to VAPI if assistant exists
-    if (business?.vapiAssistantId) {
+    // Upload to 11Labs if assistant exists
+    if (assistant?.elevenLabsAgentId) {
       try {
         const document = await prisma.knowledgeBase.findUnique({
           where: { id: documentId }
         });
-        const vapiResponse = await vapiKnowledgeService.uploadText(
-          business.vapiAssistantId,
-          document.title,
-          content
-        );
-        vapiKnowledgeId = vapiResponse.id;
-        console.log(`✅ Uploaded to VAPI knowledge base: ${vapiKnowledgeId}`);
-      } catch (vapiError) {
-        console.error('VAPI upload failed:', vapiError);
-        // Continue even if VAPI fails
+        await elevenLabsService.addKnowledgeDocument(assistant.elevenLabsAgentId, {
+          name: document.title,
+          content: content
+        });
+        console.log(`✅ Uploaded to 11Labs knowledge base`);
+      } catch (elevenLabsError) {
+        console.error('11Labs upload failed:', elevenLabsError);
+        // Continue even if 11Labs fails
       }
     }
 
@@ -238,7 +234,6 @@ async function processDocument(documentId, filePath, ext, businessId) {
       where: { id: documentId },
       data: {
         content,
-        vapiKnowledgeId,
         status: 'ACTIVE'
       }
     });
@@ -264,30 +259,19 @@ router.delete('/documents/:id', authenticateToken, async (req, res) => {
 
     // Find document
     const document = await prisma.knowledgeBase.findFirst({
-      where: { 
+      where: {
         id,
         businessId,
         type: 'DOCUMENT'
-      },
-      include: { business: { select: { vapiAssistantId: true } } }
+      }
     });
 
     if (!document) {
       return res.status(404).json({ error: 'Document not found' });
     }
 
-    // Delete from VAPI if exists
-    if (document.vapiKnowledgeId && document.business?.vapiAssistantId) {
-      try {
-        await vapiKnowledgeService.deleteKnowledge(
-          document.business.vapiAssistantId,
-          document.vapiKnowledgeId
-        );
-        console.log(`✅ Deleted from VAPI: ${document.vapiKnowledgeId}`);
-      } catch (vapiError) {
-        console.error('VAPI delete failed:', vapiError);
-      }
-    }
+    // Note: 11Labs knowledge base items are managed through agent updates
+    // Individual document deletion from 11Labs is handled when agent is re-synced
 
     // Delete file from filesystem
     if (document.filePath) {
@@ -344,27 +328,23 @@ router.post('/faqs', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Question and answer are required' });
     }
 
-    // Get business assistant ID
-    const business = await prisma.business.findUnique({
-      where: { id: businessId },
-      select: { vapiAssistantId: true }
+    // Get business assistant with 11Labs agent ID
+    const assistant = await prisma.assistant.findFirst({
+      where: { businessId, isActive: true },
+      select: { elevenLabsAgentId: true }
     });
 
-    let vapiKnowledgeId = null;
-
-    // Upload to VAPI if assistant exists
-    if (business?.vapiAssistantId) {
+    // Upload to 11Labs if assistant exists
+    if (assistant?.elevenLabsAgentId) {
       try {
         const content = `Q: ${question}\nA: ${answer}`;
-        const vapiResponse = await vapiKnowledgeService.uploadText(
-          business.vapiAssistantId,
-          `FAQ: ${question.substring(0, 50)}...`,
-          content
-        );
-        vapiKnowledgeId = vapiResponse.id;
-        console.log(`✅ FAQ uploaded to VAPI: ${vapiKnowledgeId}`);
-      } catch (vapiError) {
-        console.error('VAPI upload failed:', vapiError);
+        await elevenLabsService.addKnowledgeDocument(assistant.elevenLabsAgentId, {
+          name: `FAQ: ${question.substring(0, 50)}...`,
+          content: content
+        });
+        console.log(`✅ FAQ uploaded to 11Labs`);
+      } catch (elevenLabsError) {
+        console.error('11Labs upload failed:', elevenLabsError);
       }
     }
 
@@ -376,7 +356,6 @@ router.post('/faqs', authenticateToken, async (req, res) => {
         question,
         answer,
         category,
-        vapiKnowledgeId,
         status: 'ACTIVE'
       }
     });
@@ -522,29 +501,30 @@ router.post('/urls', authenticateToken, async (req, res) => {
 async function crawlURL(entryId, url) {
   try {
     const result = await scrapeURL(url);
-    
+
     if (result.success) {
       // Get entry to find businessId
       const entry = await prisma.knowledgeBase.findUnique({
         where: { id: entryId },
-        include: { business: { select: { vapiAssistantId: true } } }
+        select: { businessId: true }
       });
 
-      let vapiKnowledgeId = null;
+      // Get assistant with 11Labs agent ID
+      const assistant = await prisma.assistant.findFirst({
+        where: { businessId: entry.businessId, isActive: true },
+        select: { elevenLabsAgentId: true }
+      });
 
-      // Upload to VAPI if assistant exists
-      if (entry?.business?.vapiAssistantId) {
+      // Upload to 11Labs if assistant exists
+      if (assistant?.elevenLabsAgentId) {
         try {
-          const vapiResponse = await vapiKnowledgeService.uploadUrl(
-  entry.business.vapiAssistantId,
-  url,
-  result.title || url,
-  result.content  // Crawl edilmiş içerik
-);
-          vapiKnowledgeId = vapiResponse.id;
-          console.log(`✅ URL uploaded to VAPI: ${vapiKnowledgeId}`);
-        } catch (vapiError) {
-          console.error('VAPI URL upload failed:', vapiError);
+          await elevenLabsService.addKnowledgeDocument(assistant.elevenLabsAgentId, {
+            name: result.title || url,
+            content: result.content
+          });
+          console.log(`✅ URL uploaded to 11Labs`);
+        } catch (elevenLabsError) {
+          console.error('11Labs URL upload failed:', elevenLabsError);
         }
       }
 
@@ -553,7 +533,6 @@ async function crawlURL(entryId, url) {
         data: {
           title: result.title || url,
           content: result.content,
-          vapiKnowledgeId,
           pageCount: 1,
           lastCrawled: new Date(),
           status: 'ACTIVE'
