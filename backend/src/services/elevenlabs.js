@@ -260,18 +260,33 @@ const elevenLabsService = {
   },
 
   /**
-   * List conversations for an agent
-   * @param {string} agentId - Agent ID
-   * @param {Object} params - Query parameters (page_size, cursor)
+   * List conversations
+   * @param {number|string} pageSizeOrAgentId - Page size (number) or Agent ID (string for backward compat)
+   * @param {Object} params - Query parameters (page_size, cursor, agent_id)
    */
-  async listConversations(agentId, params = {}) {
+  async listConversations(pageSizeOrAgentId, params = {}) {
     try {
-      const queryParams = new URLSearchParams({
-        agent_id: agentId,
-        ...params
-      });
+      let queryParams;
+
+      // Support both new (pageSize) and old (agentId, params) signatures
+      if (typeof pageSizeOrAgentId === 'number') {
+        // New signature: listConversations(50)
+        queryParams = new URLSearchParams({
+          page_size: pageSizeOrAgentId.toString(),
+          ...params
+        });
+      } else if (typeof pageSizeOrAgentId === 'string') {
+        // Old signature: listConversations(agentId, params)
+        queryParams = new URLSearchParams({
+          agent_id: pageSizeOrAgentId,
+          ...params
+        });
+      } else {
+        queryParams = new URLSearchParams({ page_size: '50' });
+      }
+
       const response = await elevenLabsClient.get(`/convai/conversations?${queryParams}`);
-      return response.data;
+      return response.data.conversations || response.data;
     } catch (error) {
       console.error('❌ 11Labs listConversations error:', error.response?.data || error.message);
       throw error;

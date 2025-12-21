@@ -621,6 +621,167 @@ function mapStatus(elevenLabsStatus) {
 }
 
 // ============================================================================
+// SYNC CONVERSATIONS ENDPOINT
+// ============================================================================
+// Fetch recent conversations from 11Labs and sync to CallLog
+// This is needed because 11Labs phone call webhooks are not reliable
+
+router.post('/sync-conversations', async (req, res) => {
+  try {
+    console.log('🔄 Starting 11Labs conversation sync...');
+
+    const elevenLabsService = (await import('../services/elevenlabs.js')).default;
+
+    // Get recent conversations from 11Labs (last 50)
+    const conversations = await elevenLabsService.listConversations(50);
+
+    if (!conversations || conversations.length === 0) {
+      return res.json({ synced: 0, message: 'No conversations found' });
+    }
+
+    console.log(`📞 Found ${conversations.length} conversations to check`);
+
+    let syncedCount = 0;
+    let skippedCount = 0;
+
+    for (const conv of conversations) {
+      try {
+        // Check if already exists
+        const existing = await prisma.callLog.findFirst({
+          where: { callId: conv.conversation_id }
+        });
+
+        if (existing) {
+          skippedCount++;
+          continue;
+        }
+
+        // Find assistant by agent ID
+        const assistant = await prisma.assistant.findFirst({
+          where: { elevenLabsAgentId: conv.agent_id },
+          include: {
+            business: {
+              include: {
+                subscription: { select: { plan: true } }
+              }
+            }
+          }
+        });
+
+        if (!assistant) {
+          console.log(`⚠️ No assistant found for agent ${conv.agent_id}`);
+          continue;
+        }
+
+        // Fetch full conversation details
+        let conversationData;
+        try {
+          conversationData = await elevenLabsService.getConversation(conv.conversation_id);
+        } catch (err) {
+          console.warn(`⚠️ Could not fetch details for ${conv.conversation_id}`);
+          continue;
+        }
+
+        // Parse transcript
+        let transcriptMessages = [];
+        let transcriptText = '';
+        const transcript = conversationData.transcript || [];
+
+        if (Array.isArray(transcript)) {
+          transcriptMessages = transcript.map(msg => ({
+            speaker: msg.role === 'agent' ? 'assistant' : 'user',
+            text: msg.message || msg.text || '',
+            timestamp: msg.time_in_call_secs || msg.timestamp
+          }));
+          transcriptText = transcriptMessages.map(m => `${m.speaker}: ${m.text}`).join('\n');
+        }
+
+        // Get caller phone from metadata
+        const callerPhone = conversationData.metadata?.phone_call?.external_number ||
+                           conversationData.metadata?.caller_phone || 'Unknown';
+
+        const duration = conv.call_duration_secs || 0;
+
+        // Run AI analysis for eligible plans
+        const business = assistant.business;
+        const plan = business.subscription?.plan;
+        let aiAnalysis = {
+          summary: conv.call_summary_title || null,
+          keyTopics: [],
+          actionItems: [],
+          sentiment: 'neutral',
+          sentimentScore: 0.5
+        };
+
+        const shouldAnalyze = (plan === 'PROFESSIONAL' || plan === 'ENTERPRISE') &&
+                              transcriptMessages.length > 2 && !aiAnalysis.summary;
+
+        if (shouldAnalyze) {
+          try {
+            const callAnalysisResult = await callAnalysis.analyzeCall(transcriptMessages, duration);
+            aiAnalysis = {
+              summary: callAnalysisResult.summary,
+              keyTopics: callAnalysisResult.keyTopics,
+              actionItems: callAnalysisResult.actionItems,
+              sentiment: callAnalysisResult.sentiment,
+              sentimentScore: callAnalysisResult.sentimentScore
+            };
+          } catch (analysisError) {
+            console.error('⚠️ AI analysis failed:', analysisError.message);
+          }
+        }
+
+        // Create call log
+        await prisma.callLog.create({
+          data: {
+            businessId: business.id,
+            callId: conv.conversation_id,
+            callerId: callerPhone,
+            duration: duration,
+            transcript: transcriptMessages.length > 0 ? transcriptMessages : null,
+            transcriptText: transcriptText || null,
+            status: conv.call_successful === 'success' ? 'answered' : 'failed',
+            summary: aiAnalysis.summary,
+            keyTopics: aiAnalysis.keyTopics,
+            actionItems: aiAnalysis.actionItems,
+            sentiment: aiAnalysis.sentiment,
+            sentimentScore: aiAnalysis.sentimentScore,
+            createdAt: new Date(conv.start_time_unix_secs * 1000)
+          }
+        });
+
+        // Track usage
+        if (duration > 0) {
+          await usageTracking.trackCallUsage(business.id, duration, {
+            callId: conv.conversation_id,
+            transcript: transcriptText,
+            status: 'answered'
+          });
+        }
+
+        syncedCount++;
+        console.log(`✅ Synced: ${conv.conversation_id} (${duration}s)`);
+
+      } catch (convError) {
+        console.error(`❌ Error syncing ${conv.conversation_id}:`, convError.message);
+      }
+    }
+
+    console.log(`🔄 Sync complete: ${syncedCount} synced, ${skippedCount} skipped`);
+    res.json({
+      success: true,
+      synced: syncedCount,
+      skipped: skippedCount,
+      total: conversations.length
+    });
+
+  } catch (error) {
+    console.error('❌ Conversation sync error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================================
 // SIGNED URL ENDPOINT (for web client)
 // ============================================================================
 
