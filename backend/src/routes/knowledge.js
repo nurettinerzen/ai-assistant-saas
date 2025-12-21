@@ -9,9 +9,9 @@ import axios from 'axios';
 import * as cheerio from 'cheerio';
 import { createRequire } from 'module';
 import elevenLabsService from '../services/elevenlabs.js';
+import { PDFParse } from 'pdf-parse';
 
 const require = createRequire(import.meta.url);
-const pdfParse = require('pdf-parse');
 const mammoth = require('mammoth');
 
 const router = express.Router();
@@ -112,12 +112,15 @@ router.get('/documents', authenticateToken, async (req, res) => {
   }
 });
 
-// Helper function to extract text from PDF
+// Helper function to extract text from PDF (using pdf-parse v2 API)
 async function extractTextFromPDF(filePath) {
   try {
     const dataBuffer = await fs.readFile(filePath);
-    const data = await pdfParse(dataBuffer);
-    return data.text;
+    // PDFParse v2: constructor takes LoadParameters, getText() returns TextResult
+    const parser = new PDFParse({ data: dataBuffer });
+    const result = await parser.getText();
+    await parser.destroy(); // Clean up resources
+    return result.text.trim();
   } catch (error) {
     console.error('PDF parsing error:', error);
     throw new Error('Failed to extract text from PDF');

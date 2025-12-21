@@ -192,7 +192,7 @@ async function enrichVoicesWithPreviews(voices, useTurkishPreview = false) {
       // For Turkish voices, use our Turkish preview endpoint
       if (useTurkishPreview && voice.id?.startsWith('tr-')) {
         // Use backend URL for Turkish preview
-        const backendUrl = process.env.BACKEND_URL || 'http://localhost:5001';
+        const backendUrl = process.env.BACKEND_URL || 'http://localhost:3001';
         return {
           ...voice,
           sampleUrl: `${backendUrl}/api/voices/preview/${voice.id}`

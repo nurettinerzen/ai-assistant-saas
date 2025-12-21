@@ -486,7 +486,7 @@ export function buildAgentConfig(assistant, business, tools = []) {
   }));
 
   // Build webhook URL for post-call analysis
-  const backendUrl = process.env.BACKEND_URL || 'http://localhost:5001';
+  const backendUrl = process.env.BACKEND_URL || 'http://localhost:3001';
 
   return {
     name: assistant.name,
