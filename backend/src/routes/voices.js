@@ -395,6 +395,14 @@ router.get('/preview/:voiceId', async (req, res) => {
   }
 });
 
+// DELETE cache for Turkish previews (for development/testing)
+router.delete('/preview/cache', (req, res) => {
+  const count = turkishPreviewCache.size;
+  turkishPreviewCache.clear();
+  console.log(`🗑️ Cleared ${count} cached Turkish previews`);
+  res.json({ success: true, cleared: count });
+});
+
 // GET sample audio for a voice from 11Labs (original English preview)
 router.get('/sample/:voiceId', async (req, res) => {
   const { voiceId } = req.params;
