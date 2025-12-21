@@ -80,7 +80,8 @@ export default function ChatWidgetPage() {
       });
       setAssistants(response.data.assistants || []);
       if (response.data.assistants.length > 0) {
-        setAssistantId(response.data.assistants[0].vapiAssistantId);
+        // Use internal assistant ID - works for both VAPI and 11Labs assistants
+        setAssistantId(response.data.assistants[0].id);
       }
     } catch (error) {
       console.error('Failed to load assistants:', error);
@@ -377,7 +378,7 @@ export default function ChatWidgetPage() {
               </SelectTrigger>
               <SelectContent>
                 {assistants.map((assistant) => (
-                  <SelectItem key={assistant.id} value={assistant.vapiAssistantId}>
+                  <SelectItem key={assistant.id} value={assistant.id}>
                     {assistant.name}
                   </SelectItem>
                 ))}

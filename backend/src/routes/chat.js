@@ -39,8 +39,14 @@ router.post('/widget', async (req, res) => {
       return res.status(400).json({ error: 'assistantId and message are required' });
     }
 
+    // Try to find assistant by internal ID first, then by vapiAssistantId (for backward compatibility)
     const assistant = await prisma.assistant.findFirst({
-      where: { vapiAssistantId: assistantId },
+      where: {
+        OR: [
+          { id: assistantId },
+          { vapiAssistantId: assistantId }
+        ]
+      },
       include: {
         business: {
           include: {
@@ -184,8 +190,14 @@ router.get('/assistant/:assistantId', async (req, res) => {
   try {
     const { assistantId } = req.params;
 
+    // Try to find assistant by internal ID first, then by vapiAssistantId (for backward compatibility)
     const assistant = await prisma.assistant.findFirst({
-      where: { vapiAssistantId: assistantId },
+      where: {
+        OR: [
+          { id: assistantId },
+          { vapiAssistantId: assistantId }
+        ]
+      },
       select: {
         name: true,
         business: {
