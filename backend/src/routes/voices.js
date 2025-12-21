@@ -186,9 +186,18 @@ async function getPreviewUrl(voiceId) {
 }
 
 // Enrich voices with preview URLs
-async function enrichVoicesWithPreviews(voices) {
+async function enrichVoicesWithPreviews(voices, useTurkishPreview = false) {
   const enrichedVoices = await Promise.all(
     voices.map(async (voice) => {
+      // For Turkish voices, use our Turkish preview endpoint
+      if (useTurkishPreview && voice.id?.startsWith('tr-')) {
+        // Use backend URL for Turkish preview
+        const backendUrl = process.env.BACKEND_URL || 'http://localhost:5001';
+        return {
+          ...voice,
+          sampleUrl: `${backendUrl}/api/voices/preview/${voice.id}`
+        };
+      }
       // First check if preview_url already exists in voice object
       if (voice.preview_url) {
         return { ...voice, sampleUrl: voice.preview_url };
@@ -212,10 +221,12 @@ router.get('/', async (req, res) => {
   if (language && VOICE_LIBRARY[language.toLowerCase()]) {
     console.log('🎤 GET /api/voices - language:', language);
     let voices = VOICE_LIBRARY[language.toLowerCase()];
+    const lang = language.toLowerCase();
 
     // Enrich with preview URLs if requested
     if (withSamples === 'true') {
-      voices = await enrichVoicesWithPreviews(voices);
+      // Use Turkish preview for Turkish voices
+      voices = await enrichVoicesWithPreviews(voices, lang === 'tr');
     }
 
     return res.json({
@@ -230,7 +241,8 @@ router.get('/', async (req, res) => {
   // If withSamples requested, enrich all voices with preview URLs
   if (withSamples === 'true') {
     for (const lang of Object.keys(VOICE_LIBRARY)) {
-      allVoices[lang] = await enrichVoicesWithPreviews(VOICE_LIBRARY[lang]);
+      // Use Turkish preview for Turkish voices
+      allVoices[lang] = await enrichVoicesWithPreviews(VOICE_LIBRARY[lang], lang === 'tr');
     }
   } else {
     Object.keys(VOICE_LIBRARY).forEach(lang => {
@@ -290,7 +302,98 @@ router.get('/language/:code', (req, res) => {
   });
 });
 
-// GET sample audio for a voice from 11Labs
+// Turkish preview text for each voice
+const TURKISH_PREVIEW_TEXT = {
+  'tr-m-mirza': 'Merhaba, ben Mirza. Size nasıl yardımcı olabilirim?',
+  'tr-m-ali': 'Merhaba, ben Ali. Bugün size nasıl yardımcı olabilirim?',
+  'tr-m-berat': 'Merhaba, ben Berat. Sizinle tanıştığıma memnun oldum.',
+  'tr-m-yasir': 'Merhaba, ben Yasir. Size yardımcı olmak için buradayım.',
+  'tr-f-eda': 'Merhaba, ben Eda. Size nasıl yardımcı olabilirim?',
+  'tr-f-selen': 'Merhaba, ben Selen. Bugün size nasıl yardımcı olabilirim?',
+  'tr-f-sare': 'Merhaba, ben Sare. Sizinle tanıştığıma memnun oldum.',
+  'tr-f-miray': 'Merhaba, ben Miray. Size yardımcı olmak için buradayım.'
+};
+
+// Cache for Turkish preview audio
+const turkishPreviewCache = new Map();
+const PREVIEW_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+
+// GET Turkish preview audio for a voice
+router.get('/preview/:voiceId', async (req, res) => {
+  const { voiceId } = req.params;
+
+  try {
+    // Find voice in our library
+    let voice = null;
+    let elevenLabsVoiceId = voiceId;
+
+    for (const lang in VOICE_LIBRARY) {
+      voice = VOICE_LIBRARY[lang].find(v => v.id === voiceId);
+      if (voice) {
+        elevenLabsVoiceId = voice.voice_id || voiceId;
+        break;
+      }
+    }
+
+    if (!voice) {
+      return res.status(404).json({ error: 'Voice not found' });
+    }
+
+    if (!ELEVENLABS_API_KEY) {
+      return res.status(500).json({ error: '11Labs API key not configured' });
+    }
+
+    // Check cache first
+    const cached = turkishPreviewCache.get(voiceId);
+    if (cached && Date.now() - cached.timestamp < PREVIEW_CACHE_TTL) {
+      res.set('Content-Type', 'audio/mpeg');
+      res.set('Cache-Control', 'public, max-age=86400');
+      return res.send(cached.audio);
+    }
+
+    // Get Turkish preview text
+    const previewText = TURKISH_PREVIEW_TEXT[voiceId] || `Merhaba, ben ${voice.name}. Size nasıl yardımcı olabilirim?`;
+
+    // Generate Turkish audio using 11Labs TTS
+    const response = await axios.post(
+      `${ELEVENLABS_BASE_URL}/text-to-speech/${elevenLabsVoiceId}`,
+      {
+        text: previewText,
+        model_id: 'eleven_turbo_v2',
+        voice_settings: {
+          stability: 0.5,
+          similarity_boost: 0.75,
+          speed: 1.0
+        }
+      },
+      {
+        headers: {
+          'xi-api-key': ELEVENLABS_API_KEY,
+          'Content-Type': 'application/json',
+          'Accept': 'audio/mpeg'
+        },
+        responseType: 'arraybuffer',
+        timeout: 30000
+      }
+    );
+
+    // Cache the audio
+    turkishPreviewCache.set(voiceId, {
+      audio: Buffer.from(response.data),
+      timestamp: Date.now()
+    });
+
+    res.set('Content-Type', 'audio/mpeg');
+    res.set('Cache-Control', 'public, max-age=86400');
+    res.send(Buffer.from(response.data));
+
+  } catch (error) {
+    console.error('Failed to generate Turkish preview:', error.response?.data || error.message);
+    res.status(500).json({ error: 'Failed to generate preview' });
+  }
+});
+
+// GET sample audio for a voice from 11Labs (original English preview)
 router.get('/sample/:voiceId', async (req, res) => {
   const { voiceId } = req.params;
 
