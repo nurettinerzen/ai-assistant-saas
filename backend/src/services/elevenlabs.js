@@ -375,12 +375,19 @@ export function buildAgentConfig(assistant, business, tools = []) {
         first_message: assistant.firstMessage || getDefaultFirstMessage(language, assistant.name),
         language: language
       },
+      llm: {
+        provider: 'gemini',
+        model: 'gemini-2.5-flash',
+        temperature: 0.15
+      },
       tts: {
         voice_id: assistant.voiceId,
-        model_id: language === 'tr' ? 'eleven_multilingual_v2' : 'eleven_turbo_v2',
+        model_id: 'eleven_turbo_v2',
         stability: 0.5,
         similarity_boost: 0.75,
-        optimize_streaming_latency: 3
+        speed: 1.0,
+        optimize_streaming_latency: 3,
+        text_normalization: 'elevenlabs'
       },
       stt: {
         provider: 'elevenlabs',
