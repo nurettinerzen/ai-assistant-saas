@@ -354,12 +354,13 @@ router.get('/preview/:voiceId', async (req, res) => {
     // Get Turkish preview text
     const previewText = TURKISH_PREVIEW_TEXT[voiceId] || `Merhaba, ben ${voice.name}. Size nasıl yardımcı olabilirim?`;
 
-    // Generate Turkish audio using 11Labs TTS with multilingual model
+    // Generate Turkish audio using 11Labs TTS
+    // Use eleven_turbo_v2_5 with language_code for proper Turkish pronunciation
     const response = await axios.post(
       `${ELEVENLABS_BASE_URL}/text-to-speech/${elevenLabsVoiceId}`,
       {
         text: previewText,
-        model_id: 'eleven_multilingual_v2',
+        model_id: 'eleven_turbo_v2_5',
         language_code: 'tr',
         voice_settings: {
           stability: 0.5,
