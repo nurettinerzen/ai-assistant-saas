@@ -197,6 +197,7 @@ router.post('/post-call', async (req, res) => {
       status
     } = req.body;
 
+    console.log('[11Labs Post-Call] Received:', JSON.stringify(req.body, null, 2).substring(0, 1000));
     console.log('[11Labs Post-Call] Conversation:', conversation_id);
 
     // Find assistant by agent ID
@@ -439,22 +440,164 @@ async function handleConversationStarted(event) {
 async function handleConversationEnded(event) {
   try {
     const conversationId = event.conversation_id;
+    const agentId = event.agent_id;
 
     if (!conversationId) {
       console.warn('⚠️ No conversation ID in conversation.ended event');
       return;
     }
 
-    // Basic status update - full details come via post-call webhook
-    await prisma.callLog.updateMany({
-      where: { callId: conversationId },
-      data: {
-        status: 'completed',
-        updatedAt: new Date()
+    console.log(`📞 Conversation ended: ${conversationId}, fetching details...`);
+
+    // Wait a bit for 11Labs to process the conversation
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // Fetch conversation details from 11Labs API
+    const elevenLabsService = (await import('../services/elevenlabs.js')).default;
+    let conversationData;
+
+    try {
+      conversationData = await elevenLabsService.getConversation(conversationId);
+      console.log(`✅ Fetched conversation data for ${conversationId}`);
+    } catch (fetchError) {
+      console.warn(`⚠️ Could not fetch conversation details: ${fetchError.message}`);
+      // Still update status even if we can't get details
+      await prisma.callLog.updateMany({
+        where: { callId: conversationId },
+        data: { status: 'completed', updatedAt: new Date() }
+      });
+      return;
+    }
+
+    // Find assistant by agent ID
+    const assistant = await prisma.assistant.findFirst({
+      where: { elevenLabsAgentId: agentId || conversationData.agent_id },
+      include: {
+        business: {
+          include: {
+            subscription: { select: { plan: true } }
+          }
+        }
       }
     });
 
-    console.log(`✅ Conversation ended: ${conversationId}`);
+    if (!assistant) {
+      console.warn(`⚠️ No assistant found for agent ${agentId}`);
+      return;
+    }
+
+    const business = assistant.business;
+
+    // Parse transcript from conversation data
+    let transcriptMessages = [];
+    let transcriptText = '';
+    const transcript = conversationData.transcript || [];
+
+    if (Array.isArray(transcript)) {
+      transcriptMessages = transcript.map(msg => ({
+        speaker: msg.role === 'agent' ? 'assistant' : 'user',
+        text: msg.message || msg.text || '',
+        timestamp: msg.time_in_call_secs || msg.timestamp
+      }));
+      transcriptText = transcriptMessages.map(m => `${m.speaker}: ${m.text}`).join('\n');
+    }
+
+    // Get analysis data if available
+    const analysis = conversationData.analysis || {};
+    let aiAnalysis = {
+      summary: analysis.summary || null,
+      keyTopics: analysis.key_topics || [],
+      actionItems: analysis.action_items || [],
+      sentiment: analysis.sentiment || 'neutral',
+      sentimentScore: analysis.sentiment_score || 0.5
+    };
+
+    // Run AI analysis for eligible plans if no summary
+    const plan = business.subscription?.plan;
+    const shouldAnalyze = (plan === 'PROFESSIONAL' || plan === 'ENTERPRISE') &&
+                          transcriptMessages.length > 0 && !aiAnalysis.summary;
+
+    if (shouldAnalyze) {
+      console.log('🤖 Running AI analysis for conversation:', conversationId);
+      try {
+        const callAnalysisResult = await callAnalysis.analyzeCall(transcriptMessages, conversationData.call_duration_secs);
+        aiAnalysis = {
+          summary: callAnalysisResult.summary,
+          keyTopics: callAnalysisResult.keyTopics,
+          actionItems: callAnalysisResult.actionItems,
+          sentiment: callAnalysisResult.sentiment,
+          sentimentScore: callAnalysisResult.sentimentScore
+        };
+      } catch (analysisError) {
+        console.error('⚠️ AI analysis failed:', analysisError.message);
+      }
+    }
+
+    const duration = conversationData.call_duration_secs ||
+                     conversationData.metadata?.call_duration_secs || 0;
+    const callerPhone = conversationData.metadata?.caller_phone ||
+                        event.metadata?.caller_phone || 'Unknown';
+
+    // Save/update call log
+    await prisma.callLog.upsert({
+      where: { callId: conversationId },
+      update: {
+        duration: duration,
+        transcript: transcriptMessages.length > 0 ? transcriptMessages : null,
+        transcriptText: transcriptText || null,
+        status: 'answered',
+        summary: aiAnalysis.summary,
+        keyTopics: aiAnalysis.keyTopics,
+        actionItems: aiAnalysis.actionItems,
+        sentiment: aiAnalysis.sentiment,
+        sentimentScore: aiAnalysis.sentimentScore,
+        updatedAt: new Date()
+      },
+      create: {
+        businessId: business.id,
+        callId: conversationId,
+        callerId: callerPhone,
+        duration: duration,
+        transcript: transcriptMessages.length > 0 ? transcriptMessages : null,
+        transcriptText: transcriptText || null,
+        status: 'answered',
+        summary: aiAnalysis.summary,
+        keyTopics: aiAnalysis.keyTopics,
+        actionItems: aiAnalysis.actionItems,
+        sentiment: aiAnalysis.sentiment,
+        sentimentScore: aiAnalysis.sentimentScore,
+        createdAt: new Date()
+      }
+    });
+
+    console.log(`✅ Call log saved: ${conversationId} (${duration}s)`);
+
+    // Track usage
+    if (duration > 0) {
+      await usageTracking.trackCallUsage(business.id, duration, {
+        callId: conversationId,
+        transcript: transcriptText,
+        status: 'answered'
+      });
+    }
+
+    // Handle batch call updates
+    try {
+      await batchCallService.handleCallWebhook({
+        type: 'call.ended',
+        call: {
+          id: conversationId,
+          duration: duration,
+          transcript: transcriptMessages,
+          transcriptText,
+          endedReason: 'completed',
+          summary: aiAnalysis.summary
+        }
+      });
+    } catch (batchError) {
+      // Normal for regular calls
+    }
+
   } catch (error) {
     console.error('❌ Error handling conversation ended:', error);
   }

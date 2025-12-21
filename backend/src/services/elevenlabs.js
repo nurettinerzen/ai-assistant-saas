@@ -365,6 +365,9 @@ export function buildAgentConfig(assistant, business, tools = []) {
     }
   }));
 
+  // Build webhook URL for post-call analysis
+  const backendUrl = process.env.BACKEND_URL || 'http://localhost:5001';
+
   return {
     name: assistant.name,
     conversation_config: {
@@ -396,6 +399,14 @@ export function buildAgentConfig(assistant, business, tools = []) {
       },
       turn: {
         mode: 'turn'
+      }
+    },
+    platform_settings: {
+      post_call_webhook: {
+        url: `${backendUrl}/api/elevenlabs/post-call`
+      },
+      widget: {
+        variant: 'full'
       }
     },
     tools: elevenLabsTools,
