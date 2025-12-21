@@ -373,7 +373,7 @@ export function buildAgentConfig(assistant, business, tools = []) {
       },
       tts: {
         voice_id: assistant.voiceId,
-        model_id: 'eleven_turbo_v2_5',
+        model_id: language === 'tr' ? 'eleven_multilingual_v2' : 'eleven_turbo_v2',
         stability: 0.5,
         similarity_boost: 0.75,
         optimize_streaming_latency: 3
@@ -384,7 +384,7 @@ export function buildAgentConfig(assistant, business, tools = []) {
         language: language
       },
       turn: {
-        mode: 'turn_based'
+        mode: 'turn'
       }
     },
     tools: elevenLabsTools,

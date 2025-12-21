@@ -211,7 +211,7 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
             language: lang?.toLowerCase() || 'tr'
           },
           turn: {
-            mode: 'turn_based'
+            mode: 'turn'
           }
         },
         tools: activeToolsElevenLabs,
