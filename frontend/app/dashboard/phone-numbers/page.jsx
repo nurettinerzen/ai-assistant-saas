@@ -294,42 +294,55 @@ export default function PhoneNumbersPage() {
                     {t('dashboard.phoneNumbersPage.assistant')}
                   </label>
                   <div className="relative">
-                    <Select
-                      value={number.assistantId || ''}
-                      onValueChange={(value) => handleAssistantChange(number.id, value)}
-                      disabled={updatingPhoneId === number.id}
-                    >
-                      <SelectTrigger className="w-full">
-                        {updatingPhoneId === number.id ? (
-                          <div className="flex items-center gap-2">
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            <span>{t('common.updating') || 'Updating...'}</span>
-                          </div>
-                        ) : (
-                          <SelectValue placeholder={t('dashboard.phoneNumbersPage.selectAssistant') || 'Select assistant'}>
-                            <div className="flex items-center gap-2">
-                              <Bot className="h-4 w-4 text-primary-500" />
-                              <span>{number.assistantName || t('dashboard.phoneNumbersPage.notAssigned')}</span>
-                            </div>
-                          </SelectValue>
-                        )}
-                      </SelectTrigger>
-                      <SelectContent>
-                        {assistants.map((assistant) => (
-                          <SelectItem key={assistant.id} value={assistant.id}>
-                            <div className="flex items-center gap-2">
-                              <Bot className="h-4 w-4" />
-                              <span>{assistant.name}</span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                        {assistants.length === 0 && (
-                          <div className="px-2 py-1 text-sm text-neutral-500">
-                            {t('dashboard.phoneNumbersPage.noAssistants') || 'No assistants available'}
-                          </div>
-                        )}
-                      </SelectContent>
-                    </Select>
+                    {(() => {
+                      // Check if assigned assistant still exists in the list
+                      const assignedAssistantExists = number.assistantId && assistants.some(a => a.id === number.assistantId);
+                      const displayValue = assignedAssistantExists ? number.assistantId : '';
+                      const displayName = assignedAssistantExists
+                        ? number.assistantName
+                        : t('dashboard.phoneNumbersPage.notAssigned') || 'Not assigned';
+
+                      return (
+                        <Select
+                          value={displayValue}
+                          onValueChange={(value) => handleAssistantChange(number.id, value)}
+                          disabled={updatingPhoneId === number.id || assistants.length === 0}
+                        >
+                          <SelectTrigger className="w-full">
+                            {updatingPhoneId === number.id ? (
+                              <div className="flex items-center gap-2">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                <span>{t('common.updating') || 'Updating...'}</span>
+                              </div>
+                            ) : (
+                              <SelectValue placeholder={t('dashboard.phoneNumbersPage.selectAssistant') || 'Select assistant'}>
+                                <div className="flex items-center gap-2">
+                                  <Bot className={`h-4 w-4 ${assignedAssistantExists ? 'text-primary-500' : 'text-neutral-400'}`} />
+                                  <span className={!assignedAssistantExists ? 'text-neutral-400' : ''}>
+                                    {displayName}
+                                  </span>
+                                </div>
+                              </SelectValue>
+                            )}
+                          </SelectTrigger>
+                          <SelectContent>
+                            {assistants.map((assistant) => (
+                              <SelectItem key={assistant.id} value={assistant.id}>
+                                <div className="flex items-center gap-2">
+                                  <Bot className="h-4 w-4" />
+                                  <span>{assistant.name}</span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                            {assistants.length === 0 && (
+                              <div className="px-2 py-1 text-sm text-neutral-500">
+                                {t('dashboard.phoneNumbersPage.noAssistants') || 'No assistants available'}
+                              </div>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      );
+                    })()}
                   </div>
                 </div>
                 {/* Status */}
