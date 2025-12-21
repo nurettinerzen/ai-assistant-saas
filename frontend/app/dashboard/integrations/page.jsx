@@ -767,14 +767,18 @@ const handleIdeasoftConnect = async () => {
     return names[type] || type;
   };
 
+  // Integrations marked as "Coming Soon"
+  const COMING_SOON_INTEGRATIONS = ['IDEASOFT', 'TICIMAX', 'WOOCOMMERCE'];
+
   const renderIntegrationCard = (integration) => {
     const Icon = getIntegrationIcon(integration.type);
     const colors = getCategoryColors(integration.category);
     const docsUrl = getDocsUrl(integration.type);
     const disabled = isEcommerceDisabled(integration.type);
+    const isComingSoon = COMING_SOON_INTEGRATIONS.includes(integration.type);
 
     return (
-      <div key={integration.type} className={`bg-white rounded-xl border p-6 transition-shadow ${disabled ? 'opacity-60 bg-neutral-50' : 'hover:shadow-md'} ${integration.priority === 'ESSENTIAL' ? 'border-primary-300 bg-primary-50/30' : 'border-neutral-200'}`}>
+      <div key={integration.type} className={`bg-white rounded-xl border p-6 transition-shadow ${disabled || isComingSoon ? 'opacity-70 bg-neutral-50' : 'hover:shadow-md'} ${integration.priority === 'ESSENTIAL' ? 'border-primary-300 bg-primary-50/30' : 'border-neutral-200'}`}>
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className={`p-3 rounded-lg ${colors.bg}`}>
@@ -782,8 +786,13 @@ const handleIdeasoftConnect = async () => {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className={`font-semibold ${disabled ? 'text-neutral-500' : 'text-neutral-900'}`}>{integration.name}</h3>
+                <h3 className={`font-semibold ${disabled || isComingSoon ? 'text-neutral-500' : 'text-neutral-900'}`}>{integration.name}</h3>
                 {integration.priority === 'ESSENTIAL' && <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />}
+                {isComingSoon && (
+                  <Badge variant="secondary" className="bg-purple-100 text-purple-700 text-xs">
+                    {t('dashboard.integrationsPage.comingSoon')}
+                  </Badge>
+                )}
               </div>
               <Badge variant="secondary" className="text-xs mt-1">{integration.category}</Badge>
             </div>
@@ -801,16 +810,26 @@ const handleIdeasoftConnect = async () => {
           </div>
         )}
 
-        {disabled && (
+        {disabled && !isComingSoon && (
           <div className="mb-3 px-2 py-1 bg-amber-100 text-amber-700 text-xs rounded-md">
             {getEcommercePlatformName(connectedEcommerce)} {t('dashboard.integrationsPage.platformAlreadyConnected')}
+          </div>
+        )}
+
+        {isComingSoon && (
+          <div className="mb-3 px-2 py-1 bg-purple-50 text-purple-700 text-xs rounded-md">
+            {t('dashboard.integrationsPage.comingSoonDesc')}
           </div>
         )}
 
         <p className="text-sm text-neutral-600 mb-4 line-clamp-2">{getCategoryDescription(integration.type)}</p>
 
         <div className="flex gap-2">
-          {integration.connected ? (
+          {isComingSoon ? (
+            <Button size="sm" className="flex-1" disabled title={t('dashboard.integrationsPage.comingSoonTooltip')}>
+              {t('dashboard.integrationsPage.comingSoon')}
+            </Button>
+          ) : integration.connected ? (
             <>
               {integration.type === 'GOOGLE_SHEETS' ? (
                 <Button variant="outline" size="sm" className="flex-1" onClick={() => window.location.href = '/dashboard/integrations/google-sheets'}>

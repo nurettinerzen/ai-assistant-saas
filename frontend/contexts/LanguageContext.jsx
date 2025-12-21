@@ -30,11 +30,13 @@ const getNestedValue = (obj, path) => {
 };
 
 export function LanguageProvider({ children }) {
-  const [locale, setLocale] = useState('en');
+  // Default to Turkish
+  const [locale, setLocale] = useState('tr');
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('locale') || 'en';
+      // Default to Turkish if not set
+      const saved = localStorage.getItem('locale') || 'tr';
       setLocale(saved);
     }
   }, []);

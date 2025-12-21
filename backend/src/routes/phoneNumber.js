@@ -640,37 +640,69 @@ router.post('/:id/test-call', async (req, res) => {
 });
 
 // ============================================================================
-// GET AVAILABLE COUNTRIES
+// GET AVAILABLE COUNTRIES (filtered by business country)
 // ============================================================================
-router.get('/countries', (req, res) => {
-  const countries = [
-    {
-      code: 'TR',
-      name: 'Turkey',
-      flag: '🇹🇷',
-      provider: 'NETGSM_ELEVENLABS',  // NetGSM 0850 numbers + 11Labs SIP Trunk
-      pricing: {
-        monthly: PRICING.NETGSM.displayMonthly,
-        currency: 'TRY',
-        displayCurrency: '₺'
-      },
-      features: ['0850 Number', 'NetGSM SIP', '11Labs Voice', 'Natural Turkish']
-    },
-    {
-      code: 'US',
-      name: 'United States',
-      flag: '🇺🇸',
-      provider: 'ELEVENLABS',
-      pricing: {
-        monthly: PRICING.ELEVENLABS.monthlyCost,
-        currency: 'USD',
-        displayCurrency: '$'
-      },
-      features: ['Twilio Numbers', '11Labs Voice', 'Natural English']
-    }
-  ];
+router.get('/countries', async (req, res) => {
+  try {
+    const businessId = req.businessId;
 
-  res.json({ countries });
+    // Get business country
+    let businessCountry = 'TR'; // Default to Turkey
+    if (businessId) {
+      const business = await prisma.business.findUnique({
+        where: { id: businessId },
+        select: { country: true }
+      });
+      if (business?.country) {
+        businessCountry = business.country;
+      }
+    }
+
+    // All available countries
+    const allCountries = [
+      {
+        code: 'TR',
+        name: 'Türkiye',
+        flag: '🇹🇷',
+        provider: 'NETGSM_ELEVENLABS',
+        pricing: {
+          monthly: PRICING.NETGSM.displayMonthly,
+          currency: 'TRY',
+          displayCurrency: '₺'
+        },
+        features: ['0850 Numara', 'NetGSM SIP', '11Labs Ses', 'Doğal Türkçe'],
+        requiresRedirect: true,
+        redirectUrl: 'https://www.netgsm.com.tr/santral-850-numara-satin-al'
+      },
+      {
+        code: 'US',
+        name: 'United States',
+        flag: '🇺🇸',
+        provider: 'ELEVENLABS',
+        pricing: {
+          monthly: PRICING.ELEVENLABS.monthlyCost,
+          currency: 'USD',
+          displayCurrency: '$'
+        },
+        features: ['Twilio Numbers', '11Labs Voice', 'Natural English'],
+        requiresPayment: true
+      }
+    ];
+
+    // Filter countries based on business country
+    const filteredCountries = allCountries.filter(c => c.code === businessCountry);
+
+    // If no match, show all (fallback)
+    const countries = filteredCountries.length > 0 ? filteredCountries : allCountries;
+
+    res.json({
+      countries,
+      businessCountry
+    });
+  } catch (error) {
+    console.error('❌ Get countries error:', error);
+    res.status(500).json({ error: 'Failed to get countries' });
+  }
 });
 
 export default router;

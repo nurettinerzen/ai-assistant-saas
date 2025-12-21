@@ -1,6 +1,7 @@
 /**
  * PhoneNumberModal Component with Auto-Provision
  * Simplified 1-click provisioning based on country
+ * Updated: Turkish translations, NetGSM redirect, no VAPI references
  */
 
 'use client';
@@ -23,17 +24,20 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Phone, Check, Loader2, AlertCircle, Zap } from 'lucide-react';
+import { Phone, Check, Loader2, ExternalLink, Zap, CreditCard } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function PhoneNumberModal({ isOpen, onClose, onSuccess }) {
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [loadingCountries, setLoadingCountries] = useState(true);
   const [countries, setCountries] = useState([]);
   const [assistants, setAssistants] = useState([]);
   const [selectedCountry, setSelectedCountry] = useState(null);
   const [selectedAssistant, setSelectedAssistant] = useState('');
+  const [businessCountry, setBusinessCountry] = useState('TR');
 
   useEffect(() => {
     if (isOpen) {
@@ -48,15 +52,15 @@ export default function PhoneNumberModal({ isOpen, onClose, onSuccess }) {
       const response = await apiClient.phoneNumbers.getCountries();
       const countryList = response.data.countries || [];
       setCountries(countryList);
+      setBusinessCountry(response.data.businessCountry || 'TR');
 
-      // Auto-select Turkey as default
-      const turkey = countryList.find(c => c.code === 'TR');
-      if (turkey) {
-        setSelectedCountry(turkey);
+      // Auto-select first country (should be filtered by backend)
+      if (countryList.length > 0) {
+        setSelectedCountry(countryList[0]);
       }
     } catch (error) {
       console.error('Failed to load countries:', error);
-      toast.error('Failed to load available countries');
+      toast.error(t('dashboard.phoneNumbersPage.modal.failedToLoadCountries'));
     } finally {
       setLoadingCountries(false);
     }
@@ -79,12 +83,26 @@ export default function PhoneNumberModal({ isOpen, onClose, onSuccess }) {
 
   const handleProvision = async () => {
     if (!selectedCountry) {
-      toast.error('Please select a country');
+      toast.error(t('dashboard.phoneNumbersPage.modal.pleaseSelectCountry'));
+      return;
+    }
+
+    // Handle NetGSM redirect for Turkey
+    if (selectedCountry.requiresRedirect && selectedCountry.redirectUrl) {
+      window.open(selectedCountry.redirectUrl, '_blank');
+      toast.info(t('dashboard.phoneNumbersPage.modal.redirectingToNetgsm'));
+      return;
+    }
+
+    // Handle US numbers (requires payment setup)
+    if (selectedCountry.requiresPayment) {
+      toast.info(t('dashboard.phoneNumbersPage.modal.paymentRequired'));
+      // TODO: Redirect to payment page or show payment modal
       return;
     }
 
     if (!selectedAssistant && assistants.length > 0) {
-      toast.error('Please select an assistant');
+      toast.error(t('dashboard.phoneNumbersPage.modal.pleaseSelectAssistant'));
       return;
     }
 
@@ -95,19 +113,18 @@ export default function PhoneNumberModal({ isOpen, onClose, onSuccess }) {
         assistantId: selectedAssistant || undefined
       });
 
-      toast.success(`✅ Phone number provisioned successfully! ${response.data.phoneNumber}`);
+      toast.success(`${t('dashboard.phoneNumbersPage.modal.numberProvisioned')} ${response.data.phoneNumber}`);
       onSuccess && onSuccess();
       handleClose();
     } catch (error) {
       console.error('Provision error:', error);
 
-      // Handle specific error cases
       if (error.response?.status === 403) {
-        toast.error(error.response.data.error || 'Upgrade required to provision phone numbers');
+        toast.error(error.response.data.error || t('dashboard.phoneNumbersPage.modal.upgradeRequired'));
       } else if (error.response?.data?.error) {
         toast.error(error.response.data.error);
       } else {
-        toast.error('Failed to provision phone number. Please try again.');
+        toast.error(t('dashboard.phoneNumbersPage.modal.provisionFailed'));
       }
     } finally {
       setLoading(false);
@@ -120,23 +137,59 @@ export default function PhoneNumberModal({ isOpen, onClose, onSuccess }) {
     onClose();
   };
 
+  // Determine button text and action based on country
+  const getButtonConfig = () => {
+    if (!selectedCountry) {
+      return {
+        text: t('dashboard.phoneNumbersPage.modal.selectCountryFirst'),
+        disabled: true,
+        icon: Phone
+      };
+    }
+
+    if (selectedCountry.requiresRedirect) {
+      return {
+        text: t('dashboard.phoneNumbersPage.modal.goToNetgsm'),
+        disabled: false,
+        icon: ExternalLink
+      };
+    }
+
+    if (selectedCountry.requiresPayment) {
+      return {
+        text: t('dashboard.phoneNumbersPage.modal.setupPayment'),
+        disabled: false,
+        icon: CreditCard
+      };
+    }
+
+    return {
+      text: `${selectedCountry.name} ${t('dashboard.phoneNumbersPage.modal.getNumber')}`,
+      disabled: false,
+      icon: Phone
+    };
+  };
+
+  const buttonConfig = getButtonConfig();
+  const ButtonIcon = buttonConfig.icon;
+
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[550px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Phone className="h-5 w-5" />
-            Get Phone Number
+            {t('dashboard.phoneNumbersPage.modal.title')}
           </DialogTitle>
           <DialogDescription>
-            Provision a new phone number in 1 click - automatically connected to your assistant
+            {t('dashboard.phoneNumbersPage.modal.description')}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
           {/* Country Selection */}
           <div>
-            <Label className="text-base mb-3 block">Select Country</Label>
+            <Label className="text-base mb-3 block">{t('dashboard.phoneNumbersPage.modal.selectCountry')}</Label>
             {loadingCountries ? (
               <div className="space-y-3">
                 {[1, 2].map((i) => (
@@ -161,9 +214,9 @@ export default function PhoneNumberModal({ isOpen, onClose, onSuccess }) {
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
                             <h4 className="font-semibold">{country.name}</h4>
-                            {country.provider === 'VAPI' && (
-                              <Badge variant="secondary" className="bg-green-100 text-green-700">
-                                Instant
+                            {country.requiresRedirect && (
+                              <Badge variant="secondary" className="bg-blue-100 text-blue-700">
+                                NetGSM
                               </Badge>
                             )}
                           </div>
@@ -189,13 +242,13 @@ export default function PhoneNumberModal({ isOpen, onClose, onSuccess }) {
             )}
           </div>
 
-          {/* Assistant Selection */}
-          {assistants.length > 0 && (
+          {/* Assistant Selection - Only show if not redirect */}
+          {assistants.length > 0 && selectedCountry && !selectedCountry.requiresRedirect && (
             <div>
-              <Label className="text-base mb-3 block">Assign to Assistant</Label>
+              <Label className="text-base mb-3 block">{t('dashboard.phoneNumbersPage.modal.assignToAssistant')}</Label>
               <Select value={selectedAssistant} onValueChange={setSelectedAssistant}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select an assistant" />
+                  <SelectValue placeholder={t('dashboard.phoneNumbersPage.modal.selectAssistant')} />
                 </SelectTrigger>
                 <SelectContent>
                   {assistants.map((assistant) => (
@@ -206,33 +259,37 @@ export default function PhoneNumberModal({ isOpen, onClose, onSuccess }) {
                 </SelectContent>
               </Select>
               <p className="text-xs text-neutral-500 mt-2">
-                The phone number will be automatically connected to this assistant
+                {t('dashboard.phoneNumbersPage.modal.assistantConnectionNote')}
               </p>
             </div>
           )}
 
-          {/* Info Alert */}
-          {selectedCountry && (
+          {/* Info Alert - Turkey (NetGSM Redirect) */}
+          {selectedCountry?.requiresRedirect && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex gap-3">
               <Zap className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
               <div className="text-sm text-blue-800">
-                <p className="font-medium mb-1">What happens next?</p>
+                <p className="font-medium mb-1">{t('dashboard.phoneNumbersPage.modal.turkeyFlowTitle')}</p>
                 <ul className="space-y-1 list-disc list-inside">
-                  {selectedCountry.provider === 'NETGSM' ? (
-                    <>
-                      <li>We'll purchase a Turkish 0850 number from Netgsm</li>
-                      <li>Number will be automatically configured with VAPI</li>
-                      <li>Your assistant will be ready to receive calls</li>
-                      <li>Setup takes ~30 seconds</li>
-                    </>
-                  ) : (
-                    <>
-                      <li>We'll provision a US local number via VAPI</li>
-                      <li>Number activates instantly</li>
-                      <li>Your assistant will be ready to receive calls</li>
-                      <li>No additional configuration needed</li>
-                    </>
-                  )}
+                  <li>{t('dashboard.phoneNumbersPage.modal.turkeyStep1')}</li>
+                  <li>{t('dashboard.phoneNumbersPage.modal.turkeyStep2')}</li>
+                  <li>{t('dashboard.phoneNumbersPage.modal.turkeyStep3')}</li>
+                  <li>{t('dashboard.phoneNumbersPage.modal.turkeyStep4')}</li>
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {/* Info Alert - US (Payment Required) */}
+          {selectedCountry?.requiresPayment && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex gap-3">
+              <CreditCard className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-amber-800">
+                <p className="font-medium mb-1">{t('dashboard.phoneNumbersPage.modal.usFlowTitle')}</p>
+                <ul className="space-y-1 list-disc list-inside">
+                  <li>{t('dashboard.phoneNumbersPage.modal.usStep1')}</li>
+                  <li>{t('dashboard.phoneNumbersPage.modal.usStep2')}</li>
+                  <li>{t('dashboard.phoneNumbersPage.modal.usStep3')}</li>
                 </ul>
               </div>
             </div>
@@ -241,19 +298,19 @@ export default function PhoneNumberModal({ isOpen, onClose, onSuccess }) {
           {/* Provision Button */}
           <Button
             onClick={handleProvision}
-            disabled={!selectedCountry || loading}
+            disabled={buttonConfig.disabled || loading}
             className="w-full"
             size="lg"
           >
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                Provisioning...
+                {t('dashboard.phoneNumbersPage.modal.processing')}
               </>
             ) : (
               <>
-                <Phone className="mr-2 h-5 w-5" />
-                Get {selectedCountry?.name || 'Phone'} Number
+                <ButtonIcon className="mr-2 h-5 w-5" />
+                {buttonConfig.text}
               </>
             )}
           </Button>
