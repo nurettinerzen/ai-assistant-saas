@@ -186,13 +186,13 @@ async function getPreviewUrl(voiceId) {
 }
 
 // Enrich voices with preview URLs
-async function enrichVoicesWithPreviews(voices, useTurkishPreview = false) {
+async function enrichVoicesWithPreviews(voices, useTurkishPreview = false, baseUrl = null) {
   const enrichedVoices = await Promise.all(
     voices.map(async (voice) => {
       // For Turkish voices, use our Turkish preview endpoint
       if (useTurkishPreview && voice.id?.startsWith('tr-')) {
-        // Use backend URL for Turkish preview
-        const backendUrl = process.env.BACKEND_URL || 'http://localhost:3001';
+        // Use backend URL from request or env for Turkish preview
+        const backendUrl = baseUrl || process.env.BACKEND_URL || 'http://localhost:3001';
         return {
           ...voice,
           sampleUrl: `${backendUrl}/api/voices/preview/${voice.id}`
@@ -217,6 +217,11 @@ async function enrichVoicesWithPreviews(voices, useTurkishPreview = false) {
 router.get('/', async (req, res) => {
   const { language, withSamples } = req.query;
 
+  // Get base URL from request for Turkish previews
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+  const host = req.headers['x-forwarded-host'] || req.headers.host;
+  const baseUrl = `${protocol}://${host}`;
+
   // If specific language requested
   if (language && VOICE_LIBRARY[language.toLowerCase()]) {
     console.log('🎤 GET /api/voices - language:', language);
@@ -226,7 +231,7 @@ router.get('/', async (req, res) => {
     // Enrich with preview URLs if requested
     if (withSamples === 'true') {
       // Use Turkish preview for Turkish voices
-      voices = await enrichVoicesWithPreviews(voices, lang === 'tr');
+      voices = await enrichVoicesWithPreviews(voices, lang === 'tr', baseUrl);
     }
 
     return res.json({
@@ -242,7 +247,7 @@ router.get('/', async (req, res) => {
   if (withSamples === 'true') {
     for (const lang of Object.keys(VOICE_LIBRARY)) {
       // Use Turkish preview for Turkish voices
-      allVoices[lang] = await enrichVoicesWithPreviews(VOICE_LIBRARY[lang], lang === 'tr');
+      allVoices[lang] = await enrichVoicesWithPreviews(VOICE_LIBRARY[lang], lang === 'tr', baseUrl);
     }
   } else {
     Object.keys(VOICE_LIBRARY).forEach(lang => {

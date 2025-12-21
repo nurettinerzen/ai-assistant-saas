@@ -79,6 +79,10 @@ export default function VoicesPage() {
       });
 
       console.log('🎤 Loaded voices:', allVoices.length, 'from', Object.keys(voicesData).length, 'languages');
+      // Debug: log first voice to check sampleUrl
+      if (allVoices.length > 0) {
+        console.log('🎤 First voice sample:', allVoices[0].name, 'sampleUrl:', allVoices[0].sampleUrl);
+      }
       setVoices(allVoices);
     } catch (error) {
       console.error('Failed to load voices:', error);
