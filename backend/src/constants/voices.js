@@ -10,15 +10,15 @@
  * Used when creating/updating agents in 11Labs Conversational AI
  */
 export const VOICE_MAPPING = {
-  // Turkish voices (from your 11Labs library)
-  'tr-m-cihan': 'Md4RAnfKt9kVIbvqUxly',
-  'tr-m-yunus': 'Q5n6GDIjpN0pLOlycRFT',
-  'tr-m-sukru': 'pMQM2vAjnEa9PmfDvgkY',
-  'tr-m-murat': 'xouejoTN10DvXRSlXvmB',
-  'tr-f-ecem': 'PVbzZmwmdI99VcmuRK7G',
-  'tr-f-aslihan': '973ByT3y0FasCLLTLBAL',
-  'tr-f-gokce': 'oPC5I9GKjMReiaM29gjY',
-  'tr-f-auralis': 'X5CGTTx85DmIuopBFHlz',
+  // Turkish voices
+  'tr-m-mirza': 'EOVAuWqgSZN2Oel78Psj',
+  'tr-m-ali': 'scOwDtmlUjD3prqpp97I',
+  'tr-m-berat': 'UgBBYS2sOqTuMpoF3BR0',
+  'tr-m-yasir': '1SM7GgM6IMuvQlz2BwM3',
+  'tr-f-eda': '56AoDkrOh6qfVPDXZ7Pt',
+  'tr-f-selen': 'g6xIsTj2HwM6VR4iXFCw',
+  'tr-f-sare': 'kdmDKE6EkgrWrrykO9Qt',
+  'tr-f-miray': 'BZgkqPqms7Kj9ulSkVzn',
 
   // English voices
   'en-m-jude': 'Yg7C1g7suzNt5TisIqkZ',
@@ -39,7 +39,7 @@ export const VOICE_MAPPING = {
  * Default 11Labs voice IDs by language
  */
 export const DEFAULT_VOICE_BY_LANGUAGE = {
-  tr: 'Md4RAnfKt9kVIbvqUxly', // Cihan
+  tr: 'EOVAuWqgSZN2Oel78Psj', // Mirza
   en: 'Yg7C1g7suzNt5TisIqkZ', // Jude
   de: 'Yg7C1g7suzNt5TisIqkZ', // Fallback to English
   fr: 'Yg7C1g7suzNt5TisIqkZ',

@@ -11,16 +11,16 @@ const ELEVENLABS_BASE_URL = 'https://api.elevenlabs.io/v1';
 // Each language has 2 male + 2 female voices from 11Labs
 // voice_id refers to actual 11Labs voice IDs
 const VOICE_LIBRARY = {
-  // TURKISH - using actual 11Labs Turkish voices from your library
+  // TURKISH - 11Labs Turkish voices
   tr: [
-    { id: 'tr-m-cihan', voice_id: 'Md4RAnfKt9kVIbvqUxly', name: 'Cihan', accent: 'Turkish', gender: 'male', description: 'Sakin ve profesyonel erkek ses', provider: '11labs' },
-    { id: 'tr-m-yunus', voice_id: 'Q5n6GDIjpN0pLOlycRFT', name: 'Yunus', accent: 'Turkish', gender: 'male', description: 'Karizmatik genç erkek ses', provider: '11labs' },
-    { id: 'tr-m-sukru', voice_id: 'pMQM2vAjnEa9PmfDvgkY', name: 'Şükrü', accent: 'Turkish', gender: 'male', description: 'Nazik orta yaş erkek ses', provider: '11labs' },
-    { id: 'tr-m-murat', voice_id: 'xouejoTN10DvXRSlXvmB', name: 'Murat', accent: 'Turkish', gender: 'male', description: 'Samimi orta yaş erkek ses', provider: '11labs' },
-    { id: 'tr-f-ecem', voice_id: 'PVbzZmwmdI99VcmuRK7G', name: 'Ecem', accent: 'Turkish', gender: 'female', description: 'Samimi genç kadın ses', provider: '11labs' },
-    { id: 'tr-f-aslihan', voice_id: '973ByT3y0FasCLLTLBAL', name: 'Aslıhan', accent: 'Turkish', gender: 'female', description: 'Rahat genç kadın ses', provider: '11labs' },
-    { id: 'tr-f-gokce', voice_id: 'oPC5I9GKjMReiaM29gjY', name: 'Gökçe', accent: 'Turkish', gender: 'female', description: 'Tatlı genç kadın ses', provider: '11labs' },
-    { id: 'tr-f-auralis', voice_id: 'X5CGTTx85DmIuopBFHlz', name: 'Auralis', accent: 'Turkish', gender: 'female', description: 'Enerjik orta yaş kadın ses', provider: '11labs' }
+    { id: 'tr-m-mirza', voice_id: 'EOVAuWqgSZN2Oel78Psj', name: 'Mirza', accent: 'Turkish', gender: 'male', description: 'Profesyonel erkek ses', provider: '11labs' },
+    { id: 'tr-m-ali', voice_id: 'scOwDtmlUjD3prqpp97I', name: 'Ali', accent: 'Turkish', gender: 'male', description: 'Güvenilir erkek ses', provider: '11labs' },
+    { id: 'tr-m-berat', voice_id: 'UgBBYS2sOqTuMpoF3BR0', name: 'Berat', accent: 'Turkish', gender: 'male', description: 'Dinamik erkek ses', provider: '11labs' },
+    { id: 'tr-m-yasir', voice_id: '1SM7GgM6IMuvQlz2BwM3', name: 'Yasir', accent: 'Turkish', gender: 'male', description: 'Samimi erkek ses', provider: '11labs' },
+    { id: 'tr-f-eda', voice_id: '56AoDkrOh6qfVPDXZ7Pt', name: 'Eda', accent: 'Turkish', gender: 'female', description: 'Profesyonel kadın ses', provider: '11labs' },
+    { id: 'tr-f-selen', voice_id: 'g6xIsTj2HwM6VR4iXFCw', name: 'Selen', accent: 'Turkish', gender: 'female', description: 'Enerjik kadın ses', provider: '11labs' },
+    { id: 'tr-f-sare', voice_id: 'kdmDKE6EkgrWrrykO9Qt', name: 'Sare', accent: 'Turkish', gender: 'female', description: 'Sıcak kadın ses', provider: '11labs' },
+    { id: 'tr-f-miray', voice_id: 'BZgkqPqms7Kj9ulSkVzn', name: 'Miray', accent: 'Turkish', gender: 'female', description: 'Dinamik kadın ses', provider: '11labs' }
   ],
 
   // ENGLISH - using actual 11Labs English voices
