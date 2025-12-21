@@ -515,16 +515,26 @@ async function crawlURL(entryId, url) {
         select: { elevenLabsAgentId: true }
       });
 
-      // Upload to 11Labs if assistant exists
+      // Upload to 11Labs if assistant exists - use URL endpoint directly
       if (assistant?.elevenLabsAgentId) {
         try {
           await elevenLabsService.addKnowledgeDocument(assistant.elevenLabsAgentId, {
             name: result.title || url,
-            content: result.content
+            url: url  // Let 11Labs scrape the URL directly
           });
           console.log(`✅ URL uploaded to 11Labs`);
         } catch (elevenLabsError) {
           console.error('11Labs URL upload failed:', elevenLabsError);
+          // Fallback: try with scraped content
+          try {
+            await elevenLabsService.addKnowledgeDocument(assistant.elevenLabsAgentId, {
+              name: result.title || url,
+              content: result.content
+            });
+            console.log(`✅ URL content uploaded to 11Labs (fallback)`);
+          } catch (fallbackError) {
+            console.error('11Labs fallback upload also failed:', fallbackError);
+          }
         }
       }
 

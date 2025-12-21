@@ -333,20 +333,125 @@ const elevenLabsService = {
   // ============================================================================
 
   /**
-   * Add a knowledge base document to an agent
+   * Create knowledge base document from URL
+   * @param {string} url - URL to scrape
+   * @param {string} name - Optional document name
+   * @returns {Object} - { id, name }
+   */
+  async createKnowledgeFromUrl(url, name = null) {
+    try {
+      const response = await elevenLabsClient.post('/convai/knowledge-base/url', {
+        url,
+        ...(name && { name })
+      });
+      console.log('✅ 11Labs Knowledge document created from URL:', response.data.id);
+      return response.data;
+    } catch (error) {
+      console.error('❌ 11Labs createKnowledgeFromUrl error:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  /**
+   * Create knowledge base document from text content
+   * Uses file upload endpoint with a text file
+   * @param {string} content - Text content
+   * @param {string} name - Document name
+   * @returns {Object} - { id, name }
+   */
+  async createKnowledgeFromText(content, name) {
+    try {
+      const FormData = (await import('form-data')).default;
+      const formData = new FormData();
+
+      // Create a text file buffer from content
+      const buffer = Buffer.from(content, 'utf-8');
+      formData.append('file', buffer, {
+        filename: `${name.replace(/[^a-zA-Z0-9]/g, '_')}.txt`,
+        contentType: 'text/plain'
+      });
+      formData.append('name', name);
+
+      const response = await elevenLabsClient.post('/convai/knowledge-base', formData, {
+        headers: {
+          ...formData.getHeaders()
+        }
+      });
+      console.log('✅ 11Labs Knowledge document created from text:', response.data.id);
+      return response.data;
+    } catch (error) {
+      console.error('❌ 11Labs createKnowledgeFromText error:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  /**
+   * Add existing knowledge document to an agent
    * @param {string} agentId - Agent ID
-   * @param {Object} document - Document configuration
+   * @param {string} documentId - Knowledge document ID
+   */
+  async addKnowledgeToAgent(agentId, documentId) {
+    try {
+      // Get current agent config
+      const agent = await this.getAgent(agentId);
+      const currentKnowledgeBase = agent.knowledge_base || [];
+
+      // Add new document ID if not already present
+      if (!currentKnowledgeBase.includes(documentId)) {
+        currentKnowledgeBase.push(documentId);
+      }
+
+      // Update agent with new knowledge base
+      await elevenLabsClient.patch(`/convai/agents/${agentId}`, {
+        knowledge_base: currentKnowledgeBase
+      });
+
+      console.log('✅ 11Labs Knowledge document added to agent:', documentId);
+      return { success: true };
+    } catch (error) {
+      console.error('❌ 11Labs addKnowledgeToAgent error:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  /**
+   * Get agent details
+   * @param {string} agentId - Agent ID
+   */
+  async getAgent(agentId) {
+    try {
+      const response = await elevenLabsClient.get(`/convai/agents/${agentId}`);
+      return response.data;
+    } catch (error) {
+      console.error('❌ 11Labs getAgent error:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  /**
+   * Legacy method for backward compatibility
+   * Creates document and adds to agent in one step
+   * @param {string} agentId - Agent ID
+   * @param {Object} document - { name, content } or { name, url }
    */
   async addKnowledgeDocument(agentId, document) {
     try {
-      const response = await elevenLabsClient.post(`/convai/agents/${agentId}/add-to-knowledge-base`, {
-        name: document.name,
-        text: document.content,
-        // Or for URL:
-        // url: document.url
-      });
-      console.log('✅ 11Labs Knowledge document added');
-      return response.data;
+      let knowledgeDoc;
+
+      if (document.url) {
+        // Create from URL
+        knowledgeDoc = await this.createKnowledgeFromUrl(document.url, document.name);
+      } else if (document.content) {
+        // Create from text content
+        knowledgeDoc = await this.createKnowledgeFromText(document.content, document.name);
+      } else {
+        throw new Error('Either url or content is required');
+      }
+
+      // Add to agent
+      await this.addKnowledgeToAgent(agentId, knowledgeDoc.id);
+
+      return knowledgeDoc;
     } catch (error) {
       console.error('❌ 11Labs addKnowledgeDocument error:', error.response?.data || error.message);
       throw error;
