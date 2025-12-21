@@ -2,26 +2,17 @@ import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticateToken } from '../middleware/auth.js';
 import { checkPermission } from '../middleware/permissions.js';
-import vapiService from '../services/vapi.js';
 import elevenLabsService, { buildAgentConfig } from '../services/elevenlabs.js';
 import cargoAggregator from '../services/cargo-aggregator.js';
 import { removeStaticDateTimeFromPrompt } from '../utils/dateTime.js';
 import { buildAssistantPrompt, getActiveTools as getPromptBuilderTools } from '../services/promptBuilder.js';
-// ✅ Use central tool system for VAPI/11Labs tools
-import { getActiveToolsForVAPI, getActiveToolsForElevenLabs } from '../tools/index.js';
+// ✅ Use central tool system for 11Labs
+import { getActiveToolsForElevenLabs } from '../tools/index.js';
 // ✅ Central voice mapping
 import { getElevenLabsVoiceId } from '../constants/voices.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
-
-// ============================================================
-// TOOL SYSTEM - Now uses central tool system (../tools/index.js)
-// All tool definitions are managed centrally for consistency
-// across all channels: Chat, WhatsApp, Email, Phone (VAPI)
-// ============================================================
-// Note: getActiveToolsForVAPI and getActiveToolsForElevenLabs are imported from '../tools/index.js'
-// ============================================================
 
 // ============================================================
 // ASSISTANT DEFAULTS BY LANGUAGE
@@ -114,7 +105,7 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
     const businessId = req.businessId;
     const { name, voiceId, firstMessage, systemPrompt, model, language, country, industry, timezone, tone, customNotes } = req.body;
 
-    // Validate assistant name length (VAPI has 40 char limit, we use 25 for safety)
+    // Validate assistant name length
     if (!name || name.trim().length === 0) {
       return res.status(400).json({
         error: 'Assistant name is required',
@@ -289,192 +280,6 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
   }
 });
 
-// Müşterinin assistant'ını oluştur
-router.post('/create', async (req, res) => {
-  try {
-    const { businessId } = req.user;
-    
-    // Business bilgilerini al
-    const business = await prisma.business.findUnique({
-      where: { id: businessId }
-    });
-
-    if (!business) {
-      return res.status(404).json({ error: 'Business not found' });
-    }
-
-    // Zaten assistant varsa hata ver
-    if (business.vapiAssistantId) {
-      return res.status(400).json({ error: 'Assistant already exists' });
-    }
-
-    // VAPI'de assistant oluştur
-    const config = {
-      voiceId: business.vapiVoiceId || '21m00Tcm4TlvDq8ikWAM',
-      speed: business.vapiSpeed || 1.0,
-      customGreeting: business.customGreeting,
-      customInstructions: business.customInstructions
-    };
-
-    const vapiAssistant = await vapiService.createAssistant(business.name, config);
-
-    // Database'e assistant ID'yi kaydet
-    const updatedBusiness = await prisma.business.update({
-      where: { id: businessId },
-      data: {
-        vapiAssistantId: vapiAssistant.id
-      }
-    });
-
-    res.json({
-      success: true,
-      assistant: vapiAssistant,
-      business: updatedBusiness
-    });
-
-  } catch (error) {
-    console.error('Create assistant error:', error);
-    res.status(500).json({ error: 'Failed to create assistant' });
-  }
-});
-
-// Assistant ayarlarını güncelle
-router.put('/update', async (req, res) => {
-  try {
-    const { businessId } = req.user;
-    const { voiceId, voiceGender, tone, speed, pitch, customGreeting, customInstructions } = req.body;
-
-    const business = await prisma.business.findUnique({
-      where: { id: businessId },
-      include: {
-        integrations: { where: { isActive: true } }
-      }
-    });
-
-    if (!business.vapiAssistantId) {
-      return res.status(400).json({ error: 'No assistant found. Create one first.' });
-    }
-
-// 🔥 YENİ: AI TRAINING'LERİ ÇEK
-    const trainings = await prisma.aiTraining.findMany({
-      where: { businessId }
-    });
-
-    // 🔥 YENİ: KNOWLEDGE BASE'İ ÇEK
-    const knowledgeItems = await prisma.knowledgeBase.findMany({
-      where: { businessId, status: 'ACTIVE' }
-    });
-
-    // 🔥 YENİ: TRAINING'LERİ SİSTEM PROMPT'A EKLE
-    let fullInstructions = customInstructions || '';
-    
-    if (trainings.length > 0) {
-      fullInstructions += '\n\n=== CUSTOM TRAINING DATA ===\n\n';
-      trainings.forEach((training, index) => {
-        fullInstructions += `${index + 1}. ${training.title}\n`;
-        fullInstructions += `Category: ${training.category || 'General'}\n`;
-        fullInstructions += `Instructions: ${training.instructions}\n\n`;
-      });
-    }
-
-    // 🔥 YENİ: KNOWLEDGE BASE İÇERİĞİNİ EKLE
-    if (knowledgeItems.length > 0) {
-      const kbByType = { URL: [], DOCUMENT: [], FAQ: [] };
-      
-      for (const item of knowledgeItems) {
-        if (item.type === 'FAQ' && item.question && item.answer) {
-          kbByType.FAQ.push(`Q: ${item.question}\nA: ${item.answer}`);
-        } else if (item.content) {
-          kbByType[item.type]?.push(`[${item.title}]: ${item.content.substring(0, 1000)}`);
-        }
-      }
-
-      if (kbByType.FAQ.length > 0) {
-        fullInstructions += '\n\n=== FREQUENTLY ASKED QUESTIONS ===\n' + kbByType.FAQ.join('\n\n');
-      }
-      if (kbByType.URL.length > 0) {
-        fullInstructions += '\n\n=== WEBSITE CONTENT ===\n' + kbByType.URL.join('\n\n');
-      }
-      if (kbByType.DOCUMENT.length > 0) {
-        fullInstructions += '\n\n=== DOCUMENTS ===\n' + kbByType.DOCUMENT.join('\n\n');
-      }
-      
-      console.log('📚 Knowledge Base items added:', knowledgeItems.length);
-    }
-
-    // Database'i güncelle
-    const updatedBusiness = await prisma.business.update({
-      where: { id: businessId },
-      data: {
-        vapiVoiceId: voiceId,
-        vapiVoiceGender: voiceGender,
-        vapiTone: tone,
-        vapiSpeed: speed,
-        vapiPitch: pitch,
-        customGreeting,
-        customInstructions
-      }
-    });
-
-// 🔥 YENİ: 11Labs'i GÜNCELLE (TRAINING DAHİL)
-    // Get active assistant for this business
-    const assistant = await prisma.assistant.findFirst({
-      where: { businessId: business.id, isActive: true }
-    });
-
-    if (assistant?.elevenLabsAgentId) {
-      const activeToolsEL = getActiveToolsForElevenLabs(business);
-      console.log('📤 Updating 11Labs with tools:', activeToolsEL.map(t => t.name));
-
-      try {
-        await elevenLabsService.updateAgent(assistant.elevenLabsAgentId, {
-          conversation_config: {
-            agent: {
-              prompt: {
-                prompt: fullInstructions
-              }
-            }
-          },
-          tools: activeToolsEL
-        });
-        console.log('✅ 11Labs agent updated');
-      } catch (elError) {
-        console.error('⚠️ Failed to update 11Labs agent:', elError.message);
-      }
-    }
-
-    // Legacy: Update VAPI if still in use
-    if (business.vapiAssistantId && !assistant?.elevenLabsAgentId) {
-      const activeTools = getActiveToolsForVAPI(business);
-      console.log('📤 Updating VAPI with tools:', activeTools.map(t => t.function.name));
-
-      const config = {
-        voiceId: updatedBusiness.vapiVoiceId || '21m00Tcm4TlvDq8ikWAM',
-        speed: updatedBusiness.vapiSpeed || 1.0,
-        customGreeting: updatedBusiness.customGreeting,
-        customInstructions: fullInstructions,
-        tools: activeTools
-      };
-
-      await vapiService.updateAssistant(business.vapiAssistantId, config);
-    }
-
-    console.log('✅ Sending response:', {
-      success: true,
-      trainingsApplied: trainings.length
-    });
-
-    res.status(200).json({
-      success: true,
-      business: updatedBusiness,
-      trainingsApplied: trainings.length
-    });
-
-  } catch (error) {
-    console.error('Update assistant error:', error);
-    res.status(500).json({ error: 'Failed to update assistant' });
-  }
-});
 
 // Test call yap
 router.post('/test-call', async (req, res) => {
@@ -491,32 +296,24 @@ router.post('/test-call', async (req, res) => {
       return res.status(400).json({ error: 'No assistant configured' });
     }
 
+    if (!assistant.elevenLabsAgentId) {
+      return res.status(400).json({ error: 'Assistant not configured with 11Labs' });
+    }
+
     // Get phone number for outbound call
     const fromPhoneNumber = await prisma.phoneNumber.findFirst({
       where: { businessId, status: 'ACTIVE' }
     });
 
-    if (!fromPhoneNumber) {
+    if (!fromPhoneNumber || !fromPhoneNumber.elevenLabsPhoneId) {
       return res.status(400).json({ error: 'No phone number configured' });
     }
 
-    let call;
-
-    // Use 11Labs for test call
-    if (assistant.elevenLabsAgentId && fromPhoneNumber.elevenLabsPhoneId) {
-      call = await elevenLabsService.initiateOutboundCall({
-        agentId: assistant.elevenLabsAgentId,
-        phoneNumberId: fromPhoneNumber.elevenLabsPhoneId,
-        toNumber: phoneNumber
-      });
-    }
-    // Legacy: Use VAPI
-    else if (assistant.vapiAssistantId) {
-      call = await vapiService.makeTestCall(assistant.vapiAssistantId, phoneNumber);
-    }
-    else {
-      return res.status(400).json({ error: 'No voice provider configured' });
-    }
+    const call = await elevenLabsService.initiateOutboundCall({
+      agentId: assistant.elevenLabsAgentId,
+      phoneNumberId: fromPhoneNumber.elevenLabsPhoneId,
+      toNumber: phoneNumber
+    });
 
     res.json({
       success: true,
@@ -526,17 +323,6 @@ router.post('/test-call', async (req, res) => {
   } catch (error) {
     console.error('Test call error:', error);
     res.status(500).json({ error: 'Failed to initiate test call' });
-  }
-});
-
-// Mevcut sesleri getir
-router.get('/voices', async (req, res) => {
-  try {
-    const voices = await vapiService.getVoices();
-    res.json(voices);
-  } catch (error) {
-    console.error('Get voices error:', error);
-    res.status(500).json({ error: 'Failed to get voices' });
   }
 });
 
@@ -732,19 +518,6 @@ router.delete('/:id', authenticateToken, checkPermission('assistants:edit'), asy
         console.log('✅ 11Labs Agent deleted:', assistant.elevenLabsAgentId);
       } catch (elevenLabsError) {
         console.error('11Labs delete error (continuing anyway):', elevenLabsError);
-      }
-    }
-
-    // Legacy: VAPI'den de sil (eğer varsa)
-    if (assistant.vapiAssistantId) {
-      try {
-        await fetch(`https://api.vapi.ai/assistant/${assistant.vapiAssistantId}`, {
-          method: 'DELETE',
-          headers: { 'Authorization': `Bearer ${process.env.VAPI_PRIVATE_KEY}` },
-        });
-        console.log('✅ VAPI Assistant deleted:', assistant.vapiAssistantId);
-      } catch (vapiError) {
-        console.error('VAPI delete error (continuing anyway):', vapiError);
       }
     }
 

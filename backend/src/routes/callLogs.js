@@ -128,7 +128,7 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Create a new call log (from VAPI webhook)
+// Create a new call log
 router.post('/', async (req, res) => {
   try {
     const { callId, businessId, duration, status, transcript, recordingUrl, metadata } = req.body;
@@ -154,50 +154,6 @@ router.post('/', async (req, res) => {
   } catch (error) {
     console.error('Create call log error:', error);
     res.status(500).json({ error: 'Failed to create call log' });
-  }
-});
-
-// VAPI Webhook endpoint (public - no auth required for this one)
-router.post('/webhook/vapi', async (req, res) => {
-  try {
-    const vapiEvent = req.body;
-
-    console.log('📞 VAPI Webhook received:', vapiEvent);
-
-    // Handle different VAPI event types
-    if (vapiEvent.type === 'call.ended' || vapiEvent.type === 'call-ended') {
-      const { call } = vapiEvent;
-      
-      // Find business by assistant ID
-      const business = await prisma.business.findFirst({
-        where: { vapiAssistantId: call.assistantId }
-      });
-
-      if (!business) {
-        console.error('Business not found for assistant:', call.assistantId);
-        return res.status(404).json({ error: 'Business not found' });
-      }
-
-      // Create call log
-      await prisma.callLog.create({
-        data: {
-          callId: call.id,
-          businessId: business.id,
-          duration: call.duration || 0,
-          status: call.status || 'COMPLETED',
-          transcript: call.transcript || null,
-          recordingUrl: call.recordingUrl || null,
-          metadata: call
-        }
-      });
-
-      console.log('✅ Call log created for business:', business.name);
-    }
-
-    res.json({ received: true });
-  } catch (error) {
-    console.error('VAPI webhook error:', error);
-    res.status(500).json({ error: 'Webhook processing failed' });
   }
 });
 

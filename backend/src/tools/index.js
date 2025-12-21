@@ -28,28 +28,6 @@ export function getActiveTools(business) {
 }
 
 /**
- * Get active tool definitions for VAPI
- * VAPI format adds a server configuration to each tool for function calling
- *
- * @param {Object} business - Business object with businessType and integrations
- * @param {string} serverUrl - Optional server URL (defaults to BACKEND_URL)
- * @returns {Object[]} - Array of tool definitions in VAPI format with server config
- */
-export function getActiveToolsForVAPI(business, serverUrl = null) {
-  const baseTools = getActiveTools(business);
-  const backendUrl = serverUrl || process.env.BACKEND_URL || 'https://api.aicallcenter.app';
-
-  // Add VAPI server configuration to each tool
-  return baseTools.map(tool => ({
-    ...tool,
-    server: {
-      url: `${backendUrl}/api/vapi/functions`,
-      timeoutSeconds: 30
-    }
-  }));
-}
-
-/**
  * Get active tool definitions for 11Labs Conversational AI
  * 11Labs format uses webhook-based tools with different structure
  *
@@ -165,7 +143,6 @@ export { getActiveToolNames } from './utils/business-rules.js';
 // Default export with all functions
 export default {
   getActiveTools,
-  getActiveToolsForVAPI,
   getActiveToolsForElevenLabs,
   executeTool,
   getToolDefinition,

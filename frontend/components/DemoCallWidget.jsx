@@ -1,12 +1,11 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Phone, Loader2, CheckCircle, Star, Mic, MicOff, PhoneOff } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { apiClient as api } from '@/lib/api';
-import Vapi from '@vapi-ai/web';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -14,6 +13,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 export default function DemoCallWidget({ variant = 'full' }) {
   const { t, locale } = useLanguage();
@@ -24,7 +25,18 @@ export default function DemoCallWidget({ variant = 'full' }) {
   const [callId, setCallId] = useState(null);
   const [assistantId, setAssistantId] = useState(null);
   const [isMuted, setIsMuted] = useState(false);
-  const vapiRef = useRef(null);
+
+  const conversationRef = useRef(null);
+  const audioContextRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const streamRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      // Cleanup on unmount
+      endCall();
+    };
+  }, []);
 
   const startWebCall = async () => {
     setIsLoading(true);
@@ -36,54 +48,174 @@ export default function DemoCallWidget({ variant = 'full' }) {
         name: 'Demo User'
       });
 
-      const { assistantId: newAssistantId, publicKey, callType, callId: newCallId } = response.data;
+      const { assistantId: newAssistantId, callId: newCallId } = response.data;
 
-      if (callType === 'web' && newAssistantId && publicKey && Vapi) {
+      if (newAssistantId) {
         setAssistantId(newAssistantId);
-        const vapi = new Vapi(publicKey);
-        vapiRef.current = vapi;
+        setCallId(newCallId);
 
-        vapi.on('call-start', () => {
+        // Get signed URL from backend for 11Labs
+        const signedUrlResponse = await fetch(`${BACKEND_URL}/api/elevenlabs/signed-url/${newAssistantId}`);
+
+        if (!signedUrlResponse.ok) {
+          throw new Error('Failed to get signed URL');
+        }
+
+        const { signedUrl } = await signedUrlResponse.json();
+        console.log('✅ Got signed URL for 11Labs conversation');
+
+        // Initialize audio context
+        audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+
+        // Connect to 11Labs WebSocket
+        const ws = new WebSocket(signedUrl);
+        conversationRef.current = ws;
+
+        ws.onopen = () => {
+          console.log('✅ WebSocket connected');
           setCallState('active');
+          setIsLoading(false);
           toast.success(t('callStarted'));
-        });
 
-        vapi.on('call-end', () => {
-          setCallState('ended');
-          setShowFeedback(true);
-        });
+          // Start sending audio from microphone
+          startMicrophoneCapture(ws);
+        };
 
-        vapi.on('error', (error) => {
-          console.error('VAPI error:', error);
+        ws.onmessage = async (event) => {
+          try {
+            const data = JSON.parse(event.data);
+
+            if (data.type === 'audio') {
+              await playAudio(data.audio);
+            } else if (data.type === 'end') {
+              console.log('🔴 Conversation ended by server');
+              setCallState('ended');
+              setShowFeedback(true);
+            }
+          } catch (error) {
+            console.error('Error processing message:', error);
+          }
+        };
+
+        ws.onerror = (error) => {
+          console.error('WebSocket error:', error);
           toast.error(t('callError'));
           setCallState('idle');
-        });
+          setIsLoading(false);
+        };
 
-        await vapi.start(newAssistantId);
+        ws.onclose = () => {
+          console.log('🔴 WebSocket closed');
+          if (callState === 'active') {
+            setCallState('ended');
+            setShowFeedback(true);
+          }
+        };
       } else {
+        // Phone call mode (if no web assistant available)
         setCallId(newCallId);
         setCallState('active');
+        setIsLoading(false);
         toast.success(t('phoneWillRing'));
       }
     } catch (error) {
       console.error('Demo call error:', error);
       toast.error(t('demoCallFailed'));
       setCallState('idle');
-    } finally {
       setIsLoading(false);
     }
   };
 
+  const startMicrophoneCapture = async (ws) => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      mediaRecorderRef.current = mediaRecorder;
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0 && ws.readyState === WebSocket.OPEN) {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const base64 = reader.result.split(',')[1];
+            ws.send(JSON.stringify({
+              type: 'audio',
+              audio: base64
+            }));
+          };
+          reader.readAsDataURL(event.data);
+        }
+      };
+
+      mediaRecorder.start(100); // Send audio chunks every 100ms
+    } catch (error) {
+      console.error('Microphone error:', error);
+      toast.error('Microphone access denied');
+    }
+  };
+
+  const playAudio = async (base64Audio) => {
+    try {
+      if (!audioContextRef.current) return;
+
+      const audioData = atob(base64Audio);
+      const arrayBuffer = new ArrayBuffer(audioData.length);
+      const view = new Uint8Array(arrayBuffer);
+      for (let i = 0; i < audioData.length; i++) {
+        view[i] = audioData.charCodeAt(i);
+      }
+
+      const audioBuffer = await audioContextRef.current.decodeAudioData(arrayBuffer);
+      const source = audioContextRef.current.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(audioContextRef.current.destination);
+      source.start();
+    } catch (error) {
+      console.error('Error playing audio:', error);
+    }
+  };
+
   const endCall = () => {
-    if (vapiRef.current) vapiRef.current.stop();
-    setCallState('ended');
-    setShowFeedback(true);
+    // Stop media recorder
+    if (mediaRecorderRef.current) {
+      mediaRecorderRef.current.stop();
+      mediaRecorderRef.current = null;
+    }
+
+    // Stop microphone stream
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+
+    // Close WebSocket
+    if (conversationRef.current) {
+      if (conversationRef.current.readyState === WebSocket.OPEN) {
+        conversationRef.current.close();
+      }
+      conversationRef.current = null;
+    }
+
+    // Close audio context
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+      audioContextRef.current = null;
+    }
+
+    if (callState === 'active') {
+      setCallState('ended');
+      setShowFeedback(true);
+    }
   };
 
   const toggleMute = () => {
-    if (vapiRef.current) {
-      vapiRef.current.setMuted(!isMuted);
-      setIsMuted(!isMuted);
+    if (streamRef.current) {
+      const audioTrack = streamRef.current.getAudioTracks()[0];
+      if (audioTrack) {
+        audioTrack.enabled = isMuted; // Toggle: if muted, enable; if not muted, disable
+        setIsMuted(!isMuted);
+      }
     }
   };
 
@@ -104,7 +236,6 @@ export default function DemoCallWidget({ variant = 'full' }) {
     setCallId(null);
     setAssistantId(null);
     setIsMuted(false);
-    vapiRef.current = null;
   };
 
   if (variant === 'compact') {
@@ -130,7 +261,7 @@ export default function DemoCallWidget({ variant = 'full' }) {
         <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10" />
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-32 translate-x-32" />
         <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-24 -translate-x-24" />
-        
+
         <CardContent className="relative pt-8 pb-8">
           {callState === 'active' ? (
             <div className="text-center space-y-6">

@@ -1,16 +1,14 @@
 // ============================================================================
-// PHONE NUMBER ROUTES WITH BYOC SUPPORT
+// PHONE NUMBER ROUTES
 // ============================================================================
-// Enhanced phone number management with BYOC (Bring Your Own Carrier)
-// Supports: VAPI US numbers + Netgsm Turkey 0850 + SIP trunk integration
+// Phone number management with 11Labs integration
+// Supports: 11Labs Twilio numbers + Netgsm Turkey 0850 SIP trunk
 // ============================================================================
 
 import express from 'express';
 import prisma from '../prismaClient.js';
 import { authenticateToken } from '../middleware/auth.js';
 import netgsmService from '../services/netgsm.js';
-import vapiByocService from '../services/vapiByoc.js';
-import vapiService from '../services/vapi.js';
 import elevenLabsService from '../services/elevenlabs.js';
 
 const router = express.Router();
@@ -30,10 +28,6 @@ const COUNTRY_PROVIDER_MAP = {
 
 const PRICING = {
   ELEVENLABS: {
-    monthlyCost: 5.00,  // $5/month
-    currency: 'USD'
-  },
-  VAPI: {  // Legacy - deprecated
     monthlyCost: 5.00,  // $5/month
     currency: 'USD'
   },
@@ -164,13 +158,9 @@ router.post('/provision', async (req, res) => {
     else if (provider === 'ELEVENLABS') {
       result = await provisionElevenLabsNumber(businessId, assistantId, countryCode);
     }
-    // ========== NETGSM (Legacy - now uses 11Labs) ==========
+    // ========== NETGSM (uses 11Labs SIP trunk) ==========
     else if (provider === 'NETGSM') {
       result = await provisionNetgsmElevenLabsNumber(businessId, assistantId);
-    }
-    // ========== VAPI (Legacy - deprecated) ==========
-    else if (provider === 'VAPI') {
-      result = await provisionVapiNumber(businessId, assistantId);
     }
     else {
       return res.status(400).json({
@@ -278,138 +268,6 @@ async function provisionNetgsmElevenLabsNumber(businessId, assistantId) {
     status: 'ACTIVE',
     monthlyCost: phoneNumber.monthlyCost,
     elevenLabsPhoneId: elevenLabsPhoneId
-  };
-}
-
-// ============================================================================
-// HELPER: PROVISION NETGSM NUMBER (LEGACY - VAPI)
-// ============================================================================
-async function provisionNetgsmNumber(businessId, assistantId) {
-  console.log('🇹🇷 [LEGACY] Provisioning Netgsm 0850 number (VAPI)...');
-
-  // Step 1: Purchase 0850 number from Netgsm
-  const netgsmResult = await netgsmService.purchaseNumber();
-
-  console.log('✅ Netgsm number purchased:', netgsmResult.phoneNumber);
-
-  // Step 2: Get SIP credentials
-  const sipCredentials = await netgsmService.getSipCredentials(netgsmResult.numberId);
-
-  console.log('✅ SIP credentials obtained');
-
-  // Step 3: Import to VAPI as BYOC if assistant is assigned
-  let vapiPhoneId = null;
-
-  if (assistantId) {
-    const assistant = await prisma.assistant.findUnique({
-      where: { id: assistantId }
-    });
-
-    if (!assistant || !assistant.vapiAssistantId) {
-      throw new Error('Invalid assistant or assistant not configured with VAPI');
-    }
-
-    // Format phone number to E.164
-    const formattedNumber = netgsmService.formatPhoneNumber(netgsmResult.phoneNumber);
-
-    // Import to VAPI
-    const vapiResult = await vapiByocService.importByocNumber({
-      phoneNumber: formattedNumber,
-      sipUri: `sip:${sipCredentials.sipUsername}@${sipCredentials.sipServer}`,
-      sipUsername: sipCredentials.sipUsername,
-      sipPassword: sipCredentials.sipPassword,
-      assistantId: assistant.vapiAssistantId,
-      name: `Netgsm - ${formattedNumber}`
-    });
-
-    vapiPhoneId = vapiResult.vapiPhoneId;
-    console.log('✅ Number imported to VAPI:', vapiPhoneId);
-  }
-
-  // Step 4: Save to database
-  const phoneNumber = await prisma.phoneNumber.create({
-    data: {
-      businessId: businessId,
-      phoneNumber: netgsmService.formatPhoneNumber(netgsmResult.phoneNumber),
-      countryCode: 'TR',
-      provider: 'NETGSM',
-      netgsmNumberId: netgsmResult.numberId,
-      vapiPhoneId: vapiPhoneId,
-      sipUsername: sipCredentials.sipUsername,
-      sipPassword: sipCredentials.sipPassword,
-      sipServer: sipCredentials.sipServer,
-      assistantId: assistantId,
-      status: 'ACTIVE',
-      monthlyCost: netgsmResult.monthlyCost,
-      nextBillingDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) // 1 year from now
-    }
-  });
-
-  return {
-    id: phoneNumber.id,
-    phoneNumber: phoneNumber.phoneNumber,
-    provider: 'NETGSM',
-    countryCode: 'TR',
-    status: 'ACTIVE',
-    monthlyCost: phoneNumber.monthlyCost,
-    vapiPhoneId: vapiPhoneId
-  };
-}
-
-// ============================================================================
-// HELPER: PROVISION VAPI NUMBER (USA)
-// ============================================================================
-async function provisionVapiNumber(businessId, assistantId) {
-  console.log('🇺🇸 Provisioning VAPI US number...');
-
-  // Get assistant if provided
-  let vapiAssistantId = null;
-  if (assistantId) {
-    const assistant = await prisma.assistant.findUnique({
-      where: { id: assistantId }
-    });
-
-    if (!assistant || !assistant.vapiAssistantId) {
-      throw new Error('Invalid assistant or assistant not configured with VAPI');
-    }
-
-    vapiAssistantId = assistant.vapiAssistantId;
-  }
-
-  // Buy VAPI phone number
-  const vapiPhone = await vapiService.buyPhoneNumber('415'); // Default to SF area code
-
-  console.log('✅ VAPI number purchased:', vapiPhone.number);
-
-  // Assign to assistant if provided
-  if (vapiAssistantId) {
-    await vapiService.assignPhoneNumber(vapiPhone.id, vapiAssistantId);
-    console.log('✅ Number assigned to assistant');
-  }
-
-  // Save to database
-  const phoneNumber = await prisma.phoneNumber.create({
-    data: {
-      businessId: businessId,
-      phoneNumber: vapiPhone.number,
-      countryCode: 'US',
-      provider: 'VAPI',
-      vapiPhoneId: vapiPhone.id,
-      assistantId: assistantId,
-      status: 'ACTIVE',
-      monthlyCost: PRICING.VAPI.monthlyCost,
-      nextBillingDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days from now
-    }
-  });
-
-  return {
-    id: phoneNumber.id,
-    phoneNumber: phoneNumber.phoneNumber,
-    provider: 'VAPI',
-    countryCode: 'US',
-    status: 'ACTIVE',
-    monthlyCost: phoneNumber.monthlyCost,
-    vapiPhoneId: phoneNumber.vapiPhoneId
   };
 }
 
@@ -588,12 +446,11 @@ router.patch('/:id/assistant', async (req, res) => {
 
     console.log('   Assistant Name:', assistant.name);
     console.log('   elevenLabsAgentId:', assistant.elevenLabsAgentId || 'NULL');
-    console.log('   vapiAssistantId:', assistant.vapiAssistantId || 'NULL');
 
-    // Check assistant has either 11Labs or VAPI ID
-    if (!assistant.elevenLabsAgentId && !assistant.vapiAssistantId) {
-      console.log('❌ Assistant has no voice provider configured');
-      return res.status(400).json({ error: 'Assistant is not configured with any voice provider' });
+    // Check assistant has 11Labs ID
+    if (!assistant.elevenLabsAgentId) {
+      console.log('❌ Assistant has no 11Labs agent configured');
+      return res.status(400).json({ error: 'Assistant is not configured with 11Labs' });
     }
 
     // Update in 11Labs if phone is connected to 11Labs
@@ -611,39 +468,12 @@ router.patch('/:id/assistant', async (req, res) => {
           details: elevenLabsError.message
         });
       }
-    }
-    // Legacy: Update in VAPI if phone is connected to VAPI
-    else if (phoneNumber.vapiPhoneId && assistant.vapiAssistantId) {
-      console.log('📞 VAPI update started...');
-      console.log('   VAPI Phone ID:', phoneNumber.vapiPhoneId);
-      console.log('   VAPI Assistant ID:', assistant.vapiAssistantId);
-      try {
-        if (phoneNumber.provider === 'NETGSM') {
-          // BYOC numbers use vapiByocService
-          await vapiByocService.assignAssistant(phoneNumber.vapiPhoneId, assistant.vapiAssistantId);
-          console.log('✅ VAPI BYOC update SUCCESS');
-        } else {
-          // Native VAPI numbers use vapiService
-          await vapiService.assignPhoneNumber(phoneNumber.vapiPhoneId, assistant.vapiAssistantId);
-          console.log('✅ VAPI native update SUCCESS');
-        }
-      } catch (vapiError) {
-        console.error('❌ VAPI sync FAILED:', vapiError.response?.data || vapiError.message);
-        return res.status(500).json({
-          error: 'Failed to sync with VAPI',
-          details: vapiError.message
-        });
-      }
-    }
-    else {
-      console.log('⚠️ No matching provider found for phone-assistant combination');
-      console.log('   Phone has elevenLabsPhoneId:', !!phoneNumber.elevenLabsPhoneId);
-      console.log('   Phone has vapiPhoneId:', !!phoneNumber.vapiPhoneId);
-      console.log('   Assistant has elevenLabsAgentId:', !!assistant.elevenLabsAgentId);
-      console.log('   Assistant has vapiAssistantId:', !!assistant.vapiAssistantId);
+    } else {
+      console.log('⚠️ Phone not connected to 11Labs');
+      return res.status(400).json({ error: 'Phone number not connected to 11Labs' });
     }
 
-    // Update in database only after VAPI sync succeeds
+    // Update in database
     const updated = await prisma.phoneNumber.update({
       where: { id: id },
       data: { assistantId: assistantId }
@@ -704,16 +534,6 @@ router.delete('/:id', async (req, res) => {
         console.log('✅ Removed from 11Labs');
       } catch (error) {
         console.error('⚠️ Failed to remove from 11Labs:', error.message);
-      }
-    }
-
-    // Legacy: Remove from VAPI if connected
-    if (phoneNumber.vapiPhoneId) {
-      try {
-        await vapiByocService.removeByocNumber(phoneNumber.vapiPhoneId);
-        console.log('✅ Removed from VAPI');
-      } catch (error) {
-        console.error('⚠️ Failed to remove from VAPI:', error.message);
       }
     }
 
@@ -795,14 +615,9 @@ router.post('/:id/test-call', async (req, res) => {
         phoneNumberId: phoneNumber.elevenLabsPhoneId,
         toNumber: testPhoneNumber
       });
-    }
-    // Legacy: Use VAPI
-    else if (phoneNumber.vapiPhoneId) {
-      result = await vapiByocService.testByocNumber(phoneNumber.vapiPhoneId, testPhoneNumber);
-    }
-    else {
+    } else {
       return res.status(400).json({
-        error: 'Phone number not connected to any voice provider',
+        error: 'Phone number not connected to 11Labs',
         hint: 'Make sure the number is assigned to an assistant'
       });
     }

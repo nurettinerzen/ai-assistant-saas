@@ -550,7 +550,6 @@ export default function ChatWidgetPage() {
           primaryColor={primaryColor}
           showBranding={showBranding}
           buttonText={buttonText}
-          vapiPublicKey={process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY}
         />
       )}
     </div>

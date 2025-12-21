@@ -11,7 +11,6 @@ import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticateToken, verifyBusinessAccess } from '../middleware/auth.js';
 import Stripe from 'stripe';
-import vapiPhoneNumber from '../services/vapiPhoneNumber.js';
 import emailService from '../services/emailService.js';
 import iyzicoSubscription from '../services/iyzicoSubscription.js';
 import paymentProvider from '../services/paymentProvider.js';
@@ -148,7 +147,6 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
               select: {
                 id: true,
                 name: true,
-                vapiAssistantId: true,
                 users: {
                   where: { role: 'OWNER' },
                   select: { email: true },
@@ -163,29 +161,8 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
           const businessId = sub.business.id;
           const ownerEmail = sub.business.users[0]?.email;
 
-          // Auto-provision phone number for STARTER+ plans
-          if (planConfig.phoneNumbersLimit > 0 && sub.business.vapiAssistantId) {
-            try {
-              const phoneResult = await vapiPhoneNumber.provisionPhoneNumber(
-                businessId,
-                sub.business.vapiAssistantId
-              );
-
-              console.log('📞 Phone number provisioned:', phoneResult.phoneNumber);
-
-              // Send phone activated email
-              if (ownerEmail) {
-                await emailService.sendPhoneActivatedEmail(
-                  ownerEmail,
-                  sub.business.name,
-                  phoneResult.phoneNumber
-                );
-              }
-            } catch (phoneError) {
-              console.error('❌ Failed to provision phone number:', phoneError);
-              // Don't fail the webhook - user can provision manually
-            }
-          }
+          // Note: Phone numbers are now provisioned manually via the Phone Numbers page
+          // Users can add 11Labs phone numbers after subscription activation
 
           // Send payment success email
           if (ownerEmail) {
