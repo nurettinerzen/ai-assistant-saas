@@ -9,9 +9,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import EmptyState from '@/components/EmptyState';
 import PhoneNumberModal from '@/components/PhoneNumberModal';
-import { Phone, Plus, Trash2, TestTube2, Lock } from 'lucide-react';
+import { Phone, Plus, Trash2, TestTube2, Lock, Bot, Loader2 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast, toastHelpers } from '@/lib/toast';
 import { formatPhone, formatDate } from '@/lib/utils';
@@ -29,7 +36,9 @@ const PLAN_LIMITS = {
 export default function PhoneNumbersPage() {
   const { t } = useLanguage();
   const [phoneNumbers, setPhoneNumbers] = useState([]);
+  const [assistants, setAssistants] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [updatingPhoneId, setUpdatingPhoneId] = useState(null);
   const [showProvisionModal, setShowProvisionModal] = useState(false);
   const [subscription, setSubscription] = useState(null);
   const [isLocked, setIsLocked] = useState(false);
@@ -53,9 +62,15 @@ export default function PhoneNumbersPage() {
           setIsLocked(true);
         }
 
-        // Load phone numbers
-        const phoneResponse = await apiClient.phoneNumbers.getAll();
+        // Load phone numbers and assistants in parallel
+        const [phoneResponse, assistantsResponse] = await Promise.all([
+          apiClient.phoneNumbers.getAll(),
+          apiClient.assistants.getAll()
+        ]);
         setPhoneNumbers(phoneResponse.data.phoneNumbers || []);
+        // Filter to only active assistants with 11Labs agent ID
+        const allAssistants = assistantsResponse.data.assistants || [];
+        setAssistants(allAssistants.filter(a => a.isActive));
       } catch (error) {
         console.error('Failed to load data:', error);
         toast.error('Failed to load phone numbers');
@@ -88,6 +103,30 @@ export default function PhoneNumbersPage() {
       );
     } catch (error) {
       // Error handled
+    }
+  };
+
+  const handleAssistantChange = async (phoneNumberId, newAssistantId) => {
+    if (!newAssistantId) return;
+
+    setUpdatingPhoneId(phoneNumberId);
+    try {
+      await apiClient.phoneNumbers.updateAssistant(phoneNumberId, newAssistantId);
+      toast.success(t('dashboard.phoneNumbersPage.assistantUpdated') || 'Assistant updated successfully');
+
+      // Update local state
+      setPhoneNumbers(prev => prev.map(p => {
+        if (p.id === phoneNumberId) {
+          const assistant = assistants.find(a => a.id === newAssistantId);
+          return { ...p, assistantId: newAssistantId, assistantName: assistant?.name };
+        }
+        return p;
+      }));
+    } catch (error) {
+      console.error('Failed to update assistant:', error);
+      toast.error(error.response?.data?.error || 'Failed to update assistant');
+    } finally {
+      setUpdatingPhoneId(null);
     }
   };
 
@@ -248,13 +287,52 @@ export default function PhoneNumbersPage() {
                 </div>
               </div>
 
-              <div className="space-y-2 mb-4">
-                <div className="flex justify-between text-sm">
-                  <span className="text-neutral-600">{t('dashboard.phoneNumbersPage.assistant')}</span>
-                  <span className="font-medium text-neutral-900">
-                    {number.assistantName || t('dashboard.phoneNumbersPage.notAssigned')}
-                  </span>
+              <div className="space-y-3 mb-4">
+                {/* Assistant Selector */}
+                <div>
+                  <label className="text-sm text-neutral-600 mb-1 block">
+                    {t('dashboard.phoneNumbersPage.assistant')}
+                  </label>
+                  <div className="relative">
+                    <Select
+                      value={number.assistantId || ''}
+                      onValueChange={(value) => handleAssistantChange(number.id, value)}
+                      disabled={updatingPhoneId === number.id}
+                    >
+                      <SelectTrigger className="w-full">
+                        {updatingPhoneId === number.id ? (
+                          <div className="flex items-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span>{t('common.updating') || 'Updating...'}</span>
+                          </div>
+                        ) : (
+                          <SelectValue placeholder={t('dashboard.phoneNumbersPage.selectAssistant') || 'Select assistant'}>
+                            <div className="flex items-center gap-2">
+                              <Bot className="h-4 w-4 text-primary-500" />
+                              <span>{number.assistantName || t('dashboard.phoneNumbersPage.notAssigned')}</span>
+                            </div>
+                          </SelectValue>
+                        )}
+                      </SelectTrigger>
+                      <SelectContent>
+                        {assistants.map((assistant) => (
+                          <SelectItem key={assistant.id} value={assistant.id}>
+                            <div className="flex items-center gap-2">
+                              <Bot className="h-4 w-4" />
+                              <span>{assistant.name}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                        {assistants.length === 0 && (
+                          <div className="px-2 py-1 text-sm text-neutral-500">
+                            {t('dashboard.phoneNumbersPage.noAssistants') || 'No assistants available'}
+                          </div>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
+                {/* Status */}
                 <div className="flex justify-between text-sm">
                   <span className="text-neutral-600">{t('dashboard.phoneNumbersPage.status')}</span>
                   <Badge className="bg-green-100 text-green-800">{t('dashboard.phoneNumbersPage.active')}</Badge>

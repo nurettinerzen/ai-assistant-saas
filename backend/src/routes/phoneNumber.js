@@ -551,7 +551,10 @@ router.patch('/:id/assistant', async (req, res) => {
     const { assistantId } = req.body;
     const businessId = req.businessId;
 
-    console.log('🔄 Updating phone number assistant:', { id, assistantId });
+    console.log('🔄 [Phone Assistant Update] Starting...');
+    console.log('   Phone DB ID:', id);
+    console.log('   New Assistant ID:', assistantId);
+    console.log('   Business ID:', businessId);
 
     // Get phone number
     const phoneNumber = await prisma.phoneNumber.findFirst({
@@ -562,8 +565,13 @@ router.patch('/:id/assistant', async (req, res) => {
     });
 
     if (!phoneNumber) {
+      console.log('❌ Phone number not found in DB');
       return res.status(404).json({ error: 'Phone number not found' });
     }
+
+    console.log('   Phone Number:', phoneNumber.phoneNumber);
+    console.log('   elevenLabsPhoneId:', phoneNumber.elevenLabsPhoneId || 'NULL');
+    console.log('   vapiPhoneId:', phoneNumber.vapiPhoneId || 'NULL');
 
     // Get new assistant
     const assistant = await prisma.assistant.findFirst({
@@ -574,21 +582,30 @@ router.patch('/:id/assistant', async (req, res) => {
     });
 
     if (!assistant) {
+      console.log('❌ Assistant not found in DB');
       return res.status(404).json({ error: 'Assistant not found' });
     }
 
+    console.log('   Assistant Name:', assistant.name);
+    console.log('   elevenLabsAgentId:', assistant.elevenLabsAgentId || 'NULL');
+    console.log('   vapiAssistantId:', assistant.vapiAssistantId || 'NULL');
+
     // Check assistant has either 11Labs or VAPI ID
     if (!assistant.elevenLabsAgentId && !assistant.vapiAssistantId) {
+      console.log('❌ Assistant has no voice provider configured');
       return res.status(400).json({ error: 'Assistant is not configured with any voice provider' });
     }
 
     // Update in 11Labs if phone is connected to 11Labs
     if (phoneNumber.elevenLabsPhoneId && assistant.elevenLabsAgentId) {
+      console.log('📞 11Labs update started...');
+      console.log('   Phone ID:', phoneNumber.elevenLabsPhoneId);
+      console.log('   Agent ID:', assistant.elevenLabsAgentId);
       try {
         await elevenLabsService.updatePhoneNumber(phoneNumber.elevenLabsPhoneId, assistant.elevenLabsAgentId);
-        console.log('✅ Updated phone number in 11Labs');
+        console.log('✅ 11Labs phone update SUCCESS');
       } catch (elevenLabsError) {
-        console.error('❌ 11Labs sync failed:', elevenLabsError);
+        console.error('❌ 11Labs sync FAILED:', elevenLabsError.response?.data || elevenLabsError.message);
         return res.status(500).json({
           error: 'Failed to sync with 11Labs',
           details: elevenLabsError.message
@@ -597,23 +614,33 @@ router.patch('/:id/assistant', async (req, res) => {
     }
     // Legacy: Update in VAPI if phone is connected to VAPI
     else if (phoneNumber.vapiPhoneId && assistant.vapiAssistantId) {
+      console.log('📞 VAPI update started...');
+      console.log('   VAPI Phone ID:', phoneNumber.vapiPhoneId);
+      console.log('   VAPI Assistant ID:', assistant.vapiAssistantId);
       try {
         if (phoneNumber.provider === 'NETGSM') {
           // BYOC numbers use vapiByocService
           await vapiByocService.assignAssistant(phoneNumber.vapiPhoneId, assistant.vapiAssistantId);
-          console.log('✅ Updated BYOC number in VAPI');
+          console.log('✅ VAPI BYOC update SUCCESS');
         } else {
           // Native VAPI numbers use vapiService
           await vapiService.assignPhoneNumber(phoneNumber.vapiPhoneId, assistant.vapiAssistantId);
-          console.log('✅ Updated VAPI number in VAPI');
+          console.log('✅ VAPI native update SUCCESS');
         }
       } catch (vapiError) {
-        console.error('❌ VAPI sync failed:', vapiError);
+        console.error('❌ VAPI sync FAILED:', vapiError.response?.data || vapiError.message);
         return res.status(500).json({
           error: 'Failed to sync with VAPI',
           details: vapiError.message
         });
       }
+    }
+    else {
+      console.log('⚠️ No matching provider found for phone-assistant combination');
+      console.log('   Phone has elevenLabsPhoneId:', !!phoneNumber.elevenLabsPhoneId);
+      console.log('   Phone has vapiPhoneId:', !!phoneNumber.vapiPhoneId);
+      console.log('   Assistant has elevenLabsAgentId:', !!assistant.elevenLabsAgentId);
+      console.log('   Assistant has vapiAssistantId:', !!assistant.vapiAssistantId);
     }
 
     // Update in database only after VAPI sync succeeds
