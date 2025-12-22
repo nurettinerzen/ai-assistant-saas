@@ -191,6 +191,7 @@ export const apiClient = {
   phoneNumbers: {
     getAll: () => api.get('/api/phone-numbers'),
     provision: (data) => api.post('/api/phone-numbers/provision', data),
+    importSip: (data) => api.post('/api/phone-numbers/import-sip', data),
     delete: (id) => api.delete(`/api/phone-numbers/${id}`),
     updateAssistant: (id, assistantId) => api.patch(`/api/phone-numbers/${id}/assistant`, { assistantId }),
     testCall: (id, testPhoneNumber) => api.post(`/api/phone-numbers/${id}/test-call`, { testPhoneNumber }),

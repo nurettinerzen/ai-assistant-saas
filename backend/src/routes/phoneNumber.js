@@ -401,6 +401,167 @@ router.post('/:id/import-twilio', async (req, res) => {
 });
 
 // ============================================================================
+// IMPORT SIP TRUNK NUMBER (for NetGSM Turkey, etc.)
+// ============================================================================
+router.post('/import-sip', async (req, res) => {
+  try {
+    const {
+      phoneNumber,
+      sipServer,
+      sipUsername,
+      sipPassword,
+      sipPort = 5060,
+      sipTransport = 'UDP',
+      assistantId
+    } = req.body;
+    const businessId = req.businessId;
+
+    console.log('📞 Importing SIP trunk number...', { phoneNumber, sipServer, businessId });
+
+    // Validate inputs
+    if (!phoneNumber || !sipServer || !sipUsername || !sipPassword) {
+      return res.status(400).json({
+        error: 'Eksik bilgi',
+        required: ['phoneNumber', 'sipServer', 'sipUsername', 'sipPassword'],
+        message: 'Telefon numarası ve SIP bilgileri gereklidir'
+      });
+    }
+
+    // Check subscription limits
+    const subscription = await prisma.subscription.findUnique({
+      where: { businessId }
+    });
+
+    if (!subscription || subscription.plan === 'FREE') {
+      return res.status(403).json({
+        error: 'Telefon numaraları FREE planda kullanılamaz',
+        upgradeRequired: true
+      });
+    }
+
+    // Check phone number limit
+    const existingNumbers = await prisma.phoneNumber.count({
+      where: { businessId }
+    });
+
+    if (subscription.phoneNumbersLimit > 0 && existingNumbers >= subscription.phoneNumbersLimit) {
+      return res.status(403).json({
+        error: `Telefon numarası limitine ulaşıldı (${subscription.phoneNumbersLimit})`,
+        upgrade: 'Planınızı yükseltin'
+      });
+    }
+
+    // Format phone number to E.164
+    let formattedNumber = phoneNumber.replace(/\D/g, '');
+    if (!formattedNumber.startsWith('+')) {
+      if (formattedNumber.startsWith('90')) {
+        formattedNumber = '+' + formattedNumber;
+      } else if (formattedNumber.startsWith('0')) {
+        formattedNumber = '+90' + formattedNumber.substring(1);
+      } else {
+        formattedNumber = '+90' + formattedNumber;
+      }
+    }
+
+    // Get assistant if provided
+    let elevenLabsAgentId = null;
+    if (assistantId) {
+      const assistant = await prisma.assistant.findFirst({
+        where: { id: assistantId, businessId }
+      });
+
+      if (!assistant) {
+        return res.status(404).json({ error: 'Asistan bulunamadı' });
+      }
+
+      if (!assistant.elevenLabsAgentId) {
+        return res.status(400).json({ error: 'Asistan 11Labs ile yapılandırılmamış' });
+      }
+
+      elevenLabsAgentId = assistant.elevenLabsAgentId;
+    }
+
+    // Build SIP URI
+    const sipUri = `sip:${sipUsername}@${sipServer}:${sipPort}`;
+
+    // Import to 11Labs as SIP Trunk
+    let elevenLabsPhoneId = null;
+    try {
+      const elevenLabsResult = await elevenLabsService.importSipTrunkNumber({
+        phoneNumber: formattedNumber,
+        sipUri: sipUri,
+        sipUsername: sipUsername,
+        sipPassword: sipPassword,
+        sipServer: sipServer,
+        agentId: elevenLabsAgentId,
+        label: `NetGSM TR - ${formattedNumber}`
+      });
+
+      elevenLabsPhoneId = elevenLabsResult.phone_number_id;
+      console.log('✅ SIP trunk imported to 11Labs:', elevenLabsPhoneId);
+    } catch (error) {
+      console.error('❌ Failed to import SIP trunk to 11Labs:', error.response?.data || error.message);
+
+      // Return detailed error
+      const errorDetail = error.response?.data?.detail || error.message;
+      return res.status(400).json({
+        error: '11Labs SIP bağlantısı başarısız',
+        details: errorDetail,
+        message: 'SIP bilgilerinizi kontrol edin. Sunucu, kullanıcı adı ve şifre doğru olmalıdır.'
+      });
+    }
+
+    // Save to database
+    const newPhoneNumber = await prisma.phoneNumber.create({
+      data: {
+        businessId: businessId,
+        phoneNumber: formattedNumber,
+        countryCode: 'TR',
+        provider: 'ELEVENLABS',
+        elevenLabsPhoneId: elevenLabsPhoneId,
+        sipUsername: sipUsername,
+        sipPassword: sipPassword,
+        sipServer: sipServer,
+        assistantId: assistantId || null,
+        status: 'ACTIVE',
+        monthlyCost: PRICING.NETGSM.displayMonthly,
+        nextBillingDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+      }
+    });
+
+    // Update subscription usage
+    await prisma.subscription.update({
+      where: { businessId },
+      data: {
+        phoneNumbersUsed: {
+          increment: 1
+        }
+      }
+    });
+
+    console.log('✅ SIP trunk phone number saved:', newPhoneNumber.id);
+
+    res.json({
+      success: true,
+      id: newPhoneNumber.id,
+      phoneNumber: newPhoneNumber.phoneNumber,
+      provider: 'ELEVENLABS',
+      countryCode: 'TR',
+      status: 'ACTIVE',
+      elevenLabsPhoneId: elevenLabsPhoneId,
+      message: 'Telefon numarası başarıyla bağlandı!'
+    });
+
+  } catch (error) {
+    console.error('❌ Import SIP trunk error:', error);
+    res.status(500).json({
+      error: 'SIP numarası import edilemedi',
+      details: error.message
+    });
+  }
+});
+
+// ============================================================================
 // UPDATE ASSISTANT ASSIGNMENT
 // ============================================================================
 router.patch('/:id/assistant', async (req, res) => {
@@ -671,8 +832,13 @@ router.get('/countries', async (req, res) => {
           displayCurrency: '₺'
         },
         features: ['0850 Numara', 'NetGSM SIP', '11Labs Ses', 'Doğal Türkçe'],
-        requiresRedirect: true,
-        redirectUrl: 'https://www.netgsm.com.tr/santral-850-numara-satin-al'
+        requiresSipForm: true,
+        sipDefaults: {
+          server: 'sip.netgsm.com.tr',
+          port: 5060,
+          transport: 'UDP'
+        },
+        helpUrl: 'https://www.netgsm.com.tr'
       },
       {
         code: 'US',

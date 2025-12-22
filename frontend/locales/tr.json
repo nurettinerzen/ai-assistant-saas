@@ -1035,7 +1035,22 @@
         "paymentRequired": "Bu numara için ödeme gereklidir",
         "numberProvisioned": "Telefon numarası başarıyla alındı!",
         "upgradeRequired": "Bu özellik için plan yükseltmesi gerekli",
-        "provisionFailed": "Numara alınamadı. Lütfen tekrar deneyin."
+        "provisionFailed": "Numara alınamadı. Lütfen tekrar deneyin.",
+        "connectSip": "SIP Numarasını Bağla",
+        "sipFormTitle": "SIP Bağlantı Bilgileri",
+        "sipHelpText": "SIP bilgilerinizi panelinizden alabilirsiniz:",
+        "sipPhoneLabel": "Telefon Numarası",
+        "sipServerLabel": "SIP Sunucu",
+        "sipUsernameLabel": "SIP Kullanıcı Adı",
+        "sipUsernamePlaceholder": "NetGSM kullanıcı adınız",
+        "sipPasswordLabel": "SIP Şifre",
+        "sipPasswordPlaceholder": "NetGSM şifreniz",
+        "sipPortLabel": "Port",
+        "sipTransportLabel": "Transport",
+        "sipPhoneRequired": "Telefon numarası gereklidir",
+        "sipUsernameRequired": "SIP kullanıcı adı gereklidir",
+        "sipPasswordRequired": "SIP şifresi gereklidir",
+        "sipImportFailed": "SIP numarası bağlanamadı. Bilgilerinizi kontrol edin."
       }
     },
     "subscriptionPage": {

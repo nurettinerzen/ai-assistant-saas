@@ -1035,7 +1035,22 @@
         "paymentRequired": "Payment is required for this number",
         "numberProvisioned": "Phone number provisioned successfully!",
         "upgradeRequired": "Plan upgrade required for this feature",
-        "provisionFailed": "Failed to provision number. Please try again."
+        "provisionFailed": "Failed to provision number. Please try again.",
+        "connectSip": "Connect SIP Number",
+        "sipFormTitle": "SIP Connection Details",
+        "sipHelpText": "Get your SIP credentials from your provider panel:",
+        "sipPhoneLabel": "Phone Number",
+        "sipServerLabel": "SIP Server",
+        "sipUsernameLabel": "SIP Username",
+        "sipUsernamePlaceholder": "Your SIP username",
+        "sipPasswordLabel": "SIP Password",
+        "sipPasswordPlaceholder": "Your SIP password",
+        "sipPortLabel": "Port",
+        "sipTransportLabel": "Transport",
+        "sipPhoneRequired": "Phone number is required",
+        "sipUsernameRequired": "SIP username is required",
+        "sipPasswordRequired": "SIP password is required",
+        "sipImportFailed": "Failed to connect SIP number. Please check your credentials."
       }
     },
     "subscriptionPage": {
