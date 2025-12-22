@@ -155,30 +155,6 @@ export const INTEGRATION_METADATA = {
   },
 
   // ============================================================================
-  // PAYMENTS
-  // ============================================================================
-
-  // ACCOUNTING
-  // ============================================================================
-
-  PARASUT: {
-    relevantFor: ['ECOMMERCE', 'SERVICE', 'RESTAURANT', 'SALON', 'CLINIC', 'OTHER'],
-    priority: {
-      ECOMMERCE: 'ESSENTIAL',
-      SERVICE: 'RECOMMENDED',
-      RESTAURANT: 'RECOMMENDED',
-      SALON: 'RECOMMENDED',
-      CLINIC: 'RECOMMENDED',
-      OTHER: 'RECOMMENDED'
-    },
-    name: 'Paraşüt',
-    description: 'Türkiye muhasebe ve fatura',
-    category: 'accounting',
-    authType: 'oauth',
-    region: 'TR'
-  },
-
-  // ============================================================================
   // DATA
   // ============================================================================
 

@@ -597,9 +597,8 @@
       "monitor": "MONITOR",
       "system": "SYSTEM",
       "emailInbox": "Email",
-      "collections": "COLLECTIONS",
-      "overduePayments": "Overdue Payments",
-      "campaigns": "Campaigns",
+      "outbound": "OUTBOUND",
+      "batchCalls": "Batch Calls",
       "team": "Team"
     },
     "credits": {

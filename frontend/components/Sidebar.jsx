@@ -26,7 +26,6 @@ import {
   User,
   MessageSquare,
   Mail,
-  Receipt,
   Megaphone,
   Users,
 } from 'lucide-react';
@@ -79,10 +78,9 @@ export default function Sidebar({ user, credits }) {
       ],
     },
     {
-      label: t('dashboard.sidebar.collections'),
+      label: t('dashboard.sidebar.outbound'),
       items: [
-        { icon: Receipt, label: t('dashboard.sidebar.overduePayments'), href: '/dashboard/collections', permission: 'collections:view' },
-        { icon: Megaphone, label: t('dashboard.sidebar.campaigns'), href: '/dashboard/campaigns', permission: 'campaigns:view' },
+        { icon: Megaphone, label: t('dashboard.sidebar.batchCalls'), href: '/dashboard/batch-calls', permission: 'campaigns:view' },
       ],
     },
     {

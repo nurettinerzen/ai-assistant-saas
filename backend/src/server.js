@@ -36,16 +36,17 @@ import costCalculatorRoutes from './routes/costCalculator.js';
 import webhooksRoutes from './routes/webhooks.js';
 import chatRoutes from './routes/chat.js';
 import whatsappRoutes from './routes/whatsapp.js';
-import parasutRoutes from './routes/parasut.js';
 import iyzicoRoutes from './routes/iyzico.js';
 import emailRoutes from './routes/email.js';
 // E-commerce integrations
 import shopifyRoutes from './routes/shopify.js';
 import woocommerceRoutes from './routes/woocommerce.js';
 import webhookRoutes from './routes/webhook.js';
-// Batch call / Collection campaigns
+// Batch call / Collection campaigns (Legacy)
 import batchCallRoutes from './routes/batch-call.js';
 import { processAllQueues } from './services/batch-call.js';
+// New Batch Calls (Excel/CSV Upload)
+import batchCallsRoutes from './routes/batchCalls.js';
 // Team management
 import teamRoutes from './routes/team.js';
 // Waitlist
@@ -124,7 +125,6 @@ app.use('/api/cost-calculator', costCalculatorRoutes);
 app.use('/api/webhooks', webhooksRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
-app.use('/api/parasut', parasutRoutes);
 app.use('/api/iyzico', iyzicoRoutes);
 app.use('/api/email', emailRoutes);
 // E-commerce integrations
@@ -132,6 +132,7 @@ app.use('/api/shopify', shopifyRoutes);
 app.use('/api/woocommerce', woocommerceRoutes);
 app.use('/api/webhook', webhookRoutes);
 app.use('/api/batch-call', batchCallRoutes);
+app.use('/api/batch-calls', batchCallsRoutes);
 app.use('/api/team', teamRoutes);
 app.use('/api/waitlist', waitlistRoutes);
 app.use('/api/onboarding', onboardingRoutes);

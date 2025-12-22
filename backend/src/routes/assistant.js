@@ -103,7 +103,7 @@ router.get('/', authenticateToken, async (req, res) => {
 router.post('/', authenticateToken, checkPermission('assistants:create'), async (req, res) => {
   try {
     const businessId = req.businessId;
-    const { name, voiceId, firstMessage, systemPrompt, model, language, country, industry, timezone, tone, customNotes } = req.body;
+    const { name, voiceId, firstMessage, systemPrompt, model, language, country, industry, timezone, tone, customNotes, callDirection, callPurpose, dynamicVariables } = req.body;
 
     // Validate assistant name length
     if (!name || name.trim().length === 0) {
@@ -237,6 +237,9 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
         firstMessage: finalFirstMessage,
         tone: tone || 'professional',  // "friendly" or "professional"
         customNotes: customNotes || null,  // Business-specific notes
+        callDirection: callDirection || 'inbound',  // "inbound" or "outbound"
+        callPurpose: callPurpose || null,  // For outbound: "collection", "reminder", "survey", "info", "custom"
+        dynamicVariables: dynamicVariables || [],  // Dynamic variable names for outbound calls
       },
     });
 
@@ -331,7 +334,7 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
   try {
     const businessId = req.businessId;
     const { id } = req.params;
-    const { name, voiceId, systemPrompt, model, language, tone, customNotes } = req.body;
+    const { name, voiceId, systemPrompt, model, language, tone, customNotes, callDirection, callPurpose, dynamicVariables } = req.body;
 
     // Validate assistant name length if provided
     if (name && name.length > 25) {
@@ -417,6 +420,9 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
         model,
         tone: tone || assistant.tone || 'professional',  // Keep existing if not provided
         customNotes: customNotes !== undefined ? customNotes : assistant.customNotes,  // Allow null/empty
+        callDirection: callDirection || assistant.callDirection || 'inbound',
+        callPurpose: callPurpose !== undefined ? callPurpose : assistant.callPurpose,
+        dynamicVariables: dynamicVariables || assistant.dynamicVariables || [],
       },
     });
 

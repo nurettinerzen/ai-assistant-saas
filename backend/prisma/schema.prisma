@@ -109,6 +109,7 @@ model Business {
   crmOrders               CrmOrder[]
   crmStocks               CrmStock[]
   crmTickets              CrmTicket[]
+  batchCalls              BatchCall[]
 
   @@index([name])
 }
@@ -128,13 +129,18 @@ model Assistant {
   firstMessage        String?       // Custom first message
   tone                String        @default("professional")  // "friendly" or "professional"
   customNotes         String?       @db.Text                  // Business-specific notes
+  callDirection       String        @default("inbound")       // "inbound" or "outbound"
+  callPurpose         String?                                 // For outbound: "collection", "reminder", "survey", "info", "custom"
+  dynamicVariables    String[]      @default([])              // Dynamic variable names for outbound calls
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
   business            Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
   phoneNumbers        PhoneNumber[]
+  batchCalls          BatchCall[]
 
   @@index([businessId])
   @@index([isActive])
+  @@index([callDirection])
 }
 
 model PhoneNumber {
@@ -157,6 +163,7 @@ model PhoneNumber {
   updatedAt               DateTime      @updatedAt
   assistant               Assistant?    @relation(fields: [assistantId], references: [id])
   business                Business      @relation("BusinessPhoneNumbers", fields: [businessId], references: [id], onDelete: Cascade)
+  batchCalls              BatchCall[]
 
   @@index([businessId])
   @@index([phoneNumber])
@@ -1111,4 +1118,46 @@ model CrmTicket {
 
   @@unique([businessId, ticketNumber])
   @@index([businessId, customerPhone])
+}
+
+// ============================================================================
+// BATCH CALL (Excel/CSV Upload Based)
+// ============================================================================
+
+enum BatchCallStatus {
+  PENDING       // Waiting to start
+  IN_PROGRESS   // Currently running
+  COMPLETED     // All calls completed
+  FAILED        // Failed to process
+  CANCELLED     // Cancelled by user
+}
+
+model BatchCall {
+  id                  String          @id @default(cuid())
+  businessId          Int
+  assistantId         String
+  phoneNumberId       String?         // Phone number used for outbound calls
+  name                String          // Campaign name
+  elevenLabsBatchId   String?         // 11Labs Batch Call ID
+  status              BatchCallStatus @default(PENDING)
+  totalRecipients     Int             @default(0)
+  completedCalls      Int             @default(0)
+  successfulCalls     Int             @default(0)
+  failedCalls         Int             @default(0)
+  recipients          String          @db.Text    // JSON array of recipients
+  columnMapping       String?         @db.Text    // JSON column mapping config
+  scheduledAt         DateTime?       // If scheduled for later
+  startedAt           DateTime?
+  completedAt         DateTime?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  business            Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  assistant           Assistant       @relation(fields: [assistantId], references: [id], onDelete: Cascade)
+  phoneNumber         PhoneNumber?    @relation(fields: [phoneNumberId], references: [id])
+
+  @@index([businessId])
+  @@index([status])
+  @@index([assistantId])
+  @@index([createdAt])
 }

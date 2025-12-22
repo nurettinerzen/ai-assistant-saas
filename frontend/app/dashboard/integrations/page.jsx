@@ -23,7 +23,7 @@ import {
   Puzzle, Check, ExternalLink, Star, Copy, CheckCircle2, CreditCard, Zap,
   MessageSquare, Target, Cloud, Calendar, CalendarDays, BarChart3, Smartphone,
   ShoppingCart, Utensils, Scissors, Stethoscope, Package, Mail, Hash,
-  Calculator, Wallet, Eye, EyeOff, Inbox, RefreshCw
+  Wallet, Eye, EyeOff, Inbox, RefreshCw
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast, toastHelpers } from '@/lib/toast';
@@ -38,7 +38,7 @@ const INTEGRATION_ICONS = {
   FRESHA: Scissors, SHIPSTATION: Package, KLAVIYO: Mail, MAILCHIMP: Mail,
   HUBSPOT: Target, SALESFORCE: Cloud, GOOGLE_SHEETS: BarChart3, ZAPIER: Zap,
   SLACK: MessageSquare, TWILIO_SMS: MessageSquare, SENDGRID_EMAIL: Mail,
-  PARASUT: Calculator, IYZICO: Wallet, CUSTOM: Hash,
+  IYZICO: Wallet, CUSTOM: Hash,
   IKAS: ShoppingCart, IDEASOFT: ShoppingCart, TICIMAX: ShoppingCart
 };
 
@@ -64,7 +64,6 @@ const INTEGRATION_DOCS = {
   WHATSAPP: 'https://developers.facebook.com/docs/whatsapp',
   SHOPIFY: 'https://shopify.dev',
   WOOCOMMERCE: 'https://woocommerce.com/documentation',
-  PARASUT: 'https://apidocs.parasut.com',
   IYZICO: 'https://dev.iyzipay.com',
   ZAPIER: 'https://zapier.com/developer',
   IKAS: 'https://ikas.dev',
@@ -92,9 +91,6 @@ export default function IntegrationsPage() {
   const [iyzicoLoading, setIyzicoLoading] = useState(false);
   const [iyzicoForm, setIyzicoForm] = useState({ apiKey: '', secretKey: '', environment: 'sandbox' });
   const [showIyzicoSecret, setShowIyzicoSecret] = useState(false);
-
-  // Parasut state
-  const [parasutStatus, setParasutStatus] = useState(null);
 
   // Email state
   const [emailStatus, setEmailStatus] = useState(null);
@@ -140,7 +136,6 @@ export default function IntegrationsPage() {
     loadIntegrations();
     loadWhatsAppStatus();
     loadIyzicoStatus();
-    loadParasutStatus();
     loadEmailStatus();
     loadShopifyStatus();
     loadWooCommerceStatus();
@@ -213,13 +208,6 @@ export default function IntegrationsPage() {
       const response = await apiClient.get('/api/iyzico/status');
       setIyzicoStatus(response.data);
     } catch (error) { console.error('Failed to load iyzico status:', error); }
-  };
-
-  const loadParasutStatus = async () => {
-    try {
-      const response = await apiClient.get('/api/parasut/status');
-      setParasutStatus(response.data);
-    } catch (error) { console.error('Failed to load Parasut status:', error); }
   };
 
   const loadEmailStatus = async () => {
@@ -369,16 +357,6 @@ export default function IntegrationsPage() {
       await apiClient.post('/api/iyzico/disconnect');
       toast.success('iyzico disconnected');
       await loadIyzicoStatus();
-      await loadIntegrations();
-    } catch (error) { toast.error('Failed to disconnect'); }
-  };
-
-  const handleParasutDisconnect = async () => {
-    if (!confirm('Disconnect Parasut?')) return;
-    try {
-      await apiClient.post('/api/parasut/disconnect');
-      toast.success('Parasut disconnected');
-      await loadParasutStatus();
       await loadIntegrations();
     } catch (error) { toast.error('Failed to disconnect'); }
   };
@@ -590,11 +568,6 @@ const handleIdeasoftConnect = async () => {
     try {
       if (integration.type === 'WHATSAPP') { setWhatsappModalOpen(true); return; }
       if (integration.type === 'IYZICO') { setIyzicoModalOpen(true); return; }
-      if (integration.type === 'PARASUT') {
-        const response = await apiClient.get('/api/parasut/auth');
-        window.location.href = response.data.authUrl;
-        return;
-      }
       if (integration.type === 'SHOPIFY') { setShopifyModalOpen(true); return; }
       if (integration.type === 'WOOCOMMERCE') { setWoocommerceModalOpen(true); return; }
       if (integration.type === 'ZAPIER') {
@@ -628,7 +601,6 @@ const handleIdeasoftConnect = async () => {
   try {
     if (integration.type === 'WHATSAPP') await handleWhatsAppDisconnect();
     else if (integration.type === 'IYZICO') await handleIyzicoDisconnect();
-    else if (integration.type === 'PARASUT') await handleParasutDisconnect();
     else if (integration.type === 'SHOPIFY') await handleShopifyDisconnect();
     else if (integration.type === 'WOOCOMMERCE') await handleWooCommerceDisconnect();
     else if (integration.type === 'ZAPIER') await handleWebhookDisable();
@@ -724,7 +696,6 @@ const handleIdeasoftConnect = async () => {
       WHATSAPP: t('dashboard.integrationsPage.whatsappConversations'),
       SHOPIFY: t('dashboard.integrationsPage.shopifyConnect'),
       WOOCOMMERCE: t('dashboard.integrationsPage.woocommerceConnect'),
-      PARASUT: t('dashboard.integrationsPage.parasutConnect'),
       IYZICO: t('dashboard.integrationsPage.iyzicoConnect'),
       ZAPIER: t('dashboard.integrationsPage.zapierConnect'),
       IKAS: t('dashboard.integrationsPage.ikasConnect'),

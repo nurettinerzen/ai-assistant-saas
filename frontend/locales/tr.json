@@ -597,9 +597,8 @@
       "monitor": "İZLE",
       "system": "SİSTEM",
       "emailInbox": "E-posta",
-      "collections": "TAHSİLAT",
-      "overduePayments": "Vadesi Geçenler",
-      "campaigns": "Kampanyalar",
+      "outbound": "GİDEN ARAMALAR",
+      "batchCalls": "Toplu Arama",
       "team": "Ekip"
     },
     "credits": {
