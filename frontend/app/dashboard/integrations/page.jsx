@@ -78,7 +78,8 @@ const INTEGRATION_DOCS = {
 };
 
 export default function IntegrationsPage() {
-  const { t, language } = useLanguage();
+  const { t, locale } = useLanguage();
+  const language = locale; // alias for backward compatibility
   const { can, user } = usePermissions();
   const [integrations, setIntegrations] = useState([]);
   const [loading, setLoading] = useState(true);

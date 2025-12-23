@@ -49,7 +49,8 @@ import { FEATURES, VISIBILITY, getFeatureVisibility } from '@/lib/features';
 
 export default function Sidebar({ user, credits }) {
   const pathname = usePathname();
-  const { t, language } = useLanguage();
+  const { t, locale } = useLanguage();
+  const language = locale; // alias for backward compatibility
   const { can } = usePermissions();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState([]);
