@@ -55,7 +55,8 @@
     "start": "Start",
     "stop": "Stop",
     "pause": "Pause",
-    "resume": "Resume"
+    "resume": "Resume",
+    "updating": "Updating..."
   },
   "landing": {
     "hero": {
@@ -1006,6 +1007,9 @@
       "planFeatures": "Plan Features",
       "numbersUsed": "numbers used",
       "phoneNumber": "phone number",
+      "selectAssistant": "Select assistant",
+      "noAssistants": "No assistants available",
+      "assistantUpdated": "Assistant updated successfully",
       "modal": {
         "title": "Get Phone Number",
         "description": "Get a phone number automatically connected to your assistant",

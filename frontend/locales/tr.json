@@ -55,7 +55,8 @@
     "start": "Başlat",
     "stop": "Durdur",
     "pause": "Duraklat",
-    "resume": "Devam Et"
+    "resume": "Devam Et",
+    "updating": "Güncelleniyor..."
   },
   "landing": {
     "hero": {
@@ -1006,6 +1007,9 @@
       "planFeatures": "Plan Özellikleri",
       "numbersUsed": "numara kullanılıyor",
       "phoneNumber": "telefon numarası",
+      "selectAssistant": "Asistan seçiniz",
+      "noAssistants": "Kullanılabilir asistan yok",
+      "assistantUpdated": "Asistan başarıyla güncellendi",
       "modal": {
         "title": "Telefon Numarası Al",
         "description": "Asistanınıza otomatik bağlanan telefon numarası edinin",
