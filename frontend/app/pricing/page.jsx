@@ -14,9 +14,8 @@ export default function PricingPage() {
   const isTR = locale === 'tr';
 
   /**
-   * Feature Master List (ordered)
-   * All plans will show features in this exact order
-   * Empty/null for features not included in a plan
+   * Feature Master List (ordered) - same order for ALL plans
+   * Features appear in this exact order, no gaps
    */
   const FEATURE_ORDER = [
     'minutes',
@@ -25,23 +24,23 @@ export default function PricingPage() {
     'phone',
     'whatsapp',
     'chatWidget',
-    'email',
+    'analytics',
     'ecommerce',
     'calendar',
     'batchCalls',
-    'analytics',
+    'email',
     'prioritySupport',
     'apiAccess',
     'customTraining',
     'slaGuarantee'
   ];
 
-  // Feature availability per plan
+  // Feature availability per plan (in display order)
   const PLAN_FEATURES = {
     STARTER: ['minutes', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'analytics'],
-    BASIC: ['minutes', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'ecommerce', 'analytics'],
-    PROFESSIONAL: ['minutes', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'email', 'ecommerce', 'calendar', 'batchCalls', 'analytics', 'prioritySupport', 'apiAccess'],
-    ENTERPRISE: ['minutes', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'email', 'ecommerce', 'calendar', 'batchCalls', 'analytics', 'prioritySupport', 'apiAccess', 'customTraining', 'slaGuarantee']
+    BASIC: ['minutes', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'analytics', 'ecommerce'],
+    PROFESSIONAL: ['minutes', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'analytics', 'ecommerce', 'calendar', 'batchCalls', 'email', 'prioritySupport', 'apiAccess'],
+    ENTERPRISE: ['minutes', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'analytics', 'ecommerce', 'calendar', 'batchCalls', 'email', 'prioritySupport', 'apiAccess', 'customTraining', 'slaGuarantee']
   };
 
   const plans = [
@@ -138,14 +137,16 @@ export default function PricingPage() {
     return labels[key] || key;
   };
 
-  // Generate ALL features for a plan (with null for not included)
-  const getAllFeatures = (plan) => {
+  // Get only included features for a plan (no gaps, maintains order)
+  const getPlanFeatures = (plan) => {
     const includedFeatures = PLAN_FEATURES[plan.id] || [];
-    return FEATURE_ORDER.map(key => ({
-      key,
-      included: includedFeatures.includes(key),
-      text: getFeatureLabel(key, plan)
-    }));
+    // Filter FEATURE_ORDER to only include features in this plan's list
+    return FEATURE_ORDER
+      .filter(key => includedFeatures.includes(key))
+      .map(key => ({
+        key,
+        text: getFeatureLabel(key, plan)
+      }));
   };
 
   return (
@@ -225,12 +226,12 @@ export default function PricingPage() {
                   </div>
                 </div>
 
-                {/* Features list - same height for all plans */}
+                {/* Features list - only shows included features, no gaps */}
                 <ul className="space-y-2 mb-6 flex-grow">
-                  {getAllFeatures(plan).map((feature, idx) => (
+                  {getPlanFeatures(plan).map((feature, idx) => (
                     <li
                       key={idx}
-                      className={`flex items-center gap-2 h-[24px] ${!feature.included ? 'invisible' : ''}`}
+                      className="flex items-center gap-2"
                     >
                       <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
                       <span className="text-sm text-gray-700 truncate">

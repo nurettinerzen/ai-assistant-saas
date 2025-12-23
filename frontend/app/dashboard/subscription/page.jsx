@@ -37,7 +37,7 @@ const PLANS = [
     phoneNumbers: 1,
     overageRateTRY: 12,
     overageRateUSD: 0.45,
-    includedFeatures: ['minutes', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'analytics'],
+    includedFeatures: ['minutes', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'analytics'],  // Starter
   },
   {
     id: 'BASIC',
@@ -51,7 +51,7 @@ const PLANS = [
     overageRateTRY: 11,
     overageRateUSD: 0.40,
     popular: true,
-    includedFeatures: ['minutes', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'ecommerce', 'analytics'],
+    includedFeatures: ['minutes', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'analytics', 'ecommerce'],  // Basic
   },
   {
     id: 'PROFESSIONAL',
@@ -64,7 +64,7 @@ const PLANS = [
     phoneNumbers: 5,
     overageRateTRY: 10,
     overageRateUSD: 0.35,
-    includedFeatures: ['minutes', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'email', 'ecommerce', 'calendar', 'batchCalls', 'analytics', 'prioritySupport', 'apiAccess'],
+    includedFeatures: ['minutes', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'analytics', 'ecommerce', 'calendar', 'batchCalls', 'email', 'prioritySupport', 'apiAccess'],  // Professional
   },
   {
     id: 'ENTERPRISE',
@@ -77,7 +77,7 @@ const PLANS = [
     phoneNumbers: 5,  // Base, customizable
     overageRateTRY: null,  // Custom
     overageRateUSD: null,  // Custom
-    includedFeatures: ['minutes', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'email', 'ecommerce', 'calendar', 'batchCalls', 'analytics', 'prioritySupport', 'apiAccess', 'customTraining', 'slaGuarantee'],
+    includedFeatures: ['minutes', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'analytics', 'ecommerce', 'calendar', 'batchCalls', 'email', 'prioritySupport', 'apiAccess', 'customTraining', 'slaGuarantee'],  // Enterprise
   },
 ];
 
@@ -356,10 +356,10 @@ export default function SubscriptionPage() {
               return isTR ? 'Seç' : 'Select';
             };
 
-            // Feature order - all plans show features in this exact order
+            // Feature order - all plans show features in this exact order (no gaps)
             const FEATURE_ORDER = [
               'minutes', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget',
-              'email', 'ecommerce', 'calendar', 'batchCalls', 'analytics',
+              'analytics', 'ecommerce', 'calendar', 'batchCalls', 'email',
               'prioritySupport', 'apiAccess', 'customTraining', 'slaGuarantee'
             ];
 
@@ -393,13 +393,14 @@ export default function SubscriptionPage() {
               return labels[key] || key;
             };
 
-            // Get all features with included status
-            const getAllFeatures = () => {
-              return FEATURE_ORDER.map(key => ({
-                key,
-                included: plan.includedFeatures.includes(key),
-                text: getFeatureLabel(key)
-              }));
+            // Get only included features (no gaps, maintains order)
+            const getPlanFeatures = () => {
+              return FEATURE_ORDER
+                .filter(key => plan.includedFeatures.includes(key))
+                .map(key => ({
+                  key,
+                  text: getFeatureLabel(key)
+                }));
             };
 
             return (
@@ -462,12 +463,12 @@ export default function SubscriptionPage() {
                   </div>
                 </div>
 
-                {/* Features list - same height for all plans */}
+                {/* Features list - only shows included features, no gaps */}
                 <ul className="space-y-2 mb-6 flex-grow">
-                  {getAllFeatures().map((feature, i) => (
+                  {getPlanFeatures().map((feature, i) => (
                     <li
                       key={i}
-                      className={`flex items-center gap-2 h-[24px] text-sm ${!feature.included ? 'invisible' : ''}`}
+                      className="flex items-center gap-2 text-sm"
                     >
                       <Check className="h-4 w-4 text-green-600 flex-shrink-0" />
                       <span className="text-neutral-700 truncate">
