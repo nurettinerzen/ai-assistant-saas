@@ -33,7 +33,8 @@ const upload = multer({
 // ============================================================
 
 /**
- * Normalize Turkish phone number to E.164 format
+ * Normalize phone number to E.164 format
+ * Supports international numbers and Turkish numbers
  */
 function normalizePhoneNumber(phone) {
   if (!phone) return null;
@@ -41,23 +42,30 @@ function normalizePhoneNumber(phone) {
   // Remove all non-numeric characters except +
   let cleaned = String(phone).replace(/[^\d+]/g, '');
 
-  // Remove leading + if present
-  const hasPlus = cleaned.startsWith('+');
-  if (hasPlus) cleaned = cleaned.substring(1);
+  // If already has + at the start, it's international format - keep as is
+  if (cleaned.startsWith('+')) {
+    return cleaned;
+  }
 
-  // Handle Turkish phone numbers
-  if (cleaned.startsWith('90')) {
-    // Already has country code
+  // Remove leading + if somehow in middle (shouldn't happen but safety)
+  cleaned = cleaned.replace(/\+/g, '');
+
+  // Handle numbers starting with country codes (without +)
+  if (cleaned.startsWith('90') && cleaned.length >= 12) {
+    // Turkish number with country code (905XXXXXXXXX)
     return '+' + cleaned;
-  } else if (cleaned.startsWith('0')) {
-    // Remove leading 0 and add country code
+  } else if (cleaned.startsWith('1') && cleaned.length === 11) {
+    // US/Canada number (1XXXXXXXXXX)
+    return '+' + cleaned;
+  } else if (cleaned.startsWith('0') && cleaned.length === 11) {
+    // Turkish number with leading 0 (05XXXXXXXXX)
     return '+90' + cleaned.substring(1);
   } else if (cleaned.length === 10 && cleaned.startsWith('5')) {
-    // Mobile number without country code (5XXXXXXXXX)
+    // Turkish mobile without country code (5XXXXXXXXX)
     return '+90' + cleaned;
   } else if (cleaned.length >= 10) {
-    // Assume it's a valid number, add + back if it had one
-    return hasPlus ? '+' + cleaned : '+90' + cleaned;
+    // Other international - assume it's complete, just add +
+    return '+' + cleaned;
   }
 
   return null; // Invalid phone number
