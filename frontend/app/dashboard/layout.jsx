@@ -67,6 +67,11 @@ export default function DashboardLayout({ children }) {
       try {
         const subResponse = await apiClient.subscription.getCurrent();
         setCredits(subResponse.data.credits || 0);
+        // Add subscription info to user object for Sidebar feature visibility
+        setUser(prev => ({
+          ...prev,
+          subscription: subResponse.data
+        }));
       } catch (subError) {
         console.warn('Failed to load subscription:', subError);
         setCredits(0);
