@@ -179,6 +179,11 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
     let elevenLabsAgentId = null;
 
     try {
+      // Add end_call tool for outbound calls
+      const toolsWithEndCall = callDirection === 'outbound'
+        ? [...activeToolsElevenLabs, { type: 'system', name: 'end_call', description: 'Ends the call when conversation is complete or customer wants to hang up' }]
+        : activeToolsElevenLabs;
+
       const agentConfig = {
         name: `${name} - ${Date.now()}`,
         conversation_config: {
@@ -188,6 +193,11 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
             },
             first_message: finalFirstMessage,
             language: lang?.toLowerCase() || 'tr'
+          },
+          llm: {
+            provider: 'gemini',
+            model: 'gemini-2.5-flash-lite',
+            temperature: 0.15
           },
           tts: {
             voice_id: elevenLabsVoiceId,
@@ -205,7 +215,7 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
             mode: 'turn'
           }
         },
-        tools: activeToolsElevenLabs,
+        tools: toolsWithEndCall,
         metadata: {
           telyx_business_id: businessId.toString(),
           model: model || 'gpt-4'
@@ -434,6 +444,13 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
 
       try {
         const lang = language?.toLowerCase() || business?.language?.toLowerCase() || 'tr';
+        const effectiveCallDirection = callDirection || assistant.callDirection || 'inbound';
+
+        // Add end_call tool for outbound calls
+        const toolsWithEndCall = effectiveCallDirection === 'outbound'
+          ? [...activeToolsElevenLabs, { type: 'system', name: 'end_call', description: 'Ends the call when conversation is complete or customer wants to hang up' }]
+          : activeToolsElevenLabs;
+
         const agentUpdateConfig = {
           name,
           conversation_config: {
@@ -445,6 +462,11 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
                 ? `Merhaba, ben ${name}. Size nasıl yardımcı olabilirim?`
                 : `Hi, I'm ${name}. How can I help you today?`,
               language: lang
+            },
+            llm: {
+              provider: 'gemini',
+              model: 'gemini-2.5-flash-lite',
+              temperature: 0.15
             },
             tts: {
               voice_id: elevenLabsVoiceId,
@@ -459,7 +481,7 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
               language: lang
             }
           },
-          tools: activeToolsElevenLabs
+          tools: toolsWithEndCall
         };
 
         await elevenLabsService.updateAgent(assistant.elevenLabsAgentId, agentUpdateConfig);

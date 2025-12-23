@@ -121,39 +121,39 @@ const DEFAULT_FIRST_MESSAGES = {
   }
 };
 
-// Default system prompts based on call purpose (simple instructions)
+// Default system prompts based on call purpose (with dynamic variable instructions)
 const DEFAULT_SYSTEM_PROMPTS = {
   collection: {
-    tr: `Borç hatırlatma araması yap. Kibar ol. Ödeme ne zaman yapılacak diye sor.`,
-    en: `Make a debt reminder call. Be polite. Ask when the payment will be made.`
+    tr: `Sen borç hatırlatma asistanısın. Müşterinin borç tutarı {{debt_amount}} {{currency}}, vade tarihi {{due_date}}. Bu bilgileri kullanarak kibar bir şekilde ödeme hatırlatması yap. Ödemenin ne zaman yapılacağını sor. Görüşme tamamlandığında aramayı sonlandır.`,
+    en: `You are a debt reminder assistant. Customer's debt amount is {{debt_amount}} {{currency}}, due date is {{due_date}}. Use this information to politely remind about payment. Ask when payment will be made. End the call when conversation is complete.`
   },
   reminder: {
-    tr: `Randevu hatırlatma araması yap. Randevuyu onayla veya iptal et.`,
-    en: `Make an appointment reminder call. Confirm or cancel the appointment.`
+    tr: `Randevu hatırlatma araması yap. Randevu tarihi {{appointment_date}}. Randevuyu onayla veya iptal et. Görüşme tamamlandığında aramayı sonlandır.`,
+    en: `Make an appointment reminder call. Appointment date is {{appointment_date}}. Confirm or cancel the appointment. End the call when conversation is complete.`
   },
   order_update: {
-    tr: `Sipariş durumu hakkında bilgi ver. Soruları yanıtla.`,
-    en: `Give information about order status. Answer questions.`
+    tr: `Sipariş durumu hakkında bilgi ver. Soruları yanıtla. Görüşme tamamlandığında aramayı sonlandır.`,
+    en: `Give information about order status. Answer questions. End the call when conversation is complete.`
   },
   survey: {
-    tr: `Kısa bir memnuniyet anketi yap. Müşterinin zamanına saygı göster.`,
-    en: `Conduct a short satisfaction survey. Respect the customer's time.`
+    tr: `Kısa bir memnuniyet anketi yap. Müşterinin zamanına saygı göster. Görüşme tamamlandığında aramayı sonlandır.`,
+    en: `Conduct a short satisfaction survey. Respect the customer's time. End the call when conversation is complete.`
   },
   info: {
-    tr: `Önemli bilgileri aktar. Net ve kısa konuş.`,
-    en: `Convey important information. Speak clearly and briefly.`
+    tr: `Önemli bilgileri aktar. Net ve kısa konuş. Görüşme tamamlandığında aramayı sonlandır.`,
+    en: `Convey important information. Speak clearly and briefly. End the call when conversation is complete.`
   },
   custom: {
-    tr: `Kibar ve profesyonel ol.`,
-    en: `Be polite and professional.`
+    tr: `Kibar ve profesyonel ol. Görüşme tamamlandığında aramayı sonlandır.`,
+    en: `Be polite and professional. End the call when conversation is complete.`
   },
   reservation: {
-    tr: `Rezervasyonu onayla veya güncelle.`,
-    en: `Confirm or update the reservation.`
+    tr: `Rezervasyonu onayla veya güncelle. Görüşme tamamlandığında aramayı sonlandır.`,
+    en: `Confirm or update the reservation. End the call when conversation is complete.`
   },
   shipping: {
-    tr: `Kargo durumu hakkında bilgi ver.`,
-    en: `Give information about shipping status.`
+    tr: `Kargo durumu hakkında bilgi ver. Görüşme tamamlandığında aramayı sonlandır.`,
+    en: `Give information about shipping status. End the call when conversation is complete.`
   }
 };
 
