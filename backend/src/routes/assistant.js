@@ -158,7 +158,8 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
       name,
       systemPrompt: systemPrompt,
       tone: tone || 'professional',
-      customNotes: customNotes || null
+      customNotes: customNotes || null,
+      callDirection: callDirection || 'inbound'
     };
 
     // Get active tools list for prompt builder
@@ -404,11 +405,13 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
     }
 
     // Build full system prompt using promptBuilder
+    const effectiveCallDirection = callDirection || assistant.callDirection || 'inbound';
     const tempAssistant = {
       name,
       systemPrompt: systemPrompt,
       tone: tone || assistant.tone || 'professional',
-      customNotes: customNotes !== undefined ? customNotes : assistant.customNotes
+      customNotes: customNotes !== undefined ? customNotes : assistant.customNotes,
+      callDirection: effectiveCallDirection
     };
 
     // Get active tools list for prompt builder
