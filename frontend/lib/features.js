@@ -190,10 +190,24 @@ export function getFeatureVisibility(featureId, userPlan) {
   const feature = Object.values(FEATURES).find(f => f.id === featureId);
   if (!feature) return VISIBILITY.VISIBLE;
 
-  // Normalize plan name
-  const normalizedPlan = userPlan?.toUpperCase() || PLANS.FREE;
+  // Normalize plan name - handle both 'PRO' and 'PROFESSIONAL'
+  let normalizedPlan = userPlan?.toUpperCase() || PLANS.FREE;
 
-  return feature.visibility[normalizedPlan] || VISIBILITY.HIDDEN;
+  // Map 'PRO' to 'PROFESSIONAL' for consistency
+  if (normalizedPlan === 'PRO') {
+    normalizedPlan = PLANS.PROFESSIONAL;
+  }
+
+  const visibility = feature.visibility[normalizedPlan];
+
+  // If visibility not found for this plan, default based on plan hierarchy
+  if (!visibility) {
+    // For unknown plans, show as visible (to not break anything)
+    console.warn(`[features] Unknown plan: ${normalizedPlan}, defaulting to VISIBLE`);
+    return VISIBILITY.VISIBLE;
+  }
+
+  return visibility;
 }
 
 /**

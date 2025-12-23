@@ -155,7 +155,19 @@ export default function Sidebar({ user, credits }) {
   {NAVIGATION.map((section) => {
     const sectionLabel = section.label;
     const isCollapsed = collapsedSections.includes(sectionLabel);
-    
+
+    // Filter visible items first
+    const visibleItems = section.items.filter((item) => {
+      // First check role permissions
+      if (item.permission && !can(item.permission)) return false;
+      // Then check feature visibility - hide if hidden
+      const visibility = getItemVisibility(item);
+      return visibility !== VISIBILITY.HIDDEN;
+    });
+
+    // Don't render section if no visible items
+    if (visibleItems.length === 0) return null;
+
     return (
       <div key={section.label} className="mb-6">
         {/* Section header */}
@@ -174,14 +186,7 @@ export default function Sidebar({ user, credits }) {
               {/* Section items - filtered by permissions and feature visibility */}
               {!isCollapsed && (
                 <div className="space-y-1 mt-1">
-                  {section.items
-                    .filter((item) => {
-                      // First check role permissions
-                      if (item.permission && !can(item.permission)) return false;
-                      // Then check feature visibility - hide if hidden
-                      const visibility = getItemVisibility(item);
-                      return visibility !== VISIBILITY.HIDDEN;
-                    })
+                  {visibleItems
                     .map((item) => {
                     const Icon = item.icon;
                     const isActive = pathname === item.href;
