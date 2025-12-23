@@ -23,12 +23,18 @@ import {
   Puzzle, Check, ExternalLink, Star, Copy, CheckCircle2, CreditCard, Zap,
   MessageSquare, Target, Cloud, Calendar, CalendarDays, BarChart3, Smartphone,
   ShoppingCart, Utensils, Scissors, Stethoscope, Package, Mail, Hash,
-  Wallet, Eye, EyeOff, Inbox, RefreshCw
+  Wallet, Eye, EyeOff, Inbox, RefreshCw, Lock
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast, toastHelpers } from '@/lib/toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePermissions } from '@/hooks/usePermissions';
+import UpgradeModal from '@/components/UpgradeModal';
+import {
+  getIntegrationFeatureInfo,
+  LOCKED_INTEGRATIONS_FOR_BASIC,
+  FEATURES
+} from '@/lib/features';
 
 const INTEGRATION_ICONS = {
   GOOGLE_CALENDAR: CalendarDays, WHATSAPP: Smartphone, CALENDLY: Calendar,
@@ -72,11 +78,18 @@ const INTEGRATION_DOCS = {
 };
 
 export default function IntegrationsPage() {
-  const { t } = useLanguage();
-  const { can } = usePermissions();
+  const { t, language } = useLanguage();
+  const { can, user } = usePermissions();
   const [integrations, setIntegrations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [businessType, setBusinessType] = useState('OTHER');
+
+  // User plan for feature visibility
+  const [userPlan, setUserPlan] = useState('STARTER');
+
+  // Upgrade modal state
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
+  const [selectedFeature, setSelectedFeature] = useState(null);
 
   // WhatsApp state
   const [whatsappModalOpen, setWhatsappModalOpen] = useState(false);
@@ -131,6 +144,20 @@ export default function IntegrationsPage() {
   const [ticimaxStatus, setTicimaxStatus] = useState(null);
   const [ticimaxLoading, setTicimaxLoading] = useState(false);
   const [ticimaxForm, setTicimaxForm] = useState({ siteUrl: '', uyeKodu: '' });
+
+  // Load user plan
+  useEffect(() => {
+    const loadUserPlan = async () => {
+      try {
+        const response = await apiClient.get('/api/auth/me');
+        const plan = response.data?.subscription?.plan || response.data?.plan || 'STARTER';
+        setUserPlan(plan);
+      } catch (error) {
+        console.error('Failed to load user plan:', error);
+      }
+    };
+    loadUserPlan();
+  }, []);
 
   useEffect(() => {
     loadIntegrations();
@@ -741,6 +768,12 @@ const handleIdeasoftConnect = async () => {
   // Integrations marked as "Coming Soon"
   const COMING_SOON_INTEGRATIONS = ['IDEASOFT', 'TICIMAX', 'WOOCOMMERCE'];
 
+  // Handle locked integration click
+  const handleLockedIntegrationClick = (integration, feature) => {
+    setSelectedFeature(feature);
+    setUpgradeModalOpen(true);
+  };
+
   const renderIntegrationCard = (integration) => {
     const Icon = getIntegrationIcon(integration.type);
     const colors = getCategoryColors(integration.category);
@@ -748,17 +781,27 @@ const handleIdeasoftConnect = async () => {
     const disabled = isEcommerceDisabled(integration.type);
     const isComingSoon = COMING_SOON_INTEGRATIONS.includes(integration.type);
 
+    // Check if this integration is locked based on user's plan
+    const featureInfo = getIntegrationFeatureInfo(integration.type, userPlan);
+    const isLocked = featureInfo.isLocked && !integration.connected;
+
     return (
-      <div key={integration.type} className={`bg-white rounded-xl border p-6 transition-shadow ${disabled || isComingSoon ? 'opacity-70 bg-neutral-50' : 'hover:shadow-md'} ${integration.priority === 'ESSENTIAL' ? 'border-primary-300 bg-primary-50/30' : 'border-neutral-200'}`}>
+      <div key={integration.type} className={`bg-white rounded-xl border p-6 transition-shadow ${disabled || isComingSoon || isLocked ? 'opacity-70 bg-neutral-50' : 'hover:shadow-md'} ${integration.priority === 'ESSENTIAL' ? 'border-primary-300 bg-primary-50/30' : 'border-neutral-200'}`}>
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className={`p-3 rounded-lg ${colors.bg}`}>
-              <Icon className={`h-6 w-6 ${colors.icon}`} />
+            <div className={`p-3 rounded-lg ${isLocked ? 'bg-neutral-100' : colors.bg}`}>
+              <Icon className={`h-6 w-6 ${isLocked ? 'text-neutral-400' : colors.icon}`} />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className={`font-semibold ${disabled || isComingSoon ? 'text-neutral-500' : 'text-neutral-900'}`}>{integration.name}</h3>
-                {integration.priority === 'ESSENTIAL' && <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />}
+                <h3 className={`font-semibold ${disabled || isComingSoon || isLocked ? 'text-neutral-500' : 'text-neutral-900'}`}>{integration.name}</h3>
+                {integration.priority === 'ESSENTIAL' && !isLocked && <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />}
+                {isLocked && (
+                  <Badge variant="secondary" className="bg-amber-100 text-amber-700 text-xs">
+                    <Lock className="h-3 w-3 mr-1" />
+                    Pro
+                  </Badge>
+                )}
                 {isComingSoon && (
                   <Badge variant="secondary" className="bg-purple-100 text-purple-700 text-xs">
                     {t('dashboard.integrationsPage.comingSoon')}
@@ -775,13 +818,20 @@ const handleIdeasoftConnect = async () => {
           )}
         </div>
 
-        {integration.priority === 'ESSENTIAL' && (
+        {integration.priority === 'ESSENTIAL' && !isLocked && (
           <div className="mb-3 px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-md inline-flex items-center gap-1">
             <Star className="h-3 w-3 fill-blue-700" />{t('dashboard.integrationsPage.essentialForBusiness')}
           </div>
         )}
 
-        {disabled && !isComingSoon && (
+        {isLocked && (
+          <div className="mb-3 px-2 py-1 bg-amber-50 text-amber-700 text-xs rounded-md inline-flex items-center gap-1">
+            <Lock className="h-3 w-3" />
+            {language === 'tr' ? 'Bu entegrasyon Pro planında kullanılabilir' : 'This integration requires Pro plan'}
+          </div>
+        )}
+
+        {disabled && !isComingSoon && !isLocked && (
           <div className="mb-3 px-2 py-1 bg-amber-100 text-amber-700 text-xs rounded-md">
             {getEcommercePlatformName(connectedEcommerce)} {t('dashboard.integrationsPage.platformAlreadyConnected')}
           </div>
@@ -796,7 +846,17 @@ const handleIdeasoftConnect = async () => {
         <p className="text-sm text-neutral-600 mb-4 line-clamp-2">{getCategoryDescription(integration.type)}</p>
 
         <div className="flex gap-2">
-          {isComingSoon ? (
+          {isLocked ? (
+            <Button
+              size="sm"
+              className="flex-1"
+              variant="outline"
+              onClick={() => handleLockedIntegrationClick(integration, featureInfo.feature)}
+            >
+              <Lock className="h-4 w-4 mr-2" />
+              {language === 'tr' ? 'Kilidi Aç' : 'Unlock'}
+            </Button>
+          ) : isComingSoon ? (
             <Button size="sm" className="flex-1" disabled title={t('dashboard.integrationsPage.comingSoonTooltip')}>
               {t('dashboard.integrationsPage.comingSoon')}
             </Button>
@@ -936,45 +996,85 @@ const handleIdeasoftConnect = async () => {
       </div>
 
       {/* Custom CRM Integration Section */}
+      {(() => {
+        const crmFeatureInfo = getIntegrationFeatureInfo('CUSTOM', userPlan);
+        const isCRMLocked = crmFeatureInfo.isLocked;
+
+        return (
       <div className="space-y-4">
         <div>
           <h2 className="text-xl font-semibold text-neutral-900 flex items-center gap-2">
-            <Hash className="h-5 w-5 text-purple-600" />Özel CRM Entegrasyonu
+            <Hash className="h-5 w-5 text-purple-600" />
+            {language === 'tr' ? 'Özel CRM Entegrasyonu' : 'Custom CRM Integration'}
           </h2>
-          <p className="text-sm text-neutral-600 mt-1">Kendi sisteminizden sipariş, stok ve servis bilgileri gönderin.</p>
+          <p className="text-sm text-neutral-600 mt-1">
+            {language === 'tr' ? 'Kendi sisteminizden sipariş, stok ve servis bilgileri gönderin.' : 'Send order, stock and service information from your own system.'}
+          </p>
         </div>
 
-        <div className="bg-white rounded-xl border border-neutral-200 p-6 hover:shadow-md transition-shadow">
+        <div className={`bg-white rounded-xl border p-6 transition-shadow ${isCRMLocked ? 'opacity-70 bg-neutral-50 border-neutral-200' : 'border-neutral-200 hover:shadow-md'}`}>
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-3">
-              <div className="p-3 rounded-lg bg-purple-100">
-                <Hash className="h-6 w-6 text-purple-600" />
+              <div className={`p-3 rounded-lg ${isCRMLocked ? 'bg-neutral-100' : 'bg-purple-100'}`}>
+                <Hash className={`h-6 w-6 ${isCRMLocked ? 'text-neutral-400' : 'text-purple-600'}`} />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="font-semibold text-neutral-900">Özel CRM/ERP Webhook</h3>
-                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">Pro</span>
+                  <h3 className={`font-semibold ${isCRMLocked ? 'text-neutral-500' : 'text-neutral-900'}`}>
+                    {language === 'tr' ? 'Özel CRM/ERP Webhook' : 'Custom CRM/ERP Webhook'}
+                  </h3>
+                  {isCRMLocked ? (
+                    <Badge variant="secondary" className="bg-amber-100 text-amber-700 text-xs">
+                      <Lock className="h-3 w-3 mr-1" />
+                      Pro
+                    </Badge>
+                  ) : (
+                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">Pro</span>
+                  )}
                 </div>
-                <p className="text-sm text-neutral-500 mt-1">Kendi sisteminizi bağlayın</p>
+                <p className="text-sm text-neutral-500 mt-1">
+                  {language === 'tr' ? 'Kendi sisteminizi bağlayın' : 'Connect your own system'}
+                </p>
               </div>
             </div>
           </div>
 
+          {isCRMLocked && (
+            <div className="mb-3 px-2 py-1 bg-amber-50 text-amber-700 text-xs rounded-md inline-flex items-center gap-1">
+              <Lock className="h-3 w-3" />
+              {language === 'tr' ? 'Bu entegrasyon Pro planında kullanılabilir' : 'This integration requires Pro plan'}
+            </div>
+          )}
+
           <p className="text-sm text-neutral-600 mb-4">
-            Kendi CRM veya ERP sisteminizden sipariş, stok ve servis/arıza bilgilerini
-            Telyx&apos;e gönderin. AI asistanınız bu bilgilere erişerek müşterilerinize
-            otomatik yanıt verebilir.
+            {language === 'tr'
+              ? "Kendi CRM veya ERP sisteminizden sipariş, stok ve servis/arıza bilgilerini Telyx'e gönderin. AI asistanınız bu bilgilere erişerek müşterilerinize otomatik yanıt verebilir."
+              : "Send order, stock and service information from your own CRM or ERP system to Telyx. Your AI assistant can access this information to automatically respond to your customers."}
           </p>
 
+          {isCRMLocked ? (
+            <Button
+              size="sm"
+              className="w-full"
+              variant="outline"
+              onClick={() => handleLockedIntegrationClick({ type: 'CUSTOM', name: 'Custom CRM' }, crmFeatureInfo.feature)}
+            >
+              <Lock className="h-4 w-4 mr-2" />
+              {language === 'tr' ? 'Kilidi Aç' : 'Unlock'}
+            </Button>
+          ) : (
           <Button
             size="sm"
             className="w-full"
             onClick={() => window.location.href = '/dashboard/integrations/custom-crm'}
           >
-            Entegrasyonu Yönet
+            {language === 'tr' ? 'Entegrasyonu Yönet' : 'Manage Integration'}
           </Button>
+          )}
         </div>
       </div>
+        );
+      })()}
 
       {/* Integration Lists */}
       {loading ? (
@@ -1445,6 +1545,16 @@ const handleIdeasoftConnect = async () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Upgrade Modal for locked integrations */}
+      <UpgradeModal
+        isOpen={upgradeModalOpen}
+        onClose={() => setUpgradeModalOpen(false)}
+        featureId={selectedFeature?.id}
+        featureName={selectedFeature?.name}
+        featureDescription={language === 'tr' ? selectedFeature?.description : selectedFeature?.descriptionEN}
+        requiredPlan={language === 'tr' ? 'Pro' : 'Pro'}
+      />
     </div>
   );
 }

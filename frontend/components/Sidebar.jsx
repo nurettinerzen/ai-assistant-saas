@@ -1,6 +1,7 @@
 /**
  * Sidebar Component
  * Main navigation sidebar with grouped sections
+ * Updated with feature visibility based on subscription plan
  */
 
 import React, { useState, useEffect } from 'react';
@@ -28,6 +29,7 @@ import {
   Mail,
   Megaphone,
   Users,
+  Lock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -42,15 +44,24 @@ import { cn } from '@/lib/utils';
 import LanguageSwitcher from './LanguageSwitcher';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePermissions } from '@/hooks/usePermissions';
+import UpgradeModal from './UpgradeModal';
+import { FEATURES, VISIBILITY, getFeatureVisibility } from '@/lib/features';
 
 export default function Sidebar({ user, credits }) {
   const pathname = usePathname();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { can } = usePermissions();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState([]);
 
-  // Navigation items with permission requirements
+  // Upgrade modal state
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
+  const [selectedFeatureId, setSelectedFeatureId] = useState(null);
+
+  // Get user's current plan from user object
+  const userPlan = user?.subscription?.plan || user?.plan || 'STARTER';
+
+  // Navigation items with permission requirements and feature visibility
   const NAVIGATION = [
     {
       label: t('dashboard.sidebar.build'),
@@ -65,8 +76,14 @@ export default function Sidebar({ user, credits }) {
       label: t('dashboard.sidebar.deploy'),
       items: [
         { icon: PhoneCall, label: t('dashboard.sidebar.phoneNumbers'), href: '/dashboard/phone-numbers', permission: 'phone:view' },
-        { icon: Mail, label: t('dashboard.sidebar.emailInbox'), href: '/dashboard/email', permission: 'email:view' },
-        { icon: Puzzle, label: t('dashboard.sidebar.integrations'), href: '/dashboard/integrations', permission: 'integrations:view' },
+        { icon: Mail, label: t('dashboard.sidebar.emailInbox'), href: '/dashboard/email', permission: 'email:view', featureId: 'email' },
+        { icon: Puzzle, label: t('dashboard.sidebar.integrations'), href: '/dashboard/integrations', permission: 'integrations:view', featureId: 'integrations' },
+      ],
+    },
+    {
+      label: t('dashboard.sidebar.outbound'),
+      items: [
+        { icon: Megaphone, label: t('dashboard.sidebar.batchCalls'), href: '/dashboard/batch-calls', permission: 'campaigns:view', featureId: 'batch_calls' },
       ],
     },
     {
@@ -75,12 +92,6 @@ export default function Sidebar({ user, credits }) {
         { icon: LayoutDashboard, label: t('dashboard.sidebar.overview'), href: '/dashboard', permission: 'dashboard:view' },
         { icon: Phone, label: t('dashboard.sidebar.calls'), href: '/dashboard/calls', permission: 'calls:view' },
         { icon: BarChart3, label: t('dashboard.sidebar.analytics'), href: '/dashboard/analytics', permission: 'analytics:view' },
-      ],
-    },
-    {
-      label: t('dashboard.sidebar.outbound'),
-      items: [
-        { icon: Megaphone, label: t('dashboard.sidebar.batchCalls'), href: '/dashboard/batch-calls', permission: 'campaigns:view' },
       ],
     },
     {
@@ -93,6 +104,18 @@ export default function Sidebar({ user, credits }) {
       ],
     },
   ];
+
+  // Handle locked feature click
+  const handleLockedFeatureClick = (featureId) => {
+    setSelectedFeatureId(featureId);
+    setUpgradeModalOpen(true);
+  };
+
+  // Get feature visibility for an item
+  const getItemVisibility = (item) => {
+    if (!item.featureId) return VISIBILITY.VISIBLE;
+    return getFeatureVisibility(item.featureId, userPlan);
+  };
 
   const toggleSection = (label) => {
     setCollapsedSections((prev) =>
@@ -147,14 +170,45 @@ export default function Sidebar({ user, credits }) {
           )}
         </button>
 
-              {/* Section items - filtered by permissions */}
+              {/* Section items - filtered by permissions and feature visibility */}
               {!isCollapsed && (
                 <div className="space-y-1 mt-1">
                   {section.items
-                    .filter((item) => !item.permission || can(item.permission))
+                    .filter((item) => {
+                      // First check role permissions
+                      if (item.permission && !can(item.permission)) return false;
+                      // Then check feature visibility - hide if hidden
+                      const visibility = getItemVisibility(item);
+                      return visibility !== VISIBILITY.HIDDEN;
+                    })
                     .map((item) => {
                     const Icon = item.icon;
                     const isActive = pathname === item.href;
+                    const visibility = getItemVisibility(item);
+                    const isLocked = visibility === VISIBILITY.LOCKED;
+
+                    // If locked, render as a button instead of a link
+                    if (isLocked) {
+                      return (
+                        <button
+                          key={item.href}
+                          onClick={() => {
+                            setIsMobileOpen(false);
+                            handleLockedFeatureClick(item.featureId);
+                          }}
+                          className={cn(
+                            'flex items-center justify-between w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
+                            'text-neutral-400 hover:bg-neutral-100 cursor-pointer'
+                          )}
+                        >
+                          <div className="flex items-center gap-3">
+                            <Icon className="h-5 w-5 flex-shrink-0" />
+                            <span>{item.label}</span>
+                          </div>
+                          <Lock className="h-4 w-4 text-neutral-400" />
+                        </button>
+                      );
+                    }
 
                     return (
                       <Link
@@ -254,6 +308,13 @@ export default function Sidebar({ user, credits }) {
 <div className="hidden lg:block w-64 bg-white border-r border-neutral-200 fixed left-0 top-0 bottom-0 overflow-hidden">
   <SidebarContent />
 </div>
+
+      {/* Upgrade Modal for locked features */}
+      <UpgradeModal
+        isOpen={upgradeModalOpen}
+        onClose={() => setUpgradeModalOpen(false)}
+        featureId={selectedFeatureId}
+      />
     </>
   );
 }

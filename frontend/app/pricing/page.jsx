@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, X } from 'lucide-react';
+import { Check } from 'lucide-react';
 import Link from 'next/link';
 import Navigation from '@/components/Navigation';
 import { Footer } from '@/components/Footer';
@@ -12,6 +12,65 @@ export default function PricingPage() {
 
   // Determine currency based on language
   const isTR = language === 'tr';
+
+  /**
+   * Feature Master List (ordered)
+   * Only show features that are included in each plan
+   * All plans follow the same order
+   */
+  const FEATURE_ORDER = [
+    'minutes',
+    'assistants',
+    'phoneNumbers',
+    'phone',
+    'whatsapp',
+    'chatWidget',
+    'email',
+    'ecommerce',
+    'calendar',
+    'batchCalls',
+    'analytics',
+    'prioritySupport',
+    'apiAccess',
+    'customTraining',
+    'slaGuarantee'
+  ];
+
+  // Feature labels by key
+  const getFeatureLabel = (key, plan) => {
+    const labels = {
+      minutes: isTR
+        ? `${plan.minutes || '500+'} dakika telefon görüşmesi${plan.id === 'ENTERPRISE' ? ' (özelleştirilebilir)' : ''}`
+        : `${plan.minutes || '500+'} minutes of phone calls${plan.id === 'ENTERPRISE' ? ' (customizable)' : ''}`,
+      assistants: isTR
+        ? `${plan.assistants || '10+'} AI asistan${plan.id === 'ENTERPRISE' ? ' (özelleştirilebilir)' : ''}`
+        : `${plan.assistants || '10+'} AI assistant${(plan.assistants || 10) > 1 ? 's' : ''}${plan.id === 'ENTERPRISE' ? ' (customizable)' : ''}`,
+      phoneNumbers: isTR
+        ? `${plan.phoneNumbers || '5+'} telefon numarası${plan.id === 'ENTERPRISE' ? ' (özelleştirilebilir)' : ''}`
+        : `${plan.phoneNumbers || '5+'} phone number${(plan.phoneNumbers || 5) > 1 ? 's' : ''}${plan.id === 'ENTERPRISE' ? ' (customizable)' : ''}`,
+      phone: isTR ? 'Telefon AI desteği' : 'Phone AI support',
+      whatsapp: isTR ? 'WhatsApp entegrasyonu' : 'WhatsApp integration',
+      chatWidget: isTR ? 'Chat widget' : 'Chat widget',
+      email: isTR ? 'E-posta AI' : 'Email AI',
+      ecommerce: isTR ? 'E-ticaret entegrasyonu' : 'E-commerce integration',
+      calendar: isTR ? 'Takvim entegrasyonu' : 'Calendar integration',
+      batchCalls: isTR ? 'Toplu Arama (Giden)' : 'Batch Calls (Outbound)',
+      analytics: isTR ? 'Temel analitik' : 'Basic analytics',
+      prioritySupport: isTR ? 'Öncelikli destek' : 'Priority support',
+      apiAccess: isTR ? 'API erişimi' : 'API access',
+      customTraining: isTR ? 'Özel eğitim' : 'Custom training',
+      slaGuarantee: isTR ? 'SLA garantisi' : 'SLA guarantee'
+    };
+    return labels[key] || key;
+  };
+
+  // Feature availability per plan (only included features are shown)
+  const PLAN_FEATURES = {
+    STARTER: ['minutes', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'analytics'],
+    BASIC: ['minutes', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'ecommerce', 'analytics'],
+    PROFESSIONAL: ['minutes', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'email', 'ecommerce', 'calendar', 'batchCalls', 'analytics', 'prioritySupport', 'apiAccess'],
+    ENTERPRISE: ['minutes', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'email', 'ecommerce', 'calendar', 'batchCalls', 'analytics', 'prioritySupport', 'apiAccess', 'customTraining', 'slaGuarantee']
+  };
 
   const plans = [
     {
@@ -27,18 +86,6 @@ export default function PricingPage() {
       assistants: 1,
       phoneNumbers: 1,
       overageRate: 12,
-      features: [
-        { text: isTR ? '50 dakika telefon görüşmesi' : '50 minutes of phone calls', included: true },
-        { text: isTR ? '1 AI asistan' : '1 AI assistant', included: true },
-        { text: isTR ? '1 telefon numarası' : '1 phone number', included: true },
-        { text: isTR ? 'Telefon AI desteği' : 'Phone AI support', included: true },
-        { text: isTR ? 'Temel analitik' : 'Basic analytics', included: true },
-        { text: isTR ? 'WhatsApp entegrasyonu' : 'WhatsApp integration', included: false },
-        { text: isTR ? 'Chat widget' : 'Chat widget', included: false },
-        { text: isTR ? 'E-posta AI' : 'Email AI', included: false },
-        { text: isTR ? 'E-ticaret entegrasyonu' : 'E-commerce integration', included: false },
-        { text: isTR ? 'Takvim entegrasyonu' : 'Calendar integration', included: false },
-      ],
       popular: false,
     },
     {
@@ -54,18 +101,6 @@ export default function PricingPage() {
       assistants: 3,
       phoneNumbers: 2,
       overageRate: 11,
-      features: [
-        { text: isTR ? '150 dakika telefon görüşmesi' : '150 minutes of phone calls', included: true },
-        { text: isTR ? '3 AI asistan' : '3 AI assistants', included: true },
-        { text: isTR ? '2 telefon numarası' : '2 phone numbers', included: true },
-        { text: isTR ? 'Telefon AI desteği' : 'Phone AI support', included: true },
-        { text: isTR ? 'WhatsApp entegrasyonu' : 'WhatsApp integration', included: true },
-        { text: isTR ? 'Chat widget' : 'Chat widget', included: true },
-        { text: isTR ? 'E-ticaret entegrasyonu' : 'E-commerce integration', included: true },
-        { text: isTR ? 'Takvim entegrasyonu' : 'Calendar integration', included: true },
-        { text: isTR ? 'E-posta AI' : 'Email AI', included: false },
-        { text: isTR ? 'Öncelikli destek' : 'Priority support', included: false },
-      ],
       popular: true,
       badge: isTR ? 'Popüler' : 'Popular',
     },
@@ -82,19 +117,6 @@ export default function PricingPage() {
       assistants: 10,
       phoneNumbers: 5,
       overageRate: 10,
-      features: [
-        { text: isTR ? '500 dakika telefon görüşmesi' : '500 minutes of phone calls', included: true },
-        { text: isTR ? '10 AI asistan' : '10 AI assistants', included: true },
-        { text: isTR ? '5 telefon numarası' : '5 phone numbers', included: true },
-        { text: isTR ? 'Telefon AI desteği' : 'Phone AI support', included: true },
-        { text: isTR ? 'WhatsApp entegrasyonu' : 'WhatsApp integration', included: true },
-        { text: isTR ? 'Chat widget' : 'Chat widget', included: true },
-        { text: isTR ? 'E-posta AI' : 'Email AI', included: true },
-        { text: isTR ? 'E-ticaret entegrasyonu' : 'E-commerce integration', included: true },
-        { text: isTR ? 'Takvim entegrasyonu' : 'Calendar integration', included: true },
-        { text: isTR ? 'Öncelikli destek' : 'Priority support', included: true },
-        { text: isTR ? 'API erişimi' : 'API access', included: true },
-      ],
       popular: false,
     },
     {
@@ -110,21 +132,20 @@ export default function PricingPage() {
       assistants: null,
       phoneNumbers: null,
       overageRate: null,
-      features: [
-        { text: isTR ? 'Özel dakika paketi' : 'Custom minutes package', included: true },
-        { text: isTR ? 'Sınırsız AI asistan' : 'Unlimited AI assistants', included: true },
-        { text: isTR ? 'Özel telefon numarası adedi' : 'Custom phone numbers', included: true },
-        { text: isTR ? 'Tüm kanallar dahil' : 'All channels included', included: true },
-        { text: isTR ? 'Tüm entegrasyonlar' : 'All integrations', included: true },
-        { text: isTR ? 'Özel aşım fiyatlandırma' : 'Custom overage pricing', included: true },
-        { text: isTR ? 'Öncelikli destek' : 'Priority support', included: true },
-        { text: isTR ? 'API erişimi' : 'API access', included: true },
-        { text: isTR ? 'Özel eğitim' : 'Custom training', included: true },
-        { text: isTR ? 'SLA garantisi' : 'SLA guarantee', included: true },
-      ],
       popular: false,
     },
   ];
+
+  // Generate features for a plan based on FEATURE_ORDER (only included ones)
+  const getPlanFeatures = (plan) => {
+    const includedFeatures = PLAN_FEATURES[plan.id] || [];
+    return FEATURE_ORDER
+      .filter(key => includedFeatures.includes(key))
+      .map(key => ({
+        key,
+        text: getFeatureLabel(key, plan)
+      }));
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
@@ -198,14 +219,10 @@ export default function PricingPage() {
                 </div>
 
                 <ul className="space-y-3 mb-6">
-                  {plan.features.map((feature, idx) => (
+                  {getPlanFeatures(plan).map((feature, idx) => (
                     <li key={idx} className="flex items-start gap-2">
-                      {feature.included ? (
-                        <Check className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
-                      ) : (
-                        <X className="h-4 w-4 text-gray-300 flex-shrink-0 mt-0.5" />
-                      )}
-                      <span className={`text-sm ${feature.included ? 'text-gray-700' : 'text-gray-400'}`}>
+                      <Check className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
+                      <span className="text-sm text-gray-700">
                         {feature.text}
                       </span>
                     </li>
