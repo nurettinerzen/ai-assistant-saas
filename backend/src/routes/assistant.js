@@ -190,7 +190,7 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
           agent: {
             prompt: {
               prompt: fullSystemPrompt,
-              llm: 'gemini-2.0-flash-lite',
+              llm: 'gemini-2.5-flash-lite',
               temperature: 0.1
             },
             first_message: finalFirstMessage,
@@ -454,7 +454,7 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
             agent: {
               prompt: {
                 prompt: fullSystemPrompt,
-                llm: 'gemini-2.0-flash-lite',
+                llm: 'gemini-2.5-flash-lite',
                 temperature: 0.1
               },
               first_message: lang === 'tr'
