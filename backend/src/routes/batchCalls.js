@@ -527,10 +527,12 @@ router.get('/', checkPermission('campaigns:view'), async (req, res) => {
             );
 
             const elevenLabsData = response.data;
+            console.log(`📊 11Labs batch ${batch.id} status:`, elevenLabsData.status);
 
             // Update local status based on 11Labs status
+            // 11Labs can return: pending, in_progress, completed, done, failed, cancelled
             let newStatus = batch.status;
-            if (elevenLabsData.status === 'completed') {
+            if (elevenLabsData.status === 'completed' || elevenLabsData.status === 'done') {
               newStatus = 'COMPLETED';
             } else if (elevenLabsData.status === 'failed') {
               newStatus = 'FAILED';
@@ -620,10 +622,12 @@ router.get('/:id', checkPermission('campaigns:view'), async (req, res) => {
         );
 
         callDetails = response.data.recipients || [];
+        console.log(`📊 11Labs batch ${batchCall.id} detail status:`, response.data.status);
 
         // Update local status
+        // 11Labs can return: pending, in_progress, completed, done, failed, cancelled
         let newStatus = batchCall.status;
-        if (response.data.status === 'completed') {
+        if (response.data.status === 'completed' || response.data.status === 'done') {
           newStatus = 'COMPLETED';
         } else if (response.data.status === 'failed') {
           newStatus = 'FAILED';

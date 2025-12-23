@@ -180,9 +180,9 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
     let elevenLabsAgentId = null;
 
     try {
-      // Add end_call tool for outbound calls
+      // Add end_call tool for outbound calls (no description to avoid TTS reading it)
       const toolsWithEndCall = callDirection === 'outbound'
-        ? [...activeToolsElevenLabs, { type: 'system', name: 'end_call', description: 'Ends the call when conversation is complete or customer wants to hang up' }]
+        ? [...activeToolsElevenLabs, { type: 'system', name: 'end_call' }]
         : activeToolsElevenLabs;
 
       const agentConfig = {
@@ -447,9 +447,9 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
         const lang = language?.toLowerCase() || business?.language?.toLowerCase() || 'tr';
         const effectiveCallDirection = callDirection || assistant.callDirection || 'inbound';
 
-        // Add end_call tool for outbound calls
+        // Add end_call tool for outbound calls (no description to prevent TTS reading it)
         const toolsWithEndCall = effectiveCallDirection === 'outbound'
-          ? [...activeToolsElevenLabs, { type: 'system', name: 'end_call', description: 'Ends the call when conversation is complete or customer wants to hang up' }]
+          ? [...activeToolsElevenLabs, { type: 'system', name: 'end_call' }]
           : activeToolsElevenLabs;
 
         const agentUpdateConfig = {

@@ -363,10 +363,25 @@ export default function AssistantsPage() {
     setEditingAssistant(assistant);
     const voice = voices.find(v => v.id === assistant.voiceId);
     const inferredLang = voice?.language || businessLanguage || 'en';
+
+    // For outbound assistants, show the default prompt based on callPurpose
+    // instead of the full generated system prompt (which is too technical)
+    const isOutbound = assistant.callDirection === 'outbound';
+    let displayPrompt = '';
+
+    if (isOutbound && assistant.callPurpose) {
+      // Show simple default prompt for editing
+      displayPrompt = DEFAULT_SYSTEM_PROMPTS[assistant.callPurpose]?.[inferredLang] || '';
+    } else if (!isOutbound) {
+      // For inbound, systemPrompt might contain user's additional instructions
+      // but the full prompt is generated in backend, so we don't show it
+      displayPrompt = '';
+    }
+
     setFormData({
       name: assistant.name,
       voiceId: assistant.voiceId,
-      systemPrompt: assistant.systemPrompt || '',
+      systemPrompt: displayPrompt,
       firstMessage: assistant.firstMessage || '',
       language: assistant.language || inferredLang,
       tone: assistant.tone || 'formal',
