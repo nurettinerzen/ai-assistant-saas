@@ -94,17 +94,29 @@ export default function BatchCallDetailPage() {
     }
   }, [id]);
 
-  const loadBatchCall = async () => {
-    setLoading(true);
+  // Auto-refresh when campaign is in progress
+  useEffect(() => {
+    if (batchCall?.status === 'IN_PROGRESS' || batchCall?.status === 'PENDING') {
+      const interval = setInterval(() => {
+        loadBatchCall(true); // silent refresh
+      }, 5000); // Poll every 5 seconds
+      return () => clearInterval(interval);
+    }
+  }, [batchCall?.status]);
+
+  const loadBatchCall = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const response = await apiClient.get(`/api/batch-calls/${id}`);
       setBatchCall(response.data.batchCall);
     } catch (error) {
       console.error('Error loading batch call:', error);
-      toast.error(locale === 'tr' ? 'Kampanya bulunamadı' : 'Campaign not found');
-      router.push('/dashboard/batch-calls');
+      if (!silent) {
+        toast.error(locale === 'tr' ? 'Kampanya bulunamadı' : 'Campaign not found');
+        router.push('/dashboard/batch-calls');
+      }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 

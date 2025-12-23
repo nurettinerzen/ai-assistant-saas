@@ -341,7 +341,7 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
   try {
     const businessId = req.businessId;
     const { id } = req.params;
-    const { name, voiceId, systemPrompt, model, language, tone, customNotes, callDirection, callPurpose, dynamicVariables } = req.body;
+    const { name, voiceId, systemPrompt, firstMessage, model, language, tone, customNotes, callDirection, callPurpose, dynamicVariables } = req.body;
 
     // Validate assistant name length if provided
     if (name && name.length > 25) {
@@ -424,6 +424,7 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
         name,
         voiceId,
         systemPrompt: fullSystemPrompt,
+        firstMessage: firstMessage || assistant.firstMessage,
         model,
         tone: tone || assistant.tone || 'professional',  // Keep existing if not provided
         customNotes: customNotes !== undefined ? customNotes : assistant.customNotes,  // Allow null/empty
@@ -457,9 +458,7 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
                 llm: 'gemini-2.5-flash-lite',
                 temperature: 0.1
               },
-              first_message: lang === 'tr'
-                ? `Merhaba, ben ${name}. Size nasıl yardımcı olabilirim?`
-                : `Hi, I'm ${name}. How can I help you today?`,
+              first_message: firstMessage || assistant.firstMessage,
               language: lang
             },
             tts: {

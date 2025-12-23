@@ -117,6 +117,26 @@ export default function BatchCallsPage() {
     loadData();
   }, []);
 
+  // Auto-refresh when there are in-progress campaigns
+  useEffect(() => {
+    const hasInProgress = batchCalls.some(b => b.status === 'IN_PROGRESS' || b.status === 'PENDING');
+    if (hasInProgress && hasAccess) {
+      const interval = setInterval(() => {
+        refreshBatchCalls();
+      }, 5000); // Poll every 5 seconds
+      return () => clearInterval(interval);
+    }
+  }, [batchCalls, hasAccess]);
+
+  const refreshBatchCalls = async () => {
+    try {
+      const batchRes = await apiClient.get('/api/batch-calls');
+      setBatchCalls(batchRes.data.batchCalls || []);
+    } catch (err) {
+      // Silent fail for polling
+    }
+  };
+
   const loadData = async () => {
     setLoading(true);
     try {

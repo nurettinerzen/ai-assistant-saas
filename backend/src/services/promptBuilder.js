@@ -2,6 +2,31 @@ import { BASE_RULES } from '../config/prompts/base-rules.js';
 import { BUSINESS_TEMPLATES } from '../config/prompts/business-templates.js';
 import { TONE_RULES } from '../config/prompts/tone-rules.js';
 
+// Outbound (giden arama) için özel kurallar
+const OUTBOUND_RULES = `
+## GİDEN ARAMA KURALLARI
+Sen bir giden arama asistanısın. Müşteriyi SEN arıyorsun, müşteri seni aramadı.
+
+## KRİTİK KURALLAR
+- ASLA "size nasıl yardımcı olabilirim?" deme - sen zaten arama nedenini biliyorsun
+- İlk mesajdan sonra direkt konuya gir
+- Arama amacını kısa ve net açıkla
+- Müşteri meşgulse başka zaman aramayı teklif et
+- Görüşme tamamlandığında aramayı sonlandır (end_call kullan)
+
+## GÖRÜŞME AKIŞI
+1. Kendini ve şirketi tanıt (ilk mesaj zaten bunu yapıyor)
+2. Arama nedenini açıkla
+3. Müşterinin cevabını dinle
+4. Gerekirse detay ver
+5. Sonuç al (ödeme tarihi, randevu onayı vs.)
+6. Teşekkür et ve görüşmeyi kapat
+
+## DİNAMİK VERİLER
+Eğer arama verileri sağlandıysa (borç tutarı, vade tarihi, randevu tarihi vb.) bunları kullan.
+Bu veriler conversation_initiation_client_data içinde dynamic_variables olarak gelir.
+`;
+
 /**
  * Asistan için tam prompt oluşturur
  * @param {Object} assistant - Asistan objesi
@@ -10,6 +35,11 @@ import { TONE_RULES } from '../config/prompts/tone-rules.js';
  * @returns {String} Birleştirilmiş prompt
  */
 export function buildAssistantPrompt(assistant, business, integrations = []) {
+
+  // Outbound için özel prompt
+  if (assistant.callDirection === 'outbound') {
+    return buildOutboundPrompt(assistant, business);
+  }
 
   // 1. Business type'a göre template seç
   const businessType = business.businessType || 'OTHER';
@@ -73,6 +103,35 @@ export function buildAssistantPrompt(assistant, business, integrations = []) {
   // 10. Değişkenleri yerine koy
   for (const [key, value] of Object.entries(variables)) {
     prompt = prompt.replace(new RegExp(`{{${key}}}`, 'g'), value);
+  }
+
+  return prompt;
+}
+
+/**
+ * Outbound (giden arama) için prompt oluşturur
+ * @param {Object} assistant - Asistan objesi
+ * @param {Object} business - Business objesi
+ * @returns {String} Outbound prompt
+ */
+function buildOutboundPrompt(assistant, business) {
+  const businessName = business.name || 'İşletme';
+  const assistantName = assistant.name || 'Asistan';
+
+  let prompt = OUTBOUND_RULES;
+
+  // Değişkenleri yerine koy
+  prompt = prompt.replace(/{{business_name}}/g, businessName);
+  prompt = prompt.replace(/{{assistant_name}}/g, assistantName);
+
+  // Kullanıcının ek talimatlarını ekle
+  if (assistant.systemPrompt && assistant.systemPrompt.trim()) {
+    prompt += `\n\n## EK TALİMATLAR\n${assistant.systemPrompt}`;
+  }
+
+  // Kullanıcının özel notlarını ekle
+  if (assistant.customNotes && assistant.customNotes.trim()) {
+    prompt += `\n\n## İŞLETME BİLGİLERİ\n${assistant.customNotes}`;
   }
 
   return prompt;
