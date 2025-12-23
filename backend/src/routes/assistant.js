@@ -194,11 +194,6 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
             first_message: finalFirstMessage,
             language: lang?.toLowerCase() || 'tr'
           },
-          llm: {
-            provider: 'gemini',
-            model: 'gemini-2.5-flash-lite',
-            temperature: 0.15
-          },
           tts: {
             voice_id: elevenLabsVoiceId,
             model_id: 'eleven_turbo_v2_5',
@@ -462,11 +457,6 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
                 ? `Merhaba, ben ${name}. Size nasıl yardımcı olabilirim?`
                 : `Hi, I'm ${name}. How can I help you today?`,
               language: lang
-            },
-            llm: {
-              provider: 'gemini',
-              model: 'gemini-2.5-flash-lite',
-              temperature: 0.15
             },
             tts: {
               voice_id: elevenLabsVoiceId,

@@ -562,11 +562,6 @@ export function buildAgentConfig(assistant, business, tools = []) {
         first_message: assistant.firstMessage || getDefaultFirstMessage(language, assistant.name),
         language: language
       },
-      llm: {
-        provider: 'gemini',
-        model: 'gemini-2.5-flash-lite',
-        temperature: 0.15
-      },
       tts: {
         voice_id: assistant.voiceId,
         model_id: 'eleven_turbo_v2',
