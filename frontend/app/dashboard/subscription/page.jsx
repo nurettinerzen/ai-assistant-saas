@@ -10,7 +10,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Check, CreditCard, TrendingUp, X, Loader2, AlertCircle } from 'lucide-react';
+import { Check, CreditCard, TrendingUp, Loader2, AlertCircle, X } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast } from '@/lib/toast';
 import { formatDate } from '@/lib/utils';
@@ -37,20 +37,7 @@ const PLANS = [
     phoneNumbers: 1,
     overageRateTRY: 12,
     overageRateUSD: 0.45,
-    features: [
-      { key: 'minutes', included: true },
-      { key: 'assistants', included: true },
-      { key: 'phoneNumbers', included: true },
-      { key: 'phone', included: true },
-      { key: 'whatsapp', included: true },
-      { key: 'chatWidget', included: true },
-      { key: 'email', included: false },
-      { key: 'ecommerce', included: false },
-      { key: 'calendar', included: false },
-      { key: 'analytics', included: true },
-      { key: 'prioritySupport', included: false },
-      { key: 'apiAccess', included: false },
-    ],
+    includedFeatures: ['minutes', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'analytics'],
   },
   {
     id: 'BASIC',
@@ -64,20 +51,7 @@ const PLANS = [
     overageRateTRY: 11,
     overageRateUSD: 0.40,
     popular: true,
-    features: [
-      { key: 'minutes', included: true },
-      { key: 'assistants', included: true },
-      { key: 'phoneNumbers', included: true },
-      { key: 'phone', included: true },
-      { key: 'whatsapp', included: true },
-      { key: 'chatWidget', included: true },
-      { key: 'email', included: false },
-      { key: 'ecommerce', included: true },
-      { key: 'calendar', included: true },
-      { key: 'analytics', included: true },
-      { key: 'prioritySupport', included: false },
-      { key: 'apiAccess', included: false },
-    ],
+    includedFeatures: ['minutes', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'ecommerce', 'analytics'],
   },
   {
     id: 'PROFESSIONAL',
@@ -90,20 +64,7 @@ const PLANS = [
     phoneNumbers: 5,
     overageRateTRY: 10,
     overageRateUSD: 0.35,
-    features: [
-      { key: 'minutes', included: true },
-      { key: 'assistants', included: true },
-      { key: 'phoneNumbers', included: true },
-      { key: 'phone', included: true },
-      { key: 'whatsapp', included: true },
-      { key: 'chatWidget', included: true },
-      { key: 'email', included: true },
-      { key: 'ecommerce', included: true },
-      { key: 'calendar', included: true },
-      { key: 'analytics', included: true },
-      { key: 'prioritySupport', included: true },
-      { key: 'apiAccess', included: true },
-    ],
+    includedFeatures: ['minutes', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'email', 'ecommerce', 'calendar', 'batchCalls', 'analytics', 'prioritySupport', 'apiAccess'],
   },
   {
     id: 'ENTERPRISE',
@@ -116,22 +77,7 @@ const PLANS = [
     phoneNumbers: 5,  // Base, customizable
     overageRateTRY: null,  // Custom
     overageRateUSD: null,  // Custom
-    features: [
-      { key: 'enterpriseMinutes', included: true },
-      { key: 'enterpriseAssistants', included: true },
-      { key: 'enterprisePhones', included: true },
-      { key: 'phone', included: true },
-      { key: 'whatsapp', included: true },
-      { key: 'chatWidget', included: true },
-      { key: 'email', included: true },
-      { key: 'ecommerce', included: true },
-      { key: 'calendar', included: true },
-      { key: 'analytics', included: true },
-      { key: 'prioritySupport', included: true },
-      { key: 'apiAccess', included: true },
-      { key: 'customTraining', included: true },
-      { key: 'slaGuarantee', included: true },
-    ],
+    includedFeatures: ['minutes', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'email', 'ecommerce', 'calendar', 'batchCalls', 'analytics', 'prioritySupport', 'apiAccess', 'customTraining', 'slaGuarantee'],
   },
 ];
 
@@ -410,32 +356,33 @@ export default function SubscriptionPage() {
               return isTR ? 'Seç' : 'Select';
             };
 
-            // Feature labels
-            const featureLabels = {
-              minutes: isTR ? `${plan.minutes} dakika telefon görüşmesi` : `${plan.minutes} minutes of phone calls`,
-              assistants: isTR ? `${plan.assistants} AI asistan` : `${plan.assistants} AI assistant${plan.assistants > 1 ? 's' : ''}`,
-              phoneNumbers: isTR ? `${plan.phoneNumbers} telefon numarası` : `${plan.phoneNumbers} phone number${plan.phoneNumbers > 1 ? 's' : ''}`,
-              phone: isTR ? 'Telefon AI desteği' : 'Phone AI support',
-              analytics: isTR ? 'Temel analitik' : 'Basic analytics',
-              whatsapp: isTR ? 'WhatsApp entegrasyonu' : 'WhatsApp integration',
-              chatWidget: isTR ? 'Chat widget' : 'Chat widget',
-              email: isTR ? 'E-posta AI' : 'Email AI',
-              ecommerce: isTR ? 'E-ticaret entegrasyonu' : 'E-commerce integration',
-              calendar: isTR ? 'Takvim entegrasyonu' : 'Calendar integration',
-              prioritySupport: isTR ? 'Öncelikli destek' : 'Priority support',
-              apiAccess: isTR ? 'API erişimi' : 'API access',
-              customMinutes: isTR ? 'Özel dakika paketi' : 'Custom minutes package',
-              unlimitedAssistants: isTR ? 'Sınırsız AI asistan' : 'Unlimited AI assistants',
-              customPhoneNumbers: isTR ? 'Özel telefon numarası adedi' : 'Custom phone numbers',
-              allChannels: isTR ? 'Tüm kanallar dahil' : 'All channels included',
-              allIntegrations: isTR ? 'Tüm entegrasyonlar' : 'All integrations',
-              customOverage: isTR ? 'Özel aşım fiyatlandırma' : 'Custom overage pricing',
-              customTraining: isTR ? 'Özel eğitim' : 'Custom training',
-              slaGuarantee: isTR ? 'SLA garantisi' : 'SLA guarantee',
-              // Enterprise specific
-              enterpriseMinutes: isTR ? '500+ dakika (özelleştirilebilir)' : '500+ minutes (customizable)',
-              enterpriseAssistants: isTR ? '10+ AI asistan (özelleştirilebilir)' : '10+ AI assistants (customizable)',
-              enterprisePhones: isTR ? '5+ telefon numarası (özelleştirilebilir)' : '5+ phone numbers (customizable)',
+            // Feature labels - dynamic based on plan
+            const getFeatureLabel = (key) => {
+              // For Enterprise plan, use customizable labels
+              if (plan.id === 'ENTERPRISE') {
+                if (key === 'minutes') return isTR ? '500+ dakika (özelleştirilebilir)' : '500+ minutes (customizable)';
+                if (key === 'assistants') return isTR ? '10+ AI asistan (özelleştirilebilir)' : '10+ AI assistants (customizable)';
+                if (key === 'phoneNumbers') return isTR ? '5+ telefon numarası (özelleştirilebilir)' : '5+ phone numbers (customizable)';
+              }
+
+              const labels = {
+                minutes: isTR ? `${plan.minutes} dakika telefon görüşmesi` : `${plan.minutes} minutes of phone calls`,
+                assistants: isTR ? `${plan.assistants} AI asistan` : `${plan.assistants} AI assistant${plan.assistants > 1 ? 's' : ''}`,
+                phoneNumbers: isTR ? `${plan.phoneNumbers} telefon numarası` : `${plan.phoneNumbers} phone number${plan.phoneNumbers > 1 ? 's' : ''}`,
+                phone: isTR ? 'Telefon AI desteği' : 'Phone AI support',
+                analytics: isTR ? 'Temel analitik' : 'Basic analytics',
+                whatsapp: isTR ? 'WhatsApp entegrasyonu' : 'WhatsApp integration',
+                chatWidget: isTR ? 'Chat widget' : 'Chat widget',
+                email: isTR ? 'E-posta AI' : 'Email AI',
+                ecommerce: isTR ? 'E-ticaret entegrasyonu' : 'E-commerce integration',
+                calendar: isTR ? 'Takvim entegrasyonu' : 'Calendar integration',
+                batchCalls: isTR ? 'Toplu Arama (Giden)' : 'Batch Calls (Outbound)',
+                prioritySupport: isTR ? 'Öncelikli destek' : 'Priority support',
+                apiAccess: isTR ? 'API erişimi' : 'API access',
+                customTraining: isTR ? 'Özel eğitim' : 'Custom training',
+                slaGuarantee: isTR ? 'SLA garantisi' : 'SLA guarantee',
+              };
+              return labels[key] || key;
             };
 
             return (
@@ -498,15 +445,11 @@ export default function SubscriptionPage() {
                 </div>
 
                 <ul className="space-y-2 mb-6 flex-grow">
-                  {plan.features.map((feature, i) => (
+                  {plan.includedFeatures.map((featureKey, i) => (
                     <li key={i} className="flex items-start gap-2 text-sm">
-                      {feature.included ? (
-                        <Check className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
-                      ) : (
-                        <X className="h-4 w-4 text-neutral-300 flex-shrink-0 mt-0.5" />
-                      )}
-                      <span className={feature.included ? 'text-neutral-700' : 'text-neutral-400'}>
-                        {featureLabels[feature.key] || feature.key}
+                      <Check className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
+                      <span className="text-neutral-700">
+                        {getFeatureLabel(featureKey)}
                       </span>
                     </li>
                   ))}
