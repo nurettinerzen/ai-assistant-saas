@@ -35,11 +35,14 @@ Bu veriler conversation_initiation_client_data içinde dynamic_variables olarak 
  * @returns {String} Birleştirilmiş prompt
  */
 export function buildAssistantPrompt(assistant, business, integrations = []) {
+  console.log('🔧 buildAssistantPrompt called with callDirection:', assistant.callDirection);
 
   // Outbound için özel prompt
   if (assistant.callDirection === 'outbound') {
+    console.log('✅ Using OUTBOUND_RULES for outbound assistant');
     return buildOutboundPrompt(assistant, business);
   }
+  console.log('📞 Using INBOUND rules (default)');
 
   // 1. Business type'a göre template seç
   const businessType = business.businessType || 'OTHER';
