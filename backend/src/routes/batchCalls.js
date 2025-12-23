@@ -517,7 +517,8 @@ router.get('/', checkPermission('campaigns:view'), async (req, res) => {
 
     const updatedBatchCalls = await Promise.all(
       batchCalls.map(async (batch) => {
-        if (batch.elevenLabsBatchId && batch.status === 'IN_PROGRESS') {
+        // Check status for both PENDING and IN_PROGRESS batches
+        if (batch.elevenLabsBatchId && (batch.status === 'IN_PROGRESS' || batch.status === 'PENDING')) {
           try {
             const response = await axios.get(
               `https://api.elevenlabs.io/v1/convai/batch-calling/${batch.elevenLabsBatchId}`,
@@ -527,13 +528,22 @@ router.get('/', checkPermission('campaigns:view'), async (req, res) => {
             );
 
             const elevenLabsData = response.data;
-            console.log(`📊 11Labs batch ${batch.id} status:`, elevenLabsData.status);
+            console.log(`📊 11Labs batch ${batch.id} status:`, elevenLabsData.status,
+              `dispatched: ${elevenLabsData.total_calls_dispatched}/${elevenLabsData.total_calls_scheduled}`);
 
             // Update local status based on 11Labs status
             // 11Labs can return: pending, in_progress, completed, done, failed, cancelled
             let newStatus = batch.status;
-            if (elevenLabsData.status === 'completed' || elevenLabsData.status === 'done') {
+
+            // Check if all calls are done (dispatched == scheduled and status shows completion)
+            const allCallsDone = elevenLabsData.total_calls_dispatched === elevenLabsData.total_calls_scheduled
+              && elevenLabsData.total_calls_dispatched > 0;
+
+            if (elevenLabsData.status === 'completed' || elevenLabsData.status === 'done' ||
+                (allCallsDone && elevenLabsData.status !== 'pending')) {
               newStatus = 'COMPLETED';
+            } else if (elevenLabsData.status === 'in_progress' || elevenLabsData.total_calls_dispatched > 0) {
+              newStatus = 'IN_PROGRESS';
             } else if (elevenLabsData.status === 'failed') {
               newStatus = 'FAILED';
             } else if (elevenLabsData.status === 'cancelled') {
@@ -622,16 +632,26 @@ router.get('/:id', checkPermission('campaigns:view'), async (req, res) => {
         );
 
         callDetails = response.data.recipients || [];
-        console.log(`📊 11Labs batch ${batchCall.id} detail status:`, response.data.status);
+        const elevenLabsData = response.data;
+        console.log(`📊 11Labs batch ${batchCall.id} detail status:`, elevenLabsData.status,
+          `dispatched: ${elevenLabsData.total_calls_dispatched}/${elevenLabsData.total_calls_scheduled}`);
 
         // Update local status
         // 11Labs can return: pending, in_progress, completed, done, failed, cancelled
         let newStatus = batchCall.status;
-        if (response.data.status === 'completed' || response.data.status === 'done') {
+
+        // Check if all calls are done
+        const allCallsDone = elevenLabsData.total_calls_dispatched === elevenLabsData.total_calls_scheduled
+          && elevenLabsData.total_calls_dispatched > 0;
+
+        if (elevenLabsData.status === 'completed' || elevenLabsData.status === 'done' ||
+            (allCallsDone && elevenLabsData.status !== 'pending')) {
           newStatus = 'COMPLETED';
-        } else if (response.data.status === 'failed') {
+        } else if (elevenLabsData.status === 'in_progress' || elevenLabsData.total_calls_dispatched > 0) {
+          newStatus = 'IN_PROGRESS';
+        } else if (elevenLabsData.status === 'failed') {
           newStatus = 'FAILED';
-        } else if (response.data.status === 'cancelled') {
+        } else if (elevenLabsData.status === 'cancelled') {
           newStatus = 'CANCELLED';
         }
 
