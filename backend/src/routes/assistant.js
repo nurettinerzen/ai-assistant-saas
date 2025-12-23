@@ -189,14 +189,12 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
         conversation_config: {
           agent: {
             prompt: {
-              prompt: fullSystemPrompt
+              prompt: fullSystemPrompt,
+              llm: 'gemini-2.0-flash-lite',
+              temperature: 0.1
             },
             first_message: finalFirstMessage,
             language: lang?.toLowerCase() || 'tr'
-          },
-          llm: {
-            provider: 'gemini',
-            model: 'gemini-2.0-flash-lite'
           },
           tts: {
             voice_id: elevenLabsVoiceId,
@@ -455,16 +453,14 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
           conversation_config: {
             agent: {
               prompt: {
-                prompt: fullSystemPrompt
+                prompt: fullSystemPrompt,
+                llm: 'gemini-2.0-flash-lite',
+                temperature: 0.1
               },
               first_message: lang === 'tr'
                 ? `Merhaba, ben ${name}. Size nasıl yardımcı olabilirim?`
                 : `Hi, I'm ${name}. How can I help you today?`,
               language: lang
-            },
-            llm: {
-              provider: 'gemini',
-              model: 'gemini-2.0-flash-lite'
             },
             tts: {
               voice_id: elevenLabsVoiceId,
