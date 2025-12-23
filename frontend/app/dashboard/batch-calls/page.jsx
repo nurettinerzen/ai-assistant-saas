@@ -120,8 +120,10 @@ export default function BatchCallsPage() {
   // Auto-refresh when there are in-progress campaigns
   useEffect(() => {
     const hasInProgress = batchCalls.some(b => b.status === 'IN_PROGRESS' || b.status === 'PENDING');
-    if (hasInProgress && hasAccess) {
+    console.log('📊 Polling check - hasInProgress:', hasInProgress, 'hasAccess:', hasAccess);
+    if (hasInProgress) {
       const interval = setInterval(() => {
+        console.log('🔄 Polling batch calls...');
         refreshBatchCalls();
       }, 5000); // Poll every 5 seconds
       return () => clearInterval(interval);
@@ -131,9 +133,10 @@ export default function BatchCallsPage() {
   const refreshBatchCalls = async () => {
     try {
       const batchRes = await apiClient.get('/api/batch-calls');
+      console.log('📊 Batch calls refreshed:', batchRes.data.batchCalls?.map(b => ({ id: b.id, status: b.status })));
       setBatchCalls(batchRes.data.batchCalls || []);
     } catch (err) {
-      // Silent fail for polling
+      console.error('Polling error:', err);
     }
   };
 
