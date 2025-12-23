@@ -8,10 +8,10 @@ import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function PricingPage() {
-  const { t, language } = useLanguage();
+  const { t, locale } = useLanguage();
 
-  // Determine currency based on language
-  const isTR = language === 'tr';
+  // Determine currency based on locale
+  const isTR = locale === 'tr';
 
   /**
    * Feature Master List (ordered)
