@@ -259,6 +259,9 @@ router.post('/', upload.single('file'), checkPermission('campaigns:view'), async
       if (mapping.debt_amount) {
         recipient.debt_amount = String(row[mapping.debt_amount] || '');
       }
+      if (mapping.currency) {
+        recipient.currency = String(row[mapping.currency] || 'TL');
+      }
       if (mapping.due_date) {
         recipient.due_date = String(row[mapping.due_date] || '');
       }
@@ -301,22 +304,43 @@ router.post('/', upload.single('file'), checkPermission('campaigns:view'), async
     try {
       const elevenLabsApiKey = process.env.ELEVENLABS_API_KEY;
 
+      // Transform recipients to 11Labs format with dynamic_variables
+      const elevenLabsRecipients = recipients.map((r, index) => {
+        const dynamicVars = {};
+        if (r.customer_name) dynamicVars.customer_name = r.customer_name;
+        if (r.debt_amount) dynamicVars.debt_amount = r.debt_amount;
+        if (r.due_date) dynamicVars.due_date = r.due_date;
+        if (r.currency) dynamicVars.currency = r.currency;
+        if (r.appointment_date) dynamicVars.appointment_date = r.appointment_date;
+        if (r.custom_1) dynamicVars.custom_1 = r.custom_1;
+        if (r.custom_2) dynamicVars.custom_2 = r.custom_2;
+
+        return {
+          id: `recipient_${index + 1}`,
+          phone_number: r.phone_number,
+          conversation_initiation_client_data: {
+            dynamic_variables: dynamicVars
+          }
+        };
+      });
+
       const batchPayload = {
-        name: name,
+        call_name: name,
         agent_id: assistant.elevenLabsAgentId,
         agent_phone_number_id: phoneNumber.elevenLabsPhoneId,
-        recipients: recipients,
+        recipients: elevenLabsRecipients,
         ...(scheduledAt && { scheduled_time_unix: Math.floor(new Date(scheduledAt).getTime() / 1000) })
       };
 
       console.log('📤 Submitting batch call to 11Labs:', {
-        name,
+        call_name: name,
         agent_id: assistant.elevenLabsAgentId,
-        recipientCount: recipients.length
+        agent_phone_number_id: phoneNumber.elevenLabsPhoneId,
+        recipientCount: elevenLabsRecipients.length
       });
 
       const response = await axios.post(
-        'https://api.elevenlabs.io/v1/convai/batch_calling/batches',
+        'https://api.elevenlabs.io/v1/convai/batch-calling/submit',
         batchPayload,
         {
           headers: {
@@ -409,7 +433,7 @@ router.get('/', checkPermission('campaigns:view'), async (req, res) => {
         if (batch.elevenLabsBatchId && batch.status === 'IN_PROGRESS') {
           try {
             const response = await axios.get(
-              `https://api.elevenlabs.io/v1/convai/batch_calling/batches/${batch.elevenLabsBatchId}`,
+              `https://api.elevenlabs.io/v1/convai/batch-calling/${batch.elevenLabsBatchId}`,
               {
                 headers: { 'xi-api-key': elevenLabsApiKey }
               }
@@ -502,13 +526,13 @@ router.get('/:id', checkPermission('campaigns:view'), async (req, res) => {
       try {
         const elevenLabsApiKey = process.env.ELEVENLABS_API_KEY;
         const response = await axios.get(
-          `https://api.elevenlabs.io/v1/convai/batch_calling/batches/${batchCall.elevenLabsBatchId}`,
+          `https://api.elevenlabs.io/v1/convai/batch-calling/${batchCall.elevenLabsBatchId}`,
           {
             headers: { 'xi-api-key': elevenLabsApiKey }
           }
         );
 
-        callDetails = response.data.calls || [];
+        callDetails = response.data.recipients || [];
 
         // Update local status
         let newStatus = batchCall.status;
@@ -602,9 +626,8 @@ router.post('/:id/cancel', checkPermission('campaigns:view'), async (req, res) =
     if (batchCall.elevenLabsBatchId) {
       try {
         const elevenLabsApiKey = process.env.ELEVENLABS_API_KEY;
-        await axios.post(
-          `https://api.elevenlabs.io/v1/convai/batch_calling/batches/${batchCall.elevenLabsBatchId}/cancel`,
-          {},
+        await axios.delete(
+          `https://api.elevenlabs.io/v1/convai/batch-calling/${batchCall.elevenLabsBatchId}`,
           {
             headers: { 'xi-api-key': elevenLabsApiKey }
           }
@@ -651,6 +674,70 @@ router.get('/check-access', async (req, res) => {
   } catch (error) {
     console.error('Check access error:', error);
     res.status(500).json({ error: 'Failed to check access' });
+  }
+});
+
+/**
+ * GET /api/batch-calls/template
+ * Download Excel template for batch calling
+ */
+router.get('/template', async (req, res) => {
+  try {
+    // Create sample data with Turkish date format (DD/MM/YYYY)
+    const sampleData = [
+      {
+        'Telefon': '+905321234567',
+        'Müşteri Adı': 'Ahmet Yılmaz',
+        'Borç Tutarı': '1500',
+        'Para Birimi': 'TL',
+        'Vade Tarihi': '15/01/2024',
+        'Fatura No': 'FTR-001'
+      },
+      {
+        'Telefon': '+905331234568',
+        'Müşteri Adı': 'Mehmet Demir',
+        'Borç Tutarı': '2300',
+        'Para Birimi': 'TL',
+        'Vade Tarihi': '20/01/2024',
+        'Fatura No': 'FTR-002'
+      },
+      {
+        'Telefon': '+905341234569',
+        'Müşteri Adı': 'Ayşe Kaya',
+        'Borç Tutarı': '800',
+        'Para Birimi': 'USD',
+        'Vade Tarihi': '25/01/2024',
+        'Fatura No': 'FTR-003'
+      }
+    ];
+
+    // Create workbook and worksheet
+    const workbook = XLSX.utils.book_new();
+    const worksheet = XLSX.utils.json_to_sheet(sampleData);
+
+    // Set column widths
+    worksheet['!cols'] = [
+      { wch: 15 }, // Telefon
+      { wch: 20 }, // Müşteri Adı
+      { wch: 12 }, // Borç Tutarı
+      { wch: 12 }, // Para Birimi
+      { wch: 12 }, // Vade Tarihi
+      { wch: 12 }, // Fatura No
+    ];
+
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Toplu Arama');
+
+    // Generate buffer
+    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+    // Set response headers
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename=toplu-arama-sablon.xlsx');
+    res.send(buffer);
+
+  } catch (error) {
+    console.error('Template download error:', error);
+    res.status(500).json({ error: 'Failed to generate template' });
   }
 });
 

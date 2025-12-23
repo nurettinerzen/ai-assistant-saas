@@ -54,24 +54,116 @@ const LANGUAGE_TO_ACCENT = {
   'sv': 'Swedish',
 };
 
-// Call purpose options for outbound calls
-const CALL_PURPOSES = [
-  { value: 'collection', labelTr: 'Tahsilat', labelEn: 'Collection' },
-  { value: 'reminder', labelTr: 'Randevu Hatırlatma', labelEn: 'Appointment Reminder' },
-  { value: 'survey', labelTr: 'Anket', labelEn: 'Survey' },
-  { value: 'info', labelTr: 'Bilgilendirme', labelEn: 'Information' },
-  { value: 'custom', labelTr: 'Özel', labelEn: 'Custom' },
-];
+// Call purpose options for outbound calls - filtered by business type
+const CALL_PURPOSES = {
+  // Available for all business types
+  common: [
+    { value: 'collection', labelTr: 'Tahsilat', labelEn: 'Collection' },
+    { value: 'info', labelTr: 'Bilgilendirme', labelEn: 'Information' },
+    { value: 'survey', labelTr: 'Anket', labelEn: 'Survey' },
+    { value: 'custom', labelTr: 'Özel', labelEn: 'Custom' },
+  ],
+  // Business-specific purposes
+  byBusinessType: {
+    RESTAURANT: ['reminder', 'reservation'], // Randevu hatırlatma, rezervasyon
+    SALON: ['reminder'], // Randevu hatırlatma
+    CLINIC: ['reminder'], // Randevu hatırlatma
+    SERVICE: ['reminder'], // Randevu hatırlatma
+    ECOMMERCE: ['order_update', 'shipping'], // Sipariş durumu, kargo
+    OTHER: ['reminder'], // Randevu hatırlatma
+  },
+  // All purpose definitions
+  definitions: {
+    collection: { labelTr: 'Tahsilat', labelEn: 'Collection' },
+    reminder: { labelTr: 'Randevu Hatırlatma', labelEn: 'Appointment Reminder' },
+    reservation: { labelTr: 'Rezervasyon', labelEn: 'Reservation' },
+    order_update: { labelTr: 'Sipariş Durumu', labelEn: 'Order Update' },
+    shipping: { labelTr: 'Kargo Takibi', labelEn: 'Shipping Update' },
+    survey: { labelTr: 'Anket', labelEn: 'Survey' },
+    info: { labelTr: 'Bilgilendirme', labelEn: 'Information' },
+    custom: { labelTr: 'Özel', labelEn: 'Custom' },
+  }
+};
 
-// Default dynamic variables
-const DEFAULT_DYNAMIC_VARIABLES = [
-  { key: 'customer_name', labelTr: 'Müşteri Adı', labelEn: 'Customer Name' },
-  { key: 'debt_amount', labelTr: 'Borç Tutarı', labelEn: 'Debt Amount' },
-  { key: 'due_date', labelTr: 'Vade Tarihi', labelEn: 'Due Date' },
-  { key: 'appointment_date', labelTr: 'Randevu Tarihi', labelEn: 'Appointment Date' },
-  { key: 'custom_1', labelTr: 'Özel 1', labelEn: 'Custom 1' },
-  { key: 'custom_2', labelTr: 'Özel 2', labelEn: 'Custom 2' },
-];
+// Default system prompts based on call purpose
+const DEFAULT_PROMPTS = {
+  collection: {
+    tr: (businessName) => `Merhaba! Ben ${businessName || '[Şirket Adı]'} şirketinden arıyorum. {{customer_name}} ile görüşüyor muyum?
+
+{{debt_amount}} TL tutarında vadesi geçmiş bir ödemeniz bulunmaktadır. Vade tarihi: {{due_date}}.
+
+Bu ödemeyi ne zaman yapabileceğinizi öğrenmek istiyoruz. Size yardımcı olabilir miyim?`,
+    en: (businessName) => `Hello! I'm calling from ${businessName || '[Company Name]'}. Am I speaking with {{customer_name}}?
+
+You have an overdue payment of {{debt_amount}}. Due date was: {{due_date}}.
+
+We'd like to know when you'll be able to make this payment. How can I help you?`
+  },
+  reminder: {
+    tr: (businessName) => `Merhaba {{customer_name}}, ben ${businessName || '[Şirket Adı]'} şirketinden arıyorum.
+
+{{appointment_date}} tarihinde randevunuz bulunmaktadır. Randevunuzu hatırlatmak istedik.
+
+Randevunuzu onaylıyor musunuz?`,
+    en: (businessName) => `Hello {{customer_name}}, I'm calling from ${businessName || '[Company Name]'}.
+
+You have an appointment on {{appointment_date}}. We wanted to remind you about it.
+
+Would you like to confirm your appointment?`
+  },
+  order_update: {
+    tr: (businessName) => `Merhaba {{customer_name}}, ben ${businessName || '[Şirket Adı]'} şirketinden arıyorum.
+
+Siparişiniz hakkında bilgi vermek istiyoruz. Sipariş numaranız: {{custom_1}}.
+
+Size nasıl yardımcı olabilirim?`,
+    en: (businessName) => `Hello {{customer_name}}, I'm calling from ${businessName || '[Company Name]'}.
+
+We'd like to give you an update about your order. Your order number is: {{custom_1}}.
+
+How can I help you?`
+  },
+  survey: {
+    tr: (businessName) => `Merhaba {{customer_name}}, ben ${businessName || '[Şirket Adı]'} şirketinden arıyorum.
+
+Müşteri memnuniyetinizi öğrenmek için kısa bir anket yapmak istiyoruz. Birkaç dakikanızı alabilir miyiz?`,
+    en: (businessName) => `Hello {{customer_name}}, I'm calling from ${businessName || '[Company Name]'}.
+
+We'd like to conduct a short survey about your satisfaction. Could we have a few minutes of your time?`
+  },
+  info: {
+    tr: (businessName) => `Merhaba {{customer_name}}, ben ${businessName || '[Şirket Adı]'} şirketinden arıyorum.
+
+Size önemli bir bilgi vermek istiyoruz.`,
+    en: (businessName) => `Hello {{customer_name}}, I'm calling from ${businessName || '[Company Name]'}.
+
+We have some important information to share with you.`
+  },
+  custom: {
+    tr: (businessName) => `Merhaba {{customer_name}}, ben ${businessName || '[Şirket Adı]'} şirketinden arıyorum.
+
+Size nasıl yardımcı olabilirim?`,
+    en: (businessName) => `Hello {{customer_name}}, I'm calling from ${businessName || '[Company Name]'}.
+
+How can I help you?`
+  },
+  reservation: {
+    tr: (businessName) => `Merhaba {{customer_name}}, ben ${businessName || '[Şirket Adı]'} şirketinden arıyorum.
+
+{{appointment_date}} tarihindeki rezervasyonunuzu onaylamak istiyoruz. Rezervasyonunuz hâlâ geçerli mi?`,
+    en: (businessName) => `Hello {{customer_name}}, I'm calling from ${businessName || '[Company Name]'}.
+
+We'd like to confirm your reservation for {{appointment_date}}. Is your reservation still valid?`
+  },
+  shipping: {
+    tr: (businessName) => `Merhaba {{customer_name}}, ben ${businessName || '[Şirket Adı]'} şirketinden arıyorum.
+
+Siparişinizin kargo durumu hakkında bilgi vermek istiyoruz.`,
+    en: (businessName) => `Hello {{customer_name}}, I'm calling from ${businessName || '[Company Name]'}.
+
+We'd like to update you about the shipping status of your order.`
+  }
+};
 
 export default function AssistantsPage() {
   const { t, locale } = useLanguage();
@@ -89,6 +181,8 @@ export default function AssistantsPage() {
   const [selectedCallDirection, setSelectedCallDirection] = useState('inbound');
 
   const [businessLanguage, setBusinessLanguage] = useState('tr');
+  const [businessName, setBusinessName] = useState('');
+  const [businessType, setBusinessType] = useState('OTHER');
   const [formData, setFormData] = useState({
     name: '',
     voiceId: '',
@@ -99,7 +193,6 @@ export default function AssistantsPage() {
     customNotes: '',
     callDirection: 'inbound',
     callPurpose: '',
-    dynamicVariables: [],
   });
 
   useEffect(() => {
@@ -116,6 +209,8 @@ export default function AssistantsPage() {
           const business = businessRes.data;
           const language = business?.language?.toLowerCase() || 'tr';
           setBusinessLanguage(language);
+          setBusinessName(business?.name || '');
+          setBusinessType(business?.businessType || 'OTHER');
           setFormData(prev => ({ ...prev, language }));
         } catch (error) {
           console.error('Failed to load business info:', error);
@@ -148,6 +243,26 @@ export default function AssistantsPage() {
     setShowTypeSelector(true);
   };
 
+  // Get available call purposes for current business type
+  const getAvailablePurposes = () => {
+    const specificPurposes = CALL_PURPOSES.byBusinessType[businessType] || [];
+    const allPurposes = [...CALL_PURPOSES.common.map(p => p.value), ...specificPurposes];
+
+    // Return unique purposes with their labels
+    return allPurposes.map(value => ({
+      value,
+      labelTr: CALL_PURPOSES.definitions[value]?.labelTr || value,
+      labelEn: CALL_PURPOSES.definitions[value]?.labelEn || value,
+    }));
+  };
+
+  // Get default prompt for a call purpose
+  const getDefaultPrompt = (purpose) => {
+    const lang = businessLanguage === 'tr' ? 'tr' : 'en';
+    const promptFn = DEFAULT_PROMPTS[purpose]?.[lang];
+    return promptFn ? promptFn(businessName) : '';
+  };
+
   // Handle type selection
   const handleTypeSelect = (direction) => {
     setSelectedCallDirection(direction);
@@ -158,20 +273,29 @@ export default function AssistantsPage() {
       setShowTemplateSelector(true);
     } else {
       // For outbound, go directly to create modal with outbound settings
+      const defaultPurpose = 'collection';
       setFormData({
         name: '',
         voiceId: '',
-        systemPrompt: '',
+        systemPrompt: getDefaultPrompt(defaultPurpose),
         model: 'gpt-4',
         language: businessLanguage || 'tr',
         tone: 'formal',
         customNotes: '',
         callDirection: 'outbound',
-        callPurpose: 'collection',
-        dynamicVariables: ['customer_name', 'debt_amount'],
+        callPurpose: defaultPurpose,
       });
       setShowCreateModal(true);
     }
+  };
+
+  // Handle call purpose change - update prompt automatically
+  const handlePurposeChange = (purpose) => {
+    setFormData(prev => ({
+      ...prev,
+      callPurpose: purpose,
+      systemPrompt: getDefaultPrompt(purpose),
+    }));
   };
 
   const handleTemplateSelect = (template) => {
@@ -186,7 +310,6 @@ export default function AssistantsPage() {
         customNotes: '',
         callDirection: 'inbound',
         callPurpose: '',
-        dynamicVariables: [],
       });
     } else {
       setFormData({
@@ -199,7 +322,6 @@ export default function AssistantsPage() {
         customNotes: '',
         callDirection: 'inbound',
         callPurpose: '',
-        dynamicVariables: [],
       });
     }
     setShowCreateModal(true);
@@ -242,7 +364,6 @@ export default function AssistantsPage() {
       customNotes: assistant.customNotes || '',
       callDirection: assistant.callDirection || 'inbound',
       callPurpose: assistant.callPurpose || '',
-      dynamicVariables: assistant.dynamicVariables || [],
     });
     setShowCreateModal(true);
   };
@@ -285,21 +406,9 @@ export default function AssistantsPage() {
       customNotes: '',
       callDirection: 'inbound',
       callPurpose: '',
-      dynamicVariables: [],
     });
     setEditingAssistant(null);
     setSelectedCallDirection('inbound');
-  };
-
-  const toggleDynamicVariable = (varKey) => {
-    setFormData(prev => {
-      const vars = prev.dynamicVariables || [];
-      if (vars.includes(varKey)) {
-        return { ...prev, dynamicVariables: vars.filter(v => v !== varKey) };
-      } else {
-        return { ...prev, dynamicVariables: [...vars, varKey] };
-      }
-    });
   };
 
   const filteredVoices = voices.filter(voice => {
@@ -387,7 +496,7 @@ export default function AssistantsPage() {
                   }
                   {assistant.callPurpose && (
                     <span className="text-primary-600"> • {
-                      CALL_PURPOSES.find(p => p.value === assistant.callPurpose)?.[locale === 'tr' ? 'labelTr' : 'labelEn'] || assistant.callPurpose
+                      CALL_PURPOSES.definitions[assistant.callPurpose]?.[locale === 'tr' ? 'labelTr' : 'labelEn'] || assistant.callPurpose
                     }</span>
                   )}
                 </p>
@@ -568,19 +677,25 @@ export default function AssistantsPage() {
                 <Label>{locale === 'tr' ? 'Arama Amacı' : 'Call Purpose'}</Label>
                 <Select
                   value={formData.callPurpose}
-                  onValueChange={(value) => setFormData({ ...formData, callPurpose: value })}
+                  onValueChange={handlePurposeChange}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder={locale === 'tr' ? 'Amaç seçin' : 'Select purpose'} />
                   </SelectTrigger>
                   <SelectContent>
-                    {CALL_PURPOSES.map((purpose) => (
+                    {getAvailablePurposes().map((purpose) => (
                       <SelectItem key={purpose.value} value={purpose.value}>
                         {locale === 'tr' ? purpose.labelTr : purpose.labelEn}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-neutral-500 mt-1">
+                  {locale === 'tr'
+                    ? 'Amaç değiştiğinde örnek prompt otomatik güncellenir'
+                    : 'Sample prompt updates automatically when purpose changes'
+                  }
+                </p>
               </div>
             )}
 
@@ -682,55 +797,24 @@ export default function AssistantsPage() {
               </Select>
             </div>
 
-            {/* Dynamic Variables (only for outbound) */}
-            {formData.callDirection === 'outbound' && (
-              <div>
-                <Label>{locale === 'tr' ? 'Dinamik Değişkenler' : 'Dynamic Variables'}</Label>
-                <p className="text-xs text-neutral-500 mb-2">
-                  {locale === 'tr'
-                    ? 'Bu değişkenler Excel/CSV dosyasından eşleştirilebilir ve prompt içinde {{değişken}} şeklinde kullanılabilir.'
-                    : 'These variables can be mapped from Excel/CSV and used in prompts as {{variable}}.'}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {DEFAULT_DYNAMIC_VARIABLES.map((variable) => {
-                    const isSelected = (formData.dynamicVariables || []).includes(variable.key);
-                    return (
-                      <button
-                        key={variable.key}
-                        type="button"
-                        onClick={() => toggleDynamicVariable(variable.key)}
-                        className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${
-                          isSelected
-                            ? 'bg-primary-100 border-primary-500 text-primary-700'
-                            : 'bg-neutral-50 border-neutral-200 text-neutral-600 hover:border-neutral-300'
-                        }`}
-                      >
-                        {locale === 'tr' ? variable.labelTr : variable.labelEn}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
             {/* System Prompt / Instructions */}
             <div>
               <Label htmlFor="prompt">
                 {formData.callDirection === 'outbound'
-                  ? (locale === 'tr' ? 'Sistem Promptu *' : 'System Prompt *')
+                  ? (locale === 'tr' ? 'Arama Senaryosu *' : 'Call Script *')
                   : (locale === 'tr' ? 'Ek Talimatlar (Opsiyonel)' : 'Additional Instructions (Optional)')
                 }
               </Label>
               <Textarea
                 id="prompt"
-                rows={formData.callDirection === 'outbound' ? 6 : 4}
+                rows={formData.callDirection === 'outbound' ? 8 : 4}
                 value={formData.systemPrompt}
                 onChange={(e) => setFormData({ ...formData, systemPrompt: e.target.value })}
                 placeholder={
                   formData.callDirection === 'outbound'
                     ? (locale === 'tr'
-                        ? 'Örn: Merhaba {{customer_name}}, X şirketinden arıyorum. {{debt_amount}} TL tutarında vadesi geçmiş borcunuz bulunmaktadır...'
-                        : 'E.g., Hello {{customer_name}}, I am calling from X company. You have an overdue balance of {{debt_amount}}...')
+                        ? 'Arama senaryonuz burada görünecek. Yukarıdan amaç seçerek örnek senaryo yükleyebilirsiniz.'
+                        : 'Your call script will appear here. Select a purpose above to load a sample script.')
                     : (locale === 'tr'
                         ? 'Asistanın davranışı için ek talimatlar... (Temel kurallar otomatik eklenir)'
                         : 'Additional instructions for assistant behavior... (Base rules are added automatically)')
@@ -739,8 +823,8 @@ export default function AssistantsPage() {
               {formData.callDirection === 'outbound' && (
                 <p className="text-xs text-neutral-500 mt-1">
                   {locale === 'tr'
-                    ? 'Seçtiğiniz dinamik değişkenleri {{değişken}} formatında kullanabilirsiniz.'
-                    : 'You can use selected dynamic variables in {{variable}} format.'}
+                    ? 'Kullanılabilir değişkenler: {{customer_name}}, {{debt_amount}}, {{due_date}}, {{appointment_date}}, {{currency}}'
+                    : 'Available variables: {{customer_name}}, {{debt_amount}}, {{due_date}}, {{appointment_date}}, {{currency}}'}
                 </p>
               )}
             </div>

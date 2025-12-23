@@ -76,6 +76,7 @@ const STATUS_CONFIG = {
 const VARIABLE_LABELS = {
   customer_name: { tr: 'Müşteri Adı', en: 'Customer Name' },
   debt_amount: { tr: 'Borç Tutarı', en: 'Debt Amount' },
+  currency: { tr: 'Para Birimi', en: 'Currency' },
   due_date: { tr: 'Vade Tarihi', en: 'Due Date' },
   appointment_date: { tr: 'Randevu Tarihi', en: 'Appointment Date' },
   custom_1: { tr: 'Özel 1', en: 'Custom 1' },
@@ -311,8 +312,25 @@ export default function BatchCallsPage() {
     setCreateStep(1);
   };
 
-  const downloadTemplate = () => {
-    window.open('/templates/batch-call-template.csv', '_blank');
+  const downloadTemplate = async () => {
+    try {
+      const response = await apiClient.get('/api/batch-calls/template', {
+        responseType: 'blob'
+      });
+
+      // Create download link
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'toplu-arama-sablon.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Template download error:', error);
+      toast.error(locale === 'tr' ? 'Şablon indirilemedi' : 'Failed to download template');
+    }
   };
 
   // Render upgrade message for non-PRO users
