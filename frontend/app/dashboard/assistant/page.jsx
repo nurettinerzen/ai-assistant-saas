@@ -364,19 +364,18 @@ export default function AssistantsPage() {
     const voice = voices.find(v => v.id === assistant.voiceId);
     const inferredLang = voice?.language || businessLanguage || 'en';
 
-    // For outbound assistants, show the default prompt based on callPurpose
-    // instead of the full generated system prompt (which is too technical)
+    // For outbound assistants, show a simple default prompt based on callPurpose
+    // instead of the full generated system prompt (which is too technical for customers)
+    // For inbound, also show empty since full prompt is generated in backend
     const isOutbound = assistant.callDirection === 'outbound';
     let displayPrompt = '';
 
     if (isOutbound && assistant.callPurpose) {
       // Show simple default prompt for editing
       displayPrompt = DEFAULT_SYSTEM_PROMPTS[assistant.callPurpose]?.[inferredLang] || '';
-    } else if (!isOutbound) {
-      // For inbound, systemPrompt might contain user's additional instructions
-      // but the full prompt is generated in backend, so we don't show it
-      displayPrompt = '';
     }
+    // For both outbound without callPurpose and inbound, displayPrompt stays empty
+    // The full system prompt is generated in backend and should not be shown to customers
 
     setFormData({
       name: assistant.name,
