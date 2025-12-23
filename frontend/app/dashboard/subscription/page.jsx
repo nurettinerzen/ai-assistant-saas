@@ -333,7 +333,7 @@ export default function SubscriptionPage() {
         <h2 className="text-2xl font-bold text-neutral-900 mb-6">
           {locale === 'tr' ? 'Planlar' : 'Plans'}
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
           {PLANS.map((plan) => {
             const isCurrentPlan = subscription?.plan === plan.id;
             const isTR = locale === 'tr';
@@ -356,27 +356,35 @@ export default function SubscriptionPage() {
               return isTR ? 'Seç' : 'Select';
             };
 
-            // Feature labels - dynamic based on plan
+            // Feature order - all plans show features in this exact order
+            const FEATURE_ORDER = [
+              'minutes', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget',
+              'email', 'ecommerce', 'calendar', 'batchCalls', 'analytics',
+              'prioritySupport', 'apiAccess', 'customTraining', 'slaGuarantee'
+            ];
+
+            // Feature labels - shorter for Enterprise
             const getFeatureLabel = (key) => {
-              // For Enterprise plan, use customizable labels
-              if (plan.id === 'ENTERPRISE') {
-                if (key === 'minutes') return isTR ? '500+ dakika (özelleştirilebilir)' : '500+ minutes (customizable)';
-                if (key === 'assistants') return isTR ? '10+ AI asistan (özelleştirilebilir)' : '10+ AI assistants (customizable)';
-                if (key === 'phoneNumbers') return isTR ? '5+ telefon numarası (özelleştirilebilir)' : '5+ phone numbers (customizable)';
-              }
+              const isEnterprise = plan.id === 'ENTERPRISE';
 
               const labels = {
-                minutes: isTR ? `${plan.minutes} dakika telefon görüşmesi` : `${plan.minutes} minutes of phone calls`,
-                assistants: isTR ? `${plan.assistants} AI asistan` : `${plan.assistants} AI assistant${plan.assistants > 1 ? 's' : ''}`,
-                phoneNumbers: isTR ? `${plan.phoneNumbers} telefon numarası` : `${plan.phoneNumbers} phone number${plan.phoneNumbers > 1 ? 's' : ''}`,
-                phone: isTR ? 'Telefon AI desteği' : 'Phone AI support',
-                analytics: isTR ? 'Temel analitik' : 'Basic analytics',
-                whatsapp: isTR ? 'WhatsApp entegrasyonu' : 'WhatsApp integration',
+                minutes: isEnterprise
+                  ? (isTR ? '500+ dk (özel)' : '500+ min (custom)')
+                  : (isTR ? `${plan.minutes} dk görüşme` : `${plan.minutes} min calls`),
+                assistants: isEnterprise
+                  ? (isTR ? '10+ asistan (özel)' : '10+ assistants (custom)')
+                  : (isTR ? `${plan.assistants} AI asistan` : `${plan.assistants} AI assistant${plan.assistants > 1 ? 's' : ''}`),
+                phoneNumbers: isEnterprise
+                  ? (isTR ? '5+ numara (özel)' : '5+ numbers (custom)')
+                  : (isTR ? `${plan.phoneNumbers} telefon no` : `${plan.phoneNumbers} phone number${plan.phoneNumbers > 1 ? 's' : ''}`),
+                phone: isTR ? 'Telefon AI' : 'Phone AI',
+                whatsapp: isTR ? 'WhatsApp' : 'WhatsApp',
                 chatWidget: isTR ? 'Chat widget' : 'Chat widget',
                 email: isTR ? 'E-posta AI' : 'Email AI',
-                ecommerce: isTR ? 'E-ticaret entegrasyonu' : 'E-commerce integration',
-                calendar: isTR ? 'Takvim entegrasyonu' : 'Calendar integration',
-                batchCalls: isTR ? 'Toplu Arama (Giden)' : 'Batch Calls (Outbound)',
+                ecommerce: isTR ? 'E-ticaret' : 'E-commerce',
+                calendar: isTR ? 'Takvim' : 'Calendar',
+                batchCalls: isTR ? 'Toplu Arama' : 'Batch Calls',
+                analytics: isTR ? 'Analitik' : 'Analytics',
                 prioritySupport: isTR ? 'Öncelikli destek' : 'Priority support',
                 apiAccess: isTR ? 'API erişimi' : 'API access',
                 customTraining: isTR ? 'Özel eğitim' : 'Custom training',
@@ -385,10 +393,19 @@ export default function SubscriptionPage() {
               return labels[key] || key;
             };
 
+            // Get all features with included status
+            const getAllFeatures = () => {
+              return FEATURE_ORDER.map(key => ({
+                key,
+                included: plan.includedFeatures.includes(key),
+                text: getFeatureLabel(key)
+              }));
+            };
+
             return (
               <div
                 key={plan.id}
-                className={`bg-white rounded-xl border-2 p-6 shadow-sm relative flex flex-col min-h-[480px] ${
+                className={`bg-white rounded-xl border-2 p-6 shadow-sm relative flex flex-col ${
                   isCurrentPlan ? 'border-green-500 ring-2 ring-green-200' : 'border-neutral-200'
                 }`}
               >
@@ -413,7 +430,7 @@ export default function SubscriptionPage() {
                   <h3 className="text-xl font-bold text-neutral-900 mb-2">
                     {isTR ? plan.name : plan.nameEN}
                   </h3>
-                  <div className="flex items-baseline justify-center gap-1">
+                  <div className="flex items-baseline justify-center gap-1 h-[40px]">
                     {(isTR ? plan.priceTRY : plan.priceUSD) !== null ? (
                       <>
                         <span className="text-3xl font-bold text-neutral-900">
@@ -426,30 +443,35 @@ export default function SubscriptionPage() {
                       </>
                     ) : (
                       <>
-                        <span className="text-3xl font-bold text-neutral-900">
-                          {isTR ? '₺Özel' : '$Custom'}
+                        <span className="text-2xl font-bold text-neutral-900">
+                          {isTR ? 'Özel' : 'Custom'}
                         </span>
-                        <span className="text-neutral-500">{t('dashboard.subscriptionPage.perMonth')}</span>
                       </>
                     )}
                   </div>
-                  {(isTR ? plan.overageRateTRY : plan.overageRateUSD) ? (
-                    <p className="text-xs text-neutral-500 mt-2">
-                      {t('dashboard.subscriptionPage.overage')}: {isTR ? plan.overageRateTRY : plan.overageRateUSD} {isTR ? '₺' : '$'}{t('dashboard.subscriptionPage.perMinute')}
-                    </p>
-                  ) : plan.id === 'ENTERPRISE' && (
-                    <p className="text-xs text-neutral-500 mt-2">
-                      {isTR ? 'Aşım: Özel fiyatlandırma' : 'Overage: Custom pricing'}
-                    </p>
-                  )}
+                  <div className="h-[20px] mt-2">
+                    {(isTR ? plan.overageRateTRY : plan.overageRateUSD) ? (
+                      <p className="text-xs text-neutral-500">
+                        {t('dashboard.subscriptionPage.overage')}: {isTR ? plan.overageRateTRY : plan.overageRateUSD} {isTR ? '₺' : '$'}{t('dashboard.subscriptionPage.perMinute')}
+                      </p>
+                    ) : plan.id === 'ENTERPRISE' ? (
+                      <p className="text-xs text-neutral-500">
+                        {isTR ? 'Özel fiyatlandırma' : 'Custom pricing'}
+                      </p>
+                    ) : null}
+                  </div>
                 </div>
 
+                {/* Features list - same height for all plans */}
                 <ul className="space-y-2 mb-6 flex-grow">
-                  {plan.includedFeatures.map((featureKey, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm">
-                      <Check className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
-                      <span className="text-neutral-700">
-                        {getFeatureLabel(featureKey)}
+                  {getAllFeatures().map((feature, i) => (
+                    <li
+                      key={i}
+                      className={`flex items-center gap-2 h-[24px] text-sm ${!feature.included ? 'invisible' : ''}`}
+                    >
+                      <Check className="h-4 w-4 text-green-600 flex-shrink-0" />
+                      <span className="text-neutral-700 truncate">
+                        {feature.text}
                       </span>
                     </li>
                   ))}

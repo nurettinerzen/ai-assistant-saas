@@ -15,8 +15,8 @@ export default function PricingPage() {
 
   /**
    * Feature Master List (ordered)
-   * Only show features that are included in each plan
-   * All plans follow the same order
+   * All plans will show features in this exact order
+   * Empty/null for features not included in a plan
    */
   const FEATURE_ORDER = [
     'minutes',
@@ -36,35 +36,7 @@ export default function PricingPage() {
     'slaGuarantee'
   ];
 
-  // Feature labels by key
-  const getFeatureLabel = (key, plan) => {
-    const labels = {
-      minutes: isTR
-        ? `${plan.minutes || '500+'} dakika telefon görüşmesi${plan.id === 'ENTERPRISE' ? ' (özelleştirilebilir)' : ''}`
-        : `${plan.minutes || '500+'} minutes of phone calls${plan.id === 'ENTERPRISE' ? ' (customizable)' : ''}`,
-      assistants: isTR
-        ? `${plan.assistants || '10+'} AI asistan${plan.id === 'ENTERPRISE' ? ' (özelleştirilebilir)' : ''}`
-        : `${plan.assistants || '10+'} AI assistant${(plan.assistants || 10) > 1 ? 's' : ''}${plan.id === 'ENTERPRISE' ? ' (customizable)' : ''}`,
-      phoneNumbers: isTR
-        ? `${plan.phoneNumbers || '5+'} telefon numarası${plan.id === 'ENTERPRISE' ? ' (özelleştirilebilir)' : ''}`
-        : `${plan.phoneNumbers || '5+'} phone number${(plan.phoneNumbers || 5) > 1 ? 's' : ''}${plan.id === 'ENTERPRISE' ? ' (customizable)' : ''}`,
-      phone: isTR ? 'Telefon AI desteği' : 'Phone AI support',
-      whatsapp: isTR ? 'WhatsApp entegrasyonu' : 'WhatsApp integration',
-      chatWidget: isTR ? 'Chat widget' : 'Chat widget',
-      email: isTR ? 'E-posta AI' : 'Email AI',
-      ecommerce: isTR ? 'E-ticaret entegrasyonu' : 'E-commerce integration',
-      calendar: isTR ? 'Takvim entegrasyonu' : 'Calendar integration',
-      batchCalls: isTR ? 'Toplu Arama (Giden)' : 'Batch Calls (Outbound)',
-      analytics: isTR ? 'Temel analitik' : 'Basic analytics',
-      prioritySupport: isTR ? 'Öncelikli destek' : 'Priority support',
-      apiAccess: isTR ? 'API erişimi' : 'API access',
-      customTraining: isTR ? 'Özel eğitim' : 'Custom training',
-      slaGuarantee: isTR ? 'SLA garantisi' : 'SLA guarantee'
-    };
-    return labels[key] || key;
-  };
-
-  // Feature availability per plan (only included features are shown)
+  // Feature availability per plan
   const PLAN_FEATURES = {
     STARTER: ['minutes', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'analytics'],
     BASIC: ['minutes', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'ecommerce', 'analytics'],
@@ -136,15 +108,44 @@ export default function PricingPage() {
     },
   ];
 
-  // Generate features for a plan based on FEATURE_ORDER (only included ones)
-  const getPlanFeatures = (plan) => {
+  // Feature labels by key - shorter versions for Enterprise
+  const getFeatureLabel = (key, plan) => {
+    const isEnterprise = plan.id === 'ENTERPRISE';
+
+    const labels = {
+      minutes: isEnterprise
+        ? (isTR ? '500+ dk (özel)' : '500+ min (custom)')
+        : (isTR ? `${plan.minutes} dk görüşme` : `${plan.minutes} min calls`),
+      assistants: isEnterprise
+        ? (isTR ? '10+ asistan (özel)' : '10+ assistants (custom)')
+        : (isTR ? `${plan.assistants} AI asistan` : `${plan.assistants} AI assistant${plan.assistants > 1 ? 's' : ''}`),
+      phoneNumbers: isEnterprise
+        ? (isTR ? '5+ numara (özel)' : '5+ numbers (custom)')
+        : (isTR ? `${plan.phoneNumbers} telefon no` : `${plan.phoneNumbers} phone number${plan.phoneNumbers > 1 ? 's' : ''}`),
+      phone: isTR ? 'Telefon AI' : 'Phone AI',
+      whatsapp: isTR ? 'WhatsApp' : 'WhatsApp',
+      chatWidget: isTR ? 'Chat widget' : 'Chat widget',
+      email: isTR ? 'E-posta AI' : 'Email AI',
+      ecommerce: isTR ? 'E-ticaret' : 'E-commerce',
+      calendar: isTR ? 'Takvim' : 'Calendar',
+      batchCalls: isTR ? 'Toplu Arama' : 'Batch Calls',
+      analytics: isTR ? 'Analitik' : 'Analytics',
+      prioritySupport: isTR ? 'Öncelikli destek' : 'Priority support',
+      apiAccess: isTR ? 'API erişimi' : 'API access',
+      customTraining: isTR ? 'Özel eğitim' : 'Custom training',
+      slaGuarantee: isTR ? 'SLA garantisi' : 'SLA guarantee'
+    };
+    return labels[key] || key;
+  };
+
+  // Generate ALL features for a plan (with null for not included)
+  const getAllFeatures = (plan) => {
     const includedFeatures = PLAN_FEATURES[plan.id] || [];
-    return FEATURE_ORDER
-      .filter(key => includedFeatures.includes(key))
-      .map(key => ({
-        key,
-        text: getFeatureLabel(key, plan)
-      }));
+    return FEATURE_ORDER.map(key => ({
+      key,
+      included: includedFeatures.includes(key),
+      text: getFeatureLabel(key, plan)
+    }));
   };
 
   return (
@@ -171,14 +172,14 @@ export default function PricingPage() {
       {/* Pricing Cards */}
       <section className="py-12 pb-24">
         <div className="container mx-auto px-4">
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto items-stretch">
             {plans.map((plan) => (
               <div
                 key={plan.id}
-                className={`relative bg-white rounded-2xl p-6 shadow-lg border-2 transition-all duration-300 hover:shadow-xl ${
+                className={`relative bg-white rounded-2xl p-6 shadow-lg border-2 transition-all duration-300 hover:shadow-xl flex flex-col ${
                   plan.popular
-                    ? 'border-primary scale-105 z-10'
-                    : 'border-gray-100 hover:border-primary/30'
+                    ? 'border-primary'
+                    : 'border-gray-100 hover:border-gray-200'
                 }`}
               >
                 {plan.popular && plan.badge && (
@@ -193,10 +194,10 @@ export default function PricingPage() {
                   <h3 className="text-xl font-bold text-gray-900 mb-2">
                     {plan.name}
                   </h3>
-                  <p className="text-gray-600 text-sm mb-4 min-h-[40px]">
+                  <p className="text-gray-600 text-sm mb-4 h-[40px]">
                     {plan.description}
                   </p>
-                  <div className="flex items-baseline justify-center">
+                  <div className="flex items-baseline justify-center h-[40px]">
                     {plan.price !== null ? (
                       <>
                         <span className="text-3xl font-bold text-gray-900">
@@ -211,39 +212,52 @@ export default function PricingPage() {
                       </span>
                     )}
                   </div>
-                  {plan.overageRate && (
-                    <p className="text-xs text-gray-500 mt-2">
-                      {isTR ? `Aşım: ${plan.overageRate} ₺/dk` : `Overage: ${plan.overageRate} ₺/min`}
-                    </p>
-                  )}
+                  <div className="h-[20px] mt-2">
+                    {plan.overageRate ? (
+                      <p className="text-xs text-gray-500">
+                        {isTR ? `Aşım: ${plan.overageRate} ₺/dk` : `Overage: ${plan.overageRate} ₺/min`}
+                      </p>
+                    ) : plan.id === 'ENTERPRISE' ? (
+                      <p className="text-xs text-gray-500">
+                        {isTR ? 'Özel fiyatlandırma' : 'Custom pricing'}
+                      </p>
+                    ) : null}
+                  </div>
                 </div>
 
-                <ul className="space-y-3 mb-6">
-                  {getPlanFeatures(plan).map((feature, idx) => (
-                    <li key={idx} className="flex items-start gap-2">
-                      <Check className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
-                      <span className="text-sm text-gray-700">
+                {/* Features list - same height for all plans */}
+                <ul className="space-y-2 mb-6 flex-grow">
+                  {getAllFeatures(plan).map((feature, idx) => (
+                    <li
+                      key={idx}
+                      className={`flex items-center gap-2 h-[24px] ${!feature.included ? 'invisible' : ''}`}
+                    >
+                      <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
+                      <span className="text-sm text-gray-700 truncate">
                         {feature.text}
                       </span>
                     </li>
                   ))}
                 </ul>
 
-                <Link href={plan.id === 'ENTERPRISE' ? '/contact' : '/waitlist'} className="block">
-                  <Button
-                    className={`w-full ${
-                      plan.popular
-                        ? 'bg-gradient-to-r from-indigo-600 to-blue-500 hover:from-indigo-700 hover:to-blue-600'
-                        : ''
-                    }`}
-                    variant={plan.popular ? 'default' : 'outline'}
-                    size="lg"
-                  >
-                    {plan.id === 'ENTERPRISE'
-                      ? (isTR ? 'Bize Ulaşın' : 'Contact Us')
-                      : (isTR ? 'Hemen Başla' : 'Get Started')}
-                  </Button>
-                </Link>
+                {/* Button always at bottom */}
+                <div className="mt-auto">
+                  <Link href={plan.id === 'ENTERPRISE' ? '/contact' : '/waitlist'} className="block">
+                    <Button
+                      className={`w-full ${
+                        plan.popular
+                          ? 'bg-gradient-to-r from-indigo-600 to-blue-500 hover:from-indigo-700 hover:to-blue-600'
+                          : ''
+                      }`}
+                      variant={plan.popular ? 'default' : 'outline'}
+                      size="lg"
+                    >
+                      {plan.id === 'ENTERPRISE'
+                        ? (isTR ? 'Bize Ulaşın' : 'Contact Us')
+                        : (isTR ? 'Hemen Başla' : 'Get Started')}
+                    </Button>
+                  </Link>
+                </div>
               </div>
             ))}
           </div>
