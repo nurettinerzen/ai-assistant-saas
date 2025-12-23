@@ -85,97 +85,75 @@ const CALL_PURPOSES = {
   }
 };
 
-// Default first messages based on call purpose
+// Default first messages based on call purpose (simple, natural greeting)
 const DEFAULT_FIRST_MESSAGES = {
   collection: {
-    tr: (businessName, assistantName) => `Merhaba! Ben ${assistantName || 'Asistan'}, ${businessName || '[Şirket Adı]'} şirketinden arıyorum. {{customer_name}} ile görüşüyor muyum?`,
-    en: (businessName, assistantName) => `Hello! I'm ${assistantName || 'Assistant'} calling from ${businessName || '[Company Name]'}. Am I speaking with {{customer_name}}?`
+    tr: (businessName, assistantName) => `Merhaba, ben ${assistantName || 'asistan'}, ${businessName || 'şirketimiz'} adına arıyorum.`,
+    en: (businessName, assistantName) => `Hello, I'm ${assistantName || 'an assistant'} calling on behalf of ${businessName || 'our company'}.`
   },
   reminder: {
-    tr: (businessName, assistantName) => `Merhaba {{customer_name}}, ben ${assistantName || 'Asistan'}, ${businessName || '[Şirket Adı]'} şirketinden arıyorum.`,
-    en: (businessName, assistantName) => `Hello {{customer_name}}, I'm ${assistantName || 'Assistant'} calling from ${businessName || '[Company Name]'}.`
+    tr: (businessName, assistantName) => `Merhaba, ben ${assistantName || 'asistan'}, ${businessName || 'şirketimiz'} adına arıyorum.`,
+    en: (businessName, assistantName) => `Hello, I'm ${assistantName || 'an assistant'} calling on behalf of ${businessName || 'our company'}.`
   },
   order_update: {
-    tr: (businessName, assistantName) => `Merhaba {{customer_name}}, ben ${assistantName || 'Asistan'}, ${businessName || '[Şirket Adı]'} şirketinden arıyorum.`,
-    en: (businessName, assistantName) => `Hello {{customer_name}}, I'm ${assistantName || 'Assistant'} calling from ${businessName || '[Company Name]'}.`
+    tr: (businessName, assistantName) => `Merhaba, ben ${assistantName || 'asistan'}, ${businessName || 'şirketimiz'} adına arıyorum.`,
+    en: (businessName, assistantName) => `Hello, I'm ${assistantName || 'an assistant'} calling on behalf of ${businessName || 'our company'}.`
   },
   survey: {
-    tr: (businessName, assistantName) => `Merhaba {{customer_name}}, ben ${assistantName || 'Asistan'}, ${businessName || '[Şirket Adı]'} şirketinden arıyorum.`,
-    en: (businessName, assistantName) => `Hello {{customer_name}}, I'm ${assistantName || 'Assistant'} calling from ${businessName || '[Company Name]'}.`
+    tr: (businessName, assistantName) => `Merhaba, ben ${assistantName || 'asistan'}, ${businessName || 'şirketimiz'} adına arıyorum.`,
+    en: (businessName, assistantName) => `Hello, I'm ${assistantName || 'an assistant'} calling on behalf of ${businessName || 'our company'}.`
   },
   info: {
-    tr: (businessName, assistantName) => `Merhaba {{customer_name}}, ben ${assistantName || 'Asistan'}, ${businessName || '[Şirket Adı]'} şirketinden arıyorum.`,
-    en: (businessName, assistantName) => `Hello {{customer_name}}, I'm ${assistantName || 'Assistant'} calling from ${businessName || '[Company Name]'}.`
+    tr: (businessName, assistantName) => `Merhaba, ben ${assistantName || 'asistan'}, ${businessName || 'şirketimiz'} adına arıyorum.`,
+    en: (businessName, assistantName) => `Hello, I'm ${assistantName || 'an assistant'} calling on behalf of ${businessName || 'our company'}.`
   },
   custom: {
-    tr: (businessName, assistantName) => `Merhaba {{customer_name}}, ben ${assistantName || 'Asistan'}, ${businessName || '[Şirket Adı]'} şirketinden arıyorum.`,
-    en: (businessName, assistantName) => `Hello {{customer_name}}, I'm ${assistantName || 'Assistant'} calling from ${businessName || '[Company Name]'}.`
+    tr: (businessName, assistantName) => `Merhaba, ben ${assistantName || 'asistan'}, ${businessName || 'şirketimiz'} adına arıyorum.`,
+    en: (businessName, assistantName) => `Hello, I'm ${assistantName || 'an assistant'} calling on behalf of ${businessName || 'our company'}.`
   },
   reservation: {
-    tr: (businessName, assistantName) => `Merhaba {{customer_name}}, ben ${assistantName || 'Asistan'}, ${businessName || '[Şirket Adı]'} şirketinden arıyorum.`,
-    en: (businessName, assistantName) => `Hello {{customer_name}}, I'm ${assistantName || 'Assistant'} calling from ${businessName || '[Company Name]'}.`
+    tr: (businessName, assistantName) => `Merhaba, ben ${assistantName || 'asistan'}, ${businessName || 'şirketimiz'} adına arıyorum.`,
+    en: (businessName, assistantName) => `Hello, I'm ${assistantName || 'an assistant'} calling on behalf of ${businessName || 'our company'}.`
   },
   shipping: {
-    tr: (businessName, assistantName) => `Merhaba {{customer_name}}, ben ${assistantName || 'Asistan'}, ${businessName || '[Şirket Adı]'} şirketinden arıyorum.`,
-    en: (businessName, assistantName) => `Hello {{customer_name}}, I'm ${assistantName || 'Assistant'} calling from ${businessName || '[Company Name]'}.`
+    tr: (businessName, assistantName) => `Merhaba, ben ${assistantName || 'asistan'}, ${businessName || 'şirketimiz'} adına arıyorum.`,
+    en: (businessName, assistantName) => `Hello, I'm ${assistantName || 'an assistant'} calling on behalf of ${businessName || 'our company'}.`
   }
 };
 
-// Default system prompts based on call purpose
+// Default system prompts based on call purpose (simple instructions)
 const DEFAULT_SYSTEM_PROMPTS = {
   collection: {
-    tr: `Sen bir tahsilat asistanısın. Müşteriyle nazik ama kararlı bir şekilde konuş.
-Vadesi geçmiş borç tutarı: {{debt_amount}} {{currency}}
-Vade tarihi: {{due_date}}
-Amacın ödeme tarihi almak veya ödeme planı oluşturmak.`,
-    en: `You are a collection assistant. Speak politely but firmly with the customer.
-Overdue amount: {{debt_amount}} {{currency}}
-Due date: {{due_date}}
-Your goal is to get a payment date or create a payment plan.`
+    tr: `Borç hatırlatma araması yap. Kibar ol. Ödeme ne zaman yapılacak diye sor.`,
+    en: `Make a debt reminder call. Be polite. Ask when the payment will be made.`
   },
   reminder: {
-    tr: `Sen bir randevu hatırlatma asistanısın. Müşteriyi randevusu hakkında bilgilendir.
-Randevu tarihi: {{appointment_date}}
-Randevuyu onaylamasını veya değiştirmek isteyip istemediğini sor.`,
-    en: `You are an appointment reminder assistant. Inform the customer about their appointment.
-Appointment date: {{appointment_date}}
-Ask if they confirm or want to reschedule.`
+    tr: `Randevu hatırlatma araması yap. Randevuyu onayla veya iptal et.`,
+    en: `Make an appointment reminder call. Confirm or cancel the appointment.`
   },
   order_update: {
-    tr: `Sen bir sipariş durumu asistanısın. Müşteriye siparişi hakkında bilgi ver.
-Sipariş numarası: {{custom_1}}
-Soruları yanıtla ve yardımcı ol.`,
-    en: `You are an order status assistant. Give the customer information about their order.
-Order number: {{custom_1}}
-Answer questions and be helpful.`
+    tr: `Sipariş durumu hakkında bilgi ver. Soruları yanıtla.`,
+    en: `Give information about order status. Answer questions.`
   },
   survey: {
-    tr: `Sen bir müşteri memnuniyeti anketi asistanısın. Kısa ve öz sorular sor.
-Müşterinin zamanına saygı göster ve teşekkür et.`,
-    en: `You are a customer satisfaction survey assistant. Ask short and concise questions.
-Respect the customer's time and thank them.`
+    tr: `Kısa bir memnuniyet anketi yap. Müşterinin zamanına saygı göster.`,
+    en: `Conduct a short satisfaction survey. Respect the customer's time.`
   },
   info: {
-    tr: `Sen bir bilgilendirme asistanısın. Müşteriye önemli bilgileri aktar.
-Net ve anlaşılır konuş.`,
-    en: `You are an information assistant. Convey important information to the customer.
-Speak clearly and understandably.`
+    tr: `Önemli bilgileri aktar. Net ve kısa konuş.`,
+    en: `Convey important information. Speak clearly and briefly.`
   },
   custom: {
-    tr: `Sen bir telefon asistanısın. Müşteriyle profesyonel ve yardımsever bir şekilde konuş.`,
-    en: `You are a phone assistant. Speak professionally and helpfully with the customer.`
+    tr: `Kibar ve profesyonel ol.`,
+    en: `Be polite and professional.`
   },
   reservation: {
-    tr: `Sen bir rezervasyon onay asistanısın. Müşterinin rezervasyonunu onayla veya güncelle.
-Rezervasyon tarihi: {{appointment_date}}`,
-    en: `You are a reservation confirmation assistant. Confirm or update the customer's reservation.
-Reservation date: {{appointment_date}}`
+    tr: `Rezervasyonu onayla veya güncelle.`,
+    en: `Confirm or update the reservation.`
   },
   shipping: {
-    tr: `Sen bir kargo takip asistanısın. Müşteriye kargo durumu hakkında bilgi ver.
-Sorularını yanıtla.`,
-    en: `You are a shipping tracking assistant. Give the customer information about shipping status.
-Answer their questions.`
+    tr: `Kargo durumu hakkında bilgi ver.`,
+    en: `Give information about shipping status.`
   }
 };
 
@@ -364,16 +342,10 @@ export default function AssistantsPage() {
       return;
     }
 
-    // For outbound, firstMessage and systemPrompt are required
-    if (formData.callDirection === 'outbound') {
-      if (!formData.firstMessage) {
-        toast.error(locale === 'tr' ? 'İlk mesaj gerekli' : 'First message is required');
-        return;
-      }
-      if (!formData.systemPrompt) {
-        toast.error(locale === 'tr' ? 'Sistem talimatları gerekli' : 'System instructions are required');
-        return;
-      }
+    // For outbound, firstMessage is auto-generated so just check if it exists
+    if (formData.callDirection === 'outbound' && !formData.firstMessage) {
+      toast.error(locale === 'tr' ? 'Lütfen asistan adı girin' : 'Please enter assistant name');
+      return;
     }
 
     try {
@@ -816,27 +788,19 @@ export default function AssistantsPage() {
               </Select>
             </div>
 
-            {/* First Message - only for outbound calls */}
+            {/* First Message - only for outbound calls (read-only, auto-generated) */}
             {formData.callDirection === 'outbound' && (
               <div>
                 <Label htmlFor="firstMessage">
-                  {locale === 'tr' ? 'İlk Mesaj (Karşılama) *' : 'First Message (Greeting) *'}
+                  {locale === 'tr' ? 'İlk Mesaj (Karşılama)' : 'First Message (Greeting)'}
                 </Label>
-                <Textarea
-                  id="firstMessage"
-                  rows={3}
-                  value={formData.firstMessage}
-                  onChange={(e) => setFormData({ ...formData, firstMessage: e.target.value })}
-                  placeholder={
-                    locale === 'tr'
-                      ? 'Asistanın aramayı başlatırken söyleyeceği ilk cümle...'
-                      : 'The first sentence the assistant will say when starting the call...'
-                  }
-                />
+                <div className="p-3 bg-neutral-50 border border-neutral-200 rounded-md text-sm text-neutral-700">
+                  {formData.firstMessage || (locale === 'tr' ? 'Asistan adı girilince otomatik oluşturulacak' : 'Will be auto-generated when assistant name is entered')}
+                </div>
                 <p className="text-xs text-neutral-500 mt-1">
                   {locale === 'tr'
-                    ? 'Asistan aramayı bu mesajla başlatır. Değişkenler: {{customer_name}}'
-                    : 'The assistant starts the call with this message. Variables: {{customer_name}}'
+                    ? 'Bu mesaj asistan ve işletme adına göre otomatik oluşturulur.'
+                    : 'This message is auto-generated based on assistant and business name.'
                   }
                 </p>
               </div>
@@ -846,30 +810,30 @@ export default function AssistantsPage() {
             <div>
               <Label htmlFor="prompt">
                 {formData.callDirection === 'outbound'
-                  ? (locale === 'tr' ? 'Sistem Talimatları *' : 'System Instructions *')
+                  ? (locale === 'tr' ? 'Talimatlar' : 'Instructions')
                   : (locale === 'tr' ? 'Ek Talimatlar (Opsiyonel)' : 'Additional Instructions (Optional)')
                 }
               </Label>
               <Textarea
                 id="prompt"
-                rows={formData.callDirection === 'outbound' ? 5 : 4}
+                rows={formData.callDirection === 'outbound' ? 3 : 4}
                 value={formData.systemPrompt}
                 onChange={(e) => setFormData({ ...formData, systemPrompt: e.target.value })}
                 placeholder={
                   formData.callDirection === 'outbound'
                     ? (locale === 'tr'
-                        ? 'Asistanın görevi ve nasıl davranması gerektiği...'
-                        : 'The assistant\'s task and how it should behave...')
+                        ? 'örn: Kibar ol, ödeme tarihini sor...'
+                        : 'e.g., Be polite, ask for payment date...')
                     : (locale === 'tr'
-                        ? 'Asistanın davranışı için ek talimatlar... (Temel kurallar otomatik eklenir)'
-                        : 'Additional instructions for assistant behavior... (Base rules are added automatically)')
+                        ? 'Asistanın davranışı için ek talimatlar...'
+                        : 'Additional instructions for assistant behavior...')
                 }
               />
               {formData.callDirection === 'outbound' && (
                 <p className="text-xs text-neutral-500 mt-1">
                   {locale === 'tr'
-                    ? 'Değişkenler: {{customer_name}}, {{debt_amount}}, {{due_date}}, {{appointment_date}}, {{currency}}'
-                    : 'Variables: {{customer_name}}, {{debt_amount}}, {{due_date}}, {{appointment_date}}, {{currency}}'}
+                    ? 'Asistanın nasıl davranması gerektiğini kısa ve öz yazın.'
+                    : 'Write briefly how the assistant should behave.'}
                 </p>
               )}
             </div>

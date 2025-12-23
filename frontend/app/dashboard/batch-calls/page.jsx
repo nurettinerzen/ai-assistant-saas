@@ -72,15 +72,12 @@ const STATUS_CONFIG = {
   }
 };
 
-// Dynamic variable labels
+// Dynamic variable labels (simplified - only essential fields)
 const VARIABLE_LABELS = {
-  customer_name: { tr: 'Müşteri Adı', en: 'Customer Name' },
   debt_amount: { tr: 'Borç Tutarı', en: 'Debt Amount' },
   currency: { tr: 'Para Birimi', en: 'Currency' },
   due_date: { tr: 'Vade Tarihi', en: 'Due Date' },
-  appointment_date: { tr: 'Randevu Tarihi', en: 'Appointment Date' },
-  custom_1: { tr: 'Özel 1', en: 'Custom 1' },
-  custom_2: { tr: 'Özel 2', en: 'Custom 2' }
+  appointment_date: { tr: 'Randevu Tarihi', en: 'Appointment Date' }
 };
 
 export default function BatchCallsPage() {

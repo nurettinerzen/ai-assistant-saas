@@ -136,27 +136,21 @@ router.get('/template', async (req, res) => {
     const sampleData = [
       {
         'Telefon': '+905321234567',
-        'Müşteri Adı': 'Ahmet Yılmaz',
         'Borç Tutarı': '1500',
         'Para Birimi': 'TL',
-        'Vade Tarihi': '15/01/2024',
-        'Fatura No': 'FTR-001'
+        'Vade Tarihi': '15/01/2024'
       },
       {
         'Telefon': '+905331234568',
-        'Müşteri Adı': 'Mehmet Demir',
         'Borç Tutarı': '2300',
         'Para Birimi': 'TL',
-        'Vade Tarihi': '20/01/2024',
-        'Fatura No': 'FTR-002'
+        'Vade Tarihi': '20/01/2024'
       },
       {
         'Telefon': '+905341234569',
-        'Müşteri Adı': 'Ayşe Kaya',
         'Borç Tutarı': '800',
         'Para Birimi': 'USD',
-        'Vade Tarihi': '25/01/2024',
-        'Fatura No': 'FTR-003'
+        'Vade Tarihi': '25/01/2024'
       }
     ];
 
@@ -167,11 +161,9 @@ router.get('/template', async (req, res) => {
     // Set column widths
     worksheet['!cols'] = [
       { wch: 15 }, // Telefon
-      { wch: 20 }, // Müşteri Adı
       { wch: 12 }, // Borç Tutarı
       { wch: 12 }, // Para Birimi
       { wch: 12 }, // Vade Tarihi
-      { wch: 12 }, // Fatura No
     ];
 
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Toplu Arama');
