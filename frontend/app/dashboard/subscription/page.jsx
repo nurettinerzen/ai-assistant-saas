@@ -59,27 +59,34 @@ const REGIONAL_PRICING = {
 // Note: Region is determined by business.country, NOT by UI language
 // Language (locale) only affects UI text, not pricing
 
+// Map locale to UI language key (for text translations)
+const LOCALE_TO_LANG = {
+  tr: 'TR',
+  en: 'EN',
+  pr: 'PR'
+};
+
 // Base plan configurations - features are same across regions
 const BASE_PLANS = [
   {
     id: 'STARTER',
-    name: { TR: 'Başlangıç', BR: 'Inicial', US: 'Starter' },
+    name: { TR: 'Başlangıç', EN: 'Starter', PR: 'Inicial' },
     includedFeatures: ['minutes', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'analytics'],
   },
   {
     id: 'BASIC',
-    name: { TR: 'Temel', BR: 'Básico', US: 'Basic' },
+    name: { TR: 'Temel', EN: 'Basic', PR: 'Básico' },
     popular: true,
     includedFeatures: ['minutes', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'analytics', 'ecommerce'],
   },
   {
     id: 'PROFESSIONAL',
-    name: { TR: 'Pro', BR: 'Profissional', US: 'Professional' },
+    name: { TR: 'Pro', EN: 'Professional', PR: 'Profissional' },
     includedFeatures: ['minutes', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'analytics', 'ecommerce', 'calendar', 'batchCalls', 'email', 'prioritySupport', 'apiAccess'],
   },
   {
     id: 'ENTERPRISE',
-    name: { TR: 'Kurumsal', BR: 'Empresarial', US: 'Enterprise' },
+    name: { TR: 'Kurumsal', EN: 'Enterprise', PR: 'Empresarial' },
     includedFeatures: ['minutes', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'analytics', 'ecommerce', 'calendar', 'batchCalls', 'email', 'prioritySupport', 'apiAccess', 'customTraining', 'slaGuarantee'],
   },
 ];
@@ -120,7 +127,8 @@ export default function SubscriptionPage() {
     return 'US'; // Default fallback
   };
 
-  const region = getRegion();
+  const region = getRegion(); // For pricing (based on country)
+  const uiLang = LOCALE_TO_LANG[locale] || 'EN'; // For UI text (based on language)
   const regionConfig = REGIONAL_PRICING[region] || REGIONAL_PRICING.US;
 
   // Format currency based on region
@@ -137,9 +145,9 @@ export default function SubscriptionPage() {
     return regionConfig.plans[planId] || null;
   };
 
-  // Get plan name for current region
+  // Get plan name based on UI language (not region)
   const getPlanName = (plan) => {
-    return plan.name[region] || plan.name.US;
+    return plan.name[uiLang] || plan.name.EN;
   };
 
   // Handle iyzico checkout form rendering
@@ -351,7 +359,7 @@ export default function SubscriptionPage() {
       {/* Pricing plans */}
       <div>
         <h2 className="text-2xl font-bold text-neutral-900 mb-6">
-          {region === 'TR' ? 'Planlar' : region === 'BR' ? 'Planos' : 'Plans'}
+          {uiLang === 'TR' ? 'Planlar' : uiLang === 'PR' ? 'Planos' : 'Plans'}
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
           {BASE_PLANS.map((plan) => {
@@ -367,19 +375,19 @@ export default function SubscriptionPage() {
             const isUpgrade = thisPlanIndex > currentPlanIndex;
             const isDowngrade = thisPlanIndex < currentPlanIndex;
 
-            // Button text based on plan comparison and region
+            // Button text based on plan comparison and UI language
             const getButtonText = () => {
               const texts = {
                 TR: { contact: 'Bize Ulaşın', current: 'Mevcut Plan', upgrade: 'Yükselt', downgrade: 'Düşür', select: 'Seç' },
-                BR: { contact: 'Fale Conosco', current: 'Plano Atual', upgrade: 'Atualizar', downgrade: 'Rebaixar', select: 'Selecionar' },
-                US: { contact: 'Contact Us', current: 'Current Plan', upgrade: 'Upgrade', downgrade: 'Downgrade', select: 'Select' }
+                EN: { contact: 'Contact Us', current: 'Current Plan', upgrade: 'Upgrade', downgrade: 'Downgrade', select: 'Select' },
+                PR: { contact: 'Fale Conosco', current: 'Plano Atual', upgrade: 'Atualizar', downgrade: 'Rebaixar', select: 'Selecionar' }
               };
-              const t = texts[region] || texts.US;
-              if (plan.id === 'ENTERPRISE') return t.contact;
-              if (isCurrentPlan) return t.current;
-              if (isUpgrade) return t.upgrade;
-              if (isDowngrade) return t.downgrade;
-              return t.select;
+              const txt = texts[uiLang] || texts.EN;
+              if (plan.id === 'ENTERPRISE') return txt.contact;
+              if (isCurrentPlan) return txt.current;
+              if (isUpgrade) return txt.upgrade;
+              if (isDowngrade) return txt.downgrade;
+              return txt.select;
             };
 
             // Feature order - all plans show features in this exact order (no gaps)
@@ -390,12 +398,11 @@ export default function SubscriptionPage() {
               'prioritySupport', 'apiAccess', 'customTraining', 'slaGuarantee'
             ];
 
-            // Feature labels - region-aware
+            // Feature labels - based on UI language (locale), not region
             const getFeatureLabel = (key) => {
               const isEnterprise = plan.id === 'ENTERPRISE';
-              const isBrazil = region === 'BR';
 
-              // Region-specific label maps
+              // UI language-based label maps
               const labelMaps = {
                 TR: {
                   minutes: isEnterprise ? '500+ dk (özel)' : `${planPricing?.minutes || 0} dk görüşme`,
@@ -415,25 +422,7 @@ export default function SubscriptionPage() {
                   customTraining: 'Özel eğitim',
                   slaGuarantee: 'SLA garantisi',
                 },
-                BR: {
-                  minutes: isEnterprise ? '1000+ min (personalizado)' : `${planPricing?.minutes || 0} min de chamadas`,
-                  assistants: isEnterprise ? '10+ assistentes (personalizado)' : `${planPricing?.assistants || 0} assistente${(planPricing?.assistants || 0) > 1 ? 's' : ''} IA`,
-                  phoneNumbers: isEnterprise ? '5+ números (personalizado)' :
-                    planPricing?.phoneNumbers > 0 ? `${planPricing.phoneNumbers} número${planPricing.phoneNumbers > 1 ? 's' : ''}` : 'Traga seu próprio número',
-                  phone: 'WhatsApp Calling',
-                  whatsapp: 'WhatsApp',
-                  chatWidget: 'Chat widget',
-                  email: 'Email IA',
-                  ecommerce: 'E-commerce',
-                  calendar: 'Calendário',
-                  batchCalls: 'Chamadas em Lote',
-                  analytics: 'Analytics',
-                  prioritySupport: 'Suporte prioritário',
-                  apiAccess: 'Acesso API',
-                  customTraining: 'Treinamento personalizado',
-                  slaGuarantee: 'Garantia SLA',
-                },
-                US: {
+                EN: {
                   minutes: isEnterprise ? '1000+ min (custom)' : `${planPricing?.minutes || 0} min calls`,
                   assistants: isEnterprise ? '10+ assistants (custom)' : `${planPricing?.assistants || 0} AI assistant${(planPricing?.assistants || 0) > 1 ? 's' : ''}`,
                   phoneNumbers: isEnterprise ? '5+ numbers (custom)' :
@@ -450,10 +439,28 @@ export default function SubscriptionPage() {
                   apiAccess: 'API access',
                   customTraining: 'Custom training',
                   slaGuarantee: 'SLA guarantee',
+                },
+                PR: {
+                  minutes: isEnterprise ? '1000+ min (personalizado)' : `${planPricing?.minutes || 0} min de chamadas`,
+                  assistants: isEnterprise ? '10+ assistentes (personalizado)' : `${planPricing?.assistants || 0} assistente${(planPricing?.assistants || 0) > 1 ? 's' : ''} IA`,
+                  phoneNumbers: isEnterprise ? '5+ números (personalizado)' :
+                    planPricing?.phoneNumbers > 0 ? `${planPricing.phoneNumbers} número${planPricing.phoneNumbers > 1 ? 's' : ''}` : 'Traga seu próprio número',
+                  phone: 'Telefone IA',
+                  whatsapp: 'WhatsApp',
+                  chatWidget: 'Chat widget',
+                  email: 'Email IA',
+                  ecommerce: 'E-commerce',
+                  calendar: 'Calendário',
+                  batchCalls: 'Chamadas em Lote',
+                  analytics: 'Analytics',
+                  prioritySupport: 'Suporte prioritário',
+                  apiAccess: 'Acesso API',
+                  customTraining: 'Treinamento personalizado',
+                  slaGuarantee: 'Garantia SLA',
                 }
               };
 
-              return labelMaps[region]?.[key] || labelMaps.US[key] || key;
+              return labelMaps[uiLang]?.[key] || labelMaps.EN[key] || key;
             };
 
             // Get only included features (no gaps, maintains order)
@@ -505,7 +512,7 @@ export default function SubscriptionPage() {
                     ) : (
                       <>
                         <span className="text-2xl font-bold text-neutral-900">
-                          {region === 'TR' ? 'Özel' : region === 'BR' ? 'Personalizado' : 'Custom'}
+                          {uiLang === 'TR' ? 'Özel' : uiLang === 'PR' ? 'Personalizado' : 'Custom'}
                         </span>
                       </>
                     )}
@@ -517,7 +524,7 @@ export default function SubscriptionPage() {
                       </p>
                     ) : plan.id === 'ENTERPRISE' ? (
                       <p className="text-xs text-neutral-500">
-                        {region === 'TR' ? 'Özel fiyatlandırma' : region === 'BR' ? 'Preço personalizado' : 'Custom pricing'}
+                        {uiLang === 'TR' ? 'Özel fiyatlandırma' : uiLang === 'PR' ? 'Preço personalizado' : 'Custom pricing'}
                       </p>
                     ) : null}
                   </div>
@@ -563,7 +570,7 @@ export default function SubscriptionPage() {
                     {upgrading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        {region === 'TR' ? 'İşleniyor...' : region === 'BR' ? 'Processando...' : 'Processing...'}
+                        {uiLang === 'TR' ? 'İşleniyor...' : uiLang === 'PR' ? 'Processando...' : 'Processing...'}
                       </>
                     ) : (
                       getButtonText()
