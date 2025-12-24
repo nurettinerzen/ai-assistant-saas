@@ -48,19 +48,21 @@ router.get('/', async (req, res) => {
 ============================================================ */
 router.get('/available', async (req, res) => {
   try {
-    // Get business type
+    // Get business type and country
     const business = await prisma.business.findUnique({
       where: { id: req.businessId },
       select: {
         businessType: true,
+        country: true,
         whatsappPhoneNumberId: true
       }
     });
 
     const businessType = business?.businessType || 'OTHER';
+    const country = business?.country || 'TR'; // Default to TR for existing businesses
 
-    // Get filtered integrations based on business type
-    const availableIntegrations = getFilteredIntegrations(businessType);
+    // Get filtered integrations based on business type AND country/region
+    const availableIntegrations = getFilteredIntegrations(businessType, country);
 
     // Get connected integrations from database
     const connectedIntegrations = await prisma.integration.findMany({

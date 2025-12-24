@@ -56,13 +56,8 @@ const REGIONAL_PRICING = {
   }
 };
 
-// Map locale to region
-const LOCALE_TO_REGION = {
-  tr: 'TR',
-  pr: 'BR',
-  pt: 'BR',
-  en: 'US'
-};
+// Note: Region is determined by business.country, NOT by UI language
+// Language (locale) only affects UI text, not pricing
 
 // Base plan configurations - features are same across regions
 const BASE_PLANS = [
@@ -116,15 +111,13 @@ export default function SubscriptionPage() {
     return 'US';
   });
 
-  // Determine region from locale or country
+  // Determine region from business country (NOT from UI language)
   const getRegion = () => {
-    // First check locale mapping
-    const localeRegion = LOCALE_TO_REGION[locale];
-    if (localeRegion) return localeRegion;
-    // Then check country
+    // Region is based on business.country, not locale
     if (userCountry === 'TR' || userCountry === 'Turkey') return 'TR';
     if (userCountry === 'BR' || userCountry === 'Brazil') return 'BR';
-    return 'US';
+    if (userCountry === 'US' || userCountry === 'United States') return 'US';
+    return 'US'; // Default fallback
   };
 
   const region = getRegion();
