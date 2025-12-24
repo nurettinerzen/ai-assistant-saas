@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -11,24 +11,19 @@ import {
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Globe } from 'lucide-react';
 
-// Currently only Turkish is supported
-// Other languages can be enabled later by adding them here
+// Supported languages
 const languages = [
   { code: 'tr', name: 'Turkish', nativeName: 'Türkçe', flag: '🇹🇷' },
-  // Future languages (commented out for now):
-  // { code: 'en', name: 'English', nativeName: 'English', flag: '🇬🇧' },
+  { code: 'en', name: 'English', nativeName: 'English', flag: '🇬🇧' },
+  { code: 'pr', name: 'Portuguese (BR)', nativeName: 'Português (BR)', flag: '🇧🇷' },
+  { code: 'de', name: 'German', nativeName: 'Deutsch', flag: '🇩🇪' },
+  { code: 'es', name: 'Spanish', nativeName: 'Español', flag: '🇪🇸' },
+  { code: 'fr', name: 'French', nativeName: 'Français', flag: '🇫🇷' },
 ];
 
 export default function LanguageSwitcher() {
   const { locale, changeLocale } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
-
-  // Set default to Turkish if not already set
-  useEffect(() => {
-    if (locale !== 'tr') {
-      changeLocale('tr');
-    }
-  }, []);
 
   const handleChangeLocale = (newLocale) => {
     changeLocale(newLocale);
