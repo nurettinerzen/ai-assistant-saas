@@ -52,10 +52,10 @@ export const SUPPORTED_COUNTRIES = {
     timezone: 'America/Sao_Paulo',
     phonePrefix: '+55',
     flag: '🇧🇷',
-    // WhatsApp Calling is primary in Brazil due to Anatel regulations
-    primaryVoiceChannel: 'whatsapp_calling',
-    // Phone is BYOC only in Brazil (user must bring their own carrier)
-    channels: ['whatsapp_calling', 'whatsapp_messaging', 'chat_widget', 'email'],
+    // Phone is primary voice channel (same as other regions)
+    primaryVoiceChannel: 'phone',
+    // Available channels in Brazil
+    channels: ['phone', 'whatsapp_messaging', 'chat_widget', 'email'],
     // Pix and Boleto are essential for Brazil
     paymentMethods: ['card', 'pix', 'boleto'],
     dateFormat: 'DD/MM/YYYY',
