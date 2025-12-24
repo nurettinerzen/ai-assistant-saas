@@ -11,14 +11,11 @@ import {
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Globe } from 'lucide-react';
 
-// Supported languages
+// Supported languages (UI language only - does not affect region/pricing)
 const languages = [
   { code: 'tr', name: 'Turkish', nativeName: 'Türkçe', flag: '🇹🇷' },
   { code: 'en', name: 'English', nativeName: 'English', flag: '🇬🇧' },
   { code: 'pr', name: 'Portuguese (BR)', nativeName: 'Português (BR)', flag: '🇧🇷' },
-  { code: 'de', name: 'German', nativeName: 'Deutsch', flag: '🇩🇪' },
-  { code: 'es', name: 'Spanish', nativeName: 'Español', flag: '🇪🇸' },
-  { code: 'fr', name: 'French', nativeName: 'Français', flag: '🇫🇷' },
 ];
 
 export default function LanguageSwitcher() {
