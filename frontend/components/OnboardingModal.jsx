@@ -35,15 +35,30 @@ export function OnboardingModal({ open, onClose }) {
   const [createdAssistantId, setCreatedAssistantId] = useState(null);
   const [availableVoices, setAvailableVoices] = useState([]);
   const [voicesLoading, setVoicesLoading] = useState(false);
+
+  // Map locale to our language codes
+  const getLanguageFromLocale = (loc) => {
+    const mapping = { tr: 'TR', en: 'EN', pr: 'PR' };
+    return mapping[loc] || 'TR';
+  };
+
   const [data, setData] = useState({
     industry: '',
-    language: locale?.toUpperCase() || 'TR',
+    language: 'TR', // Will be updated from locale in useEffect
     country: 'TR',
     voice: null,
     firstMessage: '',
     systemPrompt: '',
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
   });
+
+  // Update language when locale changes (handles SSR -> client hydration)
+  useEffect(() => {
+    if (locale) {
+      const lang = getLanguageFromLocale(locale);
+      setData(prev => ({ ...prev, language: lang }));
+    }
+  }, [locale]);
 
   useEffect(() => {
     const fetchVoices = async () => {
@@ -53,7 +68,7 @@ export function OnboardingModal({ open, onClose }) {
         'EN': 'en',
         'PR': 'pt' // Brazilian Portuguese uses 'pt' key in backend
       };
-      const voiceKey = langToVoiceKey[data.language] || 'en';
+      const voiceKey = langToVoiceKey[data.language] || 'tr';
 
       console.log('🎤 Fetching voices... API_URL:', API_URL, 'language:', data.language, '-> key:', voiceKey);
       setVoicesLoading(true);
@@ -76,7 +91,7 @@ export function OnboardingModal({ open, onClose }) {
       }
     };
 
-    if (open) {
+    if (open && data.language) {
       fetchVoices();
     }
   }, [open, data.language]);
