@@ -48,16 +48,30 @@ export function OnboardingModal({ open, onClose }) {
     const fetchVoices = async () => {
       try {
         const response = await axios.get(`${API_URL}/api/voices`);
-        const voiceData = response.data.voices;
-        // Use data.language instead of locale for voice selection
-        const langKey = data.language?.toLowerCase() || locale || 'tr';
-        setAvailableVoices(voiceData[langKey] || voiceData['en'] || []);
+        const voiceData = response.data.voices || {};
+
+        // Map our language codes to backend voice keys
+        const langToVoiceKey = {
+          'TR': 'tr',
+          'EN': 'en',
+          'PR': 'pt' // Brazilian Portuguese uses 'pt' key in backend
+        };
+
+        const voiceKey = langToVoiceKey[data.language] || 'en';
+        const voices = voiceData[voiceKey] || voiceData['en'] || [];
+
+        console.log('🎤 Fetching voices for language:', data.language, '-> key:', voiceKey, '-> found:', voices.length);
+        setAvailableVoices(voices);
       } catch (error) {
         console.error('Failed to fetch voices:', error);
+        setAvailableVoices([]);
       }
     };
-    fetchVoices();
-  }, [locale, data.language]);
+
+    if (open) {
+      fetchVoices();
+    }
+  }, [open, data.language]);
 
   const STEPS = [
     { id: 1, title: t('onboarding.steps.chooseIndustry'), description: t('onboarding.descriptions.tellUsAboutBusiness') },
@@ -75,26 +89,18 @@ export function OnboardingModal({ open, onClose }) {
     { id: 'OTHER', icon: Package, name: t('onboarding.industries.other'), color: 'text-gray-600', bgColor: 'bg-gray-100' }
   ];
 
+  // Only supported countries for now
   const COUNTRIES = [
     { id: 'TR', name: 'Türkiye', nameLocal: 'Türkiye', flag: '🇹🇷', timezone: 'Europe/Istanbul', currency: 'TRY' },
     { id: 'BR', name: 'Brazil', nameLocal: 'Brasil', flag: '🇧🇷', timezone: 'America/Sao_Paulo', currency: 'BRL' },
-    { id: 'US', name: 'United States', nameLocal: 'United States', flag: '🇺🇸', timezone: 'America/New_York', currency: 'USD' },
-    { id: 'GB', name: 'United Kingdom', nameLocal: 'United Kingdom', flag: '🇬🇧', timezone: 'Europe/London', currency: 'GBP' },
-    { id: 'DE', name: 'Germany', nameLocal: 'Deutschland', flag: '🇩🇪', timezone: 'Europe/Berlin', currency: 'EUR' },
-    { id: 'FR', name: 'France', nameLocal: 'France', flag: '🇫🇷', timezone: 'Europe/Paris', currency: 'EUR' },
-    { id: 'ES', name: 'Spain', nameLocal: 'España', flag: '🇪🇸', timezone: 'Europe/Madrid', currency: 'EUR' },
-    { id: 'NL', name: 'Netherlands', nameLocal: 'Nederland', flag: '🇳🇱', timezone: 'Europe/Amsterdam', currency: 'EUR' },
-    { id: 'AE', name: 'UAE', nameLocal: 'الإمارات', flag: '🇦🇪', timezone: 'Asia/Dubai', currency: 'AED' }
+    { id: 'US', name: 'United States', nameLocal: 'United States', flag: '🇺🇸', timezone: 'America/New_York', currency: 'USD' }
   ];
 
+  // Only supported languages for now
   const LANGUAGES = [
     { id: 'TR', name: 'Türkçe', flag: '🇹🇷' },
     { id: 'EN', name: 'English', flag: '🇺🇸' },
-    { id: 'PR', name: 'Português (BR)', flag: '🇧🇷' },
-    { id: 'PT', name: 'Português', flag: '🇵🇹' },
-    { id: 'DE', name: 'Deutsch', flag: '🇩🇪' },
-    { id: 'ES', name: 'Español', flag: '🇪🇸' },
-    { id: 'FR', name: 'Français', flag: '🇫🇷' }
+    { id: 'PR', name: 'Português (BR)', flag: '🇧🇷' }
   ];
 
   const TIMEZONES = [
@@ -133,11 +139,7 @@ export function OnboardingModal({ open, onClose }) {
     const greetings = {
       TR: `Merhaba, ben ${voice.name}. Size nasıl yardımcı olabilirim?`,
       EN: `Hello, I'm ${voice.name}. How can I help you today?`,
-      PR: `Olá, sou ${voice.name}. Como posso ajudar você hoje?`,
-      PT: `Olá, sou o ${voice.name}. Como posso ajudá-lo?`,
-      DE: `Hallo, ich bin ${voice.name}. Wie kann ich Ihnen helfen?`,
-      ES: `Hola, soy ${voice.name}. ¿Cómo puedo ayudarle?`,
-      FR: `Bonjour, je suis ${voice.name}. Comment puis-je vous aider?`
+      PR: `Olá, sou ${voice.name}. Como posso ajudar você hoje?`
     };
     const greeting = greetings[data.language] || greetings.EN;
     setData({ ...data, voice, firstMessage: greeting });
@@ -272,10 +274,7 @@ export function OnboardingModal({ open, onClose }) {
               type="button"
               onClick={() => {
                 // Auto-set language based on country
-                const countryLangMap = {
-                  TR: 'TR', BR: 'PR', US: 'EN', GB: 'EN',
-                  DE: 'DE', FR: 'FR', ES: 'ES', NL: 'EN', AE: 'EN'
-                };
+                const countryLangMap = { TR: 'TR', BR: 'PR', US: 'EN' };
                 setData({
                   ...data,
                   country: country.id,
@@ -337,33 +336,46 @@ export function OnboardingModal({ open, onClose }) {
 )}
 
           {step === 2 && (
-            <div className="grid grid-cols-2 gap-4">
-              {availableVoices.map((voice) => (
-                <Card
-                  key={voice.id}
-                  className={`p-6 cursor-pointer hover:shadow-lg transition-all ${
-                    data.voice?.id === voice.id ? 'ring-2 ring-purple-600 bg-purple-50' : ''
-                  }`}
-                  onClick={() => handleVoiceSelect(voice)}
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <h3 className="font-semibold">{voice.name}</h3>
-                      <p className="text-xs text-gray-500">{voice.accent}</p>
-                    </div>
-                    <Button variant="ghost" size="sm" onClick={(e) => {
-                      e.stopPropagation();
-                      toast.info(t('onboarding.voice.previewComingSoon'));
-                    }}>
-                      <Play className="w-4 h-4" />
-                    </Button>
-                  </div>
-                  <div className="flex gap-2">
-                    <Badge variant="secondary">{voice.gender === 'male' ? t('onboarding.voice.male') : t('onboarding.voice.female')}</Badge>
-                    <Badge variant="outline">{voice.description}</Badge>
-                  </div>
-                </Card>
-              ))}
+            <div>
+              {availableVoices.length === 0 ? (
+                <div className="text-center py-12">
+                  <Loader2 className="h-8 w-8 mx-auto text-purple-600 animate-spin mb-4" />
+                  <p className="text-gray-600">{t('onboarding.voice.loading') || 'Loading voices...'}</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-4">
+                  {availableVoices.map((voice) => (
+                    <Card
+                      key={voice.id}
+                      className={`p-6 cursor-pointer hover:shadow-lg transition-all ${
+                        data.voice?.id === voice.id ? 'ring-2 ring-purple-600 bg-purple-50' : ''
+                      }`}
+                      onClick={() => handleVoiceSelect(voice)}
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <h3 className="font-semibold">{voice.name}</h3>
+                          <p className="text-xs text-gray-500">{voice.accent}</p>
+                        </div>
+                        {voice.sampleUrl && (
+                          <Button variant="ghost" size="sm" onClick={(e) => {
+                            e.stopPropagation();
+                            // Play voice sample
+                            const audio = new Audio(voice.sampleUrl);
+                            audio.play().catch(() => toast.error('Could not play sample'));
+                          }}>
+                            <Play className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <Badge variant="secondary">{voice.gender === 'male' ? t('onboarding.voice.male') : t('onboarding.voice.female')}</Badge>
+                        {voice.description && <Badge variant="outline">{voice.description}</Badge>}
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
