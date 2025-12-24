@@ -5,7 +5,7 @@
     "google": "Google",
     "language": "Português",
     "login": "Login",
-    "signup": "Cadastrar",
+    "signup": "Cadastrar-se",
     "logout": "Sair",
     "save": "Salvar",
     "cancel": "Cancelar",
@@ -14,7 +14,7 @@
     "add": "Adicionar",
     "back": "Voltar",
     "next": "Próximo",
-    "complete": "Concluir",
+    "complete": "Completar",
     "loading": "Carregando...",
     "search": "Buscar",
     "filter": "Filtrar",
@@ -28,7 +28,7 @@
     "reset": "Redefinir",
     "refresh": "Atualizar",
     "download": "Baixar",
-    "upload": "Carregar",
+    "upload": "Enviar",
     "preview": "Visualizar",
     "duplicate": "Duplicar",
     "activate": "Ativar",
@@ -37,54 +37,73 @@
     "disable": "Desabilitar",
     "showMore": "Mostrar Mais",
     "showLess": "Mostrar Menos",
-    "seeAll": "Ver Tudo",
-    "or": "ou"
+    "seeAll": "Ver Todos",
+    "or": "ou",
+    "connecting": "Conectando...",
+    "disconnected": "Desconectado",
+    "connected": "Conectado",
+    "create": "Criar",
+    "update": "Atualizar",
+    "copy": "Copiar",
+    "select": "Selecionar",
+    "selectAll": "Selecionar Todos",
+    "clear": "Limpar",
+    "apply": "Aplicar",
+    "test": "Testar",
+    "retry": "Tentar Novamente",
+    "continue": "Continuar",
+    "start": "Iniciar",
+    "stop": "Parar",
+    "pause": "Pausar",
+    "resume": "Retomar",
+    "updating": "Atualizando..."
   },
   "landing": {
     "hero": {
       "badge": "Plataforma de Atendimento ao Cliente com IA",
       "title": "Automatize o Atendimento ao Cliente com IA",
       "subtitle": "WhatsApp, Telefone, Chat e Email - Atendimento ao cliente 24/7 com IA",
-      "cta": "Começar Grátis",
-      "watch": "Ver Demonstração"
+      "cta": "Comece Grátis",
+      "ctaWaitlist": "Inscreva-se para Acesso Antecipado",
+      "watch": "Assistir Demonstração"
     },
     "channels": {
       "title": "Todos os Canais em Uma Plataforma",
-      "subtitle": "Automatize todos os seus canais de comunicação com o cliente usando IA",
+      "subtitle": "Automatize todos os seus canais de comunicação com clientes usando IA",
       "phone": {
-        "title": "Chamadas de IA",
-        "desc": "Assistente telefônico com IA 24/7 para chamadas de entrada e saída"
+        "title": "Chamadas Telefônicas com IA",
+        "desc": "Assistente telefônico com IA disponível 24/7 para chamadas recebidas e realizadas"
       },
       "whatsapp": {
         "title": "WhatsApp Business",
         "desc": "Mensagens automatizadas e suporte ao cliente"
       },
       "chat": {
-        "title": "Widget de Chat Web",
-        "desc": "Suporte ao vivo no site e assistente de vendas"
+        "title": "Widget de Chat na Web",
+        "desc": "Suporte ao vivo e assistente de vendas no site"
       },
       "email": {
         "title": "Automação de Email",
-        "desc": "Resposta automática com integração Gmail e Outlook"
+        "desc": "Resposta automática com integração ao Gmail e Outlook"
       }
     },
     "sectors": {
-      "title": "Soluções de IA para Cada Setor",
-      "subtitle": "Expanda seu negócio com assistentes de IA específicos para cada setor",
+      "title": "Soluções de IA para Todos os Setores",
+      "subtitle": "Faça seu negócio crescer com assistentes de IA específicos para cada setor",
       "ecommerce": {
         "title": "E-commerce",
         "feature1": "Rastreamento de pedidos",
-        "feature2": "Informações de estoque",
+        "feature2": "Informações sobre estoque",
         "feature3": "Rastreamento de devoluções"
       },
       "restaurant": {
         "title": "Restaurante",
-        "feature1": "Reservas de mesas",
+        "feature1": "Reserva de mesas",
         "feature2": "Informações do cardápio"
       },
       "salon": {
-        "title": "Salão/Spa",
-        "feature1": "Gestão de agendamentos"
+        "title": "Salão/SPA",
+        "feature1": "Gerenciamento de agendamentos"
       },
       "support": {
         "title": "Suporte Geral",
@@ -95,14 +114,15 @@
     },
     "integrations": {
       "title": "Integrações Populares",
-      "subtitle": "Integração perfeita com as ferramentas que você usa"
+      "subtitle": "Integração perfeita com as ferramentas que você usa",
+      "viewAll": "Ver Todas as Integrações"
     },
     "howItWorks": {
       "title": "Como Funciona",
-      "subtitle": "Inicie seu atendimento ao cliente com IA em 4 passos simples",
+      "subtitle": "Comece seu atendimento ao cliente com IA em 4 passos simples",
       "step1": {
         "title": "Criar Conta",
-        "desc": "Crie sua conta e insira as informações do seu negócio"
+        "desc": "Crie sua conta e insira as informações da sua empresa"
       },
       "step2": {
         "title": "Conectar Canais",
@@ -110,31 +130,31 @@
       },
       "step3": {
         "title": "Personalizar IA",
-        "desc": "Treine e personalize seu assistente de IA para seu negócio"
+        "desc": "Treine e personalize seu assistente de IA para o seu negócio"
       },
       "step4": {
         "title": "Serviço 24/7",
-        "desc": "Deixe o atendimento automatizado ao cliente começar!"
+        "desc": "Deixe o atendimento ao cliente automatizado começar!"
       }
     },
     "demo": {
-      "title": "Experimente a Demonstração ao Vivo",
+      "title": "Experimente a Demonstração Ao Vivo",
       "subtitle": "Teste nosso assistente de IA agora e descubra seu poder",
-      "formTitle": "Receba uma Chamada de Demonstração",
+      "formTitle": "Agende uma Chamada de Demonstração",
       "formSubtitle": "Deixe nosso assistente de IA ligar para você e mostrar suas capacidades",
       "nameLabel": "Nome Completo",
       "namePlaceholder": "Seu Nome Completo",
       "emailLabel": "Email",
       "emailPlaceholder": "exemplo@email.com",
       "phoneLabel": "Telefone",
-      "phonePlaceholder": "+55 XX XXXXX XXXX",
+      "phonePlaceholder": "+1 XXX XXX XXXX",
       "submitButton": "Solicitar Demonstração",
       "consent": "Ao enviar, você concorda em receber uma chamada de demonstração do nosso assistente de IA",
-      "successMessage": "Solicitação recebida! Nosso assistente de IA ligará em breve.",
+      "successMessage": "Solicitação recebida! Nosso assistente de IA ligará para você em breve.",
       "errorMessage": "Ocorreu um erro. Por favor, tente novamente.",
       "feature1": {
         "title": "Conversa Natural",
-        "desc": "Diálogo humanizado e compreensão de contexto"
+        "desc": "Diálogo semelhante ao humano e compreensão de contexto"
       },
       "feature2": {
         "title": "Resposta Instantânea",
@@ -142,19 +162,20 @@
       },
       "feature3": {
         "title": "Roteamento Inteligente",
-        "desc": "Transferência para atendente quando necessário"
+        "desc": "Transferência para o agente quando necessário"
       }
     },
     "cta": {
       "title": "Comece Agora - 14 Dias Grátis",
       "subtitle": "Sem necessidade de cartão de crédito. Cancele a qualquer momento.",
       "startTrial": "Começar Grátis",
-      "talkToSales": "Falar com Vendas"
+      "applyEarlyAccess": "Solicitar Acesso Antecipado",
+      "talkToSales": "Fale com Vendas"
     },
     "footer": {
-      "tagline": "Atendimento ao cliente com IA para negócios modernos",
+      "tagline": "Atendimento ao cliente impulsionado por IA para negócios modernos",
       "product": "Produto",
-      "features": "Recursos",
+      "features": "Funcionalidades",
       "pricing": "Preços",
       "integrations": "Integrações",
       "solutions": "Soluções",
@@ -174,53 +195,55 @@
   },
   "navigation": {
     "solutions": "Soluções",
-    "features": "Recursos",
+    "features": "Funcionalidades",
     "pricing": "Preços",
     "contact": "Contato",
-    "getStarted": "Começar Grátis",
+    "getStarted": "Comece Grátis",
+    "applyEarlyAccess": "Solicitar Acesso Antecipado",
     "solutionsEcommerce": "E-commerce",
     "solutionsRestaurant": "Restaurante",
-    "solutionsSalon": "Salão/Spa",
+    "solutionsSalon": "Salão/SPA",
     "solutionsSupport": "Suporte ao Cliente",
     "dashboard": "Painel"
   },
   "pricing": {
     "title": "Preços",
     "subtitle": "Escolha o melhor plano para o seu negócio",
-    "trial": "14 dias de teste grátis - Sem necessidade de cartão de crédito",
+    "trial": "Teste gratuito de 14 dias - Sem necessidade de cartão de crédito",
     "recommended": "Recomendado",
-    "cta": "Começar",
-    "questions": "Tem dúvidas?",
+    "cta": "Comece Agora",
+    "ctaWaitlist": "Inscreva-se para Acesso Antecipado",
+    "questions": "Tem perguntas?",
     "contactUs": "Entre em contato",
     "starter": {
-      "name": "Inicial",
-      "desc": "Pacote inicial ideal para pequenos negócios",
+      "name": "Iniciante",
+      "desc": "Pacote inicial ideal para pequenas empresas",
       "feature1": "1 Assistente de IA",
       "feature2": "Treinamento ilimitado",
       "feature3": "1 Número de Telefone",
       "feature4": "300 Minutos/Mês",
-      "feature5": "Análises Básicas",
-      "feature6": "Suporte por Email"
+      "feature5": "Análise Básica",
+      "feature6": "Suporte por E-mail"
     },
     "professional": {
       "name": "Profissional",
-      "desc": "Recursos avançados para negócios em crescimento",
+      "desc": "Recursos avançados para empresas em crescimento",
       "feature1": "2 Assistentes de IA",
       "feature2": "Treinamento ilimitado",
       "feature3": "3 Números de Telefone",
       "feature4": "1500 Minutos/Mês",
-      "feature5": "Análises Avançadas",
+      "feature5": "Análise Avançada",
       "feature6": "Suporte Prioritário",
       "feature7": "Acesso à API"
     },
     "enterprise": {
-      "name": "Empresarial",
-      "desc": "Solução completa para empresas de grande porte",
+      "name": "Enterprise",
+      "desc": "Solução completa para negócios em grande escala",
       "feature1": "5 Assistentes de IA",
-      "feature2": "Tudo ilimitado",
+      "feature2": "Ilimitado em tudo",
       "feature3": "10 Números de Telefone",
       "feature4": "Clonagem de Voz Personalizada",
-      "feature5": "Opção White-label",
+      "feature5": "Opção de Marca Branca",
       "feature6": "Gerente de Conta Dedicado",
       "feature7": "Garantia de SLA"
     }
@@ -232,40 +255,40 @@
     },
     "multichannel": {
       "title": "Suporte Multicanal",
-      "desc": "Gerencie todos os seus canais de comunicação em uma plataforma",
+      "desc": "Gerencie todos os seus canais de comunicação em uma única plataforma",
       "item1": "Integração com WhatsApp Business",
-      "item2": "Chamadas de telefone com IA",
-      "item3": "Widget de chat web",
-      "item4": "Automação de email"
+      "item2": "Chamadas telefônicas com IA",
+      "item3": "Widget de chat na web",
+      "item4": "Automação de e-mail"
     },
     "ai": {
       "title": "Assistente de IA",
       "desc": "Atendimento ao cliente inteligente baseado em GPT-4",
       "item1": "Processamento de linguagem natural",
       "item2": "Compreensão de contexto",
-      "item3": "Suporte multilíngue",
+      "item3": "Suporte a múltiplas línguas",
       "item4": "Aprendizado contínuo"
     },
     "ecommerce": {
       "title": "Integrações de E-commerce",
-      "desc": "Integre com plataformas de e-commerce populares",
+      "desc": "Integre-se com plataformas de e-commerce populares",
       "item1": "Integração com ikas",
       "item2": "Integração com Shopify",
-      "item3": "Integração com WooCommerce",
+      "item3": "Integração com IdeaSoft",
       "item4": "Integração com Ticimax"
     },
     "calendar": {
       "title": "Integração de Calendário",
-      "desc": "Gerencie agendamentos e reservas automaticamente",
+      "desc": "Gerencie automaticamente compromissos e reservas",
       "item1": "Sincronização com Google Calendar",
-      "item2": "Criação automática de agendamentos",
+      "item2": "Criação automática de compromissos",
       "item3": "Notificações de lembrete"
     },
     "languages": {
-      "title": "Suporte Multilíngue",
-      "desc": "Forneça atendimento ao cliente em 16 idiomas diferentes",
-      "item1": "Turco e Inglês",
-      "item2": "Árabe, Alemão, Francês",
+      "title": "Suporte a Múltiplas Línguas",
+      "desc": "Ofereça atendimento ao cliente em 16 idiomas diferentes",
+      "item1": "Turco e inglês",
+      "item2": "Árabe, alemão, francês",
       "item3": "E mais..."
     },
     "analytics": {
@@ -278,42 +301,43 @@
     "cta": {
       "title": "Pronto para Começar?",
       "subtitle": "Comece agora e transforme seu atendimento ao cliente com IA",
-      "start": "Começar Grátis",
+      "start": "Comece Grátis",
+      "applyEarlyAccess": "Solicite Acesso Antecipado",
       "contact": "Entre em Contato"
     }
   },
   "solutions": {
     "hero": {
-      "title": "Soluções por Setor",
-      "subtitle": "Soluções de IA projetadas especificamente para seu setor"
+      "title": "Soluções para Indústria",
+      "subtitle": "Soluções de IA projetadas especificamente para sua indústria"
     },
     "learnMore": "Saiba Mais",
-    "startFree": "Começar Grátis",
-    "contactSales": "Falar com Vendas",
+    "startFree": "Comece Grátis",
+    "contactSales": "Fale com Vendas",
     "ecommerce": {
       "title": "IA para E-commerce",
       "desc": "Suporte automatizado 24/7 para rastreamento de pedidos, informações de estoque e devoluções",
-      "feature1": "Rastreamento de status de pedido",
-      "feature2": "Informações de estoque e produto",
+      "feature1": "Rastreamento de status de pedidos",
+      "feature2": "Informações de estoque e produtos",
       "feature3": "Processo de devolução/troca",
       "hero": {
         "title": "Assistente de IA para E-commerce",
-        "subtitle": "Ofereça aos seus clientes rastreamento de pedidos 24/7, informações de estoque e suporte de devolução"
+        "subtitle": "Ofereça aos seus clientes rastreamento de pedidos 24/7, informações de estoque e suporte para devoluções"
       },
       "useCases": {
         "title": "Casos de Uso"
       },
       "useCase1": {
         "title": "Rastreamento de Pedidos",
-        "desc": "Clientes podem verificar o status do pedido instantaneamente"
+        "desc": "Os clientes podem verificar instantaneamente o status de seus pedidos"
       },
       "useCase2": {
         "title": "Rastreamento de Envio",
         "desc": "Informações de envio e entrega em tempo real"
       },
       "useCase3": {
-        "title": "Processamento de Devolução",
-        "desc": "Criação e rastreamento fácil de solicitação de devolução"
+        "title": "Processamento de Devoluções",
+        "desc": "Criação e rastreamento fáceis de solicitações de devolução"
       },
       "useCase4": {
         "title": "Informações do Produto",
@@ -324,16 +348,16 @@
         "subtitle": "Integração perfeita com plataformas de e-commerce populares"
       },
       "cta": {
-        "title": "Forneça Suporte 24/7 aos Seus Clientes de E-commerce",
+        "title": "Ofereça Suporte 24/7 aos Seus Clientes de E-commerce",
         "subtitle": "Assistente de IA integrado com ikas, Shopify e outras plataformas"
       }
     },
     "restaurant": {
       "title": "IA para Restaurantes",
-      "desc": "Assistente inteligente para reservas, informações do cardápio e consultas de clientes",
+      "desc": "Assistente inteligente para reservas, informações do menu e consultas de clientes",
       "feature1": "Reserva automática de mesas",
-      "feature2": "Informações de cardápio e preços",
-      "feature3": "Notificação de horário de funcionamento",
+      "feature2": "Informações sobre menu e preços",
+      "feature3": "Notificação de horários de funcionamento",
       "hero": {
         "title": "Assistente de IA para Restaurantes",
         "subtitle": "Automatize suas reservas, encante seus clientes"
@@ -342,66 +366,66 @@
         "title": "Casos de Uso"
       },
       "useCase1": {
-        "title": "Gestão de Reservas",
+        "title": "Gerenciamento de Reservas",
         "desc": "Reserva automática de mesas 24/7"
       },
       "useCase2": {
-        "title": "Informações do Cardápio",
+        "title": "Informações do Menu",
         "desc": "Pratos, preços e opções dietéticas especiais"
       },
       "useCase3": {
-        "title": "Horário de Funcionamento",
-        "desc": "Horários de abertura/fechamento e informações de dias especiais"
+        "title": "Horários de Funcionamento",
+        "desc": "Horários de abertura/fechamento e informações sobre dias especiais"
       },
       "useCase4": {
         "title": "Feedback",
-        "desc": "Colete avaliações e reclamações de clientes"
+        "desc": "Coletar avaliações e reclamações de clientes"
       },
       "cta": {
-        "title": "Automatize as Reservas do Seu Restaurante",
-        "subtitle": "Gestão de reservas perfeita com integração ao Google Calendar"
+        "title": "Automatize Suas Reservas de Restaurante",
+        "subtitle": "Gerenciamento de reservas perfeito com integração ao Google Calendar"
       }
     },
     "salon": {
       "title": "IA para Salões",
-      "desc": "Assistente 24/7 para agendamento de horários e informações de serviços",
-      "feature1": "Agendamento online de horários",
-      "feature2": "Informações de serviços e preços",
+      "desc": "Assistente 24/7 para agendamento de compromissos e informações de serviços",
+      "feature1": "Agendamento de compromissos online",
+      "feature2": "Informações sobre serviços e preços",
       "feature3": "Mensagens de lembrete",
       "hero": {
         "title": "Assistente de IA para Salões",
-        "subtitle": "Automatize seus agendamentos, atenda melhor seus clientes"
+        "subtitle": "Automatize seus compromissos, atenda seus clientes melhor"
       },
       "useCases": {
         "title": "Casos de Uso"
       },
       "useCase1": {
-        "title": "Agendamento de Horários",
-        "desc": "Agendamento e reagendamento online 24/7"
+        "title": "Agendamento de Compromissos",
+        "desc": "Agendamento e remanejamento de compromissos online 24/7"
       },
       "useCase2": {
         "title": "Lembretes",
-        "desc": "Mensagens automáticas de lembrete de agendamento"
+        "desc": "Mensagens automáticas de lembrete de compromissos"
       },
       "useCase3": {
-        "title": "Gestão de Equipe",
-        "desc": "Combine equipe e horários disponíveis"
+        "title": "Gerenciamento de Equipe",
+        "desc": "Combinar equipe disponível e horários"
       },
       "useCase4": {
-        "title": "Informações de Serviços",
+        "title": "Informações sobre Serviços",
         "desc": "Informações sobre serviços, durações e preços"
       },
       "cta": {
-        "title": "Simplifique os Agendamentos do Seu Salão",
-        "subtitle": "Gestão automática de agendamentos com integração de calendário"
+        "title": "Simplifique Seus Compromissos no Salão",
+        "subtitle": "Gerenciamento automático de compromissos com integração de calendário"
       }
     },
     "support": {
       "title": "IA para Suporte ao Cliente",
-      "desc": "Suporte inteligente para consultas gerais e respostas a perguntas frequentes",
-      "feature1": "Respostas automáticas a perguntas frequentes",
+      "desc": "Suporte inteligente para consultas gerais e respostas a FAQs",
+      "feature1": "Respostas automáticas a FAQs",
       "feature2": "Criação de tickets",
-      "feature3": "Transferência para atendente",
+      "feature3": "Transferência de agentes",
       "hero": {
         "title": "Assistente de IA para Suporte ao Cliente",
         "subtitle": "Responda automaticamente às perguntas dos clientes 24/7"
@@ -410,15 +434,15 @@
         "title": "Casos de Uso"
       },
       "useCase1": {
-        "title": "Respostas a Perguntas Frequentes",
+        "title": "Resposta a FAQs",
         "desc": "Respostas instantâneas a perguntas frequentes"
       },
       "useCase2": {
-        "title": "Criação de Tickets",
-        "desc": "Crie e rastreie tickets de suporte"
+        "title": "Criação de Chamados",
+        "desc": "Crie e acompanhe chamados de suporte"
       },
       "useCase3": {
-        "title": "Serviço 24/7",
+        "title": "Atendimento 24/7",
         "desc": "Suporte ininterrupto mesmo fora do horário comercial"
       },
       "useCase4": {
@@ -431,8 +455,8 @@
       }
     },
     "cta": {
-      "title": "Não Vê Seu Setor?",
-      "subtitle": "Nossos assistentes de IA podem ser adaptados para qualquer setor. Vamos discutir suas necessidades.",
+      "title": "Não Vê Sua Indústria?",
+      "subtitle": "Nossos assistentes de IA podem ser adaptados a qualquer setor. Vamos discutir suas necessidades.",
       "contact": "Entre em Contato"
     }
   },
@@ -441,7 +465,7 @@
       "title": "Entre em Contato",
       "subtitle": "Estamos aqui para ajudá-lo a encontrar a solução de IA certa"
     },
-    "successMessage": "Mensagem enviada! Entraremos em contato em breve.",
+    "successMessage": "Mensagem enviada! Retornaremos em breve.",
     "errorMessage": "Ocorreu um erro. Por favor, tente novamente.",
     "form": {
       "title": "Envie-nos uma Mensagem",
@@ -451,15 +475,15 @@
       "email": "Email",
       "emailPlaceholder": "exemplo@email.com",
       "company": "Nome da Empresa",
-      "companyPlaceholder": "Nome da sua empresa",
+      "companyPlaceholder": "O nome da sua empresa",
       "phone": "Telefone",
-      "phonePlaceholder": "+55 XX XXXXX XXXX",
+      "phonePlaceholder": "+55 XX XXXXX-XXXX",
       "businessType": "Tipo de Negócio",
       "selectType": "Selecione...",
       "types": {
         "ecommerce": "E-commerce",
-        "restaurant": "Restaurante/Café",
-        "salon": "Salão/Spa",
+        "restaurant": "Restaurante/Cafeteria",
+        "salon": "Salão/SPA",
         "service": "Negócio de Serviços",
         "other": "Outro"
       },
@@ -476,73 +500,73 @@
     },
     "response": {
       "title": "Resposta Rápida",
-      "text": "Nossa equipe normalmente responde em até 1 hora durante o horário comercial. Para assuntos urgentes, ligue diretamente."
+      "text": "Nossa equipe normalmente responde em até 1 hora durante o horário comercial. Para assuntos urgentes, entre em contato conosco diretamente."
     }
   },
   "auth": {
     "loginTitle": "Bem-vindo de volta",
-    "loginSubtitle": "Entre na sua conta",
+    "loginSubtitle": "Faça login na sua conta",
     "signupTitle": "Crie sua conta",
     "signupSubtitle": "Comece a construir assistentes de IA hoje",
     "email": "Email",
-    "emailPlaceholder": "voce@exemplo.com",
+    "emailPlaceholder": "você@exemplo.com",
     "password": "Senha",
     "passwordPlaceholder": "********",
     "fullName": "Nome Completo",
-    "businessName": "Nome do Negócio",
-    "businessNamePlaceholder": "Nome do seu negócio",
+    "businessName": "Nome da Empresa",
+    "businessNamePlaceholder": "Seu nome comercial",
     "continueWith": "Ou continue com",
     "alreadyHaveAccount": "Já tem uma conta?",
     "dontHaveAccount": "Não tem uma conta?",
     "forgotPassword": "Esqueceu a senha?",
     "businessType": "Que tipo de negócio você tem?",
     "businessTypes": {
-      "restaurant": "Restaurante/Café",
-      "restaurantDesc": "Aceite reservas e gerencie agendamentos",
-      "salon": "Salão/Spa/Barbearia",
-      "salonDesc": "Agende horários para serviços de beleza",
+      "restaurant": "Restaurante/Cafeteria",
+      "restaurantDesc": "Faça reservas e gerencie agendamentos",
+      "salon": "Salão/SPA/Barbearia",
+      "salonDesc": "Agende compromissos para serviços de beleza",
       "ecommerce": "E-commerce/Varejo",
-      "ecommerceDesc": "Rastreie estoque e envios",
+      "ecommerceDesc": "Controle o estoque e o envio",
       "service": "Negócio de Serviços",
       "serviceDesc": "Agendamentos para reparos, consultoria, etc.",
       "other": "Outro",
       "otherDesc": "Necessidades gerais de negócios"
     },
-    "freeTrial": "14 dias de teste grátis",
-    "noCreditCard": "Sem necessidade de cartão de crédito",
+    "freeTrial": "Teste gratuito de 14 dias",
+    "noCreditCard": "Nenhum cartão de crédito necessário",
     "cancelAnytime": "Cancele a qualquer momento",
     "creatingAccount": "Criando conta...",
     "signingIn": "Entrando...",
     "pleaseFillAllFields": "Por favor, preencha todos os campos",
     "passwordMinLength": "A senha deve ter pelo menos 8 caracteres",
-    "verificationCodeSent": "Código de verificação enviado para seu email",
-    "signupFailed": "Falha no cadastro. Por favor, tente novamente",
+    "verificationCodeSent": "Código de verificação enviado para seu e-mail",
+    "signupFailed": "Falha ao se inscrever. Por favor, tente novamente",
     "verificationFailed": "Código de verificação inválido",
-    "verifyEmail": "Verificar Email",
+    "verifyEmail": "Verifique seu E-mail",
     "verificationCode": "Código de Verificação",
     "verificationCodeSentTo": "Enviamos um código de 6 dígitos para",
     "verifying": "Verificando...",
     "didntReceiveCode": "Não recebeu o código?",
     "resendCode": "Reenviar Código",
     "mustBe8Chars": "Deve ter pelo menos 8 caracteres",
-    "orContinueWith": "Ou continue com email",
-    "continueWithGoogle": "Continuar com Google",
-    "invalidEmailOrPassword": "Email ou senha inválidos",
+    "orContinueWith": "Ou continue com e-mail",
+    "continueWithGoogle": "Continue com o Google",
+    "invalidEmailOrPassword": "E-mail ou senha inválidos",
     "googleSignInComingSoon": "Login com Google em breve!",
-    "orSignUpWith": "Ou cadastre-se com email",
+    "orSignUpWith": "Ou inscreva-se com e-mail",
     "byCreatingAccount": "Ao criar uma conta, você concorda com nossos",
     "termsOfService": "Termos de Serviço",
     "and": "e",
     "privacyPolicy": "Política de Privacidade",
-    "verifyYourEmail": "Verifique seu email",
+    "verifyYourEmail": "Verifique seu e-mail",
     "weSentCode": "Enviamos um código de 6 dígitos para",
     "resend": "Reenviar",
     "joinThousands": "Junte-se a milhares de empresas",
-    "automatePhoneSupport": "Automatize seu suporte telefônico com assistentes de IA que soam humanos e entendem contexto",
-    "freeTrialIncluded": "Teste grátis incluído",
+    "automatePhoneSupport": "Automatize seu suporte telefônico com assistentes de IA que soam humanos e entendem o contexto",
+    "freeTrialIncluded": "Teste gratuito incluído",
     "tryAllFeatures": "Experimente todos os recursos por 14 dias, sem necessidade de cartão de crédito",
     "noSetupFees": "Sem taxas de configuração",
-    "startWithStarter": "Comece com nosso plano inicial por apenas $29/mês",
+    "startWithStarter": "Comece com nosso plano inicial por apenas R$29/mês",
     "noCommitments": "Sem compromissos de longo prazo ou taxas ocultas",
     "passwordMustBe8": "A senha deve ter pelo menos 8 caracteres",
     "accountCreatedSuccess": "Conta criada! Vamos configurar seu assistente!",
@@ -570,16 +594,24 @@
       "costCalculator": "Calculadora de Custos",
       "subscription": "Assinatura",
       "build": "CONSTRUIR",
-      "deploy": "IMPLANTAR",
+      "deploy": "DEPLOY",
       "monitor": "MONITORAR",
-      "system": "SISTEMA"
+      "system": "SISTEMA",
+      "emailInbox": "Email",
+      "outbound": "SAÍDA",
+      "batchCalls": "Chamadas em Lote",
+      "team": "Equipe"
+    },
+    "credits": {
+      "available": "Créditos Disponíveis",
+      "add": "Adicionar Créditos"
     },
     "navBuild": "CONSTRUIR",
     "navAssistants": "Assistentes",
     "navKnowledgeBase": "Base de Conhecimento",
     "navVoices": "Vozes",
     "navChatWidget": "Widget de Chat",
-    "navDeploy": "IMPLANTAR",
+    "navDeploy": "DEPLOY",
     "navPhoneNumbers": "Números de Telefone",
     "navIntegrations": "Integrações",
     "navMonitor": "MONITORAR",
@@ -604,7 +636,7 @@
       "systemPrompt": "Prompt do Sistema",
       "voice": "Voz",
       "language": "Idioma",
-      "noAssistants": "Ainda não há assistentes",
+      "noAssistants": "Nenhum assistente ainda",
       "createFirstDesc": "Crie seu primeiro assistente de IA",
       "searchAssistants": "Buscar assistentes...",
       "configureSettings": "Configure as configurações do seu assistente de IA",
@@ -612,7 +644,7 @@
       "voiceRequired": "Voz *",
       "selectVoice": "Selecione uma voz",
       "systemPromptRequired": "Prompt do Sistema *",
-      "systemPromptPlaceholder": "Defina a personalidade e comportamento do seu assistente...",
+      "systemPromptPlaceholder": "Defina a personalidade e o comportamento do seu assistente...",
       "updateBtn": "Atualizar",
       "fillAllRequired": "Por favor, preencha todos os campos obrigatórios",
       "createdSuccess": "Assistente criado com sucesso!",
@@ -622,53 +654,108 @@
       "voicesFilteredByLanguage": "As vozes são filtradas com base no idioma selecionado",
       "noVoicesForLanguage": "Nenhuma voz disponível para este idioma",
       "chooseTemplate": "Escolha um Modelo de Assistente",
-      "startWithTemplateOrScratch": "Comece com um modelo pré-construído ou crie do zero"
+      "startWithTemplateOrScratch": "Comece com um modelo pré-construído ou crie do zero",
+      "aiModel": "Modelo de IA",
+      "communicationTone": "Tom de Comunicação",
+      "toneProf": "Profissional (Linguagem Formal)",
+      "toneFriendly": "Amigável (Linguagem Casual)",
+      "toneProfDesc": "O assistente se dirige aos clientes de forma formal, utilizando linguagem profissional.",
+      "toneFriendlyDesc": "O assistente se dirige aos clientes de forma casual, amigável, mas profissional.",
+      "customNotes": "Notas Personalizadas do Negócio",
+      "customNotesPlaceholder": "Adicione informações personalizadas sobre seu negócio (horário de funcionamento, endereço, regras especiais, etc.)"
     },
     "callsPage": {
       "title": "Histórico de Chamadas",
+      "description": "Veja gravações de chamadas, transcrições e análises de IA",
       "duration": "Duração",
       "status": "Status",
       "date": "Data",
+      "dateTime": "Data e Hora",
       "caller": "Chamador",
-      "noCalls": "Ainda não há chamadas",
+      "phoneNumber": "Número de Telefone",
+      "noCalls": "Nenhuma chamada ainda",
+      "noCallsFound": "Nenhuma chamada encontrada",
       "viewAndAnalyze": "Visualize e analise todas as suas chamadas",
       "filterByStatus": "Filtrar por status",
-      "allStatus": "Todos",
-      "searchByPhone": "Buscar por telefone ou assistente",
+      "allStatus": "Todos os Status",
+      "searchByPhone": "Pesquisar por número de telefone, ID da chamada ou transcrição...",
       "callDetails": "Detalhes da Chamada",
       "transcript": "Transcrição",
       "recording": "Gravação",
+      "playRecording": "Reproduzir gravação",
+      "viewTranscript": "Ver transcrição",
       "aiAnalysis": "Análise de IA",
       "intent": "Intenção",
       "sentiment": "Sentimento",
       "summary": "Resumo",
-      "keyPoints": "Pontos-Chave",
+      "keyPoints": "Pontos Chave",
       "taskCompleted": "Tarefa Concluída",
       "followUpNeeded": "Acompanhamento Necessário",
       "direction": "Direção",
       "inbound": "Entrada",
       "outbound": "Saída",
       "callId": "ID da Chamada",
-      "timestamp": "Registro de Horário",
+      "timestamp": "Timestamp",
       "positive": "Positivo",
       "negative": "Negativo",
       "neutral": "Neutro",
       "downloadTranscript": "Baixar Transcrição",
-      "exportCSV": "Exportar CSV"
+      "exportCSV": "Exportar CSV",
+      "answered": "Atendida",
+      "completed": "Concluída",
+      "failed": "Falhou",
+      "inProgress": "Em Andamento",
+      "actions": "Ações",
+      "noData": "Sem dados",
+      "callsWillAppear": "O histórico de chamadas aparecerá aqui assim que você receber chamadas",
+      "tryAdjustingFilters": "Tente ajustar sua pesquisa ou filtros",
+      "callsExportedSuccess": "Chamadas exportadas com sucesso",
+      "failedToLoadCalls": "Falha ao carregar chamadas",
+      "failedToExportCalls": "Falha ao exportar chamadas"
     },
     "integrationsPage": {
       "title": "Integrações",
+      "description": "Aprimore seu assistente conectando serviços externos",
       "connected": "Conectado",
       "notConnected": "Não Conectado",
       "connect": "Conectar",
       "disconnect": "Desconectar",
       "configure": "Configurar",
       "comingSoon": "Em Breve",
+      "comingSoonDesc": "Estamos trabalhando nesta integração. Ela estará disponível muito em breve!",
+      "comingSoonTooltip": "Esta integração ainda não está disponível",
       "availableIntegrations": "Integrações Disponíveis",
       "connectedIntegrations": "Integrações Conectadas",
       "needCustomIntegration": "Precisa de uma integração personalizada?",
-      "customIntegrationDesc": "Podemos ajudá-lo a construir integrações personalizadas para suas necessidades específicas.",
-      "contactSalesBtn": "Falar com Vendas"
+      "customIntegrationDesc": "Podemos ajudar você a construir integrações personalizadas para suas necessidades específicas.",
+      "contactSalesBtn": "Contate Vendas",
+      "emailChannel": "Canal de Email",
+      "emailChannelDesc": "Suporte ao cliente via email",
+      "gmailDesc": "Conecte sua conta do Gmail",
+      "connectGmail": "Conectar Gmail",
+      "outlookDesc": "Conecte sua conta do Microsoft 365",
+      "connectOutlook": "Conectar Outlook",
+      "recommendedIntegrations": "Integrações Recomendadas",
+      "essentialIntegrations": "Integrações Essenciais",
+      "moreIntegrations": "Mais Integrações",
+      "syncAppointments": "Sincronizar compromissos",
+      "parasutConnect": "Integração contábil com Parasut",
+      "whatsappConversations": "Conversas com clientes via WhatsApp",
+      "shopifyConnect": "Conectar sua loja Shopify",
+      "woocommerceConnect": "Conectar sua loja WooCommerce",
+      "iyzicoConnect": "Integração de pagamento iyzico",
+      "zapierConnect": "Conectar 5000+ apps com Zapier",
+      "ikasConnect": "Integração de e-commerce ikas",
+      "ideasoftConnect": "Integração de e-commerce Ideasoft",
+      "ticimaxConnect": "Integração de e-commerce Ticimax",
+      "openInbox": "Abrir Caixa de Entrada",
+      "connectingText": "Conectando...",
+      "testIntegration": "Testar",
+      "essentialForBusiness": "Essencial para o seu negócio",
+      "platformAlreadyConnected": "já conectado",
+      "disabledIntegration": "Indisponível",
+      "noIntegrationsAvailable": "Nenhuma integração disponível",
+      "contactSupportIntegrations": "Contate o suporte para integrações"
     },
     "settingsPage": {
       "title": "Configurações",
@@ -676,7 +763,7 @@
       "business": "Negócio",
       "billing": "Faturamento",
       "notifications": "Notificações",
-      "manageAccountPreferences": "Gerencie as preferências da sua conta",
+      "manageAccountPreferences": "Gerenciar suas preferências de conta",
       "accountSettings": "Configurações da Conta",
       "businessSettings": "Configurações do Negócio",
       "apiKeys": "Chaves de API",
@@ -689,7 +776,7 @@
       "businessInfo": "Informações do Negócio",
       "companyName": "Nome da Empresa",
       "industry": "Setor",
-      "website": "Website",
+      "website": "Site",
       "phoneNumber": "Número de Telefone",
       "address": "Endereço",
       "timezone": "Fuso Horário",
@@ -703,35 +790,46 @@
       "notificationsTitle": "Notificações",
       "configureUpdates": "Configure como você recebe atualizações",
       "emailOnNewCall": "Email em nova chamada",
-      "notifyOnCall": "Seja notificado quando receber uma chamada",
+      "notifyOnCall": "Receber notificação quando você receber uma chamada",
       "usageLimitAlerts": "Alertas de limite de uso",
-      "alertApproachingLimit": "Alertar ao se aproximar do limite de crédito",
-      "weeklySummaryLabel": "Resumo semanal",
-      "receiveWeeklyReports": "Receba relatórios semanais de desempenho",
+      "alertApproachingLimit": "Alerta ao se aproximar do limite de crédito",
+      "weeklySummaryLabel": "Resumo Semanal",
+      "receiveWeeklyReports": "Receber relatórios de desempenho semanais",
       "smsNotificationsLabel": "Notificações por SMS",
-      "criticalAlertsViaSms": "Receba alertas críticos via SMS",
+      "criticalAlertsViaSms": "Receber alertas críticos por SMS",
       "savePreferencesBtn": "Salvar Preferências",
       "securityTitle": "Segurança",
-      "managePasswordLabel": "Gerencie sua senha",
+      "managePasswordLabel": "Gerenciar sua senha",
       "currentPasswordLabel": "Senha Atual",
       "newPasswordLabel": "Nova Senha",
       "confirmNewPassword": "Confirmar Nova Senha",
-      "changePasswordBtn": "Alterar Senha",
+      "changePasswordBtn": "Mudar Senha",
       "dangerZoneTitle": "Zona de Perigo",
-      "deleteAccountWarning": "Uma vez que você excluir sua conta, não há como voltar atrás. Por favor, tenha certeza.",
+      "deleteAccountWarning": "Uma vez que você excluir sua conta, não há como voltar. Por favor, tenha certeza.",
       "deleteAccountBtn": "Excluir Conta",
       "passwordsDoNotMatch": "As senhas não coincidem",
       "savingProfile": "Salvando perfil...",
       "profileUpdatedSuccess": "Perfil atualizado com sucesso!",
       "savingPreferences": "Salvando preferências...",
       "notificationPreferencesUpdated": "Preferências de notificação atualizadas!",
-      "changingPassword": "Alterando senha...",
-      "passwordChangedSuccess": "Senha alterada com sucesso!"
+      "changingPassword": "Mudando a senha...",
+      "passwordChangedSuccess": "Senha alterada com sucesso!",
+      "regionSettings": "Configurações de Região",
+      "regionDescription": "Gerencie suas preferências de idioma, país e fuso horário",
+      "language": "Idioma",
+      "selectLanguage": "Selecionar idioma",
+      "country": "País",
+      "selectCountry": "Selecionar país",
+      "selectTimezone": "Selecionar fuso horário",
+      "saveRegion": "Salvar Configurações de Região",
+      "savingRegion": "Salvando configurações de região...",
+      "regionUpdated": "Configurações de região atualizadas!",
+      "regionUpdateFailed": "Falha ao atualizar configurações de região"
     },
     "voicesPage": {
       "title": "Biblioteca de Vozes",
       "select": "Selecionar Voz",
-      "preview": "Visualizar",
+      "preview": "Prévia",
       "selected": "Selecionado",
       "description": "Navegue e selecione vozes para seus assistentes de IA",
       "searchVoices": "Buscar vozes...",
@@ -745,10 +843,36 @@
       "of": "de",
       "noVoicesFound": "Nenhuma voz encontrada",
       "tryAdjustingFilters": "Tente ajustar seus filtros",
-      "aboutVoiceSelection": "Sobre Seleção de Voz",
-      "voiceSelectionInfo": "Escolha entre nossa biblioteca de vozes de som natural. Cada voz é otimizada para diferentes idiomas e casos de uso.",
-      "businessLanguage": "Idioma do Negócio",
-      "failedToLoadVoices": "Falha ao carregar vozes"
+      "aboutVoiceSelection": "Sobre a Seleção de Vozes",
+      "voiceSelectionInfo": "Escolha entre nossa biblioteca de vozes com som natural. Cada voz é otimizada para diferentes idiomas e casos de uso.",
+      "businessLanguage": "Idioma de Negócios",
+      "failedToLoadVoices": "Falha ao carregar vozes",
+      "playSample": "Reproduzir Amostra",
+      "pauseSample": "Pausar",
+      "sampleNotAvailable": "Amostra Não Disponível",
+      "genders": {
+        "male": "Masculino",
+        "female": "Feminino"
+      },
+      "accents": {
+        "Turkish": "Turco",
+        "American": "Americano",
+        "British": "Britânico",
+        "German": "Alemão",
+        "French": "Francês",
+        "Spanish": "Espanhol",
+        "Italian": "Italiano",
+        "Portuguese": "Português",
+        "Russian": "Russo",
+        "Arabic": "Árabe",
+        "Japanese": "Japonês",
+        "Korean": "Coreano",
+        "Chinese": "Chinês",
+        "Hindi": "Hindi",
+        "Dutch": "Holandês",
+        "Polish": "Polonês",
+        "Swedish": "Sueco"
+      }
     },
     "overviewPage": {
       "title": "Visão Geral",
@@ -763,11 +887,11 @@
       "quickStats": "Estatísticas Rápidas",
       "recentActivity": "Atividade Recente",
       "getStarted": "Começar",
-      "setupSteps": "Etapas de Configuração",
+      "setupSteps": "Passos de Configuração",
       "createYourFirstAssistant": "Crie seu primeiro assistente",
-      "uploadKnowledge": "Carregue base de conhecimento",
-      "getPhoneNumberStep": "Obtenha um número de telefone",
-      "startReceivingCalls": "Comece a receber chamadas",
+      "uploadKnowledge": "Carregar base de conhecimento",
+      "getPhoneNumberStep": "Obter um número de telefone",
+      "startReceivingCalls": "Começar a receber chamadas",
       "newAssistant": "Novo Assistente",
       "viewAllCalls": "Ver Todas as Chamadas",
       "totalCallsLabel": "Total de Chamadas",
@@ -783,7 +907,7 @@
       "noCallDataYet": "Ainda não há dados de chamadas",
       "startMakingCalls": "Comece a fazer chamadas para ver suas análises",
       "recentCallsTitle": "Chamadas Recentes",
-      "latestCallActivity": "Sua atividade de chamadas mais recente",
+      "latestCallActivity": "Sua atividade de chamada mais recente",
       "phoneNumberLabel": "Número de Telefone",
       "assistantLabel": "Assistente",
       "durationLabel": "Duração",
@@ -791,9 +915,9 @@
       "statusLabel": "Status",
       "noCallsYetTitle": "Ainda não há chamadas",
       "callHistoryAppear": "Seu histórico de chamadas aparecerá aqui",
-      "todaysAppointments": "Agendamentos de Hoje",
+      "todaysAppointments": "Compromissos de Hoje",
       "recentCalls": "Chamadas Recentes",
-      "lowStockAlerts": "Alertas de Estoque Baixo",
+      "lowStockAlerts": "Alertas de Baixo Estoque",
       "pendingShipments": "Envios Pendentes",
       "quickActions": "Ações Rápidas",
       "goodMorning": "Bom dia",
@@ -803,7 +927,7 @@
       "failedToLoad": "Falha ao carregar dados",
       "viewAnalytics": "Ver Análises",
       "newAssistantBtn": "Novo Assistente",
-      "quickOverview": "Visão Geral Rápida",
+      "quickOverview": "Visão Rápida",
       "systemStatus": "Status do Sistema",
       "activeAssistantsLabel": "Assistentes Ativos",
       "connectedIntegrations": "Integrações Conectadas",
@@ -811,18 +935,44 @@
       "allSystemsOperational": "Todos os sistemas operacionais",
       "setupNeeded": "Configuração necessária",
       "recentActivityTitle": "Atividade Recente",
-      "viewAllActivity": "Ver Tudo",
-      "noRecentActivity": "Nenhuma atividade recente",
+      "viewAllActivity": "Ver Todos",
+      "noRecentActivity": "Sem atividade recente",
       "startMakingCallsDesc": "Comece a fazer chamadas para ver sua atividade aqui",
       "quickActionsTitle": "Ações Rápidas",
       "createAssistantAction": "Criar Assistente de IA",
       "createAssistantActionDesc": "Configure um novo assistente de IA",
       "getPhoneAction": "Obter Número de Telefone",
-      "getPhoneActionDesc": "Provisione um novo número",
+      "getPhoneActionDesc": "Provisionar um novo número",
       "connectIntegrationAction": "Conectar Integração",
       "connectIntegrationActionDesc": "Vincule suas ferramentas",
       "viewReportsAction": "Ver Relatórios",
-      "viewReportsActionDesc": "Verificar análises"
+      "viewReportsActionDesc": "Ver análises",
+      "keyMetrics": "Métricas Principais",
+      "last7DaysOverview": "Visão geral do desempenho dos últimos 7 dias",
+      "fromLastWeek": "da semana passada",
+      "chatMessages": "Mensagens de Chat",
+      "avgDuration": "Duração Média",
+      "totalCost": "Custo Total",
+      "successRate": "Taxa de Sucesso",
+      "appointments": "Compromissos",
+      "createAssistant": "Criar Assistente",
+      "setupNewAI": "Configurar um novo agente de IA",
+      "buyPhoneNumber": "Comprar Número de Telefone",
+      "getNewNumber": "Obter um novo número",
+      "connectIntegration": "Conectar Integração",
+      "linkExternalTools": "Vincular ferramentas externas",
+      "integrations": "Integrações",
+      "running": "em execução",
+      "connected": "conectado",
+      "phoneNumbers": "Números de Telefone",
+      "provisioned": "provisionado",
+      "systemHealth": "Saúde do Sistema",
+      "allSystemsGo": "Todos os sistemas operacionais",
+      "latestCallsAndMessages": "Últimas chamadas e mensagens das últimas 24 horas",
+      "viewAll": "Ver Todos",
+      "unknownCaller": "Chamador Desconhecido",
+      "noAssistant": "Sem Assistente",
+      "activityWillAppear": "Suas chamadas e mensagens recentes aparecerão aqui"
     },
     "phoneNumbersPage": {
       "title": "Números de Telefone",
@@ -833,17 +983,17 @@
       "testCall": "Chamada de Teste",
       "provisioned": "Provisionado",
       "monthlyCost": "Custo Mensal",
-      "releaseConfirm": "Tem certeza de que deseja liberar este número?",
+      "releaseConfirm": "Você tem certeza de que deseja liberar este número?",
       "numberReleased": "Número liberado com sucesso",
-      "noPhoneNumbersYet": "Ainda não há números de telefone",
+      "noPhoneNumbersYet": "Ainda sem números de telefone",
       "getNumberToStart": "Obtenha um número de telefone para começar a receber chamadas",
       "selectCountry": "Selecionar País",
       "selectAreaCode": "Selecionar Código de Área",
       "purchaseNumber": "Comprar Número",
       "notAssigned": "Não atribuído",
       "active": "Ativo",
-      "billingInformationTitle": "Informações de Faturamento",
-      "phoneNumberBillingDesc": "Cada número de telefone custa $1,00/mês. Os números são faturados no primeiro dia de cada mês.",
+      "billingInformationTitle": "Informações de Cobrança",
+      "phoneNumberBillingDesc": "Cada número de telefone custa R$1,00/mês. Os números são cobrados no primeiro dia de cada mês.",
       "initiatingTestCall": "Iniciando chamada de teste...",
       "testCallStarted": "Chamada de teste iniciada! Verifique seu telefone.",
       "releasingNumber": "Liberando número...",
@@ -851,15 +1001,68 @@
       "upgradeToGetPhone": "Atualize Seu Plano",
       "phoneNumbersLockedDesc": "O recurso de número de telefone está disponível nos planos BÁSICO e superiores.",
       "unlimited": "Ilimitado",
-      "phoneLimitReached": "Limite de número de telefone atingido. Atualize seu plano para adicionar mais números."
+      "phoneLimitReached": "Limite de números de telefone atingido. Atualize seu plano para adicionar mais números.",
+      "assistant": "Assistente",
+      "status": "Status",
+      "planFeatures": "Recursos do Plano",
+      "numbersUsed": "números usados",
+      "phoneNumber": "número de telefone",
+      "selectAssistant": "Selecionar assistente",
+      "noAssistants": "Nenhum assistente disponível",
+      "assistantUpdated": "Assistente atualizado com sucesso",
+      "modal": {
+        "title": "Obter Número de Telefone",
+        "description": "Obtenha um número de telefone conectado automaticamente ao seu assistente",
+        "selectCountry": "Selecionar País",
+        "assignToAssistant": "Atribuir ao Assistente",
+        "selectAssistant": "Selecionar um assistente",
+        "assistantConnectionNote": "O número de telefone será conectado automaticamente a este assistente",
+        "turkeyFlowTitle": "O que acontece a seguir?",
+        "turkeyStep1": "Você será redirecionado para o NetGSM",
+        "turkeyStep2": "Compre seu número 0850",
+        "turkeyStep3": "Insira as credenciais SIP no painel Telyx",
+        "turkeyStep4": "Seu assistente estará pronto para receber chamadas",
+        "usFlowTitle": "Configuração de Número dos EUA",
+        "usStep1": "Método de pagamento necessário",
+        "usStep2": "Número será provisionado via Twilio",
+        "usStep3": "Conectado automaticamente ao seu assistente",
+        "goToNetgsm": "Ir para NetGSM",
+        "setupPayment": "Configurar Pagamento",
+        "getNumber": "Número",
+        "selectCountryFirst": "Selecione um país primeiro",
+        "processing": "Processando...",
+        "failedToLoadCountries": "Falha ao carregar países",
+        "pleaseSelectCountry": "Por favor, selecione um país",
+        "pleaseSelectAssistant": "Por favor, selecione um assistente",
+        "redirectingToNetgsm": "Redirecionando para NetGSM...",
+        "paymentRequired": "Pagamento é necessário para este número",
+        "numberProvisioned": "Número de telefone provisionado com sucesso!",
+        "upgradeRequired": "Atualização de plano necessária para este recurso",
+        "provisionFailed": "Falha ao provisionar o número. Por favor, tente novamente.",
+        "connectSip": "Conectar Número SIP",
+        "sipFormTitle": "Detalhes da Conexão SIP",
+        "sipHelpText": "Obtenha suas credenciais SIP no painel do seu provedor:",
+        "sipPhoneLabel": "Número de Telefone",
+        "sipServerLabel": "Servidor SIP",
+        "sipUsernameLabel": "Usuário SIP",
+        "sipUsernamePlaceholder": "Seu usuário SIP",
+        "sipPasswordLabel": "Senha SIP",
+        "sipPasswordPlaceholder": "Sua senha SIP",
+        "sipPortLabel": "Porta",
+        "sipTransportLabel": "Transporte",
+        "sipPhoneRequired": "Número de telefone é obrigatório",
+        "sipUsernameRequired": "Usuário SIP é obrigatório",
+        "sipPasswordRequired": "Senha SIP é obrigatória",
+        "sipImportFailed": "Falha ao conectar o número SIP. Por favor, verifique suas credenciais."
+      }
     },
     "subscriptionPage": {
       "title": "Assinatura",
       "description": "Gerencie seu plano e faturamento",
       "currentPlan": "Plano Atual",
       "upgrade": "Atualizar",
-      "downgrade": "Fazer Downgrade",
-      "changePlan": "Alterar Plano",
+      "downgrade": "Rebaixar",
+      "changePlan": "Mudar Plano",
       "billingHistory": "Histórico de Faturamento",
       "paymentMethod": "Método de Pagamento",
       "addPaymentMethod": "Adicionar Método de Pagamento",
@@ -871,7 +1074,7 @@
       "invoiceDate": "Data da Fatura",
       "amount": "Valor",
       "downloadInvoice": "Baixar Fatura",
-      "freePlan": "Plano Grátis",
+      "freePlan": "Plano Gratuito",
       "basicPlan": "Plano Básico",
       "professionalPlan": "Plano Profissional",
       "enterprisePlan": "Plano Empresarial",
@@ -892,33 +1095,98 @@
       "creditsIncluded": "créditos incluídos",
       "currentPlanBtn": "Plano Atual",
       "upgradeBtn": "Atualizar",
-      "noBillingHistory": "Ainda não há histórico de faturamento"
+      "noBillingHistory": "Ainda não há histórico de cobrança",
+      "upgradeConfirm": "Você tem certeza de que deseja atualizar para",
+      "plan": "plano?",
+      "processingUpgrade": "Processando atualização...",
+      "upgradeSuccess": "Plano atualizado com sucesso!",
+      "monthlyCost": "Custo Mensal",
+      "billingCycle": "Ciclo de Cobrança",
+      "monthly": "Mensal",
+      "nextBilling": "Próxima Cobrança",
+      "creditUsage": "Uso de Créditos",
+      "usedThisMonth": "Usado Este Mês",
+      "credits": "créditos",
+      "remaining": "restantes",
+      "runningLow": "Créditos baixos",
+      "limitReached": "Limite de crédito atingido",
+      "addCredits": "Adicionar Créditos",
+      "accessDenied": "Acesso Negado",
+      "noBillingPermission": "Você não tem permissão para visualizar informações de cobrança.",
+      "date": "Data",
+      "status": "Status",
+      "invoice": "Fatura",
+      "download": "Baixar",
+      "paid": "Pago",
+      "pending": "Pendente",
+      "payment": "Pagamento",
+      "paymentFailed": "Pagamento Falhou",
+      "paymentFailedDesc": "O processo de pagamento falhou. Por favor, tente novamente.",
+      "paymentSuccess": "Pagamento Bem-Sucedido",
+      "pleaseWait": "Por favor, aguarde...",
+      "processingPayment": "Processando pagamento...",
+      "redirecting": "Redirecionando...",
+      "subscriptionActivated": "Assinatura Ativada",
+      "upgradeFailed": "Atualização falhou",
+      "popular": "Popular",
+      "contactUs": "Fale Conosco",
+      "getStarted": "Começar",
+      "processing": "Processando...",
+      "overage": "Excesso",
+      "perMinute": "/min",
+      "custom": "Personalizado"
     },
     "analyticsPage": {
-      "title": "Análises",
-      "description": "Acompanhe desempenho e insights",
+      "title": "Análise",
+      "description": "Insights detalhados sobre seu desempenho em todos os canais",
       "detailedInsights": "Insights detalhados sobre o desempenho das suas chamadas",
       "totalSpent": "Total Gasto",
       "callsOverTimeChart": "Chamadas ao Longo do Tempo",
-      "callStatusDistribution": "Distribuição de Status de Chamadas",
-      "callDurationDistribution": "Distribuição de Duração de Chamadas",
+      "callStatusDistribution": "Distribuição do Status das Chamadas",
+      "callDurationDistribution": "Distribuição da Duração das Chamadas",
       "assistantPerformance": "Desempenho do Assistente",
       "costOverTime": "Custo ao Longo do Tempo",
       "callVolume": "Volume de Chamadas",
-      "peakHours": "Horários de Pico",
-      "avgCallDuration": "Duração Média de Chamada",
+      "peakHours": "Horas de Pico",
+      "peakActivityHours": "Horas de Atividade de Pico",
+      "avgCallDuration": "Duração Média da Chamada",
       "costPerCall": "Custo por Chamada",
       "selectTimeRange": "Selecionar intervalo de tempo",
       "callsByHour": "Chamadas por Hora",
       "callsByDay": "Chamadas por Dia",
       "topIntents": "Principais Intenções",
-      "sentimentBreakdown": "Distribuição de Sentimento",
+      "sentimentBreakdown": "Análise de Sentimento",
+      "sentimentAnalysis": "Análise de Sentimento",
       "avgHandleTime": "Tempo Médio de Atendimento",
-      "resolutionRate": "Taxa de Resolução"
+      "resolutionRate": "Taxa de Resolução",
+      "last7Days": "Últimos 7 Dias",
+      "last30Days": "Últimos 30 Dias",
+      "last90Days": "Últimos 90 Dias",
+      "export": "Exportar",
+      "totalCalls": "Total de Chamadas",
+      "chatMessages": "Mensagens de Chat",
+      "appointments": "Compromissos",
+      "conversionRate": "taxa de conversão",
+      "totalMinutes": "Total de Minutos",
+      "successRate": "Taxa de Sucesso",
+      "activityOverTime": "Atividade ao Longo do Tempo",
+      "phoneCalls": "Chamadas Telefônicas",
+      "channelDistribution": "Distribuição de Canais",
+      "recentCalls": "Chamadas Recentes",
+      "dateTime": "Data e Hora",
+      "caller": "Chamador",
+      "duration": "Duração",
+      "sentiment": "Sentimento",
+      "status": "Status",
+      "noCallsYet": "Ainda não há chamadas",
+      "positive": "Positivo",
+      "neutral": "Neutro",
+      "negative": "Negativo",
+      "failedToLoad": "Falha ao carregar análises"
     },
     "knowledgeBasePage": {
       "title": "Base de Conhecimento",
-      "description": "Treine sua IA com documentos, FAQs e conteúdo web",
+      "description": "Treine sua IA com documentos, FAQs e conteúdo da web",
       "documentsTab": "Documentos",
       "faqsTab": "FAQs",
       "urlsTab": "URLs",
@@ -929,13 +1197,13 @@
       "statusTableHeader": "Status",
       "uploadedTableHeader": "Carregado",
       "actionsTableHeader": "Ações",
-      "noDocumentsTitle": "Ainda não há documentos",
+      "noDocumentsTitle": "Nenhum documento ainda",
       "uploadDocumentsDesc": "Carregue documentos para treinar seu assistente de IA",
       "addFaqBtn": "Adicionar FAQ",
-      "noFaqsTitle": "Ainda não há FAQs",
+      "noFaqsTitle": "Nenhuma FAQ ainda",
       "addFaqsDesc": "Adicione perguntas frequentes para ajudar sua IA",
       "addUrlBtn": "Adicionar URL",
-      "noUrlsTitle": "Ainda não há URLs",
+      "noUrlsTitle": "Nenhuma URL ainda",
       "addUrlsDesc": "Adicione URLs de sites para rastrear e extrair conteúdo",
       "urlTableHeader": "URL",
       "pagesTableHeader": "Páginas",
@@ -946,14 +1214,14 @@
       "knowledgeBaseNamePlaceholder": "Digite o nome para esta base de conhecimento",
       "documentsLabel": "Documentos",
       "clickToUpload": "Clique para carregar ou arraste e solte",
-      "pdfDocxTxtCsv": "PDF, DOCX, TXT ou CSV (máx. 10MB)",
+      "pdfDocxTxtCsv": "PDF, DOCX, TXT ou CSV (máx 10MB)",
       "clickToChange": "Clique para alterar",
       "uploadingText": "Carregando...",
       "saveBtn": "Salvar",
       "addFaqTitle": "Adicionar FAQ",
       "createFaqDesc": "Crie uma pergunta frequente",
       "questionRequired": "Pergunta *",
-      "questionPlaceholder": "Qual é o seu horário de funcionamento?",
+      "questionPlaceholder": "Quais são seus horários?",
       "answerRequired": "Resposta *",
       "answerPlaceholder": "Estamos abertos de segunda a sexta, das 9h às 17h.",
       "categoryOptional": "Categoria (opcional)",
@@ -961,23 +1229,23 @@
       "createFaqBtn": "Criar FAQ",
       "addUrlTitle": "Adicionar URL",
       "crawlWebsiteDesc": "Rastreie um site para extrair conteúdo",
-      "websiteUrlRequired": "URL do Site *",
+      "websiteUrlRequired": "URL do site *",
       "websiteUrlPlaceholder": "https://exemplo.com",
       "crawlDepthLabel": "Profundidade de Rastreamento",
-      "crawlDepthDesc": "Número de níveis para rastrear (1 = apenas página inicial)",
+      "crawlDepthDesc": "Número de níveis a serem rastreados (1 = apenas página inicial)",
       "addUrlSubmit": "Adicionar URL",
       "enterKnowledgeBaseName": "Por favor, insira um nome para a base de conhecimento",
       "selectFileToUpload": "Por favor, selecione um arquivo para carregar",
       "documentUploadedSuccess": "Documento carregado com sucesso!",
-      "uploadFailed": "Falha no carregamento",
+      "uploadFailed": "Falha ao carregar",
       "deletingText": "Excluindo...",
       "documentDeleted": "Documento excluído!",
       "failedToDeleteDocument": "Falha ao excluir documento",
-      "fillQuestionAnswer": "Por favor, preencha pergunta e resposta",
+      "fillQuestionAnswer": "Por favor, preencha a pergunta e a resposta",
       "creatingFaq": "Criando FAQ...",
       "faqCreated": "FAQ criada!",
       "failedToCreateFaq": "Falha ao criar FAQ",
-      "faqDeleted": "FAQ excluída!",
+      "faqDeleted": "FAQ excluído!",
       "failedToDeleteFaq": "Falha ao excluir FAQ",
       "enterUrl": "Por favor, insira uma URL",
       "addingUrl": "Adicionando URL...",
@@ -987,55 +1255,67 @@
       "failedToDeleteUrl": "Falha ao excluir URL",
       "ready": "pronto",
       "processing": "processando",
-      "crawling": "rastreando"
+      "crawling": "rastreamento",
+      "saveError": "Erro ao salvar",
+      "loadError": "Erro ao carregar",
+      "editDocument": "Editar Documento",
+      "editFaq": "Editar FAQ",
+      "editUrl": "Editar URL",
+      "questionLabel": "Pergunta",
+      "answerLabel": "Resposta"
     },
     "costCalculatorPage": {
       "title": "Calculadora de Custos",
       "description": "Calcule o custo mensal do seu assistente de IA",
       "expectedCalls": "Chamadas Mensais Esperadas",
-      "avgCallDurationLabel": "Duração Média de Chamada",
+      "avgCallDurationLabel": "Duração Média da Chamada",
       "minutesLabel": "minutos",
       "yourEstimatedCost": "Seu Custo Mensal Estimado",
       "vsHiringEmployee": "vs Contratar um Funcionário",
-      "employeeCost": "Custo de Funcionário",
+      "employeeCost": "Custo do Funcionário",
       "cheaper": "mais barato",
       "youSave": "Você Economiza",
-      "startFreeTrial": "Começar Teste Grátis",
+      "startFreeTrial": "Iniciar Teste Gratuito",
       "costBreakdown": "Detalhamento de Custos",
       "baseFee": "Taxa Base",
       "usageCost": "Custo de Uso",
-      "callsPerMonth": "chamadas/mês"
+      "callsPerMonth": "chamadas/mês",
+      "perMonthShort": "mês",
+      "perMinute": "por minuto",
+      "estimatedCost": "Custo Estimado",
+      "monthlyEstimate": "Estimativa Mensal",
+      "currency": "Moeda"
     },
     "emailPage": {
-      "title": "Caixa de Entrada",
-      "description": "Gerenciamento de e-mail assistido por IA",
-      "connectYourEmail": "Conectar seu E-mail",
-      "connectEmailDesc": "Conecte sua conta Gmail ou Microsoft 365 para começar a receber respostas de e-mail assistidas por IA.",
+      "title": "Caixa de Entrada de Email",
+      "description": "Gerenciamento de email assistido por IA",
+      "connectYourEmail": "Conectar Seu Email",
+      "connectEmailDesc": "Conecte sua conta do Gmail ou Microsoft 365 para começar a receber respostas de email assistidas por IA.",
       "goToIntegrations": "Ir para Integrações",
       "connected": "Conectado",
       "syncing": "Sincronizando...",
-      "syncEmails": "Sincronizar E-mails",
+      "syncEmails": "Sincronizar Emails",
       "pendingReply": "Resposta Pendente",
       "draftsReady": "Rascunhos Prontos",
-      "repliedToday": "Respondidos Hoje",
-      "totalThreads": "Conversas Totais",
+      "repliedToday": "Respondido Hoje",
+      "totalThreads": "Total de Conversas",
       "conversations": "Conversas",
       "noConversations": "Ainda não há conversas",
       "syncToGetStarted": "Sincronize seus e-mails para começar",
-      "aiDraft": "Rascunho IA",
+      "aiDraft": "Rascunho de IA",
       "from": "De",
       "conversation": "Conversa",
       "you": "Você",
-      "aiDraftResponse": "Resposta Rascunho IA",
+      "aiDraftResponse": "Resposta do Rascunho de IA",
       "regenerate": "Regenerar",
       "editResponsePlaceholder": "Edite sua resposta...",
-      "reviewBeforeSending": "Revise e edite a resposta gerada por IA antes de enviar",
+      "reviewBeforeSending": "Revise e edite a resposta gerada pela IA antes de enviar",
       "sending": "Enviando...",
       "sendEmail": "Enviar E-mail",
       "noDraftAvailable": "Nenhum Rascunho Disponível",
-      "syncToGenerateDraft": "Sincronize seus e-mails para gerar um rascunho de resposta IA para esta conversa.",
+      "syncToGenerateDraft": "Sincronize seus e-mails para gerar uma resposta de rascunho de IA para esta conversa.",
       "conversationClosed": "Esta conversa foi encerrada",
-      "selectConversation": "Selecionar uma Conversa",
+      "selectConversation": "Selecione uma Conversa",
       "selectConversationDesc": "Escolha uma conversa da lista para ver detalhes e gerenciar respostas",
       "status": {
         "awaitingReply": "Aguardando Resposta",
@@ -1043,37 +1323,305 @@
         "replied": "Respondido",
         "closed": "Fechado"
       },
-      "failedToLoadThread": "Falha ao carregar detalhes da conversa",
+      "failedToLoadThread": "Falha ao carregar detalhes do thread",
       "emailsSyncedSuccess": "E-mails sincronizados com sucesso",
       "failedToSyncEmails": "Falha ao sincronizar e-mails",
       "emailSentSuccess": "E-mail enviado com sucesso!",
       "failedToSendEmail": "Falha ao enviar e-mail",
       "draftRegenerated": "Rascunho regenerado",
       "failedToRegenerateDraft": "Falha ao regenerar rascunho",
-      "threadClosed": "Conversa encerrada",
-      "failedToCloseThread": "Falha ao encerrar conversa"
+      "threadClosed": "Thread encerrado",
+      "failedToCloseThread": "Falha ao encerrar thread"
+    },
+    "collectionsPage": {
+      "title": "Pagamentos Atrasados",
+      "description": "Gerencie faturas aguardando cobrança",
+      "refreshButton": "Atualizar",
+      "startCampaignButton": "Iniciar Campanha",
+      "notConnected": {
+        "description": "O módulo de cobranças requer integração com o Parasut",
+        "cardTitle": "Conectar ao Parasut",
+        "cardDescription": "Conecte sua conta do Parasut para rastrear automaticamente faturas atrasadas",
+        "featuresTitle": "O Que Você Pode Fazer Com Este Recurso",
+        "feature1": "Listar automaticamente faturas atrasadas",
+        "feature2": "Ligar para clientes com IA",
+        "feature3": "Criar campanhas de cobrança em lote",
+        "feature4": "Enviar lembretes de pagamento",
+        "connectButton": "Conectar ao Parasut"
+      },
+      "summary": {
+        "totalInvoices": "Total de Faturas",
+        "totalAmount": "Valor Total",
+        "customerCount": "Número de Clientes",
+        "avgDelay": "Média de Atraso",
+        "days": "dias"
+      },
+      "filters": {
+        "title": "Filtros",
+        "minDays": "Mín. Dias Atrasados",
+        "maxDays": "Máx. Dias Atrasados",
+        "minAmount": "Mín. Valor",
+        "maxAmount": "Máx. Valor",
+        "all": "Todos",
+        "applyButton": "Aplicar Filtro"
+      },
+      "table": {
+        "title": "Faturas Atrasadas",
+        "selectAll": "Selecionar Todos",
+        "unselectAll": "Desmarcar Todos",
+        "customer": "Cliente",
+        "invoiceNo": "Número da Fatura",
+        "amount": "Valor",
+        "delay": "Atraso",
+        "days": "dias",
+        "phone": "Telefone",
+        "status": "Status",
+        "noPhone": "Sem Telefone",
+        "callable": "Ligável",
+        "phoneRequired": "Telefone Necessário",
+        "noOverdueTitle": "Sem Faturas Atrasadas",
+        "noOverdueDesc": "Todas as suas faturas parecem estar pagas em dia"
+      },
+      "modal": {
+        "title": "Criar Campanha",
+        "description": "Crie uma campanha de cobrança para os clientes selecionados.",
+        "customersSelected": "clientes selecionados",
+        "campaignName": "Nome da Campanha",
+        "campaignNamePlaceholder": "Ex.: Cobranças de Dezembro",
+        "channel": "Canal de Comunicação",
+        "phoneCall": "Ligação Telefônica",
+        "whatsapp": "Mensagem pelo WhatsApp",
+        "summaryTitle": "Resumo",
+        "customer": "Cliente",
+        "totalAmount": "Valor Total",
+        "infoTitle": "Informação",
+        "info1": "Os clientes serão chamados sequencialmente quando a campanha começar",
+        "info2": "Cada ligação será feita pelo assistente de IA",
+        "info3": "Você pode acompanhar o status da campanha em tempo real",
+        "cancel": "Cancelar",
+        "creating": "Criando...",
+        "createButton": "Criar Campanha"
+      },
+      "defaultCampaignName": "Campanha de Cobrança",
+      "errors": {
+        "loadInvoicesFailed": "Falha ao carregar faturas",
+        "parasutConnectionFailed": "Falha na conexão com o Parasut",
+        "selectAtLeastOneCustomer": "Selecione pelo menos um cliente",
+        "campaignCreationFailed": "Falha ao criar campanha"
+      },
+      "campaignCreated": "Campanha criada com sucesso",
+      "refreshData": "Atualizar Dados",
+      "startCampaign": "Iniciar Campanha",
+      "lastSynced": "Última Sincronização",
+      "noOverduePayments": "Sem Pagamentos Atrasados",
+      "noOverduePaymentsDesc": "Faturas atrasadas aparecerão aqui",
+      "connectIntegration": "Conectar Integração",
+      "connectIntegrationDesc": "Conecte sua conta Parasut para buscar faturas em atraso",
+      "goToIntegrations": "Ir para Integrações",
+      "totalOverdue": "Total em Atraso",
+      "overdueInvoices": "Faturas em Atraso",
+      "readyToCall": "Pronto para Ligar",
+      "campaignsRunning": "Campanhas em Andamento",
+      "customer": "Cliente",
+      "invoiceNo": "Número da Fatura",
+      "amount": "Valor",
+      "dueDate": "Data de Vencimento",
+      "daysOverdue": "Dias em Atraso",
+      "daysLabel": "dias",
+      "phone": "Telefone",
+      "actions": "Ações",
+      "noPhone": "Sem Telefone",
+      "callNow": "Ligar Agora",
+      "sendReminder": "Enviar Lembrete",
+      "markAsPaid": "Marcar como Pago",
+      "selected": "selecionado",
+      "selectAll": "Selecionar Todos",
+      "clearSelection": "Limpar Seleção",
+      "createCampaign": "Criar Campanha",
+      "campaignSettings": "Configurações da Campanha",
+      "campaignName": "Nome da Campanha",
+      "campaignNamePlaceholder": "Ex.: Cobranças de Dezembro",
+      "selectChannel": "Selecionar Canal",
+      "phoneChannel": "Chamada Telefônica",
+      "whatsappChannel": "Mensagem pelo WhatsApp",
+      "selectAssistant": "Selecionar Assistente",
+      "chooseAssistant": "Escolher um assistente",
+      "scheduleCampaign": "Agendar Campanha",
+      "startImmediately": "Começar Imediatamente",
+      "scheduleForLater": "Agendar para Depois",
+      "scheduledDate": "Data Agendada",
+      "scheduledTime": "Hora Agendada",
+      "cancel": "Cancelar",
+      "createAndStart": "Criar e Iniciar",
+      "invoicesSelected": "faturas selecionadas",
+      "totalAmount": "Valor Total",
+      "refreshing": "Atualizando...",
+      "dataRefreshed": "Dados atualizados",
+      "failedToRefresh": "Falha ao atualizar dados",
+      "failedToCreateCampaign": "Falha ao criar campanha",
+      "callInitiated": "Chamada iniciada",
+      "failedToInitiateCall": "Falha ao iniciar chamada",
+      "reminderSent": "Lembrete enviado",
+      "failedToSendReminder": "Falha ao enviar lembrete",
+      "markedAsPaid": "Marcado como pago",
+      "failedToMarkAsPaid": "Falha ao marcar como pago",
+      "selectInvoicesToCreateCampaign": "Selecione faturas para criar uma campanha"
+    },
+    "teamPage": {
+      "title": "Gerenciamento de Equipe",
+      "description": "Gerencie membros da equipe e permissões",
+      "sendInvite": "Enviar Convite",
+      "stats": {
+        "totalMembers": "Total de Membros",
+        "pendingInvites": "Convites Pendentes",
+        "yourRole": "Seu Papel"
+      },
+      "tabs": {
+        "members": "Membros",
+        "pendingInvites": "Convites Pendentes"
+      },
+      "members": {
+        "title": "Membros da Equipe",
+        "description": "Gerencie todos os usuários que têm acesso ao seu negócio",
+        "noMembers": "Ainda não há membros na equipe",
+        "unnamed": "Sem Nome",
+        "roleUpdated": "Papel atualizado",
+        "thisUser": "este usuário",
+        "removeConfirm": "da equipe. Você tem certeza?",
+        "removed": "Membro removido",
+        "removeFromTeam": "Remover da Equipe",
+        "tableHeaders": {
+          "user": "Usuário",
+          "role": "Papel",
+          "joinedAt": "Entrou Em",
+          "invitedBy": "Convidado Por",
+          "actions": "Ações"
+        }
+      },
+      "invitations": {
+        "title": "Convites Pendentes",
+        "description": "Gerencie convites pendentes da equipe",
+        "noPending": "Não há convites pendentes",
+        "cancelled": "Convite cancelado",
+        "resent": "Convite reenviado",
+        "tableHeaders": {
+          "email": "Email",
+          "role": "Papel",
+          "sentAt": "Enviado Em",
+          "expiresAt": "Expira Em",
+          "invitedBy": "Convidado Por",
+          "actions": "Ações"
+        }
+      },
+      "inviteModal": {
+        "title": "Convidar Membro da Equipe",
+        "description": "Convide um novo membro para sua equipe",
+        "emailLabel": "Endereço de Email",
+        "emailPlaceholder": "exemplo@empresa.com",
+        "roleLabel": "Papel",
+        "managerDesc": "Pode gerenciar assistentes e chamadas",
+        "staffDesc": "Pode visualizar chamadas",
+        "sending": "Enviando..."
+      },
+      "invite": {
+        "created": "Convite criado",
+        "manualShare": "Você pode compartilhar o link manualmente:",
+        "linkCopied": "Link copiado",
+        "copy": "Copiar",
+        "sent": "Convite enviado"
+      },
+      "roles": {
+        "owner": "Proprietário",
+        "manager": "Gerente",
+        "staff": "Funcionário"
+      },
+      "accessDenied": {
+        "title": "Acesso Negado",
+        "message": "Você não tem permissão para visualizar esta página."
+      },
+      "errors": {
+        "loadFailed": "Falha ao carregar os dados da equipe",
+        "emailRequired": "Endereço de e-mail é obrigatório",
+        "inviteFailed": "Falha ao enviar convite",
+        "roleUpdateFailed": "Falha ao atualizar função",
+        "removeFailed": "Falha ao remover membro",
+        "cancelFailed": "Falha ao cancelar convite",
+        "resendFailed": "Falha ao reenviar convite"
+      },
+      "inviteMember": "Convidar Membro",
+      "teamMembers": "Membros da Equipe",
+      "pendingInvitations": "Convites Pendentes",
+      "noTeamMembers": "Ainda não há membros na equipe",
+      "noTeamMembersDesc": "Comece adicionando membros à sua equipe",
+      "noPendingInvitations": "Sem convites pendentes",
+      "member": "Membro",
+      "role": "Função",
+      "status": "Status",
+      "joinedDate": "Data de Adesão",
+      "lastActive": "Última Atividade",
+      "actions": "Ações",
+      "active": "Ativo",
+      "inactive": "Inativo",
+      "pending": "Pendente",
+      "owner": "Proprietário",
+      "admin": "Admin",
+      "manager": "Gerente",
+      "agent": "Agente",
+      "viewer": "Visualizador",
+      "editMember": "Editar Membro",
+      "removeMember": "Remover Membro",
+      "resendInvitation": "Reenviar Convite",
+      "cancelInvitation": "Cancelar Convite",
+      "inviteTeamMember": "Convidar Membro da Equipe",
+      "emailAddress": "Endereço de E-mail",
+      "emailPlaceholder": "exemplo@empresa.com",
+      "selectRole": "Selecionar Função",
+      "roleDescriptions": {
+        "admin": "Acesso total - pode gerenciar todas as configurações",
+        "manager": "Pode gerenciar assistentes e chamadas",
+        "agent": "Pode visualizar e gerenciar chamadas",
+        "viewer": "Acesso somente para visualização"
+      },
+      "sendInvitation": "Enviar Convite",
+      "cancel": "Cancelar",
+      "confirmRemove": "Você tem certeza de que deseja remover este membro da equipe?",
+      "invitationSent": "Convite enviado",
+      "failedToSendInvitation": "Falha ao enviar convite",
+      "memberRemoved": "Membro removido",
+      "failedToRemoveMember": "Falha ao remover membro",
+      "memberUpdated": "Membro atualizado",
+      "failedToUpdateMember": "Falha ao atualizar membro",
+      "invitationResent": "Convite reenviado",
+      "failedToResendInvitation": "Falha ao reenviar convite",
+      "invitationCancelled": "Convite cancelado",
+      "failedToCancelInvitation": "Falha ao cancelar convite",
+      "youLabel": "Você",
+      "seats": "assentos",
+      "seatsUsed": "usados",
+      "upgradePlan": "Atualizar Plano",
+      "teamLimitReached": "Limite da equipe alcançado. Atualize seu plano para adicionar mais membros."
     },
     "campaignsPage": {
       "title": "Campanhas de Cobrança",
-      "description": "Gerencie suas campanhas de chamadas em massa",
+      "description": "Gerencie suas campanhas de chamadas em lote",
       "newCampaign": "Nova Campanha",
       "totalCampaigns": "Total de Campanhas",
-      "active": "Ativas",
-      "completed": "Concluídas",
+      "active": "Ativo",
+      "completed": "Concluído",
       "totalCalls": "Total de Chamadas",
       "allStatuses": "Todos os Status",
       "liveUpdateActive": "Atualização ao vivo ativa",
-      "noCampaigns": "Ainda não há campanhas",
-      "createCampaignFromOverdue": "Crie uma campanha a partir de faturas vencidas",
+      "noCampaigns": "Nenhuma campanha ainda",
+      "createCampaignFromOverdue": "Criar uma campanha a partir de faturas vencidas",
       "createCampaign": "Criar Campanha",
       "campaign": "Campanha",
       "channel": "Canal",
       "status": {
         "pending": "Pendente",
-        "running": "Em execução",
-        "paused": "Pausada",
-        "completed": "Concluída",
-        "cancelled": "Cancelada",
+        "running": "Em andamento",
+        "paused": "Pausado",
+        "completed": "Concluído",
+        "cancelled": "Cancelado",
         "failed": "Falhou"
       },
       "progress": "Progresso",
@@ -1092,7 +1640,7 @@
       "failedToPause": "Falha ao pausar campanha",
       "campaignResumed": "Campanha retomada",
       "failedToResume": "Falha ao retomar campanha",
-      "confirmCancel": "Tem certeza de que deseja cancelar esta campanha?",
+      "confirmCancel": "Você tem certeza de que deseja cancelar esta campanha?",
       "campaignCancelled": "Campanha cancelada",
       "failedToCancel": "Falha ao cancelar campanha"
     },
@@ -1100,24 +1648,25 @@
       "title": "Widget de Chat",
       "description": "Adicione um widget de chat de voz ao seu site",
       "enableWidget": "Ativar Widget",
-      "enableWidgetDesc": "Ative o widget de chat no seu site",
+      "enableWidgetDesc": "Ative o widget de chat em seu site",
       "selectAssistant": "Selecionar Assistente",
       "chooseAssistant": "Escolha um assistente",
       "noAssistantsFound": "Nenhum assistente encontrado. Crie um primeiro.",
-      "assistantWillHandle": "Este assistente gerenciará o chat",
+      "assistantWillHandle": "Este assistente irá gerenciar o chat",
       "appearance": "Aparência",
       "position": "Posição",
-      "bottomRight": "Inferior Direita",
-      "bottomLeft": "Inferior Esquerda",
-      "topRight": "Superior Direita",
-      "topLeft": "Superior Esquerda",
-      "primaryColor": "Cor Principal",
+      "bottomRight": "Inferior Direito",
+      "bottomLeft": "Inferior Esquerdo",
+      "topRight": "Superior Direito",
+      "topLeft": "Superior Esquerdo",
+      "primaryColor": "Cor Primária",
       "buttonText": "Texto do Botão",
       "buttonTextPlaceholder": "Fale conosco",
       "showBranding": "Mostrar \"Powered by Telyx\"",
-      "showBrandingDesc": "Remover marca no plano Pro",
+      "showBrandingDesc": "Você pode remover a marca no plano Pro",
+      "brandingProOnly": "Faça upgrade para o plano Pro para remover a marca",
       "saveSettings": "Salvar Configurações",
-      "preview": "Visualizar",
+      "preview": "Pré-visualização",
       "hide": "Ocultar",
       "embedCode": "Código de Incorporação",
       "copy": "Copiar",
@@ -1131,83 +1680,104 @@
       "avgDuration": "Duração Média",
       "analyticsComingSoon": "Análises em breve",
       "settingsSaved": "Configurações salvas com sucesso!",
-      "embedCodeCopied": "Código de incorporação copiado para a área de transferência!"
+      "embedCodeCopied": "Código de incorporação copiado para a área de transferência!",
+      "defaultButtonText": "Fale conosco",
+      "defaultWelcomeMessage": "Olá! Como posso ajudar você hoje?",
+      "defaultPlaceholder": "Digite uma mensagem..."
     }
   },
   "onboarding": {
-    "welcome": "Bem-vindo",
-    "businessType": "Tipo de Negócio",
-    "selectTemplate": "Selecionar Modelo",
-    "customizeAssistant": "Personalizar Assistente",
-    "complete": "Concluir",
-    "step1": {
-      "title": "Escolher Idioma",
-      "description": "Selecione seu idioma preferido"
+    "steps": {
+      "chooseIndustry": "Escolha a Indústria",
+      "pickVoice": "Escolha Sua Voz",
+      "addTraining": "Adicionar Treinamento",
+      "testAssistant": "Testar Assistente",
+      "complete": "Concluir"
     },
-    "step2": {
-      "title": "Escolher Setor",
-      "description": "Conte-nos sobre seu negócio"
+    "descriptions": {
+      "tellUsAboutBusiness": "Conte-nos sobre seu negócio",
+      "selectAssistantVoice": "Selecione a voz do seu assistente",
+      "createFirstGreeting": "Crie sua primeira saudação",
+      "tryItOut": "Experimente!",
+      "allSet": "Tudo pronto!"
     },
-    "step3": {
-      "title": "Escolher Voz",
-      "description": "Selecione a voz do seu assistente"
-    },
-    "step4": {
-      "title": "Adicionar Treinamento",
-      "description": "Crie sua primeira saudação"
-    },
-    "step5": {
-      "title": "Testar Assistente",
-      "description": "Experimente!"
-    },
-    "step6": {
-      "title": "Concluído",
-      "description": "Tudo pronto!"
+    "labels": {
+      "language": "Idioma",
+      "selectAssistantLanguage": "Selecione o idioma do assistente",
+      "country": "País",
+      "selectBusinessLocation": "Selecione a localização do seu negócio",
+      "businessType": "Tipo de Negócio",
+      "businessTimezone": "Fuso Horário Empresarial",
+      "selectBusinessTimezone": "Selecione o fuso horário em que sua empresa opera",
+      "greetingMessage": "Mensagem de Saudação",
+      "greetingMessageDesc": "A primeira frase que seu assistente irá dizer",
+      "assistantInstructions": "Instruções do Assistente",
+      "assistantInstructionsDesc": "Instruções sobre como seu assistente deve se comportar"
     },
     "industries": {
       "restaurant": "Restaurante",
-      "salon": "Salão/Spa",
+      "salonSpa": "Salão & Spa",
       "ecommerce": "E-commerce",
       "professionalServices": "Serviços Profissionais",
       "other": "Outro"
     },
-    "voiceTones": {
-      "professional": "Profissional",
-      "friendly": "Amigável",
-      "warm": "Caloroso",
-      "energetic": "Energético"
+    "prompts": {
+      "restaurant": "Você é um assistente de restaurante. Faça reservas, forneça informações sobre o menu, compartilhe horários de funcionamento, responda perguntas dos clientes.",
+      "salon": "Você é um assistente de salão. Agende compromissos, forneça informações sobre serviços e preços, compartilhe horários disponíveis.",
+      "ecommerce": "Você é um assistente de e-commerce. Forneça informações sobre estoque, atualizações de status de pedidos, explique processos de devolução e troca.",
+      "service": "Você é um assistente de serviços profissionais. Agende compromissos, forneça informações sobre serviços, ajude com preços.",
+      "other": "Você é um assistente de negócios. Responda perguntas dos clientes, forneça informações, seja útil."
     },
-    "greetingLabel": "Mensagem de Saudação",
-    "greetingPlaceholder": "Digite sua mensagem de saudação...",
-    "greetingTip": "Dica: Mantenha sua saudação curta, amigável e inclua o nome do seu negócio.",
-    "greetingExample": "Exemplo:",
-    "testYourAssistant": "Teste Seu Assistente",
-    "startVoiceTest": "Iniciar Teste de Voz",
-    "endCall": "Encerrar Chamada",
-    "creatingAssistant": "Criando seu assistente...",
-    "onboardingComplete": "Tudo Pronto!",
-    "onboardingCompleteDesc": "Seu assistente de IA está pronto para começar. Aqui está o que você pode fazer a seguir:",
-    "upgradeToGetPhone": "Atualize para Obter Seu Número de Telefone",
-    "upgradeDesc": "Comece a receber chamadas reais",
-    "addMoreTrainings": "Adicionar Mais Treinamentos",
-    "addTrainingsDesc": "Ensine seu assistente sobre seus serviços",
-    "setupIntegrations": "Configurar Integrações",
-    "setupIntegrationsDesc": "Conecte Google Calendar, Shopify ou outros",
-    "stepOf": "Etapa",
-    "of": "de"
+    "voice": {
+      "male": "Masculino",
+      "female": "Feminino",
+      "previewComingSoon": "Prévia de voz em breve"
+    },
+    "voiceDemo": {
+      "title": "Teste Seu Assistente de IA",
+      "description": "Clique no botão abaixo para iniciar uma conversa de voz com seu assistente de IA",
+      "createAssistantFirst": "Por favor, crie um assistente primeiro para testar",
+      "startVoiceTest": "Iniciar Teste de Voz",
+      "endCall": "Encerrar Chamada",
+      "allowMicrophone": "Certifique-se de permitir o acesso ao microfone quando solicitado",
+      "callStatus": {
+        "starting": "Iniciando chamada...",
+        "started": "Chamada iniciada! Fale agora...",
+        "ended": "Chamada encerrada",
+        "speaking": "Assistente está falando...",
+        "listening": "Ouvindo..."
+      }
+    },
+    "messages": {
+      "completed": "Concluído!",
+      "assistantCreated": "Assistente criado!",
+      "failedToCreate": "Falha ao criar assistente",
+      "error": "Ocorreu um erro",
+      "creatingAssistant": "Criando assistente..."
+    },
+    "final": {
+      "allSet": "Tudo Pronto!",
+      "assistantReady": "Seu assistente de IA está pronto para uso."
+    },
+    "buttons": {
+      "back": "Voltar",
+      "next": "Próximo",
+      "complete": "Concluir",
+      "loading": "Carregando..."
+    }
   },
   "errors": {
     "generic": "Ocorreu um erro",
     "networkError": "Erro de rede",
     "unauthorized": "Acesso não autorizado",
     "notFound": "Não encontrado",
-    "serverError": "Erro do servidor",
+    "serverError": "Erro de servidor",
     "tryAgainLater": "Por favor, tente novamente mais tarde",
     "connectionError": "Erro de conexão",
     "fieldRequired": "Este campo é obrigatório",
-    "invalidEmail": "Endereço de email inválido",
+    "invalidEmail": "Endereço de e-mail inválido",
     "passwordTooShort": "Senha muito curta",
-    "passwordsDoNotMatch": "As senhas não coincidem",
+    "passwordsDoNotMatch": "As senhas não correspondem",
     "phoneTooShort": "Número de telefone muito curto"
   },
   "success": {
@@ -1232,7 +1802,7 @@
     "thisYear": "Este Ano"
   },
   "callStatus": {
-    "completed": "Concluída",
+    "completed": "Concluído",
     "failed": "Falhou",
     "inProgress": "Em Andamento",
     "queued": "Na Fila"
@@ -1243,9 +1813,9 @@
     "tryNow": "Experimente Agora!",
     "desc": "Experimente nossa IA em 30 segundos - Grátis!",
     "talkNow": "Falar Agora",
-    "disclaimer": "Demonstração gratuita. Sem necessidade de cartão de crédito.",
+    "disclaimer": "Demonstração gratuita. Nenhum cartão de crédito necessário.",
     "callInProgress": "Chamada em Andamento...",
-    "talkingWithDemo": "Falando com nosso assistente de demonstração",
+    "talkingWithDemo": "Conversando com nosso assistente de demonstração",
     "callCompleted": "Chamada Concluída",
     "thanksForDemo": "Obrigado por experimentar nossa demonstração!",
     "callStarted": "Chamada iniciada!",
@@ -1254,36 +1824,58 @@
     "enterPhoneNumber": "Digite seu número de telefone",
     "callMeNow": "Me Ligue Agora",
     "callingYou": "Ligando para você...",
-    "phoneWillRing": "Seu telefone tocará em 5 segundos!",
+    "phoneWillRing": "Seu telefone vai tocar em 5 segundos!",
     "howWasDemo": "Como foi a demonstração?",
     "rateExperience": "Avalie sua experiência",
     "submitFeedback": "Enviar Feedback",
     "thankYouFeedback": "Obrigado pelo seu feedback!",
     "invalidPhoneNumber": "Número de telefone inválido",
-    "demoCallFailed": "Falha ao iniciar chamada de demonstração",
-    "tryAgain": "Tentar Novamente"
+    "demoCallFailed": "Falha ao iniciar a chamada de demonstração",
+    "tryAgain": "Tente Novamente"
   },
   "templates": {
     "title": "Modelos Prontos",
     "description": "Crie seu assistente de IA com um clique",
     "useTemplate": "Usar Modelo",
     "restaurantReservation": "Reserva de Restaurante",
-    "restaurantReservationDesc": "Assistente de IA que recebe reservas de clientes",
+    "restaurantReservationDesc": "Assistente de IA que faz reservas para os clientes",
     "salonAppointment": "Agendamento de Salão",
-    "salonAppointmentDesc": "Assistente de IA que agenda e confirma horários",
-    "ecommerceSupport": "Suporte E-commerce",
+    "salonAppointmentDesc": "Assistente de IA que agenda e confirma compromissos",
+    "ecommerceSupport": "Suporte a E-commerce",
     "ecommerceSupportDesc": "Rastreamento de pedidos e suporte ao cliente",
     "startFromScratch": "Começar do Zero",
-    "createCustomAssistant": "Crie um assistente totalmente personalizado com sua própria configuração"
+    "createCustomAssistant": "Criar um assistente totalmente personalizado com sua própria configuração",
+    "chooseTemplate": "Escolher Modelo",
+    "startWithTemplateOrScratch": "Começar com um modelo pronto ou criar do zero",
+    "recommendedForYou": "Recomendado para Você"
+  },
+  "waitlist": {
+    "title": "Solicitar Acesso Antecipado",
+    "subtitle": "Seja um dos primeiros a experimentar o Telyx.ai",
+    "name": "Nome Completo",
+    "email": "Email",
+    "company": "Nome da Empresa",
+    "businessType": "Tipo de Negócio",
+    "message": "Sua Mensagem (Opcional)",
+    "submit": "Solicitar",
+    "success": "Solicitação recebida! Entraremos em contato em breve.",
+    "alreadyApplied": "Uma solicitação com este email já existe."
+  },
+  "invite": {
+    "codeLabel": "Código de Convite",
+    "codePlaceholder": "Digite seu código de convite",
+    "codeRequired": "Um código de convite válido é necessário",
+    "noCode": "Não tem um código de convite?",
+    "applyEarlyAccess": "Solicitar acesso antecipado"
   },
   "integrations": {
     "whatsapp": {
-      "title": "Integração WhatsApp",
+      "title": "Integração com WhatsApp",
       "desc": "Atenda seus clientes via WhatsApp"
     },
     "googleCalendar": {
       "title": "Google Calendar",
-      "desc": "Sincronize agendamentos com Google Calendar"
+      "desc": "Sincronize compromissos com o Google Calendar"
     },
     "stripe": {
       "title": "Stripe",
@@ -1291,19 +1883,19 @@
     },
     "hubspot": {
       "title": "HubSpot",
-      "desc": "Sincronize chamadas e contatos com HubSpot CRM"
+      "desc": "Sincronize chamadas e contatos com o HubSpot CRM"
     },
     "zapier": {
       "title": "Zapier",
-      "desc": "Conecte com mais de 5000 aplicativos usando fluxos de trabalho Zapier"
+      "desc": "Conecte-se com mais de 5000 aplicativos usando fluxos de trabalho do Zapier"
     },
     "slack": {
       "title": "Slack",
-      "desc": "Receba notificações de chamadas no seu espaço de trabalho Slack"
+      "desc": "Receba notificações de chamadas no seu espaço de trabalho do Slack"
     },
     "salesforce": {
       "title": "Salesforce",
-      "desc": "Integre com Salesforce CRM"
+      "desc": "Integre-se com o Salesforce CRM"
     },
     "calendly": {
       "title": "Calendly",
@@ -1311,7 +1903,7 @@
     },
     "shopify": {
       "title": "Shopify",
-      "desc": "Conecte sua loja Shopify para gestão de pedidos"
+      "desc": "Conecte sua loja Shopify para gerenciamento de pedidos"
     },
     "woocommerce": {
       "title": "WooCommerce",
@@ -1335,11 +1927,11 @@
     },
     "gmail": {
       "title": "Gmail",
-      "desc": "Conecte Gmail para gestão de email assistida por IA"
+      "desc": "Conecte o Gmail para gerenciamento de e-mails assistido por IA"
     },
     "outlook": {
       "title": "Outlook",
-      "desc": "Conecte Outlook para gestão de email assistida por IA"
+      "desc": "Conecte o Outlook para gerenciamento de e-mails assistido por IA"
     },
     "categories": {
       "payments": "Pagamentos",
@@ -1349,7 +1941,200 @@
       "scheduling": "Agendamento",
       "ecommerce": "E-commerce",
       "accounting": "Contabilidade",
-      "email": "Email"
+      "email": "E-mail"
+    }
+  },
+  "about": {
+    "hero": {
+      "title": "Sobre a Telyx.ai",
+      "subtitle": "Transformando o atendimento ao cliente com inteligência artificial"
+    },
+    "story": {
+      "title": "Nossa História",
+      "content": "A Telyx.ai foi fundada para transformar o atendimento ao cliente para pequenas e médias empresas com inteligência artificial. Acreditamos que as PMEs devem ser capazes de oferecer a mesma qualidade de experiência ao cliente que as grandes empresas."
+    },
+    "mission": {
+      "title": "Nossa Missão",
+      "content": "Capacitar cada empresa a oferecer atendimento ao cliente profissional 24/7."
+    },
+    "whyTurkey": {
+      "title": "Por que a Turquia?",
+      "content": "O ecossistema dinâmico de PMEs da Turquia, a abertura para soluções inovadoras e a necessidade de transformação digital fazem dela um mercado ideal para começar. Depois de nos estabelecermos na Turquia, pretendemos expandir para mercados globais."
+    },
+    "team": {
+      "title": "Nossa Equipe",
+      "content": "Como uma equipe pequena, mas apaixonada, trabalhamos todos os dias para melhorar a experiência do cliente das empresas."
+    },
+    "cta": {
+      "title": "Junte-se a Nós",
+      "subtitle": "Candidate-se para acesso antecipado e descubra o poder do atendimento ao cliente impulsionado por IA.",
+      "button": "Candidate-se para Acesso Antecipado"
+    }
+  },
+  "help": {
+    "badge": "Central de Ajuda",
+    "hero": {
+      "title": "Perguntas Frequentes",
+      "subtitle": "Tudo o que você precisa saber sobre a Telyx.ai"
+    },
+    "faq": {
+      "q1": "O que é a Telyx.ai?",
+      "a1": "A Telyx.ai é uma plataforma que permite que empresas respondam automaticamente a solicitações de clientes por meio de canais de telefone, WhatsApp, chat e e-mail usando inteligência artificial.",
+      "q2": "Quais canais vocês suportam?",
+      "a2": "Suportamos telefone (resposta de voz por IA), WhatsApp Business, widget de chat na web e canais de e-mail.",
+      "q3": "Quanto tempo leva para a configuração?",
+      "a3": "A configuração básica pode ser concluída em até 10 minutos. Você pode começar a usar seu assistente imediatamente após criá-lo.",
+      "q4": "Quais idiomas vocês suportam além do inglês?",
+      "a4": "Suportamos 16 idiomas diferentes: turco, inglês, alemão, francês, espanhol, italiano, português, russo, árabe, japonês, coreano, chinês, hindi, holandês, polonês e sueco.",
+      "q5": "Ele se integra ao meu site de e-commerce?",
+      "a5": "Sim, nos integramos com ikas, Ticimax, Ideasoft e Shopify. Seus clientes podem verificar o status de seus pedidos.",
+      "q6": "Como funciona a precificação?",
+      "a6": "Operamos em um modelo de assinatura mensal. Visite nossa página de preços para mais detalhes.",
+      "q7": "Há um teste gratuito?",
+      "a7": "Atualmente estamos em acesso antecipado. Você pode obter acesso prioritário se inscrevendo na lista de espera.",
+      "q8": "Meus dados estão seguros?",
+      "a8": "Sim, todos os dados são armazenados de forma criptografada e processados em conformidade com o GDPR.",
+      "q9": "Como posso obter suporte?",
+      "a9": "Você pode nos contatar pelo e-mail info@telyx.ai."
+    },
+    "contact": {
+      "title": "Tem Outra Pergunta?",
+      "text": "Envie-nos um e-mail e responderemos em breve."
+    }
+  },
+  "apiDocs": {
+    "title": "Documentação da API",
+    "comingSoon": "Nossa documentação da API será publicada em breve.",
+    "contactText": "Entre em contato conosco para acesso antecipado:",
+    "backToHome": "Voltar para a Página Inicial"
+  },
+  "privacy": {
+    "title": "Política de Privacidade",
+    "lastUpdated": "Última atualização: 16 de dezembro de 2024",
+    "sections": {
+      "dataCollected": {
+        "title": "Dados Coletados",
+        "content": "Ao usar nossos serviços, coletamos os seguintes dados:\n• Informações de identidade (nome, endereço de e-mail)\n• Informações de contato (número de telefone, endereço)\n• Dados de uso (visualizações de página, cliques)\n• Informações do dispositivo (endereço IP, tipo de navegador)"
+      },
+      "dataUsage": {
+        "title": "Finalidade do Uso dos Dados",
+        "content": "Os dados coletados são usados para as seguintes finalidades:\n• Entrega e melhoria do serviço\n• Fornecimento de suporte ao cliente\n• Comunicação e notificações\n• Cumprimento de obrigações legais"
+      },
+      "dataStorage": {
+        "title": "Armazenamento de Dados",
+        "content": "Seus dados:\n• São armazenados de forma criptografada em servidores seguros\n• São mantidos apenas pelo tempo necessário\n• São protegidos com medidas de segurança padrão da indústria"
+      },
+      "thirdParty": {
+        "title": "Compartilhamento com Terceiros",
+        "content": "Seus dados podem ser compartilhados nas seguintes situações:\n• Provedores de serviços (processadores de pagamento, provedores de infraestrutura)\n• Exigências legais e ordens judiciais\n• Outros terceiros com seu consentimento"
+      },
+      "cookies": {
+        "title": "Cookies",
+        "content": "Usamos os seguintes cookies em nosso site:\n• Cookies de sessão (status de login)\n• Cookies de análise (uso do site)\n• Cookies de preferência (seleção de idioma)"
+      },
+      "userRights": {
+        "title": "Direitos do Usuário (GDPR)",
+        "content": "Sob o GDPR, você tem os seguintes direitos:\n• Direito de ser informado sobre seus dados\n• Direito de solicitar a correção de dados imprecisos\n• Direito de solicitar a exclusão de seus dados\n• Direito de se opor ao processamento de dados\n• Direito à portabilidade de dados"
+      },
+      "contact": {
+        "title": "Contato",
+        "content": "Para perguntas sobre nossa política de privacidade:\nE-mail: info@telyx.ai"
+      }
+    }
+  },
+  "terms": {
+    "title": "Termos de Serviço",
+    "lastUpdated": "Última atualização: 16 de dezembro de 2024",
+    "sections": {
+      "serviceDefinition": {
+        "title": "Definição do Serviço",
+        "content": "Telyx.ai é um produto SaaS (Software como Serviço) que fornece às empresas uma plataforma de atendimento ao cliente impulsionada por IA. A plataforma responde automaticamente a solicitações de clientes por meio de canais de telefone, WhatsApp, chat e e-mail."
+      },
+      "accountCreation": {
+        "title": "Criação de Conta",
+        "content": "Para usar nosso serviço:\n• Você deve fornecer informações precisas e atuais\n• Você é responsável pela segurança da conta\n• Você deve manter sua senha em sigilo\n• Você deve relatar acesso não autorizado imediatamente"
+      },
+      "acceptableUse": {
+        "title": "Uso Aceitável",
+        "content": "Ao usar nosso serviço:\n• Você deve usá-lo para fins legais\n• Spam ou abuso são proibidos\n• Você não deve violar os direitos de terceiros\n• Você não deve tentar contornar medidas de segurança"
+      },
+      "paymentTerms": {
+        "title": "Termos de Pagamento",
+        "content": "Termos de pagamento:\n• Opções de assinatura mensal ou anual estão disponíveis\n• Os pagamentos são renovados automaticamente\n• O cancelamento entra em vigor a partir do próximo período de faturamento\n• Nossa política de reembolso é válida por 14 dias"
+      },
+      "intellectualProperty": {
+        "title": "Propriedade Intelectual",
+        "content": "• A plataforma e todo o conteúdo pertencem à Telyx.ai\n• Os usuários mantêm os direitos sobre o conteúdo que enviam\n• A licença da plataforma é para uso pessoal/comercial\n• Engenharia reversa é proibida"
+      },
+      "liability": {
+        "title": "Limitações de Responsabilidade",
+        "content": "Telyx.ai:\n• Não garante contra interrupções de serviço\n• Não é responsável por danos indiretos\n• A responsabilidade máxima é limitada às taxas de assinatura pagas\n• Não é responsável por integrações de terceiros"
+      },
+      "termination": {
+        "title": "Rescisão",
+        "content": "Fechamento de conta:\n• Você pode fechar sua conta a qualquer momento\n• Sua conta pode ser suspensa por violações\n• Seus dados são excluídos dentro de 30 dias após o fechamento\n• Dados necessários podem ser retidos para obrigações legais"
+      },
+      "changes": {
+        "title": "Alterações",
+        "content": "Estes termos de serviço:\n• Podem ser atualizados com aviso prévio\n• Mudanças importantes são notificadas por e-mail\n• O uso contínuo significa aceitação"
+      },
+      "contact": {
+        "title": "Contato",
+        "content": "Para perguntas sobre os termos de serviço:\nE-mail: info@telyx.ai"
+      }
+    }
+  },
+  "integrationsPage": {
+    "hero": {
+      "title": "Integrações",
+      "subtitle": "Trabalhe de forma integrada com as ferramentas que você usa"
+    },
+    "categories": {
+      "ecommerce": "E-Commerce",
+      "calendar": "Calendário",
+      "email": "E-mail",
+      "accounting": "Contabilidade",
+      "payment": "Pagamento",
+      "sms": "SMS"
+    },
+    "ikas": {
+      "desc": "Gerenciamento de pedidos e clientes com a principal infraestrutura de e-commerce da Turquia"
+    },
+    "ticimax": {
+      "desc": "Acompanhe automaticamente seus pedidos de e-commerce"
+    },
+    "ideasoft": {
+      "desc": "Integração com a plataforma de e-commerce estabelecida da Turquia"
+    },
+    "shopify": {
+      "desc": "Integração completa com a plataforma de e-commerce global"
+    },
+    "googleCalendar": {
+      "desc": "Crie e gerencie compromissos automaticamente"
+    },
+    "gmail": {
+      "desc": "Integração de e-mail com o Google Workspace"
+    },
+    "outlook": {
+      "desc": "Gerenciamento de e-mail com o Microsoft 365"
+    },
+    "parasut": {
+      "desc": "Rastreamento de faturas e contas"
+    },
+    "iyzico": {
+      "desc": "A principal infraestrutura de pagamento da Turquia"
+    },
+    "stripe": {
+      "desc": "Processamento de pagamentos global"
+    },
+    "netgsm": {
+      "desc": "Notificações e verificação por SMS"
+    },
+    "cta": {
+      "title": "Comece Agora",
+      "subtitle": "Comece a usar todas as integrações gratuitamente",
+      "button": "Solicitar Acesso Antecipado",
+      "contact": "Entre em Contato"
     }
   }
 }
