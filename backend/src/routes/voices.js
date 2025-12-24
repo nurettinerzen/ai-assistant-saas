@@ -63,12 +63,13 @@ const VOICE_LIBRARY = {
     { id: 'it-f-chiara', name: 'Chiara', accent: 'Italian', gender: 'female', description: 'Voce femminile professionale', provider: '11labs' }
   ],
   
-  // PORTUGUESE (Português)
+  // PORTUGUESE (Português Brasileiro) - Uses same 11Labs voices with Portuguese language
+  // These multilingual voices support Portuguese when language_code='pt' is set
   pt: [
-    { id: 'pt-m-pedro', name: 'Pedro', accent: 'Portuguese', gender: 'male', description: 'Voz masculina profissional', provider: '11labs' },
-    { id: 'pt-m-joao', name: 'João', accent: 'Portuguese', gender: 'male', description: 'Voz masculina calorosa', provider: '11labs' },
-    { id: 'pt-f-ana', name: 'Ana', accent: 'Portuguese', gender: 'female', description: 'Voz feminina elegante', provider: '11labs' },
-    { id: 'pt-f-maria', name: 'Maria', accent: 'Portuguese', gender: 'female', description: 'Voz feminina profissional', provider: '11labs' }
+    { id: 'pt-m-joao', voice_id: 'TxGEqnHWrfWFTfGW9XjX', name: 'João', accent: 'Portuguese', gender: 'male', description: 'Voz masculina profissional', provider: '11labs' },
+    { id: 'pt-m-pedro', voice_id: 'pNInz6obpgDQGcFmaJgB', name: 'Pedro', accent: 'Portuguese', gender: 'male', description: 'Voz masculina amigável', provider: '11labs' },
+    { id: 'pt-f-ana', voice_id: '21m00Tcm4TlvDq8ikWAM', name: 'Ana', accent: 'Portuguese', gender: 'female', description: 'Voz feminina calorosa', provider: '11labs' },
+    { id: 'pt-f-maria', voice_id: 'EXAVITQu4vr4xnSDxMaL', name: 'Maria', accent: 'Portuguese', gender: 'female', description: 'Voz feminina elegante', provider: '11labs' }
   ],
   
   // RUSSIAN (Русский)
@@ -186,12 +187,19 @@ async function getPreviewUrl(voiceId) {
 }
 
 // Enrich voices with preview URLs
-async function enrichVoicesWithPreviews(voices, useTurkishPreview = false, baseUrl = null) {
+async function enrichVoicesWithPreviews(voices, lang = null, baseUrl = null) {
   const enrichedVoices = await Promise.all(
     voices.map(async (voice) => {
       // For Turkish voices, use our Turkish preview endpoint
-      if (useTurkishPreview && voice.id?.startsWith('tr-')) {
-        // Use backend URL from request or env for Turkish preview
+      if (lang === 'tr' && voice.id?.startsWith('tr-')) {
+        const backendUrl = baseUrl || process.env.BACKEND_URL || 'http://localhost:3001';
+        return {
+          ...voice,
+          sampleUrl: `${backendUrl}/api/voices/preview/${voice.id}`
+        };
+      }
+      // For Portuguese voices, use our Portuguese preview endpoint
+      if (lang === 'pt' && voice.id?.startsWith('pt-')) {
         const backendUrl = baseUrl || process.env.BACKEND_URL || 'http://localhost:3001';
         return {
           ...voice,
@@ -230,8 +238,8 @@ router.get('/', async (req, res) => {
 
     // Enrich with preview URLs if requested
     if (withSamples === 'true') {
-      // Use Turkish preview for Turkish voices
-      voices = await enrichVoicesWithPreviews(voices, lang === 'tr', baseUrl);
+      // Pass language for proper preview endpoint selection
+      voices = await enrichVoicesWithPreviews(voices, lang, baseUrl);
     }
 
     return res.json({
@@ -246,8 +254,8 @@ router.get('/', async (req, res) => {
   // If withSamples requested, enrich all voices with preview URLs
   if (withSamples === 'true') {
     for (const lang of Object.keys(VOICE_LIBRARY)) {
-      // Use Turkish preview for Turkish voices
-      allVoices[lang] = await enrichVoicesWithPreviews(VOICE_LIBRARY[lang], lang === 'tr', baseUrl);
+      // Pass language for proper preview endpoint selection
+      allVoices[lang] = await enrichVoicesWithPreviews(VOICE_LIBRARY[lang], lang, baseUrl);
     }
   } else {
     Object.keys(VOICE_LIBRARY).forEach(lang => {
@@ -319,22 +327,32 @@ const TURKISH_PREVIEW_TEXT = {
   'tr-f-miray': 'Merhaba, ben Miray. Size yardımcı olmak için buradayım.'
 };
 
-// Cache for Turkish preview audio
-const turkishPreviewCache = new Map();
+// Portuguese (Brazilian) preview text for each voice
+const PORTUGUESE_PREVIEW_TEXT = {
+  'pt-m-joao': 'Olá, sou o João. Como posso ajudar você hoje?',
+  'pt-m-pedro': 'Olá, sou o Pedro. Em que posso ajudar?',
+  'pt-f-ana': 'Olá, sou a Ana. Como posso ajudar você?',
+  'pt-f-maria': 'Olá, sou a Maria. Estou aqui para ajudar.'
+};
+
+// Cache for preview audio (Turkish and Portuguese)
+const previewAudioCache = new Map();
 const PREVIEW_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
-// GET Turkish preview audio for a voice
+// GET preview audio for a voice (Turkish or Portuguese)
 router.get('/preview/:voiceId', async (req, res) => {
   const { voiceId } = req.params;
 
   try {
-    // Find voice in our library
+    // Find voice in our library and determine its language
     let voice = null;
+    let voiceLang = null;
     let elevenLabsVoiceId = voiceId;
 
     for (const lang in VOICE_LIBRARY) {
       voice = VOICE_LIBRARY[lang].find(v => v.id === voiceId);
       if (voice) {
+        voiceLang = lang;
         elevenLabsVoiceId = voice.voice_id || voiceId;
         break;
       }
@@ -349,24 +367,35 @@ router.get('/preview/:voiceId', async (req, res) => {
     }
 
     // Check cache first
-    const cached = turkishPreviewCache.get(voiceId);
+    const cached = previewAudioCache.get(voiceId);
     if (cached && Date.now() - cached.timestamp < PREVIEW_CACHE_TTL) {
       res.set('Content-Type', 'audio/mpeg');
       res.set('Cache-Control', 'public, max-age=86400');
       return res.send(cached.audio);
     }
 
-    // Get Turkish preview text
-    const previewText = TURKISH_PREVIEW_TEXT[voiceId] || `Merhaba, ben ${voice.name}. Size nasıl yardımcı olabilirim?`;
+    // Get preview text based on language
+    let previewText;
+    let languageCode;
 
-    // Generate Turkish audio using 11Labs TTS
-    // Use eleven_turbo_v2_5 with language_code for proper Turkish pronunciation
+    if (voiceLang === 'pt') {
+      previewText = PORTUGUESE_PREVIEW_TEXT[voiceId] || `Olá, sou ${voice.name}. Como posso ajudar você?`;
+      languageCode = 'pt';
+    } else {
+      // Default to Turkish
+      previewText = TURKISH_PREVIEW_TEXT[voiceId] || `Merhaba, ben ${voice.name}. Size nasıl yardımcı olabilirim?`;
+      languageCode = 'tr';
+    }
+
+    console.log(`🎤 Generating ${languageCode} preview for ${voiceId} (${elevenLabsVoiceId})`);
+
+    // Generate audio using 11Labs TTS with proper language
     const response = await axios.post(
       `${ELEVENLABS_BASE_URL}/text-to-speech/${elevenLabsVoiceId}`,
       {
         text: previewText,
         model_id: 'eleven_turbo_v2_5',
-        language_code: 'tr',
+        language_code: languageCode,
         voice_settings: {
           stability: 0.5,
           similarity_boost: 0.75,
@@ -385,7 +414,7 @@ router.get('/preview/:voiceId', async (req, res) => {
     );
 
     // Cache the audio
-    turkishPreviewCache.set(voiceId, {
+    previewAudioCache.set(voiceId, {
       audio: Buffer.from(response.data),
       timestamp: Date.now()
     });
@@ -400,11 +429,11 @@ router.get('/preview/:voiceId', async (req, res) => {
   }
 });
 
-// DELETE cache for Turkish previews (for development/testing)
+// DELETE cache for previews (for development/testing)
 router.delete('/preview/cache', (req, res) => {
-  const count = turkishPreviewCache.size;
-  turkishPreviewCache.clear();
-  console.log(`🗑️ Cleared ${count} cached Turkish previews`);
+  const count = previewAudioCache.size;
+  previewAudioCache.clear();
+  console.log(`🗑️ Cleared ${count} cached voice previews`);
   res.json({ success: true, cleared: count });
 });
 

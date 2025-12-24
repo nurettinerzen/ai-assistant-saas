@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 export function OnboardingModal({ open, onClose }) {
   const { t, locale } = useLanguage();
@@ -34,6 +34,7 @@ export function OnboardingModal({ open, onClose }) {
   const [loading, setLoading] = useState(false);
   const [createdAssistantId, setCreatedAssistantId] = useState(null);
   const [availableVoices, setAvailableVoices] = useState([]);
+  const [voicesLoading, setVoicesLoading] = useState(false);
   const [data, setData] = useState({
     industry: '',
     language: locale?.toUpperCase() || 'TR',
@@ -46,25 +47,32 @@ export function OnboardingModal({ open, onClose }) {
 
   useEffect(() => {
     const fetchVoices = async () => {
+      // Map our language codes to backend voice keys
+      const langToVoiceKey = {
+        'TR': 'tr',
+        'EN': 'en',
+        'PR': 'pt' // Brazilian Portuguese uses 'pt' key in backend
+      };
+      const voiceKey = langToVoiceKey[data.language] || 'en';
+
+      console.log('🎤 Fetching voices... API_URL:', API_URL, 'language:', data.language, '-> key:', voiceKey);
+      setVoicesLoading(true);
+
       try {
-        const response = await axios.get(`${API_URL}/api/voices`);
-        const voiceData = response.data.voices || {};
+        // Request specific language only with samples to speed up loading
+        const response = await axios.get(`${API_URL}/api/voices?language=${voiceKey}&withSamples=true`);
+        console.log('🎤 Voice API response:', response.status);
 
-        // Map our language codes to backend voice keys
-        const langToVoiceKey = {
-          'TR': 'tr',
-          'EN': 'en',
-          'PR': 'pt' // Brazilian Portuguese uses 'pt' key in backend
-        };
+        // When language is specified, response is { voices: [...], count: N }
+        const voices = response.data.voices || [];
+        console.log('🎤 Found', voices.length, 'voices for', voiceKey);
 
-        const voiceKey = langToVoiceKey[data.language] || 'en';
-        const voices = voiceData[voiceKey] || voiceData['en'] || [];
-
-        console.log('🎤 Fetching voices for language:', data.language, '-> key:', voiceKey, '-> found:', voices.length);
         setAvailableVoices(voices);
       } catch (error) {
-        console.error('Failed to fetch voices:', error);
+        console.error('❌ Failed to fetch voices:', error.message, error.response?.status, error.response?.data);
         setAvailableVoices([]);
+      } finally {
+        setVoicesLoading(false);
       }
     };
 
@@ -273,13 +281,11 @@ export function OnboardingModal({ open, onClose }) {
               key={country.id}
               type="button"
               onClick={() => {
-                // Auto-set language based on country
-                const countryLangMap = { TR: 'TR', BR: 'PR', US: 'EN' };
+                // Only set country and timezone, language is selected separately
                 setData({
                   ...data,
                   country: country.id,
-                  timezone: country.timezone,
-                  language: countryLangMap[country.id] || 'EN'
+                  timezone: country.timezone
                 });
               }}
               className={`p-3 border rounded-lg text-center transition-all ${
@@ -337,10 +343,14 @@ export function OnboardingModal({ open, onClose }) {
 
           {step === 2 && (
             <div>
-              {availableVoices.length === 0 ? (
+              {voicesLoading ? (
                 <div className="text-center py-12">
                   <Loader2 className="h-8 w-8 mx-auto text-purple-600 animate-spin mb-4" />
                   <p className="text-gray-600">{t('onboarding.voice.loading') || 'Loading voices...'}</p>
+                </div>
+              ) : availableVoices.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-gray-600">{t('onboarding.voice.noVoices') || 'No voices available for this language. Please try another language.'}</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-4">
