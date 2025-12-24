@@ -16,12 +16,85 @@ import {
   Zap
 } from 'lucide-react';
 
+// UI translations for CreditBalance
+const TRANSLATIONS = {
+  TR: {
+    usageStatus: 'Kullanım Durumu',
+    minutesRemaining: 'dk kaldı',
+    packageMinutes: 'Paket Dakikaları',
+    creditMinutes: 'Kredi Dakikaları',
+    used80Package: "Paket dakikalarınızın %80'ini kullandınız",
+    usedAllPackage: 'Paket dakikalarınız tükendi',
+    noCredits: 'Henüz kredi satın almadınız',
+    used80Credits: "Kredi dakikalarınızın %80'ini kullandınız",
+    overageThisMonth: 'Bu Ay Aşım',
+    overageLimit: 'Aşım limit:',
+    overageNote: '(Ay sonunda kartınızdan çekilecektir)',
+    overageLimitReached: 'Aşım Limitine Ulaşıldı!',
+    overageLimitNote: 'Telefon aramaları devre dışı bırakıldı. Kredi satın alarak aramaya devam edebilirsiniz.',
+    periodEnd: 'Dönem sonu:',
+    buyCredits: 'Kredi Al',
+    retry: 'Tekrar Dene',
+    loadError: 'Bakiye yüklenemedi',
+    min: 'dk'
+  },
+  EN: {
+    usageStatus: 'Usage Status',
+    minutesRemaining: 'min remaining',
+    packageMinutes: 'Package Minutes',
+    creditMinutes: 'Credit Minutes',
+    used80Package: "You've used 80% of your package minutes",
+    usedAllPackage: 'Your package minutes are depleted',
+    noCredits: "You haven't purchased credits yet",
+    used80Credits: "You've used 80% of your credit minutes",
+    overageThisMonth: 'Overage This Month',
+    overageLimit: 'Overage limit:',
+    overageNote: '(Will be charged at end of month)',
+    overageLimitReached: 'Overage Limit Reached!',
+    overageLimitNote: 'Phone calls have been disabled. Purchase credits to continue calling.',
+    periodEnd: 'Period ends:',
+    buyCredits: 'Buy Credits',
+    retry: 'Retry',
+    loadError: 'Failed to load balance',
+    min: 'min'
+  },
+  PR: {
+    usageStatus: 'Status de Uso',
+    minutesRemaining: 'min restantes',
+    packageMinutes: 'Minutos do Pacote',
+    creditMinutes: 'Minutos de Crédito',
+    used80Package: 'Você usou 80% dos seus minutos do pacote',
+    usedAllPackage: 'Seus minutos do pacote acabaram',
+    noCredits: 'Você ainda não comprou créditos',
+    used80Credits: 'Você usou 80% dos seus minutos de crédito',
+    overageThisMonth: 'Excedente Este Mês',
+    overageLimit: 'Limite de excedente:',
+    overageNote: '(Será cobrado no final do mês)',
+    overageLimitReached: 'Limite de Excedente Atingido!',
+    overageLimitNote: 'Chamadas telefônicas foram desativadas. Compre créditos para continuar ligando.',
+    periodEnd: 'Fim do período:',
+    buyCredits: 'Comprar Créditos',
+    retry: 'Tentar Novamente',
+    loadError: 'Falha ao carregar saldo',
+    min: 'min'
+  }
+};
+
+// Map locale to translation key
+const LOCALE_TO_LANG = {
+  tr: 'TR',
+  en: 'EN',
+  pr: 'PR'
+};
+
 /**
  * CreditBalance Component
  * Displays package minutes, credit minutes, and overage usage
  */
 export default function CreditBalance({ onBuyCredit, refreshTrigger }) {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
+  const lang = LOCALE_TO_LANG[locale] || 'EN';
+  const txt = TRANSLATIONS[lang] || TRANSLATIONS.EN;
   const [balance, setBalance] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -38,7 +111,7 @@ export default function CreditBalance({ onBuyCredit, refreshTrigger }) {
       setBalance(response.data);
     } catch (err) {
       console.error('Balance fetch error:', err);
-      setError(err.response?.data?.error || 'Bakiye yüklenemedi');
+      setError(err.response?.data?.error || 'load_error');
     } finally {
       setLoading(false);
     }
@@ -62,14 +135,14 @@ export default function CreditBalance({ onBuyCredit, refreshTrigger }) {
       <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
         <div className="text-center text-neutral-500">
           <AlertTriangle className="h-8 w-8 mx-auto mb-2 text-amber-500" />
-          <p>{error}</p>
+          <p>{error === 'load_error' ? txt.loadError : error}</p>
           <Button
             variant="outline"
             size="sm"
             onClick={fetchBalance}
             className="mt-2"
           >
-            Tekrar Dene
+            {txt.retry}
           </Button>
         </div>
       </div>
@@ -88,6 +161,12 @@ export default function CreditBalance({ onBuyCredit, refreshTrigger }) {
 
   const totalRemaining = balance.package.remaining + balance.credit.remaining;
 
+  // Date locale mapping
+  const dateLocale = lang === 'TR' ? 'tr-TR' : lang === 'PR' ? 'pt-BR' : 'en-US';
+
+  // Currency symbol based on region (this comes from balance API or could be passed as prop)
+  const currencySymbol = lang === 'TR' ? '₺' : lang === 'PR' ? 'R$' : '$';
+
   return (
     <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6 space-y-5">
       {/* Header */}
@@ -95,23 +174,23 @@ export default function CreditBalance({ onBuyCredit, refreshTrigger }) {
         <div className="flex items-center gap-2">
           <TrendingUp className="h-5 w-5 text-primary-600" />
           <h3 className="text-lg font-semibold text-neutral-900">
-            Kullanım Durumu
+            {txt.usageStatus}
           </h3>
         </div>
         <Badge variant={balance.overage.limitReached ? 'destructive' : 'secondary'}>
-          {totalRemaining} dk kaldı
+          {totalRemaining} {txt.minutesRemaining}
         </Badge>
       </div>
 
-      {/* Paket Dakikaları */}
+      {/* Package Minutes */}
       <div className="space-y-2">
         <div className="flex items-center justify-between text-sm">
           <div className="flex items-center gap-2">
             <Phone className="h-4 w-4 text-blue-600" />
-            <span className="font-medium text-neutral-700">Paket Dakikaları</span>
+            <span className="font-medium text-neutral-700">{txt.packageMinutes}</span>
           </div>
           <span className="text-neutral-600">
-            {balance.package.used}/{balance.package.limit} dk
+            {balance.package.used}/{balance.package.limit} {txt.min}
           </span>
         </div>
         <Progress
@@ -121,26 +200,26 @@ export default function CreditBalance({ onBuyCredit, refreshTrigger }) {
         {packagePercent >= 80 && packagePercent < 100 && (
           <p className="text-xs text-orange-600 flex items-center gap-1">
             <AlertTriangle className="h-3 w-3" />
-            Paket dakikalarınızın %80'ini kullandınız
+            {txt.used80Package}
           </p>
         )}
         {packagePercent >= 100 && (
           <p className="text-xs text-red-600 flex items-center gap-1">
             <AlertTriangle className="h-3 w-3" />
-            Paket dakikalarınız tükendi
+            {txt.usedAllPackage}
           </p>
         )}
       </div>
 
-      {/* Kredi Dakikaları */}
+      {/* Credit Minutes */}
       <div className="space-y-2">
         <div className="flex items-center justify-between text-sm">
           <div className="flex items-center gap-2">
             <Zap className="h-4 w-4 text-green-600" />
-            <span className="font-medium text-neutral-700">Kredi Dakikaları</span>
+            <span className="font-medium text-neutral-700">{txt.creditMinutes}</span>
           </div>
           <span className="text-neutral-600">
-            {balance.credit.remaining} dk kaldı
+            {balance.credit.remaining} {txt.minutesRemaining}
           </span>
         </div>
         {balance.credit.total > 0 ? (
@@ -155,67 +234,67 @@ export default function CreditBalance({ onBuyCredit, refreshTrigger }) {
         )}
         {balance.credit.total === 0 && (
           <p className="text-xs text-neutral-500">
-            Henüz kredi satın almadınız
+            {txt.noCredits}
           </p>
         )}
         {creditPercent >= 80 && balance.credit.total > 0 && (
           <p className="text-xs text-amber-600 flex items-center gap-1">
             <AlertTriangle className="h-3 w-3" />
-            Kredi dakikalarınızın %80'ini kullandınız
+            {txt.used80Credits}
           </p>
         )}
       </div>
 
-      {/* Aşım Durumu */}
+      {/* Overage Status */}
       {balance.overage.minutes > 0 && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-1">
           <div className="flex items-center justify-between text-sm">
             <span className="font-medium text-red-700 flex items-center gap-1">
               <Clock className="h-4 w-4" />
-              Bu Ay Aşım
+              {txt.overageThisMonth}
             </span>
             <span className="text-red-700 font-semibold">
-              {balance.overage.minutes} dk × ₺{balance.overage.rate} = ₺{balance.overage.amount.toLocaleString('tr-TR')}
+              {balance.overage.minutes} {txt.min} × {currencySymbol}{balance.overage.rate} = {currencySymbol}{balance.overage.amount.toLocaleString(dateLocale)}
             </span>
           </div>
           <p className="text-xs text-red-600">
-            Aşım limit: {balance.overage.limit} dk (Ay sonunda kartınızdan çekilecektir)
+            {txt.overageLimit} {balance.overage.limit} {txt.min} {txt.overageNote}
           </p>
         </div>
       )}
 
-      {/* Aşım Limit Uyarısı */}
+      {/* Overage Limit Warning */}
       {balance.overage.limitReached && (
         <div className="bg-red-100 border border-red-300 rounded-lg p-4">
           <div className="flex items-start gap-3">
             <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
             <div>
               <p className="font-semibold text-red-800">
-                Aşım Limitine Ulaşıldı!
+                {txt.overageLimitReached}
               </p>
               <p className="text-sm text-red-700 mt-1">
-                Telefon aramaları devre dışı bırakıldı. Kredi satın alarak aramaya devam edebilirsiniz.
+                {txt.overageLimitNote}
               </p>
             </div>
           </div>
         </div>
       )}
 
-      {/* Dönem Bilgisi */}
+      {/* Period Info */}
       {balance.periodEnd && (
         <div className="text-xs text-neutral-500 flex items-center justify-between pt-2 border-t border-neutral-100">
-          <span>Dönem sonu:</span>
-          <span>{new Date(balance.periodEnd).toLocaleDateString('tr-TR')}</span>
+          <span>{txt.periodEnd}</span>
+          <span>{new Date(balance.periodEnd).toLocaleDateString(dateLocale)}</span>
         </div>
       )}
 
-      {/* Kredi Al Butonu */}
+      {/* Buy Credits Button */}
       <Button
         onClick={onBuyCredit}
         className="w-full bg-primary-600 hover:bg-primary-700"
       >
         <Plus className="h-4 w-4 mr-2" />
-        Kredi Al
+        {txt.buyCredits}
       </Button>
     </div>
   );
