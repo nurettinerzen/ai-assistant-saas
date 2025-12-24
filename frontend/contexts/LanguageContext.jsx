@@ -5,13 +5,23 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 // Import locale JSON files
 import enLocale from '@/locales/en.json';
 import trLocale from '@/locales/tr.json';
+import prLocale from '@/locales/pr.json';
+import deLocale from '@/locales/de.json';
+import esLocale from '@/locales/es.json';
+import frLocale from '@/locales/fr.json';
+import ptLocale from '@/locales/pt.json';
 
 const LanguageContext = createContext();
 
 // Locale data map
 const locales = {
   en: enLocale,
-  tr: trLocale
+  tr: trLocale,
+  pr: prLocale,  // Brazilian Portuguese
+  de: deLocale,
+  es: esLocale,
+  fr: frLocale,
+  pt: ptLocale
 };
 
 // Helper function to get nested value from object using dot notation

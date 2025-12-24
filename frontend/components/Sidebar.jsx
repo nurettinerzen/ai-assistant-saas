@@ -45,9 +45,9 @@ import LanguageSwitcher from './LanguageSwitcher';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import UpgradeModal from './UpgradeModal';
-import { FEATURES, VISIBILITY, getFeatureVisibility } from '@/lib/features';
+import { FEATURES, VISIBILITY, getFeatureVisibility, getPrimaryVoiceChannel } from '@/lib/features';
 
-export default function Sidebar({ user, credits }) {
+export default function Sidebar({ user, credits, business }) {
   const pathname = usePathname();
   const { t, locale } = useLanguage();
   const language = locale; // alias for backward compatibility
@@ -59,8 +59,9 @@ export default function Sidebar({ user, credits }) {
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const [selectedFeatureId, setSelectedFeatureId] = useState(null);
 
-  // Get user's current plan from user object
+  // Get user's current plan and country from user/business object
   const userPlan = user?.subscription?.plan || user?.plan || 'STARTER';
+  const userCountry = business?.country || user?.business?.country || 'TR';
 
   // Navigation items with permission requirements and feature visibility
   const NAVIGATION = [
@@ -112,10 +113,10 @@ export default function Sidebar({ user, credits }) {
     setUpgradeModalOpen(true);
   };
 
-  // Get feature visibility for an item
+  // Get feature visibility for an item (now region-aware)
   const getItemVisibility = (item) => {
     if (!item.featureId) return VISIBILITY.VISIBLE;
-    return getFeatureVisibility(item.featureId, userPlan);
+    return getFeatureVisibility(item.featureId, userPlan, userCountry);
   };
 
   const toggleSection = (label) => {

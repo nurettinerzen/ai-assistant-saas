@@ -2,8 +2,10 @@
  * Payment Provider Selection Service
  * Determines which payment provider to use based on country
  *
- * TR (Turkey) -> iyzico
- * Other countries -> Stripe
+ * Multi-Region Payment Support:
+ * - TR (Turkey) -> iyzico (TRY)
+ * - BR (Brazil) -> Stripe with Pix/Boleto (BRL)
+ * - US, EU, etc. -> Stripe (USD/EUR)
  */
 
 import { PrismaClient } from '@prisma/client';
@@ -13,7 +15,30 @@ const prisma = new PrismaClient();
 // Countries that should use iyzico
 const IYZICO_COUNTRIES = ['TR'];
 
-// Plan price mapping for both providers
+// Countries that use Stripe with local payment methods
+const STRIPE_LOCAL_COUNTRIES = {
+  BR: {
+    currency: 'brl',
+    paymentMethods: ['card', 'pix', 'boleto'],
+    locale: 'pt-BR'
+  }
+};
+
+// Country to currency mapping
+const COUNTRY_CURRENCY = {
+  TR: 'TRY',
+  BR: 'BRL',
+  US: 'USD',
+  GB: 'GBP',
+  DE: 'EUR',
+  FR: 'EUR',
+  ES: 'EUR',
+  NL: 'EUR',
+  IT: 'EUR',
+  AE: 'AED'
+};
+
+// Plan price mapping for all regions
 export const PLAN_PRICES = {
   STARTER: {
     stripe: {
@@ -21,33 +46,65 @@ export const PLAN_PRICES = {
       amount: 27,
       currency: 'USD'
     },
+    stripe_brl: {
+      priceId: process.env.STRIPE_STARTER_PRICE_ID_BRL,
+      amount: 99,
+      currency: 'BRL'
+    },
     iyzico: {
       pricingPlanRef: process.env.IYZICO_STARTER_PLAN_REF,
       amount: 899,
       currency: 'TRY'
     }
   },
+  BASIC: {
+    stripe: {
+      priceId: process.env.STRIPE_BASIC_PRICE_ID,
+      amount: 99,
+      currency: 'USD'
+    },
+    stripe_brl: {
+      priceId: process.env.STRIPE_BASIC_PRICE_ID_BRL,
+      amount: 299,
+      currency: 'BRL'
+    },
+    iyzico: {
+      pricingPlanRef: process.env.IYZICO_BASIC_PLAN_REF,
+      amount: 999,
+      currency: 'TRY'
+    }
+  },
   PROFESSIONAL: {
     stripe: {
       priceId: process.env.STRIPE_PRO_PRICE_ID,
-      amount: 77,
+      amount: 349,
       currency: 'USD'
+    },
+    stripe_brl: {
+      priceId: process.env.STRIPE_PRO_PRICE_ID_BRL,
+      amount: 999,
+      currency: 'BRL'
     },
     iyzico: {
       pricingPlanRef: process.env.IYZICO_PROFESSIONAL_PLAN_REF,
-      amount: 2599,
+      amount: 3499,
       currency: 'TRY'
     }
   },
   ENTERPRISE: {
     stripe: {
       priceId: process.env.STRIPE_ENTERPRISE_PRICE_ID,
-      amount: 199,
+      amount: null, // Contact sales
       currency: 'USD'
+    },
+    stripe_brl: {
+      priceId: process.env.STRIPE_ENTERPRISE_PRICE_ID_BRL,
+      amount: null, // Contact sales
+      currency: 'BRL'
     },
     iyzico: {
       pricingPlanRef: process.env.IYZICO_ENTERPRISE_PLAN_REF,
-      amount: 6799,
+      amount: null, // Contact sales
       currency: 'TRY'
     }
   }
@@ -74,14 +131,53 @@ class PaymentProviderService {
 
   /**
    * Determine payment provider based on country code
-   * @param {string} country - Country code (e.g., 'TR', 'US')
-   * @returns {string} Provider name: 'stripe' or 'iyzico'
+   * @param {string} country - Country code (e.g., 'TR', 'US', 'BR')
+   * @returns {string} Provider name: 'stripe', 'stripe_brl', or 'iyzico'
    */
   getProviderForCountry(country) {
-    if (IYZICO_COUNTRIES.includes(country?.toUpperCase())) {
+    const upperCountry = country?.toUpperCase();
+
+    if (IYZICO_COUNTRIES.includes(upperCountry)) {
       return 'iyzico';
     }
+
+    // Brazil uses Stripe with BRL pricing
+    if (upperCountry === 'BR') {
+      return 'stripe_brl';
+    }
+
     return 'stripe';
+  }
+
+  /**
+   * Get currency for a country
+   * @param {string} country - Country code
+   * @returns {string} Currency code
+   */
+  getCurrencyForCountry(country) {
+    return COUNTRY_CURRENCY[country?.toUpperCase()] || 'USD';
+  }
+
+  /**
+   * Get Stripe payment methods for a country
+   * @param {string} country - Country code
+   * @returns {Array} Payment method types
+   */
+  getPaymentMethodsForCountry(country) {
+    const localConfig = STRIPE_LOCAL_COUNTRIES[country?.toUpperCase()];
+    if (localConfig) {
+      return localConfig.paymentMethods;
+    }
+    return ['card'];
+  }
+
+  /**
+   * Check if country has local payment methods (Pix, Boleto, etc.)
+   * @param {string} country - Country code
+   * @returns {boolean}
+   */
+  hasLocalPaymentMethods(country) {
+    return !!STRIPE_LOCAL_COUNTRIES[country?.toUpperCase()];
   }
 
   /**

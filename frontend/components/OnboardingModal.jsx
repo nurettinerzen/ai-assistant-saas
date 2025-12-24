@@ -76,22 +76,25 @@ export function OnboardingModal({ open, onClose }) {
   ];
 
   const COUNTRIES = [
-    { id: 'TR', name: 'Türkiye', timezone: 'Europe/Istanbul' },
-    { id: 'US', name: 'United States', timezone: 'America/New_York' },
-    { id: 'GB', name: 'United Kingdom', timezone: 'Europe/London' },
-    { id: 'DE', name: 'Germany', timezone: 'Europe/Berlin' },
-    { id: 'FR', name: 'France', timezone: 'Europe/Paris' },
-    { id: 'ES', name: 'Spain', timezone: 'Europe/Madrid' },
-    { id: 'NL', name: 'Netherlands', timezone: 'Europe/Amsterdam' },
-    { id: 'AE', name: 'UAE', timezone: 'Asia/Dubai' }
+    { id: 'TR', name: 'Türkiye', nameLocal: 'Türkiye', flag: '🇹🇷', timezone: 'Europe/Istanbul', currency: 'TRY' },
+    { id: 'BR', name: 'Brazil', nameLocal: 'Brasil', flag: '🇧🇷', timezone: 'America/Sao_Paulo', currency: 'BRL' },
+    { id: 'US', name: 'United States', nameLocal: 'United States', flag: '🇺🇸', timezone: 'America/New_York', currency: 'USD' },
+    { id: 'GB', name: 'United Kingdom', nameLocal: 'United Kingdom', flag: '🇬🇧', timezone: 'Europe/London', currency: 'GBP' },
+    { id: 'DE', name: 'Germany', nameLocal: 'Deutschland', flag: '🇩🇪', timezone: 'Europe/Berlin', currency: 'EUR' },
+    { id: 'FR', name: 'France', nameLocal: 'France', flag: '🇫🇷', timezone: 'Europe/Paris', currency: 'EUR' },
+    { id: 'ES', name: 'Spain', nameLocal: 'España', flag: '🇪🇸', timezone: 'Europe/Madrid', currency: 'EUR' },
+    { id: 'NL', name: 'Netherlands', nameLocal: 'Nederland', flag: '🇳🇱', timezone: 'Europe/Amsterdam', currency: 'EUR' },
+    { id: 'AE', name: 'UAE', nameLocal: 'الإمارات', flag: '🇦🇪', timezone: 'Asia/Dubai', currency: 'AED' }
   ];
 
   const LANGUAGES = [
-    { id: 'TR', name: 'Türkçe' },
-    { id: 'EN', name: 'English' },
-    { id: 'DE', name: 'Deutsch' },
-    { id: 'ES', name: 'Español' },
-    { id: 'FR', name: 'Français' }
+    { id: 'TR', name: 'Türkçe', flag: '🇹🇷' },
+    { id: 'EN', name: 'English', flag: '🇺🇸' },
+    { id: 'PR', name: 'Português (BR)', flag: '🇧🇷' },
+    { id: 'PT', name: 'Português', flag: '🇵🇹' },
+    { id: 'DE', name: 'Deutsch', flag: '🇩🇪' },
+    { id: 'ES', name: 'Español', flag: '🇪🇸' },
+    { id: 'FR', name: 'Français', flag: '🇫🇷' }
   ];
 
   const TIMEZONES = [
@@ -130,11 +133,13 @@ export function OnboardingModal({ open, onClose }) {
     const greetings = {
       TR: `Merhaba, ben ${voice.name}. Size nasıl yardımcı olabilirim?`,
       EN: `Hello, I'm ${voice.name}. How can I help you today?`,
+      PR: `Olá, sou ${voice.name}. Como posso ajudar você hoje?`,
+      PT: `Olá, sou o ${voice.name}. Como posso ajudá-lo?`,
       DE: `Hallo, ich bin ${voice.name}. Wie kann ich Ihnen helfen?`,
       ES: `Hola, soy ${voice.name}. ¿Cómo puedo ayudarle?`,
       FR: `Bonjour, je suis ${voice.name}. Comment puis-je vous aider?`
     };
-    const greeting = greetings[data.language] || greetings.TR;
+    const greeting = greetings[data.language] || greetings.EN;
     setData({ ...data, voice, firstMessage: greeting });
   };
 
@@ -260,18 +265,33 @@ export function OnboardingModal({ open, onClose }) {
       <div>
         <Label className="text-base font-semibold">{t('onboarding.labels.country')}</Label>
         <p className="text-sm text-gray-500 mb-2">{t('onboarding.labels.selectBusinessLocation')}</p>
-        <select
-          value={data.country}
-          onChange={(e) => {
-            const country = COUNTRIES.find(c => c.id === e.target.value);
-            setData({ ...data, country: e.target.value, timezone: country?.timezone || data.timezone });
-          }}
-          className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none"
-        >
+        <div className="grid grid-cols-3 gap-3">
           {COUNTRIES.map((country) => (
-            <option key={country.id} value={country.id}>{country.name}</option>
+            <button
+              key={country.id}
+              type="button"
+              onClick={() => {
+                // Auto-set language based on country
+                const countryLangMap = {
+                  TR: 'TR', BR: 'PR', US: 'EN', GB: 'EN',
+                  DE: 'DE', FR: 'FR', ES: 'ES', NL: 'EN', AE: 'EN'
+                };
+                setData({
+                  ...data,
+                  country: country.id,
+                  timezone: country.timezone,
+                  language: countryLangMap[country.id] || 'EN'
+                });
+              }}
+              className={`p-3 border rounded-lg text-center transition-all ${
+                data.country === country.id ? 'ring-2 ring-purple-600 bg-purple-50 border-purple-600' : 'hover:bg-gray-50'
+              }`}
+            >
+              <span className="text-2xl block mb-1">{country.flag}</span>
+              <span className="font-medium text-sm">{country.nameLocal}</span>
+            </button>
           ))}
-        </select>
+        </div>
       </div>
 
       {/* Industry Selection */}

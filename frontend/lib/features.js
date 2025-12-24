@@ -1,6 +1,13 @@
 /**
  * Feature Visibility Configuration
- * Controls which features are visible/accessible based on user's subscription plan
+ * Controls which features are visible/accessible based on:
+ * 1. User's subscription plan
+ * 2. User's country/region
+ *
+ * Multi-Region Support:
+ * - TR (Turkey): Phone as primary voice channel
+ * - BR (Brazil): WhatsApp Calling as primary (no phone pool due to Anatel)
+ * - US/EU: Phone as primary voice channel
  */
 
 // Plan enum values
@@ -26,7 +33,30 @@ export const PLAN_HIERARCHY = {
 export const VISIBILITY = {
   VISIBLE: 'visible',   // Feature is accessible
   LOCKED: 'locked',     // Feature is visible but locked (shows upgrade modal)
-  HIDDEN: 'hidden'      // Feature is completely hidden
+  HIDDEN: 'hidden',     // Feature is completely hidden
+  BYOC: 'byoc'         // Bring Your Own Carrier (for Brazil phone numbers)
+};
+
+// Supported regions/countries
+export const REGIONS = {
+  TR: 'TR',
+  BR: 'BR',
+  US: 'US',
+  EU: 'EU'  // Covers DE, FR, ES, NL, GB, etc.
+};
+
+// Map countries to regions for feature visibility
+export const COUNTRY_TO_REGION = {
+  TR: 'TR',
+  BR: 'BR',
+  US: 'US',
+  DE: 'EU',
+  FR: 'EU',
+  ES: 'EU',
+  NL: 'EU',
+  GB: 'EU',
+  IT: 'EU',
+  AE: 'US'  // UAE uses US-style features
 };
 
 /**
@@ -143,6 +173,7 @@ export const FEATURES = {
     id: 'ecommerce_integration',
     name: 'E-ticaret Entegrasyonu',
     nameEN: 'E-commerce Integration',
+    namePR: 'Integração E-commerce',
     requiredPlan: PLANS.BASIC,
     visibility: {
       [PLANS.FREE]: VISIBILITY.HIDDEN,
@@ -152,7 +183,164 @@ export const FEATURES = {
       [PLANS.ENTERPRISE]: VISIBILITY.VISIBLE
     },
     description: 'Shopify, WooCommerce, ikas ve daha fazlası.',
-    descriptionEN: 'Shopify, WooCommerce, ikas and more.'
+    descriptionEN: 'Shopify, WooCommerce, ikas and more.',
+    descriptionPR: 'Shopify, WooCommerce, Nuvemshop e mais.'
+  },
+
+  // ============================================================================
+  // CHANNEL FEATURES - Region-based visibility
+  // ============================================================================
+
+  // Phone Channel - Primary in TR, US, EU; BYOC only in Brazil
+  PHONE_CHANNEL: {
+    id: 'phone_channel',
+    name: 'Telefon Kanalı',
+    nameEN: 'Phone Channel',
+    namePR: 'Canal Telefônico',
+    requiredPlan: PLANS.STARTER,
+    // Region-based visibility
+    regionVisibility: {
+      TR: {
+        [PLANS.FREE]: VISIBILITY.HIDDEN,
+        [PLANS.STARTER]: VISIBILITY.VISIBLE,
+        [PLANS.BASIC]: VISIBILITY.VISIBLE,
+        [PLANS.PROFESSIONAL]: VISIBILITY.VISIBLE,
+        [PLANS.ENTERPRISE]: VISIBILITY.VISIBLE
+      },
+      BR: {
+        // In Brazil, phone is BYOC only (Anatel regulations)
+        [PLANS.FREE]: VISIBILITY.HIDDEN,
+        [PLANS.STARTER]: VISIBILITY.HIDDEN,
+        [PLANS.BASIC]: VISIBILITY.HIDDEN,
+        [PLANS.PROFESSIONAL]: VISIBILITY.BYOC,
+        [PLANS.ENTERPRISE]: VISIBILITY.BYOC
+      },
+      US: {
+        [PLANS.FREE]: VISIBILITY.HIDDEN,
+        [PLANS.STARTER]: VISIBILITY.VISIBLE,
+        [PLANS.BASIC]: VISIBILITY.VISIBLE,
+        [PLANS.PROFESSIONAL]: VISIBILITY.VISIBLE,
+        [PLANS.ENTERPRISE]: VISIBILITY.VISIBLE
+      },
+      EU: {
+        [PLANS.FREE]: VISIBILITY.HIDDEN,
+        [PLANS.STARTER]: VISIBILITY.VISIBLE,
+        [PLANS.BASIC]: VISIBILITY.VISIBLE,
+        [PLANS.PROFESSIONAL]: VISIBILITY.VISIBLE,
+        [PLANS.ENTERPRISE]: VISIBILITY.VISIBLE
+      }
+    },
+    description: 'Geleneksel telefon aramaları ile müşteri hizmetleri.',
+    descriptionEN: 'Customer service via traditional phone calls.',
+    descriptionPR: 'Atendimento ao cliente via chamadas telefônicas.'
+  },
+
+  // WhatsApp Calling - Primary in Brazil, coming soon in other regions
+  WHATSAPP_CALLING: {
+    id: 'whatsapp_calling',
+    name: 'WhatsApp Arama',
+    nameEN: 'WhatsApp Calling',
+    namePR: 'Chamadas WhatsApp',
+    requiredPlan: PLANS.STARTER,
+    regionVisibility: {
+      TR: {
+        // Not yet available in Turkey
+        [PLANS.FREE]: VISIBILITY.HIDDEN,
+        [PLANS.STARTER]: VISIBILITY.HIDDEN,
+        [PLANS.BASIC]: VISIBILITY.HIDDEN,
+        [PLANS.PROFESSIONAL]: VISIBILITY.HIDDEN,
+        [PLANS.ENTERPRISE]: VISIBILITY.HIDDEN
+      },
+      BR: {
+        // Primary voice channel in Brazil
+        [PLANS.FREE]: VISIBILITY.HIDDEN,
+        [PLANS.STARTER]: VISIBILITY.VISIBLE,
+        [PLANS.BASIC]: VISIBILITY.VISIBLE,
+        [PLANS.PROFESSIONAL]: VISIBILITY.VISIBLE,
+        [PLANS.ENTERPRISE]: VISIBILITY.VISIBLE
+      },
+      US: {
+        // Coming soon in US
+        [PLANS.FREE]: VISIBILITY.HIDDEN,
+        [PLANS.STARTER]: VISIBILITY.HIDDEN,
+        [PLANS.BASIC]: VISIBILITY.HIDDEN,
+        [PLANS.PROFESSIONAL]: VISIBILITY.LOCKED,
+        [PLANS.ENTERPRISE]: VISIBILITY.VISIBLE
+      },
+      EU: {
+        // Coming soon in EU
+        [PLANS.FREE]: VISIBILITY.HIDDEN,
+        [PLANS.STARTER]: VISIBILITY.HIDDEN,
+        [PLANS.BASIC]: VISIBILITY.HIDDEN,
+        [PLANS.PROFESSIONAL]: VISIBILITY.LOCKED,
+        [PLANS.ENTERPRISE]: VISIBILITY.VISIBLE
+      }
+    },
+    description: 'WhatsApp üzerinden sesli aramalar.',
+    descriptionEN: 'Voice calls through WhatsApp.',
+    descriptionPR: 'Chamadas de voz pelo WhatsApp.'
+  },
+
+  // WhatsApp Messaging
+  WHATSAPP_MESSAGING: {
+    id: 'whatsapp_messaging',
+    name: 'WhatsApp Mesajlaşma',
+    nameEN: 'WhatsApp Messaging',
+    namePR: 'Mensagens WhatsApp',
+    requiredPlan: PLANS.BASIC,
+    regionVisibility: {
+      TR: {
+        [PLANS.FREE]: VISIBILITY.HIDDEN,
+        [PLANS.STARTER]: VISIBILITY.LOCKED,
+        [PLANS.BASIC]: VISIBILITY.VISIBLE,
+        [PLANS.PROFESSIONAL]: VISIBILITY.VISIBLE,
+        [PLANS.ENTERPRISE]: VISIBILITY.VISIBLE
+      },
+      BR: {
+        // WhatsApp is essential in Brazil - available from Starter
+        [PLANS.FREE]: VISIBILITY.HIDDEN,
+        [PLANS.STARTER]: VISIBILITY.VISIBLE,
+        [PLANS.BASIC]: VISIBILITY.VISIBLE,
+        [PLANS.PROFESSIONAL]: VISIBILITY.VISIBLE,
+        [PLANS.ENTERPRISE]: VISIBILITY.VISIBLE
+      },
+      US: {
+        [PLANS.FREE]: VISIBILITY.HIDDEN,
+        [PLANS.STARTER]: VISIBILITY.LOCKED,
+        [PLANS.BASIC]: VISIBILITY.VISIBLE,
+        [PLANS.PROFESSIONAL]: VISIBILITY.VISIBLE,
+        [PLANS.ENTERPRISE]: VISIBILITY.VISIBLE
+      },
+      EU: {
+        [PLANS.FREE]: VISIBILITY.HIDDEN,
+        [PLANS.STARTER]: VISIBILITY.LOCKED,
+        [PLANS.BASIC]: VISIBILITY.VISIBLE,
+        [PLANS.PROFESSIONAL]: VISIBILITY.VISIBLE,
+        [PLANS.ENTERPRISE]: VISIBILITY.VISIBLE
+      }
+    },
+    description: 'WhatsApp Business ile mesajlaşma.',
+    descriptionEN: 'Messaging via WhatsApp Business.',
+    descriptionPR: 'Mensagens via WhatsApp Business.'
+  },
+
+  // Chat Widget - Same across all regions
+  CHAT_WIDGET: {
+    id: 'chat_widget',
+    name: 'Chat Widget',
+    nameEN: 'Chat Widget',
+    namePR: 'Widget de Chat',
+    requiredPlan: PLANS.BASIC,
+    visibility: {
+      [PLANS.FREE]: VISIBILITY.HIDDEN,
+      [PLANS.STARTER]: VISIBILITY.LOCKED,
+      [PLANS.BASIC]: VISIBILITY.VISIBLE,
+      [PLANS.PROFESSIONAL]: VISIBILITY.VISIBLE,
+      [PLANS.ENTERPRISE]: VISIBILITY.VISIBLE
+    },
+    description: 'Web sitenize eklenebilir sohbet widget\'ı.',
+    descriptionEN: 'Embeddable chat widget for your website.',
+    descriptionPR: 'Widget de chat incorporável para seu site.'
   }
 };
 
@@ -181,12 +369,22 @@ export const INTEGRATION_FEATURE_MAP = {
 };
 
 /**
- * Get feature visibility for a specific plan
+ * Get the region code for a country
+ * @param {string} countryCode - Country code (TR, BR, US, DE, etc.)
+ * @returns {string} Region code (TR, BR, US, EU)
+ */
+export function getRegion(countryCode) {
+  return COUNTRY_TO_REGION[countryCode] || 'US';
+}
+
+/**
+ * Get feature visibility for a specific plan and optionally region
  * @param {string} featureId - Feature ID from FEATURES
  * @param {string} userPlan - User's current plan
- * @returns {string} Visibility type: 'visible', 'locked', or 'hidden'
+ * @param {string} countryCode - Optional country code for region-based features
+ * @returns {string} Visibility type: 'visible', 'locked', 'hidden', or 'byoc'
  */
-export function getFeatureVisibility(featureId, userPlan) {
+export function getFeatureVisibility(featureId, userPlan, countryCode = null) {
   const feature = Object.values(FEATURES).find(f => f.id === featureId);
   if (!feature) return VISIBILITY.VISIBLE;
 
@@ -198,7 +396,19 @@ export function getFeatureVisibility(featureId, userPlan) {
     normalizedPlan = PLANS.PROFESSIONAL;
   }
 
-  const visibility = feature.visibility[normalizedPlan];
+  // Check if this feature has region-based visibility
+  if (feature.regionVisibility && countryCode) {
+    const region = getRegion(countryCode);
+    const regionVisibility = feature.regionVisibility[region];
+
+    if (regionVisibility) {
+      const visibility = regionVisibility[normalizedPlan];
+      if (visibility) return visibility;
+    }
+  }
+
+  // Fall back to standard visibility
+  const visibility = feature.visibility?.[normalizedPlan];
 
   // If visibility not found for this plan, default based on plan hierarchy
   if (!visibility) {
@@ -321,13 +531,77 @@ export function getIntegrationFeatureInfo(integrationType, userPlan) {
   };
 }
 
+/**
+ * Get available channels for a country/region
+ * @param {string} countryCode - Country code
+ * @param {string} userPlan - User's plan
+ * @returns {array} Array of available channels with visibility info
+ */
+export function getAvailableChannels(countryCode, userPlan) {
+  const channels = [
+    {
+      id: 'phone_channel',
+      featureId: 'phone_channel',
+      icon: 'phone',
+      ...FEATURES.PHONE_CHANNEL
+    },
+    {
+      id: 'whatsapp_calling',
+      featureId: 'whatsapp_calling',
+      icon: 'whatsapp',
+      ...FEATURES.WHATSAPP_CALLING
+    },
+    {
+      id: 'whatsapp_messaging',
+      featureId: 'whatsapp_messaging',
+      icon: 'message-circle',
+      ...FEATURES.WHATSAPP_MESSAGING
+    },
+    {
+      id: 'chat_widget',
+      featureId: 'chat_widget',
+      icon: 'message-square',
+      ...FEATURES.CHAT_WIDGET
+    },
+    {
+      id: 'email',
+      featureId: 'email',
+      icon: 'mail',
+      ...FEATURES.EMAIL
+    }
+  ];
+
+  return channels.map(channel => ({
+    ...channel,
+    visibility: getFeatureVisibility(channel.featureId, userPlan, countryCode)
+  })).filter(channel => channel.visibility !== VISIBILITY.HIDDEN);
+}
+
+/**
+ * Get primary voice channel for a country
+ * @param {string} countryCode - Country code
+ * @returns {string} Primary voice channel ID
+ */
+export function getPrimaryVoiceChannel(countryCode) {
+  const region = getRegion(countryCode);
+
+  if (region === 'BR') {
+    return 'whatsapp_calling';
+  }
+
+  return 'phone_channel';
+}
+
 export default {
   PLANS,
   PLAN_HIERARCHY,
   VISIBILITY,
+  REGIONS,
+  COUNTRY_TO_REGION,
   FEATURES,
   LOCKED_INTEGRATIONS_FOR_BASIC,
   INTEGRATION_FEATURE_MAP,
+  getRegion,
   getFeatureVisibility,
   getFeature,
   hasFeatureAccess,
@@ -336,5 +610,7 @@ export default {
   getRequiredPlanName,
   getFeatureDescription,
   getFeatureName,
-  getIntegrationFeatureInfo
+  getIntegrationFeatureInfo,
+  getAvailableChannels,
+  getPrimaryVoiceChannel
 };

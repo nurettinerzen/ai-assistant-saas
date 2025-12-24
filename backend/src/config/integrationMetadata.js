@@ -2,8 +2,8 @@
  * Integration Metadata Configuration
  * Defines which integrations are relevant for each business type
  * and their priority level (ESSENTIAL, RECOMMENDED, OPTIONAL)
- * 
- * Updated: Türk pazarı entegrasyonları ve kargo şirketleri eklendi
+ *
+ * Updated: Multi-region support with Brazil (BR) and Turkey (TR) specific integrations
  */
 
 export const INTEGRATION_METADATA = {
@@ -174,6 +174,142 @@ export const INTEGRATION_METADATA = {
     authType: 'oauth'
   },
 
+  // ============================================================================
+  // BRAZIL SPECIFIC - E-COMMERCE
+  // ============================================================================
+
+  NUVEMSHOP: {
+    relevantFor: ['ECOMMERCE'],
+    priority: {
+      ECOMMERCE: 'ESSENTIAL',
+      RESTAURANT: 'OPTIONAL',
+      CLINIC: 'OPTIONAL',
+      SALON: 'OPTIONAL',
+      SERVICE: 'OPTIONAL',
+      OTHER: 'OPTIONAL'
+    },
+    name: 'Nuvemshop',
+    namePR: 'Nuvemshop',
+    description: 'Latin Amerika\'nın lider e-ticaret platformu',
+    descriptionPR: 'A principal plataforma de e-commerce da América Latina',
+    category: 'ecommerce',
+    authType: 'oauth',
+    region: 'BR',
+    priority_order: 1 // Show first for Brazil
+  },
+
+  TRAY: {
+    relevantFor: ['ECOMMERCE'],
+    priority: {
+      ECOMMERCE: 'ESSENTIAL',
+      RESTAURANT: 'OPTIONAL',
+      CLINIC: 'OPTIONAL',
+      SALON: 'OPTIONAL',
+      SERVICE: 'OPTIONAL',
+      OTHER: 'OPTIONAL'
+    },
+    name: 'Tray',
+    namePR: 'Tray',
+    description: 'Brezilya e-ticaret platformu',
+    descriptionPR: 'Plataforma de e-commerce brasileira',
+    category: 'ecommerce',
+    authType: 'api_key',
+    region: 'BR'
+  },
+
+  LOJA_INTEGRADA: {
+    relevantFor: ['ECOMMERCE'],
+    priority: {
+      ECOMMERCE: 'RECOMMENDED',
+      RESTAURANT: 'OPTIONAL',
+      CLINIC: 'OPTIONAL',
+      SALON: 'OPTIONAL',
+      SERVICE: 'OPTIONAL',
+      OTHER: 'OPTIONAL'
+    },
+    name: 'Loja Integrada',
+    namePR: 'Loja Integrada',
+    description: 'Brezilya ücretsiz e-ticaret platformu',
+    descriptionPR: 'Plataforma de e-commerce grátis do Brasil',
+    category: 'ecommerce',
+    authType: 'api_key',
+    region: 'BR'
+  },
+
+  MERCADO_LIVRE: {
+    relevantFor: ['ECOMMERCE'],
+    priority: {
+      ECOMMERCE: 'ESSENTIAL',
+      RESTAURANT: 'OPTIONAL',
+      CLINIC: 'OPTIONAL',
+      SALON: 'OPTIONAL',
+      SERVICE: 'OPTIONAL',
+      OTHER: 'OPTIONAL'
+    },
+    name: 'Mercado Livre',
+    namePR: 'Mercado Livre',
+    description: 'Latin Amerika pazaryeri',
+    descriptionPR: 'Marketplace da América Latina',
+    category: 'ecommerce',
+    authType: 'oauth',
+    region: 'BR'
+  },
+
+  // ============================================================================
+  // BRAZIL SPECIFIC - COMMUNICATION
+  // ============================================================================
+
+  ZENVIA_SMS: {
+    relevantFor: ['RESTAURANT', 'ECOMMERCE', 'CLINIC', 'SALON', 'SERVICE', 'OTHER'],
+    priority: {
+      RESTAURANT: 'RECOMMENDED',
+      ECOMMERCE: 'RECOMMENDED',
+      CLINIC: 'ESSENTIAL',
+      SALON: 'RECOMMENDED',
+      SERVICE: 'RECOMMENDED',
+      OTHER: 'OPTIONAL'
+    },
+    name: 'Zenvia SMS',
+    namePR: 'Zenvia SMS',
+    description: 'Brezilya SMS bildirimleri',
+    descriptionPR: 'Notificações SMS do Brasil',
+    category: 'communication',
+    authType: 'api_key',
+    region: 'BR'
+  },
+
+};
+
+// ============================================================================
+// REGION CONFIGURATION
+// ============================================================================
+
+/**
+ * Region-specific integration availability
+ * Defines which integrations are available or priority in each region
+ */
+export const REGION_INTEGRATIONS = {
+  TR: {
+    // Turkey-specific platforms
+    exclusive: ['IKAS', 'IDEASOFT', 'TICIMAX', 'NETGSM_SMS'],
+    // Global platforms also available
+    available: ['SHOPIFY', 'WOOCOMMERCE', 'GOOGLE_CALENDAR', 'GOOGLE_SHEETS', 'WHATSAPP']
+  },
+  BR: {
+    // Brazil-specific platforms
+    exclusive: ['NUVEMSHOP', 'TRAY', 'LOJA_INTEGRADA', 'MERCADO_LIVRE', 'ZENVIA_SMS'],
+    // Global platforms also available
+    available: ['SHOPIFY', 'WOOCOMMERCE', 'GOOGLE_CALENDAR', 'GOOGLE_SHEETS', 'WHATSAPP']
+  },
+  US: {
+    // US uses global platforms
+    exclusive: [],
+    available: ['SHOPIFY', 'WOOCOMMERCE', 'GOOGLE_CALENDAR', 'GOOGLE_SHEETS', 'WHATSAPP']
+  },
+  GLOBAL: {
+    // Available everywhere
+    platforms: ['SHOPIFY', 'WOOCOMMERCE', 'GOOGLE_CALENDAR', 'GOOGLE_SHEETS', 'WHATSAPP', 'ZAPIER']
+  }
 };
 
 // ============================================================================

@@ -19,65 +19,73 @@ import { usePermissions } from '@/hooks/usePermissions';
 import CreditBalance from '@/components/CreditBalance';
 import BuyCreditModal from '@/components/BuyCreditModal';
 
-// Plan configurations - Updated with new pricing and features
-// Pricing: TR (₺299, ₺999, ₺3,499) / EN ($29, $79, $199)
-// Standardized feature order for all plans (for easy comparison)
-// 1. minutes, 2. assistants, 3. phoneNumbers, 4. phone, 5. whatsapp,
-// 6. chatWidget, 7. email, 8. ecommerce, 9. calendar, 10. analytics,
-// 11. prioritySupport, 12. apiAccess
-const PLANS = [
+// Regional pricing configuration - Multi-region support
+const REGIONAL_PRICING = {
+  TR: {
+    currency: '₺',
+    currencyPosition: 'after',
+    locale: 'tr-TR',
+    plans: {
+      STARTER: { price: 299, minutes: 50, assistants: 1, phoneNumbers: 1, overageRate: 12 },
+      BASIC: { price: 999, minutes: 150, assistants: 3, phoneNumbers: 2, overageRate: 11 },
+      PROFESSIONAL: { price: 3499, minutes: 500, assistants: 10, phoneNumbers: 5, overageRate: 10 },
+      ENTERPRISE: { price: null, minutes: null, assistants: null, phoneNumbers: null, overageRate: null }
+    }
+  },
+  BR: {
+    currency: 'R$',
+    currencyPosition: 'before',
+    locale: 'pt-BR',
+    plans: {
+      STARTER: { price: 99, minutes: 60, assistants: 1, phoneNumbers: 0, overageRate: 3 },
+      BASIC: { price: 299, minutes: 250, assistants: 3, phoneNumbers: 0, overageRate: 2.5 },
+      PROFESSIONAL: { price: 999, minutes: 1000, assistants: 10, phoneNumbers: 1, overageRate: 2 },
+      ENTERPRISE: { price: null, minutes: null, assistants: null, phoneNumbers: null, overageRate: null }
+    }
+  },
+  US: {
+    currency: '$',
+    currencyPosition: 'before',
+    locale: 'en-US',
+    plans: {
+      STARTER: { price: 29, minutes: 60, assistants: 1, phoneNumbers: 1, overageRate: 0.5 },
+      BASIC: { price: 99, minutes: 250, assistants: 3, phoneNumbers: 2, overageRate: 0.45 },
+      PROFESSIONAL: { price: 349, minutes: 1000, assistants: 10, phoneNumbers: 5, overageRate: 0.4 },
+      ENTERPRISE: { price: null, minutes: null, assistants: null, phoneNumbers: null, overageRate: null }
+    }
+  }
+};
+
+// Map locale to region
+const LOCALE_TO_REGION = {
+  tr: 'TR',
+  pr: 'BR',
+  pt: 'BR',
+  en: 'US'
+};
+
+// Base plan configurations - features are same across regions
+const BASE_PLANS = [
   {
     id: 'STARTER',
-    name: 'Başlangıç',
-    nameEN: 'Starter',
-    priceTRY: 299,
-    priceUSD: 29,
-    minutes: 50,
-    assistants: 1,
-    phoneNumbers: 1,
-    overageRateTRY: 12,
-    overageRateUSD: 0.45,
-    includedFeatures: ['minutes', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'analytics'],  // Starter
+    name: { TR: 'Başlangıç', BR: 'Inicial', US: 'Starter' },
+    includedFeatures: ['minutes', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'analytics'],
   },
   {
     id: 'BASIC',
-    name: 'Temel',
-    nameEN: 'Standard',
-    priceTRY: 999,
-    priceUSD: 79,
-    minutes: 150,
-    assistants: 3,
-    phoneNumbers: 2,
-    overageRateTRY: 11,
-    overageRateUSD: 0.40,
+    name: { TR: 'Temel', BR: 'Básico', US: 'Basic' },
     popular: true,
-    includedFeatures: ['minutes', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'analytics', 'ecommerce'],  // Basic
+    includedFeatures: ['minutes', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'analytics', 'ecommerce'],
   },
   {
     id: 'PROFESSIONAL',
-    name: 'Pro',
-    nameEN: 'Professional',
-    priceTRY: 3499,
-    priceUSD: 199,
-    minutes: 500,
-    assistants: 10,
-    phoneNumbers: 5,
-    overageRateTRY: 10,
-    overageRateUSD: 0.35,
-    includedFeatures: ['minutes', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'analytics', 'ecommerce', 'calendar', 'batchCalls', 'email', 'prioritySupport', 'apiAccess'],  // Professional
+    name: { TR: 'Pro', BR: 'Profissional', US: 'Professional' },
+    includedFeatures: ['minutes', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'analytics', 'ecommerce', 'calendar', 'batchCalls', 'email', 'prioritySupport', 'apiAccess'],
   },
   {
     id: 'ENTERPRISE',
-    name: 'Kurumsal',
-    nameEN: 'Enterprise',
-    priceTRY: null,
-    priceUSD: null,
-    minutes: 500,  // Base, customizable
-    assistants: 10,  // Base, customizable
-    phoneNumbers: 5,  // Base, customizable
-    overageRateTRY: null,  // Custom
-    overageRateUSD: null,  // Custom
-    includedFeatures: ['minutes', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'analytics', 'ecommerce', 'calendar', 'batchCalls', 'email', 'prioritySupport', 'apiAccess', 'customTraining', 'slaGuarantee'],  // Enterprise
+    name: { TR: 'Kurumsal', BR: 'Empresarial', US: 'Enterprise' },
+    includedFeatures: ['minutes', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'analytics', 'ecommerce', 'calendar', 'batchCalls', 'email', 'prioritySupport', 'apiAccess', 'customTraining', 'slaGuarantee'],
   },
 ];
 
@@ -101,25 +109,44 @@ export default function SubscriptionPage() {
       if (lang === 'tr' || lang === 'tr-TR' || lang.startsWith('tr-')) {
         return 'TR';
       }
+      if (lang === 'pt' || lang === 'pt-BR' || lang.startsWith('pt-')) {
+        return 'BR';
+      }
     }
     return 'US';
   });
 
-  // Determine currency based on user's country or locale
-  const isTurkishUser = userCountry === 'TR' || userCountry === 'Turkey' || locale === 'tr';
-  const currencySymbol = isTurkishUser ? '₺' : '$';
-
-  // Format currency based on user's country
-  const formatPrice = (amount) => {
-    if (isTurkishUser) {
-      return `₺${amount.toLocaleString('tr-TR')}`;
-    }
-    return `$${amount.toLocaleString('en-US')}`;
+  // Determine region from locale or country
+  const getRegion = () => {
+    // First check locale mapping
+    const localeRegion = LOCALE_TO_REGION[locale];
+    if (localeRegion) return localeRegion;
+    // Then check country
+    if (userCountry === 'TR' || userCountry === 'Turkey') return 'TR';
+    if (userCountry === 'BR' || userCountry === 'Brazil') return 'BR';
+    return 'US';
   };
 
-  // Get price based on user's country
-  const getPlanPrice = (plan) => {
-    return isTurkishUser ? plan.priceTRY : plan.priceUSD;
+  const region = getRegion();
+  const regionConfig = REGIONAL_PRICING[region] || REGIONAL_PRICING.US;
+
+  // Format currency based on region
+  const formatPrice = (amount) => {
+    if (amount === null || amount === undefined) return null;
+    const formatted = amount.toLocaleString(regionConfig.locale);
+    return regionConfig.currencyPosition === 'after'
+      ? `${formatted}${regionConfig.currency}`
+      : `${regionConfig.currency}${formatted}`;
+  };
+
+  // Get plan pricing for current region
+  const getPlanPricing = (planId) => {
+    return regionConfig.plans[planId] || null;
+  };
+
+  // Get plan name for current region
+  const getPlanName = (plan) => {
+    return plan.name[region] || plan.name.US;
   };
 
   // Handle iyzico checkout form rendering
@@ -289,13 +316,13 @@ export default function SubscriptionPage() {
                 <span className="text-neutral-600">{t('dashboard.subscriptionPage.monthlyCost')}</span>
                 <span className="font-semibold text-neutral-900">
                   {(() => {
-                    // Get price from PLANS based on subscription.plan
-                    const currentPlan = PLANS.find(p => p.id === subscription.plan);
-                    if (currentPlan && currentPlan.priceTRY !== null) {
-                      return `₺${currentPlan.priceTRY.toLocaleString('tr-TR')}`;
+                    // Get price from REGIONAL_PRICING based on subscription.plan
+                    const planPricing = getPlanPricing(subscription.plan);
+                    if (planPricing && planPricing.price !== null) {
+                      return formatPrice(planPricing.price);
                     }
                     // FREE plan or custom pricing
-                    if (subscription.plan === 'FREE') return '₺0';
+                    if (subscription.plan === 'FREE') return formatPrice(0);
                     if (subscription.plan === 'ENTERPRISE') return t('dashboard.subscriptionPage.custom');
                     return formatPrice(subscription.price || 0);
                   })()}

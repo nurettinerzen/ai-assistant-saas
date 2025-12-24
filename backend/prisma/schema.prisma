@@ -51,8 +51,9 @@ model Invitation {
 model Business {
   id                      Int                     @id @default(autoincrement())
   name                    String
-  language                String                  @default("TR")  // Uygulama dili
-  country                 String                  @default("TR")  // Bölge kodu (TR, US, DE...)
+  language                String                  @default("TR")  // Uygulama dili (TR, EN, PR, DE, ES, FR...)
+  country                 String                  @default("TR")  // Bölge kodu (TR, BR, US, DE...)
+  currency                String                  @default("TRY") // Para birimi (TRY, BRL, USD, EUR...)
   timezone                String                  @default("Europe/Istanbul")
   phoneNumbers            String[]                @default([])
   vapiPhoneNumber         String?

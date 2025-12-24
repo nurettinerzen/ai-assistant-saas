@@ -2,16 +2,92 @@
 
 import { Check } from 'lucide-react';
 import Link from 'next/link';
+import { useState } from 'react';
 import Navigation from '@/components/Navigation';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/contexts/LanguageContext';
 
+// Regional pricing configuration
+const REGIONAL_PRICING = {
+  TR: {
+    currency: '₺',
+    currencyPosition: 'after',
+    locale: 'tr-TR',
+    plans: {
+      STARTER: { price: 299, minutes: 50, assistants: 1, phoneNumbers: 1, overageRate: 12 },
+      BASIC: { price: 999, minutes: 150, assistants: 3, phoneNumbers: 2, overageRate: 11 },
+      PROFESSIONAL: { price: 3499, minutes: 500, assistants: 10, phoneNumbers: 5, overageRate: 10 },
+      ENTERPRISE: { price: null, minutes: null, assistants: null, phoneNumbers: null, overageRate: null }
+    },
+    creditTiers: [
+      { min: 1, max: 49, price: 9 },
+      { min: 50, max: 99, price: 8.5 },
+      { min: 100, max: 249, price: 8 },
+      { min: 250, max: Infinity, price: 7.5 }
+    ]
+  },
+  BR: {
+    currency: 'R$',
+    currencyPosition: 'before',
+    locale: 'pt-BR',
+    plans: {
+      STARTER: { price: 99, minutes: 60, assistants: 1, phoneNumbers: 0, overageRate: 3 },
+      BASIC: { price: 299, minutes: 250, assistants: 3, phoneNumbers: 0, overageRate: 2.5 },
+      PROFESSIONAL: { price: 999, minutes: 1000, assistants: 10, phoneNumbers: 1, overageRate: 2 },
+      ENTERPRISE: { price: null, minutes: null, assistants: null, phoneNumbers: null, overageRate: null }
+    },
+    creditTiers: [
+      { min: 1, max: 49, price: 2.75 },
+      { min: 50, max: 99, price: 2.5 },
+      { min: 100, max: 249, price: 2.25 },
+      { min: 250, max: Infinity, price: 2 }
+    ]
+  },
+  US: {
+    currency: '$',
+    currencyPosition: 'before',
+    locale: 'en-US',
+    plans: {
+      STARTER: { price: 29, minutes: 60, assistants: 1, phoneNumbers: 1, overageRate: 0.5 },
+      BASIC: { price: 99, minutes: 250, assistants: 3, phoneNumbers: 2, overageRate: 0.45 },
+      PROFESSIONAL: { price: 349, minutes: 1000, assistants: 10, phoneNumbers: 5, overageRate: 0.4 },
+      ENTERPRISE: { price: null, minutes: null, assistants: null, phoneNumbers: null, overageRate: null }
+    },
+    creditTiers: [
+      { min: 1, max: 49, price: 0.45 },
+      { min: 50, max: 99, price: 0.42 },
+      { min: 100, max: 249, price: 0.38 },
+      { min: 250, max: Infinity, price: 0.35 }
+    ]
+  }
+};
+
+// Map locale to region
+const LOCALE_TO_REGION = {
+  tr: 'TR',
+  pr: 'BR',
+  pt: 'BR',
+  en: 'US'
+};
+
 export default function PricingPage() {
   const { t, locale } = useLanguage();
 
-  // Determine currency based on locale
-  const isTR = locale === 'tr';
+  // Determine region based on locale
+  const region = LOCALE_TO_REGION[locale] || 'US';
+  const pricing = REGIONAL_PRICING[region] || REGIONAL_PRICING.US;
+  const isTR = region === 'TR';
+  const isBR = region === 'BR';
+
+  // Format price with currency
+  const formatPrice = (price) => {
+    if (price === null) return null;
+    const formatted = price.toLocaleString(pricing.locale);
+    return pricing.currencyPosition === 'before'
+      ? `${pricing.currency}${formatted}`
+      : `${formatted}${pricing.currency}`;
+  };
 
   /**
    * Feature Master List (ordered) - same order for ALL plans
@@ -43,66 +119,73 @@ export default function PricingPage() {
     ENTERPRISE: ['minutes', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'analytics', 'ecommerce', 'calendar', 'batchCalls', 'email', 'prioritySupport', 'apiAccess', 'customTraining', 'slaGuarantee']
   };
 
+  // Plan names by region
+  const planNames = {
+    STARTER: isTR ? 'Başlangıç' : isBR ? 'Inicial' : 'Starter',
+    BASIC: isTR ? 'Temel' : isBR ? 'Básico' : 'Basic',
+    PROFESSIONAL: isTR ? 'Pro' : isBR ? 'Profissional' : 'Pro',
+    ENTERPRISE: isTR ? 'Kurumsal' : isBR ? 'Empresarial' : 'Enterprise'
+  };
+
+  // Plan descriptions by region
+  const planDescriptions = {
+    STARTER: isTR
+      ? 'Küçük işletmeler için ideal başlangıç paketi'
+      : isBR
+      ? 'Pacote inicial ideal para pequenas empresas'
+      : 'Perfect starter package for small businesses',
+    BASIC: isTR
+      ? 'Büyüyen işletmeler için çok kanallı çözüm'
+      : isBR
+      ? 'Solução multicanal para empresas em crescimento'
+      : 'Multi-channel solution for growing businesses',
+    PROFESSIONAL: isTR
+      ? 'Yüksek hacimli işletmeler için tam donanımlı paket'
+      : isBR
+      ? 'Pacote completo para empresas de alto volume'
+      : 'Full-featured package for high-volume businesses',
+    ENTERPRISE: isTR
+      ? 'Özel ihtiyaçlar için kişiselleştirilmiş çözümler'
+      : isBR
+      ? 'Soluções personalizadas para necessidades específicas'
+      : 'Customized solutions for specific needs'
+  };
+
+  const period = isTR ? '/ay' : isBR ? '/mês' : '/month';
+  const popularBadge = isTR ? 'Popüler' : isBR ? 'Popular' : 'Popular';
+
   const plans = [
     {
       id: 'STARTER',
-      name: isTR ? 'Başlangıç' : 'Starter',
-      price: 299,
-      currency: '₺',
-      period: isTR ? '/ay' : '/month',
-      description: isTR
-        ? 'Küçük işletmeler için ideal başlangıç paketi'
-        : 'Perfect starter package for small businesses',
-      minutes: 50,
-      assistants: 1,
-      phoneNumbers: 1,
-      overageRate: 12,
+      name: planNames.STARTER,
+      ...pricing.plans.STARTER,
+      period,
+      description: planDescriptions.STARTER,
       popular: false,
     },
     {
       id: 'BASIC',
-      name: isTR ? 'Temel' : 'Basic',
-      price: 999,
-      currency: '₺',
-      period: isTR ? '/ay' : '/month',
-      description: isTR
-        ? 'Büyüyen işletmeler için çok kanallı çözüm'
-        : 'Multi-channel solution for growing businesses',
-      minutes: 150,
-      assistants: 3,
-      phoneNumbers: 2,
-      overageRate: 11,
+      name: planNames.BASIC,
+      ...pricing.plans.BASIC,
+      period,
+      description: planDescriptions.BASIC,
       popular: true,
-      badge: isTR ? 'Popüler' : 'Popular',
+      badge: popularBadge,
     },
     {
       id: 'PROFESSIONAL',
-      name: isTR ? 'Pro' : 'Pro',
-      price: 3499,
-      currency: '₺',
-      period: isTR ? '/ay' : '/month',
-      description: isTR
-        ? 'Yüksek hacimli işletmeler için tam donanımlı paket'
-        : 'Full-featured package for high-volume businesses',
-      minutes: 500,
-      assistants: 10,
-      phoneNumbers: 5,
-      overageRate: 10,
+      name: planNames.PROFESSIONAL,
+      ...pricing.plans.PROFESSIONAL,
+      period,
+      description: planDescriptions.PROFESSIONAL,
       popular: false,
     },
     {
       id: 'ENTERPRISE',
-      name: isTR ? 'Kurumsal' : 'Enterprise',
-      price: null,
-      currency: '₺',
+      name: planNames.ENTERPRISE,
+      ...pricing.plans.ENTERPRISE,
       period: '',
-      description: isTR
-        ? 'Özel ihtiyaçlar için kişiselleştirilmiş çözümler'
-        : 'Customized solutions for specific needs',
-      minutes: null,
-      assistants: null,
-      phoneNumbers: null,
-      overageRate: null,
+      description: planDescriptions.ENTERPRISE,
       popular: false,
     },
   ];
@@ -202,25 +285,24 @@ export default function PricingPage() {
                     {plan.price !== null ? (
                       <>
                         <span className="text-3xl font-bold text-gray-900">
-                          {plan.currency}
-                          {plan.price.toLocaleString('tr-TR')}
+                          {formatPrice(plan.price)}
                         </span>
                         <span className="text-gray-600 ml-1">{plan.period}</span>
                       </>
                     ) : (
                       <span className="text-2xl font-bold text-gray-900">
-                        {isTR ? 'İletişime Geçin' : 'Contact Us'}
+                        {isTR ? 'İletişime Geçin' : isBR ? 'Entre em Contato' : 'Contact Us'}
                       </span>
                     )}
                   </div>
                   <div className="h-[20px] mt-2">
                     {plan.overageRate ? (
                       <p className="text-xs text-gray-500">
-                        {isTR ? `Aşım: ${plan.overageRate} ₺/dk` : `Overage: ${plan.overageRate} ₺/min`}
+                        {isTR ? `Aşım: ${plan.overageRate} ₺/dk` : isBR ? `Excedente: R$${plan.overageRate}/min` : `Overage: $${plan.overageRate}/min`}
                       </p>
                     ) : plan.id === 'ENTERPRISE' ? (
                       <p className="text-xs text-gray-500">
-                        {isTR ? 'Özel fiyatlandırma' : 'Custom pricing'}
+                        {isTR ? 'Özel fiyatlandırma' : isBR ? 'Preços personalizados' : 'Custom pricing'}
                       </p>
                     ) : null}
                   </div>
@@ -266,31 +348,42 @@ export default function PricingPage() {
           {/* Ekstra Kredi Bölümü */}
           <div className="mt-20 text-center max-w-4xl mx-auto">
             <h3 className="text-2xl font-bold text-gray-900 mb-3">
-              {isTR ? 'Ekstra Dakika mı Lazım?' : 'Need Extra Minutes?'}
+              {isTR ? 'Ekstra Dakika mı Lazım?' : isBR ? 'Precisa de Minutos Extras?' : 'Need Extra Minutes?'}
             </h3>
             <p className="text-gray-600 mb-8">
               {isTR
                 ? 'İstediğiniz kadar kredi satın alın, süresi dolmaz'
+                : isBR
+                ? 'Compre quantos créditos precisar, eles nunca expiram'
                 : 'Buy as many credits as you need, they never expire'}
             </p>
 
             <div className="inline-flex flex-wrap justify-center gap-4">
-              <div className="bg-white rounded-xl px-6 py-4 shadow-md border border-gray-100">
-                <span className="font-semibold text-gray-900">1-49 dk:</span>
-                <span className="text-gray-600 ml-2">9 ₺/dk</span>
-              </div>
-              <div className="bg-white rounded-xl px-6 py-4 shadow-md border border-gray-100">
-                <span className="font-semibold text-gray-900">50-99 dk:</span>
-                <span className="text-gray-600 ml-2">8.50 ₺/dk</span>
-              </div>
-              <div className="bg-white rounded-xl px-6 py-4 shadow-md border border-gray-100">
-                <span className="font-semibold text-gray-900">100-249 dk:</span>
-                <span className="text-gray-600 ml-2">8 ₺/dk</span>
-              </div>
-              <div className="bg-primary/10 rounded-xl px-6 py-4 shadow-md border border-primary/20">
-                <span className="font-semibold text-primary">250+ dk:</span>
-                <span className="text-primary ml-2">7.50 ₺/dk</span>
-              </div>
+              {pricing.creditTiers.map((tier, index) => {
+                const isLast = index === pricing.creditTiers.length - 1;
+                const tierLabel = tier.max === Infinity
+                  ? `${tier.min}+ ${isTR ? 'dk' : 'min'}`
+                  : `${tier.min}-${tier.max} ${isTR ? 'dk' : 'min'}`;
+                const priceLabel = `${formatPrice(tier.price)}/${isTR ? 'dk' : 'min'}`;
+
+                return (
+                  <div
+                    key={index}
+                    className={`rounded-xl px-6 py-4 shadow-md border ${
+                      isLast
+                        ? 'bg-primary/10 border-primary/20'
+                        : 'bg-white border-gray-100'
+                    }`}
+                  >
+                    <span className={`font-semibold ${isLast ? 'text-primary' : 'text-gray-900'}`}>
+                      {tierLabel}:
+                    </span>
+                    <span className={`ml-2 ${isLast ? 'text-primary' : 'text-gray-600'}`}>
+                      {priceLabel}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
