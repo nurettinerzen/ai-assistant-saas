@@ -16,7 +16,8 @@ import {
   Zap
 } from 'lucide-react';
 
-// UI translations for CreditBalance
+// UI translations for CreditBalance - Only Turkish for now
+// See docs/MULTI_REGION_ARCHITECTURE.md for adding new languages
 const TRANSLATIONS = {
   TR: {
     usageStatus: 'Kullanım Durumu',
@@ -37,55 +38,11 @@ const TRANSLATIONS = {
     retry: 'Tekrar Dene',
     loadError: 'Bakiye yüklenemedi',
     min: 'dk'
-  },
-  EN: {
-    usageStatus: 'Usage Status',
-    minutesRemaining: 'min remaining',
-    packageMinutes: 'Package Minutes',
-    creditMinutes: 'Credit Minutes',
-    used80Package: "You've used 80% of your package minutes",
-    usedAllPackage: 'Your package minutes are depleted',
-    noCredits: "You haven't purchased credits yet",
-    used80Credits: "You've used 80% of your credit minutes",
-    overageThisMonth: 'Overage This Month',
-    overageLimit: 'Overage limit:',
-    overageNote: '(Will be charged at end of month)',
-    overageLimitReached: 'Overage Limit Reached!',
-    overageLimitNote: 'Phone calls have been disabled. Purchase credits to continue calling.',
-    periodEnd: 'Period ends:',
-    buyCredits: 'Buy Credits',
-    retry: 'Retry',
-    loadError: 'Failed to load balance',
-    min: 'min'
-  },
-  PR: {
-    usageStatus: 'Status de Uso',
-    minutesRemaining: 'min restantes',
-    packageMinutes: 'Minutos do Pacote',
-    creditMinutes: 'Minutos de Crédito',
-    used80Package: 'Você usou 80% dos seus minutos do pacote',
-    usedAllPackage: 'Seus minutos do pacote acabaram',
-    noCredits: 'Você ainda não comprou créditos',
-    used80Credits: 'Você usou 80% dos seus minutos de crédito',
-    overageThisMonth: 'Excedente Este Mês',
-    overageLimit: 'Limite de excedente:',
-    overageNote: '(Será cobrado no final do mês)',
-    overageLimitReached: 'Limite de Excedente Atingido!',
-    overageLimitNote: 'Chamadas telefônicas foram desativadas. Compre créditos para continuar ligando.',
-    periodEnd: 'Fim do período:',
-    buyCredits: 'Comprar Créditos',
-    retry: 'Tentar Novamente',
-    loadError: 'Falha ao carregar saldo',
-    min: 'min'
   }
 };
 
 // Map locale to translation key
-const LOCALE_TO_LANG = {
-  tr: 'TR',
-  en: 'EN',
-  pr: 'PR'
-};
+const LOCALE_TO_LANG = { tr: 'TR' };
 
 /**
  * CreditBalance Component
@@ -93,8 +50,8 @@ const LOCALE_TO_LANG = {
  */
 export default function CreditBalance({ onBuyCredit, refreshTrigger }) {
   const { t, locale } = useLanguage();
-  const lang = LOCALE_TO_LANG[locale] || 'EN';
-  const txt = TRANSLATIONS[lang] || TRANSLATIONS.EN;
+  const lang = LOCALE_TO_LANG[locale] || 'TR';
+  const txt = TRANSLATIONS[lang] || TRANSLATIONS.TR;
   const [balance, setBalance] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

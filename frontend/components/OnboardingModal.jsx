@@ -114,19 +114,15 @@ export function OnboardingModal({ open, onClose }) {
     { id: 'OTHER', icon: Package, name: t('onboarding.industries.other'), color: 'text-gray-600', bgColor: 'bg-gray-100' }
   ];
 
-  // Only supported countries for now
+  // Only Turkey supported for now - other regions will be added later
+  // See docs/MULTI_REGION_ARCHITECTURE.md for adding new regions
   const COUNTRIES = [
-    { id: 'TR', name: 'Türkiye', nameLocal: 'Türkiye', flag: '🇹🇷', timezone: 'Europe/Istanbul', currency: 'TRY' },
-    { id: 'BR', name: 'Brazil', nameLocal: 'Brasil', flag: '🇧🇷', timezone: 'America/Sao_Paulo', currency: 'BRL' },
-    { id: 'US', name: 'United States', nameLocal: 'United States', flag: '🇺🇸', timezone: 'America/New_York', currency: 'USD' }
+    { id: 'TR', name: 'Türkiye', nameLocal: 'Türkiye', flag: '🇹🇷', timezone: 'Europe/Istanbul', currency: 'TRY' }
   ];
 
-  // Assistant speaking languages (not UI language)
-  // This controls what language the AI assistant speaks when answering calls
+  // Only Turkish for now - other languages will be added with multi-region support
   const LANGUAGES = [
-    { id: 'TR', name: 'Türkçe', flag: '🇹🇷' },
-    { id: 'EN', name: 'English', flag: '🇺🇸' },
-    { id: 'PR', name: 'Português (BR)', flag: '🇧🇷' }
+    { id: 'TR', name: 'Türkçe', flag: '🇹🇷' }
   ];
 
   const TIMEZONES = [

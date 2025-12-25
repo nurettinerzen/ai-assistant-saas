@@ -15,7 +15,8 @@ import {
   Zap
 } from 'lucide-react';
 
-// UI translations
+// UI translations - Only Turkish for now
+// See docs/MULTI_REGION_ARCHITECTURE.md for adding new languages
 const TRANSLATIONS = {
   TR: {
     title: 'Ekstra Kredi Al',
@@ -34,46 +35,10 @@ const TRANSLATIONS = {
     purchaseFailed: 'Satın alma başarısız',
     requiresCard: 'Kredi satın almak için önce bir kart kaydetmeniz gerekiyor.',
     perMin: '/dk'
-  },
-  EN: {
-    title: 'Buy Extra Credits',
-    howManyMinutes: 'How many minutes would you like to buy?',
-    enterMinutes: 'Enter minutes',
-    min: 'min',
-    pricing: 'Pricing',
-    unitPrice: 'Unit price:',
-    total: 'Total:',
-    creditInfo: 'Credits never expire and do not reset monthly. When your package minutes run out, credits will be used automatically.',
-    cancel: 'Cancel',
-    processing: 'Processing...',
-    purchase: 'Purchase',
-    invalidMinutes: 'Invalid minute amount',
-    creditsAdded: 'minutes of credits added!',
-    purchaseFailed: 'Purchase failed',
-    requiresCard: 'You need to save a card first to purchase credits.',
-    perMin: '/min'
-  },
-  PR: {
-    title: 'Comprar Créditos Extras',
-    howManyMinutes: 'Quantos minutos você gostaria de comprar?',
-    enterMinutes: 'Digite os minutos',
-    min: 'min',
-    pricing: 'Preços',
-    unitPrice: 'Preço unitário:',
-    total: 'Total:',
-    creditInfo: 'Os créditos nunca expiram e não são resetados mensalmente. Quando seus minutos do pacote acabarem, os créditos serão usados automaticamente.',
-    cancel: 'Cancelar',
-    processing: 'Processando...',
-    purchase: 'Comprar',
-    invalidMinutes: 'Quantidade de minutos inválida',
-    creditsAdded: 'minutos de crédito adicionados!',
-    purchaseFailed: 'Compra falhou',
-    requiresCard: 'Você precisa salvar um cartão primeiro para comprar créditos.',
-    perMin: '/min'
   }
 };
 
-const LOCALE_TO_LANG = { tr: 'TR', en: 'EN', pr: 'PR' };
+const LOCALE_TO_LANG = { tr: 'TR' };
 
 /**
  * BuyCreditModal Component
@@ -81,12 +46,12 @@ const LOCALE_TO_LANG = { tr: 'TR', en: 'EN', pr: 'PR' };
  */
 export default function BuyCreditModal({ isOpen, onClose, onSuccess }) {
   const { t, locale } = useLanguage();
-  const lang = LOCALE_TO_LANG[locale] || 'EN';
-  const txt = TRANSLATIONS[lang] || TRANSLATIONS.EN;
+  const lang = LOCALE_TO_LANG[locale] || 'TR';
+  const txt = TRANSLATIONS[lang] || TRANSLATIONS.TR;
 
-  // Currency based on locale (should ideally come from business.country)
-  const currency = lang === 'TR' ? '₺' : lang === 'PR' ? 'R$' : '$';
-  const dateLocale = lang === 'TR' ? 'tr-TR' : lang === 'PR' ? 'pt-BR' : 'en-US';
+  // Only Turkish Lira for now
+  const currency = '₺';
+  const dateLocale = 'tr-TR';
   const [minutes, setMinutes] = useState(100);
   const [calculation, setCalculation] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -164,22 +129,12 @@ export default function BuyCreditModal({ isOpen, onClose, onSuccess }) {
 
   if (!isOpen) return null;
 
-  // Pricing tiers (these should ideally come from backend based on region)
-  const pricingTiers = lang === 'TR' ? [
+  // Turkish Lira pricing tiers
+  const pricingTiers = [
     { range: '1-49', price: '9' },
     { range: '50-99', price: '8.50' },
     { range: '100-249', price: '8' },
     { range: '250+', price: '7.50', highlight: true }
-  ] : lang === 'PR' ? [
-    { range: '1-49', price: '2.75' },
-    { range: '50-99', price: '2.50' },
-    { range: '100-249', price: '2.25' },
-    { range: '250+', price: '2', highlight: true }
-  ] : [
-    { range: '1-49', price: '0.45' },
-    { range: '50-99', price: '0.42' },
-    { range: '100-249', price: '0.38' },
-    { range: '250+', price: '0.35', highlight: true }
   ];
 
   return (

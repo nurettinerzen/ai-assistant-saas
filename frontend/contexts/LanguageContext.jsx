@@ -39,8 +39,9 @@ const getNestedValue = (obj, path) => {
   return current;
 };
 
-// Supported UI locales (only TR and EN for now)
-const supportedUILocales = ['tr', 'en'];
+// Only Turkish UI for now - other languages disabled until multi-region support is complete
+// See docs/MULTI_REGION_ARCHITECTURE.md for adding new languages
+const supportedUILocales = ['tr'];
 
 export function LanguageProvider({ children }) {
   // Default to Turkish
@@ -50,9 +51,9 @@ export function LanguageProvider({ children }) {
     if (typeof window !== 'undefined') {
       // Default to Turkish if not set
       let saved = localStorage.getItem('locale') || 'tr';
-      // If PR was previously selected, fallback to EN (PR removed from UI languages)
+      // If any other language was selected, fallback to TR (only Turkish supported now)
       if (!supportedUILocales.includes(saved)) {
-        saved = 'en';
+        saved = 'tr';
         localStorage.setItem('locale', saved);
       }
       setLocale(saved);

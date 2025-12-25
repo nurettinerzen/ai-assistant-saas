@@ -264,7 +264,7 @@ export default function VoiceDemo({ assistantId, onClose }) {
               gap: '10px'
             }}
           >
-            {isConnecting ? t('common.connecting') : t('onboarding.voiceDemo.startVoiceTest')}
+            {isConnecting ? 'Bağlanıyor...' : t('onboarding.voiceDemo.startVoiceTest')}
           </button>
         ) : (
           <button
