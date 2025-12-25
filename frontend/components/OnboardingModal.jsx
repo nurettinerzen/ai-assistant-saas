@@ -60,6 +60,7 @@ export function OnboardingModal({ open, onClose }) {
     }
   }, [locale]);
 
+  // Fetch voices when entering step 2 or when language changes
   useEffect(() => {
     const fetchVoices = async () => {
       // Map our language codes to backend voice keys
@@ -70,7 +71,7 @@ export function OnboardingModal({ open, onClose }) {
       };
       const voiceKey = langToVoiceKey[data.language] || 'tr';
 
-      console.log('🎤 Fetching voices... API_URL:', API_URL, 'language:', data.language, '-> key:', voiceKey);
+      console.log('🎤 Fetching voices... API_URL:', API_URL, 'language:', data.language, '-> key:', voiceKey, 'step:', step);
       setVoicesLoading(true);
 
       try {
@@ -91,10 +92,11 @@ export function OnboardingModal({ open, onClose }) {
       }
     };
 
-    if (open && data.language) {
+    // Fetch voices when modal is open AND (entering step 2 OR language changed while on step 2)
+    if (open && data.language && (step === 2 || step === 1)) {
       fetchVoices();
     }
-  }, [open, data.language]);
+  }, [open, data.language, step]);
 
   const STEPS = [
     { id: 1, title: t('onboarding.steps.chooseIndustry'), description: t('onboarding.descriptions.tellUsAboutBusiness') },

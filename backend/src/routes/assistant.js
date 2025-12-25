@@ -12,6 +12,40 @@ import { getActiveToolsForElevenLabs } from '../tools/index.js';
 import { getElevenLabsVoiceId } from '../constants/voices.js';
 
 const router = express.Router();
+
+// ============================================================
+// 11LABS LANGUAGE CODE MAPPING
+// Our language codes -> 11Labs accepted language codes
+// ============================================================
+const ELEVENLABS_LANGUAGE_MAP = {
+  'tr': 'tr',
+  'en': 'en',
+  'pr': 'pt-br',  // Brazilian Portuguese
+  'pt': 'pt',     // European Portuguese
+  'de': 'de',
+  'es': 'es',
+  'fr': 'fr',
+  'it': 'it',
+  'ja': 'ja',
+  'ko': 'ko',
+  'zh': 'zh',
+  'ar': 'ar',
+  'hi': 'hi',
+  'nl': 'nl',
+  'pl': 'pl',
+  'ru': 'ru',
+  'sv': 'sv'
+};
+
+/**
+ * Convert our language code to 11Labs accepted language code
+ * @param {string} lang - Our language code (e.g., 'pr', 'tr', 'en')
+ * @returns {string} 11Labs language code (e.g., 'pt-br', 'tr', 'en')
+ */
+function getElevenLabsLanguage(lang) {
+  const normalized = lang?.toLowerCase() || 'tr';
+  return ELEVENLABS_LANGUAGE_MAP[normalized] || normalized;
+}
 const prisma = new PrismaClient();
 
 // ============================================================
@@ -185,6 +219,10 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
         ? [...activeToolsElevenLabs, { type: 'system', name: 'end_call' }]
         : activeToolsElevenLabs;
 
+      // Convert our language code to 11Labs format (e.g., 'pr' -> 'pt-br')
+      const elevenLabsLang = getElevenLabsLanguage(lang);
+      console.log('📝 Language mapping:', lang, '->', elevenLabsLang);
+
       const agentConfig = {
         name: `${name} - ${Date.now()}`,
         conversation_config: {
@@ -195,7 +233,7 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
               temperature: 0.1
             },
             first_message: finalFirstMessage,
-            language: lang?.toLowerCase() || 'tr'
+            language: elevenLabsLang
           },
           tts: {
             voice_id: elevenLabsVoiceId,
@@ -207,7 +245,7 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
           stt: {
             provider: 'elevenlabs',
             model: 'scribe_v1',
-            language: lang?.toLowerCase() || 'tr'
+            language: elevenLabsLang
           },
           turn: {
             mode: 'turn'
@@ -444,7 +482,9 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
       console.log('📤 11Labs Update - tools:', activeToolsElevenLabs.map(t => t.name));
 
       try {
-        const lang = language?.toLowerCase() || business?.language?.toLowerCase() || 'tr';
+        const lang = language || business?.language || 'TR';
+        const elevenLabsLang = getElevenLabsLanguage(lang);
+        console.log('📝 Update language mapping:', lang, '->', elevenLabsLang);
         const effectiveCallDirection = callDirection || assistant.callDirection || 'inbound';
 
         // Add end_call tool for outbound calls (no description to prevent TTS reading it)
@@ -462,7 +502,7 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
                 temperature: 0.1
               },
               first_message: firstMessage || assistant.firstMessage,
-              language: lang
+              language: elevenLabsLang
             },
             tts: {
               voice_id: elevenLabsVoiceId,
@@ -474,7 +514,7 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
             stt: {
               provider: 'elevenlabs',
               model: 'scribe_v1',
-              language: lang
+              language: elevenLabsLang
             }
           },
           tools: toolsWithEndCall
