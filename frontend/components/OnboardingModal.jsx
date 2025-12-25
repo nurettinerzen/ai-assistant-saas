@@ -121,7 +121,8 @@ export function OnboardingModal({ open, onClose }) {
     { id: 'US', name: 'United States', nameLocal: 'United States', flag: '🇺🇸', timezone: 'America/New_York', currency: 'USD' }
   ];
 
-  // Only supported languages for now
+  // Assistant speaking languages (not UI language)
+  // This controls what language the AI assistant speaks when answering calls
   const LANGUAGES = [
     { id: 'TR', name: 'Türkçe', flag: '🇹🇷' },
     { id: 'EN', name: 'English', flag: '🇺🇸' },

@@ -11,11 +11,11 @@ import {
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Globe } from 'lucide-react';
 
-// Supported languages (UI language only - does not affect region/pricing)
+// Supported UI languages (site interface only - does not affect assistant language or pricing)
+// Note: PR (Portuguese) removed from UI - Brazil users will use English UI, but can still select PR for assistant voice
 const languages = [
   { code: 'tr', name: 'Turkish', nativeName: 'Türkçe', flag: '🇹🇷' },
   { code: 'en', name: 'English', nativeName: 'English', flag: '🇬🇧' },
-  { code: 'pr', name: 'Portuguese (BR)', nativeName: 'Português (BR)', flag: '🇧🇷' },
 ];
 
 export default function LanguageSwitcher() {

@@ -39,6 +39,9 @@ const getNestedValue = (obj, path) => {
   return current;
 };
 
+// Supported UI locales (only TR and EN for now)
+const supportedUILocales = ['tr', 'en'];
+
 export function LanguageProvider({ children }) {
   // Default to Turkish
   const [locale, setLocale] = useState('tr');
@@ -46,7 +49,12 @@ export function LanguageProvider({ children }) {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       // Default to Turkish if not set
-      const saved = localStorage.getItem('locale') || 'tr';
+      let saved = localStorage.getItem('locale') || 'tr';
+      // If PR was previously selected, fallback to EN (PR removed from UI languages)
+      if (!supportedUILocales.includes(saved)) {
+        saved = 'en';
+        localStorage.setItem('locale', saved);
+      }
       setLocale(saved);
     }
   }, []);

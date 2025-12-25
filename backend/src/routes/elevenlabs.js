@@ -799,9 +799,10 @@ router.get('/signed-url/:assistantId', async (req, res) => {
 
     // Import the service
     const elevenLabsService = (await import('../services/elevenlabs.js')).default;
-    const signedUrl = await elevenLabsService.getSignedUrl(assistant.elevenLabsAgentId);
+    const result = await elevenLabsService.getSignedUrl(assistant.elevenLabsAgentId);
 
-    res.json({ signedUrl });
+    // 11Labs returns { signed_url: "wss://..." }
+    res.json({ signedUrl: result.signed_url });
   } catch (error) {
     console.error('❌ Error getting signed URL:', error);
     res.status(500).json({ error: error.message });
