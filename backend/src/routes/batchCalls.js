@@ -73,14 +73,24 @@ function normalizePhoneNumber(phone) {
 
 /**
  * Parse CSV/Excel file and return rows
+ * Uses UTF-8 encoding to preserve Turkish characters (ğ, ü, ş, ı, ö, ç)
  */
 function parseFile(buffer, filename) {
-  const workbook = XLSX.read(buffer, { type: 'buffer' });
+  // Read with UTF-8 encoding (codepage 65001) to preserve Turkish characters
+  const workbook = XLSX.read(buffer, {
+    type: 'buffer',
+    codepage: 65001,  // UTF-8 encoding for Turkish characters
+    raw: false        // Parse values, don't keep raw strings
+  });
+
   const sheetName = workbook.SheetNames[0];
   const sheet = workbook.Sheets[sheetName];
 
-  // Convert to JSON with headers
-  const data = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+  // Convert to JSON with headers, preserving string values
+  const data = XLSX.utils.sheet_to_json(sheet, {
+    defval: '',
+    raw: false  // Convert all values to strings
+  });
 
   if (data.length === 0) {
     throw new Error('File is empty or has no data rows');
@@ -88,6 +98,11 @@ function parseFile(buffer, filename) {
 
   // Get column names from first row
   const columns = Object.keys(data[0]);
+
+  // Log sample data for debugging Turkish characters
+  if (data.length > 0) {
+    console.log('📋 Sample row from file:', JSON.stringify(data[0]));
+  }
 
   return { data, columns };
 }
@@ -431,6 +446,13 @@ router.post('/', upload.single('file'), checkPermission('campaigns:view'), async
         ...(scheduledAt && { scheduled_time_unix: Math.floor(new Date(scheduledAt).getTime() / 1000) })
       };
 
+      // Log first recipient for debugging Turkish characters
+      if (elevenLabsRecipients.length > 0) {
+        console.log('📤 Sample recipient dynamic_variables:', JSON.stringify(
+          elevenLabsRecipients[0].conversation_initiation_client_data.dynamic_variables
+        ));
+      }
+
       console.log('📤 Submitting batch call to 11Labs:', {
         call_name: name,
         agent_id: assistant.elevenLabsAgentId,
@@ -444,7 +466,7 @@ router.post('/', upload.single('file'), checkPermission('campaigns:view'), async
         {
           headers: {
             'xi-api-key': elevenLabsApiKey,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json; charset=utf-8'  // Explicit UTF-8 for Turkish chars
           }
         }
       );
@@ -692,26 +714,21 @@ router.get('/:id', checkPermission('campaigns:view'), async (req, res) => {
     let recipients = [];
     try {
       recipients = JSON.parse(batchCall.recipients || '[]');
-      console.log('📋 Recipients from DB:', JSON.stringify(recipients, null, 2));
     } catch (e) {
       console.error('Failed to parse recipients:', e);
     }
 
     // Merge recipients with call details from 11Labs
     // Priority: DB status (from webhook) > 11Labs status > 'pending'
-    console.log('📞 11Labs callDetails:', JSON.stringify(callDetails, null, 2));
-
     const enrichedRecipients = recipients.map((recipient, index) => {
       const callDetail = callDetails.find(c => c.phone_number === recipient.phone_number) || {};
 
       // Use DB status if it was updated by webhook, otherwise use 11Labs status
       let finalStatus = recipient.status;
-      console.log(`📌 Recipient ${recipient.phone_number}: DB status = "${recipient.status}", duration = ${recipient.duration}`);
 
       if (!finalStatus || finalStatus === 'pending') {
         // Map 11Labs status to our status values
         const elevenLabsStatus = callDetail.status;
-        console.log(`  → 11Labs status = "${elevenLabsStatus}"`);
         if (elevenLabsStatus === 'done' || elevenLabsStatus === 'completed') {
           finalStatus = 'completed';
         } else if (elevenLabsStatus === 'failed' || elevenLabsStatus === 'no_answer') {
@@ -722,8 +739,6 @@ router.get('/:id', checkPermission('campaigns:view'), async (req, res) => {
           finalStatus = 'pending';
         }
       }
-
-      console.log(`  → Final status = "${finalStatus}"`);
 
       return {
         ...recipient,

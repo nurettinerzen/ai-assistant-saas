@@ -94,14 +94,16 @@ router.post('/vapi', async (req, res) => {
 });
 
 // ============================================================================
-// 11LABS CALL-STARTED WEBHOOK
+// 11LABS CALL-STARTED WEBHOOK (Conversation Initiation)
+// This webhook is called when a call starts - for inbound calls, we need to
+// verify that an inbound assistant is configured for this phone number
 // ============================================================================
 router.post('/elevenlabs/call-started', async (req, res) => {
   try {
     // Log raw payload for debugging
     console.log('📥 11Labs call-started RAW payload:', JSON.stringify(req.body, null, 2));
 
-    // 11Labs post-call webhook structure: { type, data: { ... } }
+    // 11Labs webhook structure: { type, data: { ... } }
     const { type, data } = req.body;
 
     // Extract fields from data (if wrapped) or directly from body
@@ -112,12 +114,71 @@ router.post('/elevenlabs/call-started', async (req, res) => {
       metadata
     } = callData;
 
+    // Extract phone call info
+    const phoneCallInfo = callData.phone_call || metadata?.phone_call || {};
+    const callDirection = phoneCallInfo.direction; // 'inbound' or 'outbound'
+    const agentPhoneId = phoneCallInfo.agent_phone_number_id; // 11Labs phone ID
+    const externalNumber = phoneCallInfo.external_number; // Caller's number (for inbound)
+
     const callId = conversation_id || callData.call_id;
     const agentId = agent_id;
 
-    console.log('📞 11Labs Call Started:', callId);
+    console.log('📞 11Labs Call Started:', {
+      callId,
+      direction: callDirection,
+      agentPhoneId,
+      externalNumber
+    });
 
-    // Extract business ID from metadata or agent
+    // =========================================================================
+    // INBOUND CALL CHECK - Verify inbound assistant is configured
+    // =========================================================================
+    if (callDirection === 'inbound') {
+      console.log('📞 Inbound call detected, checking for inbound assistant...');
+
+      // Find the phone number by 11Labs phone ID
+      const phoneNumber = await prisma.phoneNumber.findFirst({
+        where: { elevenLabsPhoneId: agentPhoneId },
+        include: {
+          assistant: {
+            select: { id: true, name: true, isActive: true, elevenLabsAgentId: true }
+          }
+        }
+      });
+
+      if (!phoneNumber) {
+        console.warn('⚠️ Phone number not found for 11Labs phone ID:', agentPhoneId);
+        // Let the call proceed - may be configured differently
+      } else if (!phoneNumber.assistant) {
+        // No inbound assistant configured - reject the call
+        console.warn('❌ No inbound assistant configured for phone:', phoneNumber.phoneNumber);
+        return res.status(403).json({
+          success: false,
+          error: 'NO_INBOUND_ASSISTANT',
+          message: 'Bu numara için gelen arama asistanı yapılandırılmamış. / No inbound assistant configured for this number.',
+          action: 'reject_call'
+        });
+      } else if (!phoneNumber.assistant.isActive) {
+        // Inbound assistant is not active - reject the call
+        console.warn('❌ Inbound assistant is not active for phone:', phoneNumber.phoneNumber);
+        return res.status(403).json({
+          success: false,
+          error: 'INBOUND_ASSISTANT_INACTIVE',
+          message: 'Gelen arama asistanı aktif değil. / Inbound assistant is not active.',
+          action: 'reject_call'
+        });
+      } else {
+        console.log(`✅ Inbound assistant found: ${phoneNumber.assistant.name} (${phoneNumber.assistant.id})`);
+
+        // IMPORTANT: For inbound calls, we should use the inbound assistant's agent_id
+        // If 11Labs is using a different agent (outbound), we need to signal which agent to use
+        // This may require returning the correct agent_id in the response
+      }
+    }
+
+    // =========================================================================
+    // Extract business ID
+    // =========================================================================
     let businessId = metadata?.business_id;
 
     // Try to parse as integer if it's a string
@@ -130,12 +191,23 @@ router.post('/elevenlabs/call-started', async (req, res) => {
       businessId = await extractBusinessIdFromAgent(agentId);
     }
 
+    // Fallback: find from phone number
+    if (!businessId && agentPhoneId) {
+      const phoneNumber = await prisma.phoneNumber.findFirst({
+        where: { elevenLabsPhoneId: agentPhoneId },
+        select: { businessId: true }
+      });
+      businessId = phoneNumber?.businessId;
+    }
+
     if (!businessId) {
       console.warn('⚠️ No businessId found for call:', callId);
       return res.json({ success: true, warning: 'business_id not found' });
     }
 
+    // =========================================================================
     // Acquire concurrent call slot
+    // =========================================================================
     const slotResult = await concurrentCallManager.acquireSlot(businessId);
 
     if (!slotResult.success) {
@@ -150,8 +222,8 @@ router.post('/elevenlabs/call-started', async (req, res) => {
       });
     }
 
-    // Update BatchCall recipient if this is a batch call
-    if (metadata?.recipient_id) {
+    // Update BatchCall recipient if this is a batch call (outbound only)
+    if (callDirection === 'outbound' && metadata?.recipient_id) {
       try {
         await updateBatchCallRecipientStatus(metadata.batch_call_id, metadata.recipient_id, 'in_progress', {
           elevenLabsCallId: callId,
@@ -163,10 +235,11 @@ router.post('/elevenlabs/call-started', async (req, res) => {
     }
 
     // Log the call start
-    console.log(`✅ Call slot acquired: ${slotResult.currentActive}/${slotResult.limit}`);
+    console.log(`✅ Call slot acquired: ${slotResult.currentActive}/${slotResult.limit} (${callDirection || 'unknown'} call)`);
 
     res.json({
       success: true,
+      direction: callDirection,
       activeCalls: slotResult.currentActive,
       limit: slotResult.limit
     });
@@ -211,7 +284,10 @@ router.post('/elevenlabs/call-ended', async (req, res) => {
 
     // Phone call info from 11Labs metadata
     const phoneCallInfo = callMetadata.phone_call || {};
-    const externalNumber = phoneCallInfo.external_number; // The number that was called
+    const externalNumber = phoneCallInfo.external_number; // The external party's number
+    const agentPhoneNumber = phoneCallInfo.agent_phone_number; // Our phone number
+    const agentPhoneId = phoneCallInfo.agent_phone_number_id; // 11Labs phone ID
+    const callDirection = phoneCallInfo.direction; // 'inbound' or 'outbound'
 
     // Batch call info from 11Labs metadata
     const batchCallInfo = callMetadata.batch_call || {};
@@ -228,7 +304,9 @@ router.post('/elevenlabs/call-ended', async (req, res) => {
       callId,
       duration: durationSeconds + 's',
       status,
+      direction: callDirection,
       externalNumber,
+      agentPhoneNumber,
       elevenLabsBatchId,
       elevenLabsRecipientId
     });
@@ -312,13 +390,17 @@ router.post('/elevenlabs/call-ended', async (req, res) => {
       }
     }
 
-    // 4. Create call log
+    // 4. Create call log with full details
     await createCallLog(businessId, {
       callId: callId,
       agentId: agentId,
       duration: durationSeconds,
       transcript,
       analysis,
+      // Phone info for caller display
+      callerNumber: callDirection === 'inbound' ? externalNumber : agentPhoneNumber,
+      calledNumber: callDirection === 'inbound' ? agentPhoneNumber : externalNumber,
+      direction: callDirection || 'unknown',
       metadata: { ...callMetadata, ...customMetadata }
     });
 
@@ -549,37 +631,84 @@ async function extractBusinessIdFromAgent(agentId) {
 // ============================================================================
 async function createCallLog(businessId, data) {
   try {
-    // Format transcript
+    // Format transcript - handle 11Labs transcript format
     let transcriptText = '';
-    if (Array.isArray(data.transcript)) {
-      transcriptText = data.transcript.map(t =>
-        `${t.speaker || t.role}: ${t.text || t.message}`
-      ).join('\n');
-    } else if (typeof data.transcript === 'string') {
-      transcriptText = data.transcript;
+    let transcriptData = data.transcript;
+
+    if (Array.isArray(transcriptData)) {
+      // 11Labs format: [{ role: 'agent'|'user', message: '...', time_in_call_secs: 0 }]
+      transcriptText = transcriptData.map(t => {
+        const speaker = t.role === 'agent' ? 'Asistan' : 'Müşteri';
+        const timeInSecs = t.time_in_call_secs || 0;
+        const minutes = Math.floor(timeInSecs / 60);
+        const seconds = timeInSecs % 60;
+        const timeStr = `${minutes}:${String(seconds).padStart(2, '0')}`;
+        return `[${timeStr}] ${speaker}: ${t.message || t.text || ''}`;
+      }).join('\n');
+    } else if (typeof transcriptData === 'string') {
+      transcriptText = transcriptData;
     }
+
+    // Extract analysis data from 11Labs
+    const analysis = data.analysis || {};
+
+    // Get summary from various possible locations
+    const summary = analysis.transcript_summary ||
+                   analysis.call_summary ||
+                   analysis.summary ||
+                   null;
+
+    // Get sentiment - 11Labs might return it in different formats
+    let sentiment = 'neutral';
+    if (analysis.user_sentiment) {
+      sentiment = analysis.user_sentiment.toLowerCase();
+    } else if (analysis.sentiment) {
+      sentiment = analysis.sentiment.toLowerCase();
+    } else if (transcriptText) {
+      // Fallback: detect sentiment from transcript
+      sentiment = detectSentiment(transcriptText);
+    }
+
+    // Normalize sentiment values
+    if (['positive', 'happy', 'satisfied'].includes(sentiment)) {
+      sentiment = 'positive';
+    } else if (['negative', 'angry', 'frustrated', 'dissatisfied'].includes(sentiment)) {
+      sentiment = 'negative';
+    } else {
+      sentiment = 'neutral';
+    }
+
+    // Determine caller ID based on direction
+    const callerId = data.callerNumber || data.metadata?.caller_id || data.metadata?.phone_number || 'unknown';
 
     await prisma.callLog.create({
       data: {
         businessId,
         callId: data.callId || `call_${Date.now()}`,
-        callerId: data.metadata?.caller_id || data.metadata?.phone_number || 'unknown',
+        callerId: callerId,
         duration: data.duration || 0,
         status: 'completed',
-        transcript: data.transcript || null,
+        transcript: transcriptData || null,
         transcriptText,
-        summary: data.analysis?.summary || null,
-        sentiment: data.analysis?.sentiment || 'neutral',
-        intent: data.analysis?.intent || null,
-        keyPoints: data.analysis?.key_points || data.analysis?.keyPoints || [],
-        keyTopics: data.analysis?.key_topics || data.analysis?.keyTopics || [],
-        actionItems: data.analysis?.action_items || data.analysis?.actionItems || [],
-        taskCompleted: data.analysis?.task_completed ?? data.analysis?.taskCompleted ?? null,
-        followUpNeeded: data.analysis?.follow_up_needed ?? data.analysis?.followUpNeeded ?? null
+        // Analysis fields
+        summary: summary,
+        sentiment: sentiment,
+        intent: analysis.intent || analysis.user_intent || null,
+        keyPoints: analysis.key_points || analysis.keyPoints || analysis.data_collected || [],
+        keyTopics: analysis.key_topics || analysis.keyTopics || [],
+        actionItems: analysis.action_items || analysis.actionItems || [],
+        taskCompleted: analysis.call_successful ?? analysis.task_completed ?? analysis.taskCompleted ?? null,
+        followUpNeeded: analysis.follow_up_needed ?? analysis.followUpNeeded ?? null
       }
     });
 
-    console.log('✅ Call log created for call:', data.callId);
+    console.log('✅ Call log created for call:', data.callId, {
+      callerId,
+      duration: data.duration,
+      sentiment,
+      hasSummary: !!summary,
+      hasTranscript: !!transcriptText
+    });
   } catch (error) {
     console.error('Error creating call log:', error);
     // Don't throw - call log creation failure shouldn't break the webhook
