@@ -681,6 +681,20 @@ async function createCallLog(businessId, data) {
     // Determine caller ID based on direction
     const callerId = data.callerNumber || data.metadata?.caller_id || data.metadata?.phone_number || 'unknown';
 
+    // Parse boolean values - 11Labs may return strings like "true"/"false"
+    const parseBoolean = (val) => {
+      if (val === null || val === undefined) return null;
+      if (typeof val === 'boolean') return val;
+      if (typeof val === 'string') {
+        if (val.toLowerCase() === 'true' || val === '1') return true;
+        if (val.toLowerCase() === 'false' || val === '0') return false;
+      }
+      return null;
+    };
+
+    const taskCompletedRaw = analysis.call_successful ?? analysis.task_completed ?? analysis.taskCompleted;
+    const followUpNeededRaw = analysis.follow_up_needed ?? analysis.followUpNeeded;
+
     await prisma.callLog.create({
       data: {
         businessId,
@@ -697,8 +711,8 @@ async function createCallLog(businessId, data) {
         keyPoints: analysis.key_points || analysis.keyPoints || analysis.data_collected || [],
         keyTopics: analysis.key_topics || analysis.keyTopics || [],
         actionItems: analysis.action_items || analysis.actionItems || [],
-        taskCompleted: analysis.call_successful ?? analysis.task_completed ?? analysis.taskCompleted ?? null,
-        followUpNeeded: analysis.follow_up_needed ?? analysis.followUpNeeded ?? null
+        taskCompleted: parseBoolean(taskCompletedRaw),
+        followUpNeeded: parseBoolean(followUpNeededRaw)
       }
     });
 
