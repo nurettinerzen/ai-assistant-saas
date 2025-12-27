@@ -218,6 +218,10 @@ model Subscription {
   creditWarningAt80       Boolean            @default(false)  // Kredi %80 uyarısı gönderildi mi
   overageLimitReached     Boolean            @default(false)  // Aşım limiti aşıldı mı
 
+  // Concurrent call limitleri (YENİ)
+  concurrentLimit         Int                @default(1)      // Max eşzamanlı çağrı limiti
+  activeCalls             Int                @default(0)      // Şu anki aktif çağrı sayısı
+
   createdAt               DateTime           @default(now())
   updatedAt               DateTime           @updatedAt
   business                Business           @relation(fields: [businessId], references: [id])
@@ -516,9 +520,11 @@ enum PhoneStatus {
 
 enum SubscriptionPlan {
   FREE
-  BASIC
-  PROFESSIONAL
+  STARTER     // Yeni: Başlangıç paketi (eskiden BASIC)
+  PRO         // Yeni: Profesyonel paket
   ENTERPRISE
+  BASIC       // Deprecated: eski paket, geriye dönük uyumluluk için
+  PROFESSIONAL // Deprecated: eski paket, geriye dönük uyumluluk için
 }
 
 enum SubscriptionStatus {

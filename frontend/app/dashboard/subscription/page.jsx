@@ -19,17 +19,20 @@ import { usePermissions } from '@/hooks/usePermissions';
 import CreditBalance from '@/components/CreditBalance';
 import BuyCreditModal from '@/components/BuyCreditModal';
 
-// Regional pricing configuration - Multi-region support
+// Regional pricing configuration - YENİ PAKET YAPISI
 const REGIONAL_PRICING = {
   TR: {
     currency: '₺',
     currencyPosition: 'after',
     locale: 'tr-TR',
     plans: {
-      STARTER: { price: 299, minutes: 50, assistants: 1, phoneNumbers: 1, overageRate: 12 },
-      BASIC: { price: 999, minutes: 150, assistants: 3, phoneNumbers: 2, overageRate: 11 },
-      PROFESSIONAL: { price: 3499, minutes: 500, assistants: 10, phoneNumbers: 5, overageRate: 10 },
-      ENTERPRISE: { price: null, minutes: null, assistants: null, phoneNumbers: null, overageRate: null }
+      // YENİ PAKETLER
+      STARTER: { price: 799, minutes: 100, concurrent: 1, overageRate: 7.5 },
+      PRO: { price: 3999, minutes: 800, concurrent: 5, overageRate: 6.5 },
+      ENTERPRISE: { price: null, minutes: null, concurrent: 10, overageRate: 5.5 },
+      // Deprecated - geriye dönük uyumluluk
+      BASIC: { price: 999, minutes: 150, concurrent: 1, overageRate: 11 },
+      PROFESSIONAL: { price: 3499, minutes: 500, concurrent: 3, overageRate: 10 }
     }
   },
   BR: {
@@ -37,10 +40,11 @@ const REGIONAL_PRICING = {
     currencyPosition: 'before',
     locale: 'pt-BR',
     plans: {
-      STARTER: { price: 99, minutes: 60, assistants: 1, phoneNumbers: 0, overageRate: 3 },
-      BASIC: { price: 299, minutes: 250, assistants: 3, phoneNumbers: 0, overageRate: 2.5 },
-      PROFESSIONAL: { price: 999, minutes: 1000, assistants: 10, phoneNumbers: 1, overageRate: 2 },
-      ENTERPRISE: { price: null, minutes: null, assistants: null, phoneNumbers: null, overageRate: null }
+      STARTER: { price: 99, minutes: 100, concurrent: 1, overageRate: 2.5 },
+      PRO: { price: 499, minutes: 800, concurrent: 5, overageRate: 2.0 },
+      ENTERPRISE: { price: null, minutes: null, concurrent: 10, overageRate: 1.5 },
+      BASIC: { price: 299, minutes: 250, concurrent: 1, overageRate: 2.5 },
+      PROFESSIONAL: { price: 999, minutes: 1000, concurrent: 3, overageRate: 2 }
     }
   },
   US: {
@@ -48,10 +52,11 @@ const REGIONAL_PRICING = {
     currencyPosition: 'before',
     locale: 'en-US',
     plans: {
-      STARTER: { price: 29, minutes: 60, assistants: 1, phoneNumbers: 1, overageRate: 0.5 },
-      BASIC: { price: 99, minutes: 250, assistants: 3, phoneNumbers: 2, overageRate: 0.45 },
-      PROFESSIONAL: { price: 349, minutes: 1000, assistants: 10, phoneNumbers: 5, overageRate: 0.4 },
-      ENTERPRISE: { price: null, minutes: null, assistants: null, phoneNumbers: null, overageRate: null }
+      STARTER: { price: 49, minutes: 100, concurrent: 1, overageRate: 0.35 },
+      PRO: { price: 199, minutes: 800, concurrent: 5, overageRate: 0.25 },
+      ENTERPRISE: { price: null, minutes: null, concurrent: 10, overageRate: 0.20 },
+      BASIC: { price: 99, minutes: 250, concurrent: 1, overageRate: 0.30 },
+      PROFESSIONAL: { price: 349, minutes: 1000, concurrent: 3, overageRate: 0.25 }
     }
   }
 };
@@ -66,28 +71,23 @@ const LOCALE_TO_LANG = {
   pr: 'PR'
 };
 
-// Base plan configurations - features are same across regions
+// Base plan configurations - YENİ PAKET YAPISI
 const BASE_PLANS = [
   {
     id: 'STARTER',
-    name: { TR: 'Başlangıç', EN: 'Starter', PR: 'Inicial' },
-    includedFeatures: ['minutes', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'analytics'],
+    name: { TR: 'Başlangıç', EN: 'Starter' },
+    includedFeatures: ['minutes', 'concurrent', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'ecommerce', 'calendar', 'analytics'],
   },
   {
-    id: 'BASIC',
-    name: { TR: 'Temel', EN: 'Basic', PR: 'Básico' },
+    id: 'PRO',
+    name: { TR: 'Profesyonel', EN: 'Pro' },
     popular: true,
-    includedFeatures: ['minutes', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'analytics', 'ecommerce'],
-  },
-  {
-    id: 'PROFESSIONAL',
-    name: { TR: 'Pro', EN: 'Professional', PR: 'Profissional' },
-    includedFeatures: ['minutes', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'analytics', 'ecommerce', 'calendar', 'batchCalls', 'email', 'prioritySupport', 'apiAccess'],
+    includedFeatures: ['minutes', 'concurrent', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'ecommerce', 'calendar', 'analytics', 'email', 'googleSheets', 'batchCalls', 'prioritySupport', 'apiAccess'],
   },
   {
     id: 'ENTERPRISE',
-    name: { TR: 'Kurumsal', EN: 'Enterprise', PR: 'Empresarial' },
-    includedFeatures: ['minutes', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'analytics', 'ecommerce', 'calendar', 'batchCalls', 'email', 'prioritySupport', 'apiAccess', 'customTraining', 'slaGuarantee'],
+    name: { TR: 'Kurumsal', EN: 'Enterprise' },
+    includedFeatures: ['minutes', 'concurrent', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'ecommerce', 'calendar', 'analytics', 'email', 'googleSheets', 'batchCalls', 'prioritySupport', 'apiAccess', 'slaGuarantee'],
   },
 ];
 
@@ -306,8 +306,10 @@ export default function SubscriptionPage() {
               <h2 className="text-lg font-semibold text-neutral-900">{t('dashboard.subscriptionPage.currentPlan')}</h2>
               <Badge className="bg-primary-100 text-primary-800">
                 {subscription.plan === 'FREE' ? t('dashboard.subscriptionPage.freePlan') :
-                 subscription.plan === 'STARTER' ? t('dashboard.subscriptionPage.basicPlan') :
-                 subscription.plan === 'PROFESSIONAL' ? t('dashboard.subscriptionPage.professionalPlan') :
+                 subscription.plan === 'STARTER' ? (uiLang === 'TR' ? 'Başlangıç' : 'Starter') :
+                 subscription.plan === 'PRO' ? (uiLang === 'TR' ? 'Profesyonel' : 'Pro') :
+                 subscription.plan === 'BASIC' ? (uiLang === 'TR' ? 'Temel' : 'Basic') :
+                 subscription.plan === 'PROFESSIONAL' ? (uiLang === 'TR' ? 'Profesyonel' : 'Professional') :
                  subscription.plan === 'ENTERPRISE' ? t('dashboard.subscriptionPage.enterprisePlan') :
                  subscription.planName || t('dashboard.subscriptionPage.freePlan')}
               </Badge>
@@ -359,17 +361,17 @@ export default function SubscriptionPage() {
       {/* Pricing plans */}
       <div>
         <h2 className="text-2xl font-bold text-neutral-900 mb-6">
-          {uiLang === 'TR' ? 'Planlar' : uiLang === 'PR' ? 'Planos' : 'Plans'}
+          {uiLang === 'TR' ? 'Planlar' : 'Plans'}
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
           {BASE_PLANS.map((plan) => {
             const planPricing = getPlanPricing(plan.id);
             const isCurrentPlan = subscription?.plan === plan.id;
             // Only show "Popular" badge if user has no plan or is on FREE plan
             const showPopularBadge = plan.popular && !isCurrentPlan && (!subscription?.plan || subscription?.plan === 'FREE');
 
-            // Plan order for upgrade/downgrade logic
-            const PLAN_ORDER = { FREE: 0, STARTER: 1, BASIC: 2, PROFESSIONAL: 3, ENTERPRISE: 4 };
+            // Plan order for upgrade/downgrade logic - YENİ PAKET YAPISI
+            const PLAN_ORDER = { FREE: 0, STARTER: 1, BASIC: 1, PRO: 2, PROFESSIONAL: 2, ENTERPRISE: 3 };
             const currentPlanIndex = PLAN_ORDER[subscription?.plan] || 0;
             const thisPlanIndex = PLAN_ORDER[plan.id];
             const isUpgrade = thisPlanIndex > currentPlanIndex;
@@ -379,8 +381,7 @@ export default function SubscriptionPage() {
             const getButtonText = () => {
               const texts = {
                 TR: { contact: 'Bize Ulaşın', current: 'Mevcut Plan', upgrade: 'Yükselt', downgrade: 'Düşür', select: 'Seç' },
-                EN: { contact: 'Contact Us', current: 'Current Plan', upgrade: 'Upgrade', downgrade: 'Downgrade', select: 'Select' },
-                PR: { contact: 'Fale Conosco', current: 'Plano Atual', upgrade: 'Atualizar', downgrade: 'Rebaixar', select: 'Selecionar' }
+                EN: { contact: 'Contact Us', current: 'Current Plan', upgrade: 'Upgrade', downgrade: 'Downgrade', select: 'Select' }
               };
               const txt = texts[uiLang] || texts.EN;
               if (plan.id === 'ENTERPRISE') return txt.contact;
@@ -390,73 +391,54 @@ export default function SubscriptionPage() {
               return txt.select;
             };
 
-            // Feature order - all plans show features in this exact order (no gaps)
-            // For Brazil, phoneNumbers might be 0 (BYOC) for STARTER/BASIC
+            // Feature order - YENİ PAKET YAPISI
             const FEATURE_ORDER = [
-              'minutes', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget',
-              'analytics', 'ecommerce', 'calendar', 'batchCalls', 'email',
-              'prioritySupport', 'apiAccess', 'customTraining', 'slaGuarantee'
+              'minutes', 'concurrent', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget',
+              'ecommerce', 'calendar', 'analytics', 'email', 'googleSheets', 'batchCalls',
+              'prioritySupport', 'apiAccess', 'slaGuarantee'
             ];
 
-            // Feature labels - based on UI language (locale), not region
+            // Feature labels - YENİ PAKET YAPISI
             const getFeatureLabel = (key) => {
               const isEnterprise = plan.id === 'ENTERPRISE';
 
               // UI language-based label maps
               const labelMaps = {
                 TR: {
-                  minutes: isEnterprise ? '500+ dk (özel)' : `${planPricing?.minutes || 0} dk görüşme`,
-                  assistants: isEnterprise ? '10+ asistan (özel)' : `${planPricing?.assistants || 0} AI asistan`,
-                  phoneNumbers: isEnterprise ? '5+ numara (özel)' :
-                    planPricing?.phoneNumbers > 0 ? `${planPricing.phoneNumbers} telefon no` : 'Kendi numaranızı getirin',
+                  minutes: isEnterprise ? '800+ dk (özel)' : `${planPricing?.minutes || 0} dk görüşme`,
+                  concurrent: isEnterprise ? '10+ eşzamanlı çağrı' : `${planPricing?.concurrent || 1} eşzamanlı çağrı`,
+                  assistants: 'Sınırsız asistan',
+                  phoneNumbers: 'Sınırsız telefon numarası',
                   phone: 'Telefon AI',
                   whatsapp: 'WhatsApp',
                   chatWidget: 'Chat widget',
                   email: 'E-posta AI',
-                  ecommerce: 'E-ticaret',
-                  calendar: 'Takvim',
-                  batchCalls: 'Toplu Arama',
+                  ecommerce: 'E-ticaret entegrasyonu',
+                  calendar: 'Google Takvim',
+                  googleSheets: 'Google Sheets',
+                  batchCalls: 'Toplu arama',
                   analytics: 'Analitik',
                   prioritySupport: 'Öncelikli destek',
                   apiAccess: 'API erişimi',
-                  customTraining: 'Özel eğitim',
                   slaGuarantee: 'SLA garantisi',
                 },
                 EN: {
-                  minutes: isEnterprise ? '1000+ min (custom)' : `${planPricing?.minutes || 0} min calls`,
-                  assistants: isEnterprise ? '10+ assistants (custom)' : `${planPricing?.assistants || 0} AI assistant${(planPricing?.assistants || 0) > 1 ? 's' : ''}`,
-                  phoneNumbers: isEnterprise ? '5+ numbers (custom)' :
-                    planPricing?.phoneNumbers > 0 ? `${planPricing.phoneNumbers} phone number${planPricing.phoneNumbers > 1 ? 's' : ''}` : 'Bring your own number',
+                  minutes: isEnterprise ? '800+ min (custom)' : `${planPricing?.minutes || 0} min calls`,
+                  concurrent: isEnterprise ? '10+ concurrent calls' : `${planPricing?.concurrent || 1} concurrent call${(planPricing?.concurrent || 1) > 1 ? 's' : ''}`,
+                  assistants: 'Unlimited assistants',
+                  phoneNumbers: 'Unlimited phone numbers',
                   phone: 'Phone AI',
                   whatsapp: 'WhatsApp',
                   chatWidget: 'Chat widget',
                   email: 'Email AI',
-                  ecommerce: 'E-commerce',
-                  calendar: 'Calendar',
-                  batchCalls: 'Batch Calls',
+                  ecommerce: 'E-commerce integration',
+                  calendar: 'Google Calendar',
+                  googleSheets: 'Google Sheets',
+                  batchCalls: 'Batch calls',
                   analytics: 'Analytics',
                   prioritySupport: 'Priority support',
                   apiAccess: 'API access',
-                  customTraining: 'Custom training',
                   slaGuarantee: 'SLA guarantee',
-                },
-                PR: {
-                  minutes: isEnterprise ? '1000+ min (personalizado)' : `${planPricing?.minutes || 0} min de chamadas`,
-                  assistants: isEnterprise ? '10+ assistentes (personalizado)' : `${planPricing?.assistants || 0} assistente${(planPricing?.assistants || 0) > 1 ? 's' : ''} IA`,
-                  phoneNumbers: isEnterprise ? '5+ números (personalizado)' :
-                    planPricing?.phoneNumbers > 0 ? `${planPricing.phoneNumbers} número${planPricing.phoneNumbers > 1 ? 's' : ''}` : 'Traga seu próprio número',
-                  phone: 'Telefone IA',
-                  whatsapp: 'WhatsApp',
-                  chatWidget: 'Chat widget',
-                  email: 'Email IA',
-                  ecommerce: 'E-commerce',
-                  calendar: 'Calendário',
-                  batchCalls: 'Chamadas em Lote',
-                  analytics: 'Analytics',
-                  prioritySupport: 'Suporte prioritário',
-                  apiAccess: 'Acesso API',
-                  customTraining: 'Treinamento personalizado',
-                  slaGuarantee: 'Garantia SLA',
                 }
               };
 
@@ -570,7 +552,7 @@ export default function SubscriptionPage() {
                     {upgrading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        {uiLang === 'TR' ? 'İşleniyor...' : uiLang === 'PR' ? 'Processando...' : 'Processing...'}
+                        {uiLang === 'TR' ? 'İşleniyor...' : 'Processing...'}
                       </>
                     ) : (
                       getButtonText()

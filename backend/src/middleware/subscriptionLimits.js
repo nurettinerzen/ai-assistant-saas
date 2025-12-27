@@ -5,57 +5,90 @@
 //
 // This middleware checks if users are within their subscription limits
 // before allowing certain actions (creating assistants, making calls, etc.)
+// Also handles feature and channel access control
 // ============================================================================
 
 import { PrismaClient } from '@prisma/client';
+import { PLANS, hasFeature, hasChannel, getConcurrentLimit } from '../config/plans.js';
+import featureAccess from '../services/featureAccess.js';
+import concurrentCallManager from '../services/concurrentCallManager.js';
 
 const prisma = new PrismaClient();
 
-// Plan limits configuration
+// Plan limits configuration - YENİ PAKET YAPISI
 const PLAN_LIMITS = {
   FREE: {
-    minutes: 0,              // Web test only (60 sec limit handled in frontend)
-    calls: 0,                // No actual calls
-    assistants: 0,           // No permanent assistants
+    minutes: 0,              // No minutes
+    calls: 0,                // No calls
+    assistants: 0,           // No assistants
     phoneNumbers: 0,         // No phone numbers
+    concurrent: 0,           // No concurrent calls
     trainings: 3,            // 3 AI trainings
-    voices: 4,               // 4 voices (filtered by language)
-    integrations: false,     // No integrations
-    analytics: false,        // No analytics
-    aiAnalysis: false        // No AI insights
+    voices: 4,               // 4 voices
+    integrations: false,
+    analytics: false,
+    aiAnalysis: false
   },
   STARTER: {
-    minutes: 300,            // 300 minutes/month
-    calls: 50,               // 50 calls/month
-    assistants: 1,           // 1 assistant
-    phoneNumbers: 1,         // 1 phone number
-    trainings: -1,           // Unlimited trainings
-    voices: 4,               // 4 voices (EN or TR)
-    integrations: true,      // All integrations
+    minutes: 100,            // 100 dk/ay (YENİ)
+    calls: -1,               // Sınırsız çağrı
+    assistants: -1,          // Sınırsız asistan
+    phoneNumbers: -1,        // Sınırsız numara
+    concurrent: 1,           // 1 eşzamanlı çağrı
+    trainings: -1,           // Unlimited
+    voices: -1,              // All voices
+    integrations: true,
     analytics: true,         // Basic analytics
-    aiAnalysis: false        // No AI insights
+    aiAnalysis: false        // Pro'da
   },
-  PROFESSIONAL: {
-    minutes: 1500,           // 1500 minutes/month
-    calls: -1,               // Unlimited calls
-    assistants: 2,           // 2 assistants
-    phoneNumbers: 3,         // 3 phone numbers
-    trainings: -1,           // Unlimited trainings
-    voices: 8,               // 8 voices (EN + TR)
-    integrations: true,      // All integrations
+  PRO: {
+    minutes: 800,            // 800 dk/ay (YENİ)
+    calls: -1,               // Sınırsız
+    assistants: -1,          // Sınırsız
+    phoneNumbers: -1,        // Sınırsız
+    concurrent: 5,           // 5 eşzamanlı çağrı
+    trainings: -1,
+    voices: -1,
+    integrations: true,
     analytics: true,         // Advanced analytics
-    aiAnalysis: true         // AI insights enabled
+    aiAnalysis: true
   },
   ENTERPRISE: {
-    minutes: -1,             // Unlimited minutes
-    calls: -1,               // Unlimited calls
-    assistants: 5,           // 5 assistants
-    phoneNumbers: 10,        // 10 phone numbers
-    trainings: -1,           // Unlimited trainings
-    voices: -1,              // All voices + custom cloning
-    integrations: true,      // All integrations
-    analytics: true,         // Advanced analytics
-    aiAnalysis: true         // AI insights enabled
+    minutes: -1,             // Custom
+    calls: -1,
+    assistants: -1,
+    phoneNumbers: -1,
+    concurrent: 10,          // 10+ eşzamanlı
+    trainings: -1,
+    voices: -1,
+    integrations: true,
+    analytics: true,
+    aiAnalysis: true
+  },
+  // DEPRECATED plans - geriye dönük uyumluluk
+  BASIC: {
+    minutes: 150,
+    calls: -1,
+    assistants: 3,
+    phoneNumbers: 2,
+    concurrent: 1,
+    trainings: -1,
+    voices: 4,
+    integrations: true,
+    analytics: true,
+    aiAnalysis: false
+  },
+  PROFESSIONAL: {
+    minutes: 500,
+    calls: -1,
+    assistants: 10,
+    phoneNumbers: 5,
+    concurrent: 3,
+    trainings: -1,
+    voices: 8,
+    integrations: true,
+    analytics: true,
+    aiAnalysis: true
   }
 };
 
@@ -388,10 +421,139 @@ export const attachSubscriptionInfo = async (req, res, next) => {
   }
 };
 
+/**
+ * Require a specific channel to be available in the plan
+ * @param {String} channel - Channel name (phone, whatsapp, chat_widget, email)
+ */
+export const requireChannel = (channel) => {
+  return async (req, res, next) => {
+    try {
+      const { businessId } = req.user;
+
+      if (!businessId) {
+        return res.status(401).json({ error: 'Business ID required' });
+      }
+
+      const access = await featureAccess.canAccessChannel(businessId, channel);
+
+      if (!access.allowed) {
+        return res.status(403).json({
+          error: 'CHANNEL_NOT_ALLOWED',
+          message: access.reason,
+          requiredPlan: access.requiredPlan,
+          upgradeUrl: '/dashboard/subscription'
+        });
+      }
+
+      next();
+    } catch (error) {
+      console.error('Channel access check error:', error);
+      res.status(500).json({ error: 'Failed to verify channel access' });
+    }
+  };
+};
+
+/**
+ * Require a specific feature to be available in the plan
+ * @param {String} feature - Feature name
+ */
+export const requireFeature = (feature) => {
+  return async (req, res, next) => {
+    try {
+      const { businessId } = req.user;
+
+      if (!businessId) {
+        return res.status(401).json({ error: 'Business ID required' });
+      }
+
+      const access = await featureAccess.canAccessFeature(businessId, feature);
+
+      if (!access.allowed) {
+        return res.status(403).json({
+          error: 'FEATURE_NOT_ALLOWED',
+          message: access.reason,
+          requiredPlan: access.requiredPlan,
+          upgradeUrl: '/dashboard/subscription'
+        });
+      }
+
+      next();
+    } catch (error) {
+      console.error('Feature access check error:', error);
+      res.status(500).json({ error: 'Failed to verify feature access' });
+    }
+  };
+};
+
+/**
+ * Check concurrent call limit before starting a call
+ */
+export const checkConcurrentLimit = async (req, res, next) => {
+  try {
+    const { businessId } = req.user;
+
+    if (!businessId) {
+      return res.status(401).json({ error: 'Business ID required' });
+    }
+
+    const canStart = await concurrentCallManager.canStartCall(businessId);
+
+    if (!canStart.canStart) {
+      return res.status(429).json({
+        error: 'CONCURRENT_LIMIT_EXCEEDED',
+        message: canStart.reason,
+        currentActive: canStart.currentActive,
+        limit: canStart.limit
+      });
+    }
+
+    // Attach concurrent status to request
+    req.concurrentStatus = canStart;
+    next();
+  } catch (error) {
+    console.error('Concurrent limit check error:', error);
+    res.status(500).json({ error: 'Failed to verify concurrent call limit' });
+  }
+};
+
+/**
+ * Acquire a concurrent call slot (should be called when call actually starts)
+ */
+export const acquireConcurrentSlot = async (req, res, next) => {
+  try {
+    const { businessId } = req.user;
+
+    if (!businessId) {
+      return res.status(401).json({ error: 'Business ID required' });
+    }
+
+    const result = await concurrentCallManager.acquireSlot(businessId);
+
+    if (!result.success) {
+      return res.status(429).json({
+        error: result.error,
+        message: result.message,
+        currentActive: result.currentActive,
+        limit: result.limit
+      });
+    }
+
+    req.concurrentSlot = result;
+    next();
+  } catch (error) {
+    console.error('Acquire concurrent slot error:', error);
+    res.status(500).json({ error: 'Failed to acquire call slot' });
+  }
+};
+
 export default {
   checkLimit,
   checkMultipleLimits,
   getPlanLimits,
   attachSubscriptionInfo,
+  requireChannel,
+  requireFeature,
+  checkConcurrentLimit,
+  acquireConcurrentSlot,
   PLAN_LIMITS
 };

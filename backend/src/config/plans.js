@@ -22,28 +22,33 @@ export const REGIONAL_PRICING = {
     currency: 'TRY',
     symbol: '₺',
     plans: {
-      FREE: { price: 0, overageRate: 0 },
-      STARTER: { price: 299, minutes: 50, overageRate: 12 },
-      BASIC: { price: 999, minutes: 150, overageRate: 11 },
-      PROFESSIONAL: { price: 3499, minutes: 500, overageRate: 10 },
-      ENTERPRISE: { price: null, minutes: null, overageRate: null }
+      FREE: { price: 0, minutes: 0, overageRate: 0, concurrentLimit: 0 },
+      // YENİ PAKET YAPISI
+      STARTER: { price: 799, minutes: 100, overageRate: 7.50, concurrentLimit: 1 },
+      PRO: { price: 3999, minutes: 800, overageRate: 6.50, concurrentLimit: 5 },
+      ENTERPRISE: { price: null, minutes: null, overageRate: 5.50, concurrentLimit: 10 },
+      // Deprecated - geriye dönük uyumluluk
+      BASIC: { price: 999, minutes: 150, overageRate: 11, concurrentLimit: 1 },
+      PROFESSIONAL: { price: 3499, minutes: 500, overageRate: 10, concurrentLimit: 3 }
     },
     creditTiers: [
-      { minMinutes: 250, unitPrice: 7.50 },
-      { minMinutes: 100, unitPrice: 8.00 },
-      { minMinutes: 50, unitPrice: 8.50 },
-      { minMinutes: 1, unitPrice: 9.00 }
+      { minMinutes: 500, unitPrice: 5.00, packageName: 'credit_500', packagePrice: 2500 },
+      { minMinutes: 300, unitPrice: 5.50, packageName: 'credit_300', packagePrice: 1650 },
+      { minMinutes: 100, unitPrice: 6.50, packageName: 'credit_100', packagePrice: 650 },
+      { minMinutes: 1, unitPrice: 7.50 }
     ]
   },
+  // Türkiye odaklı yapı - diğer bölgeler kullanılmıyor
   BR: {
     currency: 'BRL',
     symbol: 'R$',
     plans: {
-      FREE: { price: 0, overageRate: 0 },
-      STARTER: { price: 99, minutes: 60, overageRate: 3.50 },
-      BASIC: { price: 299, minutes: 250, overageRate: 3.00 },
-      PROFESSIONAL: { price: 999, minutes: 1000, overageRate: 2.50 },
-      ENTERPRISE: { price: null, minutes: null, overageRate: null }
+      FREE: { price: 0, minutes: 0, overageRate: 0, concurrentLimit: 0 },
+      STARTER: { price: 99, minutes: 60, overageRate: 3.50, concurrentLimit: 1 },
+      PRO: { price: 499, minutes: 400, overageRate: 2.50, concurrentLimit: 5 },
+      ENTERPRISE: { price: null, minutes: null, overageRate: 2.00, concurrentLimit: 10 },
+      BASIC: { price: 299, minutes: 250, overageRate: 3.00, concurrentLimit: 1 },
+      PROFESSIONAL: { price: 999, minutes: 1000, overageRate: 2.50, concurrentLimit: 3 }
     },
     creditTiers: [
       { minMinutes: 250, unitPrice: 2.00 },
@@ -56,11 +61,12 @@ export const REGIONAL_PRICING = {
     currency: 'USD',
     symbol: '$',
     plans: {
-      FREE: { price: 0, overageRate: 0 },
-      STARTER: { price: 29, minutes: 60, overageRate: 0.35 },
-      BASIC: { price: 99, minutes: 250, overageRate: 0.30 },
-      PROFESSIONAL: { price: 349, minutes: 1000, overageRate: 0.25 },
-      ENTERPRISE: { price: null, minutes: null, overageRate: null }
+      FREE: { price: 0, minutes: 0, overageRate: 0, concurrentLimit: 0 },
+      STARTER: { price: 49, minutes: 100, overageRate: 0.35, concurrentLimit: 1 },
+      PRO: { price: 199, minutes: 800, overageRate: 0.25, concurrentLimit: 5 },
+      ENTERPRISE: { price: null, minutes: null, overageRate: 0.20, concurrentLimit: 10 },
+      BASIC: { price: 99, minutes: 250, overageRate: 0.30, concurrentLimit: 1 },
+      PROFESSIONAL: { price: 349, minutes: 1000, overageRate: 0.25, concurrentLimit: 3 }
     },
     creditTiers: [
       { minMinutes: 250, unitPrice: 0.20 },
@@ -94,6 +100,7 @@ export const PLANS = {
     assistantsLimit: 1,
     phoneNumbersLimit: 0,
     overageLimit: 0,
+    concurrentLimit: 0,
     features: {
       phone: false,
       whatsappCalling: false,
@@ -107,43 +114,119 @@ export const PLANS = {
       prioritySupport: false,
       analytics: false,
       apiAccess: false
-    }
+    },
+    channels: []
   },
+  // YENİ PAKET YAPISI
   STARTER: {
     id: 'STARTER',
     name: 'Starter',
     nameTR: 'Başlangıç',
     nameEN: 'Starter',
     namePR: 'Inicial',
-    callsLimit: -1,
-    assistantsLimit: 1,
-    phoneNumbersLimit: 1,
-    overageLimit: 50,
+    callsLimit: -1,           // Sınırsız çağrı
+    assistantsLimit: -1,      // Sınırsız asistan
+    phoneNumbersLimit: -1,    // Sınırsız numara
+    overageLimit: 100,        // Max 100 dk aşım
+    concurrentLimit: 1,       // 1 eşzamanlı çağrı
     features: {
       phone: true,
       whatsappCalling: true,
-      whatsappMessaging: false,
-      chatWidget: false,
-      email: false,
-      ecommerce: false,
-      calendar: false,
-      googleSheets: false,
-      batchCalls: false,
-      prioritySupport: false,
-      analytics: true,
+      whatsappMessaging: true,
+      chatWidget: true,
+      email: false,           // Pro'da açık
+      ecommerce: true,
+      calendar: true,
+      googleSheets: false,    // Pro'da açık
+      batchCalls: false,      // Pro'da açık
+      prioritySupport: false, // Pro'da açık
+      analytics: true,        // Basic analytics
+      advancedAnalytics: false,
       apiAccess: false
-    }
+    },
+    channels: ['phone', 'whatsapp', 'chat_widget'],
+    analyticsLevel: 'basic',
+    supportLevel: 'email'
   },
+  PRO: {
+    id: 'PRO',
+    name: 'Pro',
+    nameTR: 'Profesyonel',
+    nameEN: 'Pro',
+    namePR: 'Pro',
+    callsLimit: -1,           // Sınırsız çağrı
+    assistantsLimit: -1,      // Sınırsız asistan
+    phoneNumbersLimit: -1,    // Sınırsız numara
+    overageLimit: 200,        // Max 200 dk aşım
+    concurrentLimit: 5,       // 5 eşzamanlı çağrı
+    features: {
+      phone: true,
+      whatsappCalling: true,
+      whatsappMessaging: true,
+      chatWidget: true,
+      email: true,
+      ecommerce: true,
+      calendar: true,
+      googleSheets: true,
+      batchCalls: true,
+      prioritySupport: true,
+      analytics: true,
+      advancedAnalytics: true,
+      apiAccess: true
+    },
+    channels: ['phone', 'whatsapp', 'chat_widget', 'email'],
+    analyticsLevel: 'advanced',
+    supportLevel: 'priority'
+  },
+  ENTERPRISE: {
+    id: 'ENTERPRISE',
+    name: 'Enterprise',
+    nameTR: 'Kurumsal',
+    nameEN: 'Enterprise',
+    namePR: 'Empresarial',
+    minutesLimit: null,       // Custom
+    callsLimit: -1,
+    assistantsLimit: -1,      // Sınırsız
+    phoneNumbersLimit: -1,    // Sınırsız
+    overageLimit: null,       // Custom
+    concurrentLimit: 10,      // 10+ eşzamanlı çağrı (custom olabilir)
+    features: {
+      phone: true,
+      whatsappCalling: true,
+      whatsappMessaging: true,
+      chatWidget: true,
+      email: true,
+      ecommerce: true,
+      calendar: true,
+      googleSheets: true,
+      batchCalls: true,
+      prioritySupport: true,
+      analytics: true,
+      advancedAnalytics: true,
+      apiAccess: true,
+      customVoice: true,
+      whiteLabel: true,
+      dedicatedSupport: true,
+      slaGuarantee: true,
+      customIntegrations: true
+    },
+    channels: ['phone', 'whatsapp', 'chat_widget', 'email'],
+    analyticsLevel: 'advanced',
+    supportLevel: 'dedicated'
+  },
+  // DEPRECATED - geriye dönük uyumluluk için
   BASIC: {
     id: 'BASIC',
     name: 'Basic',
     nameTR: 'Temel',
     nameEN: 'Basic',
     namePR: 'Básico',
+    deprecated: true,
     callsLimit: -1,
     assistantsLimit: 3,
     phoneNumbersLimit: 2,
     overageLimit: 50,
+    concurrentLimit: 1,
     features: {
       phone: true,
       whatsappCalling: true,
@@ -157,7 +240,8 @@ export const PLANS = {
       prioritySupport: false,
       analytics: true,
       apiAccess: false
-    }
+    },
+    channels: ['phone', 'whatsapp', 'chat_widget']
   },
   PROFESSIONAL: {
     id: 'PROFESSIONAL',
@@ -165,10 +249,12 @@ export const PLANS = {
     nameTR: 'Profesyonel',
     nameEN: 'Professional',
     namePR: 'Profissional',
+    deprecated: true,
     callsLimit: -1,
     assistantsLimit: 10,
     phoneNumbersLimit: 5,
     overageLimit: 50,
+    concurrentLimit: 3,
     features: {
       phone: true,
       whatsappCalling: true,
@@ -182,37 +268,8 @@ export const PLANS = {
       prioritySupport: true,
       analytics: true,
       apiAccess: true
-    }
-  },
-  ENTERPRISE: {
-    id: 'ENTERPRISE',
-    name: 'Enterprise',
-    nameTR: 'Kurumsal',
-    nameEN: 'Enterprise',
-    namePR: 'Empresarial',
-    minutesLimit: null,
-    callsLimit: -1,
-    assistantsLimit: null,
-    phoneNumbersLimit: null,
-    overageLimit: null,
-    features: {
-      phone: true,
-      whatsappCalling: true,
-      whatsappMessaging: true,
-      chatWidget: true,
-      email: true,
-      ecommerce: true,
-      calendar: true,
-      googleSheets: true,
-      batchCalls: true,
-      prioritySupport: true,
-      analytics: true,
-      apiAccess: true,
-      customVoice: true,
-      whiteLabel: true,
-      dedicatedSupport: true,
-      slaGuarantee: true
-    }
+    },
+    channels: ['phone', 'whatsapp', 'chat_widget', 'email']
   }
 };
 
@@ -374,6 +431,43 @@ export function getOverageLimit(planName) {
 }
 
 /**
+ * Get concurrent call limit for a plan
+ * @param {string} planName - Plan name
+ * @param {string} countryCode - Country code
+ * @returns {number} Concurrent call limit
+ */
+export function getConcurrentLimit(planName, countryCode = 'TR') {
+  const regional = getRegionalPricing(countryCode);
+  const planPricing = regional.plans[planName];
+  if (planPricing?.concurrentLimit !== undefined) {
+    return planPricing.concurrentLimit;
+  }
+  const plan = getPlanConfig(planName);
+  return plan.concurrentLimit || 1;
+}
+
+/**
+ * Check if a channel is available for a plan
+ * @param {string} planName - Plan name
+ * @param {string} channel - Channel name (phone, whatsapp, chat_widget, email)
+ * @returns {boolean}
+ */
+export function hasChannel(planName, channel) {
+  const plan = getPlanConfig(planName);
+  return plan.channels?.includes(channel) || false;
+}
+
+/**
+ * Get all available channels for a plan
+ * @param {string} planName - Plan name
+ * @returns {string[]} Array of channel names
+ */
+export function getChannels(planName) {
+  const plan = getPlanConfig(planName);
+  return plan.channels || [];
+}
+
+/**
  * Get plan name in specific language
  * @param {string} planName - Plan name
  * @param {string} languageCode - Language code (TR, EN, PR, etc.)
@@ -431,8 +525,11 @@ export default {
   getCreditUnitPrice,
   calculateCreditPrice,
   hasFeature,
+  hasChannel,
+  getChannels,
   getOverageRate,
   getOverageLimit,
+  getConcurrentLimit,
   getPlanName,
   formatPrice
 };
