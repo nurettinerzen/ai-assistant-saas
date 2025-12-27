@@ -366,7 +366,10 @@ export default function SubscriptionPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
           {BASE_PLANS.map((plan) => {
             const planPricing = getPlanPricing(plan.id);
-            const isCurrentPlan = subscription?.plan === plan.id;
+            // Legacy plan mapping: BASIC → STARTER, PROFESSIONAL → PRO
+            const LEGACY_PLAN_MAP = { BASIC: 'STARTER', PROFESSIONAL: 'PRO' };
+            const userPlanMapped = LEGACY_PLAN_MAP[subscription?.plan] || subscription?.plan;
+            const isCurrentPlan = userPlanMapped === plan.id;
             // Only show "Popular" badge if user has no plan or is on FREE plan
             const showPopularBadge = plan.popular && !isCurrentPlan && (!subscription?.plan || subscription?.plan === 'FREE');
 
