@@ -323,6 +323,7 @@ router.post('/', upload.single('file'), checkPermission('campaigns:view'), async
     // Build recipients list
     const recipients = [];
     const phoneColumn = mapping.phone || 'phone';
+    let recipientIndex = 0;
 
     for (const row of data) {
       // Find phone number using mapping
@@ -334,9 +335,13 @@ router.post('/', upload.single('file'), checkPermission('campaigns:view'), async
         continue;
       }
 
-      // Build recipient object with dynamic variables
+      recipientIndex++;
+
+      // Build recipient object with dynamic variables and ID for tracking
       const recipient = {
-        phone_number: normalizedPhone
+        id: `recipient_${recipientIndex}`,  // ID for webhook matching
+        phone_number: normalizedPhone,
+        status: 'pending'  // Initial status
       };
 
       // Map other columns to dynamic variables
@@ -392,9 +397,7 @@ router.post('/', upload.single('file'), checkPermission('campaigns:view'), async
       const elevenLabsApiKey = process.env.ELEVENLABS_API_KEY;
 
       // Transform recipients to 11Labs format with dynamic_variables and metadata
-      const elevenLabsRecipients = recipients.map((r, index) => {
-        const recipientId = `recipient_${index + 1}`;
-
+      const elevenLabsRecipients = recipients.map((r) => {
         const dynamicVars = {};
         if (r.customer_name) dynamicVars.customer_name = r.customer_name;
         if (r.debt_amount) dynamicVars.debt_amount = r.debt_amount;
@@ -405,7 +408,7 @@ router.post('/', upload.single('file'), checkPermission('campaigns:view'), async
         if (r.custom_2) dynamicVars.custom_2 = r.custom_2;
 
         return {
-          id: recipientId,
+          id: r.id,  // Use the same ID stored in DB
           phone_number: r.phone_number,
           conversation_initiation_client_data: {
             dynamic_variables: dynamicVars,
@@ -413,7 +416,7 @@ router.post('/', upload.single('file'), checkPermission('campaigns:view'), async
             metadata: {
               business_id: businessId.toString(),
               batch_call_id: batchCall.id,
-              recipient_id: recipientId,
+              recipient_id: r.id,  // Use the same ID stored in DB
               channel: 'outbound'
             }
           }
