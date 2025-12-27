@@ -23,10 +23,10 @@ export const REGIONAL_PRICING = {
     symbol: '₺',
     plans: {
       FREE: { price: 0, minutes: 0, overageRate: 0, concurrentLimit: 0 },
-      // YENİ PAKET YAPISI
-      STARTER: { price: 799, minutes: 100, overageRate: 7.50, concurrentLimit: 1 },
-      PRO: { price: 3999, minutes: 800, overageRate: 6.50, concurrentLimit: 5 },
-      ENTERPRISE: { price: null, minutes: null, overageRate: 5.50, concurrentLimit: 10 },
+      // YENİ PAKET YAPISI - Aşım ücretleri normal fiyattan yüksek olmalı
+      STARTER: { price: 799, minutes: 100, overageRate: 10.00, concurrentLimit: 1 },
+      PRO: { price: 3999, minutes: 800, overageRate: 8.00, concurrentLimit: 5 },
+      ENTERPRISE: { price: null, minutes: null, overageRate: 6.00, concurrentLimit: 10 },
       // Deprecated - geriye dönük uyumluluk
       BASIC: { price: 999, minutes: 150, overageRate: 11, concurrentLimit: 1 },
       PROFESSIONAL: { price: 3499, minutes: 500, overageRate: 10, concurrentLimit: 3 }

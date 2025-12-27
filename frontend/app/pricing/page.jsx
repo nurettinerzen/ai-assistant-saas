@@ -15,10 +15,10 @@ const REGIONAL_PRICING = {
     currencyPosition: 'after',
     locale: 'tr-TR',
     plans: {
-      // YENİ PAKETLER
-      STARTER: { price: 799, minutes: 100, concurrent: 1, overageRate: 7.5 },
-      PRO: { price: 3999, minutes: 800, concurrent: 5, overageRate: 6.5 },
-      ENTERPRISE: { price: null, minutes: null, concurrent: 10, overageRate: 5.5 }
+      // YENİ PAKETLER - Aşım ücretleri normal fiyattan yüksek olmalı
+      STARTER: { price: 799, minutes: 100, concurrent: 1, overageRate: 10 },
+      PRO: { price: 3999, minutes: 800, concurrent: 5, overageRate: 8 },
+      ENTERPRISE: { price: null, minutes: null, concurrent: 10, overageRate: 6 }
     },
     creditPackages: [
       { minutes: 100, price: 650, unitPrice: 6.5 },
