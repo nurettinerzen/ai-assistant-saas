@@ -327,13 +327,18 @@ export default function BatchCallDetailPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right">
-                        {recipient.conversationId && (
+                        {(recipient.callLogId || recipient.conversationId) && (
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => {
-                              // Open 11Labs conversation in new tab
-                              window.open(`https://elevenlabs.io/app/conversational-ai/history/${recipient.conversationId}`, '_blank');
+                              if (recipient.callLogId) {
+                                // Navigate to our calls page with the callLogId
+                                router.push(`/dashboard/calls?callId=${recipient.callLogId}`);
+                              } else if (recipient.conversationId) {
+                                // Fallback: Open 11Labs conversation in new tab
+                                window.open(`https://elevenlabs.io/app/conversational-ai/history/${recipient.conversationId}`, '_blank');
+                              }
                             }}
                           >
                             <ExternalLink className="h-3 w-3 mr-1" />

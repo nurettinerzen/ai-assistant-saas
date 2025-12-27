@@ -391,18 +391,34 @@ router.post('/elevenlabs/call-ended', async (req, res) => {
     }
 
     // 4. Create call log with full details
-    await createCallLog(businessId, {
+    const callLog = await createCallLog(businessId, {
       callId: callId,
       agentId: agentId,
       duration: durationSeconds,
       transcript,
       analysis,
-      // Phone info for caller display
-      callerNumber: callDirection === 'inbound' ? externalNumber : agentPhoneNumber,
-      calledNumber: callDirection === 'inbound' ? agentPhoneNumber : externalNumber,
+      // Phone info for caller display - use external number as it's the customer
+      callerNumber: externalNumber,
+      calledNumber: agentPhoneNumber,
       direction: callDirection || 'unknown',
       metadata: { ...callMetadata, ...customMetadata }
     });
+
+    // 5. Update batch call recipient with callLogId for "Listen" button
+    if (callLog && customMetadata?.batch_call_id) {
+      try {
+        await updateBatchCallRecipientStatus(
+          customMetadata.batch_call_id,
+          customMetadata.recipient_id,
+          callStatus,
+          {
+            callLogId: callLog.id
+          }
+        );
+      } catch (err) {
+        console.error('Failed to update batch call recipient with callLogId:', err);
+      }
+    }
 
     res.json({
       success: true,
@@ -641,7 +657,7 @@ async function createCallLog(businessId, data) {
         const speaker = t.role === 'agent' ? 'Asistan' : 'Müşteri';
         const timeInSecs = t.time_in_call_secs || 0;
         const minutes = Math.floor(timeInSecs / 60);
-        const seconds = timeInSecs % 60;
+        const seconds = Math.floor(timeInSecs % 60);
         const timeStr = `${minutes}:${String(seconds).padStart(2, '0')}`;
         return `[${timeStr}] ${speaker}: ${t.message || t.text || ''}`;
       }).join('\n');
@@ -678,8 +694,8 @@ async function createCallLog(businessId, data) {
       sentiment = 'neutral';
     }
 
-    // Determine caller ID based on direction
-    const callerId = data.callerNumber || data.metadata?.caller_id || data.metadata?.phone_number || 'unknown';
+    // Determine caller ID - prioritize external number (customer's phone)
+    const callerId = data.callerNumber || data.metadata?.phone_number || data.metadata?.caller_id || 'unknown';
 
     // Parse boolean values - 11Labs may return strings like "true"/"false"
     const parseBoolean = (val) => {
@@ -695,7 +711,7 @@ async function createCallLog(businessId, data) {
     const taskCompletedRaw = analysis.call_successful ?? analysis.task_completed ?? analysis.taskCompleted;
     const followUpNeededRaw = analysis.follow_up_needed ?? analysis.followUpNeeded;
 
-    await prisma.callLog.create({
+    const callLog = await prisma.callLog.create({
       data: {
         businessId,
         callId: data.callId || `call_${Date.now()}`,
@@ -717,15 +733,19 @@ async function createCallLog(businessId, data) {
     });
 
     console.log('✅ Call log created for call:', data.callId, {
+      callLogId: callLog.id,
       callerId,
       duration: data.duration,
       sentiment,
       hasSummary: !!summary,
       hasTranscript: !!transcriptText
     });
+
+    return callLog;
   } catch (error) {
     console.error('Error creating call log:', error);
     // Don't throw - call log creation failure shouldn't break the webhook
+    return null;
   }
 }
 

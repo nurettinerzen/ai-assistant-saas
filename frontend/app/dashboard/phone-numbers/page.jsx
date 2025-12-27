@@ -68,9 +68,11 @@ export default function PhoneNumbersPage() {
           apiClient.assistants.getAll()
         ]);
         setPhoneNumbers(phoneResponse.data.phoneNumbers || []);
-        // Filter to only active assistants with 11Labs agent ID
+        // Filter to only INBOUND active assistants
+        // Phone numbers should only be assigned to inbound assistants
+        // Outbound assistants are selected in batch call campaigns
         const allAssistants = assistantsResponse.data.assistants || [];
-        setAssistants(allAssistants.filter(a => a.isActive));
+        setAssistants(allAssistants.filter(a => a.isActive && a.callDirection === 'inbound'));
       } catch (error) {
         console.error('Failed to load data:', error);
         toast.error('Failed to load phone numbers');

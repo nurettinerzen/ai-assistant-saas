@@ -116,20 +116,38 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
 
     if (call.transcript && Array.isArray(call.transcript)) {
       // Format structured transcript
-      transcriptText = `Call Transcript - ${formatDate(call.createdAt, 'long')}\n`;
-      transcriptText += `Phone: ${call.phoneNumber || 'Unknown'}\n`;
-      transcriptText += `Duration: ${formatDuration(call.duration)}\n`;
+      transcriptText = `Arama Transkripti - ${formatDate(call.createdAt, 'long')}\n`;
+      transcriptText += `Telefon: ${call.phoneNumber || call.callerId || 'Bilinmiyor'}\n`;
+      transcriptText += `Süre: ${formatDuration(call.duration)}\n`;
       transcriptText += `\n${'='.repeat(60)}\n\n`;
 
       call.transcript.forEach((msg) => {
-        const speaker = msg.speaker === 'assistant' ? 'AI Assistant' : 'Customer';
-        const timestamp = new Date(msg.timestamp).toLocaleTimeString();
-        transcriptText += `[${timestamp}] ${speaker}:\n${msg.text}\n\n`;
+        // Handle both formats: speaker/role and text/message
+        const speaker = msg.speaker || (msg.role === 'agent' ? 'assistant' : 'user');
+        const isAssistant = speaker === 'assistant' || speaker === 'agent';
+        const speakerName = isAssistant ? 'Asistan' : 'Müşteri';
+        const messageText = msg.text || msg.message || '';
+
+        // Format time - handle both timestamp and time_in_call_secs
+        let timeStr = '';
+        if (msg.time_in_call_secs !== undefined && msg.time_in_call_secs !== null) {
+          const secs = Number(msg.time_in_call_secs) || 0;
+          const minutes = Math.floor(secs / 60);
+          const seconds = Math.floor(secs % 60);
+          timeStr = `${minutes}:${String(seconds).padStart(2, '0')}`;
+        } else if (msg.timestamp) {
+          const date = new Date(msg.timestamp);
+          if (!isNaN(date.getTime())) {
+            timeStr = date.toLocaleTimeString();
+          }
+        }
+
+        transcriptText += `[${timeStr}] ${speakerName}:\n${messageText}\n\n`;
       });
     } else if (call.transcriptText) {
       transcriptText = call.transcriptText;
     } else {
-      toast.error('No transcript available');
+      toast.error('Transkript bulunamadı');
       return;
     }
 
@@ -181,7 +199,7 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
             Call Details & Transcript
           </DialogTitle>
           <DialogDescription>
-            {call?.phoneNumber || 'Unknown'} • {formatDate(call?.createdAt, 'long')}
+            {call?.phoneNumber || call?.callerId || 'Bilinmiyor'} • {formatDate(call?.createdAt, 'long')}
           </DialogDescription>
         </DialogHeader>
 
@@ -379,32 +397,58 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
                 <div className="space-y-3 max-h-96 overflow-y-auto bg-neutral-50 rounded-lg p-4">
                   {call.transcript && Array.isArray(call.transcript) ? (
                     filteredMessages && filteredMessages.length > 0 ? (
-                      filteredMessages.map((msg, index) => (
-                        <div
-                          key={index}
-                          className={`flex ${
-                            msg.speaker === 'assistant' ? 'justify-end' : 'justify-start'
-                          }`}
-                        >
+                      filteredMessages.map((msg, index) => {
+                        // Format time - handle both timestamp and time_in_call_secs
+                        const formatMsgTime = () => {
+                          // 11Labs format: time_in_call_secs (number of seconds into the call)
+                          if (msg.time_in_call_secs !== undefined && msg.time_in_call_secs !== null) {
+                            const secs = Number(msg.time_in_call_secs) || 0;
+                            const minutes = Math.floor(secs / 60);
+                            const seconds = Math.floor(secs % 60);
+                            return `${minutes}:${String(seconds).padStart(2, '0')}`;
+                          }
+                          // Standard timestamp format
+                          if (msg.timestamp) {
+                            const date = new Date(msg.timestamp);
+                            if (!isNaN(date.getTime())) {
+                              return date.toLocaleTimeString();
+                            }
+                          }
+                          return '';
+                        };
+
+                        // Determine speaker - handle both formats
+                        const speaker = msg.speaker || (msg.role === 'agent' ? 'assistant' : 'user');
+                        const isAssistant = speaker === 'assistant' || speaker === 'agent';
+                        const messageText = msg.text || msg.message || '';
+
+                        return (
                           <div
-                            className={`max-w-[80%] rounded-lg p-3 ${
-                              msg.speaker === 'assistant'
-                                ? 'bg-blue-100 text-blue-900'
-                                : 'bg-white text-neutral-900 border border-neutral-200'
-                            }`}
+                            key={index}
+                            className={`flex ${isAssistant ? 'justify-end' : 'justify-start'}`}
                           >
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="text-xs font-medium">
-                                {msg.speaker === 'assistant' ? 'AI Assistant' : 'Customer'}
-                              </span>
-                              <span className="text-xs text-neutral-500">
-                                {new Date(msg.timestamp).toLocaleTimeString()}
-                              </span>
+                            <div
+                              className={`max-w-[80%] rounded-lg p-3 ${
+                                isAssistant
+                                  ? 'bg-blue-100 text-blue-900'
+                                  : 'bg-white text-neutral-900 border border-neutral-200'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-xs font-medium">
+                                  {isAssistant ? 'Asistan' : 'Müşteri'}
+                                </span>
+                                {formatMsgTime() && (
+                                  <span className="text-xs text-neutral-500">
+                                    {formatMsgTime()}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-sm">{highlightText(messageText)}</p>
                             </div>
-                            <p className="text-sm">{highlightText(msg.text)}</p>
                           </div>
-                        </div>
-                      ))
+                        );
+                      })
                     ) : (
                       <p className="text-center text-neutral-500 py-4">
                         No messages match your search

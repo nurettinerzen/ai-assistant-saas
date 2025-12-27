@@ -7,6 +7,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -27,12 +28,22 @@ import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function CallsPage() {
   const { t, locale } = useLanguage();
+  const searchParams = useSearchParams();
   const [calls, setCalls] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedCallId, setSelectedCallId] = useState(null);
   const [showTranscriptModal, setShowTranscriptModal] = useState(false);
+
+  // Handle callId from URL query params (from batch call "Listen" button)
+  useEffect(() => {
+    const callIdFromUrl = searchParams.get('callId');
+    if (callIdFromUrl) {
+      setSelectedCallId(parseInt(callIdFromUrl, 10));
+      setShowTranscriptModal(true);
+    }
+  }, [searchParams]);
 
   // Sync 11Labs conversations when page loads
   useEffect(() => {
@@ -209,7 +220,7 @@ export default function CallsPage() {
                   >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-neutral-900">
-                        {formatPhone(call.phoneNumber)}
+                        {formatPhone(call.phoneNumber || call.callerId)}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">

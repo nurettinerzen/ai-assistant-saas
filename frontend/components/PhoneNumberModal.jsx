@@ -93,10 +93,14 @@ export default function PhoneNumberModal({ isOpen, onClose, onSuccess }) {
     try {
       const response = await apiClient.assistants.getAll();
       const assistantList = response.data.assistants || [];
-      setAssistants(assistantList.filter(a => a.isActive));
+      // Only show INBOUND assistants for phone number assignment
+      // Outbound assistants are selected in batch call campaigns, not here
+      // This fixes the issue where outbound assistant was answering inbound calls
+      const inboundAssistants = assistantList.filter(a => a.isActive && a.callDirection === 'inbound');
+      setAssistants(inboundAssistants);
 
-      if (assistantList.length > 0) {
-        setSelectedAssistant(assistantList[0].id);
+      if (inboundAssistants.length > 0) {
+        setSelectedAssistant(inboundAssistants[0].id);
       }
     } catch (error) {
       console.error('Failed to load assistants:', error);
@@ -439,25 +443,35 @@ export default function PhoneNumberModal({ isOpen, onClose, onSuccess }) {
             </div>
           )}
 
-          {/* Assistant Selection */}
-          {assistants.length > 0 && selectedCountry && (
+          {/* Assistant Selection - Only Inbound Assistants */}
+          {selectedCountry && (
             <div>
               <Label className="text-base mb-3 block">{t('dashboard.phoneNumbersPage.modal.assignToAssistant')}</Label>
-              <Select value={selectedAssistant} onValueChange={setSelectedAssistant}>
-                <SelectTrigger>
-                  <SelectValue placeholder={t('dashboard.phoneNumbersPage.modal.selectAssistant')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {assistants.map((assistant) => (
-                    <SelectItem key={assistant.id} value={assistant.id}>
-                      {assistant.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-neutral-500 mt-2">
-                {t('dashboard.phoneNumbersPage.modal.assistantConnectionNote')}
-              </p>
+              {assistants.length > 0 ? (
+                <>
+                  <Select value={selectedAssistant} onValueChange={setSelectedAssistant}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={t('dashboard.phoneNumbersPage.modal.selectAssistant')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {assistants.map((assistant) => (
+                        <SelectItem key={assistant.id} value={assistant.id}>
+                          {assistant.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-neutral-500 mt-2">
+                    {t('dashboard.phoneNumbersPage.modal.assistantConnectionNote')}
+                  </p>
+                </>
+              ) : (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                  <p className="text-sm text-amber-800">
+                    Gelen arama asistanı bulunamadı. Lütfen önce "Gelen Arama" tipinde bir asistan oluşturun.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 

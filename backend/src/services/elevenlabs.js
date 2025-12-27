@@ -573,6 +573,19 @@ export function buildAgentConfig(assistant, business, tools = []) {
   // Build webhook URL for post-call analysis
   const backendUrl = process.env.BACKEND_URL || 'http://localhost:3001';
 
+  // Build analysis prompt based on language
+  const analysisPrompt = language === 'tr'
+    ? {
+        transcript_summary: 'Bu görüşmenin kısa bir özetini Türkçe olarak yaz. Müşterinin amacını ve sonucu belirt.',
+        data_collection: {},
+        success_evaluation: 'Görüşme başarılı mı? Müşterinin talebi karşılandı mı?'
+      }
+    : {
+        transcript_summary: 'Write a brief summary of this conversation. State the customer\'s purpose and the outcome.',
+        data_collection: {},
+        success_evaluation: 'Was the conversation successful? Was the customer\'s request fulfilled?'
+      };
+
   return {
     name: assistant.name,
     conversation_config: {
@@ -599,6 +612,12 @@ export function buildAgentConfig(assistant, business, tools = []) {
       },
       turn: {
         mode: 'turn'
+      },
+      // Analysis settings for post-call summary in correct language
+      analysis: {
+        transcript_summary: analysisPrompt.transcript_summary,
+        data_collection: analysisPrompt.data_collection,
+        success_evaluation: analysisPrompt.success_evaluation
       }
     },
     platform_settings: {
