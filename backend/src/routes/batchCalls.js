@@ -692,18 +692,26 @@ router.get('/:id', checkPermission('campaigns:view'), async (req, res) => {
     let recipients = [];
     try {
       recipients = JSON.parse(batchCall.recipients || '[]');
-    } catch (e) {}
+      console.log('📋 Recipients from DB:', JSON.stringify(recipients, null, 2));
+    } catch (e) {
+      console.error('Failed to parse recipients:', e);
+    }
 
     // Merge recipients with call details from 11Labs
     // Priority: DB status (from webhook) > 11Labs status > 'pending'
+    console.log('📞 11Labs callDetails:', JSON.stringify(callDetails, null, 2));
+
     const enrichedRecipients = recipients.map((recipient, index) => {
       const callDetail = callDetails.find(c => c.phone_number === recipient.phone_number) || {};
 
       // Use DB status if it was updated by webhook, otherwise use 11Labs status
       let finalStatus = recipient.status;
+      console.log(`📌 Recipient ${recipient.phone_number}: DB status = "${recipient.status}", duration = ${recipient.duration}`);
+
       if (!finalStatus || finalStatus === 'pending') {
         // Map 11Labs status to our status values
         const elevenLabsStatus = callDetail.status;
+        console.log(`  → 11Labs status = "${elevenLabsStatus}"`);
         if (elevenLabsStatus === 'done' || elevenLabsStatus === 'completed') {
           finalStatus = 'completed';
         } else if (elevenLabsStatus === 'failed' || elevenLabsStatus === 'no_answer') {
@@ -714,6 +722,8 @@ router.get('/:id', checkPermission('campaigns:view'), async (req, res) => {
           finalStatus = 'pending';
         }
       }
+
+      console.log(`  → Final status = "${finalStatus}"`);
 
       return {
         ...recipient,
