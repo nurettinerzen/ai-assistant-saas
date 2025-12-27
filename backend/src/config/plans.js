@@ -31,11 +31,9 @@ export const REGIONAL_PRICING = {
       BASIC: { price: 799, minutes: 100, overageRate: 10.00, concurrentLimit: 1 },        // → STARTER
       PROFESSIONAL: { price: 3999, minutes: 800, overageRate: 8.00, concurrentLimit: 5 }  // → PRO
     },
+    // Tek fiyat: 7₺/dk (kademeli fiyat kaldırıldı)
     creditTiers: [
-      { minMinutes: 500, unitPrice: 5.00, packageName: 'credit_500', packagePrice: 2500 },
-      { minMinutes: 300, unitPrice: 5.50, packageName: 'credit_300', packagePrice: 1650 },
-      { minMinutes: 100, unitPrice: 6.50, packageName: 'credit_100', packagePrice: 650 },
-      { minMinutes: 1, unitPrice: 7.50 }
+      { minMinutes: 1, unitPrice: 7.00 }
     ]
   },
   // Türkiye odaklı yapı - diğer bölgeler kullanılmıyor

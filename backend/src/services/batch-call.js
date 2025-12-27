@@ -13,6 +13,7 @@
 import { PrismaClient } from '@prisma/client';
 import axios from 'axios';
 import { getDateTimeContext } from '../utils/dateTime.js';
+import { trackCallUsage } from './usageTracking.js';
 
 const prisma = new PrismaClient();
 
@@ -660,6 +661,27 @@ class BatchCallService {
         paymentAmount: paymentDetails.amount
       }
     });
+
+    // Get campaign to find businessId for usage tracking
+    const campaign = await prisma.campaign.findUnique({
+      where: { id: campaignCall.campaignId },
+      select: { businessId: true }
+    });
+
+    // Track minute usage for outbound call
+    if (campaign?.businessId && duration > 0) {
+      try {
+        const usageResult = await trackCallUsage(campaign.businessId, duration, {
+          callId: vapiCallId,
+          channel: 'outbound',
+          campaignId: campaignCall.campaignId
+        });
+        console.log(`📊 Outbound call usage tracked: ${duration}s = ${Math.ceil(duration/60)} min`);
+      } catch (usageError) {
+        console.error('❌ Failed to track outbound call usage:', usageError);
+        // Don't throw - usage tracking failure shouldn't break webhook
+      }
+    }
 
     // Update campaign stats
     await this.updateCampaignStats(campaignCall.campaignId);

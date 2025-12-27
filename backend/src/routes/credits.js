@@ -113,14 +113,10 @@ router.post('/calculate', async (req, res) => {
 router.get('/pricing', async (req, res) => {
   try {
     res.json({
-      tiers: [
-        { minMinutes: 1, maxMinutes: 49, unitPrice: 9.00, description: '1-49 dakika' },
-        { minMinutes: 50, maxMinutes: 99, unitPrice: 8.50, description: '50-99 dakika' },
-        { minMinutes: 100, maxMinutes: 249, unitPrice: 8.00, description: '100-249 dakika' },
-        { minMinutes: 250, maxMinutes: null, unitPrice: 7.50, description: '250+ dakika' }
-      ],
+      // Tek fiyat: 7₺/dk
+      unitPrice: 7.00,
       currency: 'TRY',
-      note: 'Krediler süresiz geçerlidir ve aylık sıfırlanmaz.'
+      note: 'İstediğiniz kadar dakika alabilirsiniz.'
     });
   } catch (error) {
     res.status(500).json({ error: error.message });

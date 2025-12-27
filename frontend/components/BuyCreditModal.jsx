@@ -26,7 +26,7 @@ const TRANSLATIONS = {
     pricing: 'Fiyatlandırma',
     unitPrice: 'Birim fiyat:',
     total: 'Toplam:',
-    creditInfo: 'Krediler süresiz geçerlidir ve aylık sıfırlanmaz. Paket dakikalarınız bittikten sonra otomatik olarak kredi dakikalarından düşer.',
+    creditInfo: 'Krediler aylık sıfırlanmaz. Paket dakikalarınız bittikten sonra otomatik olarak kredi dakikalarından düşer.',
     cancel: 'İptal',
     processing: 'İşleniyor...',
     purchase: 'Satın Al',
@@ -34,7 +34,8 @@ const TRANSLATIONS = {
     creditsAdded: 'dakika krediniz eklendi!',
     purchaseFailed: 'Satın alma başarısız',
     requiresCard: 'Kredi satın almak için önce bir kart kaydetmeniz gerekiyor.',
-    perMin: '/dk'
+    perMin: '/dk',
+    flatPrice: 'Sabit fiyat'
   }
 };
 
@@ -129,13 +130,8 @@ export default function BuyCreditModal({ isOpen, onClose, onSuccess }) {
 
   if (!isOpen) return null;
 
-  // Turkish Lira pricing tiers
-  const pricingTiers = [
-    { range: '1-49', price: '9' },
-    { range: '50-99', price: '8.50' },
-    { range: '100-249', price: '8' },
-    { range: '250+', price: '7.50', highlight: true }
-  ];
+  // Tek fiyat: 7₺/dk
+  const flatUnitPrice = 7;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -193,21 +189,16 @@ export default function BuyCreditModal({ isOpen, onClose, onSuccess }) {
             ))}
           </div>
 
-          {/* Pricing Table */}
+          {/* Pricing - Tek fiyat */}
           <div className="bg-neutral-50 rounded-lg p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <Info className="h-4 w-4 text-neutral-500" />
-              <span className="text-sm font-medium text-neutral-700">{txt.pricing}</span>
-            </div>
-            <div className="space-y-1 text-sm text-neutral-600">
-              {pricingTiers.map((tier, i) => (
-                <div key={i} className={`flex justify-between ${tier.highlight ? 'text-green-600' : ''}`}>
-                  <span>{tier.range} {txt.min}</span>
-                  <span className={tier.highlight ? 'font-semibold' : 'font-medium'}>
-                    {currency}{tier.price}{txt.perMin}
-                  </span>
-                </div>
-              ))}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Info className="h-4 w-4 text-neutral-500" />
+                <span className="text-sm font-medium text-neutral-700">{txt.flatPrice}</span>
+              </div>
+              <span className="text-lg font-bold text-green-600">
+                {currency}{flatUnitPrice}{txt.perMin}
+              </span>
             </div>
           </div>
 
