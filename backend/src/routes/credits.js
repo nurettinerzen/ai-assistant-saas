@@ -9,7 +9,7 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticateToken } from '../middleware/auth.js';
-import { getCreditUnitPrice, calculateCreditPrice } from '../config/plans.js';
+import { getCreditUnitPrice, calculateCreditPrice, getRegionalPricing, getPlanConfig } from '../config/plans.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -25,24 +25,38 @@ router.get('/balance', async (req, res) => {
     const businessId = req.businessId;
 
     const subscription = await prisma.subscription.findUnique({
-      where: { businessId }
+      where: { businessId },
+      include: {
+        business: {
+          select: { country: true }
+        }
+      }
     });
 
     if (!subscription) {
       return res.status(404).json({ error: 'Subscription not found' });
     }
 
-    // Calculate remaining values
-    const packageRemaining = Math.max(0, subscription.minutesLimit - subscription.minutesUsed);
+    // Get plan config for correct minutes limit
+    const country = subscription.business?.country || 'TR';
+    const regionalPricing = getRegionalPricing(country);
+    const planPricing = regionalPricing.plans[subscription.plan];
+
+    // Use plan config minutes if available, otherwise fall back to DB value
+    // For legacy plans (BASIC, PROFESSIONAL), use their configured values
+    const configMinutesLimit = planPricing?.minutes ?? subscription.minutesLimit;
+
+    // Calculate remaining values using config-based limit
+    const packageRemaining = Math.max(0, configMinutesLimit - subscription.minutesUsed);
     const creditRemaining = Math.max(0, subscription.creditMinutes - subscription.creditMinutesUsed);
 
     res.json({
       package: {
-        limit: subscription.minutesLimit,
+        limit: configMinutesLimit,
         used: subscription.minutesUsed,
         remaining: packageRemaining,
-        percentage: subscription.minutesLimit > 0
-          ? Math.round((subscription.minutesUsed / subscription.minutesLimit) * 100)
+        percentage: configMinutesLimit > 0
+          ? Math.round((subscription.minutesUsed / configMinutesLimit) * 100)
           : 0
       },
       credit: {
