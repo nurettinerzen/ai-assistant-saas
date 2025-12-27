@@ -549,6 +549,27 @@ export function buildAgentConfig(assistant, business, tools = []) {
     }
   }));
 
+  // Add end_conversation system tool
+  const endConversationDescription = language === 'tr'
+    ? `Görüşmeyi sonlandır. Şu durumlarda kullan:
+- Kullanıcı vedalaştığında (güle güle, görüşürüz, hoşça kal, iyi günler, bye)
+- Kullanıcı anladığını onayladığında (tamam, anladım, not aldım, tamamdır)
+- Kullanıcı teşekkür edip başka sorusu olmadığında
+- Kullanıcı üst üste 3 kez sessiz kaldığında
+- Görev tamamlandığında ve onaylandığında`
+    : `End the conversation when:
+- User says goodbye (bye, goodbye, see you, take care)
+- User confirms understanding (okay, got it, I understand)
+- User says thank you and has no more questions
+- User is silent 3 times consecutively
+- The task has been completed and acknowledged`;
+
+  elevenLabsTools.push({
+    type: 'system',
+    name: 'end_conversation',
+    description: endConversationDescription
+  });
+
   // Build webhook URL for post-call analysis
   const backendUrl = process.env.BACKEND_URL || 'http://localhost:3001';
 
@@ -582,7 +603,10 @@ export function buildAgentConfig(assistant, business, tools = []) {
     },
     platform_settings: {
       post_call_webhook: {
-        url: `${backendUrl}/api/elevenlabs/post-call`
+        url: `${backendUrl}/api/webhooks/elevenlabs/call-ended`
+      },
+      conversation_initiation_client_data_webhook: {
+        url: `${backendUrl}/api/webhooks/elevenlabs/call-started`
       },
       widget: {
         variant: 'full'
@@ -591,7 +615,8 @@ export function buildAgentConfig(assistant, business, tools = []) {
     tools: elevenLabsTools,
     metadata: {
       telyx_assistant_id: assistant.id,
-      telyx_business_id: business.id
+      telyx_business_id: business.id,
+      business_id: business.id.toString()  // For webhook extraction
     }
   };
 }

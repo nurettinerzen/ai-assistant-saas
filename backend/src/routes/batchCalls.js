@@ -391,8 +391,10 @@ router.post('/', upload.single('file'), checkPermission('campaigns:view'), async
     try {
       const elevenLabsApiKey = process.env.ELEVENLABS_API_KEY;
 
-      // Transform recipients to 11Labs format with dynamic_variables
+      // Transform recipients to 11Labs format with dynamic_variables and metadata
       const elevenLabsRecipients = recipients.map((r, index) => {
+        const recipientId = `recipient_${index + 1}`;
+
         const dynamicVars = {};
         if (r.customer_name) dynamicVars.customer_name = r.customer_name;
         if (r.debt_amount) dynamicVars.debt_amount = r.debt_amount;
@@ -403,10 +405,17 @@ router.post('/', upload.single('file'), checkPermission('campaigns:view'), async
         if (r.custom_2) dynamicVars.custom_2 = r.custom_2;
 
         return {
-          id: `recipient_${index + 1}`,
+          id: recipientId,
           phone_number: r.phone_number,
           conversation_initiation_client_data: {
-            dynamic_variables: dynamicVars
+            dynamic_variables: dynamicVars,
+            // Metadata for webhook processing
+            metadata: {
+              business_id: businessId.toString(),
+              batch_call_id: batchCall.id,
+              recipient_id: recipientId,
+              channel: 'outbound'
+            }
           }
         };
       });
