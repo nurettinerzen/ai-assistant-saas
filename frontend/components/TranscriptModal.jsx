@@ -196,7 +196,7 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">
             <Phone className="h-5 w-5 text-primary-600" />
-            Call Details & Transcript
+            Arama Detayları ve Transkript
           </DialogTitle>
           <DialogDescription>
             {call?.phoneNumber || call?.callerId || 'Bilinmiyor'} • {formatDate(call?.createdAt, 'long')}
@@ -209,7 +209,7 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
           </div>
         ) : !call ? (
           <div className="flex-1 flex items-center justify-center py-12">
-            <p className="text-neutral-500">Call not found</p>
+            <p className="text-neutral-500">Arama bulunamadı</p>
           </div>
         ) : (
           <div className="flex-1 overflow-y-auto space-y-6">
@@ -219,7 +219,7 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Volume2 className="h-4 w-4 text-neutral-600" />
-                    <h4 className="text-sm font-semibold text-neutral-900">Call Recording</h4>
+                    <h4 className="text-sm font-semibold text-neutral-900">Arama Kaydı</h4>
                   </div>
                   <Button
                     variant="ghost"
@@ -227,7 +227,7 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
                     onClick={handleDownloadRecording}
                   >
                     <Download className="h-3 w-3 mr-2" />
-                    Download
+                    İndir
                   </Button>
                 </div>
 
@@ -250,12 +250,12 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
                       {isPlaying ? (
                         <>
                           <Pause className="h-3 w-3 mr-1" />
-                          Pause
+                          Durdur
                         </>
                       ) : (
                         <>
                           <Play className="h-3 w-3 mr-1" />
-                          Play
+                          Oynat
                         </>
                       )}
                     </Button>
@@ -276,7 +276,7 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-neutral-600">Speed:</span>
+                    <span className="text-xs text-neutral-600">Hız:</span>
                     {[0.5, 1, 1.5, 2].map((speed) => (
                       <Button
                         key={speed}
@@ -299,7 +299,7 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
                 <div className="flex items-start gap-3">
                   <FileText className="h-5 w-5 text-blue-600 mt-0.5" />
                   <div className="flex-1">
-                    <h4 className="text-sm font-semibold text-blue-900 mb-1">Call Summary</h4>
+                    <h4 className="text-sm font-semibold text-blue-900 mb-1">Arama Özeti</h4>
                     <p className="text-sm text-blue-800">{call.summary}</p>
                   </div>
                 </div>
@@ -313,14 +313,14 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
                 <div className="bg-white border rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <TrendingUp className="h-4 w-4 text-neutral-600" />
-                    <h4 className="text-xs font-medium text-neutral-500">Sentiment</h4>
+                    <h4 className="text-xs font-medium text-neutral-500">Duygu Analizi</h4>
                   </div>
                   <Badge className={sentimentColors[call.sentiment] || sentimentColors.neutral}>
-                    {call.sentiment.charAt(0).toUpperCase() + call.sentiment.slice(1)}
+                    {call.sentiment === 'positive' ? 'Olumlu' : call.sentiment === 'negative' ? 'Olumsuz' : 'Nötr'}
                   </Badge>
                   {call.sentimentScore !== null && (
                     <p className="text-xs text-neutral-500 mt-2">
-                      Score: {(call.sentimentScore * 100).toFixed(0)}%
+                      Skor: %{(call.sentimentScore * 100).toFixed(0)}
                     </p>
                   )}
                 </div>
@@ -331,7 +331,7 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
                 <div className="bg-white border rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <Lightbulb className="h-4 w-4 text-neutral-600" />
-                    <h4 className="text-xs font-medium text-neutral-500">Key Topics</h4>
+                    <h4 className="text-xs font-medium text-neutral-500">Ana Konular</h4>
                   </div>
                   <div className="flex flex-wrap gap-1">
                     {call.keyTopics.map((topic, index) => (
@@ -348,7 +348,7 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
                 <div className="bg-white border rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <CheckCircle className="h-4 w-4 text-neutral-600" />
-                    <h4 className="text-xs font-medium text-neutral-500">Action Items</h4>
+                    <h4 className="text-xs font-medium text-neutral-500">Yapılacaklar</h4>
                   </div>
                   <ul className="space-y-1">
                     {call.actionItems.map((item, index) => (
@@ -370,7 +370,7 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
                     <FileText className="h-4 w-4 text-neutral-600" />
-                    <h4 className="text-sm font-semibold text-neutral-900">Transcript</h4>
+                    <h4 className="text-sm font-semibold text-neutral-900">Transkript</h4>
                   </div>
                   <Button
                     variant="outline"
@@ -378,7 +378,7 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
                     onClick={handleDownloadTranscript}
                   >
                     <Download className="h-3 w-3 mr-2" />
-                    Download
+                    İndir
                   </Button>
                 </div>
 
@@ -386,7 +386,7 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
                 <div className="relative mb-4">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
                   <Input
-                    placeholder="Search within transcript..."
+                    placeholder="Transkript içinde ara..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-10"
@@ -451,7 +451,7 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
                       })
                     ) : (
                       <p className="text-center text-neutral-500 py-4">
-                        No messages match your search
+                        Aramanızla eşleşen mesaj bulunamadı
                       </p>
                     )
                   ) : call.transcriptText ? (
@@ -460,7 +460,7 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
                     </pre>
                   ) : (
                     <p className="text-center text-neutral-500 py-4">
-                      No transcript available
+                      Transkript bulunamadı
                     </p>
                   )}
                 </div>
@@ -472,7 +472,7 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-neutral-600" />
                 <div>
-                  <p className="text-xs text-neutral-500">Date & Time</p>
+                  <p className="text-xs text-neutral-500">Tarih ve Saat</p>
                   <p className="text-sm font-medium text-neutral-900">
                     {formatDate(call.createdAt, 'long')}
                   </p>
@@ -481,7 +481,7 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-neutral-600" />
                 <div>
-                  <p className="text-xs text-neutral-500">Duration</p>
+                  <p className="text-xs text-neutral-500">Süre</p>
                   <p className="text-sm font-medium text-neutral-900">
                     {formatDuration(call.duration)}
                   </p>
@@ -494,7 +494,7 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
         {/* Footer */}
         <div className="border-t border-neutral-200 pt-4 flex justify-end gap-2">
           <Button variant="outline" onClick={onClose}>
-            Close
+            Kapat
           </Button>
         </div>
       </DialogContent>
