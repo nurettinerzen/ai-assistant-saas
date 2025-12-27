@@ -191,34 +191,50 @@ router.post('/elevenlabs/call-ended', async (req, res) => {
       return res.status(401).json({ error: 'Invalid signature' });
     }
 
-    // 11Labs post-call webhook structure can be:
-    // 1. { type: "post_call_transcription", data: { ... } }
-    // 2. Direct fields: { conversation_id, agent_id, ... }
-    const { type, data, event_timestamp } = req.body;
+    // 11Labs post-call webhook structure:
+    // { type: "post_call_transcription", data: { conversation_id, agent_id, status, metadata: { call_duration_secs, ... } } }
+    const { type, data } = req.body;
 
-    // Extract fields from data (if wrapped) or directly from body
+    // Extract fields from data wrapper
     const callData = data || req.body;
     const {
       conversation_id,
       agent_id,
-      call_duration_secs,
-      duration_seconds,
-      start_time,
-      end_time,
       status,
-      metadata,
       transcript,
       analysis
     } = callData;
 
+    // Duration is inside metadata, not at root level
+    const callMetadata = callData.metadata || {};
+    const durationSeconds = callMetadata.call_duration_secs || callData.call_duration_secs || 0;
+
+    // Phone call info from 11Labs metadata
+    const phoneCallInfo = callMetadata.phone_call || {};
+    const externalNumber = phoneCallInfo.external_number; // The number that was called
+
+    // Batch call info from 11Labs metadata
+    const batchCallInfo = callMetadata.batch_call || {};
+    const elevenLabsBatchId = batchCallInfo.batch_call_id;
+    const elevenLabsRecipientId = batchCallInfo.batch_call_recipient_id;
+
+    // Our custom metadata (sent via conversation_initiation_client_data)
+    const customMetadata = callMetadata.custom || callMetadata;
+
     const callId = conversation_id || callData.call_id;
     const agentId = agent_id;
-    const durationSeconds = call_duration_secs || duration_seconds || 0;
 
-    console.log('📊 11Labs Call Ended:', callId, 'Duration:', durationSeconds, 's', 'Status:', status);
+    console.log('📊 11Labs Call Ended:', {
+      callId,
+      duration: durationSeconds + 's',
+      status,
+      externalNumber,
+      elevenLabsBatchId,
+      elevenLabsRecipientId
+    });
 
     // Extract business ID - try multiple methods
-    let businessId = metadata?.business_id;
+    let businessId = customMetadata?.business_id;
 
     // Try to parse as integer if it's a string
     if (businessId && typeof businessId === 'string') {
@@ -246,36 +262,53 @@ router.post('/elevenlabs/call-ended', async (req, res) => {
     if (durationSeconds > 0) {
       usageResult = await trackCallUsage(businessId, durationSeconds, {
         callId: callId,
-        channel: metadata?.channel || 'phone'
+        channel: customMetadata?.channel || 'phone'
       });
 
       console.log('📊 Usage tracked:', {
+        durationMinutes: Math.ceil(durationSeconds / 60),
         fromPackage: usageResult?.fromPackage,
         fromCredit: usageResult?.fromCredit,
         fromOverage: usageResult?.fromOverage
       });
+    } else {
+      console.log('⚠️ Duration is 0, skipping usage tracking');
     }
 
-    // 3. Update BatchCall recipient if this is a batch call
-    if (metadata?.recipient_id || metadata?.batch_call_id) {
+    // 3. Update BatchCall recipient - try multiple methods
+    const callStatus = status === 'done' ? 'completed' : 'failed';
+
+    // Method A: Use our custom metadata (batch_call_id, recipient_id)
+    if (customMetadata?.batch_call_id) {
       try {
-        const callStatus = status === 'done' ? 'completed' : 'failed';
         await updateBatchCallRecipientStatus(
-          metadata.batch_call_id,
-          metadata.recipient_id,
+          customMetadata.batch_call_id,
+          customMetadata.recipient_id,
           callStatus,
           {
             duration: durationSeconds,
             completedAt: new Date(),
+            elevenLabsConversationId: callId,
             transcript: transcript,
             analysis: analysis
           }
         );
-
-        // Update batch call progress
-        await updateBatchCallProgress(metadata.batch_call_id);
+        await updateBatchCallProgress(customMetadata.batch_call_id);
       } catch (err) {
-        console.error('Failed to update batch call recipient:', err);
+        console.error('Failed to update batch call recipient (method A):', err);
+      }
+    }
+    // Method B: Find by phone number (fallback)
+    else if (externalNumber) {
+      try {
+        await updateBatchCallRecipientByPhone(externalNumber, callStatus, {
+          duration: durationSeconds,
+          completedAt: new Date(),
+          elevenLabsConversationId: callId,
+          transcript: transcript
+        });
+      } catch (err) {
+        console.error('Failed to update batch call recipient (method B):', err);
       }
     }
 
@@ -284,11 +317,9 @@ router.post('/elevenlabs/call-ended', async (req, res) => {
       callId: callId,
       agentId: agentId,
       duration: durationSeconds,
-      startTime: start_time,
-      endTime: end_time,
       transcript,
       analysis,
-      metadata
+      metadata: { ...callMetadata, ...customMetadata }
     });
 
     res.json({
@@ -423,6 +454,75 @@ async function updateBatchCallProgress(batchCallId) {
     console.log(`✅ BatchCall progress updated: ${completedCount}/${recipients.length} completed`);
   } catch (error) {
     console.error('Error updating batch call progress:', error);
+  }
+}
+
+// ============================================================================
+// HELPER: Update BatchCall recipient by phone number (fallback method)
+// ============================================================================
+async function updateBatchCallRecipientByPhone(phoneNumber, status, additionalData = {}) {
+  if (!phoneNumber) return;
+
+  try {
+    // Normalize phone number - get last 10 digits
+    const normalizedPhone = phoneNumber.replace(/\D/g, '').slice(-10);
+
+    console.log(`🔍 Looking for recipient with phone ending in: ${normalizedPhone}`);
+
+    // Find recent batch calls that are IN_PROGRESS
+    const recentBatchCalls = await prisma.batchCall.findMany({
+      where: {
+        status: 'IN_PROGRESS',
+        startedAt: {
+          gte: new Date(Date.now() - 24 * 60 * 60 * 1000) // Last 24 hours
+        }
+      },
+      orderBy: { startedAt: 'desc' },
+      take: 10
+    });
+
+    for (const batchCall of recentBatchCalls) {
+      let recipients = [];
+      try {
+        recipients = JSON.parse(batchCall.recipients || '[]');
+      } catch (e) {
+        continue;
+      }
+
+      // Find recipient by phone number
+      const recipientIndex = recipients.findIndex(r => {
+        const recipientPhone = (r.phone_number || '').replace(/\D/g, '');
+        return recipientPhone.endsWith(normalizedPhone) &&
+               (!r.status || r.status === 'pending' || r.status === 'in_progress');
+      });
+
+      if (recipientIndex >= 0) {
+        // Update recipient
+        recipients[recipientIndex] = {
+          ...recipients[recipientIndex],
+          status,
+          ...additionalData
+        };
+
+        await prisma.batchCall.update({
+          where: { id: batchCall.id },
+          data: {
+            recipients: JSON.stringify(recipients)
+          }
+        });
+
+        console.log(`✅ BatchCall recipient updated by phone: ${phoneNumber} -> ${status}`);
+
+        // Update batch call progress
+        await updateBatchCallProgress(batchCall.id);
+
+        return; // Found and updated, exit
+      }
+    }
+
+    console.log(`⚠️ No pending recipient found for phone: ${phoneNumber}`);
+  } catch (error) {
+    console.error('Error updating batch call recipient by phone:', error);
   }
 }
 
