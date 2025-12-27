@@ -688,20 +688,38 @@ router.get('/:id', checkPermission('campaigns:view'), async (req, res) => {
       }
     }
 
-    // Parse recipients
+    // Parse recipients from DB
     let recipients = [];
     try {
       recipients = JSON.parse(batchCall.recipients || '[]');
     } catch (e) {}
 
-    // Merge recipients with call details
+    // Merge recipients with call details from 11Labs
+    // Priority: DB status (from webhook) > 11Labs status > 'pending'
     const enrichedRecipients = recipients.map((recipient, index) => {
       const callDetail = callDetails.find(c => c.phone_number === recipient.phone_number) || {};
+
+      // Use DB status if it was updated by webhook, otherwise use 11Labs status
+      let finalStatus = recipient.status;
+      if (!finalStatus || finalStatus === 'pending') {
+        // Map 11Labs status to our status values
+        const elevenLabsStatus = callDetail.status;
+        if (elevenLabsStatus === 'done' || elevenLabsStatus === 'completed') {
+          finalStatus = 'completed';
+        } else if (elevenLabsStatus === 'failed' || elevenLabsStatus === 'no_answer') {
+          finalStatus = 'failed';
+        } else if (elevenLabsStatus === 'in_progress' || elevenLabsStatus === 'calling') {
+          finalStatus = 'in_progress';
+        } else {
+          finalStatus = 'pending';
+        }
+      }
+
       return {
         ...recipient,
-        status: callDetail.status || 'pending',
-        duration: callDetail.duration || null,
-        conversationId: callDetail.conversation_id || null
+        status: finalStatus,
+        duration: recipient.duration || callDetail.duration || null,
+        conversationId: recipient.elevenLabsConversationId || callDetail.conversation_id || null
       };
     });
 
