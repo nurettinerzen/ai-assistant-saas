@@ -23,13 +23,13 @@ export const REGIONAL_PRICING = {
     symbol: '₺',
     plans: {
       FREE: { price: 0, minutes: 0, overageRate: 0, concurrentLimit: 0 },
-      // YENİ PAKET YAPISI - Aşım ücretleri normal fiyattan yüksek olmalı
+      // YENİ PAKET YAPISI - 3 paket: Başlangıç, Profesyonel, Kurumsal
       STARTER: { price: 799, minutes: 100, overageRate: 10.00, concurrentLimit: 1 },
       PRO: { price: 3999, minutes: 800, overageRate: 8.00, concurrentLimit: 5 },
       ENTERPRISE: { price: null, minutes: null, overageRate: 6.00, concurrentLimit: 10 },
-      // Deprecated - geriye dönük uyumluluk
-      BASIC: { price: 999, minutes: 150, overageRate: 11, concurrentLimit: 1 },
-      PROFESSIONAL: { price: 3499, minutes: 500, overageRate: 10, concurrentLimit: 3 }
+      // Legacy plan aliases - PRO değerlerini kullan
+      BASIC: { price: 799, minutes: 100, overageRate: 10.00, concurrentLimit: 1 },        // → STARTER
+      PROFESSIONAL: { price: 3999, minutes: 800, overageRate: 8.00, concurrentLimit: 5 }  // → PRO
     },
     creditTiers: [
       { minMinutes: 500, unitPrice: 5.00, packageName: 'credit_500', packagePrice: 2500 },
@@ -44,11 +44,11 @@ export const REGIONAL_PRICING = {
     symbol: 'R$',
     plans: {
       FREE: { price: 0, minutes: 0, overageRate: 0, concurrentLimit: 0 },
-      STARTER: { price: 99, minutes: 60, overageRate: 3.50, concurrentLimit: 1 },
-      PRO: { price: 499, minutes: 400, overageRate: 2.50, concurrentLimit: 5 },
+      STARTER: { price: 99, minutes: 100, overageRate: 3.50, concurrentLimit: 1 },
+      PRO: { price: 499, minutes: 800, overageRate: 2.50, concurrentLimit: 5 },
       ENTERPRISE: { price: null, minutes: null, overageRate: 2.00, concurrentLimit: 10 },
-      BASIC: { price: 299, minutes: 250, overageRate: 3.00, concurrentLimit: 1 },
-      PROFESSIONAL: { price: 999, minutes: 1000, overageRate: 2.50, concurrentLimit: 3 }
+      BASIC: { price: 99, minutes: 100, overageRate: 3.50, concurrentLimit: 1 },
+      PROFESSIONAL: { price: 499, minutes: 800, overageRate: 2.50, concurrentLimit: 5 }
     },
     creditTiers: [
       { minMinutes: 250, unitPrice: 2.00 },
@@ -65,8 +65,8 @@ export const REGIONAL_PRICING = {
       STARTER: { price: 49, minutes: 100, overageRate: 0.35, concurrentLimit: 1 },
       PRO: { price: 199, minutes: 800, overageRate: 0.25, concurrentLimit: 5 },
       ENTERPRISE: { price: null, minutes: null, overageRate: 0.20, concurrentLimit: 10 },
-      BASIC: { price: 99, minutes: 250, overageRate: 0.30, concurrentLimit: 1 },
-      PROFESSIONAL: { price: 349, minutes: 1000, overageRate: 0.25, concurrentLimit: 3 }
+      BASIC: { price: 49, minutes: 100, overageRate: 0.35, concurrentLimit: 1 },
+      PROFESSIONAL: { price: 199, minutes: 800, overageRate: 0.25, concurrentLimit: 5 }
     },
     creditTiers: [
       { minMinutes: 250, unitPrice: 0.20 },

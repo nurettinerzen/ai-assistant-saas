@@ -65,27 +65,27 @@ const PLAN_LIMITS = {
     analytics: true,
     aiAnalysis: true
   },
-  // DEPRECATED plans - geriye dönük uyumluluk
+  // Legacy plan aliases - yeni plan değerlerini kullan
   BASIC: {
-    minutes: 150,
+    minutes: 100,            // → STARTER
     calls: -1,
-    assistants: 3,
-    phoneNumbers: 2,
+    assistants: -1,
+    phoneNumbers: -1,
     concurrent: 1,
     trainings: -1,
-    voices: 4,
+    voices: -1,
     integrations: true,
     analytics: true,
     aiAnalysis: false
   },
   PROFESSIONAL: {
-    minutes: 500,
+    minutes: 800,            // → PRO
     calls: -1,
-    assistants: 10,
-    phoneNumbers: 5,
-    concurrent: 3,
+    assistants: -1,
+    phoneNumbers: -1,
+    concurrent: 5,
     trainings: -1,
-    voices: 8,
+    voices: -1,
     integrations: true,
     analytics: true,
     aiAnalysis: true
