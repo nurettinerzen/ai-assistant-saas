@@ -625,6 +625,10 @@
     "availableCredits": "Available Credits",
     "addCredits": "Add Credits",
     "profileSettings": "Profile Settings",
+    "theme": "Theme",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "themeSystem": "System",
     "logOut": "Log Out",
     "assistantsPage": {
       "title": "AI Assistants",

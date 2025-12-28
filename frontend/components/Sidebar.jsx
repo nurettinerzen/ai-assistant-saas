@@ -7,6 +7,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useTheme } from 'next-themes';
 import {
   LayoutDashboard,
   Bot,
@@ -14,7 +15,6 @@ import {
   BarChart3,
   Settings,
   CreditCard,
-  Calculator,
   Puzzle,
   BookOpen,
   Mic,
@@ -24,12 +24,15 @@ import {
   Menu,
   X,
   LogOut,
-  User,
+  Sun,
+  Moon,
+  Monitor,
   MessageSquare,
   Mail,
   Megaphone,
   Users,
   Lock,
+  Check,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -39,6 +42,10 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuPortal,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import LanguageSwitcher from './LanguageSwitcher';
@@ -52,8 +59,15 @@ export default function Sidebar({ user, credits, business }) {
   const { t, locale } = useLanguage();
   const language = locale; // alias for backward compatibility
   const { can } = usePermissions();
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState([]);
+
+  // Prevent hydration mismatch for theme
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Upgrade modal state
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
@@ -100,7 +114,6 @@ export default function Sidebar({ user, credits, business }) {
       label: t('dashboard.sidebar.system'),
       items: [
         { icon: Users, label: t('dashboard.sidebar.team'), href: '/dashboard/team', permission: 'team:view' },
-        { icon: Calculator, label: t('dashboard.sidebar.costCalculator'), href: '/dashboard/cost-calculator', permission: 'dashboard:view' },
         { icon: Settings, label: t('dashboard.sidebar.settings'), href: '/dashboard/settings', permission: 'settings:view' },
         { icon: CreditCard, label: t('dashboard.sidebar.subscription'), href: '/dashboard/subscription', permission: 'billing:view' },
       ],
@@ -247,9 +260,6 @@ export default function Sidebar({ user, credits, business }) {
       </div>
 
       {/* User profile */}
-      <div className="p-3 border-t border-neutral-200"></div>
-
-      {/* User profile */}
       <div className="p-3 border-t border-neutral-200">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -269,12 +279,37 @@ export default function Sidebar({ user, credits, business }) {
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuItem asChild>
-              <Link href="/dashboard/settings" className="cursor-pointer">
-                <User className="h-4 w-4 mr-2" />
-                {t('dashboard.profileSettings')}
-              </Link>
-            </DropdownMenuItem>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger className="cursor-pointer">
+                {mounted && theme === 'dark' ? (
+                  <Moon className="h-4 w-4 mr-2" />
+                ) : mounted && theme === 'light' ? (
+                  <Sun className="h-4 w-4 mr-2" />
+                ) : (
+                  <Monitor className="h-4 w-4 mr-2" />
+                )}
+                {t('dashboard.theme') || 'Tema'}
+              </DropdownMenuSubTrigger>
+              <DropdownMenuPortal>
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem onClick={() => setTheme('light')} className="cursor-pointer">
+                    <Sun className="h-4 w-4 mr-2" />
+                    {t('dashboard.themeLight') || 'Açık'}
+                    {mounted && theme === 'light' && <Check className="h-4 w-4 ml-auto" />}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setTheme('dark')} className="cursor-pointer">
+                    <Moon className="h-4 w-4 mr-2" />
+                    {t('dashboard.themeDark') || 'Koyu'}
+                    {mounted && theme === 'dark' && <Check className="h-4 w-4 ml-auto" />}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setTheme('system')} className="cursor-pointer">
+                    <Monitor className="h-4 w-4 mr-2" />
+                    {t('dashboard.themeSystem') || 'Sistem'}
+                    {mounted && theme === 'system' && <Check className="h-4 w-4 ml-auto" />}
+                  </DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuPortal>
+            </DropdownMenuSub>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-600">
               <LogOut className="h-4 w-4 mr-2" />

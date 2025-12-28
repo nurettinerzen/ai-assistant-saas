@@ -625,6 +625,10 @@
     "availableCredits": "Kullanılabilir Kredi",
     "addCredits": "Kredi Ekle",
     "profileSettings": "Profil Ayarları",
+    "theme": "Tema",
+    "themeLight": "Açık",
+    "themeDark": "Koyu",
+    "themeSystem": "Sistem",
     "logOut": "Çıkış Yap",
     "assistantsPage": {
       "title": "AI Asistanlar",
