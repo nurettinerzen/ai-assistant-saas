@@ -218,22 +218,17 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
       const elevenLabsLang = getElevenLabsLanguage(lang);
       console.log('📝 Language mapping:', lang, '->', elevenLabsLang);
 
-      // Build end_conversation description based on language
-      const endConversationDesc = elevenLabsLang === 'tr'
+      // Build end_call description based on language
+      // Note: 11Labs uses "end_call" not "end_conversation"
+      const endCallDesc = elevenLabsLang === 'tr'
         ? 'Görüşmeyi sonlandır. Müşteri vedalaştığında (güle güle, görüşürüz, hoşça kal, iyi günler, bye, teşekkürler hepsi bu kadar) veya görev tamamlandığında bu aracı kullan.'
-        : 'End the conversation when the user says goodbye or the task is complete.';
+        : 'End the call when the user says goodbye or the task is complete.';
 
-      // Add end_conversation tool for ALL assistants (so they can end call on goodbye)
-      // Add end_call tool for outbound calls (to hang up the phone)
+      // Add end_call tool for ALL assistants (so they can end call on goodbye)
       const toolsWithSystemTools = [
         ...activeToolsElevenLabs,
-        { type: 'system', name: 'end_conversation', description: endConversationDesc }
+        { type: 'system', name: 'end_call', description: endCallDesc }
       ];
-
-      // For outbound, also add end_call
-      if (callDirection === 'outbound') {
-        toolsWithSystemTools.push({ type: 'system', name: 'end_call' });
-      }
 
       // Build language-specific analysis prompts for post-call summary
       const analysisPrompts = {
@@ -518,21 +513,17 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
         console.log('📝 Update language mapping:', lang, '->', elevenLabsLang);
         const effectiveCallDirection = callDirection || assistant.callDirection || 'inbound';
 
-        // Build end_conversation description based on language
-        const endConversationDesc = elevenLabsLang === 'tr'
+        // Build end_call description based on language
+        // Note: 11Labs uses "end_call" not "end_conversation"
+        const endCallDesc = elevenLabsLang === 'tr'
           ? 'Görüşmeyi sonlandır. Müşteri vedalaştığında (güle güle, görüşürüz, hoşça kal, iyi günler, bye, teşekkürler hepsi bu kadar) veya görev tamamlandığında bu aracı kullan.'
-          : 'End the conversation when the user says goodbye or the task is complete.';
+          : 'End the call when the user says goodbye or the task is complete.';
 
-        // Add end_conversation tool for ALL assistants (so they can end call on goodbye)
+        // Add end_call tool for ALL assistants (so they can end call on goodbye)
         const toolsWithSystemTools = [
           ...activeToolsElevenLabs,
-          { type: 'system', name: 'end_conversation', description: endConversationDesc }
+          { type: 'system', name: 'end_call', description: endCallDesc }
         ];
-
-        // For outbound, also add end_call
-        if (effectiveCallDirection === 'outbound') {
-          toolsWithSystemTools.push({ type: 'system', name: 'end_call' });
-        }
 
         // Build language-specific analysis prompts for post-call summary
         const analysisPrompts = {
