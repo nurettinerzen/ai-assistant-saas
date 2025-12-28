@@ -255,7 +255,9 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
             prompt: {
               prompt: fullSystemPrompt,
               llm: 'gemini-2.5-flash-lite',
-              temperature: 0.1
+              temperature: 0.1,
+              // System tools must be inside prompt.tools per 11Labs API
+              tools: toolsWithSystemTools
             },
             first_message: finalFirstMessage,
             language: elevenLabsLang
@@ -281,7 +283,6 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
             success_evaluation_prompt: langAnalysis.success_evaluation
           }
         },
-        tools: toolsWithSystemTools,
         metadata: {
           telyx_business_id: businessId.toString(),
           model: model || 'gpt-4'
@@ -553,7 +554,9 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
               prompt: {
                 prompt: fullSystemPrompt,
                 llm: 'gemini-2.5-flash-lite',
-                temperature: 0.1
+                temperature: 0.1,
+                // System tools must be inside prompt.tools per 11Labs API
+                tools: toolsWithSystemTools
               },
               first_message: firstMessage || assistant.firstMessage,
               language: elevenLabsLang
@@ -575,8 +578,7 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
               transcript_summary_prompt: langAnalysis.transcript_summary,
               success_evaluation_prompt: langAnalysis.success_evaluation
             }
-          },
-          tools: toolsWithSystemTools
+          }
         };
 
         await elevenLabsService.updateAgent(assistant.elevenLabsAgentId, agentUpdateConfig);
