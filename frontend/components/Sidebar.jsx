@@ -149,12 +149,12 @@ export default function Sidebar({ user, credits, business }) {
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
       {/* Logo */}
-      <div className="h-16 flex items-center px-6 border-b border-neutral-200">
+      <div className="h-16 flex items-center px-6 border-b border-neutral-200 dark:border-neutral-700">
         <Link href="/dashboard" className="flex items-center gap-2">
           <div className="w-8 h-8 bg-gradient-to-br from-primary-600 to-primary-700 rounded-lg flex items-center justify-center">
             <Phone className="h-5 w-5 text-white" />
           </div>
-          <span className="text-xl font-bold text-neutral-900">Telyx</span>
+          <span className="text-xl font-bold text-neutral-900 dark:text-white">Telyx</span>
         </Link>
       </div>
 
@@ -187,7 +187,7 @@ export default function Sidebar({ user, credits, business }) {
         {/* Section header */}
         <button
           onClick={() => toggleSection(sectionLabel)}
-          className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold text-neutral-500 uppercase tracking-wider hover:text-neutral-700 transition-colors"
+          className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors"
         >
           <span>{sectionLabel}</span>
           {isCollapsed ? (
@@ -218,14 +218,14 @@ export default function Sidebar({ user, credits, business }) {
                           }}
                           className={cn(
                             'flex items-center justify-between w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
-                            'text-neutral-400 hover:bg-neutral-100 cursor-pointer'
+                            'text-neutral-400 dark:text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer'
                           )}
                         >
                           <div className="flex items-center gap-3">
                             <Icon className="h-5 w-5 flex-shrink-0" />
                             <span>{item.label}</span>
                           </div>
-                          <Lock className="h-4 w-4 text-neutral-400" />
+                          <Lock className="h-4 w-4 text-neutral-400 dark:text-neutral-500" />
                         </button>
                       );
                     }
@@ -238,8 +238,8 @@ export default function Sidebar({ user, credits, business }) {
                         className={cn(
                           'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
                           isActive
-                            ? 'bg-primary-50 text-primary-700'
-                            : 'text-neutral-700 hover:bg-neutral-100'
+                            ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400'
+                            : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800'
                         )}
                       >
                         <Icon className="h-5 w-5 flex-shrink-0" />
@@ -255,25 +255,25 @@ export default function Sidebar({ user, credits, business }) {
       </nav>
 
       {/* Language Switcher */}
-      <div className="px-6 py-3 border-t border-neutral-200">
+      <div className="px-6 py-3 border-t border-neutral-200 dark:border-neutral-700">
         <LanguageSwitcher />
       </div>
 
       {/* User profile */}
-      <div className="p-3 border-t border-neutral-200">
+      <div className="p-3 border-t border-neutral-200 dark:border-neutral-700">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-3 w-full px-3 py-2 rounded-lg hover:bg-neutral-100 transition-colors">
+            <button className="flex items-center gap-3 w-full px-3 py-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">
               <Avatar className="h-9 w-9">
                 <AvatarFallback className="bg-primary-600 text-white">
                   {user?.name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'U'}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 text-left">
-                <p className="text-sm font-medium text-neutral-900 truncate">
+                <p className="text-sm font-medium text-neutral-900 dark:text-white truncate">
                   {user?.name || 'User'}
                 </p>
-                <p className="text-xs text-neutral-500 truncate">{user?.email}</p>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate">{user?.email}</p>
               </div>
               <ChevronDown className="h-4 w-4 text-neutral-400" />
             </button>
@@ -326,9 +326,9 @@ export default function Sidebar({ user, credits, business }) {
       {/* Mobile menu button */}
       <button
         onClick={() => setIsMobileOpen(!isMobileOpen)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-white rounded-lg shadow-lg border border-neutral-200"
+        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-white dark:bg-neutral-900 rounded-lg shadow-lg border border-neutral-200 dark:border-neutral-700"
       >
-        {isMobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+        {isMobileOpen ? <X className="h-6 w-6 dark:text-white" /> : <Menu className="h-6 w-6 dark:text-white" />}
       </button>
 
       {/* Mobile sidebar */}
@@ -338,7 +338,7 @@ export default function Sidebar({ user, credits, business }) {
           onClick={() => setIsMobileOpen(false)}
         >
           <div
-            className="w-64 h-full bg-white shadow-xl"
+            className="w-64 h-full bg-white dark:bg-neutral-900 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <SidebarContent />
@@ -347,7 +347,7 @@ export default function Sidebar({ user, credits, business }) {
       )}
 
       {/* Desktop sidebar */}
-<div className="hidden lg:block w-64 bg-white border-r border-neutral-200 fixed left-0 top-0 bottom-0 overflow-hidden">
+<div className="hidden lg:block w-64 bg-white dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-700 fixed left-0 top-0 bottom-0 overflow-hidden">
   <SidebarContent />
 </div>
 
