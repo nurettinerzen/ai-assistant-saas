@@ -214,25 +214,39 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
     let elevenLabsAgentId = null;
 
     try {
-      // Add end_call tool for outbound calls (no description to avoid TTS reading it)
-      const toolsWithEndCall = callDirection === 'outbound'
-        ? [...activeToolsElevenLabs, { type: 'system', name: 'end_call' }]
-        : activeToolsElevenLabs;
-
       // Convert our language code to 11Labs format (e.g., 'pr' -> 'pt-br')
       const elevenLabsLang = getElevenLabsLanguage(lang);
       console.log('📝 Language mapping:', lang, '->', elevenLabsLang);
 
-      // Build language-specific evaluation prompt for post-call summary
-      const summaryPromptByLang = {
-        tr: 'Bu görüşmenin kısa bir özetini Türkçe olarak yaz. Müşterinin amacını, konuşulan konuları ve sonucu belirt.',
-        en: 'Write a brief summary of this conversation in English. State the customer purpose, topics discussed, and outcome.',
-        de: 'Schreiben Sie eine kurze Zusammenfassung dieses Gesprächs auf Deutsch.',
-        es: 'Escribe un breve resumen de esta conversación en español.',
-        fr: 'Rédigez un bref résumé de cette conversation en français.',
-        pt: 'Escreva um breve resumo desta conversa em português.',
-        'pt-br': 'Escreva um breve resumo desta conversa em português brasileiro.'
+      // Build end_conversation description based on language
+      const endConversationDesc = elevenLabsLang === 'tr'
+        ? 'Görüşmeyi sonlandır. Müşteri vedalaştığında (güle güle, görüşürüz, hoşça kal, iyi günler, bye, teşekkürler hepsi bu kadar) veya görev tamamlandığında bu aracı kullan.'
+        : 'End the conversation when the user says goodbye or the task is complete.';
+
+      // Add end_conversation tool for ALL assistants (so they can end call on goodbye)
+      // Add end_call tool for outbound calls (to hang up the phone)
+      const toolsWithSystemTools = [
+        ...activeToolsElevenLabs,
+        { type: 'system', name: 'end_conversation', description: endConversationDesc }
+      ];
+
+      // For outbound, also add end_call
+      if (callDirection === 'outbound') {
+        toolsWithSystemTools.push({ type: 'system', name: 'end_call' });
+      }
+
+      // Build language-specific analysis prompts for post-call summary
+      const analysisPrompts = {
+        tr: {
+          transcript_summary: 'Bu görüşmenin kısa bir özetini Türkçe olarak yaz. Müşterinin amacını, konuşulan konuları ve sonucu belirt.',
+          success_evaluation: 'Görüşme başarılı mı? Müşterinin talebi karşılandı mı?'
+        },
+        en: {
+          transcript_summary: 'Write a brief summary of this conversation. State the customer purpose, topics discussed, and outcome.',
+          success_evaluation: 'Was the conversation successful? Was the customer request fulfilled?'
+        }
       };
+      const langAnalysis = analysisPrompts[elevenLabsLang] || analysisPrompts.en;
 
       const agentConfig = {
         name: `${name} - ${Date.now()}`,
@@ -260,21 +274,14 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
           },
           turn: {
             mode: 'turn'
+          },
+          // Analysis settings for Turkish/language-specific summary
+          analysis: {
+            transcript_summary_prompt: langAnalysis.transcript_summary,
+            success_evaluation_prompt: langAnalysis.success_evaluation
           }
         },
-        platform_settings: {
-          evaluation: {
-            criteria: [
-              {
-                id: 'call_summary',
-                name: 'Call Summary',
-                type: 'prompt',
-                conversation_goal_prompt: summaryPromptByLang[elevenLabsLang] || summaryPromptByLang.en
-              }
-            ]
-          }
-        },
-        tools: toolsWithEndCall,
+        tools: toolsWithSystemTools,
         metadata: {
           telyx_business_id: businessId.toString(),
           model: model || 'gpt-4'
@@ -510,21 +517,34 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
         console.log('📝 Update language mapping:', lang, '->', elevenLabsLang);
         const effectiveCallDirection = callDirection || assistant.callDirection || 'inbound';
 
-        // Add end_call tool for outbound calls (no description to prevent TTS reading it)
-        const toolsWithEndCall = effectiveCallDirection === 'outbound'
-          ? [...activeToolsElevenLabs, { type: 'system', name: 'end_call' }]
-          : activeToolsElevenLabs;
+        // Build end_conversation description based on language
+        const endConversationDesc = elevenLabsLang === 'tr'
+          ? 'Görüşmeyi sonlandır. Müşteri vedalaştığında (güle güle, görüşürüz, hoşça kal, iyi günler, bye, teşekkürler hepsi bu kadar) veya görev tamamlandığında bu aracı kullan.'
+          : 'End the conversation when the user says goodbye or the task is complete.';
 
-        // Build language-specific evaluation prompt for post-call summary
-        const summaryPromptByLang = {
-          tr: 'Bu görüşmenin kısa bir özetini Türkçe olarak yaz. Müşterinin amacını, konuşulan konuları ve sonucu belirt.',
-          en: 'Write a brief summary of this conversation in English. State the customer purpose, topics discussed, and outcome.',
-          de: 'Schreiben Sie eine kurze Zusammenfassung dieses Gesprächs auf Deutsch.',
-          es: 'Escribe un breve resumen de esta conversación en español.',
-          fr: 'Rédigez un bref résumé de cette conversation en français.',
-          pt: 'Escreva um breve resumo desta conversa em português.',
-          'pt-br': 'Escreva um breve resumo desta conversa em português brasileiro.'
+        // Add end_conversation tool for ALL assistants (so they can end call on goodbye)
+        const toolsWithSystemTools = [
+          ...activeToolsElevenLabs,
+          { type: 'system', name: 'end_conversation', description: endConversationDesc }
+        ];
+
+        // For outbound, also add end_call
+        if (effectiveCallDirection === 'outbound') {
+          toolsWithSystemTools.push({ type: 'system', name: 'end_call' });
+        }
+
+        // Build language-specific analysis prompts for post-call summary
+        const analysisPrompts = {
+          tr: {
+            transcript_summary: 'Bu görüşmenin kısa bir özetini Türkçe olarak yaz. Müşterinin amacını, konuşulan konuları ve sonucu belirt.',
+            success_evaluation: 'Görüşme başarılı mı? Müşterinin talebi karşılandı mı?'
+          },
+          en: {
+            transcript_summary: 'Write a brief summary of this conversation. State the customer purpose, topics discussed, and outcome.',
+            success_evaluation: 'Was the conversation successful? Was the customer request fulfilled?'
+          }
         };
+        const langAnalysis = analysisPrompts[elevenLabsLang] || analysisPrompts.en;
 
         const agentUpdateConfig = {
           name,
@@ -549,21 +569,14 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
               provider: 'elevenlabs',
               model: 'scribe_v1',
               language: elevenLabsLang
+            },
+            // Analysis settings for Turkish/language-specific summary
+            analysis: {
+              transcript_summary_prompt: langAnalysis.transcript_summary,
+              success_evaluation_prompt: langAnalysis.success_evaluation
             }
           },
-          platform_settings: {
-            evaluation: {
-              criteria: [
-                {
-                  id: 'call_summary',
-                  name: 'Call Summary',
-                  type: 'prompt',
-                  conversation_goal_prompt: summaryPromptByLang[elevenLabsLang] || summaryPromptByLang.en
-                }
-              ]
-            }
-          },
-          tools: toolsWithEndCall
+          tools: toolsWithSystemTools
         };
 
         await elevenLabsService.updateAgent(assistant.elevenLabsAgentId, agentUpdateConfig);
