@@ -7,8 +7,14 @@
 import express from 'express';
 import crypto from 'crypto';
 import { PrismaClient } from '@prisma/client';
+import OpenAI from 'openai';
 import concurrentCallManager from '../services/concurrentCallManager.js';
 import { trackCallUsage } from '../services/usageTracking.js';
+
+// OpenAI client for summary translation
+const openai = process.env.OPENAI_API_KEY
+  ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  : null;
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -631,6 +637,38 @@ async function extractBusinessIdFromAgent(agentId) {
 }
 
 // ============================================================================
+// HELPER: Translate summary to Turkish using OpenAI
+// ============================================================================
+async function translateSummaryToTurkish(englishSummary) {
+  if (!englishSummary || !openai) return englishSummary;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: 'Sen bir çevirmensin. Verilen İngilizce metni doğal Türkçe\'ye çevir. Kısa ve öz tut.'
+        },
+        {
+          role: 'user',
+          content: englishSummary
+        }
+      ],
+      max_tokens: 300,
+      temperature: 0.3
+    });
+
+    const turkishSummary = response.choices[0]?.message?.content?.trim();
+    console.log('🌐 Summary translated to Turkish');
+    return turkishSummary || englishSummary;
+  } catch (error) {
+    console.error('❌ Failed to translate summary:', error.message);
+    return englishSummary; // Return original if translation fails
+  }
+}
+
+// ============================================================================
 // HELPER: Create call log from 11Labs data
 // ============================================================================
 async function createCallLog(businessId, data) {
@@ -657,10 +695,15 @@ async function createCallLog(businessId, data) {
     const analysis = data.analysis || {};
 
     // Get summary from various possible locations
-    const summary = analysis.transcript_summary ||
+    let summary = analysis.transcript_summary ||
                    analysis.call_summary ||
                    analysis.summary ||
                    null;
+
+    // Translate summary to Turkish if it's in English
+    if (summary && /^[A-Za-z]/.test(summary)) {
+      summary = await translateSummaryToTurkish(summary);
+    }
 
     // Get sentiment - 11Labs might return it in different formats
     let sentiment = 'neutral';
