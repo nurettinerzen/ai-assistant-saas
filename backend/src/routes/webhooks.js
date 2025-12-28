@@ -353,7 +353,21 @@ router.post('/elevenlabs/call-ended', async (req, res) => {
       console.log('⚠️ Duration is 0, skipping usage tracking');
     }
 
-    // 3. Update BatchCall recipient - try multiple methods
+    // 3. Create call log FIRST (so we have callLogId for batch recipient)
+    const callLog = await createCallLog(businessId, {
+      callId: callId,
+      agentId: agentId,
+      duration: durationSeconds,
+      transcript,
+      analysis,
+      // Phone info for caller display - use external number as it's the customer
+      callerNumber: externalNumber,
+      calledNumber: agentPhoneNumber,
+      direction: callDirection || 'unknown',
+      metadata: { ...callMetadata, ...customMetadata }
+    });
+
+    // 4. Update BatchCall recipient with ALL data including callLogId
     const callStatus = status === 'done' ? 'completed' : 'failed';
 
     // Method A: Use our custom metadata (batch_call_id, recipient_id)
@@ -368,10 +382,13 @@ router.post('/elevenlabs/call-ended', async (req, res) => {
             completedAt: new Date(),
             elevenLabsConversationId: callId,
             transcript: transcript,
-            analysis: analysis
+            analysis: analysis,
+            // Include callLogId for "Listen" button navigation
+            callLogId: callLog?.id || null
           }
         );
         await updateBatchCallProgress(customMetadata.batch_call_id);
+        console.log(`✅ Batch call recipient updated with callLogId: ${callLog?.id}`);
       } catch (err) {
         console.error('Failed to update batch call recipient (method A):', err);
       }
@@ -383,40 +400,11 @@ router.post('/elevenlabs/call-ended', async (req, res) => {
           duration: durationSeconds,
           completedAt: new Date(),
           elevenLabsConversationId: callId,
-          transcript: transcript
+          transcript: transcript,
+          callLogId: callLog?.id || null
         });
       } catch (err) {
         console.error('Failed to update batch call recipient (method B):', err);
-      }
-    }
-
-    // 4. Create call log with full details
-    const callLog = await createCallLog(businessId, {
-      callId: callId,
-      agentId: agentId,
-      duration: durationSeconds,
-      transcript,
-      analysis,
-      // Phone info for caller display - use external number as it's the customer
-      callerNumber: externalNumber,
-      calledNumber: agentPhoneNumber,
-      direction: callDirection || 'unknown',
-      metadata: { ...callMetadata, ...customMetadata }
-    });
-
-    // 5. Update batch call recipient with callLogId for "Listen" button
-    if (callLog && customMetadata?.batch_call_id) {
-      try {
-        await updateBatchCallRecipientStatus(
-          customMetadata.batch_call_id,
-          customMetadata.recipient_id,
-          callStatus,
-          {
-            callLogId: callLog.id
-          }
-        );
-      } catch (err) {
-        console.error('Failed to update batch call recipient with callLogId:', err);
       }
     }
 

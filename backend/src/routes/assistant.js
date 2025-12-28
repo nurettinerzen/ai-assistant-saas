@@ -223,6 +223,17 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
       const elevenLabsLang = getElevenLabsLanguage(lang);
       console.log('📝 Language mapping:', lang, '->', elevenLabsLang);
 
+      // Build language-specific evaluation prompt for post-call summary
+      const summaryPromptByLang = {
+        tr: 'Bu görüşmenin kısa bir özetini Türkçe olarak yaz. Müşterinin amacını, konuşulan konuları ve sonucu belirt.',
+        en: 'Write a brief summary of this conversation in English. State the customer purpose, topics discussed, and outcome.',
+        de: 'Schreiben Sie eine kurze Zusammenfassung dieses Gesprächs auf Deutsch.',
+        es: 'Escribe un breve resumen de esta conversación en español.',
+        fr: 'Rédigez un bref résumé de cette conversation en français.',
+        pt: 'Escreva um breve resumo desta conversa em português.',
+        'pt-br': 'Escreva um breve resumo desta conversa em português brasileiro.'
+      };
+
       const agentConfig = {
         name: `${name} - ${Date.now()}`,
         conversation_config: {
@@ -249,6 +260,18 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
           },
           turn: {
             mode: 'turn'
+          }
+        },
+        platform_settings: {
+          evaluation: {
+            criteria: [
+              {
+                id: 'call_summary',
+                name: 'Call Summary',
+                type: 'prompt',
+                conversation_goal_prompt: summaryPromptByLang[elevenLabsLang] || summaryPromptByLang.en
+              }
+            ]
           }
         },
         tools: toolsWithEndCall,
@@ -492,6 +515,17 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
           ? [...activeToolsElevenLabs, { type: 'system', name: 'end_call' }]
           : activeToolsElevenLabs;
 
+        // Build language-specific evaluation prompt for post-call summary
+        const summaryPromptByLang = {
+          tr: 'Bu görüşmenin kısa bir özetini Türkçe olarak yaz. Müşterinin amacını, konuşulan konuları ve sonucu belirt.',
+          en: 'Write a brief summary of this conversation in English. State the customer purpose, topics discussed, and outcome.',
+          de: 'Schreiben Sie eine kurze Zusammenfassung dieses Gesprächs auf Deutsch.',
+          es: 'Escribe un breve resumen de esta conversación en español.',
+          fr: 'Rédigez un bref résumé de cette conversation en français.',
+          pt: 'Escreva um breve resumo desta conversa em português.',
+          'pt-br': 'Escreva um breve resumo desta conversa em português brasileiro.'
+        };
+
         const agentUpdateConfig = {
           name,
           conversation_config: {
@@ -515,6 +549,18 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
               provider: 'elevenlabs',
               model: 'scribe_v1',
               language: elevenLabsLang
+            }
+          },
+          platform_settings: {
+            evaluation: {
+              criteria: [
+                {
+                  id: 'call_summary',
+                  name: 'Call Summary',
+                  type: 'prompt',
+                  conversation_goal_prompt: summaryPromptByLang[elevenLabsLang] || summaryPromptByLang.en
+                }
+              ]
             }
           },
           tools: toolsWithEndCall
