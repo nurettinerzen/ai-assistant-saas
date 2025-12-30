@@ -34,7 +34,16 @@ const elevenLabsService = {
       console.log('✅ 11Labs Agent created:', response.data.agent_id);
       return response.data;
     } catch (error) {
-      console.error('❌ 11Labs createAgent error:', error.response?.data || error.message);
+      // Log full error details including loc array
+      const errorData = error.response?.data;
+      if (errorData?.detail) {
+        console.error('❌ 11Labs createAgent error details:');
+        errorData.detail.forEach((d, i) => {
+          console.error(`  [${i}] type: ${d.type}, loc: ${JSON.stringify(d.loc)}, msg: ${d.msg}, input: ${JSON.stringify(d.input)}`);
+        });
+      } else {
+        console.error('❌ 11Labs createAgent error:', errorData || error.message);
+      }
       throw error;
     }
   },

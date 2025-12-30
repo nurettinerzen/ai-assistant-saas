@@ -284,6 +284,10 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
         }
       };
 
+      // DEBUG: Log the full agent config and tools
+      console.log('🔍 DEBUG - toolsWithSystemTools:', JSON.stringify(toolsWithSystemTools, null, 2));
+      console.log('🔍 DEBUG - agentConfig:', JSON.stringify(agentConfig, null, 2));
+
       const elevenLabsResponse = await elevenLabsService.createAgent(agentConfig);
       elevenLabsAgentId = elevenLabsResponse.agent_id;
       console.log('✅ 11Labs Agent created:', elevenLabsAgentId);

@@ -41,7 +41,7 @@ export function getActiveToolsForElevenLabs(business, serverUrl = null) {
   const webhookUrl = `${backendUrl}/api/elevenlabs/webhook`;
 
   // Convert OpenAI format to 11Labs webhook format
-  // 11Labs uses api_schema instead of parameters + webhook
+  // 11Labs uses api_schema - omit path_params_schema and query_params_schema if not needed
   return baseTools.map(tool => ({
     type: 'webhook',
     name: tool.function.name,
@@ -49,8 +49,6 @@ export function getActiveToolsForElevenLabs(business, serverUrl = null) {
     api_schema: {
       url: webhookUrl,
       method: 'POST',
-      path_params_schema: {},
-      query_params_schema: {},
       request_body_schema: {
         type: 'object',
         properties: {
@@ -61,9 +59,6 @@ export function getActiveToolsForElevenLabs(business, serverUrl = null) {
           ...tool.function.parameters.properties
         },
         required: tool.function.parameters.required || []
-      },
-      request_headers: {
-        'Content-Type': 'application/json'
       }
     }
   }));

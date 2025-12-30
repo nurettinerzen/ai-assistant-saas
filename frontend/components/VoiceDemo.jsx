@@ -1,10 +1,9 @@
 'use client';
 
 import { useLanguage } from '@/contexts/LanguageContext';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { Conversation } from '@elevenlabs/client';
 
-// 11Labs Conversational AI Web SDK
-// Uses WebSocket connection for voice calls
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 export default function VoiceDemo({ assistantId, onClose }) {
@@ -12,18 +11,31 @@ export default function VoiceDemo({ assistantId, onClose }) {
   const [isCallActive, setIsCallActive] = useState(false);
   const [callStatus, setCallStatus] = useState('');
   const [isConnecting, setIsConnecting] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
   const conversationRef = useRef(null);
-  const audioContextRef = useRef(null);
+
+  const endCall = useCallback(async () => {
+    if (conversationRef.current) {
+      try {
+        await conversationRef.current.endSession();
+      } catch (error) {
+        console.error('Error ending session:', error);
+      }
+      conversationRef.current = null;
+    }
+    setIsCallActive(false);
+    setIsSpeaking(false);
+    setCallStatus(t('onboarding.voiceDemo.callStatus.ended'));
+  }, [t]);
 
   useEffect(() => {
     return () => {
-      // Cleanup on unmount
       if (conversationRef.current) {
         endCall();
       }
     };
-  }, []);
+  }, [endCall]);
 
   const startCall = async () => {
     try {
@@ -41,54 +53,44 @@ export default function VoiceDemo({ assistantId, onClose }) {
       const { signedUrl } = await response.json();
       console.log('✅ Got signed URL for 11Labs conversation');
 
-      // Initialize audio context
-      audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
-
-      // Connect to 11Labs WebSocket
-      const ws = new WebSocket(signedUrl);
-      conversationRef.current = ws;
-
-      ws.onopen = () => {
-        console.log('✅ WebSocket connected');
-        setIsCallActive(true);
-        setIsConnecting(false);
-        setCallStatus(t('onboarding.voiceDemo.callStatus.started'));
-
-        // Start sending audio from microphone
-        startMicrophoneCapture(ws);
-      };
-
-      ws.onmessage = async (event) => {
-        try {
-          const data = JSON.parse(event.data);
-
-          if (data.type === 'audio') {
-            // Play received audio
-            await playAudio(data.audio);
+      // Start conversation using official SDK
+      const conversation = await Conversation.startSession({
+        signedUrl: signedUrl,
+        onConnect: () => {
+          console.log('✅ Connected to 11Labs');
+          setIsCallActive(true);
+          setIsConnecting(false);
+          setCallStatus(t('onboarding.voiceDemo.callStatus.started'));
+        },
+        onDisconnect: () => {
+          console.log('🔴 Disconnected from 11Labs');
+          setIsCallActive(false);
+          setIsSpeaking(false);
+          setCallStatus(t('onboarding.voiceDemo.callStatus.ended'));
+        },
+        onError: (error) => {
+          console.error('11Labs error:', error);
+          setCallStatus('Error: ' + (error.message || 'Connection failed'));
+          setIsCallActive(false);
+          setIsConnecting(false);
+        },
+        onModeChange: (mode) => {
+          console.log('📢 Mode changed:', mode.mode);
+          if (mode.mode === 'speaking') {
+            setIsSpeaking(true);
             setCallStatus(t('onboarding.voiceDemo.callStatus.speaking'));
-          } else if (data.type === 'transcript') {
-            console.log('📝 Transcript:', data.text);
-          } else if (data.type === 'end') {
-            console.log('🔴 Conversation ended by server');
-            endCall();
+          } else {
+            setIsSpeaking(false);
+            setCallStatus(t('onboarding.voiceDemo.callStatus.listening'));
           }
-        } catch (error) {
-          console.error('Error processing message:', error);
+        },
+        onMessage: (message) => {
+          console.log('📝 Message:', message);
         }
-      };
+      });
 
-      ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
-        setCallStatus('Error: Connection failed');
-        setIsCallActive(false);
-        setIsConnecting(false);
-      };
-
-      ws.onclose = () => {
-        console.log('🔴 WebSocket closed');
-        setIsCallActive(false);
-        setCallStatus(t('onboarding.voiceDemo.callStatus.ended'));
-      };
+      conversationRef.current = conversation;
+      console.log('✅ Conversation started');
 
     } catch (error) {
       console.error('Start call error:', error);
@@ -96,89 +98,6 @@ export default function VoiceDemo({ assistantId, onClose }) {
       setIsCallActive(false);
       setIsConnecting(false);
     }
-  };
-
-  const startMicrophoneCapture = async (ws) => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0 && ws.readyState === WebSocket.OPEN) {
-          // Convert to base64 and send
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            const base64 = reader.result.split(',')[1];
-            ws.send(JSON.stringify({
-              type: 'audio',
-              audio: base64
-            }));
-          };
-          reader.readAsDataURL(event.data);
-        }
-      };
-
-      mediaRecorder.start(100); // Send audio chunks every 100ms
-
-      // Store for cleanup
-      conversationRef.current.mediaRecorder = mediaRecorder;
-      conversationRef.current.stream = stream;
-
-      setCallStatus(t('onboarding.voiceDemo.callStatus.listening'));
-    } catch (error) {
-      console.error('Microphone error:', error);
-      setCallStatus('Microphone access denied');
-    }
-  };
-
-  const playAudio = async (base64Audio) => {
-    try {
-      if (!audioContextRef.current) return;
-
-      const audioData = atob(base64Audio);
-      const arrayBuffer = new ArrayBuffer(audioData.length);
-      const view = new Uint8Array(arrayBuffer);
-      for (let i = 0; i < audioData.length; i++) {
-        view[i] = audioData.charCodeAt(i);
-      }
-
-      const audioBuffer = await audioContextRef.current.decodeAudioData(arrayBuffer);
-      const source = audioContextRef.current.createBufferSource();
-      source.buffer = audioBuffer;
-      source.connect(audioContextRef.current.destination);
-      source.start();
-    } catch (error) {
-      console.error('Error playing audio:', error);
-    }
-  };
-
-  const endCall = () => {
-    if (conversationRef.current) {
-      // Stop media recorder
-      if (conversationRef.current.mediaRecorder) {
-        conversationRef.current.mediaRecorder.stop();
-      }
-
-      // Stop microphone stream
-      if (conversationRef.current.stream) {
-        conversationRef.current.stream.getTracks().forEach(track => track.stop());
-      }
-
-      // Close WebSocket
-      if (conversationRef.current.readyState === WebSocket.OPEN) {
-        conversationRef.current.close();
-      }
-
-      conversationRef.current = null;
-    }
-
-    if (audioContextRef.current) {
-      audioContextRef.current.close();
-      audioContextRef.current = null;
-    }
-
-    setIsCallActive(false);
-    setCallStatus(t('onboarding.voiceDemo.callStatus.ended'));
   };
 
   const handleClose = () => {
