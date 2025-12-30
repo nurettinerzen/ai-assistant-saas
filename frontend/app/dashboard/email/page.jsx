@@ -80,7 +80,10 @@ export default function EmailDashboardPage() {
   // Load threads
   const loadThreads = useCallback(async (status = null) => {
     try {
-      const params = status ? { status } : {};
+      const params = { limit: 500 }; // Fetch all threads
+      if (status) {
+        params.status = status;
+      }
       const response = await apiClient.get('/api/email/threads', { params });
       setThreads(response.data.threads || []);
     } catch (error) {
