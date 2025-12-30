@@ -6,13 +6,41 @@
 
 import { PrismaClient } from '@prisma/client';
 import OpenAI from 'openai';
-import { getGmailService } from './gmail.js';
-import { getOutlookService } from './outlook.js';
+import { google } from 'googleapis';
 
 const prisma = new PrismaClient();
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
+
+/**
+ * Create authenticated Gmail API client for a business
+ */
+async function getAuthenticatedGmailClient(integration) {
+  const oauth2Client = new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET
+  );
+
+  oauth2Client.setCredentials(integration.credentials);
+
+  // Handle token refresh if needed
+  if (integration.credentials.expiry_date && Date.now() >= integration.credentials.expiry_date) {
+    try {
+      const { credentials } = await oauth2Client.refreshAccessToken();
+      await prisma.emailIntegration.update({
+        where: { id: integration.id },
+        data: { credentials }
+      });
+      oauth2Client.setCredentials(credentials);
+    } catch (error) {
+      console.error('[Style Analyzer] Token refresh failed:', error);
+      throw error;
+    }
+  }
+
+  return google.gmail({ version: 'v1', auth: oauth2Client });
+}
 
 /**
  * Analyze user's writing style from sent emails
@@ -103,11 +131,11 @@ export async function analyzeWritingStyle(businessId) {
  */
 async function fetchGmailSentEmails(integration, limit = 100) {
   try {
-    const gmailService = await getGmailService(integration);
-    if (!gmailService) return [];
+    const gmail = await getAuthenticatedGmailClient(integration);
+    if (!gmail) return [];
 
     // Get message list from Sent folder
-    const listResponse = await gmailService.users.messages.list({
+    const listResponse = await gmail.users.messages.list({
       userId: 'me',
       labelIds: ['SENT'],
       maxResults: limit,
@@ -123,7 +151,7 @@ async function fetchGmailSentEmails(integration, limit = 100) {
 
     for (const msg of messageIds) {
       try {
-        const msgResponse = await gmailService.users.messages.get({
+        const msgResponse = await gmail.users.messages.get({
           userId: 'me',
           id: msg.id,
           format: 'full',
@@ -169,32 +197,13 @@ async function fetchGmailSentEmails(integration, limit = 100) {
 
 /**
  * Fetch sent emails from Outlook
+ * Note: Outlook integration is not yet fully implemented
  */
 async function fetchOutlookSentEmails(integration, limit = 100) {
-  try {
-    const outlookService = await getOutlookService(integration);
-    if (!outlookService) return [];
-
-    // Get sent items
-    const response = await outlookService
-      .api('/me/mailFolders/sentitems/messages')
-      .select('subject,toRecipients,body')
-      .top(limit)
-      .get();
-
-    if (!response.value || response.value.length === 0) {
-      return [];
-    }
-
-    return response.value.map((msg) => ({
-      subject: msg.subject || '',
-      to: msg.toRecipients?.map((r) => r.emailAddress?.address).join(', ') || '',
-      body: msg.body?.content?.substring(0, 2000) || '',
-    }));
-  } catch (error) {
-    console.error('[Style Analyzer] Outlook fetch error:', error);
-    return [];
-  }
+  // TODO: Implement Outlook Graph API integration
+  // For now, return empty array as Outlook is not yet supported
+  console.warn('[Style Analyzer] Outlook style analysis not yet implemented');
+  return [];
 }
 
 /**
