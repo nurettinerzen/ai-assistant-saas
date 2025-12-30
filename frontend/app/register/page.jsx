@@ -12,8 +12,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { toast, Toaster } from 'sonner';
+import { apiClient } from '@/lib/api';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
 const getBusinessTypes = (t) => [
@@ -56,21 +56,11 @@ export default function RegisterPage() {
 
     setGoogleLoading(true);
     try {
-      const res = await fetch(`${API_URL}/api/auth/google`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          credential: response.credential,
-        }),
+      const res = await apiClient.post('/api/auth/google', {
+        credential: response.credential,
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Google sign-in failed');
-      }
+      const data = res.data;
 
       // Save token and user data
       localStorage.setItem('token', data.token);
@@ -86,7 +76,7 @@ export default function RegisterPage() {
       router.push('/dashboard');
     } catch (err) {
       console.error('Google sign-in error:', err);
-      toast.error(err.message || 'Google sign-in failed');
+      toast.error(err.response?.data?.error || err.message || 'Google sign-in failed');
     } finally {
       setGoogleLoading(false);
     }
@@ -111,24 +101,15 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_URL}/api/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
+      const response = await apiClient.post('/api/auth/register', formData);
+      const data = response.data;
 
-      const data = await response.json();
-
-      if (response.ok) {
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user));
-        // Redirect to email pending page for verification
-        router.push('/auth/email-pending');
-      } else {
-        setError(data.error || 'Registration failed');
-      }
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      // Redirect to email pending page for verification
+      router.push('/auth/email-pending');
     } catch (err) {
-      setError('Connection error. Please try again.');
+      setError(err.response?.data?.error || 'Registration failed');
     } finally {
       setLoading(false);
     }

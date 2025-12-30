@@ -7,8 +7,7 @@ import { Phone, CheckCircle, XCircle, Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast, Toaster } from 'sonner';
 import { useLanguage } from '@/contexts/LanguageContext';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+import { apiClient } from '@/lib/api';
 
 function VerifyEmailContent() {
   const router = useRouter();
@@ -35,31 +34,28 @@ function VerifyEmailContent() {
     try {
       setStatus('verifying');
 
-      const response = await fetch(`${API_URL}/api/auth/verify-email?token=${token}`);
-      const data = await response.json();
+      const response = await apiClient.get(`/api/auth/verify-email?token=${token}`);
+      const data = response.data;
 
-      if (response.ok) {
-        setStatus('success');
-        setEmail(data.email);
-        toast.success('Email adresiniz başarıyla doğrulandı!');
+      setStatus('success');
+      setEmail(data.email);
+      toast.success('Email adresiniz başarıyla doğrulandı!');
 
-        // Redirect to dashboard after 3 seconds
-        setTimeout(() => {
-          router.push('/dashboard');
-        }, 3000);
-      } else {
-        if (data.code === 'TOKEN_EXPIRED') {
-          setStatus('expired');
-          setErrorMessage('Doğrulama linkinin süresi dolmuş. Yeni bir link talep edebilirsiniz.');
-        } else {
-          setStatus('error');
-          setErrorMessage(data.error || 'Doğrulama başarısız oldu.');
-        }
-      }
+      // Redirect to dashboard after 3 seconds
+      setTimeout(() => {
+        router.push('/dashboard');
+      }, 3000);
     } catch (error) {
       console.error('Verification error:', error);
-      setStatus('error');
-      setErrorMessage('Bir hata oluştu. Lütfen tekrar deneyin.');
+
+      const data = error.response?.data;
+      if (data?.code === 'TOKEN_EXPIRED') {
+        setStatus('expired');
+        setErrorMessage('Doğrulama linkinin süresi dolmuş. Yeni bir link talep edebilirsiniz.');
+      } else {
+        setStatus('error');
+        setErrorMessage(data?.error || 'Doğrulama başarısız oldu.');
+      }
     }
   };
 

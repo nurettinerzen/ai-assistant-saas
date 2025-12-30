@@ -80,7 +80,10 @@ export default function EmailDashboardPage() {
   // Load threads
   const loadThreads = useCallback(async (status = null) => {
     try {
-      const params = status ? { status } : {};
+      const params = { limit: 500 }; // Fetch all threads
+      if (status) {
+        params.status = status;
+      }
       const response = await apiClient.get('/api/email/threads', { params });
       setThreads(response.data.threads || []);
     } catch (error) {
@@ -278,20 +281,20 @@ export default function EmailDashboardPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <button
             onClick={() => {
-              setStatusFilter(statusFilter === 'PENDING_REPLY' ? null : 'PENDING_REPLY');
-              loadThreads(statusFilter === 'PENDING_REPLY' ? null : 'PENDING_REPLY');
+              setStatusFilter(statusFilter === 'NO_REPLY_NEEDED' ? null : 'NO_REPLY_NEEDED');
+              loadThreads(statusFilter === 'NO_REPLY_NEEDED' ? null : 'NO_REPLY_NEEDED');
             }}
             className={`bg-white rounded-lg border p-4 text-left transition-all hover:shadow-md ${
-              statusFilter === 'PENDING_REPLY' ? 'border-yellow-500 ring-2 ring-yellow-200' : 'border-neutral-200'
+              statusFilter === 'NO_REPLY_NEEDED' ? 'border-purple-500 ring-2 ring-purple-200' : 'border-neutral-200'
             }`}
           >
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-yellow-100 rounded-lg">
-                <Clock className="h-5 w-5 text-yellow-600" />
+              <div className="p-2 bg-purple-100 rounded-lg">
+                <Clock className="h-5 w-5 text-purple-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-neutral-900">{stats.pendingCount}</p>
-                <p className="text-sm text-neutral-600">{t('dashboard.emailPage.pendingReply')}</p>
+                <p className="text-2xl font-bold text-neutral-900">{stats.noReplyNeededCount || 0}</p>
+                <p className="text-sm text-neutral-600">{t('dashboard.emailPage.noReplyNeeded')}</p>
               </div>
             </div>
           </button>

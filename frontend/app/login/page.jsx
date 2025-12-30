@@ -11,8 +11,8 @@ import { Label } from '@/components/ui/label';
 import { toast, Toaster } from 'sonner';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
+import { apiClient } from '@/lib/api';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
 export default function LoginPage() {
@@ -43,21 +43,11 @@ export default function LoginPage() {
 
     setGoogleLoading(true);
     try {
-      const res = await fetch(`${API_URL}/api/auth/google`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          credential: response.credential,
-        }),
+      const res = await apiClient.post('/api/auth/google', {
+        credential: response.credential,
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Google sign-in failed');
-      }
+      const data = res.data;
 
       // Save token and user data
       localStorage.setItem('token', data.token);
@@ -73,7 +63,7 @@ export default function LoginPage() {
       router.push('/dashboard');
     } catch (error) {
       console.error('Google sign-in error:', error);
-      toast.error(error.message || 'Google sign-in failed');
+      toast.error(error.response?.data?.error || error.message || 'Google sign-in failed');
     } finally {
       setGoogleLoading(false);
     }
@@ -84,19 +74,8 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Login failed');
-      }
+      const response = await apiClient.post('/api/auth/login', formData);
+      const data = response.data;
 
       // Save token and user data
       localStorage.setItem('token', data.token);
