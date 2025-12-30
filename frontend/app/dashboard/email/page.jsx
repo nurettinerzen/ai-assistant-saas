@@ -31,8 +31,7 @@ import {
   ChevronRight,
   AlertCircle,
   Trash2,
-  ExternalLink,
-  Ban
+  ExternalLink
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast } from '@/lib/toast';
@@ -276,7 +275,7 @@ export default function EmailDashboardPage() {
 
       {/* Stats - Clickable for filtering */}
       {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <button
             onClick={() => {
               setStatusFilter(statusFilter === 'PENDING_REPLY' ? null : 'PENDING_REPLY');
@@ -312,25 +311,6 @@ export default function EmailDashboardPage() {
               <div>
                 <p className="text-2xl font-bold text-neutral-900">{stats.draftReadyCount}</p>
                 <p className="text-sm text-neutral-600">{t('dashboard.emailPage.draftsReady')}</p>
-              </div>
-            </div>
-          </button>
-          <button
-            onClick={() => {
-              setStatusFilter(statusFilter === 'NO_REPLY_NEEDED' ? null : 'NO_REPLY_NEEDED');
-              loadThreads(statusFilter === 'NO_REPLY_NEEDED' ? null : 'NO_REPLY_NEEDED');
-            }}
-            className={`bg-white rounded-lg border p-4 text-left transition-all hover:shadow-md ${
-              statusFilter === 'NO_REPLY_NEEDED' ? 'border-purple-500 ring-2 ring-purple-200' : 'border-neutral-200'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <Ban className="h-5 w-5 text-purple-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-neutral-900">{stats.noReplyNeededCount || 0}</p>
-                <p className="text-sm text-neutral-600">{t('dashboard.emailPage.noReplyNeeded')}</p>
               </div>
             </div>
           </button>

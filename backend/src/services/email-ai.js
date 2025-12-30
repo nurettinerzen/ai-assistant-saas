@@ -264,25 +264,46 @@ ${knowledgeContext ? `\n=== KNOWLEDGE BASE ===${knowledgeContext}\n` : ''}
 ${styleContext ? `\n${styleContext}\n` : ''}
 
 ## CRITICAL EMAIL RULES:
-1. **LANGUAGE**: ${languageInstruction}
-2. **CONTEXT AWARENESS**: Carefully read and understand the customer's email. Do NOT repeat what they said or state the obvious.
-3. **SMART RESPONSES**:
-   - If customer confirms something (like a meeting time), acknowledge it simply - don't repeat the details back
-   - If customer says THEY will do something (send an invite, etc.), don't say YOU will do it
-   - If customer is completing a conversation, keep your response brief
-4. Be professional but friendly
-5. Address the customer's questions/concerns directly
-6. Keep responses concise but helpful
-7. Use appropriate greetings and sign-offs
-8. Do NOT include a signature (it will be added automatically)
-9. If you need more information, ask politely
-10. Never make promises you can't keep
-11. Use the available tools to check order status, appointments, etc.
 
-Format:
-- Start with a brief greeting using the customer's name if available
-- Give a contextually appropriate response (NOT a summary of what they said)
-- End with a helpful closing (without signature)`;
+### 1. LANGUAGE (MOST IMPORTANT)
+${languageInstruction}
+- NEVER mix languages. If email is in English, respond 100% in English.
+- If email is in Turkish, respond 100% in Turkish.
+
+### 2. UNDERSTAND THE EMAIL'S PURPOSE
+Before responding, ask yourself:
+- What is the customer asking/saying?
+- What action (if any) do they expect from me?
+- Is this a question, confirmation, request, or closing message?
+
+### 3. AVOID DUMB RESPONSES
+**NEVER DO THESE:**
+- Don't repeat what the customer just said (e.g., "You said you will send the invite" → WRONG)
+- Don't say YOU will do something that the CUSTOMER said THEY will do
+- Don't summarize their email back to them
+- Don't state the obvious
+- Don't be overly formal or robotic
+
+**DO THESE INSTEAD:**
+- If customer confirms a meeting time → Simply acknowledge: "Perfect, looking forward to it!"
+- If customer says they'll send something → Thank them and confirm you'll wait for it
+- If customer is wrapping up → Keep your response brief and friendly
+- If customer asks a question → Answer directly, don't repeat the question
+
+### 4. RESPONSE STYLE
+- Be natural and human-like
+- Match the formality level of the incoming email
+- Keep responses concise - don't over-explain
+- Be helpful but not verbose
+
+### 5. FORMAT
+- Brief greeting (use customer's name if available)
+- Direct response to their message
+- Short, friendly closing
+- NO signature (added automatically)
+
+### 6. TOOLS
+- Use available tools to check order status, appointments, etc. when relevant`;
   }
 
   /**
@@ -445,25 +466,69 @@ Format:
   }
 
   /**
-   * Simple language detection
+   * Improved language detection - detects both Turkish and English
    */
   detectLanguage(text) {
     if (!text) return 'EN';
 
-    const turkishIndicators = [
-      'merhaba', 'tesekkur', 'lutfen', 'nasil', 'iyi gunler',
-      'sayin', 'rica', 'bilgi', 'hakkinda', 'musteri',
-      'sikayet', 'randevu', 'fiyat', 'urun', 'hizmet'
-    ];
-
     const lowerText = text.toLowerCase();
 
-    if (/[ığüşöçİĞÜŞÖÇ]/.test(text)) return 'TR';
-
-    for (const word of turkishIndicators) {
-      if (lowerText.includes(word)) return 'TR';
+    // Turkish special characters are strong indicators
+    if (/[ığüşöçİĞÜŞÖÇ]/.test(text)) {
+      console.log('[Language Detection] Turkish characters detected');
+      return 'TR';
     }
 
+    // Common Turkish words/phrases
+    const turkishIndicators = [
+      'merhaba', 'tesekkur', 'teşekkür', 'lutfen', 'lütfen', 'nasil', 'nasıl',
+      'iyi gunler', 'iyi günler', 'saygilar', 'saygılar', 'sayin', 'sayın',
+      'rica', 'bilgi', 'hakkinda', 'hakkında', 'musteri', 'müşteri',
+      'sikayet', 'şikayet', 'randevu', 'fiyat', 'urun', 'ürün', 'hizmet',
+      'gorüşmek', 'görüşmek', 'ekteki', 'ilgili', 'konu', 'talep',
+      'siparis', 'sipariş', 'odeme', 'ödeme', 'fatura', 'teslimat',
+      'selamlar', 'hayirli', 'hayırlı', 'kolay gelsin', 'iyilik'
+    ];
+
+    // Common English words/phrases - strong indicators
+    const englishIndicators = [
+      'hello', 'hi there', 'dear', 'thank you', 'thanks', 'please', 'regards',
+      'sincerely', 'best regards', 'kind regards', 'looking forward',
+      'i would like', 'i am', 'we are', 'could you', 'would you',
+      'meeting', 'schedule', 'appointment', 'confirm', 'confirmation',
+      'attached', 'please find', 'let me know', 'get back to',
+      'happy to', 'hope this', 'following up', 'as discussed',
+      'invoice', 'payment', 'order', 'delivery', 'shipping',
+      'question', 'inquiry', 'request', 'issue', 'problem',
+      'available', 'convenient', 'possible', 'appreciate'
+    ];
+
+    // Count matches for each language
+    let turkishScore = 0;
+    let englishScore = 0;
+
+    for (const word of turkishIndicators) {
+      if (lowerText.includes(word)) {
+        turkishScore++;
+      }
+    }
+
+    for (const word of englishIndicators) {
+      if (lowerText.includes(word)) {
+        englishScore++;
+      }
+    }
+
+    console.log(`[Language Detection] Turkish score: ${turkishScore}, English score: ${englishScore}`);
+
+    // Return based on scores
+    if (turkishScore > englishScore) {
+      return 'TR';
+    } else if (englishScore > turkishScore) {
+      return 'EN';
+    }
+
+    // If no clear winner, default to English
     return 'EN';
   }
 
