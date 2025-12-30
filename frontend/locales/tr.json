@@ -1321,11 +1321,13 @@
       "conversationClosed": "Bu konuşma kapatıldı",
       "selectConversation": "Konuşma Seçin",
       "selectConversationDesc": "Detayları görüntülemek ve yanıtları yönetmek için listeden bir konuşma seçin",
+      "noReplyNeeded": "Yanıt Gerekmiyor",
       "status": {
         "awaitingReply": "Yanıt Bekleniyor",
         "draftReady": "Taslak Hazır",
         "replied": "Yanıtlandı",
-        "closed": "Kapatıldı"
+        "closed": "Kapatıldı",
+        "noReplyNeeded": "Yanıt Gerekmiyor"
       },
       "failedToLoadThread": "Konuşma detayları yüklenemedi",
       "emailsSyncedSuccess": "E-postalar başarıyla senkronize edildi",

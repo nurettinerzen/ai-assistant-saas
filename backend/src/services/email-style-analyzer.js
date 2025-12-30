@@ -66,13 +66,13 @@ export async function analyzeWritingStyle(businessId) {
   });
 
   try {
-    // Fetch sent emails based on provider
+    // Fetch sent emails based on provider (last 30 days, up to 150 emails)
     let sentEmails = [];
 
     if (integration.provider === 'GMAIL') {
-      sentEmails = await fetchGmailSentEmails(integration, 100);
+      sentEmails = await fetchGmailSentEmails(integration, 150);
     } else if (integration.provider === 'OUTLOOK') {
-      sentEmails = await fetchOutlookSentEmails(integration, 100);
+      sentEmails = await fetchOutlookSentEmails(integration, 150);
     }
 
     if (sentEmails.length === 0) {
@@ -127,18 +127,22 @@ export async function analyzeWritingStyle(businessId) {
 }
 
 /**
- * Fetch sent emails from Gmail
+ * Fetch sent emails from Gmail (last 30 days)
  */
-async function fetchGmailSentEmails(integration, limit = 100) {
+async function fetchGmailSentEmails(integration, limit = 150) {
   try {
     const gmail = await getAuthenticatedGmailClient(integration);
     if (!gmail) return [];
+
+    // Get sent emails from last 30 days
+    const thirtyDaysAgo = Math.floor((Date.now() - 30 * 24 * 60 * 60 * 1000) / 1000);
 
     // Get message list from Sent folder
     const listResponse = await gmail.users.messages.list({
       userId: 'me',
       labelIds: ['SENT'],
       maxResults: limit,
+      q: `after:${thirtyDaysAgo}`, // Only last 30 days
     });
 
     if (!listResponse.data.messages || listResponse.data.messages.length === 0) {

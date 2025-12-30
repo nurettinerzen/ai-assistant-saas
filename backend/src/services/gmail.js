@@ -318,13 +318,13 @@ async syncNewMessages(businessId) {
       const timestamp = Math.floor(lastSync.getTime() / 1000);
       query += ` after:${timestamp}`;
     } else {
-      // İlk sync: son 7 günün maillerini getir
-      const sevenDaysAgo = Math.floor((Date.now() - 7 * 24 * 60 * 60 * 1000) / 1000);
-      query += ` after:${sevenDaysAgo}`;
+      // İlk sync: son 30 günün maillerini getir
+      const thirtyDaysAgo = Math.floor((Date.now() - 30 * 24 * 60 * 60 * 1000) / 1000);
+      query += ` after:${thirtyDaysAgo}`;
     }
 
     const { messages } = await this.getMessages(businessId, {
-      maxResults: 50,
+      maxResults: 100, // Increased from 50 to get more emails on first sync
       query,
       labelIds: ['INBOX']
     });

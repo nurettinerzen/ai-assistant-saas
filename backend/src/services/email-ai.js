@@ -62,7 +62,10 @@ class EmailAIService {
       const businessName = business.name;
       const businessType = business.businessType;
       const assistantPrompt = business.assistants[0]?.systemPrompt || '';
-      const language = business.language || this.detectLanguage(incomingMessage.bodyText || incomingMessage.subject);
+      // IMPORTANT: Always detect language from the incoming email, not from business settings
+      // This ensures we respond in the same language the customer used
+      const detectedLanguage = this.detectLanguage(incomingMessage.bodyText || incomingMessage.subject);
+      const language = detectedLanguage; // Always use detected language for email responses
       const timezone = business.timezone || 'UTC';
 
       // Build Knowledge Base context
@@ -237,8 +240,8 @@ class EmailAIService {
    */
   buildSystemPrompt({ businessName, businessType, assistantPrompt, language, timezone, knowledgeContext, styleContext, business, assistant }) {
     const languageInstruction = language === 'TR'
-      ? 'Her zaman Türkçe yanıt ver.'
-      : 'Always respond in English.';
+      ? 'CRITICAL: Respond ONLY in Turkish (Türkçe). The customer wrote in Turkish.'
+      : 'CRITICAL: Respond ONLY in English. The customer wrote in English.';
 
     // Use central prompt builder if business and assistant are available
     let basePrompt = '';
@@ -260,21 +263,26 @@ ${assistantPrompt ? `Business Instructions:\n${assistantPrompt}\n` : ''}`;
 ${knowledgeContext ? `\n=== KNOWLEDGE BASE ===${knowledgeContext}\n` : ''}
 ${styleContext ? `\n${styleContext}\n` : ''}
 
-## EMAIL-SPECIFIC GUIDELINES:
-1. ${languageInstruction}
-2. Be professional but friendly
-3. Address the customer's questions/concerns directly
-4. Keep responses concise but helpful
-5. Use appropriate greetings and sign-offs matching the user's style
-6. Do NOT include a signature (it will be added automatically)
-7. If you need more information, ask politely
-8. Never make promises you can't keep
-9. Use the available tools to check order status, appointments, etc.
+## CRITICAL EMAIL RULES:
+1. **LANGUAGE**: ${languageInstruction}
+2. **CONTEXT AWARENESS**: Carefully read and understand the customer's email. Do NOT repeat what they said or state the obvious.
+3. **SMART RESPONSES**:
+   - If customer confirms something (like a meeting time), acknowledge it simply - don't repeat the details back
+   - If customer says THEY will do something (send an invite, etc.), don't say YOU will do it
+   - If customer is completing a conversation, keep your response brief
+4. Be professional but friendly
+5. Address the customer's questions/concerns directly
+6. Keep responses concise but helpful
+7. Use appropriate greetings and sign-offs
+8. Do NOT include a signature (it will be added automatically)
+9. If you need more information, ask politely
+10. Never make promises you can't keep
+11. Use the available tools to check order status, appointments, etc.
 
 Format:
-- Start with a greeting using the customer's name if available (use user's preferred greeting style if available)
-- Address their main points
-- End with a helpful closing matching the user's preferred closing style (without signature)`;
+- Start with a brief greeting using the customer's name if available
+- Give a contextually appropriate response (NOT a summary of what they said)
+- End with a helpful closing (without signature)`;
   }
 
   /**

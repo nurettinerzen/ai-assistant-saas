@@ -507,7 +507,12 @@ router.post('/sync', authenticateToken, async (req, res) => {
                 newDraftsCount++;
               }
             } else {
-              console.log(`[Email Sync] Skipping draft for automated email from ${message.from.email}`);
+              // Mark automated emails as NO_REPLY_NEEDED
+              await prisma.emailThread.update({
+                where: { id: thread.id },
+                data: { status: 'NO_REPLY_NEEDED' }
+              });
+              console.log(`[Email Sync] Marked as NO_REPLY_NEEDED: ${message.from.email}`);
             }
           } catch (draftError) {
             console.error('Draft generation error:', draftError);
@@ -544,6 +549,7 @@ router.get('/stats', authenticateToken, async (req, res) => {
       pendingCount,
       draftReadyCount,
       repliedTodayCount,
+      noReplyNeededCount,
       totalThreads
     ] = await Promise.all([
       prisma.emailThread.count({
@@ -566,6 +572,12 @@ router.get('/stats', authenticateToken, async (req, res) => {
         }
       }),
       prisma.emailThread.count({
+        where: {
+          businessId: req.businessId,
+          status: 'NO_REPLY_NEEDED'
+        }
+      }),
+      prisma.emailThread.count({
         where: { businessId: req.businessId }
       })
     ]);
@@ -574,6 +586,7 @@ router.get('/stats', authenticateToken, async (req, res) => {
       pendingCount,
       draftReadyCount,
       repliedTodayCount,
+      noReplyNeededCount,
       totalThreads
     });
   } catch (error) {

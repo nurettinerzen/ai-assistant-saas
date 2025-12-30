@@ -1321,11 +1321,13 @@
       "conversationClosed": "This conversation has been closed",
       "selectConversation": "Select a Conversation",
       "selectConversationDesc": "Choose a conversation from the list to view details and manage responses",
+      "noReplyNeeded": "No Reply Needed",
       "status": {
         "awaitingReply": "Awaiting Reply",
         "draftReady": "Draft Ready",
         "replied": "Replied",
-        "closed": "Closed"
+        "closed": "Closed",
+        "noReplyNeeded": "No Reply Needed"
       },
       "failedToLoadThread": "Failed to load thread details",
       "emailsSyncedSuccess": "Emails synced successfully",

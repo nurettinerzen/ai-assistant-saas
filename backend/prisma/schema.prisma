@@ -677,6 +677,7 @@ enum EmailThreadStatus {
   DRAFT_READY
   REPLIED
   CLOSED
+  NO_REPLY_NEEDED  // For automated/marketing emails
 }
 
 enum EmailMessageDirection {
