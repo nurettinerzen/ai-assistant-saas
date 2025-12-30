@@ -536,16 +536,33 @@ const elevenLabsService = {
  */
 export function buildAgentConfig(assistant, business, tools = []) {
   const language = business.language?.toLowerCase() || 'tr';
+  const backendUrl = process.env.BACKEND_URL || 'https://api.aicallcenter.app';
+  const webhookUrl = `${backendUrl}/api/elevenlabs/webhook`;
 
-  // Convert tools to 11Labs format
+  // Convert tools to 11Labs format using api_schema
   const elevenLabsTools = tools.map(tool => ({
     type: 'webhook',
     name: tool.function.name,
     description: tool.function.description,
-    parameters: tool.function.parameters,
-    webhook: {
-      url: `${process.env.BACKEND_URL}/api/elevenlabs/webhook`,
-      method: 'POST'
+    api_schema: {
+      url: webhookUrl,
+      method: 'POST',
+      path_params_schema: {},
+      query_params_schema: {},
+      request_body_schema: {
+        type: 'object',
+        properties: {
+          tool_name: {
+            type: 'string',
+            description: 'Name of the tool being called'
+          },
+          ...tool.function.parameters.properties
+        },
+        required: tool.function.parameters.required || []
+      },
+      request_headers: {
+        'Content-Type': 'application/json'
+      }
     }
   }));
 
@@ -569,9 +586,6 @@ export function buildAgentConfig(assistant, business, tools = []) {
     name: 'end_conversation',
     description: endConversationDescription
   });
-
-  // Build webhook URL for post-call analysis
-  const backendUrl = process.env.BACKEND_URL || 'http://localhost:3001';
 
   // Build analysis prompt based on language
   const analysisPrompt = language === 'tr'
