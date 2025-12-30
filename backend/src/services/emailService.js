@@ -489,6 +489,109 @@ export const sendWeeklySummaryEmail = async (email, businessName, stats) => {
   return sendEmail(email, subject, html);
 };
 
+/**
+ * 10. Email Verification Email
+ */
+export const sendVerificationEmail = async (email, verificationUrl, businessName) => {
+  const subject = '📧 Email Adresinizi Doğrulayın - Telyx';
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+        .button { display: inline-block; padding: 14px 40px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: bold; }
+        .warning { background: #fff3cd; padding: 15px; border-radius: 5px; border-left: 4px solid #ffc107; margin: 20px 0; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>📧 Email Doğrulama</h1>
+        </div>
+        <div class="content">
+          <p>Merhaba${businessName ? ` ${businessName}` : ''},</p>
+          <p>Telyx hesabınızı oluşturdunuz! Hesabınızı aktif hale getirmek için lütfen email adresinizi doğrulayın.</p>
+
+          <p style="text-align: center;">
+            <a href="${verificationUrl}" class="button">Email Adresimi Doğrula</a>
+          </p>
+
+          <div class="warning">
+            <p style="margin: 0;"><strong>⏰ Önemli:</strong> Bu link 24 saat geçerlidir. Süre dolarsa yeni bir doğrulama linki talep edebilirsiniz.</p>
+          </div>
+
+          <p style="font-size: 14px; color: #666;">
+            Eğer butona tıklayamıyorsanız, aşağıdaki linki tarayıcınıza kopyalayabilirsiniz:<br>
+            <a href="${verificationUrl}" style="color: #667eea; word-break: break-all;">${verificationUrl}</a>
+          </p>
+
+          <p style="font-size: 14px; color: #666;">
+            Bu emaili siz talep etmediyseniz, lütfen dikkate almayın.
+          </p>
+
+          <p>Teşekkürler,<br><strong>Telyx Ekibi</strong></p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return sendEmail(email, subject, html);
+};
+
+/**
+ * 11. Email Changed Verification Email
+ */
+export const sendEmailChangeVerification = async (newEmail, verificationUrl) => {
+  const subject = '📧 Yeni Email Adresinizi Doğrulayın - Telyx';
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+        .button { display: inline-block; padding: 14px 40px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: bold; }
+        .warning { background: #fff3cd; padding: 15px; border-radius: 5px; border-left: 4px solid #ffc107; margin: 20px 0; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>📧 Yeni Email Doğrulama</h1>
+        </div>
+        <div class="content">
+          <p>Merhaba,</p>
+          <p>Email adresinizi <strong>${newEmail}</strong> olarak değiştirmek istediğinizi gördük. Bu değişikliği tamamlamak için lütfen yeni email adresinizi doğrulayın.</p>
+
+          <p style="text-align: center;">
+            <a href="${verificationUrl}" class="button">Yeni Email Adresimi Doğrula</a>
+          </p>
+
+          <div class="warning">
+            <p style="margin: 0;"><strong>⏰ Önemli:</strong> Bu link 24 saat geçerlidir.</p>
+          </div>
+
+          <p style="font-size: 14px; color: #666;">
+            Bu işlemi siz başlatmadıysanız, lütfen bu emaili dikkate almayın ve hesap güvenliğinizi kontrol edin.
+          </p>
+
+          <p>Teşekkürler,<br><strong>Telyx Ekibi</strong></p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return sendEmail(newEmail, subject, html);
+};
+
 export default {
   sendWelcomeEmail,
   sendAssistantCreatedEmail,
@@ -498,5 +601,7 @@ export default {
   sendPaymentSuccessEmail,
   sendPaymentFailedEmail,
   sendMonthlyResetEmail,
-  sendWeeklySummaryEmail
+  sendWeeklySummaryEmail,
+  sendVerificationEmail,
+  sendEmailChangeVerification
 };

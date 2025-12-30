@@ -79,9 +79,9 @@ export default function SignupPage() {
       const response = await apiClient.auth.signup(formData);
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
-      toast.success('Account created!');
-      // Redirect to dashboard, which will show onboarding modal
-      router.push('/dashboard');
+      toast.success('Account created! Please verify your email.');
+      // Redirect to email pending page for verification
+      router.push('/auth/email-pending');
     } catch (error) {
       console.error('Signup error:', error);
       // Handle invite code specific errors

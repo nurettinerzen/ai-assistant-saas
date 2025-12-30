@@ -27,7 +27,7 @@ class EmailAIService {
    */
   async generateDraft(businessId, thread, incomingMessage) {
     try {
-      // Get business info with integrations
+      // Get business info with integrations and email integration
       const business = await prisma.business.findUnique({
         where: { id: businessId },
         include: {
@@ -37,7 +37,8 @@ class EmailAIService {
           },
           integrations: {
             where: { isActive: true }
-          }
+          },
+          emailIntegration: true
         }
       });
 
@@ -67,6 +68,10 @@ class EmailAIService {
       // Build Knowledge Base context
       const knowledgeContext = this.buildKnowledgeContext(knowledgeItems);
 
+      // Get style profile if available
+      const styleProfile = business.emailIntegration?.styleProfile;
+      const styleContext = this.buildStyleContext(styleProfile);
+
       // Build the prompt using central prompt builder
       const assistant = business.assistants[0] || null;
       const systemPrompt = this.buildSystemPrompt({
@@ -76,6 +81,7 @@ class EmailAIService {
         language,
         timezone,
         knowledgeContext,
+        styleContext,
         business,
         assistant
       });
@@ -229,7 +235,7 @@ class EmailAIService {
    * Build system prompt for draft generation
    * Now uses the central promptBuilder service
    */
-  buildSystemPrompt({ businessName, businessType, assistantPrompt, language, timezone, knowledgeContext, business, assistant }) {
+  buildSystemPrompt({ businessName, businessType, assistantPrompt, language, timezone, knowledgeContext, styleContext, business, assistant }) {
     const languageInstruction = language === 'TR'
       ? 'Her zaman Türkçe yanıt ver.'
       : 'Always respond in English.';
@@ -252,22 +258,65 @@ ${assistantPrompt ? `Business Instructions:\n${assistantPrompt}\n` : ''}`;
     return `${basePrompt}
 
 ${knowledgeContext ? `\n=== KNOWLEDGE BASE ===${knowledgeContext}\n` : ''}
+${styleContext ? `\n${styleContext}\n` : ''}
 
 ## EMAIL-SPECIFIC GUIDELINES:
 1. ${languageInstruction}
 2. Be professional but friendly
 3. Address the customer's questions/concerns directly
 4. Keep responses concise but helpful
-5. Use appropriate greetings and sign-offs
+5. Use appropriate greetings and sign-offs matching the user's style
 6. Do NOT include a signature (it will be added automatically)
 7. If you need more information, ask politely
 8. Never make promises you can't keep
 9. Use the available tools to check order status, appointments, etc.
 
 Format:
-- Start with a greeting using the customer's name if available
+- Start with a greeting using the customer's name if available (use user's preferred greeting style if available)
 - Address their main points
-- End with a helpful closing (without signature)`;
+- End with a helpful closing matching the user's preferred closing style (without signature)`;
+  }
+
+  /**
+   * Build style context from style profile
+   */
+  buildStyleContext(styleProfile) {
+    if (!styleProfile || !styleProfile.analyzed) {
+      return '';
+    }
+
+    let context = '=== USER WRITING STYLE ===\n';
+    context += 'Match the following writing style when drafting responses:\n\n';
+
+    if (styleProfile.formality) {
+      context += `- Formality: ${styleProfile.formality}\n`;
+    }
+
+    if (styleProfile.tone) {
+      context += `- Tone: ${styleProfile.tone}\n`;
+    }
+
+    if (styleProfile.averageLength) {
+      context += `- Response Length: ${styleProfile.averageLength} (keep responses similar in length)\n`;
+    }
+
+    if (styleProfile.greetingPatterns && styleProfile.greetingPatterns.length > 0) {
+      context += `- Preferred Greetings: ${styleProfile.greetingPatterns.join(', ')}\n`;
+    }
+
+    if (styleProfile.closingPatterns && styleProfile.closingPatterns.length > 0) {
+      context += `- Preferred Closings: ${styleProfile.closingPatterns.join(', ')}\n`;
+    }
+
+    if (styleProfile.language) {
+      context += `- Primary Language: ${styleProfile.language === 'tr' ? 'Turkish' : styleProfile.language === 'en' ? 'English' : 'Mixed'}\n`;
+    }
+
+    if (styleProfile.additionalNotes) {
+      context += `- Additional Notes: ${styleProfile.additionalNotes}\n`;
+    }
+
+    return context;
   }
 
   /**

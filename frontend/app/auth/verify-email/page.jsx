@@ -1,0 +1,200 @@
+'use client';
+
+import { useEffect, useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+import { Phone, CheckCircle, XCircle, Loader2, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { toast, Toaster } from 'sonner';
+import { useLanguage } from '@/contexts/LanguageContext';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+function VerifyEmailContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { t } = useLanguage();
+  const token = searchParams.get('token');
+
+  const [status, setStatus] = useState('verifying'); // verifying, success, error, expired
+  const [email, setEmail] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+
+  useEffect(() => {
+    if (!token) {
+      setStatus('error');
+      setErrorMessage('Doğrulama linki geçersiz. Token bulunamadı.');
+      return;
+    }
+
+    verifyEmail();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
+
+  const verifyEmail = async () => {
+    try {
+      setStatus('verifying');
+
+      const response = await fetch(`${API_URL}/api/auth/verify-email?token=${token}`);
+      const data = await response.json();
+
+      if (response.ok) {
+        setStatus('success');
+        setEmail(data.email);
+        toast.success('Email adresiniz başarıyla doğrulandı!');
+
+        // Redirect to dashboard after 3 seconds
+        setTimeout(() => {
+          router.push('/dashboard');
+        }, 3000);
+      } else {
+        if (data.code === 'TOKEN_EXPIRED') {
+          setStatus('expired');
+          setErrorMessage('Doğrulama linkinin süresi dolmuş. Yeni bir link talep edebilirsiniz.');
+        } else {
+          setStatus('error');
+          setErrorMessage(data.error || 'Doğrulama başarısız oldu.');
+        }
+      }
+    } catch (error) {
+      console.error('Verification error:', error);
+      setStatus('error');
+      setErrorMessage('Bir hata oluştu. Lütfen tekrar deneyin.');
+    }
+  };
+
+  const handleRequestNewLink = () => {
+    router.push('/auth/email-pending');
+  };
+
+  const handleGoToDashboard = () => {
+    router.push('/dashboard');
+  };
+
+  const handleGoToLogin = () => {
+    router.push('/login');
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-50 flex items-center justify-center p-4">
+      <Toaster position="top-right" richColors />
+
+      <div className="w-full max-w-md">
+        <div className="bg-white rounded-2xl shadow-xl border border-neutral-200 p-8">
+          {/* Logo */}
+          <div className="flex items-center justify-center mb-8">
+            <div className="flex items-center gap-2">
+              <div className="w-10 h-10 bg-gradient-to-br from-primary-600 to-primary-700 rounded-lg flex items-center justify-center">
+                <Phone className="h-6 w-6 text-white" />
+              </div>
+              <span className="text-2xl font-bold text-neutral-900">Telyx</span>
+            </div>
+          </div>
+
+          {/* Verifying State */}
+          {status === 'verifying' && (
+            <div className="text-center">
+              <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Loader2 className="h-8 w-8 text-primary-600 animate-spin" />
+              </div>
+              <h1 className="text-2xl font-bold text-neutral-900 mb-2">
+                Email Doğrulanıyor
+              </h1>
+              <p className="text-neutral-600">
+                Lütfen bekleyin, email adresiniz doğrulanıyor...
+              </p>
+            </div>
+          )}
+
+          {/* Success State */}
+          {status === 'success' && (
+            <div className="text-center">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <CheckCircle className="h-8 w-8 text-green-600" />
+              </div>
+              <h1 className="text-2xl font-bold text-neutral-900 mb-2">
+                Email Doğrulandı!
+              </h1>
+              <p className="text-neutral-600 mb-6">
+                {email && <span className="font-medium">{email}</span>} adresi başarıyla doğrulandı.
+                Dashboard&apos;a yönlendiriliyorsunuz...
+              </p>
+              <Button onClick={handleGoToDashboard} className="w-full">
+                Dashboard&apos;a Git
+              </Button>
+            </div>
+          )}
+
+          {/* Expired State */}
+          {status === 'expired' && (
+            <div className="text-center">
+              <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <RefreshCw className="h-8 w-8 text-yellow-600" />
+              </div>
+              <h1 className="text-2xl font-bold text-neutral-900 mb-2">
+                Link Süresi Dolmuş
+              </h1>
+              <p className="text-neutral-600 mb-6">
+                {errorMessage}
+              </p>
+              <div className="space-y-3">
+                <Button onClick={handleRequestNewLink} className="w-full">
+                  Yeni Link Talep Et
+                </Button>
+                <Button variant="outline" onClick={handleGoToLogin} className="w-full">
+                  Giriş Sayfasına Dön
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Error State */}
+          {status === 'error' && (
+            <div className="text-center">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <XCircle className="h-8 w-8 text-red-600" />
+              </div>
+              <h1 className="text-2xl font-bold text-neutral-900 mb-2">
+                Doğrulama Başarısız
+              </h1>
+              <p className="text-neutral-600 mb-6">
+                {errorMessage}
+              </p>
+              <div className="space-y-3">
+                <Button onClick={handleRequestNewLink} className="w-full">
+                  Yeni Link Talep Et
+                </Button>
+                <Button variant="outline" onClick={handleGoToLogin} className="w-full">
+                  Giriş Sayfasına Dön
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Help Link */}
+          <p className="text-center text-sm text-neutral-500 mt-6">
+            Sorun mu yaşıyorsunuz?{' '}
+            <Link href="mailto:support@telyx.ai" className="text-primary-600 hover:underline">
+              Destek alın
+            </Link>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function VerifyEmailPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-50 flex items-center justify-center p-4">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary-600 mx-auto mb-4" />
+          <p className="text-neutral-600">Yükleniyor...</p>
+        </div>
+      </div>
+    }>
+      <VerifyEmailContent />
+    </Suspense>
+  );
+}

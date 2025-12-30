@@ -19,12 +19,15 @@ model User {
   invitedAt           DateTime?
   acceptedAt          DateTime?
   onboardingCompleted Boolean      @default(false)
+  emailVerified       Boolean      @default(false)
+  emailVerifiedAt     DateTime?
   createdAt           DateTime     @default(now())
   updatedAt           DateTime     @updatedAt
   business            Business     @relation(fields: [businessId], references: [id])
   invitedBy           User?        @relation("UserInvitations", fields: [invitedById], references: [id])
   invitedUsers        User[]       @relation("UserInvitations")
   sentInvitations     Invitation[] @relation("InvitedByUser")
+  verificationTokens  EmailVerificationToken[]
 
   @@index([businessId])
   @@index([email])
@@ -46,6 +49,18 @@ model Invitation {
   @@index([businessId])
   @@index([token])
   @@index([email])
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  userId    Int
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
 }
 
 model Business {
@@ -684,19 +699,58 @@ enum EmailDraftStatus {
 }
 
 model EmailIntegration {
-  id            Int           @id @default(autoincrement())
-  businessId    Int           @unique
-  provider      EmailProvider
-  email         String        // Connected email address
-  credentials   Json          // access_token, refresh_token, expiry
-  connected     Boolean       @default(true)
-  lastSyncedAt  DateTime?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  business      Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  id                   Int                      @id @default(autoincrement())
+  businessId           Int                      @unique
+  provider             EmailProvider
+  email                String                   // Connected email address
+  credentials          Json                     // access_token, refresh_token, expiry
+  connected            Boolean                  @default(true)
+  lastSyncedAt         DateTime?
+  // Style Learning fields
+  styleProfile         Json?                    // User's writing style profile
+  styleAnalysisStatus  StyleAnalysisStatus      @default(PENDING)
+  styleAnalyzedAt      DateTime?
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
+  business             Business                 @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
   @@index([businessId])
   @@index([provider])
+}
+
+enum StyleAnalysisStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+// Email Sender Cache for Smart Filtering
+model EmailSenderCache {
+  id             String              @id @default(cuid())
+  businessId     Int
+  emailAddress   String              // Sender's email address
+  classification EmailClassification
+  classifiedBy   ClassificationSource
+  overriddenAt   DateTime?           // If user manually overrode the classification
+  createdAt      DateTime            @default(now())
+  expiresAt      DateTime            // 30 days from creation
+
+  @@unique([businessId, emailAddress])
+  @@index([businessId])
+  @@index([emailAddress])
+  @@index([expiresAt])
+}
+
+enum EmailClassification {
+  PERSONAL
+  AUTOMATED
+}
+
+enum ClassificationSource {
+  HEURISTIC
+  AI
+  USER_OVERRIDE
 }
 
 model EmailThread {

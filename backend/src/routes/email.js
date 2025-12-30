@@ -63,6 +63,14 @@ router.get('/gmail/callback', async (req, res) => {
     await gmailService.handleCallback(code, businessId);
 
     console.log(`Gmail connected for business ${businessId}`);
+
+    // Trigger style analysis in background
+    import('../services/email-style-analyzer.js').then((module) => {
+      module.analyzeWritingStyle(businessId).catch((err) => {
+        console.error('Background style analysis failed:', err);
+      });
+    });
+
     res.redirect(`${process.env.FRONTEND_URL}/dashboard/integrations?success=gmail`);
   } catch (error) {
     console.error('Gmail callback error:', error);
@@ -117,6 +125,14 @@ router.get('/outlook/callback', async (req, res) => {
     await outlookService.handleCallback(code, businessId);
 
     console.log(`Outlook connected for business ${businessId}`);
+
+    // Trigger style analysis in background
+    import('../services/email-style-analyzer.js').then((module) => {
+      module.analyzeWritingStyle(businessId).catch((err) => {
+        console.error('Background style analysis failed:', err);
+      });
+    });
+
     res.redirect(`${process.env.FRONTEND_URL}/dashboard/integrations?success=outlook`);
   } catch (error) {
     console.error('Outlook callback error:', error);
@@ -467,20 +483,31 @@ router.post('/sync', authenticateToken, async (req, res) => {
       if (isNew) {
         processedCount++;
 
-        // Generate AI draft for inbound messages
+        // Generate AI draft for inbound messages (only for PERSONAL emails)
         if (direction === 'INBOUND') {
           try {
-            // Get the saved message
-            const savedMessage = await prisma.emailMessage.findFirst({
-              where: {
-                threadId: thread.id,
-                messageId: message.messageId
-              }
+            // Classify the sender first
+            const classification = await classifyEmailSender(req.businessId, message.from.email, {
+              subject: message.subject,
+              snippet: message.snippet || message.bodyText?.substring(0, 200),
             });
 
-            if (savedMessage) {
-              await emailAI.generateDraft(req.businessId, thread, savedMessage);
-              newDraftsCount++;
+            // Only generate draft for personal emails
+            if (classification.classification === 'PERSONAL') {
+              // Get the saved message
+              const savedMessage = await prisma.emailMessage.findFirst({
+                where: {
+                  threadId: thread.id,
+                  messageId: message.messageId
+                }
+              });
+
+              if (savedMessage) {
+                await emailAI.generateDraft(req.businessId, thread, savedMessage);
+                newDraftsCount++;
+              }
+            } else {
+              console.log(`[Email Sync] Skipping draft for automated email from ${message.from.email}`);
             }
           } catch (draftError) {
             console.error('Draft generation error:', draftError);
@@ -597,6 +624,166 @@ router.post('/webhook/outlook', async (req, res) => {
   } catch (error) {
     console.error('Outlook webhook error:', error);
     res.status(202).send('Accepted');
+  }
+});
+
+// ==================== STYLE LEARNING ROUTES ====================
+
+import { analyzeWritingStyle, getStyleProfile, reanalyzeWritingStyle } from '../services/email-style-analyzer.js';
+import { classifyEmailSender, overrideClassification, getClassificationStats } from '../services/email-classifier.js';
+
+/**
+ * Get Style Profile
+ * GET /api/email/style-profile
+ */
+router.get('/style-profile', authenticateToken, async (req, res) => {
+  try {
+    const profile = await getStyleProfile(req.businessId);
+
+    if (!profile) {
+      return res.status(404).json({ error: 'No email integration found' });
+    }
+
+    res.json({
+      styleProfile: profile.styleProfile,
+      status: profile.styleAnalysisStatus,
+      analyzedAt: profile.styleAnalyzedAt,
+    });
+  } catch (error) {
+    console.error('Get style profile error:', error);
+    res.status(500).json({ error: 'Failed to get style profile' });
+  }
+});
+
+/**
+ * Trigger Style Analysis
+ * POST /api/email/style-profile/analyze
+ */
+router.post('/style-profile/analyze', authenticateToken, async (req, res) => {
+  try {
+    // Check if integration exists
+    const integration = await prisma.emailIntegration.findUnique({
+      where: { businessId: req.businessId },
+    });
+
+    if (!integration || !integration.connected) {
+      return res.status(400).json({ error: 'No email provider connected' });
+    }
+
+    // If already processing, don't start another
+    if (integration.styleAnalysisStatus === 'PROCESSING') {
+      return res.status(400).json({ error: 'Analysis is already in progress' });
+    }
+
+    // Start analysis in background
+    const result = await reanalyzeWritingStyle(req.businessId);
+
+    res.json({
+      success: true,
+      message: 'Style analysis started',
+      status: 'PROCESSING',
+    });
+  } catch (error) {
+    console.error('Trigger style analysis error:', error);
+    res.status(500).json({ error: 'Failed to start style analysis' });
+  }
+});
+
+// ==================== SMART FILTERING ROUTES ====================
+
+/**
+ * Classify Email Sender
+ * POST /api/email/classify
+ */
+router.post('/classify', authenticateToken, async (req, res) => {
+  try {
+    const { senderEmail, subject, snippet, headers } = req.body;
+
+    if (!senderEmail) {
+      return res.status(400).json({ error: 'Sender email is required' });
+    }
+
+    const result = await classifyEmailSender(req.businessId, senderEmail, {
+      subject,
+      snippet,
+      headers,
+    });
+
+    res.json(result);
+  } catch (error) {
+    console.error('Classify email error:', error);
+    res.status(500).json({ error: 'Failed to classify email' });
+  }
+});
+
+/**
+ * Override Classification
+ * POST /api/email/classify/override
+ */
+router.post('/classify/override', authenticateToken, async (req, res) => {
+  try {
+    const { senderEmail, classification } = req.body;
+
+    if (!senderEmail || !classification) {
+      return res.status(400).json({ error: 'Sender email and classification are required' });
+    }
+
+    if (!['PERSONAL', 'AUTOMATED'].includes(classification)) {
+      return res.status(400).json({ error: 'Invalid classification. Must be PERSONAL or AUTOMATED' });
+    }
+
+    const result = await overrideClassification(req.businessId, senderEmail, classification);
+
+    res.json({
+      success: true,
+      message: 'Classification updated',
+      result,
+    });
+  } catch (error) {
+    console.error('Override classification error:', error);
+    res.status(500).json({ error: 'Failed to override classification' });
+  }
+});
+
+/**
+ * Get Classification Stats
+ * GET /api/email/classify/stats
+ */
+router.get('/classify/stats', authenticateToken, async (req, res) => {
+  try {
+    const stats = await getClassificationStats(req.businessId);
+
+    const summary = {
+      total: 0,
+      personal: 0,
+      automated: 0,
+      bySource: {
+        heuristic: 0,
+        ai: 0,
+        userOverride: 0,
+      },
+    };
+
+    for (const stat of stats) {
+      summary.total += stat._count;
+      if (stat.classification === 'PERSONAL') {
+        summary.personal += stat._count;
+      } else {
+        summary.automated += stat._count;
+      }
+      if (stat.classifiedBy === 'HEURISTIC') {
+        summary.bySource.heuristic += stat._count;
+      } else if (stat.classifiedBy === 'AI') {
+        summary.bySource.ai += stat._count;
+      } else {
+        summary.bySource.userOverride += stat._count;
+      }
+    }
+
+    res.json(summary);
+  } catch (error) {
+    console.error('Get classification stats error:', error);
+    res.status(500).json({ error: 'Failed to get classification stats' });
   }
 });
 

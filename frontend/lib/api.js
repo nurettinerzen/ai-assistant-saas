@@ -226,6 +226,18 @@ export const apiClient = {
   elevenlabs: {
     syncConversations: () => api.post('/api/elevenlabs/sync-conversations'),
   },
+
+  // Email Features
+  email: {
+    // Style Profile
+    getStyleProfile: () => api.get('/api/email/style-profile'),
+    analyzeStyleProfile: () => api.post('/api/email/style-profile/analyze'),
+
+    // Email Classification
+    classifyEmail: (data) => api.post('/api/email/classify', data),
+    overrideClassification: (data) => api.post('/api/email/classify/override', data),
+    getClassificationStats: () => api.get('/api/email/classify/stats'),
+  },
 };
 
 export default api;

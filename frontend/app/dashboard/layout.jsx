@@ -45,12 +45,22 @@ export default function DashboardLayout({ children }) {
       const userResponse = await apiClient.get('/api/auth/me');
       setUser(userResponse.data);
 
+      const userData = userResponse.data;
+
+      // Check if email verification is needed
+      // Skip for invited members (they got invited to verified account)
+      // Skip for users who signed up with Google OAuth (emailVerified will be true)
+      const isInvitedMember = userData.acceptedAt || (userData.role && userData.role !== 'OWNER');
+      if (!userData.emailVerified && !isInvitedMember) {
+        // Redirect to email pending page
+        router.push('/auth/email-pending');
+        return;
+      }
+
       // Check if onboarding is needed
       // Team members (non-owners) who were invited should skip onboarding
-      const userData = userResponse.data;
       if (userData.onboardingCompleted === false) {
         // If user was invited (has acceptedAt) or is not owner, skip onboarding
-        const isInvitedMember = userData.acceptedAt || (userData.role && userData.role !== 'OWNER');
         if (isInvitedMember) {
           // Auto-complete onboarding for invited members
           try {
