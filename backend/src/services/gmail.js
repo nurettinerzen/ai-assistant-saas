@@ -308,19 +308,25 @@ async syncNewMessages(businessId) {
     const lastSync = integration.lastSyncedAt;
     let query = 'in:inbox';
 
-        // DEBUG LOGS
+    // DEBUG LOGS
     console.log('=== GMAIL SYNC DEBUG ===');
     console.log('lastSync from DB:', lastSync);
     console.log('Date.now():', Date.now());
     console.log('Current date:', new Date().toISOString());
 
+    // Her zaman son 7 günün maillerini çek (veya lastSync daha yeniyse onu kullan)
+    const sevenDaysAgo = Math.floor((Date.now() - 7 * 24 * 60 * 60 * 1000) / 1000);
+
     if (lastSync) {
-      const timestamp = Math.floor(lastSync.getTime() / 1000);
-      query += ` after:${timestamp}`;
+      const lastSyncTimestamp = Math.floor(lastSync.getTime() / 1000);
+      // lastSync 7 günden eskiyse, 7 günü kullan; değilse lastSync'i kullan
+      const effectiveTimestamp = Math.max(lastSyncTimestamp, sevenDaysAgo);
+      query += ` after:${effectiveTimestamp}`;
+      console.log('Using effective timestamp:', new Date(effectiveTimestamp * 1000).toISOString());
     } else {
-      // İlk sync: son 7 günün maillerini getir (sınırsız)
-      const sevenDaysAgo = Math.floor((Date.now() - 7 * 24 * 60 * 60 * 1000) / 1000);
+      // İlk sync: son 7 günün maillerini getir
       query += ` after:${sevenDaysAgo}`;
+      console.log('First sync: fetching last 7 days');
     }
 
     const { messages } = await this.getMessages(businessId, {
