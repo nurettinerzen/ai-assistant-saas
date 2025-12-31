@@ -112,10 +112,10 @@ export default function AnalyticsPage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="h-8 w-64 bg-neutral-200 rounded animate-pulse"></div>
+        <div className="h-8 w-64 bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse"></div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-32 bg-neutral-200 rounded-xl animate-pulse"></div>
+            <div key={i} className="h-32 bg-neutral-200 dark:bg-neutral-700 rounded-xl animate-pulse"></div>
           ))}
         </div>
       </div>
@@ -127,8 +127,8 @@ export default function AnalyticsPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-neutral-900">{t('dashboard.analyticsPage.title')}</h1>
-          <p className="text-neutral-600 mt-1">
+          <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">{t('dashboard.analyticsPage.title')}</h1>
+          <p className="text-neutral-600 dark:text-neutral-400 mt-1">
             {t('dashboard.analyticsPage.description')}
           </p>
         </div>
@@ -155,78 +155,78 @@ export default function AnalyticsPage() {
 
       {/* Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-        <div className="bg-white rounded-xl border border-neutral-200 p-6">
+        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6">
           <div className="flex items-center justify-between mb-4">
-            <div className="p-2 bg-primary-100 rounded-lg">
-              <Phone className="h-5 w-5 text-primary-600" />
+            <div className="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-lg">
+              <Phone className="h-5 w-5 text-primary-600 dark:text-primary-400" />
             </div>
-            <TrendingUp className="h-4 w-4 text-green-600" />
+            <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
           </div>
-          <h3 className="text-2xl font-bold text-neutral-900">
+          <h3 className="text-2xl font-bold text-neutral-900 dark:text-white">
             {analytics?.totalCalls || 0}
           </h3>
-          <p className="text-sm text-neutral-600">{t('dashboard.analyticsPage.totalCalls')}</p>
+          <p className="text-sm text-neutral-600 dark:text-neutral-400">{t('dashboard.analyticsPage.totalCalls')}</p>
         </div>
 
         {/* Chat Messages Card */}
-        <div className="bg-white rounded-xl border border-neutral-200 p-6">
+        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6">
           <div className="flex items-center justify-between mb-4">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <MessageCircle className="h-5 w-5 text-green-600" />
+            <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+              <MessageCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
             </div>
           </div>
-          <h3 className="text-2xl font-bold text-neutral-900">
+          <h3 className="text-2xl font-bold text-neutral-900 dark:text-white">
             {analytics?.totalChatMessages || 0}
           </h3>
-          <p className="text-sm text-neutral-600">{t('dashboard.analyticsPage.chatMessages')}</p>
+          <p className="text-sm text-neutral-600 dark:text-neutral-400">{t('dashboard.analyticsPage.chatMessages')}</p>
         </div>
 
         {/* Appointments Card */}
-        <div className="bg-white rounded-xl border border-neutral-200 p-6">
+        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6">
           <div className="flex items-center justify-between mb-4">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <CalendarCheck className="h-5 w-5 text-purple-600" />
+            <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+              <CalendarCheck className="h-5 w-5 text-purple-600 dark:text-purple-400" />
             </div>
           </div>
-          <h3 className="text-2xl font-bold text-neutral-900">
+          <h3 className="text-2xl font-bold text-neutral-900 dark:text-white">
             {analytics?.totalAppointments || 0}
           </h3>
-          <p className="text-sm text-neutral-600">{t('dashboard.analyticsPage.appointments')}</p>
-          <p className="text-xs text-neutral-500 mt-1">
+          <p className="text-sm text-neutral-600 dark:text-neutral-400">{t('dashboard.analyticsPage.appointments')}</p>
+          <p className="text-xs text-neutral-500 dark:text-neutral-500 mt-1">
             {analytics?.appointmentRate || 0}% {t('dashboard.analyticsPage.conversionRate')}
           </p>
         </div>
 
-        <div className="bg-white rounded-xl border border-neutral-200 p-6">
+        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6">
           <div className="flex items-center justify-between mb-4">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <Clock className="h-5 w-5 text-blue-600" />
+            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+              <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             </div>
           </div>
-          <h3 className="text-2xl font-bold text-neutral-900">
+          <h3 className="text-2xl font-bold text-neutral-900 dark:text-white">
             {analytics?.totalMinutes || 0}m
           </h3>
-          <p className="text-sm text-neutral-600">{t('dashboard.analyticsPage.totalMinutes')}</p>
+          <p className="text-sm text-neutral-600 dark:text-neutral-400">{t('dashboard.analyticsPage.totalMinutes')}</p>
         </div>
 
-        <div className="bg-white rounded-xl border border-neutral-200 p-6">
+        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6">
           <div className="flex items-center justify-between mb-4">
-            <div className="p-2 bg-yellow-100 rounded-lg">
-              <Smile className="h-5 w-5 text-yellow-600" />
+            <div className="p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg">
+              <Smile className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
             </div>
           </div>
-          <h3 className="text-2xl font-bold text-neutral-900">
+          <h3 className="text-2xl font-bold text-neutral-900 dark:text-white">
             {analytics?.successRate || 0}%
           </h3>
-          <p className="text-sm text-neutral-600">{t('dashboard.analyticsPage.successRate')}</p>
+          <p className="text-sm text-neutral-600 dark:text-neutral-400">{t('dashboard.analyticsPage.successRate')}</p>
         </div>
       </div>
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Multi-Channel Activity Chart */}
-        <div className="bg-white rounded-xl border border-neutral-200 p-6">
-          <h3 className="text-lg font-semibold mb-4">{t('dashboard.analyticsPage.activityOverTime')}</h3>
+        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6">
+          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">{t('dashboard.analyticsPage.activityOverTime')}</h3>
           <ResponsiveContainer width="100%" height={250}>
             <LineChart data={analytics?.callsOverTime || []}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -260,8 +260,8 @@ export default function AnalyticsPage() {
         </div>
 
         {/* Channel Distribution */}
-        <div className="bg-white rounded-xl border border-neutral-200 p-6">
-          <h3 className="text-lg font-semibold mb-4">{t('dashboard.analyticsPage.channelDistribution')}</h3>
+        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6">
+          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">{t('dashboard.analyticsPage.channelDistribution')}</h3>
           <div className="flex items-center justify-center">
             <ResponsiveContainer width="100%" height={250}>
               <PieChart>
@@ -289,8 +289,8 @@ export default function AnalyticsPage() {
       {/* Sentiment & Peak Hours Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Sentiment Distribution */}
-        <div className="bg-white rounded-xl border border-neutral-200 p-6">
-          <h3 className="text-lg font-semibold mb-4">{t('dashboard.analyticsPage.sentimentAnalysis')}</h3>
+        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6">
+          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">{t('dashboard.analyticsPage.sentimentAnalysis')}</h3>
           <div className="flex items-center justify-center">
             <ResponsiveContainer width="100%" height={250}>
               <PieChart>
@@ -315,8 +315,8 @@ export default function AnalyticsPage() {
         </div>
 
         {/* Peak Hours Chart */}
-        <div className="bg-white rounded-xl border border-neutral-200 p-6">
-          <h3 className="text-lg font-semibold mb-4">{t('dashboard.analyticsPage.peakActivityHours')}</h3>
+        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6">
+          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">{t('dashboard.analyticsPage.peakActivityHours')}</h3>
           <ResponsiveContainer width="100%" height={250}>
             <BarChart data={peakHours}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -330,25 +330,25 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Recent Calls Table */}
-      <div className="bg-white rounded-xl border border-neutral-200 p-6">
-        <h3 className="text-lg font-semibold mb-4">{t('dashboard.analyticsPage.recentCalls')}</h3>
+      <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6">
+        <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">{t('dashboard.analyticsPage.recentCalls')}</h3>
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-neutral-50">
+            <thead className="bg-neutral-50 dark:bg-neutral-800">
               <tr>
-                <th className="text-left p-3 text-sm font-medium text-neutral-700">
+                <th className="text-left p-3 text-sm font-medium text-neutral-700 dark:text-neutral-300">
                   {t('dashboard.analyticsPage.dateTime')}
                 </th>
-                <th className="text-left p-3 text-sm font-medium text-neutral-700">
+                <th className="text-left p-3 text-sm font-medium text-neutral-700 dark:text-neutral-300">
                   {t('dashboard.analyticsPage.caller')}
                 </th>
-                <th className="text-left p-3 text-sm font-medium text-neutral-700">
+                <th className="text-left p-3 text-sm font-medium text-neutral-700 dark:text-neutral-300">
                   {t('dashboard.analyticsPage.duration')}
                 </th>
-                <th className="text-left p-3 text-sm font-medium text-neutral-700">
+                <th className="text-left p-3 text-sm font-medium text-neutral-700 dark:text-neutral-300">
                   {t('dashboard.analyticsPage.sentiment')}
                 </th>
-                <th className="text-left p-3 text-sm font-medium text-neutral-700">
+                <th className="text-left p-3 text-sm font-medium text-neutral-700 dark:text-neutral-300">
                   {t('dashboard.analyticsPage.status')}
                 </th>
               </tr>
@@ -356,37 +356,37 @@ export default function AnalyticsPage() {
             <tbody>
               {recentCalls.length > 0 ? (
                 recentCalls.map((call) => (
-                  <tr key={call.id} className="border-t border-neutral-100">
-                    <td className="p-3 text-sm text-neutral-900">
+                  <tr key={call.id} className="border-t border-neutral-100 dark:border-neutral-800">
+                    <td className="p-3 text-sm text-neutral-900 dark:text-neutral-100">
                       {formatDate(call.createdAt, 'long', locale)}
                     </td>
-                    <td className="p-3 text-sm text-neutral-900">
+                    <td className="p-3 text-sm text-neutral-900 dark:text-neutral-100">
                       {call.callerId || t('dashboard.overviewPage.unknownCaller')}
                     </td>
-                    <td className="p-3 text-sm text-neutral-900">
+                    <td className="p-3 text-sm text-neutral-900 dark:text-neutral-100">
                       {formatDuration(call.duration)}
                     </td>
                     <td className="p-3">
                       <div className="flex items-center gap-2">
                         {call.sentiment === 'positive' && (
-                          <Smile className="h-4 w-4 text-green-600" />
+                          <Smile className="h-4 w-4 text-green-600 dark:text-green-400" />
                         )}
                         {call.sentiment === 'neutral' && (
-                          <Meh className="h-4 w-4 text-neutral-600" />
+                          <Meh className="h-4 w-4 text-neutral-600 dark:text-neutral-400" />
                         )}
                         {call.sentiment === 'negative' && (
-                          <Frown className="h-4 w-4 text-red-600" />
+                          <Frown className="h-4 w-4 text-red-600 dark:text-red-400" />
                         )}
-                        <span className="text-sm capitalize">{call.sentiment || 'N/A'}</span>
+                        <span className="text-sm capitalize text-neutral-700 dark:text-neutral-300">{call.sentiment || 'N/A'}</span>
                       </div>
                     </td>
                     <td className="p-3">
-                      <Badge 
+                      <Badge
                         variant="secondary"
                         className={
-                          call.status === 'completed' 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-neutral-100 text-neutral-800'
+                          call.status === 'completed'
+                            ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400'
+                            : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-300'
                         }
                       >
                         {call.status}
@@ -396,7 +396,7 @@ export default function AnalyticsPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="p-8 text-center text-neutral-500">
+                  <td colSpan={5} className="p-8 text-center text-neutral-500 dark:text-neutral-400">
                     {t('dashboard.analyticsPage.noCallsYet')}
                   </td>
                 </tr>

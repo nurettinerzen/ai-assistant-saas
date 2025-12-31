@@ -448,8 +448,8 @@ export default function AssistantsPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-neutral-900">{t('dashboard.assistantsPage.title')}</h1>
-          <p className="text-neutral-600 mt-1">{t('dashboard.assistantsPage.description')}</p>
+          <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">{t('dashboard.assistantsPage.title')}</h1>
+          <p className="text-neutral-600 dark:text-neutral-400 mt-1">{t('dashboard.assistantsPage.description')}</p>
         </div>
         {can('assistants:create') && (
           <Button onClick={handleNewAssistant}>
@@ -476,10 +476,10 @@ export default function AssistantsPage() {
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-white rounded-xl border border-neutral-200 p-6 animate-pulse">
-              <div className="h-6 w-32 bg-neutral-200 rounded mb-3"></div>
-              <div className="h-4 w-full bg-neutral-200 rounded mb-2"></div>
-              <div className="h-4 w-2/3 bg-neutral-200 rounded"></div>
+            <div key={i} className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6 animate-pulse">
+              <div className="h-6 w-32 bg-neutral-200 dark:bg-neutral-700 rounded mb-3"></div>
+              <div className="h-4 w-full bg-neutral-200 dark:bg-neutral-700 rounded mb-2"></div>
+              <div className="h-4 w-2/3 bg-neutral-200 dark:bg-neutral-700 rounded"></div>
             </div>
           ))}
         </div>
@@ -492,27 +492,27 @@ export default function AssistantsPage() {
             return (
               <div
                 key={assistant.id}
-                className="bg-white rounded-xl border border-neutral-200 p-6 hover:shadow-md transition-shadow"
+                className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6 hover:shadow-md transition-shadow"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-lg ${isOutbound ? 'bg-orange-100' : 'bg-primary-100'}`}>
+                    <div className={`p-2 rounded-lg ${isOutbound ? 'bg-orange-100 dark:bg-orange-900/30' : 'bg-primary-100 dark:bg-primary-900/30'}`}>
                       {isOutbound ? (
-                        <PhoneOutgoing className="h-5 w-5 text-orange-600" />
+                        <PhoneOutgoing className="h-5 w-5 text-orange-600 dark:text-orange-400" />
                       ) : (
-                        <PhoneIncoming className="h-5 w-5 text-primary-600" />
+                        <PhoneIncoming className="h-5 w-5 text-primary-600 dark:text-primary-400" />
                       )}
                     </div>
                     <div>
-                      <h3 className="font-semibold text-neutral-900">{assistant.name}</h3>
-                      <p className="text-xs text-neutral-500">
+                      <h3 className="font-semibold text-neutral-900 dark:text-white">{assistant.name}</h3>
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400">
                         {formatDate(assistant.createdAt, 'short')}
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <p className="text-sm text-neutral-600 line-clamp-2 mb-4">
+                <p className="text-sm text-neutral-600 dark:text-neutral-400 line-clamp-2 mb-4">
                   {isOutbound
                     ? (locale === 'tr' ? 'Giden Arama Asistanı' : 'Outbound Call Assistant')
                     : (locale === 'tr' ? 'Gelen Arama Asistanı' : 'Inbound Call Assistant')
@@ -593,15 +593,15 @@ export default function AssistantsPage() {
             {/* Inbound Option */}
             <button
               onClick={() => handleTypeSelect('inbound')}
-              className="flex flex-col items-center p-6 border-2 border-neutral-200 rounded-xl hover:border-primary-500 hover:bg-primary-50 transition-all group"
+              className="flex flex-col items-center p-6 border-2 border-neutral-200 dark:border-neutral-700 rounded-xl hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all group"
             >
-              <div className="p-4 bg-blue-100 rounded-full mb-4 group-hover:bg-blue-200 transition-colors">
-                <PhoneIncoming className="h-8 w-8 text-blue-600" />
+              <div className="p-4 bg-blue-100 dark:bg-blue-900/30 rounded-full mb-4 group-hover:bg-blue-200 dark:group-hover:bg-blue-900/50 transition-colors">
+                <PhoneIncoming className="h-8 w-8 text-blue-600 dark:text-blue-400" />
               </div>
-              <h3 className="font-semibold text-neutral-900 mb-1">
+              <h3 className="font-semibold text-neutral-900 dark:text-white mb-1">
                 {locale === 'tr' ? 'Gelen Arama' : 'Inbound Call'}
               </h3>
-              <p className="text-xs text-neutral-500 text-center">
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 text-center">
                 {locale === 'tr'
                   ? 'Müşterileriniz sizi aradığında yanıt verir'
                   : 'Answers when customers call you'
@@ -612,15 +612,15 @@ export default function AssistantsPage() {
             {/* Outbound Option */}
             <button
               onClick={() => handleTypeSelect('outbound')}
-              className="flex flex-col items-center p-6 border-2 border-neutral-200 rounded-xl hover:border-orange-500 hover:bg-orange-50 transition-all group"
+              className="flex flex-col items-center p-6 border-2 border-neutral-200 dark:border-neutral-700 rounded-xl hover:border-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all group"
             >
-              <div className="p-4 bg-orange-100 rounded-full mb-4 group-hover:bg-orange-200 transition-colors">
-                <PhoneOutgoing className="h-8 w-8 text-orange-600" />
+              <div className="p-4 bg-orange-100 dark:bg-orange-900/30 rounded-full mb-4 group-hover:bg-orange-200 dark:group-hover:bg-orange-900/50 transition-colors">
+                <PhoneOutgoing className="h-8 w-8 text-orange-600 dark:text-orange-400" />
               </div>
-              <h3 className="font-semibold text-neutral-900 mb-1">
+              <h3 className="font-semibold text-neutral-900 dark:text-white mb-1">
                 {locale === 'tr' ? 'Giden Arama' : 'Outbound Call'}
               </h3>
-              <p className="text-xs text-neutral-500 text-center">
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 text-center">
                 {locale === 'tr'
                   ? 'Müşterilerinizi siz aradığında konuşur'
                   : 'Speaks when you call customers'

@@ -357,18 +357,18 @@ export default function SubscriptionPage() {
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-neutral-900">{t('dashboard.subscriptionPage.title')}</h1>
-        <p className="text-neutral-600 mt-1">{t('dashboard.subscriptionPage.description')}</p>
+        <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">{t('dashboard.subscriptionPage.title')}</h1>
+        <p className="text-neutral-600 dark:text-neutral-400 mt-1">{t('dashboard.subscriptionPage.description')}</p>
       </div>
 
       {/* Current plan & usage */}
       {!loading && subscription && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Current plan */}
-          <div className="bg-white rounded-xl border border-neutral-200 p-6 shadow-sm">
+          <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6 shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-neutral-900">{t('dashboard.subscriptionPage.currentPlan')}</h2>
-              <Badge className="bg-primary-100 text-primary-800">
+              <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">{t('dashboard.subscriptionPage.currentPlan')}</h2>
+              <Badge className="bg-primary-100 dark:bg-primary-900/30 text-primary-800 dark:text-primary-400">
                 {subscription.plan === 'FREE' ? t('dashboard.subscriptionPage.freePlan') :
                  subscription.plan === 'STARTER' ? (uiLang === 'TR' ? 'Başlangıç' : 'Starter') :
                  subscription.plan === 'PRO' ? (uiLang === 'TR' ? 'Profesyonel' : 'Pro') :
@@ -380,8 +380,8 @@ export default function SubscriptionPage() {
             </div>
             <div className="space-y-3">
               <div className="flex justify-between text-sm">
-                <span className="text-neutral-600">{t('dashboard.subscriptionPage.monthlyCost')}</span>
-                <span className="font-semibold text-neutral-900">
+                <span className="text-neutral-600 dark:text-neutral-400">{t('dashboard.subscriptionPage.monthlyCost')}</span>
+                <span className="font-semibold text-neutral-900 dark:text-white">
                   {(() => {
                     // Get price from REGIONAL_PRICING based on subscription.plan
                     const planPricing = getPlanPricing(subscription.plan);
@@ -396,23 +396,23 @@ export default function SubscriptionPage() {
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-neutral-600">{t('dashboard.subscriptionPage.billingCycle')}</span>
-                <span className="font-medium text-neutral-900">
+                <span className="text-neutral-600 dark:text-neutral-400">{t('dashboard.subscriptionPage.billingCycle')}</span>
+                <span className="font-medium text-neutral-900 dark:text-white">
                   {subscription.billingCycle || t('dashboard.subscriptionPage.monthly')}
                 </span>
               </div>
               {subscription.currentPeriodEnd && !subscription.cancelAtPeriodEnd && (
               <div className="flex justify-between text-sm">
-                <span className="text-neutral-600">{t('dashboard.subscriptionPage.nextBilling')}</span>
-                <span className="font-medium text-neutral-900">
+                <span className="text-neutral-600 dark:text-neutral-400">{t('dashboard.subscriptionPage.nextBilling')}</span>
+                <span className="font-medium text-neutral-900 dark:text-white">
                   {formatDate(subscription.currentPeriodEnd || subscription.nextBillingDate, 'short')}
                 </span>
               </div>
               )}
               {subscription.cancelAtPeriodEnd && subscription.currentPeriodEnd && (
               <div className="flex justify-between text-sm">
-                <span className="text-neutral-600">Abonelik Bitiş Tarihi</span>
-                <span className="font-medium text-orange-600">
+                <span className="text-neutral-600 dark:text-neutral-400">Abonelik Bitiş Tarihi</span>
+                <span className="font-medium text-orange-600 dark:text-orange-400">
                   {formatDate(subscription.currentPeriodEnd, 'short')}
                 </span>
               </div>
@@ -421,7 +421,7 @@ export default function SubscriptionPage() {
 
             {/* Cancel Subscription Button - Only show for paid plans */}
             {subscription.plan !== 'FREE' && !subscription.cancelAtPeriodEnd && (
-              <div className="mt-6 pt-4 border-t border-neutral-200">
+              <div className="mt-6 pt-4 border-t border-neutral-200 dark:border-neutral-700">
                 <Button
                   variant="outline"
                   size="sm"
@@ -446,8 +446,8 @@ export default function SubscriptionPage() {
 
             {/* Canceled status message */}
             {subscription.cancelAtPeriodEnd && (
-              <div className="mt-6 pt-4 border-t border-neutral-200">
-                <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-sm text-orange-800">
+              <div className="mt-6 pt-4 border-t border-neutral-200 dark:border-neutral-700">
+                <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-3 text-sm text-orange-800 dark:text-orange-400">
                   <strong>Abonelik iptal edildi.</strong>
                   <br />
                   {subscription.currentPeriodEnd && (
@@ -471,7 +471,7 @@ export default function SubscriptionPage() {
 
       {/* Pricing plans */}
       <div>
-        <h2 className="text-2xl font-bold text-neutral-900 mb-6">
+        <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-6">
           {uiLang === 'TR' ? 'Planlar' : 'Plans'}
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
@@ -572,8 +572,8 @@ export default function SubscriptionPage() {
             return (
               <div
                 key={plan.id}
-                className={`bg-white rounded-xl border-2 p-6 shadow-sm relative flex flex-col ${
-                  isCurrentPlan ? 'border-green-500 ring-2 ring-green-200' : 'border-neutral-200'
+                className={`bg-white dark:bg-neutral-900 rounded-xl border-2 p-6 shadow-sm relative flex flex-col ${
+                  isCurrentPlan ? 'border-green-500 ring-2 ring-green-200 dark:ring-green-900' : 'border-neutral-200 dark:border-neutral-700'
                 }`}
               >
                 {/* Show "Current Plan" badge if this is the current plan */}
@@ -594,20 +594,20 @@ export default function SubscriptionPage() {
                 )}
 
                 <div className="text-center mb-6">
-                  <h3 className="text-xl font-bold text-neutral-900 mb-2">
+                  <h3 className="text-xl font-bold text-neutral-900 dark:text-white mb-2">
                     {getPlanName(plan)}
                   </h3>
                   <div className="flex items-baseline justify-center gap-1 h-[40px]">
                     {planPricing?.price !== null ? (
                       <>
-                        <span className="text-3xl font-bold text-neutral-900">
+                        <span className="text-3xl font-bold text-neutral-900 dark:text-white">
                           {formatPrice(planPricing.price)}
                         </span>
-                        <span className="text-neutral-500">{t('dashboard.subscriptionPage.perMonth')}</span>
+                        <span className="text-neutral-500 dark:text-neutral-400">{t('dashboard.subscriptionPage.perMonth')}</span>
                       </>
                     ) : (
                       <>
-                        <span className="text-2xl font-bold text-neutral-900">
+                        <span className="text-2xl font-bold text-neutral-900 dark:text-white">
                           {uiLang === 'TR' ? 'Özel' : uiLang === 'PR' ? 'Personalizado' : 'Custom'}
                         </span>
                       </>
@@ -615,11 +615,11 @@ export default function SubscriptionPage() {
                   </div>
                   <div className="h-[20px] mt-2">
                     {planPricing?.overageRate ? (
-                      <p className="text-xs text-neutral-500">
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400">
                         {t('dashboard.subscriptionPage.overage')}: {formatPrice(planPricing.overageRate)}{t('dashboard.subscriptionPage.perMinute')}
                       </p>
                     ) : plan.id === 'ENTERPRISE' ? (
-                      <p className="text-xs text-neutral-500">
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400">
                         {uiLang === 'TR' ? 'Özel fiyatlandırma' : uiLang === 'PR' ? 'Preço personalizado' : 'Custom pricing'}
                       </p>
                     ) : null}
@@ -633,8 +633,8 @@ export default function SubscriptionPage() {
                       key={i}
                       className="flex items-center gap-2 text-sm"
                     >
-                      <Check className="h-4 w-4 text-green-600 flex-shrink-0" />
-                      <span className="text-neutral-700 truncate">
+                      <Check className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+                      <span className="text-neutral-700 dark:text-neutral-300 truncate">
                         {feature.text}
                       </span>
                     </li>

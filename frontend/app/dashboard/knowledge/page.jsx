@@ -214,8 +214,8 @@ export default function KnowledgeBasePage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-neutral-900">{t('dashboard.knowledgeBasePage.title')}</h1>
-        <p className="text-neutral-600 mt-1">{t('dashboard.knowledgeBasePage.description')}</p>
+        <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">{t('dashboard.knowledgeBasePage.title')}</h1>
+        <p className="text-neutral-600 dark:text-neutral-400 mt-1">{t('dashboard.knowledgeBasePage.description')}</p>
       </div>
 
       {/* Tabs */}
@@ -238,43 +238,43 @@ export default function KnowledgeBasePage() {
           )}
 
           {documents.length > 0 ? (
-            <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
+            <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden">
               <table className="w-full">
-                <thead className="bg-neutral-50 border-b border-neutral-200">
+                <thead className="bg-neutral-50 dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">{t('dashboard.knowledgeBasePage.nameTableHeader')}</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">{t('dashboard.knowledgeBasePage.typeTableHeader')}</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">{t('dashboard.knowledgeBasePage.sizeTableHeader')}</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">{t('dashboard.knowledgeBasePage.statusTableHeader')}</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">{t('dashboard.knowledgeBasePage.uploadedTableHeader')}</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">{t('dashboard.knowledgeBasePage.actionsTableHeader')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">{t('dashboard.knowledgeBasePage.nameTableHeader')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">{t('dashboard.knowledgeBasePage.typeTableHeader')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">{t('dashboard.knowledgeBasePage.sizeTableHeader')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">{t('dashboard.knowledgeBasePage.statusTableHeader')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">{t('dashboard.knowledgeBasePage.uploadedTableHeader')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">{t('dashboard.knowledgeBasePage.actionsTableHeader')}</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-neutral-200">
+                <tbody className="divide-y divide-neutral-200 dark:divide-neutral-700">
                   {documents.map((doc) => (
                     <tr key={doc.id}>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
-                          <FileText className="h-4 w-4 text-neutral-400" />
-                          <span className="text-sm font-medium text-neutral-900">{doc.name}</span>
+                          <FileText className="h-4 w-4 text-neutral-400 dark:text-neutral-500" />
+                          <span className="text-sm font-medium text-neutral-900 dark:text-white">{doc.name}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-sm text-neutral-600">{doc.type}</td>
-                      <td className="px-6 py-4 text-sm text-neutral-600">{formatFileSize(doc.size)}</td>
+                      <td className="px-6 py-4 text-sm text-neutral-600 dark:text-neutral-400">{doc.type}</td>
+                      <td className="px-6 py-4 text-sm text-neutral-600 dark:text-neutral-400">{formatFileSize(doc.size)}</td>
                       <td className="px-6 py-4">
                         <Badge
                           className={
                             doc.status === 'ACTIVE' || doc.status === 'ready'
-                          ? 'bg-green-100 text-green-800'
+                          ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400'
                           : doc.status === 'PROCESSING' || doc.status === 'processing'
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : 'bg-red-100 text-red-800'
+                            ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400'
+                            : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400'
                           }
                         >
                           {t((doc.status === 'ACTIVE' || doc.status === 'ready') ? 'dashboard.knowledgeBasePage.ready' : (doc.status === 'PROCESSING' || doc.status === 'processing') ? 'dashboard.knowledgeBasePage.processing' : 'dashboard.knowledgeBasePage.failed')}
                         </Badge>
                       </td>
-                      <td className="px-6 py-4 text-sm text-neutral-600">
+                      <td className="px-6 py-4 text-sm text-neutral-600 dark:text-neutral-400">
                         {formatDate(doc.uploadedAt, 'short')}
                       </td>
                       <td className="px-6 py-4">
@@ -294,7 +294,7 @@ export default function KnowledgeBasePage() {
               </table>
             </div>
           ) : (
-            <div className="bg-white rounded-xl border border-neutral-200 p-12">
+            <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-12">
               <EmptyState
                 icon={FileText}
                 title={t('dashboard.knowledgeBasePage.noDocumentsTitle')}
@@ -318,9 +318,9 @@ export default function KnowledgeBasePage() {
           {faqs.length > 0 ? (
             <div className="space-y-3">
               {faqs.map((faq) => (
-                <div key={faq.id} className="bg-white rounded-xl border border-neutral-200 p-6">
+                <div key={faq.id} className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6">
                   <div className="flex justify-between items-start mb-3">
-                    <h3 className="font-semibold text-neutral-900">{faq.question}</h3>
+                    <h3 className="font-semibold text-neutral-900 dark:text-white">{faq.question}</h3>
                     {can('knowledge:delete') && (
                     <Button
                       variant="ghost"
@@ -331,7 +331,7 @@ export default function KnowledgeBasePage() {
                     </Button>
                     )}
                   </div>
-                  <p className="text-sm text-neutral-600 mb-2">{faq.answer}</p>
+                  <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-2">{faq.answer}</p>
                   {faq.category && (
                     <Badge variant="secondary" className="text-xs">{faq.category}</Badge>
                   )}
@@ -339,7 +339,7 @@ export default function KnowledgeBasePage() {
               ))}
             </div>
           ) : (
-            <div className="bg-white rounded-xl border border-neutral-200 p-12">
+            <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-12">
               <EmptyState
                 icon={MessageSquare}
                 title={t('dashboard.knowledgeBasePage.noFaqsTitle')}
@@ -361,28 +361,28 @@ export default function KnowledgeBasePage() {
           )}
 
           {urls.length > 0 ? (
-            <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
+            <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden">
               <table className="w-full">
-                <thead className="bg-neutral-50 border-b border-neutral-200">
+                <thead className="bg-neutral-50 dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">{t('dashboard.knowledgeBasePage.urlTableHeader')}</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">{t('dashboard.knowledgeBasePage.statusTableHeader')}</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">{t('dashboard.knowledgeBasePage.pagesTableHeader')}</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">{t('dashboard.knowledgeBasePage.lastCrawledHeader')}</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">{t('dashboard.knowledgeBasePage.actionsTableHeader')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">{t('dashboard.knowledgeBasePage.urlTableHeader')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">{t('dashboard.knowledgeBasePage.statusTableHeader')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">{t('dashboard.knowledgeBasePage.pagesTableHeader')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">{t('dashboard.knowledgeBasePage.lastCrawledHeader')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">{t('dashboard.knowledgeBasePage.actionsTableHeader')}</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-neutral-200">
+                <tbody className="divide-y divide-neutral-200 dark:divide-neutral-700">
                   {urls.map((url) => (
                     <tr key={url.id}>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
-                          <LinkIcon className="h-4 w-4 text-neutral-400" />
+                          <LinkIcon className="h-4 w-4 text-neutral-400 dark:text-neutral-500" />
                           <a
                             href={url.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-sm text-primary-600 hover:underline"
+                            className="text-sm text-primary-600 dark:text-primary-400 hover:underline"
                           >
                             {url.url}
                           </a>
@@ -392,17 +392,17 @@ export default function KnowledgeBasePage() {
                         <Badge
                           className={
                             url.status === 'ACTIVE' || url.status === 'ready'
-                              ? 'bg-green-100 text-green-800'
+                              ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400'
                               : url.status === 'PROCESSING' || url.status === 'crawling'
-                                ? 'bg-yellow-100 text-yellow-800'
-                                : 'bg-red-100 text-red-800'
+                                ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400'
+                                : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400'
                           }
                         >
                         {t((url.status === 'ACTIVE' || url.status === 'ready') ? 'dashboard.knowledgeBasePage.ready' : (url.status === 'PROCESSING' || url.status === 'crawling') ? 'dashboard.knowledgeBasePage.crawling' : 'dashboard.knowledgeBasePage.failed')}
                         </Badge>
                       </td>
-                      <td className="px-6 py-4 text-sm text-neutral-600">{url.pageCount}</td>
-                      <td className="px-6 py-4 text-sm text-neutral-600">
+                      <td className="px-6 py-4 text-sm text-neutral-600 dark:text-neutral-400">{url.pageCount}</td>
+                      <td className="px-6 py-4 text-sm text-neutral-600 dark:text-neutral-400">
                         {url.lastCrawled ? formatDate(url.lastCrawled, 'short') : 'N/A'}
                       </td>
                       <td className="px-6 py-4">
@@ -422,7 +422,7 @@ export default function KnowledgeBasePage() {
               </table>
             </div>
           ) : (
-            <div className="bg-white rounded-xl border border-neutral-200 p-12">
+            <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-12">
               <EmptyState
                 icon={LinkIcon}
                 title={t('dashboard.knowledgeBasePage.noUrlsTitle')}

@@ -14,6 +14,9 @@ import { buildAssistantPrompt, getActiveTools as getPromptBuilderTools } from '.
 const router = express.Router();
 const prisma = new PrismaClient();
 
+// Max iterations for recursive tool calling (consistent with WhatsApp)
+const MAX_TOOL_ITERATIONS = 5;
+
 // Lazy initialization
 let openai = null;
 const getOpenAI = () => {
@@ -24,6 +27,96 @@ const getOpenAI = () => {
   }
   return openai;
 };
+
+/**
+ * Process messages with recursive tool calling loop
+ * This ensures consistency with WhatsApp channel behavior
+ */
+async function processWithToolLoop(messages, tools, business, context = {}) {
+  const client = getOpenAI();
+  let iteration = 0;
+  const allToolNames = [];
+
+  while (iteration < MAX_TOOL_ITERATIONS) {
+    // Call OpenAI
+    const completionParams = {
+      model: 'gpt-4o-mini',
+      messages: messages,
+      max_tokens: 500,
+      temperature: 0.7
+    };
+
+    // Add tools if available
+    if (tools && tools.length > 0) {
+      completionParams.tools = tools;
+      completionParams.tool_choice = 'auto';
+    }
+
+    const completion = await client.chat.completions.create(completionParams);
+    const responseMessage = completion.choices[0].message;
+
+    // Check if AI wants to call tools
+    if (!responseMessage.tool_calls || responseMessage.tool_calls.length === 0) {
+      // No tool calls - return the text response
+      return {
+        reply: responseMessage.content || (business.language === 'TR'
+          ? 'Üzgünüm, bir yanıt oluşturamadım.'
+          : 'Sorry, I could not generate a response.'),
+        toolsCalled: allToolNames
+      };
+    }
+
+    console.log(`🔧 [Chat] Tool calls detected (iteration ${iteration + 1}):`,
+      responseMessage.tool_calls.map(tc => tc.function.name));
+
+    // Add assistant's response with tool_calls to messages
+    messages.push({
+      role: 'assistant',
+      content: responseMessage.content || '',
+      tool_calls: responseMessage.tool_calls
+    });
+
+    // Execute each tool call
+    for (const toolCall of responseMessage.tool_calls) {
+      const functionName = toolCall.function.name;
+      let functionArgs;
+
+      try {
+        functionArgs = JSON.parse(toolCall.function.arguments);
+      } catch (e) {
+        console.error(`❌ Failed to parse tool arguments for ${functionName}:`, e);
+        functionArgs = {};
+      }
+
+      console.log(`🔧 [Chat] Executing tool: ${functionName}`, JSON.stringify(functionArgs));
+
+      // Execute tool using central tool system
+      const result = await executeTool(functionName, functionArgs, business, context);
+
+      console.log(`🔧 [Chat] Tool result for ${functionName}:`, result.success ? 'SUCCESS' : 'FAILED');
+
+      // Add tool result to messages
+      messages.push({
+        role: 'tool',
+        tool_call_id: toolCall.id,
+        content: JSON.stringify(result)
+      });
+
+      allToolNames.push(functionName);
+    }
+
+    iteration++;
+  }
+
+  // Max iterations reached
+  console.warn(`⚠️ [Chat] Max tool iterations (${MAX_TOOL_ITERATIONS}) reached`);
+  return {
+    reply: business.language === 'TR'
+      ? 'İşleminiz tamamlanamadı. Lütfen tekrar deneyin.'
+      : 'Could not complete your request. Please try again.',
+    toolsCalled: allToolNames
+  };
+}
 
 // POST /api/chat/widget - Public endpoint for widget
 router.post('/widget', async (req, res) => {
@@ -110,88 +203,15 @@ ${toolInstructions}`
       }
     ];
 
-    // Call OpenAI with function calling (only if tools available)
-    const completionParams = {
-      model: 'gpt-4o-mini',
-      messages: messages,
-      max_tokens: 500,
-      temperature: 0.7
-    };
-
-    // Add tools if available
-    if (tools && tools.length > 0) {
-      completionParams.tools = tools;
-      completionParams.tool_choice = 'auto';
-    }
-
-    const completion = await getOpenAI().chat.completions.create(completionParams);
-
-    const responseMessage = completion.choices[0]?.message;
-
-    // Check if AI wants to call a tool
-    if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
-      // Process all tool calls
-      const toolResults = [];
-      const toolNames = [];
-
-      for (const toolCall of responseMessage.tool_calls) {
-        const toolName = toolCall.function.name;
-        const toolArgs = JSON.parse(toolCall.function.arguments);
-
-        console.log(`🔧 [Chat] Executing tool: ${toolName}`, JSON.stringify(toolArgs));
-
-        // Execute tool using central tool system
-        const result = await executeTool(toolName, toolArgs, business, { channel: 'CHAT' });
-
-        console.log(`🔧 [Chat] Tool result for ${toolName}:`, result.success ? 'SUCCESS' : 'FAILED', result);
-
-        toolResults.push({
-          role: 'tool',
-          tool_call_id: toolCall.id,
-          content: JSON.stringify(result)
-        });
-        toolNames.push(toolName);
-      }
-
-      // Build assistant message with tool_calls - ensure content is empty string, not null
-      const assistantMessage = {
-        role: 'assistant',
-        content: responseMessage.content || '',
-        tool_calls: responseMessage.tool_calls
-      };
-
-      // Send result back to AI to generate final response
-      const secondMessages = [
-        ...messages,
-        assistantMessage,
-        ...toolResults
-      ];
-
-      const secondCompletion = await getOpenAI().chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: secondMessages,
-        max_tokens: 500,
-        temperature: 0.7
-      });
-
-      const finalReply = secondCompletion.choices[0]?.message?.content;
-
-      return res.json({
-        success: true,
-        reply: finalReply,
-        assistantName: assistant.name,
-        toolCalled: toolNames.join(', '),
-        toolResult: toolResults.every(r => JSON.parse(r.content).success)
-      });
-    }
-
-    // No tool call, just return the text response
-    const reply = responseMessage?.content || 'Sorry, I could not generate a response.';
+    // Process with recursive tool loop (consistent with WhatsApp channel)
+    const result = await processWithToolLoop(messages, tools, business, { channel: 'CHAT' });
 
     res.json({
       success: true,
-      reply: reply,
-      assistantName: assistant.name
+      reply: result.reply,
+      assistantName: assistant.name,
+      toolCalled: result.toolsCalled.length > 0 ? result.toolsCalled.join(', ') : undefined,
+      toolResult: result.toolsCalled.length > 0 ? true : undefined
     });
 
   } catch (error) {

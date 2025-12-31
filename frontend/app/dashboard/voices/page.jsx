@@ -136,13 +136,13 @@ export default function VoicesPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-neutral-900">{t('dashboard.voicesPage.title')}</h1>
-        <p className="text-neutral-600 mt-1">
+        <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">{t('dashboard.voicesPage.title')}</h1>
+        <p className="text-neutral-600 dark:text-neutral-400 mt-1">
           {t('dashboard.voicesPage.description')}
         </p>
         {/* Business language indicator */}
         {businessLanguage && (
-          <p className="text-sm text-primary-600 mt-2">
+          <p className="text-sm text-primary-600 dark:text-primary-400 mt-2">
             {t('dashboard.voicesPage.businessLanguage')}: {
               businessLanguage === 'TR' ? 'Türkçe' :
               businessLanguage === 'PR' ? 'Português' :
@@ -182,12 +182,12 @@ export default function VoicesPage() {
           {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
             <div
               key={i}
-              className="bg-white rounded-xl border border-neutral-200 p-6 animate-pulse"
+              className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6 animate-pulse"
             >
-              <div className="h-6 w-32 bg-neutral-200 rounded mb-3"></div>
-              <div className="h-4 w-full bg-neutral-200 rounded mb-2"></div>
-              <div className="h-4 w-2/3 bg-neutral-200 rounded mb-4"></div>
-              <div className="h-10 w-full bg-neutral-200 rounded"></div>
+              <div className="h-6 w-32 bg-neutral-200 dark:bg-neutral-700 rounded mb-3"></div>
+              <div className="h-4 w-full bg-neutral-200 dark:bg-neutral-700 rounded mb-2"></div>
+              <div className="h-4 w-2/3 bg-neutral-200 dark:bg-neutral-700 rounded mb-4"></div>
+              <div className="h-10 w-full bg-neutral-200 dark:bg-neutral-700 rounded"></div>
             </div>
           ))}
         </div>
@@ -210,7 +210,7 @@ export default function VoicesPage() {
           </div>
         </>
       ) : (
-        <div className="bg-white rounded-xl border border-neutral-200 p-8">
+        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-8">
           <EmptyState
             icon={Mic}
             title={t('dashboard.voicesPage.noVoicesFound')}
@@ -220,11 +220,11 @@ export default function VoicesPage() {
       )}
 
       {/* Info banner */}
-      <div className="bg-primary-50 border border-primary-200 rounded-xl p-6">
-        <h3 className="text-sm font-semibold text-primary-900 mb-2">
+      <div className="bg-primary-50 dark:bg-primary-950 border border-primary-200 dark:border-primary-800 rounded-xl p-6">
+        <h3 className="text-sm font-semibold text-primary-900 dark:text-primary-100 mb-2">
           {t('dashboard.voicesPage.aboutVoiceSelection')}
         </h3>
-        <p className="text-sm text-primary-700">
+        <p className="text-sm text-primary-700 dark:text-primary-300">
           {t('dashboard.voicesPage.voiceSelectionInfo')}
         </p>
       </div>

@@ -166,19 +166,19 @@ export default function PhoneNumbersPage() {
       <div className="space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold text-neutral-900">{t('dashboard.phoneNumbersPage.title')}</h1>
-          <p className="text-neutral-600 mt-1">{t('dashboard.phoneNumbersPage.description')}</p>
+          <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">{t('dashboard.phoneNumbersPage.title')}</h1>
+          <p className="text-neutral-600 dark:text-neutral-400 mt-1">{t('dashboard.phoneNumbersPage.description')}</p>
         </div>
 
         {/* Locked State */}
-        <div className="bg-white rounded-xl border border-neutral-200 p-12 text-center">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-neutral-100 rounded-full mb-6">
+        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-12 text-center">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-neutral-100 dark:bg-neutral-800 rounded-full mb-6">
             <Lock className="h-10 w-10 text-neutral-400" />
           </div>
-          <h2 className="text-2xl font-bold text-neutral-900 mb-3">
+          <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-3">
             {t('dashboard.phoneNumbersPage.upgradeToGetPhone')}
           </h2>
-          <p className="text-neutral-600 mb-6 max-w-md mx-auto">
+          <p className="text-neutral-600 dark:text-neutral-400 mb-6 max-w-md mx-auto">
             {t('dashboard.phoneNumbersPage.phoneNumbersLockedDesc')}
           </p>
           <Link href="/dashboard/subscription">
@@ -189,26 +189,26 @@ export default function PhoneNumbersPage() {
         </div>
 
         {/* Plan comparison */}
-        <div className="bg-primary-50 border border-primary-200 rounded-xl p-6">
-          <h3 className="text-sm font-semibold text-primary-900 mb-3">
+        <div className="bg-primary-50 dark:bg-primary-950 border border-primary-200 dark:border-primary-800 rounded-xl p-6">
+          <h3 className="text-sm font-semibold text-primary-900 dark:text-primary-100 mb-3">
             {t('dashboard.phoneNumbersPage.planFeatures')}
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-            <div className="bg-white p-4 rounded-lg">
-              <div className="font-semibold text-neutral-900 mb-2">{t('dashboard.subscriptionPage.basicPlan')}</div>
-              <div className="text-neutral-600">1 {t('dashboard.phoneNumbersPage.phoneNumber')}</div>
+            <div className="bg-white dark:bg-neutral-900 p-4 rounded-lg">
+              <div className="font-semibold text-neutral-900 dark:text-white mb-2">{t('dashboard.subscriptionPage.basicPlan')}</div>
+              <div className="text-neutral-600 dark:text-neutral-400">1 {t('dashboard.phoneNumbersPage.phoneNumber')}</div>
               <div className="text-xs text-neutral-500 mt-1">$29/ay</div>
             </div>
-            <div className="bg-white p-4 rounded-lg border-2 border-primary-300">
-              <div className="font-semibold text-primary-700 mb-2">
+            <div className="bg-white dark:bg-neutral-900 p-4 rounded-lg border-2 border-primary-300 dark:border-primary-600">
+              <div className="font-semibold text-primary-700 dark:text-primary-400 mb-2">
                 {t('dashboard.subscriptionPage.professionalPlan')} ⭐
               </div>
-              <div className="text-neutral-600">3 {t('dashboard.phoneNumbersPage.phoneNumber')}</div>
+              <div className="text-neutral-600 dark:text-neutral-400">3 {t('dashboard.phoneNumbersPage.phoneNumber')}</div>
               <div className="text-xs text-neutral-500 mt-1">$99/ay</div>
             </div>
-            <div className="bg-white p-4 rounded-lg">
-              <div className="font-semibold text-neutral-900 mb-2">{t('dashboard.subscriptionPage.enterprisePlan')}</div>
-              <div className="text-neutral-600">{t('dashboard.phoneNumbersPage.unlimited')}</div>
+            <div className="bg-white dark:bg-neutral-900 p-4 rounded-lg">
+              <div className="font-semibold text-neutral-900 dark:text-white mb-2">{t('dashboard.subscriptionPage.enterprisePlan')}</div>
+              <div className="text-neutral-600 dark:text-neutral-400">{t('dashboard.phoneNumbersPage.unlimited')}</div>
               <div className="text-xs text-neutral-500 mt-1">{t('solutions.contactSales')}</div>
             </div>
           </div>
@@ -222,11 +222,11 @@ export default function PhoneNumbersPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-neutral-900">{t('dashboard.phoneNumbersPage.title')}</h1>
-          <p className="text-neutral-600 mt-1">{t('dashboard.phoneNumbersPage.description')}</p>
+          <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">{t('dashboard.phoneNumbersPage.title')}</h1>
+          <p className="text-neutral-600 dark:text-neutral-400 mt-1">{t('dashboard.phoneNumbersPage.description')}</p>
           {/* 🔧 Plan limit indicator */}
           {subscription && (
-            <p className="text-sm text-primary-600 mt-2">
+            <p className="text-sm text-primary-600 dark:text-primary-400 mt-2">
               {phoneNumbers.length}/{PLAN_LIMITS[subscription.plan]?.phoneNumbers === -1 ? '∞' : PLAN_LIMITS[subscription.plan]?.phoneNumbers} {t('dashboard.phoneNumbersPage.numbersUsed')}
             </p>
           )}
@@ -242,8 +242,8 @@ export default function PhoneNumbersPage() {
 
       {/* Limit warning */}
       {!canAddNumber() && phoneNumbers.length > 0 && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
-          <p className="text-sm text-yellow-800">
+        <div className="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-xl p-4">
+          <p className="text-sm text-yellow-800 dark:text-yellow-200">
             ⚠️ {t('dashboard.phoneNumbersPage.phoneLimitReached')}
             <Link href="/dashboard/subscription" className="ml-2 underline font-medium">
               {t('dashboard.subscriptionPage.upgrade')}
@@ -258,11 +258,11 @@ export default function PhoneNumbersPage() {
           {[1, 2, 3].map((i) => (
             <div
               key={i}
-              className="bg-white rounded-xl border border-neutral-200 p-6 animate-pulse"
+              className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6 animate-pulse"
             >
-              <div className="h-8 w-48 bg-neutral-200 rounded mb-4"></div>
-              <div className="h-4 w-32 bg-neutral-200 rounded mb-2"></div>
-              <div className="h-10 w-full bg-neutral-200 rounded"></div>
+              <div className="h-8 w-48 bg-neutral-200 dark:bg-neutral-700 rounded mb-4"></div>
+              <div className="h-4 w-32 bg-neutral-200 dark:bg-neutral-700 rounded mb-2"></div>
+              <div className="h-10 w-full bg-neutral-200 dark:bg-neutral-700 rounded"></div>
             </div>
           ))}
         </div>
@@ -271,15 +271,15 @@ export default function PhoneNumbersPage() {
           {phoneNumbers.map((number) => (
             <div
               key={number.id}
-              className="bg-white rounded-xl border border-neutral-200 p-6 hover:shadow-md transition-shadow"
+              className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6 hover:shadow-md transition-shadow"
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-primary-100 rounded-lg">
-                    <Phone className="h-5 w-5 text-primary-600" />
+                  <div className="p-2 bg-primary-100 dark:bg-primary-900 rounded-lg">
+                    <Phone className="h-5 w-5 text-primary-600 dark:text-primary-400" />
                   </div>
                   <div>
-                    <p className="text-2xl font-mono font-bold text-neutral-900">
+                    <p className="text-2xl font-mono font-bold text-neutral-900 dark:text-white">
                       {formatPhone(number.phoneNumber)}
                     </p>
                     <p className="text-xs text-neutral-500 mt-1">
@@ -292,7 +292,7 @@ export default function PhoneNumbersPage() {
               <div className="space-y-3 mb-4">
                 {/* Assistant Selector */}
                 <div>
-                  <label className="text-sm text-neutral-600 mb-1 block">
+                  <label className="text-sm text-neutral-600 dark:text-neutral-400 mb-1 block">
                     {t('dashboard.phoneNumbersPage.assistant')}
                   </label>
                   <div className="relative">
@@ -349,8 +349,8 @@ export default function PhoneNumbersPage() {
                 </div>
                 {/* Status */}
                 <div className="flex justify-between text-sm">
-                  <span className="text-neutral-600">{t('dashboard.phoneNumbersPage.status')}</span>
-                  <Badge className="bg-green-100 text-green-800">{t('dashboard.phoneNumbersPage.active')}</Badge>
+                  <span className="text-neutral-600 dark:text-neutral-400">{t('dashboard.phoneNumbersPage.status')}</span>
+                  <Badge className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">{t('dashboard.phoneNumbersPage.active')}</Badge>
                 </div>
               </div>
 
@@ -376,7 +376,7 @@ export default function PhoneNumbersPage() {
           ))}
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-neutral-200 p-8">
+        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-8">
           <EmptyState
             icon={Phone}
             title={t('dashboard.phoneNumbersPage.noPhoneNumbersYet')}

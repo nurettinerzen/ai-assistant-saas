@@ -132,7 +132,7 @@ export function getToolDefinition(toolName) {
  * @param {string} toolName - Tool name
  * @returns {boolean}
  */
-export function hasTooll(toolName) {
+export function hasTool(toolName) {
   return registry.has(toolName);
 }
 
@@ -157,7 +157,7 @@ export default {
   getActiveToolsForElevenLabs,
   executeTool,
   getToolDefinition,
-  hasTooll,
+  hasTool,
   getAllToolNames,
   registry
 };

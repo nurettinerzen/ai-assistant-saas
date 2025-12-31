@@ -50,20 +50,20 @@ const INTEGRATION_ICONS = {
 };
 
 const CATEGORY_COLORS = {
-  scheduling: { icon: 'text-blue-600', bg: 'bg-blue-100' },
-  communication: { icon: 'text-green-600', bg: 'bg-green-100' },
-  payments: { icon: 'text-purple-600', bg: 'bg-purple-100' },
-  ecommerce: { icon: 'text-orange-600', bg: 'bg-orange-100' },
-  reservations: { icon: 'text-red-600', bg: 'bg-red-100' },
-  pos: { icon: 'text-yellow-600', bg: 'bg-yellow-100' },
-  healthcare: { icon: 'text-teal-600', bg: 'bg-teal-100' },
-  booking: { icon: 'text-pink-600', bg: 'bg-pink-100' },
-  shipping: { icon: 'text-indigo-600', bg: 'bg-indigo-100' },
-  marketing: { icon: 'text-rose-600', bg: 'bg-rose-100' },
-  crm: { icon: 'text-cyan-600', bg: 'bg-cyan-100' },
-  data: { icon: 'text-emerald-600', bg: 'bg-emerald-100' },
-  automation: { icon: 'text-amber-600', bg: 'bg-amber-100' },
-  accounting: { icon: 'text-slate-600', bg: 'bg-slate-100' }
+  scheduling: { icon: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-100 dark:bg-blue-900/30' },
+  communication: { icon: 'text-green-600 dark:text-green-400', bg: 'bg-green-100 dark:bg-green-900/30' },
+  payments: { icon: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-100 dark:bg-purple-900/30' },
+  ecommerce: { icon: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-100 dark:bg-orange-900/30' },
+  reservations: { icon: 'text-red-600 dark:text-red-400', bg: 'bg-red-100 dark:bg-red-900/30' },
+  pos: { icon: 'text-yellow-600 dark:text-yellow-400', bg: 'bg-yellow-100 dark:bg-yellow-900/30' },
+  healthcare: { icon: 'text-teal-600 dark:text-teal-400', bg: 'bg-teal-100 dark:bg-teal-900/30' },
+  booking: { icon: 'text-pink-600 dark:text-pink-400', bg: 'bg-pink-100 dark:bg-pink-900/30' },
+  shipping: { icon: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-100 dark:bg-indigo-900/30' },
+  marketing: { icon: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-100 dark:bg-rose-900/30' },
+  crm: { icon: 'text-cyan-600 dark:text-cyan-400', bg: 'bg-cyan-100 dark:bg-cyan-900/30' },
+  data: { icon: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-100 dark:bg-emerald-900/30' },
+  automation: { icon: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-100 dark:bg-amber-900/30' },
+  accounting: { icon: 'text-slate-600 dark:text-slate-400', bg: 'bg-slate-100 dark:bg-slate-900/30' }
 };
 
 const INTEGRATION_DOCS = {
@@ -788,15 +788,15 @@ const handleIdeasoftConnect = async () => {
     const isLocked = featureInfo.isLocked && !integration.connected;
 
     return (
-      <div key={integration.type} className={`bg-white rounded-xl border p-6 transition-shadow ${disabled || isComingSoon || isLocked ? 'opacity-70 bg-neutral-50' : 'hover:shadow-md'} ${integration.priority === 'ESSENTIAL' ? 'border-primary-300 bg-primary-50/30' : 'border-neutral-200'}`}>
+      <div key={integration.type} className={`bg-white dark:bg-neutral-900 rounded-xl border p-6 transition-shadow ${disabled || isComingSoon || isLocked ? 'opacity-70 bg-neutral-50 dark:bg-neutral-800' : 'hover:shadow-md'} ${integration.priority === 'ESSENTIAL' ? 'border-primary-300 dark:border-primary-700 bg-primary-50/30 dark:bg-primary-900/20' : 'border-neutral-200 dark:border-neutral-700'}`}>
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className={`p-3 rounded-lg ${isLocked ? 'bg-neutral-100' : colors.bg}`}>
-              <Icon className={`h-6 w-6 ${isLocked ? 'text-neutral-400' : colors.icon}`} />
+            <div className={`p-3 rounded-lg ${isLocked ? 'bg-neutral-100 dark:bg-neutral-800' : colors.bg}`}>
+              <Icon className={`h-6 w-6 ${isLocked ? 'text-neutral-400 dark:text-neutral-500' : colors.icon}`} />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className={`font-semibold ${disabled || isComingSoon || isLocked ? 'text-neutral-500' : 'text-neutral-900'}`}>{integration.name}</h3>
+                <h3 className={`font-semibold ${disabled || isComingSoon || isLocked ? 'text-neutral-500 dark:text-neutral-400' : 'text-neutral-900 dark:text-white'}`}>{integration.name}</h3>
                 {integration.priority === 'ESSENTIAL' && !isLocked && <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />}
                 {isLocked && (
                   <Badge variant="secondary" className="bg-amber-100 text-amber-700 text-xs">
@@ -845,7 +845,7 @@ const handleIdeasoftConnect = async () => {
           </div>
         )}
 
-        <p className="text-sm text-neutral-600 mb-4 line-clamp-2">{getCategoryDescription(integration.type)}</p>
+        <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4 line-clamp-2">{getCategoryDescription(integration.type)}</p>
 
         <div className="flex gap-2">
           {isLocked ? (
@@ -894,8 +894,8 @@ const handleIdeasoftConnect = async () => {
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-neutral-900">{t('dashboard.integrationsPage.title')}</h1>
-        <p className="text-neutral-600 mt-1">{t('dashboard.integrationsPage.description')}</p>
+        <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">{t('dashboard.integrationsPage.title')}</h1>
+        <p className="text-neutral-600 dark:text-neutral-400 mt-1">{t('dashboard.integrationsPage.description')}</p>
         {businessType && (
           <div className="mt-3 flex items-center gap-2">
             <Badge variant="outline" className="text-sm">
@@ -908,22 +908,22 @@ const handleIdeasoftConnect = async () => {
       {/* Email Channel Section */}
       <div className="space-y-4">
         <div>
-          <h2 className="text-xl font-semibold text-neutral-900 flex items-center gap-2">
-            <Inbox className="h-5 w-5 text-blue-600" />{t('dashboard.integrationsPage.emailChannel')}
+          <h2 className="text-xl font-semibold text-neutral-900 dark:text-white flex items-center gap-2">
+            <Inbox className="h-5 w-5 text-blue-600 dark:text-blue-400" />{t('dashboard.integrationsPage.emailChannel')}
           </h2>
-          <p className="text-sm text-neutral-600 mt-1">{t('dashboard.integrationsPage.emailChannelDesc')}</p>
+          <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">{t('dashboard.integrationsPage.emailChannelDesc')}</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Gmail Card */}
-          <div className={`bg-white rounded-xl border p-6 hover:shadow-md transition-shadow ${emailStatus?.connected && emailStatus?.provider === 'GMAIL' ? 'border-green-300 bg-green-50/30' : 'border-neutral-200'}`}>
+          <div className={`bg-white dark:bg-neutral-900 rounded-xl border p-6 hover:shadow-md transition-shadow ${emailStatus?.connected && emailStatus?.provider === 'GMAIL' ? 'border-green-300 dark:border-green-700 bg-green-50/30 dark:bg-green-900/20' : 'border-neutral-200 dark:border-neutral-700'}`}>
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className="p-3 rounded-lg bg-red-100">
-                  <Mail className="h-6 w-6 text-red-600" />
+                <div className="p-3 rounded-lg bg-red-100 dark:bg-red-900/30">
+                  <Mail className="h-6 w-6 text-red-600 dark:text-red-400" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-neutral-900">Gmail</h3>
+                  <h3 className="font-semibold text-neutral-900 dark:text-white">Gmail</h3>
                   <Badge variant="secondary" className="text-xs mt-1">{t('dashboard.integrationsPage.emailChannel')}</Badge>
                 </div>
               </div>
@@ -931,7 +931,7 @@ const handleIdeasoftConnect = async () => {
                 <div className="p-1 bg-green-100 rounded-full"><Check className="h-4 w-4 text-green-600" /></div>
               )}
             </div>
-            <p className="text-sm text-neutral-600 mb-4">{t('dashboard.integrationsPage.gmailDesc')}</p>
+            <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">{t('dashboard.integrationsPage.gmailDesc')}</p>
             {emailStatus?.connected && emailStatus?.provider === 'GMAIL' ? (
               <div className="space-y-3">
                 <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 p-2 rounded-lg">
@@ -956,14 +956,14 @@ const handleIdeasoftConnect = async () => {
           </div>
 
           {/* Outlook Card */}
-          <div className={`bg-white rounded-xl border p-6 hover:shadow-md transition-shadow ${emailStatus?.connected && emailStatus?.provider === 'OUTLOOK' ? 'border-green-300 bg-green-50/30' : 'border-neutral-200'}`}>
+          <div className={`bg-white dark:bg-neutral-900 rounded-xl border p-6 hover:shadow-md transition-shadow ${emailStatus?.connected && emailStatus?.provider === 'OUTLOOK' ? 'border-green-300 dark:border-green-700 bg-green-50/30 dark:bg-green-900/20' : 'border-neutral-200 dark:border-neutral-700'}`}>
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className="p-3 rounded-lg bg-blue-100">
-                  <Mail className="h-6 w-6 text-blue-600" />
+                <div className="p-3 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                  <Mail className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-neutral-900">Microsoft 365</h3>
+                  <h3 className="font-semibold text-neutral-900 dark:text-white">Microsoft 365</h3>
                   <Badge variant="secondary" className="text-xs mt-1">{t('dashboard.integrationsPage.emailChannel')}</Badge>
                 </div>
               </div>
@@ -971,7 +971,7 @@ const handleIdeasoftConnect = async () => {
                 <div className="p-1 bg-green-100 rounded-full"><Check className="h-4 w-4 text-green-600" /></div>
               )}
             </div>
-            <p className="text-sm text-neutral-600 mb-4">{t('dashboard.integrationsPage.outlookDesc')}</p>
+            <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">{t('dashboard.integrationsPage.outlookDesc')}</p>
             {emailStatus?.connected && emailStatus?.provider === 'OUTLOOK' ? (
               <div className="space-y-3">
                 <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 p-2 rounded-lg">
@@ -1005,24 +1005,24 @@ const handleIdeasoftConnect = async () => {
         return (
       <div className="space-y-4">
         <div>
-          <h2 className="text-xl font-semibold text-neutral-900 flex items-center gap-2">
-            <Hash className="h-5 w-5 text-purple-600" />
+          <h2 className="text-xl font-semibold text-neutral-900 dark:text-white flex items-center gap-2">
+            <Hash className="h-5 w-5 text-purple-600 dark:text-purple-400" />
             {language === 'tr' ? 'Özel CRM Entegrasyonu' : 'Custom CRM Integration'}
           </h2>
-          <p className="text-sm text-neutral-600 mt-1">
+          <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
             {language === 'tr' ? 'Kendi sisteminizden sipariş, stok ve servis bilgileri gönderin.' : 'Send order, stock and service information from your own system.'}
           </p>
         </div>
 
-        <div className={`bg-white rounded-xl border p-6 transition-shadow ${isCRMLocked ? 'opacity-70 bg-neutral-50 border-neutral-200' : 'border-neutral-200 hover:shadow-md'}`}>
+        <div className={`bg-white dark:bg-neutral-900 rounded-xl border p-6 transition-shadow ${isCRMLocked ? 'opacity-70 bg-neutral-50 dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700' : 'border-neutral-200 dark:border-neutral-700 hover:shadow-md'}`}>
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-3">
-              <div className={`p-3 rounded-lg ${isCRMLocked ? 'bg-neutral-100' : 'bg-purple-100'}`}>
-                <Hash className={`h-6 w-6 ${isCRMLocked ? 'text-neutral-400' : 'text-purple-600'}`} />
+              <div className={`p-3 rounded-lg ${isCRMLocked ? 'bg-neutral-100 dark:bg-neutral-800' : 'bg-purple-100 dark:bg-purple-900/30'}`}>
+                <Hash className={`h-6 w-6 ${isCRMLocked ? 'text-neutral-400 dark:text-neutral-500' : 'text-purple-600 dark:text-purple-400'}`} />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className={`font-semibold ${isCRMLocked ? 'text-neutral-500' : 'text-neutral-900'}`}>
+                  <h3 className={`font-semibold ${isCRMLocked ? 'text-neutral-500 dark:text-neutral-400' : 'text-neutral-900 dark:text-white'}`}>
                     {language === 'tr' ? 'Özel CRM/ERP Webhook' : 'Custom CRM/ERP Webhook'}
                   </h3>
                   {isCRMLocked ? (
@@ -1034,7 +1034,7 @@ const handleIdeasoftConnect = async () => {
                     <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">Pro</span>
                   )}
                 </div>
-                <p className="text-sm text-neutral-500 mt-1">
+                <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
                   {language === 'tr' ? 'Kendi sisteminizi bağlayın' : 'Connect your own system'}
                 </p>
               </div>
@@ -1048,7 +1048,7 @@ const handleIdeasoftConnect = async () => {
             </div>
           )}
 
-          <p className="text-sm text-neutral-600 mb-4">
+          <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">
             {language === 'tr'
               ? "Kendi CRM veya ERP sisteminizden sipariş, stok ve servis/arıza bilgilerini Telyx'e gönderin. AI asistanınız bu bilgilere erişerek müşterilerinize otomatik yanıt verebilir."
               : "Send order, stock and service information from your own CRM or ERP system to Telyx. Your AI assistant can access this information to automatically respond to your customers."}
@@ -1082,11 +1082,11 @@ const handleIdeasoftConnect = async () => {
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="bg-white rounded-xl border border-neutral-200 p-6 animate-pulse">
-              <div className="h-12 w-12 bg-neutral-200 rounded-lg mb-4"></div>
-              <div className="h-6 w-32 bg-neutral-200 rounded mb-2"></div>
-              <div className="h-4 w-full bg-neutral-200 rounded mb-4"></div>
-              <div className="h-10 w-full bg-neutral-200 rounded"></div>
+            <div key={i} className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6 animate-pulse">
+              <div className="h-12 w-12 bg-neutral-200 dark:bg-neutral-700 rounded-lg mb-4"></div>
+              <div className="h-6 w-32 bg-neutral-200 dark:bg-neutral-700 rounded mb-2"></div>
+              <div className="h-4 w-full bg-neutral-200 dark:bg-neutral-700 rounded mb-4"></div>
+              <div className="h-10 w-full bg-neutral-200 dark:bg-neutral-700 rounded"></div>
             </div>
           ))}
         </div>
@@ -1094,7 +1094,7 @@ const handleIdeasoftConnect = async () => {
         <>
           {groupedIntegrations.ESSENTIAL.length > 0 && (
             <div className="space-y-4">
-              <h2 className="text-xl font-semibold text-neutral-900 flex items-center gap-2">
+              <h2 className="text-xl font-semibold text-neutral-900 dark:text-white flex items-center gap-2">
                 <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />{t('dashboard.integrationsPage.essentialIntegrations')}
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -1105,8 +1105,8 @@ const handleIdeasoftConnect = async () => {
 
           {groupedIntegrations.RECOMMENDED.length > 0 && (
             <div className="space-y-4">
-              <h2 className="text-xl font-semibold text-neutral-900 flex items-center gap-2">
-                <CheckCircle2 className="h-5 w-5 text-green-600" />{t('dashboard.integrationsPage.recommendedIntegrations')}
+              <h2 className="text-xl font-semibold text-neutral-900 dark:text-white flex items-center gap-2">
+                <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />{t('dashboard.integrationsPage.recommendedIntegrations')}
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {groupedIntegrations.RECOMMENDED.map(renderIntegrationCard)}
@@ -1116,7 +1116,7 @@ const handleIdeasoftConnect = async () => {
 
           {groupedIntegrations.OPTIONAL.length > 0 && (
             <div className="space-y-4">
-              <h2 className="text-xl font-semibold text-neutral-900">{t('dashboard.integrationsPage.moreIntegrations')}</h2>
+              <h2 className="text-xl font-semibold text-neutral-900 dark:text-white">{t('dashboard.integrationsPage.moreIntegrations')}</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {groupedIntegrations.OPTIONAL.map(renderIntegrationCard)}
               </div>

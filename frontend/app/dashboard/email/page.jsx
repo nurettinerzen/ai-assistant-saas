@@ -232,20 +232,20 @@ export default function EmailDashboardPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-neutral-900">{t('dashboard.emailPage.title')}</h1>
-          <p className="text-neutral-600 mt-1">
+          <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">{t('dashboard.emailPage.title')}</h1>
+          <p className="text-neutral-600 dark:text-neutral-400 mt-1">
             {t('dashboard.emailPage.description')}
           </p>
         </div>
 
-        <div className="bg-white rounded-xl border border-neutral-200 p-12 text-center">
-          <div className="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center mb-4">
-            <Mail className="h-8 w-8 text-blue-600" />
+        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-12 text-center">
+          <div className="w-16 h-16 mx-auto bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mb-4">
+            <Mail className="h-8 w-8 text-blue-600 dark:text-blue-400" />
           </div>
-          <h2 className="text-xl font-semibold text-neutral-900 mb-2">
+          <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-2">
             {t('dashboard.emailPage.connectYourEmail')}
           </h2>
-          <p className="text-neutral-600 mb-6 max-w-md mx-auto">
+          <p className="text-neutral-600 dark:text-neutral-400 mb-6 max-w-md mx-auto">
             {t('dashboard.emailPage.connectEmailDesc')}
           </p>
           <Button onClick={() => window.location.href = '/dashboard/integrations'}>
@@ -261,8 +261,8 @@ export default function EmailDashboardPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-neutral-900">{t('dashboard.emailPage.title')}</h1>
-          <p className="text-neutral-600 mt-1">
+          <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">{t('dashboard.emailPage.title')}</h1>
+          <p className="text-neutral-600 dark:text-neutral-400 mt-1">
             {emailStatus?.email && (
               <span className="text-sm">
                 {t('dashboard.emailPage.connected')}: <span className="font-medium">{emailStatus.email}</span>
@@ -284,17 +284,17 @@ export default function EmailDashboardPage() {
               setStatusFilter(statusFilter === 'NO_REPLY_NEEDED' ? null : 'NO_REPLY_NEEDED');
               loadThreads(statusFilter === 'NO_REPLY_NEEDED' ? null : 'NO_REPLY_NEEDED');
             }}
-            className={`bg-white rounded-lg border p-4 text-left transition-all hover:shadow-md ${
-              statusFilter === 'NO_REPLY_NEEDED' ? 'border-purple-500 ring-2 ring-purple-200' : 'border-neutral-200'
+            className={`bg-white dark:bg-neutral-900 rounded-lg border p-4 text-left transition-all hover:shadow-md ${
+              statusFilter === 'NO_REPLY_NEEDED' ? 'border-purple-500 ring-2 ring-purple-200 dark:ring-purple-800' : 'border-neutral-200 dark:border-neutral-700'
             }`}
           >
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <Clock className="h-5 w-5 text-purple-600" />
+              <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
+                <Clock className="h-5 w-5 text-purple-600 dark:text-purple-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-neutral-900">{stats.noReplyNeededCount || 0}</p>
-                <p className="text-sm text-neutral-600">{t('dashboard.emailPage.noReplyNeeded')}</p>
+                <p className="text-2xl font-bold text-neutral-900 dark:text-white">{stats.noReplyNeededCount || 0}</p>
+                <p className="text-sm text-neutral-600 dark:text-neutral-400">{t('dashboard.emailPage.noReplyNeeded')}</p>
               </div>
             </div>
           </button>
@@ -303,17 +303,17 @@ export default function EmailDashboardPage() {
               setStatusFilter(statusFilter === 'DRAFT_READY' ? null : 'DRAFT_READY');
               loadThreads(statusFilter === 'DRAFT_READY' ? null : 'DRAFT_READY');
             }}
-            className={`bg-white rounded-lg border p-4 text-left transition-all hover:shadow-md ${
-              statusFilter === 'DRAFT_READY' ? 'border-blue-500 ring-2 ring-blue-200' : 'border-neutral-200'
+            className={`bg-white dark:bg-neutral-900 rounded-lg border p-4 text-left transition-all hover:shadow-md ${
+              statusFilter === 'DRAFT_READY' ? 'border-blue-500 ring-2 ring-blue-200 dark:ring-blue-800' : 'border-neutral-200 dark:border-neutral-700'
             }`}
           >
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Pencil className="h-5 w-5 text-blue-600" />
+              <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                <Pencil className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-neutral-900">{stats.draftReadyCount}</p>
-                <p className="text-sm text-neutral-600">{t('dashboard.emailPage.draftsReady')}</p>
+                <p className="text-2xl font-bold text-neutral-900 dark:text-white">{stats.draftReadyCount}</p>
+                <p className="text-sm text-neutral-600 dark:text-neutral-400">{t('dashboard.emailPage.draftsReady')}</p>
               </div>
             </div>
           </button>
@@ -322,17 +322,17 @@ export default function EmailDashboardPage() {
               setStatusFilter(statusFilter === 'REPLIED' ? null : 'REPLIED');
               loadThreads(statusFilter === 'REPLIED' ? null : 'REPLIED');
             }}
-            className={`bg-white rounded-lg border p-4 text-left transition-all hover:shadow-md ${
-              statusFilter === 'REPLIED' ? 'border-green-500 ring-2 ring-green-200' : 'border-neutral-200'
+            className={`bg-white dark:bg-neutral-900 rounded-lg border p-4 text-left transition-all hover:shadow-md ${
+              statusFilter === 'REPLIED' ? 'border-green-500 ring-2 ring-green-200 dark:ring-green-800' : 'border-neutral-200 dark:border-neutral-700'
             }`}
           >
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <CheckCircle2 className="h-5 w-5 text-green-600" />
+              <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
+                <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-neutral-900">{stats.repliedTodayCount}</p>
-                <p className="text-sm text-neutral-600">{t('dashboard.emailPage.repliedToday')}</p>
+                <p className="text-2xl font-bold text-neutral-900 dark:text-white">{stats.repliedTodayCount}</p>
+                <p className="text-sm text-neutral-600 dark:text-neutral-400">{t('dashboard.emailPage.repliedToday')}</p>
               </div>
             </div>
           </button>
@@ -341,17 +341,17 @@ export default function EmailDashboardPage() {
               setStatusFilter(null);
               loadThreads(null);
             }}
-            className={`bg-white rounded-lg border p-4 text-left transition-all hover:shadow-md ${
-              statusFilter === null ? 'border-neutral-500 ring-2 ring-neutral-200' : 'border-neutral-200'
+            className={`bg-white dark:bg-neutral-900 rounded-lg border p-4 text-left transition-all hover:shadow-md ${
+              statusFilter === null ? 'border-neutral-500 ring-2 ring-neutral-200 dark:ring-neutral-700' : 'border-neutral-200 dark:border-neutral-700'
             }`}
           >
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-neutral-100 rounded-lg">
-                <Inbox className="h-5 w-5 text-neutral-600" />
+              <div className="p-2 bg-neutral-100 dark:bg-neutral-800 rounded-lg">
+                <Inbox className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-neutral-900">{stats.totalThreads}</p>
-                <p className="text-sm text-neutral-600">{t('dashboard.emailPage.totalThreads')}</p>
+                <p className="text-2xl font-bold text-neutral-900 dark:text-white">{stats.totalThreads}</p>
+                <p className="text-sm text-neutral-600 dark:text-neutral-400">{t('dashboard.emailPage.totalThreads')}</p>
               </div>
             </div>
           </button>
@@ -361,11 +361,11 @@ export default function EmailDashboardPage() {
       {/* Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Thread List */}
-        <div className="lg:col-span-1 bg-white rounded-xl border border-neutral-200 overflow-hidden">
-          <div className="p-4 border-b border-neutral-200">
-            <h2 className="font-semibold text-neutral-900">{t('dashboard.emailPage.conversations')}</h2>
+        <div className="lg:col-span-1 bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden">
+          <div className="p-4 border-b border-neutral-200 dark:border-neutral-700">
+            <h2 className="font-semibold text-neutral-900 dark:text-white">{t('dashboard.emailPage.conversations')}</h2>
           </div>
-          <div className="divide-y divide-neutral-100 max-h-[600px] overflow-y-auto">
+          <div className="divide-y divide-neutral-100 dark:divide-neutral-800 max-h-[600px] overflow-y-auto">
             {loading ? (
               <div className="p-8 text-center">
                 <RefreshCw className="h-6 w-6 mx-auto text-neutral-400 animate-spin" />
@@ -386,16 +386,16 @@ export default function EmailDashboardPage() {
                   <button
                     key={thread.id}
                     onClick={() => loadThreadDetails(thread.id)}
-                    className={`w-full text-left p-4 hover:bg-neutral-50 transition-colors ${
-                      isSelected ? 'bg-blue-50 border-l-4 border-blue-600' : ''
+                    className={`w-full text-left p-4 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors ${
+                      isSelected ? 'bg-blue-50 dark:bg-blue-950 border-l-4 border-blue-600' : ''
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-neutral-900 truncate">
+                        <p className="font-medium text-neutral-900 dark:text-white truncate">
                           {thread.customerName || thread.customerEmail}
                         </p>
-                        <p className="text-sm text-neutral-600 truncate mt-0.5">
+                        <p className="text-sm text-neutral-600 dark:text-neutral-400 truncate mt-0.5">
                           {thread.subject}
                         </p>
                         <div className="flex items-center gap-2 mt-2">
@@ -428,13 +428,13 @@ export default function EmailDashboardPage() {
           {selectedThread ? (
             <>
               {/* Thread Header */}
-              <div className="bg-white rounded-xl border border-neutral-200 p-4">
+              <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-4">
                 <div className="flex items-start justify-between">
                   <div>
-                    <h2 className="text-lg font-semibold text-neutral-900">
+                    <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">
                       {selectedThread.subject}
                     </h2>
-                    <p className="text-sm text-neutral-600 mt-1">
+                    <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
                       {t('dashboard.emailPage.from')}: {selectedThread.customerName || selectedThread.customerEmail}
                       {selectedThread.customerName && (
                         <span className="text-neutral-400"> &lt;{selectedThread.customerEmail}&gt;</span>
@@ -454,33 +454,33 @@ export default function EmailDashboardPage() {
               </div>
 
               {/* Messages */}
-              <div className="bg-white rounded-xl border border-neutral-200 p-4 max-h-[300px] overflow-y-auto">
-                <h3 className="font-medium text-neutral-900 mb-4">{t('dashboard.emailPage.conversation')}</h3>
+              <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-4 max-h-[300px] overflow-y-auto">
+                <h3 className="font-medium text-neutral-900 dark:text-white mb-4">{t('dashboard.emailPage.conversation')}</h3>
                 <div className="space-y-4">
                   {selectedThread.messages?.map((message) => (
                     <div
                       key={message.id}
                       className={`p-4 rounded-lg ${
                         message.direction === 'INBOUND'
-                          ? 'bg-neutral-100 mr-8'
-                          : 'bg-blue-50 ml-8'
+                          ? 'bg-neutral-100 dark:bg-neutral-800 mr-8'
+                          : 'bg-blue-50 dark:bg-blue-950 ml-8'
                       }`}
                     >
                       <div className="flex items-center justify-between mb-2">
                         <span className="font-medium text-sm">
                           {message.direction === 'INBOUND' ? (
-                            <span className="text-neutral-700">
+                            <span className="text-neutral-700 dark:text-neutral-300">
                               {message.fromName || message.fromEmail}
                             </span>
                           ) : (
-                            <span className="text-blue-700">{t('dashboard.emailPage.you')}</span>
+                            <span className="text-blue-700 dark:text-blue-400">{t('dashboard.emailPage.you')}</span>
                           )}
                         </span>
                         <span className="text-xs text-neutral-500">
                           {formatDate(message.receivedAt || message.sentAt || message.createdAt)}
                         </span>
                       </div>
-                      <p className="text-sm text-neutral-700 whitespace-pre-wrap">
+                      <p className="text-sm text-neutral-700 dark:text-neutral-300 whitespace-pre-wrap">
                         {message.bodyText?.substring(0, 500)}
                         {message.bodyText?.length > 500 && '...'}
                       </p>
@@ -500,10 +500,10 @@ export default function EmailDashboardPage() {
 
               {/* Draft Editor */}
               {getActiveDraft() && selectedThread.status !== 'CLOSED' && (
-                <div className="bg-white rounded-xl border border-neutral-200 p-4">
+                <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-4">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-medium text-neutral-900 flex items-center gap-2">
-                      <Pencil className="h-4 w-4 text-blue-600" />
+                    <h3 className="font-medium text-neutral-900 dark:text-white flex items-center gap-2">
+                      <Pencil className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                       {t('dashboard.emailPage.aiDraftResponse')}
                     </h3>
                     <div className="flex items-center gap-2">
@@ -535,12 +535,12 @@ export default function EmailDashboardPage() {
                       placeholder={t('dashboard.emailPage.editResponsePlaceholder')}
                     />
                   ) : (
-                    <div className="bg-neutral-50 rounded-lg p-4 min-h-[200px] text-sm whitespace-pre-wrap">
+                    <div className="bg-neutral-50 dark:bg-neutral-800 rounded-lg p-4 min-h-[200px] text-sm whitespace-pre-wrap dark:text-neutral-200">
                       {editedContent}
                     </div>
                   )}
 
-                  <div className="flex items-center justify-between mt-4 pt-4 border-t border-neutral-200">
+                  <div className="flex items-center justify-between mt-4 pt-4 border-t border-neutral-200 dark:border-neutral-700">
                     <p className="text-xs text-neutral-500">
                       {t('dashboard.emailPage.reviewBeforeSending')}
                     </p>
@@ -568,12 +568,12 @@ export default function EmailDashboardPage() {
 
               {/* No draft available */}
               {!getActiveDraft() && selectedThread.status === 'PENDING_REPLY' && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+                <div className="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-xl p-4">
                   <div className="flex items-start gap-3">
-                    <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
+                    <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
                     <div>
-                      <h3 className="font-medium text-yellow-900">{t('dashboard.emailPage.noDraftAvailable')}</h3>
-                      <p className="text-sm text-yellow-700 mt-1">
+                      <h3 className="font-medium text-yellow-900 dark:text-yellow-100">{t('dashboard.emailPage.noDraftAvailable')}</h3>
+                      <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
                         {t('dashboard.emailPage.syncToGenerateDraft')}
                       </p>
                     </div>
@@ -583,19 +583,19 @@ export default function EmailDashboardPage() {
 
               {/* Thread closed */}
               {selectedThread.status === 'CLOSED' && (
-                <div className="bg-neutral-100 border border-neutral-200 rounded-xl p-4 text-center">
+                <div className="bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4 text-center">
                   <CheckCircle2 className="h-8 w-8 mx-auto text-neutral-400 mb-2" />
-                  <p className="text-neutral-600">{t('dashboard.emailPage.conversationClosed')}</p>
+                  <p className="text-neutral-600 dark:text-neutral-400">{t('dashboard.emailPage.conversationClosed')}</p>
                 </div>
               )}
             </>
           ) : (
-            <div className="bg-white rounded-xl border border-neutral-200 p-12 text-center">
-              <MessageSquare className="h-12 w-12 mx-auto text-neutral-300 mb-4" />
-              <h3 className="text-lg font-medium text-neutral-900 mb-2">
+            <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-12 text-center">
+              <MessageSquare className="h-12 w-12 mx-auto text-neutral-300 dark:text-neutral-600 mb-4" />
+              <h3 className="text-lg font-medium text-neutral-900 dark:text-white mb-2">
                 {t('dashboard.emailPage.selectConversation')}
               </h3>
-              <p className="text-neutral-600">
+              <p className="text-neutral-600 dark:text-neutral-400">
                 {t('dashboard.emailPage.selectConversationDesc')}
               </p>
             </div>

@@ -358,13 +358,13 @@ export default function BatchCallsPage() {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
         <div className="text-center max-w-md">
-          <div className="p-4 bg-primary-100 rounded-full w-20 h-20 mx-auto mb-6 flex items-center justify-center">
-            <ArrowUpCircle className="h-10 w-10 text-primary-600" />
+          <div className="p-4 bg-primary-100 dark:bg-primary-900 rounded-full w-20 h-20 mx-auto mb-6 flex items-center justify-center">
+            <ArrowUpCircle className="h-10 w-10 text-primary-600 dark:text-primary-400" />
           </div>
-          <h2 className="text-2xl font-bold text-neutral-900 mb-3">
+          <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-3">
             {locale === 'tr' ? 'Planınızı Yükseltin' : 'Upgrade Your Plan'}
           </h2>
-          <p className="text-neutral-600 mb-6">
+          <p className="text-neutral-600 dark:text-neutral-400 mb-6">
             {locale === 'tr'
               ? 'Toplu arama özelliği Profesyonel ve Kurumsal planlarda kullanılabilir. Planınızı yükselterek bu özelliğe erişebilirsiniz.'
               : 'Batch calling is available on Professional and Enterprise plans. Upgrade your plan to access this feature.'
@@ -386,10 +386,10 @@ export default function BatchCallsPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-neutral-900">
+          <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">
             {locale === 'tr' ? 'Toplu Arama' : 'Batch Calls'}
           </h1>
-          <p className="text-neutral-600 mt-1">
+          <p className="text-neutral-600 dark:text-neutral-400 mt-1">
             {locale === 'tr'
               ? 'Excel veya CSV dosyası yükleyerek toplu arama kampanyaları oluşturun'
               : 'Create batch calling campaigns by uploading Excel or CSV files'
@@ -406,13 +406,13 @@ export default function BatchCallsPage() {
 
       {/* Batch Calls List */}
       {loading ? (
-        <div className="bg-white rounded-xl border border-neutral-200 p-12 flex items-center justify-center">
+        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-12 flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
         </div>
       ) : batchCalls.length > 0 ? (
-        <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
+        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden">
           <table className="w-full">
-            <thead className="bg-neutral-50 border-b border-neutral-200">
+            <thead className="bg-neutral-50 dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                   {locale === 'tr' ? 'Kampanya' : 'Campaign'}
@@ -434,7 +434,7 @@ export default function BatchCallsPage() {
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-neutral-200">
+            <tbody className="divide-y divide-neutral-200 dark:divide-neutral-700">
               {batchCalls.map((batch) => {
                 const statusConfig = STATUS_CONFIG[batch.status] || STATUS_CONFIG.PENDING;
                 const StatusIcon = statusConfig.icon;
@@ -443,14 +443,14 @@ export default function BatchCallsPage() {
                   : 0;
 
                 return (
-                  <tr key={batch.id} className="hover:bg-neutral-50">
+                  <tr key={batch.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-800">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <div className="p-2 bg-primary-100 rounded-lg mr-3">
-                          <Megaphone className="h-5 w-5 text-primary-600" />
+                        <div className="p-2 bg-primary-100 dark:bg-primary-900 rounded-lg mr-3">
+                          <Megaphone className="h-5 w-5 text-primary-600 dark:text-primary-400" />
                         </div>
                         <div>
-                          <div className="text-sm font-medium text-neutral-900">{batch.name}</div>
+                          <div className="text-sm font-medium text-neutral-900 dark:text-white">{batch.name}</div>
                           <div className="text-xs text-neutral-500">
                             {batch.totalRecipients} {locale === 'tr' ? 'kişi' : 'recipients'}
                           </div>
@@ -458,7 +458,7 @@ export default function BatchCallsPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm text-neutral-900">{batch.assistant?.name || '-'}</span>
+                      <span className="text-sm text-neutral-900 dark:text-white">{batch.assistant?.name || '-'}</span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <Badge className={`${statusConfig.color} flex items-center gap-1 w-fit`}>
@@ -468,19 +468,19 @@ export default function BatchCallsPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
-                        <div className="w-24 h-2 bg-neutral-200 rounded-full overflow-hidden">
+                        <div className="w-24 h-2 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden">
                           <div
                             className="h-full bg-primary-600 rounded-full transition-all"
                             style={{ width: `${progress}%` }}
                           />
                         </div>
-                        <span className="text-xs text-neutral-600">
+                        <span className="text-xs text-neutral-600 dark:text-neutral-400">
                           {batch.completedCalls}/{batch.totalRecipients}
                         </span>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm text-neutral-600">
+                      <span className="text-sm text-neutral-600 dark:text-neutral-400">
                         {formatDate(batch.createdAt, 'short')}
                       </span>
                     </td>
@@ -682,8 +682,8 @@ export default function BatchCallsPage() {
             {/* Step 3: Column Mapping */}
             {createStep === 3 && (
               <div className="space-y-4">
-                <div className="bg-neutral-50 rounded-lg p-4 mb-4">
-                  <p className="text-sm text-neutral-600">
+                <div className="bg-neutral-50 dark:bg-neutral-800 rounded-lg p-4 mb-4">
+                  <p className="text-sm text-neutral-600 dark:text-neutral-400">
                     {locale === 'tr'
                       ? `Dosyada ${fileData.totalRows} satır bulundu. Kolonları eşleştirin:`
                       : `Found ${fileData.totalRows} rows in file. Map the columns:`
@@ -742,12 +742,12 @@ export default function BatchCallsPage() {
                 {fileData.preview.length > 0 && (
                   <div className="mt-4">
                     <Label className="mb-2 block">{locale === 'tr' ? 'Önizleme (ilk 5 satır)' : 'Preview (first 5 rows)'}</Label>
-                    <div className="overflow-x-auto border rounded-lg">
+                    <div className="overflow-x-auto border dark:border-neutral-700 rounded-lg">
                       <table className="w-full text-sm">
-                        <thead className="bg-neutral-50">
+                        <thead className="bg-neutral-50 dark:bg-neutral-800">
                           <tr>
                             {fileData.columns.map((col) => (
-                              <th key={col} className="px-3 py-2 text-left font-medium text-neutral-600">
+                              <th key={col} className="px-3 py-2 text-left font-medium text-neutral-600 dark:text-neutral-400">
                                 {col}
                               </th>
                             ))}
@@ -755,9 +755,9 @@ export default function BatchCallsPage() {
                         </thead>
                         <tbody>
                           {fileData.preview.map((row, idx) => (
-                            <tr key={idx} className="border-t">
+                            <tr key={idx} className="border-t dark:border-neutral-700">
                               {fileData.columns.map((col) => (
-                                <td key={col} className="px-3 py-2 text-neutral-900">
+                                <td key={col} className="px-3 py-2 text-neutral-900 dark:text-white">
                                   {String(row[col] || '')}
                                 </td>
                               ))}
@@ -835,30 +835,30 @@ export default function BatchCallsPage() {
             {/* Step 5: Preview/Confirm */}
             {createStep === 5 && (
               <div className="space-y-4">
-                <div className="bg-neutral-50 rounded-lg p-4 space-y-3">
+                <div className="bg-neutral-50 dark:bg-neutral-800 rounded-lg p-4 space-y-3">
                   <div className="flex justify-between">
-                    <span className="text-neutral-600">{locale === 'tr' ? 'Kampanya Adı' : 'Campaign Name'}</span>
-                    <span className="font-medium">{formData.name}</span>
+                    <span className="text-neutral-600 dark:text-neutral-400">{locale === 'tr' ? 'Kampanya Adı' : 'Campaign Name'}</span>
+                    <span className="font-medium dark:text-white">{formData.name}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-neutral-600">{locale === 'tr' ? 'Asistan' : 'Assistant'}</span>
-                    <span className="font-medium">
+                    <span className="text-neutral-600 dark:text-neutral-400">{locale === 'tr' ? 'Asistan' : 'Assistant'}</span>
+                    <span className="font-medium dark:text-white">
                       {assistants.find(a => a.id === formData.assistantId)?.name || '-'}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-neutral-600">{locale === 'tr' ? 'Telefon' : 'Phone'}</span>
-                    <span className="font-medium">
+                    <span className="text-neutral-600 dark:text-neutral-400">{locale === 'tr' ? 'Telefon' : 'Phone'}</span>
+                    <span className="font-medium dark:text-white">
                       {phoneNumbers.find(p => p.id === formData.phoneNumberId)?.phoneNumber || '-'}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-neutral-600">{locale === 'tr' ? 'Toplam Alıcı' : 'Total Recipients'}</span>
-                    <span className="font-medium text-primary-600">{fileData.totalRows}</span>
+                    <span className="text-neutral-600 dark:text-neutral-400">{locale === 'tr' ? 'Toplam Alıcı' : 'Total Recipients'}</span>
+                    <span className="font-medium text-primary-600 dark:text-primary-400">{fileData.totalRows}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-neutral-600">{locale === 'tr' ? 'Zamanlama' : 'Scheduling'}</span>
-                    <span className="font-medium">
+                    <span className="text-neutral-600 dark:text-neutral-400">{locale === 'tr' ? 'Zamanlama' : 'Scheduling'}</span>
+                    <span className="font-medium dark:text-white">
                       {formData.startImmediately
                         ? (locale === 'tr' ? 'Hemen başlat' : 'Start immediately')
                         : formatDate(formData.scheduledAt, 'long')
@@ -867,10 +867,10 @@ export default function BatchCallsPage() {
                   </div>
                 </div>
 
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
                   <div className="flex gap-2">
-                    <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0" />
-                    <p className="text-sm text-amber-800">
+                    <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                    <p className="text-sm text-amber-800 dark:text-amber-200">
                       {locale === 'tr'
                         ? `${fileData.totalRows} kişiye otomatik arama yapılacaktır. Bu işlem geri alınamaz.`
                         : `${fileData.totalRows} recipients will be called automatically. This action cannot be undone.`
