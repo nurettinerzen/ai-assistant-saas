@@ -741,37 +741,9 @@ router.put('/:id', async (req, res) => {
 });
 
 /**
- * DELETE /api/customer-data/:id
- * Delete a customer data record
- */
-router.delete('/:id', async (req, res) => {
-  try {
-    const businessId = req.businessId;
-    const { id } = req.params;
-
-    const existing = await prisma.customerData.findFirst({
-      where: { id, businessId }
-    });
-
-    if (!existing) {
-      return res.status(404).json({ error: 'Customer not found' });
-    }
-
-    await prisma.customerData.delete({
-      where: { id }
-    });
-
-    res.json({ success: true, message: 'Customer deleted' });
-
-  } catch (error) {
-    console.error('Delete customer error:', error);
-    res.status(500).json({ error: 'Failed to delete customer' });
-  }
-});
-
-/**
  * DELETE /api/customer-data/bulk
  * Delete multiple customer data records
+ * NOTE: This route MUST be before /:id to avoid "bulk" being matched as an ID
  */
 router.delete('/bulk', async (req, res) => {
   try {
@@ -798,6 +770,35 @@ router.delete('/bulk', async (req, res) => {
   } catch (error) {
     console.error('Bulk delete error:', error);
     res.status(500).json({ error: 'Failed to delete customers' });
+  }
+});
+
+/**
+ * DELETE /api/customer-data/:id
+ * Delete a customer data record
+ */
+router.delete('/:id', async (req, res) => {
+  try {
+    const businessId = req.businessId;
+    const { id } = req.params;
+
+    const existing = await prisma.customerData.findFirst({
+      where: { id, businessId }
+    });
+
+    if (!existing) {
+      return res.status(404).json({ error: 'Customer not found' });
+    }
+
+    await prisma.customerData.delete({
+      where: { id }
+    });
+
+    res.json({ success: true, message: 'Customer deleted' });
+
+  } catch (error) {
+    console.error('Delete customer error:', error);
+    res.status(500).json({ error: 'Failed to delete customer' });
   }
 });
 
