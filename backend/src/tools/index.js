@@ -35,10 +35,15 @@ export function getActiveTools(business) {
  * @param {string} serverUrl - Optional server URL (defaults to BACKEND_URL)
  * @returns {Object[]} - Array of tool definitions in 11Labs format
  */
-export function getActiveToolsForElevenLabs(business, serverUrl = null) {
+export function getActiveToolsForElevenLabs(business, serverUrl = null, agentId = null) {
   const baseTools = getActiveTools(business);
   const backendUrl = serverUrl || process.env.BACKEND_URL || 'https://api.aicallcenter.app';
-  const webhookUrl = `${backendUrl}/api/elevenlabs/webhook`;
+
+  // Include agentId in URL so we can identify the business when tool is called
+  // 11Labs webhook doesn't send agent_id in the body, only the tool parameters
+  const webhookUrl = agentId
+    ? `${backendUrl}/api/elevenlabs/webhook?agentId=${agentId}`
+    : `${backendUrl}/api/elevenlabs/webhook`;
 
   // Convert OpenAI format to 11Labs webhook format
   // 11Labs uses api_schema - omit path_params_schema and query_params_schema if not needed

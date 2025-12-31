@@ -301,6 +301,24 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
       const elevenLabsResponse = await elevenLabsService.createAgent(agentConfig);
       elevenLabsAgentId = elevenLabsResponse.agent_id;
       console.log('✅ 11Labs Agent created:', elevenLabsAgentId);
+
+      // Now update tools with agentId in webhook URL (since we didn't have it before creation)
+      const toolsWithAgentId = getActiveToolsForElevenLabs(business, null, elevenLabsAgentId);
+      const finalToolsWithSystemTools = [
+        ...toolsWithAgentId,
+        { type: 'system', name: 'end_call', description: endCallDesc }
+      ];
+
+      await elevenLabsService.updateAgent(elevenLabsAgentId, {
+        conversation_config: {
+          agent: {
+            prompt: {
+              tools: finalToolsWithSystemTools
+            }
+          }
+        }
+      });
+      console.log('✅ 11Labs Agent tools updated with agentId in webhook URL');
     } catch (elevenLabsError) {
       console.error('❌ 11Labs Agent creation failed:', elevenLabsError.response?.data || elevenLabsError.message);
       return res.status(500).json({
@@ -523,8 +541,8 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
 
 // ✅ YENİ: 11Labs'deki agent'ı da güncelle (PATCH)
     if (assistant.elevenLabsAgentId) {
-      // Get active tools for this business (using central tool system)
-      const activeToolsElevenLabs = getActiveToolsForElevenLabs(business);
+      // Get active tools for this business (with agentId in webhook URL)
+      const activeToolsElevenLabs = getActiveToolsForElevenLabs(business, null, assistant.elevenLabsAgentId);
       console.log('📤 11Labs Update - tools:', activeToolsElevenLabs.map(t => t.name));
 
       try {

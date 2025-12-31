@@ -21,6 +21,15 @@ export async function execute(args, business, context = {}) {
 
     console.log('🔍 Customer Data Lookup:', { query_type, phone: lookupPhone, businessId: business.id });
 
+    // Debug: Log all context info
+    console.log('🔍 Context info:', {
+      argsPhone: phone,
+      contextCallerPhone: context.callerPhone,
+      contextPhone: context.phone,
+      contextFrom: context.from,
+      resolvedPhone: lookupPhone
+    });
+
     if (!lookupPhone) {
       return {
         success: false,
@@ -32,6 +41,8 @@ export async function execute(args, business, context = {}) {
 
     // Normalize phone number
     const normalizedPhone = normalizePhone(lookupPhone);
+    console.log('🔍 Phone normalization:', { original: lookupPhone, normalized: normalizedPhone });
+
     if (!normalizedPhone) {
       return {
         success: false,
@@ -42,6 +53,8 @@ export async function execute(args, business, context = {}) {
     }
 
     // Look up customer
+    console.log('🔍 Looking up customer:', { businessId: business.id, phone: normalizedPhone });
+
     const customer = await prisma.customerData.findUnique({
       where: {
         businessId_phone: {
@@ -50,6 +63,8 @@ export async function execute(args, business, context = {}) {
         }
       }
     });
+
+    console.log('🔍 Customer lookup result:', customer ? `Found: ${customer.companyName}` : 'NOT FOUND');
 
     if (!customer) {
       return {

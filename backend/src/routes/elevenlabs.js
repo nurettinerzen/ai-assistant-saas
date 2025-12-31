@@ -123,11 +123,24 @@ router.post('/webhook', async (req, res) => {
     // Determine event type
     const eventType = event.type || event.event_type;
 
+    // 11Labs tool webhook sends tool_name directly without type field
+    // Check if this is a tool call by looking for tool_name in body
+    const isToolCall = event.tool_name || (eventType === 'tool_call') || (eventType === 'client_tool_call');
+
+    // Get agentId from query param (we embed it in webhook URL)
+    const agentIdFromQuery = req.query.agentId;
+
+    if (isToolCall && event.tool_name) {
+      console.log('🔧 11Labs Tool Call (direct):', event.tool_name, 'AgentID:', agentIdFromQuery);
+      const result = await handleToolCall(event, agentIdFromQuery);
+      return res.json(result);
+    }
+
     switch (eventType) {
-      // ========== TOOL CALL - Server-side tool execution ==========
+      // ========== TOOL CALL - Server-side tool execution (legacy format) ==========
       case 'tool_call':
       case 'client_tool_call': {
-        console.log('🔧 11Labs Tool Call:', event.tool_name);
+        console.log('🔧 11Labs Tool Call:', event.properties?.tool_name || event.tool_name);
         const result = await handleToolCall(event);
         return res.json(result);
       }
@@ -332,13 +345,17 @@ router.post('/post-call', async (req, res) => {
 // TOOL CALL HANDLER
 // ============================================================================
 
-async function handleToolCall(event) {
-  const {
-    tool_name,
-    parameters,
-    conversation_id,
-    agent_id
-  } = event;
+async function handleToolCall(event, agentIdFromQuery = null) {
+  // 11Labs sends tool parameters directly in body (tool_name, query_type, phone, etc.)
+  // No 'properties' wrapper, no 'type' field - just the raw parameters
+  const toolName = event.tool_name;
+
+  // Extract parameters - everything except tool_name is a parameter
+  const { tool_name: _, ...parameters } = event;
+
+  // agent_id comes from query param since 11Labs doesn't send it in body
+  const conversation_id = event.conversation_id;
+  const agent_id = agentIdFromQuery || event.agent_id;
 
   // Extract caller phone from various possible locations in 11Labs event
   const callerPhone = event.caller_phone ||
@@ -348,7 +365,7 @@ async function handleToolCall(event) {
                       event.from ||
                       null;
 
-  console.log('[11Labs Tool Call]', tool_name, parameters, 'Caller:', callerPhone);
+  console.log('[11Labs Tool Call]', toolName, JSON.stringify(parameters), 'Caller:', callerPhone);
 
   try {
     // Find business from agent ID
@@ -393,7 +410,7 @@ async function handleToolCall(event) {
     }
 
     // Execute tool using central tool system with caller phone in context
-    const result = await executeTool(tool_name, parameters, business, {
+    const result = await executeTool(toolName, parameters, business, {
       channel: 'PHONE',
       conversationId: conversation_id,
       callerPhone: resolvedCallerPhone,
@@ -401,7 +418,7 @@ async function handleToolCall(event) {
       from: resolvedCallerPhone
     });
 
-    console.log(`🔧 Tool result for ${tool_name}:`, result.success ? 'SUCCESS' : 'FAILED');
+    console.log(`🔧 Tool result for ${toolName}:`, result.success ? 'SUCCESS' : 'FAILED', JSON.stringify(result).substring(0, 500));
 
     return {
       success: result.success,
