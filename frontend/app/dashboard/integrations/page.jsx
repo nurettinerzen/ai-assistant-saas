@@ -45,7 +45,8 @@ const INTEGRATION_ICONS = {
   HUBSPOT: Target, SALESFORCE: Cloud, GOOGLE_SHEETS: BarChart3, ZAPIER: Zap,
   SLACK: MessageSquare, TWILIO_SMS: MessageSquare, SENDGRID_EMAIL: Mail,
   IYZICO: Wallet, CUSTOM: Hash,
-  IKAS: ShoppingCart, IDEASOFT: ShoppingCart, TICIMAX: ShoppingCart
+  IKAS: ShoppingCart, IDEASOFT: ShoppingCart, TICIMAX: ShoppingCart,
+  CUSTOM_ERP_WEBHOOK: Zap
 };
 
 const CATEGORY_COLORS = {
@@ -996,8 +997,8 @@ const handleIdeasoftConnect = async () => {
         </div>
       </div>
 
-      {/* Custom CRM Integration Section */}
-      {(() => {
+      {/* Custom CRM Integration Section - Only for ECOMMERCE */}
+      {businessType === 'ECOMMERCE' && (() => {
         const crmFeatureInfo = getIntegrationFeatureInfo('CUSTOM', userPlan);
         const isCRMLocked = crmFeatureInfo.isLocked;
 

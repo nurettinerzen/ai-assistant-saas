@@ -12,14 +12,14 @@ export const INTEGRATION_METADATA = {
   // ============================================================================
   
   GOOGLE_CALENDAR: {
-    relevantFor: ['RESTAURANT', 'CLINIC', 'SALON', 'SERVICE'],
+    relevantFor: ['RESTAURANT', 'CLINIC', 'SALON', 'SERVICE', 'OTHER'],
     priority: {
       RESTAURANT: 'ESSENTIAL',
       CLINIC: 'ESSENTIAL',
       SALON: 'ESSENTIAL',
       SERVICE: 'RECOMMENDED',
       ECOMMERCE: 'OPTIONAL',
-      OTHER: 'OPTIONAL'
+      OTHER: 'RECOMMENDED'
     },
     name: 'Google Calendar',
     description: 'Randevu ve takvim yönetimi',
@@ -72,14 +72,13 @@ export const INTEGRATION_METADATA = {
   // ============================================================================
 
   SHOPIFY: {
-    relevantFor: ['ECOMMERCE'],
+    relevantFor: ['ECOMMERCE'], // NOT for OTHER
     priority: {
       ECOMMERCE: 'ESSENTIAL',
       RESTAURANT: 'OPTIONAL',
       CLINIC: 'OPTIONAL',
       SALON: 'OPTIONAL',
-      SERVICE: 'OPTIONAL',
-      OTHER: 'OPTIONAL'
+      SERVICE: 'OPTIONAL'
     },
     name: 'Shopify',
     description: 'Shopify mağaza entegrasyonu',
@@ -88,14 +87,13 @@ export const INTEGRATION_METADATA = {
   },
 
   WOOCOMMERCE: {
-    relevantFor: ['ECOMMERCE'],
+    relevantFor: ['ECOMMERCE'], // NOT for OTHER
     priority: {
       ECOMMERCE: 'ESSENTIAL',
       RESTAURANT: 'OPTIONAL',
       CLINIC: 'OPTIONAL',
       SALON: 'OPTIONAL',
-      SERVICE: 'OPTIONAL',
-      OTHER: 'OPTIONAL'
+      SERVICE: 'OPTIONAL'
     },
     name: 'WooCommerce',
     description: 'WooCommerce mağaza entegrasyonu',
@@ -104,14 +102,13 @@ export const INTEGRATION_METADATA = {
   },
 
   IKAS: {
-    relevantFor: ['ECOMMERCE'],
+    relevantFor: ['ECOMMERCE'], // NOT for OTHER
     priority: {
       ECOMMERCE: 'ESSENTIAL',
       RESTAURANT: 'OPTIONAL',
       CLINIC: 'OPTIONAL',
       SALON: 'OPTIONAL',
-      SERVICE: 'OPTIONAL',
-      OTHER: 'OPTIONAL'
+      SERVICE: 'OPTIONAL'
     },
     name: 'ikas',
     description: 'ikas e-ticaret platformu entegrasyonu',
@@ -121,14 +118,13 @@ export const INTEGRATION_METADATA = {
   },
 
   IDEASOFT: {
-    relevantFor: ['ECOMMERCE'],
+    relevantFor: ['ECOMMERCE'], // NOT for OTHER
     priority: {
       ECOMMERCE: 'ESSENTIAL',
       RESTAURANT: 'OPTIONAL',
       CLINIC: 'OPTIONAL',
       SALON: 'OPTIONAL',
-      SERVICE: 'OPTIONAL',
-      OTHER: 'OPTIONAL'
+      SERVICE: 'OPTIONAL'
     },
     name: 'Ideasoft',
     description: 'Ideasoft e-ticaret platformu entegrasyonu',
@@ -138,20 +134,40 @@ export const INTEGRATION_METADATA = {
   },
 
   TICIMAX: {
-    relevantFor: ['ECOMMERCE'],
+    relevantFor: ['ECOMMERCE'], // NOT for OTHER
     priority: {
       ECOMMERCE: 'ESSENTIAL',
       RESTAURANT: 'OPTIONAL',
       CLINIC: 'OPTIONAL',
       SALON: 'OPTIONAL',
-      SERVICE: 'OPTIONAL',
-      OTHER: 'OPTIONAL'
+      SERVICE: 'OPTIONAL'
     },
     name: 'Ticimax',
     description: 'Ticimax e-ticaret platformu entegrasyonu',
     category: 'ecommerce',
     authType: 'api_key',
     region: 'TR'
+  },
+
+  // ============================================================================
+  // CUSTOM INTEGRATIONS
+  // ============================================================================
+
+  CUSTOM_ERP_WEBHOOK: {
+    relevantFor: ['ECOMMERCE'],
+    priority: {
+      ECOMMERCE: 'RECOMMENDED',
+      RESTAURANT: 'OPTIONAL',
+      CLINIC: 'OPTIONAL',
+      SALON: 'OPTIONAL',
+      SERVICE: 'OPTIONAL'
+    },
+    name: 'Özel ERP Webhook',
+    nameEN: 'Custom ERP Webhook',
+    description: 'Kendi CRM veya ERP sisteminizden sipariş, stok ve servis bilgilerini entegre edin',
+    descriptionEN: 'Integrate order, stock and service information from your own CRM or ERP system',
+    category: 'automation',
+    authType: 'webhook'
   },
 
   // ============================================================================
@@ -326,12 +342,12 @@ export function getFilteredIntegrations(businessType = 'OTHER', region = null) {
   const integrations = [];
 
   for (const [integrationType, metadata] of Object.entries(INTEGRATION_METADATA)) {
-    // For OTHER type, show all integrations
-    const isRelevant = businessType === 'OTHER' || metadata.relevantFor.includes(businessType);
-    
+    // Check if relevant for this business type
+    const isRelevant = metadata.relevantFor.includes(businessType);
+
     // Region filter (if specified)
     const matchesRegion = !region || !metadata.region || metadata.region === region;
-    
+
     if (isRelevant && matchesRegion) {
       integrations.push({
         type: integrationType,

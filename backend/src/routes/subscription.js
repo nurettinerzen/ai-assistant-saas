@@ -413,62 +413,112 @@ router.post('/iyzico-subscription-callback', async (req, res) => {
   }
 
   try {
-    const Iyzipay = (await import('iyzipay')).default;
-    const iyzipay = new Iyzipay({
-      apiKey: process.env.IYZICO_API_KEY,
-      secretKey: process.env.IYZICO_SECRET_KEY,
-      uri: process.env.IYZICO_BASE_URL || 'https://sandbox-api.iyzipay.com'
+    // Retrieve subscription checkout form result using iyzicoSubscription service
+    const result = await iyzicoSubscription.retrieveCheckoutFormResult(token);
+
+    if (!result.success) {
+      console.error('iyzico callback error:', result.error);
+      return res.redirect(`${frontendUrl}/dashboard/subscription?status=error`);
+    }
+
+    console.log('iyzico subscription result:', result);
+
+    // Find subscription by pending token
+    const subscription = await prisma.subscription.findFirst({
+      where: { pendingSubscriptionToken: token }
     });
 
-    // Retrieve subscription checkout form result
-    iyzipay.subscriptionCheckoutForm.retrieve({
-      locale: Iyzipay.LOCALE.TR,
-      conversationId: token,
-      token: token
-    }, async (err, result) => {
-      if (err || result.status !== 'success') {
-        console.error('iyzico callback error:', err || result);
-        return res.redirect(`${frontendUrl}/dashboard/subscription?status=error`);
-      }
+    if (subscription) {
+      const planId = subscription.pendingPlanId;
+      const planConfig = PLAN_CONFIG[planId] || PLAN_CONFIG.STARTER;
 
-      console.log('iyzico subscription result:', result);
-
-      // Find subscription by pending token
-      const subscription = await prisma.subscription.findFirst({
-        where: { pendingSubscriptionToken: token }
+      await prisma.subscription.update({
+        where: { id: subscription.id },
+        data: {
+          plan: planId,
+          status: 'ACTIVE',
+          paymentProvider: 'iyzico',
+          iyzicoSubscriptionId: result.subscriptionReferenceCode,
+          iyzicoReferenceCode: result.subscriptionReferenceCode,
+          currentPeriodStart: new Date(result.startDate),
+          currentPeriodEnd: new Date(result.endDate),
+          pendingSubscriptionToken: null,
+          pendingPlanId: null,
+          // Set plan limits
+          minutesLimit: planConfig.minutesLimit,
+          callsLimit: planConfig.callsLimit,
+          assistantsLimit: planConfig.assistantsLimit,
+          phoneNumbersLimit: planConfig.phoneNumbersLimit
+        }
       });
 
-      if (subscription) {
-        const planId = subscription.pendingPlanId;
-        const planConfig = PLAN_CONFIG[planId] || PLAN_CONFIG.STARTER;
+      console.log('✅ iyzico subscription activated:', planId);
+    }
 
-        await prisma.subscription.update({
-          where: { id: subscription.id },
-          data: {
-            plan: planId,
-            status: 'ACTIVE',
-            paymentProvider: 'iyzico',
-            iyzicoSubscriptionId: result.subscriptionReferenceCode || result.referenceCode,
-            iyzicoReferenceCode: result.subscriptionReferenceCode || result.referenceCode,
-            currentPeriodStart: new Date(),
-            currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-            pendingSubscriptionToken: null,
-            pendingPlanId: null,
-            // Set plan limits
-            minutesLimit: planConfig.minutesLimit,
-            callsLimit: planConfig.callsLimit,
-            assistantsLimit: planConfig.assistantsLimit,
-            phoneNumbersLimit: planConfig.phoneNumbersLimit
-          }
-        });
-
-        console.log('✅ iyzico subscription activated:', planId);
-      }
-
-      return res.redirect(`${frontendUrl}/dashboard/subscription?status=success`);
-    });
+    return res.redirect(`${frontendUrl}/dashboard/subscription?status=success`);
   } catch (error) {
     console.error('iyzico subscription callback error:', error);
+    return res.redirect(`${frontendUrl}/dashboard/subscription?status=error`);
+  }
+});
+
+// iyzico callback - POST handler (used by iyzicoSubscription service)
+router.post('/iyzico-callback', async (req, res) => {
+  const { token } = req.body;
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+
+  console.log('📥 iyzico callback received:', { token });
+
+  if (!token) {
+    return res.redirect(`${frontendUrl}/dashboard/subscription?status=error&message=missing_token`);
+  }
+
+  try {
+    // Retrieve subscription checkout form result using iyzicoSubscription service
+    const result = await iyzicoSubscription.retrieveCheckoutFormResult(token);
+
+    if (!result.success) {
+      console.error('iyzico callback error:', result.error);
+      return res.redirect(`${frontendUrl}/dashboard/subscription?status=error`);
+    }
+
+    console.log('iyzico subscription result:', result);
+
+    // Find subscription by pending token
+    const subscription = await prisma.subscription.findFirst({
+      where: { pendingSubscriptionToken: token }
+    });
+
+    if (subscription) {
+      const planId = subscription.pendingPlanId;
+      const planConfig = PLAN_CONFIG[planId] || PLAN_CONFIG.STARTER;
+
+      await prisma.subscription.update({
+        where: { id: subscription.id },
+        data: {
+          plan: planId,
+          status: 'ACTIVE',
+          paymentProvider: 'iyzico',
+          iyzicoSubscriptionId: result.subscriptionReferenceCode,
+          iyzicoReferenceCode: result.subscriptionReferenceCode,
+          currentPeriodStart: new Date(result.startDate),
+          currentPeriodEnd: new Date(result.endDate),
+          pendingSubscriptionToken: null,
+          pendingPlanId: null,
+          // Set plan limits
+          minutesLimit: planConfig.minutesLimit,
+          callsLimit: planConfig.callsLimit,
+          assistantsLimit: planConfig.assistantsLimit,
+          phoneNumbersLimit: planConfig.phoneNumbersLimit
+        }
+      });
+
+      console.log('✅ iyzico subscription activated:', planId);
+    }
+
+    return res.redirect(`${frontendUrl}/dashboard/subscription?status=success`);
+  } catch (error) {
+    console.error('iyzico callback error:', error);
     return res.redirect(`${frontendUrl}/dashboard/subscription?status=error`);
   }
 });
@@ -577,7 +627,7 @@ router.get('/plans', async (req, res) => {
         id: 'STARTER',
         name: 'Starter',
         price: 27,
-        priceTRY: 899,
+        priceTRY: 799,
         currency: 'USD',
         interval: 'month',
         stripePriceId: PLAN_CONFIG.STARTER.stripePriceId,
@@ -599,7 +649,7 @@ router.get('/plans', async (req, res) => {
         id: 'PROFESSIONAL',
         name: 'Professional',
         price: 77,
-        priceTRY: 2599,
+        priceTRY: 3499,
         currency: 'USD',
         interval: 'month',
         stripePriceId: PLAN_CONFIG.PROFESSIONAL.stripePriceId,
@@ -621,10 +671,11 @@ router.get('/plans', async (req, res) => {
       {
         id: 'ENTERPRISE',
         name: 'Enterprise',
-        price: 199,
-        priceTRY: 6799,
+        price: null,
+        priceTRY: null,
         currency: 'USD',
         interval: 'month',
+        contactSales: true,
         stripePriceId: PLAN_CONFIG.ENTERPRISE.stripePriceId,
         iyzicoPlanRef: PLAN_CONFIG.ENTERPRISE.iyzicoPlanRef,
         features: [
@@ -661,8 +712,8 @@ router.get('/payment-provider', verifyBusinessAccess, async (req, res) => {
 
     res.json({
       provider,
-      country: business?.country || 'US',
-      isIyzico: provider === 'iyzi co',
+      country: business?.country || 'TR',
+      isIyzico: provider === 'iyzico',
       isStripe: provider === 'stripe'
     });
   } catch (error) {
@@ -931,8 +982,15 @@ router.post('/upgrade', verifyBusinessAccess, async (req, res) => {
       return res.status(400).json({ error: 'Plan ID is required' });
     }
 
-    // Normalize planId to uppercase
-    const normalizedPlanId = planId.toUpperCase();
+    // Normalize planId to uppercase and map aliases
+    let normalizedPlanId = planId.toUpperCase();
+
+    // Map common aliases
+    const planAliases = {
+      'PRO': 'PROFESSIONAL',
+      'BASIC': 'STARTER'
+    };
+    normalizedPlanId = planAliases[normalizedPlanId] || normalizedPlanId;
 
     if (!PLAN_CONFIG[normalizedPlanId] || normalizedPlanId === 'FREE') {
       return res.status(400).json({ error: 'Invalid plan ID' });
@@ -955,92 +1013,53 @@ router.post('/upgrade', verifyBusinessAccess, async (req, res) => {
 
     // ========== IYZICO SUBSCRIPTION API ==========
     if (provider === 'iyzico') {
-      const planConfig = PLAN_CONFIG[normalizedPlanId];
-      const planRef = planConfig.iyzicoPlanRef;
+      // Use iyzicoSubscription service for checkout form initialization
+      const result = await iyzicoSubscription.initializeCheckoutForm(businessId, normalizedPlanId);
 
-      if (!planRef) {
-        return res.status(400).json({ error: 'iyzico plan reference not configured' });
+      if (!result.success) {
+        console.error('iyzico subscription error:', result.error);
+        return res.status(500).json({ error: result.error || 'Abonelik başlatılamadı' });
       }
 
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-
-      // Use iyzico Subscription Checkout Form Initialize
-      const Iyzipay = (await import('iyzipay')).default;
-      const iyzipay = new Iyzipay({
-        apiKey: process.env.IYZICO_API_KEY,
-        secretKey: process.env.IYZICO_SECRET_KEY,
-        uri: process.env.IYZICO_BASE_URL || 'https://sandbox-api.iyzipay.com'
+      // Save pending subscription info
+      await prisma.subscription.upsert({
+        where: { businessId },
+        create: {
+          businessId,
+          paymentProvider: 'iyzico',
+          plan: 'FREE',
+          status: 'INCOMPLETE',
+          pendingSubscriptionToken: result.token,
+          pendingPlanId: normalizedPlanId
+        },
+        update: {
+          pendingSubscriptionToken: result.token,
+          pendingPlanId: normalizedPlanId
+        }
       });
 
-      const request = {
-        locale: Iyzipay.LOCALE.TR,
-        conversationId: `sub_${businessId}_${Date.now()}`,
-        pricingPlanReferenceCode: planRef,
-        subscriptionInitialStatus: 'ACTIVE',
-        callbackUrl: `${frontendUrl}/dashboard/subscription/callback`,
-        customer: {
-          name: user.name?.split(' ')[0] || 'Ad',
-          surname: user.name?.split(' ').slice(1).join(' ') || 'Soyad',
-          email: user.email,
-          gsmNumber: '+905551234567',
-          identityNumber: '11111111111',
-          shippingAddress: {
-            contactName: user.name || 'Müşteri',
-            city: 'Istanbul',
-            country: 'Turkey',
-            address: 'Türkiye'
-          },
-          billingAddress: {
-            contactName: user.name || 'Müşteri',
-            city: 'Istanbul',
-            country: 'Turkey',
-            address: 'Türkiye'
-          }
-        }
-      };
-
-      return new Promise(async (resolve) => {
-        iyzipay.subscriptionCheckoutFormInitialize.create(request, async (err, result) => {
-          if (err) {
-            console.error('iyzico subscription error:', err);
-            return resolve(res.status(500).json({ error: 'Abonelik başlatılamadı' }));
-          }
-
-          if (result.status !== 'success') {
-            console.error('iyzico subscription failed:', result);
-            return resolve(res.status(400).json({ error: result.errorMessage || 'Abonelik başlatılamadı' }));
-          }
-
-          // Save pending subscription token for callback
-          await prisma.subscription.upsert({
-            where: { businessId },
-            create: {
-              businessId,
-              paymentProvider: 'iyzico',
-              plan: 'FREE',
-              status: 'INCOMPLETE',
-              pendingSubscriptionToken: result.token,
-              pendingPlanId: normalizedPlanId
-            },
-            update: {
-              pendingSubscriptionToken: result.token,
-              pendingPlanId: normalizedPlanId
-            }
-          });
-
-          resolve(res.json({
-            provider: 'iyzico',
-            checkoutFormContent: result.checkoutFormContent,
-            token: result.token,
-            tokenExpireTime: result.tokenExpireTime
-          }));
-        });
+      return res.json({
+        provider: 'iyzico',
+        checkoutFormContent: result.checkoutFormContent,
+        token: result.token,
+        tokenExpireTime: result.tokenExpireTime
       });
     }
 
     // ========== STRIPE CHECKOUT ==========
     const planConfig = PLAN_CONFIG[normalizedPlanId];
-    const priceId = planConfig.stripePriceId;
+
+    // Determine price ID based on country
+    const country = user.business.country?.toUpperCase();
+    let priceId;
+
+    if (country === 'TR') {
+      // Use TRY pricing for Turkey
+      priceId = process.env[`STRIPE_${normalizedPlanId}_PRICE_ID_TRY`] || planConfig.stripePriceId;
+    } else {
+      // Use USD pricing for other countries
+      priceId = planConfig.stripePriceId;
+    }
 
     if (!priceId) {
       return res.status(400).json({ error: 'Stripe price not configured for this plan' });
@@ -1081,8 +1100,132 @@ router.post('/upgrade', verifyBusinessAccess, async (req, res) => {
       });
     }
 
-    // Create Stripe checkout session
+    // Check if user already has an active subscription
+    const currentSubscription = await prisma.subscription.findUnique({
+      where: { businessId }
+    });
+
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+
+    // If already has subscription, update it (upgrade/downgrade)
+    if (currentSubscription?.stripeSubscriptionId) {
+      const stripeSubscription = await stripe.subscriptions.retrieve(currentSubscription.stripeSubscriptionId);
+
+      // CHECK: If subscription is canceled, reactivate it + change plan
+      if (stripeSubscription.cancel_at_period_end) {
+        // Reactivate subscription + change to new plan
+        await stripe.subscriptions.update(stripeSubscription.id, {
+          cancel_at_period_end: false, // Undo cancellation
+          items: [{
+            id: stripeSubscription.items.data[0].id,
+            price: priceId
+          }],
+          proration_behavior: 'none', // No immediate charge, will charge at next period
+          metadata: {
+            planId: normalizedPlanId
+          }
+        });
+
+        // Update database
+        await prisma.subscription.update({
+          where: { businessId },
+          data: {
+            plan: normalizedPlanId,
+            cancelAtPeriodEnd: false,
+            minutesLimit: planConfig.minutesLimit,
+            callsLimit: planConfig.callsLimit,
+            assistantsLimit: planConfig.assistantsLimit,
+            phoneNumbersLimit: planConfig.phoneNumbersLimit
+          }
+        });
+
+        console.log(`✅ Reactivated and changed plan for business ${businessId}: ${normalizedPlanId}`);
+
+        return res.json({
+          provider: 'stripe',
+          success: true,
+          message: 'Subscription reactivated with new plan',
+          type: 'reactivate',
+          effectiveDate: new Date(stripeSubscription.current_period_end * 1000)
+        });
+      }
+
+      // Get current plan level
+      const planLevels = { STARTER: 1, PROFESSIONAL: 2, ENTERPRISE: 3 };
+      const currentLevel = planLevels[currentSubscription.plan] || 0;
+      const newLevel = planLevels[normalizedPlanId] || 0;
+
+      // Determine if upgrade or downgrade
+      const isUpgrade = newLevel > currentLevel;
+
+      if (isUpgrade) {
+        // UPGRADE: Immediate with proration
+        await stripe.subscriptions.update(stripeSubscription.id, {
+          items: [{
+            id: stripeSubscription.items.data[0].id,
+            price: priceId
+          }],
+          proration_behavior: 'create_prorations', // Charge difference now
+          metadata: {
+            planId: normalizedPlanId
+          }
+        });
+
+        // Update database
+        await prisma.subscription.update({
+          where: { businessId },
+          data: {
+            plan: normalizedPlanId,
+            minutesLimit: planConfig.minutesLimit,
+            callsLimit: planConfig.callsLimit,
+            assistantsLimit: planConfig.assistantsLimit,
+            phoneNumbersLimit: planConfig.phoneNumbersLimit
+          }
+        });
+
+        console.log(`✅ Upgraded subscription for business ${businessId}: ${currentSubscription.plan} → ${normalizedPlanId}`);
+
+        return res.json({
+          provider: 'stripe',
+          success: true,
+          message: 'Plan upgraded successfully',
+          type: 'upgrade'
+        });
+      } else {
+        // DOWNGRADE: Schedule for end of period
+        await stripe.subscriptions.update(stripeSubscription.id, {
+          items: [{
+            id: stripeSubscription.items.data[0].id,
+            price: priceId
+          }],
+          proration_behavior: 'none', // No charge now
+          billing_cycle_anchor: 'unchanged', // Keep current billing cycle
+          metadata: {
+            scheduledPlanId: normalizedPlanId
+          }
+        });
+
+        // Mark as pending downgrade
+        await prisma.subscription.update({
+          where: { businessId },
+          data: {
+            pendingPlanId: normalizedPlanId
+          }
+        });
+
+        console.log(`⏰ Scheduled downgrade for business ${businessId}: ${currentSubscription.plan} → ${normalizedPlanId} (at period end)`);
+
+        return res.json({
+          provider: 'stripe',
+          success: true,
+          message: 'Plan will be downgraded at the end of current billing period',
+          type: 'downgrade',
+          effectiveDate: new Date(stripeSubscription.current_period_end * 1000)
+        });
+      }
+    }
+
+    // NEW SUBSCRIPTION: Create checkout session
     const session = await stripe.checkout.sessions.create({
       customer: stripeCustomerId,
       mode: 'subscription',
@@ -1093,7 +1236,7 @@ router.post('/upgrade', verifyBusinessAccess, async (req, res) => {
           quantity: 1
         }
       ],
-      success_url: `${frontendUrl}/dashboard/assistant?success=true&provider=stripe`,
+      success_url: `${frontendUrl}/dashboard/subscription?success=true&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${frontendUrl}/pricing?canceled=true`,
       metadata: {
         businessId: businessId.toString(),
@@ -1105,7 +1248,8 @@ router.post('/upgrade', verifyBusinessAccess, async (req, res) => {
     return res.json({
       provider: 'stripe',
       sessionUrl: session.url,
-      sessionId: session.id
+      sessionId: session.id,
+      type: 'new'
     });
   } catch (error) {
     console.error('Upgrade error:', error);
@@ -1113,6 +1257,86 @@ router.post('/upgrade', verifyBusinessAccess, async (req, res) => {
       error: 'Upgrade failed',
       details: error.message
     });
+  }
+});
+
+// Verify Stripe checkout session and activate subscription
+router.get('/verify-session', authenticateToken, async (req, res) => {
+  try {
+    const { session_id } = req.query;
+    const { businessId } = req;
+
+    if (!session_id) {
+      return res.status(400).json({ error: 'Session ID required' });
+    }
+
+    // Retrieve the session from Stripe
+    const session = await stripe.checkout.sessions.retrieve(session_id);
+
+    if (session.payment_status !== 'paid') {
+      return res.status(400).json({ error: 'Payment not completed' });
+    }
+
+    // Get subscription details
+    const stripeSubscription = await stripe.subscriptions.retrieve(session.subscription);
+    const planId = session.metadata.planId;
+    const planConfig = PLAN_CONFIG[planId];
+
+    if (!planConfig) {
+      return res.status(400).json({ error: 'Invalid plan' });
+    }
+
+    // Convert Unix timestamps to Date objects
+    const periodStart = stripeSubscription.current_period_start
+      ? new Date(stripeSubscription.current_period_start * 1000)
+      : new Date();
+    const periodEnd = stripeSubscription.current_period_end
+      ? new Date(stripeSubscription.current_period_end * 1000)
+      : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+    console.log('📅 Subscription dates:', { periodStart, periodEnd });
+
+    // Activate subscription in database
+    await prisma.subscription.upsert({
+      where: { businessId },
+      create: {
+        businessId,
+        plan: planId,
+        status: 'ACTIVE',
+        paymentProvider: 'stripe',
+        stripeCustomerId: session.customer,
+        stripeSubscriptionId: session.subscription,
+        currentPeriodStart: periodStart,
+        currentPeriodEnd: periodEnd,
+        minutesLimit: planConfig.minutesLimit,
+        callsLimit: planConfig.callsLimit,
+        assistantsLimit: planConfig.assistantsLimit,
+        phoneNumbersLimit: planConfig.phoneNumbersLimit
+      },
+      update: {
+        plan: planId,
+        status: 'ACTIVE',
+        paymentProvider: 'stripe',
+        stripeSubscriptionId: session.subscription,
+        currentPeriodStart: periodStart,
+        currentPeriodEnd: periodEnd,
+        minutesLimit: planConfig.minutesLimit,
+        callsLimit: planConfig.callsLimit,
+        assistantsLimit: planConfig.assistantsLimit,
+        phoneNumbersLimit: planConfig.phoneNumbersLimit
+      }
+    });
+
+    console.log(`✅ Subscription activated for business ${businessId}, plan: ${planId}`);
+
+    return res.json({
+      success: true,
+      plan: planId,
+      status: 'ACTIVE'
+    });
+  } catch (error) {
+    console.error('Verify session error:', error);
+    return res.status(500).json({ error: 'Failed to verify session' });
   }
 });
 
@@ -1141,6 +1365,55 @@ router.post('/create-portal-session', verifyBusinessAccess, async (req, res) => 
   } catch (error) {
     console.error('Create portal session error:', error);
     res.status(500).json({ error: 'Failed to create portal session' });
+  }
+});
+
+// Cancel subscription (schedules cancellation at period end)
+router.post('/cancel', authenticateToken, async (req, res) => {
+  try {
+    const { businessId } = req;
+
+    const subscription = await prisma.subscription.findUnique({
+      where: { businessId }
+    });
+
+    if (!subscription) {
+      return res.status(404).json({ error: 'No subscription found' });
+    }
+
+    if (!subscription.stripeSubscriptionId) {
+      return res.status(400).json({ error: 'No Stripe subscription found' });
+    }
+
+    // Cancel at period end (user keeps access until current period ends)
+    const canceledSubscription = await stripe.subscriptions.update(
+      subscription.stripeSubscriptionId,
+      {
+        cancel_at_period_end: true
+      }
+    );
+
+    // Update database
+    await prisma.subscription.update({
+      where: { businessId },
+      data: {
+        cancelAtPeriodEnd: true
+      }
+    });
+
+    console.log(`✅ Subscription canceled at period end for business ${businessId}`);
+
+    return res.json({
+      success: true,
+      message: 'Subscription will be canceled at period end',
+      cancelAt: new Date(canceledSubscription.current_period_end * 1000)
+    });
+  } catch (error) {
+    console.error('Cancel subscription error:', error);
+    return res.status(500).json({
+      error: 'Failed to cancel subscription',
+      details: error.message
+    });
   }
 });
 

@@ -177,10 +177,20 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
     const elevenLabsVoiceId = getElevenLabsVoiceId(voiceId, language);
 
     // Get business info for language/timezone defaults
-    const business = await prisma.business.findUnique({
+    let business = await prisma.business.findUnique({
       where: { id: businessId },
       include: { integrations: { where: { isActive: true } } }
     });
+
+    // Update business country if provided and not already set (from onboarding)
+    if (country && (!business.country || business.country === 'US')) {
+      business = await prisma.business.update({
+        where: { id: businessId },
+        data: { country: country.toUpperCase() },
+        include: { integrations: { where: { isActive: true } } }
+      });
+      console.log('📍 Updated business country to:', country.toUpperCase());
+    }
 
     const lang = language?.toUpperCase() || business?.language || 'TR';
     const businessTimezone = timezone || business?.timezone || 'Europe/Istanbul';
@@ -348,6 +358,12 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
       console.error('⚠️ Failed to auto-assign phone number:', phoneError);
       // Don't fail the request, just log the error
     }
+
+    console.log('✅ Assistant saved to DB:', {
+      id: assistant.id,
+      name: assistant.name,
+      elevenLabsAgentId: assistant.elevenLabsAgentId
+    });
 
     res.json({
       message: 'Assistant created successfully',

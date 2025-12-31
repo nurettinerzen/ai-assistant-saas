@@ -13,7 +13,7 @@ export const authenticateToken = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
+
     // Fetch user with business details
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
@@ -34,10 +34,10 @@ export const authenticateToken = async (req, res, next) => {
     req.userId = user.id;
     req.businessId = user.businessId;
     req.userRole = user.role;
-    
+
     next();
   } catch (error) {
-    console.error('Authentication error:', error);
+    console.error('Auth error:', error.message);
     return res.status(403).json({ error: 'Invalid or expired token' });
   }
 };

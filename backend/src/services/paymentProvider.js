@@ -12,8 +12,8 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-// Countries that should use iyzico
-const IYZICO_COUNTRIES = ['TR'];
+// Countries that should use iyzico (currently disabled, using Stripe globally)
+const IYZICO_COUNTRIES = [];
 
 // Countries that use Stripe with local payment methods
 const STRIPE_LOCAL_COUNTRIES = {

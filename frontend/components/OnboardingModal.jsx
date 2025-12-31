@@ -208,8 +208,10 @@ export function OnboardingModal({ open, onClose }) {
           },
           { headers: { Authorization: `Bearer ${token}` } }
         );
-        // Use internal assistant ID (works for both VAPI legacy and 11Labs assistants)
-        setCreatedAssistantId(response.data.assistant?.id || response.data.assistant?.elevenLabsAgentId);
+        // Use internal assistant ID (database ID, NOT elevenLabsAgentId)
+        const assistantId = response.data.assistant?.id;
+        console.log('✅ Assistant created with ID:', assistantId);
+        setCreatedAssistantId(assistantId);
         toast.success(t('onboarding.messages.assistantCreated'));
         setStep(4);
       } catch (error) {

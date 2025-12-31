@@ -44,14 +44,17 @@ export default function VoiceDemo({ assistantId, onClose }) {
       setCallStatus(t('onboarding.voiceDemo.callStatus.starting'));
 
       // Get signed URL from backend
+      console.log('🔗 Fetching signed URL from:', `${BACKEND_URL}/api/elevenlabs/signed-url/${assistantId}`);
       const response = await fetch(`${BACKEND_URL}/api/elevenlabs/signed-url/${assistantId}`);
 
       if (!response.ok) {
-        throw new Error('Failed to get signed URL');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('❌ Signed URL error:', response.status, errorData);
+        throw new Error(errorData.error || 'Failed to get signed URL');
       }
 
       const { signedUrl } = await response.json();
-      console.log('✅ Got signed URL for 11Labs conversation');
+      console.log('✅ Got signed URL for 11Labs conversation:', signedUrl ? 'OK' : 'EMPTY');
 
       // Start conversation using official SDK
       const conversation = await Conversation.startSession({

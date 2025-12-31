@@ -174,6 +174,24 @@ export default function SubscriptionPage() {
     const params = new URLSearchParams(window.location.search);
     const status = params.get('status');
     const success = params.get('success');
+    const session_id = params.get('session_id');
+
+    // Verify Stripe session if present
+    if (success === 'true' && session_id) {
+      apiClient.get(`/api/subscription/verify-session?session_id=${session_id}`)
+        .then(() => {
+          toast.success(t('dashboard.subscriptionPage.upgradeSuccess') || 'Plan başarıyla yükseltildi!');
+          // Reload subscription data
+          loadData();
+          // Clean URL
+          window.history.replaceState({}, '', window.location.pathname);
+        })
+        .catch((error) => {
+          console.error('Session verification error:', error);
+          toast.error('Abonelik aktivasyonunda hata oluştu');
+        });
+      return;
+    }
 
     if (status === 'success' || success === 'true') {
       toast.success(t('dashboard.subscriptionPage.upgradeSuccess') || 'Plan basariyla yukseltildi!');
@@ -234,27 +252,73 @@ export default function SubscriptionPage() {
   };
 
   const handleUpgrade = async (planId) => {
-    const planName = t(`pricing.${planId}.name`);
-    if (!confirm(`${t('dashboard.subscriptionPage.upgradeConfirm') || 'Planı yükseltmek istediğinize emin misiniz?'} ${planName}`)) return;
+    // Get plan name from BASE_PLANS
+    const planInfo = BASE_PLANS.find(p => p.id === planId);
+    const planName = planInfo ? planInfo.name[uiLang] : planId;
+
+    if (!confirm(`${t('dashboard.subscriptionPage.upgradeConfirm') || 'Planı değiştirmek istediğinize emin misiniz?'} ${planName}`)) return;
 
     try {
       setUpgrading(true);
       const response = await apiClient.subscription.upgrade(planId);
 
-      // Check if iyzico checkout form is returned
-      if (response.data?.checkoutFormContent) {
+      // Handle different response types
+      if (response.data?.type === 'upgrade') {
+        // Immediate upgrade (with proration)
+        toast.success('Plan başarıyla yükseltildi! Fark tutarı hesaplanarak tahsil edildi.');
+        loadData();
+      } else if (response.data?.type === 'reactivate') {
+        // Reactivated canceled subscription with new plan
+        const effectiveDate = response.data.effectiveDate
+          ? new Date(response.data.effectiveDate).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' })
+          : 'bir sonraki dönem';
+        toast.success(`Abonelik yeniden başlatıldı! ${effectiveDate} tarihinden itibaren ${planName} planı aktif olacak.`);
+        loadData();
+      } else if (response.data?.type === 'downgrade') {
+        // Scheduled downgrade (end of period)
+        const effectiveDate = response.data.effectiveDate
+          ? new Date(response.data.effectiveDate).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' })
+          : 'dönem sonunda';
+        toast.success(`Plan değişikliği planlandı. ${effectiveDate} tarihinde ${planName} planına geçilecek.`);
+        loadData();
+      } else if (response.data?.checkoutFormContent) {
+        // iyzico checkout form
         setCheckoutFormHtml(response.data.checkoutFormContent);
         setShowPaymentModal(true);
       } else if (response.data?.sessionUrl) {
-        // Stripe redirect
+        // Stripe checkout (new subscription)
         window.location.href = response.data.sessionUrl;
       } else {
-        toast.success(t('dashboard.subscriptionPage.upgradeSuccess') || 'Plan başarıyla yükseltildi!');
+        toast.success(t('dashboard.subscriptionPage.upgradeSuccess') || 'Plan başarıyla güncellendi!');
         loadData();
       }
     } catch (error) {
       console.error('Upgrade error:', error);
-      toast.error(error.response?.data?.error || t('dashboard.subscriptionPage.upgradeFailed') || 'Ödeme başlatılamadı');
+      toast.error(error.response?.data?.error || t('dashboard.subscriptionPage.upgradeFailed') || 'İşlem başlatılamadı');
+    } finally {
+      setUpgrading(false);
+    }
+  };
+
+  const handleCancelSubscription = async () => {
+    if (!confirm(t('dashboard.subscriptionPage.cancelConfirm') || 'Aboneliğinizi iptal etmek istediğinize emin misiniz? Mevcut dönem sonunda planınız sona erecektir.')) {
+      return;
+    }
+
+    try {
+      setUpgrading(true);
+      const response = await apiClient.post('/api/subscription/cancel');
+
+      if (response.data?.success) {
+        const cancelDate = response.data.cancelAt
+          ? new Date(response.data.cancelAt).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' })
+          : 'dönem sonunda';
+        toast.success(`Abonelik iptal edildi. ${cancelDate} tarihinde sona erecek.`);
+        loadData();
+      }
+    } catch (error) {
+      console.error('Cancel subscription error:', error);
+      toast.error(error.response?.data?.error || 'İptal işlemi başarısız oldu');
     } finally {
       setUpgrading(false);
     }
@@ -337,7 +401,7 @@ export default function SubscriptionPage() {
                   {subscription.billingCycle || t('dashboard.subscriptionPage.monthly')}
                 </span>
               </div>
-              {subscription.currentPeriodEnd && (
+              {subscription.currentPeriodEnd && !subscription.cancelAtPeriodEnd && (
               <div className="flex justify-between text-sm">
                 <span className="text-neutral-600">{t('dashboard.subscriptionPage.nextBilling')}</span>
                 <span className="font-medium text-neutral-900">
@@ -345,7 +409,54 @@ export default function SubscriptionPage() {
                 </span>
               </div>
               )}
+              {subscription.cancelAtPeriodEnd && subscription.currentPeriodEnd && (
+              <div className="flex justify-between text-sm">
+                <span className="text-neutral-600">Abonelik Bitiş Tarihi</span>
+                <span className="font-medium text-orange-600">
+                  {formatDate(subscription.currentPeriodEnd, 'short')}
+                </span>
+              </div>
+              )}
             </div>
+
+            {/* Cancel Subscription Button - Only show for paid plans */}
+            {subscription.plan !== 'FREE' && !subscription.cancelAtPeriodEnd && (
+              <div className="mt-6 pt-4 border-t border-neutral-200">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCancelSubscription}
+                  disabled={upgrading}
+                  className="w-full text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                >
+                  {upgrading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {t('dashboard.subscriptionPage.processing') || 'İşleniyor...'}
+                    </>
+                  ) : (
+                    <>
+                      <X className="mr-2 h-4 w-4" />
+                      {t('dashboard.subscriptionPage.cancelSubscription') || 'Aboneliği İptal Et'}
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
+
+            {/* Canceled status message */}
+            {subscription.cancelAtPeriodEnd && (
+              <div className="mt-6 pt-4 border-t border-neutral-200">
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-sm text-orange-800">
+                  <strong>Abonelik iptal edildi.</strong>
+                  <br />
+                  {subscription.currentPeriodEnd && (
+                    <>Planınız {formatDate(subscription.currentPeriodEnd, 'short')} tarihinde sona erecek.</>
+                  )}
+                  {!subscription.currentPeriodEnd && <>Planınız dönem sonunda sona erecek.</>}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Credit Balance - YENİ KREDİ SİSTEMİ */}

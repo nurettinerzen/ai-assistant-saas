@@ -75,6 +75,7 @@ router.post('/register', async (req, res) => {
         data: {
           name: businessName,
           businessType: req.body.businessType || 'OTHER',
+          country: req.body.country?.toUpperCase() || 'TR', // Default to TR for iyzico
           users: {
             create: {
               email,

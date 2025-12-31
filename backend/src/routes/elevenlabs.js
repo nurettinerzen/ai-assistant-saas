@@ -788,23 +788,36 @@ router.post('/sync-conversations', async (req, res) => {
 router.get('/signed-url/:assistantId', async (req, res) => {
   try {
     const { assistantId } = req.params;
+    console.log('🔗 Signed URL requested for assistantId:', assistantId);
 
     const assistant = await prisma.assistant.findUnique({
       where: { id: assistantId }
     });
 
-    if (!assistant || !assistant.elevenLabsAgentId) {
-      return res.status(404).json({ error: 'Assistant not found or not configured for 11Labs' });
+    console.log('📋 Assistant found:', assistant ? {
+      id: assistant.id,
+      name: assistant.name,
+      elevenLabsAgentId: assistant.elevenLabsAgentId
+    } : 'NOT FOUND');
+
+    if (!assistant) {
+      return res.status(404).json({ error: 'Assistant not found' });
+    }
+
+    if (!assistant.elevenLabsAgentId) {
+      return res.status(404).json({ error: 'Assistant not configured for 11Labs (missing elevenLabsAgentId)' });
     }
 
     // Import the service
     const elevenLabsService = (await import('../services/elevenlabs.js')).default;
+    console.log('🔑 Getting signed URL from 11Labs for agent:', assistant.elevenLabsAgentId);
     const result = await elevenLabsService.getSignedUrl(assistant.elevenLabsAgentId);
 
     // 11Labs returns { signed_url: "wss://..." }
+    console.log('✅ Signed URL obtained successfully');
     res.json({ signedUrl: result.signed_url });
   } catch (error) {
-    console.error('❌ Error getting signed URL:', error);
+    console.error('❌ Error getting signed URL:', error.response?.data || error.message);
     res.status(500).json({ error: error.message });
   }
 });
