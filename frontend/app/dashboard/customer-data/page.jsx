@@ -618,12 +618,12 @@ export default function CustomerDataPage() {
                 </span>
               </div>
 
-              <div className="max-h-64 overflow-auto border rounded-lg">
-                <table className="w-full text-sm">
+              <div className="max-h-64 overflow-auto border rounded-lg" style={{ maxWidth: '100%' }}>
+                <table className="w-full text-sm table-fixed">
                   <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
                     <tr>
                       {uploadPreview.columns.slice(0, 6).map((col, i) => (
-                        <th key={i} className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300 whitespace-nowrap">
+                        <th key={i} className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300 truncate max-w-[120px]" title={col}>
                           {col}
                         </th>
                       ))}
@@ -638,8 +638,8 @@ export default function CustomerDataPage() {
                     {uploadPreview.preview.map((row, i) => (
                       <tr key={i}>
                         {uploadPreview.columns.slice(0, 6).map((col, j) => (
-                          <td key={j} className="px-3 py-2 text-gray-700 dark:text-gray-300 whitespace-nowrap">
-                            {String(row[col] || '').substring(0, 30)}
+                          <td key={j} className="px-3 py-2 text-gray-700 dark:text-gray-300 truncate max-w-[120px]" title={String(row[col] || '')}>
+                            {String(row[col] || '').substring(0, 20)}
                           </td>
                         ))}
                         {uploadPreview.columns.length > 6 && (
