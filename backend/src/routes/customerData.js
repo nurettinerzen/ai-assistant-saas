@@ -4,9 +4,119 @@ import { authenticateToken } from '../middleware/auth.js';
 import { checkPermission } from '../middleware/permissions.js';
 import multer from 'multer';
 import XLSX from 'xlsx';
+import elevenLabsService from '../services/elevenlabs.js';
+import { getActiveToolsForElevenLabs } from '../tools/index.js';
+import { buildAssistantPrompt, getActiveTools as getPromptBuilderTools } from '../services/promptBuilder.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
+
+// ============================================================
+// 11LABS LANGUAGE CODE MAPPING (copied from assistant.js)
+// ============================================================
+const ELEVENLABS_LANGUAGE_MAP = {
+  'tr': 'tr',
+  'en': 'en',
+  'pr': 'pt-br',
+  'pt': 'pt',
+  'de': 'de',
+  'es': 'es',
+  'fr': 'fr'
+};
+
+function getElevenLabsLanguage(lang) {
+  const normalized = lang?.toLowerCase() || 'tr';
+  return ELEVENLABS_LANGUAGE_MAP[normalized] || normalized;
+}
+
+/**
+ * Update all 11Labs agents for a business with latest tools
+ * Called after customer data import to ensure agents have access to new data
+ */
+async function syncElevenLabsAgents(businessId) {
+  try {
+    // Get business with integrations
+    const business = await prisma.business.findUnique({
+      where: { id: businessId },
+      include: { integrations: { where: { isActive: true } } }
+    });
+
+    if (!business) {
+      console.log('⚠️ Business not found for 11Labs sync');
+      return;
+    }
+
+    // Get all active assistants for this business
+    const assistants = await prisma.assistant.findMany({
+      where: { businessId, isActive: true, elevenLabsAgentId: { not: null } }
+    });
+
+    if (assistants.length === 0) {
+      console.log('ℹ️ No 11Labs agents to sync for business:', businessId);
+      return;
+    }
+
+    console.log(`🔄 Syncing ${assistants.length} 11Labs agent(s) after customer data change...`);
+
+    // Get active tools for this business
+    const activeToolsElevenLabs = getActiveToolsForElevenLabs(business);
+    console.log('📤 11Labs tools to sync:', activeToolsElevenLabs.map(t => t.name));
+
+    const lang = business.language?.toLowerCase() || 'tr';
+    const elevenLabsLang = getElevenLabsLanguage(lang);
+
+    // Build end_call description
+    const endCallDesc = elevenLabsLang === 'tr'
+      ? 'Görüşmeyi sonlandır. Müşteri vedalaştığında (güle güle, görüşürüz, hoşça kal, iyi günler, bye, teşekkürler hepsi bu kadar) veya görev tamamlandığında bu aracı kullan.'
+      : 'End the call when the user says goodbye or the task is complete.';
+
+    // Add end_call tool
+    const toolsWithSystemTools = [
+      ...activeToolsElevenLabs,
+      { type: 'system', name: 'end_call', description: endCallDesc }
+    ];
+
+    // Update each assistant's 11Labs agent
+    for (const assistant of assistants) {
+      try {
+        // Get active tools list for prompt builder
+        const activeToolsList = getPromptBuilderTools(business, business.integrations || []);
+
+        // Build updated prompt
+        const tempAssistant = {
+          name: assistant.name,
+          systemPrompt: assistant.systemPrompt,
+          tone: assistant.tone || 'professional',
+          customNotes: assistant.customNotes,
+          callDirection: assistant.callDirection || 'inbound'
+        };
+        const fullSystemPrompt = buildAssistantPrompt(tempAssistant, business, activeToolsList);
+
+        const agentUpdateConfig = {
+          conversation_config: {
+            agent: {
+              prompt: {
+                prompt: fullSystemPrompt,
+                llm: 'gemini-2.5-flash-lite',
+                temperature: 0.1,
+                tools: toolsWithSystemTools
+              }
+            }
+          }
+        };
+
+        await elevenLabsService.updateAgent(assistant.elevenLabsAgentId, agentUpdateConfig);
+        console.log(`✅ 11Labs agent synced: ${assistant.name} (${assistant.elevenLabsAgentId})`);
+      } catch (err) {
+        console.error(`❌ Failed to sync agent ${assistant.name}:`, err.message);
+      }
+    }
+
+    console.log('🔄 11Labs agent sync completed');
+  } catch (error) {
+    console.error('❌ 11Labs agent sync error:', error);
+  }
+}
 
 // Configure multer for file uploads (5MB max)
 const storage = multer.memoryStorage();
@@ -476,6 +586,11 @@ router.post('/import', upload.single('file'), async (req, res) => {
       }
     }
 
+    // Sync 11Labs agents with new tools (async, don't wait)
+    syncElevenLabsAgents(businessId).catch(err => {
+      console.error('Background 11Labs sync error:', err);
+    });
+
     res.json({
       success: true,
       message: `Import completed: ${results.success} created, ${results.updated} updated, ${results.failed} failed`,
@@ -665,6 +780,11 @@ router.post('/', async (req, res) => {
       }
     });
 
+    // Sync 11Labs agents (async, don't wait)
+    syncElevenLabsAgents(businessId).catch(err => {
+      console.error('Background 11Labs sync error:', err);
+    });
+
     res.status(201).json({ customer });
 
   } catch (error) {
@@ -831,4 +951,31 @@ router.get('/tags/list', async (req, res) => {
   }
 });
 
+/**
+ * POST /api/customer-data/sync-agents
+ * Manually trigger 11Labs agent sync for this business
+ * Use this to update existing agents with customer_data_lookup tool
+ */
+router.post('/sync-agents', async (req, res) => {
+  try {
+    const businessId = req.businessId;
+
+    console.log('🔄 Manual 11Labs agent sync requested for business:', businessId);
+
+    await syncElevenLabsAgents(businessId);
+
+    res.json({
+      success: true,
+      message: '11Labs agents synced successfully'
+    });
+
+  } catch (error) {
+    console.error('Sync agents error:', error);
+    res.status(500).json({ error: 'Failed to sync agents' });
+  }
+});
+
 export default router;
+
+// Export sync function for use in other routes
+export { syncElevenLabsAgents };

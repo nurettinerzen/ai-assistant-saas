@@ -340,7 +340,15 @@ async function handleToolCall(event) {
     agent_id
   } = event;
 
-  console.log('[11Labs Tool Call]', tool_name, parameters);
+  // Extract caller phone from various possible locations in 11Labs event
+  const callerPhone = event.caller_phone ||
+                      event.metadata?.caller_phone ||
+                      event.metadata?.phone_call?.external_number ||
+                      event.phone_call?.external_number ||
+                      event.from ||
+                      null;
+
+  console.log('[11Labs Tool Call]', tool_name, parameters, 'Caller:', callerPhone);
 
   try {
     // Find business from agent ID
@@ -371,10 +379,26 @@ async function handleToolCall(event) {
     const business = assistant.business;
     console.log(`✅ Found business: ${business.name} (ID: ${business.id})`);
 
-    // Execute tool using central tool system
+    // If no caller phone in event, try to get from call log
+    let resolvedCallerPhone = callerPhone;
+    if (!resolvedCallerPhone && conversation_id) {
+      const callLog = await prisma.callLog.findFirst({
+        where: { callId: conversation_id },
+        select: { callerId: true }
+      });
+      if (callLog?.callerId && callLog.callerId !== 'Unknown') {
+        resolvedCallerPhone = callLog.callerId;
+        console.log(`📞 Got caller phone from call log: ${resolvedCallerPhone}`);
+      }
+    }
+
+    // Execute tool using central tool system with caller phone in context
     const result = await executeTool(tool_name, parameters, business, {
       channel: 'PHONE',
-      conversationId: conversation_id
+      conversationId: conversation_id,
+      callerPhone: resolvedCallerPhone,
+      phone: resolvedCallerPhone,
+      from: resolvedCallerPhone
     });
 
     console.log(`🔧 Tool result for ${tool_name}:`, result.success ? 'SUCCESS' : 'FAILED');
