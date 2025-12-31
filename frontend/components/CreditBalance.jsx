@@ -76,12 +76,12 @@ export default function CreditBalance({ onBuyCredit, refreshTrigger }) {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+      <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-sm border border-neutral-200 dark:border-neutral-700 p-6">
         <div className="animate-pulse space-y-4">
-          <div className="h-5 bg-neutral-200 rounded w-1/3"></div>
-          <div className="h-3 bg-neutral-200 rounded"></div>
-          <div className="h-3 bg-neutral-200 rounded"></div>
-          <div className="h-3 bg-neutral-200 rounded w-2/3"></div>
+          <div className="h-5 bg-neutral-200 dark:bg-neutral-700 rounded w-1/3"></div>
+          <div className="h-3 bg-neutral-200 dark:bg-neutral-700 rounded"></div>
+          <div className="h-3 bg-neutral-200 dark:bg-neutral-700 rounded"></div>
+          <div className="h-3 bg-neutral-200 dark:bg-neutral-700 rounded w-2/3"></div>
         </div>
       </div>
     );
@@ -89,8 +89,8 @@ export default function CreditBalance({ onBuyCredit, refreshTrigger }) {
 
   if (error) {
     return (
-      <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
-        <div className="text-center text-neutral-500">
+      <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-sm border border-neutral-200 dark:border-neutral-700 p-6">
+        <div className="text-center text-neutral-500 dark:text-neutral-400">
           <AlertTriangle className="h-8 w-8 mx-auto mb-2 text-amber-500" />
           <p>{error === 'load_error' ? txt.loadError : error}</p>
           <Button
@@ -125,12 +125,12 @@ export default function CreditBalance({ onBuyCredit, refreshTrigger }) {
   const currencySymbol = lang === 'TR' ? '₺' : lang === 'PR' ? 'R$' : '$';
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6 space-y-5">
+    <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-sm border border-neutral-200 dark:border-neutral-700 p-6 space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <TrendingUp className="h-5 w-5 text-primary-600" />
-          <h3 className="text-lg font-semibold text-neutral-900">
+          <TrendingUp className="h-5 w-5 text-primary-600 dark:text-primary-400" />
+          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
             {txt.usageStatus}
           </h3>
         </div>
@@ -143,10 +143,10 @@ export default function CreditBalance({ onBuyCredit, refreshTrigger }) {
       <div className="space-y-2">
         <div className="flex items-center justify-between text-sm">
           <div className="flex items-center gap-2">
-            <Phone className="h-4 w-4 text-blue-600" />
-            <span className="font-medium text-neutral-700">{txt.packageMinutes}</span>
+            <Phone className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <span className="font-medium text-neutral-700 dark:text-neutral-300">{txt.packageMinutes}</span>
           </div>
-          <span className="text-neutral-600">
+          <span className="text-neutral-600 dark:text-neutral-400">
             {balance.package.used}/{balance.package.limit} {txt.min}
           </span>
         </div>
@@ -172,10 +172,10 @@ export default function CreditBalance({ onBuyCredit, refreshTrigger }) {
       <div className="space-y-2">
         <div className="flex items-center justify-between text-sm">
           <div className="flex items-center gap-2">
-            <Zap className="h-4 w-4 text-green-600" />
-            <span className="font-medium text-neutral-700">{txt.creditMinutes}</span>
+            <Zap className="h-4 w-4 text-green-600 dark:text-green-400" />
+            <span className="font-medium text-neutral-700 dark:text-neutral-300">{txt.creditMinutes}</span>
           </div>
-          <span className="text-neutral-600">
+          <span className="text-neutral-600 dark:text-neutral-400">
             {balance.credit.remaining} {txt.minutesRemaining}
           </span>
         </div>
@@ -185,8 +185,8 @@ export default function CreditBalance({ onBuyCredit, refreshTrigger }) {
             className={`h-2 ${creditPercent >= 80 ? '[&>div]:bg-amber-500' : '[&>div]:bg-green-500'}`}
           />
         ) : (
-          <div className="h-2 bg-neutral-100 rounded-full">
-            <div className="h-full bg-neutral-200 rounded-full w-0"></div>
+          <div className="h-2 bg-neutral-100 dark:bg-neutral-800 rounded-full">
+            <div className="h-full bg-neutral-200 dark:bg-neutral-700 rounded-full w-0"></div>
           </div>
         )}
         {balance.credit.total === 0 && (
@@ -204,17 +204,17 @@ export default function CreditBalance({ onBuyCredit, refreshTrigger }) {
 
       {/* Overage Status */}
       {balance.overage.minutes > 0 && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-1">
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 space-y-1">
           <div className="flex items-center justify-between text-sm">
-            <span className="font-medium text-red-700 flex items-center gap-1">
+            <span className="font-medium text-red-700 dark:text-red-400 flex items-center gap-1">
               <Clock className="h-4 w-4" />
               {txt.overageThisMonth}
             </span>
-            <span className="text-red-700 font-semibold">
+            <span className="text-red-700 dark:text-red-400 font-semibold">
               {balance.overage.minutes} {txt.min} × {currencySymbol}{balance.overage.rate} = {currencySymbol}{balance.overage.amount.toLocaleString(dateLocale)}
             </span>
           </div>
-          <p className="text-xs text-red-600">
+          <p className="text-xs text-red-600 dark:text-red-400">
             {txt.overageLimit} {balance.overage.limit} {txt.min} {txt.overageNote}
           </p>
         </div>
@@ -222,14 +222,14 @@ export default function CreditBalance({ onBuyCredit, refreshTrigger }) {
 
       {/* Overage Limit Warning */}
       {balance.overage.limitReached && (
-        <div className="bg-red-100 border border-red-300 rounded-lg p-4">
+        <div className="bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg p-4">
           <div className="flex items-start gap-3">
-            <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="font-semibold text-red-800">
+              <p className="font-semibold text-red-800 dark:text-red-300">
                 {txt.overageLimitReached}
               </p>
-              <p className="text-sm text-red-700 mt-1">
+              <p className="text-sm text-red-700 dark:text-red-400 mt-1">
                 {txt.overageLimitNote}
               </p>
             </div>
@@ -239,7 +239,7 @@ export default function CreditBalance({ onBuyCredit, refreshTrigger }) {
 
       {/* Period Info */}
       {balance.periodEnd && (
-        <div className="text-xs text-neutral-500 flex items-center justify-between pt-2 border-t border-neutral-100">
+        <div className="text-xs text-neutral-500 dark:text-neutral-400 flex items-center justify-between pt-2 border-t border-neutral-100 dark:border-neutral-800">
           <span>{txt.periodEnd}</span>
           <span>{new Date(balance.periodEnd).toLocaleDateString(dateLocale)}</span>
         </div>

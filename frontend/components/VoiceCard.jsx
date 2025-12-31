@@ -41,8 +41,8 @@ export default function VoiceCard({ voice, onSelect, isSelected }) {
 
   return (
     <div
-      className={`relative bg-white rounded-xl border-2 p-6 cursor-pointer transition-all hover:shadow-md ${
-        isSelected ? 'border-primary-600 ring-2 ring-primary-100' : 'border-neutral-200 hover:border-neutral-300'
+      className={`relative bg-white dark:bg-neutral-900 rounded-xl border-2 p-6 cursor-pointer transition-all hover:shadow-md ${
+        isSelected ? 'border-primary-600 ring-2 ring-primary-100 dark:ring-primary-900' : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
       }`}
       onClick={() => onSelect(voice)}
     >
@@ -55,7 +55,7 @@ export default function VoiceCard({ voice, onSelect, isSelected }) {
 
       {/* Voice info */}
       <div className="mb-4">
-        <h3 className="text-lg font-semibold text-neutral-900 mb-2">{voice.name}</h3>
+        <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-2">{voice.name}</h3>
         
         <div className="flex flex-wrap gap-2 mb-3">
           <Badge variant="secondary" className="text-xs">
@@ -72,7 +72,7 @@ export default function VoiceCard({ voice, onSelect, isSelected }) {
         </div>
         
         {voice.description && (
-          <p className="text-sm text-neutral-600 line-clamp-2">{voice.description}</p>
+          <p className="text-sm text-neutral-600 dark:text-neutral-400 line-clamp-2">{voice.description}</p>
         )}
       </div>
 
