@@ -52,15 +52,15 @@ export default function CallDetailsModal({ call, isOpen, onClose }) {
   };
 
   const statusColors = {
-    completed: 'bg-green-100 text-green-800',
-    failed: 'bg-red-100 text-red-800',
-    'in-progress': 'bg-blue-100 text-blue-800',
+    completed: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300',
+    failed: 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300',
+    'in-progress': 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300',
   };
 
   const sentimentColors = {
-    positive: 'text-green-600',
-    neutral: 'text-gray-600',
-    negative: 'text-red-600',
+    positive: 'text-green-600 dark:text-green-400',
+    neutral: 'text-gray-600 dark:text-gray-400',
+    negative: 'text-red-600 dark:text-red-400',
   };
 
   return (
@@ -73,41 +73,41 @@ export default function CallDetailsModal({ call, isOpen, onClose }) {
         {/* Call Summary */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-4">
           <div className="flex items-start gap-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <Phone className="h-5 w-5 text-blue-600" />
+            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+              <Phone className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <p className="text-xs text-gray-600">Phone Number</p>
-              <p className="font-semibold text-sm">{call.callerId || 'Unknown'}</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">Phone Number</p>
+              <p className="font-semibold text-sm text-gray-900 dark:text-white">{call.callerId || 'Unknown'}</p>
             </div>
           </div>
 
           <div className="flex items-start gap-3">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <Clock className="h-5 w-5 text-purple-600" />
+            <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+              <Clock className="h-5 w-5 text-purple-600 dark:text-purple-400" />
             </div>
             <div>
-              <p className="text-xs text-gray-600">Duration</p>
-              <p className="font-semibold text-sm">{formatDuration(call.duration)}</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">Duration</p>
+              <p className="font-semibold text-sm text-gray-900 dark:text-white">{formatDuration(call.duration)}</p>
             </div>
           </div>
 
           <div className="flex items-start gap-3">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <DollarSign className="h-5 w-5 text-green-600" />
+            <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+              <DollarSign className="h-5 w-5 text-green-600 dark:text-green-400" />
             </div>
             <div>
-              <p className="text-xs text-gray-600">Cost</p>
-              <p className="font-semibold text-sm">{formatCurrency(call.cost)}</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">Cost</p>
+              <p className="font-semibold text-sm text-gray-900 dark:text-white">{formatCurrency(call.cost)}</p>
             </div>
           </div>
 
           <div className="flex items-start gap-3">
-            <div className="p-2 bg-amber-100 rounded-lg">
-              <AlertCircle className="h-5 w-5 text-amber-600" />
+            <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
+              <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
             </div>
             <div>
-              <p className="text-xs text-gray-600">Status</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">Status</p>
               <Badge className={statusColors[call.status]}>
                 {call.status}
               </Badge>
@@ -119,23 +119,23 @@ export default function CallDetailsModal({ call, isOpen, onClose }) {
 
         {/* Call Metadata */}
         <div className="space-y-3">
-          <h3 className="font-semibold text-lg">Call Information</h3>
+          <h3 className="font-semibold text-lg text-gray-900 dark:text-white">Call Information</h3>
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div>
-              <p className="text-gray-600">Call ID</p>
-              <p className="font-mono text-xs">{call.callId}</p>
+              <p className="text-gray-600 dark:text-gray-400">Call ID</p>
+              <p className="font-mono text-xs text-gray-900 dark:text-gray-200">{call.callId}</p>
             </div>
             <div>
-              <p className="text-gray-600">Timestamp</p>
-              <p>{formatDate(call.createdAt)}</p>
+              <p className="text-gray-600 dark:text-gray-400">Timestamp</p>
+              <p className="text-gray-900 dark:text-gray-200">{formatDate(call.createdAt)}</p>
             </div>
             <div>
-              <p className="text-gray-600">Assistant</p>
-              <p className="font-medium">{call.assistantName || 'Default Assistant'}</p>
+              <p className="text-gray-600 dark:text-gray-400">Assistant</p>
+              <p className="font-medium text-gray-900 dark:text-white">{call.assistantName || 'Default Assistant'}</p>
             </div>
             <div>
-              <p className="text-gray-600">Direction</p>
-              <p>{call.direction || 'Inbound'}</p>
+              <p className="text-gray-600 dark:text-gray-400">Direction</p>
+              <p className="text-gray-900 dark:text-gray-200">{call.direction || 'Inbound'}</p>
             </div>
           </div>
         </div>
@@ -151,38 +151,38 @@ export default function CallDetailsModal({ call, isOpen, onClose }) {
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 {call.intent && (
-                  <div className="p-3 bg-blue-50 rounded-lg">
-                    <p className="text-xs text-blue-600 font-semibold mb-1">Intent</p>
-                    <p className="text-sm">{call.intent}</p>
+                  <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                    <p className="text-xs text-blue-600 dark:text-blue-400 font-semibold mb-1">Intent</p>
+                    <p className="text-sm text-gray-900 dark:text-gray-200">{call.intent}</p>
                   </div>
                 )}
                 {call.sentiment && (
-                  <div className="p-3 bg-gray-50 rounded-lg">
-                    <p className="text-xs text-gray-600 font-semibold mb-1">Sentiment</p>
+                  <div className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                    <p className="text-xs text-gray-600 dark:text-gray-400 font-semibold mb-1">Sentiment</p>
                     <p className={`text-sm font-medium ${sentimentColors[call.sentiment]}`}>
                       {call.sentiment}
                     </p>
                   </div>
                 )}
                 {call.taskCompleted !== undefined && (
-                  <div className="p-3 bg-green-50 rounded-lg">
-                    <p className="text-xs text-green-600 font-semibold mb-1">Task Completed</p>
-                    <p className="text-sm">{call.taskCompleted ? 'Yes' : 'No'}</p>
+                  <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                    <p className="text-xs text-green-600 dark:text-green-400 font-semibold mb-1">Task Completed</p>
+                    <p className="text-sm text-gray-900 dark:text-gray-200">{call.taskCompleted ? 'Yes' : 'No'}</p>
                   </div>
                 )}
               </div>
               {call.summary && (
-                <div className="p-4 bg-purple-50 rounded-lg">
-                  <p className="text-xs text-purple-600 font-semibold mb-2">Summary</p>
-                  <p className="text-sm text-gray-700">{call.summary}</p>
+                <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                  <p className="text-xs text-purple-600 dark:text-purple-400 font-semibold mb-2">Summary</p>
+                  <p className="text-sm text-gray-700 dark:text-gray-300">{call.summary}</p>
                 </div>
               )}
               {call.keyPoints && call.keyPoints.length > 0 && (
-                <div className="p-4 bg-amber-50 rounded-lg">
-                  <p className="text-xs text-amber-600 font-semibold mb-2">Key Points</p>
+                <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
+                  <p className="text-xs text-amber-600 dark:text-amber-400 font-semibold mb-2">Key Points</p>
                   <ul className="list-disc list-inside space-y-1">
                     {call.keyPoints.map((point, index) => (
-                      <li key={index} className="text-sm text-gray-700">{point}</li>
+                      <li key={index} className="text-sm text-gray-700 dark:text-gray-300">{point}</li>
                     ))}
                   </ul>
                 </div>
@@ -217,8 +217,8 @@ export default function CallDetailsModal({ call, isOpen, onClose }) {
                   Download
                 </Button>
               </div>
-              <div className="p-4 bg-gray-50 rounded-lg max-h-64 overflow-y-auto">
-                <pre className="whitespace-pre-wrap text-sm text-gray-700 font-sans">
+              <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg max-h-64 overflow-y-auto">
+                <pre className="whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-300 font-sans">
                   {call.transcript}
                 </pre>
               </div>
@@ -231,7 +231,7 @@ export default function CallDetailsModal({ call, isOpen, onClose }) {
           <>
             <Separator />
             <div className="space-y-3">
-              <h3 className="font-semibold text-lg">Recording</h3>
+              <h3 className="font-semibold text-lg text-gray-900 dark:text-white">Recording</h3>
               <audio controls className="w-full">
                 <source src={call.recordingUrl} type="audio/mpeg" />
                 Your browser does not support the audio element.

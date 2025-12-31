@@ -157,10 +157,10 @@ export default function DashboardPage() {
       <div>
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="text-xl font-semibold text-neutral-900">
+            <h2 className="text-xl font-semibold text-neutral-900 dark:text-white">
               {t('dashboard.overviewPage.keyMetrics')}
             </h2>
-            <p className="text-sm text-neutral-600">
+            <p className="text-sm text-neutral-600 dark:text-neutral-400">
               {t('dashboard.overviewPage.last7DaysOverview')}
             </p>
           </div>
@@ -239,23 +239,23 @@ export default function DashboardPage() {
       {/* ========== SECTION 3: QUICK ACTIONS & STATUS ========== */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Quick Actions */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-neutral-200 p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-neutral-900 mb-4">
+        <div className="lg:col-span-2 bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6 shadow-sm">
+          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">
             {t('dashboard.overviewPage.quickActions')}
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Button
               variant="outline"
-              className="justify-start h-auto py-4 px-4 hover:border-primary-500 hover:bg-primary-50"
+              className="justify-start h-auto py-4 px-4 hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20"
               onClick={() => router.push('/dashboard/assistant')}
             >
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary-100 rounded-lg">
-                  <Bot className="h-5 w-5 text-primary-600" />
+                <div className="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-lg">
+                  <Bot className="h-5 w-5 text-primary-600 dark:text-primary-400" />
                 </div>
                 <div className="text-left">
-                  <div className="font-semibold">{t('dashboard.overviewPage.createAssistant')}</div>
-                  <div className="text-xs text-neutral-500">
+                  <div className="font-semibold dark:text-white">{t('dashboard.overviewPage.createAssistant')}</div>
+                  <div className="text-xs text-neutral-500 dark:text-neutral-400">
                     {t('dashboard.overviewPage.setupNewAI')}
                   </div>
                 </div>
@@ -264,16 +264,16 @@ export default function DashboardPage() {
 
             <Button
               variant="outline"
-              className="justify-start h-auto py-4 px-4 hover:border-green-500 hover:bg-green-50"
+              className="justify-start h-auto py-4 px-4 hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-900/20"
               onClick={() => router.push('/dashboard/phone-numbers')}
             >
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <Phone className="h-5 w-5 text-green-600" />
+                <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                  <Phone className="h-5 w-5 text-green-600 dark:text-green-400" />
                 </div>
                 <div className="text-left">
-                  <div className="font-semibold">{t('dashboard.overviewPage.buyPhoneNumber')}</div>
-                  <div className="text-xs text-neutral-500">
+                  <div className="font-semibold dark:text-white">{t('dashboard.overviewPage.buyPhoneNumber')}</div>
+                  <div className="text-xs text-neutral-500 dark:text-neutral-400">
                     {t('dashboard.overviewPage.getNewNumber')}
                   </div>
                 </div>
@@ -282,18 +282,18 @@ export default function DashboardPage() {
 
             <Button
               variant="outline"
-              className="justify-start h-auto py-4 px-4 hover:border-purple-500 hover:bg-purple-50"
+              className="justify-start h-auto py-4 px-4 hover:border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/20"
               onClick={() => router.push('/dashboard/integrations')}
             >
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-purple-100 rounded-lg">
-                  <Plug className="h-5 w-5 text-purple-600" />
+                <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                  <Plug className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                 </div>
                 <div className="text-left">
-                  <div className="font-semibold">
+                  <div className="font-semibold dark:text-white">
                     {t('dashboard.overviewPage.connectIntegration')}
                   </div>
-                  <div className="text-xs text-neutral-500">
+                  <div className="text-xs text-neutral-500 dark:text-neutral-400">
                     {t('dashboard.overviewPage.linkExternalTools')}
                   </div>
                 </div>
@@ -302,16 +302,16 @@ export default function DashboardPage() {
 
             <Button
               variant="outline"
-              className="justify-start h-auto py-4 px-4 hover:border-blue-500 hover:bg-blue-50"
+              className="justify-start h-auto py-4 px-4 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20"
               onClick={() => router.push('/dashboard/calls')}
             >
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <PhoneCall className="h-5 w-5 text-blue-600" />
+                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                  <PhoneCall className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div className="text-left">
-                  <div className="font-semibold">{t('dashboard.overviewPage.viewAllCalls')}</div>
-                  <div className="text-xs text-neutral-500">
+                  <div className="font-semibold dark:text-white">{t('dashboard.overviewPage.viewAllCalls')}</div>
+                  <div className="text-xs text-neutral-500 dark:text-neutral-400">
                     {t('dashboard.overviewPage.latestCallActivity')}
                   </div>
                 </div>
@@ -321,19 +321,19 @@ export default function DashboardPage() {
         </div>
 
         {/* Status Indicators */}
-        <div className="bg-white rounded-xl border border-neutral-200 p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-neutral-900 mb-4">
+        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6 shadow-sm">
+          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">
             {t('dashboard.overviewPage.systemStatus')}
           </h3>
           <div className="space-y-4">
-            <div className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg">
+            <div className="flex items-center justify-between p-3 bg-neutral-50 dark:bg-neutral-800 rounded-lg">
               <div className="flex items-center gap-3">
-                <Bot className="h-5 w-5 text-neutral-600" />
+                <Bot className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
                 <div>
-                  <div className="text-sm font-medium text-neutral-900">
+                  <div className="text-sm font-medium text-neutral-900 dark:text-white">
                     {t('dashboard.overviewPage.activeAssistantsLabel')}
                   </div>
-                  <div className="text-xs text-neutral-500">
+                  <div className="text-xs text-neutral-500 dark:text-neutral-400">
                     {systemStatus.activeAssistants} {t('dashboard.overviewPage.running')}
                   </div>
                 </div>
@@ -342,22 +342,22 @@ export default function DashboardPage() {
                 variant={systemStatus.activeAssistants > 0 ? 'default' : 'secondary'}
                 className={
                   systemStatus.activeAssistants > 0
-                    ? 'bg-green-100 text-green-800'
-                    : 'bg-neutral-200 text-neutral-600'
+                    ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400'
+                    : 'bg-neutral-200 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300'
                 }
               >
                 {systemStatus.activeAssistants}
               </Badge>
             </div>
 
-            <div className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg">
+            <div className="flex items-center justify-between p-3 bg-neutral-50 dark:bg-neutral-800 rounded-lg">
               <div className="flex items-center gap-3">
-                <Plug className="h-5 w-5 text-neutral-600" />
+                <Plug className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
                 <div>
-                  <div className="text-sm font-medium text-neutral-900">
+                  <div className="text-sm font-medium text-neutral-900 dark:text-white">
                     {t('dashboard.overviewPage.integrations')}
                   </div>
-                  <div className="text-xs text-neutral-500">
+                  <div className="text-xs text-neutral-500 dark:text-neutral-400">
                     {systemStatus.connectedIntegrations} {t('dashboard.overviewPage.connected')}
                   </div>
                 </div>
@@ -366,22 +366,22 @@ export default function DashboardPage() {
                 variant={systemStatus.connectedIntegrations > 0 ? 'default' : 'secondary'}
                 className={
                   systemStatus.connectedIntegrations > 0
-                    ? 'bg-green-100 text-green-800'
-                    : 'bg-neutral-200 text-neutral-600'
+                    ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400'
+                    : 'bg-neutral-200 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300'
                 }
               >
                 {systemStatus.connectedIntegrations}
               </Badge>
             </div>
 
-            <div className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg">
+            <div className="flex items-center justify-between p-3 bg-neutral-50 dark:bg-neutral-800 rounded-lg">
               <div className="flex items-center gap-3">
-                <Phone className="h-5 w-5 text-neutral-600" />
+                <Phone className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
                 <div>
-                  <div className="text-sm font-medium text-neutral-900">
+                  <div className="text-sm font-medium text-neutral-900 dark:text-white">
                     {t('dashboard.overviewPage.phoneNumbers')}
                   </div>
-                  <div className="text-xs text-neutral-500">
+                  <div className="text-xs text-neutral-500 dark:text-neutral-400">
                     {systemStatus.phoneNumbers} {t('dashboard.overviewPage.provisioned')}
                   </div>
                 </div>
@@ -390,40 +390,40 @@ export default function DashboardPage() {
                 variant={systemStatus.phoneNumbers > 0 ? 'default' : 'secondary'}
                 className={
                   systemStatus.phoneNumbers > 0
-                    ? 'bg-green-100 text-green-800'
-                    : 'bg-neutral-200 text-neutral-600'
+                    ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400'
+                    : 'bg-neutral-200 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300'
                 }
               >
                 {systemStatus.phoneNumbers}
               </Badge>
             </div>
 
-            <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200">
+            <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
               <div className="flex items-center gap-3">
-                <CheckCircle2 className="h-5 w-5 text-green-600" />
+                <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
                 <div>
-                  <div className="text-sm font-medium text-green-900">
+                  <div className="text-sm font-medium text-green-900 dark:text-green-400">
                     {t('dashboard.overviewPage.systemHealth')}
                   </div>
-                  <div className="text-xs text-green-600">{t('dashboard.overviewPage.allSystemsGo')}</div>
+                  <div className="text-xs text-green-600 dark:text-green-500">{t('dashboard.overviewPage.allSystemsGo')}</div>
                 </div>
               </div>
-              <Zap className="h-5 w-5 text-green-600" />
+              <Zap className="h-5 w-5 text-green-600 dark:text-green-400" />
             </div>
           </div>
         </div>
       </div>
 
       {/* ========== SECTION 4: RECENT ACTIVITY FEED ========== */}
-      <div className="bg-white rounded-xl border border-neutral-200 shadow-sm">
-        <div className="p-6 border-b border-neutral-200">
+      <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 shadow-sm">
+        <div className="p-6 border-b border-neutral-200 dark:border-neutral-700">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-neutral-900 flex items-center gap-2">
+              <h2 className="text-lg font-semibold text-neutral-900 dark:text-white flex items-center gap-2">
                 <Activity className="h-5 w-5 text-primary-600" />
                 {t('dashboard.overviewPage.recentActivity')}
               </h2>
-              <p className="text-sm text-neutral-500 mt-1">
+              <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
                 {t('dashboard.overviewPage.latestCallsAndMessages')}
               </p>
             </div>
@@ -443,16 +443,16 @@ export default function DashboardPage() {
           <div className="p-8">
             <div className="animate-pulse space-y-4">
               {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="h-20 bg-neutral-100 rounded-lg"></div>
+                <div key={i} className="h-20 bg-neutral-100 dark:bg-neutral-800 rounded-lg"></div>
               ))}
             </div>
           </div>
         ) : recentCalls.length > 0 ? (
-          <div className="divide-y divide-neutral-100">
+          <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
             {recentCalls.map((call) => (
               <div
                 key={call.id}
-                className="p-5 hover:bg-neutral-50 cursor-pointer transition-colors group"
+                className="p-5 hover:bg-neutral-50 dark:hover:bg-neutral-800 cursor-pointer transition-colors group"
                 onClick={() => router.push(`/dashboard/calls?callId=${call.id}`)}
               >
                 <div className="flex items-start justify-between gap-4">
@@ -460,43 +460,43 @@ export default function DashboardPage() {
                     <div
                       className={`p-3 rounded-lg ${
                         call.status === 'completed'
-                          ? 'bg-green-100'
+                          ? 'bg-green-100 dark:bg-green-900/30'
                           : call.status === 'failed'
-                          ? 'bg-red-100'
-                          : 'bg-amber-100'
+                          ? 'bg-red-100 dark:bg-red-900/30'
+                          : 'bg-amber-100 dark:bg-amber-900/30'
                       }`}
                     >
                       <Phone
                         className={`h-5 w-5 ${
                           call.status === 'completed'
-                            ? 'text-green-600'
+                            ? 'text-green-600 dark:text-green-400'
                             : call.status === 'failed'
-                            ? 'text-red-600'
-                            : 'text-amber-600'
+                            ? 'text-red-600 dark:text-red-400'
+                            : 'text-amber-600 dark:text-amber-400'
                         }`}
                       />
                     </div>
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <p className="font-semibold text-neutral-900">
+                        <p className="font-semibold text-neutral-900 dark:text-white">
                           {call.phoneNumber || t('dashboard.overviewPage.unknownCaller')}
                         </p>
                         <Badge
                           variant="secondary"
                           className={`text-xs ${
                             call.status === 'completed'
-                              ? 'bg-green-100 text-green-800'
+                              ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400'
                               : call.status === 'failed'
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-amber-100 text-amber-800'
+                              ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400'
+                              : 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-400'
                           }`}
                         >
                           {call.status}
                         </Badge>
                       </div>
 
-                      <div className="flex items-center gap-4 text-sm text-neutral-600">
+                      <div className="flex items-center gap-4 text-sm text-neutral-600 dark:text-neutral-400">
                         <span className="flex items-center gap-1">
                           <Bot className="h-3.5 w-3.5" />
                           {call.assistantName || t('dashboard.overviewPage.noAssistant')}
@@ -505,14 +505,14 @@ export default function DashboardPage() {
                           <Clock className="h-3.5 w-3.5" />
                           {formatDuration(call.duration)}
                         </span>
-                        <span className="text-neutral-500">
+                        <span className="text-neutral-500 dark:text-neutral-500">
                           {formatDate(call.createdAt, 'relative', locale)}
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  <ExternalLink className="h-4 w-4 text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <ExternalLink className="h-4 w-4 text-neutral-400 dark:text-neutral-500 opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
               </div>
             ))}

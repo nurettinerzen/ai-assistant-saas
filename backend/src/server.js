@@ -58,6 +58,8 @@ import creditsRoutes from './routes/credits.js';
 // CRM Webhook Integration
 import crmWebhookRoutes from './routes/crm-webhook.js';
 import crmRoutes from './routes/crm.js';
+// Customer Data (for AI assistant matching)
+import customerDataRoutes from './routes/customerData.js';
 
 
 // Import jobs
@@ -140,6 +142,8 @@ app.use('/api/credits', creditsRoutes);
 // CRM Webhook Integration
 app.use('/api/webhook/crm', crmWebhookRoutes);
 app.use('/api/crm', crmRoutes);
+// Customer Data (for AI assistant matching)
+app.use('/api/customer-data', customerDataRoutes);
 
 
 // Error handling middleware

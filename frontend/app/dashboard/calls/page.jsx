@@ -120,18 +120,18 @@ export default function CallsPage() {
   const filteredCalls = calls;
 
   const statusColors = {
-    completed: 'bg-green-100 text-green-800',
-    answered: 'bg-green-100 text-green-800',
-    failed: 'bg-red-100 text-red-800',
-    'in-progress': 'bg-blue-100 text-blue-800',
-    in_progress: 'bg-blue-100 text-blue-800',
-    queued: 'bg-amber-100 text-amber-800',
+    completed: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300',
+    answered: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300',
+    failed: 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300',
+    'in-progress': 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300',
+    in_progress: 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300',
+    queued: 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300',
   };
 
   const sentimentColors = {
-    positive: 'bg-green-100 text-green-800',
-    neutral: 'bg-gray-100 text-gray-800',
-    negative: 'bg-red-100 text-red-800',
+    positive: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300',
+    neutral: 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200',
+    negative: 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300',
   };
 
   return (
@@ -139,8 +139,8 @@ export default function CallsPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-neutral-900">{t('dashboard.callsPage.title')}</h1>
-          <p className="text-neutral-600 mt-1">{t('dashboard.callsPage.description')}</p>
+          <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">{t('dashboard.callsPage.title')}</h1>
+          <p className="text-neutral-600 dark:text-neutral-400 mt-1">{t('dashboard.callsPage.description')}</p>
         </div>
         <Button onClick={handleExport} variant="outline">
           <Download className="h-4 w-4 mr-2" />
@@ -176,68 +176,68 @@ export default function CallsPage() {
 
       {/* Calls table */}
       {loading ? (
-        <div className="bg-white rounded-xl border border-neutral-200 p-8">
+        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-8">
           <div className="animate-pulse space-y-4">
             {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="h-16 bg-neutral-100 rounded"></div>
+              <div key={i} className="h-16 bg-neutral-100 dark:bg-neutral-800 rounded"></div>
             ))}
           </div>
         </div>
       ) : filteredCalls.length > 0 ? (
-        <div className="bg-white rounded-xl border border-neutral-200 shadow-sm overflow-hidden">
+        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-neutral-50 border-b border-neutral-200">
+              <thead className="bg-neutral-50 dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
                     {t('dashboard.callsPage.phoneNumber')}
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
                     {t('dashboard.callsPage.dateTime')}
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
                     {t('dashboard.callsPage.duration')}
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
                     {t('dashboard.callsPage.status')}
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
                     {t('dashboard.callsPage.sentiment')}
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
                     {t('dashboard.callsPage.summary')}
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-right text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
                     {t('dashboard.callsPage.actions')}
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-200">
+              <tbody className="divide-y divide-neutral-200 dark:divide-neutral-700">
                 {filteredCalls.map((call) => (
                   <tr
                     key={call.id}
-                    className="hover:bg-neutral-50 transition-colors"
+                    className="hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
                   >
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-neutral-900">
+                      <div className="text-sm font-medium text-neutral-900 dark:text-white">
                         {formatPhone(call.phoneNumber || call.callerId)}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-neutral-600">
+                      <div className="text-sm text-neutral-600 dark:text-neutral-300">
                         {formatDate(call.createdAt, 'short', locale)}
                       </div>
-                      <div className="text-xs text-neutral-400">
+                      <div className="text-xs text-neutral-400 dark:text-neutral-500">
                         {formatDate(call.createdAt, 'time', locale)}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-neutral-600">
+                      <div className="text-sm text-neutral-600 dark:text-neutral-300">
                         {formatDuration(call.duration)}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <Badge className={statusColors[call.status] || 'bg-neutral-100 text-neutral-800'}>
+                      <Badge className={statusColors[call.status] || 'bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200'}>
                         {call.status}
                       </Badge>
                     </td>
@@ -247,12 +247,12 @@ export default function CallsPage() {
                           {call.sentiment.charAt(0).toUpperCase() + call.sentiment.slice(1)}
                         </Badge>
                       ) : (
-                        <span className="text-xs text-neutral-400">-</span>
+                        <span className="text-xs text-neutral-400 dark:text-neutral-500">-</span>
                       )}
                     </td>
                     <td className="px-6 py-4 max-w-xs">
-                      <div className="text-sm text-neutral-600 truncate" title={call.summary}>
-                        {call.summary || <span className="text-neutral-400">-</span>}
+                      <div className="text-sm text-neutral-600 dark:text-neutral-300 truncate" title={call.summary}>
+                        {call.summary || <span className="text-neutral-400 dark:text-neutral-500">-</span>}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right">
@@ -284,7 +284,7 @@ export default function CallsPage() {
                           </Button>
                         )}
                         {!call.hasRecording && !call.hasTranscript && (
-                          <span className="text-xs text-neutral-400">{t('dashboard.callsPage.noData')}</span>
+                          <span className="text-xs text-neutral-400 dark:text-neutral-500">{t('dashboard.callsPage.noData')}</span>
                         )}
                       </div>
                     </td>
@@ -295,7 +295,7 @@ export default function CallsPage() {
           </div>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-neutral-200 p-8">
+        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-8">
           <EmptyState
             icon={Phone}
             title={searchQuery || statusFilter !== 'all' ? t('dashboard.callsPage.noCallsFound') : t('dashboard.callsPage.noCalls')}

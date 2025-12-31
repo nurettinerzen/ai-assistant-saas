@@ -11,6 +11,7 @@
  * - check_order_status_crm: CRM order lookup (custom webhook)
  * - check_stock_crm: CRM stock lookup (custom webhook)
  * - check_ticket_status_crm: CRM ticket/service lookup (custom webhook)
+ * - customer_data_lookup: Customer data lookup (from Excel/CSV import)
  *
  * NOTE: Paraşüt is NOT an AI tool - it's a dashboard feature for business owners.
  * Payment tools (iyzico) are disabled until explicitly needed.
@@ -20,19 +21,23 @@
 export const BUSINESS_TYPE_TOOLS = {
   RESTAURANT: [
     'create_appointment',      // Table reservation - ✅ WORKING
-    'send_order_notification'  // Food orders - ✅ WORKING
+    'send_order_notification', // Food orders - ✅ WORKING
+    'customer_data_lookup'     // ✅ Customer data lookup
   ],
   SALON: [
-    'create_appointment'       // Hair/beauty appointments - ✅ WORKING
+    'create_appointment',      // Hair/beauty appointments - ✅ WORKING
+    'customer_data_lookup'     // ✅ Customer data lookup
   ],
   CLINIC: [
-    'create_appointment'       // Medical appointments - ✅ WORKING
+    'create_appointment',      // Medical appointments - ✅ WORKING
+    'customer_data_lookup'     // ✅ Customer data lookup
   ],
   SERVICE: [
     'create_appointment',      // Service appointments - ✅ WORKING
     'check_order_status_crm',  // ✅ CRM orders
     'check_stock_crm',         // ✅ CRM stock
-    'check_ticket_status_crm'  // ✅ CRM tickets
+    'check_ticket_status_crm', // ✅ CRM tickets
+    'customer_data_lookup'     // ✅ Customer data lookup
   ],
   ECOMMERCE: [
     'check_order_status',      // ✅ Shopify/WooCommerce via aggregator
@@ -40,13 +45,15 @@ export const BUSINESS_TYPE_TOOLS = {
     'get_tracking_info',       // ✅ Shopify/WooCommerce via aggregator
     'check_order_status_crm',  // ✅ CRM orders
     'check_stock_crm',         // ✅ CRM stock
-    'check_ticket_status_crm'  // ✅ CRM tickets
+    'check_ticket_status_crm', // ✅ CRM tickets
+    'customer_data_lookup'     // ✅ Customer data lookup
   ],
   OTHER: [
     'create_appointment',      // Generic appointments - ✅ WORKING
     'check_order_status_crm',  // ✅ CRM orders
     'check_stock_crm',         // ✅ CRM stock
-    'check_ticket_status_crm'  // ✅ CRM tickets
+    'check_ticket_status_crm', // ✅ CRM tickets
+    'customer_data_lookup'     // ✅ Customer data lookup
   ]
 };
 
@@ -65,7 +72,8 @@ export const INTEGRATION_REQUIRED_TOOLS = {
 // Tools that work without any specific integration
 export const STANDALONE_TOOLS = [
   'create_appointment',
-  'send_order_notification'
+  'send_order_notification',
+  'customer_data_lookup'  // ✅ Always available - handler checks for data and returns appropriate message
 ];
 
 /**
@@ -83,9 +91,10 @@ export function getToolsForBusinessType(businessType) {
  * @param {Object[]} integrations - Array of active integrations
  * @param {Object} crmWebhook - CRM webhook object (optional)
  * @param {Object} crmDataCounts - CRM data counts { orders, stock, tickets }
+ * @param {Object} customerDataCount - Customer data count (optional)
  * @returns {string[]} - Filtered array of tool names that have required integrations
  */
-export function filterToolsByIntegrations(toolNames, integrations = [], crmWebhook = null, crmDataCounts = null) {
+export function filterToolsByIntegrations(toolNames, integrations = [], crmWebhook = null, crmDataCounts = null, customerDataCount = 0) {
   const activeIntegrationTypes = integrations
     .filter(i => i.isActive && i.connected)
     .map(i => i.type);
@@ -125,7 +134,7 @@ export function filterToolsByIntegrations(toolNames, integrations = [], crmWebho
 
 /**
  * Get active tool names for a business (combining business type and integrations)
- * @param {Object} business - Business object with businessType, integrations, crmWebhook, and crmDataCounts
+ * @param {Object} business - Business object with businessType, integrations, crmWebhook, crmDataCounts, and customerDataCount
  * @returns {string[]} - Array of active tool names
  */
 export function getActiveToolNames(business) {
@@ -133,12 +142,13 @@ export function getActiveToolNames(business) {
   const integrations = business.integrations || [];
   const crmWebhook = business.crmWebhook || null;
   const crmDataCounts = business.crmDataCounts || null;
+  const customerDataCount = business.customerDataCount || 0;
 
   // Get tools allowed for business type
   const allowedTools = getToolsForBusinessType(businessType);
 
-  // Filter by active integrations (including CRM webhook)
-  return filterToolsByIntegrations(allowedTools, integrations, crmWebhook, crmDataCounts);
+  // Filter by active integrations (including CRM webhook and customer data)
+  return filterToolsByIntegrations(allowedTools, integrations, crmWebhook, crmDataCounts, customerDataCount);
 }
 
 export default {

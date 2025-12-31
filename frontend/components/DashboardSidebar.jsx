@@ -153,15 +153,15 @@ export function DashboardSidebar() {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed top-0 left-0 z-40 h-screen w-64 bg-white border-r transition-transform duration-300 lg:translate-x-0",
+          "fixed top-0 left-0 z-40 h-screen w-64 bg-white dark:bg-neutral-900 border-r border-gray-200 dark:border-neutral-700 transition-transform duration-300 lg:translate-x-0",
           isOpen ? "translate-x-0" : "-translate-x-full"
         )}
         data-testid="dashboard-sidebar"
       >
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="p-6 border-b">
-            <h1 className="text-2xl font-bold text-purple-600">Telyx</h1>
+          <div className="p-6 border-b border-gray-200 dark:border-neutral-700">
+            <h1 className="text-2xl font-bold text-purple-600 dark:text-purple-400">Telyx</h1>
             {!loading && (
               <Badge 
                 variant={plan === 'FREE' ? 'secondary' : 'default'}
@@ -187,7 +187,7 @@ export function DashboardSidebar() {
                   variant={isActive ? 'secondary' : 'ghost'}
                   className={cn(
                     "w-full justify-start",
-                    isActive && "bg-purple-50 text-purple-700 hover:bg-purple-100",
+                    isActive && "bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/50",
                     !canAccess && "opacity-50 cursor-not-allowed"
                   )}
                   onClick={() => {
@@ -201,7 +201,7 @@ export function DashboardSidebar() {
                 >
                   <Icon className="w-5 h-5 mr-3" />
                   <span className="flex-1 text-left">{item.title}</span>
-                  {!canAccess && <Lock className="w-4 h-4 text-gray-400" />}
+                  {!canAccess && <Lock className="w-4 h-4 text-gray-400 dark:text-gray-600" />}
                   {showBadge && (
                     <Badge variant="secondary" className="ml-2 text-xs">
                       {item.badge}
@@ -213,11 +213,11 @@ export function DashboardSidebar() {
           </nav>
 
           {/* Bottom Section */}
-          <div className="p-4 border-t space-y-2">
+          <div className="p-4 border-t border-gray-200 dark:border-neutral-700 space-y-2">
             {/* Upgrade CTA for FREE users */}
             {plan === 'FREE' && (
-              <div className="p-3 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg mb-2">
-                <p className="text-sm font-semibold mb-1">Upgrade to unlock all features</p>
+              <div className="p-3 bg-gradient-to-r from-purple-50 dark:from-purple-900/30 to-blue-50 dark:to-blue-900/30 rounded-lg mb-2">
+                <p className="text-sm font-semibold mb-1 text-gray-900 dark:text-white">Upgrade to unlock all features</p>
                 <Button 
                   size="sm" 
                   className="w-full bg-purple-600 hover:bg-purple-700"
@@ -245,7 +245,7 @@ export function DashboardSidebar() {
             {/* Logout */}
             <Button
               variant="ghost"
-              className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
+              className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
               onClick={handleLogout}
               data-testid="logout-btn"
             >

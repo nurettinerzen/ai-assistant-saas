@@ -33,6 +33,7 @@ import {
   Users,
   Lock,
   Check,
+  Database,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -100,6 +101,7 @@ export default function Sidebar({ user, credits, business }) {
       label: t('dashboard.sidebar.outbound'),
       items: [
         { icon: Megaphone, label: t('dashboard.sidebar.batchCalls'), href: '/dashboard/batch-calls', permission: 'campaigns:view', featureId: 'batch_calls' },
+        { icon: Database, label: locale === 'tr' ? 'Müşteri Verileri' : 'Customer Data', href: '/dashboard/customer-data', permission: 'campaigns:view' },
       ],
     },
     {

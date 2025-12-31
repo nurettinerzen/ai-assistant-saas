@@ -22,6 +22,8 @@ import trackingInfoHandler from './tracking-info.js';
 import crmOrderStatusHandler from './crm-order-status.js';
 import crmStockHandler from './crm-stock.js';
 import crmTicketStatusHandler from './crm-ticket-status.js';
+// Customer Data Handler
+import customerDataLookupHandler from './customer-data-lookup.js';
 
 // Tool name -> handler mapping
 const handlers = {
@@ -33,7 +35,9 @@ const handlers = {
   // CRM Handlers
   'check_order_status_crm': crmOrderStatusHandler,
   'check_stock_crm': crmStockHandler,
-  'check_ticket_status_crm': crmTicketStatusHandler
+  'check_ticket_status_crm': crmTicketStatusHandler,
+  // Customer Data Handler
+  'customer_data_lookup': customerDataLookupHandler
 };
 
 export default handlers;
@@ -48,5 +52,7 @@ export {
   // CRM Handlers
   crmOrderStatusHandler,
   crmStockHandler,
-  crmTicketStatusHandler
+  crmTicketStatusHandler,
+  // Customer Data Handler
+  customerDataLookupHandler
 };

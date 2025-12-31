@@ -22,6 +22,8 @@ import getTrackingInfo from './tracking-info.js';
 import checkOrderStatusCrm from './crm-order-status.js';
 import checkStockCrm from './crm-stock.js';
 import checkTicketStatusCrm from './crm-ticket-status.js';
+// Customer Data Tool
+import customerDataLookup from './customer-data-lookup.js';
 
 // Export all definitions as an array
 export const definitions = [
@@ -33,7 +35,9 @@ export const definitions = [
   // CRM Tools
   checkOrderStatusCrm,
   checkStockCrm,
-  checkTicketStatusCrm
+  checkTicketStatusCrm,
+  // Customer Data Tool
+  customerDataLookup
 ];
 
 // Export individual definitions
@@ -46,7 +50,9 @@ export {
   // CRM Tools
   checkOrderStatusCrm,
   checkStockCrm,
-  checkTicketStatusCrm
+  checkTicketStatusCrm,
+  // Customer Data Tool
+  customerDataLookup
 };
 
 // Export as default map for easy lookup

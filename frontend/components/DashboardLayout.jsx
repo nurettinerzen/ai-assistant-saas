@@ -46,18 +46,18 @@ export default function DashboardLayout({ children }) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-neutral-950">
       {/* Sidebar */}
       <div
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-200 lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-neutral-900 shadow-lg dark:shadow-neutral-900/50 transform transition-transform duration-200 lg:translate-x-0 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         <div className="h-full flex flex-col">
           {/* Logo */}
-          <div className="p-6 border-b">
+          <div className="p-6 border-b border-gray-200 dark:border-neutral-700">
             <h1 className="text-xl font-bold text-primary">AI Assistant</h1>
-            <p className="text-sm text-gray-600 mt-1">{user.business?.name}</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{user.business?.name}</p>
           </div>
 
           {/* Navigation */}
@@ -72,7 +72,7 @@ export default function DashboardLayout({ children }) {
                   className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                     isActive
                       ? 'bg-primary text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-800'
                   }`}
                   data-testid={`nav-${item.href}`}
                 >
@@ -84,17 +84,17 @@ export default function DashboardLayout({ children }) {
           </nav>
 
           {/* User menu */}
-          <div className="p-4 border-t">
+          <div className="p-4 border-t border-gray-200 dark:border-neutral-700">
             <button
               onClick={() => setLang(lang === 'en' ? 'tr' : 'en')}
-              className="w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100 rounded-lg mb-2"
+              className="w-full px-4 py-2 text-sm text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-lg mb-2"
               data-testid="language-toggle"
             >
               {lang === 'en' ? '🇬🇧 English' : '🇹🇷 Türkçe'}
             </button>
             <Button
               variant="ghost"
-              className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
+              className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
               onClick={handleLogout}
               data-testid="logout-button"
             >
@@ -116,17 +116,17 @@ export default function DashboardLayout({ children }) {
       {/* Main content */}
       <div className="lg:pl-64">
         {/* Top bar */}
-        <div className="sticky top-0 z-30 bg-white border-b px-4 py-4 flex items-center justify-between">
+        <div className="sticky top-0 z-30 bg-white dark:bg-neutral-900 border-b border-gray-200 dark:border-neutral-700 px-4 py-4 flex items-center justify-between">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="lg:hidden"
+            className="lg:hidden text-gray-700 dark:text-gray-300"
             data-testid="menu-button"
           >
             <Menu className="w-6 h-6" />
           </button>
-          
+
           <div className="flex items-center gap-4">
-            <div className="text-sm text-gray-600">
+            <div className="text-sm text-gray-600 dark:text-gray-400">
               {user.email} • {user.role}
             </div>
             {/* Language Switcher */}

@@ -238,6 +238,26 @@ export const apiClient = {
     overrideClassification: (data) => api.post('/api/email/classify/override', data),
     getClassificationStats: () => api.get('/api/email/classify/stats'),
   },
+
+  // Customer Data (for AI assistant matching)
+  customerData: {
+    getAll: (params) => api.get('/api/customer-data', { params }),
+    getById: (id) => api.get(`/api/customer-data/${id}`),
+    create: (data) => api.post('/api/customer-data', data),
+    update: (id, data) => api.put(`/api/customer-data/${id}`, data),
+    delete: (id) => api.delete(`/api/customer-data/${id}`),
+    bulkDelete: (ids) => api.delete('/api/customer-data/bulk', { data: { ids } }),
+    lookup: (phone) => api.get('/api/customer-data/lookup', { params: { phone } }),
+    getTags: () => api.get('/api/customer-data/tags/list'),
+    // File operations
+    parseFile: (formData) => api.post('/api/customer-data/parse', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+    importFile: (formData) => api.post('/api/customer-data/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+    downloadTemplate: () => api.get('/api/customer-data/template', { responseType: 'blob' }),
+  },
 };
 
 export default api;

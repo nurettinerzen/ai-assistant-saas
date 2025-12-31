@@ -126,6 +126,7 @@ model Business {
   crmStocks               CrmStock[]
   crmTickets              CrmTicket[]
   batchCalls              BatchCall[]
+  customerData            CustomerData[]
 
   @@index([name])
 }
@@ -1222,4 +1223,47 @@ model BatchCall {
   @@index([status])
   @@index([assistantId])
   @@index([createdAt])
+}
+
+// ============================================================================
+// MÜŞTERİ VERİ TABANI (CUSTOMER DATA)
+// Müşteri telefon numarasına göre eşleştirme yapılarak AI asistan tarafından
+// kullanılan özel müşteri verileri. Excel/CSV ile toplu yükleme destekli.
+// ============================================================================
+
+model CustomerData {
+  id                String    @id @default(cuid())
+
+  // İlişki
+  businessId        Int
+  business          Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  // Temel bilgiler (zorunlu alanlar)
+  companyName       String              // İşletme/Şirket adı veya müşteri adı
+  phone             String              // Telefon (eşleştirme için kritik)
+
+  // İletişim bilgileri
+  contactName       String?             // Yetkili kişi adı
+  email             String?             // Email
+
+  // Kimlik bilgileri
+  vkn               String?             // Vergi Kimlik No
+  tcNo              String?             // TC Kimlik No (şahıs firması ise)
+
+  // Özel alanlar - JSON formatında esnek veri
+  // Mali veriler, borç bilgileri, beyanname durumları vb. burada tutulur
+  customFields      Json?               // { sgkDebt: 15750, taxDebt: 8320, ... }
+
+  // Ek bilgiler
+  notes             String?             // Serbest notlar
+  tags              String[]  @default([])  // Etiketler (kategorilendirme için)
+
+  // Zaman damgaları
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@unique([businessId, phone])  // Aynı business'ta aynı telefon bir kez olabilir
+  @@index([businessId])
+  @@index([phone])
+  @@index([vkn])
 }
