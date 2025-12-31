@@ -209,10 +209,10 @@ async function processDocument(documentId, filePath, ext, businessId) {
         throw new Error('Unsupported file type');
     }
 
-    // Get business assistant with 11Labs agent ID
-    const assistant = await prisma.assistant.findFirst({
+    // Get ALL active assistants with 11Labs agent ID for this business
+    const assistants = await prisma.assistant.findMany({
       where: { businessId, isActive: true },
-      select: { elevenLabsAgentId: true }
+      select: { id: true, elevenLabsAgentId: true, name: true }
     });
 
     // Get document info for name
@@ -220,32 +220,37 @@ async function processDocument(documentId, filePath, ext, businessId) {
       where: { id: documentId }
     });
 
-    let elevenLabsDocId = null;
+    const elevenLabsDocIds = [];
 
-    // Upload to 11Labs if assistant exists
-    if (assistant?.elevenLabsAgentId) {
-      try {
-        // Use original filename as document name
-        const docName = document.title || document.fileName || `Document_${documentId.substring(0, 8)}`;
-        const elevenLabsDoc = await elevenLabsService.addKnowledgeDocument(assistant.elevenLabsAgentId, {
-          name: docName,
-          content: content
-        });
-        elevenLabsDocId = elevenLabsDoc?.id;
-        console.log(`✅ Uploaded to 11Labs knowledge base: ${elevenLabsDocId}`);
-      } catch (elevenLabsError) {
-        console.error('11Labs upload failed:', elevenLabsError);
-        // Continue even if 11Labs fails
+    // Upload to 11Labs for ALL assistants
+    for (const assistant of assistants) {
+      if (assistant.elevenLabsAgentId) {
+        try {
+          // Use original filename as document name
+          const docName = document.title || document.fileName || `Document_${documentId.substring(0, 8)}`;
+          const elevenLabsDoc = await elevenLabsService.addKnowledgeDocument(assistant.elevenLabsAgentId, {
+            name: docName,
+            content: content
+          });
+          if (elevenLabsDoc?.id) {
+            elevenLabsDocIds.push({ assistantId: assistant.id, docId: elevenLabsDoc.id });
+            console.log(`✅ Document uploaded to 11Labs for assistant "${assistant.name}": ${elevenLabsDoc.id}`);
+          }
+        } catch (elevenLabsError) {
+          console.error(`11Labs upload failed for assistant "${assistant.name}":`, elevenLabsError);
+          // Continue with other assistants even if one fails
+        }
       }
     }
 
-    // Update document with extracted content and 11Labs ID
+    // Update document with extracted content
+    // Store first elevenLabsDocId for backward compatibility (or could store all in JSON)
     await prisma.knowledgeBase.update({
       where: { id: documentId },
       data: {
         content,
         status: 'ACTIVE',
-        ...(elevenLabsDocId && { elevenLabsDocId })
+        ...(elevenLabsDocIds.length > 0 && { elevenLabsDocId: elevenLabsDocIds[0].docId })
       }
     });
 
@@ -358,27 +363,31 @@ router.post('/faqs', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Question and answer are required' });
     }
 
-    // Get business assistant with 11Labs agent ID
-    const assistant = await prisma.assistant.findFirst({
+    // Get ALL active assistants with 11Labs agent ID
+    const assistants = await prisma.assistant.findMany({
       where: { businessId, isActive: true },
-      select: { elevenLabsAgentId: true }
+      select: { id: true, elevenLabsAgentId: true, name: true }
     });
 
-    let elevenLabsDocId = null;
+    const elevenLabsDocIds = [];
 
-    // Upload to 11Labs if assistant exists
-    if (assistant?.elevenLabsAgentId) {
-      try {
-        const content = `Q: ${question}\nA: ${answer}`;
-        const faqName = `FAQ: ${question.substring(0, 50)}`;
-        const elevenLabsDoc = await elevenLabsService.addKnowledgeDocument(assistant.elevenLabsAgentId, {
-          name: faqName,
-          content: content
-        });
-        elevenLabsDocId = elevenLabsDoc?.id;
-        console.log(`✅ FAQ uploaded to 11Labs: ${elevenLabsDocId}`);
-      } catch (elevenLabsError) {
-        console.error('11Labs upload failed:', elevenLabsError);
+    // Upload to 11Labs for ALL assistants
+    for (const assistant of assistants) {
+      if (assistant.elevenLabsAgentId) {
+        try {
+          const content = `Q: ${question}\nA: ${answer}`;
+          const faqName = `FAQ: ${question.substring(0, 50)}`;
+          const elevenLabsDoc = await elevenLabsService.addKnowledgeDocument(assistant.elevenLabsAgentId, {
+            name: faqName,
+            content: content
+          });
+          if (elevenLabsDoc?.id) {
+            elevenLabsDocIds.push({ assistantId: assistant.id, docId: elevenLabsDoc.id });
+            console.log(`✅ FAQ uploaded to 11Labs for assistant "${assistant.name}": ${elevenLabsDoc.id}`);
+          }
+        } catch (elevenLabsError) {
+          console.error(`11Labs FAQ upload failed for assistant "${assistant.name}":`, elevenLabsError);
+        }
       }
     }
 
@@ -390,7 +399,7 @@ router.post('/faqs', authenticateToken, async (req, res) => {
         question,
         answer,
         category,
-        elevenLabsDocId,
+        elevenLabsDocId: elevenLabsDocIds.length > 0 ? elevenLabsDocIds[0].docId : null,
         status: 'ACTIVE'
       }
     });
@@ -561,35 +570,41 @@ async function crawlURL(entryId, url) {
         select: { businessId: true }
       });
 
-      // Get assistant with 11Labs agent ID
-      const assistant = await prisma.assistant.findFirst({
+      // Get ALL active assistants with 11Labs agent ID
+      const assistants = await prisma.assistant.findMany({
         where: { businessId: entry.businessId, isActive: true },
-        select: { elevenLabsAgentId: true }
+        select: { id: true, elevenLabsAgentId: true, name: true }
       });
 
-      let elevenLabsDocId = null;
+      const elevenLabsDocIds = [];
 
-      // Upload to 11Labs if assistant exists - use URL endpoint directly
-      if (assistant?.elevenLabsAgentId) {
-        try {
-          const elevenLabsDoc = await elevenLabsService.addKnowledgeDocument(assistant.elevenLabsAgentId, {
-            name: result.title || url,
-            url: url  // Let 11Labs scrape the URL directly
-          });
-          elevenLabsDocId = elevenLabsDoc?.id;
-          console.log(`✅ URL uploaded to 11Labs: ${elevenLabsDocId}`);
-        } catch (elevenLabsError) {
-          console.error('11Labs URL upload failed:', elevenLabsError);
-          // Fallback: try with scraped content
+      // Upload to 11Labs for ALL assistants
+      for (const assistant of assistants) {
+        if (assistant.elevenLabsAgentId) {
           try {
             const elevenLabsDoc = await elevenLabsService.addKnowledgeDocument(assistant.elevenLabsAgentId, {
               name: result.title || url,
-              content: result.content
+              url: url  // Let 11Labs scrape the URL directly
             });
-            elevenLabsDocId = elevenLabsDoc?.id;
-            console.log(`✅ URL content uploaded to 11Labs (fallback): ${elevenLabsDocId}`);
-          } catch (fallbackError) {
-            console.error('11Labs fallback upload also failed:', fallbackError);
+            if (elevenLabsDoc?.id) {
+              elevenLabsDocIds.push({ assistantId: assistant.id, docId: elevenLabsDoc.id });
+              console.log(`✅ URL uploaded to 11Labs for assistant "${assistant.name}": ${elevenLabsDoc.id}`);
+            }
+          } catch (elevenLabsError) {
+            console.error(`11Labs URL upload failed for assistant "${assistant.name}":`, elevenLabsError);
+            // Fallback: try with scraped content
+            try {
+              const elevenLabsDoc = await elevenLabsService.addKnowledgeDocument(assistant.elevenLabsAgentId, {
+                name: result.title || url,
+                content: result.content
+              });
+              if (elevenLabsDoc?.id) {
+                elevenLabsDocIds.push({ assistantId: assistant.id, docId: elevenLabsDoc.id });
+                console.log(`✅ URL content uploaded to 11Labs (fallback) for assistant "${assistant.name}": ${elevenLabsDoc.id}`);
+              }
+            } catch (fallbackError) {
+              console.error(`11Labs fallback upload also failed for assistant "${assistant.name}":`, fallbackError);
+            }
           }
         }
       }
@@ -601,7 +616,7 @@ async function crawlURL(entryId, url) {
           content: result.content,
           pageCount: 1,
           lastCrawled: new Date(),
-          elevenLabsDocId,
+          elevenLabsDocId: elevenLabsDocIds.length > 0 ? elevenLabsDocIds[0].docId : null,
           status: 'ACTIVE'
         }
       });

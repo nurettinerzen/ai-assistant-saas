@@ -359,6 +359,55 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
       // Don't fail the request, just log the error
     }
 
+    // ✅ YENİ: Mevcut Knowledge Base içeriklerini yeni asistana ekle
+    if (elevenLabsAgentId) {
+      try {
+        const existingKBs = await prisma.knowledgeBase.findMany({
+          where: { businessId, status: 'ACTIVE' }
+        });
+
+        if (existingKBs.length > 0) {
+          console.log(`📚 Syncing ${existingKBs.length} existing KB items to new assistant...`);
+
+          for (const kb of existingKBs) {
+            try {
+              let kbContent = '';
+              let kbName = kb.title || 'Knowledge Item';
+
+              if (kb.type === 'FAQ' && kb.question && kb.answer) {
+                kbContent = `Q: ${kb.question}\nA: ${kb.answer}`;
+                kbName = `FAQ: ${kb.question.substring(0, 50)}`;
+              } else if (kb.type === 'URL' && kb.url) {
+                // For URLs, let 11Labs fetch directly
+                await elevenLabsService.addKnowledgeDocument(elevenLabsAgentId, {
+                  name: kbName,
+                  url: kb.url
+                });
+                console.log(`✅ URL KB synced to new assistant: ${kbName}`);
+                continue;
+              } else if (kb.content) {
+                kbContent = kb.content;
+              }
+
+              if (kbContent) {
+                await elevenLabsService.addKnowledgeDocument(elevenLabsAgentId, {
+                  name: kbName,
+                  content: kbContent
+                });
+                console.log(`✅ KB synced to new assistant: ${kbName}`);
+              }
+            } catch (kbError) {
+              console.error(`⚠️ Failed to sync KB "${kb.title}" to new assistant:`, kbError.message);
+              // Continue with other KBs even if one fails
+            }
+          }
+        }
+      } catch (kbSyncError) {
+        console.error('⚠️ Failed to sync existing KBs to new assistant:', kbSyncError);
+        // Don't fail the request, just log the error
+      }
+    }
+
     console.log('✅ Assistant saved to DB:', {
       id: assistant.id,
       name: assistant.name,
