@@ -158,6 +158,37 @@ router.post('/widget', async (req, res) => {
     const business = assistant.business;
     const language = business?.language || 'TR';
 
+    // Get Knowledge Base content for this business
+    const knowledgeItems = await prisma.knowledgeBase.findMany({
+      where: { businessId: business.id, status: 'ACTIVE' }
+    });
+
+    // Build Knowledge Base context
+    let knowledgeContext = '';
+    if (knowledgeItems && knowledgeItems.length > 0) {
+      const kbByType = { URL: [], DOCUMENT: [], FAQ: [] };
+
+      for (const item of knowledgeItems) {
+        if (item.type === 'FAQ' && item.question && item.answer) {
+          kbByType.FAQ.push(`S: ${item.question}\nC: ${item.answer}`);
+        } else if (item.content) {
+          kbByType[item.type]?.push(`[${item.title}]: ${item.content.substring(0, 1000)}`);
+        }
+      }
+
+      if (kbByType.FAQ.length > 0) {
+        knowledgeContext += '\n\n## SIK SORULAN SORULAR\n' + kbByType.FAQ.join('\n\n');
+      }
+      if (kbByType.URL.length > 0) {
+        knowledgeContext += '\n\n## WEB SAYFASI İÇERİĞİ\n' + kbByType.URL.join('\n\n');
+      }
+      if (kbByType.DOCUMENT.length > 0) {
+        knowledgeContext += '\n\n## DÖKÜMANLAR\n' + kbByType.DOCUMENT.join('\n\n');
+      }
+
+      console.log(`📚 [Chat] Knowledge Base items added: ${knowledgeItems.length}`);
+    }
+
     // Get active tools for this business from central tool system
     const tools = getActiveTools(business);
     console.log(`🔧 [Chat] Active tools for business ${business.id}: ${tools.map(t => t.function.name).join(', ') || 'none'}`);
@@ -185,12 +216,12 @@ When a customer wants to book an appointment:
 4. Ask for their preferred date and time
 5. Use the create_appointment function to book it`;
 
-    // Build messages array
+    // Build messages array with Knowledge Base context
     const messages = [
       {
         role: 'system',
         content: `${systemPromptBase}
-
+${knowledgeContext}
 ${toolInstructions}`
       },
       ...conversationHistory.slice(-10).map(msg => ({

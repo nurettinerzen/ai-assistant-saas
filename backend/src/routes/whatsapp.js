@@ -165,8 +165,8 @@ async function generateAIResponseWithTools(business, phoneNumber, userMessage, c
     const client = getOpenAI();
     const assistant = business.assistants?.[0];
 
-    // Build system prompt
-    const systemPrompt = buildSystemPrompt(business, assistant);
+    // Build system prompt (now async due to Knowledge Base query)
+    const systemPrompt = await buildSystemPrompt(business, assistant);
 
     // Get conversation history
     const conversationKey = `${business.id}:${phoneNumber}`;
@@ -312,7 +312,7 @@ async function processWithToolLoop(client, messages, tools, business, context, m
  * Build system prompt for the assistant
  * Now uses the central promptBuilder service
  */
-function buildSystemPrompt(business, assistant) {
+async function buildSystemPrompt(business, assistant) {
   const language = business?.language || 'TR';
 
   // Get active tools list for prompt
@@ -320,6 +320,37 @@ function buildSystemPrompt(business, assistant) {
 
   // Use the central prompt builder
   const basePrompt = buildAssistantPrompt(assistant || {}, business, activeToolsList);
+
+  // Get Knowledge Base content for this business
+  const knowledgeItems = await prisma.knowledgeBase.findMany({
+    where: { businessId: business.id, status: 'ACTIVE' }
+  });
+
+  // Build Knowledge Base context
+  let knowledgeContext = '';
+  if (knowledgeItems && knowledgeItems.length > 0) {
+    const kbByType = { URL: [], DOCUMENT: [], FAQ: [] };
+
+    for (const item of knowledgeItems) {
+      if (item.type === 'FAQ' && item.question && item.answer) {
+        kbByType.FAQ.push(`S: ${item.question}\nC: ${item.answer}`);
+      } else if (item.content) {
+        kbByType[item.type]?.push(`[${item.title}]: ${item.content.substring(0, 1000)}`);
+      }
+    }
+
+    if (kbByType.FAQ.length > 0) {
+      knowledgeContext += '\n\n## SIK SORULAN SORULAR\n' + kbByType.FAQ.join('\n\n');
+    }
+    if (kbByType.URL.length > 0) {
+      knowledgeContext += '\n\n## WEB SAYFASI İÇERİĞİ\n' + kbByType.URL.join('\n\n');
+    }
+    if (kbByType.DOCUMENT.length > 0) {
+      knowledgeContext += '\n\n## DÖKÜMANLAR\n' + kbByType.DOCUMENT.join('\n\n');
+    }
+
+    console.log(`📚 [WhatsApp] Knowledge Base items added: ${knowledgeItems.length}`);
+  }
 
   // Tool calling instructions - CRITICAL: No debug info to user
   const toolInstructions = language === 'TR'
@@ -353,7 +384,7 @@ Customer requests:
 Confirm the result with the customer in a friendly manner.`;
 
   return `${basePrompt}
-
+${knowledgeContext}
 ${toolInstructions}`;
 }
 
