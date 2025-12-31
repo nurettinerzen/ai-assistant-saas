@@ -107,23 +107,22 @@ export function buildAssistantPrompt(assistant, business, integrations = []) {
   prompt += `
 
 ## MÜŞTERİ VERİSİ SORGULAMA (customer_data_lookup)
-Arayan müşterinin telefon numarasına göre kayıtlı bilgilerini sorgulayabilirsin.
+Müşterinin telefon numarasına göre kayıtlı bilgilerini sorgulayabilirsin.
 
 ### NE ZAMAN KULLAN:
 - Müşteri SGK borcu, vergi borcu veya diğer borçlarını sorduğunda
 - Beyanname durumu, son ödeme tarihleri sorulduğunda
 - "Borcum ne kadar?", "Ne zaman ödemem lazım?" gibi sorularda
-- Hesap bilgisi, bakiye sorgusu yapıldığında
 
 ### NASIL KULLAN:
 1. customer_data_lookup aracını çağır
 2. query_type: sgk_borcu, vergi_borcu, beyanname veya tum_bilgiler
-3. Telefon numarası otomatik olarak arayan numaradan alınır
+3. phone: Müşteri numara söylediyse o numarayı yaz (boşlukları kaldır: "0532 123 45 67" -> "05321234567")
 
 ### ÖNEMLİ:
-- Müşteri bilgi sorduğunda ÖNCE customer_data_lookup ile sorgula
-- "Bilmiyorum" veya "temsilciye aktarıyorum" DEME, önce veritabanını kontrol et
-- Kayıt bulunamazsa: "Sistemimizde bu numaraya kayıtlı bilgi bulamadım" de`;
+- Müşteri numara söylediyse phone parametresine YAZ
+- Müşteri numara söylemediyse phone boş bırak (arayan numara otomatik kullanılır)
+- "Bilmiyorum" DEME, önce veritabanını kontrol et`;
 
   // 8. NOT: Tarih/saat bilgisi burada EKLENMİYOR
   // Tarih/saat her çağrı başladığında vapi.js'deki assistant-request handler'da

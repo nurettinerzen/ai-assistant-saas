@@ -6,7 +6,7 @@
 
 export default {
   name: 'customer_data_lookup',
-  description: 'Arayan müşterinin kayıtlı bilgilerini getirir. SGK borcu, vergi borcu, beyanname durumu gibi müşteriye özel verileri sorgular. Müşteri bilgi sorduğunda veya arama başladığında bu tool\'u kullan.',
+  description: 'Müşterinin kayıtlı bilgilerini getirir (SGK borcu, vergi borcu, beyanname durumu). Müşteri numara söylediyse o numarayı phone parametresine yaz. Numara söylemediyse phone boş bırak.',
   parameters: {
     type: 'object',
     properties: {
@@ -17,7 +17,7 @@ export default {
       },
       phone: {
         type: 'string',
-        description: 'Müşteri telefon numarası. Otomatik olarak arayan numaradan alınabilir.'
+        description: 'Müşterinin söylediği telefon numarası. Müşteri numara söylediyse BU ALANI DOLDUR. Örnek: "0532 123 45 67" -> "05321234567"'
       }
     },
     required: ['query_type']
