@@ -130,26 +130,41 @@ ${toolInstructions}`
 
     // Check if AI wants to call a tool
     if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
-      const toolCall = responseMessage.tool_calls[0];
-      const toolName = toolCall.function.name;
-      const toolArgs = JSON.parse(toolCall.function.arguments);
+      // Process all tool calls
+      const toolResults = [];
+      const toolNames = [];
 
-      console.log(`🔧 [Chat] Executing tool: ${toolName}`, JSON.stringify(toolArgs));
+      for (const toolCall of responseMessage.tool_calls) {
+        const toolName = toolCall.function.name;
+        const toolArgs = JSON.parse(toolCall.function.arguments);
 
-      // Execute tool using central tool system
-      const result = await executeTool(toolName, toolArgs, business, { channel: 'CHAT' });
+        console.log(`🔧 [Chat] Executing tool: ${toolName}`, JSON.stringify(toolArgs));
 
-      console.log(`🔧 [Chat] Tool result for ${toolName}:`, result.success ? 'SUCCESS' : 'FAILED', result);
+        // Execute tool using central tool system
+        const result = await executeTool(toolName, toolArgs, business, { channel: 'CHAT' });
+
+        console.log(`🔧 [Chat] Tool result for ${toolName}:`, result.success ? 'SUCCESS' : 'FAILED', result);
+
+        toolResults.push({
+          role: 'tool',
+          tool_call_id: toolCall.id,
+          content: JSON.stringify(result)
+        });
+        toolNames.push(toolName);
+      }
+
+      // Build assistant message with tool_calls - ensure content is empty string, not null
+      const assistantMessage = {
+        role: 'assistant',
+        content: responseMessage.content || '',
+        tool_calls: responseMessage.tool_calls
+      };
 
       // Send result back to AI to generate final response
       const secondMessages = [
         ...messages,
-        responseMessage,
-        {
-          role: 'tool',
-          tool_call_id: toolCall.id,
-          content: JSON.stringify(result)
-        }
+        assistantMessage,
+        ...toolResults
       ];
 
       const secondCompletion = await getOpenAI().chat.completions.create({
@@ -165,8 +180,8 @@ ${toolInstructions}`
         success: true,
         reply: finalReply,
         assistantName: assistant.name,
-        toolCalled: toolName,
-        toolResult: result.success
+        toolCalled: toolNames.join(', '),
+        toolResult: toolResults.every(r => JSON.parse(r.content).success)
       });
     }
 
