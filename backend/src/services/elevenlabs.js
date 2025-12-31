@@ -546,17 +546,24 @@ const elevenLabsService = {
 // AGENT CONFIG BUILDER
 // ============================================================================
 
+import { buildAssistantPrompt, getActiveTools as getPromptBuilderTools } from './promptBuilder.js';
+
 /**
  * Build 11Labs agent configuration from assistant data
  * @param {Object} assistant - Local assistant object
  * @param {Object} business - Business object
  * @param {Array} tools - Array of tool definitions
+ * @param {Array} integrations - Active integrations (optional)
  * @returns {Object} 11Labs agent configuration
  */
-export function buildAgentConfig(assistant, business, tools = []) {
+export function buildAgentConfig(assistant, business, tools = [], integrations = []) {
   const language = business.language?.toLowerCase() || 'tr';
   const backendUrl = process.env.BACKEND_URL || 'https://api.aicallcenter.app';
   const webhookUrl = `${backendUrl}/api/elevenlabs/webhook`;
+
+  // Build system prompt using central promptBuilder for consistency
+  const activeToolsList = getPromptBuilderTools(business, integrations);
+  const systemPrompt = buildAssistantPrompt(assistant, business, activeToolsList);
 
   // Convert tools to 11Labs format using api_schema
   const elevenLabsTools = tools.map(tool => ({
@@ -624,7 +631,8 @@ export function buildAgentConfig(assistant, business, tools = []) {
     conversation_config: {
       agent: {
         prompt: {
-          prompt: assistant.systemPrompt
+          // Use central promptBuilder for consistent system prompt across all channels
+          prompt: systemPrompt
         },
         first_message: assistant.firstMessage || getDefaultFirstMessage(language, assistant.name),
         language: language
