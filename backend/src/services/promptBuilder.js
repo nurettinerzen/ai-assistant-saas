@@ -95,12 +95,35 @@ export function buildAssistantPrompt(assistant, business, integrations = []) {
         'check_appointment': 'Randevu sorgulama',
         'cancel_appointment': 'Randevu iptal',
         'take_order': 'Sipariş alma',
-        'check_menu': 'Menü bilgisi'
+        'check_menu': 'Menü bilgisi',
+        'customer_data_lookup': 'Müşteri bilgisi sorgulama'
       };
       return names[i] || i;
     });
     prompt += `\n\n## KULLANILAN ARAÇLAR\nŞu işlemleri yapabilirsin: ${integrationNames.join(', ')}`;
   }
+
+  // 7.1 Customer Data Lookup talimatları (her zaman ekle)
+  prompt += `
+
+## MÜŞTERİ VERİSİ SORGULAMA (customer_data_lookup)
+Arayan müşterinin telefon numarasına göre kayıtlı bilgilerini sorgulayabilirsin.
+
+### NE ZAMAN KULLAN:
+- Müşteri SGK borcu, vergi borcu veya diğer borçlarını sorduğunda
+- Beyanname durumu, son ödeme tarihleri sorulduğunda
+- "Borcum ne kadar?", "Ne zaman ödemem lazım?" gibi sorularda
+- Hesap bilgisi, bakiye sorgusu yapıldığında
+
+### NASIL KULLAN:
+1. customer_data_lookup aracını çağır
+2. query_type: sgk_borcu, vergi_borcu, beyanname veya tum_bilgiler
+3. Telefon numarası otomatik olarak arayan numaradan alınır
+
+### ÖNEMLİ:
+- Müşteri bilgi sorduğunda ÖNCE customer_data_lookup ile sorgula
+- "Bilmiyorum" veya "temsilciye aktarıyorum" DEME, önce veritabanını kontrol et
+- Kayıt bulunamazsa: "Sistemimizde bu numaraya kayıtlı bilgi bulamadım" de`;
 
   // 8. NOT: Tarih/saat bilgisi burada EKLENMİYOR
   // Tarih/saat her çağrı başladığında vapi.js'deki assistant-request handler'da
