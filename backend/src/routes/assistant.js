@@ -301,24 +301,6 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
       const elevenLabsResponse = await elevenLabsService.createAgent(agentConfig);
       elevenLabsAgentId = elevenLabsResponse.agent_id;
       console.log('✅ 11Labs Agent created:', elevenLabsAgentId);
-
-      // Now update tools with agentId in webhook URL (since we didn't have it before creation)
-      const toolsWithAgentId = getActiveToolsForElevenLabs(business, null, elevenLabsAgentId);
-      const finalToolsWithSystemTools = [
-        ...toolsWithAgentId,
-        { type: 'system', name: 'end_call', description: endCallDesc }
-      ];
-
-      await elevenLabsService.updateAgent(elevenLabsAgentId, {
-        conversation_config: {
-          agent: {
-            prompt: {
-              tools: finalToolsWithSystemTools
-            }
-          }
-        }
-      });
-      console.log('✅ 11Labs Agent tools updated with agentId in webhook URL');
     } catch (elevenLabsError) {
       console.error('❌ 11Labs Agent creation failed:', elevenLabsError.response?.data || elevenLabsError.message);
       return res.status(500).json({
@@ -375,6 +357,55 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
     } catch (phoneError) {
       console.error('⚠️ Failed to auto-assign phone number:', phoneError);
       // Don't fail the request, just log the error
+    }
+
+    // ✅ YENİ: Mevcut Knowledge Base içeriklerini yeni asistana ekle
+    if (elevenLabsAgentId) {
+      try {
+        const existingKBs = await prisma.knowledgeBase.findMany({
+          where: { businessId, status: 'ACTIVE' }
+        });
+
+        if (existingKBs.length > 0) {
+          console.log(`📚 Syncing ${existingKBs.length} existing KB items to new assistant...`);
+
+          for (const kb of existingKBs) {
+            try {
+              let kbContent = '';
+              let kbName = kb.title || 'Knowledge Item';
+
+              if (kb.type === 'FAQ' && kb.question && kb.answer) {
+                kbContent = `Q: ${kb.question}\nA: ${kb.answer}`;
+                kbName = `FAQ: ${kb.question.substring(0, 50)}`;
+              } else if (kb.type === 'URL' && kb.url) {
+                // For URLs, let 11Labs fetch directly
+                await elevenLabsService.addKnowledgeDocument(elevenLabsAgentId, {
+                  name: kbName,
+                  url: kb.url
+                });
+                console.log(`✅ URL KB synced to new assistant: ${kbName}`);
+                continue;
+              } else if (kb.content) {
+                kbContent = kb.content;
+              }
+
+              if (kbContent) {
+                await elevenLabsService.addKnowledgeDocument(elevenLabsAgentId, {
+                  name: kbName,
+                  content: kbContent
+                });
+                console.log(`✅ KB synced to new assistant: ${kbName}`);
+              }
+            } catch (kbError) {
+              console.error(`⚠️ Failed to sync KB "${kb.title}" to new assistant:`, kbError.message);
+              // Continue with other KBs even if one fails
+            }
+          }
+        }
+      } catch (kbSyncError) {
+        console.error('⚠️ Failed to sync existing KBs to new assistant:', kbSyncError);
+        // Don't fail the request, just log the error
+      }
     }
 
     console.log('✅ Assistant saved to DB:', {
@@ -541,8 +572,8 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
 
 // ✅ YENİ: 11Labs'deki agent'ı da güncelle (PATCH)
     if (assistant.elevenLabsAgentId) {
-      // Get active tools for this business (with agentId in webhook URL)
-      const activeToolsElevenLabs = getActiveToolsForElevenLabs(business, null, assistant.elevenLabsAgentId);
+      // Get active tools for this business (using central tool system)
+      const activeToolsElevenLabs = getActiveToolsForElevenLabs(business);
       console.log('📤 11Labs Update - tools:', activeToolsElevenLabs.map(t => t.name));
 
       try {
