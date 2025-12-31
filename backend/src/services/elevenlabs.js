@@ -121,16 +121,26 @@ const elevenLabsService = {
    */
   async importPhoneNumber(config) {
     try {
-      // 11Labs API expects 'sid' and 'token' at root level for Twilio
+      // Step 1: Import phone number to 11Labs
+      // Note: agent_id in create request is often ignored, so we update separately
       const response = await elevenLabsClient.post('/convai/phone-numbers/create', {
         phone_number: config.phoneNumber,
         label: config.label || `Telyx - ${config.phoneNumber}`,
         provider: 'twilio',
         sid: config.twilioAccountSid || process.env.TWILIO_ACCOUNT_SID,
-        token: config.twilioAuthToken || process.env.TWILIO_AUTH_TOKEN,
-        agent_id: config.agentId
+        token: config.twilioAuthToken || process.env.TWILIO_AUTH_TOKEN
       });
       console.log('✅ 11Labs Phone number imported:', response.data.phone_number_id);
+
+      // Step 2: Assign agent to the phone number (separate API call)
+      if (config.agentId) {
+        console.log('📞 Assigning agent to phone number...');
+        await elevenLabsClient.patch(`/convai/phone-numbers/${response.data.phone_number_id}`, {
+          agent_id: config.agentId
+        });
+        console.log('✅ Agent assigned to phone number');
+      }
+
       return response.data;
     } catch (error) {
       console.error('❌ 11Labs importPhoneNumber error:', error.response?.data || error.message);
