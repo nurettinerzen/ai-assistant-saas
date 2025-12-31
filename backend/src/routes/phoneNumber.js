@@ -614,13 +614,44 @@ router.patch('/:id/assistant', async (req, res) => {
       return res.status(400).json({ error: 'Assistant is not configured with 11Labs' });
     }
 
-    // Update in 11Labs if phone is connected to 11Labs
-    if (phoneNumber.elevenLabsPhoneId && assistant.elevenLabsAgentId) {
+    let elevenLabsPhoneId = phoneNumber.elevenLabsPhoneId;
+
+    // If phone is not connected to 11Labs yet, import it first
+    if (!elevenLabsPhoneId) {
+      console.log('📞 Phone not connected to 11Labs, importing now...');
+      console.log('   Phone Number:', phoneNumber.phoneNumber);
+      console.log('   Agent ID:', assistant.elevenLabsAgentId);
+
+      try {
+        // Import to 11Labs using Twilio credentials from env
+        const importResult = await elevenLabsService.importPhoneNumber({
+          phoneNumber: phoneNumber.phoneNumber,
+          agentId: assistant.elevenLabsAgentId,
+          label: `Telyx - ${phoneNumber.phoneNumber}`
+        });
+
+        elevenLabsPhoneId = importResult.phone_number_id;
+        console.log('✅ Phone imported to 11Labs:', elevenLabsPhoneId);
+
+        // Update database with 11Labs phone ID
+        await prisma.phoneNumber.update({
+          where: { id: id },
+          data: { elevenLabsPhoneId: elevenLabsPhoneId }
+        });
+      } catch (importError) {
+        console.error('❌ 11Labs import FAILED:', importError.response?.data || importError.message);
+        return res.status(500).json({
+          error: 'Failed to import phone number to 11Labs',
+          details: importError.response?.data?.detail || importError.message
+        });
+      }
+    } else {
+      // Phone already connected, just update the agent assignment
       console.log('📞 11Labs update started...');
-      console.log('   Phone ID:', phoneNumber.elevenLabsPhoneId);
+      console.log('   Phone ID:', elevenLabsPhoneId);
       console.log('   Agent ID:', assistant.elevenLabsAgentId);
       try {
-        await elevenLabsService.updatePhoneNumber(phoneNumber.elevenLabsPhoneId, assistant.elevenLabsAgentId);
+        await elevenLabsService.updatePhoneNumber(elevenLabsPhoneId, assistant.elevenLabsAgentId);
         console.log('✅ 11Labs phone update SUCCESS');
       } catch (elevenLabsError) {
         console.error('❌ 11Labs sync FAILED:', elevenLabsError.response?.data || elevenLabsError.message);
@@ -629,9 +660,6 @@ router.patch('/:id/assistant', async (req, res) => {
           details: elevenLabsError.message
         });
       }
-    } else {
-      console.log('⚠️ Phone not connected to 11Labs');
-      return res.status(400).json({ error: 'Phone number not connected to 11Labs' });
     }
 
     // Update in database
