@@ -12,6 +12,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import EmptyState from '@/components/EmptyState';
 import {
@@ -30,7 +31,9 @@ import {
   XCircle,
   ChevronLeft,
   ChevronRight,
-  X
+  X,
+  FileText,
+  Database
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
@@ -66,6 +69,7 @@ export default function CustomerDataPage() {
   const { t, locale } = useLanguage();
   const [customerData, setCustomerData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('custom'); // 'template' or 'custom'
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 20,
@@ -355,7 +359,7 @@ export default function CustomerDataPage() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
-            {locale === 'tr' ? 'Müşteri Verileri' : 'Customer Data'}
+            {locale === 'tr' ? 'Gelen Arama' : 'Inbound Calls'}
           </h1>
           <p className="text-gray-500 dark:text-gray-400 mt-1">
             {locale === 'tr'
@@ -380,37 +384,77 @@ export default function CustomerDataPage() {
         </div>
       </div>
 
-      {/* Search and Bulk Actions */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="relative w-full sm:w-80">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input
-            placeholder={locale === 'tr' ? 'İsim, telefon, VKN ile ara...' : 'Search by name, phone, VKN...'}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2 mb-6">
+          <TabsTrigger value="template" className="flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            {locale === 'tr' ? 'Hazır Şablon' : 'Ready Template'}
+          </TabsTrigger>
+          <TabsTrigger value="custom" className="flex items-center gap-2">
+            <Database className="h-4 w-4" />
+            {locale === 'tr' ? 'Müşteri Verileri' : 'Customer Data'}
+          </TabsTrigger>
+        </TabsList>
 
-        {selectedIds.length > 0 && (
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-500">
-              {selectedIds.length} {locale === 'tr' ? 'seçili' : 'selected'}
-            </span>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => setShowDeleteModal(true)}
-            >
-              <Trash2 className="w-4 h-4 mr-1" />
-              {locale === 'tr' ? 'Sil' : 'Delete'}
-            </Button>
+        {/* Template Tab Content */}
+        <TabsContent value="template">
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+            <div className="text-center py-8">
+              <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                {locale === 'tr' ? 'Hazır Şablonlar' : 'Ready Templates'}
+              </h3>
+              <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto">
+                {locale === 'tr'
+                  ? 'Hazır veri şablonları yakında eklenecek. Şimdilik "Müşteri Verileri" sekmesinden Excel dosyası yükleyerek müşteri ekleyebilirsiniz.'
+                  : 'Ready data templates coming soon. For now, you can add customers by uploading Excel files from the "Customer Data" tab.'
+                }
+              </p>
+              <Button
+                variant="outline"
+                className="mt-4"
+                onClick={() => setActiveTab('custom')}
+              >
+                {locale === 'tr' ? 'Müşteri Verileri ile Başla' : 'Start with Customer Data'}
+              </Button>
+            </div>
           </div>
-        )}
-      </div>
+        </TabsContent>
 
-      {/* Table */}
-      {customerData.length === 0 ? (
+        {/* Custom Data Tab Content */}
+        <TabsContent value="custom">
+          {/* Search and Bulk Actions */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
+            <div className="relative w-full sm:w-80">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder={locale === 'tr' ? 'İsim, telefon, VKN ile ara...' : 'Search by name, phone, VKN...'}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+
+            {selectedIds.length > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-500">
+                  {selectedIds.length} {locale === 'tr' ? 'seçili' : 'selected'}
+                </span>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setShowDeleteModal(true)}
+                >
+                  <Trash2 className="w-4 h-4 mr-1" />
+                  {locale === 'tr' ? 'Sil' : 'Delete'}
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* Table */}
+          {customerData.length === 0 ? (
         <EmptyState
           icon={Users}
           title={locale === 'tr' ? 'Henüz müşteri verisi yok' : 'No customer data yet'}
@@ -562,6 +606,8 @@ export default function CustomerDataPage() {
           )}
         </div>
       )}
+        </TabsContent>
+      </Tabs>
 
       {/* Upload Modal */}
       <Dialog open={showUploadModal} onOpenChange={(open) => !open && resetUploadModal()}>

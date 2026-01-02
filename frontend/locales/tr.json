@@ -598,7 +598,10 @@
       "monitor": "İZLE",
       "system": "SİSTEM",
       "emailInbox": "E-posta",
-      "outbound": "GİDEN ARAMALAR",
+      "calls": "ARAMALAR",
+      "outboundCalls": "Giden Arama",
+      "inboundCalls": "Gelen Arama",
+      "callHistory": "Arama Geçmişi",
       "batchCalls": "Toplu Arama",
       "team": "Ekip"
     },
