@@ -62,7 +62,8 @@ export default function PhoneNumberModal({ isOpen, onClose, onSuccess }) {
     if (selectedProvider) {
       setSipForm(prev => ({
         ...prev,
-        sipServer: selectedProvider.defaultServer || prev.sipServer,
+        // Use provider's default, or clear if no default (user must enter manually)
+        sipServer: selectedProvider.defaultServer || '',
         sipPort: String(selectedProvider.defaultPort || 5060),
         sipTransport: selectedProvider.defaultTransport || 'UDP'
       }));
