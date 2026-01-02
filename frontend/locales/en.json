@@ -598,7 +598,10 @@
       "monitor": "MONITOR",
       "system": "SYSTEM",
       "emailInbox": "Email",
-      "outbound": "OUTBOUND",
+      "calls": "CALLS",
+      "outboundCalls": "Outbound Calls",
+      "inboundCalls": "Inbound Calls",
+      "callHistory": "Call History",
       "batchCalls": "Batch Calls",
       "team": "Team"
     },

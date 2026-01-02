@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import EmptyState from '@/components/EmptyState';
 import {
@@ -35,7 +36,9 @@ import {
   Eye,
   Pause,
   ArrowUpCircle,
-  AlertCircle
+  AlertCircle,
+  FileText,
+  Database
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
@@ -86,6 +89,7 @@ export default function BatchCallsPage() {
   const [batchCalls, setBatchCalls] = useState([]);
   const [loading, setLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(true);
+  const [activeTab, setActiveTab] = useState('template'); // 'template' or 'custom'
 
   // Modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -289,8 +293,8 @@ export default function BatchCallsPage() {
       });
 
       toast.success(locale === 'tr'
-        ? `Kampanya başarıyla oluşturuldu (${response.data.batchCall.totalRecipients} kişi)`
-        : `Campaign created successfully (${response.data.batchCall.totalRecipients} recipients)`
+        ? `Arama başarıyla oluşturuldu (${response.data.batchCall.totalRecipients} kişi)`
+        : `Call created successfully (${response.data.batchCall.totalRecipients} recipients)`
       );
 
       setShowCreateModal(false);
@@ -305,13 +309,13 @@ export default function BatchCallsPage() {
   };
 
   const handleCancel = async (batchCallId) => {
-    if (!confirm(locale === 'tr' ? 'Bu kampanyayı iptal etmek istediğinize emin misiniz?' : 'Are you sure you want to cancel this campaign?')) {
+    if (!confirm(locale === 'tr' ? 'Bu aramayı iptal etmek istediğinize emin misiniz?' : 'Are you sure you want to cancel this call?')) {
       return;
     }
 
     try {
       await apiClient.post(`/api/batch-calls/${batchCallId}/cancel`);
-      toast.success(locale === 'tr' ? 'Kampanya iptal edildi' : 'Campaign cancelled');
+      toast.success(locale === 'tr' ? 'Arama iptal edildi' : 'Call cancelled');
       loadData();
     } catch (error) {
       toast.error(error.response?.data?.error || t('errors.generic'));
@@ -387,142 +391,184 @@ export default function BatchCallsPage() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">
-            {locale === 'tr' ? 'Toplu Arama' : 'Batch Calls'}
+            {locale === 'tr' ? 'Giden Arama' : 'Outbound Calls'}
           </h1>
           <p className="text-neutral-600 dark:text-neutral-400 mt-1">
             {locale === 'tr'
-              ? 'Excel veya CSV dosyası yükleyerek toplu arama kampanyaları oluşturun'
-              : 'Create batch calling campaigns by uploading Excel or CSV files'
+              ? 'Excel veya CSV dosyası yükleyerek toplu giden arama oluşturun'
+              : 'Create batch outbound calls by uploading Excel or CSV files'
             }
           </p>
         </div>
         {can('campaigns:view') && (
           <Button onClick={() => setShowCreateModal(true)}>
             <Plus className="h-4 w-4 mr-2" />
-            {locale === 'tr' ? 'Yeni Kampanya' : 'New Campaign'}
+            {locale === 'tr' ? 'Yeni Arama' : 'New Call'}
           </Button>
         )}
       </div>
 
-      {/* Batch Calls List */}
-      {loading ? (
-        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-12 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
-        </div>
-      ) : batchCalls.length > 0 ? (
-        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-neutral-50 dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  {locale === 'tr' ? 'Kampanya' : 'Campaign'}
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  {locale === 'tr' ? 'Asistan' : 'Assistant'}
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  {locale === 'tr' ? 'Durum' : 'Status'}
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  {locale === 'tr' ? 'İlerleme' : 'Progress'}
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  {locale === 'tr' ? 'Tarih' : 'Date'}
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  {locale === 'tr' ? 'İşlemler' : 'Actions'}
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-neutral-200 dark:divide-neutral-700">
-              {batchCalls.map((batch) => {
-                const statusConfig = STATUS_CONFIG[batch.status] || STATUS_CONFIG.PENDING;
-                const StatusIcon = statusConfig.icon;
-                const progress = batch.totalRecipients > 0
-                  ? Math.round((batch.completedCalls / batch.totalRecipients) * 100)
-                  : 0;
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2 mb-6">
+          <TabsTrigger value="template" className="flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            {locale === 'tr' ? 'Hazır Şablon' : 'Ready Template'}
+          </TabsTrigger>
+          <TabsTrigger value="custom" className="flex items-center gap-2">
+            <Database className="h-4 w-4" />
+            {locale === 'tr' ? 'Özel Veri' : 'Custom Data'}
+          </TabsTrigger>
+        </TabsList>
 
-                return (
-                  <tr key={batch.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-800">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="p-2 bg-primary-100 dark:bg-primary-900 rounded-lg mr-3">
-                          <Megaphone className="h-5 w-5 text-primary-600 dark:text-primary-400" />
-                        </div>
-                        <div>
-                          <div className="text-sm font-medium text-neutral-900 dark:text-white">{batch.name}</div>
-                          <div className="text-xs text-neutral-500">
-                            {batch.totalRecipients} {locale === 'tr' ? 'kişi' : 'recipients'}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm text-neutral-900 dark:text-white">{batch.assistant?.name || '-'}</span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <Badge className={`${statusConfig.color} flex items-center gap-1 w-fit`}>
-                        <StatusIcon className={`h-3 w-3 ${batch.status === 'IN_PROGRESS' ? 'animate-spin' : ''}`} />
-                        {statusConfig.label[locale]}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        <div className="w-24 h-2 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-primary-600 rounded-full transition-all"
-                            style={{ width: `${progress}%` }}
-                          />
-                        </div>
-                        <span className="text-xs text-neutral-600 dark:text-neutral-400">
-                          {batch.completedCalls}/{batch.totalRecipients}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm text-neutral-600 dark:text-neutral-400">
-                        {formatDate(batch.createdAt, 'short')}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Link href={`/dashboard/batch-calls/${batch.id}`}>
-                          <Button variant="outline" size="sm">
-                            <Eye className="h-3 w-3 mr-1" />
-                            {locale === 'tr' ? 'Detay' : 'Details'}
-                          </Button>
-                        </Link>
-                        {(batch.status === 'PENDING' || batch.status === 'IN_PROGRESS') && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleCancel(batch.id)}
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            <XCircle className="h-3 w-3 mr-1" />
-                            {locale === 'tr' ? 'İptal' : 'Cancel'}
-                          </Button>
-                        )}
-                      </div>
-                    </td>
+        {/* Template Tab Content */}
+        <TabsContent value="template">
+          <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6">
+            <div className="text-center py-8">
+              <FileText className="h-12 w-12 text-neutral-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-neutral-900 dark:text-white mb-2">
+                {locale === 'tr' ? 'Hazır Şablonlar' : 'Ready Templates'}
+              </h3>
+              <p className="text-neutral-500 dark:text-neutral-400 max-w-md mx-auto">
+                {locale === 'tr'
+                  ? 'Hazır arama şablonları yakında eklenecek. Şimdilik "Özel Veri" sekmesinden Excel/CSV dosyası yükleyerek arama oluşturabilirsiniz.'
+                  : 'Ready call templates coming soon. For now, you can create calls by uploading Excel/CSV files from the "Custom Data" tab.'
+                }
+              </p>
+              <Button
+                variant="outline"
+                className="mt-4"
+                onClick={() => setActiveTab('custom')}
+              >
+                {locale === 'tr' ? 'Özel Veri ile Başla' : 'Start with Custom Data'}
+              </Button>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Custom Data Tab Content */}
+        <TabsContent value="custom">
+          {/* Batch Calls List */}
+          {loading ? (
+            <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-12 flex items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+            </div>
+          ) : batchCalls.length > 0 ? (
+            <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-neutral-50 dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                      {locale === 'tr' ? 'Arama' : 'Call'}
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                      {locale === 'tr' ? 'Asistan' : 'Assistant'}
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                      {locale === 'tr' ? 'Durum' : 'Status'}
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                      {locale === 'tr' ? 'İlerleme' : 'Progress'}
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                      {locale === 'tr' ? 'Tarih' : 'Date'}
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                      {locale === 'tr' ? 'İşlemler' : 'Actions'}
+                    </th>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <EmptyState
-          icon={Megaphone}
-          title={locale === 'tr' ? 'Henüz kampanya yok' : 'No campaigns yet'}
-          description={locale === 'tr'
-            ? 'Excel veya CSV dosyası yükleyerek ilk toplu arama kampanyanızı oluşturun.'
-            : 'Create your first batch calling campaign by uploading an Excel or CSV file.'
-          }
-          actionLabel={locale === 'tr' ? 'Yeni Kampanya' : 'New Campaign'}
-          onAction={() => setShowCreateModal(true)}
-        />
-      )}
+                </thead>
+                <tbody className="divide-y divide-neutral-200 dark:divide-neutral-700">
+                  {batchCalls.map((batch) => {
+                    const statusConfig = STATUS_CONFIG[batch.status] || STATUS_CONFIG.PENDING;
+                    const StatusIcon = statusConfig.icon;
+                    const progress = batch.totalRecipients > 0
+                      ? Math.round((batch.completedCalls / batch.totalRecipients) * 100)
+                      : 0;
+
+                    return (
+                      <tr key={batch.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-800">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="p-2 bg-primary-100 dark:bg-primary-900 rounded-lg mr-3">
+                              <Megaphone className="h-5 w-5 text-primary-600 dark:text-primary-400" />
+                            </div>
+                            <div>
+                              <div className="text-sm font-medium text-neutral-900 dark:text-white">{batch.name}</div>
+                              <div className="text-xs text-neutral-500">
+                                {batch.totalRecipients} {locale === 'tr' ? 'kişi' : 'recipients'}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-sm text-neutral-900 dark:text-white">{batch.assistant?.name || '-'}</span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <Badge className={`${statusConfig.color} flex items-center gap-1 w-fit`}>
+                            <StatusIcon className={`h-3 w-3 ${batch.status === 'IN_PROGRESS' ? 'animate-spin' : ''}`} />
+                            {statusConfig.label[locale]}
+                          </Badge>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <div className="w-24 h-2 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-primary-600 rounded-full transition-all"
+                                style={{ width: `${progress}%` }}
+                              />
+                            </div>
+                            <span className="text-xs text-neutral-600 dark:text-neutral-400">
+                              {batch.completedCalls}/{batch.totalRecipients}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-sm text-neutral-600 dark:text-neutral-400">
+                            {formatDate(batch.createdAt, 'short')}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <Link href={`/dashboard/batch-calls/${batch.id}`}>
+                              <Button variant="outline" size="sm">
+                                <Eye className="h-3 w-3 mr-1" />
+                                {locale === 'tr' ? 'Detay' : 'Details'}
+                              </Button>
+                            </Link>
+                            {(batch.status === 'PENDING' || batch.status === 'IN_PROGRESS') && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleCancel(batch.id)}
+                                className="text-red-600 hover:text-red-700"
+                              >
+                                <XCircle className="h-3 w-3 mr-1" />
+                                {locale === 'tr' ? 'İptal' : 'Cancel'}
+                              </Button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <EmptyState
+              icon={Megaphone}
+              title={locale === 'tr' ? 'Henüz planlanmış arama yok' : 'No scheduled calls yet'}
+              description={locale === 'tr'
+                ? 'Excel veya CSV dosyası yükleyerek ilk toplu aramanızı oluşturun.'
+                : 'Create your first batch call by uploading an Excel or CSV file.'
+              }
+              actionLabel={locale === 'tr' ? 'Yeni Arama' : 'New Call'}
+              onAction={() => setShowCreateModal(true)}
+            />
+          )}
+        </TabsContent>
+      </Tabs>
 
       {/* Create Campaign Modal */}
       <Dialog
@@ -536,7 +582,7 @@ export default function BatchCallsPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Megaphone className="h-5 w-5 text-primary-600" />
-              {locale === 'tr' ? 'Yeni Kampanya Oluştur' : 'Create New Campaign'}
+              {locale === 'tr' ? 'Yeni Arama Oluştur' : 'Create New Call'}
             </DialogTitle>
             <DialogDescription>
               {locale === 'tr'
@@ -563,7 +609,7 @@ export default function BatchCallsPage() {
             {createStep === 1 && (
               <div className="space-y-4">
                 <div>
-                  <Label>{locale === 'tr' ? 'Kampanya Adı *' : 'Campaign Name *'}</Label>
+                  <Label>{locale === 'tr' ? 'Arama Adı *' : 'Call Name *'}</Label>
                   <Input
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -837,7 +883,7 @@ export default function BatchCallsPage() {
               <div className="space-y-4">
                 <div className="bg-neutral-50 dark:bg-neutral-800 rounded-lg p-4 space-y-3">
                   <div className="flex justify-between">
-                    <span className="text-neutral-600 dark:text-neutral-400">{locale === 'tr' ? 'Kampanya Adı' : 'Campaign Name'}</span>
+                    <span className="text-neutral-600 dark:text-neutral-400">{locale === 'tr' ? 'Arama Adı' : 'Call Name'}</span>
                     <span className="font-medium dark:text-white">{formData.name}</span>
                   </div>
                   <div className="flex justify-between">
@@ -944,7 +990,7 @@ export default function BatchCallsPage() {
                 ) : (
                   <>
                     <Megaphone className="h-4 w-4 mr-2" />
-                    {locale === 'tr' ? 'Kampanyayı Başlat' : 'Start Campaign'}
+                    {locale === 'tr' ? 'Aramayı Başlat' : 'Start Call'}
                   </>
                 )}
               </Button>

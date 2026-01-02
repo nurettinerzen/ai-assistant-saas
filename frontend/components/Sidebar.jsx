@@ -98,17 +98,17 @@ export default function Sidebar({ user, credits, business }) {
       ],
     },
     {
-      label: t('dashboard.sidebar.outbound'),
+      label: t('dashboard.sidebar.calls'),
       items: [
-        { icon: Megaphone, label: t('dashboard.sidebar.batchCalls'), href: '/dashboard/batch-calls', permission: 'campaigns:view', featureId: 'batch_calls' },
-        { icon: Database, label: locale === 'tr' ? 'Müşteri Verileri' : 'Customer Data', href: '/dashboard/customer-data', permission: 'campaigns:view' },
+        { icon: Megaphone, label: t('dashboard.sidebar.outboundCalls'), href: '/dashboard/batch-calls', permission: 'campaigns:view', featureId: 'batch_calls' },
+        { icon: Database, label: t('dashboard.sidebar.inboundCalls'), href: '/dashboard/customer-data', permission: 'campaigns:view' },
       ],
     },
     {
       label: t('dashboard.sidebar.monitor'),
       items: [
         { icon: LayoutDashboard, label: t('dashboard.sidebar.overview'), href: '/dashboard', permission: 'dashboard:view' },
-        { icon: Phone, label: t('dashboard.sidebar.calls'), href: '/dashboard/calls', permission: 'calls:view' },
+        { icon: Phone, label: t('dashboard.sidebar.callHistory'), href: '/dashboard/calls', permission: 'calls:view' },
         { icon: BarChart3, label: t('dashboard.sidebar.analytics'), href: '/dashboard/analytics', permission: 'analytics:view' },
       ],
     },
