@@ -75,12 +75,21 @@ const STATUS_CONFIG = {
   }
 };
 
-// Dynamic variable labels (simplified - only essential fields)
-const VARIABLE_LABELS = {
+// Template variable labels (for Hazır Şablon - collection template)
+const TEMPLATE_VARIABLE_LABELS = {
   debt_amount: { tr: 'Borç Tutarı', en: 'Debt Amount' },
   currency: { tr: 'Para Birimi', en: 'Currency' },
-  due_date: { tr: 'Vade Tarihi', en: 'Due Date' },
-  appointment_date: { tr: 'Randevu Tarihi', en: 'Appointment Date' }
+  due_date: { tr: 'Vade Tarihi', en: 'Due Date' }
+};
+
+// Call purpose options (for Özel Veri)
+const CALL_PURPOSE_OPTIONS = {
+  collection: { tr: 'Tahsilat', en: 'Collection' },
+  appointment: { tr: 'Randevu Hatırlatma', en: 'Appointment Reminder' },
+  order: { tr: 'Sipariş Bildirimi', en: 'Order Notification' },
+  support: { tr: 'Arıza Takip', en: 'Support Follow-up' },
+  info: { tr: 'Genel Bilgilendirme', en: 'General Information' },
+  other: { tr: 'Diğer', en: 'Other' }
 };
 
 export default function BatchCallsPage() {
@@ -93,7 +102,8 @@ export default function BatchCallsPage() {
 
   // Modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [createStep, setCreateStep] = useState(1); // 1: Basic, 2: Upload, 3: Mapping, 4: Schedule, 5: Preview
+  const [modalType, setModalType] = useState('template'); // 'template' or 'custom'
+  const [createStep, setCreateStep] = useState(1);
 
   // Form data
   const [formData, setFormData] = useState({
@@ -101,7 +111,8 @@ export default function BatchCallsPage() {
     assistantId: '',
     phoneNumberId: '',
     scheduledAt: null,
-    startImmediately: true
+    startImmediately: true,
+    callPurpose: '' // For custom data
   });
 
   // File data
@@ -124,12 +135,10 @@ export default function BatchCallsPage() {
   // Auto-refresh when there are in-progress campaigns
   useEffect(() => {
     const hasInProgress = batchCalls.some(b => b.status === 'IN_PROGRESS' || b.status === 'PENDING');
-    console.log('📊 Polling check - hasInProgress:', hasInProgress, 'hasAccess:', hasAccess);
     if (hasInProgress) {
       const interval = setInterval(() => {
-        console.log('🔄 Polling batch calls...');
         refreshBatchCalls();
-      }, 5000); // Poll every 5 seconds
+      }, 5000);
       return () => clearInterval(interval);
     }
   }, [batchCalls, hasAccess]);
@@ -137,7 +146,6 @@ export default function BatchCallsPage() {
   const refreshBatchCalls = async () => {
     try {
       const batchRes = await apiClient.get('/api/batch-calls');
-      console.log('📊 Batch calls refreshed:', batchRes.data.batchCalls?.map(b => ({ id: b.id, status: b.status })));
       setBatchCalls(batchRes.data.batchCalls || []);
     } catch (err) {
       console.error('Polling error:', err);
@@ -236,16 +244,17 @@ export default function BatchCallsPage() {
         setColumnMapping(prev => ({ ...prev, phone: phoneColumn }));
       }
 
-      // Auto-detect name column
-      const nameColumn = response.data.columns.find(col =>
-        col.toLowerCase().includes('name') ||
-        col.toLowerCase().includes('ad') ||
-        col.toLowerCase().includes('isim') ||
-        col.toLowerCase().includes('müşteri')
-      );
-
-      if (nameColumn) {
-        setColumnMapping(prev => ({ ...prev, customer_name: nameColumn }));
+      // For template mode, also auto-detect other columns
+      if (modalType === 'template') {
+        const nameColumn = response.data.columns.find(col =>
+          col.toLowerCase().includes('name') ||
+          col.toLowerCase().includes('ad') ||
+          col.toLowerCase().includes('isim') ||
+          col.toLowerCase().includes('müşteri')
+        );
+        if (nameColumn) {
+          setColumnMapping(prev => ({ ...prev, customer_name: nameColumn }));
+        }
       }
 
       setCreateStep(3);
@@ -274,6 +283,12 @@ export default function BatchCallsPage() {
       return;
     }
 
+    // For custom data, purpose is required
+    if (modalType === 'custom' && !formData.callPurpose) {
+      toast.error(locale === 'tr' ? 'Lütfen arama amacını seçin' : 'Please select call purpose');
+      return;
+    }
+
     setSubmitting(true);
 
     try {
@@ -283,6 +298,11 @@ export default function BatchCallsPage() {
       submitFormData.append('assistantId', formData.assistantId);
       submitFormData.append('phoneNumberId', formData.phoneNumberId);
       submitFormData.append('columnMapping', JSON.stringify(columnMapping));
+      submitFormData.append('dataType', modalType); // 'template' or 'custom'
+
+      if (modalType === 'custom') {
+        submitFormData.append('callPurpose', formData.callPurpose);
+      }
 
       if (!formData.startImmediately && formData.scheduledAt) {
         submitFormData.append('scheduledAt', formData.scheduledAt);
@@ -328,12 +348,19 @@ export default function BatchCallsPage() {
       assistantId: '',
       phoneNumberId: '',
       scheduledAt: null,
-      startImmediately: true
+      startImmediately: true,
+      callPurpose: ''
     });
     setSelectedFile(null);
     setFileData({ columns: [], preview: [], totalRows: 0 });
     setColumnMapping({});
     setCreateStep(1);
+  };
+
+  const openCreateModal = (type) => {
+    setModalType(type);
+    resetForm();
+    setShowCreateModal(true);
   };
 
   const downloadTemplate = async () => {
@@ -342,11 +369,10 @@ export default function BatchCallsPage() {
         responseType: 'blob'
       });
 
-      // Create download link
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', 'toplu-arama-sablon.xlsx');
+      link.setAttribute('download', 'tahsilat-sablon.xlsx');
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -354,6 +380,31 @@ export default function BatchCallsPage() {
     } catch (error) {
       console.error('Template download error:', error);
       toast.error(locale === 'tr' ? 'Şablon indirilemedi' : 'Failed to download template');
+    }
+  };
+
+  // Get step count based on modal type
+  const getTotalSteps = () => modalType === 'template' ? 5 : 4;
+
+  // Get step name
+  const getStepName = (step) => {
+    if (modalType === 'template') {
+      const steps = {
+        1: { tr: 'Temel Bilgiler', en: 'Basic Info' },
+        2: { tr: 'Dosya Yükleme', en: 'File Upload' },
+        3: { tr: 'Kolon Eşleştirme', en: 'Column Mapping' },
+        4: { tr: 'Zamanlama', en: 'Scheduling' },
+        5: { tr: 'Önizleme', en: 'Preview' }
+      };
+      return steps[step]?.[locale] || '';
+    } else {
+      const steps = {
+        1: { tr: 'Temel Bilgiler', en: 'Basic Info' },
+        2: { tr: 'Dosya Yükleme', en: 'File Upload' },
+        3: { tr: 'Zamanlama', en: 'Scheduling' },
+        4: { tr: 'Önizleme', en: 'Preview' }
+      };
+      return steps[step]?.[locale] || '';
     }
   };
 
@@ -370,8 +421,8 @@ export default function BatchCallsPage() {
           </h2>
           <p className="text-neutral-600 dark:text-neutral-400 mb-6">
             {locale === 'tr'
-              ? 'Toplu arama özelliği Profesyonel ve Kurumsal planlarda kullanılabilir. Planınızı yükselterek bu özelliğe erişebilirsiniz.'
-              : 'Batch calling is available on Professional and Enterprise plans. Upgrade your plan to access this feature.'
+              ? 'Toplu arama özelliği Profesyonel ve Kurumsal planlarda kullanılabilir.'
+              : 'Batch calling is available on Professional and Enterprise plans.'
             }
           </p>
           <Link href="/dashboard/subscription">
@@ -385,6 +436,130 @@ export default function BatchCallsPage() {
     );
   }
 
+  // Render batch calls table
+  const renderBatchCallsTable = () => {
+    if (loading) {
+      return (
+        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-12 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+        </div>
+      );
+    }
+
+    if (batchCalls.length === 0) {
+      return null;
+    }
+
+    return (
+      <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden mt-6">
+        <div className="px-6 py-4 border-b border-neutral-200 dark:border-neutral-700">
+          <h3 className="font-medium text-neutral-900 dark:text-white">
+            {locale === 'tr' ? 'Arama Geçmişi' : 'Call History'}
+          </h3>
+        </div>
+        <table className="w-full">
+          <thead className="bg-neutral-50 dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                {locale === 'tr' ? 'Arama' : 'Call'}
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                {locale === 'tr' ? 'Asistan' : 'Assistant'}
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                {locale === 'tr' ? 'Durum' : 'Status'}
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                {locale === 'tr' ? 'İlerleme' : 'Progress'}
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                {locale === 'tr' ? 'Tarih' : 'Date'}
+              </th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                {locale === 'tr' ? 'İşlemler' : 'Actions'}
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-neutral-200 dark:divide-neutral-700">
+            {batchCalls.map((batch) => {
+              const statusConfig = STATUS_CONFIG[batch.status] || STATUS_CONFIG.PENDING;
+              const StatusIcon = statusConfig.icon;
+              const progress = batch.totalRecipients > 0
+                ? Math.round((batch.completedCalls / batch.totalRecipients) * 100)
+                : 0;
+
+              return (
+                <tr key={batch.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-800">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div className="p-2 bg-primary-100 dark:bg-primary-900 rounded-lg mr-3">
+                        <Megaphone className="h-5 w-5 text-primary-600 dark:text-primary-400" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-neutral-900 dark:text-white">{batch.name}</div>
+                        <div className="text-xs text-neutral-500">
+                          {batch.totalRecipients} {locale === 'tr' ? 'kişi' : 'recipients'}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="text-sm text-neutral-900 dark:text-white">{batch.assistant?.name || '-'}</span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <Badge className={`${statusConfig.color} flex items-center gap-1 w-fit`}>
+                      <StatusIcon className={`h-3 w-3 ${batch.status === 'IN_PROGRESS' ? 'animate-spin' : ''}`} />
+                      {statusConfig.label[locale]}
+                    </Badge>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center gap-2">
+                      <div className="w-24 h-2 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-primary-600 rounded-full transition-all"
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
+                      <span className="text-xs text-neutral-600 dark:text-neutral-400">
+                        {batch.completedCalls}/{batch.totalRecipients}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="text-sm text-neutral-600 dark:text-neutral-400">
+                      {formatDate(batch.createdAt, 'short')}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <Link href={`/dashboard/batch-calls/${batch.id}`}>
+                        <Button variant="outline" size="sm">
+                          <Eye className="h-3 w-3 mr-1" />
+                          {locale === 'tr' ? 'Detay' : 'Details'}
+                        </Button>
+                      </Link>
+                      {(batch.status === 'PENDING' || batch.status === 'IN_PROGRESS') && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleCancel(batch.id)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <XCircle className="h-3 w-3 mr-1" />
+                          {locale === 'tr' ? 'İptal' : 'Cancel'}
+                        </Button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -395,17 +570,11 @@ export default function BatchCallsPage() {
           </h1>
           <p className="text-neutral-600 dark:text-neutral-400 mt-1">
             {locale === 'tr'
-              ? 'Excel veya CSV dosyası yükleyerek toplu giden arama oluşturun'
-              : 'Create batch outbound calls by uploading Excel or CSV files'
+              ? 'Hazır şablon veya özel veri ile toplu giden arama oluşturun'
+              : 'Create batch outbound calls with ready template or custom data'
             }
           </p>
         </div>
-        {can('campaigns:view') && (
-          <Button onClick={() => setShowCreateModal(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            {locale === 'tr' ? 'Yeni Arama' : 'New Call'}
-          </Button>
-        )}
       </div>
 
       {/* Tabs */}
@@ -421,156 +590,105 @@ export default function BatchCallsPage() {
           </TabsTrigger>
         </TabsList>
 
-        {/* Template Tab Content */}
+        {/* Hazır Şablon Tab - Collection Template */}
         <TabsContent value="template">
           <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6">
-            <div className="text-center py-8">
-              <FileText className="h-12 w-12 text-neutral-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-neutral-900 dark:text-white mb-2">
-                {locale === 'tr' ? 'Hazır Şablonlar' : 'Ready Templates'}
-              </h3>
-              <p className="text-neutral-500 dark:text-neutral-400 max-w-md mx-auto">
-                {locale === 'tr'
-                  ? 'Hazır arama şablonları yakında eklenecek. Şimdilik "Özel Veri" sekmesinden Excel/CSV dosyası yükleyerek arama oluşturabilirsiniz.'
-                  : 'Ready call templates coming soon. For now, you can create calls by uploading Excel/CSV files from the "Custom Data" tab.'
-                }
-              </p>
-              <Button
-                variant="outline"
-                className="mt-4"
-                onClick={() => setActiveTab('custom')}
-              >
-                {locale === 'tr' ? 'Özel Veri ile Başla' : 'Start with Custom Data'}
+            <div className="flex items-start gap-4 mb-6">
+              <div className="p-3 bg-primary-100 dark:bg-primary-900 rounded-lg">
+                <FileText className="h-6 w-6 text-primary-600 dark:text-primary-400" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-medium text-neutral-900 dark:text-white mb-1">
+                  {locale === 'tr' ? 'Tahsilat Şablonu' : 'Collection Template'}
+                </h3>
+                <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                  {locale === 'tr'
+                    ? 'Borç hatırlatma aramaları için hazır şablon. Telefon, borç tutarı, para birimi ve vade tarihi kolonlarını içerir.'
+                    : 'Ready template for debt reminder calls. Includes phone, debt amount, currency and due date columns.'
+                  }
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-neutral-50 dark:bg-neutral-800 rounded-lg p-4 mb-6">
+              <h4 className="text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-3">
+                {locale === 'tr' ? 'Şablon Kolonları:' : 'Template Columns:'}
+              </h4>
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="outline">{locale === 'tr' ? 'Telefon (zorunlu)' : 'Phone (required)'}</Badge>
+                <Badge variant="outline">{locale === 'tr' ? 'Borç Tutarı' : 'Debt Amount'}</Badge>
+                <Badge variant="outline">{locale === 'tr' ? 'Para Birimi' : 'Currency'}</Badge>
+                <Badge variant="outline">{locale === 'tr' ? 'Vade Tarihi' : 'Due Date'}</Badge>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={downloadTemplate}>
+                <Download className="h-4 w-4 mr-2" />
+                {locale === 'tr' ? 'Şablon İndir' : 'Download Template'}
               </Button>
+              {can('campaigns:view') && (
+                <Button onClick={() => openCreateModal('template')}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  {locale === 'tr' ? 'Yeni Arama Oluştur' : 'Create New Call'}
+                </Button>
+              )}
             </div>
           </div>
+
+          {renderBatchCallsTable()}
         </TabsContent>
 
-        {/* Custom Data Tab Content */}
+        {/* Özel Veri Tab - Custom Data */}
         <TabsContent value="custom">
-          {/* Batch Calls List */}
-          {loading ? (
-            <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-12 flex items-center justify-center">
-              <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+          <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6">
+            <div className="flex items-start gap-4 mb-6">
+              <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                <Database className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-medium text-neutral-900 dark:text-white mb-1">
+                  {locale === 'tr' ? 'Özel Veri ile Arama' : 'Call with Custom Data'}
+                </h3>
+                <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                  {locale === 'tr'
+                    ? 'Kendi Excel/CSV dosyanızı yükleyin. Sadece telefon kolonunu seçin ve arama amacını belirtin. Asistan tüm verileri akıllıca kullanacak.'
+                    : 'Upload your own Excel/CSV file. Just select the phone column and specify call purpose. Assistant will intelligently use all data.'
+                  }
+                </p>
+              </div>
             </div>
-          ) : batchCalls.length > 0 ? (
-            <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-neutral-50 dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                      {locale === 'tr' ? 'Arama' : 'Call'}
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                      {locale === 'tr' ? 'Asistan' : 'Assistant'}
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                      {locale === 'tr' ? 'Durum' : 'Status'}
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                      {locale === 'tr' ? 'İlerleme' : 'Progress'}
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                      {locale === 'tr' ? 'Tarih' : 'Date'}
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                      {locale === 'tr' ? 'İşlemler' : 'Actions'}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-neutral-200 dark:divide-neutral-700">
-                  {batchCalls.map((batch) => {
-                    const statusConfig = STATUS_CONFIG[batch.status] || STATUS_CONFIG.PENDING;
-                    const StatusIcon = statusConfig.icon;
-                    const progress = batch.totalRecipients > 0
-                      ? Math.round((batch.completedCalls / batch.totalRecipients) * 100)
-                      : 0;
 
-                    return (
-                      <tr key={batch.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-800">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="p-2 bg-primary-100 dark:bg-primary-900 rounded-lg mr-3">
-                              <Megaphone className="h-5 w-5 text-primary-600 dark:text-primary-400" />
-                            </div>
-                            <div>
-                              <div className="text-sm font-medium text-neutral-900 dark:text-white">{batch.name}</div>
-                              <div className="text-xs text-neutral-500">
-                                {batch.totalRecipients} {locale === 'tr' ? 'kişi' : 'recipients'}
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="text-sm text-neutral-900 dark:text-white">{batch.assistant?.name || '-'}</span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <Badge className={`${statusConfig.color} flex items-center gap-1 w-fit`}>
-                            <StatusIcon className={`h-3 w-3 ${batch.status === 'IN_PROGRESS' ? 'animate-spin' : ''}`} />
-                            {statusConfig.label[locale]}
-                          </Badge>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            <div className="w-24 h-2 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-primary-600 rounded-full transition-all"
-                                style={{ width: `${progress}%` }}
-                              />
-                            </div>
-                            <span className="text-xs text-neutral-600 dark:text-neutral-400">
-                              {batch.completedCalls}/{batch.totalRecipients}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="text-sm text-neutral-600 dark:text-neutral-400">
-                            {formatDate(batch.createdAt, 'short')}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <Link href={`/dashboard/batch-calls/${batch.id}`}>
-                              <Button variant="outline" size="sm">
-                                <Eye className="h-3 w-3 mr-1" />
-                                {locale === 'tr' ? 'Detay' : 'Details'}
-                              </Button>
-                            </Link>
-                            {(batch.status === 'PENDING' || batch.status === 'IN_PROGRESS') && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleCancel(batch.id)}
-                                className="text-red-600 hover:text-red-700"
-                              >
-                                <XCircle className="h-3 w-3 mr-1" />
-                                {locale === 'tr' ? 'İptal' : 'Cancel'}
-                              </Button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
+              <div className="flex gap-2">
+                <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                <div className="text-sm text-blue-800 dark:text-blue-200">
+                  <p className="font-medium mb-1">
+                    {locale === 'tr' ? 'Nasıl Çalışır?' : 'How It Works?'}
+                  </p>
+                  <ul className="list-disc list-inside space-y-1 text-blue-700 dark:text-blue-300">
+                    <li>{locale === 'tr' ? 'Herhangi bir formatta CSV/Excel yükleyin' : 'Upload CSV/Excel in any format'}</li>
+                    <li>{locale === 'tr' ? 'Sadece telefon numarası kolonunu seçin' : 'Just select the phone number column'}</li>
+                    <li>{locale === 'tr' ? 'Arama amacını belirtin (Tahsilat, Randevu vb.)' : 'Specify call purpose (Collection, Appointment etc.)'}</li>
+                    <li>{locale === 'tr' ? 'Asistan tüm verileri context olarak alacak' : 'Assistant will receive all data as context'}</li>
+                  </ul>
+                </div>
+              </div>
             </div>
-          ) : (
-            <EmptyState
-              icon={Megaphone}
-              title={locale === 'tr' ? 'Henüz planlanmış arama yok' : 'No scheduled calls yet'}
-              description={locale === 'tr'
-                ? 'Excel veya CSV dosyası yükleyerek ilk toplu aramanızı oluşturun.'
-                : 'Create your first batch call by uploading an Excel or CSV file.'
-              }
-              actionLabel={locale === 'tr' ? 'Yeni Arama' : 'New Call'}
-              onAction={() => setShowCreateModal(true)}
-            />
-          )}
+
+            {can('campaigns:view') && (
+              <Button onClick={() => openCreateModal('custom')}>
+                <Plus className="h-4 w-4 mr-2" />
+                {locale === 'tr' ? 'Özel Veri ile Başla' : 'Start with Custom Data'}
+              </Button>
+            )}
+          </div>
+
+          {renderBatchCallsTable()}
         </TabsContent>
       </Tabs>
 
-      {/* Create Campaign Modal */}
+      {/* Create Modal */}
       <Dialog
         open={showCreateModal}
         onOpenChange={(open) => {
@@ -581,25 +699,20 @@ export default function BatchCallsPage() {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Megaphone className="h-5 w-5 text-primary-600" />
-              {locale === 'tr' ? 'Yeni Arama Oluştur' : 'Create New Call'}
+              {modalType === 'template' ? (
+                <FileText className="h-5 w-5 text-primary-600" />
+              ) : (
+                <Database className="h-5 w-5 text-blue-600" />
+              )}
+              {modalType === 'template'
+                ? (locale === 'tr' ? 'Tahsilat Araması Oluştur' : 'Create Collection Call')
+                : (locale === 'tr' ? 'Özel Veri ile Arama' : 'Call with Custom Data')
+              }
             </DialogTitle>
             <DialogDescription>
               {locale === 'tr'
-                ? `Adım ${createStep}/5 - ${
-                    createStep === 1 ? 'Temel Bilgiler' :
-                    createStep === 2 ? 'Dosya Yükleme' :
-                    createStep === 3 ? 'Kolon Eşleştirme' :
-                    createStep === 4 ? 'Zamanlama' :
-                    'Önizleme'
-                  }`
-                : `Step ${createStep}/5 - ${
-                    createStep === 1 ? 'Basic Info' :
-                    createStep === 2 ? 'File Upload' :
-                    createStep === 3 ? 'Column Mapping' :
-                    createStep === 4 ? 'Scheduling' :
-                    'Preview'
-                  }`
+                ? `Adım ${createStep}/${getTotalSteps()} - ${getStepName(createStep)}`
+                : `Step ${createStep}/${getTotalSteps()} - ${getStepName(createStep)}`
               }
             </DialogDescription>
           </DialogHeader>
@@ -634,11 +747,6 @@ export default function BatchCallsPage() {
                       ))}
                     </SelectContent>
                   </Select>
-                  {phoneNumbers.length === 0 && (
-                    <p className="text-xs text-amber-600 mt-1">
-                      {locale === 'tr' ? 'Henüz telefon numaranız yok.' : 'No phone numbers found.'}
-                    </p>
-                  )}
                 </div>
 
                 <div>
@@ -668,23 +776,47 @@ export default function BatchCallsPage() {
                     </p>
                   )}
                 </div>
+
+                {/* Call Purpose - Only for Custom Data */}
+                {modalType === 'custom' && (
+                  <div>
+                    <Label>{locale === 'tr' ? 'Arama Amacı *' : 'Call Purpose *'}</Label>
+                    <Select
+                      value={formData.callPurpose}
+                      onValueChange={(value) => setFormData({ ...formData, callPurpose: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={locale === 'tr' ? 'Arama amacını seçin' : 'Select call purpose'} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(CALL_PURPOSE_OPTIONS).map(([key, labels]) => (
+                          <SelectItem key={key} value={key}>
+                            {labels[locale]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
             )}
 
             {/* Step 2: File Upload */}
             {createStep === 2 && (
               <div className="space-y-4">
-                <div className="flex justify-end">
-                  <Button variant="outline" size="sm" onClick={downloadTemplate}>
-                    <Download className="h-4 w-4 mr-2" />
-                    {locale === 'tr' ? 'Örnek Şablon İndir' : 'Download Template'}
-                  </Button>
-                </div>
+                {modalType === 'template' && (
+                  <div className="flex justify-end">
+                    <Button variant="outline" size="sm" onClick={downloadTemplate}>
+                      <Download className="h-4 w-4 mr-2" />
+                      {locale === 'tr' ? 'Örnek Şablon İndir' : 'Download Template'}
+                    </Button>
+                  </div>
+                )}
 
                 <div
                   onClick={() => fileInputRef.current?.click()}
                   className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors
-                    ${selectedFile ? 'border-primary-300 bg-primary-50' : 'border-neutral-300 hover:border-primary-400'}
+                    ${selectedFile ? 'border-primary-300 bg-primary-50 dark:bg-primary-950' : 'border-neutral-300 hover:border-primary-400 dark:border-neutral-600'}
                   `}
                 >
                   <input
@@ -698,14 +830,14 @@ export default function BatchCallsPage() {
                   {uploading ? (
                     <div className="flex flex-col items-center">
                       <Loader2 className="h-12 w-12 text-primary-600 animate-spin mb-3" />
-                      <p className="text-neutral-600">
+                      <p className="text-neutral-600 dark:text-neutral-400">
                         {locale === 'tr' ? 'Dosya okunuyor...' : 'Reading file...'}
                       </p>
                     </div>
                   ) : selectedFile ? (
                     <div className="flex flex-col items-center">
                       <FileSpreadsheet className="h-12 w-12 text-primary-600 mb-3" />
-                      <p className="font-medium text-neutral-900">{selectedFile.name}</p>
+                      <p className="font-medium text-neutral-900 dark:text-white">{selectedFile.name}</p>
                       <p className="text-sm text-neutral-500">
                         {(selectedFile.size / 1024).toFixed(1)} KB
                       </p>
@@ -713,7 +845,7 @@ export default function BatchCallsPage() {
                   ) : (
                     <div className="flex flex-col items-center">
                       <Upload className="h-12 w-12 text-neutral-400 mb-3" />
-                      <p className="font-medium text-neutral-700 mb-1">
+                      <p className="font-medium text-neutral-700 dark:text-neutral-300 mb-1">
                         {locale === 'tr' ? 'Dosya yüklemek için tıklayın' : 'Click to upload file'}
                       </p>
                       <p className="text-sm text-neutral-500">
@@ -725,8 +857,8 @@ export default function BatchCallsPage() {
               </div>
             )}
 
-            {/* Step 3: Column Mapping */}
-            {createStep === 3 && (
+            {/* Step 3: Column Mapping (Template) or Scheduling (Custom) */}
+            {createStep === 3 && modalType === 'template' && (
               <div className="space-y-4">
                 <div className="bg-neutral-50 dark:bg-neutral-800 rounded-lg p-4 mb-4">
                   <p className="text-sm text-neutral-600 dark:text-neutral-400">
@@ -759,8 +891,8 @@ export default function BatchCallsPage() {
                     </Select>
                   </div>
 
-                  {/* Other dynamic variable columns */}
-                  {Object.entries(VARIABLE_LABELS).map(([key, labels]) => (
+                  {/* Template variable columns */}
+                  {Object.entries(TEMPLATE_VARIABLE_LABELS).map(([key, labels]) => (
                     <div key={key}>
                       <Label>{labels[locale]}</Label>
                       <Select
@@ -817,28 +949,93 @@ export default function BatchCallsPage() {
               </div>
             )}
 
-            {/* Step 4: Scheduling */}
-            {createStep === 4 && (
+            {/* Step 3 for Custom: Phone column selection + Preview */}
+            {createStep === 3 && modalType === 'custom' && (
+              <div className="space-y-4">
+                <div className="bg-neutral-50 dark:bg-neutral-800 rounded-lg p-4 mb-4">
+                  <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                    {locale === 'tr'
+                      ? `Dosyada ${fileData.totalRows} satır bulundu. Telefon numarası kolonunu seçin:`
+                      : `Found ${fileData.totalRows} rows in file. Select the phone number column:`
+                    }
+                  </p>
+                </div>
+
+                {/* Phone column selection */}
+                <div>
+                  <Label className="flex items-center gap-1">
+                    <Phone className="h-4 w-4" />
+                    {locale === 'tr' ? 'Telefon Numarası Kolonu *' : 'Phone Number Column *'}
+                  </Label>
+                  <Select
+                    value={columnMapping.phone || ''}
+                    onValueChange={(value) => setColumnMapping({ phone: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={locale === 'tr' ? 'Kolon seçin' : 'Select column'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {fileData.columns.map((col) => (
+                        <SelectItem key={col} value={col}>{col}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Preview - show all columns */}
+                {fileData.preview.length > 0 && (
+                  <div className="mt-4">
+                    <Label className="mb-2 block">
+                      {locale === 'tr' ? 'Veri Önizlemesi (tüm kolonlar context olarak gönderilecek)' : 'Data Preview (all columns will be sent as context)'}
+                    </Label>
+                    <div className="overflow-x-auto border dark:border-neutral-700 rounded-lg">
+                      <table className="w-full text-sm">
+                        <thead className="bg-neutral-50 dark:bg-neutral-800">
+                          <tr>
+                            {fileData.columns.map((col) => (
+                              <th key={col} className="px-3 py-2 text-left font-medium text-neutral-600 dark:text-neutral-400">
+                                {col}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {fileData.preview.map((row, idx) => (
+                            <tr key={idx} className="border-t dark:border-neutral-700">
+                              {fileData.columns.map((col) => (
+                                <td key={col} className="px-3 py-2 text-neutral-900 dark:text-white">
+                                  {String(row[col] || '')}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Scheduling Step */}
+            {((createStep === 4 && modalType === 'template') || (createStep === 3 && modalType === 'custom' && columnMapping.phone)) && modalType === 'template' && createStep === 4 && (
               <div className="space-y-4">
                 <div className="flex gap-4">
                   <button
                     type="button"
                     onClick={() => setFormData({ ...formData, startImmediately: true })}
                     className={`flex-1 p-4 border-2 rounded-xl text-left transition-colors ${
-                      formData.startImmediately ? 'border-primary-500 bg-primary-50' : 'border-neutral-200'
+                      formData.startImmediately ? 'border-primary-500 bg-primary-50 dark:bg-primary-950' : 'border-neutral-200 dark:border-neutral-700'
                     }`}
                   >
                     <div className="flex items-center gap-2 mb-1">
                       <Phone className="h-5 w-5 text-primary-600" />
-                      <span className="font-medium">
+                      <span className="font-medium text-neutral-900 dark:text-white">
                         {locale === 'tr' ? 'Hemen Başlat' : 'Start Immediately'}
                       </span>
                     </div>
                     <p className="text-sm text-neutral-500">
-                      {locale === 'tr'
-                        ? 'Aramalar hemen başlayacak'
-                        : 'Calls will start immediately'
-                      }
+                      {locale === 'tr' ? 'Aramalar hemen başlayacak' : 'Calls will start immediately'}
                     </p>
                   </button>
 
@@ -846,20 +1043,17 @@ export default function BatchCallsPage() {
                     type="button"
                     onClick={() => setFormData({ ...formData, startImmediately: false })}
                     className={`flex-1 p-4 border-2 rounded-xl text-left transition-colors ${
-                      !formData.startImmediately ? 'border-primary-500 bg-primary-50' : 'border-neutral-200'
+                      !formData.startImmediately ? 'border-primary-500 bg-primary-50 dark:bg-primary-950' : 'border-neutral-200 dark:border-neutral-700'
                     }`}
                   >
                     <div className="flex items-center gap-2 mb-1">
                       <Calendar className="h-5 w-5 text-primary-600" />
-                      <span className="font-medium">
+                      <span className="font-medium text-neutral-900 dark:text-white">
                         {locale === 'tr' ? 'İleri Tarihte' : 'Schedule for Later'}
                       </span>
                     </div>
                     <p className="text-sm text-neutral-500">
-                      {locale === 'tr'
-                        ? 'Belirli bir tarih ve saat seçin'
-                        : 'Choose a specific date and time'
-                      }
+                      {locale === 'tr' ? 'Belirli bir tarih ve saat seçin' : 'Choose a specific date and time'}
                     </p>
                   </button>
                 </div>
@@ -878,8 +1072,54 @@ export default function BatchCallsPage() {
               </div>
             )}
 
-            {/* Step 5: Preview/Confirm */}
-            {createStep === 5 && (
+            {/* Scheduling for Custom - Step 4 */}
+            {createStep === 4 && modalType === 'custom' && (
+              <div className="space-y-4">
+                <div className="bg-neutral-50 dark:bg-neutral-800 rounded-lg p-4 space-y-3">
+                  <div className="flex justify-between">
+                    <span className="text-neutral-600 dark:text-neutral-400">{locale === 'tr' ? 'Arama Adı' : 'Call Name'}</span>
+                    <span className="font-medium dark:text-white">{formData.name}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-neutral-600 dark:text-neutral-400">{locale === 'tr' ? 'Arama Amacı' : 'Call Purpose'}</span>
+                    <span className="font-medium dark:text-white">
+                      {CALL_PURPOSE_OPTIONS[formData.callPurpose]?.[locale] || '-'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-neutral-600 dark:text-neutral-400">{locale === 'tr' ? 'Asistan' : 'Assistant'}</span>
+                    <span className="font-medium dark:text-white">
+                      {assistants.find(a => a.id === formData.assistantId)?.name || '-'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-neutral-600 dark:text-neutral-400">{locale === 'tr' ? 'Telefon' : 'Phone'}</span>
+                    <span className="font-medium dark:text-white">
+                      {phoneNumbers.find(p => p.id === formData.phoneNumberId)?.phoneNumber || '-'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-neutral-600 dark:text-neutral-400">{locale === 'tr' ? 'Toplam Alıcı' : 'Total Recipients'}</span>
+                    <span className="font-medium text-primary-600 dark:text-primary-400">{fileData.totalRows}</span>
+                  </div>
+                </div>
+
+                <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+                  <div className="flex gap-2">
+                    <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                    <p className="text-sm text-amber-800 dark:text-amber-200">
+                      {locale === 'tr'
+                        ? `${fileData.totalRows} kişiye otomatik arama yapılacaktır. Tüm veri kolonları asistana context olarak gönderilecek.`
+                        : `${fileData.totalRows} recipients will be called automatically. All data columns will be sent to assistant as context.`
+                      }
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Preview/Confirm for Template - Step 5 */}
+            {createStep === 5 && modalType === 'template' && (
               <div className="space-y-4">
                 <div className="bg-neutral-50 dark:bg-neutral-800 rounded-lg p-4 space-y-3">
                   <div className="flex justify-between">
@@ -947,12 +1187,16 @@ export default function BatchCallsPage() {
               }
             </Button>
 
-            {createStep < 5 ? (
+            {createStep < getTotalSteps() ? (
               <Button
                 onClick={() => {
                   if (createStep === 1) {
                     if (!formData.name || !formData.assistantId || !formData.phoneNumberId) {
                       toast.error(locale === 'tr' ? 'Tüm alanları doldurun' : 'Fill all fields');
+                      return;
+                    }
+                    if (modalType === 'custom' && !formData.callPurpose) {
+                      toast.error(locale === 'tr' ? 'Arama amacını seçin' : 'Select call purpose');
                       return;
                     }
                     setCreateStep(2);
@@ -968,7 +1212,7 @@ export default function BatchCallsPage() {
                       return;
                     }
                     setCreateStep(4);
-                  } else if (createStep === 4) {
+                  } else if (createStep === 4 && modalType === 'template') {
                     if (!formData.startImmediately && !formData.scheduledAt) {
                       toast.error(locale === 'tr' ? 'Tarih seçin' : 'Select a date');
                       return;
