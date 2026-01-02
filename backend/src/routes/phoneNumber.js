@@ -10,6 +10,7 @@ import prisma from '../prismaClient.js';
 import { authenticateToken } from '../middleware/auth.js';
 import netgsmService from '../services/netgsm.js';
 import elevenLabsService from '../services/elevenlabs.js';
+import { SIP_PROVIDERS, getProvidersForCountry } from '../config/sip-providers.js';
 
 const router = express.Router();
 
@@ -847,39 +848,28 @@ router.get('/countries', async (req, res) => {
       }
     }
 
-    // All available countries
+    // Get SIP providers for this country
+    const sipProviders = getProvidersForCountry(businessCountry);
+
+    // All available countries with generic SIP support
     const allCountries = [
       {
         code: 'TR',
         name: 'Türkiye',
         flag: '🇹🇷',
-        provider: 'NETGSM_ELEVENLABS',
-        pricing: {
-          monthly: PRICING.NETGSM.displayMonthly,
-          currency: 'TRY',
-          displayCurrency: '₺'
-        },
-        features: ['0850 Numara', 'NetGSM SIP', '11Labs Ses', 'Doğal Türkçe'],
+        provider: 'SIP_TRUNK',
         requiresSipForm: true,
-        sipDefaults: {
-          server: 'sip.netgsm.com.tr',
-          port: 5060,
-          transport: 'UDP'
-        },
-        helpUrl: 'https://www.netgsm.com.tr'
+        sipProviders: sipProviders.filter(p => p.country === 'TR' || p.country === 'GLOBAL'),
+        helpText: 'SIP sağlayıcınızın panelinden SIP bilgilerinizi alabilirsiniz'
       },
       {
         code: 'US',
         name: 'United States',
         flag: '🇺🇸',
-        provider: 'ELEVENLABS',
-        pricing: {
-          monthly: PRICING.ELEVENLABS.monthlyCost,
-          currency: 'USD',
-          displayCurrency: '$'
-        },
-        features: ['Twilio Numbers', '11Labs Voice', 'Natural English'],
-        requiresPayment: true
+        provider: 'SIP_TRUNK',
+        requiresSipForm: true,
+        sipProviders: getProvidersForCountry('US'),
+        helpText: 'Get your SIP credentials from your VoIP provider'
       }
     ];
 
@@ -891,7 +881,8 @@ router.get('/countries', async (req, res) => {
 
     res.json({
       countries,
-      businessCountry
+      businessCountry,
+      sipProviders: sipProviders
     });
   } catch (error) {
     console.error('❌ Get countries error:', error);
