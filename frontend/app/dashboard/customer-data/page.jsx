@@ -69,7 +69,7 @@ export default function CustomerDataPage() {
   const { t, locale } = useLanguage();
   const [customerData, setCustomerData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('custom'); // 'template' or 'custom'
+  const [activeTab, setActiveTab] = useState('template'); // 'template' or 'custom'
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 20,
@@ -397,26 +397,50 @@ export default function CustomerDataPage() {
           </TabsTrigger>
         </TabsList>
 
-        {/* Template Tab Content */}
+        {/* Template Tab Content - Muhasebe/Mali Müşavir Şablonu */}
         <TabsContent value="template">
           <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-            <div className="text-center py-8">
-              <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                {locale === 'tr' ? 'Hazır Şablonlar' : 'Ready Templates'}
-              </h3>
-              <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto">
-                {locale === 'tr'
-                  ? 'Hazır veri şablonları yakında eklenecek. Şimdilik "Müşteri Verileri" sekmesinden Excel dosyası yükleyerek müşteri ekleyebilirsiniz.'
-                  : 'Ready data templates coming soon. For now, you can add customers by uploading Excel files from the "Customer Data" tab.'
-                }
-              </p>
-              <Button
-                variant="outline"
-                className="mt-4"
-                onClick={() => setActiveTab('custom')}
-              >
-                {locale === 'tr' ? 'Müşteri Verileri ile Başla' : 'Start with Customer Data'}
+            <div className="flex items-start gap-4 mb-6">
+              <div className="p-3 bg-primary-100 dark:bg-primary-900 rounded-lg">
+                <FileText className="h-6 w-6 text-primary-600 dark:text-primary-400" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">
+                  {locale === 'tr' ? 'Muhasebe Müşteri Şablonu' : 'Accounting Client Template'}
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  {locale === 'tr'
+                    ? 'Mali müşavir ve muhasebeciler için hazır müşteri veri şablonu. SGK borcu, vergi borcu ve beyanname bilgilerini içerir.'
+                    : 'Ready customer data template for accountants. Includes SSI debt, tax debt and declaration information.'
+                  }
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 mb-6">
+              <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                {locale === 'tr' ? 'Şablon Kolonları:' : 'Template Columns:'}
+              </h4>
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="outline">{locale === 'tr' ? 'İşletme Adı' : 'Company Name'}</Badge>
+                <Badge variant="outline">{locale === 'tr' ? 'Telefon (zorunlu)' : 'Phone (required)'}</Badge>
+                <Badge variant="outline">{locale === 'tr' ? 'VKN' : 'Tax ID'}</Badge>
+                <Badge variant="outline">{locale === 'tr' ? 'SGK Borcu' : 'SSI Debt'}</Badge>
+                <Badge variant="outline">{locale === 'tr' ? 'SGK Vade Tarihi' : 'SSI Due Date'}</Badge>
+                <Badge variant="outline">{locale === 'tr' ? 'Vergi Borcu' : 'Tax Debt'}</Badge>
+                <Badge variant="outline">{locale === 'tr' ? 'Vergi Vade Tarihi' : 'Tax Due Date'}</Badge>
+                <Badge variant="outline">{locale === 'tr' ? 'Beyanname Tipi' : 'Declaration Type'}</Badge>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={handleDownloadTemplate}>
+                <Download className="h-4 w-4 mr-2" />
+                {locale === 'tr' ? 'Şablon İndir' : 'Download Template'}
+              </Button>
+              <Button onClick={() => setShowUploadModal(true)}>
+                <Upload className="h-4 w-4 mr-2" />
+                {locale === 'tr' ? 'Excel Yükle' : 'Upload Excel'}
               </Button>
             </div>
           </div>
