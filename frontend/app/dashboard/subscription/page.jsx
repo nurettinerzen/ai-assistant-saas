@@ -525,22 +525,19 @@ export default function SubscriptionPage() {
                   current: 'Mevcut Plan',
                   upgrade: 'Yükselt',
                   downgrade: 'Düşür',
-                  select: 'Seç',
-                  switchToPayg: 'PAYG\'ye Geç'
+                  select: 'Seç'
                 },
                 EN: {
                   contact: 'Contact Us',
                   current: 'Current Plan',
                   upgrade: 'Upgrade',
                   downgrade: 'Downgrade',
-                  select: 'Select',
-                  switchToPayg: 'Switch to PAYG'
+                  select: 'Select'
                 }
               };
               const txt = texts[uiLang] || texts.EN;
               if (plan.id === 'ENTERPRISE') return txt.contact;
               if (isCurrentPlan) return txt.current;
-              if (plan.id === 'PAYG') return txt.switchToPayg;
               if (isUpgrade) return txt.upgrade;
               if (isDowngrade) return txt.downgrade;
               return txt.select;
@@ -718,13 +715,11 @@ export default function SubscriptionPage() {
                     className={`w-full ${
                       isCurrentPlan
                         ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed border-neutral-200'
-                        : plan.id === 'PAYG'
-                          ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white'
-                          : isUpgrade
-                            ? 'bg-gradient-to-r from-indigo-600 to-blue-500 hover:from-indigo-700 hover:to-blue-600 text-white'
-                            : 'border-neutral-300 text-neutral-700 hover:bg-neutral-50'
+                        : isUpgrade
+                          ? 'bg-gradient-to-r from-indigo-600 to-blue-500 hover:from-indigo-700 hover:to-blue-600 text-white'
+                          : 'border-neutral-300 text-neutral-700 hover:bg-neutral-50'
                     }`}
-                    variant={isCurrentPlan ? 'outline' : ((isUpgrade || plan.id === 'PAYG') ? 'default' : 'outline')}
+                    variant={isCurrentPlan ? 'outline' : (isUpgrade ? 'default' : 'outline')}
                     disabled={isCurrentPlan || !can('billing:manage') || upgrading}
                     onClick={() => handleUpgrade(plan.id)}
                   >
