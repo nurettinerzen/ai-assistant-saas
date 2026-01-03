@@ -3,40 +3,42 @@
 // ============================================================================
 // FILE: backend/src/services/emailService.js
 //
-// Handles all email notifications using SendGrid
+// Handles all email notifications using Resend
 // ============================================================================
 
-import sgMail from '@sendgrid/mail';
+import { Resend } from 'resend';
 
-const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
-const FROM_EMAIL = process.env.SENDGRID_FROM_EMAIL || 'noreply@telyx.ai';
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
+const FROM_EMAIL = process.env.EMAIL_FROM || 'Telyx.AI <info@telyx.ai>';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://telyx.ai';
 
-if (SENDGRID_API_KEY) {
-  sgMail.setApiKey(SENDGRID_API_KEY);
+let resend = null;
+
+if (RESEND_API_KEY) {
+  resend = new Resend(RESEND_API_KEY);
 } else {
-  console.warn('⚠️ SENDGRID_API_KEY not set. Email notifications will be logged only.');
+  console.warn('⚠️ RESEND_API_KEY not set. Email notifications will be logged only.');
 }
 
 /**
  * Send email helper
  */
 const sendEmail = async (to, subject, html) => {
-  if (!SENDGRID_API_KEY) {
+  if (!resend) {
     console.log(`📧 [EMAIL PREVIEW] To: ${to}, Subject: ${subject}`);
     console.log(html);
     return { sent: false, reason: 'no_api_key' };
   }
 
   try {
-    await sgMail.send({
-      to,
+    const result = await resend.emails.send({
       from: FROM_EMAIL,
+      to: [to],
       subject,
       html
     });
-    console.log(`✅ Email sent to ${to}: ${subject}`);
-    return { sent: true };
+    console.log(`✅ Email sent to ${to}: ${subject} (ID: ${result.data?.id})`);
+    return { sent: true, id: result.data?.id };
   } catch (error) {
     console.error('❌ Email send error:', error);
     throw error;
@@ -44,477 +46,36 @@ const sendEmail = async (to, subject, html) => {
 };
 
 /**
- * 1. Welcome Email (on signup)
- */
-export const sendWelcomeEmail = async (email, businessName) => {
-  const subject = '🎉 Welcome to Telyx!';
-  const html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-        .button { display: inline-block; padding: 12px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
-        .steps { background: white; padding: 20px; border-radius: 5px; margin: 20px 0; }
-        .step { margin: 15px 0; padding-left: 30px; position: relative; }
-        .step:before { content: '✓'; position: absolute; left: 0; color: #667eea; font-weight: bold; }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h1>Welcome to Telyx! 🚀</h1>
-        </div>
-        <div class="content">
-          <p>Hi there,</p>
-          <p>Thank you for joining <strong>${businessName}</strong> on Telyx! We're excited to help you build your AI-powered phone assistant.</p>
-          
-          <div class="steps">
-            <h3>Next Steps:</h3>
-            <div class="step">Choose your language (English or Turkish)</div>
-            <div class="step">Select your AI assistant's voice</div>
-            <div class="step">Add your first training</div>
-            <div class="step">Test your assistant with web voice demo</div>
-            <div class="step">Upgrade to get your phone number!</div>
-          </div>
-
-          <p style="text-align: center;">
-            <a href="${FRONTEND_URL}/dashboard" class="button">Go to Dashboard</a>
-          </p>
-
-          <p>Need help? Reply to this email and we'll assist you right away.</p>
-          
-          <p>Best regards,<br><strong>The Telyx Team</strong></p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
-
-  return sendEmail(email, subject, html);
-};
-
-/**
- * 2. Assistant Created Email
- */
-export const sendAssistantCreatedEmail = async (email, businessName) => {
-  const subject = '✨ Your AI Assistant is Ready!';
-  const html = `
-    <!DOCTYPE html>
-    <html>
-    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-      <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: #667eea; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-          <h1>🎤 Your Assistant is Live!</h1>
-        </div>
-        <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
-          <p>Hi ${businessName},</p>
-          <p>Great news! Your AI assistant has been created and is ready to test.</p>
-          
-          <p style="background: white; padding: 20px; border-radius: 5px; border-left: 4px solid #667eea;">
-            <strong>🎯 Try it now:</strong><br>
-            Click the "Test Assistant" button in your dashboard to have a conversation with your AI.
-          </p>
-
-          <p style="text-align: center;">
-            <a href="${FRONTEND_URL}/dashboard/assistant" style="display: inline-block; padding: 12px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0;">Test Your Assistant</a>
-          </p>
-
-          <p><strong>Ready for real calls?</strong><br>
-          Upgrade to STARTER plan to get your phone number and start receiving calls 24/7!</p>
-
-          <p>Best,<br><strong>Telyx Team</strong></p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
-
-  return sendEmail(email, subject, html);
-};
-
-/**
- * 3. Phone Number Activated Email
- */
-export const sendPhoneActivatedEmail = async (email, businessName, phoneNumber) => {
-  const subject = '📞 Your Phone Number is Live!';
-  const html = `
-    <!DOCTYPE html>
-    <html>
-    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-      <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-          <h1>📞 Your Phone Number is Active!</h1>
-        </div>
-        <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
-          <p>Hi ${businessName},</p>
-          <p>Congratulations! Your AI assistant is now live and answering calls.</p>
-          
-          <div style="background: white; padding: 25px; border-radius: 5px; text-align: center; margin: 20px 0; border: 2px solid #11998e;">
-            <p style="margin: 0; color: #666; font-size: 14px;">Your Phone Number:</p>
-            <h2 style="margin: 10px 0; color: #11998e; font-size: 32px;">${phoneNumber}</h2>
-            <p style="margin: 0; color: #666; font-size: 14px;">Share this with your customers!</p>
-          </div>
-
-          <p><strong>What happens now?</strong></p>
-          <ul>
-            <li>Calls to this number will be answered by your AI assistant</li>
-            <li>All conversations will be logged in your dashboard</li>
-            <li>You'll receive analytics on call performance</li>
-            <li>You can update your assistant's training anytime</li>
-          </ul>
-
-          <p style="text-align: center;">
-            <a href="${FRONTEND_URL}/dashboard" style="display: inline-block; padding: 12px 30px; background: #11998e; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0;">View Dashboard</a>
-          </p>
-
-          <p><strong>💡 Pro Tip:</strong> Test your assistant by calling this number yourself!</p>
-
-          <p>Best,<br><strong>Telyx Team</strong></p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
-
-  return sendEmail(email, subject, html);
-};
-
-/**
- * 4. Limit Warning Email (at 90% usage)
- */
-export const sendLimitWarningEmail = async (email, businessName, limitType, usage) => {
-  const subject = `⚠️ You're Running Low on ${limitType === 'minutes' ? 'Minutes' : 'Calls'}`;
-  const html = `
-    <!DOCTYPE html>
-    <html>
-    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-      <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: #ff9800; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-          <h1>⚠️ Usage Alert</h1>
-        </div>
-        <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
-          <p>Hi ${businessName},</p>
-          <p>You've used <strong>${usage.percentage}%</strong> of your monthly ${limitType}.</p>
-          
-          <div style="background: white; padding: 20px; border-radius: 5px; margin: 20px 0;">
-            <h3 style="margin-top: 0;">Current Usage:</h3>
-            <div style="background: #f0f0f0; border-radius: 10px; height: 30px; position: relative; overflow: hidden;">
-              <div style="background: linear-gradient(90deg, #ff9800, #ff5722); height: 100%; width: ${usage.percentage}%; border-radius: 10px;"></div>
-            </div>
-            <p style="text-align: center; margin: 10px 0;"><strong>${usage.used} / ${usage.limit}</strong> ${limitType}</p>
-          </div>
-
-          <p>To avoid service interruption, consider upgrading to a higher plan with more ${limitType}.</p>
-
-          <p style="text-align: center;">
-            <a href="${FRONTEND_URL}/dashboard/settings?tab=billing" style="display: inline-block; padding: 12px 30px; background: #ff9800; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0;">Upgrade Now</a>
-          </p>
-
-          <p>Best,<br><strong>Telyx Team</strong></p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
-
-  return sendEmail(email, subject, html);
-};
-
-/**
- * 5. Limit Reached Email
- */
-export const sendLimitReachedEmail = async (email, businessName, limitType, usage, currentPlan) => {
-  const nextPlan = currentPlan === 'STARTER' ? 'PROFESSIONAL' : 'ENTERPRISE';
-  const subject = `🚫 ${limitType === 'minutes' ? 'Minute' : 'Call'} Limit Reached`;
-  const html = `
-    <!DOCTYPE html>
-    <html>
-    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-      <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: #f44336; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-          <h1>🚫 Limit Reached</h1>
-        </div>
-        <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
-          <p>Hi ${businessName},</p>
-          <p>You've reached your monthly limit of <strong>${usage.limit} ${limitType}</strong> on your ${currentPlan} plan.</p>
-          
-          <div style="background: #ffebee; padding: 20px; border-radius: 5px; border-left: 4px solid #f44336; margin: 20px 0;">
-            <p style="margin: 0;"><strong>⚠️ What this means:</strong><br>
-            ${limitType === 'minutes' ? 'New calls will not be answered until next month or you upgrade.' : 'You cannot receive more calls this month unless you upgrade.'}</p>
-          </div>
-
-          <p><strong>Upgrade to ${nextPlan} to continue:</strong></p>
-          <ul>
-            <li>${nextPlan === 'PROFESSIONAL' ? '1500 minutes/month' : 'Unlimited minutes'}</li>
-            <li>${nextPlan === 'PROFESSIONAL' ? 'Unlimited calls' : 'Unlimited calls'}</li>
-            <li>Advanced analytics</li>
-            <li>Priority support</li>
-          </ul>
-
-          <p style="text-align: center;">
-            <a href="${FRONTEND_URL}/dashboard/settings?tab=billing" style="display: inline-block; padding: 12px 30px; background: #f44336; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0;">Upgrade to ${nextPlan}</a>
-          </p>
-
-          <p><small>Your usage will reset on the 1st of next month.</small></p>
-
-          <p>Best,<br><strong>Telyx Team</strong></p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
-
-  return sendEmail(email, subject, html);
-};
-
-/**
- * 6. Payment Success Email
- */
-export const sendPaymentSuccessEmail = async (email, businessName, amount, plan) => {
-  const subject = '✅ Payment Received - Thank You!';
-  const html = `
-    <!DOCTYPE html>
-    <html>
-    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-      <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: #4caf50; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-          <h1>✅ Payment Successful</h1>
-        </div>
-        <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
-          <p>Hi ${businessName},</p>
-          <p>Thank you! We've successfully processed your payment.</p>
-          
-          <div style="background: white; padding: 20px; border-radius: 5px; margin: 20px 0; border: 1px solid #e0e0e0;">
-            <table style="width: 100%; border-collapse: collapse;">
-              <tr>
-                <td style="padding: 10px 0; border-bottom: 1px solid #f0f0f0;"><strong>Plan:</strong></td>
-                <td style="padding: 10px 0; border-bottom: 1px solid #f0f0f0; text-align: right;">${plan}</td>
-              </tr>
-              <tr>
-                <td style="padding: 10px 0; border-bottom: 1px solid #f0f0f0;"><strong>Amount:</strong></td>
-                <td style="padding: 10px 0; border-bottom: 1px solid #f0f0f0; text-align: right;">$${(amount / 100).toFixed(2)}</td>
-              </tr>
-              <tr>
-                <td style="padding: 10px 0;"><strong>Status:</strong></td>
-                <td style="padding: 10px 0; text-align: right; color: #4caf50;"><strong>PAID</strong></td>
-              </tr>
-            </table>
-          </div>
-
-          <p>Your subscription is now active and your assistant is ready to take calls!</p>
-
-          <p style="text-align: center;">
-            <a href="${FRONTEND_URL}/dashboard" style="display: inline-block; padding: 12px 30px; background: #4caf50; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0;">Go to Dashboard</a>
-          </p>
-
-          <p><small>Need an invoice? You can download it from your billing settings.</small></p>
-
-          <p>Best,<br><strong>Telyx Team</strong></p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
-
-  return sendEmail(email, subject, html);
-};
-
-/**
- * 7. Payment Failed Email
- */
-export const sendPaymentFailedEmail = async (email, businessName) => {
-  const subject = '❌ Payment Failed - Action Required';
-  const html = `
-    <!DOCTYPE html>
-    <html>
-    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-      <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: #f44336; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-          <h1>❌ Payment Failed</h1>
-        </div>
-        <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
-          <p>Hi ${businessName},</p>
-          <p>We were unable to process your recent payment. Your service may be interrupted if this isn't resolved.</p>
-          
-          <div style="background: #ffebee; padding: 20px; border-radius: 5px; border-left: 4px solid #f44336; margin: 20px 0;">
-            <p style="margin: 0;"><strong>⚠️ Action Required:</strong><br>
-            Please update your payment method to continue using Telyx.</p>
-          </div>
-
-          <p><strong>Common reasons for payment failure:</strong></p>
-          <ul>
-            <li>Insufficient funds</li>
-            <li>Expired card</li>
-            <li>Incorrect billing information</li>
-          </ul>
-
-          <p style="text-align: center;">
-            <a href="${FRONTEND_URL}/dashboard/settings?tab=billing" style="display: inline-block; padding: 12px 30px; background: #f44336; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0;">Update Payment Method</a>
-          </p>
-
-          <p>If you need help, please reply to this email.</p>
-
-          <p>Best,<br><strong>Telyx Team</strong></p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
-
-  return sendEmail(email, subject, html);
-};
-
-/**
- * 8. Monthly Reset Email
- */
-export const sendMonthlyResetEmail = async (email, businessName, plan) => {
-  const subject = '🔄 New Month, Fresh Limits!';
-  const html = `
-    <!DOCTYPE html>
-    <html>
-    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-      <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-          <h1>🔄 New Month Started!</h1>
-        </div>
-        <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
-          <p>Hi ${businessName},</p>
-          <p>Good news! Your monthly usage limits have been reset for your ${plan} plan.</p>
-          
-          <div style="background: white; padding: 20px; border-radius: 5px; margin: 20px 0; border: 1px solid #e0e0e0;">
-            <p style="margin: 0;"><strong>✨ Your fresh limits:</strong></p>
-            <ul style="margin: 15px 0;">
-              ${plan === 'STARTER' ? '<li>300 minutes</li><li>50 calls</li>' : ''}
-              ${plan === 'PROFESSIONAL' ? '<li>1500 minutes</li><li>Unlimited calls</li>' : ''}
-              ${plan === 'ENTERPRISE' ? '<li>Unlimited everything!</li>' : ''}
-            </ul>
-          </div>
-
-          <p>Your AI assistant is ready to handle calls for another great month!</p>
-
-          <p style="text-align: center;">
-            <a href="${FRONTEND_URL}/dashboard/analytics" style="display: inline-block; padding: 12px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0;">View Analytics</a>
-          </p>
-
-          <p>Best,<br><strong>Telyx Team</strong></p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
-
-  return sendEmail(email, subject, html);
-};
-
-/**
- * 9. Weekly Summary Email (PRO+ only)
- */
-export const sendWeeklySummaryEmail = async (email, businessName, stats) => {
-  const subject = `📊 Your Weekly Summary - ${stats.totalCalls} Calls`;
-  const html = `
-    <!DOCTYPE html>
-    <html>
-    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-      <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-          <h1>📊 Weekly Summary</h1>
-          <p style="margin: 0; font-size: 14px;">Your AI Assistant Performance</p>
-        </div>
-        <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
-          <p>Hi ${businessName},</p>
-          <p>Here's how your AI assistant performed this week:</p>
-          
-          <div style="background: white; padding: 20px; border-radius: 5px; margin: 20px 0;">
-            <h3 style="margin-top: 0; border-bottom: 2px solid #11998e; padding-bottom: 10px;">Key Metrics</h3>
-            <table style="width: 100%; border-collapse: collapse;">
-              <tr>
-                <td style="padding: 15px 0; border-bottom: 1px solid #f0f0f0;">
-                  <strong>Total Calls:</strong>
-                </td>
-                <td style="padding: 15px 0; border-bottom: 1px solid #f0f0f0; text-align: right; font-size: 24px; color: #11998e;">
-                  <strong>${stats.totalCalls}</strong>
-                </td>
-              </tr>
-              <tr>
-                <td style="padding: 15px 0; border-bottom: 1px solid #f0f0f0;">
-                  <strong>Avg Duration:</strong>
-                </td>
-                <td style="padding: 15px 0; border-bottom: 1px solid #f0f0f0; text-align: right;">
-                  ${stats.avgDuration}
-                </td>
-              </tr>
-              <tr>
-                <td style="padding: 15px 0; border-bottom: 1px solid #f0f0f0;">
-                  <strong>Customer Satisfaction:</strong>
-                </td>
-                <td style="padding: 15px 0; border-bottom: 1px solid #f0f0f0; text-align: right;">
-                  ${stats.satisfaction}% Positive
-                </td>
-              </tr>
-              <tr>
-                <td style="padding: 15px 0;">
-                  <strong>Busiest Day:</strong>
-                </td>
-                <td style="padding: 15px 0; text-align: right;">
-                  ${stats.busiestDay}
-                </td>
-              </tr>
-            </table>
-          </div>
-
-          ${stats.topIntent ? `
-          <div style="background: #e8f5e9; padding: 20px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #4caf50;">
-            <p style="margin: 0;"><strong>💡 Top Reason for Calls:</strong><br>
-            ${stats.topIntent}</p>
-          </div>
-          ` : ''}
-
-          <p style="text-align: center;">
-            <a href="${FRONTEND_URL}/dashboard/analytics" style="display: inline-block; padding: 12px 30px; background: #11998e; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0;">View Full Report</a>
-          </p>
-
-          <p>Keep up the great work!</p>
-
-          <p>Best,<br><strong>Telyx Team</strong></p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
-
-  return sendEmail(email, subject, html);
-};
-
-/**
- * 10. Email Verification Email
+ * 1. Email Verification Email
  */
 export const sendVerificationEmail = async (email, verificationUrl, businessName) => {
-  const subject = '📧 Email Adresinizi Doğrulayın - Telyx';
+  const subject = 'Telyx.AI - Email Adresinizi Doğrulayın';
   const html = `
     <!DOCTYPE html>
     <html>
     <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f4f4f5; }
         .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-        .button { display: inline-block; padding: 14px 40px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: bold; }
-        .warning { background: #fff3cd; padding: 15px; border-radius: 5px; border-left: 4px solid #ffc107; margin: 20px 0; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0; }
+        .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
+        .content { background: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px; }
+        .button { display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white !important; text-decoration: none; border-radius: 8px; margin: 24px 0; font-weight: 600; font-size: 16px; }
+        .warning { background: #fef3c7; padding: 16px; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 24px 0; }
+        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
+        .link { color: #667eea; word-break: break-all; }
       </style>
     </head>
     <body>
       <div class="container">
         <div class="header">
-          <h1>📧 Email Doğrulama</h1>
+          <h1>Email Adresinizi Doğrulayın</h1>
         </div>
         <div class="content">
-          <p>Merhaba${businessName ? ` ${businessName}` : ''},</p>
-          <p>Telyx hesabınızı oluşturdunuz! Hesabınızı aktif hale getirmek için lütfen email adresinizi doğrulayın.</p>
+          <p>Merhaba${businessName ? ` <strong>${businessName}</strong>` : ''},</p>
+          <p>Telyx.AI'a kayıt olduğunuz için teşekkürler! Hesabınızı aktif hale getirmek için email adresinizi doğrulamanız gerekmektedir.</p>
 
           <p style="text-align: center;">
             <a href="${verificationUrl}" class="button">Email Adresimi Doğrula</a>
@@ -524,16 +85,18 @@ export const sendVerificationEmail = async (email, verificationUrl, businessName
             <p style="margin: 0;"><strong>⏰ Önemli:</strong> Bu link 24 saat geçerlidir. Süre dolarsa yeni bir doğrulama linki talep edebilirsiniz.</p>
           </div>
 
-          <p style="font-size: 14px; color: #666;">
+          <p style="font-size: 14px; color: #6b7280;">
             Eğer butona tıklayamıyorsanız, aşağıdaki linki tarayıcınıza kopyalayabilirsiniz:<br>
-            <a href="${verificationUrl}" style="color: #667eea; word-break: break-all;">${verificationUrl}</a>
+            <a href="${verificationUrl}" class="link">${verificationUrl}</a>
           </p>
 
-          <p style="font-size: 14px; color: #666;">
-            Bu emaili siz talep etmediyseniz, lütfen dikkate almayın.
+          <p style="font-size: 14px; color: #6b7280;">
+            Bu hesabı siz oluşturmadıysanız, bu emaili görmezden gelebilirsiniz.
           </p>
-
-          <p>Teşekkürler,<br><strong>Telyx Ekibi</strong></p>
+        </div>
+        <div class="footer">
+          <p>Telyx.AI Ekibi<br>
+          <a href="https://telyx.ai" class="link">https://telyx.ai</a></p>
         </div>
       </div>
     </body>
@@ -544,27 +107,282 @@ export const sendVerificationEmail = async (email, verificationUrl, businessName
 };
 
 /**
- * 11. Email Changed Verification Email
+ * 2. Password Reset Email
  */
-export const sendEmailChangeVerification = async (newEmail, verificationUrl) => {
-  const subject = '📧 Yeni Email Adresinizi Doğrulayın - Telyx';
+export const sendPasswordResetEmail = async (email, resetUrl) => {
+  const subject = 'Telyx.AI - Şifre Sıfırlama';
   const html = `
     <!DOCTYPE html>
     <html>
     <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f4f4f5; }
         .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-        .button { display: inline-block; padding: 14px 40px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: bold; }
-        .warning { background: #fff3cd; padding: 15px; border-radius: 5px; border-left: 4px solid #ffc107; margin: 20px 0; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0; }
+        .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
+        .content { background: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px; }
+        .button { display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white !important; text-decoration: none; border-radius: 8px; margin: 24px 0; font-weight: 600; font-size: 16px; }
+        .warning { background: #fef3c7; padding: 16px; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 24px 0; }
+        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
+        .link { color: #667eea; word-break: break-all; }
       </style>
     </head>
     <body>
       <div class="container">
         <div class="header">
-          <h1>📧 Yeni Email Doğrulama</h1>
+          <h1>Şifre Sıfırlama</h1>
+        </div>
+        <div class="content">
+          <p>Merhaba,</p>
+          <p>Şifrenizi sıfırlamak için bir talep aldık. Yeni şifre belirlemek için aşağıdaki butona tıklayın:</p>
+
+          <p style="text-align: center;">
+            <a href="${resetUrl}" class="button">Şifremi Sıfırla</a>
+          </p>
+
+          <div class="warning">
+            <p style="margin: 0;"><strong>⏰ Önemli:</strong> Bu link 1 saat geçerlidir.</p>
+          </div>
+
+          <p style="font-size: 14px; color: #6b7280;">
+            Eğer bu talebi siz yapmadıysanız, bu emaili görmezden gelebilirsiniz. Şifreniz değişmeyecektir.
+          </p>
+        </div>
+        <div class="footer">
+          <p>Telyx.AI Ekibi<br>
+          <a href="https://telyx.ai" class="link">https://telyx.ai</a></p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return sendEmail(email, subject, html);
+};
+
+/**
+ * 3. Welcome Email (after verification)
+ */
+export const sendWelcomeEmail = async (email, userName) => {
+  const subject = "Telyx.AI'a Hoş Geldiniz!";
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f4f4f5; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0; }
+        .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
+        .content { background: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px; }
+        .button { display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white !important; text-decoration: none; border-radius: 8px; margin: 24px 0; font-weight: 600; font-size: 16px; }
+        .steps { background: #f9fafb; padding: 20px; border-radius: 8px; margin: 24px 0; }
+        .step { margin: 12px 0; padding-left: 28px; position: relative; }
+        .step:before { content: '✓'; position: absolute; left: 0; color: #667eea; font-weight: bold; }
+        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
+        .link { color: #667eea; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Telyx.AI'a Hoş Geldiniz!</h1>
+        </div>
+        <div class="content">
+          <p>Merhaba${userName ? ` <strong>${userName}</strong>` : ''},</p>
+          <p>Telyx.AI ailesine hoş geldiniz! Hesabınız aktif ve kullanıma hazır.</p>
+
+          <div class="steps">
+            <h3 style="margin-top: 0;">Başlamanız için birkaç adım:</h3>
+            <div class="step">İlk asistanınızı oluşturun</div>
+            <div class="step">Kanallarınızı bağlayın (WhatsApp, Telefon, Chat)</div>
+            <div class="step">Bilgi bankasına dökümanlarınızı ekleyin</div>
+          </div>
+
+          <p style="background: #ecfdf5; padding: 16px; border-radius: 8px; border-left: 4px solid #10b981;">
+            <strong>Deneme sürenizde:</strong><br>
+            15 dakika telefon görüşmesi ve 7 gün chat/WhatsApp kullanım hakkınız var.
+          </p>
+
+          <p style="text-align: center;">
+            <a href="${FRONTEND_URL}/dashboard" class="button">Dashboard'a Git</a>
+          </p>
+
+          <p style="font-size: 14px; color: #6b7280;">
+            Sorularınız mı var? <a href="mailto:info@telyx.ai" class="link">info@telyx.ai</a> adresinden bize ulaşabilirsiniz.
+          </p>
+        </div>
+        <div class="footer">
+          <p>Telyx.AI Ekibi<br>
+          <a href="https://telyx.ai" class="link">https://telyx.ai</a></p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return sendEmail(email, subject, html);
+};
+
+/**
+ * 4. Low Balance Alert (PAYG)
+ */
+export const sendLowBalanceAlert = async (email, currentBalance) => {
+  const subject = 'Telyx.AI - Bakiyeniz Azalıyor';
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f4f4f5; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0; }
+        .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
+        .content { background: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px; }
+        .button { display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white !important; text-decoration: none; border-radius: 8px; margin: 24px 0; font-weight: 600; font-size: 16px; }
+        .balance-box { background: #fef3c7; padding: 24px; border-radius: 8px; text-align: center; margin: 24px 0; }
+        .balance { font-size: 32px; font-weight: bold; color: #d97706; }
+        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
+        .link { color: #667eea; }
+        .tip { background: #eff6ff; padding: 16px; border-radius: 8px; border-left: 4px solid #3b82f6; margin: 24px 0; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>⚠️ Bakiyeniz Azalıyor</h1>
+        </div>
+        <div class="content">
+          <p>Merhaba,</p>
+          <p>Telyx.AI bakiyeniz düşük seviyeye geldi. Kesintisiz hizmet için bakiye yüklemenizi öneririz.</p>
+
+          <div class="balance-box">
+            <p style="margin: 0 0 8px 0; color: #6b7280;">Mevcut Bakiye:</p>
+            <p class="balance">${currentBalance} TL</p>
+          </div>
+
+          <p style="text-align: center;">
+            <a href="${FRONTEND_URL}/dashboard/billing" class="button">Bakiye Yükle</a>
+          </p>
+
+          <div class="tip">
+            <p style="margin: 0;"><strong>💡 İpucu:</strong> Otomatik yükleme özelliğini açarak bakiyenizin bitmesini önleyebilirsiniz.</p>
+          </div>
+        </div>
+        <div class="footer">
+          <p>Telyx.AI Ekibi<br>
+          <a href="https://telyx.ai" class="link">https://telyx.ai</a></p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return sendEmail(email, subject, html);
+};
+
+/**
+ * 5. Overage Invoice
+ */
+export const sendOverageInvoice = async (email, overageMinutes, amount, billingPeriod) => {
+  const subject = 'Telyx.AI - Aylık Aşım Faturanız';
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f4f4f5; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0; }
+        .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
+        .content { background: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px; }
+        .button { display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white !important; text-decoration: none; border-radius: 8px; margin: 24px 0; font-weight: 600; font-size: 16px; }
+        .invoice-box { background: #f9fafb; padding: 24px; border-radius: 8px; margin: 24px 0; }
+        .invoice-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #e5e7eb; }
+        .invoice-row:last-child { border-bottom: none; font-weight: bold; font-size: 18px; }
+        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
+        .link { color: #667eea; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Aylık Aşım Faturanız</h1>
+        </div>
+        <div class="content">
+          <p>Merhaba,</p>
+          <p>${billingPeriod || 'Bu ay'} dönemi için aşım faturanız oluşturuldu.</p>
+
+          <div class="invoice-box">
+            <div class="invoice-row">
+              <span>Aşım Dakikası:</span>
+              <span>${overageMinutes} dk</span>
+            </div>
+            <div class="invoice-row">
+              <span>Birim Fiyat:</span>
+              <span>23 TL/dk</span>
+            </div>
+            <div class="invoice-row">
+              <span>Toplam Tutar:</span>
+              <span>${amount} TL</span>
+            </div>
+          </div>
+
+          <p style="font-size: 14px; color: #6b7280;">
+            Bu tutar kayıtlı kartınızdan otomatik olarak tahsil edilecektir.
+          </p>
+
+          <p style="text-align: center;">
+            <a href="${FRONTEND_URL}/dashboard/billing" class="button">Fatura Detayları</a>
+          </p>
+        </div>
+        <div class="footer">
+          <p>Telyx.AI Ekibi<br>
+          <a href="https://telyx.ai" class="link">https://telyx.ai</a></p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return sendEmail(email, subject, html);
+};
+
+/**
+ * 6. Email Change Verification
+ */
+export const sendEmailChangeVerification = async (newEmail, verificationUrl) => {
+  const subject = 'Telyx.AI - Yeni Email Adresinizi Doğrulayın';
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f4f4f5; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0; }
+        .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
+        .content { background: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px; }
+        .button { display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white !important; text-decoration: none; border-radius: 8px; margin: 24px 0; font-weight: 600; font-size: 16px; }
+        .warning { background: #fef3c7; padding: 16px; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 24px 0; }
+        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
+        .link { color: #667eea; word-break: break-all; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Yeni Email Doğrulama</h1>
         </div>
         <div class="content">
           <p>Merhaba,</p>
@@ -578,11 +396,13 @@ export const sendEmailChangeVerification = async (newEmail, verificationUrl) => 
             <p style="margin: 0;"><strong>⏰ Önemli:</strong> Bu link 24 saat geçerlidir.</p>
           </div>
 
-          <p style="font-size: 14px; color: #666;">
+          <p style="font-size: 14px; color: #6b7280;">
             Bu işlemi siz başlatmadıysanız, lütfen bu emaili dikkate almayın ve hesap güvenliğinizi kontrol edin.
           </p>
-
-          <p>Teşekkürler,<br><strong>Telyx Ekibi</strong></p>
+        </div>
+        <div class="footer">
+          <p>Telyx.AI Ekibi<br>
+          <a href="https://telyx.ai" class="link">https://telyx.ai</a></p>
         </div>
       </div>
     </body>
@@ -592,8 +412,724 @@ export const sendEmailChangeVerification = async (newEmail, verificationUrl) => 
   return sendEmail(newEmail, subject, html);
 };
 
+/**
+ * 7. Assistant Created Email
+ */
+export const sendAssistantCreatedEmail = async (email, businessName) => {
+  const subject = 'Telyx.AI - AI Asistanınız Hazır!';
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f4f4f5; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0; }
+        .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
+        .content { background: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px; }
+        .button { display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white !important; text-decoration: none; border-radius: 8px; margin: 24px 0; font-weight: 600; font-size: 16px; }
+        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
+        .link { color: #667eea; }
+        .tip { background: #eff6ff; padding: 16px; border-radius: 8px; border-left: 4px solid #3b82f6; margin: 24px 0; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>🎤 AI Asistanınız Hazır!</h1>
+        </div>
+        <div class="content">
+          <p>Merhaba${businessName ? ` ${businessName}` : ''},</p>
+          <p>Harika haber! AI asistanınız oluşturuldu ve test etmeye hazır.</p>
+
+          <div class="tip">
+            <p style="margin: 0;"><strong>🎯 Şimdi deneyin:</strong><br>
+            Dashboard'daki "Asistanı Test Et" butonuna tıklayarak AI'nızla konuşabilirsiniz.</p>
+          </div>
+
+          <p style="text-align: center;">
+            <a href="${FRONTEND_URL}/dashboard/assistant" class="button">Asistanı Test Et</a>
+          </p>
+
+          <p><strong>Gerçek aramalar için hazır mısınız?</strong><br>
+          STARTER planına geçerek telefon numaranızı alın ve 7/24 arama almaya başlayın!</p>
+        </div>
+        <div class="footer">
+          <p>Telyx.AI Ekibi<br>
+          <a href="https://telyx.ai" class="link">https://telyx.ai</a></p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return sendEmail(email, subject, html);
+};
+
+/**
+ * 8. Phone Number Activated Email
+ */
+export const sendPhoneActivatedEmail = async (email, businessName, phoneNumber) => {
+  const subject = 'Telyx.AI - Telefon Numaranız Aktif!';
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f4f4f5; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0; }
+        .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
+        .content { background: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px; }
+        .button { display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white !important; text-decoration: none; border-radius: 8px; margin: 24px 0; font-weight: 600; font-size: 16px; }
+        .phone-box { background: #ecfdf5; padding: 24px; border-radius: 8px; text-align: center; margin: 24px 0; border: 2px solid #10b981; }
+        .phone { font-size: 32px; font-weight: bold; color: #059669; }
+        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
+        .link { color: #667eea; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>📞 Telefon Numaranız Aktif!</h1>
+        </div>
+        <div class="content">
+          <p>Merhaba${businessName ? ` ${businessName}` : ''},</p>
+          <p>Tebrikler! AI asistanınız artık canlı ve aramaları yanıtlıyor.</p>
+
+          <div class="phone-box">
+            <p style="margin: 0 0 8px 0; color: #6b7280;">Telefon Numaranız:</p>
+            <p class="phone">${phoneNumber}</p>
+            <p style="margin: 8px 0 0 0; color: #6b7280; font-size: 14px;">Bu numarayı müşterilerinizle paylaşın!</p>
+          </div>
+
+          <p><strong>Bundan sonra ne olacak?</strong></p>
+          <ul>
+            <li>Bu numaraya yapılan aramalar AI asistanınız tarafından yanıtlanacak</li>
+            <li>Tüm konuşmalar dashboard'unuzda kaydedilecek</li>
+            <li>Arama performansı analizlerini görebileceksiniz</li>
+            <li>Asistan eğitimini istediğiniz zaman güncelleyebilirsiniz</li>
+          </ul>
+
+          <p style="text-align: center;">
+            <a href="${FRONTEND_URL}/dashboard" class="button">Dashboard'a Git</a>
+          </p>
+
+          <p style="background: #eff6ff; padding: 16px; border-radius: 8px; border-left: 4px solid #3b82f6;">
+            <strong>💡 Pro İpucu:</strong> Bu numarayı kendiniz arayarak asistanınızı test edin!
+          </p>
+        </div>
+        <div class="footer">
+          <p>Telyx.AI Ekibi<br>
+          <a href="https://telyx.ai" class="link">https://telyx.ai</a></p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return sendEmail(email, subject, html);
+};
+
+/**
+ * 9. Limit Warning Email (at 80% usage)
+ */
+export const sendLimitWarningEmail = async (email, businessName, limitType, usage) => {
+  const subject = `Telyx.AI - ${limitType === 'minutes' ? 'Dakika' : 'Arama'} Limitiniz Azalıyor`;
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f4f4f5; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0; }
+        .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
+        .content { background: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px; }
+        .button { display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white !important; text-decoration: none; border-radius: 8px; margin: 24px 0; font-weight: 600; font-size: 16px; }
+        .usage-box { background: #fef3c7; padding: 24px; border-radius: 8px; margin: 24px 0; }
+        .progress-bar { background: #e5e7eb; border-radius: 10px; height: 24px; position: relative; overflow: hidden; margin: 16px 0; }
+        .progress-fill { background: linear-gradient(90deg, #f59e0b, #ef4444); height: 100%; border-radius: 10px; }
+        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
+        .link { color: #667eea; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>⚠️ Kullanım Uyarısı</h1>
+        </div>
+        <div class="content">
+          <p>Merhaba${businessName ? ` ${businessName}` : ''},</p>
+          <p>Aylık ${limitType === 'minutes' ? 'dakika' : 'arama'} limitinizin <strong>${usage.percentage}%</strong>'ini kullandınız.</p>
+
+          <div class="usage-box">
+            <h3 style="margin-top: 0;">Mevcut Kullanım:</h3>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: ${usage.percentage}%;"></div>
+            </div>
+            <p style="text-align: center; margin: 0;"><strong>${usage.used} / ${usage.limit}</strong> ${limitType === 'minutes' ? 'dakika' : 'arama'}</p>
+          </div>
+
+          <p>Hizmet kesintisini önlemek için planınızı yükseltmeyi veya bakiye yüklemeyi düşünebilirsiniz.</p>
+
+          <p style="text-align: center;">
+            <a href="${FRONTEND_URL}/dashboard/settings?tab=billing" class="button">Şimdi Yükselt</a>
+          </p>
+        </div>
+        <div class="footer">
+          <p>Telyx.AI Ekibi<br>
+          <a href="https://telyx.ai" class="link">https://telyx.ai</a></p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return sendEmail(email, subject, html);
+};
+
+/**
+ * 10. Limit Reached Email
+ */
+export const sendLimitReachedEmail = async (email, businessName, limitType, usage, currentPlan) => {
+  const nextPlan = currentPlan === 'STARTER' ? 'PRO' : 'ENTERPRISE';
+  const subject = `Telyx.AI - ${limitType === 'minutes' ? 'Dakika' : 'Arama'} Limitine Ulaşıldı`;
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f4f4f5; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0; }
+        .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
+        .content { background: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px; }
+        .button { display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white !important; text-decoration: none; border-radius: 8px; margin: 24px 0; font-weight: 600; font-size: 16px; }
+        .warning-box { background: #fef2f2; padding: 20px; border-radius: 8px; border-left: 4px solid #ef4444; margin: 24px 0; }
+        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
+        .link { color: #667eea; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>🚫 Limite Ulaşıldı</h1>
+        </div>
+        <div class="content">
+          <p>Merhaba${businessName ? ` ${businessName}` : ''},</p>
+          <p>${currentPlan} planınızdaki aylık <strong>${usage.limit} ${limitType === 'minutes' ? 'dakika' : 'arama'}</strong> limitine ulaştınız.</p>
+
+          <div class="warning-box">
+            <p style="margin: 0;"><strong>⚠️ Bu ne anlama geliyor:</strong><br>
+            ${limitType === 'minutes' ? 'Gelecek aya kadar veya yükseltme yapana kadar yeni aramalar yanıtlanmayacak.' : 'Bu ay daha fazla arama alamazsınız.'}</p>
+          </div>
+
+          <p><strong>${nextPlan} planına yükselterek devam edin:</strong></p>
+          <ul>
+            <li>${nextPlan === 'PRO' ? '500 dakika/ay' : 'Sınırsız dakika'}</li>
+            <li>Gelişmiş analitikler</li>
+            <li>Öncelikli destek</li>
+          </ul>
+
+          <p style="text-align: center;">
+            <a href="${FRONTEND_URL}/dashboard/settings?tab=billing" class="button">${nextPlan}'ya Yükselt</a>
+          </p>
+
+          <p style="font-size: 14px; color: #6b7280;">
+            Kullanımınız ayın 1'inde sıfırlanacak.
+          </p>
+        </div>
+        <div class="footer">
+          <p>Telyx.AI Ekibi<br>
+          <a href="https://telyx.ai" class="link">https://telyx.ai</a></p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return sendEmail(email, subject, html);
+};
+
+/**
+ * 11. Payment Success Email
+ */
+export const sendPaymentSuccessEmail = async (email, businessName, amount, plan) => {
+  const subject = 'Telyx.AI - Ödeme Başarılı!';
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f4f4f5; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0; }
+        .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
+        .content { background: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px; }
+        .button { display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white !important; text-decoration: none; border-radius: 8px; margin: 24px 0; font-weight: 600; font-size: 16px; }
+        .invoice-box { background: #f9fafb; padding: 24px; border-radius: 8px; margin: 24px 0; border: 1px solid #e5e7eb; }
+        .invoice-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #e5e7eb; }
+        .invoice-row:last-child { border-bottom: none; }
+        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
+        .link { color: #667eea; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>✅ Ödeme Başarılı</h1>
+        </div>
+        <div class="content">
+          <p>Merhaba${businessName ? ` ${businessName}` : ''},</p>
+          <p>Teşekkürler! Ödemeniz başarıyla işlendi.</p>
+
+          <div class="invoice-box">
+            <div class="invoice-row">
+              <span><strong>Plan:</strong></span>
+              <span>${plan}</span>
+            </div>
+            <div class="invoice-row">
+              <span><strong>Tutar:</strong></span>
+              <span>${amount} TL</span>
+            </div>
+            <div class="invoice-row">
+              <span><strong>Durum:</strong></span>
+              <span style="color: #10b981;"><strong>ÖDENDİ</strong></span>
+            </div>
+          </div>
+
+          <p>Aboneliğiniz aktif ve asistanınız arama almaya hazır!</p>
+
+          <p style="text-align: center;">
+            <a href="${FRONTEND_URL}/dashboard" class="button">Dashboard'a Git</a>
+          </p>
+
+          <p style="font-size: 14px; color: #6b7280;">
+            Faturanıza ödeme ayarlarından ulaşabilirsiniz.
+          </p>
+        </div>
+        <div class="footer">
+          <p>Telyx.AI Ekibi<br>
+          <a href="https://telyx.ai" class="link">https://telyx.ai</a></p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return sendEmail(email, subject, html);
+};
+
+/**
+ * 12. Payment Failed Email
+ */
+export const sendPaymentFailedEmail = async (email, businessName) => {
+  const subject = 'Telyx.AI - Ödeme Başarısız';
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f4f4f5; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0; }
+        .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
+        .content { background: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px; }
+        .button { display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white !important; text-decoration: none; border-radius: 8px; margin: 24px 0; font-weight: 600; font-size: 16px; }
+        .warning-box { background: #fef2f2; padding: 20px; border-radius: 8px; border-left: 4px solid #ef4444; margin: 24px 0; }
+        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
+        .link { color: #667eea; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>❌ Ödeme Başarısız</h1>
+        </div>
+        <div class="content">
+          <p>Merhaba${businessName ? ` ${businessName}` : ''},</p>
+          <p>Son ödemenizi işleyemedik. Bu çözülmezse hizmetiniz kesintiye uğrayabilir.</p>
+
+          <div class="warning-box">
+            <p style="margin: 0;"><strong>⚠️ İşlem Gerekli:</strong><br>
+            Telyx kullanmaya devam etmek için lütfen ödeme yönteminizi güncelleyin.</p>
+          </div>
+
+          <p><strong>Ödeme başarısızlığının yaygın nedenleri:</strong></p>
+          <ul>
+            <li>Yetersiz bakiye</li>
+            <li>Kartın süresi dolmuş</li>
+            <li>Yanlış fatura bilgileri</li>
+          </ul>
+
+          <p style="text-align: center;">
+            <a href="${FRONTEND_URL}/dashboard/settings?tab=billing" class="button">Ödeme Yöntemini Güncelle</a>
+          </p>
+
+          <p style="font-size: 14px; color: #6b7280;">
+            Yardıma ihtiyacınız varsa bu emaile cevap verebilirsiniz.
+          </p>
+        </div>
+        <div class="footer">
+          <p>Telyx.AI Ekibi<br>
+          <a href="https://telyx.ai" class="link">https://telyx.ai</a></p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return sendEmail(email, subject, html);
+};
+
+/**
+ * 13. Monthly Reset Email
+ */
+export const sendMonthlyResetEmail = async (email, businessName, plan) => {
+  const subject = 'Telyx.AI - Yeni Ay, Yeni Limitler!';
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f4f4f5; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0; }
+        .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
+        .content { background: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px; }
+        .button { display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white !important; text-decoration: none; border-radius: 8px; margin: 24px 0; font-weight: 600; font-size: 16px; }
+        .limits-box { background: #f9fafb; padding: 24px; border-radius: 8px; margin: 24px 0; border: 1px solid #e5e7eb; }
+        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
+        .link { color: #667eea; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>🔄 Yeni Ay Başladı!</h1>
+        </div>
+        <div class="content">
+          <p>Merhaba${businessName ? ` ${businessName}` : ''},</p>
+          <p>Harika haber! ${plan} planınız için aylık kullanım limitleri sıfırlandı.</p>
+
+          <div class="limits-box">
+            <p style="margin: 0;"><strong>✨ Yeni limitler:</strong></p>
+            <ul style="margin: 15px 0;">
+              ${plan === 'STARTER' ? '<li>150 dakika</li>' : ''}
+              ${plan === 'PRO' ? '<li>500 dakika</li>' : ''}
+              ${plan === 'ENTERPRISE' ? '<li>Sınırsız!</li>' : ''}
+            </ul>
+          </div>
+
+          <p>AI asistanınız harika bir ay daha için arama almaya hazır!</p>
+
+          <p style="text-align: center;">
+            <a href="${FRONTEND_URL}/dashboard/analytics" class="button">Analizleri Görüntüle</a>
+          </p>
+        </div>
+        <div class="footer">
+          <p>Telyx.AI Ekibi<br>
+          <a href="https://telyx.ai" class="link">https://telyx.ai</a></p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return sendEmail(email, subject, html);
+};
+
+/**
+ * 14. Weekly Summary Email (PRO+ only)
+ */
+export const sendWeeklySummaryEmail = async (email, businessName, stats) => {
+  const subject = `Telyx.AI - Haftalık Özet: ${stats.totalCalls} Arama`;
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f4f4f5; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0; }
+        .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
+        .content { background: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px; }
+        .button { display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white !important; text-decoration: none; border-radius: 8px; margin: 24px 0; font-weight: 600; font-size: 16px; }
+        .stats-box { background: #f9fafb; padding: 24px; border-radius: 8px; margin: 24px 0; }
+        .stat-row { display: flex; justify-content: space-between; padding: 16px 0; border-bottom: 1px solid #e5e7eb; }
+        .stat-row:last-child { border-bottom: none; }
+        .stat-value { font-size: 24px; font-weight: bold; color: #10b981; }
+        .insight-box { background: #ecfdf5; padding: 16px; border-radius: 8px; border-left: 4px solid #10b981; margin: 24px 0; }
+        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
+        .link { color: #667eea; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>📊 Haftalık Özet</h1>
+          <p style="margin: 8px 0 0 0; opacity: 0.9;">AI Asistan Performansınız</p>
+        </div>
+        <div class="content">
+          <p>Merhaba${businessName ? ` ${businessName}` : ''},</p>
+          <p>AI asistanınızın bu haftaki performansı:</p>
+
+          <div class="stats-box">
+            <h3 style="margin-top: 0; border-bottom: 2px solid #10b981; padding-bottom: 12px;">Temel Metrikler</h3>
+            <div class="stat-row">
+              <span><strong>Toplam Arama:</strong></span>
+              <span class="stat-value">${stats.totalCalls}</span>
+            </div>
+            <div class="stat-row">
+              <span><strong>Ortalama Süre:</strong></span>
+              <span>${stats.avgDuration}</span>
+            </div>
+            <div class="stat-row">
+              <span><strong>Müşteri Memnuniyeti:</strong></span>
+              <span>${stats.satisfaction}% Olumlu</span>
+            </div>
+            <div class="stat-row">
+              <span><strong>En Yoğun Gün:</strong></span>
+              <span>${stats.busiestDay}</span>
+            </div>
+          </div>
+
+          ${stats.topIntent ? `
+          <div class="insight-box">
+            <p style="margin: 0;"><strong>💡 En Sık Arama Nedeni:</strong><br>
+            ${stats.topIntent}</p>
+          </div>
+          ` : ''}
+
+          <p style="text-align: center;">
+            <a href="${FRONTEND_URL}/dashboard/analytics" class="button">Tam Raporu Görüntüle</a>
+          </p>
+
+          <p>Harika iş çıkarıyorsunuz!</p>
+        </div>
+        <div class="footer">
+          <p>Telyx.AI Ekibi<br>
+          <a href="https://telyx.ai" class="link">https://telyx.ai</a></p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return sendEmail(email, subject, html);
+};
+
+/**
+ * 15. Low Balance Warning Email (Alias for sendLowBalanceAlert)
+ */
+export const sendLowBalanceWarningEmail = async (email, data) => {
+  return sendLowBalanceAlert(email, data?.balance || data?.remainingMinutes || 0);
+};
+
+/**
+ * 16. Trial Expired Notification
+ */
+export const sendTrialExpiredNotification = async ({ email, businessName }) => {
+  const subject = 'Telyx.AI - Deneme Süreniz Doldu';
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f4f4f5; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0; }
+        .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
+        .content { background: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px; }
+        .button { display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white !important; text-decoration: none; border-radius: 8px; margin: 24px 0; font-weight: 600; font-size: 16px; }
+        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
+        .link { color: #667eea; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Deneme Süreniz Doldu</h1>
+        </div>
+        <div class="content">
+          <p>Merhaba${businessName ? ` ${businessName}` : ''},</p>
+          <p>7 günlük deneme süreniz sona erdi. Telyx.AI'ı kullanmaya devam etmek için bir plan seçmeniz gerekiyor.</p>
+
+          <p><strong>Size özel fırsatlar:</strong></p>
+          <ul>
+            <li><strong>PAYG (Kullandıkça Öde):</strong> Taahhütsüz, sadece kullandığınız kadar ödeyin</li>
+            <li><strong>STARTER:</strong> 2.499 TL/ay, 150 dakika dahil</li>
+            <li><strong>PRO:</strong> 7.499 TL/ay, 500 dakika dahil</li>
+          </ul>
+
+          <p style="text-align: center;">
+            <a href="${FRONTEND_URL}/dashboard/subscription" class="button">Plan Seç</a>
+          </p>
+        </div>
+        <div class="footer">
+          <p>Telyx.AI Ekibi<br>
+          <a href="https://telyx.ai" class="link">https://telyx.ai</a></p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return sendEmail(email, subject, html);
+};
+
+/**
+ * 17. Overage Bill Notification
+ */
+export const sendOverageBillNotification = async ({ email, businessName, overageMinutes, totalAmount }) => {
+  return sendOverageInvoice(email, overageMinutes, totalAmount);
+};
+
+/**
+ * 18. Overage Limit Reached Email
+ */
+export const sendOverageLimitReachedEmail = async (email, businessName, overageMinutes, maxOverageLimit) => {
+  const subject = 'Telyx.AI - Aşım Limitine Ulaşıldı';
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f4f4f5; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0; }
+        .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
+        .content { background: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px; }
+        .button { display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white !important; text-decoration: none; border-radius: 8px; margin: 24px 0; font-weight: 600; font-size: 16px; }
+        .warning-box { background: #fef2f2; padding: 20px; border-radius: 8px; border-left: 4px solid #ef4444; margin: 24px 0; }
+        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
+        .link { color: #667eea; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Aşım Limitine Ulaşıldı</h1>
+        </div>
+        <div class="content">
+          <p>Merhaba${businessName ? ` ${businessName}` : ''},</p>
+          <p>Bu ay için belirlenen maksimum aşım limitinize (${maxOverageLimit} dakika) ulaştınız.</p>
+
+          <div class="warning-box">
+            <p style="margin: 0;"><strong>⚠️ Önemli:</strong><br>
+            Hizmet kesintisini önlemek için bakiye yükleyin veya planınızı yükseltin.</p>
+          </div>
+
+          <p style="text-align: center;">
+            <a href="${FRONTEND_URL}/dashboard/billing" class="button">Bakiye Yükle</a>
+          </p>
+        </div>
+        <div class="footer">
+          <p>Telyx.AI Ekibi<br>
+          <a href="https://telyx.ai" class="link">https://telyx.ai</a></p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return sendEmail(email, subject, html);
+};
+
+/**
+ * 19. Auto Reload Failed Email
+ */
+export const sendAutoReloadFailedEmail = async (email, businessName, amount) => {
+  const subject = 'Telyx.AI - Otomatik Yükleme Başarısız';
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f4f4f5; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0; }
+        .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
+        .content { background: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px; }
+        .button { display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white !important; text-decoration: none; border-radius: 8px; margin: 24px 0; font-weight: 600; font-size: 16px; }
+        .warning-box { background: #fef2f2; padding: 20px; border-radius: 8px; border-left: 4px solid #ef4444; margin: 24px 0; }
+        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
+        .link { color: #667eea; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Otomatik Yükleme Başarısız</h1>
+        </div>
+        <div class="content">
+          <p>Merhaba${businessName ? ` ${businessName}` : ''},</p>
+          <p>Otomatik bakiye yükleme işleminiz (${amount} TL) başarısız oldu.</p>
+
+          <div class="warning-box">
+            <p style="margin: 0;"><strong>⚠️ Olası Nedenler:</strong></p>
+            <ul style="margin: 8px 0 0 0; padding-left: 20px;">
+              <li>Yetersiz bakiye</li>
+              <li>Kartın süresi dolmuş</li>
+              <li>Kart limiti aşılmış</li>
+            </ul>
+          </div>
+
+          <p>Hizmet kesintisini önlemek için lütfen ödeme yönteminizi kontrol edin veya manuel yükleme yapın.</p>
+
+          <p style="text-align: center;">
+            <a href="${FRONTEND_URL}/dashboard/billing" class="button">Ödeme Yöntemini Güncelle</a>
+          </p>
+        </div>
+        <div class="footer">
+          <p>Telyx.AI Ekibi<br>
+          <a href="https://telyx.ai" class="link">https://telyx.ai</a></p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return sendEmail(email, subject, html);
+};
+
+/**
+ * 20. Low Balance Warning (with data object)
+ */
+export const sendLowBalanceWarning = async ({ email, businessName, balance, threshold }) => {
+  return sendLowBalanceAlert(email, balance);
+};
+
 export default {
+  sendVerificationEmail,
+  sendPasswordResetEmail,
   sendWelcomeEmail,
+  sendLowBalanceAlert,
+  sendOverageInvoice,
+  sendEmailChangeVerification,
   sendAssistantCreatedEmail,
   sendPhoneActivatedEmail,
   sendLimitWarningEmail,
@@ -602,6 +1138,10 @@ export default {
   sendPaymentFailedEmail,
   sendMonthlyResetEmail,
   sendWeeklySummaryEmail,
-  sendVerificationEmail,
-  sendEmailChangeVerification
+  sendLowBalanceWarningEmail,
+  sendTrialExpiredNotification,
+  sendOverageBillNotification,
+  sendOverageLimitReachedEmail,
+  sendAutoReloadFailedEmail,
+  sendLowBalanceWarning
 };
