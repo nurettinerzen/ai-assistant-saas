@@ -163,15 +163,14 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
       where: { businessId, isActive: true },
     });
 
-    // Plan limits: FREE=1, BASIC=3, PROFESSIONAL=10, ENTERPRISE=unlimited
-    const limits = { FREE: 1, BASIC: 3, PROFESSIONAL: 10, ENTERPRISE: 999 };
-    const limit = limits[subscription?.plan] || 1;
-
-    if (assistantCount >= limit) {
-      return res.status(403).json({ 
-        error: `You've reached your plan limit of ${limit} assistant${limit > 1 ? 's' : ''}. Upgrade to add more.` 
-      });
-    }
+    // Plan limits removed - unlimited assistants for all plans
+    // const limits = { FREE: 1, BASIC: 3, PROFESSIONAL: 10, ENTERPRISE: 999 };
+    // const limit = limits[subscription?.plan] || 1;
+    // if (assistantCount >= limit) {
+    //   return res.status(403).json({
+    //     error: `You've reached your plan limit of ${limit} assistant${limit > 1 ? 's' : ''}. Upgrade to add more.`
+    //   });
+    // }
 
     // Get 11Labs voice ID from central mapping
     const elevenLabsVoiceId = getElevenLabsVoiceId(voiceId, language);
