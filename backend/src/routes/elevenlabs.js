@@ -138,6 +138,15 @@ router.post('/webhook', async (req, res) => {
       return res.json(result);
     }
 
+    // 11Labs sometimes sends tool calls without tool_name - detect by parameters
+    // If we have query_type (customer_data_lookup specific param), it's that tool
+    if (!eventType && event.query_type) {
+      console.log('🔧 11Labs Tool Call (detected by params - customer_data_lookup):', event);
+      const toolEvent = { ...event, tool_name: 'customer_data_lookup' };
+      const result = await handleToolCall(toolEvent, agentIdFromQuery);
+      return res.json(result);
+    }
+
     switch (eventType) {
       // ========== TOOL CALL - Server-side tool execution (legacy format) ==========
       case 'tool_call':
