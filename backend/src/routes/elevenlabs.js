@@ -416,7 +416,20 @@ async function handleToolCall(event, agentIdFromQuery = null) {
             conversationId: conversation_id,
             callerPhone: resolvedCallerPhone
           });
-          return result;
+
+          // Apply same response format as main path
+          if (result.success) {
+            return {
+              success: true,
+              message: result.message || JSON.stringify(result.data),
+              data: result.data
+            };
+          } else {
+            return {
+              success: false,
+              error: result.error || 'Tool execution failed'
+            };
+          }
         }
       }
       return {
@@ -476,11 +489,20 @@ async function handleToolCall(event, agentIdFromQuery = null) {
 
     console.log(`🔧 Tool result for ${toolName}:`, result.success ? 'SUCCESS' : 'FAILED', JSON.stringify(result).substring(0, 500));
 
-    return {
-      success: result.success,
-      result: result.data || result.message,
-      error: result.error
-    };
+    // 11Labs expects a simple response that the AI can use to continue conversation
+    // Return the message directly for the AI to read and respond to
+    if (result.success) {
+      return {
+        success: true,
+        message: result.message || JSON.stringify(result.data),
+        data: result.data
+      };
+    } else {
+      return {
+        success: false,
+        error: result.error || 'Tool execution failed'
+      };
+    }
 
   } catch (error) {
     console.error('[11Labs Tool Call] Error:', error);
