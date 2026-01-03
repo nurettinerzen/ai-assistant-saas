@@ -1638,8 +1638,8 @@ router.post('/ideasoft/auth', authenticateToken, async (req, res) => {
     }, 5 * 60 * 1000);
     
     // Callback URL
-    const redirectUri = 'https://marin-methoxy-suzette.ngrok-free.dev/api/integrations/ideasoft/callback';
-    
+    const redirectUri = (process.env.BACKEND_URL || 'https://ai-assistant-saas.onrender.com') + '/api/integrations/ideasoft/callback';
+
     // İdeasoft authorization URL
     const authUrl = `${normalizedUrl}/oauth/authorize?` + new URLSearchParams({
       client_id: clientId,
@@ -1683,7 +1683,7 @@ router.get('/ideasoft/callback', async (req, res) => {
     delete global.ideasoftPendingAuth[state];
     
     // Code'u token'a çevir
-    const redirectUri = 'https://marin-methoxy-suzette.ngrok-free.dev/api/integrations/ideasoft/callback';
+    const redirectUri = (process.env.BACKEND_URL || 'https://ai-assistant-saas.onrender.com') + '/api/integrations/ideasoft/callback';
     
     console.log('🔄 Exchanging code for token...');
     

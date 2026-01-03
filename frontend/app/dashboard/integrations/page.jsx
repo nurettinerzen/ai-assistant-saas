@@ -1459,7 +1459,7 @@ const handleIdeasoftConnect = async () => {
               <li>Açılan formda:
                 <ul>
                   <li><strong>Adı:</strong> Telyx.ai</li>
-                  <li><strong>Yönlendirme Adresi:</strong> <code>https://marin-methoxy-suzette.ngrok-free.dev/api/integrations/ideasoft/callback</code></li>
+                  <li><strong>Yönlendirme Adresi:</strong> <code>https://ai-assistant-saas.onrender.com/api/integrations/ideasoft/callback</code></li>
                 </ul>
               </li>
               <li><strong>Kaydet</strong>'e tıklayın</li>
