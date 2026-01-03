@@ -380,6 +380,51 @@ async function handleToolCall(event, agentIdFromQuery = null) {
 
   try {
     // Find business from agent ID
+    // IMPORTANT: If agent_id is undefined/null, we cannot find the correct business
+    if (!agent_id) {
+      console.error('❌ No agent_id provided in tool call - cannot identify business');
+      // Try to find from conversation_id if available
+      if (conversation_id) {
+        const callLog = await prisma.callLog.findFirst({
+          where: { callId: conversation_id },
+          include: {
+            assistant: {
+              include: {
+                business: {
+                  include: {
+                    integrations: { where: { isActive: true } },
+                    users: {
+                      where: { role: 'OWNER' },
+                      take: 1,
+                      select: { email: true }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        });
+        if (callLog?.assistant?.business) {
+          const business = callLog.assistant.business;
+          console.log(`✅ Found business from conversation: ${business.name} (ID: ${business.id})`);
+
+          let resolvedCallerPhone = callerPhone || callLog.callerId;
+          if (resolvedCallerPhone === 'Unknown') resolvedCallerPhone = null;
+
+          const result = await executeTool(toolName, parameters, business, {
+            channel: 'PHONE',
+            conversationId: conversation_id,
+            callerPhone: resolvedCallerPhone
+          });
+          return result;
+        }
+      }
+      return {
+        success: false,
+        error: 'Cannot identify business - no agent_id or conversation_id'
+      };
+    }
+
     const assistant = await prisma.assistant.findFirst({
       where: { elevenLabsAgentId: agent_id },
       include: {
