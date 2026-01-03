@@ -217,8 +217,8 @@ function formatResponseMessage(customer, customFields, queryType, language) {
     case 'sgk_borcu':
       if (customFields.sgkDebt !== undefined && customFields.sgkDebt !== null) {
         message += isTR
-          ? `\nSGK Borcu: ${formatMoney(customFields.sgkDebt)} TL`
-          : `\nSSI Debt: ${formatMoney(customFields.sgkDebt)} TL`;
+          ? `\nSGK Borcu: ${formatMoney(customFields.sgkDebt)}`
+          : `\nSSI Debt: ${formatMoney(customFields.sgkDebt)}`;
 
         if (customFields.sgkDueDate) {
           message += isTR
@@ -235,8 +235,8 @@ function formatResponseMessage(customer, customFields, queryType, language) {
     case 'vergi_borcu':
       if (customFields.taxDebt !== undefined && customFields.taxDebt !== null) {
         message += isTR
-          ? `\nVergi Borcu: ${formatMoney(customFields.taxDebt)} TL`
-          : `\nTax Debt: ${formatMoney(customFields.taxDebt)} TL`;
+          ? `\nVergi Borcu: ${formatMoney(customFields.taxDebt)}`
+          : `\nTax Debt: ${formatMoney(customFields.taxDebt)}`;
 
         if (customFields.taxDueDate) {
           message += isTR
@@ -286,8 +286,8 @@ function formatResponseMessage(customer, customFields, queryType, language) {
       // SGK Debt
       if (customFields.sgkDebt !== undefined && customFields.sgkDebt !== null) {
         message += isTR
-          ? `\nSGK Borcu: ${formatMoney(customFields.sgkDebt)} TL`
-          : `\nSSI Debt: ${formatMoney(customFields.sgkDebt)} TL`;
+          ? `\nSGK Borcu: ${formatMoney(customFields.sgkDebt)}`
+          : `\nSSI Debt: ${formatMoney(customFields.sgkDebt)}`;
 
         if (customFields.sgkDueDate) {
           message += isTR
@@ -299,8 +299,8 @@ function formatResponseMessage(customer, customFields, queryType, language) {
       // Tax Debt
       if (customFields.taxDebt !== undefined && customFields.taxDebt !== null) {
         message += isTR
-          ? `\nVergi Borcu: ${formatMoney(customFields.taxDebt)} TL`
-          : `\nTax Debt: ${formatMoney(customFields.taxDebt)} TL`;
+          ? `\nVergi Borcu: ${formatMoney(customFields.taxDebt)}`
+          : `\nTax Debt: ${formatMoney(customFields.taxDebt)}`;
 
         if (customFields.taxDueDate) {
           message += isTR
@@ -312,8 +312,8 @@ function formatResponseMessage(customer, customFields, queryType, language) {
       // Other Debt
       if (customFields.otherDebt !== undefined && customFields.otherDebt !== null) {
         message += isTR
-          ? `\nDiğer Borç: ${formatMoney(customFields.otherDebt)} TL`
-          : `\nOther Debt: ${formatMoney(customFields.otherDebt)} TL`;
+          ? `\nDiğer Borç: ${formatMoney(customFields.otherDebt)}`
+          : `\nOther Debt: ${formatMoney(customFields.otherDebt)}`;
 
         if (customFields.otherDebtNote) {
           message += ` (${customFields.otherDebtNote})`;
@@ -363,14 +363,57 @@ function formatResponseMessage(customer, customFields, queryType, language) {
 }
 
 /**
- * Format money value
+ * Format money value for AI to read correctly
+ * Uses space as thousands separator to avoid AI confusion with decimal points
+ * Example: 8320.50 -> "8 bin 320 lira 50 kuruş" or "8320.50" for simple values
  */
 function formatMoney(value) {
-  if (value === null || value === undefined) return '0';
-  return new Intl.NumberFormat('tr-TR', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }).format(value);
+  if (value === null || value === undefined) return '0 TL';
+
+  const num = Number(value);
+  if (isNaN(num)) return '0 TL';
+
+  // For values under 1000, just show the number simply
+  if (num < 1000) {
+    return `${num.toFixed(2)} TL`;
+  }
+
+  // For larger values, format with Turkish words to avoid AI confusion
+  // e.g., 8320.00 -> "8 bin 320 TL"
+  // e.g., 125000.50 -> "125 bin TL"
+  const intPart = Math.floor(num);
+  const decPart = Math.round((num - intPart) * 100);
+
+  let result = '';
+
+  if (intPart >= 1000000) {
+    const millions = Math.floor(intPart / 1000000);
+    const remainder = intPart % 1000000;
+    result = `${millions} milyon`;
+    if (remainder >= 1000) {
+      const thousands = Math.floor(remainder / 1000);
+      const units = remainder % 1000;
+      result += ` ${thousands} bin`;
+      if (units > 0) result += ` ${units}`;
+    } else if (remainder > 0) {
+      result += ` ${remainder}`;
+    }
+  } else if (intPart >= 1000) {
+    const thousands = Math.floor(intPart / 1000);
+    const units = intPart % 1000;
+    result = `${thousands} bin`;
+    if (units > 0) result += ` ${units}`;
+  } else {
+    result = String(intPart);
+  }
+
+  result += ' TL';
+
+  if (decPart > 0) {
+    result += ` ${decPart} kuruş`;
+  }
+
+  return result;
 }
 
 /**
