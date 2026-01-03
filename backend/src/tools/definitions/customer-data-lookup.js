@@ -20,7 +20,7 @@ export default {
         description: 'ZORUNLU: Müşterinin söylediği telefon numarası. Müşteri hangi numarayı söylediyse onu buraya yaz. Boşlukları ve tireleri kaldır. Örnek: "0532 123 45 67" -> "05321234567", "532 123 4567" -> "5321234567"'
       }
     },
-    required: ['query_type', 'phone']
+    required: ['query_type']
   },
   // Available for all business types - can store custom data
   allowedBusinessTypes: ['RESTAURANT', 'SALON', 'ECOMMERCE', 'CLINIC', 'SERVICE', 'OTHER'],
