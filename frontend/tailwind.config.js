@@ -1,9 +1,8 @@
 // ============================================================================
 // TELYX CUSTOM TAILWIND CONFIGURATION
 // ============================================================================
-// FILE: frontend/tailwind.config.js (REPLACE EXISTING)
-//
-// Custom design system inspired by retell.ai and bland.ai
+// Design system inspired by Retell AI, 11Labs, and Bland AI
+// Minimalist, professional, user-friendly
 // ============================================================================
 
 const { fontFamily } = require('tailwindcss/defaultTheme');
@@ -27,22 +26,23 @@ module.exports = {
     },
     extend: {
       colors: {
-        // Custom Primary Color (Purple-Blue)
+        // Primary Color (Indigo - Retell/11Labs style)
         primary: {
-          50: '#f0f1ff',
-          100: '#e4e6ff',
-          200: '#cdd0ff',
-          300: '#a7adff',
-          400: '#7d85ff',
-          500: '#5b5fff', // Main brand color
-          600: '#4347cc',
-          700: '#3538a3',
-          800: '#2c2e85',
-          900: '#26286e',
-          DEFAULT: '#5b5fff',
+          50: '#eef2ff',
+          100: '#e0e7ff',
+          200: '#c7d2fe',
+          300: '#a5b4fc',
+          400: '#818cf8',
+          500: '#6366f1',
+          600: '#4f46e5', // Main brand color
+          700: '#4338ca', // Hover state
+          800: '#3730a3',
+          900: '#312e81',
+          950: '#1e1b4b',
+          DEFAULT: '#4f46e5',
           foreground: '#ffffff',
         },
-        // Neutral Grays (Refined)
+        // Gray palette (refined)
         gray: {
           50: '#f9fafb',
           100: '#f3f4f6',
@@ -54,33 +54,63 @@ module.exports = {
           700: '#374151',
           800: '#1f2937',
           900: '#111827',
+          950: '#030712',
         },
         // Success (Green)
         success: {
           50: '#ecfdf5',
           100: '#d1fae5',
+          200: '#a7f3d0',
+          300: '#6ee7b7',
+          400: '#34d399',
           500: '#10b981',
           600: '#059669',
           700: '#047857',
+          800: '#065f46',
+          900: '#064e3b',
           DEFAULT: '#10b981',
         },
         // Warning (Amber)
         warning: {
           50: '#fffbeb',
           100: '#fef3c7',
+          200: '#fde68a',
+          300: '#fcd34d',
+          400: '#fbbf24',
           500: '#f59e0b',
           600: '#d97706',
           700: '#b45309',
+          800: '#92400e',
+          900: '#78350f',
           DEFAULT: '#f59e0b',
         },
         // Error (Red)
         error: {
           50: '#fef2f2',
           100: '#fee2e2',
+          200: '#fecaca',
+          300: '#fca5a5',
+          400: '#f87171',
           500: '#ef4444',
           600: '#dc2626',
           700: '#b91c1c',
+          800: '#991b1b',
+          900: '#7f1d1d',
           DEFAULT: '#ef4444',
+        },
+        // Info (Blue)
+        info: {
+          50: '#eff6ff',
+          100: '#dbeafe',
+          200: '#bfdbfe',
+          300: '#93c5fd',
+          400: '#60a5fa',
+          500: '#3b82f6',
+          600: '#2563eb',
+          700: '#1d4ed8',
+          800: '#1e40af',
+          900: '#1e3a8a',
+          DEFAULT: '#3b82f6',
         },
         // Shadcn compatibility
         border: 'hsl(var(--border))',
@@ -117,33 +147,35 @@ module.exports = {
         sans: ['Inter', ...fontFamily.sans],
       },
       fontSize: {
-        xs: ['0.75rem', { lineHeight: '1.5' }],
-        sm: ['0.875rem', { lineHeight: '1.6' }],
-        base: ['1rem', { lineHeight: '1.6' }],
-        lg: ['1.125rem', { lineHeight: '1.5' }],
-        xl: ['1.25rem', { lineHeight: '1.4' }],
-        '2xl': ['1.5rem', { lineHeight: '1.3' }],
-        '3xl': ['1.875rem', { lineHeight: '1.2' }],
-        '4xl': ['2.25rem', { lineHeight: '1.1' }],
+        xs: ['0.75rem', { lineHeight: '1rem' }],      // 12px - Caption
+        sm: ['0.875rem', { lineHeight: '1.25rem' }],  // 14px - Body
+        base: ['1rem', { lineHeight: '1.5rem' }],     // 16px - H3
+        lg: ['1.125rem', { lineHeight: '1.75rem' }],  // 18px
+        xl: ['1.25rem', { lineHeight: '1.75rem' }],   // 20px - H2
+        '2xl': ['1.5rem', { lineHeight: '2rem' }],    // 24px - H1
+        '3xl': ['1.875rem', { lineHeight: '2.25rem' }],
+        '4xl': ['2.25rem', { lineHeight: '2.5rem' }],
       },
       spacing: {
+        4.5: '1.125rem',  // 18px
         18: '4.5rem',
         22: '5.5rem',
       },
       borderRadius: {
-        lg: '12px',
-        md: '8px',
         sm: '4px',
+        DEFAULT: '6px',
+        md: '8px',
+        lg: '12px',
+        xl: '16px',
       },
       boxShadow: {
-        sm: '0 1px 2px 0 rgb(0 0 0 / 0.05)',
-        DEFAULT:
-          '0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)',
-        md: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
-        lg: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)',
-        xl: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)',
-        '2xl': '0 25px 50px -12px rgb(0 0 0 / 0.25)',
-        inner: 'inset 0 2px 4px 0 rgb(0 0 0 / 0.05)',
+        sm: '0 1px 2px rgba(0, 0, 0, 0.05)',
+        DEFAULT: '0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06)',
+        md: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+        lg: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+        xl: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+        '2xl': '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+        inner: 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.06)',
         none: 'none',
       },
       keyframes: {
@@ -163,12 +195,29 @@ module.exports = {
           from: { transform: 'translateY(-10px)', opacity: 0 },
           to: { transform: 'translateY(0)', opacity: 1 },
         },
+        'gradient-shift': {
+          '0%, 100%': { backgroundPosition: '0% 50%' },
+          '50%': { backgroundPosition: '100% 50%' },
+        },
+        'pulse-slow': {
+          '0%, 100%': { opacity: 1 },
+          '50%': { opacity: 0.5 },
+        },
+        'blob': {
+          '0%': { transform: 'translate(0px, 0px) scale(1)' },
+          '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+          '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+          '100%': { transform: 'translate(0px, 0px) scale(1)' },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
         'fade-in': 'fade-in 0.3s ease-out',
         'slide-in': 'slide-in 0.3s ease-out',
+        'gradient-shift': 'gradient-shift 3s ease infinite',
+        'pulse-slow': 'pulse-slow 2s ease-in-out infinite',
+        'blob': 'blob 7s infinite',
       },
     },
   },

@@ -1,39 +1,33 @@
 /**
- * Dashboard Overview Page - Quick Overview Redesign
- * Main landing page showing recent activity, key metrics, and quick actions
+ * Dashboard Overview Page
+ * Clean, minimal design inspired by 11Labs and Retell AI
  */
 
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import MetricCard from '@/components/MetricCard';
-import EmptyState from '@/components/EmptyState';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { GradientLoaderInline } from '@/components/GradientLoader';
+import EmptyState from '@/components/EmptyState';
 import {
   Phone,
   Clock,
-  DollarSign,
   TrendingUp,
-  Plus,
-  ExternalLink,
   PhoneCall,
   Bot,
-  Plug,
-  AlertCircle,
+  Puzzle,
   CheckCircle2,
   MessageCircle,
-  CalendarCheck,
   BarChart3,
-  CreditCard,
-  Zap,
   ArrowRight,
   Activity,
+  Sparkles,
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
-import { formatDate, formatDuration, formatCurrency, getIntlLocale } from '@/lib/utils';
+import { formatDate, formatDuration, getIntlLocale } from '@/lib/utils';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function DashboardPage() {
@@ -48,7 +42,6 @@ export default function DashboardPage() {
     phoneNumbers: 0,
   });
 
-  // Get current time of day for greeting
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return t('dashboard.overviewPage.goodMorning');
@@ -56,24 +49,13 @@ export default function DashboardPage() {
     return t('dashboard.overviewPage.goodEvening');
   };
 
-  // Get user name from localStorage
   const getUserName = () => {
     try {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
-      return user.name || user.email?.split('@')[0] || 'there';
+      return user.name || user.email?.split('@')[0] || '';
     } catch {
-      return 'there';
+      return '';
     }
-  };
-
-  // Format current date
-  const getCurrentDate = () => {
-    return new Date().toLocaleDateString(getIntlLocale(locale), {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
   };
 
   useEffect(() => {
@@ -93,9 +75,7 @@ export default function DashboardPage() {
         ]);
 
       setStats(statsRes.data);
-      setRecentCalls((callsRes.data.calls || []).slice(0, 8));
-
-      // Set system status
+      setRecentCalls((callsRes.data.calls || []).slice(0, 5));
       setSystemStatus({
         activeAssistants: assistantsRes.data.assistants?.length || 0,
         connectedIntegrations:
@@ -110,415 +90,266 @@ export default function DashboardPage() {
     }
   };
 
-  // Generate sparkline data from stats
-  const generateSparklineData = (baseValue, trend) => {
-    if (!baseValue) return [];
-    const data = [];
-    const variation = trend === 'up' ? 1.15 : trend === 'down' ? 0.85 : 1;
-    const steps = 7;
+  // Stat Card Component - 11Labs style
+  const StatCard = ({ label, value, icon: Icon, color = 'primary' }) => {
+    const colorClasses = {
+      primary: 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20',
+      success: 'text-success-600 dark:text-success-400 bg-success-50 dark:bg-success-900/20',
+      info: 'text-info-600 dark:text-info-400 bg-info-50 dark:bg-info-900/20',
+      warning: 'text-warning-600 dark:text-warning-400 bg-warning-50 dark:bg-warning-900/20',
+    };
 
-    for (let i = 0; i < steps; i++) {
-      const randomVariation = 0.9 + Math.random() * 0.2;
-      const value = Math.round((baseValue / steps) * i * randomVariation * variation);
-      data.push({ value });
-    }
-
-    return data;
+    return (
+      <div className="bg-white dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-800 p-5">
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
+              {label}
+            </p>
+            <p className="text-2xl font-semibold text-gray-900 dark:text-white">
+              {value}
+            </p>
+          </div>
+          <div className={`p-2 rounded-md ${colorClasses[color]}`}>
+            <Icon className="h-4 w-4" />
+          </div>
+        </div>
+      </div>
+    );
   };
 
+  if (loading) {
+    return <GradientLoaderInline text={t('dashboard.overviewPage.loadingDashboard') || 'Dashboard yükleniyor...'} />;
+  }
+
   return (
-    <div className="space-y-8">
-      {/* ========== SECTION 1: WELCOME HEADER ========== */}
-      <div className="bg-gradient-to-r from-primary-600 to-primary-700 rounded-2xl p-8 text-white shadow-lg">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">
-              {getGreeting()}, {getUserName()}!
-            </h1>
-            <p className="text-primary-100 text-sm">{getCurrentDate()}</p>
-            <p className="text-white/90 mt-3">
-              {t('dashboard.overviewPage.dashboardWelcomeMessage')}
-            </p>
-          </div>
-          <div className="flex gap-3">
-            <Button
-              variant="secondary"
-              onClick={() => router.push('/dashboard/analytics')}
-              className="bg-white/10 hover:bg-white/20 text-white border-white/20"
-            >
-              <BarChart3 className="h-4 w-4 mr-2" />
-              {t('dashboard.overviewPage.viewAnalytics')}
-            </Button>
-          </div>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
+            {getGreeting()}{getUserName() ? `, ${getUserName()}` : ''}
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            {t('dashboard.overviewPage.dashboardWelcomeMessage')}
+          </p>
         </div>
+        <Button onClick={() => router.push('/dashboard/analytics')}>
+          <BarChart3 className="h-4 w-4 mr-2" />
+          {t('dashboard.overviewPage.viewAnalytics')}
+        </Button>
       </div>
 
-      {/* ========== SECTION 2: QUICK METRICS OVERVIEW ========== */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-xl font-semibold text-neutral-900 dark:text-white">
-              {t('dashboard.overviewPage.keyMetrics')}
-            </h2>
-            <p className="text-sm text-neutral-600 dark:text-neutral-400">
-              {t('dashboard.overviewPage.last7DaysOverview')}
-            </p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <MetricCard
-            label={t('dashboard.overviewPage.totalCalls')}
-            value={stats?.totalCalls || 0}
-            icon={Phone}
-            trend={stats?.totalCalls > 10 ? 'up' : stats?.totalCalls > 0 ? 'neutral' : 'down'}
-            trendValue="12%"
-            sparklineData={generateSparklineData(stats?.totalCalls, 'up')}
-            color="primary"
-            loading={loading}
-          />
-          <MetricCard
-            label={t('dashboard.overviewPage.chatMessages')}
-            value={stats?.totalChatMessages || 0}
-            icon={MessageCircle}
-            trend={
-              stats?.totalChatMessages > 20
-                ? 'up'
-                : stats?.totalChatMessages > 0
-                ? 'neutral'
-                : 'down'
-            }
-            trendValue="8%"
-            sparklineData={generateSparklineData(stats?.totalChatMessages, 'up')}
-            color="success"
-            loading={loading}
-          />
-          <MetricCard
-            label={t('dashboard.overviewPage.avgDuration')}
-            value={formatDuration(stats?.avgDuration || 0)}
-            icon={Clock}
-            trend="neutral"
-            trendValue="2%"
-            sparklineData={generateSparklineData(stats?.avgDuration / 60, 'neutral')}
-            color="info"
-            loading={loading}
-          />
-          <MetricCard
-            label={t('dashboard.overviewPage.totalCost')}
-            value={formatCurrency(stats?.totalCost || 0)}
-            icon={DollarSign}
-            trend={stats?.totalCost > 0 ? 'up' : 'neutral'}
-            trendValue="5%"
-            sparklineData={generateSparklineData(stats?.totalCost * 10, 'up')}
-            color="warning"
-            loading={loading}
-          />
-          <MetricCard
-            label={t('dashboard.overviewPage.successRate')}
-            value={`${stats?.successRate || 0}%`}
-            icon={TrendingUp}
-            trend={stats?.successRate >= 90 ? 'up' : 'down'}
-            trendValue="3%"
-            sparklineData={generateSparklineData(stats?.successRate, 'up')}
-            color="success"
-            loading={loading}
-          />
-          <MetricCard
-            label={t('dashboard.overviewPage.appointments')}
-            value={stats?.totalAppointments || 0}
-            icon={CalendarCheck}
-            trend={stats?.totalAppointments > 0 ? 'up' : 'neutral'}
-            trendValue="15%"
-            sparklineData={generateSparklineData(stats?.totalAppointments, 'up')}
-            color="purple"
-            loading={loading}
-          />
-        </div>
+      {/* Stats Grid - 4 columns */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          label={t('dashboard.overviewPage.totalCalls')}
+          value={stats?.totalCalls || 0}
+          icon={Phone}
+          color="primary"
+        />
+        <StatCard
+          label={t('dashboard.overviewPage.chatMessages')}
+          value={stats?.totalChatMessages || 0}
+          icon={MessageCircle}
+          color="success"
+        />
+        <StatCard
+          label={t('dashboard.overviewPage.avgDuration')}
+          value={formatDuration(stats?.avgDuration || 0)}
+          icon={Clock}
+          color="info"
+        />
+        <StatCard
+          label={t('dashboard.overviewPage.successRate')}
+          value={`${stats?.successRate || 0}%`}
+          icon={TrendingUp}
+          color="success"
+        />
       </div>
 
-      {/* ========== SECTION 3: QUICK ACTIONS & STATUS ========== */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Quick Actions & Status */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Quick Actions */}
-        <div className="lg:col-span-2 bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">
+        <div className="lg:col-span-2 bg-white dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-800 p-5">
+          <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-4">
             {t('dashboard.overviewPage.quickActions')}
-          </h3>
+          </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Button
-              variant="outline"
-              className="justify-start h-auto py-4 px-4 hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20"
+            <button
               onClick={() => router.push('/dashboard/assistant')}
+              className="flex items-center gap-3 p-3 rounded-md border border-gray-200 dark:border-gray-800 hover:border-primary-300 dark:hover:border-primary-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all text-left"
             >
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-lg">
-                  <Bot className="h-5 w-5 text-primary-600 dark:text-primary-400" />
-                </div>
-                <div className="text-left">
-                  <div className="font-semibold dark:text-white">{t('dashboard.overviewPage.createAssistant')}</div>
-                  <div className="text-xs text-neutral-500 dark:text-neutral-400">
-                    {t('dashboard.overviewPage.setupNewAI')}
-                  </div>
-                </div>
+              <div className="p-2 bg-primary-50 dark:bg-primary-900/20 rounded-md">
+                <Bot className="h-4 w-4 text-primary-600 dark:text-primary-400" />
               </div>
-            </Button>
+              <div>
+                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  {t('dashboard.overviewPage.createAssistant')}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {t('dashboard.overviewPage.setupNewAI')}
+                </p>
+              </div>
+            </button>
 
-            <Button
-              variant="outline"
-              className="justify-start h-auto py-4 px-4 hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-900/20"
+            <button
               onClick={() => router.push('/dashboard/phone-numbers')}
+              className="flex items-center gap-3 p-3 rounded-md border border-gray-200 dark:border-gray-800 hover:border-success-300 dark:hover:border-success-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all text-left"
             >
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                  <Phone className="h-5 w-5 text-green-600 dark:text-green-400" />
-                </div>
-                <div className="text-left">
-                  <div className="font-semibold dark:text-white">{t('dashboard.overviewPage.buyPhoneNumber')}</div>
-                  <div className="text-xs text-neutral-500 dark:text-neutral-400">
-                    {t('dashboard.overviewPage.getNewNumber')}
-                  </div>
-                </div>
+              <div className="p-2 bg-success-50 dark:bg-success-900/20 rounded-md">
+                <Phone className="h-4 w-4 text-success-600 dark:text-success-400" />
               </div>
-            </Button>
+              <div>
+                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  {t('dashboard.overviewPage.buyPhoneNumber')}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {t('dashboard.overviewPage.getNewNumber')}
+                </p>
+              </div>
+            </button>
 
-            <Button
-              variant="outline"
-              className="justify-start h-auto py-4 px-4 hover:border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+            <button
               onClick={() => router.push('/dashboard/integrations')}
+              className="flex items-center gap-3 p-3 rounded-md border border-gray-200 dark:border-gray-800 hover:border-purple-300 dark:hover:border-purple-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all text-left"
             >
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-                  <Plug className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                </div>
-                <div className="text-left">
-                  <div className="font-semibold dark:text-white">
-                    {t('dashboard.overviewPage.connectIntegration')}
-                  </div>
-                  <div className="text-xs text-neutral-500 dark:text-neutral-400">
-                    {t('dashboard.overviewPage.linkExternalTools')}
-                  </div>
-                </div>
+              <div className="p-2 bg-purple-50 dark:bg-purple-900/20 rounded-md">
+                <Puzzle className="h-4 w-4 text-purple-600 dark:text-purple-400" />
               </div>
-            </Button>
+              <div>
+                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  {t('dashboard.overviewPage.connectIntegration')}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {t('dashboard.overviewPage.linkExternalTools')}
+                </p>
+              </div>
+            </button>
 
-            <Button
-              variant="outline"
-              className="justify-start h-auto py-4 px-4 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+            <button
               onClick={() => router.push('/dashboard/calls')}
+              className="flex items-center gap-3 p-3 rounded-md border border-gray-200 dark:border-gray-800 hover:border-info-300 dark:hover:border-info-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all text-left"
             >
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                  <PhoneCall className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                </div>
-                <div className="text-left">
-                  <div className="font-semibold dark:text-white">{t('dashboard.overviewPage.viewAllCalls')}</div>
-                  <div className="text-xs text-neutral-500 dark:text-neutral-400">
-                    {t('dashboard.overviewPage.latestCallActivity')}
-                  </div>
-                </div>
+              <div className="p-2 bg-info-50 dark:bg-info-900/20 rounded-md">
+                <PhoneCall className="h-4 w-4 text-info-600 dark:text-info-400" />
               </div>
-            </Button>
+              <div>
+                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  {t('dashboard.overviewPage.viewAllCalls')}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {t('dashboard.overviewPage.latestCallActivity')}
+                </p>
+              </div>
+            </button>
           </div>
         </div>
 
-        {/* Status Indicators */}
-        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">
+        {/* System Status */}
+        <div className="bg-white dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-800 p-5">
+          <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-4">
             {t('dashboard.overviewPage.systemStatus')}
-          </h3>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-3 bg-neutral-50 dark:bg-neutral-800 rounded-lg">
-              <div className="flex items-center gap-3">
-                <Bot className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
-                <div>
-                  <div className="text-sm font-medium text-neutral-900 dark:text-white">
-                    {t('dashboard.overviewPage.activeAssistantsLabel')}
-                  </div>
-                  <div className="text-xs text-neutral-500 dark:text-neutral-400">
-                    {systemStatus.activeAssistants} {t('dashboard.overviewPage.running')}
-                  </div>
-                </div>
+          </h2>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+              <div className="flex items-center gap-2">
+                <Bot className="h-4 w-4 text-gray-500" />
+                <span className="text-sm text-gray-700 dark:text-gray-300">
+                  {t('dashboard.overviewPage.activeAssistantsLabel')}
+                </span>
               </div>
-              <Badge
-                variant={systemStatus.activeAssistants > 0 ? 'default' : 'secondary'}
-                className={
-                  systemStatus.activeAssistants > 0
-                    ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400'
-                    : 'bg-neutral-200 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300'
-                }
-              >
+              <Badge className={systemStatus.activeAssistants > 0 ? 'badge-success' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'}>
                 {systemStatus.activeAssistants}
               </Badge>
             </div>
 
-            <div className="flex items-center justify-between p-3 bg-neutral-50 dark:bg-neutral-800 rounded-lg">
-              <div className="flex items-center gap-3">
-                <Plug className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
-                <div>
-                  <div className="text-sm font-medium text-neutral-900 dark:text-white">
-                    {t('dashboard.overviewPage.integrations')}
-                  </div>
-                  <div className="text-xs text-neutral-500 dark:text-neutral-400">
-                    {systemStatus.connectedIntegrations} {t('dashboard.overviewPage.connected')}
-                  </div>
-                </div>
+            <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+              <div className="flex items-center gap-2">
+                <Puzzle className="h-4 w-4 text-gray-500" />
+                <span className="text-sm text-gray-700 dark:text-gray-300">
+                  {t('dashboard.overviewPage.integrations')}
+                </span>
               </div>
-              <Badge
-                variant={systemStatus.connectedIntegrations > 0 ? 'default' : 'secondary'}
-                className={
-                  systemStatus.connectedIntegrations > 0
-                    ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400'
-                    : 'bg-neutral-200 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300'
-                }
-              >
+              <Badge className={systemStatus.connectedIntegrations > 0 ? 'badge-success' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'}>
                 {systemStatus.connectedIntegrations}
               </Badge>
             </div>
 
-            <div className="flex items-center justify-between p-3 bg-neutral-50 dark:bg-neutral-800 rounded-lg">
-              <div className="flex items-center gap-3">
-                <Phone className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
-                <div>
-                  <div className="text-sm font-medium text-neutral-900 dark:text-white">
-                    {t('dashboard.overviewPage.phoneNumbers')}
-                  </div>
-                  <div className="text-xs text-neutral-500 dark:text-neutral-400">
-                    {systemStatus.phoneNumbers} {t('dashboard.overviewPage.provisioned')}
-                  </div>
-                </div>
+            <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+              <div className="flex items-center gap-2">
+                <Phone className="h-4 w-4 text-gray-500" />
+                <span className="text-sm text-gray-700 dark:text-gray-300">
+                  {t('dashboard.overviewPage.phoneNumbers')}
+                </span>
               </div>
-              <Badge
-                variant={systemStatus.phoneNumbers > 0 ? 'default' : 'secondary'}
-                className={
-                  systemStatus.phoneNumbers > 0
-                    ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400'
-                    : 'bg-neutral-200 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300'
-                }
-              >
+              <Badge className={systemStatus.phoneNumbers > 0 ? 'badge-success' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'}>
                 {systemStatus.phoneNumbers}
               </Badge>
             </div>
 
-            <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-              <div className="flex items-center gap-3">
-                <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
-                <div>
-                  <div className="text-sm font-medium text-green-900 dark:text-green-400">
-                    {t('dashboard.overviewPage.systemHealth')}
-                  </div>
-                  <div className="text-xs text-green-600 dark:text-green-500">{t('dashboard.overviewPage.allSystemsGo')}</div>
-                </div>
-              </div>
-              <Zap className="h-5 w-5 text-green-600 dark:text-green-400" />
+            <div className="flex items-center gap-2 p-3 bg-success-50 dark:bg-success-900/20 rounded-md border border-success-200 dark:border-success-800">
+              <CheckCircle2 className="h-4 w-4 text-success-600 dark:text-success-400" />
+              <span className="text-sm font-medium text-success-700 dark:text-success-400">
+                {t('dashboard.overviewPage.allSystemsGo')}
+              </span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* ========== SECTION 4: RECENT ACTIVITY FEED ========== */}
-      <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 shadow-sm">
-        <div className="p-6 border-b border-neutral-200 dark:border-neutral-700">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-neutral-900 dark:text-white flex items-center gap-2">
-                <Activity className="h-5 w-5 text-primary-600" />
-                {t('dashboard.overviewPage.recentActivity')}
-              </h2>
-              <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-                {t('dashboard.overviewPage.latestCallsAndMessages')}
-              </p>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => router.push('/dashboard/calls')}
-              className="text-primary-600 hover:text-primary-700 hover:bg-primary-50"
-            >
-              {t('dashboard.overviewPage.viewAll')}
-              <ArrowRight className="h-4 w-4 ml-1" />
-            </Button>
+      {/* Recent Activity */}
+      <div className="bg-white dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-800">
+        <div className="p-5 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Activity className="h-4 w-4 text-primary-600" />
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white">
+              {t('dashboard.overviewPage.recentActivity')}
+            </h2>
           </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.push('/dashboard/calls')}
+          >
+            {t('dashboard.overviewPage.viewAll')}
+            <ArrowRight className="h-4 w-4 ml-1" />
+          </Button>
         </div>
 
-        {loading ? (
-          <div className="p-8">
-            <div className="animate-pulse space-y-4">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="h-20 bg-neutral-100 dark:bg-neutral-800 rounded-lg"></div>
-              ))}
-            </div>
-          </div>
-        ) : recentCalls.length > 0 ? (
-          <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
+        {recentCalls.length > 0 ? (
+          <div className="divide-y divide-gray-100 dark:divide-gray-800">
             {recentCalls.map((call) => (
               <div
                 key={call.id}
-                className="p-5 hover:bg-neutral-50 dark:hover:bg-neutral-800 cursor-pointer transition-colors group"
+                className="p-4 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors"
                 onClick={() => router.push(`/dashboard/calls?callId=${call.id}`)}
               >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-start gap-4 flex-1">
-                    <div
-                      className={`p-3 rounded-lg ${
-                        call.status === 'completed'
-                          ? 'bg-green-100 dark:bg-green-900/30'
-                          : call.status === 'failed'
-                          ? 'bg-red-100 dark:bg-red-900/30'
-                          : 'bg-amber-100 dark:bg-amber-900/30'
-                      }`}
-                    >
-                      <Phone
-                        className={`h-5 w-5 ${
-                          call.status === 'completed'
-                            ? 'text-green-600 dark:text-green-400'
-                            : call.status === 'failed'
-                            ? 'text-red-600 dark:text-red-400'
-                            : 'text-amber-600 dark:text-amber-400'
-                        }`}
-                      />
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <p className="font-semibold text-neutral-900 dark:text-white">
-                          {call.phoneNumber || t('dashboard.overviewPage.unknownCaller')}
-                        </p>
-                        <Badge
-                          variant="secondary"
-                          className={`text-xs ${
-                            call.status === 'completed'
-                              ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400'
-                              : call.status === 'failed'
-                              ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400'
-                              : 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-400'
-                          }`}
-                        >
-                          {call.status}
-                        </Badge>
-                      </div>
-
-                      <div className="flex items-center gap-4 text-sm text-neutral-600 dark:text-neutral-400">
-                        <span className="flex items-center gap-1">
-                          <Bot className="h-3.5 w-3.5" />
-                          {call.assistantName || t('dashboard.overviewPage.noAssistant')}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="h-3.5 w-3.5" />
-                          {formatDuration(call.duration)}
-                        </span>
-                        <span className="text-neutral-500 dark:text-neutral-500">
-                          {formatDate(call.createdAt, 'relative', locale)}
-                        </span>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-2 h-2 rounded-full ${
+                      call.status === 'completed' ? 'bg-success-500' :
+                      call.status === 'failed' ? 'bg-error-500' : 'bg-warning-500'
+                    }`} />
+                    <div>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">
+                        {call.phoneNumber || t('dashboard.overviewPage.unknownCaller')}
+                      </p>
+                      <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                        <span>{call.assistantName || t('dashboard.overviewPage.noAssistant')}</span>
+                        <span>{formatDuration(call.duration)}</span>
                       </div>
                     </div>
                   </div>
-
-                  <ExternalLink className="h-4 w-4 text-neutral-400 dark:text-neutral-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <span className="text-xs text-gray-400 dark:text-gray-500">
+                    {formatDate(call.createdAt, 'relative', locale)}
+                  </span>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <div className="p-12">
+          <div className="p-8">
             <EmptyState
               icon={PhoneCall}
               title={t('dashboard.overviewPage.noRecentActivity')}

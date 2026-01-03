@@ -1,12 +1,12 @@
 /**
  * Calls Page
- * View and manage call history with filtering
- * UPDATE EXISTING FILE: frontend/app/dashboard/calls/page.jsx
+ * Call history with Retell-style table design
+ * Clean, minimal layout with status indicators
  */
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,25 +18,60 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import TranscriptModal from '@/components/TranscriptModal';
 import EmptyState from '@/components/EmptyState';
-import { Phone, Search, Download, Filter, FileText, Play, Volume2 } from 'lucide-react';
+import { GradientLoaderInline } from '@/components/GradientLoader';
+import { Phone, Search, Download, Filter, FileText, Volume2, MessageSquare } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
-import { formatDate, formatDuration, formatCurrency, formatPhone } from '@/lib/utils';
+import { formatDate, formatDuration, formatPhone } from '@/lib/utils';
 import { useLanguage } from '@/contexts/LanguageContext';
+
+// Simple cache for calls data
+const callsCache = {
+  data: null,
+  timestamp: null,
+  CACHE_DURATION: 5 * 60 * 1000, // 5 minutes
+
+  isValid() {
+    return this.data && this.timestamp && (Date.now() - this.timestamp < this.CACHE_DURATION);
+  },
+
+  set(data) {
+    this.data = data;
+    this.timestamp = Date.now();
+  },
+
+  get() {
+    return this.data;
+  },
+
+  clear() {
+    this.data = null;
+    this.timestamp = null;
+  }
+};
 
 export default function CallsPage() {
   const { t, locale } = useLanguage();
   const searchParams = useSearchParams();
   const [calls, setCalls] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedCallId, setSelectedCallId] = useState(null);
   const [showTranscriptModal, setShowTranscriptModal] = useState(false);
 
-  // Handle callId from URL query params (from batch call "Listen" button)
+  // Handle callId from URL query params
   useEffect(() => {
     const callIdFromUrl = searchParams.get('callId');
     if (callIdFromUrl) {
@@ -45,39 +80,65 @@ export default function CallsPage() {
     }
   }, [searchParams]);
 
-  // Sync 11Labs conversations when page loads
+  // Initial load with cache
   useEffect(() => {
-    const syncAndLoad = async () => {
-      try {
-        // Silently sync 11Labs conversations first
-        await apiClient.elevenlabs.syncConversations();
-      } catch (error) {
-        // Ignore sync errors, just continue loading
-        console.log('Sync skipped:', error.message);
+    const loadInitial = async () => {
+      // Check cache first
+      if (callsCache.isValid()) {
+        setCalls(callsCache.get());
+        setLoading(false);
+        setIsInitialLoad(false);
+        // Background refresh
+        refreshCalls(true);
+        return;
       }
-      loadCalls();
+
+      // No cache, load fresh
+      await loadCalls();
+      setIsInitialLoad(false);
     };
-    syncAndLoad();
+
+    loadInitial();
   }, []);
 
+  // Reload when filters change
   useEffect(() => {
-    if (statusFilter !== 'all') {
+    if (!isInitialLoad) {
       loadCalls();
     }
   }, [statusFilter]);
 
+  // Debounced search
+  useEffect(() => {
+    if (isInitialLoad) return;
+
+    const timer = setTimeout(() => {
+      loadCalls();
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   const loadCalls = async () => {
     setLoading(true);
     try {
+      // Sync 11Labs silently
+      try {
+        await apiClient.elevenlabs.syncConversations();
+      } catch {}
+
       const params = {};
-      if (statusFilter !== 'all') {
-        params.status = statusFilter;
-      }
-      if (searchQuery) {
-        params.search = searchQuery;
-      }
+      if (statusFilter !== 'all') params.status = statusFilter;
+      if (searchQuery) params.search = searchQuery;
+
       const response = await apiClient.calls.getAll(params);
-      setCalls(response.data.calls || []);
+      const callsData = response.data.calls || [];
+      setCalls(callsData);
+
+      // Only cache if no filters
+      if (statusFilter === 'all' && !searchQuery) {
+        callsCache.set(callsData);
+      }
     } catch (error) {
       toast.error(t('dashboard.callsPage.failedToLoadCalls'));
     } finally {
@@ -85,16 +146,19 @@ export default function CallsPage() {
     }
   };
 
-  // Reload calls when search query changes (with debounce)
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (searchQuery !== '') {
-        loadCalls();
-      }
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
+  const refreshCalls = async (silent = false) => {
+    if (!silent) setLoading(true);
+    try {
+      const response = await apiClient.calls.getAll({});
+      const callsData = response.data.calls || [];
+      setCalls(callsData);
+      callsCache.set(callsData);
+    } catch (error) {
+      if (!silent) toast.error(t('dashboard.callsPage.failedToLoadCalls'));
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  };
 
   const handleExport = async () => {
     try {
@@ -117,51 +181,127 @@ export default function CallsPage() {
     setShowTranscriptModal(true);
   };
 
-  const filteredCalls = calls;
-
-  const statusColors = {
-    completed: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300',
-    answered: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300',
-    failed: 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300',
-    'in-progress': 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300',
-    in_progress: 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300',
-    queued: 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300',
+  // Channel badge
+  const getChannelBadge = (call) => {
+    if (call.channel === 'chat' || call.type === 'chat') {
+      return (
+        <Badge className="bg-info-50 dark:bg-info-900/20 text-info-700 dark:text-info-400 text-xs">
+          <MessageSquare className="h-3 w-3 mr-1" />
+          Chat
+        </Badge>
+      );
+    }
+    return (
+      <Badge className="bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400 text-xs">
+        <Phone className="h-3 w-3 mr-1" />
+        {t('dashboard.callsPage.phone') || 'Telefon'}
+      </Badge>
+    );
   };
 
-  const sentimentColors = {
-    positive: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300',
-    neutral: 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200',
-    negative: 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300',
+  // Status indicator
+  const getStatusIndicator = (status) => {
+    const statusConfig = {
+      completed: { color: 'bg-success-500', label: t('dashboard.callsPage.completed') || 'Tamamlandı' },
+      answered: { color: 'bg-success-500', label: t('dashboard.callsPage.answered') || 'Yanıtlandı' },
+      failed: { color: 'bg-error-500', label: t('dashboard.callsPage.failed') || 'Başarısız' },
+      'in-progress': { color: 'bg-info-500', label: t('dashboard.callsPage.inProgress') || 'Devam Ediyor' },
+      in_progress: { color: 'bg-info-500', label: t('dashboard.callsPage.inProgress') || 'Devam Ediyor' },
+      queued: { color: 'bg-warning-500', label: t('dashboard.callsPage.queued') || 'Sırada' },
+    };
+
+    const config = statusConfig[status] || { color: 'bg-gray-400', label: status };
+
+    return (
+      <div className="flex items-center gap-2">
+        <div className={`w-2 h-2 rounded-full ${config.color}`} />
+        <span className="text-sm text-gray-700 dark:text-gray-300">{config.label}</span>
+      </div>
+    );
   };
+
+  // Sentiment badge
+  const getSentimentBadge = (sentiment) => {
+    if (!sentiment) return <span className="text-xs text-gray-400">-</span>;
+
+    const sentimentConfig = {
+      positive: { emoji: '😊', bg: 'bg-success-50 dark:bg-success-900/20 text-success-700 dark:text-success-400' },
+      neutral: { emoji: '😐', bg: 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300' },
+      negative: { emoji: '😞', bg: 'bg-error-50 dark:bg-error-900/20 text-error-700 dark:text-error-400' },
+    };
+
+    const config = sentimentConfig[sentiment] || sentimentConfig.neutral;
+
+    return (
+      <Badge className={`${config.bg} text-xs`}>
+        {config.emoji} {sentiment.charAt(0).toUpperCase() + sentiment.slice(1)}
+      </Badge>
+    );
+  };
+
+  // Format date in Turkish style
+  const formatCallDate = (dateStr) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString(locale === 'tr' ? 'tr-TR' : 'en-US', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  // Show gradient loader on initial load only
+  if (loading && isInitialLoad) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
+              {t('dashboard.callsPage.title')}
+            </h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              {t('dashboard.callsPage.description')}
+            </p>
+          </div>
+        </div>
+        <GradientLoaderInline text={t('dashboard.callsPage.loadingCalls') || 'Arama geçmişi yükleniyor...'} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">{t('dashboard.callsPage.title')}</h1>
-          <p className="text-neutral-600 dark:text-neutral-400 mt-1">{t('dashboard.callsPage.description')}</p>
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
+            {t('dashboard.callsPage.title')}
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            {t('dashboard.callsPage.description')}
+          </p>
         </div>
-        <Button onClick={handleExport} variant="outline">
+        <Button onClick={handleExport} variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
           {t('dashboard.callsPage.exportCSV')}
         </Button>
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
+      <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
             placeholder={t('dashboard.callsPage.searchByPhone')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
+            className="pl-9"
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full sm:w-48">
-            <Filter className="h-4 w-4 mr-2" />
+          <SelectTrigger className="w-full sm:w-44">
+            <Filter className="h-4 w-4 mr-2 text-gray-400" />
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -174,141 +314,103 @@ export default function CallsPage() {
         </Select>
       </div>
 
-      {/* Calls table */}
+      {/* Table */}
       {loading ? (
-        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-8">
-          <div className="animate-pulse space-y-4">
+        <div className="bg-white dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-800 p-6">
+          <div className="space-y-3">
             {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="h-16 bg-neutral-100 dark:bg-neutral-800 rounded"></div>
+              <div key={i} className="h-14 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
             ))}
           </div>
         </div>
-      ) : filteredCalls.length > 0 ? (
-        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-neutral-50 dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
-                    {t('dashboard.callsPage.phoneNumber')}
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
-                    {t('dashboard.callsPage.dateTime')}
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
-                    {t('dashboard.callsPage.duration')}
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
-                    {t('dashboard.callsPage.status')}
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
-                    {t('dashboard.callsPage.sentiment')}
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
-                    {t('dashboard.callsPage.summary')}
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
-                    {t('dashboard.callsPage.actions')}
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-200 dark:divide-neutral-700">
-                {filteredCalls.map((call) => (
-                  <tr
-                    key={call.id}
-                    className="hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-neutral-900 dark:text-white">
-                        {formatPhone(call.phoneNumber || call.callerId)}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-neutral-600 dark:text-neutral-300">
-                        {formatDate(call.createdAt, 'short', locale)}
-                      </div>
-                      <div className="text-xs text-neutral-400 dark:text-neutral-500">
-                        {formatDate(call.createdAt, 'time', locale)}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-neutral-600 dark:text-neutral-300">
-                        {formatDuration(call.duration)}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <Badge className={statusColors[call.status] || 'bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200'}>
-                        {call.status}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {call.sentiment ? (
-                        <Badge className={sentimentColors[call.sentiment] || sentimentColors.neutral}>
-                          {call.sentiment.charAt(0).toUpperCase() + call.sentiment.slice(1)}
-                        </Badge>
-                      ) : (
-                        <span className="text-xs text-neutral-400 dark:text-neutral-500">-</span>
+      ) : calls.length > 0 ? (
+        <div className="bg-white dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-800 overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t('dashboard.callsPage.dateTime')}</TableHead>
+                <TableHead>{t('dashboard.callsPage.duration')}</TableHead>
+                <TableHead>{t('dashboard.callsPage.channel') || 'Kanal'}</TableHead>
+                <TableHead>{t('dashboard.callsPage.status')}</TableHead>
+                <TableHead>{t('dashboard.callsPage.sentiment')}</TableHead>
+                <TableHead>{t('dashboard.callsPage.phoneNumber')}</TableHead>
+                <TableHead className="text-right">{t('dashboard.callsPage.actions')}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {calls.map((call) => (
+                <TableRow key={call.id}>
+                  <TableCell>
+                    <span className="text-sm text-gray-900 dark:text-white">
+                      {formatCallDate(call.createdAt)}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">
+                      {formatDuration(call.duration)}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    {getChannelBadge(call)}
+                  </TableCell>
+                  <TableCell>
+                    {getStatusIndicator(call.status)}
+                  </TableCell>
+                  <TableCell>
+                    {getSentimentBadge(call.sentiment)}
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                      {formatPhone(call.phoneNumber || call.callerId) || '-'}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      {call.hasRecording && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleViewTranscript(call.id)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Volume2 className="h-4 w-4" />
+                        </Button>
                       )}
-                    </td>
-                    <td className="px-6 py-4 max-w-xs">
-                      <div className="text-sm text-neutral-600 dark:text-neutral-300 truncate" title={call.summary}>
-                        {call.summary || <span className="text-neutral-400 dark:text-neutral-500">-</span>}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        {call.hasRecording && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleViewTranscript(call.id);
-                            }}
-                            title={t('dashboard.callsPage.playRecording')}
-                          >
-                            <Volume2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                        {call.hasTranscript && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleViewTranscript(call.id);
-                            }}
-                            title={t('dashboard.callsPage.viewTranscript')}
-                          >
-                            <FileText className="h-4 w-4" />
-                          </Button>
-                        )}
-                        {!call.hasRecording && !call.hasTranscript && (
-                          <span className="text-xs text-neutral-400 dark:text-neutral-500">{t('dashboard.callsPage.noData')}</span>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      {call.hasTranscript && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleViewTranscript(call.id)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <FileText className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {!call.hasRecording && !call.hasTranscript && (
+                        <span className="text-xs text-gray-400">-</span>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       ) : (
-        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-8">
+        <div className="bg-white dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-800 p-8">
           <EmptyState
             icon={Phone}
-            title={searchQuery || statusFilter !== 'all' ? t('dashboard.callsPage.noCallsFound') : t('dashboard.callsPage.noCalls')}
-            description={
-              searchQuery || statusFilter !== 'all'
-                ? t('dashboard.callsPage.tryAdjustingFilters')
-                : t('dashboard.callsPage.callsWillAppear')
-            }
+            title={searchQuery || statusFilter !== 'all'
+              ? t('dashboard.callsPage.noCallsFound')
+              : t('dashboard.callsPage.noCalls')}
+            description={searchQuery || statusFilter !== 'all'
+              ? t('dashboard.callsPage.tryAdjustingFilters')
+              : t('dashboard.callsPage.callsWillAppear')}
           />
         </div>
       )}
 
-      {/* Transcript modal */}
+      {/* Transcript Modal */}
       <TranscriptModal
         callId={selectedCallId}
         isOpen={showTranscriptModal}

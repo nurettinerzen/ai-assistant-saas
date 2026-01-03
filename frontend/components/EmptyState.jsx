@@ -1,6 +1,6 @@
 /**
  * EmptyState Component
- * Reusable empty state with icon, message, and optional CTA
+ * Clean, minimal empty state with icon, message, and optional CTA
  */
 
 import React from 'react';
@@ -15,25 +15,25 @@ export default function EmptyState({
   className = '',
 }) {
   return (
-    <div className={`flex flex-col items-center justify-center py-16 px-4 ${className}`}>
+    <div className={`flex flex-col items-center justify-center py-12 px-4 ${className}`}>
       {Icon && (
-        <div className="mb-4 rounded-full bg-neutral-100 p-4">
-          <Icon className="h-8 w-8 text-neutral-400" />
+        <div className="mb-4 rounded-full bg-gray-100 dark:bg-gray-800 p-4">
+          <Icon className="h-6 w-6 text-gray-400 dark:text-gray-500" />
         </div>
       )}
-      
-      <h3 className="text-lg font-semibold text-neutral-900 mb-2">
+
+      <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-1">
         {title}
       </h3>
-      
+
       {description && (
-        <p className="text-sm text-neutral-500 text-center max-w-md mb-6">
+        <p className="text-sm text-gray-500 dark:text-gray-400 text-center max-w-sm mb-4">
           {description}
         </p>
       )}
-      
+
       {actionLabel && onAction && (
-        <Button onClick={onAction} className="mt-2">
+        <Button onClick={onAction} size="sm">
           {actionLabel}
         </Button>
       )}

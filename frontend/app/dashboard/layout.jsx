@@ -110,22 +110,22 @@ export default function DashboardLayout({ children }) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-neutral-50 dark:bg-neutral-950">
+      <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-gray-950">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-          <p className="text-neutral-600 dark:text-neutral-400">Loading...</p>
+          <div className="animate-spin rounded-full h-10 w-10 border-2 border-gray-200 dark:border-gray-800 border-t-primary-600 mx-auto mb-4"></div>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Yükleniyor...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen bg-neutral-50 dark:bg-neutral-950">
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-950">
       {/* Sidebar */}
       <Sidebar user={user} credits={credits} />
 
-      {/* Main content */}
-      <div className="flex-1 lg:ml-64 overflow-auto h-screen">
+      {/* Main content - adjusted for 240px sidebar (w-60) */}
+      <div className="flex-1 lg:ml-60 overflow-auto h-screen">
         <main className="p-6 lg:p-8">
           {children}
         </main>
