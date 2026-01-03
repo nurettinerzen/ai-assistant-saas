@@ -116,19 +116,72 @@ router.get('/', async (req, res) => {
     }
 
     const country = subscription.business?.country || 'TR';
-    const pricePerMinute = getPricePerMinute(subscription.plan, country);
-    const balanceMinutes = calculateTLToMinutes(subscription.balance, subscription.plan, country);
+    const plan = subscription.plan;
+    const pricePerMinute = getPricePerMinute(plan, country);
+    const balanceMinutes = calculateTLToMinutes(subscription.balance || 0, plan, country);
+
+    // Get included minutes limit based on plan
+    // Legacy: BASIC/PROFESSIONAL → STARTER/PRO values
+    const INCLUDED_MINUTES = {
+      TRIAL: 15,
+      PAYG: 0,
+      STARTER: 150,
+      BASIC: 150,
+      PRO: 500,
+      PROFESSIONAL: 500,
+      ENTERPRISE: 800
+    };
+
+    // Get overage rate
+    const { getOverageRate } = await import('../config/plans.js');
+    const overageRate = getOverageRate(plan, country);
+
+    // Calculate trial chat days remaining
+    let trialChat = null;
+    if (plan === 'TRIAL' && subscription.trialChatExpiry) {
+      const now = new Date();
+      const expiry = new Date(subscription.trialChatExpiry);
+      const daysLeft = Math.max(0, Math.ceil((expiry - now) / (1000 * 60 * 60 * 24)));
+      trialChat = { daysLeft, expiry: subscription.trialChatExpiry };
+    }
 
     res.json({
-      balanceTL: subscription.balance,
+      // Basic info
+      plan,
+      balance: subscription.balance || 0,
       balanceMinutes,
       pricePerMinute,
-      plan: subscription.plan,
+      currency: country === 'TR' ? '₺' : country === 'BR' ? 'R$' : '$',
+
+      // Included minutes (for STARTER/PRO/ENTERPRISE/BASIC/PROFESSIONAL)
+      includedMinutes: {
+        used: subscription.includedMinutesUsed || subscription.minutesUsed || 0,
+        limit: subscription.minutesLimit || INCLUDED_MINUTES[plan] || 0
+      },
+
+      // Trial info (for TRIAL plan)
+      trialMinutes: plan === 'TRIAL' ? {
+        used: subscription.trialMinutesUsed || 0,
+        limit: 15
+      } : null,
+      trialChat,
+
+      // Overage info
+      overageRate,
+      overage: {
+        minutes: subscription.overageMinutes || 0,
+        amount: (subscription.overageMinutes || 0) * overageRate
+      },
+
+      // Auto-reload settings
       autoReload: {
-        enabled: subscription.autoReloadEnabled,
-        threshold: subscription.autoReloadThreshold,
-        amount: subscription.autoReloadAmount
-      }
+        enabled: subscription.autoReloadEnabled || false,
+        threshold: subscription.autoReloadThreshold || 2,
+        amount: subscription.autoReloadAmount || 5
+      },
+
+      // Period info
+      periodEnd: subscription.currentPeriodEnd
     });
 
   } catch (error) {
