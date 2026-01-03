@@ -220,7 +220,28 @@ model Subscription {
   assistantsLimit         Int                @default(0)
   phoneNumbersLimit       Int                @default(0)
 
-  // Kredi sistemi (YENİ)
+  // ============================================================================
+  // YENİ FİYATLANDIRMA SİSTEMİ - Bakiye bazlı
+  // ============================================================================
+
+  // TL cinsinden bakiye (PAYG ve aşım için)
+  balance                 Float              @default(0)      // TL cinsinden bakiye
+
+  // Deneme sistemi
+  trialMinutesUsed        Float              @default(0)      // Deneme dakikası kullanımı (15 dk limit)
+  trialChatExpiry         DateTime?                           // Chat/WhatsApp deneme bitiş tarihi (7 gün)
+  trialStartDate          DateTime?                           // Deneme başlangıç tarihi
+
+  // Dahil dakika sistemi (STARTER/PRO için)
+  includedMinutesUsed     Float              @default(0)      // Bu ay kullanılan dahil dakika
+  includedMinutesResetAt  DateTime?                           // Dahil dakika sıfırlama tarihi
+
+  // Otomatik bakiye yükleme
+  autoReloadEnabled       Boolean            @default(false)  // Otomatik yükleme açık/kapalı
+  autoReloadThreshold     Float              @default(2)      // Kaç dakika kaldığında yükle
+  autoReloadAmount        Float              @default(5)      // Kaç dakika yükle
+
+  // Kredi sistemi (YENİ) - Legacy, bakiye sistemi ile değiştirildi
   creditMinutes           Int                @default(0)    // Satın alınan toplam kredi dakikaları
   creditMinutesUsed       Int                @default(0)    // Krediden kullanılan dakikalar
 
@@ -233,6 +254,7 @@ model Subscription {
   packageWarningAt80      Boolean            @default(false)  // Paket %80 uyarısı gönderildi mi
   creditWarningAt80       Boolean            @default(false)  // Kredi %80 uyarısı gönderildi mi
   overageLimitReached     Boolean            @default(false)  // Aşım limiti aşıldı mı
+  lowBalanceWarningAt     DateTime?                           // Son düşük bakiye uyarısı gönderilme tarihi
 
   // Concurrent call limitleri (YENİ)
   concurrentLimit         Int                @default(1)      // Max eşzamanlı çağrı limiti
@@ -241,6 +263,10 @@ model Subscription {
   createdAt               DateTime           @default(now())
   updatedAt               DateTime           @updatedAt
   business                Business           @relation(fields: [businessId], references: [id])
+
+  // İlişkiler
+  usageRecords            UsageRecord[]
+  balanceTransactions     BalanceTransaction[]
 
   @@index([businessId])
   @@index([plan])
@@ -536,9 +562,11 @@ enum PhoneStatus {
 
 enum SubscriptionPlan {
   FREE
-  STARTER     // Yeni: Başlangıç paketi (eskiden BASIC)
-  PRO         // Yeni: Profesyonel paket
-  ENTERPRISE
+  TRIAL       // Deneme: 15 dk telefon, 7 gün chat/whatsapp
+  PAYG        // Kullandıkça Öde: Taahhütsüz, 23 TL/dk
+  STARTER     // Başlangıç: 2.499 TL/ay, 150 dk dahil
+  PRO         // Profesyonel: 7.499 TL/ay, 500 dk dahil
+  ENTERPRISE  // Kurumsal: Özel fiyat
   BASIC       // Deprecated: eski paket, geriye dönük uyumluluk için
   PROFESSIONAL // Deprecated: eski paket, geriye dönük uyumluluk için
 }
@@ -1096,6 +1124,59 @@ model UsageLog {
   business      Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
   @@index([businessId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+// ============================================================================
+// YENİ: KULLANIM KAYDI (UsageRecord) - Detaylı kullanım takibi
+// ============================================================================
+
+model UsageRecord {
+  id                String    @id @default(cuid())
+  subscriptionId    Int
+  channel           String                       // PHONE, WHATSAPP, CHAT, EMAIL
+  callId            String?                      // 11Labs conversation ID (telefon için)
+  conversationId    String?                      // Diğer kanallar için
+  durationSeconds   Int                          // Saniye cinsinden süre
+  durationMinutes   Float                        // Dakika cinsinden süre
+  chargeType        String                       // TRIAL, INCLUDED, BALANCE, OVERAGE
+  pricePerMinute    Float?                       // Uygulanan dakika fiyatı
+  totalCharge       Float?                       // Toplam ücret TL
+  assistantId       String?
+  metadata          Json?
+  createdAt         DateTime  @default(now())
+
+  subscription      Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  balanceTransaction BalanceTransaction?
+
+  @@index([subscriptionId])
+  @@index([channel])
+  @@index([chargeType])
+  @@index([createdAt])
+}
+
+// ============================================================================
+// YENİ: BAKİYE HAREKETLERİ (BalanceTransaction)
+// ============================================================================
+
+model BalanceTransaction {
+  id                      String    @id @default(cuid())
+  subscriptionId          Int
+  type                    String                       // TOPUP, USAGE, REFUND, OVERAGE
+  amount                  Float                        // + yükleme, - kullanım
+  balanceBefore           Float
+  balanceAfter            Float
+  stripePaymentIntentId   String?                      // Stripe ile yükleme için
+  iyzicoPaymentId         String?                      // iyzico ile yükleme için
+  usageRecordId           String?   @unique           // Kullanım için
+  description             String?
+  createdAt               DateTime  @default(now())
+
+  subscription            Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  usageRecord             UsageRecord? @relation(fields: [usageRecordId], references: [id])
+
+  @@index([subscriptionId])
   @@index([type])
   @@index([createdAt])
 }

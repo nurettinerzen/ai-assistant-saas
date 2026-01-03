@@ -11,6 +11,8 @@ import express from 'express';
 import crypto from 'crypto';
 import { PrismaClient } from '@prisma/client';
 import usageTracking from '../services/usageTracking.js';
+import usageService from '../services/usageService.js';
+import subscriptionService from '../services/subscriptionService.js';
 import callAnalysis from '../services/callAnalysis.js';
 import { executeTool } from '../tools/index.js';
 import batchCallService from '../services/batch-call.js';
@@ -461,10 +463,44 @@ async function handleConversationStarted(event) {
       return;
     }
 
+    const businessId = assistant.business.id;
+
+    // Check if can make call (balance, trial limits, concurrent limits)
+    try {
+      const canCallResult = await subscriptionService.canMakeCall(businessId);
+
+      if (!canCallResult.canMakeCall) {
+        console.warn(`⚠️ Call blocked for business ${businessId}: ${canCallResult.reason}`);
+        // Note: We can't reject the call from webhook, but we log it
+        // In production, the call check should happen BEFORE initiating the call
+
+        // Still log the call but mark it as blocked
+        await prisma.callLog.create({
+          data: {
+            businessId,
+            callId: conversationId,
+            callerId: callerPhone,
+            status: 'blocked',
+            summary: `Blocked: ${canCallResult.reason}`,
+            createdAt: new Date()
+          }
+        });
+        return;
+      }
+
+      // Increment active calls counter
+      const incrementResult = await subscriptionService.incrementActiveCalls(businessId);
+      if (!incrementResult.success) {
+        console.warn(`⚠️ Concurrent limit reached for business ${businessId}`);
+      }
+    } catch (checkError) {
+      console.error('⚠️ Call check failed (continuing anyway):', checkError.message);
+    }
+
     // Create initial call log
     await prisma.callLog.create({
       data: {
-        businessId: assistant.business.id,
+        businessId,
         callId: conversationId,
         callerId: callerPhone,
         status: 'in_progress',
@@ -613,13 +649,49 @@ async function handleConversationEnded(event) {
 
     console.log(`✅ Call log saved: ${conversationId} (${duration}s)`);
 
-    // Track usage
+    // Track usage with new usage service
     if (duration > 0) {
-      await usageTracking.trackCallUsage(business.id, duration, {
-        callId: conversationId,
-        transcript: transcriptText,
-        status: 'answered'
+      // Get subscription for this business
+      const subscription = await prisma.subscription.findUnique({
+        where: { businessId: business.id }
       });
+
+      if (subscription) {
+        try {
+          // Use new usage service for proper billing
+          await usageService.recordUsage({
+            subscriptionId: subscription.id,
+            channel: 'PHONE',
+            durationSeconds: duration,
+            callId: conversationId,
+            assistantId: assistant?.id,
+            metadata: {
+              transcript: transcriptText,
+              status: 'answered',
+              agentId: agentId
+            }
+          });
+          console.log(`💰 Usage recorded via new service: ${Math.ceil(duration / 60)} dk`);
+        } catch (usageError) {
+          console.error('⚠️ New usage service failed, falling back to legacy:', usageError.message);
+          // Fallback to legacy tracking
+          await usageTracking.trackCallUsage(business.id, duration, {
+            callId: conversationId,
+            transcript: transcriptText,
+            status: 'answered'
+          });
+        }
+      } else {
+        // No subscription, use legacy tracking
+        await usageTracking.trackCallUsage(business.id, duration, {
+          callId: conversationId,
+          transcript: transcriptText,
+          status: 'answered'
+        });
+      }
+
+      // Decrement active calls
+      await subscriptionService.decrementActiveCalls(business.id);
     }
 
     // Handle batch call updates

@@ -5,12 +5,24 @@
 //
 // Central configuration for subscription plans with pricing, limits, and features
 // Supports multiple currencies and regions
+//
+// YENİ FİYATLANDIRMA (Ocak 2026):
+// - TRIAL: 15 dk telefon, 7 gün chat/whatsapp, 1 asistan
+// - PAYG: 23 TL/dk, taahhütsüz, min 4 dk yükleme
+// - STARTER: 2.499 TL/ay, 150 dk dahil, 17 TL/dk, 19 TL aşım
+// - PRO: 7.499 TL/ay, 500 dk dahil, 15 TL/dk, 16 TL aşım
+// - ENTERPRISE: Özel, 12 TL/dk, 13 TL aşım
 // ============================================================================
 
 import { getCountry, getCurrency, formatCurrency } from './countries.js';
 
 // ============================================================================
-// REGION-BASED PRICING
+// SABİT DOLAR KURU (Manuel güncelleme gerektirir)
+// ============================================================================
+export const USD_TO_TRY = 45; // 1 USD = 45 TL (hardcoded)
+
+// ============================================================================
+// REGION-BASED PRICING - YENİ FİYATLANDIRMA SİSTEMİ
 // ============================================================================
 
 /**
@@ -22,56 +34,66 @@ export const REGIONAL_PRICING = {
     currency: 'TRY',
     symbol: '₺',
     plans: {
-      FREE: { price: 0, minutes: 0, overageRate: 0, concurrentLimit: 0 },
-      // YENİ PAKET YAPISI - 3 paket: Başlangıç, Profesyonel, Kurumsal
-      STARTER: { price: 799, minutes: 100, overageRate: 10.00, concurrentLimit: 1 },
-      PRO: { price: 3999, minutes: 800, overageRate: 8.00, concurrentLimit: 5 },
-      ENTERPRISE: { price: null, minutes: null, overageRate: 6.00, concurrentLimit: 10 },
-      // Legacy plan aliases - PRO değerlerini kullan
-      BASIC: { price: 799, minutes: 100, overageRate: 10.00, concurrentLimit: 1 },        // → STARTER
-      PROFESSIONAL: { price: 3999, minutes: 800, overageRate: 8.00, concurrentLimit: 5 }  // → PRO
+      FREE: { price: 0, minutes: 0, overageRate: 0, concurrentLimit: 0, pricePerMinute: 0, assistantsLimit: 0, phoneNumbersLimit: 0 },
+
+      // DENEME: 15 dk telefon, 7 gün chat/whatsapp
+      TRIAL: { price: 0, minutes: 15, overageRate: 0, concurrentLimit: 1, pricePerMinute: 0, assistantsLimit: 1, phoneNumbersLimit: 1, chatDays: 7 },
+
+      // PAYG: Kullandıkça öde, taahhütsüz
+      PAYG: { price: 0, minutes: 0, overageRate: 0, concurrentLimit: 1, pricePerMinute: 23, assistantsLimit: 1, phoneNumbersLimit: 1, minTopup: 4 },
+
+      // YENİ FİYATLANDIRMA - Ocak 2026
+      STARTER: { price: 2499, minutes: 150, overageRate: 19, concurrentLimit: 1, pricePerMinute: 17, assistantsLimit: 3, phoneNumbersLimit: -1 },
+      PRO: { price: 7499, minutes: 500, overageRate: 16, concurrentLimit: 5, pricePerMinute: 15, assistantsLimit: 10, phoneNumbersLimit: -1 },
+      ENTERPRISE: { price: null, minutes: null, overageRate: 13, concurrentLimit: 5, pricePerMinute: 12, assistantsLimit: -1, phoneNumbersLimit: -1 },
+
+      // Legacy plan aliases - yeni plan değerlerini kullan
+      BASIC: { price: 2499, minutes: 150, overageRate: 19, concurrentLimit: 1, pricePerMinute: 17, assistantsLimit: 3 },        // → STARTER
+      PROFESSIONAL: { price: 7499, minutes: 500, overageRate: 16, concurrentLimit: 5, pricePerMinute: 15, assistantsLimit: 10 }  // → PRO
     },
-    // Tek fiyat: 7₺/dk (kademeli fiyat kaldırıldı)
+    // PAYG dakika fiyatı: 23 TL/dk
     creditTiers: [
-      { minMinutes: 1, unitPrice: 7.00 }
-    ]
+      { minMinutes: 1, unitPrice: 23.00 }
+    ],
+    // Minimum PAYG yükleme: 4 dk (~100 TL)
+    minTopupMinutes: 4
   },
-  // Türkiye odaklı yapı - diğer bölgeler kullanılmıyor
+  // Türkiye odaklı yapı - diğer bölgeler için USD kuru ile hesaplama
   BR: {
     currency: 'BRL',
     symbol: 'R$',
     plans: {
       FREE: { price: 0, minutes: 0, overageRate: 0, concurrentLimit: 0 },
-      STARTER: { price: 99, minutes: 100, overageRate: 3.50, concurrentLimit: 1 },
-      PRO: { price: 499, minutes: 800, overageRate: 2.50, concurrentLimit: 5 },
-      ENTERPRISE: { price: null, minutes: null, overageRate: 2.00, concurrentLimit: 10 },
-      BASIC: { price: 99, minutes: 100, overageRate: 3.50, concurrentLimit: 1 },
-      PROFESSIONAL: { price: 499, minutes: 800, overageRate: 2.50, concurrentLimit: 5 }
+      TRIAL: { price: 0, minutes: 15, overageRate: 0, concurrentLimit: 1, chatDays: 7 },
+      PAYG: { price: 0, minutes: 0, overageRate: 0, concurrentLimit: 1, pricePerMinute: 4.60, minTopup: 4 },
+      STARTER: { price: 500, minutes: 150, overageRate: 3.80, concurrentLimit: 1, pricePerMinute: 3.40, assistantsLimit: 3 },
+      PRO: { price: 1500, minutes: 500, overageRate: 3.20, concurrentLimit: 5, pricePerMinute: 3.00, assistantsLimit: 10 },
+      ENTERPRISE: { price: null, minutes: null, overageRate: 2.60, concurrentLimit: 5, pricePerMinute: 2.40, assistantsLimit: -1 },
+      BASIC: { price: 500, minutes: 150, overageRate: 3.80, concurrentLimit: 1 },
+      PROFESSIONAL: { price: 1500, minutes: 500, overageRate: 3.20, concurrentLimit: 5 }
     },
     creditTiers: [
-      { minMinutes: 250, unitPrice: 2.00 },
-      { minMinutes: 100, unitPrice: 2.25 },
-      { minMinutes: 50, unitPrice: 2.50 },
-      { minMinutes: 1, unitPrice: 2.75 }
-    ]
+      { minMinutes: 1, unitPrice: 4.60 }
+    ],
+    minTopupMinutes: 4
   },
   US: {
     currency: 'USD',
     symbol: '$',
     plans: {
       FREE: { price: 0, minutes: 0, overageRate: 0, concurrentLimit: 0 },
-      STARTER: { price: 49, minutes: 100, overageRate: 0.35, concurrentLimit: 1 },
-      PRO: { price: 199, minutes: 800, overageRate: 0.25, concurrentLimit: 5 },
-      ENTERPRISE: { price: null, minutes: null, overageRate: 0.20, concurrentLimit: 10 },
-      BASIC: { price: 49, minutes: 100, overageRate: 0.35, concurrentLimit: 1 },
-      PROFESSIONAL: { price: 199, minutes: 800, overageRate: 0.25, concurrentLimit: 5 }
+      TRIAL: { price: 0, minutes: 15, overageRate: 0, concurrentLimit: 1, chatDays: 7 },
+      PAYG: { price: 0, minutes: 0, overageRate: 0, concurrentLimit: 1, pricePerMinute: 0.51, minTopup: 4 },
+      STARTER: { price: 55, minutes: 150, overageRate: 0.42, concurrentLimit: 1, pricePerMinute: 0.38, assistantsLimit: 3 },
+      PRO: { price: 167, minutes: 500, overageRate: 0.36, concurrentLimit: 5, pricePerMinute: 0.33, assistantsLimit: 10 },
+      ENTERPRISE: { price: null, minutes: null, overageRate: 0.29, concurrentLimit: 5, pricePerMinute: 0.27, assistantsLimit: -1 },
+      BASIC: { price: 55, minutes: 150, overageRate: 0.42, concurrentLimit: 1 },
+      PROFESSIONAL: { price: 167, minutes: 500, overageRate: 0.36, concurrentLimit: 5 }
     },
     creditTiers: [
-      { minMinutes: 250, unitPrice: 0.20 },
-      { minMinutes: 100, unitPrice: 0.22 },
-      { minMinutes: 50, unitPrice: 0.25 },
-      { minMinutes: 1, unitPrice: 0.28 }
-    ]
+      { minMinutes: 1, unitPrice: 0.51 }
+    ],
+    minTopupMinutes: 4
   },
   // European countries use EUR
   DE: { currency: 'EUR', symbol: '€', useUSDPricing: true, multiplier: 0.92 },
@@ -95,7 +117,7 @@ export const PLANS = {
     namePR: 'Grátis',
     minutesLimit: 0,
     callsLimit: 0,
-    assistantsLimit: 1,
+    assistantsLimit: 0,
     phoneNumbersLimit: 0,
     overageLimit: 0,
     concurrentLimit: 0,
@@ -115,17 +137,91 @@ export const PLANS = {
     },
     channels: []
   },
-  // YENİ PAKET YAPISI
+
+  // ============================================================================
+  // YENİ: DENEME PLANI
+  // ============================================================================
+  TRIAL: {
+    id: 'TRIAL',
+    name: 'Trial',
+    nameTR: 'Deneme',
+    nameEN: 'Trial',
+    namePR: 'Teste',
+    minutesLimit: 15,         // 15 dk telefon
+    callsLimit: -1,
+    assistantsLimit: 1,       // 1 asistan
+    phoneNumbersLimit: 1,
+    overageLimit: 0,          // Aşım yok
+    concurrentLimit: 1,       // 1 eşzamanlı çağrı
+    chatDays: 7,              // 7 gün chat/whatsapp
+    features: {
+      phone: true,
+      whatsappCalling: true,
+      whatsappMessaging: true,
+      chatWidget: true,
+      email: true,
+      ecommerce: true,
+      calendar: true,
+      googleSheets: false,
+      batchCalls: false,
+      prioritySupport: false,
+      analytics: true,
+      apiAccess: false
+    },
+    channels: ['phone', 'whatsapp', 'chat_widget', 'email'],
+    analyticsLevel: 'basic',
+    supportLevel: 'email'
+  },
+
+  // ============================================================================
+  // YENİ: PAYG (Kullandıkça Öde)
+  // ============================================================================
+  PAYG: {
+    id: 'PAYG',
+    name: 'Pay As You Go',
+    nameTR: 'Kullandıkça Öde',
+    nameEN: 'Pay As You Go',
+    namePR: 'Pague Conforme Usa',
+    minutesLimit: 0,          // Dahil dakika yok
+    callsLimit: -1,
+    assistantsLimit: 1,       // 1 asistan
+    phoneNumbersLimit: 1,
+    overageLimit: 0,          // Aşım kavramı yok, direkt bakiyeden
+    concurrentLimit: 1,       // 1 eşzamanlı çağrı
+    minTopupMinutes: 4,       // Minimum 4 dk (~100 TL) yükleme
+    features: {
+      phone: true,
+      whatsappCalling: true,
+      whatsappMessaging: true,
+      chatWidget: true,
+      email: true,
+      ecommerce: true,
+      calendar: true,
+      googleSheets: false,
+      batchCalls: false,
+      prioritySupport: false,
+      analytics: true,
+      apiAccess: false
+    },
+    channels: ['phone', 'whatsapp', 'chat_widget', 'email'],
+    analyticsLevel: 'basic',
+    supportLevel: 'email'
+  },
+
+  // ============================================================================
+  // YENİ FİYATLANDIRMA - Ocak 2026
+  // ============================================================================
   STARTER: {
     id: 'STARTER',
     name: 'Starter',
     nameTR: 'Başlangıç',
     nameEN: 'Starter',
     namePR: 'Inicial',
+    minutesLimit: 150,        // 150 dk dahil
     callsLimit: -1,           // Sınırsız çağrı
-    assistantsLimit: -1,      // Sınırsız asistan
+    assistantsLimit: 3,       // 3 asistan
     phoneNumbersLimit: -1,    // Sınırsız numara
-    overageLimit: 100,        // Max 100 dk aşım
+    overageLimit: 200,        // Max 200 dk aşım
     concurrentLimit: 1,       // 1 eşzamanlı çağrı
     features: {
       phone: true,
@@ -152,10 +248,11 @@ export const PLANS = {
     nameTR: 'Profesyonel',
     nameEN: 'Pro',
     namePR: 'Pro',
+    minutesLimit: 500,        // 500 dk dahil
     callsLimit: -1,           // Sınırsız çağrı
-    assistantsLimit: -1,      // Sınırsız asistan
+    assistantsLimit: 10,      // 10 asistan
     phoneNumbersLimit: -1,    // Sınırsız numara
-    overageLimit: 200,        // Max 200 dk aşım
+    overageLimit: 500,        // Max 500 dk aşım
     concurrentLimit: 5,       // 5 eşzamanlı çağrı
     features: {
       phone: true,
@@ -182,12 +279,12 @@ export const PLANS = {
     nameTR: 'Kurumsal',
     nameEN: 'Enterprise',
     namePR: 'Empresarial',
-    minutesLimit: null,       // Custom
+    minutesLimit: -1,         // Sınırsız (özel)
     callsLimit: -1,
     assistantsLimit: -1,      // Sınırsız
     phoneNumbersLimit: -1,    // Sınırsız
-    overageLimit: null,       // Custom
-    concurrentLimit: 10,      // 10+ eşzamanlı çağrı (custom olabilir)
+    overageLimit: -1,         // Sınırsız (özel)
+    concurrentLimit: 5,       // 5+ eşzamanlı çağrı (custom olabilir)
     features: {
       phone: true,
       whatsappCalling: true,
@@ -212,7 +309,10 @@ export const PLANS = {
     analyticsLevel: 'advanced',
     supportLevel: 'dedicated'
   },
-  // DEPRECATED - geriye dönük uyumluluk için
+
+  // ============================================================================
+  // DEPRECATED - geriye dönük uyumluluk için (STARTER ve PRO değerlerini kullan)
+  // ============================================================================
   BASIC: {
     id: 'BASIC',
     name: 'Basic',
@@ -220,10 +320,11 @@ export const PLANS = {
     nameEN: 'Basic',
     namePR: 'Básico',
     deprecated: true,
+    minutesLimit: 150,
     callsLimit: -1,
     assistantsLimit: 3,
-    phoneNumbersLimit: 2,
-    overageLimit: 50,
+    phoneNumbersLimit: -1,
+    overageLimit: 200,
     concurrentLimit: 1,
     features: {
       phone: true,
@@ -248,11 +349,12 @@ export const PLANS = {
     nameEN: 'Professional',
     namePR: 'Profissional',
     deprecated: true,
+    minutesLimit: 500,
     callsLimit: -1,
     assistantsLimit: 10,
-    phoneNumbersLimit: 5,
-    overageLimit: 50,
-    concurrentLimit: 3,
+    phoneNumbersLimit: -1,
+    overageLimit: 500,
+    concurrentLimit: 5,
     features: {
       phone: true,
       whatsappCalling: true,
@@ -504,6 +606,101 @@ export function formatPrice(price, countryCode = 'TR') {
 }
 
 // ============================================================================
+// YENİ HELPER FONKSİYONLAR - Fiyatlandırma sistemi için
+// ============================================================================
+
+/**
+ * Get price per minute for a plan
+ * @param {string} planName - Plan name
+ * @param {string} countryCode - Country code
+ * @returns {number} Price per minute in local currency
+ */
+export function getPricePerMinute(planName, countryCode = 'TR') {
+  const regional = getRegionalPricing(countryCode);
+  return regional.plans[planName]?.pricePerMinute || 0;
+}
+
+/**
+ * Get included minutes for a plan
+ * @param {string} planName - Plan name
+ * @param {string} countryCode - Country code
+ * @returns {number} Included minutes
+ */
+export function getIncludedMinutes(planName, countryCode = 'TR') {
+  const regional = getRegionalPricing(countryCode);
+  return regional.plans[planName]?.minutes || 0;
+}
+
+/**
+ * Get minimum topup minutes for PAYG
+ * @param {string} countryCode - Country code
+ * @returns {number} Minimum topup minutes
+ */
+export function getMinTopupMinutes(countryCode = 'TR') {
+  const regional = getRegionalPricing(countryCode);
+  return regional.minTopupMinutes || 4;
+}
+
+/**
+ * Calculate TL from minutes for a plan
+ * @param {number} minutes - Number of minutes
+ * @param {string} planName - Plan name
+ * @param {string} countryCode - Country code
+ * @returns {number} Amount in local currency
+ */
+export function calculateMinutesToTL(minutes, planName, countryCode = 'TR') {
+  const pricePerMinute = getPricePerMinute(planName, countryCode);
+  return +(minutes * pricePerMinute).toFixed(2);
+}
+
+/**
+ * Calculate minutes from TL for a plan
+ * @param {number} amount - Amount in local currency
+ * @param {string} planName - Plan name
+ * @param {string} countryCode - Country code
+ * @returns {number} Number of minutes
+ */
+export function calculateTLToMinutes(amount, planName, countryCode = 'TR') {
+  const pricePerMinute = getPricePerMinute(planName, countryCode);
+  if (pricePerMinute === 0) return 0;
+  return Math.floor(amount / pricePerMinute);
+}
+
+/**
+ * Get assistants limit for a plan
+ * @param {string} planName - Plan name
+ * @param {string} countryCode - Country code
+ * @returns {number} Assistants limit (-1 for unlimited)
+ */
+export function getAssistantsLimit(planName, countryCode = 'TR') {
+  const regional = getRegionalPricing(countryCode);
+  const planPricing = regional.plans[planName];
+  if (planPricing?.assistantsLimit !== undefined) {
+    return planPricing.assistantsLimit;
+  }
+  const plan = getPlanConfig(planName);
+  return plan.assistantsLimit || 0;
+}
+
+/**
+ * Check if a plan is a paid plan (requires subscription)
+ * @param {string} planName - Plan name
+ * @returns {boolean}
+ */
+export function isPaidPlan(planName) {
+  return ['STARTER', 'PRO', 'ENTERPRISE', 'BASIC', 'PROFESSIONAL'].includes(planName);
+}
+
+/**
+ * Check if a plan requires balance (PAYG or overage)
+ * @param {string} planName - Plan name
+ * @returns {boolean}
+ */
+export function requiresBalance(planName) {
+  return planName === 'PAYG' || isPaidPlan(planName);
+}
+
+// ============================================================================
 // LEGACY EXPORTS (for backward compatibility)
 // ============================================================================
 
@@ -516,6 +713,7 @@ export default {
   PLANS,
   REGIONAL_PRICING,
   CREDIT_PRICING,
+  USD_TO_TRY,
   getRegionalPricing,
   getPlanConfig,
   getPlanWithPricing,
@@ -529,5 +727,14 @@ export default {
   getOverageLimit,
   getConcurrentLimit,
   getPlanName,
-  formatPrice
+  formatPrice,
+  // Yeni fonksiyonlar
+  getPricePerMinute,
+  getIncludedMinutes,
+  getMinTopupMinutes,
+  calculateMinutesToTL,
+  calculateTLToMinutes,
+  getAssistantsLimit,
+  isPaidPlan,
+  requiresBalance
 };

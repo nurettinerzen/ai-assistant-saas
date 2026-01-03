@@ -55,11 +55,17 @@ import waitlistRoutes from './routes/waitlist.js';
 import onboardingRoutes from './routes/onboarding.js';
 // Credits
 import creditsRoutes from './routes/credits.js';
+// Balance (new pricing system)
+import balanceRoutes from './routes/balance.js';
+// Usage (new pricing system)
+import usageRoutes from './routes/usage.js';
 // CRM Webhook Integration
 import crmWebhookRoutes from './routes/crm-webhook.js';
 import crmRoutes from './routes/crm.js';
 // Customer Data (for AI assistant matching)
 import customerDataRoutes from './routes/customerData.js';
+// Cron jobs (for external schedulers)
+import cronRoutes from './routes/cron.js';
 
 
 // Import jobs
@@ -139,11 +145,16 @@ app.use('/api/team', teamRoutes);
 app.use('/api/waitlist', waitlistRoutes);
 app.use('/api/onboarding', onboardingRoutes);
 app.use('/api/credits', creditsRoutes);
+// Balance and Usage (new pricing system)
+app.use('/api/balance', balanceRoutes);
+app.use('/api/usage', usageRoutes);
 // CRM Webhook Integration
 app.use('/api/webhook/crm', crmWebhookRoutes);
 app.use('/api/crm', crmRoutes);
 // Customer Data (for AI assistant matching)
 app.use('/api/customer-data', customerDataRoutes);
+// Cron jobs (for external schedulers like cron-job.org)
+app.use('/api/cron', cronRoutes);
 
 
 // Error handling middleware

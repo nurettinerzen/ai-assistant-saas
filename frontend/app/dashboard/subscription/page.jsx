@@ -19,20 +19,26 @@ import { usePermissions } from '@/hooks/usePermissions';
 import CreditBalance from '@/components/CreditBalance';
 import BuyCreditModal from '@/components/BuyCreditModal';
 
-// Regional pricing configuration - YENİ PAKET YAPISI
+// Regional pricing configuration - YENİ FİYATLANDIRMA SİSTEMİ (2024)
+// TRIAL: 15 dk telefon, 7 gün chat/whatsapp - ücretsiz
+// PAYG: Kullandıkça öde - 23 TL/dk, taahhütsüz
+// STARTER: 2.499 TL/ay, 150 dk dahil, 17 TL/dk, 19 TL aşım
+// PRO: 7.499 TL/ay, 500 dk dahil, 15 TL/dk, 16 TL aşım
+// ENTERPRISE: Özel fiyat, 12 TL/dk, 13 TL aşım
 const REGIONAL_PRICING = {
   TR: {
     currency: '₺',
     currencyPosition: 'after',
     locale: 'tr-TR',
     plans: {
-      // YENİ PAKET YAPISI - 3 paket: Başlangıç, Profesyonel, Kurumsal
-      STARTER: { price: 799, minutes: 100, concurrent: 1, overageRate: 10 },
-      PRO: { price: 3999, minutes: 800, concurrent: 5, overageRate: 8 },
-      ENTERPRISE: { price: null, minutes: null, concurrent: 10, overageRate: 6 },
+      TRIAL: { price: 0, minutes: 15, concurrent: 1, pricePerMinute: 0, chatDays: 7 },
+      PAYG: { price: 0, minutes: 0, concurrent: 1, pricePerMinute: 23, minTopup: 4 },
+      STARTER: { price: 2499, minutes: 150, concurrent: 3, pricePerMinute: 17, overageRate: 19 },
+      PRO: { price: 7499, minutes: 500, concurrent: 10, pricePerMinute: 15, overageRate: 16 },
+      ENTERPRISE: { price: null, minutes: null, concurrent: 20, pricePerMinute: 12, overageRate: 13 },
       // Legacy plan aliases - yeni plan değerlerini kullan
-      BASIC: { price: 799, minutes: 100, concurrent: 1, overageRate: 10 },        // → STARTER
-      PROFESSIONAL: { price: 3999, minutes: 800, concurrent: 5, overageRate: 8 }  // → PRO
+      BASIC: { price: 2499, minutes: 150, concurrent: 3, pricePerMinute: 17, overageRate: 19 },
+      PROFESSIONAL: { price: 7499, minutes: 500, concurrent: 10, pricePerMinute: 15, overageRate: 16 }
     }
   },
   BR: {
@@ -40,11 +46,13 @@ const REGIONAL_PRICING = {
     currencyPosition: 'before',
     locale: 'pt-BR',
     plans: {
-      STARTER: { price: 99, minutes: 100, concurrent: 1, overageRate: 3.5 },
-      PRO: { price: 499, minutes: 800, concurrent: 5, overageRate: 2.5 },
-      ENTERPRISE: { price: null, minutes: null, concurrent: 10, overageRate: 2.0 },
-      BASIC: { price: 99, minutes: 100, concurrent: 1, overageRate: 3.5 },
-      PROFESSIONAL: { price: 499, minutes: 800, concurrent: 5, overageRate: 2.5 }
+      TRIAL: { price: 0, minutes: 15, concurrent: 1, pricePerMinute: 0, chatDays: 7 },
+      PAYG: { price: 0, minutes: 0, concurrent: 1, pricePerMinute: 1.5, minTopup: 4 },
+      STARTER: { price: 149, minutes: 150, concurrent: 3, pricePerMinute: 1.1, overageRate: 1.3 },
+      PRO: { price: 449, minutes: 500, concurrent: 10, pricePerMinute: 1.0, overageRate: 1.1 },
+      ENTERPRISE: { price: null, minutes: null, concurrent: 20, pricePerMinute: 0.8, overageRate: 0.9 },
+      BASIC: { price: 149, minutes: 150, concurrent: 3, pricePerMinute: 1.1, overageRate: 1.3 },
+      PROFESSIONAL: { price: 449, minutes: 500, concurrent: 10, pricePerMinute: 1.0, overageRate: 1.1 }
     }
   },
   US: {
@@ -52,11 +60,13 @@ const REGIONAL_PRICING = {
     currencyPosition: 'before',
     locale: 'en-US',
     plans: {
-      STARTER: { price: 49, minutes: 100, concurrent: 1, overageRate: 0.35 },
-      PRO: { price: 199, minutes: 800, concurrent: 5, overageRate: 0.25 },
-      ENTERPRISE: { price: null, minutes: null, concurrent: 10, overageRate: 0.20 },
-      BASIC: { price: 49, minutes: 100, concurrent: 1, overageRate: 0.35 },
-      PROFESSIONAL: { price: 199, minutes: 800, concurrent: 5, overageRate: 0.25 }
+      TRIAL: { price: 0, minutes: 15, concurrent: 1, pricePerMinute: 0, chatDays: 7 },
+      PAYG: { price: 0, minutes: 0, concurrent: 1, pricePerMinute: 0.55, minTopup: 4 },
+      STARTER: { price: 59, minutes: 150, concurrent: 3, pricePerMinute: 0.40, overageRate: 0.45 },
+      PRO: { price: 179, minutes: 500, concurrent: 10, pricePerMinute: 0.36, overageRate: 0.38 },
+      ENTERPRISE: { price: null, minutes: null, concurrent: 20, pricePerMinute: 0.29, overageRate: 0.31 },
+      BASIC: { price: 59, minutes: 150, concurrent: 3, pricePerMinute: 0.40, overageRate: 0.45 },
+      PROFESSIONAL: { price: 179, minutes: 500, concurrent: 10, pricePerMinute: 0.36, overageRate: 0.38 }
     }
   }
 };
@@ -71,22 +81,40 @@ const LOCALE_TO_LANG = {
   pr: 'PR'
 };
 
-// Base plan configurations - YENİ PAKET YAPISI
+// Base plan configurations - YENİ FİYATLANDIRMA SİSTEMİ
+// Sıralama: Deneme → PAYG → Başlangıç → Pro → Kurumsal
 const BASE_PLANS = [
+  {
+    id: 'TRIAL',
+    name: { TR: 'Deneme', EN: 'Trial' },
+    description: { TR: '15 dakika telefon, 7 gün chat/WhatsApp', EN: '15 minutes phone, 7 days chat/WhatsApp' },
+    includedFeatures: ['trialMinutes', 'trialChat', 'concurrent', 'phone', 'whatsapp', 'chatWidget'],
+    isTrial: true,
+  },
+  {
+    id: 'PAYG',
+    name: { TR: 'Kullandıkça Öde', EN: 'Pay As You Go' },
+    description: { TR: 'Taahhütsüz, bakiye yükle kullan', EN: 'No commitment, top up and use' },
+    includedFeatures: ['payPerMinute', 'concurrent', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'ecommerce', 'calendar', 'analytics'],
+    isPayg: true,
+  },
   {
     id: 'STARTER',
     name: { TR: 'Başlangıç', EN: 'Starter' },
+    description: { TR: '150 dakika dahil, aşım bakiyeden', EN: '150 minutes included, overage from balance' },
     includedFeatures: ['minutes', 'concurrent', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'ecommerce', 'calendar', 'analytics'],
   },
   {
     id: 'PRO',
     name: { TR: 'Profesyonel', EN: 'Pro' },
+    description: { TR: '500 dakika dahil, öncelikli destek', EN: '500 minutes included, priority support' },
     popular: true,
     includedFeatures: ['minutes', 'concurrent', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'ecommerce', 'calendar', 'analytics', 'email', 'googleSheets', 'batchCalls', 'prioritySupport', 'apiAccess'],
   },
   {
     id: 'ENTERPRISE',
     name: { TR: 'Kurumsal', EN: 'Enterprise' },
+    description: { TR: 'Özel fiyatlandırma, SLA garantisi', EN: 'Custom pricing, SLA guarantee' },
     includedFeatures: ['minutes', 'concurrent', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'ecommerce', 'calendar', 'analytics', 'email', 'googleSheets', 'batchCalls', 'prioritySupport', 'apiAccess', 'slaGuarantee'],
   },
 ];
@@ -370,10 +398,12 @@ export default function SubscriptionPage() {
               <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">{t('dashboard.subscriptionPage.currentPlan')}</h2>
               <Badge className="bg-primary-100 dark:bg-primary-900/30 text-primary-800 dark:text-primary-400">
                 {subscription.plan === 'FREE' ? t('dashboard.subscriptionPage.freePlan') :
+                 subscription.plan === 'TRIAL' ? (uiLang === 'TR' ? 'Deneme' : 'Trial') :
+                 subscription.plan === 'PAYG' ? (uiLang === 'TR' ? 'Kullandıkça Öde' : 'Pay As You Go') :
                  subscription.plan === 'STARTER' ? (uiLang === 'TR' ? 'Başlangıç' : 'Starter') :
                  subscription.plan === 'PRO' ? (uiLang === 'TR' ? 'Profesyonel' : 'Pro') :
-                 subscription.plan === 'BASIC' ? (uiLang === 'TR' ? 'Temel' : 'Basic') :
-                 subscription.plan === 'PROFESSIONAL' ? (uiLang === 'TR' ? 'Profesyonel' : 'Professional') :
+                 subscription.plan === 'BASIC' ? (uiLang === 'TR' ? 'Başlangıç' : 'Starter') :
+                 subscription.plan === 'PROFESSIONAL' ? (uiLang === 'TR' ? 'Profesyonel' : 'Pro') :
                  subscription.plan === 'ENTERPRISE' ? t('dashboard.subscriptionPage.enterprisePlan') :
                  subscription.planName || t('dashboard.subscriptionPage.freePlan')}
               </Badge>
@@ -484,8 +514,9 @@ export default function SubscriptionPage() {
             // Only show "Popular" badge if user has no plan or is on FREE plan
             const showPopularBadge = plan.popular && !isCurrentPlan && (!subscription?.plan || subscription?.plan === 'FREE');
 
-            // Plan order for upgrade/downgrade logic - YENİ PAKET YAPISI
-            const PLAN_ORDER = { FREE: 0, STARTER: 1, BASIC: 1, PRO: 2, PROFESSIONAL: 2, ENTERPRISE: 3 };
+            // Plan order for upgrade/downgrade logic - YENİ FİYATLANDIRMA SİSTEMİ
+            // TRIAL ve PAYG özel planlar - normal hiyerarşi dışında
+            const PLAN_ORDER = { FREE: 0, TRIAL: 0, PAYG: 1, STARTER: 2, BASIC: 2, PRO: 3, PROFESSIONAL: 3, ENTERPRISE: 4 };
             const currentPlanIndex = PLAN_ORDER[subscription?.plan] || 0;
             const thisPlanIndex = PLAN_ORDER[plan.id];
             const isUpgrade = thisPlanIndex > currentPlanIndex;
@@ -494,33 +525,57 @@ export default function SubscriptionPage() {
             // Button text based on plan comparison and UI language
             const getButtonText = () => {
               const texts = {
-                TR: { contact: 'Bize Ulaşın', current: 'Mevcut Plan', upgrade: 'Yükselt', downgrade: 'Düşür', select: 'Seç' },
-                EN: { contact: 'Contact Us', current: 'Current Plan', upgrade: 'Upgrade', downgrade: 'Downgrade', select: 'Select' }
+                TR: {
+                  contact: 'Bize Ulaşın',
+                  current: 'Mevcut Plan',
+                  upgrade: 'Yükselt',
+                  downgrade: 'Düşür',
+                  select: 'Seç',
+                  startTrial: 'Denemeye Başla',
+                  switchToPayg: 'PAYG\'ye Geç'
+                },
+                EN: {
+                  contact: 'Contact Us',
+                  current: 'Current Plan',
+                  upgrade: 'Upgrade',
+                  downgrade: 'Downgrade',
+                  select: 'Select',
+                  startTrial: 'Start Trial',
+                  switchToPayg: 'Switch to PAYG'
+                }
               };
               const txt = texts[uiLang] || texts.EN;
               if (plan.id === 'ENTERPRISE') return txt.contact;
               if (isCurrentPlan) return txt.current;
+              if (plan.id === 'TRIAL' && !subscription?.plan) return txt.startTrial;
+              if (plan.id === 'PAYG') return txt.switchToPayg;
               if (isUpgrade) return txt.upgrade;
               if (isDowngrade) return txt.downgrade;
               return txt.select;
             };
 
-            // Feature order - YENİ PAKET YAPISI
+            // Feature order - YENİ FİYATLANDIRMA SİSTEMİ
             const FEATURE_ORDER = [
-              'minutes', 'concurrent', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget',
+              'trialMinutes', 'trialChat', 'payPerMinute', 'minutes', 'concurrent',
+              'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget',
               'ecommerce', 'calendar', 'analytics', 'email', 'googleSheets', 'batchCalls',
               'prioritySupport', 'apiAccess', 'slaGuarantee'
             ];
 
-            // Feature labels - YENİ PAKET YAPISI
+            // Feature labels - YENİ FİYATLANDIRMA SİSTEMİ
             const getFeatureLabel = (key) => {
               const isEnterprise = plan.id === 'ENTERPRISE';
+              const isTrial = plan.id === 'TRIAL';
+              const isPayg = plan.id === 'PAYG';
 
               // UI language-based label maps
               const labelMaps = {
                 TR: {
-                  minutes: isEnterprise ? '800+ dk (özel)' : `${planPricing?.minutes || 0} dk görüşme`,
-                  concurrent: isEnterprise ? '10+ eşzamanlı çağrı' : `${planPricing?.concurrent || 1} eşzamanlı çağrı`,
+                  trialMinutes: '15 dakika telefon görüşmesi',
+                  trialChat: '7 gün chat/WhatsApp',
+                  payPerMinute: `${formatPrice(planPricing?.pricePerMinute || 0)}/dk kullandıkça öde`,
+                  minutes: isEnterprise ? '800+ dk (özel)' : `${planPricing?.minutes || 0} dk dahil`,
+                  concurrent: isEnterprise ? '20+ eşzamanlı çağrı' : `${planPricing?.concurrent || 1} eşzamanlı çağrı`,
                   assistants: 'Sınırsız asistan',
                   phoneNumbers: 'Sınırsız telefon numarası',
                   phone: 'Telefon AI',
@@ -537,8 +592,11 @@ export default function SubscriptionPage() {
                   slaGuarantee: 'SLA garantisi',
                 },
                 EN: {
-                  minutes: isEnterprise ? '800+ min (custom)' : `${planPricing?.minutes || 0} min calls`,
-                  concurrent: isEnterprise ? '10+ concurrent calls' : `${planPricing?.concurrent || 1} concurrent call${(planPricing?.concurrent || 1) > 1 ? 's' : ''}`,
+                  trialMinutes: '15 minutes phone calls',
+                  trialChat: '7 days chat/WhatsApp',
+                  payPerMinute: `${formatPrice(planPricing?.pricePerMinute || 0)}/min pay as you go`,
+                  minutes: isEnterprise ? '800+ min (custom)' : `${planPricing?.minutes || 0} min included`,
+                  concurrent: isEnterprise ? '20+ concurrent calls' : `${planPricing?.concurrent || 1} concurrent call${(planPricing?.concurrent || 1) > 1 ? 's' : ''}`,
                   assistants: 'Unlimited assistants',
                   phoneNumbers: 'Unlimited phone numbers',
                   phone: 'Phone AI',
@@ -598,7 +656,21 @@ export default function SubscriptionPage() {
                     {getPlanName(plan)}
                   </h3>
                   <div className="flex items-baseline justify-center gap-1 h-[40px]">
-                    {planPricing?.price !== null ? (
+                    {/* TRIAL: Ücretsiz */}
+                    {plan.id === 'TRIAL' ? (
+                      <span className="text-3xl font-bold text-green-600 dark:text-green-400">
+                        {uiLang === 'TR' ? 'Ücretsiz' : 'Free'}
+                      </span>
+                    ) : plan.id === 'PAYG' ? (
+                      /* PAYG: Dakika başına fiyat */
+                      <>
+                        <span className="text-3xl font-bold text-neutral-900 dark:text-white">
+                          {formatPrice(planPricing?.pricePerMinute || 0)}
+                        </span>
+                        <span className="text-neutral-500 dark:text-neutral-400">/{uiLang === 'TR' ? 'dk' : 'min'}</span>
+                      </>
+                    ) : planPricing?.price !== null ? (
+                      /* Normal planlar: Aylık fiyat */
                       <>
                         <span className="text-3xl font-bold text-neutral-900 dark:text-white">
                           {formatPrice(planPricing.price)}
@@ -606,15 +678,25 @@ export default function SubscriptionPage() {
                         <span className="text-neutral-500 dark:text-neutral-400">{t('dashboard.subscriptionPage.perMonth')}</span>
                       </>
                     ) : (
-                      <>
-                        <span className="text-2xl font-bold text-neutral-900 dark:text-white">
-                          {uiLang === 'TR' ? 'Özel' : uiLang === 'PR' ? 'Personalizado' : 'Custom'}
-                        </span>
-                      </>
+                      /* Enterprise: Özel */
+                      <span className="text-2xl font-bold text-neutral-900 dark:text-white">
+                        {uiLang === 'TR' ? 'Özel' : uiLang === 'PR' ? 'Personalizado' : 'Custom'}
+                      </span>
                     )}
                   </div>
                   <div className="h-[20px] mt-2">
-                    {planPricing?.overageRate ? (
+                    {/* TRIAL: Açıklama */}
+                    {plan.id === 'TRIAL' ? (
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                        {uiLang === 'TR' ? 'Kredi kartı gerekmez' : 'No credit card required'}
+                      </p>
+                    ) : plan.id === 'PAYG' ? (
+                      /* PAYG: Taahhütsüz */
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                        {uiLang === 'TR' ? 'Taahhütsüz, bakiye yükle kullan' : 'No commitment, top up and use'}
+                      </p>
+                    ) : planPricing?.overageRate ? (
+                      /* Normal planlar: Aşım ücreti */
                       <p className="text-xs text-neutral-500 dark:text-neutral-400">
                         {t('dashboard.subscriptionPage.overage')}: {formatPrice(planPricing.overageRate)}{t('dashboard.subscriptionPage.perMinute')}
                       </p>
@@ -650,16 +732,43 @@ export default function SubscriptionPage() {
                   >
                     {getButtonText()}
                   </Button>
+                ) : plan.id === 'TRIAL' ? (
+                  /* TRIAL butonu - sadece yeni kullanıcılar için */
+                  <Button
+                    className={`w-full ${
+                      isCurrentPlan || subscription?.trialUsed
+                        ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed border-neutral-200'
+                        : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white'
+                    }`}
+                    variant={isCurrentPlan || subscription?.trialUsed ? 'outline' : 'default'}
+                    disabled={isCurrentPlan || subscription?.trialUsed || !can('billing:manage') || upgrading}
+                    onClick={() => handleUpgrade(plan.id)}
+                  >
+                    {upgrading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        {uiLang === 'TR' ? 'İşleniyor...' : 'Processing...'}
+                      </>
+                    ) : isCurrentPlan ? (
+                      uiLang === 'TR' ? 'Mevcut Plan' : 'Current Plan'
+                    ) : subscription?.trialUsed ? (
+                      uiLang === 'TR' ? 'Deneme Kullanıldı' : 'Trial Used'
+                    ) : (
+                      getButtonText()
+                    )}
+                  </Button>
                 ) : (
                   <Button
                     className={`w-full ${
                       isCurrentPlan
                         ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed border-neutral-200'
-                        : isUpgrade
-                          ? 'bg-gradient-to-r from-indigo-600 to-blue-500 hover:from-indigo-700 hover:to-blue-600 text-white'
-                          : 'border-neutral-300 text-neutral-700 hover:bg-neutral-50'
+                        : plan.id === 'PAYG'
+                          ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white'
+                          : isUpgrade
+                            ? 'bg-gradient-to-r from-indigo-600 to-blue-500 hover:from-indigo-700 hover:to-blue-600 text-white'
+                            : 'border-neutral-300 text-neutral-700 hover:bg-neutral-50'
                     }`}
-                    variant={isCurrentPlan ? 'outline' : (isUpgrade ? 'default' : 'outline')}
+                    variant={isCurrentPlan ? 'outline' : ((isUpgrade || plan.id === 'PAYG') ? 'default' : 'outline')}
                     disabled={isCurrentPlan || !can('billing:manage') || upgrading}
                     onClick={() => handleUpgrade(plan.id)}
                   >

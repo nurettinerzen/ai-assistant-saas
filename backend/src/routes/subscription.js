@@ -1452,4 +1452,201 @@ router.get('/billing-history', authenticateToken, async (req, res) => {
   }
 });
 
+// ============================================================================
+// NEW PRICING SYSTEM ENDPOINTS
+// ============================================================================
+
+// POST /api/subscription/start-trial - Start trial for new user
+router.post('/start-trial', verifyBusinessAccess, async (req, res) => {
+  try {
+    const { businessId } = req.user;
+
+    // Check if trial already used
+    const existingSub = await prisma.subscription.findUnique({
+      where: { businessId }
+    });
+
+    if (existingSub?.trialUsed) {
+      return res.status(400).json({ error: 'Trial already used' });
+    }
+
+    const now = new Date();
+    const trialChatExpiry = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+    // Create or update subscription to TRIAL
+    const subscription = await prisma.subscription.upsert({
+      where: { businessId },
+      create: {
+        businessId,
+        plan: 'TRIAL',
+        status: 'active',
+        trialMinutesUsed: 0,
+        trialChatExpiry,
+        trialUsed: false,
+        currentPeriodStart: now,
+        currentPeriodEnd: trialChatExpiry
+      },
+      update: {
+        plan: 'TRIAL',
+        status: 'active',
+        trialMinutesUsed: 0,
+        trialChatExpiry,
+        currentPeriodStart: now,
+        currentPeriodEnd: trialChatExpiry
+      }
+    });
+
+    console.log(`✅ Trial started for business ${businessId}`);
+
+    res.json({
+      success: true,
+      subscription: {
+        plan: 'TRIAL',
+        trialMinutes: 15,
+        trialChatExpiry,
+        status: 'active'
+      }
+    });
+  } catch (error) {
+    console.error('Start trial error:', error);
+    res.status(500).json({ error: 'Failed to start trial' });
+  }
+});
+
+// POST /api/subscription/switch-to-payg - Switch to PAYG plan
+router.post('/switch-to-payg', verifyBusinessAccess, async (req, res) => {
+  try {
+    const { businessId } = req.user;
+
+    // Update to PAYG plan
+    const subscription = await prisma.subscription.upsert({
+      where: { businessId },
+      create: {
+        businessId,
+        plan: 'PAYG',
+        status: 'active',
+        balance: 0,
+        trialUsed: true // Mark trial as used when switching to PAYG
+      },
+      update: {
+        plan: 'PAYG',
+        status: 'active',
+        trialUsed: true,
+        // Cancel any existing subscription
+        cancelAtPeriodEnd: false,
+        stripeSubscriptionId: null,
+        iyzicoSubscriptionId: null
+      }
+    });
+
+    console.log(`✅ Switched to PAYG for business ${businessId}`);
+
+    res.json({
+      success: true,
+      subscription: {
+        plan: 'PAYG',
+        balance: subscription.balance || 0,
+        status: 'active'
+      },
+      message: 'Switched to PAYG. Please top up your balance to start using.'
+    });
+  } catch (error) {
+    console.error('Switch to PAYG error:', error);
+    res.status(500).json({ error: 'Failed to switch to PAYG' });
+  }
+});
+
+// GET /api/subscription/can-make-call - Check if user can make a call
+router.get('/can-make-call', verifyBusinessAccess, async (req, res) => {
+  try {
+    const { businessId } = req.user;
+
+    const subscription = await prisma.subscription.findUnique({
+      where: { businessId }
+    });
+
+    if (!subscription) {
+      return res.json({
+        canMakeCall: false,
+        reason: 'No subscription found'
+      });
+    }
+
+    const plan = subscription.plan;
+
+    // TRIAL plan check
+    if (plan === 'TRIAL') {
+      const minutesUsed = subscription.trialMinutesUsed || 0;
+      if (minutesUsed >= 15) {
+        return res.json({
+          canMakeCall: false,
+          reason: 'Trial minutes exhausted',
+          trialExpired: true
+        });
+      }
+      return res.json({
+        canMakeCall: true,
+        minutesRemaining: 15 - minutesUsed,
+        chargeType: 'TRIAL'
+      });
+    }
+
+    // PAYG plan check
+    if (plan === 'PAYG') {
+      const balance = subscription.balance || 0;
+      const pricePerMinute = 23; // TL
+      if (balance < pricePerMinute) {
+        return res.json({
+          canMakeCall: false,
+          reason: 'Insufficient balance',
+          balance,
+          minRequired: pricePerMinute
+        });
+      }
+      return res.json({
+        canMakeCall: true,
+        balance,
+        minutesAvailable: Math.floor(balance / pricePerMinute),
+        chargeType: 'BALANCE'
+      });
+    }
+
+    // STARTER/PRO/ENTERPRISE - check included minutes and balance
+    const includedUsed = subscription.includedMinutesUsed || 0;
+    const includedLimit = plan === 'STARTER' ? 150 : plan === 'PRO' ? 500 : 1000;
+    const balance = subscription.balance || 0;
+    const overageRate = plan === 'STARTER' ? 19 : plan === 'PRO' ? 16 : 13;
+
+    if (includedUsed < includedLimit) {
+      return res.json({
+        canMakeCall: true,
+        minutesRemaining: includedLimit - includedUsed,
+        chargeType: 'INCLUDED'
+      });
+    }
+
+    // Included exhausted, check balance for overage
+    if (balance >= overageRate) {
+      return res.json({
+        canMakeCall: true,
+        balance,
+        chargeType: 'OVERAGE',
+        overageRate
+      });
+    }
+
+    return res.json({
+      canMakeCall: false,
+      reason: 'Included minutes exhausted and insufficient balance for overage',
+      includedUsed,
+      includedLimit,
+      balance,
+      overageRate
+    });
+  } catch (error) {
+    console.error('Can make call check error:', error);
+    res.status(500).json({ error: 'Failed to check call eligibility' });
+  }
+});
+
 export default router;

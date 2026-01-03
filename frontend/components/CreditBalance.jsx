@@ -6,6 +6,7 @@ import { apiClient } from '@/lib/api';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import {
   Clock,
   CreditCard,
@@ -13,40 +14,87 @@ import {
   TrendingUp,
   Plus,
   Phone,
-  Zap
+  Zap,
+  Wallet,
+  RefreshCw,
+  Settings
 } from 'lucide-react';
 
-// UI translations for CreditBalance - Only Turkish for now
-// See docs/MULTI_REGION_ARCHITECTURE.md for adding new languages
+// UI translations for CreditBalance - YENİ FİYATLANDIRMA SİSTEMİ
 const TRANSLATIONS = {
   TR: {
     usageStatus: 'Kullanım Durumu',
+    balance: 'Bakiye',
+    balanceMinutes: 'Bakiye (dakika)',
     minutesRemaining: 'dk kaldı',
-    packageMinutes: 'Paket Dakikaları',
-    creditMinutes: 'Kredi Dakikaları',
-    used80Package: "Paket dakikalarınızın %80'ini kullandınız",
-    usedAllPackage: 'Paket dakikalarınız tükendi',
-    noCredits: 'Henüz kredi satın almadınız',
-    used80Credits: "Kredi dakikalarınızın %80'ini kullandınız",
+    includedMinutes: 'Dahil Dakikalar',
+    usedMinutes: 'Kullanılan',
+    trialMinutes: 'Deneme Dakikaları',
+    trialChat: 'Chat/WhatsApp',
+    trialDaysLeft: 'gün kaldı',
+    trialExpired: 'Süresi doldu',
+    payPerMinute: 'Dakika başı ücret',
+    used80Package: "Dahil dakikalarınızın %80'ini kullandınız",
+    usedAllPackage: 'Dahil dakikalarınız tükendi, bakiyeden düşülüyor',
+    lowBalance: 'Bakiyeniz azalıyor',
+    noBalance: 'Bakiyeniz yok',
     overageThisMonth: 'Bu Ay Aşım',
-    overageLimit: 'Aşım limit:',
-    overageNote: '(Ay sonunda kartınızdan çekilecektir)',
-    overageLimitReached: 'Aşım Limitine Ulaşıldı!',
-    overageLimitNote: 'Telefon aramaları devre dışı bırakıldı. Kredi satın alarak aramaya devam edebilirsiniz.',
+    overageRate: 'Aşım ücreti',
     periodEnd: 'Dönem sonu:',
-    buyCredits: 'Kredi Al',
+    topUpBalance: 'Bakiye Yükle',
+    autoReload: 'Otomatik Yükleme',
+    autoReloadEnabled: 'Açık',
+    autoReloadDisabled: 'Kapalı',
+    autoReloadSettings: 'Otomatik yükleme ayarları',
+    whenBalanceBelow: 'Bakiye şunun altına düşünce:',
+    reloadAmount: 'Yüklenecek tutar:',
     retry: 'Tekrar Dene',
     loadError: 'Bakiye yüklenemedi',
-    min: 'dk'
+    min: 'dk',
+    perMin: '/dk'
+  },
+  EN: {
+    usageStatus: 'Usage Status',
+    balance: 'Balance',
+    balanceMinutes: 'Balance (minutes)',
+    minutesRemaining: 'min remaining',
+    includedMinutes: 'Included Minutes',
+    usedMinutes: 'Used',
+    trialMinutes: 'Trial Minutes',
+    trialChat: 'Chat/WhatsApp',
+    trialDaysLeft: 'days left',
+    trialExpired: 'Expired',
+    payPerMinute: 'Per minute rate',
+    used80Package: "You've used 80% of your included minutes",
+    usedAllPackage: 'Included minutes used up, deducting from balance',
+    lowBalance: 'Your balance is running low',
+    noBalance: 'No balance',
+    overageThisMonth: 'Overage This Month',
+    overageRate: 'Overage rate',
+    periodEnd: 'Period ends:',
+    topUpBalance: 'Top Up Balance',
+    autoReload: 'Auto Reload',
+    autoReloadEnabled: 'On',
+    autoReloadDisabled: 'Off',
+    autoReloadSettings: 'Auto reload settings',
+    whenBalanceBelow: 'When balance falls below:',
+    reloadAmount: 'Amount to reload:',
+    retry: 'Retry',
+    loadError: 'Failed to load balance',
+    min: 'min',
+    perMin: '/min'
   }
 };
 
-// Map locale to translation key
-const LOCALE_TO_LANG = { tr: 'TR' };
+const LOCALE_TO_LANG = { tr: 'TR', en: 'EN' };
 
 /**
- * CreditBalance Component
- * Displays package minutes, credit minutes, and overage usage
+ * CreditBalance Component - YENİ FİYATLANDIRMA SİSTEMİ
+ * Displays:
+ * - TRIAL: Trial minutes used, chat days remaining
+ * - PAYG: Balance in TL/minutes, per-minute rate
+ * - STARTER/PRO: Included minutes + balance for overage
+ * - ENTERPRISE: Custom display
  */
 export default function CreditBalance({ onBuyCredit, refreshTrigger }) {
   const { t, locale } = useLanguage();
@@ -64,8 +112,15 @@ export default function CreditBalance({ onBuyCredit, refreshTrigger }) {
     try {
       setLoading(true);
       setError(null);
-      const response = await apiClient.get('/api/credits/balance');
-      setBalance(response.data);
+      // Try new balance API first, fall back to credits API
+      try {
+        const response = await apiClient.get('/api/balance');
+        setBalance({ ...response.data, isNewSystem: true });
+      } catch (err) {
+        // Fallback to old credits API
+        const response = await apiClient.get('/api/credits/balance');
+        setBalance({ ...response.data, isNewSystem: false });
+      }
     } catch (err) {
       console.error('Balance fetch error:', err);
       setError(err.response?.data?.error || 'load_error');
@@ -108,21 +163,237 @@ export default function CreditBalance({ onBuyCredit, refreshTrigger }) {
 
   if (!balance) return null;
 
-  const packagePercent = balance.package.limit > 0
+  // Currency based on region
+  const currency = balance.currency || '₺';
+  const dateLocale = lang === 'TR' ? 'tr-TR' : 'en-US';
+
+  // New system display
+  if (balance.isNewSystem) {
+    const plan = balance.plan || 'FREE';
+    const isTrial = plan === 'TRIAL';
+    const isPayg = plan === 'PAYG';
+    const hasIncludedMinutes = ['STARTER', 'PRO', 'ENTERPRISE', 'BASIC', 'PROFESSIONAL'].includes(plan);
+
+    // Calculate percentages
+    const includedPercent = balance.includedMinutes?.limit > 0
+      ? Math.min((balance.includedMinutes.used / balance.includedMinutes.limit) * 100, 100)
+      : 0;
+
+    const trialPercent = balance.trialMinutes?.limit > 0
+      ? Math.min((balance.trialMinutes.used / balance.trialMinutes.limit) * 100, 100)
+      : 0;
+
+    return (
+      <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-sm border border-neutral-200 dark:border-neutral-700 p-6 space-y-5">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-primary-600 dark:text-primary-400" />
+            <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
+              {txt.usageStatus}
+            </h3>
+          </div>
+          <Badge variant="secondary" className="bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400">
+            {plan === 'TRIAL' ? (lang === 'TR' ? 'Deneme' : 'Trial') :
+             plan === 'PAYG' ? (lang === 'TR' ? 'Kullandıkça Öde' : 'PAYG') :
+             plan === 'STARTER' || plan === 'BASIC' ? (lang === 'TR' ? 'Başlangıç' : 'Starter') :
+             plan === 'PRO' || plan === 'PROFESSIONAL' ? (lang === 'TR' ? 'Pro' : 'Pro') :
+             plan === 'ENTERPRISE' ? (lang === 'TR' ? 'Kurumsal' : 'Enterprise') : plan}
+          </Badge>
+        </div>
+
+        {/* TRIAL Plan Display */}
+        {isTrial && (
+          <>
+            {/* Trial Phone Minutes */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2">
+                  <Phone className="h-4 w-4 text-green-600 dark:text-green-400" />
+                  <span className="font-medium text-neutral-700 dark:text-neutral-300">{txt.trialMinutes}</span>
+                </div>
+                <span className="text-neutral-600 dark:text-neutral-400">
+                  {balance.trialMinutes?.used || 0}/{balance.trialMinutes?.limit || 15} {txt.min}
+                </span>
+              </div>
+              <Progress
+                value={trialPercent}
+                className={`h-2 ${trialPercent >= 80 ? '[&>div]:bg-orange-500' : '[&>div]:bg-green-500'}`}
+              />
+            </div>
+
+            {/* Trial Chat Days */}
+            {balance.trialChat && (
+              <div className="flex items-center justify-between text-sm bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
+                <div className="flex items-center gap-2">
+                  <Zap className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  <span className="font-medium text-neutral-700 dark:text-neutral-300">{txt.trialChat}</span>
+                </div>
+                <span className={`font-semibold ${balance.trialChat.daysLeft > 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                  {balance.trialChat.daysLeft > 0
+                    ? `${balance.trialChat.daysLeft} ${txt.trialDaysLeft}`
+                    : txt.trialExpired}
+                </span>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* PAYG Plan Display */}
+        {isPayg && (
+          <>
+            {/* Balance Display */}
+            <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Wallet className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                  <span className="font-medium text-neutral-700 dark:text-neutral-300">{txt.balance}</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-2xl font-bold text-amber-700 dark:text-amber-400">
+                    {currency}{(balance.balance || 0).toLocaleString(dateLocale)}
+                  </span>
+                  <p className="text-xs text-neutral-500">
+                    ≈ {balance.balanceMinutes || 0} {txt.min}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Per-minute rate */}
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-neutral-600 dark:text-neutral-400">{txt.payPerMinute}</span>
+              <span className="font-semibold text-neutral-900 dark:text-white">
+                {currency}{balance.pricePerMinute || 23}{txt.perMin}
+              </span>
+            </div>
+
+            {/* Low balance warning */}
+            {(balance.balance || 0) < 100 && (
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0" />
+                <span className="text-sm text-amber-700 dark:text-amber-400">
+                  {(balance.balance || 0) === 0 ? txt.noBalance : txt.lowBalance}
+                </span>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* STARTER/PRO/ENTERPRISE Plan Display */}
+        {hasIncludedMinutes && (
+          <>
+            {/* Included Minutes */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2">
+                  <Phone className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  <span className="font-medium text-neutral-700 dark:text-neutral-300">{txt.includedMinutes}</span>
+                </div>
+                <span className="text-neutral-600 dark:text-neutral-400">
+                  {balance.includedMinutes?.used || 0}/{balance.includedMinutes?.limit || 0} {txt.min}
+                </span>
+              </div>
+              <Progress
+                value={includedPercent}
+                className={`h-2 ${includedPercent >= 100 ? '[&>div]:bg-red-500' : includedPercent >= 80 ? '[&>div]:bg-orange-500' : '[&>div]:bg-blue-600'}`}
+              />
+              {includedPercent >= 80 && includedPercent < 100 && (
+                <p className="text-xs text-orange-600 flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  {txt.used80Package}
+                </p>
+              )}
+              {includedPercent >= 100 && (
+                <p className="text-xs text-red-600 flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  {txt.usedAllPackage}
+                </p>
+              )}
+            </div>
+
+            {/* Balance for Overage */}
+            <div className="bg-neutral-50 dark:bg-neutral-800 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Wallet className="h-4 w-4 text-green-600 dark:text-green-400" />
+                  <span className="font-medium text-neutral-700 dark:text-neutral-300">{txt.balance}</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-lg font-bold text-neutral-900 dark:text-white">
+                    {currency}{(balance.balance || 0).toLocaleString(dateLocale)}
+                  </span>
+                </div>
+              </div>
+              {balance.overageRate && (
+                <p className="text-xs text-neutral-500 mt-1">
+                  {txt.overageRate}: {currency}{balance.overageRate}{txt.perMin}
+                </p>
+              )}
+            </div>
+
+            {/* Overage This Month */}
+            {balance.overage && balance.overage.minutes > 0 && (
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium text-red-700 dark:text-red-400 flex items-center gap-1">
+                    <Clock className="h-4 w-4" />
+                    {txt.overageThisMonth}
+                  </span>
+                  <span className="text-red-700 dark:text-red-400 font-semibold">
+                    {balance.overage.minutes} {txt.min} = {currency}{balance.overage.amount?.toLocaleString(dateLocale)}
+                  </span>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Auto-Reload Status */}
+        {balance.autoReload && (
+          <div className="flex items-center justify-between text-sm bg-green-50 dark:bg-green-900/20 rounded-lg p-3">
+            <div className="flex items-center gap-2">
+              <RefreshCw className="h-4 w-4 text-green-600 dark:text-green-400" />
+              <span className="text-neutral-700 dark:text-neutral-300">{txt.autoReload}</span>
+            </div>
+            <Badge variant="outline" className="text-green-600 border-green-600">
+              {balance.autoReload.enabled ? txt.autoReloadEnabled : txt.autoReloadDisabled}
+            </Badge>
+          </div>
+        )}
+
+        {/* Period Info */}
+        {balance.periodEnd && (
+          <div className="text-xs text-neutral-500 dark:text-neutral-400 flex items-center justify-between pt-2 border-t border-neutral-100 dark:border-neutral-800">
+            <span>{txt.periodEnd}</span>
+            <span>{new Date(balance.periodEnd).toLocaleDateString(dateLocale)}</span>
+          </div>
+        )}
+
+        {/* Top Up Button - Show for PAYG and paid plans */}
+        {(isPayg || hasIncludedMinutes) && (
+          <Button
+            onClick={onBuyCredit}
+            className="w-full bg-primary-600 hover:bg-primary-700"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            {txt.topUpBalance}
+          </Button>
+        )}
+      </div>
+    );
+  }
+
+  // Legacy system display (fallback) - Keep original code
+  const packagePercent = balance.package?.limit > 0
     ? Math.min((balance.package.used / balance.package.limit) * 100, 100)
     : 0;
 
-  const creditPercent = balance.credit.total > 0
+  const creditPercent = balance.credit?.total > 0
     ? Math.min((balance.credit.used / balance.credit.total) * 100, 100)
     : 0;
 
-  const totalRemaining = balance.package.remaining + balance.credit.remaining;
-
-  // Date locale mapping
-  const dateLocale = lang === 'TR' ? 'tr-TR' : lang === 'PR' ? 'pt-BR' : 'en-US';
-
-  // Currency symbol based on region (this comes from balance API or could be passed as prop)
-  const currencySymbol = lang === 'TR' ? '₺' : lang === 'PR' ? 'R$' : '$';
+  const totalRemaining = (balance.package?.remaining || 0) + (balance.credit?.remaining || 0);
 
   return (
     <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-sm border border-neutral-200 dark:border-neutral-700 p-6 space-y-5">
@@ -134,114 +405,46 @@ export default function CreditBalance({ onBuyCredit, refreshTrigger }) {
             {txt.usageStatus}
           </h3>
         </div>
-        <Badge variant={balance.overage.limitReached ? 'destructive' : 'secondary'}>
+        <Badge variant={balance.overage?.limitReached ? 'destructive' : 'secondary'}>
           {totalRemaining} {txt.minutesRemaining}
         </Badge>
       </div>
 
       {/* Package Minutes */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between text-sm">
-          <div className="flex items-center gap-2">
-            <Phone className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            <span className="font-medium text-neutral-700 dark:text-neutral-300">{txt.packageMinutes}</span>
+      {balance.package && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center gap-2">
+              <Phone className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <span className="font-medium text-neutral-700 dark:text-neutral-300">{txt.includedMinutes}</span>
+            </div>
+            <span className="text-neutral-600 dark:text-neutral-400">
+              {balance.package.used}/{balance.package.limit} {txt.min}
+            </span>
           </div>
-          <span className="text-neutral-600 dark:text-neutral-400">
-            {balance.package.used}/{balance.package.limit} {txt.min}
-          </span>
+          <Progress
+            value={packagePercent}
+            className={`h-2 ${packagePercent >= 80 ? '[&>div]:bg-orange-500' : '[&>div]:bg-blue-600'}`}
+          />
         </div>
-        <Progress
-          value={packagePercent}
-          className={`h-2 ${packagePercent >= 80 ? '[&>div]:bg-orange-500' : '[&>div]:bg-blue-600'}`}
-        />
-        {packagePercent >= 80 && packagePercent < 100 && (
-          <p className="text-xs text-orange-600 flex items-center gap-1">
-            <AlertTriangle className="h-3 w-3" />
-            {txt.used80Package}
-          </p>
-        )}
-        {packagePercent >= 100 && (
-          <p className="text-xs text-red-600 flex items-center gap-1">
-            <AlertTriangle className="h-3 w-3" />
-            {txt.usedAllPackage}
-          </p>
-        )}
-      </div>
+      )}
 
       {/* Credit Minutes */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between text-sm">
-          <div className="flex items-center gap-2">
-            <Zap className="h-4 w-4 text-green-600 dark:text-green-400" />
-            <span className="font-medium text-neutral-700 dark:text-neutral-300">{txt.creditMinutes}</span>
+      {balance.credit && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center gap-2">
+              <Zap className="h-4 w-4 text-green-600 dark:text-green-400" />
+              <span className="font-medium text-neutral-700 dark:text-neutral-300">{txt.balance}</span>
+            </div>
+            <span className="text-neutral-600 dark:text-neutral-400">
+              {balance.credit.remaining} {txt.minutesRemaining}
+            </span>
           </div>
-          <span className="text-neutral-600 dark:text-neutral-400">
-            {balance.credit.remaining} {txt.minutesRemaining}
-          </span>
-        </div>
-        {balance.credit.total > 0 ? (
           <Progress
             value={creditPercent}
             className={`h-2 ${creditPercent >= 80 ? '[&>div]:bg-amber-500' : '[&>div]:bg-green-500'}`}
           />
-        ) : (
-          <div className="h-2 bg-neutral-100 dark:bg-neutral-800 rounded-full">
-            <div className="h-full bg-neutral-200 dark:bg-neutral-700 rounded-full w-0"></div>
-          </div>
-        )}
-        {balance.credit.total === 0 && (
-          <p className="text-xs text-neutral-500">
-            {txt.noCredits}
-          </p>
-        )}
-        {creditPercent >= 80 && balance.credit.total > 0 && (
-          <p className="text-xs text-amber-600 flex items-center gap-1">
-            <AlertTriangle className="h-3 w-3" />
-            {txt.used80Credits}
-          </p>
-        )}
-      </div>
-
-      {/* Overage Status */}
-      {balance.overage.minutes > 0 && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 space-y-1">
-          <div className="flex items-center justify-between text-sm">
-            <span className="font-medium text-red-700 dark:text-red-400 flex items-center gap-1">
-              <Clock className="h-4 w-4" />
-              {txt.overageThisMonth}
-            </span>
-            <span className="text-red-700 dark:text-red-400 font-semibold">
-              {balance.overage.minutes} {txt.min} × {currencySymbol}{balance.overage.rate} = {currencySymbol}{balance.overage.amount.toLocaleString(dateLocale)}
-            </span>
-          </div>
-          <p className="text-xs text-red-600 dark:text-red-400">
-            {txt.overageLimit} {balance.overage.limit} {txt.min} {txt.overageNote}
-          </p>
-        </div>
-      )}
-
-      {/* Overage Limit Warning */}
-      {balance.overage.limitReached && (
-        <div className="bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg p-4">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-semibold text-red-800 dark:text-red-300">
-                {txt.overageLimitReached}
-              </p>
-              <p className="text-sm text-red-700 dark:text-red-400 mt-1">
-                {txt.overageLimitNote}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Period Info */}
-      {balance.periodEnd && (
-        <div className="text-xs text-neutral-500 dark:text-neutral-400 flex items-center justify-between pt-2 border-t border-neutral-100 dark:border-neutral-800">
-          <span>{txt.periodEnd}</span>
-          <span>{new Date(balance.periodEnd).toLocaleDateString(dateLocale)}</span>
         </div>
       )}
 
@@ -251,7 +454,7 @@ export default function CreditBalance({ onBuyCredit, refreshTrigger }) {
         className="w-full bg-primary-600 hover:bg-primary-700"
       >
         <Plus className="h-4 w-4 mr-2" />
-        {txt.buyCredits}
+        {txt.topUpBalance}
       </Button>
     </div>
   );
