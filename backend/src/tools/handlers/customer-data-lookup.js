@@ -16,7 +16,7 @@ export async function execute(args, business, context = {}) {
   try {
     const { query_type, phone } = args;
 
-    // Get phone from args or context (caller phone from call metadata)
+    // PRIORITY: Use phone from args first (user-provided), then fallback to context (caller ID)
     const lookupPhone = phone || context.callerPhone || context.phone || context.from;
 
     console.log('🔍 Customer Data Lookup:', { query_type, phone: lookupPhone, businessId: business.id });
@@ -30,12 +30,23 @@ export async function execute(args, business, context = {}) {
       resolvedPhone: lookupPhone
     });
 
+    // If no phone from args and user is asking, prompt them to provide phone
+    if (!phone && !lookupPhone) {
+      return {
+        success: false,
+        error: business.language === 'TR'
+          ? 'Lütfen telefon numaranızı söyleyin, kayıtlarınıza bakayım.'
+          : 'Please tell me your phone number so I can look up your records.'
+      };
+    }
+
+    // If no phone in args but we have context phone, that's OK - use caller ID
     if (!lookupPhone) {
       return {
         success: false,
         error: business.language === 'TR'
-          ? 'Telefon numarası bulunamadı. Müşteri bilgilerini getirmek için telefon numarası gerekli.'
-          : 'Phone number not found. Phone number is required to lookup customer information.'
+          ? 'Telefon numarası bulunamadı. Lütfen numaranızı söyleyin.'
+          : 'Phone number not found. Please provide your phone number.'
       };
     }
 

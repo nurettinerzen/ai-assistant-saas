@@ -6,7 +6,7 @@
 
 export default {
   name: 'customer_data_lookup',
-  description: 'Müşterinin kayıtlı bilgilerini getirir (SGK borcu, vergi borcu, beyanname durumu). Müşteri numara söylediyse o numarayı phone parametresine yaz. Numara söylemediyse phone boş bırak.',
+  description: 'Müşterinin kayıtlı bilgilerini getirir (SGK borcu, vergi borcu, beyanname durumu). ÖNEMLİ: Müşteri telefon numarası söylediğinde, bu numarayı MUTLAKA phone parametresine yaz! Örnek: Müşteri "0532 123 45 67" derse phone alanına "05321234567" yaz.',
   parameters: {
     type: 'object',
     properties: {
@@ -17,10 +17,10 @@ export default {
       },
       phone: {
         type: 'string',
-        description: 'Müşterinin söylediği telefon numarası. Müşteri numara söylediyse BU ALANI DOLDUR. Örnek: "0532 123 45 67" -> "05321234567"'
+        description: 'ZORUNLU: Müşterinin söylediği telefon numarası. Müşteri hangi numarayı söylediyse onu buraya yaz. Boşlukları ve tireleri kaldır. Örnek: "0532 123 45 67" -> "05321234567", "532 123 4567" -> "5321234567"'
       }
     },
-    required: ['query_type']
+    required: ['query_type', 'phone']
   },
   // Available for all business types - can store custom data
   allowedBusinessTypes: ['RESTAURANT', 'SALON', 'ECOMMERCE', 'CLINIC', 'SERVICE', 'OTHER'],
