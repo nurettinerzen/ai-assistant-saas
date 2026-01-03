@@ -112,6 +112,7 @@ export default function Sidebar({ user, credits, business }) {
     {
       label: t('dashboard.sidebar.system'),
       items: [
+        { icon: Puzzle, label: t('dashboard.sidebar.integrations'), href: '/dashboard/integrations', permission: 'integrations:view' },
         { icon: Users, label: t('dashboard.sidebar.team'), href: '/dashboard/team', permission: 'team:view' },
         { icon: Settings, label: t('dashboard.sidebar.settings'), href: '/dashboard/settings', permission: 'settings:view' },
         { icon: CreditCard, label: t('dashboard.sidebar.subscription'), href: '/dashboard/subscription', permission: 'billing:view' },

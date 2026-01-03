@@ -78,10 +78,20 @@ export default function ChatWidgetPage() {
       const response = await axios.get(`${API_URL}/api/assistants`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setAssistants(response.data.assistants || []);
-      if (response.data.assistants.length > 0) {
-        // Use internal assistant ID - works for both VAPI and 11Labs assistants
-        setAssistantId(response.data.assistants[0].id);
+      const allAssistants = response.data.assistants || [];
+      setAssistants(allAssistants);
+
+      // Check if we have a saved assistantId in localStorage
+      const saved = localStorage.getItem('chatWidgetSettings');
+      const savedSettings = saved ? JSON.parse(saved) : {};
+
+      if (savedSettings.assistantId && allAssistants.find(a => a.id === savedSettings.assistantId)) {
+        // Use saved assistant if it still exists
+        setAssistantId(savedSettings.assistantId);
+      } else if (allAssistants.length > 0) {
+        // Find first inbound assistant, or fallback to first assistant
+        const inboundAssistant = allAssistants.find(a => a.callDirection === 'inbound' || !a.callDirection);
+        setAssistantId(inboundAssistant?.id || allAssistants[0].id);
       }
     } catch (error) {
       console.error('Failed to load assistants:', error);
