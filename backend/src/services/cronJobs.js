@@ -385,18 +385,32 @@ export async function billOverageUsage() {
 
         console.log(`📊 Billing ${subscription.business?.name}: ${subscription.overageMinutes} dk × ${overageRate} = ${overageAmount} TL`);
 
-        // Check if has payment method (Stripe customer)
+        // Check if has payment method (Stripe customer) and create invoice
+        let stripeInvoiceResult = null;
         if (subscription.business?.stripeCustomerId) {
-          // TODO: Create Stripe invoice for overage
-          // const stripe = (await import('./stripe.js')).default;
-          // await stripe.createInvoiceItem({
-          //   customer: subscription.business.stripeCustomerId,
-          //   amount: Math.round(overageAmount * 100), // cents
-          //   currency: country === 'TR' ? 'try' : country === 'BR' ? 'brl' : 'usd',
-          //   description: `Aşım kullanımı: ${subscription.overageMinutes} dakika`
-          // });
+          try {
+            const stripeService = (await import('./stripe.js')).default;
+            const currency = country === 'TR' ? 'TRY' : country === 'BR' ? 'BRL' : 'USD';
 
-          console.log(`💳 [TODO] Would create Stripe invoice for ${subscription.business?.name}: ${overageAmount} TL`);
+            stripeInvoiceResult = await stripeService.createOverageInvoice({
+              customerId: subscription.business.stripeCustomerId,
+              overageMinutes: subscription.overageMinutes,
+              overageRate,
+              totalAmount: overageAmount,
+              currency,
+              countryCode: country,
+              businessName: subscription.business.name,
+              periodStart: subscription.currentPeriodStart,
+              periodEnd: subscription.currentPeriodEnd
+            });
+
+            console.log(`💳 Stripe invoice created: ${stripeInvoiceResult.invoiceId} for ${subscription.business?.name}`);
+          } catch (stripeErr) {
+            console.error(`❌ Stripe invoice creation failed for ${subscription.business?.name}:`, stripeErr.message);
+            // Continue with database recording even if Stripe fails
+          }
+        } else {
+          console.log(`⚠️ No Stripe customer for ${subscription.business?.name}, skipping invoice creation`);
         }
 
         // Record the billing in database
@@ -420,7 +434,9 @@ export async function billOverageUsage() {
               overageMinutes: subscription.overageMinutes,
               overageRate,
               periodStart: subscription.currentPeriodStart,
-              periodEnd: subscription.currentPeriodEnd
+              periodEnd: subscription.currentPeriodEnd,
+              stripeInvoiceId: stripeInvoiceResult?.invoiceId || null,
+              stripeInvoiceStatus: stripeInvoiceResult?.status || null
             }
           }
         });

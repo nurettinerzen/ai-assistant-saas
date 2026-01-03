@@ -21,7 +21,7 @@ import {
   getPricePerMinute,
   getMinTopupMinutes,
   calculateTLToMinutes,
-  getOverageRate,
+  getIncludedMinutes,
   isPrepaidPlan,
   isPostpaidPlan,
   getPaymentModel,
@@ -135,16 +135,8 @@ router.get('/', async (req, res) => {
     const paymentModel = getPaymentModel(plan);
     const overageRate = getFixedOveragePrice(country); // Sabit aşım fiyatı
 
-    // Get included minutes limit based on plan
-    const INCLUDED_MINUTES = {
-      TRIAL: 15,
-      PAYG: 0,
-      STARTER: 150,
-      BASIC: 150,
-      PRO: 500,
-      PROFESSIONAL: 500,
-      ENTERPRISE: 800
-    };
+    // Get included minutes from plan config (not from database!)
+    const planIncludedMinutes = getIncludedMinutes(plan, country);
 
     // Calculate trial chat days remaining
     let trialChat = null;
@@ -173,10 +165,10 @@ router.get('/', async (req, res) => {
       balanceMinutes: isPAYG ? balanceMinutes : null,
       pricePerMinute: isPAYG ? pricePerMinute : null,
 
-      // Paketler için dahil dakika bilgisi
+      // Paketler için dahil dakika bilgisi (plan config'den al, database'den DEĞİL)
       includedMinutes: !isPAYG && plan !== 'TRIAL' ? {
         used: subscription.includedMinutesUsed || 0,
-        limit: subscription.minutesLimit || INCLUDED_MINUTES[plan] || 0
+        limit: planIncludedMinutes
       } : null,
 
       // Aşım bilgisi (postpaid paketler için)

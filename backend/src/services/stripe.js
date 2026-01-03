@@ -333,6 +333,119 @@ class StripeService {
       throw error;
     }
   }
+
+  /**
+   * Create an overage invoice for postpaid billing
+   * Used at the end of billing period for STARTER/PRO/ENTERPRISE plans
+   * @param {object} options - Invoice options
+   * @param {string} options.customerId - Stripe customer ID
+   * @param {number} options.overageMinutes - Number of overage minutes
+   * @param {number} options.overageRate - Rate per minute
+   * @param {number} options.totalAmount - Total amount to charge
+   * @param {string} options.currency - Currency code (TRY, BRL, USD)
+   * @param {string} options.countryCode - Country code for localization
+   * @param {string} options.businessName - Business name for description
+   * @param {Date} options.periodStart - Billing period start
+   * @param {Date} options.periodEnd - Billing period end
+   */
+  async createOverageInvoice({
+    customerId,
+    overageMinutes,
+    overageRate,
+    totalAmount,
+    currency = 'TRY',
+    countryCode = 'TR',
+    businessName,
+    periodStart,
+    periodEnd
+  }) {
+    try {
+      // Format dates for description
+      const formatDate = (date) => {
+        const d = new Date(date);
+        return d.toLocaleDateString(countryCode === 'TR' ? 'tr-TR' : countryCode === 'BR' ? 'pt-BR' : 'en-US');
+      };
+
+      const periodStr = `${formatDate(periodStart)} - ${formatDate(periodEnd)}`;
+
+      // Localized descriptions
+      const descriptions = {
+        TR: `Aşım kullanımı: ${overageMinutes} dakika × ${overageRate} ₺/dk (${periodStr})`,
+        BR: `Uso excedente: ${overageMinutes} minutos × R$ ${overageRate}/min (${periodStr})`,
+        US: `Overage usage: ${overageMinutes} minutes × $${overageRate}/min (${periodStr})`
+      };
+
+      const productNames = {
+        TR: 'TELYX.AI Aşım Kullanımı',
+        BR: 'TELYX.AI Uso Excedente',
+        US: 'TELYX.AI Overage Usage'
+      };
+
+      // Create an invoice item (this will be added to the next invoice or a new one)
+      const invoiceItem = await stripe.invoiceItems.create({
+        customer: customerId,
+        amount: Math.round(totalAmount * 100), // Stripe uses smallest currency unit
+        currency: currency.toLowerCase(),
+        description: descriptions[countryCode] || descriptions.US,
+        metadata: {
+          type: 'overage_charge',
+          overageMinutes: overageMinutes.toString(),
+          overageRate: overageRate.toString(),
+          periodStart: periodStart.toISOString(),
+          periodEnd: periodEnd.toISOString()
+        }
+      });
+
+      console.log(`💳 Created invoice item for ${businessName}: ${totalAmount} ${currency}`);
+
+      // Create and finalize the invoice immediately
+      const invoice = await stripe.invoices.create({
+        customer: customerId,
+        auto_advance: true, // Automatically finalize and attempt payment
+        collection_method: 'charge_automatically',
+        description: productNames[countryCode] || productNames.US,
+        metadata: {
+          type: 'overage_invoice',
+          businessName,
+          periodStart: periodStart.toISOString(),
+          periodEnd: periodEnd.toISOString()
+        }
+      });
+
+      // Finalize the invoice (this triggers payment attempt)
+      const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id);
+
+      console.log(`💳 Finalized overage invoice ${finalizedInvoice.id} for ${businessName}`);
+
+      return {
+        success: true,
+        invoiceId: finalizedInvoice.id,
+        invoiceItemId: invoiceItem.id,
+        amount: totalAmount,
+        currency,
+        status: finalizedInvoice.status,
+        hostedInvoiceUrl: finalizedInvoice.hosted_invoice_url,
+        pdfUrl: finalizedInvoice.invoice_pdf
+      };
+
+    } catch (error) {
+      console.error('Create overage invoice error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get invoice by ID
+   * @param {string} invoiceId - Stripe invoice ID
+   */
+  async getInvoice(invoiceId) {
+    try {
+      return await stripe.invoices.retrieve(invoiceId);
+    } catch (error) {
+      console.error('Get invoice error:', error);
+      throw error;
+    }
+  }
 }
 
 export default new StripeService();
