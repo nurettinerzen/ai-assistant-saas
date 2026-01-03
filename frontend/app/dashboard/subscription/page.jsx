@@ -38,12 +38,12 @@ const REGIONAL_PRICING = {
       TRIAL: { price: 0, minutes: 15, concurrent: 1, pricePerMinute: 0, chatDays: 7, paymentModel: null },
       PAYG: { price: 0, minutes: 0, concurrent: 1, pricePerMinute: 23, minTopup: 4, paymentModel: 'PREPAID' },
       // SABİT 23 TL AŞIM - POSTPAID
-      STARTER: { price: 2499, minutes: 150, concurrent: 3, pricePerMinute: 17, overageRate: 23, paymentModel: 'POSTPAID' },
-      PRO: { price: 7499, minutes: 500, concurrent: 10, pricePerMinute: 15, overageRate: 23, paymentModel: 'POSTPAID' },
-      ENTERPRISE: { price: null, minutes: null, concurrent: 20, pricePerMinute: 12, overageRate: 23, paymentModel: 'POSTPAID' },
+      STARTER: { price: 2499, minutes: 150, concurrent: 1, pricePerMinute: 17, overageRate: 23, paymentModel: 'POSTPAID' },
+      PRO: { price: 7499, minutes: 500, concurrent: 5, pricePerMinute: 15, overageRate: 23, paymentModel: 'POSTPAID' },
+      ENTERPRISE: { price: null, minutes: null, concurrent: 5, pricePerMinute: 12, overageRate: 23, paymentModel: 'POSTPAID' },
       // Legacy plan aliases
-      BASIC: { price: 2499, minutes: 150, concurrent: 3, pricePerMinute: 17, overageRate: 23, paymentModel: 'POSTPAID' },
-      PROFESSIONAL: { price: 7499, minutes: 500, concurrent: 10, pricePerMinute: 15, overageRate: 23, paymentModel: 'POSTPAID' }
+      BASIC: { price: 2499, minutes: 150, concurrent: 1, pricePerMinute: 17, overageRate: 23, paymentModel: 'POSTPAID' },
+      PROFESSIONAL: { price: 7499, minutes: 500, concurrent: 5, pricePerMinute: 15, overageRate: 23, paymentModel: 'POSTPAID' }
     }
   },
   BR: {
@@ -54,11 +54,11 @@ const REGIONAL_PRICING = {
       TRIAL: { price: 0, minutes: 15, concurrent: 1, pricePerMinute: 0, chatDays: 7, paymentModel: null },
       PAYG: { price: 0, minutes: 0, concurrent: 1, pricePerMinute: 4.60, minTopup: 4, paymentModel: 'PREPAID' },
       // SABİT 4.60 R$ AŞIM - POSTPAID
-      STARTER: { price: 500, minutes: 150, concurrent: 3, pricePerMinute: 3.40, overageRate: 4.60, paymentModel: 'POSTPAID' },
-      PRO: { price: 1500, minutes: 500, concurrent: 10, pricePerMinute: 3.00, overageRate: 4.60, paymentModel: 'POSTPAID' },
-      ENTERPRISE: { price: null, minutes: null, concurrent: 20, pricePerMinute: 2.40, overageRate: 4.60, paymentModel: 'POSTPAID' },
-      BASIC: { price: 500, minutes: 150, concurrent: 3, pricePerMinute: 3.40, overageRate: 4.60, paymentModel: 'POSTPAID' },
-      PROFESSIONAL: { price: 1500, minutes: 500, concurrent: 10, pricePerMinute: 3.00, overageRate: 4.60, paymentModel: 'POSTPAID' }
+      STARTER: { price: 500, minutes: 150, concurrent: 1, pricePerMinute: 3.40, overageRate: 4.60, paymentModel: 'POSTPAID' },
+      PRO: { price: 1500, minutes: 500, concurrent: 5, pricePerMinute: 3.00, overageRate: 4.60, paymentModel: 'POSTPAID' },
+      ENTERPRISE: { price: null, minutes: null, concurrent: 5, pricePerMinute: 2.40, overageRate: 4.60, paymentModel: 'POSTPAID' },
+      BASIC: { price: 500, minutes: 150, concurrent: 1, pricePerMinute: 3.40, overageRate: 4.60, paymentModel: 'POSTPAID' },
+      PROFESSIONAL: { price: 1500, minutes: 500, concurrent: 5, pricePerMinute: 3.00, overageRate: 4.60, paymentModel: 'POSTPAID' }
     }
   },
   US: {
@@ -69,11 +69,11 @@ const REGIONAL_PRICING = {
       TRIAL: { price: 0, minutes: 15, concurrent: 1, pricePerMinute: 0, chatDays: 7, paymentModel: null },
       PAYG: { price: 0, minutes: 0, concurrent: 1, pricePerMinute: 0.51, minTopup: 4, paymentModel: 'PREPAID' },
       // SABİT $0.51 AŞIM - POSTPAID
-      STARTER: { price: 55, minutes: 150, concurrent: 3, pricePerMinute: 0.38, overageRate: 0.51, paymentModel: 'POSTPAID' },
-      PRO: { price: 167, minutes: 500, concurrent: 10, pricePerMinute: 0.33, overageRate: 0.51, paymentModel: 'POSTPAID' },
-      ENTERPRISE: { price: null, minutes: null, concurrent: 20, pricePerMinute: 0.27, overageRate: 0.51, paymentModel: 'POSTPAID' },
-      BASIC: { price: 55, minutes: 150, concurrent: 3, pricePerMinute: 0.38, overageRate: 0.51, paymentModel: 'POSTPAID' },
-      PROFESSIONAL: { price: 167, minutes: 500, concurrent: 10, pricePerMinute: 0.33, overageRate: 0.51, paymentModel: 'POSTPAID' }
+      STARTER: { price: 55, minutes: 150, concurrent: 1, pricePerMinute: 0.38, overageRate: 0.51, paymentModel: 'POSTPAID' },
+      PRO: { price: 167, minutes: 500, concurrent: 5, pricePerMinute: 0.33, overageRate: 0.51, paymentModel: 'POSTPAID' },
+      ENTERPRISE: { price: null, minutes: null, concurrent: 5, pricePerMinute: 0.27, overageRate: 0.51, paymentModel: 'POSTPAID' },
+      BASIC: { price: 55, minutes: 150, concurrent: 1, pricePerMinute: 0.38, overageRate: 0.51, paymentModel: 'POSTPAID' },
+      PROFESSIONAL: { price: 167, minutes: 500, concurrent: 5, pricePerMinute: 0.33, overageRate: 0.51, paymentModel: 'POSTPAID' }
     }
   }
 };
@@ -574,8 +574,8 @@ export default function SubscriptionPage() {
                   trialMinutes: '15 dakika telefon görüşmesi',
                   trialChat: '7 gün chat/WhatsApp',
                   payPerMinute: `${formatPrice(planPricing?.pricePerMinute || 0)}/dk kullandıkça öde`,
-                  minutes: isEnterprise ? '800+ dk (özel)' : `${planPricing?.minutes || 0} dk dahil`,
-                  concurrent: isEnterprise ? '20+ eşzamanlı çağrı' : `${planPricing?.concurrent || 1} eşzamanlı çağrı`,
+                  minutes: isEnterprise ? '500+ dk (özel)' : `${planPricing?.minutes || 0} dk dahil`,
+                  concurrent: isEnterprise ? '5+ eşzamanlı çağrı' : `${planPricing?.concurrent || 1} eşzamanlı çağrı`,
                   assistants: 'Sınırsız asistan',
                   phoneNumbers: 'Sınırsız telefon numarası',
                   phone: 'Telefon AI',
@@ -595,8 +595,8 @@ export default function SubscriptionPage() {
                   trialMinutes: '15 minutes phone calls',
                   trialChat: '7 days chat/WhatsApp',
                   payPerMinute: `${formatPrice(planPricing?.pricePerMinute || 0)}/min pay as you go`,
-                  minutes: isEnterprise ? '800+ min (custom)' : `${planPricing?.minutes || 0} min included`,
-                  concurrent: isEnterprise ? '20+ concurrent calls' : `${planPricing?.concurrent || 1} concurrent call${(planPricing?.concurrent || 1) > 1 ? 's' : ''}`,
+                  minutes: isEnterprise ? '500+ min (custom)' : `${planPricing?.minutes || 0} min included`,
+                  concurrent: isEnterprise ? '5+ concurrent calls' : `${planPricing?.concurrent || 1} concurrent call${(planPricing?.concurrent || 1) > 1 ? 's' : ''}`,
                   assistants: 'Unlimited assistants',
                   phoneNumbers: 'Unlimited phone numbers',
                   phone: 'Phone AI',
