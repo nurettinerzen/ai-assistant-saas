@@ -82,15 +82,9 @@ const LOCALE_TO_LANG = {
 };
 
 // Base plan configurations - YENİ FİYATLANDIRMA SİSTEMİ
-// Sıralama: Deneme → PAYG → Başlangıç → Pro → Kurumsal
+// Sıralama: PAYG → Başlangıç → Pro → Kurumsal
+// NOT: TRIAL plan burada gösterilmez, yeni kayıtlarda otomatik başlar
 const BASE_PLANS = [
-  {
-    id: 'TRIAL',
-    name: { TR: 'Deneme', EN: 'Trial' },
-    description: { TR: '15 dakika telefon, 7 gün chat/WhatsApp', EN: '15 minutes phone, 7 days chat/WhatsApp' },
-    includedFeatures: ['trialMinutes', 'trialChat', 'concurrent', 'phone', 'whatsapp', 'chatWidget'],
-    isTrial: true,
-  },
   {
     id: 'PAYG',
     name: { TR: 'Kullandıkça Öde', EN: 'Pay As You Go' },
@@ -531,7 +525,6 @@ export default function SubscriptionPage() {
                   upgrade: 'Yükselt',
                   downgrade: 'Düşür',
                   select: 'Seç',
-                  startTrial: 'Denemeye Başla',
                   switchToPayg: 'PAYG\'ye Geç'
                 },
                 EN: {
@@ -540,14 +533,12 @@ export default function SubscriptionPage() {
                   upgrade: 'Upgrade',
                   downgrade: 'Downgrade',
                   select: 'Select',
-                  startTrial: 'Start Trial',
                   switchToPayg: 'Switch to PAYG'
                 }
               };
               const txt = texts[uiLang] || texts.EN;
               if (plan.id === 'ENTERPRISE') return txt.contact;
               if (isCurrentPlan) return txt.current;
-              if (plan.id === 'TRIAL' && !subscription?.plan) return txt.startTrial;
               if (plan.id === 'PAYG') return txt.switchToPayg;
               if (isUpgrade) return txt.upgrade;
               if (isDowngrade) return txt.downgrade;
@@ -565,7 +556,6 @@ export default function SubscriptionPage() {
             // Feature labels - YENİ FİYATLANDIRMA SİSTEMİ
             const getFeatureLabel = (key) => {
               const isEnterprise = plan.id === 'ENTERPRISE';
-              const isTrial = plan.id === 'TRIAL';
               const isPayg = plan.id === 'PAYG';
 
               // UI language-based label maps
@@ -656,12 +646,7 @@ export default function SubscriptionPage() {
                     {getPlanName(plan)}
                   </h3>
                   <div className="flex items-baseline justify-center gap-1 h-[40px]">
-                    {/* TRIAL: Ücretsiz */}
-                    {plan.id === 'TRIAL' ? (
-                      <span className="text-3xl font-bold text-green-600 dark:text-green-400">
-                        {uiLang === 'TR' ? 'Ücretsiz' : 'Free'}
-                      </span>
-                    ) : plan.id === 'PAYG' ? (
+                    {plan.id === 'PAYG' ? (
                       /* PAYG: Dakika başına fiyat */
                       <>
                         <span className="text-3xl font-bold text-neutral-900 dark:text-white">
@@ -685,12 +670,7 @@ export default function SubscriptionPage() {
                     )}
                   </div>
                   <div className="h-[20px] mt-2">
-                    {/* TRIAL: Açıklama */}
-                    {plan.id === 'TRIAL' ? (
-                      <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                        {uiLang === 'TR' ? 'Kredi kartı gerekmez' : 'No credit card required'}
-                      </p>
-                    ) : plan.id === 'PAYG' ? (
+                    {plan.id === 'PAYG' ? (
                       /* PAYG: Taahhütsüz */
                       <p className="text-xs text-neutral-500 dark:text-neutral-400">
                         {uiLang === 'TR' ? 'Taahhütsüz, bakiye yükle kullan' : 'No commitment, top up and use'}
@@ -731,31 +711,6 @@ export default function SubscriptionPage() {
                     onClick={() => window.location.href = '/contact'}
                   >
                     {getButtonText()}
-                  </Button>
-                ) : plan.id === 'TRIAL' ? (
-                  /* TRIAL butonu - sadece yeni kullanıcılar için */
-                  <Button
-                    className={`w-full ${
-                      isCurrentPlan || subscription?.trialUsed
-                        ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed border-neutral-200'
-                        : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white'
-                    }`}
-                    variant={isCurrentPlan || subscription?.trialUsed ? 'outline' : 'default'}
-                    disabled={isCurrentPlan || subscription?.trialUsed || !can('billing:manage') || upgrading}
-                    onClick={() => handleUpgrade(plan.id)}
-                  >
-                    {upgrading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        {uiLang === 'TR' ? 'İşleniyor...' : 'Processing...'}
-                      </>
-                    ) : isCurrentPlan ? (
-                      uiLang === 'TR' ? 'Mevcut Plan' : 'Current Plan'
-                    ) : subscription?.trialUsed ? (
-                      uiLang === 'TR' ? 'Deneme Kullanıldı' : 'Trial Used'
-                    ) : (
-                      getButtonText()
-                    )}
                   </Button>
                 ) : (
                   <Button

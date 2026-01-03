@@ -9,7 +9,6 @@
  */
 
 import { PrismaClient } from '@prisma/client';
-import { getPlanDetails } from '../config/plans.js';
 
 const prisma = new PrismaClient();
 
