@@ -498,7 +498,8 @@ export default function SubscriptionPage() {
         <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-6">
           {uiLang === 'TR' ? 'Planlar' : 'Plans'}
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
+        {/* 4 plan kartı: mobilde 1, tablette 2, büyük ekranda 4 yan yana */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 items-stretch">
           {BASE_PLANS.map((plan) => {
             const planPricing = getPlanPricing(plan.id);
             // Legacy plan mapping: BASIC → STARTER, PROFESSIONAL → PRO
