@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 
 // UI translations for CreditBalance - YENİ FİYATLANDIRMA SİSTEMİ
+// PAYG: Prepaid (bakiye yükleme), Paketler: Postpaid (ay sonu fatura)
 const TRANSLATIONS = {
   TR: {
     usageStatus: 'Kullanım Durumu',
@@ -35,11 +36,12 @@ const TRANSLATIONS = {
     trialExpired: 'Süresi doldu',
     payPerMinute: 'Dakika başı ücret',
     used80Package: "Dahil dakikalarınızın %80'ini kullandınız",
-    usedAllPackage: 'Dahil dakikalarınız tükendi, bakiyeden düşülüyor',
+    usedAllPackage: 'Dahil dakikalarınız tükendi, aşım ay sonu faturalanır',
     lowBalance: 'Bakiyeniz azalıyor',
     noBalance: 'Bakiyeniz yok',
     overageThisMonth: 'Bu Ay Aşım',
     overageRate: 'Aşım ücreti',
+    overagePostpaid: 'Ay sonu faturalanır',
     periodEnd: 'Dönem sonu:',
     topUpBalance: 'Bakiye Yükle',
     autoReload: 'Otomatik Yükleme',
@@ -51,7 +53,8 @@ const TRANSLATIONS = {
     retry: 'Tekrar Dene',
     loadError: 'Bakiye yüklenemedi',
     min: 'dk',
-    perMin: '/dk'
+    perMin: '/dk',
+    postpaidNote: 'Aşım kullanımı ay sonunda faturalanır'
   },
   EN: {
     usageStatus: 'Usage Status',
@@ -66,11 +69,12 @@ const TRANSLATIONS = {
     trialExpired: 'Expired',
     payPerMinute: 'Per minute rate',
     used80Package: "You've used 80% of your included minutes",
-    usedAllPackage: 'Included minutes used up, deducting from balance',
+    usedAllPackage: 'Included minutes used up, overage will be billed monthly',
     lowBalance: 'Your balance is running low',
     noBalance: 'No balance',
     overageThisMonth: 'Overage This Month',
     overageRate: 'Overage rate',
+    overagePostpaid: 'Billed at month end',
     periodEnd: 'Period ends:',
     topUpBalance: 'Top Up Balance',
     autoReload: 'Auto Reload',
@@ -82,7 +86,8 @@ const TRANSLATIONS = {
     retry: 'Retry',
     loadError: 'Failed to load balance',
     min: 'min',
-    perMin: '/min'
+    perMin: '/min',
+    postpaidNote: 'Overage usage is billed at month end'
   }
 };
 
@@ -280,7 +285,7 @@ export default function CreditBalance({ onBuyCredit, refreshTrigger }) {
           </>
         )}
 
-        {/* STARTER/PRO/ENTERPRISE Plan Display */}
+        {/* STARTER/PRO/ENTERPRISE Plan Display - POSTPAID Model */}
         {hasIncludedMinutes && (
           <>
             {/* Included Minutes */}
@@ -312,40 +317,29 @@ export default function CreditBalance({ onBuyCredit, refreshTrigger }) {
               )}
             </div>
 
-            {/* Balance for Overage */}
-            <div className="bg-neutral-50 dark:bg-neutral-800 rounded-lg p-4">
+            {/* Overage Info - POSTPAID (Ay sonu fatura) */}
+            <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Wallet className="h-4 w-4 text-green-600 dark:text-green-400" />
-                  <span className="font-medium text-neutral-700 dark:text-neutral-300">{txt.balance}</span>
+                  <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                  <span className="font-medium text-neutral-700 dark:text-neutral-300">{txt.overageThisMonth}</span>
                 </div>
                 <div className="text-right">
-                  <span className="text-lg font-bold text-neutral-900 dark:text-white">
-                    {currency}{(balance.balance || 0).toLocaleString(dateLocale)}
+                  <span className="text-lg font-bold text-amber-700 dark:text-amber-400">
+                    {balance.overage?.minutes || 0} {txt.min}
                   </span>
                 </div>
               </div>
-              {balance.overageRate && (
-                <p className="text-xs text-neutral-500 mt-1">
-                  {txt.overageRate}: {currency}{balance.overageRate}{txt.perMin}
+              <div className="mt-2 flex items-center justify-between text-xs text-neutral-500">
+                <span>{txt.overageRate}: {currency}{balance.overage?.rate || 23}{txt.perMin}</span>
+                <span className="text-amber-600 dark:text-amber-400">{txt.overagePostpaid}</span>
+              </div>
+              {balance.overage && balance.overage.minutes > 0 && (
+                <p className="mt-2 text-sm text-amber-700 dark:text-amber-400 font-semibold">
+                  {txt.postpaidNote}: {currency}{balance.overage.amount?.toLocaleString(dateLocale)}
                 </p>
               )}
             </div>
-
-            {/* Overage This Month */}
-            {balance.overage && balance.overage.minutes > 0 && (
-              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium text-red-700 dark:text-red-400 flex items-center gap-1">
-                    <Clock className="h-4 w-4" />
-                    {txt.overageThisMonth}
-                  </span>
-                  <span className="text-red-700 dark:text-red-400 font-semibold">
-                    {balance.overage.minutes} {txt.min} = {currency}{balance.overage.amount?.toLocaleString(dateLocale)}
-                  </span>
-                </div>
-              </div>
-            )}
           </>
         )}
 
@@ -370,8 +364,8 @@ export default function CreditBalance({ onBuyCredit, refreshTrigger }) {
           </div>
         )}
 
-        {/* Top Up Button - Show for PAYG and paid plans */}
-        {(isPayg || hasIncludedMinutes) && (
+        {/* Top Up Button - SADECE PAYG için göster (prepaid model) */}
+        {isPayg && (
           <Button
             onClick={onBuyCredit}
             className="w-full bg-primary-600 hover:bg-primary-700"

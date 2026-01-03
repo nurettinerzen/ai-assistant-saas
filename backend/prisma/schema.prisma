@@ -245,10 +245,11 @@ model Subscription {
   creditMinutes           Int                @default(0)    // Satın alınan toplam kredi dakikaları
   creditMinutesUsed       Int                @default(0)    // Krediden kullanılan dakikalar
 
-  // Aşım sistemi (YENİ)
+  // Aşım sistemi (YENİ) - POSTPAID model için
   overageMinutes          Int                @default(0)    // Bu ay aşım dakikaları
-  overageRate             Float              @default(12)   // TL/dk aşım ücreti
-  overageLimit            Int                @default(50)   // Max aşım limiti (dakika)
+  overageRate             Float              @default(23)   // SABİT 23 TL/dk aşım ücreti
+  overageLimit            Int                @default(200)  // Max aşım limiti (dakika)
+  overageBilledAt         DateTime?                         // Son aşım faturalama tarihi
 
   // Uyarı durumları (YENİ)
   packageWarningAt80      Boolean            @default(false)  // Paket %80 uyarısı gönderildi mi

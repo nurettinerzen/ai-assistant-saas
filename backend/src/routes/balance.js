@@ -4,10 +4,13 @@
 // FILE: backend/src/routes/balance.js
 //
 // Endpoints:
-// POST /api/balance/topup - Bakiye yükle
-// GET  /api/balance - Mevcut bakiye
+// POST /api/balance/topup - Bakiye yükle (SADECE PAYG)
+// GET  /api/balance - Mevcut bakiye ve kullanım bilgisi
 // GET  /api/balance/transactions - Bakiye hareketleri
-// PUT  /api/balance/auto-reload - Otomatik yükleme ayarları
+// PUT  /api/balance/auto-reload - Otomatik yükleme ayarları (SADECE PAYG)
+//
+// NOT: Bakiye yükleme sadece PAYG (Kullandıkça Öde) planı için geçerlidir.
+// Paket planları (STARTER/PRO/ENTERPRISE) postpaid aşım modeli kullanır.
 // ============================================================================
 
 import express from 'express';
@@ -17,7 +20,12 @@ import balanceService from '../services/balanceService.js';
 import {
   getPricePerMinute,
   getMinTopupMinutes,
-  calculateTLToMinutes
+  calculateTLToMinutes,
+  getOverageRate,
+  isPrepaidPlan,
+  isPostpaidPlan,
+  getPaymentModel,
+  getFixedOveragePrice
 } from '../config/plans.js';
 
 const router = express.Router();
@@ -27,7 +35,7 @@ const prisma = new PrismaClient();
 router.use(authenticateToken);
 
 // ============================================================================
-// POST /api/balance/topup - Bakiye yükle
+// POST /api/balance/topup - Bakiye yükle (SADECE PAYG)
 // ============================================================================
 router.post('/topup', async (req, res) => {
   try {
@@ -52,17 +60,23 @@ router.post('/topup', async (req, res) => {
       return res.status(404).json({ error: 'Abonelik bulunamadı' });
     }
 
+    // ⚠️ SADECE PAYG planı bakiye yükleyebilir
+    if (subscription.plan !== 'PAYG') {
+      return res.status(400).json({
+        error: 'Bakiye yükleme sadece Kullandıkça Öde planında kullanılabilir',
+        hint: 'Paket planlarında aşım kullanımı ay sonu faturalandırılır'
+      });
+    }
+
     const country = subscription.business?.country || 'TR';
 
     // Check minimum topup for PAYG
-    if (subscription.plan === 'PAYG') {
-      const minMinutes = getMinTopupMinutes(country);
-      if (minutes < minMinutes) {
-        return res.status(400).json({
-          error: `Minimum ${minMinutes} dakika yükleme yapılabilir`,
-          minMinutes
-        });
-      }
+    const minMinutes = getMinTopupMinutes(country);
+    if (minutes < minMinutes) {
+      return res.status(400).json({
+        error: `Minimum ${minMinutes} dakika yükleme yapılabilir`,
+        minMinutes
+      });
     }
 
     // Calculate amount in TL
@@ -96,7 +110,7 @@ router.post('/topup', async (req, res) => {
 });
 
 // ============================================================================
-// GET /api/balance - Mevcut bakiye
+// GET /api/balance - Mevcut bakiye ve kullanım bilgisi
 // ============================================================================
 router.get('/', async (req, res) => {
   try {
@@ -118,10 +132,10 @@ router.get('/', async (req, res) => {
     const country = subscription.business?.country || 'TR';
     const plan = subscription.plan;
     const pricePerMinute = getPricePerMinute(plan, country);
-    const balanceMinutes = calculateTLToMinutes(subscription.balance || 0, plan, country);
+    const paymentModel = getPaymentModel(plan);
+    const overageRate = getFixedOveragePrice(country); // Sabit aşım fiyatı
 
     // Get included minutes limit based on plan
-    // Legacy: BASIC/PROFESSIONAL → STARTER/PRO values
     const INCLUDED_MINUTES = {
       TRIAL: 15,
       PAYG: 0,
@@ -132,10 +146,6 @@ router.get('/', async (req, res) => {
       ENTERPRISE: 800
     };
 
-    // Get overage rate
-    const { getOverageRate } = await import('../config/plans.js');
-    const overageRate = getOverageRate(plan, country);
-
     // Calculate trial chat days remaining
     let trialChat = null;
     if (plan === 'TRIAL' && subscription.trialChatExpiry) {
@@ -145,19 +155,36 @@ router.get('/', async (req, res) => {
       trialChat = { daysLeft, expiry: subscription.trialChatExpiry };
     }
 
+    // PAYG: Bakiye bazlı (prepaid)
+    // Paketler: Dahil dakika + postpaid aşım
+    const isPAYG = plan === 'PAYG';
+    const balanceMinutes = isPAYG
+      ? calculateTLToMinutes(subscription.balance || 0, plan, country)
+      : 0;
+
     res.json({
       // Basic info
       plan,
-      balance: subscription.balance || 0,
-      balanceMinutes,
-      pricePerMinute,
+      paymentModel, // 'PREPAID' veya 'POSTPAID'
       currency: country === 'TR' ? '₺' : country === 'BR' ? 'R$' : '$',
 
-      // Included minutes (for STARTER/PRO/ENTERPRISE/BASIC/PROFESSIONAL)
-      includedMinutes: {
-        used: subscription.includedMinutesUsed || subscription.minutesUsed || 0,
+      // PAYG için bakiye bilgisi (prepaid)
+      balance: isPAYG ? (subscription.balance || 0) : null,
+      balanceMinutes: isPAYG ? balanceMinutes : null,
+      pricePerMinute: isPAYG ? pricePerMinute : null,
+
+      // Paketler için dahil dakika bilgisi
+      includedMinutes: !isPAYG && plan !== 'TRIAL' ? {
+        used: subscription.includedMinutesUsed || 0,
         limit: subscription.minutesLimit || INCLUDED_MINUTES[plan] || 0
-      },
+      } : null,
+
+      // Aşım bilgisi (postpaid paketler için)
+      overage: paymentModel === 'POSTPAID' ? {
+        minutes: subscription.overageMinutes || 0,
+        amount: (subscription.overageMinutes || 0) * overageRate,
+        rate: overageRate
+      } : null,
 
       // Trial info (for TRIAL plan)
       trialMinutes: plan === 'TRIAL' ? {
@@ -166,19 +193,12 @@ router.get('/', async (req, res) => {
       } : null,
       trialChat,
 
-      // Overage info
-      overageRate,
-      overage: {
-        minutes: subscription.overageMinutes || 0,
-        amount: (subscription.overageMinutes || 0) * overageRate
-      },
-
-      // Auto-reload settings
-      autoReload: {
+      // Auto-reload settings (sadece PAYG için)
+      autoReload: isPAYG ? {
         enabled: subscription.autoReloadEnabled || false,
         threshold: subscription.autoReloadThreshold || 2,
         amount: subscription.autoReloadAmount || 5
-      },
+      } : null,
 
       // Period info
       periodEnd: subscription.currentPeriodEnd
@@ -226,7 +246,7 @@ router.get('/transactions', async (req, res) => {
 });
 
 // ============================================================================
-// PUT /api/balance/auto-reload - Otomatik yükleme ayarları
+// PUT /api/balance/auto-reload - Otomatik yükleme ayarları (SADECE PAYG)
 // ============================================================================
 router.put('/auto-reload', async (req, res) => {
   try {
@@ -237,6 +257,21 @@ router.put('/auto-reload', async (req, res) => {
       return res.status(400).json({ error: 'enabled alanı gerekli (true/false)' });
     }
 
+    const subscription = await prisma.subscription.findUnique({
+      where: { businessId }
+    });
+
+    if (!subscription) {
+      return res.status(404).json({ error: 'Abonelik bulunamadı' });
+    }
+
+    // ⚠️ SADECE PAYG planı otomatik yükleme kullanabilir
+    if (subscription.plan !== 'PAYG') {
+      return res.status(400).json({
+        error: 'Otomatik yükleme sadece Kullandıkça Öde planında kullanılabilir'
+      });
+    }
+
     if (enabled) {
       if (!threshold || threshold < 1) {
         return res.status(400).json({ error: 'Eşik değeri en az 1 dakika olmalı' });
@@ -244,14 +279,6 @@ router.put('/auto-reload', async (req, res) => {
       if (!amount || amount < 1) {
         return res.status(400).json({ error: 'Yükleme miktarı en az 1 dakika olmalı' });
       }
-    }
-
-    const subscription = await prisma.subscription.findUnique({
-      where: { businessId }
-    });
-
-    if (!subscription) {
-      return res.status(404).json({ error: 'Abonelik bulunamadı' });
     }
 
     const updated = await balanceService.updateAutoReloadSettings(subscription.id, {
@@ -277,7 +304,7 @@ router.put('/auto-reload', async (req, res) => {
 });
 
 // ============================================================================
-// POST /api/balance/create-checkout - Ödeme oturumu oluştur
+// POST /api/balance/create-checkout - Ödeme oturumu oluştur (SADECE PAYG)
 // ============================================================================
 router.post('/create-checkout', async (req, res) => {
   try {
@@ -301,17 +328,23 @@ router.post('/create-checkout', async (req, res) => {
       return res.status(404).json({ error: 'Abonelik bulunamadı' });
     }
 
+    // ⚠️ SADECE PAYG planı bakiye yükleyebilir
+    if (subscription.plan !== 'PAYG') {
+      return res.status(400).json({
+        error: 'Bakiye yükleme sadece Kullandıkça Öde planında kullanılabilir',
+        hint: 'Paket planlarında aşım kullanımı ay sonu faturalandırılır'
+      });
+    }
+
     const country = subscription.business?.country || 'TR';
 
     // Check minimum topup for PAYG
-    if (subscription.plan === 'PAYG') {
-      const minMinutes = getMinTopupMinutes(country);
-      if (minutes < minMinutes) {
-        return res.status(400).json({
-          error: `Minimum ${minMinutes} dakika yükleme yapılabilir`,
-          minMinutes
-        });
-      }
+    const minMinutes = getMinTopupMinutes(country);
+    if (minutes < minMinutes) {
+      return res.status(400).json({
+        error: `Minimum ${minMinutes} dakika yükleme yapılabilir`,
+        minMinutes
+      });
     }
 
     // Calculate amount

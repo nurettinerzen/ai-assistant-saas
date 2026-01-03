@@ -8,10 +8,13 @@
 //
 // YENİ FİYATLANDIRMA (Ocak 2026):
 // - TRIAL: 15 dk telefon, 7 gün chat/whatsapp, 1 asistan
-// - PAYG: 23 TL/dk, taahhütsüz, min 4 dk yükleme
-// - STARTER: 2.499 TL/ay, 150 dk dahil, 17 TL/dk, 19 TL aşım
-// - PRO: 7.499 TL/ay, 500 dk dahil, 15 TL/dk, 16 TL aşım
-// - ENTERPRISE: Özel, 12 TL/dk, 13 TL aşım
+// - PAYG: 23 TL/dk, PREPAID (bakiye yükleme), min 4 dk yükleme
+// - STARTER: 2.499 TL/ay, 150 dk dahil, POSTPAID aşım
+// - PRO: 7.499 TL/ay, 500 dk dahil, POSTPAID aşım
+// - ENTERPRISE: Özel, POSTPAID aşım
+//
+// AŞIM FİYATI: Tüm planlar için SABİT 23 TL/dk (ay sonu fatura - postpaid)
+// BAKİYE: Sadece PAYG için, prepaid model
 // ============================================================================
 
 import { getCountry, getCurrency, formatCurrency } from './countries.js';
@@ -20,6 +23,27 @@ import { getCountry, getCurrency, formatCurrency } from './countries.js';
 // SABİT DOLAR KURU (Manuel güncelleme gerektirir)
 // ============================================================================
 export const USD_TO_TRY = 45; // 1 USD = 45 TL (hardcoded)
+
+// ============================================================================
+// SABİT AŞIM FİYATI - Tüm planlar için aynı
+// ============================================================================
+export const OVERAGE_PRICE = {
+  TR: 23,       // 23 TL/dk
+  BR: 4.60,     // R$ 4.60/dk
+  US: 0.51      // $0.51/dk
+};
+
+// ============================================================================
+// ÖDEME MODELİ
+// ============================================================================
+export const PAYMENT_MODELS = {
+  PAYG: 'PREPAID',        // Bakiye yükle, kullan
+  STARTER: 'POSTPAID',    // Ay sonu aşım faturası
+  PRO: 'POSTPAID',
+  ENTERPRISE: 'POSTPAID',
+  BASIC: 'POSTPAID',      // Legacy
+  PROFESSIONAL: 'POSTPAID' // Legacy
+};
 
 // ============================================================================
 // REGION-BASED PRICING - YENİ FİYATLANDIRMA SİSTEMİ
@@ -34,24 +58,24 @@ export const REGIONAL_PRICING = {
     currency: 'TRY',
     symbol: '₺',
     plans: {
-      FREE: { price: 0, minutes: 0, overageRate: 0, concurrentLimit: 0, pricePerMinute: 0, assistantsLimit: 0, phoneNumbersLimit: 0 },
+      FREE: { price: 0, minutes: 0, overageRate: 0, concurrentLimit: 0, pricePerMinute: 0, assistantsLimit: 0, phoneNumbersLimit: 0, paymentModel: null },
 
       // DENEME: 15 dk telefon, 7 gün chat/whatsapp
-      TRIAL: { price: 0, minutes: 15, overageRate: 0, concurrentLimit: 1, pricePerMinute: 0, assistantsLimit: 1, phoneNumbersLimit: 1, chatDays: 7 },
+      TRIAL: { price: 0, minutes: 15, overageRate: 0, concurrentLimit: 1, pricePerMinute: 0, assistantsLimit: 1, phoneNumbersLimit: 1, chatDays: 7, paymentModel: null },
 
-      // PAYG: Kullandıkça öde, taahhütsüz
-      PAYG: { price: 0, minutes: 0, overageRate: 0, concurrentLimit: 1, pricePerMinute: 23, assistantsLimit: 1, phoneNumbersLimit: 1, minTopup: 4 },
+      // PAYG: Kullandıkça öde - PREPAID (bakiye yükle, kullan)
+      PAYG: { price: 0, minutes: 0, overageRate: 0, concurrentLimit: 1, pricePerMinute: 23, assistantsLimit: 1, phoneNumbersLimit: 1, minTopup: 4, paymentModel: 'PREPAID' },
 
-      // YENİ FİYATLANDIRMA - Ocak 2026
-      STARTER: { price: 2499, minutes: 150, overageRate: 19, concurrentLimit: 1, pricePerMinute: 17, assistantsLimit: 3, phoneNumbersLimit: -1 },
-      PRO: { price: 7499, minutes: 500, overageRate: 16, concurrentLimit: 5, pricePerMinute: 15, assistantsLimit: 10, phoneNumbersLimit: -1 },
-      ENTERPRISE: { price: null, minutes: null, overageRate: 13, concurrentLimit: 5, pricePerMinute: 12, assistantsLimit: -1, phoneNumbersLimit: -1 },
+      // YENİ FİYATLANDIRMA - Ocak 2026 - SABİT 23 TL AŞIM (POSTPAID)
+      STARTER: { price: 2499, minutes: 150, overageRate: 23, concurrentLimit: 1, pricePerMinute: 17, assistantsLimit: 3, phoneNumbersLimit: -1, paymentModel: 'POSTPAID' },
+      PRO: { price: 7499, minutes: 500, overageRate: 23, concurrentLimit: 5, pricePerMinute: 15, assistantsLimit: 10, phoneNumbersLimit: -1, paymentModel: 'POSTPAID' },
+      ENTERPRISE: { price: null, minutes: null, overageRate: 23, concurrentLimit: 5, pricePerMinute: 12, assistantsLimit: -1, phoneNumbersLimit: -1, paymentModel: 'POSTPAID' },
 
-      // Legacy plan aliases - yeni plan değerlerini kullan
-      BASIC: { price: 2499, minutes: 150, overageRate: 19, concurrentLimit: 1, pricePerMinute: 17, assistantsLimit: 3 },        // → STARTER
-      PROFESSIONAL: { price: 7499, minutes: 500, overageRate: 16, concurrentLimit: 5, pricePerMinute: 15, assistantsLimit: 10 }  // → PRO
+      // Legacy plan aliases - SABİT 23 TL AŞIM
+      BASIC: { price: 2499, minutes: 150, overageRate: 23, concurrentLimit: 1, pricePerMinute: 17, assistantsLimit: 3, paymentModel: 'POSTPAID' },
+      PROFESSIONAL: { price: 7499, minutes: 500, overageRate: 23, concurrentLimit: 5, pricePerMinute: 15, assistantsLimit: 10, paymentModel: 'POSTPAID' }
     },
-    // PAYG dakika fiyatı: 23 TL/dk
+    // PAYG dakika fiyatı: 23 TL/dk (PREPAID)
     creditTiers: [
       { minMinutes: 1, unitPrice: 23.00 }
     ],
@@ -63,14 +87,15 @@ export const REGIONAL_PRICING = {
     currency: 'BRL',
     symbol: 'R$',
     plans: {
-      FREE: { price: 0, minutes: 0, overageRate: 0, concurrentLimit: 0 },
-      TRIAL: { price: 0, minutes: 15, overageRate: 0, concurrentLimit: 1, chatDays: 7 },
-      PAYG: { price: 0, minutes: 0, overageRate: 0, concurrentLimit: 1, pricePerMinute: 4.60, minTopup: 4 },
-      STARTER: { price: 500, minutes: 150, overageRate: 3.80, concurrentLimit: 1, pricePerMinute: 3.40, assistantsLimit: 3 },
-      PRO: { price: 1500, minutes: 500, overageRate: 3.20, concurrentLimit: 5, pricePerMinute: 3.00, assistantsLimit: 10 },
-      ENTERPRISE: { price: null, minutes: null, overageRate: 2.60, concurrentLimit: 5, pricePerMinute: 2.40, assistantsLimit: -1 },
-      BASIC: { price: 500, minutes: 150, overageRate: 3.80, concurrentLimit: 1 },
-      PROFESSIONAL: { price: 1500, minutes: 500, overageRate: 3.20, concurrentLimit: 5 }
+      FREE: { price: 0, minutes: 0, overageRate: 0, concurrentLimit: 0, paymentModel: null },
+      TRIAL: { price: 0, minutes: 15, overageRate: 0, concurrentLimit: 1, chatDays: 7, paymentModel: null },
+      PAYG: { price: 0, minutes: 0, overageRate: 0, concurrentLimit: 1, pricePerMinute: 4.60, minTopup: 4, paymentModel: 'PREPAID' },
+      // SABİT 4.60 R$ AŞIM (POSTPAID)
+      STARTER: { price: 500, minutes: 150, overageRate: 4.60, concurrentLimit: 1, pricePerMinute: 3.40, assistantsLimit: 3, paymentModel: 'POSTPAID' },
+      PRO: { price: 1500, minutes: 500, overageRate: 4.60, concurrentLimit: 5, pricePerMinute: 3.00, assistantsLimit: 10, paymentModel: 'POSTPAID' },
+      ENTERPRISE: { price: null, minutes: null, overageRate: 4.60, concurrentLimit: 5, pricePerMinute: 2.40, assistantsLimit: -1, paymentModel: 'POSTPAID' },
+      BASIC: { price: 500, minutes: 150, overageRate: 4.60, concurrentLimit: 1, paymentModel: 'POSTPAID' },
+      PROFESSIONAL: { price: 1500, minutes: 500, overageRate: 4.60, concurrentLimit: 5, paymentModel: 'POSTPAID' }
     },
     creditTiers: [
       { minMinutes: 1, unitPrice: 4.60 }
@@ -81,14 +106,15 @@ export const REGIONAL_PRICING = {
     currency: 'USD',
     symbol: '$',
     plans: {
-      FREE: { price: 0, minutes: 0, overageRate: 0, concurrentLimit: 0 },
-      TRIAL: { price: 0, minutes: 15, overageRate: 0, concurrentLimit: 1, chatDays: 7 },
-      PAYG: { price: 0, minutes: 0, overageRate: 0, concurrentLimit: 1, pricePerMinute: 0.51, minTopup: 4 },
-      STARTER: { price: 55, minutes: 150, overageRate: 0.42, concurrentLimit: 1, pricePerMinute: 0.38, assistantsLimit: 3 },
-      PRO: { price: 167, minutes: 500, overageRate: 0.36, concurrentLimit: 5, pricePerMinute: 0.33, assistantsLimit: 10 },
-      ENTERPRISE: { price: null, minutes: null, overageRate: 0.29, concurrentLimit: 5, pricePerMinute: 0.27, assistantsLimit: -1 },
-      BASIC: { price: 55, minutes: 150, overageRate: 0.42, concurrentLimit: 1 },
-      PROFESSIONAL: { price: 167, minutes: 500, overageRate: 0.36, concurrentLimit: 5 }
+      FREE: { price: 0, minutes: 0, overageRate: 0, concurrentLimit: 0, paymentModel: null },
+      TRIAL: { price: 0, minutes: 15, overageRate: 0, concurrentLimit: 1, chatDays: 7, paymentModel: null },
+      PAYG: { price: 0, minutes: 0, overageRate: 0, concurrentLimit: 1, pricePerMinute: 0.51, minTopup: 4, paymentModel: 'PREPAID' },
+      // SABİT $0.51 AŞIM (POSTPAID)
+      STARTER: { price: 55, minutes: 150, overageRate: 0.51, concurrentLimit: 1, pricePerMinute: 0.38, assistantsLimit: 3, paymentModel: 'POSTPAID' },
+      PRO: { price: 167, minutes: 500, overageRate: 0.51, concurrentLimit: 5, pricePerMinute: 0.33, assistantsLimit: 10, paymentModel: 'POSTPAID' },
+      ENTERPRISE: { price: null, minutes: null, overageRate: 0.51, concurrentLimit: 5, pricePerMinute: 0.27, assistantsLimit: -1, paymentModel: 'POSTPAID' },
+      BASIC: { price: 55, minutes: 150, overageRate: 0.51, concurrentLimit: 1, paymentModel: 'POSTPAID' },
+      PROFESSIONAL: { price: 167, minutes: 500, overageRate: 0.51, concurrentLimit: 5, paymentModel: 'POSTPAID' }
     },
     creditTiers: [
       { minMinutes: 1, unitPrice: 0.51 }
@@ -692,12 +718,48 @@ export function isPaidPlan(planName) {
 }
 
 /**
- * Check if a plan requires balance (PAYG or overage)
+ * Check if a plan requires balance (ONLY PAYG - prepaid)
  * @param {string} planName - Plan name
  * @returns {boolean}
  */
 export function requiresBalance(planName) {
-  return planName === 'PAYG' || isPaidPlan(planName);
+  return planName === 'PAYG';
+}
+
+/**
+ * Get payment model for a plan
+ * @param {string} planName - Plan name
+ * @returns {'PREPAID' | 'POSTPAID' | null}
+ */
+export function getPaymentModel(planName) {
+  return PAYMENT_MODELS[planName] || null;
+}
+
+/**
+ * Check if a plan uses prepaid model (balance topup)
+ * @param {string} planName - Plan name
+ * @returns {boolean}
+ */
+export function isPrepaidPlan(planName) {
+  return PAYMENT_MODELS[planName] === 'PREPAID';
+}
+
+/**
+ * Check if a plan uses postpaid model (monthly overage invoice)
+ * @param {string} planName - Plan name
+ * @returns {boolean}
+ */
+export function isPostpaidPlan(planName) {
+  return PAYMENT_MODELS[planName] === 'POSTPAID';
+}
+
+/**
+ * Get fixed overage price for a region
+ * @param {string} countryCode - Country code
+ * @returns {number} Fixed overage price per minute
+ */
+export function getFixedOveragePrice(countryCode = 'TR') {
+  return OVERAGE_PRICE[countryCode] || OVERAGE_PRICE.US;
 }
 
 // ============================================================================
@@ -714,6 +776,8 @@ export default {
   REGIONAL_PRICING,
   CREDIT_PRICING,
   USD_TO_TRY,
+  OVERAGE_PRICE,
+  PAYMENT_MODELS,
   getRegionalPricing,
   getPlanConfig,
   getPlanWithPricing,
@@ -736,5 +800,10 @@ export default {
   calculateTLToMinutes,
   getAssistantsLimit,
   isPaidPlan,
-  requiresBalance
+  requiresBalance,
+  // Yeni prepaid/postpaid fonksiyonlar
+  getPaymentModel,
+  isPrepaidPlan,
+  isPostpaidPlan,
+  getFixedOveragePrice
 };

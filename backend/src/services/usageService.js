@@ -12,16 +12,21 @@
 //
 // Ücret Tipi Akışı:
 // TRIAL → 15 dk ücretsiz, sonra TRIAL_EXPIRED
-// PAYG → Direkt bakiyeden, yetersizse INSUFFICIENT_BALANCE
-// STARTER/PRO → Önce dahil dakikadan, sonra bakiyeden aşım bedeli ile
+// PAYG → PREPAID: Direkt bakiyeden, yetersizse INSUFFICIENT_BALANCE
+// STARTER/PRO/ENTERPRISE → POSTPAID: Önce dahil dakikadan, sonra aşım (ay sonu fatura)
+//
+// ÖNEMLİ: Paket planlarında aşım için bakiye kontrolü YAPILMAZ!
+// Aşım dakikaları overageMinutes field'ında toplanır ve ay sonu faturalanır.
 // ============================================================================
 
 import { PrismaClient } from '@prisma/client';
 import {
   getPricePerMinute,
   getIncludedMinutes,
-  getOverageRate,
-  getPlanConfig
+  getFixedOveragePrice,
+  getPlanConfig,
+  isPrepaidPlan,
+  isPostpaidPlan
 } from '../config/plans.js';
 import balanceService from './balanceService.js';
 
@@ -176,16 +181,14 @@ export async function calculateCharge(subscription, durationMinutes) {
     };
   }
 
-  // STARTER, PRO, ENTERPRISE - dahil dakika + aşım
+  // STARTER, PRO, ENTERPRISE - dahil dakika + POSTPAID aşım
   const includedMinutes = getIncludedMinutes(plan, country);
   const usedIncluded = subscription.includedMinutesUsed || 0;
   const remainingIncluded = Math.max(0, includedMinutes - usedIncluded);
-  const overageRate = getOverageRate(plan, country);
-  const pricePerMinute = getPricePerMinute(plan, country);
+  const overageRate = getFixedOveragePrice(country); // Sabit 23 TL aşım fiyatı
 
   let fromIncluded = 0;
-  let fromBalance = 0;
-  let totalCharge = 0;
+  let overageMinutes = 0;
   let chargeType = 'INCLUDED';
 
   // First use included minutes
@@ -193,28 +196,23 @@ export async function calculateCharge(subscription, durationMinutes) {
     fromIncluded = Math.min(durationMinutes, remainingIncluded);
   }
 
-  // Remaining minutes go to overage (charged from balance)
-  const overageMinutes = durationMinutes - fromIncluded;
+  // Remaining minutes go to POSTPAID overage (ay sonu faturalanır)
+  overageMinutes = durationMinutes - fromIncluded;
   if (overageMinutes > 0) {
-    fromBalance = overageMinutes;
-    totalCharge = overageMinutes * overageRate;
     chargeType = fromIncluded > 0 ? 'INCLUDED_AND_OVERAGE' : 'OVERAGE';
-
-    // Check if enough balance for overage
-    if (subscription.balance < totalCharge) {
-      throw new Error('INSUFFICIENT_BALANCE');
-    }
+    // NOT: Bakiye kontrolü YAPILMAZ! Postpaid model.
   }
 
   return {
     chargeType,
-    pricePerMinute: fromBalance > 0 ? overageRate : 0,
-    totalCharge,
+    pricePerMinute: 0, // Postpaid - anında ücret yok
+    totalCharge: 0,    // Postpaid - anında ücret yok
     breakdown: {
       fromIncluded,
-      fromBalance,
+      overageMinutes,         // Ay sonu faturalanacak aşım dakikaları
+      overageRate,            // Sabit aşım fiyatı (23 TL)
       includedRemaining: remainingIncluded - fromIncluded,
-      overageCharge: totalCharge
+      paymentModel: 'POSTPAID'
     }
   };
 }
@@ -242,25 +240,38 @@ export async function applyCharge(subscription, chargeResult, usageRecordId) {
       return;
     }
 
-    // Update included minutes used
-    if (breakdown.fromIncluded > 0) {
-      await prisma.subscription.update({
-        where: { id: subscription.id },
-        data: {
-          includedMinutesUsed: {
-            increment: breakdown.fromIncluded
-          }
-        }
-      });
+    // PAYG - PREPAID: Deduct from balance immediately
+    if (chargeType === 'BALANCE' && totalCharge > 0) {
+      const description = `PAYG kullanım: ${breakdown.fromBalance} dk`;
+      await balanceService.deduct(subscription.id, totalCharge, usageRecordId, description);
+      await checkUsageWarnings(subscription.id);
+      return;
     }
 
-    // Deduct from balance for overage or PAYG
-    if (totalCharge > 0) {
-      const description = chargeType === 'BALANCE'
-        ? `PAYG kullanım: ${breakdown.fromBalance} dk`
-        : `Aşım kullanımı: ${breakdown.fromBalance} dk (${totalCharge} TL)`;
+    // STARTER/PRO/ENTERPRISE - POSTPAID model
+    const updateData = {};
 
-      await balanceService.deduct(subscription.id, totalCharge, usageRecordId, description);
+    // Update included minutes used
+    if (breakdown.fromIncluded > 0) {
+      updateData.includedMinutesUsed = {
+        increment: breakdown.fromIncluded
+      };
+    }
+
+    // Track overage minutes for POSTPAID billing (ay sonu fatura)
+    if (breakdown.overageMinutes > 0) {
+      updateData.overageMinutes = {
+        increment: breakdown.overageMinutes
+      };
+      console.log(`📊 Postpaid aşım kaydedildi: ${breakdown.overageMinutes} dk (ay sonu faturalanacak)`);
+    }
+
+    // Apply updates
+    if (Object.keys(updateData).length > 0) {
+      await prisma.subscription.update({
+        where: { id: subscription.id },
+        data: updateData
+      });
     }
 
     // Check and send warnings
@@ -621,10 +632,11 @@ export async function canMakeCall(subscriptionId) {
       };
     }
 
-    // STARTER, PRO, ENTERPRISE
+    // STARTER, PRO, ENTERPRISE - POSTPAID model (bakiye kontrolü YAPILMAZ)
     const includedMinutes = getIncludedMinutes(plan, country);
     const remainingIncluded = includedMinutes - (subscription.includedMinutesUsed || 0);
-    const overageRate = getOverageRate(plan, country);
+    const overageRate = getFixedOveragePrice(country);
+    const currentOverage = subscription.overageMinutes || 0;
 
     // Check if has included minutes
     if (remainingIncluded > 0) {
@@ -633,30 +645,23 @@ export async function canMakeCall(subscriptionId) {
         reason: 'INCLUDED_MINUTES_AVAILABLE',
         details: {
           includedMinutesRemaining: remainingIncluded,
-          includedMinutesUsed: subscription.includedMinutesUsed
+          includedMinutesUsed: subscription.includedMinutesUsed,
+          paymentModel: 'POSTPAID'
         }
       };
     }
 
-    // Check if has balance for overage
-    if (subscription.balance >= overageRate) {
-      const overageMinutes = Math.floor(subscription.balance / overageRate);
-      return {
-        canMakeCall: true,
-        reason: 'OVERAGE_AVAILABLE',
-        details: {
-          balance: subscription.balance,
-          overageMinutes,
-          overageRate
-        }
-      };
-    }
-
+    // POSTPAID: Dahil dakika bitmiş olsa bile arama yapılabilir
+    // Aşım dakikaları ay sonunda faturalanır
     return {
-      canMakeCall: false,
-      reason: 'INSUFFICIENT_BALANCE',
-      balance: subscription.balance,
-      includedMinutesRemaining: 0
+      canMakeCall: true,
+      reason: 'OVERAGE_POSTPAID',
+      details: {
+        overageMinutes: currentOverage,
+        overageRate,
+        paymentModel: 'POSTPAID',
+        message: 'Aşım kullanımı ay sonu faturalanacaktır'
+      }
     };
 
   } catch (error) {

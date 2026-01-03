@@ -3,12 +3,14 @@
  *
  * Scheduled tasks:
  * 1. resetIncludedMinutes: Her ay başında STARTER/PRO planlarının dahil dakikalarını sıfırla
- * 2. lowBalanceWarning: Düşük bakiye uyarısı gönder
- * 3. autoReloadCheck: Otomatik yükleme kontrolü
+ * 2. lowBalanceWarning: Düşük bakiye uyarısı gönder (SADECE PAYG için)
+ * 3. autoReloadCheck: Otomatik yükleme kontrolü (SADECE PAYG için)
  * 4. trialExpiredCheck: Deneme süresi dolmuş kullanıcıları kontrol et
+ * 5. billOverageUsage: POSTPAID aşım faturalandırması (ay sonu - paket planları için)
  */
 
 import { PrismaClient } from '@prisma/client';
+import { getFixedOveragePrice } from '../config/plans.js';
 
 const prisma = new PrismaClient();
 
@@ -83,16 +85,18 @@ export async function resetIncludedMinutes() {
 /**
  * Check for low balance and send warnings
  * Run every hour
+ * NOT: Sadece PAYG planı için geçerli (prepaid model)
+ * Paket planları postpaid aşım kullandığından bakiye kontrolü YAPILMAZ
  */
 export async function checkLowBalance() {
-  console.log('💰 Checking for low balance warnings...');
+  console.log('💰 Checking for low balance warnings (PAYG only)...');
 
   try {
-    // Find PAYG and paid plan users with low balance
+    // SADECE PAYG kullanıcıları için düşük bakiye kontrolü (prepaid model)
     const lowBalanceSubscriptions = await prisma.subscription.findMany({
       where: {
         status: 'active',
-        plan: { in: ['PAYG', 'STARTER', 'PRO', 'ENTERPRISE', 'BASIC', 'PROFESSIONAL'] },
+        plan: 'PAYG', // Sadece PAYG
         balance: { lt: 100 }, // Less than 100 TL
         // Don't warn if already warned in last 24 hours
         OR: [
@@ -328,6 +332,140 @@ export async function cleanupOldRecords() {
 }
 
 /**
+ * Bill overage usage for POSTPAID plans
+ * Run at the end of each billing period (triggered by Stripe webhook or cron)
+ * Paket planları için aşım faturalandırması
+ */
+export async function billOverageUsage() {
+  console.log('💳 Processing postpaid overage billing...');
+
+  try {
+    const now = new Date();
+
+    // Find subscriptions with overage that need billing
+    // These are STARTER/PRO/ENTERPRISE plans whose billing period has ended
+    const subscriptionsWithOverage = await prisma.subscription.findMany({
+      where: {
+        status: 'active',
+        plan: { in: ['STARTER', 'PRO', 'ENTERPRISE', 'BASIC', 'PROFESSIONAL'] },
+        overageMinutes: { gt: 0 },
+        currentPeriodEnd: { lte: now },
+        // Don't bill if already billed for this period
+        OR: [
+          { overageBilledAt: null },
+          { overageBilledAt: { lt: prisma.subscription.fields.currentPeriodStart } }
+        ]
+      },
+      include: {
+        business: {
+          select: {
+            id: true,
+            name: true,
+            country: true,
+            stripeCustomerId: true,
+            users: {
+              where: { role: 'OWNER' },
+              select: { email: true, name: true }
+            }
+          }
+        }
+      }
+    });
+
+    console.log(`📊 Found ${subscriptionsWithOverage.length} subscriptions with overage to bill`);
+
+    let billedCount = 0;
+    let totalAmount = 0;
+
+    for (const subscription of subscriptionsWithOverage) {
+      try {
+        const country = subscription.business?.country || 'TR';
+        const overageRate = getFixedOveragePrice(country);
+        const overageAmount = subscription.overageMinutes * overageRate;
+
+        console.log(`📊 Billing ${subscription.business?.name}: ${subscription.overageMinutes} dk × ${overageRate} = ${overageAmount} TL`);
+
+        // Check if has payment method (Stripe customer)
+        if (subscription.business?.stripeCustomerId) {
+          // TODO: Create Stripe invoice for overage
+          // const stripe = (await import('./stripe.js')).default;
+          // await stripe.createInvoiceItem({
+          //   customer: subscription.business.stripeCustomerId,
+          //   amount: Math.round(overageAmount * 100), // cents
+          //   currency: country === 'TR' ? 'try' : country === 'BR' ? 'brl' : 'usd',
+          //   description: `Aşım kullanımı: ${subscription.overageMinutes} dakika`
+          // });
+
+          console.log(`💳 [TODO] Would create Stripe invoice for ${subscription.business?.name}: ${overageAmount} TL`);
+        }
+
+        // Record the billing in database
+        await prisma.subscription.update({
+          where: { id: subscription.id },
+          data: {
+            overageBilledAt: now,
+            overageMinutes: 0, // Reset for next period
+            updatedAt: now
+          }
+        });
+
+        // Create a balance transaction record for tracking
+        await prisma.balanceTransaction.create({
+          data: {
+            subscriptionId: subscription.id,
+            type: 'OVERAGE_BILL',
+            amount: -overageAmount, // Negative = charge
+            description: `Aşım faturası: ${subscription.overageMinutes} dk (${overageAmount} TL)`,
+            metadata: {
+              overageMinutes: subscription.overageMinutes,
+              overageRate,
+              periodStart: subscription.currentPeriodStart,
+              periodEnd: subscription.currentPeriodEnd
+            }
+          }
+        });
+
+        // Send email notification
+        const ownerEmail = subscription.business?.users?.[0]?.email;
+        if (ownerEmail && emailService) {
+          try {
+            await emailService.sendOverageBillNotification({
+              to: ownerEmail,
+              businessName: subscription.business.name,
+              overageMinutes: subscription.overageMinutes,
+              overageAmount,
+              overageRate,
+              periodEnd: subscription.currentPeriodEnd
+            });
+            console.log(`📧 Overage bill notification sent to: ${ownerEmail}`);
+          } catch (emailErr) {
+            console.error(`❌ Failed to send overage email to ${ownerEmail}:`, emailErr.message);
+          }
+        }
+
+        billedCount++;
+        totalAmount += overageAmount;
+        console.log(`✅ Overage billed for ${subscription.business?.name}: ${overageAmount} TL`);
+
+      } catch (err) {
+        console.error(`❌ Failed to bill overage for subscription ${subscription.id}:`, err.message);
+      }
+    }
+
+    console.log(`💳 Overage billing complete: ${billedCount}/${subscriptionsWithOverage.length} billed, total: ${totalAmount} TL`);
+    return {
+      success: true,
+      billedCount,
+      total: subscriptionsWithOverage.length,
+      totalAmount
+    };
+  } catch (error) {
+    console.error('❌ Overage billing error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
  * Run all cron jobs - can be called by a scheduler or manually
  */
 export async function runAllJobs() {
@@ -337,7 +475,8 @@ export async function runAllJobs() {
     resetIncludedMinutes: await resetIncludedMinutes(),
     checkLowBalance: await checkLowBalance(),
     processAutoReload: await processAutoReload(),
-    checkTrialExpired: await checkTrialExpired()
+    checkTrialExpired: await checkTrialExpired(),
+    billOverageUsage: await billOverageUsage()
   };
 
   console.log('🕐 All cron jobs complete:', results);
@@ -350,5 +489,6 @@ export default {
   processAutoReload,
   checkTrialExpired,
   cleanupOldRecords,
+  billOverageUsage,
   runAllJobs
 };
