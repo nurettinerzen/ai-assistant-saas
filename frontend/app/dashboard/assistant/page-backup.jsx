@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 const ASSISTANT_OPTIONS = [
   { id: '1de49414-20bd-4f8c-a7fe-9ffc0c31f299', name: 'Male - Professional', language: 'English', gender: 'male', tone: 'professional', description: 'Clear, formal, business-like tone', icon: '👔' },

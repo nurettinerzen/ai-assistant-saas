@@ -192,7 +192,7 @@ async function enrichVoicesWithPreviews(voices, lang = null, baseUrl = null) {
     voices.map(async (voice) => {
       // For Turkish voices, use our Turkish preview endpoint
       if (lang === 'tr' && voice.id?.startsWith('tr-')) {
-        const backendUrl = baseUrl || process.env.BACKEND_URL || 'http://localhost:3001';
+        const backendUrl = baseUrl || process.env.BACKEND_URL;
         return {
           ...voice,
           sampleUrl: `${backendUrl}/api/voices/preview/${voice.id}`
@@ -200,7 +200,7 @@ async function enrichVoicesWithPreviews(voices, lang = null, baseUrl = null) {
       }
       // For Portuguese voices, use our Portuguese preview endpoint
       if (lang === 'pt' && voice.id?.startsWith('pt-')) {
-        const backendUrl = baseUrl || process.env.BACKEND_URL || 'http://localhost:3001';
+        const backendUrl = baseUrl || process.env.BACKEND_URL;
         return {
           ...voice,
           sampleUrl: `${backendUrl}/api/voices/preview/${voice.id}`

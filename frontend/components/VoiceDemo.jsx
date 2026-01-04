@@ -4,7 +4,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Conversation } from '@elevenlabs/client';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export default function VoiceDemo({ assistantId, onClose }) {
   const { t } = useLanguage();

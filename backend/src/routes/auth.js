@@ -9,7 +9,7 @@ import { sendVerificationEmail, sendEmailChangeVerification } from '../services/
 const router = express.Router();
 const prisma = new PrismaClient();
 
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+const FRONTEND_URL = process.env.FRONTEND_URL;
 
 // Rate limit tracking for resend verification (in-memory, for production use Redis)
 const resendRateLimits = new Map();

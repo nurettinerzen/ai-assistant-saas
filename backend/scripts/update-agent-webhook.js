@@ -15,7 +15,7 @@ const __dirname = dirname(__filename);
 dotenv.config({ path: join(__dirname, '..', '.env') });
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001';
+const BACKEND_URL = process.env.BACKEND_URL;
 
 const elevenLabsClient = axios.create({
   baseURL: 'https://api.elevenlabs.io/v1',

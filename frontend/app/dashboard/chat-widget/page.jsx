@@ -25,7 +25,7 @@ import ChatWidget from '@/components/ChatWidget';
 import axios from 'axios';
 import { apiClient } from '@/lib/api';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export default function ChatWidgetPage() {
   const { t, locale } = useLanguage();
@@ -132,7 +132,7 @@ export default function ChatWidgetPage() {
   };
 
   const generateEmbedCode = () => {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
   const positionMap = {
     'bottom-right': 'bottom: 20px; right: 20px;',

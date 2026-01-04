@@ -101,7 +101,7 @@ router.get('/webhook', async (req, res) => {
       })
     ]);
 
-    const apiUrl = process.env.API_URL || 'https://api.telyx.ai';
+    const apiUrl = process.env.BACKEND_URL;
 
     res.json({
       webhook: {
@@ -145,7 +145,7 @@ router.post('/webhook/regenerate', async (req, res) => {
       data: { webhookSecret: newSecret }
     });
 
-    const apiUrl = process.env.API_URL || 'https://api.telyx.ai';
+    const apiUrl = process.env.BACKEND_URL;
 
     res.json({
       webhookSecret: webhook.webhookSecret,

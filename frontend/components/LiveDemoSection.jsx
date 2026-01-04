@@ -23,7 +23,7 @@ export const LiveDemoSection = () => {
     setLoading(true);
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/demo-request`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/demo-request`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

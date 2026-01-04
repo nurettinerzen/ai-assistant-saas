@@ -288,7 +288,7 @@ class IyzicoSubscriptionService {
       }
 
       const user = business.users[0];
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      const frontendUrl = process.env.FRONTEND_URL;
 
       // Generate unique reference codes
       const conversationId = `SUB-${businessId}-${Date.now()}`;
@@ -304,7 +304,7 @@ class IyzicoSubscriptionService {
         conversationId: conversationId,
         pricingPlanReferenceCode: pricingPlanRef,
         subscriptionInitialStatus: 'ACTIVE',
-        callbackUrl: `${process.env.BACKEND_URL || 'http://localhost:3001'}/api/subscription/iyzico-callback`,
+        callbackUrl: `${process.env.BACKEND_URL}/api/subscription/iyzico-callback`,
         customer: {
           name: user.name?.split(' ')[0] || 'Customer',
           surname: user.name?.split(' ').slice(1).join(' ') || 'Customer',

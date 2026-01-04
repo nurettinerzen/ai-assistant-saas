@@ -321,7 +321,7 @@ router.post('/iyzico-webhook', express.json(), async (req, res) => {
 router.post('/iyzico-payment-callback', async (req, res) => {
   const { token } = req.body;
   const { planId, businessId } = req.query;
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const frontendUrl = process.env.FRONTEND_URL;
 
   console.log('📥 iyzico payment callback received:', { token, planId, businessId });
 
@@ -404,7 +404,7 @@ router.post('/iyzico-payment-callback', async (req, res) => {
 // iyzico Subscription Callback - POST handler for form submission
 router.post('/iyzico-subscription-callback', async (req, res) => {
   const { token } = req.body;
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const frontendUrl = process.env.FRONTEND_URL;
 
   console.log('📥 iyzico subscription callback received:', { token });
 
@@ -465,7 +465,7 @@ router.post('/iyzico-subscription-callback', async (req, res) => {
 // iyzico callback - POST handler (used by iyzicoSubscription service)
 router.post('/iyzico-callback', async (req, res) => {
   const { token } = req.body;
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const frontendUrl = process.env.FRONTEND_URL;
 
   console.log('📥 iyzico callback received:', { token });
 
@@ -525,7 +525,7 @@ router.post('/iyzico-callback', async (req, res) => {
 
 // Legacy callback (GET - for backward compatibility)
 router.get('/iyzico-callback', async (req, res) => {
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const frontendUrl = process.env.FRONTEND_URL;
   return res.redirect(`${frontendUrl}/dashboard/subscription?status=error&message=use_post`);
 });
 
@@ -821,7 +821,7 @@ router.post('/create-checkout', verifyBusinessAccess, async (req, res) => {
     }
 
     // Create checkout session
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const frontendUrl = process.env.FRONTEND_URL;
     const session = await stripe.checkout.sessions.create({
       customer: stripeCustomerId,
       mode: 'subscription',
@@ -1105,7 +1105,7 @@ router.post('/upgrade', verifyBusinessAccess, async (req, res) => {
       where: { businessId }
     });
 
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const frontendUrl = process.env.FRONTEND_URL;
 
     // If already has subscription, update it (upgrade/downgrade)
     if (currentSubscription?.stripeSubscriptionId) {
@@ -1353,7 +1353,7 @@ router.post('/create-portal-session', verifyBusinessAccess, async (req, res) => 
       return res.status(400).json({ error: 'No Stripe customer found' });
     }
 
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const frontendUrl = process.env.FRONTEND_URL;
     const session = await stripe.billingPortal.sessions.create({
       customer: subscription.stripeCustomerId,
       return_url: `${frontendUrl}/dashboard/settings?tab=billing`

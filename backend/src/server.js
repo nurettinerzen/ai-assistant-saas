@@ -77,13 +77,25 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// CORS
+// CORS - Dynamic origins from environment variable
+const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',').map(origin => origin.trim()) || [];
+
+if (allowedOrigins.length === 0) {
+  console.warn('WARNING: ALLOWED_ORIGINS is not defined. CORS will block all cross-origin requests.');
+}
+
 app.use(cors({
-  origin: [
-    'https://ai-assistant-saas-frontend-a5cbuji7l.vercel.app',
-    'https://telyx.ai',
-    'http://localhost:3000'
-  ],
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.warn(`CORS blocked origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
 

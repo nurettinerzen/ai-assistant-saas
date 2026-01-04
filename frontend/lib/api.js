@@ -6,7 +6,11 @@
 import axios from 'axios';
 import { toast } from 'sonner';
 
-const API_BASE_URL = process.env.REACT_APP_BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+
+if (!API_BASE_URL) {
+  throw new Error('NEXT_PUBLIC_API_URL environment variable is not defined. Check your .env.local file.');
+}
 
 const api = axios.create({
   baseURL: API_BASE_URL,

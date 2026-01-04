@@ -829,7 +829,7 @@ router.post('/whatsapp/connect', requireOwner, async (req, res) => {
     const encryptedAccessToken = encrypt(accessToken);
 
     // Generate webhook URL for this business
-    const webhookUrl = `${process.env.BACKEND_URL || 'http://localhost:3001'}/api/whatsapp/webhook`;
+    const webhookUrl = `${process.env.BACKEND_URL}/api/whatsapp/webhook`;
 
     // Store in Business model for direct access
     await prisma.business.update({
@@ -1638,7 +1638,7 @@ router.post('/ideasoft/auth', authenticateToken, async (req, res) => {
     }, 5 * 60 * 1000);
     
     // Callback URL
-    const redirectUri = (process.env.BACKEND_URL || 'https://ai-assistant-saas.onrender.com') + '/api/integrations/ideasoft/callback';
+    const redirectUri = process.env.BACKEND_URL + '/api/integrations/ideasoft/callback';
 
     // İdeasoft authorization URL
     const authUrl = `${normalizedUrl}/oauth/authorize?` + new URLSearchParams({
@@ -1662,7 +1662,7 @@ router.get('/ideasoft/callback', async (req, res) => {
   try {
     const { code, state, error: oauthError } = req.query;
     
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const frontendUrl = process.env.FRONTEND_URL;
     
     if (oauthError) {
       console.error('İdeasoft OAuth denied:', oauthError);
@@ -1683,7 +1683,7 @@ router.get('/ideasoft/callback', async (req, res) => {
     delete global.ideasoftPendingAuth[state];
     
     // Code'u token'a çevir
-    const redirectUri = (process.env.BACKEND_URL || 'https://ai-assistant-saas.onrender.com') + '/api/integrations/ideasoft/callback';
+    const redirectUri = process.env.BACKEND_URL + '/api/integrations/ideasoft/callback';
     
     console.log('🔄 Exchanging code for token...');
     
@@ -1741,7 +1741,7 @@ router.get('/ideasoft/callback', async (req, res) => {
     
   } catch (error) {
     console.error('İdeasoft callback error:', error.response?.data || error.message);
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const frontendUrl = process.env.FRONTEND_URL;
     res.redirect(`${frontendUrl}/dashboard/integrations?error=ideasoft_token_failed`);
   }
 });

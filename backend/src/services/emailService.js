@@ -10,7 +10,7 @@ import { Resend } from 'resend';
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const FROM_EMAIL = process.env.EMAIL_FROM || 'Telyx.AI <info@telyx.ai>';
-const FRONTEND_URL = process.env.FRONTEND_URL || 'https://telyx.ai';
+const FRONTEND_URL = process.env.FRONTEND_URL;
 
 let resend = null;
 

@@ -69,7 +69,7 @@ export async function getWebhookUrl(businessId) {
     return null;
   }
 
-  const baseUrl = process.env.BACKEND_URL || 'https://api.telyx.ai';
+  const baseUrl = process.env.BACKEND_URL;
   return `${baseUrl}/api/webhook/incoming/${businessId}/${config.webhookSecret}`;
 }
 

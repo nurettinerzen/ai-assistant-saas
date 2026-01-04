@@ -3,11 +3,14 @@ node_modules/
 .pnp
 .pnp.js
 
-# Environment variables
+# Environment variables (NEVER commit these)
 .env
 .env.local
 .env.production
 .env.development
+.env.*.local
+# BUT allow .env.example (template file)
+!.env.example
 
 # Next.js
 .next/
@@ -39,19 +42,4 @@ prisma/migrations/
 .cache/
 .temp/
 backend/config/google-credentials.json
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
+.vercel

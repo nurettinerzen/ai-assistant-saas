@@ -284,7 +284,7 @@ router.post('/invite', authenticateToken, checkPermission('team:invite'), async 
     });
 
     // Generate invitation link
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const frontendUrl = process.env.FRONTEND_URL;
     const inviteLink = `${frontendUrl}/invitation/${token}`;
 
     // TODO: Send email with invitation link
@@ -390,7 +390,7 @@ router.post('/invitations/:id/resend', authenticateToken, checkPermission('team:
       }
     });
 
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const frontendUrl = process.env.FRONTEND_URL;
     const inviteLink = `${frontendUrl}/invitation/${newToken}`;
 
     console.log('📧 DAVET YENİDEN GÖNDERİLDİ:', inviteLink);
