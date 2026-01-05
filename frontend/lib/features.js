@@ -521,8 +521,27 @@ export function getIntegrationFeatureInfo(integrationType, userPlan) {
     return { isLocked: false, feature: null };
   }
 
-  const normalizedPlan = userPlan?.toUpperCase() || PLANS.FREE;
+  // Normalize plan name - handle both 'PRO' and 'PROFESSIONAL'
+  let normalizedPlan = userPlan?.toUpperCase() || PLANS.FREE;
+
+  // Map 'PRO' to 'PROFESSIONAL' for consistency
+  if (normalizedPlan === 'PRO') {
+    normalizedPlan = PLANS.PROFESSIONAL;
+  }
+
   const visibility = featureMapping.visibility[normalizedPlan];
+
+  // If visibility is not defined for this plan, check plan hierarchy
+  // Higher plans should have access if lower plans don't have explicit visibility
+  if (visibility === undefined) {
+    const currentPlanLevel = PLAN_HIERARCHY[normalizedPlan] || 0;
+    const requiredPlanLevel = PLAN_HIERARCHY[featureMapping.requiredPlan] || 0;
+
+    // If user's plan level is >= required plan level, it's visible
+    if (currentPlanLevel >= requiredPlanLevel) {
+      return { isLocked: false, isHidden: false, feature: featureMapping };
+    }
+  }
 
   return {
     isLocked: visibility === VISIBILITY.LOCKED,
