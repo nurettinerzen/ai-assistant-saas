@@ -46,28 +46,28 @@ export default function UpgradeModal({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader className="text-center">
-          <div className="mx-auto mb-4 w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center">
-            <Lock className="h-8 w-8 text-primary-600" />
+          <div className="mx-auto mb-4 w-16 h-16 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center">
+            <Lock className="h-8 w-8 text-primary-600 dark:text-primary-400" />
           </div>
-          <DialogTitle className="text-xl font-bold text-neutral-900">
+          <DialogTitle className="text-xl font-bold text-neutral-900 dark:text-white">
             {locale === 'tr'
               ? `Bu özellik ${requiredPlan} planında`
               : `This feature requires ${requiredPlan} plan`}
           </DialogTitle>
-          <DialogDescription className="text-neutral-600 mt-2">
+          <DialogDescription className="text-neutral-600 dark:text-neutral-400 mt-2">
             {description}
           </DialogDescription>
         </DialogHeader>
 
         <div className="py-4">
-          <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
+          <div className="bg-primary-50 dark:bg-primary-950 border border-primary-200 dark:border-primary-800 rounded-lg p-4">
             <div className="flex items-center gap-3">
-              <div className="flex-shrink-0 w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
-                <Lock className="h-5 w-5 text-primary-600" />
+              <div className="flex-shrink-0 w-10 h-10 bg-primary-100 dark:bg-primary-900/50 rounded-lg flex items-center justify-center">
+                <Lock className="h-5 w-5 text-primary-600 dark:text-primary-400" />
               </div>
               <div>
-                <p className="font-medium text-neutral-900">{featureName}</p>
-                <p className="text-sm text-neutral-500">
+                <p className="font-medium text-neutral-900 dark:text-white">{featureName}</p>
+                <p className="text-sm text-neutral-500 dark:text-neutral-400">
                   {locale === 'tr'
                     ? `${requiredPlan} ve üzeri planlarda kullanılabilir`
                     : `Available in ${requiredPlan} and above plans`}

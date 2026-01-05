@@ -200,7 +200,7 @@ export function OnboardingModal({ open, onClose }) {
             name: data.voice.name,
             voiceId: data.voice.id,
             firstMessage: data.firstMessage,
-            systemPrompt: data.systemPrompt,
+            customNotes: data.systemPrompt,  // Onboarding'deki talimatlar customNotes olarak kaydedilir
             language: data.language,
             country: data.country,
             industry: data.industry,

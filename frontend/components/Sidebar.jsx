@@ -35,6 +35,7 @@ import {
   Check,
   Database,
   Sparkles,
+  Shield,
 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -54,6 +55,11 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import UpgradeModal from './UpgradeModal';
 import { VISIBILITY, getFeatureVisibility } from '@/lib/features';
+
+// Admin email whitelist - should match backend
+const ADMIN_EMAILS = [
+  'nurettin@telyx.ai'
+];
 
 export default function Sidebar({ user, credits, business }) {
   const pathname = usePathname();
@@ -120,6 +126,17 @@ export default function Sidebar({ user, credits, business }) {
     },
   ];
 
+  // Admin-only navigation
+  const isUserAdmin = ADMIN_EMAILS.includes(user?.email);
+  const ADMIN_NAVIGATION = isUserAdmin ? [
+    {
+      label: 'Admin',
+      items: [
+        { icon: Shield, label: 'Kurumsal Musteriler', href: '/dashboard/admin/enterprise' },
+      ],
+    },
+  ] : [];
+
   const handleLockedFeatureClick = (featureId) => {
     setSelectedFeatureId(featureId);
     setUpgradeModalOpen(true);
@@ -176,7 +193,7 @@ export default function Sidebar({ user, credits, business }) {
         }}
         className="flex-1 overflow-y-auto py-4 px-3"
       >
-        {NAVIGATION.map((section) => {
+        {[...NAVIGATION, ...ADMIN_NAVIGATION].map((section) => {
           const sectionLabel = section.label;
           const isCollapsed = collapsedSections.includes(sectionLabel);
 

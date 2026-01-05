@@ -13,6 +13,7 @@
 // Plan enum values
 export const PLANS = {
   FREE: 'FREE',
+  PAYG: 'PAYG',             // Pay as you go - same level as STARTER
   STARTER: 'STARTER',
   BASIC: 'BASIC',
   PRO: 'PROFESSIONAL',      // Backend uses PROFESSIONAL
@@ -23,6 +24,7 @@ export const PLANS = {
 // Plan hierarchy for comparison
 export const PLAN_HIERARCHY = {
   [PLANS.FREE]: 0,
+  [PLANS.PAYG]: 1,          // PAYG = STARTER level
   [PLANS.STARTER]: 1,
   [PLANS.BASIC]: 2,
   [PLANS.PROFESSIONAL]: 3,
@@ -63,11 +65,11 @@ export const COUNTRY_TO_REGION = {
  * Feature definitions with visibility per plan
  *
  * Sidebar Matrix:
- * | Feature        | Starter | Basic | Pro | Enterprise |
- * |----------------|---------|-------|-----|------------|
- * | E-posta        | hidden  | locked| ✓   | ✓          |
- * | Entegrasyonlar | hidden  | ✓     | ✓   | ✓          |
- * | Toplu Arama    | hidden  | locked| ✓   | ✓          |
+ * | Feature        | Free    | Starter | Basic | Pro | Enterprise |
+ * |----------------|---------|---------|-------|-----|------------|
+ * | E-posta        | hidden  | hidden  | locked| ✓   | ✓          |
+ * | Entegrasyonlar | hidden  | hidden  | ✓     | ✓   | ✓          |
+ * | Toplu Arama    | locked  | locked  | locked| ✓   | ✓          |
  */
 export const FEATURES = {
   // Sidebar features
@@ -109,8 +111,8 @@ export const FEATURES = {
     nameEN: 'Batch Calls',
     requiredPlan: PLANS.PROFESSIONAL,
     visibility: {
-      [PLANS.FREE]: VISIBILITY.HIDDEN,
-      [PLANS.STARTER]: VISIBILITY.HIDDEN,
+      [PLANS.FREE]: VISIBILITY.LOCKED,
+      [PLANS.STARTER]: VISIBILITY.LOCKED,
       [PLANS.BASIC]: VISIBILITY.LOCKED,
       [PLANS.PROFESSIONAL]: VISIBILITY.VISIBLE,
       [PLANS.ENTERPRISE]: VISIBILITY.VISIBLE
@@ -158,8 +160,9 @@ export const FEATURES = {
     nameEN: 'Custom CRM',
     requiredPlan: PLANS.PROFESSIONAL,
     visibility: {
-      [PLANS.FREE]: VISIBILITY.HIDDEN,
-      [PLANS.STARTER]: VISIBILITY.HIDDEN,
+      [PLANS.FREE]: VISIBILITY.LOCKED,
+      [PLANS.PAYG]: VISIBILITY.LOCKED,
+      [PLANS.STARTER]: VISIBILITY.LOCKED,
       [PLANS.BASIC]: VISIBILITY.LOCKED,
       [PLANS.PROFESSIONAL]: VISIBILITY.VISIBLE,
       [PLANS.ENTERPRISE]: VISIBILITY.VISIBLE
@@ -408,13 +411,18 @@ export function getFeatureVisibility(featureId, userPlan, countryCode = null) {
   }
 
   // Fall back to standard visibility
-  const visibility = feature.visibility?.[normalizedPlan];
+  let visibility = feature.visibility?.[normalizedPlan];
 
-  // If visibility not found for this plan, default based on plan hierarchy
+  // If visibility not found for this plan, use fallback logic
   if (!visibility) {
-    // For unknown plans, show as visible (to not break anything)
-    console.warn(`[features] Unknown plan: ${normalizedPlan}, defaulting to VISIBLE`);
-    return VISIBILITY.VISIBLE;
+    if (normalizedPlan === 'PAYG') {
+      // PAYG should behave like STARTER for feature access
+      visibility = feature.visibility?.[PLANS.STARTER] || feature.visibility?.[PLANS.FREE] || VISIBILITY.LOCKED;
+    } else {
+      // For unknown plans, default to LOCKED (safer than VISIBLE)
+      console.warn(`[features] Unknown plan: ${normalizedPlan}, defaulting to LOCKED`);
+      visibility = VISIBILITY.LOCKED;
+    }
   }
 
   return visibility;
@@ -522,7 +530,18 @@ export function getIntegrationFeatureInfo(integrationType, userPlan) {
   }
 
   const normalizedPlan = userPlan?.toUpperCase() || PLANS.FREE;
-  const visibility = featureMapping.visibility[normalizedPlan];
+
+  // PAYG plan should behave like STARTER for feature access
+  // If plan not defined in visibility, fall back to STARTER, then FREE
+  let visibility = featureMapping.visibility[normalizedPlan];
+  if (visibility === undefined) {
+    if (normalizedPlan === 'PAYG') {
+      visibility = featureMapping.visibility[PLANS.STARTER] || featureMapping.visibility[PLANS.FREE];
+    } else {
+      // Unknown plan - treat as FREE (locked)
+      visibility = featureMapping.visibility[PLANS.FREE] || VISIBILITY.LOCKED;
+    }
+  }
 
   return {
     isLocked: visibility === VISIBILITY.LOCKED,

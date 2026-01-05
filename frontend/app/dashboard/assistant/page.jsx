@@ -802,72 +802,99 @@ export default function AssistantsPage() {
               </Select>
             </div>
 
-            {/* First Message - only for outbound calls (read-only, auto-generated) */}
+            {/* First Message - Greeting */}
+            <div>
+              <Label htmlFor="firstMessage">
+                {locale === 'tr' ? 'Karşılama Mesajı' : 'Greeting Message'}
+              </Label>
+              {formData.callDirection === 'outbound' ? (
+                // Outbound: Read-only, auto-generated
+                <>
+                  <div className="p-3 bg-neutral-50 border border-neutral-200 rounded-md text-sm text-neutral-700 dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-300">
+                    {formData.firstMessage || (locale === 'tr' ? 'Asistan adı girilince otomatik oluşturulacak' : 'Will be auto-generated when assistant name is entered')}
+                  </div>
+                  <p className="text-xs text-neutral-500 mt-1">
+                    {locale === 'tr'
+                      ? 'Bu mesaj asistan ve işletme adına göre otomatik oluşturulur.'
+                      : 'This message is auto-generated based on assistant and business name.'
+                    }
+                  </p>
+                </>
+              ) : (
+                // Inbound: Editable
+                <>
+                  <Textarea
+                    id="firstMessage"
+                    rows={2}
+                    value={formData.firstMessage}
+                    onChange={(e) => setFormData({ ...formData, firstMessage: e.target.value })}
+                    placeholder={locale === 'tr'
+                      ? 'örn: Merhaba, ben Asistan. Size nasıl yardımcı olabilirim?'
+                      : 'e.g., Hello, I\'m Assistant. How can I help you?'
+                    }
+                  />
+                  <p className="text-xs text-neutral-500 mt-1">
+                    {locale === 'tr'
+                      ? 'Asistanın aramayı açarken söyleyeceği ilk mesaj.'
+                      : 'The first message the assistant says when answering a call.'
+                    }
+                  </p>
+                </>
+              )}
+            </div>
+
+            {/* System Prompt / Instructions - Only for outbound */}
             {formData.callDirection === 'outbound' && (
               <div>
-                <Label htmlFor="firstMessage">
-                  {locale === 'tr' ? 'İlk Mesaj (Karşılama)' : 'First Message (Greeting)'}
+                <Label htmlFor="prompt">
+                  {locale === 'tr' ? 'Talimatlar' : 'Instructions'}
                 </Label>
-                <div className="p-3 bg-neutral-50 border border-neutral-200 rounded-md text-sm text-neutral-700">
-                  {formData.firstMessage || (locale === 'tr' ? 'Asistan adı girilince otomatik oluşturulacak' : 'Will be auto-generated when assistant name is entered')}
-                </div>
-                <p className="text-xs text-neutral-500 mt-1">
-                  {locale === 'tr'
-                    ? 'Bu mesaj asistan ve işletme adına göre otomatik oluşturulur.'
-                    : 'This message is auto-generated based on assistant and business name.'
-                  }
-                </p>
-              </div>
-            )}
-
-            {/* System Prompt / Instructions */}
-            <div>
-              <Label htmlFor="prompt">
-                {formData.callDirection === 'outbound'
-                  ? (locale === 'tr' ? 'Talimatlar' : 'Instructions')
-                  : (locale === 'tr' ? 'Ek Talimatlar (Opsiyonel)' : 'Additional Instructions (Optional)')
-                }
-              </Label>
-              <Textarea
-                id="prompt"
-                rows={formData.callDirection === 'outbound' ? 3 : 4}
-                value={formData.systemPrompt}
-                onChange={(e) => setFormData({ ...formData, systemPrompt: e.target.value })}
-                placeholder={
-                  formData.callDirection === 'outbound'
-                    ? (locale === 'tr'
-                        ? 'örn: Kibar ol, ödeme tarihini sor...'
-                        : 'e.g., Be polite, ask for payment date...')
-                    : (locale === 'tr'
-                        ? 'Asistanın davranışı için ek talimatlar...'
-                        : 'Additional instructions for assistant behavior...')
-                }
-              />
-              {formData.callDirection === 'outbound' && (
+                <Textarea
+                  id="prompt"
+                  rows={3}
+                  value={formData.systemPrompt}
+                  onChange={(e) => setFormData({ ...formData, systemPrompt: e.target.value })}
+                  placeholder={locale === 'tr'
+                    ? 'örn: Kibar ol, ödeme tarihini sor...'
+                    : 'e.g., Be polite, ask for payment date...'}
+                />
                 <p className="text-xs text-neutral-500 mt-1">
                   {locale === 'tr'
                     ? 'Asistanın nasıl davranması gerektiğini kısa ve öz yazın.'
                     : 'Write briefly how the assistant should behave.'}
                 </p>
-              )}
-            </div>
+              </div>
+            )}
 
-            {/* Custom Notes */}
+            {/* Custom Notes / Additional Instructions */}
             <div>
               <Label htmlFor="customNotes">
-                {t('dashboard.assistantsPage.customNotes')}
+                {formData.callDirection === 'inbound'
+                  ? (locale === 'tr' ? 'Ek Talimatlar ve Bilgiler' : 'Additional Instructions & Info')
+                  : t('dashboard.assistantsPage.customNotes')
+                }
               </Label>
               <Textarea
                 id="customNotes"
                 rows={4}
                 value={formData.customNotes}
                 onChange={(e) => setFormData({ ...formData, customNotes: e.target.value })}
-                placeholder={t('dashboard.assistantsPage.customNotesPlaceholder')}
+                placeholder={formData.callDirection === 'inbound'
+                  ? (locale === 'tr'
+                    ? 'örn: Çalışma saatleri 09:00-18:00, Cumartesi kapalı. Randevu için telefon numarası mutlaka alınmalı...'
+                    : 'e.g., Working hours 9AM-6PM, closed on Saturday. Phone number must be collected for appointments...')
+                  : t('dashboard.assistantsPage.customNotesPlaceholder')
+                }
               />
               <p className="text-xs text-neutral-500 mt-1">
-                {locale === 'tr'
-                  ? 'Çalışma saatleri, adres, özel kurallar vb. asistanın bilmesi gereken bilgiler.'
-                  : 'Working hours, address, special rules, etc. that the assistant should know.'}
+                {formData.callDirection === 'inbound'
+                  ? (locale === 'tr'
+                    ? 'Asistanın bilmesi gereken özel kurallar, çalışma saatleri, adres vb. bilgiler.'
+                    : 'Special rules, working hours, address, etc. that the assistant should know.')
+                  : (locale === 'tr'
+                    ? 'Çalışma saatleri, adres, özel kurallar vb. asistanın bilmesi gereken bilgiler.'
+                    : 'Working hours, address, special rules, etc. that the assistant should know.')
+                }
               </p>
             </div>
           </div>

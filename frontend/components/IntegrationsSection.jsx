@@ -24,7 +24,7 @@ export const IntegrationsSection = () => {
   ];
 
   return (
-    <section className="py-24 px-4 sm:px-6 lg:px-8 bg-gray-50">
+    <section className="py-24 px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-neutral-900">
       <div className="max-w-7xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -56,7 +56,7 @@ export const IntegrationsSection = () => {
               viewport={{ once: true }}
               transition={{ duration: 0.4, delay: index * 0.05 }}
               whileHover={{ scale: 1.05, y: -4 }}
-              className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 hover:shadow-lg hover:border-indigo-100 transition-all duration-300 w-full h-20 flex items-center justify-center group cursor-pointer"
+              className="bg-white dark:bg-neutral-800 rounded-xl p-5 shadow-sm border border-gray-100 dark:border-neutral-700 hover:shadow-lg hover:border-indigo-100 dark:hover:border-indigo-900 transition-all duration-300 w-full h-20 flex items-center justify-center group cursor-pointer"
             >
               <div className="relative w-full h-8 group-hover:scale-105 transition-transform duration-300">
                 <Image
@@ -66,7 +66,7 @@ export const IntegrationsSection = () => {
                   className="object-contain"
                   onError={(e) => {
                     e.target.style.display = 'none';
-                    e.target.parentElement.innerHTML = `<span class="text-sm font-semibold text-gray-700">${integration.name}</span>`;
+                    e.target.parentElement.innerHTML = `<span class="text-sm font-semibold text-gray-700 dark:text-gray-200">${integration.name}</span>`;
                   }}
                 />
               </div>
@@ -83,7 +83,7 @@ export const IntegrationsSection = () => {
         >
           <Link
             href="/integrations"
-            className="inline-flex items-center gap-2 text-indigo-600 hover:text-indigo-700 font-semibold transition-colors group"
+            className="inline-flex items-center gap-2 text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-semibold transition-colors group"
           >
             {t('landing.integrations.viewAll')}
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />

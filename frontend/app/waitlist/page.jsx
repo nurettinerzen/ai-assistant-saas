@@ -59,24 +59,24 @@ export default function WaitlistPage() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
           <div className="flex justify-between items-center mb-8">
-            <Link href="/" className="text-2xl font-bold text-indigo-600">
+            <Link href="/" className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
               <Phone className="inline-block mr-2 h-8 w-8" />
               TELYX.AI
             </Link>
             <LanguageSwitcher />
           </div>
 
-          <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <CheckCircle className="h-8 w-8 text-green-600" />
+          <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-xl border border-neutral-200 dark:border-neutral-800 p-8 text-center">
+            <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
+              <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
               {t('waitlist.success')}
             </h1>
-            <p className="text-gray-600 mb-8">
+            <p className="text-gray-600 dark:text-gray-400 mb-8">
               {t('waitlist.success')}
             </p>
             <Link href="/">
@@ -91,29 +91,29 @@ export default function WaitlistPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 flex items-center justify-center p-4">
       <Toaster position="top-right" />
 
       <div className="w-full max-w-md">
         <div className="flex justify-between items-center mb-8">
-          <Link href="/" className="text-2xl font-bold text-indigo-600">
+          <Link href="/" className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
             <Phone className="inline-block mr-2 h-8 w-8" />
             TELYX.AI
           </Link>
           <LanguageSwitcher />
         </div>
 
-        <div className="bg-white rounded-2xl shadow-xl p-8">
+        <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-xl border border-neutral-200 dark:border-neutral-800 p-8">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
               {t('waitlist.title')}
             </h1>
-            <p className="text-gray-600">{t('waitlist.subtitle')}</p>
+            <p className="text-gray-600 dark:text-gray-400">{t('waitlist.subtitle')}</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <Label htmlFor="name">{t('waitlist.name')}</Label>
+              <Label htmlFor="name" className="text-gray-900 dark:text-white">{t('waitlist.name')}</Label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                 <Input
@@ -129,7 +129,7 @@ export default function WaitlistPage() {
             </div>
 
             <div>
-              <Label htmlFor="email">{t('waitlist.email')}</Label>
+              <Label htmlFor="email" className="text-gray-900 dark:text-white">{t('waitlist.email')}</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                 <Input
@@ -145,7 +145,7 @@ export default function WaitlistPage() {
             </div>
 
             <div>
-              <Label htmlFor="company">{t('waitlist.company')}</Label>
+              <Label htmlFor="company" className="text-gray-900 dark:text-white">{t('waitlist.company')}</Label>
               <div className="relative">
                 <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                 <Input
@@ -160,12 +160,12 @@ export default function WaitlistPage() {
             </div>
 
             <div>
-              <Label htmlFor="businessType">{t('waitlist.businessType')}</Label>
+              <Label htmlFor="businessType" className="text-gray-900 dark:text-white">{t('waitlist.businessType')}</Label>
               <div className="relative">
                 <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                 <select
                   id="businessType"
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-neutral-700 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-neutral-800 text-gray-900 dark:text-white"
                   value={formData.businessType}
                   onChange={(e) => setFormData({ ...formData, businessType: e.target.value })}
                 >
@@ -180,13 +180,13 @@ export default function WaitlistPage() {
             </div>
 
             <div>
-              <Label htmlFor="message">{t('waitlist.message')}</Label>
+              <Label htmlFor="message" className="text-gray-900 dark:text-white">{t('waitlist.message')}</Label>
               <div className="relative">
                 <MessageSquare className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                 <textarea
                   id="message"
                   placeholder={t('contact.form.messagePlaceholder')}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent min-h-[100px] resize-none"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-neutral-700 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent min-h-[100px] resize-none bg-white dark:bg-neutral-800 text-gray-900 dark:text-white"
                   value={formData.message}
                   onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                 />
@@ -205,9 +205,9 @@ export default function WaitlistPage() {
             </Button>
           </form>
 
-          <div className="mt-6 text-center text-sm text-gray-600">
+          <div className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
             {t('auth.alreadyHaveAccount')}{' '}
-            <Link href="/login" className="text-indigo-600 hover:underline font-medium">
+            <Link href="/login" className="text-indigo-600 dark:text-indigo-400 hover:underline font-medium">
               {t('common.signIn')}
             </Link>
           </div>

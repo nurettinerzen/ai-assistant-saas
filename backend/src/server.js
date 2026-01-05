@@ -66,6 +66,8 @@ import crmRoutes from './routes/crm.js';
 import customerDataRoutes from './routes/customerData.js';
 // Cron jobs (for external schedulers)
 import cronRoutes from './routes/cron.js';
+// Admin panel
+import adminRoutes from './routes/admin.js';
 
 
 // Import jobs
@@ -167,6 +169,8 @@ app.use('/api/crm', crmRoutes);
 app.use('/api/customer-data', customerDataRoutes);
 // Cron jobs (for external schedulers like cron-job.org)
 app.use('/api/cron', cronRoutes);
+// Admin panel
+app.use('/api/admin', adminRoutes);
 
 
 // Error handling middleware

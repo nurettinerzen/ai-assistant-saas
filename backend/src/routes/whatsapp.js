@@ -13,6 +13,7 @@ import { webhookRateLimiter } from '../middleware/rateLimiter.js';
 import { getActiveTools, executeTool } from '../tools/index.js';
 import { getDateTimeContext } from '../utils/dateTime.js';
 import { buildAssistantPrompt, getActiveTools as getPromptBuilderTools } from '../services/promptBuilder.js';
+import { isFreePlanExpired } from '../middleware/checkPlanExpiry.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -108,6 +109,18 @@ router.post('/webhook', webhookRateLimiter.middleware(), async (req, res) => {
       }
 
       console.log(`✅ Message for business: ${business.name} (ID: ${business.id})`);
+
+      // Check subscription and plan expiry
+      const subscription = await prisma.subscription.findUnique({
+        where: { businessId: business.id },
+        include: { business: true }
+      });
+
+      if (subscription && isFreePlanExpired(subscription)) {
+        console.log(`🚫 WhatsApp blocked - FREE plan expired for business ${business.id}`);
+        // Silently ignore the message - don't respond
+        return res.sendStatus(200);
+      }
 
       // Process incoming messages
       if (value?.messages && value.messages.length > 0) {

@@ -37,7 +37,7 @@ export const ChannelsSection = () => {
   ];
 
   return (
-    <section className="py-24 px-4 sm:px-6 lg:px-8 bg-gray-50">
+    <section className="py-24 px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-neutral-900">
       <div className="max-w-7xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -65,7 +65,7 @@ export const ChannelsSection = () => {
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
               >
-                <Card className="p-8 h-full hover:shadow-lg transition-all duration-300 hover:-translate-y-1 bg-white border-border">
+                <Card className="p-8 h-full hover:shadow-lg transition-all duration-300 hover:-translate-y-1 bg-white dark:bg-neutral-800 border-border">
                   <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${channel.color} flex items-center justify-center mb-6`}>
                     <Icon className="w-7 h-7 text-white" />
                   </div>

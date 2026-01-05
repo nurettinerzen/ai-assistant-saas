@@ -1006,7 +1006,7 @@
       "releasingNumber": "Numara bırakılıyor...",
       "phoneNumberReleased": "Telefon numarası bırakıldı!",
       "upgradeToGetPhone": "Planınızı Yükseltin",
-      "phoneNumbersLockedDesc": "Telefon numarası özelliği BASIC ve üzeri planlarda kullanılabilir.",
+      "phoneNumbersLockedDesc": "Telefon numarası özelliği ücretli planlarda kullanılabilir. Kullandıkça Öde veya paket planlarından birini seçin.",
       "unlimited": "Sınırsız",
       "phoneLimitReached": "Telefon numarası limitine ulaşıldı. Daha fazla numara eklemek için planınızı yükseltin.",
       "assistant": "Asistan",

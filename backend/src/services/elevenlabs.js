@@ -7,16 +7,27 @@
 
 import axios from 'axios';
 
-const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
 const ELEVENLABS_BASE_URL = 'https://api.elevenlabs.io/v1';
 
-const elevenLabsClient = axios.create({
-  baseURL: ELEVENLABS_BASE_URL,
-  headers: {
-    'xi-api-key': ELEVENLABS_API_KEY,
-    'Content-Type': 'application/json'
+// Lazy initialization to ensure env vars are loaded
+let elevenLabsClient = null;
+
+function getClient() {
+  if (!elevenLabsClient) {
+    const apiKey = process.env.ELEVENLABS_API_KEY;
+    if (!apiKey) {
+      console.error('❌ ELEVENLABS_API_KEY is not set in environment variables');
+    }
+    elevenLabsClient = axios.create({
+      baseURL: ELEVENLABS_BASE_URL,
+      headers: {
+        'xi-api-key': apiKey,
+        'Content-Type': 'application/json'
+      }
+    });
   }
-});
+  return elevenLabsClient;
+}
 
 // ============================================================================
 // AGENT (ASSISTANT) MANAGEMENT
@@ -30,7 +41,7 @@ const elevenLabsService = {
    */
   async createAgent(config) {
     try {
-      const response = await elevenLabsClient.post('/convai/agents/create', config);
+      const response = await getClient().post('/convai/agents/create', config);
       console.log('✅ 11Labs Agent created:', response.data.agent_id);
       return response.data;
     } catch (error) {
@@ -55,7 +66,7 @@ const elevenLabsService = {
    */
   async updateAgent(agentId, config) {
     try {
-      const response = await elevenLabsClient.patch(`/convai/agents/${agentId}`, config);
+      const response = await getClient().patch(`/convai/agents/${agentId}`, config);
       console.log('✅ 11Labs Agent updated:', agentId);
       return response.data;
     } catch (error) {
@@ -70,7 +81,7 @@ const elevenLabsService = {
    */
   async getAgent(agentId) {
     try {
-      const response = await elevenLabsClient.get(`/convai/agents/${agentId}`);
+      const response = await getClient().get(`/convai/agents/${agentId}`);
       return response.data;
     } catch (error) {
       console.error('❌ 11Labs getAgent error:', error.response?.data || error.message);
@@ -84,7 +95,7 @@ const elevenLabsService = {
    */
   async deleteAgent(agentId) {
     try {
-      await elevenLabsClient.delete(`/convai/agents/${agentId}`);
+      await getClient().delete(`/convai/agents/${agentId}`);
       console.log('✅ 11Labs Agent deleted:', agentId);
       return true;
     } catch (error) {
@@ -98,7 +109,7 @@ const elevenLabsService = {
    */
   async listAgents() {
     try {
-      const response = await elevenLabsClient.get('/convai/agents');
+      const response = await getClient().get('/convai/agents');
       return response.data;
     } catch (error) {
       console.error('❌ 11Labs listAgents error:', error.response?.data || error.message);
@@ -123,7 +134,7 @@ const elevenLabsService = {
     try {
       // Step 1: Import phone number to 11Labs
       // Note: agent_id in create request is often ignored, so we update separately
-      const response = await elevenLabsClient.post('/convai/phone-numbers/create', {
+      const response = await getClient().post('/convai/phone-numbers/create', {
         phone_number: config.phoneNumber,
         label: config.label || `Telyx - ${config.phoneNumber}`,
         provider: 'twilio',
@@ -135,7 +146,7 @@ const elevenLabsService = {
       // Step 2: Assign agent to the phone number (separate API call)
       if (config.agentId) {
         console.log('📞 Assigning agent to phone number...');
-        await elevenLabsClient.patch(`/convai/phone-numbers/${response.data.phone_number_id}`, {
+        await getClient().patch(`/convai/phone-numbers/${response.data.phone_number_id}`, {
           agent_id: config.agentId
         });
         console.log('✅ Agent assigned to phone number');
@@ -150,28 +161,98 @@ const elevenLabsService = {
 
   /**
    * Import a SIP trunk phone number to 11Labs (for NetGSM, etc.)
+   * Uses the new sip_trunk_configuration format
+   *
    * @param {Object} config - SIP trunk configuration
+   * @param {string} config.phoneNumber - Phone number (will be converted to E.164)
+   * @param {string} config.sipServer - SIP server address (e.g., sip.netgsm.com.tr)
+   * @param {string} config.sipUsername - SIP username for digest auth
+   * @param {string} config.sipPassword - SIP password for digest auth
+   * @param {string} config.transport - Transport protocol: 'tcp' or 'tls' (UDP not supported)
+   * @param {string} config.mediaEncryption - 'disabled', 'allowed', or 'required'
+   * @param {string} config.label - Optional label for the phone number
+   * @param {string} config.agentId - Optional agent ID to assign
    */
   async importSipTrunkNumber(config) {
     try {
-      const response = await elevenLabsClient.post('/convai/phone-numbers/create', {
-        phone_number: config.phoneNumber,
-        label: config.label || `SIP - ${config.phoneNumber}`,
-        provider: 'sip_trunk',
-        provider_config: {
-          sip_trunk_termination_uri: config.sipUri || `sip:${config.sipUsername}@${config.sipServer}`,
-          sip_trunk_origination_uri: config.originationUri || config.sipUri,
-          sip_trunk_authentication: {
-            username: config.sipUsername,
-            password: config.sipPassword
+      // Ensure phone number is in E.164 format
+      let phoneNumber = config.phoneNumber;
+      if (!phoneNumber.startsWith('+')) {
+        // If starts with 0, assume Turkish number
+        if (phoneNumber.startsWith('0')) {
+          phoneNumber = '+9' + phoneNumber;
+        } else if (phoneNumber.startsWith('9')) {
+          phoneNumber = '+' + phoneNumber;
+        } else {
+          phoneNumber = '+90' + phoneNumber;
+        }
+      }
+
+      // Transport must be 'tcp' or 'tls' (UDP is NOT supported by 11Labs)
+      const transport = config.transport?.toLowerCase() === 'tls' ? 'tls' : 'tcp';
+
+      // Media encryption: 'disabled', 'allowed', or 'required'
+      const mediaEncryption = config.mediaEncryption || 'disabled';
+
+      // Build the new sip_trunk_configuration format
+      const requestBody = {
+        phone_number: phoneNumber,
+        label: config.label || `SIP - ${phoneNumber}`,
+        sip_trunk_configuration: {
+          inbound: {
+            transport: transport,
+            media_encryption: mediaEncryption
+          },
+          outbound: {
+            address: config.sipServer,  // Just hostname, no sip: prefix
+            transport: transport,
+            media_encryption: mediaEncryption,
+            digest_auth: {
+              username: config.sipUsername,
+              password: config.sipPassword
+            }
           }
-        },
-        agent_id: config.agentId
+        }
+      };
+
+      console.log('📞 Creating SIP trunk phone number with config:', {
+        phone_number: phoneNumber,
+        label: requestBody.label,
+        sip_server: config.sipServer,
+        transport: transport,
+        media_encryption: mediaEncryption
       });
+
+      console.log('📤 Sending SIP trunk request body:', JSON.stringify(requestBody, null, 2));
+      const response = await getClient().post('/convai/phone-numbers', requestBody);
       console.log('✅ 11Labs SIP trunk phone number imported:', response.data.phone_number_id);
+      console.log('📥 Full API response:', JSON.stringify(response.data, null, 2));
+
+      // If agent ID provided, assign it separately
+      if (config.agentId) {
+        console.log('📞 Assigning agent to SIP trunk phone number...');
+        await getClient().patch(`/convai/phone-numbers/${response.data.phone_number_id}`, {
+          agent_id: config.agentId
+        });
+        console.log('✅ Agent assigned to SIP trunk phone number');
+      }
+
       return response.data;
     } catch (error) {
-      console.error('❌ 11Labs importSipTrunkNumber error:', error.response?.data || error.message);
+      // Log detailed error information
+      const errorData = error.response?.data;
+      console.error('❌ 11Labs importSipTrunkNumber error - Full response:', JSON.stringify(errorData, null, 2));
+
+      if (errorData?.detail) {
+        if (Array.isArray(errorData.detail)) {
+          console.error('❌ Validation errors:');
+          errorData.detail.forEach((d, i) => {
+            console.error(`  [${i}] type: ${d.type}, loc: ${JSON.stringify(d.loc)}, msg: ${d.msg}, input: ${JSON.stringify(d.input)}`);
+          });
+        } else {
+          console.error('❌ Error detail:', errorData.detail);
+        }
+      }
       throw error;
     }
   },
@@ -183,7 +264,7 @@ const elevenLabsService = {
    */
   async updatePhoneNumber(phoneNumberId, agentId) {
     try {
-      const response = await elevenLabsClient.patch(`/convai/phone-numbers/${phoneNumberId}`, {
+      const response = await getClient().patch(`/convai/phone-numbers/${phoneNumberId}`, {
         agent_id: agentId
       });
       console.log('✅ 11Labs Phone number updated:', phoneNumberId);
@@ -200,7 +281,7 @@ const elevenLabsService = {
    */
   async deletePhoneNumber(phoneNumberId) {
     try {
-      await elevenLabsClient.delete(`/convai/phone-numbers/${phoneNumberId}`);
+      await getClient().delete(`/convai/phone-numbers/${phoneNumberId}`);
       console.log('✅ 11Labs Phone number deleted:', phoneNumberId);
       return true;
     } catch (error) {
@@ -215,7 +296,7 @@ const elevenLabsService = {
    */
   async getPhoneNumber(phoneNumberId) {
     try {
-      const response = await elevenLabsClient.get(`/convai/phone-numbers/${phoneNumberId}`);
+      const response = await getClient().get(`/convai/phone-numbers/${phoneNumberId}`);
       return response.data;
     } catch (error) {
       console.error('❌ 11Labs getPhoneNumber error:', error.response?.data || error.message);
@@ -228,7 +309,7 @@ const elevenLabsService = {
    */
   async listPhoneNumbers() {
     try {
-      const response = await elevenLabsClient.get('/convai/phone-numbers');
+      const response = await getClient().get('/convai/phone-numbers');
       return response.data;
     } catch (error) {
       console.error('❌ 11Labs listPhoneNumbers error:', error.response?.data || error.message);
@@ -246,7 +327,7 @@ const elevenLabsService = {
    */
   async initiateOutboundCall(config) {
     try {
-      const response = await elevenLabsClient.post('/convai/twilio/outbound-call', {
+      const response = await getClient().post('/convai/twilio/outbound-call', {
         agent_id: config.agentId,
         agent_phone_number_id: config.phoneNumberId,
         to_number: config.toNumber,
@@ -270,7 +351,7 @@ const elevenLabsService = {
    */
   async getConversation(conversationId) {
     try {
-      const response = await elevenLabsClient.get(`/convai/conversations/${conversationId}`);
+      const response = await getClient().get(`/convai/conversations/${conversationId}`);
       return response.data;
     } catch (error) {
       console.error('❌ 11Labs getConversation error:', error.response?.data || error.message);
@@ -304,7 +385,7 @@ const elevenLabsService = {
         queryParams = new URLSearchParams({ page_size: '50' });
       }
 
-      const response = await elevenLabsClient.get(`/convai/conversations?${queryParams}`);
+      const response = await getClient().get(`/convai/conversations?${queryParams}`);
       return response.data.conversations || response.data;
     } catch (error) {
       console.error('❌ 11Labs listConversations error:', error.response?.data || error.message);
@@ -318,7 +399,7 @@ const elevenLabsService = {
    */
   async getConversationAudio(conversationId) {
     try {
-      const response = await elevenLabsClient.get(`/convai/conversations/${conversationId}/audio`, {
+      const response = await getClient().get(`/convai/conversations/${conversationId}/audio`, {
         responseType: 'arraybuffer'
       });
       return response.data;
@@ -339,7 +420,7 @@ const elevenLabsService = {
    */
   async getSignedUrl(agentId) {
     try {
-      const response = await elevenLabsClient.get(`/convai/conversation/get-signed-url?agent_id=${agentId}`);
+      const response = await getClient().get(`/convai/conversation/get-signed-url?agent_id=${agentId}`);
       return response.data;
     } catch (error) {
       console.error('❌ 11Labs getSignedUrl error:', error.response?.data || error.message);
@@ -359,7 +440,7 @@ const elevenLabsService = {
    */
   async createKnowledgeFromUrl(url, name = null) {
     try {
-      const response = await elevenLabsClient.post('/convai/knowledge-base/url', {
+      const response = await getClient().post('/convai/knowledge-base/url', {
         url,
         ...(name && { name })
       });
@@ -391,7 +472,7 @@ const elevenLabsService = {
       });
       formData.append('name', name);
 
-      const response = await elevenLabsClient.post('/convai/knowledge-base', formData, {
+      const response = await getClient().post('/convai/knowledge-base', formData, {
         headers: {
           ...formData.getHeaders()
         }
@@ -431,7 +512,7 @@ const elevenLabsService = {
       }
 
       // Update agent with new knowledge base - nested in conversation_config
-      const response = await elevenLabsClient.patch(`/convai/agents/${agentId}`, {
+      const response = await getClient().patch(`/convai/agents/${agentId}`, {
         conversation_config: {
           agent: {
             prompt: {
@@ -465,7 +546,7 @@ const elevenLabsService = {
       const updatedKnowledgeBase = currentKnowledgeBase.filter(kb => kb.id !== documentId);
 
       // Update agent
-      await elevenLabsClient.patch(`/convai/agents/${agentId}`, {
+      await getClient().patch(`/convai/agents/${agentId}`, {
         conversation_config: {
           agent: {
             prompt: {
@@ -489,7 +570,7 @@ const elevenLabsService = {
    */
   async deleteKnowledgeDocument(documentId) {
     try {
-      await elevenLabsClient.delete(`/convai/knowledge-base/${documentId}`);
+      await getClient().delete(`/convai/knowledge-base/${documentId}`);
       console.log('✅ 11Labs Knowledge document deleted:', documentId);
       return { success: true };
     } catch (error) {
@@ -504,7 +585,7 @@ const elevenLabsService = {
    */
   async getAgent(agentId) {
     try {
-      const response = await elevenLabsClient.get(`/convai/agents/${agentId}`);
+      const response = await getClient().get(`/convai/agents/${agentId}`);
       return response.data;
     } catch (error) {
       console.error('❌ 11Labs getAgent error:', error.response?.data || error.message);

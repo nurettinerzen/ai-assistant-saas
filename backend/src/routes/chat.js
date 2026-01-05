@@ -10,6 +10,7 @@ import OpenAI from 'openai';
 import { getActiveTools, executeTool } from '../tools/index.js';
 import { getDateTimeContext } from '../utils/dateTime.js';
 import { buildAssistantPrompt, getActiveTools as getPromptBuilderTools } from '../services/promptBuilder.js';
+import { isFreePlanExpired } from '../middleware/checkPlanExpiry.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -158,6 +159,22 @@ router.post('/widget', async (req, res) => {
     const business = assistant.business;
     const language = business?.language || 'TR';
 
+    // Check subscription and plan expiry
+    const subscription = await prisma.subscription.findUnique({
+      where: { businessId: business.id },
+      include: { business: true }
+    });
+
+    if (subscription && isFreePlanExpired(subscription)) {
+      console.log(`🚫 Chat blocked - FREE plan expired for business ${business.id}`);
+      return res.status(403).json({
+        error: language === 'TR'
+          ? 'Deneme süreniz doldu. Hizmete devam etmek için lütfen bir plan seçin.'
+          : 'Your trial has expired. Please choose a plan to continue.',
+        expired: true
+      });
+    }
+
     // Get Knowledge Base content for this business
     const knowledgeItems = await prisma.knowledgeBase.findMany({
       where: { businessId: business.id, status: 'ACTIVE' }
@@ -284,6 +301,57 @@ router.get('/assistant/:assistantId', async (req, res) => {
   } catch (error) {
     console.error('Get assistant error:', error);
     res.status(500).json({ error: 'Failed to get assistant info' });
+  }
+});
+
+// GET /api/chat/widget/status/:assistantId - Check if widget should be active
+// This is called by the widget JS before rendering
+router.get('/widget/status/:assistantId', async (req, res) => {
+  try {
+    const { assistantId } = req.params;
+
+    // Find assistant and business
+    const assistant = await prisma.assistant.findFirst({
+      where: {
+        OR: [
+          { id: assistantId },
+          { vapiAssistantId: assistantId }
+        ]
+      },
+      include: {
+        business: true
+      }
+    });
+
+    if (!assistant) {
+      return res.json({ active: false, reason: 'not_found' });
+    }
+
+    // Check subscription
+    const subscription = await prisma.subscription.findUnique({
+      where: { businessId: assistant.business.id },
+      include: { business: true }
+    });
+
+    if (!subscription) {
+      return res.json({ active: false, reason: 'no_subscription' });
+    }
+
+    // Check FREE plan expiry
+    if (isFreePlanExpired(subscription)) {
+      return res.json({ active: false, reason: 'trial_expired' });
+    }
+
+    // Widget is active
+    res.json({
+      active: true,
+      assistantName: assistant.name,
+      businessName: assistant.business?.name
+    });
+
+  } catch (error) {
+    console.error('Widget status error:', error);
+    res.json({ active: false, reason: 'error' });
   }
 });
 

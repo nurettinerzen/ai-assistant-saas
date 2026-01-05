@@ -279,7 +279,10 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
             language: elevenLabsLang
           },
           turn: {
-            mode: 'turn'
+            mode: 'turn',
+            turn_timeout: 15,                    // 15sn bekle (default 7 çok kısa)
+            turn_eagerness: 'patient',           // Sabırlı mod - müşterinin tamamlamasını bekle
+            silence_end_call_timeout: 45         // 45sn sessizlikten sonra kapat
           },
           // Analysis settings for Turkish/language-specific summary
           analysis: {
@@ -653,6 +656,12 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
               provider: 'elevenlabs',
               model: 'scribe_v1',
               language: elevenLabsLang
+            },
+            turn: {
+              mode: 'turn',
+              turn_timeout: 15,                    // 15sn bekle (default 7 çok kısa)
+              turn_eagerness: 'patient',           // Sabırlı mod - müşterinin tamamlamasını bekle
+              silence_end_call_timeout: 45         // 45sn sessizlikten sonra kapat
             },
             // Analysis settings for Turkish/language-specific summary
             analysis: {

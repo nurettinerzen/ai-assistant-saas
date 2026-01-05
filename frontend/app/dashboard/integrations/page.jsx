@@ -117,11 +117,7 @@ export default function IntegrationsPage() {
   const [shopifyLoading, setShopifyLoading] = useState(false);
   const [shopifyForm, setShopifyForm] = useState({ shopUrl: '' });
 
-  // WooCommerce state
-  const [woocommerceModalOpen, setWoocommerceModalOpen] = useState(false);
-  const [woocommerceStatus, setWoocommerceStatus] = useState(null);
-  const [woocommerceLoading, setWoocommerceLoading] = useState(false);
-  const [woocommerceForm, setWoocommerceForm] = useState({ siteUrl: '', consumerKey: '', consumerSecret: '' });
+  // WooCommerce state - REMOVED (platform no longer supported)
 
   // Webhook state
   const [webhookModalOpen, setWebhookModalOpen] = useState(false);
@@ -135,17 +131,8 @@ export default function IntegrationsPage() {
   const [ikasLoading, setIkasLoading] = useState(false);
   const [ikasForm, setIkasForm] = useState({ storeName: '', clientId: '', clientSecret: '' });
 
-  // Ideasoft state
-  const [ideasoftModalOpen, setIdeasoftModalOpen] = useState(false);
-  const [ideasoftStatus, setIdeasoftStatus] = useState(null);
-  const [ideasoftLoading, setIdeasoftLoading] = useState(false);
-  const [ideasoftForm, setIdeasoftForm] = useState({ storeDomain: '', clientId: '', clientSecret: '' });
-
-  // Ticimax state
-  const [ticimaxModalOpen, setTicimaxModalOpen] = useState(false);
-  const [ticimaxStatus, setTicimaxStatus] = useState(null);
-  const [ticimaxLoading, setTicimaxLoading] = useState(false);
-  const [ticimaxForm, setTicimaxForm] = useState({ siteUrl: '', uyeKodu: '' });
+  // Ideasoft state - REMOVED (platform no longer supported)
+  // Ticimax state - REMOVED (platform no longer supported)
 
   // Load user plan
   useEffect(() => {
@@ -167,11 +154,8 @@ export default function IntegrationsPage() {
     loadIyzicoStatus();
     loadEmailStatus();
     loadShopifyStatus();
-    loadWooCommerceStatus();
     loadWebhookStatus();
     loadIkasStatus();
-    loadIdeasoftStatus();
-    loadTicimaxStatus();
 
     // Handle OAuth callback results
     if (typeof window !== 'undefined') {
@@ -253,12 +237,7 @@ export default function IntegrationsPage() {
     } catch (error) { console.error('Failed to load Shopify status:', error); }
   };
 
-  const loadWooCommerceStatus = async () => {
-    try {
-      const response = await apiClient.get('/api/woocommerce/status');
-      setWoocommerceStatus(response.data);
-    } catch (error) { console.error('Failed to load WooCommerce status:', error); }
-  };
+  // WooCommerce load removed - platform no longer supported
 
   const loadWebhookStatus = async () => {
     try {
@@ -274,19 +253,7 @@ export default function IntegrationsPage() {
     } catch (error) { console.error('Failed to load ikas status:', error); }
   };
 
-  const loadIdeasoftStatus = async () => {
-    try {
-      const response = await apiClient.get('/api/integrations/ideasoft/status');
-      setIdeasoftStatus(response.data);
-    } catch (error) { console.error('Failed to load Ideasoft status:', error); }
-  };
-
-  const loadTicimaxStatus = async () => {
-    try {
-      const response = await apiClient.get('/api/integrations/ticimax/status');
-      setTicimaxStatus(response.data);
-    } catch (error) { console.error('Failed to load Ticimax status:', error); }
-  };
+  // Ideasoft and Ticimax load removed - platforms no longer supported
 
   // Handler functions
   const handleGmailConnect = async () => {
@@ -734,16 +701,13 @@ const handleIdeasoftConnect = async () => {
     return descriptions[type] || t('dashboard.integrationsPage.title');
   };
 
-  // E-commerce platforms list
-  const ECOMMERCE_PLATFORMS = ['SHOPIFY', 'WOOCOMMERCE', 'IKAS', 'IDEASOFT', 'TICIMAX'];
+  // E-commerce platforms list (only active ones)
+  const ECOMMERCE_PLATFORMS = ['SHOPIFY', 'IKAS'];
 
   // Check which e-commerce platform is connected
   const getConnectedEcommercePlatform = () => {
     if (shopifyStatus?.connected) return 'SHOPIFY';
-    if (woocommerceStatus?.connected) return 'WOOCOMMERCE';
     if (ikasStatus?.connected) return 'IKAS';
-    if (ideasoftStatus?.connected) return 'IDEASOFT';
-    if (ticimaxStatus?.connected) return 'TICIMAX';
     return null;
   };
 
@@ -759,16 +723,60 @@ const handleIdeasoftConnect = async () => {
   const getEcommercePlatformName = (type) => {
     const names = {
       SHOPIFY: 'Shopify',
-      WOOCOMMERCE: 'WooCommerce',
-      IKAS: 'ikas',
-      IDEASOFT: 'Ideasoft',
-      TICIMAX: 'Ticimax'
+      IKAS: 'ikas'
     };
     return names[type] || type;
   };
 
-  // Integrations marked as "Coming Soon"
-  const COMING_SOON_INTEGRATIONS = ['IDEASOFT', 'TICIMAX', 'WOOCOMMERCE'];
+  // Integrations to hide (removed from platform)
+  const HIDDEN_INTEGRATIONS = ['IDEASOFT', 'TICIMAX', 'WOOCOMMERCE'];
+
+  // Integration Categories - new structure without sector filter
+  const INTEGRATION_CATEGORIES = [
+    {
+      id: 'ecommerce',
+      title: locale === 'tr' ? 'E-ticaret' : 'E-commerce',
+      icon: ShoppingCart,
+      types: ['SHOPIFY', 'IKAS']
+    },
+    {
+      id: 'calendar',
+      title: locale === 'tr' ? 'Takvim' : 'Calendar',
+      icon: CalendarDays,
+      types: ['GOOGLE_CALENDAR']
+    },
+    {
+      id: 'data',
+      title: locale === 'tr' ? 'Veri' : 'Data',
+      icon: BarChart3,
+      types: ['GOOGLE_SHEETS']
+    },
+    {
+      id: 'messaging',
+      title: locale === 'tr' ? 'Mesajlaşma' : 'Messaging',
+      icon: Smartphone,
+      types: ['WHATSAPP']
+    },
+    {
+      id: 'crm',
+      title: 'CRM',
+      icon: Hash,
+      types: ['CUSTOM']
+    },
+    {
+      id: 'email',
+      title: locale === 'tr' ? 'E-posta' : 'Email',
+      icon: Mail,
+      types: ['EMAIL']
+    }
+  ];
+
+  // Filter out hidden integrations and group by category
+  const filteredIntegrations = integrations.filter(i => !HIDDEN_INTEGRATIONS.includes(i.type));
+
+  const getCategoryIntegrations = (categoryTypes) => {
+    return filteredIntegrations.filter(i => categoryTypes.includes(i.type));
+  };
 
   // Handle locked integration click
   const handleLockedIntegrationClick = (integration, feature) => {
@@ -781,14 +789,13 @@ const handleIdeasoftConnect = async () => {
     const colors = getCategoryColors(integration.category);
     const docsUrl = getDocsUrl(integration.type);
     const disabled = isEcommerceDisabled(integration.type);
-    const isComingSoon = COMING_SOON_INTEGRATIONS.includes(integration.type);
 
     // Check if this integration is locked based on user's plan
     const featureInfo = getIntegrationFeatureInfo(integration.type, userPlan);
     const isLocked = featureInfo.isLocked && !integration.connected;
 
     return (
-      <div key={integration.type} className={`bg-white dark:bg-neutral-900 rounded-xl border p-6 transition-shadow ${disabled || isComingSoon || isLocked ? 'opacity-70 bg-neutral-50 dark:bg-neutral-800' : 'hover:shadow-md'} ${integration.priority === 'ESSENTIAL' ? 'border-primary-300 dark:border-primary-700 bg-primary-50/30 dark:bg-primary-900/20' : 'border-neutral-200 dark:border-neutral-700'}`}>
+      <div key={integration.type} className={`bg-white dark:bg-neutral-900 rounded-xl border p-6 transition-shadow ${disabled || isLocked ? 'opacity-70 bg-neutral-50 dark:bg-neutral-800' : 'hover:shadow-md'} border-neutral-200 dark:border-neutral-700`}>
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className={`p-3 rounded-lg ${isLocked ? 'bg-neutral-100 dark:bg-neutral-800' : colors.bg}`}>
@@ -796,21 +803,14 @@ const handleIdeasoftConnect = async () => {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className={`font-semibold ${disabled || isComingSoon || isLocked ? 'text-neutral-500 dark:text-neutral-400' : 'text-neutral-900 dark:text-white'}`}>{integration.name}</h3>
-                {integration.priority === 'ESSENTIAL' && !isLocked && <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />}
+                <h3 className={`font-semibold ${disabled || isLocked ? 'text-neutral-500 dark:text-neutral-400' : 'text-neutral-900 dark:text-white'}`}>{integration.name}</h3>
                 {isLocked && (
                   <Badge variant="secondary" className="bg-amber-100 text-amber-700 text-xs">
                     <Lock className="h-3 w-3 mr-1" />
                     Pro
                   </Badge>
                 )}
-                {isComingSoon && (
-                  <Badge variant="secondary" className="bg-purple-100 text-purple-700 text-xs">
-                    {t('dashboard.integrationsPage.comingSoon')}
-                  </Badge>
-                )}
               </div>
-              <Badge variant="secondary" className="text-xs mt-1">{integration.category}</Badge>
             </div>
           </div>
           {integration.connected && (
@@ -820,12 +820,6 @@ const handleIdeasoftConnect = async () => {
           )}
         </div>
 
-        {integration.priority === 'ESSENTIAL' && !isLocked && (
-          <div className="mb-3 px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-md inline-flex items-center gap-1">
-            <Star className="h-3 w-3 fill-blue-700" />{t('dashboard.integrationsPage.essentialForBusiness')}
-          </div>
-        )}
-
         {isLocked && (
           <div className="mb-3 px-2 py-1 bg-amber-50 text-amber-700 text-xs rounded-md inline-flex items-center gap-1">
             <Lock className="h-3 w-3" />
@@ -833,15 +827,9 @@ const handleIdeasoftConnect = async () => {
           </div>
         )}
 
-        {disabled && !isComingSoon && !isLocked && (
+        {disabled && !isLocked && (
           <div className="mb-3 px-2 py-1 bg-amber-100 text-amber-700 text-xs rounded-md">
             {getEcommercePlatformName(connectedEcommerce)} {t('dashboard.integrationsPage.platformAlreadyConnected')}
-          </div>
-        )}
-
-        {isComingSoon && (
-          <div className="mb-3 px-2 py-1 bg-purple-50 text-purple-700 text-xs rounded-md">
-            {t('dashboard.integrationsPage.comingSoonDesc')}
           </div>
         )}
 
@@ -857,10 +845,6 @@ const handleIdeasoftConnect = async () => {
             >
               <Lock className="h-4 w-4 mr-2" />
               {language === 'tr' ? 'Kilidi Aç' : 'Unlock'}
-            </Button>
-          ) : isComingSoon ? (
-            <Button size="sm" className="flex-1" disabled title={t('dashboard.integrationsPage.comingSoonTooltip')}>
-              {t('dashboard.integrationsPage.comingSoon')}
             </Button>
           ) : integration.connected ? (
             <>
@@ -914,7 +898,7 @@ const handleIdeasoftConnect = async () => {
           <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">{t('dashboard.integrationsPage.emailChannelDesc')}</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Gmail Card */}
           <div className={`bg-white dark:bg-neutral-900 rounded-xl border p-6 hover:shadow-md transition-shadow ${emailStatus?.connected && emailStatus?.provider === 'GMAIL' ? 'border-green-300 dark:border-green-700 bg-green-50/30 dark:bg-green-900/20' : 'border-neutral-200 dark:border-neutral-700'}`}>
             <div className="flex items-start justify-between mb-4">
@@ -1057,9 +1041,12 @@ const handleIdeasoftConnect = async () => {
           {isCRMLocked ? (
             <Button
               size="sm"
-              className="w-full"
               variant="outline"
-              onClick={() => handleLockedIntegrationClick({ type: 'CUSTOM', name: 'Custom CRM' }, crmFeatureInfo.feature)}
+              className="w-full"
+              onClick={() => {
+                setSelectedFeature(crmFeatureInfo.feature);
+                setUpgradeModalOpen(true);
+              }}
             >
               <Lock className="h-4 w-4 mr-2" />
               {language === 'tr' ? 'Kilidi Aç' : 'Unlock'}
@@ -1091,42 +1078,30 @@ const handleIdeasoftConnect = async () => {
           ))}
         </div>
       ) : (
-        <>
-          {groupedIntegrations.ESSENTIAL.length > 0 && (
-            <div className="space-y-4">
-              <h2 className="text-xl font-semibold text-neutral-900 dark:text-white flex items-center gap-2">
-                <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />{t('dashboard.integrationsPage.essentialIntegrations')}
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {groupedIntegrations.ESSENTIAL.map(renderIntegrationCard)}
-              </div>
-            </div>
-          )}
+        <div className="space-y-8">
+          {/* Render integrations by category */}
+          {INTEGRATION_CATEGORIES.map((category) => {
+            const categoryIntegrations = getCategoryIntegrations(category.types);
+            if (categoryIntegrations.length === 0) return null;
 
-          {groupedIntegrations.RECOMMENDED.length > 0 && (
-            <div className="space-y-4">
-              <h2 className="text-xl font-semibold text-neutral-900 dark:text-white flex items-center gap-2">
-                <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />{t('dashboard.integrationsPage.recommendedIntegrations')}
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {groupedIntegrations.RECOMMENDED.map(renderIntegrationCard)}
+            const CategoryIcon = category.icon;
+            return (
+              <div key={category.id} className="space-y-4">
+                <h2 className="text-xl font-semibold text-neutral-900 dark:text-white flex items-center gap-2">
+                  <CategoryIcon className="h-5 w-5 text-primary-600 dark:text-primary-400" />
+                  {category.title}
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {categoryIntegrations.map(renderIntegrationCard)}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })}
 
-          {groupedIntegrations.OPTIONAL.length > 0 && (
-            <div className="space-y-4">
-              <h2 className="text-xl font-semibold text-neutral-900 dark:text-white">{t('dashboard.integrationsPage.moreIntegrations')}</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {groupedIntegrations.OPTIONAL.map(renderIntegrationCard)}
-              </div>
-            </div>
-          )}
-
-          {integrations.length === 0 && (
+          {filteredIntegrations.length === 0 && (
             <EmptyState icon={Puzzle} title={t('dashboard.integrationsPage.noIntegrationsAvailable')} description={t('dashboard.integrationsPage.contactSupportIntegrations')} />
           )}
-        </>
+        </div>
       )}
 
       {/* WhatsApp Modal */}
@@ -1255,39 +1230,7 @@ const handleIdeasoftConnect = async () => {
         </DialogContent>
       </Dialog>
 
-      {/* WooCommerce Modal */}
-      <Dialog open={woocommerceModalOpen} onOpenChange={setWoocommerceModalOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Connect WooCommerce Store</DialogTitle>
-            <DialogDescription>Connect your WooCommerce store for order tracking and inventory management.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Site URL *</Label>
-              <Input type="text" placeholder="https://mystore.com" value={woocommerceForm.siteUrl} onChange={(e) => setWoocommerceForm({ ...woocommerceForm, siteUrl: e.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <Label>Consumer Key *</Label>
-              <Input type="text" placeholder="ck_xxxxxxxxxxxxxxxxxxxxxxxx" value={woocommerceForm.consumerKey} onChange={(e) => setWoocommerceForm({ ...woocommerceForm, consumerKey: e.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <Label>Consumer Secret *</Label>
-              <Input type="password" placeholder="cs_xxxxxxxxxxxxxxxxxxxxxxxx" value={woocommerceForm.consumerSecret} onChange={(e) => setWoocommerceForm({ ...woocommerceForm, consumerSecret: e.target.value })} />
-            </div>
-            {woocommerceStatus?.connected && (
-              <div className="flex items-center gap-2 p-3 bg-purple-50 border border-purple-200 rounded-lg">
-                <CheckCircle2 className="h-5 w-5 text-purple-600" />
-                <p className="text-sm font-medium text-purple-900">Connected: {woocommerceStatus.storeName || woocommerceStatus.siteUrl}</p>
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setWoocommerceModalOpen(false)} disabled={woocommerceLoading}>Cancel</Button>
-            <Button onClick={handleWooCommerceConnect} disabled={woocommerceLoading}>{woocommerceLoading ? 'Connecting...' : 'Connect WooCommerce'}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* WooCommerce Modal - REMOVED (platform no longer supported) */}
 
       {/* Webhook Modal */}
       <Dialog open={webhookModalOpen} onOpenChange={setWebhookModalOpen}>
@@ -1405,148 +1348,8 @@ const handleIdeasoftConnect = async () => {
         </DialogContent>
       </Dialog>
 
-      {/* Ideasoft Modal */}
-      <Dialog open={ideasoftModalOpen} onOpenChange={setIdeasoftModalOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <ShoppingCart className="h-5 w-5 text-blue-600" />
-              Ideasoft Mağaza Bağlantısı
-            </DialogTitle>
-            <DialogDescription>Ideasoft e-ticaret platformunuzu bağlayarak AI asistanınızın sipariş durumu ve stok bilgisi sorgulamasını sağlayın.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Mağaza Domain *</Label>
-              <Input
-                type="text"
-                placeholder="www.magazam.com"
-                value={ideasoftForm.storeDomain}
-                onChange={(e) => setIdeasoftForm({ ...ideasoftForm, storeDomain: e.target.value })}
-              />
-              <p className="text-xs text-neutral-500">Mağazanızın tam domain adresini girin</p>
-            </div>
-            <div className="space-y-2">
-              <Label>Client ID *</Label>
-              <Input
-                type="text"
-                placeholder="Client ID'nizi girin"
-                value={ideasoftForm.clientId}
-                onChange={(e) => setIdeasoftForm({ ...ideasoftForm, clientId: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Client Secret *</Label>
-              <Input
-                type="password"
-                placeholder="Client Secret'ınızı girin"
-                value={ideasoftForm.clientSecret}
-                onChange={(e) => setIdeasoftForm({ ...ideasoftForm, clientSecret: e.target.value })}
-              />
-            </div>
-            {ideasoftStatus?.connected && (
-              <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-                <CheckCircle2 className="h-5 w-5 text-green-600" />
-                <p className="text-sm font-medium text-green-900">Bağlı: {ideasoftStatus.storeDomain}</p>
-              </div>
-            )}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h4 className="text-sm font-medium text-blue-900 mb-2">API bilgilerinizi nereden bulabilirsiniz:</h4>
-              <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
-              <li>İdeasoft yönetim panelinize giriş yapın</li>
-              <li>Üst menüden <strong>Entegrasyonlar → API</strong> bölümüne gidin</li>
-              <li>Sol taraftan <strong>Ekle</strong> butonuna tıklayın</li>
-              <li>Açılan formda:
-                <ul>
-                  <li><strong>Adı:</strong> Telyx.ai</li>
-                  <li><strong>Yönlendirme Adresi:</strong> <code>{process.env.NEXT_PUBLIC_API_URL}/api/integrations/ideasoft/callback</code></li>
-                </ul>
-              </li>
-              <li><strong>Kaydet</strong>'e tıklayın</li>
-              <li><strong>İzin Yönetimi</strong>'ne tıklayın ve izinleri aktif edin</li>
-              <li>Oluşan <strong>Client ID</strong> ve <strong>Client Secret</strong> bilgilerini aşağıya girin</li>
-              <li><strong>Yetkilendir</strong> butonuna tıklayın - İdeasoft'a yönlendirileceksiniz</li>
-              </ol>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIdeasoftModalOpen(false)} disabled={ideasoftLoading}>İptal</Button>
-            <Button onClick={handleIdeasoftConnect} disabled={ideasoftLoading}>
-              {ideasoftLoading ? <><RefreshCw className="h-4 w-4 mr-2 animate-spin" />Bağlanıyor...</> : "Ideasoft'u Bağla"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Ticimax Modal */}
-      <Dialog open={ticimaxModalOpen} onOpenChange={setTicimaxModalOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <ShoppingCart className="h-5 w-5 text-purple-600" />
-              Ticimax Mağaza Bağlantısı
-            </DialogTitle>
-            <DialogDescription>Ticimax e-ticaret platformunuzu bağlayarak AI asistanınızın sipariş durumu ve stok bilgisi sorgulamasını sağlayın.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Site URL *</Label>
-              <Input
-                type="text"
-                placeholder="www.magazam.com"
-                value={ticimaxForm.siteUrl}
-                onChange={(e) => setTicimaxForm({ ...ticimaxForm, siteUrl: e.target.value })}
-              />
-              <p className="text-xs text-neutral-500">Mağazanızın tam site adresini girin</p>
-            </div>
-            <div className="space-y-2">
-              <Label>Yetki Kodu (API Key) *</Label>
-              <Input
-                type="password"
-                placeholder="Yetki kodunuzu girin"
-                value={ticimaxForm.uyeKodu}
-                onChange={(e) => setTicimaxForm({ ...ticimaxForm, uyeKodu: e.target.value })}
-              />
-              <p className="text-xs text-neutral-500">Ticimax panelinden aldığınız API yetki kodunu girin</p>
-            </div>
-            {ticimaxStatus?.connected && (
-              <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-                <CheckCircle2 className="h-5 w-5 text-green-600" />
-                <p className="text-sm font-medium text-green-900">Bağlı: {ticimaxStatus.siteUrl}</p>
-              </div>
-            )}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h4 className="text-sm font-medium text-blue-900 mb-2">API bilgilerinizi nereden bulabilirsiniz:</h4>
-              <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
-              <li>Ticimax yönetim panelinize giriş yapın</li>
-              <li>Sağ üst menüden <strong>Ayarlar → WS Yetki Kodu Yönetimi</strong> sekmesine gidin</li>
-              <li>Sol üstten <strong>Yeni Ekle</strong> butonuna tıklayın</li>
-              <li>Açılan formda:
-                <ul>
-                  <li><strong>Yetki Kodu Tanım:</strong> Telyx.ai</li>
-                  <li><strong>Yetki Kodu Oluştur</strong> butonuna tıklayın</li>
-                </ul>
-              </li>
-              <li>Aşağıdaki tüm yetkileri <strong>aktif</strong> hale getirin (X'leri tıklayarak yeşil yapın):
-                <ul>
-                  <li>Ürün Listele, Ürün Düzenle</li>
-                  <li>Sipariş Listele, Sipariş Düzenle</li>
-                  <li>Üye Listele</li>
-                </ul>
-              </li>
-              <li><strong>Kaydet</strong>'e tıklayın</li>
-              <li>Oluşan <strong>Yetki Kodu</strong>'nu kopyalayıp ilgili alana yapıştırın</li>
-              </ol>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setTicimaxModalOpen(false)} disabled={ticimaxLoading}>İptal</Button>
-            <Button onClick={handleTicimaxConnect} disabled={ticimaxLoading}>
-              {ticimaxLoading ? <><RefreshCw className="h-4 w-4 mr-2 animate-spin" />Bağlanıyor...</> : "Ticimax'ı Bağla"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Ideasoft Modal - REMOVED (platform no longer supported) */}
+      {/* Ticimax Modal - REMOVED (platform no longer supported) */}
 
       {/* Upgrade Modal for locked integrations */}
       <UpgradeModal

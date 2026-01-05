@@ -222,14 +222,15 @@ async function provisionNetgsmElevenLabsNumber(businessId, assistantId) {
       throw new Error('Invalid assistant or assistant not configured with 11Labs');
     }
 
-    // Import to 11Labs as SIP Trunk
+    // Import to 11Labs as SIP Trunk with new API format
     try {
       const elevenLabsResult = await elevenLabsService.importSipTrunkNumber({
         phoneNumber: formattedNumber,
-        sipUri: `sip:${sipCredentials.sipUsername}@${sipCredentials.sipServer}`,
+        sipServer: sipCredentials.sipServer,  // Just hostname, no sip: prefix
         sipUsername: sipCredentials.sipUsername,
         sipPassword: sipCredentials.sipPassword,
-        sipServer: sipCredentials.sipServer,
+        transport: 'tcp',  // UDP not supported by 11Labs
+        mediaEncryption: 'disabled',
         agentId: assistant.elevenLabsAgentId,
         label: `Netgsm TR - ${formattedNumber}`
       });
@@ -412,8 +413,9 @@ router.post('/import-sip', async (req, res) => {
       sipUsername,
       sipPassword,
       sipPort = 5060,
-      sipTransport = 'UDP',
-      assistantId
+      sipTransport = 'TCP',  // UDP not supported by 11Labs, only TCP/TLS
+      assistantId,
+      provider = 'other'
     } = req.body;
     const businessId = req.businessId;
 
@@ -482,20 +484,21 @@ router.post('/import-sip', async (req, res) => {
       elevenLabsAgentId = assistant.elevenLabsAgentId;
     }
 
-    // Build SIP URI
-    const sipUri = `sip:${sipUsername}@${sipServer}:${sipPort}`;
+    // Validate transport - only TCP and TLS supported
+    const validTransport = sipTransport?.toUpperCase() === 'TLS' ? 'tls' : 'tcp';
 
-    // Import to 11Labs as SIP Trunk
+    // Import to 11Labs as SIP Trunk with new API format
     let elevenLabsPhoneId = null;
     try {
       const elevenLabsResult = await elevenLabsService.importSipTrunkNumber({
         phoneNumber: formattedNumber,
-        sipUri: sipUri,
+        sipServer: sipServer,  // Just hostname, no sip: prefix
         sipUsername: sipUsername,
         sipPassword: sipPassword,
-        sipServer: sipServer,
+        transport: validTransport,
+        mediaEncryption: validTransport === 'tls' ? 'required' : 'disabled',
         agentId: elevenLabsAgentId,
-        label: `NetGSM TR - ${formattedNumber}`
+        label: `${provider === 'netgsm' ? 'NetGSM' : 'SIP'} TR - ${formattedNumber}`
       });
 
       elevenLabsPhoneId = elevenLabsResult.phone_number_id;

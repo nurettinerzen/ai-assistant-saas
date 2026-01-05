@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Phone, Mail, User } from 'lucide-react';
+import { Phone, Loader2, CheckCircle } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Card } from './ui/card';
@@ -10,43 +10,55 @@ import { toast } from 'sonner';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 export const LiveDemoSection = () => {
-  const { t } = useLanguage();
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-  });
+  const { t, locale: language } = useLanguage();
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [loading, setLoading] = useState(false);
+  const [callInitiated, setCallInitiated] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Validate phone number
+    const cleanPhone = phoneNumber.replace(/\D/g, '');
+    if (cleanPhone.length < 10) {
+      toast.error(language === 'tr' ? 'Geçerli bir telefon numarası girin' : 'Please enter a valid phone number');
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/demo-request`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/demo/request-call`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          phoneNumber: cleanPhone,
+          language: language === 'tr' ? 'TR' : 'EN'
+        }),
       });
 
-      if (response.ok) {
-        toast.success(t('landing.demo.successMessage'));
-        setFormData({ name: '', email: '', phone: '' });
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setCallInitiated(true);
+        toast.success(language === 'tr'
+          ? 'Demo araması başlatılıyor! Telefonunuz birkaç saniye içinde çalacak.'
+          : 'Demo call initiated! Your phone will ring shortly.');
+        setPhoneNumber('');
+
+        // Reset after 30 seconds
+        setTimeout(() => setCallInitiated(false), 30000);
       } else {
-        toast.error(t('landing.demo.errorMessage'));
+        toast.error(data.error || (language === 'tr' ? 'Demo araması başlatılamadı' : 'Failed to initiate demo call'));
       }
     } catch (error) {
       console.error('Error:', error);
-      toast.error(t('landing.demo.errorMessage'));
+      toast.error(language === 'tr' ? 'Bir hata oluştu. Lütfen tekrar deneyin.' : 'An error occurred. Please try again.');
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   return (
@@ -88,71 +100,69 @@ export const LiveDemoSection = () => {
                 {t('landing.demo.formSubtitle')}
               </p>
 
-              <form onSubmit={handleSubmit} className="space-y-5">
-                <div className="space-y-2">
-                  <label htmlFor="name" className="text-sm font-medium text-foreground flex items-center">
-                    <User className="w-4 h-4 mr-2 text-muted-foreground" />
-                    {t('landing.demo.nameLabel')}
-                  </label>
-                  <Input
-                    id="name"
-                    name="name"
-                    type="text"
-                    placeholder={t('landing.demo.namePlaceholder')}
-                    value={formData.name}
-                    onChange={handleChange}
-                    required
-                    className="h-12 border-border focus:border-primary focus:ring-primary"
-                  />
+              {callInitiated ? (
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
+                  </div>
+                  <h4 className="text-lg font-semibold text-foreground mb-2">
+                    {language === 'tr' ? 'Arama Başlatıldı!' : 'Call Initiated!'}
+                  </h4>
+                  <p className="text-muted-foreground">
+                    {language === 'tr'
+                      ? 'Telefonunuz birkaç saniye içinde çalacak. AI asistanımız sizinle konuşmak için bekliyor.'
+                      : 'Your phone will ring shortly. Our AI assistant is waiting to talk with you.'}
+                  </p>
                 </div>
+              ) : (
+                <form onSubmit={handleSubmit} className="space-y-5">
+                  <div className="space-y-2">
+                    <label htmlFor="phone" className="text-sm font-medium text-foreground flex items-center">
+                      <Phone className="w-4 h-4 mr-2 text-muted-foreground" />
+                      {language === 'tr' ? 'Telefon Numaranız' : 'Your Phone Number'}
+                    </label>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      placeholder={language === 'tr' ? '+90 5XX XXX XX XX' : '+1 (555) 000-0000'}
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
+                      required
+                      className="h-12 border-border focus:border-primary focus:ring-primary text-lg"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {language === 'tr'
+                        ? 'Numaranızı girin, sizi arayalım ve AI asistanımızı deneyin!'
+                        : 'Enter your number and we\'ll call you to demo our AI assistant!'}
+                    </p>
+                  </div>
 
-                <div className="space-y-2">
-                  <label htmlFor="email" className="text-sm font-medium text-foreground flex items-center">
-                    <Mail className="w-4 h-4 mr-2 text-muted-foreground" />
-                    {t('landing.demo.emailLabel')}
-                  </label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    placeholder={t('landing.demo.emailPlaceholder')}
-                    value={formData.email}
-                    onChange={handleChange}
-                    required
-                    className="h-12 border-border focus:border-primary focus:ring-primary"
-                  />
-                </div>
+                  <Button
+                    type="submit"
+                    size="lg"
+                    disabled={loading}
+                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-blue h-14 text-lg font-semibold"
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                        {language === 'tr' ? 'Aranıyor...' : 'Calling...'}
+                      </>
+                    ) : (
+                      <>
+                        <Phone className="w-5 h-5 mr-2" />
+                        {language === 'tr' ? 'Beni Ara' : 'Call Me Now'}
+                      </>
+                    )}
+                  </Button>
 
-                <div className="space-y-2">
-                  <label htmlFor="phone" className="text-sm font-medium text-foreground flex items-center">
-                    <Phone className="w-4 h-4 mr-2 text-muted-foreground" />
-                    {t('landing.demo.phoneLabel')}
-                  </label>
-                  <Input
-                    id="phone"
-                    name="phone"
-                    type="tel"
-                    placeholder={t('landing.demo.phonePlaceholder')}
-                    value={formData.phone}
-                    onChange={handleChange}
-                    required
-                    className="h-12 border-border focus:border-primary focus:ring-primary"
-                  />
-                </div>
-
-                <Button
-                  type="submit"
-                  size="lg"
-                  disabled={loading}
-                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-blue h-12 text-base font-semibold"
-                >
-                  {loading ? t('common.loading') : t('landing.demo.submitButton')}
-                </Button>
-
-                <p className="text-xs text-center text-muted-foreground mt-4">
-                  {t('landing.demo.consent')}
-                </p>
-              </form>
+                  <p className="text-xs text-center text-muted-foreground mt-4">
+                    {language === 'tr'
+                      ? '1-2 dakikalık ücretsiz demo görüşmesi. Numaranız kaydedilmez.'
+                      : '1-2 minute free demo call. Your number won\'t be stored.'}
+                  </p>
+                </form>
+              )}
             </div>
           </Card>
         </motion.div>

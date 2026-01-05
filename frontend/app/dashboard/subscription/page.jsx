@@ -297,7 +297,11 @@ export default function SubscriptionPage() {
       const response = await apiClient.subscription.upgrade(planId);
 
       // Handle different response types
-      if (response.data?.type === 'upgrade') {
+      if (response.data?.type === 'payg_switch') {
+        // Switched to PAYG (pay as you go)
+        toast.success(uiLang === 'TR' ? 'Kullandıkça öde planına geçildi. Bakiye yükleyerek kullanmaya başlayabilirsiniz.' : 'Switched to Pay As You Go. Top up your balance to start using.');
+        loadData();
+      } else if (response.data?.type === 'upgrade') {
         // Immediate upgrade (with proration)
         toast.success('Plan başarıyla yükseltildi! Fark tutarı hesaplanarak tahsil edildi.');
         loadData();

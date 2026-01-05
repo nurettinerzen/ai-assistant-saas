@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/select';
 import EmptyState from '@/components/EmptyState';
 import PhoneNumberModal from '@/components/PhoneNumberModal';
-import { Phone, Plus, Trash2, TestTube2, Lock, Bot, Loader2 } from 'lucide-react';
+import { Phone, Plus, Trash2, Lock, Bot, Loader2 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast, toastHelpers } from '@/lib/toast';
 import { formatPhone, formatDate } from '@/lib/utils';
@@ -26,11 +26,14 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import Link from 'next/link';
 
 // Plan limitleri - Backend plan isimlerine uygun
+// NOT: FREE ve TRIAL planlarında 1 telefon numarası + 15 dk deneme hakkı var
 const PLAN_LIMITS = {
-  FREE: { phoneNumbers: 0 },
+  FREE: { phoneNumbers: 1, trialMinutes: 15 },
+  TRIAL: { phoneNumbers: 1, trialMinutes: 15 },
+  PAYG: { phoneNumbers: 1 },
   STARTER: { phoneNumbers: 1 },
   PROFESSIONAL: { phoneNumbers: 3 },
-  ENTERPRISE: { phoneNumbers: 10 } // Enterprise has 10 in backend config
+  ENTERPRISE: { phoneNumbers: 10 }
 };
 
 export default function PhoneNumbersPage() {
@@ -58,7 +61,20 @@ export default function PhoneNumbersPage() {
         const sub = subResponse.data;
         console.log('Phone page - subscription:', sub);
         setSubscription(sub);
-        if (sub?.plan === 'FREE') {
+        // FREE ve TRIAL planları artık deneme hakkı ile erişebilir
+        // Sadece deneme süresi/dakikası bitmişse kilitle
+        const plan = sub?.plan || 'FREE';
+        const trialMinutesUsed = sub?.trialMinutesUsed || 0;
+        const trialChatExpiry = sub?.trialChatExpiry ? new Date(sub.trialChatExpiry) : null;
+        const now = new Date();
+
+        // Trial bitmiş mi kontrol et
+        const trialExpired = (plan === 'FREE' || plan === 'TRIAL') && (
+          trialMinutesUsed >= 15 ||
+          (trialChatExpiry && trialChatExpiry < now)
+        );
+
+        if (trialExpired) {
           setIsLocked(true);
         }
 
@@ -93,18 +109,6 @@ export default function PhoneNumbersPage() {
       toast.error('Failed to load phone numbers');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleTestCall = async (phoneNumber) => {
-    try {
-      await toastHelpers.async(
-        apiClient.phoneNumbers.test(phoneNumber.id),
-        t('dashboard.phoneNumbersPage.initiatingTestCall'),
-        t('dashboard.phoneNumbersPage.testCallStarted')
-      );
-    } catch (error) {
-      // Error handled
     }
   };
 
@@ -160,8 +164,12 @@ export default function PhoneNumbersPage() {
     return phoneNumbers.length < limit;
   };
 
-  // 🔧 Locked view for FREE plan
+  // 🔧 Locked view - Trial expired
   if (isLocked) {
+    // Deneme süresi/dakikası bitti
+    const trialMinutesUsed = subscription?.trialMinutesUsed || 0;
+    const minutesExpired = trialMinutesUsed >= 15;
+
     return (
       <div className="space-y-6">
         {/* Header */}
@@ -170,45 +178,53 @@ export default function PhoneNumbersPage() {
           <p className="text-neutral-600 dark:text-neutral-400 mt-1">{t('dashboard.phoneNumbersPage.description')}</p>
         </div>
 
-        {/* Locked State */}
+        {/* Trial Expired State */}
         <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-12 text-center">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-neutral-100 dark:bg-neutral-800 rounded-full mb-6">
-            <Lock className="h-10 w-10 text-neutral-400" />
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-orange-100 dark:bg-orange-900/30 rounded-full mb-6">
+            <Lock className="h-10 w-10 text-orange-500" />
           </div>
           <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-3">
-            {t('dashboard.phoneNumbersPage.upgradeToGetPhone')}
+            {minutesExpired ? 'Deneme Dakikalarınız Bitti' : 'Deneme Süreniz Bitti'}
           </h2>
+          <p className="text-neutral-600 dark:text-neutral-400 mb-2">
+            {minutesExpired
+              ? `15 dakikalık ücretsiz deneme hakkınızı kullandınız (${trialMinutesUsed.toFixed(1)} dk).`
+              : '7 günlük ücretsiz deneme süreniz sona erdi.'}
+          </p>
           <p className="text-neutral-600 dark:text-neutral-400 mb-6 max-w-md mx-auto">
-            {t('dashboard.phoneNumbersPage.phoneNumbersLockedDesc')}
+            Telefon AI özelliğini kullanmaya devam etmek için bakiye yükleyin veya bir plan seçin.
           </p>
           <Link href="/dashboard/subscription">
             <Button size="lg" className="bg-gradient-to-r from-indigo-600 to-blue-500">
-              {t('dashboard.subscriptionPage.upgrade')} →
+              Plan Seç veya Bakiye Yükle →
             </Button>
           </Link>
         </div>
 
-        {/* Plan comparison */}
+        {/* Plan comparison - Minute limits */}
         <div className="bg-primary-50 dark:bg-primary-950 border border-primary-200 dark:border-primary-800 rounded-xl p-6">
           <h3 className="text-sm font-semibold text-primary-900 dark:text-primary-100 mb-3">
             {t('dashboard.phoneNumbersPage.planFeatures')}
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
             <div className="bg-white dark:bg-neutral-900 p-4 rounded-lg">
-              <div className="font-semibold text-neutral-900 dark:text-white mb-2">{t('dashboard.subscriptionPage.basicPlan')}</div>
-              <div className="text-neutral-600 dark:text-neutral-400">1 {t('dashboard.phoneNumbersPage.phoneNumber')}</div>
-              <div className="text-xs text-neutral-500 mt-1">$29/ay</div>
-            </div>
-            <div className="bg-white dark:bg-neutral-900 p-4 rounded-lg border-2 border-primary-300 dark:border-primary-600">
-              <div className="font-semibold text-primary-700 dark:text-primary-400 mb-2">
-                {t('dashboard.subscriptionPage.professionalPlan')} ⭐
-              </div>
-              <div className="text-neutral-600 dark:text-neutral-400">3 {t('dashboard.phoneNumbersPage.phoneNumber')}</div>
-              <div className="text-xs text-neutral-500 mt-1">$99/ay</div>
+              <div className="font-semibold text-neutral-900 dark:text-white mb-2">Kullandıkça Öde</div>
+              <div className="text-neutral-600 dark:text-neutral-400">23 ₺/dk</div>
+              <div className="text-xs text-neutral-500 mt-1">Bakiye yükle, taahhütsüz</div>
             </div>
             <div className="bg-white dark:bg-neutral-900 p-4 rounded-lg">
-              <div className="font-semibold text-neutral-900 dark:text-white mb-2">{t('dashboard.subscriptionPage.enterprisePlan')}</div>
-              <div className="text-neutral-600 dark:text-neutral-400">{t('dashboard.phoneNumbersPage.unlimited')}</div>
+              <div className="font-semibold text-neutral-900 dark:text-white mb-2">Başlangıç</div>
+              <div className="text-neutral-600 dark:text-neutral-400">150 dk dahil</div>
+              <div className="text-xs text-neutral-500 mt-1">2.499 ₺/ay + 23 ₺ aşım</div>
+            </div>
+            <div className="bg-white dark:bg-neutral-900 p-4 rounded-lg">
+              <div className="font-semibold text-neutral-900 dark:text-white mb-2">Pro</div>
+              <div className="text-neutral-600 dark:text-neutral-400">500 dk dahil</div>
+              <div className="text-xs text-neutral-500 mt-1">7.499 ₺/ay + 23 ₺ aşım</div>
+            </div>
+            <div className="bg-white dark:bg-neutral-900 p-4 rounded-lg">
+              <div className="font-semibold text-neutral-900 dark:text-white mb-2">Kurumsal</div>
+              <div className="text-neutral-600 dark:text-neutral-400">500+ dk (özel)</div>
               <div className="text-xs text-neutral-500 mt-1">{t('solutions.contactSales')}</div>
             </div>
           </div>
@@ -239,6 +255,38 @@ export default function PhoneNumbersPage() {
           {t('dashboard.phoneNumbersPage.getPhoneNumber')}
         </Button>
       </div>
+
+      {/* Trial info banner for FREE/TRIAL plans */}
+      {(subscription?.plan === 'FREE' || subscription?.plan === 'TRIAL') && (
+        <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                🎁 Ücretsiz Deneme Hakkınız
+              </p>
+              <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                {15 - (subscription?.trialMinutesUsed || 0) > 0
+                  ? `${(15 - (subscription?.trialMinutesUsed || 0)).toFixed(1)} dakika kaldı`
+                  : 'Dakikalarınız bitti'
+                }
+                {subscription?.trialChatExpiry && (
+                  <span className="ml-2">
+                    • {new Date(subscription.trialChatExpiry) > new Date()
+                      ? `${Math.ceil((new Date(subscription.trialChatExpiry) - new Date()) / (1000 * 60 * 60 * 24))} gün kaldı`
+                      : 'Süre doldu'
+                    }
+                  </span>
+                )}
+              </p>
+            </div>
+            <Link href="/dashboard/subscription">
+              <Button size="sm" variant="outline" className="border-blue-300 text-blue-700 hover:bg-blue-100">
+                Plan Yükselt
+              </Button>
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* Limit warning */}
       {!canAddNumber() && phoneNumbers.length > 0 && (
@@ -354,22 +402,15 @@ export default function PhoneNumbersPage() {
                 </div>
               </div>
 
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1"
-                  onClick={() => handleTestCall(number)}
-                >
-                  <TestTube2 className="h-3 w-3 mr-2" />
-                  {t('dashboard.phoneNumbersPage.testCall')}
-                </Button>
+              <div className="flex gap-2 justify-end">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => handleRelease(number)}
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
                 >
-                  <Trash2 className="h-3 w-3" />
+                  <Trash2 className="h-3 w-3 mr-2" />
+                  {t('common.delete') || 'Sil'}
                 </Button>
               </div>
             </div>

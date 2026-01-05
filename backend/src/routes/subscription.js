@@ -17,7 +17,15 @@ import paymentProvider from '../services/paymentProvider.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+// Lazy initialize Stripe to ensure env vars are loaded
+let stripe = null;
+function getStripe() {
+  if (!stripe && process.env.STRIPE_SECRET_KEY) {
+    stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+  }
+  return stripe;
+}
 
 // Plan configurations with both Stripe and iyzico pricing
 const PLAN_CONFIG = {
@@ -29,6 +37,16 @@ const PLAN_CONFIG = {
     callsLimit: 0,
     assistantsLimit: 0,
     phoneNumbersLimit: 0
+  },
+  PAYG: {
+    name: 'PAYG',
+    price: 0,
+    priceTRY: 0,
+    minutesLimit: 0, // Pay per minute, no limit
+    callsLimit: -1, // unlimited
+    assistantsLimit: 1,
+    phoneNumbersLimit: 1,
+    isPrepaid: true // Balance-based, not subscription
   },
   STARTER: {
     name: 'STARTER',
@@ -96,7 +114,7 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
   let event;
 
   try {
-    event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+    event = getStripe().webhooks.constructEvent(req.body, sig, webhookSecret);
   } catch (err) {
     console.error('❌ Webhook signature verification failed:', err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
@@ -110,7 +128,26 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
         const session = event.data.object;
         console.log('💳 Checkout completed:', session.id);
 
-        const subscriptionId = session.subscription;
+        // Check if this is an enterprise payment link
+        if (session.metadata?.type === 'enterprise') {
+          const subscriptionId = parseInt(session.metadata.subscriptionId);
+          console.log('💼 Enterprise payment link completed for subscription:', subscriptionId);
+
+          // Update enterprise payment status
+          await prisma.subscription.update({
+            where: { id: subscriptionId },
+            data: {
+              enterprisePaymentStatus: 'paid',
+              status: 'ACTIVE'
+            }
+          });
+
+          console.log('✅ Enterprise subscription payment confirmed');
+          break;
+        }
+
+        // Regular subscription checkout
+        const stripeSubscriptionId = session.subscription;
         const customerId = session.customer;
         const priceId = session.line_items?.data[0]?.price?.id || session.metadata?.priceId;
 
@@ -125,7 +162,7 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
         const subscription = await prisma.subscription.updateMany({
           where: { stripeCustomerId: customerId },
           data: {
-            stripeSubscriptionId: subscriptionId,
+            stripeSubscriptionId: stripeSubscriptionId,
             stripePriceId: priceId,
             plan: plan,
             status: 'ACTIVE',
@@ -794,7 +831,7 @@ router.post('/create-checkout', verifyBusinessAccess, async (req, res) => {
     if (existingSub?.stripeCustomerId) {
       stripeCustomerId = existingSub.stripeCustomerId;
     } else {
-      const customer = await stripe.customers.create({
+      const customer = await getStripe().customers.create({
         email: user.email,
         name: user.business.name,
         metadata: {
@@ -822,7 +859,7 @@ router.post('/create-checkout', verifyBusinessAccess, async (req, res) => {
 
     // Create checkout session
     const frontendUrl = process.env.FRONTEND_URL;
-    const session = await stripe.checkout.sessions.create({
+    const session = await getStripe().checkout.sessions.create({
       customer: stripeCustomerId,
       mode: 'subscription',
       payment_method_types: ['card'],
@@ -896,7 +933,7 @@ router.post('/cancel', verifyBusinessAccess, async (req, res) => {
     }
 
     // Cancel at period end (don't cancel immediately)
-    await stripe.subscriptions.update(subscription.stripeSubscriptionId, {
+    await getStripe().subscriptions.update(subscription.stripeSubscriptionId, {
       cancel_at_period_end: true
     });
 
@@ -948,7 +985,7 @@ router.post('/reactivate', verifyBusinessAccess, async (req, res) => {
     }
 
     // Remove cancel_at_period_end
-    await stripe.subscriptions.update(subscription.stripeSubscriptionId, {
+    await getStripe().subscriptions.update(subscription.stripeSubscriptionId, {
       cancel_at_period_end: false
     });
 
@@ -994,6 +1031,44 @@ router.post('/upgrade', verifyBusinessAccess, async (req, res) => {
 
     if (!PLAN_CONFIG[normalizedPlanId] || normalizedPlanId === 'FREE') {
       return res.status(400).json({ error: 'Invalid plan ID' });
+    }
+
+    // Handle PAYG plan switch - redirect to switch-to-payg endpoint
+    if (normalizedPlanId === 'PAYG') {
+      // PAYG is balance-based, not subscription-based
+      const planConfig = PLAN_CONFIG.PAYG;
+
+      // Update subscription to PAYG plan
+      await prisma.subscription.upsert({
+        where: { businessId },
+        create: {
+          businessId,
+          plan: 'PAYG',
+          status: 'ACTIVE',
+          balance: 0,
+          minutesLimit: planConfig.minutesLimit,
+          callsLimit: planConfig.callsLimit,
+          assistantsLimit: planConfig.assistantsLimit,
+          phoneNumbersLimit: planConfig.phoneNumbersLimit
+        },
+        update: {
+          plan: 'PAYG',
+          status: 'ACTIVE',
+          cancelAtPeriodEnd: false,
+          minutesLimit: planConfig.minutesLimit,
+          callsLimit: planConfig.callsLimit,
+          assistantsLimit: planConfig.assistantsLimit,
+          phoneNumbersLimit: planConfig.phoneNumbersLimit
+        }
+      });
+
+      console.log(`✅ Switched to PAYG for business ${businessId}`);
+
+      return res.json({
+        success: true,
+        message: 'Kullandıkça öde planına geçildi. Bakiye yükleyerek kullanmaya başlayabilirsiniz.',
+        type: 'payg_switch'
+      });
     }
 
     // Get user and business info
@@ -1074,7 +1149,7 @@ router.post('/upgrade', verifyBusinessAccess, async (req, res) => {
     if (existingSub?.stripeCustomerId) {
       stripeCustomerId = existingSub.stripeCustomerId;
     } else {
-      const customer = await stripe.customers.create({
+      const customer = await getStripe().customers.create({
         email: user.email,
         name: user.business.name,
         metadata: {
@@ -1109,12 +1184,12 @@ router.post('/upgrade', verifyBusinessAccess, async (req, res) => {
 
     // If already has subscription, update it (upgrade/downgrade)
     if (currentSubscription?.stripeSubscriptionId) {
-      const stripeSubscription = await stripe.subscriptions.retrieve(currentSubscription.stripeSubscriptionId);
+      const stripeSubscription = await getStripe().subscriptions.retrieve(currentSubscription.stripeSubscriptionId);
 
       // CHECK: If subscription is canceled, reactivate it + change plan
       if (stripeSubscription.cancel_at_period_end) {
         // Reactivate subscription + change to new plan
-        await stripe.subscriptions.update(stripeSubscription.id, {
+        await getStripe().subscriptions.update(stripeSubscription.id, {
           cancel_at_period_end: false, // Undo cancellation
           items: [{
             id: stripeSubscription.items.data[0].id,
@@ -1160,7 +1235,7 @@ router.post('/upgrade', verifyBusinessAccess, async (req, res) => {
 
       if (isUpgrade) {
         // UPGRADE: Immediate with proration
-        await stripe.subscriptions.update(stripeSubscription.id, {
+        await getStripe().subscriptions.update(stripeSubscription.id, {
           items: [{
             id: stripeSubscription.items.data[0].id,
             price: priceId
@@ -1193,7 +1268,7 @@ router.post('/upgrade', verifyBusinessAccess, async (req, res) => {
         });
       } else {
         // DOWNGRADE: Schedule for end of period
-        await stripe.subscriptions.update(stripeSubscription.id, {
+        await getStripe().subscriptions.update(stripeSubscription.id, {
           items: [{
             id: stripeSubscription.items.data[0].id,
             price: priceId
@@ -1226,7 +1301,7 @@ router.post('/upgrade', verifyBusinessAccess, async (req, res) => {
     }
 
     // NEW SUBSCRIPTION: Create checkout session
-    const session = await stripe.checkout.sessions.create({
+    const session = await getStripe().checkout.sessions.create({
       customer: stripeCustomerId,
       mode: 'subscription',
       payment_method_types: ['card'],
@@ -1271,14 +1346,14 @@ router.get('/verify-session', authenticateToken, async (req, res) => {
     }
 
     // Retrieve the session from Stripe
-    const session = await stripe.checkout.sessions.retrieve(session_id);
+    const session = await getStripe().checkout.sessions.retrieve(session_id);
 
     if (session.payment_status !== 'paid') {
       return res.status(400).json({ error: 'Payment not completed' });
     }
 
     // Get subscription details
-    const stripeSubscription = await stripe.subscriptions.retrieve(session.subscription);
+    const stripeSubscription = await getStripe().subscriptions.retrieve(session.subscription);
     const planId = session.metadata.planId;
     const planConfig = PLAN_CONFIG[planId];
 
@@ -1354,7 +1429,7 @@ router.post('/create-portal-session', verifyBusinessAccess, async (req, res) => 
     }
 
     const frontendUrl = process.env.FRONTEND_URL;
-    const session = await stripe.billingPortal.sessions.create({
+    const session = await getStripe().billingPortal.sessions.create({
       customer: subscription.stripeCustomerId,
       return_url: `${frontendUrl}/dashboard/settings?tab=billing`
     });
@@ -1386,7 +1461,7 @@ router.post('/cancel', authenticateToken, async (req, res) => {
     }
 
     // Cancel at period end (user keeps access until current period ends)
-    const canceledSubscription = await stripe.subscriptions.update(
+    const canceledSubscription = await getStripe().subscriptions.update(
       subscription.stripeSubscriptionId,
       {
         cancel_at_period_end: true
@@ -1461,12 +1536,13 @@ router.post('/start-trial', verifyBusinessAccess, async (req, res) => {
   try {
     const { businessId } = req.user;
 
-    // Check if trial already used
+    // Check if trial already used (check if trialMinutesUsed > 0 or trialChatExpiry passed)
     const existingSub = await prisma.subscription.findUnique({
       where: { businessId }
     });
 
-    if (existingSub?.trialUsed) {
+    // Trial is "used" if minutes are exhausted or chat trial has expired
+    if (existingSub?.trialMinutesUsed >= 15) {
       return res.status(400).json({ error: 'Trial already used' });
     }
 
@@ -1479,16 +1555,15 @@ router.post('/start-trial', verifyBusinessAccess, async (req, res) => {
       create: {
         businessId,
         plan: 'TRIAL',
-        status: 'active',
+        status: 'ACTIVE',
         trialMinutesUsed: 0,
         trialChatExpiry,
-        trialUsed: false,
         currentPeriodStart: now,
         currentPeriodEnd: trialChatExpiry
       },
       update: {
         plan: 'TRIAL',
-        status: 'active',
+        status: 'ACTIVE',
         trialMinutesUsed: 0,
         trialChatExpiry,
         currentPeriodStart: now,
@@ -1524,14 +1599,12 @@ router.post('/switch-to-payg', verifyBusinessAccess, async (req, res) => {
       create: {
         businessId,
         plan: 'PAYG',
-        status: 'active',
-        balance: 0,
-        trialUsed: true // Mark trial as used when switching to PAYG
+        status: 'ACTIVE',
+        balance: 0
       },
       update: {
         plan: 'PAYG',
-        status: 'active',
-        trialUsed: true,
+        status: 'ACTIVE',
         // Cancel any existing subscription
         cancelAtPeriodEnd: false,
         stripeSubscriptionId: null,
