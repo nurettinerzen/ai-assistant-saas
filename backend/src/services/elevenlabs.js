@@ -152,26 +152,33 @@ const elevenLabsService = {
    * Import a SIP trunk phone number to 11Labs (for NetGSM, etc.)
    * @param {Object} config - SIP trunk configuration
    *
-   * SIP Trunk Configuration:
-   * - termination_uri: Where 11Labs sends OUTBOUND calls (your SIP provider's hostname)
-   * - origination_uri: Where your SIP provider sends INBOUND calls (11Labs SIP URI)
-   * - authentication: Username/password for SIP REGISTER
+   * SIP Trunk Configuration (NEW API - July 2025):
+   * - inbound_trunk_config: Configuration for receiving calls
+   * - outbound_trunk_config: Configuration for making calls (address, transport, credentials)
    */
   async importSipTrunkNumber(config) {
     try {
-      // termination_uri should be just the hostname (for outbound calls from 11Labs)
-      const terminationUri = config.sipServer;
-
-      // Build the request payload
+      // Build the request payload with NEW API format (July 2025)
       const payload = {
         phone_number: config.phoneNumber,
         label: config.label || `SIP - ${config.phoneNumber}`,
         provider: 'sip_trunk',
-        provider_config: {
-          // Outbound: 11Labs sends SIP INVITE to this address
-          sip_trunk_termination_uri: terminationUri,
-          // Authentication for SIP REGISTER
-          sip_trunk_authentication: {
+        supports_inbound: true,
+        supports_outbound: true,
+        // Inbound configuration - for receiving calls from SIP provider
+        inbound_trunk_config: {
+          media_encryption: 'disabled',
+          credentials: {
+            username: config.sipUsername,
+            password: config.sipPassword
+          }
+        },
+        // Outbound configuration - for making calls via SIP provider
+        outbound_trunk_config: {
+          address: config.sipServer,  // Just hostname, e.g., "sip1.voip.com.tr"
+          transport: config.transport || 'tcp',  // tcp, udp, or tls
+          media_encryption: 'disabled',
+          credentials: {
             username: config.sipUsername,
             password: config.sipPassword
           }
@@ -179,7 +186,7 @@ const elevenLabsService = {
         agent_id: config.agentId
       };
 
-      console.log('📞 11Labs SIP trunk payload:', JSON.stringify(payload, null, 2));
+      console.log('📞 11Labs SIP trunk payload (NEW API):', JSON.stringify(payload, null, 2));
 
       const response = await elevenLabsClient.post('/convai/phone-numbers/create', payload);
       console.log('✅ 11Labs SIP trunk phone number imported:', response.data.phone_number_id);
@@ -210,16 +217,25 @@ const elevenLabsService = {
   },
 
   /**
-   * Update SIP trunk configuration for a phone number
+   * Update SIP trunk configuration for a phone number (NEW API - July 2025)
    * @param {string} phoneNumberId - 11Labs phone number ID
    * @param {Object} config - SIP configuration to update
    */
   async updateSipTrunkConfig(phoneNumberId, config) {
     try {
       const updatePayload = {
-        provider_config: {
-          sip_trunk_termination_uri: config.sipServer,
-          sip_trunk_authentication: {
+        inbound_trunk_config: {
+          media_encryption: 'disabled',
+          credentials: {
+            username: config.sipUsername,
+            password: config.sipPassword
+          }
+        },
+        outbound_trunk_config: {
+          address: config.sipServer,
+          transport: config.transport || 'tcp',
+          media_encryption: 'disabled',
+          credentials: {
             username: config.sipUsername,
             password: config.sipPassword
           }
@@ -230,7 +246,7 @@ const elevenLabsService = {
         updatePayload.agent_id = config.agentId;
       }
 
-      console.log('📞 Updating 11Labs SIP config:', JSON.stringify(updatePayload, null, 2));
+      console.log('📞 Updating 11Labs SIP config (NEW API):', JSON.stringify(updatePayload, null, 2));
 
       const response = await elevenLabsClient.patch(`/convai/phone-numbers/${phoneNumberId}`, updatePayload);
       console.log('✅ 11Labs SIP trunk config updated:', phoneNumberId);
