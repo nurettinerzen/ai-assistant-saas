@@ -139,7 +139,7 @@ export default function IntegrationsPage() {
     const loadUserPlan = async () => {
       try {
         const response = await apiClient.get('/api/auth/me');
-        const plan = response.data?.subscription?.plan || response.data?.plan || 'STARTER';
+        const plan = response.data?.business?.subscription?.plan || response.data?.subscription?.plan || response.data?.plan || 'STARTER';
         setUserPlan(plan);
       } catch (error) {
         console.error('Failed to load user plan:', error);
