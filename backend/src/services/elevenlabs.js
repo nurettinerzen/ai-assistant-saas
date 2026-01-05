@@ -188,7 +188,8 @@ const elevenLabsService = {
 
       console.log('📞 11Labs SIP trunk payload (NEW API):', JSON.stringify(payload, null, 2));
 
-      const response = await elevenLabsClient.post('/convai/phone-numbers/create', payload);
+      // Use /convai/phone-numbers endpoint (not /create)
+      const response = await elevenLabsClient.post('/convai/phone-numbers', payload);
       console.log('✅ 11Labs SIP trunk phone number imported:', response.data.phone_number_id);
       console.log('📋 11Labs response:', JSON.stringify(response.data, null, 2));
       return response.data;
