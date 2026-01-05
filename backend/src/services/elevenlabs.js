@@ -192,6 +192,20 @@ const elevenLabsService = {
       const response = await elevenLabsClient.post('/convai/phone-numbers', payload);
       console.log('✅ 11Labs SIP trunk phone number imported:', response.data.phone_number_id);
       console.log('📋 11Labs response:', JSON.stringify(response.data, null, 2));
+
+      // Agent assignment doesn't work in create call, do it separately
+      if (config.agentId && response.data.phone_number_id) {
+        console.log('📞 Assigning agent to SIP trunk phone number...');
+        try {
+          await elevenLabsClient.patch(`/convai/phone-numbers/${response.data.phone_number_id}`, {
+            agent_id: config.agentId
+          });
+          console.log('✅ Agent assigned to SIP trunk phone number');
+        } catch (agentError) {
+          console.error('⚠️ Failed to assign agent:', agentError.response?.data || agentError.message);
+        }
+      }
+
       return response.data;
     } catch (error) {
       console.error('❌ 11Labs importSipTrunkNumber error:', error.response?.data || error.message);
