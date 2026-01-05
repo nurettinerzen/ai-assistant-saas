@@ -86,21 +86,6 @@ export const INTEGRATION_METADATA = {
     authType: 'oauth'
   },
 
-  WOOCOMMERCE: {
-    relevantFor: ['ECOMMERCE'], // NOT for OTHER
-    priority: {
-      ECOMMERCE: 'ESSENTIAL',
-      RESTAURANT: 'OPTIONAL',
-      CLINIC: 'OPTIONAL',
-      SALON: 'OPTIONAL',
-      SERVICE: 'OPTIONAL'
-    },
-    name: 'WooCommerce',
-    description: 'WooCommerce mağaza entegrasyonu',
-    category: 'ecommerce',
-    authType: 'api_key'
-  },
-
   IKAS: {
     relevantFor: ['ECOMMERCE'], // NOT for OTHER
     priority: {
@@ -115,59 +100,6 @@ export const INTEGRATION_METADATA = {
     category: 'ecommerce',
     authType: 'oauth',
     region: 'TR'
-  },
-
-  IDEASOFT: {
-    relevantFor: ['ECOMMERCE'], // NOT for OTHER
-    priority: {
-      ECOMMERCE: 'ESSENTIAL',
-      RESTAURANT: 'OPTIONAL',
-      CLINIC: 'OPTIONAL',
-      SALON: 'OPTIONAL',
-      SERVICE: 'OPTIONAL'
-    },
-    name: 'Ideasoft',
-    description: 'Ideasoft e-ticaret platformu entegrasyonu',
-    category: 'ecommerce',
-    authType: 'oauth',
-    region: 'TR'
-  },
-
-  TICIMAX: {
-    relevantFor: ['ECOMMERCE'], // NOT for OTHER
-    priority: {
-      ECOMMERCE: 'ESSENTIAL',
-      RESTAURANT: 'OPTIONAL',
-      CLINIC: 'OPTIONAL',
-      SALON: 'OPTIONAL',
-      SERVICE: 'OPTIONAL'
-    },
-    name: 'Ticimax',
-    description: 'Ticimax e-ticaret platformu entegrasyonu',
-    category: 'ecommerce',
-    authType: 'api_key',
-    region: 'TR'
-  },
-
-  // ============================================================================
-  // CUSTOM INTEGRATIONS
-  // ============================================================================
-
-  CUSTOM_ERP_WEBHOOK: {
-    relevantFor: ['ECOMMERCE'],
-    priority: {
-      ECOMMERCE: 'RECOMMENDED',
-      RESTAURANT: 'OPTIONAL',
-      CLINIC: 'OPTIONAL',
-      SALON: 'OPTIONAL',
-      SERVICE: 'OPTIONAL'
-    },
-    name: 'Özel ERP Webhook',
-    nameEN: 'Custom ERP Webhook',
-    description: 'Kendi CRM veya ERP sisteminizden sipariş, stok ve servis bilgilerini entegre edin',
-    descriptionEN: 'Integrate order, stock and service information from your own CRM or ERP system',
-    category: 'automation',
-    authType: 'webhook'
   },
 
   // ============================================================================
@@ -307,24 +239,24 @@ export const INTEGRATION_METADATA = {
 export const REGION_INTEGRATIONS = {
   TR: {
     // Turkey-specific platforms
-    exclusive: ['IKAS', 'IDEASOFT', 'TICIMAX', 'NETGSM_SMS'],
+    exclusive: ['IKAS', 'NETGSM_SMS'],
     // Global platforms also available
-    available: ['SHOPIFY', 'WOOCOMMERCE', 'GOOGLE_CALENDAR', 'GOOGLE_SHEETS', 'WHATSAPP']
+    available: ['SHOPIFY', 'GOOGLE_CALENDAR', 'GOOGLE_SHEETS', 'WHATSAPP']
   },
   BR: {
     // Brazil-specific platforms
     exclusive: ['NUVEMSHOP', 'TRAY', 'LOJA_INTEGRADA', 'MERCADO_LIVRE', 'ZENVIA_SMS'],
     // Global platforms also available
-    available: ['SHOPIFY', 'WOOCOMMERCE', 'GOOGLE_CALENDAR', 'GOOGLE_SHEETS', 'WHATSAPP']
+    available: ['SHOPIFY', 'GOOGLE_CALENDAR', 'GOOGLE_SHEETS', 'WHATSAPP']
   },
   US: {
     // US uses global platforms
     exclusive: [],
-    available: ['SHOPIFY', 'WOOCOMMERCE', 'GOOGLE_CALENDAR', 'GOOGLE_SHEETS', 'WHATSAPP']
+    available: ['SHOPIFY', 'GOOGLE_CALENDAR', 'GOOGLE_SHEETS', 'WHATSAPP']
   },
   GLOBAL: {
     // Available everywhere
-    platforms: ['SHOPIFY', 'WOOCOMMERCE', 'GOOGLE_CALENDAR', 'GOOGLE_SHEETS', 'WHATSAPP', 'ZAPIER']
+    platforms: ['SHOPIFY', 'GOOGLE_CALENDAR', 'GOOGLE_SHEETS', 'WHATSAPP', 'ZAPIER']
   }
 };
 

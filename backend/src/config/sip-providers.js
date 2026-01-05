@@ -14,7 +14,7 @@ export const SIP_PROVIDERS = {
     defaultPort: 5060,
     defaultTransport: 'UDP',
     helpText: 'NetGSM panelinden: Ses Hizmeti > Ayarlar > SIP Bilgileri',
-    helpUrl: 'https://www.netgsm.com.tr',
+    helpUrl: 'http://netg.sm/3139',
     website: 'https://www.netgsm.com.tr'
   },
   bulutfon: {
@@ -49,17 +49,6 @@ export const SIP_PROVIDERS = {
     helpText: 'Twilio Console > Phone Numbers > SIP Trunking',
     helpUrl: 'https://www.twilio.com/console/sip-trunking',
     website: 'https://www.twilio.com'
-  },
-  other: {
-    id: 'other',
-    name: 'Diğer / Other',
-    country: 'GLOBAL',
-    defaultServer: '',
-    defaultPort: 5060,
-    defaultTransport: 'UDP',
-    helpText: 'SIP sağlayıcınızdan aldığınız bilgileri girin',
-    helpUrl: null,
-    website: null
   }
 };
 

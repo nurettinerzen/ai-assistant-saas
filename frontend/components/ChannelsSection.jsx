@@ -46,10 +46,10 @@ export const ChannelsSection = () => {
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
-          <h2 className="text-4xl sm:text-5xl font-bold text-foreground mb-4">
+          <h2 className="text-4xl sm:text-5xl font-bold text-foreground dark:text-white mb-4">
             {t('landing.channels.title')}
           </h2>
-          <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+          <p className="text-xl text-muted-foreground dark:text-neutral-400 max-w-3xl mx-auto">
             {t('landing.channels.subtitle')}
           </p>
         </motion.div>
@@ -65,14 +65,14 @@ export const ChannelsSection = () => {
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
               >
-                <Card className="p-8 h-full hover:shadow-lg transition-all duration-300 hover:-translate-y-1 bg-white dark:bg-neutral-800 border-border">
+                <Card className="p-8 h-full hover:shadow-lg transition-all duration-300 hover:-translate-y-1 bg-white dark:bg-neutral-800 border-border dark:border-neutral-700">
                   <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${channel.color} flex items-center justify-center mb-6`}>
                     <Icon className="w-7 h-7 text-white" />
                   </div>
-                  <h3 className="text-xl font-bold text-foreground mb-3">
+                  <h3 className="text-xl font-bold text-foreground dark:text-white mb-3">
                     {t(channel.titleKey)}
                   </h3>
-                  <p className="text-muted-foreground">
+                  <p className="text-muted-foreground dark:text-neutral-400">
                     {t(channel.descKey)}
                   </p>
                 </Card>

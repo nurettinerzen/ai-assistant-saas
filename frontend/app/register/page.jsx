@@ -106,8 +106,8 @@ export default function RegisterPage() {
 
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
-      // Redirect to email pending page for verification
-      router.push('/auth/email-pending');
+      // Skip email verification - go directly to dashboard
+      router.push('/dashboard');
     } catch (err) {
       setError(err.response?.data?.error || 'Registration failed');
     } finally {
@@ -116,7 +116,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 flex items-center justify-center p-4">
       {/* Google Sign-In Script */}
       <Script
         src="https://accounts.google.com/gsi/client"
@@ -136,12 +136,12 @@ export default function RegisterPage() {
         <div className="text-center mb-8 flex items-center justify-between max-w-2xl mx-auto">
           <Link href="/" className="inline-block flex-1">
             <h1 className="text-4xl font-bold gradient-text mb-2">TELYX.AI</h1>
-            <p className="text-gray-600">{t('auth.signupSubtitle')}</p>
+            <p className="text-gray-600 dark:text-neutral-400">{t('auth.signupSubtitle')}</p>
           </Link>
           <LanguageSwitcher />
         </div>
 
-        <Card className="glass border-white/20 shadow-xl">
+        <Card className="glass border-white/20 dark:border-neutral-700 dark:bg-neutral-800/80 shadow-xl">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl">{t('common.signup')}</CardTitle>
             <CardDescription>
@@ -151,7 +151,7 @@ export default function RegisterPage() {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               {error && (
-                <div className="bg-red-50 text-red-600 p-4 rounded-lg text-sm border border-red-200" data-testid="error-message">
+                <div className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-4 rounded-lg text-sm border border-red-200 dark:border-red-800" data-testid="error-message">
                   {error}
                 </div>
               )}
@@ -180,17 +180,17 @@ export default function RegisterPage() {
                       onClick={() => setFormData({ ...formData, businessType: type.value })}
                       className={`p-4 rounded-xl border-2 cursor-pointer transition-all hover:scale-[1.02] ${
                         formData.businessType === type.value
-                          ? 'border-indigo-600 bg-indigo-50 shadow-md'
-                          : 'border-gray-200 bg-white hover:border-gray-300'
+                          ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 shadow-md'
+                          : 'border-gray-200 dark:border-neutral-600 bg-white dark:bg-neutral-700 hover:border-gray-300 dark:hover:border-neutral-500'
                       }`}
                       data-testid={`business-type-${type.value.toLowerCase()}`}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
-                          <div className="font-semibold text-gray-900 mb-1">
+                          <div className="font-semibold text-gray-900 dark:text-white mb-1">
                             {type.label}
                           </div>
-                          <div className="text-sm text-gray-600">
+                          <div className="text-sm text-gray-600 dark:text-neutral-400">
                             {type.description}
                           </div>
                         </div>

@@ -72,31 +72,31 @@ function VerifyEmailContent() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-50 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 flex items-center justify-center p-4">
       <Toaster position="top-right" richColors />
 
       <div className="w-full max-w-md">
-        <div className="bg-white rounded-2xl shadow-xl border border-neutral-200 p-8">
+        <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-xl border border-neutral-200 dark:border-neutral-700 p-8">
           {/* Logo */}
           <div className="flex items-center justify-center mb-8">
             <div className="flex items-center gap-2">
               <div className="w-10 h-10 bg-gradient-to-br from-primary-600 to-primary-700 rounded-lg flex items-center justify-center">
                 <Phone className="h-6 w-6 text-white" />
               </div>
-              <span className="text-2xl font-bold text-neutral-900">Telyx</span>
+              <span className="text-2xl font-bold text-neutral-900 dark:text-white">Telyx</span>
             </div>
           </div>
 
           {/* Verifying State */}
           {status === 'verifying' && (
             <div className="text-center">
-              <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <div className="w-16 h-16 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
                 <Loader2 className="h-8 w-8 text-primary-600 animate-spin" />
               </div>
-              <h1 className="text-2xl font-bold text-neutral-900 mb-2">
+              <h1 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
                 Email Doğrulanıyor
               </h1>
-              <p className="text-neutral-600">
+              <p className="text-neutral-600 dark:text-neutral-400">
                 Lütfen bekleyin, email adresiniz doğrulanıyor...
               </p>
             </div>
@@ -105,13 +105,13 @@ function VerifyEmailContent() {
           {/* Success State */}
           {status === 'success' && (
             <div className="text-center">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <CheckCircle className="h-8 w-8 text-green-600" />
+              <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
+                <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400" />
               </div>
-              <h1 className="text-2xl font-bold text-neutral-900 mb-2">
+              <h1 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
                 Email Doğrulandı!
               </h1>
-              <p className="text-neutral-600 mb-6">
+              <p className="text-neutral-600 dark:text-neutral-400 mb-6">
                 {email && <span className="font-medium">{email}</span>} adresi başarıyla doğrulandı.
                 Dashboard&apos;a yönlendiriliyorsunuz...
               </p>
@@ -124,13 +124,13 @@ function VerifyEmailContent() {
           {/* Expired State */}
           {status === 'expired' && (
             <div className="text-center">
-              <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <RefreshCw className="h-8 w-8 text-yellow-600" />
+              <div className="w-16 h-16 bg-yellow-100 dark:bg-yellow-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
+                <RefreshCw className="h-8 w-8 text-yellow-600 dark:text-yellow-400" />
               </div>
-              <h1 className="text-2xl font-bold text-neutral-900 mb-2">
+              <h1 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
                 Link Süresi Dolmuş
               </h1>
-              <p className="text-neutral-600 mb-6">
+              <p className="text-neutral-600 dark:text-neutral-400 mb-6">
                 {errorMessage}
               </p>
               <div className="space-y-3">
@@ -147,13 +147,13 @@ function VerifyEmailContent() {
           {/* Error State */}
           {status === 'error' && (
             <div className="text-center">
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <XCircle className="h-8 w-8 text-red-600" />
+              <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
+                <XCircle className="h-8 w-8 text-red-600 dark:text-red-400" />
               </div>
-              <h1 className="text-2xl font-bold text-neutral-900 mb-2">
+              <h1 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
                 Doğrulama Başarısız
               </h1>
-              <p className="text-neutral-600 mb-6">
+              <p className="text-neutral-600 dark:text-neutral-400 mb-6">
                 {errorMessage}
               </p>
               <div className="space-y-3">
@@ -168,9 +168,9 @@ function VerifyEmailContent() {
           )}
 
           {/* Help Link */}
-          <p className="text-center text-sm text-neutral-500 mt-6">
+          <p className="text-center text-sm text-neutral-500 dark:text-neutral-400 mt-6">
             Sorun mu yaşıyorsunuz?{' '}
-            <Link href="mailto:support@telyx.ai" className="text-primary-600 hover:underline">
+            <Link href="mailto:support@telyx.ai" className="text-primary-600 dark:text-primary-400 hover:underline">
               Destek alın
             </Link>
           </p>
@@ -183,10 +183,10 @@ function VerifyEmailContent() {
 export default function VerifyEmailPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-50 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 flex items-center justify-center p-4">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary-600 mx-auto mb-4" />
-          <p className="text-neutral-600">Yükleniyor...</p>
+          <p className="text-neutral-600 dark:text-neutral-400">Yükleniyor...</p>
         </div>
       </div>
     }>

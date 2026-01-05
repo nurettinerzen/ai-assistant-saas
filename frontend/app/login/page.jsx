@@ -83,13 +83,7 @@ export default function LoginPage() {
 
       toast.success('Login successful!');
 
-      // Check if email is verified
-      // TODO: Re-enable email verification after testing
-      // if (data.user.emailVerified === false) {
-      //   router.push('/auth/email-pending');
-      // } else {
-      //   router.push('/dashboard');
-      // }
+      // Skip email verification check - go directly to dashboard
       router.push('/dashboard');
     } catch (error) {
       console.error('Login error:', error);
@@ -146,7 +140,7 @@ export default function LoginPage() {
       <Toaster position="top-right" richColors />
 
       <div className="w-full max-w-md">
-        <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-xl border border-neutral-200 dark:border-neutral-800 p-8">
+        <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-xl border border-neutral-200 dark:border-neutral-700 p-8">
           {/* Logo and Language Switcher */}
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-2">
@@ -227,7 +221,7 @@ export default function LoginPage() {
               <div className="w-full border-t border-neutral-200 dark:border-neutral-700"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-neutral-900 px-2 text-xs text-neutral-500 dark:text-neutral-400">
+              <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-neutral-800 px-2 text-xs text-neutral-500 dark:text-neutral-400">
               {t('auth.continueWith')}
             </span>
             </div>

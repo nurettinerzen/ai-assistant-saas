@@ -7,6 +7,10 @@
 // Stripe for global customers, iyzico for Turkey (TR)
 // ============================================================================
 
+// Load environment variables first
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticateToken, verifyBusinessAccess } from '../middleware/auth.js';

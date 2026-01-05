@@ -37,7 +37,7 @@ export const HowItWorks = () => {
   ];
 
   return (
-    <section className="py-24 px-4 sm:px-6 lg:px-8 bg-background">
+    <section className="py-24 px-4 sm:px-6 lg:px-8 bg-background dark:bg-neutral-950">
       <div className="max-w-7xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -46,10 +46,10 @@ export const HowItWorks = () => {
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
-          <h2 className="text-4xl sm:text-5xl font-bold text-foreground mb-4">
+          <h2 className="text-4xl sm:text-5xl font-bold text-foreground dark:text-white mb-4">
             {t('landing.howItWorks.title')}
           </h2>
-          <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+          <p className="text-xl text-muted-foreground dark:text-neutral-400 max-w-3xl mx-auto">
             {t('landing.howItWorks.subtitle')}
           </p>
         </motion.div>
@@ -65,25 +65,25 @@ export const HowItWorks = () => {
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: index * 0.15 }}
               >
-                <Card className="p-8 h-full bg-card border-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg relative overflow-hidden">
+                <Card className="p-8 h-full bg-card dark:bg-neutral-800 border-border dark:border-neutral-700 hover:border-primary/50 transition-all duration-300 hover:shadow-lg relative overflow-hidden">
                   {/* Step Number Background */}
-                  <div className="absolute -top-4 -right-4 text-8xl font-bold text-primary/5">
+                  <div className="absolute -top-4 -right-4 text-8xl font-bold text-primary/5 dark:text-primary/10">
                     {step.number}
                   </div>
 
                   <div className="relative">
-                    <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center mb-6">
+                    <div className="w-14 h-14 rounded-xl bg-primary/10 dark:bg-primary/20 flex items-center justify-center mb-6">
                       <Icon className="w-7 h-7 text-primary" />
                     </div>
 
                     <div className="flex items-center gap-3 mb-4">
                       <span className="text-sm font-bold text-primary">{step.number}</span>
-                      <h3 className="text-xl font-bold text-foreground">
+                      <h3 className="text-xl font-bold text-foreground dark:text-white">
                         {t(step.titleKey)}
                       </h3>
                     </div>
 
-                    <p className="text-muted-foreground leading-relaxed">
+                    <p className="text-muted-foreground dark:text-neutral-400 leading-relaxed">
                       {t(step.descKey)}
                     </p>
                   </div>

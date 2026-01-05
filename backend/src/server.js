@@ -6,10 +6,12 @@
 // UPDATE your existing server.js to include new routes and cron jobs
 // ============================================================================
 
-import express from 'express';
-import cors from 'cors';
+// CRITICAL: Load dotenv BEFORE any other imports to ensure env vars are available
 import dotenv from 'dotenv';
 dotenv.config();
+
+import express from 'express';
+import cors from 'cors';
 
 // Import routes
 import authRoutes from './routes/auth.js';

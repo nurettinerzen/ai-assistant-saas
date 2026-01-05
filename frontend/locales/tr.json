@@ -148,9 +148,9 @@
       "emailPlaceholder": "ornek@email.com",
       "phoneLabel": "Telefon",
       "phonePlaceholder": "+90 5XX XXX XX XX",
-      "submitButton": "Demo Talep Et",
-      "consent": "Gönderdiğinizde, AI asistanımızdan demo araması almayı kabul edersiniz",
-      "successMessage": "Talebiniz alındı! AI asistanımız kısa sürede sizi arayacak.",
+      "submitButton": "Beni Ara",
+      "consent": "Butona bastığınızda, AI asistanımız sizi hemen arayacaktır",
+      "successMessage": "Arama başlatıldı! Telefonunuz birazdan çalacak.",
       "errorMessage": "Bir hata oluştu. Lütfen tekrar deneyin.",
       "feature1": {
         "title": "Doğal Konuşma",
@@ -1052,9 +1052,9 @@
         "sipPhoneLabel": "Telefon Numarası",
         "sipServerLabel": "SIP Sunucu",
         "sipUsernameLabel": "SIP Kullanıcı Adı",
-        "sipUsernamePlaceholder": "NetGSM kullanıcı adınız",
+        "sipUsernamePlaceholder": "SIP kullanıcı adınız",
         "sipPasswordLabel": "SIP Şifre",
-        "sipPasswordPlaceholder": "NetGSM şifreniz",
+        "sipPasswordPlaceholder": "SIP şifreniz",
         "sipPortLabel": "Port",
         "sipTransportLabel": "Transport",
         "sipPhoneRequired": "Telefon numarası gereklidir",
@@ -2161,12 +2161,22 @@
       "subtitle": "Kullandığınız araçlarla sorunsuz çalışın"
     },
     "categories": {
+      "data": "Veri Entegrasyonları",
       "ecommerce": "E-Ticaret",
       "calendar": "Takvim",
       "email": "E-Posta",
       "accounting": "Muhasebe",
       "payment": "Ödeme",
       "sms": "SMS"
+    },
+    "googleSheets": {
+      "desc": "Google Sheets ile müşteri verilerini senkronize edin"
+    },
+    "customCrm": {
+      "desc": "Kendi CRM sisteminizle entegrasyon"
+    },
+    "webhookApi": {
+      "desc": "Webhook API ile herhangi bir sisteme bağlanın"
     },
     "ikas": {
       "desc": "Türkiye'nin önde gelen e-ticaret altyapısı ile sipariş ve müşteri yönetimi"

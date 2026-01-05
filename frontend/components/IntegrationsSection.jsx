@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import Image from 'next/image';
 import Link from 'next/link';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { ArrowRight } from 'lucide-react';
@@ -10,17 +9,11 @@ import { ArrowRight } from 'lucide-react';
 export const IntegrationsSection = () => {
   const { t } = useLanguage();
 
+  // Only list integrations that are actually implemented in the system
   const integrations = [
-    { name: 'ikas', logo: '/integrations/ikas.svg' },
-    { name: 'Shopify', logo: '/integrations/shopify.svg' },
-    { name: 'IdeaSoft', logo: '/integrations/ideasoft.svg' },
-    { name: 'Ticimax', logo: '/integrations/ticimax.svg' },
-    { name: 'Gmail', logo: '/integrations/gmail.svg' },
-    { name: 'Outlook', logo: '/integrations/outlook.svg' },
-    { name: 'Google Calendar', logo: '/integrations/google-calendar.svg' },
-    { name: 'iyzico', logo: '/integrations/iyzico.svg' },
-    { name: 'Stripe', logo: '/integrations/stripe.svg' },
-    { name: 'Parasut', logo: '/integrations/parasut.svg' }
+    { name: 'Google Sheets', textOnly: true },
+    { name: 'Custom CRM', textOnly: true },
+    { name: 'Webhook API', textOnly: true },
   ];
 
   return (
@@ -33,10 +26,10 @@ export const IntegrationsSection = () => {
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
-          <h2 className="text-4xl sm:text-5xl font-bold text-foreground mb-4">
+          <h2 className="text-4xl sm:text-5xl font-bold text-foreground dark:text-white mb-4">
             {t('landing.integrations.title')}
           </h2>
-          <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+          <p className="text-xl text-muted-foreground dark:text-neutral-400 max-w-3xl mx-auto">
             {t('landing.integrations.subtitle')}
           </p>
         </motion.div>
@@ -58,18 +51,9 @@ export const IntegrationsSection = () => {
               whileHover={{ scale: 1.05, y: -4 }}
               className="bg-white dark:bg-neutral-800 rounded-xl p-5 shadow-sm border border-gray-100 dark:border-neutral-700 hover:shadow-lg hover:border-indigo-100 dark:hover:border-indigo-900 transition-all duration-300 w-full h-20 flex items-center justify-center group cursor-pointer"
             >
-              <div className="relative w-full h-8 group-hover:scale-105 transition-transform duration-300">
-                <Image
-                  src={integration.logo}
-                  alt={integration.name}
-                  fill
-                  className="object-contain"
-                  onError={(e) => {
-                    e.target.style.display = 'none';
-                    e.target.parentElement.innerHTML = `<span class="text-sm font-semibold text-gray-700 dark:text-gray-200">${integration.name}</span>`;
-                  }}
-                />
-              </div>
+              <span className="text-sm font-semibold text-gray-700 dark:text-neutral-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                {integration.name}
+              </span>
             </motion.div>
           ))}
         </motion.div>

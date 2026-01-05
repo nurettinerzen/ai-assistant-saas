@@ -2,132 +2,44 @@
 
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import Image from 'next/image';
 import Navigation from '@/components/Navigation';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/contexts/LanguageContext';
-import {
-  ShoppingCart,
-  Calendar,
-  Mail,
-  Receipt,
-  CreditCard,
-  MessageSquare,
-  Plug
-} from 'lucide-react';
+import { Plug } from 'lucide-react';
 
 export default function IntegrationsPage() {
   const { t } = useLanguage();
 
+  // Only show actually implemented integrations
   const categories = [
     {
-      id: 'ecommerce',
-      titleKey: 'integrationsPage.categories.ecommerce',
-      icon: ShoppingCart,
+      id: 'data',
+      titleKey: 'integrationsPage.categories.data',
+      icon: Plug,
       color: 'from-green-500 to-emerald-500',
       integrations: [
         {
-          name: 'ikas',
-          descKey: 'integrationsPage.ikas.desc',
-          logo: '/integrations/ikas.svg'
+          name: 'Google Sheets',
+          descKey: 'integrationsPage.googleSheets.desc',
+          textOnly: true
         },
         {
-          name: 'Ticimax',
-          descKey: 'integrationsPage.ticimax.desc',
-          logo: '/integrations/ticimax.svg'
+          name: 'Custom CRM',
+          descKey: 'integrationsPage.customCrm.desc',
+          textOnly: true
         },
         {
-          name: 'IdeaSoft',
-          descKey: 'integrationsPage.ideasoft.desc',
-          logo: '/integrations/ideasoft.svg'
-        },
-        {
-          name: 'Shopify',
-          descKey: 'integrationsPage.shopify.desc',
-          logo: '/integrations/shopify.svg'
-        },
-      ]
-    },
-    {
-      id: 'calendar',
-      titleKey: 'integrationsPage.categories.calendar',
-      icon: Calendar,
-      color: 'from-blue-500 to-indigo-500',
-      integrations: [
-        {
-          name: 'Google Calendar',
-          descKey: 'integrationsPage.googleCalendar.desc',
-          logo: '/integrations/google-calendar.svg'
-        },
-      ]
-    },
-    {
-      id: 'email',
-      titleKey: 'integrationsPage.categories.email',
-      icon: Mail,
-      color: 'from-red-500 to-orange-500',
-      integrations: [
-        {
-          name: 'Gmail',
-          descKey: 'integrationsPage.gmail.desc',
-          logo: '/integrations/gmail.svg'
-        },
-        {
-          name: 'Outlook',
-          descKey: 'integrationsPage.outlook.desc',
-          logo: '/integrations/outlook.svg'
-        },
-      ]
-    },
-    {
-      id: 'accounting',
-      titleKey: 'integrationsPage.categories.accounting',
-      icon: Receipt,
-      color: 'from-purple-500 to-pink-500',
-      integrations: [
-        {
-          name: 'Parasut',
-          descKey: 'integrationsPage.parasut.desc',
-          logo: '/integrations/parasut.svg'
-        },
-      ]
-    },
-    {
-      id: 'payment',
-      titleKey: 'integrationsPage.categories.payment',
-      icon: CreditCard,
-      color: 'from-yellow-500 to-orange-500',
-      integrations: [
-        {
-          name: 'iyzico',
-          descKey: 'integrationsPage.iyzico.desc',
-          logo: '/integrations/iyzico.svg'
-        },
-        {
-          name: 'Stripe',
-          descKey: 'integrationsPage.stripe.desc',
-          logo: '/integrations/stripe.svg'
-        },
-      ]
-    },
-    {
-      id: 'sms',
-      titleKey: 'integrationsPage.categories.sms',
-      icon: MessageSquare,
-      color: 'from-cyan-500 to-blue-500',
-      integrations: [
-        {
-          name: 'NetGSM',
-          descKey: 'integrationsPage.netgsm.desc',
-          logo: '/integrations/netgsm.svg'
+          name: 'Webhook API',
+          descKey: 'integrationsPage.webhookApi.desc',
+          textOnly: true
         },
       ]
     },
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 dark:from-neutral-900 dark:via-neutral-900 dark:to-neutral-800">
       <Navigation />
 
       {/* Hero Section */}
@@ -146,7 +58,7 @@ export default function IntegrationsPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
-              className="text-5xl md:text-6xl font-bold mb-6"
+              className="text-5xl md:text-6xl font-bold mb-6 text-gray-900 dark:text-white"
             >
               {t('integrationsPage.hero.title')}
             </motion.h1>
@@ -154,7 +66,7 @@ export default function IntegrationsPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
-              className="text-xl text-gray-600"
+              className="text-xl text-gray-600 dark:text-gray-300"
             >
               {t('integrationsPage.hero.subtitle')}
             </motion.p>
@@ -180,12 +92,12 @@ export default function IntegrationsPage() {
                     <div className={`w-12 h-12 bg-gradient-to-br ${category.color} rounded-xl flex items-center justify-center`}>
                       <Icon className="w-6 h-6 text-white" />
                     </div>
-                    <h2 className="text-2xl font-bold text-gray-900">
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
                       {t(category.titleKey)}
                     </h2>
                   </div>
 
-                  <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {category.integrations.map((integration, intIndex) => (
                       <motion.div
                         key={integration.name}
@@ -193,26 +105,14 @@ export default function IntegrationsPage() {
                         whileInView={{ opacity: 1, scale: 1 }}
                         viewport={{ once: true }}
                         transition={{ duration: 0.3, delay: intIndex * 0.05 }}
-                        className="bg-white rounded-xl p-6 border border-gray-100 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300"
+                        className="bg-white dark:bg-neutral-800 rounded-xl p-6 border border-gray-100 dark:border-neutral-700 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300"
                       >
                         <div className="h-12 mb-4 flex items-center">
-                          <div className="relative w-full h-8">
-                            <Image
-                              src={integration.logo}
-                              alt={integration.name}
-                              fill
-                              className="object-contain object-left"
-                              onError={(e) => {
-                                e.target.style.display = 'none';
-                                e.target.parentElement.innerHTML = `<span class="text-lg font-semibold text-gray-800">${integration.name}</span>`;
-                              }}
-                            />
-                          </div>
+                          <span className="text-lg font-semibold text-gray-800 dark:text-gray-200">
+                            {integration.name}
+                          </span>
                         </div>
-                        <h3 className="font-semibold text-gray-900 mb-2">
-                          {integration.name}
-                        </h3>
-                        <p className="text-sm text-gray-600">
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
                           {t(integration.descKey)}
                         </p>
                       </motion.div>
@@ -228,11 +128,11 @@ export default function IntegrationsPage() {
       {/* CTA Section */}
       <section className="py-20">
         <div className="container mx-auto px-4">
-          <div className="glass rounded-3xl p-12 text-center max-w-4xl mx-auto">
-            <h2 className="text-3xl font-bold mb-6">
+          <div className="glass rounded-3xl p-12 text-center max-w-4xl mx-auto dark:bg-neutral-800/50 dark:border dark:border-neutral-700">
+            <h2 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white">
               {t('integrationsPage.cta.title')}
             </h2>
-            <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+            <p className="text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-2xl mx-auto">
               {t('integrationsPage.cta.subtitle')}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">

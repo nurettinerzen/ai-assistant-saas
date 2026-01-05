@@ -31,7 +31,7 @@ export default function Navigation() {
   ];
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-white/10">
+    <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-white/10 dark:bg-neutral-900/80 dark:border-neutral-700">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
@@ -50,7 +50,7 @@ export default function Navigation() {
               >
                 <Link
                   href={item.href}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary transition-colors rounded-lg hover:bg-gray-50 flex items-center"
+                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:text-primary transition-colors rounded-lg hover:bg-gray-50 dark:hover:bg-neutral-800 flex items-center"
                 >
                   {item.name}
                   {item.items && (
@@ -60,12 +60,12 @@ export default function Navigation() {
 
                 {/* Dropdown */}
                 {item.items && activeDropdown === item.name && (
-                  <div className="absolute top-full left-0 mt-2 w-64 glass rounded-xl shadow-xl border border-white/20 overflow-hidden animate-fade-in">
+                  <div className="absolute top-full left-0 mt-2 w-64 glass rounded-xl shadow-xl border border-white/20 dark:bg-neutral-800 dark:border-neutral-700 overflow-hidden animate-fade-in">
                     {item.items.map((subItem) => (
                       <Link
                         key={subItem.nameKey}
                         href={subItem.href}
-                        className="block px-4 py-3 text-sm text-gray-700 hover:bg-primary/10 hover:text-primary transition-colors"
+                        className="block px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-primary/10 hover:text-primary transition-colors"
                       >
                         {t(subItem.nameKey)}
                       </Link>
@@ -93,10 +93,10 @@ export default function Navigation() {
 
           {/* Mobile Menu Button */}
           <button
-            className="md:hidden p-2 rounded-lg hover:bg-gray-100"
+            className="md:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-neutral-800"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-6 h-6 text-gray-700 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               {mobileMenuOpen ? (
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               ) : (
@@ -113,7 +113,7 @@ export default function Navigation() {
               <div key={item.name}>
                 <Link
                   href={item.href}
-                  className="block px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg"
+                  className="block px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-neutral-800 rounded-lg"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   {item.name}
@@ -124,7 +124,7 @@ export default function Navigation() {
                       <Link
                         key={subItem.nameKey}
                         href={subItem.href}
-                        className="block px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-lg"
+                        className="block px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-neutral-800 rounded-lg"
                         onClick={() => setMobileMenuOpen(false)}
                       >
                         {t(subItem.nameKey)}

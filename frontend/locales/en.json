@@ -148,9 +148,9 @@
       "emailPlaceholder": "example@email.com",
       "phoneLabel": "Phone",
       "phonePlaceholder": "+1 XXX XXX XXXX",
-      "submitButton": "Request Demo",
-      "consent": "By submitting, you agree to receive a demo call from our AI assistant",
-      "successMessage": "Request received! Our AI assistant will call you shortly.",
+      "submitButton": "Call Me",
+      "consent": "When you click, our AI assistant will call you immediately",
+      "successMessage": "Call initiated! Your phone will ring shortly.",
       "errorMessage": "An error occurred. Please try again.",
       "feature1": {
         "title": "Natural Conversation",
@@ -2161,12 +2161,22 @@
       "subtitle": "Work seamlessly with the tools you use"
     },
     "categories": {
+      "data": "Data Integrations",
       "ecommerce": "E-Commerce",
       "calendar": "Calendar",
       "email": "Email",
       "accounting": "Accounting",
       "payment": "Payment",
       "sms": "SMS"
+    },
+    "googleSheets": {
+      "desc": "Sync customer data with Google Sheets"
+    },
+    "customCrm": {
+      "desc": "Integration with your own CRM system"
+    },
+    "webhookApi": {
+      "desc": "Connect to any system via Webhook API"
     },
     "ikas": {
       "desc": "Order and customer management with Turkey's leading e-commerce infrastructure"

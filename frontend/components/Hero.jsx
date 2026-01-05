@@ -21,7 +21,7 @@ export const Hero = () => {
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Animated Background */}
-      <div className="absolute inset-0 bg-gradient-to-b from-background via-gray-50 to-background">
+      <div className="absolute inset-0 bg-gradient-to-b from-background via-gray-50 to-background dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950">
         <WaveformAnimation />
       </div>
 
@@ -39,7 +39,7 @@ export const Hero = () => {
             transition={{ delay: 0.2, duration: 0.5 }}
             className="inline-block mb-6"
           >
-            <span className="px-5 py-2.5 bg-primary/10 text-primary rounded-full text-sm font-semibold border border-primary/20 shadow-sm">
+            <span className="px-5 py-2.5 bg-primary/10 dark:bg-primary/20 text-primary rounded-full text-sm font-semibold border border-primary/20 dark:border-primary/30 shadow-sm">
               {t('landing.hero.badge')}
             </span>
           </motion.div>
@@ -49,7 +49,7 @@ export const Hero = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3, duration: 0.8 }}
-            className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold text-foreground leading-[1.1] mb-6"
+            className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold text-foreground dark:text-white leading-[1.1] mb-6"
           >
             {t('landing.hero.title')}
           </motion.h1>
@@ -59,7 +59,7 @@ export const Hero = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5, duration: 0.7 }}
-            className="text-lg sm:text-xl lg:text-2xl text-muted-foreground mb-10 leading-relaxed max-w-3xl mx-auto"
+            className="text-lg sm:text-xl lg:text-2xl text-muted-foreground dark:text-neutral-400 mb-10 leading-relaxed max-w-3xl mx-auto"
           >
             {t('landing.hero.subtitle')}
           </motion.p>

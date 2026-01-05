@@ -122,48 +122,48 @@ export default function EmailPendingPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-50 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 flex items-center justify-center p-4">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary-600 mx-auto mb-4" />
-          <p className="text-neutral-600">Yükleniyor...</p>
+          <p className="text-neutral-600 dark:text-neutral-400">Yükleniyor...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-50 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 flex items-center justify-center p-4">
       <Toaster position="top-right" richColors />
 
       <div className="w-full max-w-md">
-        <div className="bg-white rounded-2xl shadow-xl border border-neutral-200 p-8">
+        <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-xl border border-neutral-200 dark:border-neutral-700 p-8">
           {/* Logo */}
           <div className="flex items-center justify-center mb-8">
             <div className="flex items-center gap-2">
               <div className="w-10 h-10 bg-gradient-to-br from-primary-600 to-primary-700 rounded-lg flex items-center justify-center">
                 <Phone className="h-6 w-6 text-white" />
               </div>
-              <span className="text-2xl font-bold text-neutral-900">Telyx</span>
+              <span className="text-2xl font-bold text-neutral-900 dark:text-white">Telyx</span>
             </div>
           </div>
 
           {/* Main Content */}
           <div className="text-center">
-            <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Mail className="h-8 w-8 text-yellow-600" />
+            <div className="w-16 h-16 bg-yellow-100 dark:bg-yellow-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Mail className="h-8 w-8 text-yellow-600 dark:text-yellow-400" />
             </div>
 
-            <h1 className="text-2xl font-bold text-neutral-900 mb-2">
+            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
               Email Doğrulama Bekleniyor
             </h1>
 
-            <p className="text-neutral-600 mb-2">
+            <p className="text-neutral-600 dark:text-neutral-400 mb-2">
               Hesabınızı kullanmaya başlamak için email adresinizi doğrulamanız gerekiyor.
             </p>
 
-            <div className="bg-neutral-100 rounded-lg p-3 mb-6">
-              <p className="text-sm text-neutral-600">Doğrulama linki gönderildi:</p>
-              <p className="font-medium text-neutral-900">{user?.email}</p>
+            <div className="bg-neutral-100 dark:bg-neutral-700 rounded-lg p-3 mb-6">
+              <p className="text-sm text-neutral-600 dark:text-neutral-400">Doğrulama linki gönderildi:</p>
+              <p className="font-medium text-neutral-900 dark:text-white">{user?.email}</p>
             </div>
 
             {!showChangeEmail ? (
@@ -273,7 +273,7 @@ export default function EmailPendingPage() {
           </div>
 
           {/* Info Box */}
-          <div className="mt-6 bg-blue-50 rounded-lg p-4 text-sm text-blue-800">
+          <div className="mt-6 bg-blue-50 dark:bg-blue-900/30 rounded-lg p-4 text-sm text-blue-800 dark:text-blue-300">
             <div className="flex gap-2">
               <CheckCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
               <div>
@@ -284,9 +284,9 @@ export default function EmailPendingPage() {
           </div>
 
           {/* Help Link */}
-          <p className="text-center text-sm text-neutral-500 mt-6">
+          <p className="text-center text-sm text-neutral-500 dark:text-neutral-400 mt-6">
             Sorun mu yaşıyorsunuz?{' '}
-            <Link href="mailto:support@telyx.ai" className="text-primary-600 hover:underline">
+            <Link href="mailto:support@telyx.ai" className="text-primary-600 dark:text-primary-400 hover:underline">
               Destek alın
             </Link>
           </p>

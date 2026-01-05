@@ -79,9 +79,9 @@ export default function SignupPage() {
       const response = await apiClient.auth.signup(formData);
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
-      toast.success('Account created! Please verify your email.');
-      // Redirect to email pending page for verification
-      router.push('/auth/email-pending');
+      toast.success('Account created successfully!');
+      // Skip email verification - go directly to dashboard
+      router.push('/dashboard');
     } catch (error) {
       console.error('Signup error:', error);
       // Handle invite code specific errors
@@ -102,31 +102,31 @@ export default function SignupPage() {
   // Show loading while checking auth
   if (checkingAuth) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-indigo-600 dark:text-indigo-400" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 flex items-center justify-center p-4">
       <Toaster position="top-right" />
-      
+
       <div className="w-full max-w-md">
         <div className="flex justify-between items-center mb-8">
-          <Link href="/" className="text-2xl font-bold text-indigo-600">
+          <Link href="/" className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
             <Phone className="inline-block mr-2 h-8 w-8" />
             TELYX.AI
           </Link>
           <LanguageSwitcher />
         </div>
 
-        <div className="bg-white rounded-2xl shadow-xl p-8">
+        <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-xl dark:border dark:border-neutral-700 p-8">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
               {t('auth.signupTitle')}
             </h1>
-            <p className="text-gray-600">{t('auth.signupSubtitle')}</p>
+            <p className="text-gray-600 dark:text-neutral-400">{t('auth.signupSubtitle')}</p>
           </div>
 
           <form onSubmit={handleSignup} className="space-y-6">
@@ -177,13 +177,13 @@ export default function SignupPage() {
                   minLength={8}
                 />
               </div>
-              <p className="text-xs text-gray-500 mt-1">{t('auth.mustBe8Chars')}</p>
+              <p className="text-xs text-gray-500 dark:text-neutral-500 mt-1">{t('auth.mustBe8Chars')}</p>
             </div>
 
             <div>
               <Label htmlFor="inviteCode">{t('invite.codeLabel')}</Label>
               <div className="relative">
-                <Ticket className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <Ticket className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-gray-500" />
                 <Input
                   id="inviteCode"
                   type="text"
@@ -194,9 +194,9 @@ export default function SignupPage() {
                   required
                 />
               </div>
-              <p className="text-xs text-gray-500 mt-2">
+              <p className="text-xs text-gray-500 dark:text-neutral-500 mt-2">
                 {t('invite.noCode')}{' '}
-                <Link href="/waitlist" className="text-indigo-600 hover:underline font-medium">
+                <Link href="/waitlist" className="text-indigo-600 dark:text-indigo-400 hover:underline font-medium">
                   {t('invite.applyEarlyAccess')}
                 </Link>
               </p>
@@ -214,9 +214,9 @@ export default function SignupPage() {
             </Button>
           </form>
 
-          <div className="mt-6 text-center text-sm text-gray-600">
+          <div className="mt-6 text-center text-sm text-gray-600 dark:text-neutral-400">
             {t('auth.alreadyHaveAccount')}{' '}
-            <Link href="/login" className="text-indigo-600 hover:underline font-medium">
+            <Link href="/login" className="text-indigo-600 dark:text-indigo-400 hover:underline font-medium">
               {t('common.signIn')}
             </Link>
           </div>

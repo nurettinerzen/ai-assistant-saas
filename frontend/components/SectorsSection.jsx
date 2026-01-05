@@ -55,7 +55,7 @@ export const SectorsSection = () => {
   ];
 
   return (
-    <section className="py-24 px-4 sm:px-6 lg:px-8 bg-background">
+    <section className="py-24 px-4 sm:px-6 lg:px-8 bg-background dark:bg-neutral-950">
       <div className="max-w-7xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -64,10 +64,10 @@ export const SectorsSection = () => {
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
-          <h2 className="text-4xl sm:text-5xl font-bold text-foreground mb-4">
+          <h2 className="text-4xl sm:text-5xl font-bold text-foreground dark:text-white mb-4">
             {t('landing.sectors.title')}
           </h2>
-          <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+          <p className="text-xl text-muted-foreground dark:text-neutral-400 max-w-3xl mx-auto">
             {t('landing.sectors.subtitle')}
           </p>
         </motion.div>
@@ -83,16 +83,16 @@ export const SectorsSection = () => {
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
               >
-                <Card className="p-6 h-full hover:shadow-lg transition-all duration-300 hover:-translate-y-1 bg-card border-border flex flex-col">
+                <Card className="p-6 h-full hover:shadow-lg transition-all duration-300 hover:-translate-y-1 bg-card dark:bg-neutral-800 border-border dark:border-neutral-700 flex flex-col">
                   <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${sector.color} flex items-center justify-center mb-4`}>
                     <Icon className="w-6 h-6 text-white" />
                   </div>
-                  <h3 className="text-lg font-bold text-foreground mb-3">
+                  <h3 className="text-lg font-bold text-foreground dark:text-white mb-3">
                     {t(sector.titleKey)}
                   </h3>
                   <ul className="space-y-2 mb-4 flex-1">
                     {sector.features.map((feature, idx) => (
-                      <li key={idx} className="flex items-start space-x-2 text-sm text-muted-foreground">
+                      <li key={idx} className="flex items-start space-x-2 text-sm text-muted-foreground dark:text-neutral-400">
                         <div className="w-1.5 h-1.5 rounded-full bg-primary mt-2 flex-shrink-0" />
                         <span>{t(feature)}</span>
                       </li>

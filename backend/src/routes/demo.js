@@ -3,86 +3,81 @@ import elevenLabsService from '../services/elevenlabs.js';
 
 const router = express.Router();
 
-// Demo agent and phone number IDs - should be set in environment
-// These are the 11Labs agent and phone number assigned to nurettin@telyx.ai for demos
-const DEMO_AGENT_ID = process.env.DEMO_ELEVENLABS_AGENT_ID;
-const DEMO_PHONE_NUMBER_ID = process.env.DEMO_ELEVENLABS_PHONE_NUMBER_ID;
+// Demo configuration from environment variables
+const DEMO_CONFIG = {
+  agentId: process.env.ELEVENLABS_DEMO_AGENT_ID,
+  phoneNumberId: process.env.ELEVENLABS_DEMO_PHONE_NUMBER_ID
+};
 
-// Demo request endpoint - Request a demo call using 11Labs
+// Demo request endpoint - Initiate outbound call to user using 11Labs
 router.post('/demo/request-call', async (req, res) => {
   try {
-    const { phoneNumber, language = 'TR' } = req.body;
+    const { phoneNumber, language = 'TR', name } = req.body;
 
-    // Phone number is required for outbound calls
+    // Validate phone number
     if (!phoneNumber) {
-      return res.status(400).json({ error: 'Phone number is required' });
-    }
-
-    // Clean and validate phone number
-    let cleanPhone = phoneNumber.replace(/\D/g, '');
-
-    // Add country code if missing
-    if (cleanPhone.length === 10) {
-      // Turkish mobile starting with 5
-      cleanPhone = '+90' + cleanPhone;
-    } else if (cleanPhone.startsWith('0') && cleanPhone.length === 11) {
-      // Turkish format with leading 0
-      cleanPhone = '+9' + cleanPhone;
-    } else if (!cleanPhone.startsWith('+')) {
-      cleanPhone = '+' + cleanPhone;
-    }
-
-    if (cleanPhone.length < 12) {
-      return res.status(400).json({ error: 'Invalid phone number format' });
-    }
-
-    // Check if 11Labs demo credentials are configured
-    if (!DEMO_AGENT_ID || !DEMO_PHONE_NUMBER_ID) {
-      console.log('📞 Demo call requested but 11Labs demo not configured:', { phoneNumber, language });
-      return res.json({
+      return res.status(400).json({
         success: false,
-        error: 'Demo sistemi henüz yapılandırılmadı. Lütfen daha sonra tekrar deneyin.',
-        demo: true
+        error: 'Telefon numarasi gereklidir'
       });
     }
 
-    console.log('📞 Initiating 11Labs demo call:', {
-      toNumber: cleanPhone.slice(-4).padStart(cleanPhone.length, '*'),
-      agentId: DEMO_AGENT_ID,
-      phoneNumberId: DEMO_PHONE_NUMBER_ID,
-      language
+    // Clean phone number - ensure E.164 format
+    let cleanPhone = phoneNumber.replace(/\D/g, '');
+
+    // Add country code if not present (assume Turkey for now)
+    if (cleanPhone.startsWith('0')) {
+      cleanPhone = '90' + cleanPhone.substring(1);
+    }
+    if (!cleanPhone.startsWith('90') && cleanPhone.length === 10) {
+      cleanPhone = '90' + cleanPhone;
+    }
+    cleanPhone = '+' + cleanPhone;
+
+    // Check if demo is configured
+    if (!DEMO_CONFIG.agentId || !DEMO_CONFIG.phoneNumberId) {
+      console.log('📞 Demo call requested but not configured:', {
+        hasAgentId: !!DEMO_CONFIG.agentId,
+        hasPhoneNumberId: !!DEMO_CONFIG.phoneNumberId
+      });
+      return res.status(400).json({
+        success: false,
+        error: 'Demo sistemi henuz yapilandirilmadi. Lutfen daha sonra tekrar deneyin.'
+      });
+    }
+
+    console.log('📞 Initiating demo outbound call:', {
+      to: cleanPhone.slice(0, -4) + '****',
+      language,
+      name
     });
 
     // Initiate outbound call via 11Labs
     const result = await elevenLabsService.initiateOutboundCall({
-      agentId: DEMO_AGENT_ID,
-      phoneNumberId: DEMO_PHONE_NUMBER_ID,
+      agentId: DEMO_CONFIG.agentId,
+      phoneNumberId: DEMO_CONFIG.phoneNumberId,
       toNumber: cleanPhone,
       clientData: {
-        source: 'landing_page_demo',
-        language: language
+        caller_name: name || 'Demo User',
+        language: language,
+        demo: true
       }
     });
 
-    console.log('✅ Demo call initiated:', {
-      callSid: result.call_sid,
-      phoneNumber: cleanPhone.slice(-4).padStart(cleanPhone.length, '*')
-    });
+    console.log('✅ Demo call initiated:', result);
 
-    return res.json({
+    res.json({
       success: true,
-      message: language === 'TR'
-        ? 'Demo araması başlatıldı! Telefonunuz birkaç saniye içinde çalacak.'
-        : 'Demo call initiated! Your phone will ring shortly.',
-      callId: result.call_sid,
+      message: 'Demo araması başlatıldı! Telefonunuz birazdan çalacak.',
+      callId: result.call_sid || result.conversation_id,
       callType: 'outbound'
     });
 
   } catch (error) {
     console.error('Demo call error:', error.response?.data || error.message);
-    return res.status(500).json({
+    res.status(500).json({
       success: false,
-      error: 'Demo araması başlatılamadı. Lütfen daha sonra tekrar deneyin.'
+      error: 'Demo araması başlatılamadı. Lütfen tekrar deneyin.'
     });
   }
 });
@@ -103,7 +98,7 @@ router.post('/demo/feedback', async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Thank you for your feedback!'
+      message: 'Geri bildiriminiz icin tesekkurler!'
     });
 
   } catch (error) {
@@ -112,20 +107,22 @@ router.post('/demo/feedback', async (req, res) => {
   }
 });
 
-// Legacy demo request endpoint (backward compatibility)
+// Legacy demo request endpoint (for landing page form - simple contact form)
 router.post('/demo-request', async (req, res) => {
   try {
     const { name, email, phone } = req.body;
 
-    console.log('📞 Demo request received:', { name, email, phone });
+    console.log('📞 Demo request received (contact form):', { name, email, phone });
+
+    // TODO: Store demo requests in database and/or send notification
 
     res.json({
       success: true,
-      message: 'Demo request received successfully'
+      message: 'Demo talebiniz alındı. En kısa sürede sizinle iletişime geçeceğiz!'
     });
   } catch (error) {
     console.error('Demo request error:', error);
-    res.status(500).json({ error: 'Failed to process demo request' });
+    res.status(500).json({ error: 'Demo talebi işlenemedi' });
   }
 });
 

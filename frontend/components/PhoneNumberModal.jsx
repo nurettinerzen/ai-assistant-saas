@@ -41,14 +41,13 @@ export default function PhoneNumberModal({ isOpen, onClose, onSuccess }) {
   const [showPassword, setShowPassword] = useState(false);
 
   // SIP Form State
-  // Note: UDP is NOT supported by 11Labs, only TCP and TLS
   const [sipForm, setSipForm] = useState({
     phoneNumber: '',
     sipServer: '',
     sipUsername: '',
     sipPassword: '',
     sipPort: '5060',
-    sipTransport: 'TCP'
+    sipTransport: 'UDP'
   });
 
   useEffect(() => {
@@ -61,18 +60,13 @@ export default function PhoneNumberModal({ isOpen, onClose, onSuccess }) {
   // Update SIP defaults when provider changes
   useEffect(() => {
     if (selectedProvider) {
-      // Ensure transport is TCP or TLS (UDP not supported by 11Labs)
-      let transport = selectedProvider.defaultTransport || 'TCP';
-      if (transport.toUpperCase() === 'UDP') {
-        transport = 'TCP'; // Force TCP if provider default was UDP
-      }
-
       setSipForm(prev => ({
         ...prev,
         // Use provider's default, or clear if no default (user must enter manually)
         sipServer: selectedProvider.defaultServer || '',
         sipPort: String(selectedProvider.defaultPort || 5060),
-        sipTransport: transport.toUpperCase()
+        // Always use UDP as default for SIP (optimal for voice traffic)
+        sipTransport: 'UDP'
       }));
     }
   }, [selectedProvider]);
@@ -196,7 +190,7 @@ export default function PhoneNumberModal({ isOpen, onClose, onSuccess }) {
       sipUsername: '',
       sipPassword: '',
       sipPort: '5060',
-      sipTransport: 'TCP'
+      sipTransport: 'UDP'
     });
     setShowPassword(false);
     onClose();
@@ -391,14 +385,15 @@ export default function PhoneNumberModal({ isOpen, onClose, onSuccess }) {
                   <Select
                     value={sipForm.sipTransport}
                     onValueChange={(value) => handleSipFormChange('sipTransport', value)}
+                    defaultValue="UDP"
                   >
                     <SelectTrigger className="mt-1">
-                      <SelectValue />
+                      <SelectValue placeholder="UDP" />
                     </SelectTrigger>
                     <SelectContent>
-                      {/* Note: UDP is NOT supported by 11Labs */}
+                      <SelectItem value="UDP">UDP (Önerilen)</SelectItem>
                       <SelectItem value="TCP">TCP</SelectItem>
-                      <SelectItem value="TLS">TLS (Şifreli)</SelectItem>
+                      <SelectItem value="TLS">TLS</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

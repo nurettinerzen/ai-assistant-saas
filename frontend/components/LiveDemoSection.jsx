@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Phone, Loader2, CheckCircle } from 'lucide-react';
+import { Phone, Mail, User } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Card } from './ui/card';
@@ -10,59 +10,54 @@ import { toast } from 'sonner';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 export const LiveDemoSection = () => {
-  const { t, locale: language } = useLanguage();
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const { t } = useLanguage();
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+  });
   const [loading, setLoading] = useState(false);
-  const [callInitiated, setCallInitiated] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    // Validate phone number
-    const cleanPhone = phoneNumber.replace(/\D/g, '');
-    if (cleanPhone.length < 10) {
-      toast.error(language === 'tr' ? 'Geçerli bir telefon numarası girin' : 'Please enter a valid phone number');
-      return;
-    }
-
     setLoading(true);
 
     try {
+      // Call the demo outbound call endpoint
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/demo/request-call`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          phoneNumber: cleanPhone,
-          language: language === 'tr' ? 'TR' : 'EN'
+          phoneNumber: formData.phone,
+          name: formData.name,
+          language: 'TR'
         }),
       });
 
       const data = await response.json();
 
       if (response.ok && data.success) {
-        setCallInitiated(true);
-        toast.success(language === 'tr'
-          ? 'Demo araması başlatılıyor! Telefonunuz birkaç saniye içinde çalacak.'
-          : 'Demo call initiated! Your phone will ring shortly.');
-        setPhoneNumber('');
-
-        // Reset after 30 seconds
-        setTimeout(() => setCallInitiated(false), 30000);
+        toast.success(t('landing.demo.successMessage'));
+        setFormData({ name: '', email: '', phone: '' });
       } else {
-        toast.error(data.error || (language === 'tr' ? 'Demo araması başlatılamadı' : 'Failed to initiate demo call'));
+        toast.error(data.error || t('landing.demo.errorMessage'));
       }
     } catch (error) {
       console.error('Error:', error);
-      toast.error(language === 'tr' ? 'Bir hata oluştu. Lütfen tekrar deneyin.' : 'An error occurred. Please try again.');
+      toast.error(t('landing.demo.errorMessage'));
     } finally {
       setLoading(false);
     }
   };
 
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
   return (
-    <section id="live-demo" className="py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-background to-gray-50">
+    <section id="live-demo" className="py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-background to-gray-50 dark:from-neutral-950 dark:to-neutral-900">
       <div className="max-w-6xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -71,10 +66,10 @@ export const LiveDemoSection = () => {
           transition={{ duration: 0.6 }}
           className="text-center mb-12"
         >
-          <h2 className="text-4xl sm:text-5xl font-bold text-foreground mb-4">
+          <h2 className="text-4xl sm:text-5xl font-bold text-foreground dark:text-white mb-4">
             {t('landing.demo.title')}
           </h2>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+          <p className="text-xl text-muted-foreground dark:text-neutral-400 max-w-2xl mx-auto">
             {t('landing.demo.subtitle')}
           </p>
         </motion.div>
@@ -85,84 +80,86 @@ export const LiveDemoSection = () => {
           viewport={{ once: true }}
           transition={{ duration: 0.7, delay: 0.2 }}
         >
-          <Card className="max-w-2xl mx-auto border-2 border-primary/20 shadow-blue-lg bg-card">
+          <Card className="max-w-2xl mx-auto border-2 border-primary/20 dark:border-primary/30 shadow-blue-lg bg-card dark:bg-neutral-800">
             <div className="p-8 sm:p-12">
               <div className="flex items-center justify-center mb-6">
-                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                <div className="w-16 h-16 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center">
                   <Phone className="w-8 h-8 text-primary" />
                 </div>
               </div>
 
-              <h3 className="text-2xl font-bold text-center text-foreground mb-2">
+              <h3 className="text-2xl font-bold text-center text-foreground dark:text-white mb-2">
                 {t('landing.demo.formTitle')}
               </h3>
-              <p className="text-center text-muted-foreground mb-8">
+              <p className="text-center text-muted-foreground dark:text-neutral-400 mb-8">
                 {t('landing.demo.formSubtitle')}
               </p>
 
-              {callInitiated ? (
-                <div className="text-center py-8">
-                  <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
-                  </div>
-                  <h4 className="text-lg font-semibold text-foreground mb-2">
-                    {language === 'tr' ? 'Arama Başlatıldı!' : 'Call Initiated!'}
-                  </h4>
-                  <p className="text-muted-foreground">
-                    {language === 'tr'
-                      ? 'Telefonunuz birkaç saniye içinde çalacak. AI asistanımız sizinle konuşmak için bekliyor.'
-                      : 'Your phone will ring shortly. Our AI assistant is waiting to talk with you.'}
-                  </p>
+              <form onSubmit={handleSubmit} className="space-y-5">
+                <div className="space-y-2">
+                  <label htmlFor="name" className="text-sm font-medium text-foreground dark:text-white flex items-center">
+                    <User className="w-4 h-4 mr-2 text-muted-foreground dark:text-neutral-400" />
+                    {t('landing.demo.nameLabel')}
+                  </label>
+                  <Input
+                    id="name"
+                    name="name"
+                    type="text"
+                    placeholder={t('landing.demo.namePlaceholder')}
+                    value={formData.name}
+                    onChange={handleChange}
+                    required
+                    className="h-12 border-border dark:border-neutral-600 dark:bg-neutral-700 dark:text-white focus:border-primary focus:ring-primary"
+                  />
                 </div>
-              ) : (
-                <form onSubmit={handleSubmit} className="space-y-5">
-                  <div className="space-y-2">
-                    <label htmlFor="phone" className="text-sm font-medium text-foreground flex items-center">
-                      <Phone className="w-4 h-4 mr-2 text-muted-foreground" />
-                      {language === 'tr' ? 'Telefon Numaranız' : 'Your Phone Number'}
-                    </label>
-                    <Input
-                      id="phone"
-                      type="tel"
-                      placeholder={language === 'tr' ? '+90 5XX XXX XX XX' : '+1 (555) 000-0000'}
-                      value={phoneNumber}
-                      onChange={(e) => setPhoneNumber(e.target.value)}
-                      required
-                      className="h-12 border-border focus:border-primary focus:ring-primary text-lg"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      {language === 'tr'
-                        ? 'Numaranızı girin, sizi arayalım ve AI asistanımızı deneyin!'
-                        : 'Enter your number and we\'ll call you to demo our AI assistant!'}
-                    </p>
-                  </div>
 
-                  <Button
-                    type="submit"
-                    size="lg"
-                    disabled={loading}
-                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-blue h-14 text-lg font-semibold"
-                  >
-                    {loading ? (
-                      <>
-                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                        {language === 'tr' ? 'Aranıyor...' : 'Calling...'}
-                      </>
-                    ) : (
-                      <>
-                        <Phone className="w-5 h-5 mr-2" />
-                        {language === 'tr' ? 'Beni Ara' : 'Call Me Now'}
-                      </>
-                    )}
-                  </Button>
+                <div className="space-y-2">
+                  <label htmlFor="email" className="text-sm font-medium text-foreground dark:text-white flex items-center">
+                    <Mail className="w-4 h-4 mr-2 text-muted-foreground dark:text-neutral-400" />
+                    {t('landing.demo.emailLabel')}
+                  </label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    placeholder={t('landing.demo.emailPlaceholder')}
+                    value={formData.email}
+                    onChange={handleChange}
+                    required
+                    className="h-12 border-border dark:border-neutral-600 dark:bg-neutral-700 dark:text-white focus:border-primary focus:ring-primary"
+                  />
+                </div>
 
-                  <p className="text-xs text-center text-muted-foreground mt-4">
-                    {language === 'tr'
-                      ? '1-2 dakikalık ücretsiz demo görüşmesi. Numaranız kaydedilmez.'
-                      : '1-2 minute free demo call. Your number won\'t be stored.'}
-                  </p>
-                </form>
-              )}
+                <div className="space-y-2">
+                  <label htmlFor="phone" className="text-sm font-medium text-foreground dark:text-white flex items-center">
+                    <Phone className="w-4 h-4 mr-2 text-muted-foreground dark:text-neutral-400" />
+                    {t('landing.demo.phoneLabel')}
+                  </label>
+                  <Input
+                    id="phone"
+                    name="phone"
+                    type="tel"
+                    placeholder={t('landing.demo.phonePlaceholder')}
+                    value={formData.phone}
+                    onChange={handleChange}
+                    required
+                    className="h-12 border-border dark:border-neutral-600 dark:bg-neutral-700 dark:text-white focus:border-primary focus:ring-primary"
+                  />
+                </div>
+
+                <Button
+                  type="submit"
+                  size="lg"
+                  disabled={loading}
+                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-blue h-12 text-base font-semibold"
+                >
+                  {loading ? t('common.loading') : t('landing.demo.submitButton')}
+                </Button>
+
+                <p className="text-xs text-center text-muted-foreground dark:text-neutral-500 mt-4">
+                  {t('landing.demo.consent')}
+                </p>
+              </form>
             </div>
           </Card>
         </motion.div>
@@ -180,9 +177,9 @@ export const LiveDemoSection = () => {
             { titleKey: 'landing.demo.feature2.title', descKey: 'landing.demo.feature2.desc' },
             { titleKey: 'landing.demo.feature3.title', descKey: 'landing.demo.feature3.desc' },
           ].map((feature, index) => (
-            <Card key={index} className="p-6 hover:shadow-lg transition-shadow bg-card border-border">
-              <h4 className="font-semibold text-foreground mb-2">{t(feature.titleKey)}</h4>
-              <p className="text-sm text-muted-foreground">{t(feature.descKey)}</p>
+            <Card key={index} className="p-6 hover:shadow-lg transition-shadow bg-card dark:bg-neutral-800 border-border dark:border-neutral-700">
+              <h4 className="font-semibold text-foreground dark:text-white mb-2">{t(feature.titleKey)}</h4>
+              <p className="text-sm text-muted-foreground dark:text-neutral-400">{t(feature.descKey)}</p>
             </Card>
           ))}
         </motion.div>
