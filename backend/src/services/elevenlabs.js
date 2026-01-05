@@ -151,24 +151,39 @@ const elevenLabsService = {
   /**
    * Import a SIP trunk phone number to 11Labs (for NetGSM, etc.)
    * @param {Object} config - SIP trunk configuration
+   *
+   * SIP Trunk Configuration:
+   * - termination_uri: Where 11Labs sends OUTBOUND calls (your SIP provider's hostname)
+   * - origination_uri: Where your SIP provider sends INBOUND calls (11Labs SIP URI)
+   * - authentication: Username/password for SIP REGISTER
    */
   async importSipTrunkNumber(config) {
     try {
-      const response = await elevenLabsClient.post('/convai/phone-numbers/create', {
+      // termination_uri should be just the hostname (for outbound calls from 11Labs)
+      const terminationUri = config.sipServer;
+
+      // Build the request payload
+      const payload = {
         phone_number: config.phoneNumber,
         label: config.label || `SIP - ${config.phoneNumber}`,
         provider: 'sip_trunk',
         provider_config: {
-          sip_trunk_termination_uri: config.sipUri || `sip:${config.sipUsername}@${config.sipServer}`,
-          sip_trunk_origination_uri: config.originationUri || config.sipUri,
+          // Outbound: 11Labs sends SIP INVITE to this address
+          sip_trunk_termination_uri: terminationUri,
+          // Authentication for SIP REGISTER
           sip_trunk_authentication: {
             username: config.sipUsername,
             password: config.sipPassword
           }
         },
         agent_id: config.agentId
-      });
+      };
+
+      console.log('📞 11Labs SIP trunk payload:', JSON.stringify(payload, null, 2));
+
+      const response = await elevenLabsClient.post('/convai/phone-numbers/create', payload);
       console.log('✅ 11Labs SIP trunk phone number imported:', response.data.phone_number_id);
+      console.log('📋 11Labs response:', JSON.stringify(response.data, null, 2));
       return response.data;
     } catch (error) {
       console.error('❌ 11Labs importSipTrunkNumber error:', error.response?.data || error.message);
@@ -190,6 +205,38 @@ const elevenLabsService = {
       return response.data;
     } catch (error) {
       console.error('❌ 11Labs updatePhoneNumber error:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  /**
+   * Update SIP trunk configuration for a phone number
+   * @param {string} phoneNumberId - 11Labs phone number ID
+   * @param {Object} config - SIP configuration to update
+   */
+  async updateSipTrunkConfig(phoneNumberId, config) {
+    try {
+      const updatePayload = {
+        provider_config: {
+          sip_trunk_termination_uri: config.sipServer,
+          sip_trunk_authentication: {
+            username: config.sipUsername,
+            password: config.sipPassword
+          }
+        }
+      };
+
+      if (config.agentId) {
+        updatePayload.agent_id = config.agentId;
+      }
+
+      console.log('📞 Updating 11Labs SIP config:', JSON.stringify(updatePayload, null, 2));
+
+      const response = await elevenLabsClient.patch(`/convai/phone-numbers/${phoneNumberId}`, updatePayload);
+      console.log('✅ 11Labs SIP trunk config updated:', phoneNumberId);
+      return response.data;
+    } catch (error) {
+      console.error('❌ 11Labs updateSipTrunkConfig error:', error.response?.data || error.message);
       throw error;
     }
   },

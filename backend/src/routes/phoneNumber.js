@@ -566,6 +566,56 @@ router.post('/import-sip', async (req, res) => {
 });
 
 // ============================================================================
+// UPDATE SIP TRUNK CONFIGURATION
+// ============================================================================
+router.patch('/:id/sip-config', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { sipServer, sipUsername, sipPassword } = req.body;
+    const businessId = req.businessId;
+
+    console.log('🔄 [SIP Config Update] Starting...', { id, sipServer, sipUsername });
+
+    // Get phone number
+    const phoneNumber = await prisma.phoneNumber.findFirst({
+      where: { id, businessId }
+    });
+
+    if (!phoneNumber) {
+      return res.status(404).json({ error: 'Phone number not found' });
+    }
+
+    if (!phoneNumber.elevenLabsPhoneId) {
+      return res.status(400).json({ error: 'Phone number not connected to 11Labs' });
+    }
+
+    // Update in 11Labs
+    await elevenLabsService.updateSipTrunkConfig(phoneNumber.elevenLabsPhoneId, {
+      sipServer,
+      sipUsername,
+      sipPassword
+    });
+
+    // Update in database
+    await prisma.phoneNumber.update({
+      where: { id },
+      data: {
+        sipServer,
+        sipUsername,
+        sipPassword
+      }
+    });
+
+    console.log('✅ SIP config updated successfully');
+    res.json({ success: true, message: 'SIP configuration updated' });
+
+  } catch (error) {
+    console.error('❌ SIP config update error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================================
 // UPDATE ASSISTANT ASSIGNMENT
 // ============================================================================
 router.patch('/:id/assistant', async (req, res) => {
