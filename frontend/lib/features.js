@@ -529,17 +529,29 @@ export function getIntegrationFeatureInfo(integrationType, userPlan) {
     return { isLocked: false, feature: null };
   }
 
-  const normalizedPlan = userPlan?.toUpperCase() || PLANS.FREE;
+  // Normalize plan name - handle both 'PRO' and 'PROFESSIONAL'
+  let normalizedPlan = userPlan?.toUpperCase() || PLANS.FREE;
+
+  // Map 'PRO' to 'PROFESSIONAL' for consistency
+  if (normalizedPlan === 'PRO') {
+    normalizedPlan = PLANS.PROFESSIONAL;
+  }
 
   // PAYG plan should behave like STARTER for feature access
-  // If plan not defined in visibility, fall back to STARTER, then FREE
   let visibility = featureMapping.visibility[normalizedPlan];
+  if (visibility === undefined && normalizedPlan === 'PAYG') {
+    visibility = featureMapping.visibility[PLANS.STARTER] || featureMapping.visibility[PLANS.FREE];
+  }
+
+  // If visibility is not defined for this plan, check plan hierarchy
+  // Higher plans should have access if lower plans don't have explicit visibility
   if (visibility === undefined) {
-    if (normalizedPlan === 'PAYG') {
-      visibility = featureMapping.visibility[PLANS.STARTER] || featureMapping.visibility[PLANS.FREE];
-    } else {
-      // Unknown plan - treat as FREE (locked)
-      visibility = featureMapping.visibility[PLANS.FREE] || VISIBILITY.LOCKED;
+    const currentPlanLevel = PLAN_HIERARCHY[normalizedPlan] || 0;
+    const requiredPlanLevel = PLAN_HIERARCHY[featureMapping.requiredPlan] || 0;
+
+    // If user's plan level is >= required plan level, it's visible
+    if (currentPlanLevel >= requiredPlanLevel) {
+      return { isLocked: false, isHidden: false, feature: featureMapping };
     }
   }
 
