@@ -24,6 +24,8 @@ import checkStockCrm from './crm-stock.js';
 import checkTicketStatusCrm from './crm-ticket-status.js';
 // Customer Data Tool
 import customerDataLookup from './customer-data-lookup.js';
+// Callback Tool
+import createCallback from './create-callback.js';
 
 // Export all definitions as an array
 export const definitions = [
@@ -37,7 +39,9 @@ export const definitions = [
   checkStockCrm,
   checkTicketStatusCrm,
   // Customer Data Tool
-  customerDataLookup
+  customerDataLookup,
+  // Callback Tool
+  createCallback
 ];
 
 // Export individual definitions
@@ -52,7 +56,9 @@ export {
   checkStockCrm,
   checkTicketStatusCrm,
   // Customer Data Tool
-  customerDataLookup
+  customerDataLookup,
+  // Callback Tool
+  createCallback
 };
 
 // Export as default map for easy lookup

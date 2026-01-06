@@ -1,6 +1,7 @@
 /**
  * usePermissions Hook
  * Provides role-based permission checking for the frontend
+ * Includes subscription status checks (INCOMPLETE = limited access)
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -116,6 +117,22 @@ export function usePermissions() {
   const isStaff = user?.role === 'STAFF';
   const role = user?.role;
 
+  // Subscription status check
+  const subscriptionStatus = user?.subscription?.status;
+  const isSubscriptionActive = subscriptionStatus === 'ACTIVE';
+  const isSubscriptionIncomplete = subscriptionStatus === 'INCOMPLETE';
+
+  /**
+   * Check if subscription allows feature access
+   * INCOMPLETE status means payment pending - limited access
+   */
+  const hasActiveSubscription = useCallback(() => {
+    // Allow if no subscription data (backwards compatibility)
+    if (!user?.subscription) return true;
+    // ACTIVE and TRIALING are allowed
+    return ['ACTIVE', 'TRIALING'].includes(subscriptionStatus);
+  }, [user, subscriptionStatus]);
+
   /**
    * Update user in state (call this after login/profile update)
    * @param {Object} newUser - Updated user object
@@ -140,6 +157,12 @@ export function usePermissions() {
     isManager,
     isStaff,
     role,
+
+    // Subscription status checks
+    isSubscriptionActive,
+    isSubscriptionIncomplete,
+    hasActiveSubscription,
+    subscriptionStatus,
 
     // User state
     user,

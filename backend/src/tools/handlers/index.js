@@ -24,6 +24,8 @@ import crmStockHandler from './crm-stock.js';
 import crmTicketStatusHandler from './crm-ticket-status.js';
 // Customer Data Handler
 import customerDataLookupHandler from './customer-data-lookup.js';
+// Callback Handler
+import createCallbackHandler from './create-callback.js';
 
 // Tool name -> handler mapping
 const handlers = {
@@ -37,7 +39,9 @@ const handlers = {
   'check_stock_crm': crmStockHandler,
   'check_ticket_status_crm': crmTicketStatusHandler,
   // Customer Data Handler
-  'customer_data_lookup': customerDataLookupHandler
+  'customer_data_lookup': customerDataLookupHandler,
+  // Callback Handler
+  'create_callback': createCallbackHandler
 };
 
 export default handlers;
@@ -54,5 +58,7 @@ export {
   crmStockHandler,
   crmTicketStatusHandler,
   // Customer Data Handler
-  customerDataLookupHandler
+  customerDataLookupHandler,
+  // Callback Handler
+  createCallbackHandler
 };

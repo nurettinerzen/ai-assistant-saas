@@ -102,9 +102,9 @@ export const checkLimit = (action) => {
       const { businessId } = req.user;
 
       if (!businessId) {
-        return res.status(401).json({ 
+        return res.status(401).json({
           error: 'Business ID required',
-          upgradeRequired: false 
+          upgradeRequired: false
         });
       }
 

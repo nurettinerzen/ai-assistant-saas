@@ -32,6 +32,7 @@ function getStripe() {
 }
 
 // Plan configurations with both Stripe and iyzico pricing
+// Updated: January 2026 - synced with pricing.js
 const PLAN_CONFIG = {
   FREE: {
     name: 'FREE',
@@ -39,7 +40,7 @@ const PLAN_CONFIG = {
     priceTRY: 0,
     minutesLimit: 0,
     callsLimit: 0,
-    assistantsLimit: 0,
+    assistantsLimit: 1,
     phoneNumbersLimit: 0
   },
   PAYG: {
@@ -56,34 +57,47 @@ const PLAN_CONFIG = {
     name: 'STARTER',
     stripePriceId: process.env.STRIPE_STARTER_PRICE_ID || 'price_starter',
     iyzicoPlanRef: process.env.IYZICO_STARTER_PLAN_REF,
-    price: 27,
-    priceTRY: 899,
-    minutesLimit: 300,
-    callsLimit: 50,
-    assistantsLimit: 1,
-    phoneNumbersLimit: 1
+    price: 55,        // $55 USD
+    priceTRY: 2499,   // ₺2,499 TRY
+    minutesLimit: 150,
+    callsLimit: -1,   // unlimited
+    assistantsLimit: 3,
+    phoneNumbersLimit: -1 // unlimited
   },
+  PRO: {
+    name: 'PRO',
+    stripePriceId: process.env.STRIPE_PRO_PRICE_ID || 'price_pro',
+    iyzicoPlanRef: process.env.IYZICO_PRO_PLAN_REF,
+    price: 167,       // $167 USD
+    priceTRY: 7499,   // ₺7,499 TRY
+    minutesLimit: 500,
+    callsLimit: -1,   // unlimited
+    assistantsLimit: 10,
+    phoneNumbersLimit: -1 // unlimited
+  },
+  // PROFESSIONAL is deprecated alias for PRO
   PROFESSIONAL: {
     name: 'PROFESSIONAL',
-    stripePriceId: process.env.STRIPE_PRO_PRICE_ID || 'price_professional',
-    iyzicoPlanRef: process.env.IYZICO_PROFESSIONAL_PLAN_REF,
-    price: 77,
-    priceTRY: 2599,
-    minutesLimit: 1500,
-    callsLimit: -1, // unlimited
-    assistantsLimit: 2,
-    phoneNumbersLimit: 3
+    stripePriceId: process.env.STRIPE_PRO_PRICE_ID || 'price_pro',
+    iyzicoPlanRef: process.env.IYZICO_PRO_PLAN_REF,
+    price: 167,
+    priceTRY: 7499,
+    minutesLimit: 500,
+    callsLimit: -1,
+    assistantsLimit: 10,
+    phoneNumbersLimit: -1,
+    deprecated: true // Use PRO instead
   },
   ENTERPRISE: {
     name: 'ENTERPRISE',
     stripePriceId: process.env.STRIPE_ENTERPRISE_PRICE_ID || 'price_enterprise',
     iyzicoPlanRef: process.env.IYZICO_ENTERPRISE_PLAN_REF,
-    price: 199,
-    priceTRY: 6799,
-    minutesLimit: -1, // unlimited
+    price: null,      // Contact sales
+    priceTRY: null,   // İletişime geçin
+    minutesLimit: -1, // unlimited (custom)
     callsLimit: -1,
-    assistantsLimit: 5,
-    phoneNumbersLimit: 10
+    assistantsLimit: -1, // unlimited
+    phoneNumbersLimit: -1 // custom
   }
 };
 
@@ -131,22 +145,71 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
       case 'checkout.session.completed': {
         const session = event.data.object;
         console.log('💳 Checkout completed:', session.id);
+        console.log('📋 Session metadata:', JSON.stringify(session.metadata));
 
         // Check if this is an enterprise payment link
-        if (session.metadata?.type === 'enterprise') {
-          const subscriptionId = parseInt(session.metadata.subscriptionId);
+        // Try session metadata first, then line items
+        let isEnterprise = session.metadata?.type === 'enterprise';
+        let subscriptionId = session.metadata?.subscriptionId ? parseInt(session.metadata.subscriptionId) : null;
+
+        // If no metadata on session, check if we can identify from line items or price
+        if (!isEnterprise && session.subscription) {
+          // Get the Stripe subscription to check price metadata
+          try {
+            const stripeSubscription = await getStripe().subscriptions.retrieve(session.subscription);
+            const priceId = stripeSubscription.items?.data?.[0]?.price?.id;
+
+            if (priceId) {
+              // Check price metadata
+              const price = await getStripe().prices.retrieve(priceId);
+              console.log('💰 Price metadata:', JSON.stringify(price.metadata));
+
+              if (price.metadata?.type === 'enterprise') {
+                isEnterprise = true;
+                subscriptionId = parseInt(price.metadata.subscriptionId);
+                console.log('🔍 Found enterprise info from price metadata');
+              }
+            }
+          } catch (e) {
+            console.log('⚠️ Could not retrieve subscription/price details:', e.message);
+          }
+        }
+
+        if (isEnterprise && subscriptionId) {
+          const stripeSubId = session.subscription; // Stripe subscription ID from checkout
           console.log('💼 Enterprise payment link completed for subscription:', subscriptionId);
 
-          // Update enterprise payment status
+          // Önce mevcut subscription'ı al - enterprise detaylarını korumak için
+          const existingSub = await prisma.subscription.findUnique({
+            where: { id: subscriptionId }
+          });
+
+          if (!existingSub) {
+            console.error('❌ Enterprise subscription not found:', subscriptionId);
+            break;
+          }
+
+          // Ödeme yapıldı - pendingPlanId'yi aktif plan yap
+          // Enterprise özellikleri (dakika, concurrent vs.) aktif olacak
           await prisma.subscription.update({
             where: { id: subscriptionId },
             data: {
+              plan: 'ENTERPRISE', // Şimdi plan değişiyor
+              pendingPlanId: null, // Bekleyen plan temizlendi
               enterprisePaymentStatus: 'paid',
-              status: 'ACTIVE'
+              status: 'ACTIVE',
+              stripeSubscriptionId: stripeSubId,
+              stripeCustomerId: session.customer,
+              currentPeriodStart: new Date(),
+              currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+              // Enterprise limitleri aktif et
+              minutesLimit: existingSub.enterpriseMinutes || 1000,
+              concurrentLimit: existingSub.enterpriseConcurrent || 10,
+              assistantsLimit: existingSub.enterpriseAssistants || 999
             }
           });
 
-          console.log('✅ Enterprise subscription payment confirmed');
+          console.log('✅ Enterprise subscription payment confirmed, plan activated. Stripe Sub:', stripeSubId);
           break;
         }
 
@@ -252,6 +315,54 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
         break;
       }
 
+      case 'customer.subscription.created': {
+        const subscription = event.data.object;
+        console.log('🆕 Subscription created:', subscription.id);
+
+        // Check if this is an enterprise subscription
+        const priceId = subscription.items?.data?.[0]?.price?.id;
+        if (priceId) {
+          try {
+            const price = await getStripe().prices.retrieve(priceId);
+            console.log('💰 New subscription price metadata:', JSON.stringify(price.metadata));
+
+            if (price.metadata?.type === 'enterprise' && price.metadata?.subscriptionId) {
+              const subscriptionId = parseInt(price.metadata.subscriptionId);
+              console.log('💼 Enterprise subscription created for:', subscriptionId);
+
+              // Get existing subscription
+              const existingSub = await prisma.subscription.findUnique({
+                where: { id: subscriptionId }
+              });
+
+              if (existingSub && existingSub.pendingPlanId === 'ENTERPRISE') {
+                // Activate enterprise plan
+                await prisma.subscription.update({
+                  where: { id: subscriptionId },
+                  data: {
+                    plan: 'ENTERPRISE',
+                    pendingPlanId: null,
+                    enterprisePaymentStatus: 'paid',
+                    status: 'ACTIVE',
+                    stripeSubscriptionId: subscription.id,
+                    stripeCustomerId: subscription.customer,
+                    currentPeriodStart: new Date(subscription.current_period_start * 1000),
+                    currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+                    minutesLimit: existingSub.enterpriseMinutes || 1000,
+                    concurrentLimit: existingSub.enterpriseConcurrent || 10,
+                    assistantsLimit: existingSub.enterpriseAssistants || 999
+                  }
+                });
+                console.log('✅ Enterprise plan activated via customer.subscription.created');
+              }
+            }
+          } catch (e) {
+            console.log('⚠️ Could not process new subscription:', e.message);
+          }
+        }
+        break;
+      }
+
       case 'customer.subscription.deleted': {
         const subscription = event.data.object;
         console.log('❌ Subscription canceled:', subscription.id);
@@ -279,7 +390,57 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
       case 'invoice.payment_succeeded': {
         const invoice = event.data.object;
         console.log('✅ Payment succeeded:', invoice.id);
+        console.log('📋 Invoice metadata:', JSON.stringify(invoice.metadata || {}));
+        console.log('📋 Invoice subscription:', invoice.subscription);
 
+        // Check if this is an enterprise subscription payment
+        if (invoice.subscription) {
+          try {
+            const stripeSubscription = await getStripe().subscriptions.retrieve(invoice.subscription);
+            const priceId = stripeSubscription.items?.data?.[0]?.price?.id;
+
+            if (priceId) {
+              const price = await getStripe().prices.retrieve(priceId);
+              console.log('💰 Invoice price metadata:', JSON.stringify(price.metadata));
+
+              if (price.metadata?.type === 'enterprise' && price.metadata?.subscriptionId) {
+                const subscriptionId = parseInt(price.metadata.subscriptionId);
+                console.log('💼 Enterprise invoice payment for subscription:', subscriptionId);
+
+                // Get existing subscription
+                const existingSub = await prisma.subscription.findUnique({
+                  where: { id: subscriptionId }
+                });
+
+                if (existingSub && existingSub.plan !== 'ENTERPRISE') {
+                  // Activate enterprise plan if not already active
+                  await prisma.subscription.update({
+                    where: { id: subscriptionId },
+                    data: {
+                      plan: 'ENTERPRISE',
+                      pendingPlanId: null,
+                      enterprisePaymentStatus: 'paid',
+                      status: 'ACTIVE',
+                      stripeSubscriptionId: invoice.subscription,
+                      stripeCustomerId: invoice.customer,
+                      currentPeriodStart: new Date(),
+                      currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+                      minutesLimit: existingSub.enterpriseMinutes || 1000,
+                      concurrentLimit: existingSub.enterpriseConcurrent || 10,
+                      assistantsLimit: existingSub.enterpriseAssistants || 999
+                    }
+                  });
+                  console.log('✅ Enterprise plan activated via invoice.payment_succeeded');
+                }
+                break;
+              }
+            }
+          } catch (e) {
+            console.log('⚠️ Could not check enterprise status:', e.message);
+          }
+        }
+
+        // Regular payment - just update status
         await prisma.subscription.updateMany({
           where: { stripeCustomerId: invoice.customer },
           data: { status: 'ACTIVE' }
@@ -644,6 +805,7 @@ router.get('/current', verifyBusinessAccess, async (req, res) => {
 });
 
 // Get available plans - includes both Stripe and iyzico pricing
+// Updated: January 2026 - synced with pricing.js
 router.get('/plans', async (req, res) => {
   try {
     const plans = [
@@ -665,53 +827,80 @@ router.get('/plans', async (req, res) => {
         limits: PLAN_CONFIG.FREE
       },
       {
+        id: 'PAYG',
+        name: 'Pay As You Go',
+        nameTR: 'Kullandıkça Öde',
+        price: 0,
+        priceTRY: 0,
+        currency: 'USD',
+        interval: 'month',
+        isPrepaid: true,
+        features: [
+          '1 AI assistant',
+          '1 phone number',
+          'Pay per minute (balance-based)',
+          'Unlimited calls',
+          'Unlimited trainings',
+          'Basic analytics',
+          'All integrations',
+          'Email support'
+        ],
+        limits: PLAN_CONFIG.PAYG
+      },
+      {
         id: 'STARTER',
         name: 'Starter',
-        price: 27,
-        priceTRY: 799,
+        nameTR: 'Başlangıç',
+        price: 55,          // $55 USD
+        priceTRY: 2499,     // ₺2.499 TRY
         currency: 'USD',
         interval: 'month',
         stripePriceId: PLAN_CONFIG.STARTER.stripePriceId,
         iyzicoPlanRef: PLAN_CONFIG.STARTER.iyzicoPlanRef,
         popular: true,
         features: [
-          '1 AI assistant',
-          '1 phone number',
-          '300 minutes per month',
-          '50 calls per month',
+          '3 AI assistants',
+          'Unlimited phone numbers',
+          '150 minutes per month',
+          'Unlimited calls',
           'Unlimited trainings',
           'Basic analytics',
           'All integrations',
-          'Email support'
+          'Email support',
+          'Overage: 23₺/min'
         ],
         limits: PLAN_CONFIG.STARTER
       },
       {
-        id: 'PROFESSIONAL',
-        name: 'Professional',
-        price: 77,
-        priceTRY: 3499,
+        id: 'PRO',
+        name: 'Pro',
+        nameTR: 'Profesyonel',
+        price: 167,         // $167 USD
+        priceTRY: 7499,     // ₺7.499 TRY
         currency: 'USD',
         interval: 'month',
-        stripePriceId: PLAN_CONFIG.PROFESSIONAL.stripePriceId,
-        iyzicoPlanRef: PLAN_CONFIG.PROFESSIONAL.iyzicoPlanRef,
+        stripePriceId: PLAN_CONFIG.PRO.stripePriceId,
+        iyzicoPlanRef: PLAN_CONFIG.PRO?.iyzicoPlanRef,
         bestValue: true,
         features: [
-          '2 AI assistants',
-          '3 phone numbers',
-          '1500 minutes per month',
+          '10 AI assistants',
+          'Unlimited phone numbers',
+          '500 minutes per month',
           'Unlimited calls',
           'Unlimited trainings',
           'Advanced analytics with AI insights',
           'All integrations',
+          'Batch/outbound calls',
           'Priority support',
-          'API access'
+          'API access',
+          'Overage: 23₺/min'
         ],
-        limits: PLAN_CONFIG.PROFESSIONAL
+        limits: PLAN_CONFIG.PRO
       },
       {
         id: 'ENTERPRISE',
         name: 'Enterprise',
+        nameTR: 'Kurumsal',
         price: null,
         priceTRY: null,
         currency: 'USD',
@@ -720,9 +909,9 @@ router.get('/plans', async (req, res) => {
         stripePriceId: PLAN_CONFIG.ENTERPRISE.stripePriceId,
         iyzicoPlanRef: PLAN_CONFIG.ENTERPRISE.iyzicoPlanRef,
         features: [
-          '5 AI assistants',
-          '10 phone numbers',
-          'Unlimited everything',
+          'Unlimited AI assistants',
+          'Unlimited phone numbers',
+          'Custom minutes allocation',
           'Custom voice cloning',
           'White-label option',
           'Dedicated account manager',
@@ -1593,39 +1782,102 @@ router.post('/start-trial', verifyBusinessAccess, async (req, res) => {
 });
 
 // POST /api/subscription/switch-to-payg - Switch to PAYG plan
+// If user has active paid subscription, schedule downgrade at period end
 router.post('/switch-to-payg', verifyBusinessAccess, async (req, res) => {
   try {
     const { businessId } = req.user;
+    const { force } = req.body; // force=true for immediate switch (admin only or free plans)
 
-    // Update to PAYG plan
-    const subscription = await prisma.subscription.upsert({
+    // Get current subscription
+    const currentSubscription = await prisma.subscription.findUnique({
+      where: { businessId }
+    });
+
+    // Plans that can switch immediately (no billing period)
+    const immediateSwitchPlans = ['FREE', 'TRIAL', 'PAYG', null, undefined];
+
+    // Enterprise with pending payment CAN switch immediately (haven't paid yet)
+    // Enterprise with paid status should wait for period end
+    const isEnterprisePendingPayment = currentSubscription?.plan === 'ENTERPRISE' &&
+      currentSubscription?.enterprisePaymentStatus === 'pending';
+
+    const canSwitchImmediately = !currentSubscription ||
+      immediateSwitchPlans.includes(currentSubscription.plan) ||
+      currentSubscription.status !== 'ACTIVE' ||
+      isEnterprisePendingPayment || // Enterprise pending payment = can switch immediately
+      force;
+
+    if (canSwitchImmediately) {
+      // Immediate switch - no active paid subscription
+      const subscription = await prisma.subscription.upsert({
+        where: { businessId },
+        create: {
+          businessId,
+          plan: 'PAYG',
+          status: 'ACTIVE',
+          balance: 0
+        },
+        update: {
+          plan: 'PAYG',
+          status: 'ACTIVE',
+          cancelAtPeriodEnd: false,
+          scheduledPlanId: null,
+          stripeSubscriptionId: null,
+          iyzicoSubscriptionId: null
+        }
+      });
+
+      console.log(`✅ Switched to PAYG for business ${businessId} (immediate)`);
+
+      return res.json({
+        success: true,
+        subscription: {
+          plan: 'PAYG',
+          balance: subscription.balance || 0,
+          status: 'active'
+        },
+        message: 'Switched to PAYG. Please top up your balance to start using.'
+      });
+    }
+
+    // User has active paid subscription - schedule downgrade at period end
+    const periodEnd = currentSubscription.currentPeriodEnd ||
+      currentSubscription.enterpriseEndDate ||
+      new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // Default 30 days if no period end
+
+    // Cancel Stripe subscription if exists
+    if (currentSubscription.stripeSubscriptionId) {
+      try {
+        await stripe.subscriptions.update(currentSubscription.stripeSubscriptionId, {
+          cancel_at_period_end: true
+        });
+        console.log(`📅 Scheduled Stripe cancellation for subscription ${currentSubscription.stripeSubscriptionId}`);
+      } catch (stripeError) {
+        console.error('Stripe cancellation error:', stripeError.message);
+      }
+    }
+
+    // Update subscription to schedule PAYG switch at period end
+    const subscription = await prisma.subscription.update({
       where: { businessId },
-      create: {
-        businessId,
-        plan: 'PAYG',
-        status: 'ACTIVE',
-        balance: 0
-      },
-      update: {
-        plan: 'PAYG',
-        status: 'ACTIVE',
-        // Cancel any existing subscription
-        cancelAtPeriodEnd: false,
-        stripeSubscriptionId: null,
-        iyzicoSubscriptionId: null
+      data: {
+        cancelAtPeriodEnd: true,
+        scheduledPlanId: 'PAYG'
       }
     });
 
-    console.log(`✅ Switched to PAYG for business ${businessId}`);
+    console.log(`⏰ Scheduled PAYG switch for business ${businessId}: ${currentSubscription.plan} → PAYG (at ${periodEnd})`);
 
     res.json({
       success: true,
+      scheduled: true,
       subscription: {
-        plan: 'PAYG',
-        balance: subscription.balance || 0,
+        plan: currentSubscription.plan,
+        scheduledPlan: 'PAYG',
+        periodEnd: periodEnd,
         status: 'active'
       },
-      message: 'Switched to PAYG. Please top up your balance to start using.'
+      message: `Plan will be changed to PAYG at the end of current billing period (${new Date(periodEnd).toLocaleDateString('tr-TR')}). You can continue using your current plan until then.`
     });
   } catch (error) {
     console.error('Switch to PAYG error:', error);

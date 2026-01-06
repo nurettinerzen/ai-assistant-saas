@@ -552,8 +552,10 @@ export default function SubscriptionPage() {
                 }
               };
               const txt = texts[uiLang] || texts.EN;
-              if (plan.id === 'ENTERPRISE') return txt.contact;
+              // Önce mevcut plan kontrolü - ENTERPRISE dahil
               if (isCurrentPlan) return txt.current;
+              // Enterprise için "Bize Ulaşın" (mevcut plan değilse)
+              if (plan.id === 'ENTERPRISE') return txt.contact;
               if (isUpgrade) return txt.upgrade;
               if (isDowngrade) return txt.downgrade;
               return txt.select;
@@ -721,13 +723,23 @@ export default function SubscriptionPage() {
 
                 <div className="mt-auto">
                 {plan.id === 'ENTERPRISE' ? (
-                  <Button
-                    className="w-full border-primary-600 text-primary-600 hover:bg-primary-50"
-                    variant="outline"
-                    onClick={() => window.location.href = '/contact'}
-                  >
-                    {getButtonText()}
-                  </Button>
+                  isCurrentPlan ? (
+                    <Button
+                      className="w-full bg-neutral-100 text-neutral-500 cursor-not-allowed border-neutral-200"
+                      variant="outline"
+                      disabled
+                    >
+                      {getButtonText()}
+                    </Button>
+                  ) : (
+                    <Button
+                      className="w-full border-primary-600 text-primary-600 hover:bg-primary-50"
+                      variant="outline"
+                      onClick={() => window.location.href = '/contact'}
+                    >
+                      {getButtonText()}
+                    </Button>
+                  )
                 ) : (
                   <Button
                     className={`w-full ${

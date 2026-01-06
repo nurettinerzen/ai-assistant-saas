@@ -54,7 +54,12 @@ const TRANSLATIONS = {
     loadError: 'Bakiye yüklenemedi',
     min: 'dk',
     perMin: '/dk',
-    postpaidNote: 'Aşım kullanımı ay sonunda faturalanır'
+    postpaidNote: 'Aşım kullanımı ay sonunda faturalanır',
+    enterprisePaymentPending: 'Ödeme bekleniyor',
+    enterprisePaymentPaid: 'Ödendi',
+    enterprisePaymentOverdue: 'Gecikmiş',
+    enterpriseEndDate: 'Bitiş tarihi',
+    enterpriseConcurrent: 'Eş zamanlı arama'
   },
   EN: {
     usageStatus: 'Usage Status',
@@ -87,7 +92,12 @@ const TRANSLATIONS = {
     loadError: 'Failed to load balance',
     min: 'min',
     perMin: '/min',
-    postpaidNote: 'Overage usage is billed at month end'
+    postpaidNote: 'Overage usage is billed at month end',
+    enterprisePaymentPending: 'Payment pending',
+    enterprisePaymentPaid: 'Paid',
+    enterprisePaymentOverdue: 'Overdue',
+    enterpriseEndDate: 'End date',
+    enterpriseConcurrent: 'Concurrent calls'
   }
 };
 
@@ -177,6 +187,7 @@ export default function CreditBalance({ onBuyCredit, refreshTrigger }) {
     const plan = balance.plan || 'FREE';
     const isTrial = plan === 'TRIAL';
     const isPayg = plan === 'PAYG';
+    const isEnterprise = plan === 'ENTERPRISE';
     const hasIncludedMinutes = ['STARTER', 'PRO', 'ENTERPRISE', 'BASIC', 'PROFESSIONAL'].includes(plan);
 
     // Calculate percentages
@@ -317,29 +328,83 @@ export default function CreditBalance({ onBuyCredit, refreshTrigger }) {
               )}
             </div>
 
-            {/* Overage Info - POSTPAID (Ay sonu fatura) */}
-            <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                  <span className="font-medium text-neutral-700 dark:text-neutral-300">{txt.overageThisMonth}</span>
+            {/* Enterprise Payment Status */}
+            {isEnterprise && balance.enterprise && (
+              <div className={`rounded-lg p-4 ${
+                balance.enterprise.paymentStatus === 'paid'
+                  ? 'bg-green-50 dark:bg-green-900/20'
+                  : balance.enterprise.paymentStatus === 'overdue'
+                  ? 'bg-red-50 dark:bg-red-900/20'
+                  : 'bg-amber-50 dark:bg-amber-900/20'
+              }`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Wallet className={`h-4 w-4 ${
+                      balance.enterprise.paymentStatus === 'paid'
+                        ? 'text-green-600 dark:text-green-400'
+                        : balance.enterprise.paymentStatus === 'overdue'
+                        ? 'text-red-600 dark:text-red-400'
+                        : 'text-amber-600 dark:text-amber-400'
+                    }`} />
+                    <span className="font-medium text-neutral-700 dark:text-neutral-300">
+                      {lang === 'TR' ? 'Ödeme Durumu' : 'Payment Status'}
+                    </span>
+                  </div>
+                  <Badge variant={
+                    balance.enterprise.paymentStatus === 'paid' ? 'success' :
+                    balance.enterprise.paymentStatus === 'overdue' ? 'destructive' : 'warning'
+                  }>
+                    {balance.enterprise.paymentStatus === 'paid' ? txt.enterprisePaymentPaid :
+                     balance.enterprise.paymentStatus === 'overdue' ? txt.enterprisePaymentOverdue :
+                     txt.enterprisePaymentPending}
+                  </Badge>
                 </div>
-                <div className="text-right">
-                  <span className="text-lg font-bold text-amber-700 dark:text-amber-400">
-                    {balance.overage?.minutes || 0} {txt.min}
-                  </span>
+                {balance.enterprise.paymentStatus !== 'paid' && (
+                  <p className="mt-2 text-sm text-amber-700 dark:text-amber-400">
+                    {lang === 'TR'
+                      ? 'Arama yapabilmek için ödeme yapılması gerekmektedir.'
+                      : 'Payment is required to make calls.'}
+                  </p>
+                )}
+                {balance.enterprise.endDate && (
+                  <div className="mt-2 text-xs text-neutral-500 flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    <span>{txt.enterpriseEndDate}: {new Date(balance.enterprise.endDate).toLocaleDateString(dateLocale)}</span>
+                  </div>
+                )}
+                {balance.enterprise.concurrent && (
+                  <div className="mt-1 text-xs text-neutral-500">
+                    {txt.enterpriseConcurrent}: {balance.enterprise.concurrent}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Overage Info - POSTPAID (Ay sonu fatura) - Enterprise hariç */}
+            {!isEnterprise && (
+              <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                    <span className="font-medium text-neutral-700 dark:text-neutral-300">{txt.overageThisMonth}</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-lg font-bold text-amber-700 dark:text-amber-400">
+                      {balance.overage?.minutes || 0} {txt.min}
+                    </span>
+                  </div>
                 </div>
+                <div className="mt-2 flex items-center justify-between text-xs text-neutral-500">
+                  <span>{txt.overageRate}: {currency}{balance.overage?.rate || 23}{txt.perMin}</span>
+                  <span className="text-amber-600 dark:text-amber-400">{txt.overagePostpaid}</span>
+                </div>
+                {balance.overage && balance.overage.minutes > 0 && (
+                  <p className="mt-2 text-sm text-amber-700 dark:text-amber-400 font-semibold">
+                    {txt.postpaidNote}: {currency}{balance.overage.amount?.toLocaleString(dateLocale)}
+                  </p>
+                )}
               </div>
-              <div className="mt-2 flex items-center justify-between text-xs text-neutral-500">
-                <span>{txt.overageRate}: {currency}{balance.overage?.rate || 23}{txt.perMin}</span>
-                <span className="text-amber-600 dark:text-amber-400">{txt.overagePostpaid}</span>
-              </div>
-              {balance.overage && balance.overage.minutes > 0 && (
-                <p className="mt-2 text-sm text-amber-700 dark:text-amber-400 font-semibold">
-                  {txt.postpaidNote}: {currency}{balance.overage.amount?.toLocaleString(dateLocale)}
-                </p>
-              )}
-            </div>
+            )}
           </>
         )}
 

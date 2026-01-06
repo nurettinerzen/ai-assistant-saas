@@ -12,6 +12,7 @@
  * - check_stock_crm: CRM stock lookup (custom webhook)
  * - check_ticket_status_crm: CRM ticket/service lookup (custom webhook)
  * - customer_data_lookup: Customer data lookup (from Excel/CSV import)
+ * - create_callback: Create callback request (geri arama talebi)
  *
  * NOTE: Paraşüt is NOT an AI tool - it's a dashboard feature for business owners.
  * Payment tools (iyzico) are disabled until explicitly needed.
@@ -22,22 +23,26 @@ export const BUSINESS_TYPE_TOOLS = {
   RESTAURANT: [
     'create_appointment',      // Table reservation - ✅ WORKING
     'send_order_notification', // Food orders - ✅ WORKING
-    'customer_data_lookup'     // ✅ Customer data lookup
+    'customer_data_lookup',    // ✅ Customer data lookup
+    'create_callback'          // ✅ Geri arama talebi
   ],
   SALON: [
     'create_appointment',      // Hair/beauty appointments - ✅ WORKING
-    'customer_data_lookup'     // ✅ Customer data lookup
+    'customer_data_lookup',    // ✅ Customer data lookup
+    'create_callback'          // ✅ Geri arama talebi
   ],
   CLINIC: [
     'create_appointment',      // Medical appointments - ✅ WORKING
-    'customer_data_lookup'     // ✅ Customer data lookup
+    'customer_data_lookup',    // ✅ Customer data lookup
+    'create_callback'          // ✅ Geri arama talebi
   ],
   SERVICE: [
     'create_appointment',      // Service appointments - ✅ WORKING
     'check_order_status_crm',  // ✅ CRM orders
     'check_stock_crm',         // ✅ CRM stock
     'check_ticket_status_crm', // ✅ CRM tickets
-    'customer_data_lookup'     // ✅ Customer data lookup
+    'customer_data_lookup',    // ✅ Customer data lookup
+    'create_callback'          // ✅ Geri arama talebi
   ],
   ECOMMERCE: [
     'check_order_status',      // ✅ Shopify/WooCommerce via aggregator
@@ -46,14 +51,16 @@ export const BUSINESS_TYPE_TOOLS = {
     'check_order_status_crm',  // ✅ CRM orders
     'check_stock_crm',         // ✅ CRM stock
     'check_ticket_status_crm', // ✅ CRM tickets
-    'customer_data_lookup'     // ✅ Customer data lookup
+    'customer_data_lookup',    // ✅ Customer data lookup
+    'create_callback'          // ✅ Geri arama talebi
   ],
   OTHER: [
     'create_appointment',      // Generic appointments - ✅ WORKING
     'check_order_status_crm',  // ✅ CRM orders
     'check_stock_crm',         // ✅ CRM stock
     'check_ticket_status_crm', // ✅ CRM tickets
-    'customer_data_lookup'     // ✅ Customer data lookup
+    'customer_data_lookup',    // ✅ Customer data lookup
+    'create_callback'          // ✅ Geri arama talebi
   ]
 };
 
@@ -73,7 +80,8 @@ export const INTEGRATION_REQUIRED_TOOLS = {
 export const STANDALONE_TOOLS = [
   'create_appointment',
   'send_order_notification',
-  'customer_data_lookup'  // ✅ Always available - handler checks for data and returns appropriate message
+  'customer_data_lookup',  // ✅ Always available - handler checks for data and returns appropriate message
+  'create_callback'        // ✅ Geri arama talebi - tüm iş tiplerine açık
 ];
 
 /**

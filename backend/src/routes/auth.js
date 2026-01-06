@@ -92,12 +92,22 @@ router.post('/register', async (req, res) => {
       // Get the created user
       const user = business.users[0];
 
-      // Create free subscription
+      // Create trial subscription - 15 dk telefon, 7 gün chat/whatsapp
+      const trialChatExpiry = new Date();
+      trialChatExpiry.setDate(trialChatExpiry.getDate() + 7); // 7 gün chat/whatsapp
+
       const subscription = await tx.subscription.create({
         data: {
           businessId: business.id,
-          plan: 'FREE',
-          status: 'TRIAL',
+          plan: 'TRIAL',
+          status: 'ACTIVE',
+          trialStartDate: new Date(),
+          trialMinutesUsed: 0,
+          trialChatExpiry: trialChatExpiry,
+          minutesLimit: 15,
+          assistantsLimit: 1,
+          phoneNumbersLimit: 1,
+          concurrentLimit: 1
         },
       });
 
@@ -196,13 +206,22 @@ router.post("/signup", async (req, res) => {
           businessId: business.id
         }
       });
+      // Create trial subscription - 15 dk telefon, 7 gün chat/whatsapp
+      const trialChatExpiry = new Date();
+      trialChatExpiry.setDate(trialChatExpiry.getDate() + 7);
+
       await tx.subscription.create({
         data: {
           businessId: business.id,
-          plan: "FREE",
-          status: "TRIAL",
-          minutesLimit: 10,
-          minutesUsed: 0
+          plan: "TRIAL",
+          status: "ACTIVE",
+          trialStartDate: new Date(),
+          trialMinutesUsed: 0,
+          trialChatExpiry: trialChatExpiry,
+          minutesLimit: 15,
+          assistantsLimit: 1,
+          phoneNumbersLimit: 1,
+          concurrentLimit: 1
         }
       });
 
@@ -530,14 +549,22 @@ router.post('/google', async (req, res) => {
         // Get the created user
         const newUser = business.users[0];
 
-        // Create free subscription
+        // Create trial subscription - 15 dk telefon, 7 gün chat/whatsapp
+        const trialChatExpiry = new Date();
+        trialChatExpiry.setDate(trialChatExpiry.getDate() + 7);
+
         await tx.subscription.create({
           data: {
             businessId: business.id,
-            plan: 'FREE',
-            status: 'TRIAL',
-            minutesLimit: 10,
-            minutesUsed: 0,
+            plan: 'TRIAL',
+            status: 'ACTIVE',
+            trialStartDate: new Date(),
+            trialMinutesUsed: 0,
+            trialChatExpiry: trialChatExpiry,
+            minutesLimit: 15,
+            assistantsLimit: 1,
+            phoneNumbersLimit: 1,
+            concurrentLimit: 1
           },
         });
 

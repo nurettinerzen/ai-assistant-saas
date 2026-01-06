@@ -37,12 +37,18 @@ router.use(isAdmin);
 
 /**
  * GET /api/admin/enterprise-customers
- * List all enterprise customers
+ * List all enterprise customers (active + pending)
  */
 router.get('/enterprise-customers', async (req, res) => {
   try {
+    // Hem aktif enterprise'ları hem de bekleyen enterprise tekliflerini getir
     const subscriptions = await prisma.subscription.findMany({
-      where: { plan: 'ENTERPRISE' },
+      where: {
+        OR: [
+          { plan: 'ENTERPRISE' },           // Aktif enterprise
+          { pendingPlanId: 'ENTERPRISE' }   // Bekleyen enterprise teklifi
+        ]
+      },
       include: {
         business: {
           include: {
@@ -66,6 +72,9 @@ router.get('/enterprise-customers', async (req, res) => {
       businessName: sub.business?.name,
       ownerEmail: sub.business?.users?.[0]?.email,
       ownerName: sub.business?.users?.[0]?.name,
+      currentPlan: sub.plan,                    // Mevcut plan (TRIAL, STARTER vs.)
+      pendingPlan: sub.pendingPlanId,           // Bekleyen plan (ENTERPRISE)
+      isActive: sub.plan === 'ENTERPRISE',      // Enterprise aktif mi?
       enterpriseMinutes: sub.enterpriseMinutes,
       enterprisePrice: sub.enterprisePrice,
       enterpriseConcurrent: sub.enterpriseConcurrent,
@@ -136,6 +145,13 @@ router.get('/users', async (req, res) => {
 /**
  * POST /api/admin/enterprise-customers
  * Upgrade a user to enterprise
+ *
+ * Akış:
+ * 1. Mevcut planı DEĞİŞTİRME (TRIAL, STARTER vs. kalsın)
+ * 2. pendingPlanId = 'ENTERPRISE' olarak kaydet
+ * 3. Enterprise detaylarını kaydet (fiyat, dakika vs.)
+ * 4. enterprisePaymentStatus = 'pending'
+ * 5. Ödeme yapılınca (webhook): plan = 'ENTERPRISE', status = 'ACTIVE'
  */
 router.post('/enterprise-customers', async (req, res) => {
   try {
@@ -154,12 +170,23 @@ router.post('/enterprise-customers', async (req, res) => {
       return res.status(400).json({ error: 'businessId is required' });
     }
 
+    // Mevcut subscription'ı kontrol et
+    const existingSubscription = await prisma.subscription.findUnique({
+      where: { businessId: parseInt(businessId) }
+    });
+
+    // Enterprise eklerken:
+    // - Mevcut planı DEĞİŞTİRME (kullanıcı mevcut planını kullanmaya devam etsin)
+    // - pendingPlanId = 'ENTERPRISE' olarak ayarla
+    // - Enterprise detaylarını kaydet
+    // - Ödeme yapılınca plan aktif olacak
     const subscription = await prisma.subscription.upsert({
       where: { businessId: parseInt(businessId) },
       create: {
         businessId: parseInt(businessId),
-        plan: 'ENTERPRISE',
+        plan: 'TRIAL', // Yeni kullanıcıysa TRIAL ile başlasın
         status: 'ACTIVE',
+        pendingPlanId: 'ENTERPRISE', // Bekleyen plan
         enterpriseMinutes: minutes || 1000,
         enterprisePrice: price || 8500,
         enterpriseConcurrent: concurrent || 10,
@@ -167,14 +194,11 @@ router.post('/enterprise-customers', async (req, res) => {
         enterpriseStartDate: startDate ? new Date(startDate) : new Date(),
         enterpriseEndDate: endDate ? new Date(endDate) : null,
         enterprisePaymentStatus: 'pending',
-        enterpriseNotes: notes || null,
-        minutesLimit: minutes || 1000,
-        concurrentLimit: concurrent || 10,
-        assistantsLimit: assistants || 999
+        enterpriseNotes: notes || null
       },
       update: {
-        plan: 'ENTERPRISE',
-        status: 'ACTIVE',
+        // plan DEĞİŞMİYOR - mevcut planı koru
+        pendingPlanId: 'ENTERPRISE', // Bekleyen plan
         enterpriseMinutes: minutes,
         enterprisePrice: price,
         enterpriseConcurrent: concurrent,
@@ -182,14 +206,11 @@ router.post('/enterprise-customers', async (req, res) => {
         enterpriseStartDate: startDate ? new Date(startDate) : undefined,
         enterpriseEndDate: endDate ? new Date(endDate) : undefined,
         enterprisePaymentStatus: 'pending',
-        enterpriseNotes: notes,
-        minutesLimit: minutes,
-        concurrentLimit: concurrent,
-        assistantsLimit: assistants || 999
+        enterpriseNotes: notes
       }
     });
 
-    console.log(`✅ Admin: Business ${businessId} upgraded to ENTERPRISE`);
+    console.log(`✅ Admin: Business ${businessId} - Enterprise teklifi oluşturuldu (pendingPlan). Mevcut plan: ${subscription.plan}`);
     res.json(subscription);
   } catch (error) {
     console.error('Admin: Failed to create enterprise customer:', error);
@@ -200,6 +221,7 @@ router.post('/enterprise-customers', async (req, res) => {
 /**
  * PUT /api/admin/enterprise-customers/:id
  * Update enterprise customer
+ * If paymentStatus changes to 'paid', automatically activate the enterprise plan
  */
 router.put('/enterprise-customers/:id', async (req, res) => {
   try {
@@ -215,21 +237,39 @@ router.put('/enterprise-customers/:id', async (req, res) => {
       notes
     } = req.body;
 
+    // Get current subscription to check if we need to activate
+    const currentSub = await prisma.subscription.findUnique({
+      where: { id: parseInt(id) }
+    });
+
+    // Build update data
+    const updateData = {
+      enterpriseMinutes: minutes,
+      enterprisePrice: price,
+      enterpriseConcurrent: concurrent,
+      enterpriseAssistants: assistants,
+      enterpriseStartDate: startDate ? new Date(startDate) : undefined,
+      enterpriseEndDate: endDate ? new Date(endDate) : undefined,
+      enterprisePaymentStatus: paymentStatus,
+      enterpriseNotes: notes,
+      minutesLimit: minutes,
+      concurrentLimit: concurrent,
+      assistantsLimit: assistants || 999
+    };
+
+    // If payment status is changing to 'paid' and plan is not ENTERPRISE yet, activate it
+    if (paymentStatus === 'paid' && currentSub?.plan !== 'ENTERPRISE') {
+      updateData.plan = 'ENTERPRISE';
+      updateData.pendingPlanId = null;
+      updateData.status = 'ACTIVE';
+      updateData.currentPeriodStart = new Date();
+      updateData.currentPeriodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+      console.log(`✅ Admin: Activating ENTERPRISE plan for subscription ${id} (manual payment confirmation)`);
+    }
+
     const subscription = await prisma.subscription.update({
       where: { id: parseInt(id) },
-      data: {
-        enterpriseMinutes: minutes,
-        enterprisePrice: price,
-        enterpriseConcurrent: concurrent,
-        enterpriseAssistants: assistants,
-        enterpriseStartDate: startDate ? new Date(startDate) : undefined,
-        enterpriseEndDate: endDate ? new Date(endDate) : undefined,
-        enterprisePaymentStatus: paymentStatus,
-        enterpriseNotes: notes,
-        minutesLimit: minutes,
-        concurrentLimit: concurrent,
-        assistantsLimit: assistants || 999
-      }
+      data: updateData
     });
 
     console.log(`✅ Admin: Enterprise subscription ${id} updated`);
@@ -243,6 +283,7 @@ router.put('/enterprise-customers/:id', async (req, res) => {
 /**
  * POST /api/admin/enterprise-customers/:id/payment-link
  * Generate Stripe payment link for enterprise customer
+ * Creates a recurring subscription, not one-time payment
  */
 router.post('/enterprise-customers/:id/payment-link', async (req, res) => {
   try {
@@ -261,23 +302,51 @@ router.post('/enterprise-customers/:id/payment-link', async (req, res) => {
       return res.status(400).json({ error: 'Kurumsal fiyat belirlenmemiş' });
     }
 
-    // Create Stripe Payment Link
+    // Minimum fiyat kontrolü - Stripe TRY için en az 500 TL gerektirir (~$10)
+    // Aslında ~$0.50 ama güvenlik için 500 TL minimum koyuyoruz
+    if (subscription.enterprisePrice < 500) {
+      return res.status(400).json({
+        error: 'Kurumsal fiyat en az 500 TL olmalıdır',
+        currentPrice: subscription.enterprisePrice
+      });
+    }
+
+    // First, create a Stripe product for this enterprise customer
+    const product = await stripe.products.create({
+      name: `Telyx.AI Kurumsal Plan - ${subscription.business?.name}`,
+      description: `${subscription.enterpriseMinutes} dakika dahil, özel kurumsal plan`,
+      metadata: {
+        businessId: subscription.businessId.toString(),
+        type: 'enterprise'
+      }
+    });
+
+    // Create a recurring price for this product
+    const price = await stripe.prices.create({
+      product: product.id,
+      unit_amount: Math.round(subscription.enterprisePrice * 100), // Kuruş
+      currency: 'try',
+      recurring: {
+        interval: 'month'
+      },
+      metadata: {
+        subscriptionId: subscription.id.toString(),
+        businessId: subscription.businessId.toString(),
+        type: 'enterprise'
+      }
+    });
+
+    // Create Stripe Payment Link with recurring subscription
     const paymentLink = await stripe.paymentLinks.create({
       line_items: [{
-        price_data: {
-          currency: 'try',
-          product_data: {
-            name: `Telyx.AI Kurumsal Plan - ${subscription.enterpriseMinutes} Dakika`,
-            description: `${subscription.business?.name} için özel kurumsal plan`
-          },
-          unit_amount: Math.round(subscription.enterprisePrice * 100), // Kuruş
-        },
+        price: price.id,
         quantity: 1,
       }],
       metadata: {
         subscriptionId: subscription.id.toString(),
         businessId: subscription.businessId.toString(),
-        type: 'enterprise'
+        type: 'enterprise',
+        priceId: price.id
       },
       after_completion: {
         type: 'redirect',
@@ -287,11 +356,19 @@ router.post('/enterprise-customers/:id/payment-link', async (req, res) => {
       }
     });
 
-    console.log(`✅ Admin: Payment link created for subscription ${id}`);
+    // Store the Stripe price ID for future reference
+    await prisma.subscription.update({
+      where: { id: parseInt(id) },
+      data: {
+        stripePriceId: price.id
+      }
+    });
+
+    console.log(`✅ Admin: Payment link created for subscription ${id} (recurring)`);
     res.json({ url: paymentLink.url });
   } catch (error) {
     console.error('Admin: Failed to create payment link:', error);
-    res.status(500).json({ error: 'Failed to create payment link' });
+    res.status(500).json({ error: 'Failed to create payment link', details: error.message });
   }
 });
 

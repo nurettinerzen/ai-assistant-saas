@@ -127,6 +127,7 @@ model Business {
   crmTickets              CrmTicket[]
   batchCalls              BatchCall[]
   customerData            CustomerData[]
+  callbackRequests        CallbackRequest[]
 
   @@index([name])
 }
@@ -154,6 +155,7 @@ model Assistant {
   business            Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
   phoneNumbers        PhoneNumber[]
   batchCalls          BatchCall[]
+  callbackRequests    CallbackRequest[]
 
   @@index([businessId])
   @@index([isActive])
@@ -293,20 +295,34 @@ model CallLog {
   callId            String   @unique
   callerId          String?
   duration          Int?
-  status            String
+  status            String   // Mevcut teknik durum alanı (completed, in-progress vb.)
   transcript        Json?    // Array of {speaker, text, timestamp}
   transcriptText    String?  @db.Text // Plain text for search
   recordingUrl      String?  @db.Text
   recordingDuration Int?     // Duration in seconds
   intent            String?
-  sentiment         String?  // 'positive', 'neutral', 'negative'
-  sentimentScore    Float?   // 0.0 to 1.0
+  sentiment         String?  // DEPRECATED: Eski içerik analizi
+  sentimentScore    Float?   // DEPRECATED: 0.0 to 1.0
   summary           String?  @db.Text
   keyPoints         String[] @default([])
   keyTopics         String[] @default([]) // ['appointment', 'pricing', 'availability']
   actionItems       String[] @default([]) // ['Schedule follow-up', 'Send email']
   taskCompleted     Boolean?
   followUpNeeded    Boolean?
+
+  // === YENİ DURUM ANALİZİ ALANLARI ===
+  // Sonuç: Arama teknik olarak başarılı mı?
+  callResult        CallResult?
+
+  // Durum: İçerik olarak başarılı mı? (müşteri sorularının cevaplanma oranı)
+  callStatus        CallStatus?
+
+  // Analiz detayları
+  analysisData      Json?           // { totalRequests, answeredRequests, callbackCreated, unansweredCategories, summary }
+
+  // Voicemail detection
+  voicemailDetected Boolean?        @default(false)
+
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
   business          Business @relation(fields: [businessId], references: [id])
@@ -315,6 +331,24 @@ model CallLog {
   @@index([callId])
   @@index([createdAt])
   @@index([status])
+  @@index([callResult])
+  @@index([callStatus])
+}
+
+// Arama teknik sonucu
+enum CallResult {
+  SUCCESS       // Arama gerçekleşti
+  FAILED        // Arama başarısız (hata, bağlantı sorunu)
+  NO_ANSWER     // Cevap verilmedi
+  VOICEMAIL     // Sesli mesaja düştü
+  BUSY          // Meşgul
+}
+
+// Arama içerik durumu (müşteri soruları cevaplanma oranı)
+enum CallStatus {
+  POSITIVE      // Müşterinin soruları cevaplandı (%80+)
+  NEUTRAL       // Kısmen cevaplandı (%50-80) veya insana aktarıldı
+  NEGATIVE      // Cevap verilemedi (%50-)
 }
 
 model Integration {
@@ -1317,6 +1351,64 @@ model BatchCall {
   @@index([status])
   @@index([assistantId])
   @@index([createdAt])
+}
+
+// ============================================================================
+// GERİ ARAMA TALEPLERİ (CALLBACK REQUESTS)
+// Asistan müşteriye yardımcı olamadığında veya müşteri gerçek biriyle
+// görüşmek istediğinde oluşturulan geri arama kayıtları
+// ============================================================================
+
+model CallbackRequest {
+  id            String   @id @default(cuid())
+
+  // İlişkiler
+  businessId    Int
+  business      Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  assistantId   String?
+  assistant     Assistant? @relation(fields: [assistantId], references: [id], onDelete: SetNull)
+  callId        String?  // İlgili arama kaydı (conversation_id)
+
+  // Müşteri bilgileri
+  customerName  String
+  customerPhone String
+  topic         String   // Konu özeti
+
+  // Durum
+  status        CallbackStatus @default(PENDING)
+  priority      CallbackPriority @default(NORMAL)
+
+  // Notlar
+  notes         String?  @db.Text // İşletme notları
+  callbackNotes String?  @db.Text // Geri arama sonrası notlar
+
+  // Zaman
+  requestedAt   DateTime @default(now())
+  scheduledFor  DateTime? // Planlanan arama zamanı (opsiyonel)
+  completedAt   DateTime?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([businessId])
+  @@index([status])
+  @@index([priority])
+  @@index([requestedAt])
+}
+
+enum CallbackStatus {
+  PENDING     // Bekliyor
+  IN_PROGRESS // Aranıyor
+  COMPLETED   // Tamamlandı
+  NO_ANSWER   // Cevap vermedi
+  CANCELLED   // İptal edildi
+}
+
+enum CallbackPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
 }
 
 // ============================================================================

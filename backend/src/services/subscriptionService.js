@@ -284,7 +284,51 @@ export async function canMakeCall(businessId) {
       };
     }
 
-    // STARTER, PRO, ENTERPRISE
+    // ENTERPRISE plan - özel kontroller
+    if (plan === 'ENTERPRISE') {
+      // Ödeme durumu kontrolü
+      if (subscription.enterprisePaymentStatus !== 'paid') {
+        return {
+          canMakeCall: false,
+          reason: 'ENTERPRISE_PAYMENT_PENDING',
+          paymentStatus: subscription.enterprisePaymentStatus
+        };
+      }
+
+      // Süre kontrolü
+      if (subscription.enterpriseEndDate && new Date() > new Date(subscription.enterpriseEndDate)) {
+        return {
+          canMakeCall: false,
+          reason: 'ENTERPRISE_EXPIRED',
+          endDate: subscription.enterpriseEndDate
+        };
+      }
+
+      // Enterprise dahil dakika kontrolü
+      const enterpriseMinutes = subscription.enterpriseMinutes || 1000;
+      const remainingMinutes = enterpriseMinutes - (subscription.includedMinutesUsed || 0);
+
+      if (remainingMinutes <= 0) {
+        return {
+          canMakeCall: false,
+          reason: 'ENTERPRISE_MINUTES_EXHAUSTED',
+          minutesUsed: subscription.includedMinutesUsed,
+          minutesLimit: enterpriseMinutes
+        };
+      }
+
+      return {
+        canMakeCall: true,
+        reason: 'ENTERPRISE_ACTIVE',
+        details: {
+          minutesRemaining: remainingMinutes,
+          minutesUsed: subscription.includedMinutesUsed || 0,
+          minutesLimit: enterpriseMinutes
+        }
+      };
+    }
+
+    // STARTER, PRO
     const includedMinutes = getIncludedMinutes(plan, country);
     const remainingIncluded = includedMinutes - (subscription.includedMinutesUsed || 0);
 

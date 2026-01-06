@@ -266,7 +266,7 @@ router.post('/post-call', async (req, res) => {
     };
 
     const plan = business.subscription?.plan;
-    const shouldAnalyze = (plan === 'PROFESSIONAL' || plan === 'ENTERPRISE') &&
+    const shouldAnalyze = (plan === 'PROFESSIONAL' || plan === 'PRO' || plan === 'ENTERPRISE') &&
                           transcriptMessages.length > 0;
 
     if (shouldAnalyze && !aiAnalysis.summary) {
@@ -285,6 +285,35 @@ router.post('/post-call', async (req, res) => {
       }
     }
 
+    // === YENİ DURUM ANALİZİ ===
+    // Teknik sonuç (callResult) ve içerik durumu (callStatus) hesapla
+    let callResult = 'SUCCESS';
+    let callStatus = null;
+    let analysisData = null;
+    let voicemailDetected = false;
+
+    // Teknik sonuç belirleme
+    const callData = {
+      status,
+      duration: call_duration_secs,
+      voicemailDetected: metadata?.voicemail_detected || false
+    };
+    callResult = callAnalysis.determineCallResult(callData);
+    voicemailDetected = callResult === 'VOICEMAIL';
+
+    // İçerik analizi (PRO/ENTERPRISE için ve başarılı aramalar için)
+    if (shouldAnalyze && callResult === 'SUCCESS' && transcriptText) {
+      try {
+        const contentAnalysis = await callAnalysis.analyzeCallContent(transcriptText);
+        if (contentAnalysis) {
+          callStatus = contentAnalysis.callStatus;
+          analysisData = contentAnalysis;
+        }
+      } catch (contentError) {
+        console.error('⚠️ Content analysis failed (non-critical):', contentError);
+      }
+    }
+
     // Save/update call log
     await prisma.callLog.upsert({
       where: { callId: conversation_id },
@@ -298,6 +327,11 @@ router.post('/post-call', async (req, res) => {
         actionItems: aiAnalysis.actionItems,
         sentiment: aiAnalysis.sentiment,
         sentimentScore: aiAnalysis.sentimentScore,
+        // Yeni durum analizi alanları
+        callResult,
+        callStatus,
+        analysisData,
+        voicemailDetected,
         updatedAt: new Date()
       },
       create: {
@@ -313,6 +347,11 @@ router.post('/post-call', async (req, res) => {
         actionItems: aiAnalysis.actionItems,
         sentiment: aiAnalysis.sentiment,
         sentimentScore: aiAnalysis.sentimentScore,
+        // Yeni durum analizi alanları
+        callResult,
+        callStatus,
+        analysisData,
+        voicemailDetected,
         createdAt: new Date()
       }
     });

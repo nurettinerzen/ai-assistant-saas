@@ -70,6 +70,8 @@ import customerDataRoutes from './routes/customerData.js';
 import cronRoutes from './routes/cron.js';
 // Admin panel
 import adminRoutes from './routes/admin.js';
+// Callback (geri arama) sistemi
+import callbackRoutes from './routes/callback.js';
 
 
 // Import jobs
@@ -173,6 +175,8 @@ app.use('/api/customer-data', customerDataRoutes);
 app.use('/api/cron', cronRoutes);
 // Admin panel
 app.use('/api/admin', adminRoutes);
+// Callback (geri arama) sistemi
+app.use('/api/callbacks', callbackRoutes);
 
 
 // Error handling middleware

@@ -19,6 +19,37 @@ export const PLAN_FEATURES = {
     maxConcurrentCalls: 1,
     trialDays: 7  // Free plan expires after 7 days
   },
+  TRIAL: {
+    // Deneme planı - 15 dk telefon, 7 gün chat/whatsapp
+    inboundCalls: true,
+    outboundCalls: false,
+    whatsapp: true,
+    chatWidget: true,
+    email: true,
+    googleCalendar: true,
+    googleSheets: true,
+    ecommerce: true,
+    customCrm: false,
+    maxMinutes: 15,
+    maxAssistants: 1,
+    maxConcurrentCalls: 1,
+    trialDays: 7
+  },
+  PAYG: {
+    // Kullandıkça Öde - Taahhütsüz, bakiye bazlı
+    inboundCalls: true,
+    outboundCalls: false,  // Batch calling sadece PRO+
+    whatsapp: true,
+    chatWidget: true,
+    email: true,
+    googleCalendar: true,
+    googleSheets: true,
+    ecommerce: true,
+    customCrm: false,
+    maxMinutes: null,  // Bakiyeye göre sınırsız
+    maxAssistants: 1,
+    maxConcurrentCalls: 1
+  },
   STARTER: {
     inboundCalls: true,
     outboundCalls: false,
@@ -108,7 +139,8 @@ export function getPlanLimits(plan) {
  */
 export function getRequiredPlanForFeature(feature) {
   // Check which plan first has access to this feature
-  const plans = ['FREE', 'STARTER', 'PRO', 'ENTERPRISE'];
+  // PAYG has same features as STARTER (basic features, no batch calls)
+  const plans = ['FREE', 'TRIAL', 'PAYG', 'STARTER', 'PRO', 'ENTERPRISE'];
 
   for (const plan of plans) {
     if (PLAN_FEATURES[plan]?.[feature]) {
@@ -158,7 +190,10 @@ export function getTrialDaysRemaining(createdAt) {
 export function getPlanDisplayName(plan, locale = 'tr') {
   const names = {
     FREE: { tr: 'Ücretsiz Deneme', en: 'Free Trial' },
+    TRIAL: { tr: 'Deneme', en: 'Trial' },
+    PAYG: { tr: 'Kullandıkça Öde', en: 'Pay As You Go' },
     STARTER: { tr: 'Başlangıç', en: 'Starter' },
+    BASIC: { tr: 'Temel', en: 'Basic' },
     PRO: { tr: 'Pro', en: 'Pro' },
     PROFESSIONAL: { tr: 'Pro', en: 'Pro' },
     ENTERPRISE: { tr: 'Kurumsal', en: 'Enterprise' }

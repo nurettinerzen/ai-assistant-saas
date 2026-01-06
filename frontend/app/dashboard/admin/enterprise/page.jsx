@@ -56,6 +56,7 @@ export default function EnterpriseAdminPage() {
   const [users, setUsers] = useState([]);
   const [stats, setStats] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [filter, setFilter] = useState('all'); // all, active, pending
 
   // Modal states
   const [showAddModal, setShowAddModal] = useState(false);
@@ -155,7 +156,7 @@ export default function EnterpriseAdminPage() {
 
     try {
       setActionLoading(true);
-      await apiClient.put(`/api/admin/enterprise-customers/${selectedCustomer.id}`, {
+      const response = await apiClient.put(`/api/admin/enterprise-customers/${selectedCustomer.id}`, {
         minutes: formData.minutes,
         price: formData.price,
         concurrent: formData.concurrent,
@@ -166,7 +167,13 @@ export default function EnterpriseAdminPage() {
         notes: formData.notes
       });
 
-      toast.success('Musteri guncellendi');
+      // Check if plan was activated
+      if (formData.paymentStatus === 'paid' && !selectedCustomer.isActive) {
+        toast.success('Kurumsal plan aktif edildi!');
+      } else {
+        toast.success('Musteri guncellendi');
+      }
+
       setShowEditModal(false);
       setSelectedCustomer(null);
       resetForm();
@@ -248,6 +255,28 @@ export default function EnterpriseAdminPage() {
     const config = statusConfig[status] || statusConfig.pending;
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
+
+  const getStatusBadge = (customer) => {
+    if (customer.isActive) {
+      return <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">Aktif</Badge>;
+    }
+    if (customer.pendingPlan === 'ENTERPRISE') {
+      return <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300">Bekliyor</Badge>;
+    }
+    return <Badge variant="secondary">Bilinmiyor</Badge>;
+  };
+
+  // Filter customers
+  const filteredCustomers = customers.filter(customer => {
+    if (filter === 'all') return true;
+    if (filter === 'active') return customer.isActive;
+    if (filter === 'pending') return !customer.isActive && customer.pendingPlan === 'ENTERPRISE';
+    return true;
+  });
+
+  // Count stats
+  const activeCount = customers.filter(c => c.isActive).length;
+  const pendingCount = customers.filter(c => !c.isActive && c.pendingPlan === 'ENTERPRISE').length;
 
   if (loading) {
     return (
@@ -336,8 +365,35 @@ export default function EnterpriseAdminPage() {
         </div>
       )}
 
-      {/* Add Customer Button */}
-      <div className="flex justify-end mb-6">
+      {/* Filter & Add Customer */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-2">
+          <Button
+            variant={filter === 'all' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setFilter('all')}
+          >
+            Tumu ({customers.length})
+          </Button>
+          <Button
+            variant={filter === 'active' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setFilter('active')}
+            className={filter === 'active' ? '' : 'text-green-600 border-green-200 hover:bg-green-50'}
+          >
+            <CheckCircle className="w-4 h-4 mr-1" />
+            Aktif ({activeCount})
+          </Button>
+          <Button
+            variant={filter === 'pending' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setFilter('pending')}
+            className={filter === 'pending' ? '' : 'text-amber-600 border-amber-200 hover:bg-amber-50'}
+          >
+            <Clock className="w-4 h-4 mr-1" />
+            Bekleyen ({pendingCount})
+          </Button>
+        </div>
         <Button onClick={() => setShowAddModal(true)}>
           <Plus className="w-4 h-4 mr-2" />
           Kurumsal Musteri Ekle
@@ -351,23 +407,25 @@ export default function EnterpriseAdminPage() {
             <thead className="bg-gray-50 dark:bg-gray-900">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Isletme</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Durum</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Dakika</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Fiyat</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Kullanim</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Bitis</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Odeme</th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Islemler</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {customers.length === 0 ? (
+              {filteredCustomers.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
-                    Henuz kurumsal musteri yok
+                    {filter === 'all' ? 'Henuz kurumsal musteri yok' :
+                     filter === 'active' ? 'Aktif kurumsal musteri yok' :
+                     'Bekleyen kurumsal musteri yok'}
                   </td>
                 </tr>
               ) : (
-                customers.map((customer) => (
+                filteredCustomers.map((customer) => (
                   <tr key={customer.id} className="hover:bg-gray-50 dark:hover:bg-gray-900">
                     <td className="px-4 py-3">
                       <div>
@@ -377,7 +435,15 @@ export default function EnterpriseAdminPage() {
                         <p className="text-sm text-gray-500 dark:text-gray-400">
                           {customer.ownerEmail}
                         </p>
+                        {customer.currentPlan && customer.currentPlan !== 'ENTERPRISE' && (
+                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                            Mevcut: {customer.currentPlan}
+                          </p>
+                        )}
                       </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      {getStatusBadge(customer)}
                     </td>
                     <td className="px-4 py-3 text-gray-900 dark:text-white">
                       {customer.enterpriseMinutes?.toLocaleString()} dk
@@ -401,9 +467,6 @@ export default function EnterpriseAdminPage() {
                         <span>{customer.callsCount}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-gray-900 dark:text-white">
-                      {formatDate(customer.enterpriseEndDate)}
-                    </td>
                     <td className="px-4 py-3">
                       {getPaymentStatusBadge(customer.enterprisePaymentStatus)}
                     </td>
@@ -416,14 +479,17 @@ export default function EnterpriseAdminPage() {
                         >
                           <Edit className="w-4 h-4" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleGeneratePaymentLink(customer.id)}
-                          disabled={actionLoading}
-                        >
-                          <LinkIcon className="w-4 h-4" />
-                        </Button>
+                        {customer.enterprisePaymentStatus === 'pending' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleGeneratePaymentLink(customer.id)}
+                            disabled={actionLoading}
+                            title="Odeme linki olustur"
+                          >
+                            <LinkIcon className="w-4 h-4" />
+                          </Button>
+                        )}
                       </div>
                     </td>
                   </tr>

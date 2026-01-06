@@ -1,0 +1,342 @@
+/**
+ * Callback (Geri Arama) Routes
+ *
+ * Asistan müşteriye yardımcı olamadığında veya müşteri gerçek biriyle
+ * görüşmek istediğinde geri arama kaydı oluşturulur.
+ */
+
+import express from 'express';
+import { PrismaClient } from '@prisma/client';
+import { authenticateToken, verifyBusinessAccess } from '../middleware/auth.js';
+
+const router = express.Router();
+const prisma = new PrismaClient();
+
+// ============================================================================
+// PUBLIC ENDPOINT - Asistan tool'undan çağrılır (authentication yok)
+// ============================================================================
+
+/**
+ * POST /api/callbacks/create
+ * Yeni callback oluştur (asistan tool'undan çağrılır)
+ * NOT: Bu endpoint public'tir, assistantId ile yetkilendirme yapılır
+ */
+router.post('/create', async (req, res) => {
+  try {
+    const {
+      assistantId,
+      customerName,
+      customerPhone,
+      topic,
+      priority = 'NORMAL',
+      callId
+    } = req.body;
+
+    // Validasyon
+    if (!assistantId || !customerName || !customerPhone || !topic) {
+      return res.status(400).json({
+        error: 'assistantId, customerName, customerPhone ve topic zorunludur'
+      });
+    }
+
+    // Assistant'tan businessId al
+    const assistant = await prisma.assistant.findUnique({
+      where: { id: assistantId },
+      select: { businessId: true, name: true }
+    });
+
+    if (!assistant) {
+      return res.status(404).json({ error: 'Asistan bulunamadı' });
+    }
+
+    // Priority validasyonu
+    const validPriorities = ['LOW', 'NORMAL', 'HIGH', 'URGENT'];
+    const finalPriority = validPriorities.includes(priority) ? priority : 'NORMAL';
+
+    // Callback oluştur
+    const callback = await prisma.callbackRequest.create({
+      data: {
+        businessId: assistant.businessId,
+        assistantId,
+        callId,
+        customerName,
+        customerPhone,
+        topic,
+        priority: finalPriority
+      }
+    });
+
+    console.log(`✅ Callback created: ${callback.id} by assistant ${assistant.name}`);
+
+    // TODO: İşletmeye bildirim gönder (email/push notification)
+    // Bu bir sonraki iterasyonda eklenecek
+
+    res.json({
+      success: true,
+      message: 'Geri arama kaydı oluşturuldu',
+      callbackId: callback.id
+    });
+  } catch (error) {
+    console.error('❌ Error creating callback:', error);
+    res.status(500).json({ error: 'Callback oluşturulamadı' });
+  }
+});
+
+// ============================================================================
+// PROTECTED ENDPOINTS - Dashboard için
+// ============================================================================
+
+router.use(authenticateToken);
+router.use(verifyBusinessAccess);
+
+/**
+ * GET /api/callbacks
+ * Callback listesi (dashboard için)
+ */
+router.get('/', async (req, res) => {
+  try {
+    const { businessId } = req.user;
+    const { status, priority, limit = 50, offset = 0 } = req.query;
+
+    const where = { businessId };
+
+    // Filtreler
+    if (status) where.status = status;
+    if (priority) where.priority = priority;
+
+    const callbacks = await prisma.callbackRequest.findMany({
+      where,
+      include: {
+        assistant: { select: { name: true } }
+      },
+      orderBy: [
+        { status: 'asc' },      // PENDING önce
+        { priority: 'desc' },   // URGENT önce
+        { requestedAt: 'desc' }
+      ],
+      take: parseInt(limit),
+      skip: parseInt(offset)
+    });
+
+    res.json(callbacks);
+  } catch (error) {
+    console.error('❌ Error fetching callbacks:', error);
+    res.status(500).json({ error: 'Callback listesi alınamadı' });
+  }
+});
+
+/**
+ * GET /api/callbacks/stats
+ * Callback istatistikleri
+ */
+router.get('/stats', async (req, res) => {
+  try {
+    const { businessId } = req.user;
+
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const [pending, inProgress, completed, noAnswer, today, urgent] = await Promise.all([
+      prisma.callbackRequest.count({
+        where: { businessId, status: 'PENDING' }
+      }),
+      prisma.callbackRequest.count({
+        where: { businessId, status: 'IN_PROGRESS' }
+      }),
+      prisma.callbackRequest.count({
+        where: { businessId, status: 'COMPLETED' }
+      }),
+      prisma.callbackRequest.count({
+        where: { businessId, status: 'NO_ANSWER' }
+      }),
+      prisma.callbackRequest.count({
+        where: {
+          businessId,
+          requestedAt: { gte: todayStart }
+        }
+      }),
+      prisma.callbackRequest.count({
+        where: {
+          businessId,
+          priority: 'URGENT',
+          status: { in: ['PENDING', 'IN_PROGRESS'] }
+        }
+      })
+    ]);
+
+    res.json({
+      pending,
+      inProgress,
+      completed,
+      noAnswer,
+      today,
+      urgent,
+      total: pending + inProgress + completed + noAnswer
+    });
+  } catch (error) {
+    console.error('❌ Error fetching callback stats:', error);
+    res.status(500).json({ error: 'İstatistikler alınamadı' });
+  }
+});
+
+/**
+ * GET /api/callbacks/:id
+ * Tek callback detayı
+ */
+router.get('/:id', async (req, res) => {
+  try {
+    const { businessId } = req.user;
+    const { id } = req.params;
+
+    const callback = await prisma.callbackRequest.findFirst({
+      where: { id, businessId },
+      include: {
+        assistant: { select: { name: true } }
+      }
+    });
+
+    if (!callback) {
+      return res.status(404).json({ error: 'Callback bulunamadı' });
+    }
+
+    res.json(callback);
+  } catch (error) {
+    console.error('❌ Error fetching callback:', error);
+    res.status(500).json({ error: 'Callback alınamadı' });
+  }
+});
+
+/**
+ * PATCH /api/callbacks/:id
+ * Callback durumu güncelle
+ */
+router.patch('/:id', async (req, res) => {
+  try {
+    const { businessId } = req.user;
+    const { id } = req.params;
+    const { status, notes, callbackNotes, scheduledFor, priority } = req.body;
+
+    // Kullanıcının callback'i olduğunu doğrula
+    const existing = await prisma.callbackRequest.findFirst({
+      where: { id, businessId }
+    });
+
+    if (!existing) {
+      return res.status(404).json({ error: 'Callback bulunamadı' });
+    }
+
+    const updateData = {};
+
+    // Status güncelleme
+    if (status) {
+      const validStatuses = ['PENDING', 'IN_PROGRESS', 'COMPLETED', 'NO_ANSWER', 'CANCELLED'];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({ error: 'Geçersiz status değeri' });
+      }
+      updateData.status = status;
+
+      // Tamamlandıysa completedAt ayarla
+      if (status === 'COMPLETED') {
+        updateData.completedAt = new Date();
+      }
+    }
+
+    // Priority güncelleme
+    if (priority) {
+      const validPriorities = ['LOW', 'NORMAL', 'HIGH', 'URGENT'];
+      if (!validPriorities.includes(priority)) {
+        return res.status(400).json({ error: 'Geçersiz priority değeri' });
+      }
+      updateData.priority = priority;
+    }
+
+    // Notlar
+    if (notes !== undefined) updateData.notes = notes;
+    if (callbackNotes !== undefined) updateData.callbackNotes = callbackNotes;
+
+    // Planlanma zamanı
+    if (scheduledFor !== undefined) {
+      updateData.scheduledFor = scheduledFor ? new Date(scheduledFor) : null;
+    }
+
+    const callback = await prisma.callbackRequest.update({
+      where: { id },
+      data: updateData,
+      include: {
+        assistant: { select: { name: true } }
+      }
+    });
+
+    res.json(callback);
+  } catch (error) {
+    console.error('❌ Error updating callback:', error);
+    res.status(500).json({ error: 'Callback güncellenemedi' });
+  }
+});
+
+/**
+ * DELETE /api/callbacks/:id
+ * Callback sil
+ */
+router.delete('/:id', async (req, res) => {
+  try {
+    const { businessId } = req.user;
+    const { id } = req.params;
+
+    // Kullanıcının callback'i olduğunu doğrula
+    const existing = await prisma.callbackRequest.findFirst({
+      where: { id, businessId }
+    });
+
+    if (!existing) {
+      return res.status(404).json({ error: 'Callback bulunamadı' });
+    }
+
+    await prisma.callbackRequest.delete({
+      where: { id }
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('❌ Error deleting callback:', error);
+    res.status(500).json({ error: 'Callback silinemedi' });
+  }
+});
+
+/**
+ * POST /api/callbacks/:id/retry
+ * Cevap vermeyen callback'i tekrar kuyruğa al
+ */
+router.post('/:id/retry', async (req, res) => {
+  try {
+    const { businessId } = req.user;
+    const { id } = req.params;
+
+    const existing = await prisma.callbackRequest.findFirst({
+      where: { id, businessId }
+    });
+
+    if (!existing) {
+      return res.status(404).json({ error: 'Callback bulunamadı' });
+    }
+
+    if (existing.status !== 'NO_ANSWER') {
+      return res.status(400).json({ error: 'Sadece cevapsız callback tekrar denenebilir' });
+    }
+
+    const callback = await prisma.callbackRequest.update({
+      where: { id },
+      data: {
+        status: 'PENDING',
+        completedAt: null
+      }
+    });
+
+    res.json(callback);
+  } catch (error) {
+    console.error('❌ Error retrying callback:', error);
+    res.status(500).json({ error: 'Callback tekrar denenemedi' });
+  }
+});
+
+export default router;

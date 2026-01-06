@@ -19,6 +19,7 @@ import {
   BookOpen,
   Mic,
   PhoneCall,
+  PhoneMissed,
   ChevronDown,
   ChevronRight,
   Menu,
@@ -112,6 +113,7 @@ export default function Sidebar({ user, credits, business }) {
       items: [
         { icon: LayoutDashboard, label: t('dashboard.sidebar.overview'), href: '/dashboard', permission: 'dashboard:view' },
         { icon: Phone, label: t('dashboard.sidebar.callHistory'), href: '/dashboard/calls', permission: 'calls:view' },
+        { icon: PhoneMissed, label: locale === 'tr' ? 'Geri Aramalar' : 'Callbacks', href: '/dashboard/callbacks', permission: 'calls:view' },
         { icon: BarChart3, label: t('dashboard.sidebar.analytics'), href: '/dashboard/analytics', permission: 'analytics:view' },
       ],
     },
@@ -161,16 +163,30 @@ export default function Sidebar({ user, credits, business }) {
     window.location.href = '/login';
   };
 
-  // Get plan display name
+  // Get plan display name - Turkish names for TR locale
   const getPlanDisplay = () => {
-    const plans = {
+    const plansEn = {
       FREE: 'Free',
+      TRIAL: 'Trial',
+      PAYG: 'PAYG',
       STARTER: 'Starter',
       BASIC: 'Basic',
+      PRO: 'Pro',
       PROFESSIONAL: 'Pro',
       ENTERPRISE: 'Enterprise',
     };
-    return plans[userPlan] || 'Free';
+    const plansTr = {
+      FREE: 'Ücretsiz',
+      TRIAL: 'Deneme',
+      PAYG: 'Kullandıkça Öde',
+      STARTER: 'Başlangıç',
+      BASIC: 'Temel',
+      PRO: 'Pro',
+      PROFESSIONAL: 'Pro',
+      ENTERPRISE: 'Kurumsal',
+    };
+    const plans = locale === 'tr' ? plansTr : plansEn;
+    return plans[userPlan] || userPlan || (locale === 'tr' ? 'Ücretsiz' : 'Free');
   };
 
   const SidebarContent = () => (

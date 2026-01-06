@@ -233,10 +233,21 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
         ? 'Görüşmeyi sonlandır. Müşteri vedalaştığında (güle güle, görüşürüz, hoşça kal, iyi günler, bye, teşekkürler hepsi bu kadar) veya görev tamamlandığında bu aracı kullan.'
         : 'End the call when the user says goodbye or the task is complete.';
 
-      // Add end_call tool for ALL assistants (so they can end call on goodbye)
+      // Add system tools for ALL assistants:
+      // - end_call: So they can end call on goodbye
+      // - voicemail_detection: To detect answering machines
       const toolsWithSystemTools = [
         ...activeToolsElevenLabs,
-        { type: 'system', name: 'end_call', description: endCallDesc }
+        { type: 'system', name: 'end_call', description: endCallDesc },
+        {
+          type: 'system',
+          name: 'voicemail_detection',
+          description: 'Sesli mesaj algılandığında aramayı sonlandırır.',
+          params: {
+            action: 'end_call',  // Sesli mesajda kapat
+            message: null        // Mesaj bırakma
+          }
+        }
       ];
 
       // Build language-specific analysis prompts for post-call summary
@@ -308,7 +319,16 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
       const activeToolsWithAgentId = getActiveToolsForElevenLabs(business, null, elevenLabsAgentId);
       const toolsWithSystemToolsAndAgentId = [
         ...activeToolsWithAgentId,
-        { type: 'system', name: 'end_call', description: endCallDesc }
+        { type: 'system', name: 'end_call', description: endCallDesc },
+        {
+          type: 'system',
+          name: 'voicemail_detection',
+          description: 'Sesli mesaj algılandığında aramayı sonlandırır.',
+          params: {
+            action: 'end_call',
+            message: null
+          }
+        }
       ];
 
       // Update agent with tools that include agentId in webhook URL
@@ -612,10 +632,21 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
           ? 'Görüşmeyi sonlandır. Müşteri vedalaştığında (güle güle, görüşürüz, hoşça kal, iyi günler, bye, teşekkürler hepsi bu kadar) veya görev tamamlandığında bu aracı kullan.'
           : 'End the call when the user says goodbye or the task is complete.';
 
-        // Add end_call tool for ALL assistants (so they can end call on goodbye)
+        // Add system tools for ALL assistants:
+        // - end_call: So they can end call on goodbye
+        // - voicemail_detection: To detect answering machines
         const toolsWithSystemTools = [
           ...activeToolsElevenLabs,
-          { type: 'system', name: 'end_call', description: endCallDesc }
+          { type: 'system', name: 'end_call', description: endCallDesc },
+          {
+            type: 'system',
+            name: 'voicemail_detection',
+            description: 'Sesli mesaj algılandığında aramayı sonlandırır.',
+            params: {
+              action: 'end_call',  // Sesli mesajda kapat
+              message: null        // Mesaj bırakma
+            }
+          }
         ];
 
         // Build language-specific analysis prompts for post-call summary

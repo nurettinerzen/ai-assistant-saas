@@ -135,8 +135,11 @@ router.get('/', async (req, res) => {
     const paymentModel = getPaymentModel(plan);
     const overageRate = getFixedOveragePrice(country); // Sabit aşım fiyatı
 
-    // Get included minutes from plan config (not from database!)
-    const planIncludedMinutes = getIncludedMinutes(plan, country);
+    // ENTERPRISE için dakika limiti database'den, diğerleri için plan config'den al
+    const isEnterprise = plan === 'ENTERPRISE';
+    const planIncludedMinutes = isEnterprise
+      ? (subscription.enterpriseMinutes || 1000)
+      : getIncludedMinutes(plan, country);
 
     // Calculate trial chat days remaining
     let trialChat = null;
@@ -154,6 +157,15 @@ router.get('/', async (req, res) => {
       ? calculateTLToMinutes(subscription.balance || 0, plan, country)
       : 0;
 
+    // Enterprise için ödeme durumu bilgisi
+    const enterpriseInfo = isEnterprise ? {
+      paymentStatus: subscription.enterprisePaymentStatus,
+      startDate: subscription.enterpriseStartDate,
+      endDate: subscription.enterpriseEndDate,
+      price: subscription.enterprisePrice,
+      concurrent: subscription.enterpriseConcurrent
+    } : null;
+
     res.json({
       // Basic info
       plan,
@@ -165,14 +177,16 @@ router.get('/', async (req, res) => {
       balanceMinutes: isPAYG ? balanceMinutes : null,
       pricePerMinute: isPAYG ? pricePerMinute : null,
 
-      // Paketler için dahil dakika bilgisi (plan config'den al, database'den DEĞİL)
+      // Paketler için dahil dakika bilgisi
+      // ENTERPRISE: database'den al (özel limit)
+      // Diğerleri: plan config'den al
       includedMinutes: !isPAYG && plan !== 'TRIAL' ? {
         used: subscription.includedMinutesUsed || 0,
         limit: planIncludedMinutes
       } : null,
 
-      // Aşım bilgisi (postpaid paketler için)
-      overage: paymentModel === 'POSTPAID' ? {
+      // Aşım bilgisi (postpaid paketler için - enterprise hariç)
+      overage: paymentModel === 'POSTPAID' && !isEnterprise ? {
         minutes: subscription.overageMinutes || 0,
         amount: (subscription.overageMinutes || 0) * overageRate,
         rate: overageRate
@@ -191,6 +205,9 @@ router.get('/', async (req, res) => {
         threshold: subscription.autoReloadThreshold || 2,
         amount: subscription.autoReloadAmount || 5
       } : null,
+
+      // Enterprise bilgileri
+      enterprise: enterpriseInfo,
 
       // Period info
       periodEnd: subscription.currentPeriodEnd
