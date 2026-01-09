@@ -38,7 +38,8 @@ import {
   ArrowUpCircle,
   AlertCircle,
   FileText,
-  Database
+  Database,
+  TrendingUp
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
@@ -75,11 +76,50 @@ const STATUS_CONFIG = {
   }
 };
 
-// Template variable labels (for Hazır Şablon - collection template)
-const TEMPLATE_VARIABLE_LABELS = {
-  debt_amount: { tr: 'Borç Tutarı', en: 'Debt Amount' },
-  currency: { tr: 'Para Birimi', en: 'Currency' },
-  due_date: { tr: 'Vade Tarihi', en: 'Due Date' }
+// Template types for Hazır Şablon tab
+const TEMPLATE_TYPES = {
+  collection: {
+    id: 'collection',
+    name: { tr: 'Tahsilat Şablonu', en: 'Collection Template' },
+    description: {
+      tr: 'Borç hatırlatma aramaları için. Telefon, borç tutarı, para birimi ve vade tarihi kolonlarını içerir.',
+      en: 'For debt reminder calls. Includes phone, debt amount, currency and due date columns.'
+    },
+    icon: 'FileText',
+    color: 'primary',
+    columns: {
+      tr: ['Telefon (zorunlu)', 'Borç Tutarı', 'Para Birimi', 'Vade Tarihi'],
+      en: ['Phone (required)', 'Debt Amount', 'Currency', 'Due Date']
+    },
+    variableLabels: {
+      debt_amount: { tr: 'Borç Tutarı', en: 'Debt Amount' },
+      currency: { tr: 'Para Birimi', en: 'Currency' },
+      due_date: { tr: 'Vade Tarihi', en: 'Due Date' }
+    },
+    assistantFilter: (a) => a.callDirection === 'outbound' || a.callDirection === 'outbound_collection'
+  },
+  sales: {
+    id: 'sales',
+    name: { tr: 'Satış Şablonu', en: 'Sales Template' },
+    description: {
+      tr: 'Satış aramaları için. Telefon, isim, şirket, ilgi alanı ve notlar kolonlarını içerir. Ürün bilgileri Bilgi Bankası\'ndan alınır.',
+      en: 'For sales calls. Includes phone, name, company, interest area and notes. Product info comes from Knowledge Base.'
+    },
+    icon: 'TrendingUp',
+    color: 'green',
+    columns: {
+      tr: ['Telefon (zorunlu)', 'İsim Soyisim', 'Şirket', 'İlgi Alanı', 'Önceki Ürün', 'Notlar'],
+      en: ['Phone (required)', 'Name', 'Company', 'Interest Area', 'Previous Product', 'Notes']
+    },
+    variableLabels: {
+      customer_name: { tr: 'İsim Soyisim', en: 'Name' },
+      customer_company: { tr: 'Şirket', en: 'Company' },
+      interest_area: { tr: 'İlgi Alanı', en: 'Interest Area' },
+      previous_product: { tr: 'Önceki Ürün/Hizmet', en: 'Previous Product' },
+      custom_notes: { tr: 'Notlar', en: 'Notes' }
+    },
+    assistantFilter: (a) => a.callDirection === 'outbound_sales'
+  }
 };
 
 // Call purpose options (for Özel Veri)
@@ -99,6 +139,7 @@ export default function BatchCallsPage() {
   const [loading, setLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(true);
   const [activeTab, setActiveTab] = useState('template'); // 'template' or 'custom'
+  const [selectedTemplateType, setSelectedTemplateType] = useState('collection'); // 'collection' or 'sales'
 
   // Modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -177,10 +218,10 @@ export default function BatchCallsPage() {
         }
       }
 
-      // Load assistants (only outbound)
+      // Load assistants (all outbound types - will be filtered in modal based on template)
       const assistantsRes = await apiClient.assistants.getAll();
       const outboundAssistants = (assistantsRes.data.assistants || []).filter(
-        a => a.callDirection === 'outbound'
+        a => a.callDirection === 'outbound' || a.callDirection === 'outbound_collection' || a.callDirection === 'outbound_sales'
       );
       setAssistants(outboundAssistants);
 
@@ -363,16 +404,17 @@ export default function BatchCallsPage() {
     setShowCreateModal(true);
   };
 
-  const downloadTemplate = async () => {
+  const downloadTemplate = async (templateType = 'collection') => {
     try {
-      const response = await apiClient.get('/api/batch-calls/template', {
+      const response = await apiClient.get(`/api/batch-calls/template/${templateType}`, {
         responseType: 'blob'
       });
 
+      const fileName = templateType === 'sales' ? 'satis-sablon.xlsx' : 'tahsilat-sablon.xlsx';
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', 'tahsilat-sablon.xlsx');
+      link.setAttribute('download', fileName);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -590,49 +632,115 @@ export default function BatchCallsPage() {
           </TabsTrigger>
         </TabsList>
 
-        {/* Hazır Şablon Tab - Collection Template */}
+        {/* Hazır Şablon Tab - Template Selection */}
         <TabsContent value="template">
-          <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6">
-            <div className="flex items-start gap-4 mb-6">
-              <div className="p-3 bg-primary-100 dark:bg-primary-900 rounded-lg">
-                <FileText className="h-6 w-6 text-primary-600 dark:text-primary-400" />
+          <div className="grid md:grid-cols-2 gap-4 mb-6">
+            {/* Collection Template Card */}
+            <div
+              onClick={() => setSelectedTemplateType('collection')}
+              className={`bg-white dark:bg-neutral-900 rounded-xl border-2 p-6 cursor-pointer transition-all ${
+                selectedTemplateType === 'collection'
+                  ? 'border-primary-500 ring-2 ring-primary-200 dark:ring-primary-800'
+                  : 'border-neutral-200 dark:border-neutral-700 hover:border-primary-300'
+              }`}
+            >
+              <div className="flex items-start gap-4 mb-4">
+                <div className={`p-3 rounded-lg ${
+                  selectedTemplateType === 'collection'
+                    ? 'bg-primary-100 dark:bg-primary-900'
+                    : 'bg-neutral-100 dark:bg-neutral-800'
+                }`}>
+                  <FileText className={`h-6 w-6 ${
+                    selectedTemplateType === 'collection'
+                      ? 'text-primary-600 dark:text-primary-400'
+                      : 'text-neutral-500 dark:text-neutral-400'
+                  }`} />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-medium text-neutral-900 dark:text-white mb-1">
+                    {TEMPLATE_TYPES.collection.name[locale]}
+                  </h3>
+                  <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                    {TEMPLATE_TYPES.collection.description[locale]}
+                  </p>
+                </div>
               </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-medium text-neutral-900 dark:text-white mb-1">
-                  {locale === 'tr' ? 'Tahsilat Şablonu' : 'Collection Template'}
-                </h3>
-                <p className="text-sm text-neutral-500 dark:text-neutral-400">
+              <div className="flex flex-wrap gap-2">
+                {TEMPLATE_TYPES.collection.columns[locale].map((col, idx) => (
+                  <Badge key={idx} variant="outline" className="text-xs">{col}</Badge>
+                ))}
+              </div>
+            </div>
+
+            {/* Sales Template Card */}
+            <div
+              onClick={() => setSelectedTemplateType('sales')}
+              className={`bg-white dark:bg-neutral-900 rounded-xl border-2 p-6 cursor-pointer transition-all ${
+                selectedTemplateType === 'sales'
+                  ? 'border-green-500 ring-2 ring-green-200 dark:ring-green-800'
+                  : 'border-neutral-200 dark:border-neutral-700 hover:border-green-300'
+              }`}
+            >
+              <div className="flex items-start gap-4 mb-4">
+                <div className={`p-3 rounded-lg ${
+                  selectedTemplateType === 'sales'
+                    ? 'bg-green-100 dark:bg-green-900'
+                    : 'bg-neutral-100 dark:bg-neutral-800'
+                }`}>
+                  <TrendingUp className={`h-6 w-6 ${
+                    selectedTemplateType === 'sales'
+                      ? 'text-green-600 dark:text-green-400'
+                      : 'text-neutral-500 dark:text-neutral-400'
+                  }`} />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-medium text-neutral-900 dark:text-white mb-1">
+                    {TEMPLATE_TYPES.sales.name[locale]}
+                  </h3>
+                  <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                    {TEMPLATE_TYPES.sales.description[locale]}
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {TEMPLATE_TYPES.sales.columns[locale].map((col, idx) => (
+                  <Badge key={idx} variant="outline" className="text-xs">{col}</Badge>
+                ))}
+              </div>
+              {/* KB Info for Sales */}
+              <div className="mt-3 pt-3 border-t border-neutral-200 dark:border-neutral-700">
+                <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
                   {locale === 'tr'
-                    ? 'Borç hatırlatma aramaları için hazır şablon. Telefon, borç tutarı, para birimi ve vade tarihi kolonlarını içerir.'
-                    : 'Ready template for debt reminder calls. Includes phone, debt amount, currency and due date columns.'
+                    ? 'Ürün bilgileri Bilgi Bankası\'ndan alınır'
+                    : 'Product info comes from Knowledge Base'
                   }
                 </p>
               </div>
             </div>
+          </div>
 
-            <div className="bg-neutral-50 dark:bg-neutral-800 rounded-lg p-4 mb-6">
-              <h4 className="text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-3">
-                {locale === 'tr' ? 'Şablon Kolonları:' : 'Template Columns:'}
-              </h4>
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="outline">{locale === 'tr' ? 'Telefon (zorunlu)' : 'Phone (required)'}</Badge>
-                <Badge variant="outline">{locale === 'tr' ? 'Borç Tutarı' : 'Debt Amount'}</Badge>
-                <Badge variant="outline">{locale === 'tr' ? 'Para Birimi' : 'Currency'}</Badge>
-                <Badge variant="outline">{locale === 'tr' ? 'Vade Tarihi' : 'Due Date'}</Badge>
+          {/* Action Buttons */}
+          <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-4">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-neutral-600 dark:text-neutral-400">
+                {locale === 'tr' ? 'Seçili şablon:' : 'Selected template:'}{' '}
+                <span className="font-medium text-neutral-900 dark:text-white">
+                  {TEMPLATE_TYPES[selectedTemplateType].name[locale]}
+                </span>
               </div>
-            </div>
-
-            <div className="flex gap-3">
-              <Button variant="outline" onClick={downloadTemplate}>
-                <Download className="h-4 w-4 mr-2" />
-                {locale === 'tr' ? 'Şablon İndir' : 'Download Template'}
-              </Button>
-              {can('campaigns:view') && (
-                <Button onClick={() => openCreateModal('template')}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  {locale === 'tr' ? 'Yeni Arama Oluştur' : 'Create New Call'}
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={() => downloadTemplate(selectedTemplateType)}>
+                  <Download className="h-4 w-4 mr-2" />
+                  {locale === 'tr' ? 'Şablon İndir' : 'Download Template'}
                 </Button>
-              )}
+                {can('campaigns:view') && (
+                  <Button onClick={() => openCreateModal('template')}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    {locale === 'tr' ? 'Yeni Arama Oluştur' : 'Create New Call'}
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
 
@@ -700,12 +808,18 @@ export default function BatchCallsPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {modalType === 'template' ? (
-                <FileText className="h-5 w-5 text-primary-600" />
+                selectedTemplateType === 'sales' ? (
+                  <TrendingUp className="h-5 w-5 text-green-600" />
+                ) : (
+                  <FileText className="h-5 w-5 text-primary-600" />
+                )
               ) : (
                 <Database className="h-5 w-5 text-blue-600" />
               )}
               {modalType === 'template'
-                ? (locale === 'tr' ? 'Tahsilat Araması Oluştur' : 'Create Collection Call')
+                ? (selectedTemplateType === 'sales'
+                  ? (locale === 'tr' ? 'Satış Araması Oluştur' : 'Create Sales Call')
+                  : (locale === 'tr' ? 'Tahsilat Araması Oluştur' : 'Create Collection Call'))
                 : (locale === 'tr' ? 'Özel Veri ile Arama' : 'Call with Custom Data')
               }
             </DialogTitle>
@@ -726,7 +840,10 @@ export default function BatchCallsPage() {
                   <Input
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder={locale === 'tr' ? 'örn: Ocak Tahsilat' : 'e.g., January Collection'}
+                    placeholder={modalType === 'template' && selectedTemplateType === 'sales'
+                      ? (locale === 'tr' ? 'örn: Ocak Satış Kampanyası' : 'e.g., January Sales Campaign')
+                      : (locale === 'tr' ? 'örn: Ocak Tahsilat' : 'e.g., January Collection')
+                    }
                   />
                 </div>
 
@@ -759,19 +876,31 @@ export default function BatchCallsPage() {
                       <SelectValue placeholder={locale === 'tr' ? 'Giden arama asistanı seçin' : 'Select outbound assistant'} />
                     </SelectTrigger>
                     <SelectContent>
-                      {assistants.map((assistant) => (
-                        <SelectItem key={assistant.id} value={assistant.id}>
-                          {assistant.name}
-                        </SelectItem>
-                      ))}
+                      {assistants
+                        .filter(a => modalType === 'template'
+                          ? TEMPLATE_TYPES[selectedTemplateType].assistantFilter(a)
+                          : true
+                        )
+                        .map((assistant) => (
+                          <SelectItem key={assistant.id} value={assistant.id}>
+                            {assistant.name}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
-                  {assistants.length === 0 && (
+                  {assistants.filter(a => modalType === 'template'
+                    ? TEMPLATE_TYPES[selectedTemplateType].assistantFilter(a)
+                    : true
+                  ).length === 0 && (
                     <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
                       <AlertCircle className="h-3 w-3" />
-                      {locale === 'tr'
-                        ? 'Önce "Giden Arama" tipinde bir asistan oluşturmalısınız.'
-                        : 'You need to create an "Outbound" type assistant first.'
+                      {modalType === 'template' && selectedTemplateType === 'sales'
+                        ? (locale === 'tr'
+                          ? 'Önce "Satış" tipinde bir giden arama asistanı oluşturmalısınız.'
+                          : 'You need to create an "Outbound Sales" type assistant first.')
+                        : (locale === 'tr'
+                          ? 'Önce "Tahsilat" tipinde bir giden arama asistanı oluşturmalısınız.'
+                          : 'You need to create an "Outbound Collection" type assistant first.')
                       }
                     </p>
                   )}
@@ -806,7 +935,7 @@ export default function BatchCallsPage() {
               <div className="space-y-4">
                 {modalType === 'template' && (
                   <div className="flex justify-end">
-                    <Button variant="outline" size="sm" onClick={downloadTemplate}>
+                    <Button variant="outline" size="sm" onClick={() => downloadTemplate(selectedTemplateType)}>
                       <Download className="h-4 w-4 mr-2" />
                       {locale === 'tr' ? 'Örnek Şablon İndir' : 'Download Template'}
                     </Button>
@@ -891,8 +1020,8 @@ export default function BatchCallsPage() {
                     </Select>
                   </div>
 
-                  {/* Template variable columns */}
-                  {Object.entries(TEMPLATE_VARIABLE_LABELS).map(([key, labels]) => (
+                  {/* Template variable columns - based on selected template type */}
+                  {Object.entries(TEMPLATE_TYPES[selectedTemplateType].variableLabels).map(([key, labels]) => (
                     <div key={key}>
                       <Label>{labels[locale]}</Label>
                       <Select

@@ -148,15 +148,10 @@ router.get('/check-access', async (req, res) => {
   }
 });
 
-/**
- * GET /api/batch-calls/template
- * Download Excel template for batch calling
- * NOTE: This route must be defined BEFORE /:id to avoid being caught by it
- */
-router.get('/template', async (req, res) => {
-  try {
-    // Create sample data with Turkish date format (DD/MM/YYYY)
-    const sampleData = [
+// Template configurations for different call types
+const TEMPLATE_CONFIGS = {
+  collection: {
+    sampleData: [
       {
         'Telefon': '+905321234567',
         'Borç Tutarı': '1500',
@@ -175,28 +170,94 @@ router.get('/template', async (req, res) => {
         'Para Birimi': 'USD',
         'Vade Tarihi': '25/01/2024'
       }
-    ];
-
-    // Create workbook and worksheet
-    const workbook = XLSX.utils.book_new();
-    const worksheet = XLSX.utils.json_to_sheet(sampleData);
-
-    // Set column widths
-    worksheet['!cols'] = [
+    ],
+    colWidths: [
       { wch: 15 }, // Telefon
       { wch: 12 }, // Borç Tutarı
       { wch: 12 }, // Para Birimi
       { wch: 12 }, // Vade Tarihi
-    ];
+    ],
+    sheetName: 'Tahsilat Listesi',
+    fileName: 'tahsilat-sablon.xlsx'
+  },
+  sales: {
+    sampleData: [
+      {
+        'Telefon': '+905321234567',
+        'İsim Soyisim': 'Ahmet Yılmaz',
+        'Şirket': 'ABC Teknoloji',
+        'İlgi Alanı': 'Mobil uygulama',
+        'Önceki Ürün/Hizmet': 'Web sitesi yaptırdı',
+        'Son İletişim': '15/12/2024',
+        'Öncelik': 'Yüksek',
+        'Notlar': 'Demo talep etmişti',
+        'Etiketler': 'Sıcak Lead, Teknoloji'
+      },
+      {
+        'Telefon': '+905331234568',
+        'İsim Soyisim': 'Ayşe Demir',
+        'Şirket': 'XYZ Danışmanlık',
+        'İlgi Alanı': 'CRM sistemi',
+        'Önceki Ürün/Hizmet': '',
+        'Son İletişim': '10/12/2024',
+        'Öncelik': 'Orta',
+        'Notlar': 'Fiyat teklifi istedi',
+        'Etiketler': 'Yeni Lead'
+      },
+      {
+        'Telefon': '+905341234569',
+        'İsim Soyisim': 'Mehmet Kaya',
+        'Şirket': '',
+        'İlgi Alanı': 'E-ticaret',
+        'Önceki Ürün/Hizmet': '',
+        'Son İletişim': '05/12/2024',
+        'Öncelik': 'Düşük',
+        'Notlar': '',
+        'Etiketler': 'Araştırma Aşaması'
+      }
+    ],
+    colWidths: [
+      { wch: 15 }, // Telefon
+      { wch: 18 }, // İsim Soyisim
+      { wch: 18 }, // Şirket
+      { wch: 15 }, // İlgi Alanı
+      { wch: 20 }, // Önceki Ürün/Hizmet
+      { wch: 14 }, // Son İletişim
+      { wch: 10 }, // Öncelik
+      { wch: 25 }, // Notlar
+      { wch: 20 }, // Etiketler
+    ],
+    sheetName: 'Satış Listesi',
+    fileName: 'satis-sablon.xlsx'
+  }
+};
 
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Toplu Arama');
+/**
+ * GET /api/batch-calls/template/:type?
+ * Download Excel template for batch calling
+ * @param {string} type - Template type: 'collection' (default) or 'sales'
+ * NOTE: This route must be defined BEFORE /:id to avoid being caught by it
+ */
+router.get('/template/:type?', async (req, res) => {
+  try {
+    const templateType = req.params.type || req.query.type || 'collection';
+    const config = TEMPLATE_CONFIGS[templateType] || TEMPLATE_CONFIGS.collection;
+
+    // Create workbook and worksheet
+    const workbook = XLSX.utils.book_new();
+    const worksheet = XLSX.utils.json_to_sheet(config.sampleData);
+
+    // Set column widths
+    worksheet['!cols'] = config.colWidths;
+
+    XLSX.utils.book_append_sheet(workbook, worksheet, config.sheetName);
 
     // Generate buffer
     const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
 
     // Set response headers
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename=toplu-arama-sablon.xlsx');
+    res.setHeader('Content-Disposition', `attachment; filename=${config.fileName}`);
     res.send(buffer);
 
   } catch (error) {
