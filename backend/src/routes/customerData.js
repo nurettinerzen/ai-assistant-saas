@@ -269,89 +269,171 @@ function parseDateValue(value) {
 
 router.use(authenticateToken);
 
+// ============================================================
+// TEMPLATE DEFINITIONS
+// ============================================================
+
 /**
- * GET /api/customer-data/template
- * Download Excel template for customer data import
+ * Collection (Tahsilat) template - for debt collection calls
  */
-router.get('/template', async (req, res) => {
+const COLLECTION_TEMPLATE = {
+  sampleData: [
+    {
+      'İşletme/Müşteri Adı': 'ABC Ticaret Ltd. Şti.',
+      'Yetkili': 'Ahmet Yılmaz',
+      'Telefon': '5321234567',
+      'Email': 'ahmet@abc.com',
+      'VKN': '1234567890',
+      'TC No': '',
+      'SGK Borcu': '15750.00',
+      'SGK Vadesi': '15.01.2025',
+      'Vergi Borcu': '8320.00',
+      'Vergi Vadesi': '26.01.2025',
+      'Diğer Borç': '',
+      'Diğer Borç Açıklama': '',
+      'Beyanname Türü': 'KDV',
+      'Beyanname Dönemi': '2024/12',
+      'Beyanname Tarihi': '26.01.2025',
+      'Beyanname Durumu': 'Bekliyor',
+      'Notlar': 'Önemli müşteri',
+      'Etiketler': 'VIP, Kurumsal'
+    },
+    {
+      'İşletme/Müşteri Adı': 'XYZ İnşaat A.Ş.',
+      'Yetkili': 'Mehmet Demir',
+      'Telefon': '+905331234568',
+      'Email': 'mehmet@xyz.com',
+      'VKN': '9876543210',
+      'TC No': '',
+      'SGK Borcu': '25000.00',
+      'SGK Vadesi': '20.01.2025',
+      'Vergi Borcu': '12500.00',
+      'Vergi Vadesi': '26.01.2025',
+      'Diğer Borç': '5000.00',
+      'Diğer Borç Açıklama': 'Danışmanlık ücreti',
+      'Beyanname Türü': 'Muhtasar',
+      'Beyanname Dönemi': '2024/12',
+      'Beyanname Tarihi': '26.01.2025',
+      'Beyanname Durumu': 'Verildi',
+      'Notlar': '',
+      'Etiketler': 'Kurumsal'
+    }
+  ],
+  colWidths: [
+    { wch: 25 }, // İşletme/Müşteri Adı
+    { wch: 18 }, // Yetkili
+    { wch: 15 }, // Telefon
+    { wch: 22 }, // Email
+    { wch: 12 }, // VKN
+    { wch: 12 }, // TC No
+    { wch: 12 }, // SGK Borcu
+    { wch: 12 }, // SGK Vadesi
+    { wch: 12 }, // Vergi Borcu
+    { wch: 12 }, // Vergi Vadesi
+    { wch: 12 }, // Diğer Borç
+    { wch: 20 }, // Diğer Borç Açıklama
+    { wch: 15 }, // Beyanname Türü
+    { wch: 15 }, // Beyanname Dönemi
+    { wch: 15 }, // Beyanname Tarihi
+    { wch: 15 }, // Beyanname Durumu
+    { wch: 25 }, // Notlar
+    { wch: 20 }, // Etiketler
+  ],
+  sheetName: 'Müşteri Verileri',
+  fileName: 'tahsilat-sablon.xlsx'
+};
+
+/**
+ * Sales (Satış) template - for outbound sales calls
+ * Simpler structure: phone (required), name, custom data for personalization
+ * Product/service info comes from Knowledge Base, not CSV
+ */
+const SALES_TEMPLATE = {
+  sampleData: [
+    {
+      'Telefon': '5321234567',
+      'İsim Soyisim': 'Ahmet Yılmaz',
+      'Şirket': 'ABC Teknoloji',
+      'İlgi Alanı': 'Mobil uygulama',
+      'Önceki Ürün/Hizmet': 'Web sitesi yaptırdı',
+      'Son İletişim': '15.12.2024',
+      'Öncelik': 'Yüksek',
+      'Notlar': 'Demo talep etmişti, geri dönüş yapılacak',
+      'Etiketler': 'Sıcak Lead, Teknoloji'
+    },
+    {
+      'Telefon': '+905331234568',
+      'İsim Soyisim': 'Ayşe Kaya',
+      'Şirket': 'XYZ Danışmanlık',
+      'İlgi Alanı': 'CRM yazılımı',
+      'Önceki Ürün/Hizmet': '',
+      'Son İletişim': '20.12.2024',
+      'Öncelik': 'Normal',
+      'Notlar': 'Fiyat teklifi istedi',
+      'Etiketler': 'Yeni Lead'
+    },
+    {
+      'Telefon': '5441234569',
+      'İsim Soyisim': 'Mehmet Demir',
+      'Şirket': '',
+      'İlgi Alanı': 'E-ticaret paketi',
+      'Önceki Ürün/Hizmet': 'Mevcut müşteri - hosting',
+      'Son İletişim': '10.01.2025',
+      'Öncelik': 'Düşük',
+      'Notlar': 'Mevcut müşteri, cross-sell fırsatı',
+      'Etiketler': 'Mevcut Müşteri, Upsell'
+    }
+  ],
+  colWidths: [
+    { wch: 15 }, // Telefon
+    { wch: 20 }, // İsim Soyisim
+    { wch: 20 }, // Şirket
+    { wch: 20 }, // İlgi Alanı
+    { wch: 25 }, // Önceki Ürün/Hizmet
+    { wch: 15 }, // Son İletişim
+    { wch: 12 }, // Öncelik
+    { wch: 35 }, // Notlar
+    { wch: 25 }, // Etiketler
+  ],
+  sheetName: 'Satış Listesi',
+  fileName: 'satis-sablon.xlsx'
+};
+
+/**
+ * GET /api/customer-data/template/:type?
+ * Download Excel template for customer data import
+ * @param type - 'collection' (default) or 'sales'
+ */
+router.get('/template/:type?', async (req, res) => {
   try {
-    // Create sample data with all supported columns
-    const sampleData = [
-      {
-        'İşletme/Müşteri Adı': 'ABC Ticaret Ltd. Şti.',
-        'Yetkili': 'Ahmet Yılmaz',
-        'Telefon': '5321234567',
-        'Email': 'ahmet@abc.com',
-        'VKN': '1234567890',
-        'TC No': '',
-        'SGK Borcu': '15750.00',
-        'SGK Vadesi': '15.01.2025',
-        'Vergi Borcu': '8320.00',
-        'Vergi Vadesi': '26.01.2025',
-        'Diğer Borç': '',
-        'Diğer Borç Açıklama': '',
-        'Beyanname Türü': 'KDV',
-        'Beyanname Dönemi': '2024/12',
-        'Beyanname Tarihi': '26.01.2025',
-        'Beyanname Durumu': 'Bekliyor',
-        'Notlar': 'Önemli müşteri',
-        'Etiketler': 'VIP, Kurumsal'
-      },
-      {
-        'İşletme/Müşteri Adı': 'XYZ İnşaat A.Ş.',
-        'Yetkili': 'Mehmet Demir',
-        'Telefon': '+905331234568',
-        'Email': 'mehmet@xyz.com',
-        'VKN': '9876543210',
-        'TC No': '',
-        'SGK Borcu': '25000.00',
-        'SGK Vadesi': '20.01.2025',
-        'Vergi Borcu': '12500.00',
-        'Vergi Vadesi': '26.01.2025',
-        'Diğer Borç': '5000.00',
-        'Diğer Borç Açıklama': 'Danışmanlık ücreti',
-        'Beyanname Türü': 'Muhtasar',
-        'Beyanname Dönemi': '2024/12',
-        'Beyanname Tarihi': '26.01.2025',
-        'Beyanname Durumu': 'Verildi',
-        'Notlar': '',
-        'Etiketler': 'Kurumsal'
-      }
-    ];
+    const templateType = req.params.type || req.query.type || 'collection';
+
+    // Select template based on type
+    let template;
+    switch (templateType) {
+      case 'sales':
+        template = SALES_TEMPLATE;
+        break;
+      case 'collection':
+      default:
+        template = COLLECTION_TEMPLATE;
+        break;
+    }
 
     // Create workbook and worksheet
     const workbook = XLSX.utils.book_new();
-    const worksheet = XLSX.utils.json_to_sheet(sampleData);
+    const worksheet = XLSX.utils.json_to_sheet(template.sampleData);
 
     // Set column widths
-    worksheet['!cols'] = [
-      { wch: 25 }, // İşletme/Müşteri Adı
-      { wch: 18 }, // Yetkili
-      { wch: 15 }, // Telefon
-      { wch: 22 }, // Email
-      { wch: 12 }, // VKN
-      { wch: 12 }, // TC No
-      { wch: 12 }, // SGK Borcu
-      { wch: 12 }, // SGK Vadesi
-      { wch: 12 }, // Vergi Borcu
-      { wch: 12 }, // Vergi Vadesi
-      { wch: 12 }, // Diğer Borç
-      { wch: 20 }, // Diğer Borç Açıklama
-      { wch: 15 }, // Beyanname Türü
-      { wch: 15 }, // Beyanname Dönemi
-      { wch: 15 }, // Beyanname Tarihi
-      { wch: 15 }, // Beyanname Durumu
-      { wch: 25 }, // Notlar
-      { wch: 20 }, // Etiketler
-    ];
+    worksheet['!cols'] = template.colWidths;
 
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Müşteri Verileri');
+    XLSX.utils.book_append_sheet(workbook, worksheet, template.sheetName);
 
     // Generate buffer
     const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename=musteri-verileri-sablon.xlsx');
+    res.setHeader('Content-Disposition', `attachment; filename=${template.fileName}`);
     res.send(buffer);
 
   } catch (error) {

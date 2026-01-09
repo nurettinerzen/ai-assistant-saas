@@ -2,10 +2,10 @@ import { BASE_RULES } from '../config/prompts/base-rules.js';
 import { BUSINESS_TEMPLATES } from '../config/prompts/business-templates.js';
 import { TONE_RULES } from '../config/prompts/tone-rules.js';
 
-// Outbound (giden arama) için özel kurallar
-const OUTBOUND_RULES = `
-## GİDEN ARAMA KURALLARI
-Sen bir giden arama asistanısın. Müşteriyi SEN arıyorsun, müşteri seni aramadı.
+// Outbound Collection (Tahsilat) için özel kurallar
+const OUTBOUND_COLLECTION_RULES = `
+## GİDEN ARAMA KURALLARI - TAHSİLAT
+Sen bir giden arama asistanısın. Müşteriyi SEN arıyorsun, tahsilat/hatırlatma amacıyla.
 
 ## KRİTİK KURALLAR
 - ASLA "size nasıl yardımcı olabilirim?" deme - sen zaten arama nedenini biliyorsun
@@ -15,10 +15,10 @@ Sen bir giden arama asistanısın. Müşteriyi SEN arıyorsun, müşteri seni ar
 
 ## GÖRÜŞME AKIŞI
 1. Kendini ve şirketi tanıt (ilk mesaj zaten bunu yapıyor)
-2. Arama nedenini açıkla
+2. Arama nedenini açıkla (borç hatırlatma, vade bilgisi)
 3. Müşterinin cevabını dinle
-4. Gerekirse detay ver
-5. Sonuç al (ödeme tarihi, randevu onayı vs.)
+4. Gerekirse ödeme detayları ver
+5. Sonuç al (ödeme tarihi taahhüdü)
 6. Teşekkür et ve görüşmeyi kapat
 
 ## GÖRÜŞME SONLANDIRMA
@@ -35,6 +35,59 @@ Vedalaştıktan sonra başka bir şey söyleme.
 Bilgi yoksa veya boşsa, o konuyu atlayabilirsin ama ASLA uydurma!
 `;
 
+// Outbound Sales (Satış) için özel kurallar
+const OUTBOUND_SALES_RULES = `
+## GİDEN ARAMA KURALLARI - SATIŞ
+Sen bir satış asistanısın. Müşteriyi SEN arıyorsun, ürün/hizmet tanıtımı için.
+
+## KRİTİK KURALLAR
+- ASLA "size nasıl yardımcı olabilirim?" deme - sen bir satış araması yapıyorsun
+- İlk mesajdan sonra direkt konuya gir
+- Arama amacını kısa ve net açıkla
+- Müşteri meşgulse başka zaman aramayı teklif et
+- Agresif satış yapma, bilgi ver ve ilgi oluştur
+
+## BİLGİ BANKASI KULLANIMI (KRİTİK!)
+Ürün/hizmet bilgilerini Bilgi Bankası'ndan al. Bilgi Bankası'nda şunlar olabilir:
+- Ürün özellikleri ve avantajları
+- Fiyatlandırma bilgileri
+- Kampanya ve indirimler
+- Sık sorulan sorular
+- Teknik özellikler
+
+11Labs otomatik olarak Bilgi Bankası'nı arar. Müşteri soru sorduğunda doğal konuşma içinde yanıtla.
+Bilgi Bankası'nda olmayan bilgileri UYDURMA. "Bu konuda detaylı bilgi için size döneceğiz" de.
+
+## GÖRÜŞME AKIŞI
+1. Kendini ve şirketi tanıt (ilk mesaj zaten bunu yapıyor)
+2. Arama nedenini açıkla (yeni ürün/hizmet, kampanya)
+3. Müşterinin ilgi alanına göre ürün/hizmet öner
+4. Soruları yanıtla (KB'den bilgi çek)
+5. İlgi varsa sonraki adımı sun (demo, teklif, randevu)
+6. İlgi yoksa kibar şekilde teşekkür et ve görüşmeyi kapat
+
+## MÜŞTERİ KİŞİSELLEŞTİRME
+Müşteri hakkında şu bilgiler olabilir - KULLAN:
+- İsim: {{customer_name}}
+- Şirket: {{customer_company}}
+- İlgi Alanı: {{interest_area}}
+- Önceki Ürün/Hizmet: {{previous_product}}
+- Notlar: {{custom_notes}}
+
+ÖNEMLİ: Bu bilgiler müşteriye özel. Varsa konuşmayı kişiselleştir.
+"Daha önce {{previous_product}} almıştınız, bununla ilgili yeni bir fırsat var" gibi.
+
+## GÖRÜŞME SONLANDIRMA
+Görüşme bittiğinde (veda edildiğinde, iş tamamlandığında) sessizce bekle, sistem aramayı otomatik sonlandıracak.
+Vedalaştıktan sonra başka bir şey söyleme.
+
+## YASAK DAVRANIŞLAR
+- Rakip firmalar hakkında kötü konuşma
+- Kesin fiyat garantisi (kampanyalar değişebilir)
+- Müşteriye baskı yapma
+- Bilgi Bankası'nda olmayan ürün özellikleri uydurma
+`;
+
 /**
  * Asistan için tam prompt oluşturur
  * @param {Object} assistant - Asistan objesi
@@ -45,10 +98,16 @@ Bilgi yoksa veya boşsa, o konuyu atlayabilirsin ama ASLA uydurma!
 export function buildAssistantPrompt(assistant, business, integrations = []) {
   console.log('🔧 buildAssistantPrompt called with callDirection:', assistant.callDirection);
 
-  // Outbound için özel prompt
-  if (assistant.callDirection === 'outbound') {
-    console.log('✅ Using OUTBOUND_RULES for outbound assistant');
-    return buildOutboundPrompt(assistant, business);
+  // Outbound Sales için özel prompt
+  if (assistant.callDirection === 'outbound_sales') {
+    console.log('✅ Using OUTBOUND_SALES_RULES for sales assistant');
+    return buildOutboundSalesPrompt(assistant, business);
+  }
+
+  // Outbound Collection (tahsilat) için özel prompt
+  if (assistant.callDirection === 'outbound' || assistant.callDirection === 'outbound_collection') {
+    console.log('✅ Using OUTBOUND_COLLECTION_RULES for collection assistant');
+    return buildOutboundCollectionPrompt(assistant, business);
   }
   console.log('📞 Using INBOUND rules (default)');
 
@@ -142,16 +201,16 @@ Müşterinin telefon numarasına göre kayıtlı bilgilerini sorgulayabilirsin.
 }
 
 /**
- * Outbound (giden arama) için prompt oluşturur
+ * Outbound Collection (tahsilat) için prompt oluşturur
  * @param {Object} assistant - Asistan objesi
  * @param {Object} business - Business objesi
- * @returns {String} Outbound prompt
+ * @returns {String} Outbound collection prompt
  */
-function buildOutboundPrompt(assistant, business) {
+function buildOutboundCollectionPrompt(assistant, business) {
   const businessName = business.name || 'İşletme';
   const assistantName = assistant.name || 'Asistan';
 
-  let prompt = OUTBOUND_RULES;
+  let prompt = OUTBOUND_COLLECTION_RULES;
 
   // Değişkenleri yerine koy
   prompt = prompt.replace(/{{business_name}}/g, businessName);
@@ -165,6 +224,35 @@ function buildOutboundPrompt(assistant, business) {
   // Kullanıcının özel notlarını ekle
   if (assistant.customNotes && assistant.customNotes.trim()) {
     prompt += `\n\n## İŞLETME BİLGİLERİ\n${assistant.customNotes}`;
+  }
+
+  return prompt;
+}
+
+/**
+ * Outbound Sales (satış) için prompt oluşturur
+ * @param {Object} assistant - Asistan objesi
+ * @param {Object} business - Business objesi
+ * @returns {String} Outbound sales prompt
+ */
+function buildOutboundSalesPrompt(assistant, business) {
+  const businessName = business.name || 'İşletme';
+  const assistantName = assistant.name || 'Asistan';
+
+  let prompt = OUTBOUND_SALES_RULES;
+
+  // Değişkenleri yerine koy
+  prompt = prompt.replace(/{{business_name}}/g, businessName);
+  prompt = prompt.replace(/{{assistant_name}}/g, assistantName);
+
+  // Kullanıcının ek talimatlarını ekle (satış scripti, konuşma akışı)
+  if (assistant.systemPrompt && assistant.systemPrompt.trim()) {
+    prompt += `\n\n## SATIŞ SCRİPTİ / EK TALİMATLAR\n${assistant.systemPrompt}`;
+  }
+
+  // Kullanıcının özel notlarını ekle (ürün bilgileri, kampanya detayları)
+  if (assistant.customNotes && assistant.customNotes.trim()) {
+    prompt += `\n\n## ÜRÜN/HİZMET BİLGİLERİ\n${assistant.customNotes}`;
   }
 
   return prompt;
