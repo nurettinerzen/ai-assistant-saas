@@ -61,11 +61,6 @@ async function syncElevenLabsAgents(businessId) {
     const lang = business.language?.toLowerCase() || 'tr';
     const elevenLabsLang = getElevenLabsLanguage(lang);
 
-    // Build end_call description
-    const endCallDesc = elevenLabsLang === 'tr'
-      ? 'Görüşmeyi sonlandır. Müşteri vedalaştığında (güle güle, görüşürüz, hoşça kal, iyi günler, bye, teşekkürler hepsi bu kadar) veya görev tamamlandığında bu aracı kullan.'
-      : 'End the call when the user says goodbye or the task is complete.';
-
     // Update each assistant's 11Labs agent
     for (const assistant of assistants) {
       try {
@@ -73,11 +68,8 @@ async function syncElevenLabsAgents(businessId) {
         const activeToolsElevenLabs = getActiveToolsForElevenLabs(business, null, assistant.elevenLabsAgentId);
         console.log('📤 11Labs tools to sync for', assistant.name, ':', activeToolsElevenLabs.map(t => t.name));
 
-        // Add end_call tool
-        const toolsWithSystemTools = [
-          ...activeToolsElevenLabs,
-          { type: 'system', name: 'end_call', description: endCallDesc }
-        ];
+        // NOTE: System tools removed - 11Labs handles end_call automatically
+        const toolsWithSystemTools = [...activeToolsElevenLabs];
 
         // Get active tools list for prompt builder
         const activeToolsList = getPromptBuilderTools(business, business.integrations || []);

@@ -227,28 +227,10 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
       const elevenLabsLang = getElevenLabsLanguage(lang);
       console.log('📝 Language mapping:', lang, '->', elevenLabsLang);
 
-      // Build end_call description based on language
-      // Note: 11Labs uses "end_call" not "end_conversation"
-      const endCallDesc = elevenLabsLang === 'tr'
-        ? 'Görüşmeyi sonlandır. Müşteri vedalaştığında (güle güle, görüşürüz, hoşça kal, iyi günler, bye, teşekkürler hepsi bu kadar) veya görev tamamlandığında bu aracı kullan.'
-        : 'End the call when the user says goodbye or the task is complete.';
-
-      // Add system tools for ALL assistants:
-      // - end_call: So they can end call on goodbye
-      // - voicemail_detection: To detect answering machines
-      const toolsWithSystemTools = [
-        ...activeToolsElevenLabs,
-        { type: 'system', name: 'end_call', description: endCallDesc },
-        {
-          type: 'system',
-          name: 'voicemail_detection',
-          description: 'Sesli mesaj algılandığında aramayı sonlandırır.',
-          params: {
-            action: 'end_call',  // Sesli mesajda kapat
-            message: null        // Mesaj bırakma
-          }
-        }
-      ];
+      // NOTE: System tools (end_call, voicemail_detection) removed
+      // 11Labs handles call termination and voicemail detection automatically
+      // The new API format requires system_tool_type discriminator which changes frequently
+      const toolsWithSystemTools = [...activeToolsElevenLabs];
 
       // Build language-specific analysis prompts for post-call summary
       const analysisPrompts = {
@@ -317,19 +299,8 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
 
       // Now update tools with agentId in webhook URL so we can identify business in tool calls
       const activeToolsWithAgentId = getActiveToolsForElevenLabs(business, null, elevenLabsAgentId);
-      const toolsWithSystemToolsAndAgentId = [
-        ...activeToolsWithAgentId,
-        { type: 'system', name: 'end_call', description: endCallDesc },
-        {
-          type: 'system',
-          name: 'voicemail_detection',
-          description: 'Sesli mesaj algılandığında aramayı sonlandırır.',
-          params: {
-            action: 'end_call',
-            message: null
-          }
-        }
-      ];
+      // NOTE: System tools removed - 11Labs handles end_call and voicemail automatically
+      const toolsWithSystemToolsAndAgentId = [...activeToolsWithAgentId];
 
       // Update agent with tools that include agentId in webhook URL
       await elevenLabsService.updateAgent(elevenLabsAgentId, {
@@ -626,28 +597,9 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
         console.log('📝 Update language mapping:', lang, '->', elevenLabsLang);
         const effectiveCallDirection = callDirection || assistant.callDirection || 'inbound';
 
-        // Build end_call description based on language
-        // Note: 11Labs uses "end_call" not "end_conversation"
-        const endCallDesc = elevenLabsLang === 'tr'
-          ? 'Görüşmeyi sonlandır. Müşteri vedalaştığında (güle güle, görüşürüz, hoşça kal, iyi günler, bye, teşekkürler hepsi bu kadar) veya görev tamamlandığında bu aracı kullan.'
-          : 'End the call when the user says goodbye or the task is complete.';
-
-        // Add system tools for ALL assistants:
-        // - end_call: So they can end call on goodbye
-        // - voicemail_detection: To detect answering machines
-        const toolsWithSystemTools = [
-          ...activeToolsElevenLabs,
-          { type: 'system', name: 'end_call', description: endCallDesc },
-          {
-            type: 'system',
-            name: 'voicemail_detection',
-            description: 'Sesli mesaj algılandığında aramayı sonlandırır.',
-            params: {
-              action: 'end_call',  // Sesli mesajda kapat
-              message: null        // Mesaj bırakma
-            }
-          }
-        ];
+        // NOTE: System tools (end_call, voicemail_detection) removed
+        // 11Labs handles call termination and voicemail detection automatically
+        const toolsWithSystemTools = [...activeToolsElevenLabs];
 
         // Build language-specific analysis prompts for post-call summary
         const analysisPrompts = {

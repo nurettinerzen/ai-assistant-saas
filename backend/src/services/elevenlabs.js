@@ -719,26 +719,8 @@ export function buildAgentConfig(assistant, business, tools = [], integrations =
     }
   }));
 
-  // Add end_conversation system tool
-  const endConversationDescription = language === 'tr'
-    ? `Görüşmeyi sonlandır. Şu durumlarda kullan:
-- Kullanıcı vedalaştığında (güle güle, görüşürüz, hoşça kal, iyi günler, bye)
-- Kullanıcı anladığını onayladığında (tamam, anladım, not aldım, tamamdır)
-- Kullanıcı teşekkür edip başka sorusu olmadığında
-- Kullanıcı üst üste 3 kez sessiz kaldığında
-- Görev tamamlandığında ve onaylandığında`
-    : `End the conversation when:
-- User says goodbye (bye, goodbye, see you, take care)
-- User confirms understanding (okay, got it, I understand)
-- User says thank you and has no more questions
-- User is silent 3 times consecutively
-- The task has been completed and acknowledged`;
-
-  elevenLabsTools.push({
-    type: 'system',
-    name: 'end_conversation',
-    description: endConversationDescription
-  });
+  // NOTE: end_call system tool removed - 11Labs handles call termination automatically
+  // The agent will end calls based on conversation flow without explicit tool
 
   // Build analysis prompt based on language
   const analysisPrompt = language === 'tr'

@@ -515,33 +515,58 @@ router.post('/import-sip', async (req, res) => {
       });
     }
 
-    // Save to database
-    const newPhoneNumber = await prisma.phoneNumber.create({
-      data: {
-        businessId: businessId,
-        phoneNumber: formattedNumber,
-        countryCode: 'TR',
-        provider: 'ELEVENLABS',
-        elevenLabsPhoneId: elevenLabsPhoneId,
-        sipUsername: sipUsername,
-        sipPassword: sipPassword,
-        sipServer: sipServer,
-        assistantId: assistantId || null,
-        status: 'ACTIVE',
-        monthlyCost: PRICING.NETGSM.displayMonthly,
-        nextBillingDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-      }
+    // Check if phone number already exists for this business
+    const existingPhone = await prisma.phoneNumber.findFirst({
+      where: { phoneNumber: formattedNumber }
     });
 
-    // Update subscription usage
-    await prisma.subscription.update({
-      where: { businessId },
-      data: {
-        phoneNumbersUsed: {
-          increment: 1
+    let newPhoneNumber;
+    let isNewNumber = false;
+
+    if (existingPhone) {
+      // Update existing record
+      console.log('📞 Phone number already exists, updating...');
+      newPhoneNumber = await prisma.phoneNumber.update({
+        where: { id: existingPhone.id },
+        data: {
+          elevenLabsPhoneId: elevenLabsPhoneId,
+          sipUsername: sipUsername,
+          sipPassword: sipPassword,
+          sipServer: sipServer,
+          assistantId: assistantId || existingPhone.assistantId,
+          status: 'ACTIVE'
         }
-      }
-    });
+      });
+    } else {
+      // Create new record
+      isNewNumber = true;
+      newPhoneNumber = await prisma.phoneNumber.create({
+        data: {
+          businessId: businessId,
+          phoneNumber: formattedNumber,
+          countryCode: 'TR',
+          provider: 'ELEVENLABS',
+          elevenLabsPhoneId: elevenLabsPhoneId,
+          sipUsername: sipUsername,
+          sipPassword: sipPassword,
+          sipServer: sipServer,
+          assistantId: assistantId || null,
+          status: 'ACTIVE',
+          monthlyCost: PRICING.NETGSM.displayMonthly,
+          nextBillingDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+        }
+      });
+
+      // Update subscription usage only for new numbers
+      await prisma.subscription.update({
+        where: { businessId },
+        data: {
+          phoneNumbersUsed: {
+            increment: 1
+          }
+        }
+      });
+    }
 
     console.log('✅ SIP trunk phone number saved:', newPhoneNumber.id);
 
@@ -553,7 +578,7 @@ router.post('/import-sip', async (req, res) => {
       countryCode: 'TR',
       status: 'ACTIVE',
       elevenLabsPhoneId: elevenLabsPhoneId,
-      message: 'Telefon numarası başarıyla bağlandı!'
+      message: isNewNumber ? 'Telefon numarası başarıyla bağlandı!' : 'Telefon numarası güncellendi!'
     });
 
   } catch (error) {
