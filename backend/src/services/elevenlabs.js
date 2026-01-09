@@ -761,7 +761,10 @@ export function buildAgentConfig(assistant, business, tools = [], integrations =
         language: language
       },
       turn: {
-        mode: 'turn'
+        mode: 'turn',
+        turn_timeout: 10,                    // 10sn bekle (müşteri konuşmasını bitirsin)
+        turn_eagerness: 'patient',           // Sabırlı mod
+        silence_end_call_timeout: 30         // 30sn toplam sessizlikten sonra kapat
       },
       // Analysis settings for post-call summary in correct language
       analysis: {
