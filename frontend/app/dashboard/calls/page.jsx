@@ -29,7 +29,7 @@ import {
 import TranscriptModal from '@/components/TranscriptModal';
 import EmptyState from '@/components/EmptyState';
 import { GradientLoaderInline } from '@/components/GradientLoader';
-import { Phone, Search, Download, Filter, FileText, Volume2, MessageSquare } from 'lucide-react';
+import { Phone, Search, Download, Filter, FileText, Volume2, MessageSquare, PhoneIncoming, PhoneOutgoing } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
 import { formatDate, formatDuration, formatPhone } from '@/lib/utils';
@@ -199,6 +199,25 @@ export default function CallsPage() {
     );
   };
 
+  // Direction badge (inbound/outbound)
+  const getDirectionBadge = (call) => {
+    const isOutbound = call.direction === 'outbound';
+    if (isOutbound) {
+      return (
+        <Badge className="bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 text-xs">
+          <PhoneOutgoing className="h-3 w-3 mr-1" />
+          {locale === 'tr' ? 'Giden' : 'Outbound'}
+        </Badge>
+      );
+    }
+    return (
+      <Badge className="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 text-xs">
+        <PhoneIncoming className="h-3 w-3 mr-1" />
+        {locale === 'tr' ? 'Gelen' : 'Inbound'}
+      </Badge>
+    );
+  };
+
   // Status indicator
   const getStatusIndicator = (status) => {
     const statusConfig = {
@@ -330,6 +349,7 @@ export default function CallsPage() {
               <TableRow>
                 <TableHead>{t('dashboard.callsPage.dateTime')}</TableHead>
                 <TableHead>{t('dashboard.callsPage.duration')}</TableHead>
+                <TableHead>{locale === 'tr' ? 'Yön' : 'Direction'}</TableHead>
                 <TableHead>{t('dashboard.callsPage.channel') || 'Kanal'}</TableHead>
                 <TableHead>{t('dashboard.callsPage.status')}</TableHead>
                 <TableHead>{t('dashboard.callsPage.sentiment')}</TableHead>
@@ -349,6 +369,9 @@ export default function CallsPage() {
                     <span className="text-sm font-medium text-gray-900 dark:text-white">
                       {formatDuration(call.duration)}
                     </span>
+                  </TableCell>
+                  <TableCell>
+                    {getDirectionBadge(call)}
                   </TableCell>
                   <TableCell>
                     {getChannelBadge(call)}

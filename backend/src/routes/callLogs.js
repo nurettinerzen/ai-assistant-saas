@@ -57,6 +57,7 @@ router.get('/', async (req, res) => {
       phoneNumber: call.callerId,
       duration: call.duration,
       status: call.status,
+      direction: call.direction || 'inbound',
       createdAt: call.createdAt,
       sentiment: call.sentiment,
       summary: call.summary,

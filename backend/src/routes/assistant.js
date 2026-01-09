@@ -355,19 +355,31 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
     });
 
     // ✅ Telefon numarası varsa, yeni asistanı otomatik ata
+    // NOT: Outbound asistanlar için otomatik atama yapılmaz - onlar batch call için kullanılır
+    // Ayrıca telefon numarasında zaten bir asistan varsa, onu koruruz
     try {
-      const phoneNumber = await prisma.phoneNumber.findFirst({
-        where: { businessId }
-      });
+      const effectiveCallDirection = callDirection || 'inbound';
 
-      if (phoneNumber && phoneNumber.elevenLabsPhoneId && elevenLabsAgentId) {
-        console.log('📱 Auto-assigning assistant to phone number:', phoneNumber.phoneNumber);
-        await elevenLabsService.updatePhoneNumber(phoneNumber.elevenLabsPhoneId, elevenLabsAgentId);
-        await prisma.phoneNumber.update({
-          where: { id: phoneNumber.id },
-          data: { assistantId: assistant.id }
+      // Only auto-assign for inbound assistants
+      if (effectiveCallDirection === 'inbound') {
+        const phoneNumber = await prisma.phoneNumber.findFirst({
+          where: { businessId }
         });
-        console.log('✅ Phone number assigned to new assistant');
+
+        // Only auto-assign if phone number has no assistant assigned yet
+        if (phoneNumber && phoneNumber.elevenLabsPhoneId && elevenLabsAgentId && !phoneNumber.assistantId) {
+          console.log('📱 Auto-assigning assistant to phone number:', phoneNumber.phoneNumber);
+          await elevenLabsService.updatePhoneNumber(phoneNumber.elevenLabsPhoneId, elevenLabsAgentId);
+          await prisma.phoneNumber.update({
+            where: { id: phoneNumber.id },
+            data: { assistantId: assistant.id }
+          });
+          console.log('✅ Phone number assigned to new assistant');
+        } else if (phoneNumber?.assistantId) {
+          console.log('📱 Phone number already has an assistant assigned, skipping auto-assign');
+        }
+      } else {
+        console.log('📱 Outbound assistant created, skipping phone number auto-assign');
       }
     } catch (phoneError) {
       console.error('⚠️ Failed to auto-assign phone number:', phoneError);

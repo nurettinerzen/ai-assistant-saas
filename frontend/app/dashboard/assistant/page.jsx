@@ -59,6 +59,7 @@ const CALL_PURPOSES = {
   // Available for all business types
   common: [
     { value: 'collection', labelTr: 'Tahsilat', labelEn: 'Collection' },
+    { value: 'sales', labelTr: 'Satış', labelEn: 'Sales' },
     { value: 'info', labelTr: 'Bilgilendirme', labelEn: 'Information' },
     { value: 'survey', labelTr: 'Anket', labelEn: 'Survey' },
     { value: 'custom', labelTr: 'Özel', labelEn: 'Custom' },
@@ -75,6 +76,7 @@ const CALL_PURPOSES = {
   // All purpose definitions
   definitions: {
     collection: { labelTr: 'Tahsilat', labelEn: 'Collection' },
+    sales: { labelTr: 'Satış', labelEn: 'Sales' },
     reminder: { labelTr: 'Randevu Hatırlatma', labelEn: 'Appointment Reminder' },
     reservation: { labelTr: 'Rezervasyon', labelEn: 'Reservation' },
     order_update: { labelTr: 'Sipariş Durumu', labelEn: 'Order Update' },
@@ -88,6 +90,10 @@ const CALL_PURPOSES = {
 // Default first messages based on call purpose (simple, natural greeting)
 const DEFAULT_FIRST_MESSAGES = {
   collection: {
+    tr: (businessName, assistantName) => `Merhaba, ben ${assistantName || 'asistan'}, ${businessName || 'şirketimiz'} adına arıyorum.`,
+    en: (businessName, assistantName) => `Hello, I'm ${assistantName || 'an assistant'} calling on behalf of ${businessName || 'our company'}.`
+  },
+  sales: {
     tr: (businessName, assistantName) => `Merhaba, ben ${assistantName || 'asistan'}, ${businessName || 'şirketimiz'} adına arıyorum.`,
     en: (businessName, assistantName) => `Hello, I'm ${assistantName || 'an assistant'} calling on behalf of ${businessName || 'our company'}.`
   },
@@ -126,6 +132,10 @@ const DEFAULT_SYSTEM_PROMPTS = {
   collection: {
     tr: `Borç hatırlatma araması yap. Kibar ol. Ödeme ne zaman yapılacak diye sor.`,
     en: `Make a debt reminder call. Be polite. Ask when the payment will be made.`
+  },
+  sales: {
+    tr: `Satış araması yap. Ürün veya hizmeti tanıt. Müşterinin ihtiyaçlarını dinle ve uygun çözümler sun.`,
+    en: `Make a sales call. Introduce the product or service. Listen to customer needs and offer suitable solutions.`
   },
   reminder: {
     tr: `Randevu hatırlatma araması yap. Randevuyu onayla veya iptal et.`,

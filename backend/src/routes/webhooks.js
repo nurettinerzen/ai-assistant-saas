@@ -301,7 +301,19 @@ router.post('/elevenlabs/call-ended', async (req, res) => {
     const elevenLabsRecipientId = batchCallInfo.batch_call_recipient_id;
 
     // Our custom metadata (sent via conversation_initiation_client_data)
-    const customMetadata = callMetadata.custom || callMetadata;
+    // 11Labs may return it in different locations depending on webhook type
+    const conversationInitData = callMetadata.conversation_initiation_client_data || {};
+    const customMetadata = conversationInitData.metadata || callMetadata.custom || callMetadata;
+
+    // DEBUG: Log all metadata locations to find where our batch_call_id is
+    console.log('🔍 DEBUG metadata locations:', {
+      'callMetadata.batch_call': callMetadata.batch_call,
+      'callMetadata.custom': callMetadata.custom,
+      'callMetadata.conversation_initiation_client_data': callMetadata.conversation_initiation_client_data,
+      'customMetadata.batch_call_id': customMetadata?.batch_call_id,
+      'customMetadata.recipient_id': customMetadata?.recipient_id,
+      'customMetadata.business_id': customMetadata?.business_id
+    });
 
     const callId = conversation_id || callData.call_id;
     const agentId = agent_id;
@@ -378,6 +390,7 @@ router.post('/elevenlabs/call-ended', async (req, res) => {
 
     // Method A: Use our custom metadata (batch_call_id, recipient_id)
     if (customMetadata?.batch_call_id) {
+      console.log(`🔍 Using Method A: batch_call_id=${customMetadata.batch_call_id}, recipient_id=${customMetadata.recipient_id}`);
       try {
         await updateBatchCallRecipientStatus(
           customMetadata.batch_call_id,
@@ -401,6 +414,7 @@ router.post('/elevenlabs/call-ended', async (req, res) => {
     }
     // Method B: Find by phone number (fallback)
     else if (externalNumber) {
+      console.log(`🔍 Using Method B (fallback): phone=${externalNumber}`);
       try {
         await updateBatchCallRecipientByPhone(externalNumber, callStatus, {
           duration: durationSeconds,
@@ -561,17 +575,19 @@ async function updateBatchCallRecipientByPhone(phoneNumber, status, additionalDa
 
     console.log(`🔍 Looking for recipient with phone ending in: ${normalizedPhone}`);
 
-    // Find recent batch calls that are IN_PROGRESS
+    // Find recent batch calls that are PENDING or IN_PROGRESS
     const recentBatchCalls = await prisma.batchCall.findMany({
       where: {
-        status: 'IN_PROGRESS',
-        startedAt: {
+        status: { in: ['PENDING', 'IN_PROGRESS'] },
+        createdAt: {
           gte: new Date(Date.now() - 24 * 60 * 60 * 1000) // Last 24 hours
         }
       },
-      orderBy: { startedAt: 'desc' },
+      orderBy: { createdAt: 'desc' },
       take: 10
     });
+
+    console.log(`🔍 Method B: Found ${recentBatchCalls.length} recent batch calls to search`);
 
     for (const batchCall of recentBatchCalls) {
       let recipients = [];

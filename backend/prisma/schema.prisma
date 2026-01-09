@@ -33,6 +33,7 @@ model User {
   invitedUsers        User[]       @relation("UserInvitations")
   sentInvitations     Invitation[] @relation("InvitedByUser")
   verificationTokens  EmailVerificationToken[]
+  passwordResetTokens PasswordResetToken[]
 
   @@index([businessId])
   @@index([email])
@@ -58,6 +59,18 @@ model Invitation {
 }
 
 model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  userId    Int
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+}
+
+model PasswordResetToken {
   id        String   @id @default(cuid())
   userId    Int
   token     String   @unique
@@ -308,6 +321,7 @@ model CallLog {
   callerId          String?
   duration          Int?
   status            String   // Mevcut teknik durum alanı (completed, in-progress vb.)
+  direction         String?  // "inbound" or "outbound" - arama yönü
   transcript        Json?    // Array of {speaker, text, timestamp}
   transcriptText    String?  @db.Text // Plain text for search
   recordingUrl      String?  @db.Text
@@ -343,6 +357,7 @@ model CallLog {
   @@index([callId])
   @@index([createdAt])
   @@index([status])
+  @@index([direction])
   @@index([callResult])
   @@index([callStatus])
 }

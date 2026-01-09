@@ -562,6 +562,14 @@ async function handleConversationStarted(event) {
     const agentId = event.agent_id;
     const callerPhone = event.metadata?.caller_phone || event.caller_phone || 'Unknown';
 
+    // Determine call direction from metadata or assistant settings
+    let direction = event.metadata?.channel ||
+                    event.metadata?.phone_call?.call_type ||
+                    'inbound';
+    if (direction === 'web' || direction === 'chat') {
+      direction = 'inbound';
+    }
+
     if (!conversationId) {
       console.warn('⚠️ No conversation ID in conversation.started event');
       return;
@@ -576,6 +584,11 @@ async function handleConversationStarted(event) {
     if (!assistant) {
       console.warn(`⚠️ No assistant found for agent ${agentId}`);
       return;
+    }
+
+    // Use assistant's callDirection if not determined from metadata
+    if (direction === 'inbound' && assistant.callDirection === 'outbound') {
+      direction = 'outbound';
     }
 
     const businessId = assistant.business.id;
@@ -595,6 +608,7 @@ async function handleConversationStarted(event) {
             businessId,
             callId: conversationId,
             callerId: callerPhone,
+            direction: direction,
             status: 'blocked',
             summary: `Blocked: ${canCallResult.reason}`,
             createdAt: new Date()
@@ -618,6 +632,7 @@ async function handleConversationStarted(event) {
         businessId,
         callId: conversationId,
         callerId: callerPhone,
+        direction: direction,
         status: 'in_progress',
         createdAt: new Date()
       }
@@ -730,11 +745,22 @@ async function handleConversationEnded(event) {
     const callerPhone = conversationData.metadata?.caller_phone ||
                         event.metadata?.caller_phone || 'Unknown';
 
+    // Determine call direction
+    let direction = conversationData.metadata?.channel ||
+                    conversationData.metadata?.phone_call?.call_type ||
+                    event.metadata?.channel ||
+                    assistant.callDirection ||
+                    'inbound';
+    if (direction === 'web' || direction === 'chat') {
+      direction = 'inbound';
+    }
+
     // Save/update call log
     await prisma.callLog.upsert({
       where: { callId: conversationId },
       update: {
         duration: duration,
+        direction: direction,
         transcript: transcriptMessages.length > 0 ? transcriptMessages : null,
         transcriptText: transcriptText || null,
         status: 'answered',
@@ -750,6 +776,7 @@ async function handleConversationEnded(event) {
         callId: conversationId,
         callerId: callerPhone,
         duration: duration,
+        direction: direction,
         transcript: transcriptMessages.length > 0 ? transcriptMessages : null,
         transcriptText: transcriptText || null,
         status: 'answered',
@@ -879,7 +906,8 @@ router.post('/sync-conversations', async (req, res) => {
           where: { callId: conv.conversation_id }
         });
 
-        if (existing) {
+        // Skip only if exists AND is already completed/answered (not in_progress)
+        if (existing && existing.status !== 'in_progress' && existing.status !== 'in-progress') {
           skippedCount++;
           continue;
         }
@@ -928,6 +956,17 @@ router.post('/sync-conversations', async (req, res) => {
         const callerPhone = conversationData.metadata?.phone_call?.external_number ||
                            conversationData.metadata?.caller_phone || 'Unknown';
 
+        // Determine call direction
+        // Priority: metadata.channel > phone_call type > assistant.callDirection
+        let direction = conversationData.metadata?.channel ||
+                        conversationData.metadata?.phone_call?.call_type ||
+                        assistant.callDirection ||
+                        'inbound';
+        // Normalize direction value
+        if (direction === 'web' || direction === 'chat') {
+          direction = 'inbound'; // Web/chat calls are considered inbound
+        }
+
         const duration = conv.call_duration_secs || 0;
 
         // Run AI analysis for eligible plans
@@ -959,13 +998,29 @@ router.post('/sync-conversations', async (req, res) => {
           }
         }
 
-        // Create call log
-        await prisma.callLog.create({
-          data: {
+        // Create or update call log (upsert for in_progress calls)
+        await prisma.callLog.upsert({
+          where: { callId: conv.conversation_id },
+          update: {
+            callerId: callerPhone !== 'Unknown' ? callerPhone : undefined,
+            duration: duration,
+            direction: direction,
+            transcript: transcriptMessages.length > 0 ? transcriptMessages : undefined,
+            transcriptText: transcriptText || undefined,
+            status: conv.call_successful === 'success' ? 'answered' : 'failed',
+            summary: aiAnalysis.summary,
+            keyTopics: aiAnalysis.keyTopics,
+            actionItems: aiAnalysis.actionItems,
+            sentiment: aiAnalysis.sentiment,
+            sentimentScore: aiAnalysis.sentimentScore,
+            updatedAt: new Date()
+          },
+          create: {
             businessId: business.id,
             callId: conv.conversation_id,
             callerId: callerPhone,
             duration: duration,
+            direction: direction,
             transcript: transcriptMessages.length > 0 ? transcriptMessages : null,
             transcriptText: transcriptText || null,
             status: conv.call_successful === 'success' ? 'answered' : 'failed',
@@ -978,8 +1033,8 @@ router.post('/sync-conversations', async (req, res) => {
           }
         });
 
-        // Track usage
-        if (duration > 0) {
+        // Track usage only for new calls (not updates)
+        if (duration > 0 && !existing) {
           await usageTracking.trackCallUsage(business.id, duration, {
             callId: conv.conversation_id,
             transcript: transcriptText,
@@ -988,7 +1043,7 @@ router.post('/sync-conversations', async (req, res) => {
         }
 
         syncedCount++;
-        console.log(`✅ Synced: ${conv.conversation_id} (${duration}s)`);
+        console.log(`✅ ${existing ? 'Updated' : 'Synced'}: ${conv.conversation_id} (${duration}s)`);
 
       } catch (convError) {
         console.error(`❌ Error syncing ${conv.conversation_id}:`, convError.message);

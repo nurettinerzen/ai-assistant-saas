@@ -101,7 +101,7 @@ await prisma.emailIntegration.upsert({
     const oauth2Client = this.createOAuth2Client();
     oauth2Client.setCredentials(credentials);
 
-    // Check if token is expired
+    // Check if token is expired or needs refresh
     if (credentials.expiry_date && credentials.expiry_date < Date.now()) {
       try {
         const { credentials: newTokens } = await oauth2Client.refreshAccessToken();
@@ -116,6 +116,21 @@ await prisma.emailIntegration.upsert({
         console.log(`Gmail token refreshed for business ${businessId}`);
       } catch (error) {
         console.error('Token refresh failed:', error);
+
+        // Check if it's an invalid_grant error (token revoked/expired)
+        if (error.response?.data?.error === 'invalid_grant') {
+          // Mark the integration as disconnected so user knows to reconnect
+          await prisma.emailIntegration.update({
+            where: { businessId },
+            data: {
+              connected: false,
+              lastSyncedAt: null
+            }
+          });
+          console.log(`Gmail disconnected for business ${businessId} due to invalid_grant`);
+          throw new Error('Gmail bağlantısı sona erdi. Lütfen yeniden bağlanın. / Gmail connection expired. Please reconnect.');
+        }
+
         throw new Error('Gmail token expired. Please reconnect.');
       }
     }

@@ -131,15 +131,15 @@ export const sendPasswordResetEmail = async (email, resetUrl) => {
     </head>
     <body>
       <div class="container">
-        <div class="header">
-          <h1>Şifre Sıfırlama</h1>
+        <div style="background-color: #667eea; color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
+          <h1 style="margin: 0; font-size: 24px; font-weight: 600; color: #ffffff;">Şifre Sıfırlama</h1>
         </div>
         <div class="content">
           <p>Merhaba,</p>
           <p>Şifrenizi sıfırlamak için bir talep aldık. Yeni şifre belirlemek için aşağıdaki butona tıklayın:</p>
 
           <p style="text-align: center;">
-            <a href="${resetUrl}" class="button">Şifremi Sıfırla</a>
+            <a href="${resetUrl}" style="display: inline-block; padding: 16px 48px; background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; margin: 24px 0; font-weight: 600; font-size: 16px;">Şifremi Sıfırla</a>
           </p>
 
           <div class="warning">

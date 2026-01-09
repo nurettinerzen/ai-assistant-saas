@@ -39,8 +39,15 @@ const upload = multer({
 function normalizePhoneNumber(phone) {
   if (!phone) return null;
 
+  // Convert to string and handle scientific notation (e.g., 9.05058E+11)
+  let phoneStr = String(phone);
+  if (phoneStr.includes('E+') || phoneStr.includes('e+')) {
+    // Parse scientific notation to full number string
+    phoneStr = Number(phone).toLocaleString('fullwide', { useGrouping: false });
+  }
+
   // Remove all non-numeric characters except +
-  let cleaned = String(phone).replace(/[^\d+]/g, '');
+  let cleaned = phoneStr.replace(/[^\d+]/g, '');
 
   // If already has + at the start, it's international format - keep as is
   if (cleaned.startsWith('+')) {
@@ -151,52 +158,99 @@ router.get('/check-access', async (req, res) => {
 /**
  * GET /api/batch-calls/template
  * Download Excel template for batch calling
+ * Supports both collection (default) and sales templates via ?type=sales
  * NOTE: This route must be defined BEFORE /:id to avoid being caught by it
  */
 router.get('/template', async (req, res) => {
   try {
-    // Create sample data with Turkish date format (DD/MM/YYYY)
-    const sampleData = [
-      {
-        'Telefon': '+905321234567',
-        'Borç Tutarı': '1500',
-        'Para Birimi': 'TL',
-        'Vade Tarihi': '15/01/2024'
-      },
-      {
-        'Telefon': '+905331234568',
-        'Borç Tutarı': '2300',
-        'Para Birimi': 'TL',
-        'Vade Tarihi': '20/01/2024'
-      },
-      {
-        'Telefon': '+905341234569',
-        'Borç Tutarı': '800',
-        'Para Birimi': 'USD',
-        'Vade Tarihi': '25/01/2024'
-      }
-    ];
+    const templateType = req.query.type || 'collection';
+
+    let sampleData;
+    let sheetName;
+    let columnWidths;
+    let filename;
+
+    if (templateType === 'sales') {
+      // Sales template
+      sampleData = [
+        {
+          'Telefon': '+905321234567',
+          'Müşteri Adı': 'Ahmet Yılmaz',
+          'Ürün/Hizmet Adı': 'Premium Paket',
+          'Fiyat': '2500 TL',
+          'Kampanya Adı': 'Yılsonu İndirimi'
+        },
+        {
+          'Telefon': '+905331234568',
+          'Müşteri Adı': 'Ayşe Demir',
+          'Ürün/Hizmet Adı': 'Standart Paket',
+          'Fiyat': '1500 TL',
+          'Kampanya Adı': 'Yılsonu İndirimi'
+        },
+        {
+          'Telefon': '+905341234569',
+          'Müşteri Adı': 'Mehmet Kaya',
+          'Ürün/Hizmet Adı': 'Enterprise Paket',
+          'Fiyat': '5000 TL',
+          'Kampanya Adı': 'Kurumsal Fırsat'
+        }
+      ];
+      sheetName = 'Satış Araması';
+      columnWidths = [
+        { wch: 15 }, // Telefon
+        { wch: 18 }, // Müşteri Adı
+        { wch: 20 }, // Ürün/Hizmet Adı
+        { wch: 12 }, // Fiyat
+        { wch: 18 }, // Kampanya Adı
+      ];
+      filename = 'satis-sablon.xlsx';
+    } else {
+      // Collection template (default)
+      sampleData = [
+        {
+          'Telefon': '+905321234567',
+          'Borç Tutarı': '1500',
+          'Para Birimi': 'TL',
+          'Vade Tarihi': '15/01/2024'
+        },
+        {
+          'Telefon': '+905331234568',
+          'Borç Tutarı': '2300',
+          'Para Birimi': 'TL',
+          'Vade Tarihi': '20/01/2024'
+        },
+        {
+          'Telefon': '+905341234569',
+          'Borç Tutarı': '800',
+          'Para Birimi': 'USD',
+          'Vade Tarihi': '25/01/2024'
+        }
+      ];
+      sheetName = 'Toplu Arama';
+      columnWidths = [
+        { wch: 15 }, // Telefon
+        { wch: 12 }, // Borç Tutarı
+        { wch: 12 }, // Para Birimi
+        { wch: 12 }, // Vade Tarihi
+      ];
+      filename = 'tahsilat-sablon.xlsx';
+    }
 
     // Create workbook and worksheet
     const workbook = XLSX.utils.book_new();
     const worksheet = XLSX.utils.json_to_sheet(sampleData);
 
     // Set column widths
-    worksheet['!cols'] = [
-      { wch: 15 }, // Telefon
-      { wch: 12 }, // Borç Tutarı
-      { wch: 12 }, // Para Birimi
-      { wch: 12 }, // Vade Tarihi
-    ];
+    worksheet['!cols'] = columnWidths;
 
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Toplu Arama');
+    XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
 
     // Generate buffer
     const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
 
     // Set response headers
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename=toplu-arama-sablon.xlsx');
+    res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
     res.send(buffer);
 
   } catch (error) {
@@ -360,6 +414,7 @@ router.post('/', upload.single('file'), checkPermission('campaigns:view'), async
       };
 
       // Map other columns to dynamic variables
+      // Collection template variables
       if (mapping.customer_name) {
         recipient.customer_name = String(row[mapping.customer_name] || '');
       }
@@ -372,6 +427,17 @@ router.post('/', upload.single('file'), checkPermission('campaigns:view'), async
       if (mapping.due_date) {
         recipient.due_date = String(row[mapping.due_date] || '');
       }
+      // Sales template variables
+      if (mapping.product_name) {
+        recipient.product_name = String(row[mapping.product_name] || '');
+      }
+      if (mapping.product_price) {
+        recipient.product_price = String(row[mapping.product_price] || '');
+      }
+      if (mapping.campaign_name) {
+        recipient.campaign_name = String(row[mapping.campaign_name] || '');
+      }
+      // General variables
       if (mapping.appointment_date) {
         recipient.appointment_date = String(row[mapping.appointment_date] || '');
       }
@@ -414,10 +480,16 @@ router.post('/', upload.single('file'), checkPermission('campaigns:view'), async
       // Transform recipients to 11Labs format with dynamic_variables and metadata
       const elevenLabsRecipients = recipients.map((r) => {
         const dynamicVars = {};
+        // Collection variables
         if (r.customer_name) dynamicVars.customer_name = r.customer_name;
         if (r.debt_amount) dynamicVars.debt_amount = r.debt_amount;
         if (r.due_date) dynamicVars.due_date = r.due_date;
         if (r.currency) dynamicVars.currency = r.currency;
+        // Sales variables
+        if (r.product_name) dynamicVars.product_name = r.product_name;
+        if (r.product_price) dynamicVars.product_price = r.product_price;
+        if (r.campaign_name) dynamicVars.campaign_name = r.campaign_name;
+        // General variables
         if (r.appointment_date) dynamicVars.appointment_date = r.appointment_date;
         if (r.custom_1) dynamicVars.custom_1 = r.custom_1;
         if (r.custom_2) dynamicVars.custom_2 = r.custom_2;
@@ -473,11 +545,14 @@ router.post('/', upload.single('file'), checkPermission('campaigns:view'), async
 
       console.log('✅ 11Labs batch call created:', response.data);
 
+      // 11Labs returns 'id' not 'batch_id'
+      const elevenLabsBatchId = response.data.id || response.data.batch_id;
+
       // Update batch call with 11Labs ID
       await prisma.batchCall.update({
         where: { id: batchCall.id },
         data: {
-          elevenLabsBatchId: response.data.batch_id,
+          elevenLabsBatchId: elevenLabsBatchId,
           status: scheduledAt ? 'PENDING' : 'IN_PROGRESS',
           startedAt: scheduledAt ? null : new Date()
         }
@@ -487,7 +562,7 @@ router.post('/', upload.single('file'), checkPermission('campaigns:view'), async
         success: true,
         batchCall: {
           ...batchCall,
-          elevenLabsBatchId: response.data.batch_id
+          elevenLabsBatchId: elevenLabsBatchId
         },
         message: `Batch call created with ${recipients.length} recipients`
       });
@@ -563,20 +638,24 @@ router.get('/', checkPermission('campaigns:view'), async (req, res) => {
 
             const elevenLabsData = response.data;
             console.log(`📊 11Labs batch ${batch.id} status:`, elevenLabsData.status,
-              `dispatched: ${elevenLabsData.total_calls_dispatched}/${elevenLabsData.total_calls_scheduled}`);
+              `dispatched: ${elevenLabsData.total_calls_dispatched}/${elevenLabsData.total_calls_scheduled}`,
+              `finished: ${elevenLabsData.total_calls_finished}/${elevenLabsData.total_calls_scheduled}`);
 
             // Update local status based on 11Labs status
-            // 11Labs can return: pending, in_progress, completed, done, failed, cancelled
+            // 11Labs returns: pending, in_progress, completed, done, failed, cancelled
+            // Fields: total_calls_scheduled, total_calls_dispatched, total_calls_finished
             let newStatus = batch.status;
 
-            // Check if all calls are done (dispatched == scheduled and status shows completion)
-            const allCallsDone = elevenLabsData.total_calls_dispatched === elevenLabsData.total_calls_scheduled
-              && elevenLabsData.total_calls_dispatched > 0;
+            const totalScheduled = elevenLabsData.total_calls_scheduled || 0;
+            const totalDispatched = elevenLabsData.total_calls_dispatched || 0;
+            const totalFinished = elevenLabsData.total_calls_finished || 0;
 
-            if (elevenLabsData.status === 'completed' || elevenLabsData.status === 'done' ||
-                (allCallsDone && elevenLabsData.status !== 'pending')) {
+            // All calls are truly done when finished == scheduled
+            const allCallsFinished = totalFinished === totalScheduled && totalScheduled > 0;
+
+            if (elevenLabsData.status === 'completed' || elevenLabsData.status === 'done' || allCallsFinished) {
               newStatus = 'COMPLETED';
-            } else if (elevenLabsData.status === 'in_progress' || elevenLabsData.total_calls_dispatched > 0) {
+            } else if (elevenLabsData.status === 'in_progress' || totalDispatched > 0) {
               newStatus = 'IN_PROGRESS';
             } else if (elevenLabsData.status === 'failed') {
               newStatus = 'FAILED';
@@ -584,15 +663,20 @@ router.get('/', checkPermission('campaigns:view'), async (req, res) => {
               newStatus = 'CANCELLED';
             }
 
-            // Update in database if status changed
-            if (newStatus !== batch.status) {
+            // Calculate completed calls from 11Labs data
+            // Note: 11Labs uses total_calls_finished for completed calls
+            const completedCalls = totalFinished;
+
+            // Update in database if status or progress changed
+            const statusChanged = newStatus !== batch.status;
+            const progressChanged = completedCalls !== batch.completedCalls;
+
+            if (statusChanged || progressChanged) {
               await prisma.batchCall.update({
                 where: { id: batch.id },
                 data: {
                   status: newStatus,
-                  completedCalls: elevenLabsData.completed_calls || 0,
-                  successfulCalls: elevenLabsData.successful_calls || 0,
-                  failedCalls: elevenLabsData.failed_calls || 0,
+                  completedCalls: completedCalls,
                   ...(newStatus === 'COMPLETED' && { completedAt: new Date() })
                 }
               });
@@ -601,9 +685,7 @@ router.get('/', checkPermission('campaigns:view'), async (req, res) => {
             return {
               ...batch,
               status: newStatus,
-              completedCalls: elevenLabsData.completed_calls || batch.completedCalls,
-              successfulCalls: elevenLabsData.successful_calls || batch.successfulCalls,
-              failedCalls: elevenLabsData.failed_calls || batch.failedCalls
+              completedCalls: completedCalls
             };
           } catch (error) {
             console.error(`Failed to fetch 11Labs status for batch ${batch.id}:`, error.message);
@@ -674,12 +756,14 @@ router.get('/:id', checkPermission('campaigns:view'), async (req, res) => {
         // 11Labs can return: pending, in_progress, completed, done, failed, cancelled
         let newStatus = batchCall.status;
 
-        // Check if all calls are done
-        const allCallsDone = elevenLabsData.total_calls_dispatched === elevenLabsData.total_calls_scheduled
-          && elevenLabsData.total_calls_dispatched > 0;
+        // Check if all calls are done - use total_calls_finished for accuracy
+        const totalScheduled = elevenLabsData.total_calls_scheduled || 0;
+        const totalFinished = elevenLabsData.total_calls_finished || 0;
+        const allCallsDone = totalFinished >= totalScheduled && totalScheduled > 0;
 
-        if (elevenLabsData.status === 'completed' || elevenLabsData.status === 'done' ||
-            (allCallsDone && elevenLabsData.status !== 'pending')) {
+        console.log(`📊 Batch ${batchCall.id}: scheduled=${totalScheduled}, finished=${totalFinished}, 11Labs status=${elevenLabsData.status}`);
+
+        if (elevenLabsData.status === 'completed' || elevenLabsData.status === 'done' || allCallsDone) {
           newStatus = 'COMPLETED';
         } else if (elevenLabsData.status === 'in_progress' || elevenLabsData.total_calls_dispatched > 0) {
           newStatus = 'IN_PROGRESS';
@@ -689,21 +773,26 @@ router.get('/:id', checkPermission('campaigns:view'), async (req, res) => {
           newStatus = 'CANCELLED';
         }
 
-        if (newStatus !== batchCall.status) {
+        // Use total_calls_finished for completed count
+        const completedCount = totalFinished;
+        const successCount = elevenLabsData.successful_calls || totalFinished; // Assume success if not specified
+        const failedCount = elevenLabsData.failed_calls || 0;
+
+        if (newStatus !== batchCall.status || completedCount !== batchCall.completedCalls) {
           await prisma.batchCall.update({
             where: { id: batchCall.id },
             data: {
               status: newStatus,
-              completedCalls: response.data.completed_calls || 0,
-              successfulCalls: response.data.successful_calls || 0,
-              failedCalls: response.data.failed_calls || 0,
+              completedCalls: completedCount,
+              successfulCalls: successCount,
+              failedCalls: failedCount,
               ...(newStatus === 'COMPLETED' && { completedAt: new Date() })
             }
           });
           batchCall.status = newStatus;
-          batchCall.completedCalls = response.data.completed_calls || 0;
-          batchCall.successfulCalls = response.data.successful_calls || 0;
-          batchCall.failedCalls = response.data.failed_calls || 0;
+          batchCall.completedCalls = completedCount;
+          batchCall.successfulCalls = successCount;
+          batchCall.failedCalls = failedCount;
         }
       } catch (error) {
         console.error('Failed to fetch 11Labs batch details:', error.message);
@@ -789,6 +878,9 @@ router.post('/:id/cancel', checkPermission('campaigns:view'), async (req, res) =
     }
 
     // Cancel in 11Labs
+    let elevenLabsCancelled = false;
+    let elevenLabsError = null;
+
     if (batchCall.elevenLabsBatchId) {
       try {
         const elevenLabsApiKey = process.env.ELEVENLABS_API_KEY;
@@ -799,9 +891,10 @@ router.post('/:id/cancel', checkPermission('campaigns:view'), async (req, res) =
           }
         );
         console.log('✅ 11Labs batch call cancelled:', batchCall.elevenLabsBatchId);
+        elevenLabsCancelled = true;
       } catch (error) {
-        console.error('Failed to cancel in 11Labs:', error.message);
-        // Continue anyway to update local status
+        console.error('Failed to cancel in 11Labs:', error.response?.data || error.message);
+        elevenLabsError = error.response?.data?.detail || error.message;
       }
     }
 
@@ -813,7 +906,12 @@ router.post('/:id/cancel', checkPermission('campaigns:view'), async (req, res) =
 
     res.json({
       success: true,
-      message: 'Batch call cancelled'
+      message: elevenLabsCancelled
+        ? 'Kampanya iptal edildi. Sıradaki aramalar yapılmayacak.'
+        : 'Kampanya yerel olarak iptal edildi.',
+      warning: elevenLabsError
+        ? `11Labs iptal hatası: ${elevenLabsError}. Devam eden aramalar tamamlanabilir.`
+        : (batchCall.status === 'IN_PROGRESS' ? 'Not: Şu anda devam eden arama varsa, o arama tamamlanana kadar sürecektir.' : null)
     });
 
   } catch (error) {

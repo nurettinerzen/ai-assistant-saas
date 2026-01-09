@@ -18,7 +18,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import EmptyState from '@/components/EmptyState';
 import {
@@ -37,8 +36,7 @@ import {
   Pause,
   ArrowUpCircle,
   AlertCircle,
-  FileText,
-  Database
+  X
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
@@ -75,15 +73,9 @@ const STATUS_CONFIG = {
   }
 };
 
-// Template variable labels (for Hazır Şablon - collection template)
-const TEMPLATE_VARIABLE_LABELS = {
-  debt_amount: { tr: 'Borç Tutarı', en: 'Debt Amount' },
-  currency: { tr: 'Para Birimi', en: 'Currency' },
-  due_date: { tr: 'Vade Tarihi', en: 'Due Date' }
-};
-
-// Call purpose options (for Özel Veri)
+// Call purpose options
 const CALL_PURPOSE_OPTIONS = {
+  sales: { tr: 'Satış', en: 'Sales' },
   collection: { tr: 'Tahsilat', en: 'Collection' },
   appointment: { tr: 'Randevu Hatırlatma', en: 'Appointment Reminder' },
   order: { tr: 'Sipariş Bildirimi', en: 'Order Notification' },
@@ -92,17 +84,29 @@ const CALL_PURPOSE_OPTIONS = {
   other: { tr: 'Diğer', en: 'Other' }
 };
 
+// Template variable labels based on purpose
+const TEMPLATE_VARIABLES = {
+  collection: {
+    debt_amount: { tr: 'Borç Tutarı', en: 'Debt Amount' },
+    currency: { tr: 'Para Birimi', en: 'Currency' },
+    due_date: { tr: 'Vade Tarihi', en: 'Due Date' }
+  },
+  sales: {
+    product_name: { tr: 'Ürün/Hizmet Adı', en: 'Product/Service Name' },
+    product_price: { tr: 'Fiyat', en: 'Price' },
+    campaign_name: { tr: 'Kampanya Adı', en: 'Campaign Name' }
+  }
+};
+
 export default function BatchCallsPage() {
   const { t, locale } = useLanguage();
   const { can } = usePermissions();
   const [batchCalls, setBatchCalls] = useState([]);
   const [loading, setLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(true);
-  const [activeTab, setActiveTab] = useState('template'); // 'template' or 'custom'
 
   // Modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [modalType, setModalType] = useState('template'); // 'template' or 'custom'
   const [createStep, setCreateStep] = useState(1);
 
   // Form data
@@ -110,9 +114,9 @@ export default function BatchCallsPage() {
     name: '',
     assistantId: '',
     phoneNumberId: '',
+    callPurpose: '',
     scheduledAt: null,
-    startImmediately: true,
-    callPurpose: '' // For custom data
+    startImmediately: true
   });
 
   // File data
@@ -244,20 +248,17 @@ export default function BatchCallsPage() {
         setColumnMapping(prev => ({ ...prev, phone: phoneColumn }));
       }
 
-      // For template mode, also auto-detect other columns
-      if (modalType === 'template') {
-        const nameColumn = response.data.columns.find(col =>
-          col.toLowerCase().includes('name') ||
-          col.toLowerCase().includes('ad') ||
-          col.toLowerCase().includes('isim') ||
-          col.toLowerCase().includes('müşteri')
-        );
-        if (nameColumn) {
-          setColumnMapping(prev => ({ ...prev, customer_name: nameColumn }));
-        }
+      // Auto-detect name column
+      const nameColumn = response.data.columns.find(col =>
+        col.toLowerCase().includes('name') ||
+        col.toLowerCase().includes('ad') ||
+        col.toLowerCase().includes('isim') ||
+        col.toLowerCase().includes('müşteri')
+      );
+      if (nameColumn) {
+        setColumnMapping(prev => ({ ...prev, customer_name: nameColumn }));
       }
 
-      setCreateStep(3);
     } catch (error) {
       console.error('Parse error:', error);
       toast.error(error.response?.data?.error || (locale === 'tr' ? 'Dosya okunamadı' : 'Failed to parse file'));
@@ -268,7 +269,7 @@ export default function BatchCallsPage() {
   };
 
   const handleSubmit = async () => {
-    if (!formData.name || !formData.assistantId || !formData.phoneNumberId) {
+    if (!formData.name || !formData.assistantId || !formData.phoneNumberId || !formData.callPurpose) {
       toast.error(locale === 'tr' ? 'Lütfen tüm zorunlu alanları doldurun' : 'Please fill all required fields');
       return;
     }
@@ -283,12 +284,6 @@ export default function BatchCallsPage() {
       return;
     }
 
-    // For custom data, purpose is required
-    if (modalType === 'custom' && !formData.callPurpose) {
-      toast.error(locale === 'tr' ? 'Lütfen arama amacını seçin' : 'Please select call purpose');
-      return;
-    }
-
     setSubmitting(true);
 
     try {
@@ -298,11 +293,13 @@ export default function BatchCallsPage() {
       submitFormData.append('assistantId', formData.assistantId);
       submitFormData.append('phoneNumberId', formData.phoneNumberId);
       submitFormData.append('columnMapping', JSON.stringify(columnMapping));
-      submitFormData.append('dataType', modalType); // 'template' or 'custom'
+      submitFormData.append('callPurpose', formData.callPurpose);
 
-      if (modalType === 'custom') {
-        submitFormData.append('callPurpose', formData.callPurpose);
-      }
+      // Set dataType based on purpose for backend processing
+      const dataType = (formData.callPurpose === 'collection' || formData.callPurpose === 'sales')
+        ? formData.callPurpose
+        : 'custom';
+      submitFormData.append('dataType', dataType);
 
       if (!formData.startImmediately && formData.scheduledAt) {
         submitFormData.append('scheduledAt', formData.scheduledAt);
@@ -347,9 +344,9 @@ export default function BatchCallsPage() {
       name: '',
       assistantId: '',
       phoneNumberId: '',
+      callPurpose: '',
       scheduledAt: null,
-      startImmediately: true,
-      callPurpose: ''
+      startImmediately: true
     });
     setSelectedFile(null);
     setFileData({ columns: [], preview: [], totalRows: 0 });
@@ -357,22 +354,16 @@ export default function BatchCallsPage() {
     setCreateStep(1);
   };
 
-  const openCreateModal = (type) => {
-    setModalType(type);
-    resetForm();
-    setShowCreateModal(true);
-  };
-
-  const downloadTemplate = async () => {
+  const downloadTemplate = async (type = 'collection') => {
     try {
-      const response = await apiClient.get('/api/batch-calls/template', {
+      const response = await apiClient.get(`/api/batch-calls/template?type=${type}`, {
         responseType: 'blob'
       });
 
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', 'tahsilat-sablon.xlsx');
+      link.setAttribute('download', type === 'sales' ? 'satis-sablon.xlsx' : 'tahsilat-sablon.xlsx');
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -383,29 +374,12 @@ export default function BatchCallsPage() {
     }
   };
 
-  // Get step count based on modal type
-  const getTotalSteps = () => modalType === 'template' ? 5 : 4;
+  // Check if current purpose has template
+  const hasTemplate = formData.callPurpose === 'collection' || formData.callPurpose === 'sales';
 
-  // Get step name
-  const getStepName = (step) => {
-    if (modalType === 'template') {
-      const steps = {
-        1: { tr: 'Temel Bilgiler', en: 'Basic Info' },
-        2: { tr: 'Dosya Yükleme', en: 'File Upload' },
-        3: { tr: 'Kolon Eşleştirme', en: 'Column Mapping' },
-        4: { tr: 'Zamanlama', en: 'Scheduling' },
-        5: { tr: 'Önizleme', en: 'Preview' }
-      };
-      return steps[step]?.[locale] || '';
-    } else {
-      const steps = {
-        1: { tr: 'Temel Bilgiler', en: 'Basic Info' },
-        2: { tr: 'Dosya Yükleme', en: 'File Upload' },
-        3: { tr: 'Zamanlama', en: 'Scheduling' },
-        4: { tr: 'Önizleme', en: 'Preview' }
-      };
-      return steps[step]?.[locale] || '';
-    }
+  // Get template variables for current purpose
+  const getTemplateVariables = () => {
+    return TEMPLATE_VARIABLES[formData.callPurpose] || {};
   };
 
   // Render upgrade message for non-PRO users
@@ -436,130 +410,6 @@ export default function BatchCallsPage() {
     );
   }
 
-  // Render batch calls table
-  const renderBatchCallsTable = () => {
-    if (loading) {
-      return (
-        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-12 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
-        </div>
-      );
-    }
-
-    if (batchCalls.length === 0) {
-      return null;
-    }
-
-    return (
-      <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden mt-6">
-        <div className="px-6 py-4 border-b border-neutral-200 dark:border-neutral-700">
-          <h3 className="font-medium text-neutral-900 dark:text-white">
-            {locale === 'tr' ? 'Arama Geçmişi' : 'Call History'}
-          </h3>
-        </div>
-        <table className="w-full">
-          <thead className="bg-neutral-50 dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                {locale === 'tr' ? 'Arama' : 'Call'}
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                {locale === 'tr' ? 'Asistan' : 'Assistant'}
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                {locale === 'tr' ? 'Durum' : 'Status'}
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                {locale === 'tr' ? 'İlerleme' : 'Progress'}
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                {locale === 'tr' ? 'Tarih' : 'Date'}
-              </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                {locale === 'tr' ? 'İşlemler' : 'Actions'}
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-neutral-200 dark:divide-neutral-700">
-            {batchCalls.map((batch) => {
-              const statusConfig = STATUS_CONFIG[batch.status] || STATUS_CONFIG.PENDING;
-              const StatusIcon = statusConfig.icon;
-              const progress = batch.totalRecipients > 0
-                ? Math.round((batch.completedCalls / batch.totalRecipients) * 100)
-                : 0;
-
-              return (
-                <tr key={batch.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-800">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="p-2 bg-primary-100 dark:bg-primary-900 rounded-lg mr-3">
-                        <Megaphone className="h-5 w-5 text-primary-600 dark:text-primary-400" />
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium text-neutral-900 dark:text-white">{batch.name}</div>
-                        <div className="text-xs text-neutral-500">
-                          {batch.totalRecipients} {locale === 'tr' ? 'kişi' : 'recipients'}
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm text-neutral-900 dark:text-white">{batch.assistant?.name || '-'}</span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <Badge className={`${statusConfig.color} flex items-center gap-1 w-fit`}>
-                      <StatusIcon className={`h-3 w-3 ${batch.status === 'IN_PROGRESS' ? 'animate-spin' : ''}`} />
-                      {statusConfig.label[locale]}
-                    </Badge>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center gap-2">
-                      <div className="w-24 h-2 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-primary-600 rounded-full transition-all"
-                          style={{ width: `${progress}%` }}
-                        />
-                      </div>
-                      <span className="text-xs text-neutral-600 dark:text-neutral-400">
-                        {batch.completedCalls}/{batch.totalRecipients}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm text-neutral-600 dark:text-neutral-400">
-                      {formatDate(batch.createdAt, 'short')}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <Link href={`/dashboard/batch-calls/${batch.id}`}>
-                        <Button variant="outline" size="sm">
-                          <Eye className="h-3 w-3 mr-1" />
-                          {locale === 'tr' ? 'Detay' : 'Details'}
-                        </Button>
-                      </Link>
-                      {(batch.status === 'PENDING' || batch.status === 'IN_PROGRESS') && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleCancel(batch.id)}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <XCircle className="h-3 w-3 mr-1" />
-                          {locale === 'tr' ? 'İptal' : 'Cancel'}
-                        </Button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    );
-  };
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -570,125 +420,146 @@ export default function BatchCallsPage() {
           </h1>
           <p className="text-neutral-600 dark:text-neutral-400 mt-1">
             {locale === 'tr'
-              ? 'Hazır şablon veya özel veri ile toplu giden arama oluşturun'
-              : 'Create batch outbound calls with ready template or custom data'
+              ? 'Toplu giden arama kampanyalarınızı yönetin'
+              : 'Manage your batch outbound call campaigns'
             }
           </p>
         </div>
+        {can('campaigns:view') && (
+          <Button onClick={() => setShowCreateModal(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            {locale === 'tr' ? 'Yeni Arama Oluştur' : 'Create New Call'}
+          </Button>
+        )}
       </div>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-6">
-          <TabsTrigger value="template" className="flex items-center gap-2">
-            <FileText className="h-4 w-4" />
-            {locale === 'tr' ? 'Hazır Şablon' : 'Ready Template'}
-          </TabsTrigger>
-          <TabsTrigger value="custom" className="flex items-center gap-2">
-            <Database className="h-4 w-4" />
-            {locale === 'tr' ? 'Özel Veri' : 'Custom Data'}
-          </TabsTrigger>
-        </TabsList>
-
-        {/* Hazır Şablon Tab - Collection Template */}
-        <TabsContent value="template">
-          <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6">
-            <div className="flex items-start gap-4 mb-6">
-              <div className="p-3 bg-primary-100 dark:bg-primary-900 rounded-lg">
-                <FileText className="h-6 w-6 text-primary-600 dark:text-primary-400" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-medium text-neutral-900 dark:text-white mb-1">
-                  {locale === 'tr' ? 'Tahsilat Şablonu' : 'Collection Template'}
-                </h3>
-                <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                  {locale === 'tr'
-                    ? 'Borç hatırlatma aramaları için hazır şablon. Telefon, borç tutarı, para birimi ve vade tarihi kolonlarını içerir.'
-                    : 'Ready template for debt reminder calls. Includes phone, debt amount, currency and due date columns.'
-                  }
-                </p>
-              </div>
-            </div>
-
-            <div className="bg-neutral-50 dark:bg-neutral-800 rounded-lg p-4 mb-6">
-              <h4 className="text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-3">
-                {locale === 'tr' ? 'Şablon Kolonları:' : 'Template Columns:'}
-              </h4>
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="outline">{locale === 'tr' ? 'Telefon (zorunlu)' : 'Phone (required)'}</Badge>
-                <Badge variant="outline">{locale === 'tr' ? 'Borç Tutarı' : 'Debt Amount'}</Badge>
-                <Badge variant="outline">{locale === 'tr' ? 'Para Birimi' : 'Currency'}</Badge>
-                <Badge variant="outline">{locale === 'tr' ? 'Vade Tarihi' : 'Due Date'}</Badge>
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <Button variant="outline" onClick={downloadTemplate}>
-                <Download className="h-4 w-4 mr-2" />
-                {locale === 'tr' ? 'Şablon İndir' : 'Download Template'}
-              </Button>
-              {can('campaigns:view') && (
-                <Button onClick={() => openCreateModal('template')}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  {locale === 'tr' ? 'Yeni Arama Oluştur' : 'Create New Call'}
-                </Button>
-              )}
-            </div>
-          </div>
-
-          {renderBatchCallsTable()}
-        </TabsContent>
-
-        {/* Özel Veri Tab - Custom Data */}
-        <TabsContent value="custom">
-          <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6">
-            <div className="flex items-start gap-4 mb-6">
-              <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                <Database className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-medium text-neutral-900 dark:text-white mb-1">
-                  {locale === 'tr' ? 'Özel Veri ile Arama' : 'Call with Custom Data'}
-                </h3>
-                <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                  {locale === 'tr'
-                    ? 'Kendi Excel/CSV dosyanızı yükleyin. Sadece telefon kolonunu seçin ve arama amacını belirtin. Asistan tüm verileri akıllıca kullanacak.'
-                    : 'Upload your own Excel/CSV file. Just select the phone column and specify call purpose. Assistant will intelligently use all data.'
-                  }
-                </p>
-              </div>
-            </div>
-
-            <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
-              <div className="flex gap-2">
-                <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-                <div className="text-sm text-blue-800 dark:text-blue-200">
-                  <p className="font-medium mb-1">
-                    {locale === 'tr' ? 'Nasıl Çalışır?' : 'How It Works?'}
-                  </p>
-                  <ul className="list-disc list-inside space-y-1 text-blue-700 dark:text-blue-300">
-                    <li>{locale === 'tr' ? 'Herhangi bir formatta CSV/Excel yükleyin' : 'Upload CSV/Excel in any format'}</li>
-                    <li>{locale === 'tr' ? 'Sadece telefon numarası kolonunu seçin' : 'Just select the phone number column'}</li>
-                    <li>{locale === 'tr' ? 'Arama amacını belirtin (Tahsilat, Randevu vb.)' : 'Specify call purpose (Collection, Appointment etc.)'}</li>
-                    <li>{locale === 'tr' ? 'Asistan tüm verileri context olarak alacak' : 'Assistant will receive all data as context'}</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-
-            {can('campaigns:view') && (
-              <Button onClick={() => openCreateModal('custom')}>
+      {/* Call History Table */}
+      {loading ? (
+        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-12 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+        </div>
+      ) : batchCalls.length === 0 ? (
+        <EmptyState
+          icon={Megaphone}
+          title={locale === 'tr' ? 'Henüz arama yok' : 'No calls yet'}
+          description={locale === 'tr'
+            ? 'Toplu arama oluşturarak müşterilerinize ulaşın'
+            : 'Create batch calls to reach your customers'
+          }
+          action={
+            can('campaigns:view') && (
+              <Button onClick={() => setShowCreateModal(true)}>
                 <Plus className="h-4 w-4 mr-2" />
-                {locale === 'tr' ? 'Özel Veri ile Başla' : 'Start with Custom Data'}
+                {locale === 'tr' ? 'İlk Aramayı Oluştur' : 'Create First Call'}
               </Button>
-            )}
-          </div>
+            )
+          }
+        />
+      ) : (
+        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden">
+          <table className="w-full">
+            <thead className="bg-neutral-50 dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                  {locale === 'tr' ? 'Arama' : 'Call'}
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                  {locale === 'tr' ? 'Asistan' : 'Assistant'}
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                  {locale === 'tr' ? 'Durum' : 'Status'}
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                  {locale === 'tr' ? 'İlerleme' : 'Progress'}
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                  {locale === 'tr' ? 'Tarih' : 'Date'}
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                  {locale === 'tr' ? 'İşlemler' : 'Actions'}
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-neutral-200 dark:divide-neutral-700">
+              {batchCalls.map((batch) => {
+                const statusConfig = STATUS_CONFIG[batch.status] || STATUS_CONFIG.PENDING;
+                const StatusIcon = statusConfig.icon;
+                const progress = batch.totalRecipients > 0
+                  ? Math.round((batch.completedCalls / batch.totalRecipients) * 100)
+                  : 0;
 
-          {renderBatchCallsTable()}
-        </TabsContent>
-      </Tabs>
+                return (
+                  <tr key={batch.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-800">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="p-2 bg-primary-100 dark:bg-primary-900 rounded-lg mr-3">
+                          <Megaphone className="h-5 w-5 text-primary-600 dark:text-primary-400" />
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium text-neutral-900 dark:text-white">{batch.name}</div>
+                          <div className="text-xs text-neutral-500">
+                            {batch.totalRecipients} {locale === 'tr' ? 'kişi' : 'recipients'}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="text-sm text-neutral-900 dark:text-white">{batch.assistant?.name || '-'}</span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <Badge className={`${statusConfig.color} flex items-center gap-1 w-fit`}>
+                        <StatusIcon className={`h-3 w-3 ${batch.status === 'IN_PROGRESS' ? 'animate-spin' : ''}`} />
+                        {statusConfig.label[locale]}
+                      </Badge>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <div className="w-24 h-2 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-primary-600 rounded-full transition-all"
+                            style={{ width: `${progress}%` }}
+                          />
+                        </div>
+                        <span className="text-xs text-neutral-600 dark:text-neutral-400">
+                          {batch.completedCalls}/{batch.totalRecipients}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="text-sm text-neutral-600 dark:text-neutral-400">
+                        {formatDate(batch.createdAt, 'short')}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Link href={`/dashboard/batch-calls/${batch.id}`}>
+                          <Button variant="outline" size="sm">
+                            <Eye className="h-3 w-3 mr-1" />
+                            {locale === 'tr' ? 'Detay' : 'Details'}
+                          </Button>
+                        </Link>
+                        {(batch.status === 'PENDING' || batch.status === 'IN_PROGRESS') && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleCancel(batch.id)}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <XCircle className="h-3 w-3 mr-1" />
+                            {locale === 'tr' ? 'İptal' : 'Cancel'}
+                          </Button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
-      {/* Create Modal */}
+      {/* Create Modal - Full Screen */}
       <Dialog
         open={showCreateModal}
         onOpenChange={(open) => {
@@ -696,96 +567,65 @@ export default function BatchCallsPage() {
           if (!open) resetForm();
         }}
       >
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              {modalType === 'template' ? (
-                <FileText className="h-5 w-5 text-primary-600" />
-              ) : (
-                <Database className="h-5 w-5 text-blue-600" />
-              )}
-              {modalType === 'template'
-                ? (locale === 'tr' ? 'Tahsilat Araması Oluştur' : 'Create Collection Call')
-                : (locale === 'tr' ? 'Özel Veri ile Arama' : 'Call with Custom Data')
-              }
-            </DialogTitle>
+            <div className="flex items-center justify-between">
+              <DialogTitle className="flex items-center gap-2">
+                <Megaphone className="h-5 w-5 text-primary-600" />
+                {locale === 'tr' ? 'Yeni Arama Oluştur' : 'Create New Call'}
+              </DialogTitle>
+            </div>
             <DialogDescription>
-              {locale === 'tr'
-                ? `Adım ${createStep}/${getTotalSteps()} - ${getStepName(createStep)}`
-                : `Step ${createStep}/${getTotalSteps()} - ${getStepName(createStep)}`
-              }
+              {createStep === 1 && (locale === 'tr' ? 'Arama bilgilerini girin' : 'Enter call information')}
+              {createStep === 2 && (locale === 'tr' ? 'Dosya yükleyin ve kolonları eşleştirin' : 'Upload file and map columns')}
+              {createStep === 3 && (locale === 'tr' ? 'Zamanlamayı ayarlayın ve onaylayın' : 'Set scheduling and confirm')}
             </DialogDescription>
           </DialogHeader>
+
+          {/* Progress Steps */}
+          <div className="flex items-center justify-center gap-2 py-4">
+            {[1, 2, 3].map((step) => (
+              <React.Fragment key={step}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
+                  createStep >= step
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-neutral-200 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400'
+                }`}>
+                  {step}
+                </div>
+                {step < 3 && (
+                  <div className={`w-16 h-1 rounded-full transition-colors ${
+                    createStep > step
+                      ? 'bg-primary-600'
+                      : 'bg-neutral-200 dark:bg-neutral-700'
+                  }`} />
+                )}
+              </React.Fragment>
+            ))}
+          </div>
 
           <div className="space-y-6 py-4">
             {/* Step 1: Basic Info */}
             {createStep === 1 && (
-              <div className="space-y-4">
-                <div>
-                  <Label>{locale === 'tr' ? 'Arama Adı *' : 'Call Name *'}</Label>
-                  <Input
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder={locale === 'tr' ? 'örn: Ocak Tahsilat' : 'e.g., January Collection'}
-                  />
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div>
+                    <Label>{locale === 'tr' ? 'Arama Adı *' : 'Call Name *'}</Label>
+                    <Input
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      placeholder={locale === 'tr' ? 'örn: Ocak Tahsilat Araması' : 'e.g., January Collection Call'}
+                      className="mt-1"
+                    />
+                  </div>
 
-                <div>
-                  <Label>{locale === 'tr' ? 'Telefon Numarası *' : 'Phone Number *'}</Label>
-                  <Select
-                    value={formData.phoneNumberId}
-                    onValueChange={(value) => setFormData({ ...formData, phoneNumberId: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={locale === 'tr' ? 'Numara seçin' : 'Select number'} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {phoneNumbers.map((phone) => (
-                        <SelectItem key={phone.id} value={phone.id}>
-                          {phone.phoneNumber}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label>{locale === 'tr' ? 'Asistan *' : 'Assistant *'}</Label>
-                  <Select
-                    value={formData.assistantId}
-                    onValueChange={(value) => setFormData({ ...formData, assistantId: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={locale === 'tr' ? 'Giden arama asistanı seçin' : 'Select outbound assistant'} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {assistants.map((assistant) => (
-                        <SelectItem key={assistant.id} value={assistant.id}>
-                          {assistant.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {assistants.length === 0 && (
-                    <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
-                      <AlertCircle className="h-3 w-3" />
-                      {locale === 'tr'
-                        ? 'Önce "Giden Arama" tipinde bir asistan oluşturmalısınız.'
-                        : 'You need to create an "Outbound" type assistant first.'
-                      }
-                    </p>
-                  )}
-                </div>
-
-                {/* Call Purpose - Only for Custom Data */}
-                {modalType === 'custom' && (
                   <div>
                     <Label>{locale === 'tr' ? 'Arama Amacı *' : 'Call Purpose *'}</Label>
                     <Select
                       value={formData.callPurpose}
-                      onValueChange={(value) => setFormData({ ...formData, callPurpose: value })}
+                      onValueChange={(value) => setFormData({ ...formData, callPurpose: value, assistantId: '' })}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="mt-1">
                         <SelectValue placeholder={locale === 'tr' ? 'Arama amacını seçin' : 'Select call purpose'} />
                       </SelectTrigger>
                       <SelectContent>
@@ -797,22 +637,100 @@ export default function BatchCallsPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                )}
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <Label>{locale === 'tr' ? 'Telefon Numarası *' : 'Phone Number *'}</Label>
+                    <Select
+                      value={formData.phoneNumberId}
+                      onValueChange={(value) => setFormData({ ...formData, phoneNumberId: value })}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder={locale === 'tr' ? 'Numara seçin' : 'Select number'} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {phoneNumbers.map((phone) => (
+                          <SelectItem key={phone.id} value={phone.id}>
+                            {phone.phoneNumber}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label>{locale === 'tr' ? 'Asistan *' : 'Assistant *'}</Label>
+                    <Select
+                      value={formData.assistantId}
+                      onValueChange={(value) => setFormData({ ...formData, assistantId: value })}
+                      disabled={!formData.callPurpose}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder={
+                          !formData.callPurpose
+                            ? (locale === 'tr' ? 'Önce arama amacı seçin' : 'Select call purpose first')
+                            : (locale === 'tr' ? 'Giden arama asistanı seçin' : 'Select outbound assistant')
+                        } />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {assistants
+                          .filter(a => a.callPurpose === formData.callPurpose)
+                          .map((assistant) => (
+                            <SelectItem key={assistant.id} value={assistant.id}>
+                              {assistant.name}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                    {formData.callPurpose && assistants.filter(a => a.callPurpose === formData.callPurpose).length === 0 && (
+                      <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3" />
+                        {locale === 'tr'
+                          ? `"${CALL_PURPOSE_OPTIONS[formData.callPurpose]?.tr}" amacına uygun asistan bulunamadı. Önce bu amaç için bir giden arama asistanı oluşturun.`
+                          : `No assistant found for "${CALL_PURPOSE_OPTIONS[formData.callPurpose]?.en}" purpose. Create an outbound assistant for this purpose first.`
+                        }
+                      </p>
+                    )}
+                    {!formData.callPurpose && assistants.length === 0 && (
+                      <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3" />
+                        {locale === 'tr'
+                          ? 'Önce "Giden Arama" tipinde bir asistan oluşturmalısınız.'
+                          : 'You need to create an "Outbound" type assistant first.'
+                        }
+                      </p>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
 
-            {/* Step 2: File Upload */}
+            {/* Step 2: File Upload & Column Mapping */}
             {createStep === 2 && (
-              <div className="space-y-4">
-                {modalType === 'template' && (
-                  <div className="flex justify-end">
-                    <Button variant="outline" size="sm" onClick={downloadTemplate}>
+              <div className="space-y-6">
+                {/* Template Download Section */}
+                {hasTemplate && (
+                  <div className="bg-neutral-50 dark:bg-neutral-800 rounded-lg p-4 flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-neutral-900 dark:text-white">
+                        {formData.callPurpose === 'sales'
+                          ? (locale === 'tr' ? 'Satış Şablonu' : 'Sales Template')
+                          : (locale === 'tr' ? 'Tahsilat Şablonu' : 'Collection Template')
+                        }
+                      </p>
+                      <p className="text-sm text-neutral-500">
+                        {locale === 'tr' ? 'Hazır şablonu indirip doldurun' : 'Download and fill the template'}
+                      </p>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={() => downloadTemplate(formData.callPurpose)}>
                       <Download className="h-4 w-4 mr-2" />
-                      {locale === 'tr' ? 'Örnek Şablon İndir' : 'Download Template'}
+                      {locale === 'tr' ? 'Şablon İndir' : 'Download'}
                     </Button>
                   </div>
                 )}
 
+                {/* File Upload Area */}
                 <div
                   onClick={() => fileInputRef.current?.click()}
                   className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors
@@ -838,9 +756,13 @@ export default function BatchCallsPage() {
                     <div className="flex flex-col items-center">
                       <FileSpreadsheet className="h-12 w-12 text-primary-600 mb-3" />
                       <p className="font-medium text-neutral-900 dark:text-white">{selectedFile.name}</p>
-                      <p className="text-sm text-neutral-500">
-                        {(selectedFile.size / 1024).toFixed(1)} KB
+                      <p className="text-sm text-neutral-500 mb-2">
+                        {(selectedFile.size / 1024).toFixed(1)} KB • {fileData.totalRows} {locale === 'tr' ? 'satır' : 'rows'}
                       </p>
+                      <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); setSelectedFile(null); setFileData({ columns: [], preview: [], totalRows: 0 }); setColumnMapping({}); }}>
+                        <X className="h-4 w-4 mr-1" />
+                        {locale === 'tr' ? 'Kaldır' : 'Remove'}
+                      </Button>
                     </div>
                   ) : (
                     <div className="flex flex-col items-center">
@@ -854,305 +776,221 @@ export default function BatchCallsPage() {
                     </div>
                   )}
                 </div>
-              </div>
-            )}
 
-            {/* Step 3: Column Mapping (Template) or Scheduling (Custom) */}
-            {createStep === 3 && modalType === 'template' && (
-              <div className="space-y-4">
-                <div className="bg-neutral-50 dark:bg-neutral-800 rounded-lg p-4 mb-4">
-                  <p className="text-sm text-neutral-600 dark:text-neutral-400">
-                    {locale === 'tr'
-                      ? `Dosyada ${fileData.totalRows} satır bulundu. Kolonları eşleştirin:`
-                      : `Found ${fileData.totalRows} rows in file. Map the columns:`
-                    }
-                  </p>
-                </div>
+                {/* Column Mapping */}
+                {fileData.columns.length > 0 && (
+                  <div className="space-y-4">
+                    <h4 className="font-medium text-neutral-900 dark:text-white">
+                      {locale === 'tr' ? 'Kolon Eşleştirme' : 'Column Mapping'}
+                    </h4>
 
-                <div className="grid gap-4">
-                  {/* Phone column (required) */}
-                  <div>
-                    <Label className="flex items-center gap-1">
-                      <Phone className="h-4 w-4" />
-                      {locale === 'tr' ? 'Telefon Numarası Kolonu *' : 'Phone Number Column *'}
-                    </Label>
-                    <Select
-                      value={columnMapping.phone || ''}
-                      onValueChange={(value) => setColumnMapping({ ...columnMapping, phone: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder={locale === 'tr' ? 'Kolon seçin' : 'Select column'} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {fileData.columns.map((col) => (
-                          <SelectItem key={col} value={col}>{col}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Template variable columns */}
-                  {Object.entries(TEMPLATE_VARIABLE_LABELS).map(([key, labels]) => (
-                    <div key={key}>
-                      <Label>{labels[locale]}</Label>
-                      <Select
-                        value={columnMapping[key] || ''}
-                        onValueChange={(value) => setColumnMapping({
-                          ...columnMapping,
-                          [key]: value === '_none_' ? undefined : value
-                        })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder={locale === 'tr' ? 'Opsiyonel' : 'Optional'} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="_none_">{locale === 'tr' ? '-- Seçme --' : '-- None --'}</SelectItem>
-                          {fileData.columns.map((col) => (
-                            <SelectItem key={col} value={col}>{col}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Preview table */}
-                {fileData.preview.length > 0 && (
-                  <div className="mt-4">
-                    <Label className="mb-2 block">{locale === 'tr' ? 'Önizleme (ilk 5 satır)' : 'Preview (first 5 rows)'}</Label>
-                    <div className="overflow-x-auto border dark:border-neutral-700 rounded-lg">
-                      <table className="w-full text-sm">
-                        <thead className="bg-neutral-50 dark:bg-neutral-800">
-                          <tr>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Phone column (required) */}
+                      <div>
+                        <Label className="flex items-center gap-1">
+                          <Phone className="h-4 w-4" />
+                          {locale === 'tr' ? 'Telefon Numarası *' : 'Phone Number *'}
+                        </Label>
+                        <Select
+                          value={columnMapping.phone || ''}
+                          onValueChange={(value) => setColumnMapping({ ...columnMapping, phone: value })}
+                        >
+                          <SelectTrigger className="mt-1">
+                            <SelectValue placeholder={locale === 'tr' ? 'Kolon seçin' : 'Select column'} />
+                          </SelectTrigger>
+                          <SelectContent>
                             {fileData.columns.map((col) => (
-                              <th key={col} className="px-3 py-2 text-left font-medium text-neutral-600 dark:text-neutral-400">
-                                {col}
-                              </th>
+                              <SelectItem key={col} value={col}>{col}</SelectItem>
                             ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {fileData.preview.map((row, idx) => (
-                            <tr key={idx} className="border-t dark:border-neutral-700">
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Customer name column */}
+                      <div>
+                        <Label>{locale === 'tr' ? 'Müşteri Adı' : 'Customer Name'}</Label>
+                        <Select
+                          value={columnMapping.customer_name || ''}
+                          onValueChange={(value) => setColumnMapping({
+                            ...columnMapping,
+                            customer_name: value === '_none_' ? undefined : value
+                          })}
+                        >
+                          <SelectTrigger className="mt-1">
+                            <SelectValue placeholder={locale === 'tr' ? 'Opsiyonel' : 'Optional'} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="_none_">{locale === 'tr' ? '-- Seçme --' : '-- None --'}</SelectItem>
+                            {fileData.columns.map((col) => (
+                              <SelectItem key={col} value={col}>{col}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Template-specific columns */}
+                      {hasTemplate && Object.entries(getTemplateVariables()).map(([key, labels]) => (
+                        <div key={key}>
+                          <Label>{labels[locale]}</Label>
+                          <Select
+                            value={columnMapping[key] || ''}
+                            onValueChange={(value) => setColumnMapping({
+                              ...columnMapping,
+                              [key]: value === '_none_' ? undefined : value
+                            })}
+                          >
+                            <SelectTrigger className="mt-1">
+                              <SelectValue placeholder={locale === 'tr' ? 'Opsiyonel' : 'Optional'} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="_none_">{locale === 'tr' ? '-- Seçme --' : '-- None --'}</SelectItem>
                               {fileData.columns.map((col) => (
-                                <td key={col} className="px-3 py-2 text-neutral-900 dark:text-white">
-                                  {String(row[col] || '')}
-                                </td>
+                                <SelectItem key={col} value={col}>{col}</SelectItem>
                               ))}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Step 3 for Custom: Phone column selection + Preview */}
-            {createStep === 3 && modalType === 'custom' && (
-              <div className="space-y-4">
-                <div className="bg-neutral-50 dark:bg-neutral-800 rounded-lg p-4 mb-4">
-                  <p className="text-sm text-neutral-600 dark:text-neutral-400">
-                    {locale === 'tr'
-                      ? `Dosyada ${fileData.totalRows} satır bulundu. Telefon numarası kolonunu seçin:`
-                      : `Found ${fileData.totalRows} rows in file. Select the phone number column:`
-                    }
-                  </p>
-                </div>
-
-                {/* Phone column selection */}
-                <div>
-                  <Label className="flex items-center gap-1">
-                    <Phone className="h-4 w-4" />
-                    {locale === 'tr' ? 'Telefon Numarası Kolonu *' : 'Phone Number Column *'}
-                  </Label>
-                  <Select
-                    value={columnMapping.phone || ''}
-                    onValueChange={(value) => setColumnMapping({ phone: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={locale === 'tr' ? 'Kolon seçin' : 'Select column'} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {fileData.columns.map((col) => (
-                        <SelectItem key={col} value={col}>{col}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
                       ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                    </div>
 
-                {/* Preview - show all columns */}
-                {fileData.preview.length > 0 && (
-                  <div className="mt-4">
-                    <Label className="mb-2 block">
-                      {locale === 'tr' ? 'Veri Önizlemesi (tüm kolonlar context olarak gönderilecek)' : 'Data Preview (all columns will be sent as context)'}
-                    </Label>
-                    <div className="overflow-x-auto border dark:border-neutral-700 rounded-lg">
-                      <table className="w-full text-sm">
-                        <thead className="bg-neutral-50 dark:bg-neutral-800">
-                          <tr>
-                            {fileData.columns.map((col) => (
-                              <th key={col} className="px-3 py-2 text-left font-medium text-neutral-600 dark:text-neutral-400">
-                                {col}
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {fileData.preview.map((row, idx) => (
-                            <tr key={idx} className="border-t dark:border-neutral-700">
-                              {fileData.columns.map((col) => (
-                                <td key={col} className="px-3 py-2 text-neutral-900 dark:text-white">
-                                  {String(row[col] || '')}
-                                </td>
+                    {/* Preview table */}
+                    {fileData.preview.length > 0 && (
+                      <div className="mt-4">
+                        <Label className="mb-2 block">{locale === 'tr' ? 'Önizleme (ilk 5 satır)' : 'Preview (first 5 rows)'}</Label>
+                        <div className="overflow-x-auto border dark:border-neutral-700 rounded-lg">
+                          <table className="w-full text-sm">
+                            <thead className="bg-neutral-50 dark:bg-neutral-800">
+                              <tr>
+                                {fileData.columns.map((col) => (
+                                  <th key={col} className="px-3 py-2 text-left font-medium text-neutral-600 dark:text-neutral-400">
+                                    {col}
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {fileData.preview.map((row, idx) => (
+                                <tr key={idx} className="border-t dark:border-neutral-700">
+                                  {fileData.columns.map((col) => (
+                                    <td key={col} className="px-3 py-2 text-neutral-900 dark:text-white">
+                                      {String(row[col] || '')}
+                                    </td>
+                                  ))}
+                                </tr>
                               ))}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
             )}
 
-            {/* Scheduling Step */}
-            {((createStep === 4 && modalType === 'template') || (createStep === 3 && modalType === 'custom' && columnMapping.phone)) && modalType === 'template' && createStep === 4 && (
-              <div className="space-y-4">
-                <div className="flex gap-4">
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, startImmediately: true })}
-                    className={`flex-1 p-4 border-2 rounded-xl text-left transition-colors ${
-                      formData.startImmediately ? 'border-primary-500 bg-primary-50 dark:bg-primary-950' : 'border-neutral-200 dark:border-neutral-700'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <Phone className="h-5 w-5 text-primary-600" />
-                      <span className="font-medium text-neutral-900 dark:text-white">
-                        {locale === 'tr' ? 'Hemen Başlat' : 'Start Immediately'}
-                      </span>
+            {/* Step 3: Scheduling & Confirm */}
+            {createStep === 3 && (
+              <div className="space-y-6">
+                {/* Scheduling Options */}
+                <div>
+                  <Label className="mb-3 block">{locale === 'tr' ? 'Zamanlama' : 'Scheduling'}</Label>
+                  <div className="flex gap-4">
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, startImmediately: true })}
+                      className={`flex-1 p-4 border-2 rounded-xl text-left transition-colors ${
+                        formData.startImmediately ? 'border-primary-500 bg-primary-50 dark:bg-primary-950' : 'border-neutral-200 dark:border-neutral-700'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <Phone className="h-5 w-5 text-primary-600" />
+                        <span className="font-medium text-neutral-900 dark:text-white">
+                          {locale === 'tr' ? 'Hemen Başlat' : 'Start Immediately'}
+                        </span>
+                      </div>
+                      <p className="text-sm text-neutral-500">
+                        {locale === 'tr' ? 'Aramalar hemen başlayacak' : 'Calls will start immediately'}
+                      </p>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, startImmediately: false })}
+                      className={`flex-1 p-4 border-2 rounded-xl text-left transition-colors ${
+                        !formData.startImmediately ? 'border-primary-500 bg-primary-50 dark:bg-primary-950' : 'border-neutral-200 dark:border-neutral-700'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <Calendar className="h-5 w-5 text-primary-600" />
+                        <span className="font-medium text-neutral-900 dark:text-white">
+                          {locale === 'tr' ? 'İleri Tarihte' : 'Schedule for Later'}
+                        </span>
+                      </div>
+                      <p className="text-sm text-neutral-500">
+                        {locale === 'tr' ? 'Belirli bir tarih ve saat seçin' : 'Choose a specific date and time'}
+                      </p>
+                    </button>
+                  </div>
+
+                  {!formData.startImmediately && (
+                    <div className="mt-4">
+                      <Label>{locale === 'tr' ? 'Başlangıç Zamanı' : 'Start Time'}</Label>
+                      <Input
+                        type="datetime-local"
+                        value={formData.scheduledAt || ''}
+                        onChange={(e) => setFormData({ ...formData, scheduledAt: e.target.value })}
+                        min={new Date().toISOString().slice(0, 16)}
+                        className="mt-1 max-w-xs"
+                      />
                     </div>
-                    <p className="text-sm text-neutral-500">
-                      {locale === 'tr' ? 'Aramalar hemen başlayacak' : 'Calls will start immediately'}
-                    </p>
-                  </button>
+                  )}
+                </div>
 
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, startImmediately: false })}
-                    className={`flex-1 p-4 border-2 rounded-xl text-left transition-colors ${
-                      !formData.startImmediately ? 'border-primary-500 bg-primary-50 dark:bg-primary-950' : 'border-neutral-200 dark:border-neutral-700'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <Calendar className="h-5 w-5 text-primary-600" />
-                      <span className="font-medium text-neutral-900 dark:text-white">
-                        {locale === 'tr' ? 'İleri Tarihte' : 'Schedule for Later'}
-                      </span>
+                {/* Summary */}
+                <div className="bg-neutral-50 dark:bg-neutral-800 rounded-lg p-4 space-y-3">
+                  <h4 className="font-medium text-neutral-900 dark:text-white mb-3">
+                    {locale === 'tr' ? 'Özet' : 'Summary'}
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-neutral-500">{locale === 'tr' ? 'Arama Adı' : 'Call Name'}</span>
+                      <p className="font-medium text-neutral-900 dark:text-white">{formData.name}</p>
                     </div>
-                    <p className="text-sm text-neutral-500">
-                      {locale === 'tr' ? 'Belirli bir tarih ve saat seçin' : 'Choose a specific date and time'}
-                    </p>
-                  </button>
-                </div>
-
-                {!formData.startImmediately && (
-                  <div>
-                    <Label>{locale === 'tr' ? 'Başlangıç Zamanı' : 'Start Time'}</Label>
-                    <Input
-                      type="datetime-local"
-                      value={formData.scheduledAt || ''}
-                      onChange={(e) => setFormData({ ...formData, scheduledAt: e.target.value })}
-                      min={new Date().toISOString().slice(0, 16)}
-                    />
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Scheduling for Custom - Step 4 */}
-            {createStep === 4 && modalType === 'custom' && (
-              <div className="space-y-4">
-                <div className="bg-neutral-50 dark:bg-neutral-800 rounded-lg p-4 space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-neutral-600 dark:text-neutral-400">{locale === 'tr' ? 'Arama Adı' : 'Call Name'}</span>
-                    <span className="font-medium dark:text-white">{formData.name}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-neutral-600 dark:text-neutral-400">{locale === 'tr' ? 'Arama Amacı' : 'Call Purpose'}</span>
-                    <span className="font-medium dark:text-white">
-                      {CALL_PURPOSE_OPTIONS[formData.callPurpose]?.[locale] || '-'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-neutral-600 dark:text-neutral-400">{locale === 'tr' ? 'Asistan' : 'Assistant'}</span>
-                    <span className="font-medium dark:text-white">
-                      {assistants.find(a => a.id === formData.assistantId)?.name || '-'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-neutral-600 dark:text-neutral-400">{locale === 'tr' ? 'Telefon' : 'Phone'}</span>
-                    <span className="font-medium dark:text-white">
-                      {phoneNumbers.find(p => p.id === formData.phoneNumberId)?.phoneNumber || '-'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-neutral-600 dark:text-neutral-400">{locale === 'tr' ? 'Toplam Alıcı' : 'Total Recipients'}</span>
-                    <span className="font-medium text-primary-600 dark:text-primary-400">{fileData.totalRows}</span>
+                    <div>
+                      <span className="text-neutral-500">{locale === 'tr' ? 'Arama Amacı' : 'Call Purpose'}</span>
+                      <p className="font-medium text-neutral-900 dark:text-white">
+                        {CALL_PURPOSE_OPTIONS[formData.callPurpose]?.[locale] || '-'}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-neutral-500">{locale === 'tr' ? 'Asistan' : 'Assistant'}</span>
+                      <p className="font-medium text-neutral-900 dark:text-white">
+                        {assistants.find(a => a.id === formData.assistantId)?.name || '-'}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-neutral-500">{locale === 'tr' ? 'Telefon' : 'Phone'}</span>
+                      <p className="font-medium text-neutral-900 dark:text-white">
+                        {phoneNumbers.find(p => p.id === formData.phoneNumberId)?.phoneNumber || '-'}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-neutral-500">{locale === 'tr' ? 'Toplam Alıcı' : 'Total Recipients'}</span>
+                      <p className="font-medium text-primary-600 dark:text-primary-400">{fileData.totalRows}</p>
+                    </div>
+                    <div>
+                      <span className="text-neutral-500">{locale === 'tr' ? 'Zamanlama' : 'Scheduling'}</span>
+                      <p className="font-medium text-neutral-900 dark:text-white">
+                        {formData.startImmediately
+                          ? (locale === 'tr' ? 'Hemen başlat' : 'Start immediately')
+                          : formatDate(formData.scheduledAt, 'long')
+                        }
+                      </p>
+                    </div>
                   </div>
                 </div>
 
-                <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-                  <div className="flex gap-2">
-                    <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
-                    <p className="text-sm text-amber-800 dark:text-amber-200">
-                      {locale === 'tr'
-                        ? `${fileData.totalRows} kişiye otomatik arama yapılacaktır. Tüm veri kolonları asistana context olarak gönderilecek.`
-                        : `${fileData.totalRows} recipients will be called automatically. All data columns will be sent to assistant as context.`
-                      }
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Preview/Confirm for Template - Step 5 */}
-            {createStep === 5 && modalType === 'template' && (
-              <div className="space-y-4">
-                <div className="bg-neutral-50 dark:bg-neutral-800 rounded-lg p-4 space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-neutral-600 dark:text-neutral-400">{locale === 'tr' ? 'Arama Adı' : 'Call Name'}</span>
-                    <span className="font-medium dark:text-white">{formData.name}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-neutral-600 dark:text-neutral-400">{locale === 'tr' ? 'Asistan' : 'Assistant'}</span>
-                    <span className="font-medium dark:text-white">
-                      {assistants.find(a => a.id === formData.assistantId)?.name || '-'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-neutral-600 dark:text-neutral-400">{locale === 'tr' ? 'Telefon' : 'Phone'}</span>
-                    <span className="font-medium dark:text-white">
-                      {phoneNumbers.find(p => p.id === formData.phoneNumberId)?.phoneNumber || '-'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-neutral-600 dark:text-neutral-400">{locale === 'tr' ? 'Toplam Alıcı' : 'Total Recipients'}</span>
-                    <span className="font-medium text-primary-600 dark:text-primary-400">{fileData.totalRows}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-neutral-600 dark:text-neutral-400">{locale === 'tr' ? 'Zamanlama' : 'Scheduling'}</span>
-                    <span className="font-medium dark:text-white">
-                      {formData.startImmediately
-                        ? (locale === 'tr' ? 'Hemen başlat' : 'Start immediately')
-                        : formatDate(formData.scheduledAt, 'long')
-                      }
-                    </span>
-                  </div>
-                </div>
-
+                {/* Warning */}
                 <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
                   <div className="flex gap-2">
                     <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
@@ -1187,16 +1025,12 @@ export default function BatchCallsPage() {
               }
             </Button>
 
-            {createStep < getTotalSteps() ? (
+            {createStep < 3 ? (
               <Button
                 onClick={() => {
                   if (createStep === 1) {
-                    if (!formData.name || !formData.assistantId || !formData.phoneNumberId) {
-                      toast.error(locale === 'tr' ? 'Tüm alanları doldurun' : 'Fill all fields');
-                      return;
-                    }
-                    if (modalType === 'custom' && !formData.callPurpose) {
-                      toast.error(locale === 'tr' ? 'Arama amacını seçin' : 'Select call purpose');
+                    if (!formData.name || !formData.assistantId || !formData.phoneNumberId || !formData.callPurpose) {
+                      toast.error(locale === 'tr' ? 'Tüm zorunlu alanları doldurun' : 'Fill all required fields');
                       return;
                     }
                     setCreateStep(2);
@@ -1205,19 +1039,11 @@ export default function BatchCallsPage() {
                       toast.error(locale === 'tr' ? 'Dosya yükleyin' : 'Upload a file');
                       return;
                     }
-                    // File already processed, move to step 3
-                  } else if (createStep === 3) {
                     if (!columnMapping.phone) {
                       toast.error(locale === 'tr' ? 'Telefon kolonunu seçin' : 'Select phone column');
                       return;
                     }
-                    setCreateStep(4);
-                  } else if (createStep === 4 && modalType === 'template') {
-                    if (!formData.startImmediately && !formData.scheduledAt) {
-                      toast.error(locale === 'tr' ? 'Tarih seçin' : 'Select a date');
-                      return;
-                    }
-                    setCreateStep(5);
+                    setCreateStep(3);
                   }
                 }}
                 disabled={uploading}

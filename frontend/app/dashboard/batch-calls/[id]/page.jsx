@@ -126,8 +126,14 @@ export default function BatchCallDetailPage() {
     }
 
     try {
-      await apiClient.post(`/api/batch-calls/${id}/cancel`);
-      toast.success(locale === 'tr' ? 'Kampanya iptal edildi' : 'Campaign cancelled');
+      const response = await apiClient.post(`/api/batch-calls/${id}/cancel`);
+      toast.success(response.data.message || (locale === 'tr' ? 'Kampanya iptal edildi' : 'Campaign cancelled'));
+
+      // Show warning if there's one (e.g., active call will continue)
+      if (response.data.warning) {
+        toast.info(response.data.warning, { duration: 6000 });
+      }
+
       loadBatchCall();
     } catch (error) {
       toast.error(error.response?.data?.error || (locale === 'tr' ? 'Bir hata oluştu' : 'An error occurred'));

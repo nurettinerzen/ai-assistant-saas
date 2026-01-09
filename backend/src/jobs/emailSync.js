@@ -65,6 +65,12 @@ async function syncBusinessEmails(integration) {
     console.log(`[Email Sync] Business ${businessId}: ${processedCount} new messages synced`);
     return { businessId, processed: processedCount };
   } catch (error) {
+    // Check if this is a token expiration error (already handled in gmail.js)
+    if (error.message.includes('reconnect') || error.message.includes('bağlantısı sona erdi')) {
+      console.log(`[Email Sync] Business ${businessId}: Gmail connection expired, marked as disconnected`);
+      return { businessId, disconnected: true, error: 'Token expired' };
+    }
+
     console.error(`[Email Sync] Error syncing business ${businessId}:`, error.message);
     return { businessId, error: error.message };
   }
