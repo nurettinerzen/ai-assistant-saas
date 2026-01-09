@@ -338,13 +338,15 @@ router.post('/', upload.single('file'), checkPermission('campaigns:view'), async
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    // Verify assistant belongs to this business and is outbound type
+    // Verify assistant belongs to this business and is outbound type (collection or sales)
     const assistant = await prisma.assistant.findFirst({
       where: {
         id: assistantId,
         businessId,
         isActive: true,
-        callDirection: 'outbound'
+        callDirection: {
+          in: ['outbound', 'outbound_collection', 'outbound_sales']
+        }
       }
     });
 

@@ -804,8 +804,8 @@ export default function BatchCallsPage() {
           if (!open) resetForm();
         }}
       >
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle className="flex items-center gap-2">
               {modalType === 'template' ? (
                 selectedTemplateType === 'sales' ? (
@@ -831,7 +831,7 @@ export default function BatchCallsPage() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-6 py-4">
+          <div className="space-y-6 py-4 overflow-y-auto flex-1 min-h-0">
             {/* Step 1: Basic Info */}
             {createStep === 1 && (
               <div className="space-y-4">
@@ -1298,7 +1298,7 @@ export default function BatchCallsPage() {
           </div>
 
           {/* Footer Buttons */}
-          <div className="flex justify-between pt-4 border-t">
+          <div className="flex justify-between pt-4 border-t flex-shrink-0">
             <Button
               variant="outline"
               onClick={() => {
