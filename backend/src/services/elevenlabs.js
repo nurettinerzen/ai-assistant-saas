@@ -152,43 +152,57 @@ const elevenLabsService = {
    * Import a SIP trunk phone number to 11Labs (for NetGSM, etc.)
    * @param {Object} config - SIP trunk configuration
    *
-   * SIP Trunk Configuration (NEW API - July 2025):
-   * - inbound_trunk_config: Configuration for receiving calls
-   * - outbound_trunk_config: Configuration for making calls (address, transport, credentials)
+   * SIP Trunk Configuration (Based on NetGSM + ElevenLabs integration):
+   * - inbound_trunk_config: Only media_encryption and username (NO password for inbound)
+   * - outbound_trunk_config: address, transport, media_encryption, and full credentials
+   *
+   * IMPORTANT:
+   * - Both inbound and outbound must have media_encryption: 'disabled'
+   * - Transport must be 'tcp' (ElevenLabs doesn't support UDP with NetGSM)
+   * - Inbound only needs username, no password
+   * - Outbound needs full credentials (username + password)
    */
   async importSipTrunkNumber(config) {
     try {
-      // Build the request payload with NEW API format (July 2025)
+      // Extract just the number part for SIP username (remove + and country code prefix if needed)
+      // NetGSM format: 8503078914 (not +908503078914)
+      let sipUsername = config.sipUsername;
+      if (sipUsername.startsWith('+90')) {
+        sipUsername = sipUsername.substring(3);
+      } else if (sipUsername.startsWith('90')) {
+        sipUsername = sipUsername.substring(2);
+      } else if (sipUsername.startsWith('+')) {
+        sipUsername = sipUsername.substring(1);
+      }
+
+      // Build the request payload based on actual ElevenLabs panel fields
       const payload = {
         phone_number: config.phoneNumber,
         label: config.label || `SIP - ${config.phoneNumber}`,
         provider: 'sip_trunk',
         supports_inbound: true,
         supports_outbound: true,
-        // Inbound configuration - for receiving calls from SIP provider
+        // Inbound configuration - ONLY media_encryption, NO credentials
         inbound_trunk_config: {
-          media_encryption: 'disabled',
-          credentials: {
-            username: config.sipUsername,
-            password: config.sipPassword
-          }
+          media_encryption: 'disabled'
+          // Note: No credentials for inbound based on ElevenLabs panel
         },
-        // Outbound configuration - for making calls via SIP provider
+        // Outbound configuration - full credentials with address
         outbound_trunk_config: {
-          address: config.sipServer,  // Just hostname, e.g., "sip1.voip.com.tr"
-          transport: config.transport || 'tcp',  // tcp, udp, or tls
+          address: config.sipServer,  // e.g., "sip.netgsm.com.tr"
+          transport: 'tcp',  // Must be TCP for NetGSM + ElevenLabs
           media_encryption: 'disabled',
           credentials: {
-            username: config.sipUsername,
+            username: sipUsername,
             password: config.sipPassword
           }
         },
         agent_id: config.agentId
       };
 
-      console.log('📞 11Labs SIP trunk payload (NEW API):', JSON.stringify(payload, null, 2));
+      console.log('📞 11Labs SIP trunk payload:', JSON.stringify(payload, null, 2));
 
-      // Use /convai/phone-numbers endpoint (not /create)
+      // Use /convai/phone-numbers endpoint
       const response = await elevenLabsClient.post('/convai/phone-numbers', payload);
       console.log('✅ 11Labs SIP trunk phone number imported:', response.data.phone_number_id);
       console.log('📋 11Labs response:', JSON.stringify(response.data, null, 2));
@@ -232,26 +246,36 @@ const elevenLabsService = {
   },
 
   /**
-   * Update SIP trunk configuration for a phone number (NEW API - July 2025)
+   * Update SIP trunk configuration for a phone number
    * @param {string} phoneNumberId - 11Labs phone number ID
    * @param {Object} config - SIP configuration to update
+   *
+   * Note: Inbound config has NO password, only username
    */
   async updateSipTrunkConfig(phoneNumberId, config) {
     try {
+      // Extract just the number part for SIP username
+      let sipUsername = config.sipUsername;
+      if (sipUsername.startsWith('+90')) {
+        sipUsername = sipUsername.substring(3);
+      } else if (sipUsername.startsWith('90')) {
+        sipUsername = sipUsername.substring(2);
+      } else if (sipUsername.startsWith('+')) {
+        sipUsername = sipUsername.substring(1);
+      }
+
       const updatePayload = {
+        // Inbound - ONLY media_encryption, NO credentials
         inbound_trunk_config: {
-          media_encryption: 'disabled',
-          credentials: {
-            username: config.sipUsername,
-            password: config.sipPassword
-          }
+          media_encryption: 'disabled'
         },
+        // Outbound - full credentials
         outbound_trunk_config: {
           address: config.sipServer,
-          transport: config.transport || 'tcp',
+          transport: 'tcp',  // Must be TCP
           media_encryption: 'disabled',
           credentials: {
-            username: config.sipUsername,
+            username: sipUsername,
             password: config.sipPassword
           }
         }
@@ -261,7 +285,7 @@ const elevenLabsService = {
         updatePayload.agent_id = config.agentId;
       }
 
-      console.log('📞 Updating 11Labs SIP config (NEW API):', JSON.stringify(updatePayload, null, 2));
+      console.log('📞 Updating 11Labs SIP config:', JSON.stringify(updatePayload, null, 2));
 
       const response = await elevenLabsClient.patch(`/convai/phone-numbers/${phoneNumberId}`, updatePayload);
       console.log('✅ 11Labs SIP trunk config updated:', phoneNumberId);

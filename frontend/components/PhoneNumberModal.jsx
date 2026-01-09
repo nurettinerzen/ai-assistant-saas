@@ -23,7 +23,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Phone, Check, Loader2, ExternalLink, HelpCircle, Eye, EyeOff, Info } from 'lucide-react';
+import { Phone, Check, Loader2, ExternalLink, HelpCircle, Eye, EyeOff, Info, BookOpen } from 'lucide-react';
+import Link from 'next/link';
 import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -40,14 +41,14 @@ export default function PhoneNumberModal({ isOpen, onClose, onSuccess }) {
   const [selectedAssistant, setSelectedAssistant] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  // SIP Form State
+  // SIP Form State - TCP is required for ElevenLabs
   const [sipForm, setSipForm] = useState({
     phoneNumber: '',
-    sipServer: '',
+    sipServer: 'sip.netgsm.com.tr',
     sipUsername: '',
     sipPassword: '',
     sipPort: '5060',
-    sipTransport: 'UDP'
+    sipTransport: 'TCP'  // ElevenLabs only supports TCP/TLS
   });
 
   useEffect(() => {
@@ -63,10 +64,10 @@ export default function PhoneNumberModal({ isOpen, onClose, onSuccess }) {
       setSipForm(prev => ({
         ...prev,
         // Use provider's default, or clear if no default (user must enter manually)
-        sipServer: selectedProvider.defaultServer || '',
+        sipServer: selectedProvider.defaultServer || 'sip.netgsm.com.tr',
         sipPort: String(selectedProvider.defaultPort || 5060),
-        // Always use UDP as default for SIP (optimal for voice traffic)
-        sipTransport: 'UDP'
+        // TCP is required for ElevenLabs (UDP not supported)
+        sipTransport: selectedProvider.defaultTransport || 'TCP'
       }));
     }
   }, [selectedProvider]);
@@ -213,230 +214,153 @@ export default function PhoneNumberModal({ isOpen, onClose, onSuccess }) {
         </DialogHeader>
 
         <div className="space-y-6 py-4">
-          {/* Country Selection */}
-          <div>
-            <Label className="text-base mb-3 block">{t('dashboard.phoneNumbersPage.modal.selectCountry')}</Label>
-            {loadingCountries ? (
-              <div className="space-y-3">
-                {[1, 2].map((i) => (
-                  <div key={i} className="h-16 bg-neutral-100 dark:bg-neutral-800 rounded-lg animate-pulse"></div>
-                ))}
+          {/* NetGSM Info Banner */}
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                <Phone className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               </div>
-            ) : (
-              <div className="space-y-3">
-                {countries.map((country) => (
-                  <button
-                    key={country.code}
-                    onClick={() => {
-                      setSelectedCountry(country);
-                      // Auto-select first provider for this country
-                      if (country.sipProviders?.length > 0) {
-                        setSelectedProvider(country.sipProviders[0]);
-                      }
-                    }}
-                    className={`w-full p-4 border-2 rounded-xl text-left transition-all ${
-                      selectedCountry?.code === country.code
-                        ? 'border-primary-500 bg-primary-50 dark:bg-primary-950'
-                        : 'border-neutral-200 dark:border-neutral-700 hover:border-primary-300 dark:hover:border-primary-600'
-                    }`}
+              <div className="flex-1">
+                <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-1">
+                  NetGSM ile Bağlantı
+                </h4>
+                <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
+                  NetGSM 0850 numaranızı AI asistanınıza bağlamak için SIP bilgilerinizi girin.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <a
+                    href="https://portal.netgsm.com.tr/satis_arayuzu/ses-paketler.php"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-2 py-1 rounded hover:bg-blue-200 dark:hover:bg-blue-800"
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <span className="text-3xl">{country.flag}</span>
-                        <div>
-                          <h4 className="font-semibold text-neutral-900 dark:text-white">{country.name}</h4>
-                          <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                            SIP Trunk
-                          </p>
-                        </div>
-                      </div>
-                      {selectedCountry?.code === country.code && (
-                        <Check className="h-5 w-5 text-primary-600 dark:text-primary-400 flex-shrink-0" />
-                      )}
-                    </div>
-                  </button>
-                ))}
+                    Ses Paketi Al <ExternalLink className="h-3 w-3" />
+                  </a>
+                  <Link
+                    href="/dashboard/guides/netgsm-connection"
+                    className="inline-flex items-center gap-1 text-xs bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-2 py-1 rounded hover:bg-indigo-200 dark:hover:bg-indigo-800"
+                  >
+                    <BookOpen className="h-3 w-3" /> Bağlantı Rehberi
+                  </Link>
+                </div>
               </div>
+            </div>
+          </div>
+
+          {/* Country Selection - Auto-select Turkey */}
+          <div className="hidden">
+            {/* Hidden - auto-selecting Turkey for now */}
+            {loadingCountries ? null : (
+              countries.length > 0 && !selectedCountry && setSelectedCountry(countries.find(c => c.code === 'TR') || countries[0])
             )}
           </div>
 
-          {/* SIP Form */}
-          {selectedCountry?.requiresSipForm && (
-            <div className="space-y-4 p-4 bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700">
-              <div className="flex items-center gap-2 mb-2">
-                <Phone className="h-5 w-5 text-primary-600 dark:text-primary-400" />
-                <h4 className="font-medium text-neutral-900 dark:text-white">
-                  SIP Bağlantı Bilgileri
-                </h4>
-              </div>
+          {/* SIP Form - Always show for NetGSM */}
+          <div className="space-y-4 p-4 bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700">
+            <div className="flex items-center gap-2 mb-2">
+              <Phone className="h-5 w-5 text-primary-600 dark:text-primary-400" />
+              <h4 className="font-medium text-neutral-900 dark:text-white">
+                NetGSM SIP Bilgileri
+              </h4>
+            </div>
 
-              {/* SIP Provider Selection */}
+            {/* Help Text */}
+            <div className="text-sm text-neutral-600 dark:text-neutral-400 flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-950 rounded-lg border border-amber-200 dark:border-amber-800">
+              <Info className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
               <div>
-                <Label htmlFor="sipProvider">SIP Sağlayıcı</Label>
-                <Select
-                  value={selectedProvider?.id || ''}
-                  onValueChange={handleProviderChange}
+                <span>NetGSM panelinden: <strong>Ses Hizmeti → Ayarlar → SIP Bilgileri</strong></span>
+              </div>
+            </div>
+
+            {/* Phone Number */}
+            <div>
+              <Label htmlFor="phoneNumber">Telefon Numarası</Label>
+              <Input
+                id="phoneNumber"
+                placeholder="örn: 08501234567"
+                value={sipForm.phoneNumber}
+                onChange={(e) => handleSipFormChange('phoneNumber', e.target.value)}
+                className="mt-1"
+              />
+              <p className="text-xs text-neutral-500 mt-1">NetGSM panelindeki telefon numaranız</p>
+            </div>
+
+            {/* SIP Username */}
+            <div>
+              <Label htmlFor="sipUsername">SIP Kullanıcı Adı</Label>
+              <Input
+                id="sipUsername"
+                placeholder="örn: 8501234567"
+                value={sipForm.sipUsername}
+                onChange={(e) => handleSipFormChange('sipUsername', e.target.value)}
+                className="mt-1"
+              />
+              <p className="text-xs text-neutral-500 mt-1">NetGSM SIP Bilgileri'ndeki Kullanıcı Adı</p>
+            </div>
+
+            {/* SIP Password */}
+            <div>
+              <Label htmlFor="sipPassword">SIP Şifresi</Label>
+              <div className="relative mt-1">
+                <Input
+                  id="sipPassword"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="NetGSM SIP şifreniz"
+                  value={sipForm.sipPassword}
+                  onChange={(e) => handleSipFormChange('sipPassword', e.target.value)}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
                 >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Sağlayıcı seçin" />
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              <p className="text-xs text-neutral-500 mt-1">NetGSM SIP Bilgileri'ndeki Şifre (Şifreyi Göster butonuna tıklayın)</p>
+            </div>
+
+            {/* Hidden fields with defaults */}
+            <input type="hidden" value={sipForm.sipServer} />
+            <input type="hidden" value={sipForm.sipPort} />
+            <input type="hidden" value={sipForm.sipTransport} />
+          </div>
+
+          {/* Assistant Selection - Only Inbound Assistants */}
+          <div>
+            <Label className="text-base mb-3 block">{t('dashboard.phoneNumbersPage.modal.assignToAssistant')}</Label>
+            {assistants.length > 0 ? (
+              <>
+                <Select value={selectedAssistant} onValueChange={setSelectedAssistant}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t('dashboard.phoneNumbersPage.modal.selectAssistant')} />
                   </SelectTrigger>
                   <SelectContent>
-                    {currentProviders.map((provider) => (
-                      <SelectItem key={provider.id} value={provider.id}>
-                        {provider.name}
+                    {assistants.map((assistant) => (
+                      <SelectItem key={assistant.id} value={assistant.id}>
+                        {assistant.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-2">
+                  {t('dashboard.phoneNumbersPage.modal.assistantConnectionNote')}
+                </p>
+              </>
+            ) : (
+              <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                <p className="text-sm text-amber-800 dark:text-amber-200">
+                  Gelen arama asistanı bulunamadı. Lütfen önce "Gelen Arama" tipinde bir asistan oluşturun.
+                </p>
               </div>
-
-              {/* Help Link */}
-              {selectedProvider && (
-                <div className="text-sm text-neutral-600 dark:text-neutral-400 flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
-                  <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <span>{selectedProvider.helpText}</span>
-                    {selectedProvider.helpUrl && (
-                      <a
-                        href={selectedProvider.helpUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="ml-2 text-blue-600 dark:text-blue-400 underline hover:text-blue-700 dark:hover:text-blue-300 inline-flex items-center gap-1"
-                      >
-                        {selectedProvider.name} <ExternalLink className="h-3 w-3" />
-                      </a>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Phone Number */}
-              <div>
-                <Label htmlFor="phoneNumber">Telefon Numarası</Label>
-                <Input
-                  id="phoneNumber"
-                  placeholder="örn: 02121234567 veya 08501234567"
-                  value={sipForm.phoneNumber}
-                  onChange={(e) => handleSipFormChange('phoneNumber', e.target.value)}
-                  className="mt-1"
-                />
-              </div>
-
-              {/* SIP Server */}
-              <div>
-                <Label htmlFor="sipServer">SIP Sunucu</Label>
-                <Input
-                  id="sipServer"
-                  placeholder="örn: sip.provider.com.tr"
-                  value={sipForm.sipServer}
-                  onChange={(e) => handleSipFormChange('sipServer', e.target.value)}
-                  className="mt-1"
-                />
-              </div>
-
-              {/* SIP Username */}
-              <div>
-                <Label htmlFor="sipUsername">Kullanıcı Adı</Label>
-                <Input
-                  id="sipUsername"
-                  placeholder={t('dashboard.phoneNumbersPage.modal.sipUsernamePlaceholder')}
-                  value={sipForm.sipUsername}
-                  onChange={(e) => handleSipFormChange('sipUsername', e.target.value)}
-                  className="mt-1"
-                />
-              </div>
-
-              {/* SIP Password */}
-              <div>
-                <Label htmlFor="sipPassword">Şifre</Label>
-                <div className="relative mt-1">
-                  <Input
-                    id="sipPassword"
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder={t('dashboard.phoneNumbersPage.modal.sipPasswordPlaceholder')}
-                    value={sipForm.sipPassword}
-                    onChange={(e) => handleSipFormChange('sipPassword', e.target.value)}
-                    className="pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-
-              {/* Port and Transport */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="sipPort">Port</Label>
-                  <Input
-                    id="sipPort"
-                    placeholder="5060"
-                    value={sipForm.sipPort}
-                    onChange={(e) => handleSipFormChange('sipPort', e.target.value)}
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="sipTransport">Transport</Label>
-                  <Select
-                    value={sipForm.sipTransport}
-                    onValueChange={(value) => handleSipFormChange('sipTransport', value)}
-                    defaultValue="UDP"
-                  >
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="UDP" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="UDP">UDP (Önerilen)</SelectItem>
-                      <SelectItem value="TCP">TCP</SelectItem>
-                      <SelectItem value="TLS">TLS</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Assistant Selection - Only Inbound Assistants */}
-          {selectedCountry && (
-            <div>
-              <Label className="text-base mb-3 block">{t('dashboard.phoneNumbersPage.modal.assignToAssistant')}</Label>
-              {assistants.length > 0 ? (
-                <>
-                  <Select value={selectedAssistant} onValueChange={setSelectedAssistant}>
-                    <SelectTrigger>
-                      <SelectValue placeholder={t('dashboard.phoneNumbersPage.modal.selectAssistant')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {assistants.map((assistant) => (
-                        <SelectItem key={assistant.id} value={assistant.id}>
-                          {assistant.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-2">
-                    {t('dashboard.phoneNumbersPage.modal.assistantConnectionNote')}
-                  </p>
-                </>
-              ) : (
-                <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
-                  <p className="text-sm text-amber-800 dark:text-amber-200">
-                    Gelen arama asistanı bulunamadı. Lütfen önce "Gelen Arama" tipinde bir asistan oluşturun.
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Submit Button */}
           <Button
             onClick={handleImportSip}
-            disabled={!selectedCountry || loading}
+            disabled={loading || !sipForm.phoneNumber || !sipForm.sipUsername || !sipForm.sipPassword}
             className="w-full"
             size="lg"
           >
