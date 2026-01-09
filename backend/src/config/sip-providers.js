@@ -12,43 +12,13 @@ export const SIP_PROVIDERS = {
     country: 'TR',
     defaultServer: 'sip.netgsm.com.tr',
     defaultPort: 5060,
-    defaultTransport: 'UDP',
+    defaultTransport: 'TCP',  // ElevenLabs only supports TCP or TLS, not UDP
     helpText: 'NetGSM panelinden: Ses Hizmeti > Ayarlar > SIP Bilgileri',
-    helpUrl: 'http://netg.sm/3139',
-    website: 'https://www.netgsm.com.tr'
-  },
-  bulutfon: {
-    id: 'bulutfon',
-    name: 'Bulutfon',
-    country: 'TR',
-    defaultServer: 'sip.bulutfon.com',
-    defaultPort: 5060,
-    defaultTransport: 'UDP',
-    helpText: 'Bulutfon panelinden SIP ayarlarını alabilirsiniz',
-    helpUrl: 'https://www.bulutfon.com',
-    website: 'https://www.bulutfon.com'
-  },
-  voiptelekom: {
-    id: 'voiptelekom',
-    name: 'VoIP Telekom',
-    country: 'TR',
-    defaultServer: '',
-    defaultPort: 5060,
-    defaultTransport: 'UDP',
-    helpText: 'VoIP Telekom sözleşmenizde belirtilen SIP bilgilerini girin',
-    helpUrl: null,
-    website: null
-  },
-  twilio: {
-    id: 'twilio',
-    name: 'Twilio',
-    country: 'GLOBAL',
-    defaultServer: '',
-    defaultPort: 5060,
-    defaultTransport: 'UDP',
-    helpText: 'Twilio Console > Phone Numbers > SIP Trunking',
-    helpUrl: 'https://www.twilio.com/console/sip-trunking',
-    website: 'https://www.twilio.com'
+    helpUrl: '/dashboard/guides/netgsm-connection',
+    website: 'https://www.netgsm.com.tr',
+    // NetGSM-specific settings
+    sipUsernameFormat: 'phone_number_without_plus',  // 8503078914 (not +908503078914)
+    elevenLabsDomain: 'sip.rtc.elevenlabs.io'  // NetGSM needs this for SIP Trunk config
   }
 };
 
