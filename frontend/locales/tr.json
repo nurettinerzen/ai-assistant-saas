@@ -1326,8 +1326,9 @@
       "selectConversationDesc": "Detayları görüntülemek ve yanıtları yönetmek için listeden bir konuşma seçin",
       "noReplyNeeded": "Yanıt Gerekmiyor",
       "status": {
+        "new": "Yeni",
         "awaitingReply": "Yanıt Bekleniyor",
-        "draftReady": "Taslak Hazır",
+        "draftReady": "AI Taslak",
         "replied": "Yanıtlandı",
         "closed": "Kapatıldı",
         "noReplyNeeded": "Yanıt Gerekmiyor"
@@ -1340,7 +1341,20 @@
       "draftRegenerated": "Taslak yeniden oluşturuldu",
       "failedToRegenerateDraft": "Taslak yeniden oluşturulamadı",
       "threadClosed": "Konuşma kapatıldı",
-      "failedToCloseThread": "Konuşma kapatılamadı"
+      "failedToCloseThread": "Konuşma kapatılamadı",
+      "replied": "Yanıtlandı",
+      "allConversations": "Tüm Konuşmalar",
+      "pendingReplyTitle": "Yanıt Bekliyor",
+      "pendingReplyDesc": "Bu e-posta henüz yanıtlanmadı. AI taslak oluşturabilir veya yanıt gerektirmiyor olarak işaretleyebilirsiniz.",
+      "generateAiDraft": "AI Taslak Oluştur",
+      "generatingDraft": "Taslak oluşturuluyor...",
+      "markNoReplyNeeded": "Yanıt Gerekmiyor",
+      "markedNoReplyNeeded": "Yanıt gerekmiyor olarak işaretlendi",
+      "failedToMarkNoReplyNeeded": "İşaretlenemedi",
+      "noReplyNeededTitle": "Yanıt Gerekmiyor",
+      "noReplyNeededDesc": "Bu e-posta yanıt gerektirmiyor olarak işaretlendi. Yine de yanıt vermek isterseniz AI taslak oluşturabilirsiniz.",
+      "draftGenerated": "Taslak oluşturuldu",
+      "failedToGenerateDraft": "Taslak oluşturulamadı"
     },
     "chatWidgetPage": {
       "title": "Sohbet Aracı",
