@@ -214,28 +214,61 @@ async function fetchOutlookSentEmails(integration, limit = 100) {
  * Analyze emails with OpenAI to extract writing style
  */
 async function analyzeEmailsWithAI(emails) {
-  // Prepare email samples for analysis
+  // Prepare email samples for analysis - include full body to capture signatures
   const emailSamples = emails
     .slice(0, 50) // Limit to 50 for token management
-    .map((e, i) => `--- Email ${i + 1} ---\nSubject: ${e.subject}\nBody:\n${e.body}`)
+    .map((e, i) => `--- Email ${i + 1} ---\nTo: ${e.to}\nSubject: ${e.subject}\nBody:\n${e.body}`)
     .join('\n\n');
 
-  const prompt = `Analyze the following ${emails.length} sent emails and create a detailed writing style profile for the author.
+  const prompt = `Analyze the following ${emails.length} sent emails and create a DETAILED writing style profile for the author. Pay special attention to how they sign their emails.
 
 ${emailSamples}
 
 Based on these emails, provide a JSON object with the following structure:
 {
   "formality": "formal" | "semi-formal" | "informal",
-  "greetingPatterns": ["array of 3-5 most common greetings used"],
-  "closingPatterns": ["array of 3-5 most common closings/sign-offs used"],
+  "greetingPatterns": {
+    "turkish": ["array of greetings used in Turkish emails, e.g. 'Merhaba', 'İyi günler', 'Selam'"],
+    "english": ["array of greetings used in English emails, e.g. 'Hi', 'Hello', 'Dear'"]
+  },
+  "closingPatterns": {
+    "turkish": ["array of closings used in Turkish, e.g. 'Saygılarımla', 'İyi çalışmalar', 'Teşekkürler'"],
+    "english": ["array of closings used in English, e.g. 'Best regards', 'Thanks', 'Best'"]
+  },
+  "signature": {
+    "hasSignature": true/false,
+    "name": "Full name if consistently used, or null",
+    "title": "Job title if used, or null",
+    "company": "Company name if used, or null",
+    "phone": "Phone number if included, or null",
+    "fullSignature": "The complete signature block as typically used, or null"
+  },
   "averageLength": "short" | "medium" | "long",
-  "language": "tr" | "en" | "mixed",
+  "primaryLanguage": "tr" | "en",
+  "secondaryLanguage": "tr" | "en" | null,
   "tone": "professional" | "friendly" | "direct" | "warm",
-  "additionalNotes": "Other notable characteristics (emoji usage, punctuation style, signature style, etc.)",
+  "writingCharacteristics": {
+    "usesEmoji": true/false,
+    "usesPunctuation": "minimal" | "standard" | "heavy",
+    "paragraphStyle": "short" | "medium" | "long",
+    "bulletPoints": true/false
+  },
+  "responsePatterns": {
+    "startsWithGreeting": true/false,
+    "addressesRecipientByName": true/false,
+    "includesPleasantries": true/false,
+    "directToPoint": true/false
+  },
+  "additionalNotes": "Other notable characteristics",
   "analyzed": true,
   "sampleCount": ${emails.length}
 }
+
+IMPORTANT: Extract the ACTUAL signature from the emails. Look for:
+- Name at the end of emails
+- Any title/company info
+- Contact info in signature
+- Consistent patterns in how they sign off
 
 Respond ONLY with the JSON object, no other text.`;
 
@@ -246,7 +279,7 @@ Respond ONLY with the JSON object, no other text.`;
         {
           role: 'system',
           content:
-            'You are an expert at analyzing writing styles. Analyze the emails and return a JSON profile. Respond only with valid JSON.',
+            'You are an expert at analyzing writing styles. Analyze the emails and return a detailed JSON profile. Pay special attention to signature patterns and language-specific greetings/closings. Respond only with valid JSON.',
         },
         {
           role: 'user',
@@ -254,7 +287,7 @@ Respond ONLY with the JSON object, no other text.`;
         },
       ],
       temperature: 0.3,
-      max_tokens: 500,
+      max_tokens: 1500, // Increased for detailed profile
     });
 
     const content = response.choices[0]?.message?.content?.trim();
@@ -263,7 +296,9 @@ Respond ONLY with the JSON object, no other text.`;
     try {
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        return JSON.parse(jsonMatch[0]);
+        const parsed = JSON.parse(jsonMatch[0]);
+        console.log('[Style Analyzer] Successfully parsed style profile:', JSON.stringify(parsed, null, 2));
+        return parsed;
       }
     } catch (parseError) {
       console.error('[Style Analyzer] Failed to parse AI response:', parseError);
@@ -272,11 +307,38 @@ Respond ONLY with the JSON object, no other text.`;
     // Default profile if parsing fails
     return {
       formality: 'semi-formal',
-      greetingPatterns: ['Merhaba', 'İyi günler'],
-      closingPatterns: ['Saygılarımla', 'İyi çalışmalar'],
+      greetingPatterns: {
+        turkish: ['Merhaba', 'İyi günler'],
+        english: ['Hi', 'Hello'],
+      },
+      closingPatterns: {
+        turkish: ['Saygılarımla', 'İyi çalışmalar'],
+        english: ['Best regards', 'Thanks'],
+      },
+      signature: {
+        hasSignature: false,
+        name: null,
+        title: null,
+        company: null,
+        phone: null,
+        fullSignature: null,
+      },
       averageLength: 'medium',
-      language: 'tr',
+      primaryLanguage: 'tr',
+      secondaryLanguage: 'en',
       tone: 'professional',
+      writingCharacteristics: {
+        usesEmoji: false,
+        usesPunctuation: 'standard',
+        paragraphStyle: 'medium',
+        bulletPoints: false,
+      },
+      responsePatterns: {
+        startsWithGreeting: true,
+        addressesRecipientByName: true,
+        includesPleasantries: true,
+        directToPoint: false,
+      },
       additionalNotes: 'Unable to fully analyze - using defaults',
       analyzed: false,
       sampleCount: emails.length,

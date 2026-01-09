@@ -233,6 +233,27 @@ export const apiClient = {
 
   // Email Features
   email: {
+    // Status & Sync
+    getStatus: () => api.get('/api/email/status'),
+    sync: () => api.post('/api/email/sync'),
+    getStats: () => api.get('/api/email/stats'),
+
+    // Threads
+    getThreads: (params) => api.get('/api/email/threads', { params }),
+    getThread: (threadId) => api.get(`/api/email/threads/${threadId}`),
+    closeThread: (threadId) => api.post(`/api/email/threads/${threadId}/close`),
+    updateThread: (threadId, data) => api.patch(`/api/email/threads/${threadId}`, data),
+    generateDraft: (threadId) => api.post(`/api/email/threads/${threadId}/generate-draft`),
+
+    // Drafts
+    getDrafts: () => api.get('/api/email/drafts'),
+    getDraft: (draftId) => api.get(`/api/email/drafts/${draftId}`),
+    updateDraft: (draftId, content) => api.put(`/api/email/drafts/${draftId}`, { content }),
+    approveDraft: (draftId) => api.post(`/api/email/drafts/${draftId}/approve`),
+    sendDraft: (draftId) => api.post(`/api/email/drafts/${draftId}/send`),
+    rejectDraft: (draftId) => api.post(`/api/email/drafts/${draftId}/reject`),
+    regenerateDraft: (draftId, feedback) => api.post(`/api/email/drafts/${draftId}/regenerate`, { feedback }),
+
     // Style Profile
     getStyleProfile: () => api.get('/api/email/style-profile'),
     analyzeStyleProfile: () => api.post('/api/email/style-profile/analyze'),

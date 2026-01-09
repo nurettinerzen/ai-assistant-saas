@@ -1,17 +1,20 @@
 /**
  * Email Sync Background Job
  * Periodically syncs new emails for all connected businesses
+ *
+ * NOTE: This job ONLY syncs emails. It does NOT generate AI drafts automatically.
+ * Draft generation is 100% manual - users click "Generate AI Draft" button for specific threads.
  */
 
 import cron from 'node-cron';
 import { PrismaClient } from '@prisma/client';
 import emailAggregator from '../services/email-aggregator.js';
-import emailAI from '../services/email-ai.js';
 
 const prisma = new PrismaClient();
 
 /**
  * Sync emails for a single business
+ * Only syncs emails - NO automatic draft generation
  */
 async function syncBusinessEmails(integration) {
   const { businessId, provider, email } = integration;
@@ -24,11 +27,10 @@ async function syncBusinessEmails(integration) {
 
     if (newMessages.length === 0) {
       console.log(`[Email Sync] No new messages for business ${businessId}`);
-      return { businessId, processed: 0, drafts: 0 };
+      return { businessId, processed: 0 };
     }
 
     let processedCount = 0;
-    let newDraftsCount = 0;
 
     for (const message of newMessages) {
       // Determine direction
@@ -46,30 +48,22 @@ async function syncBusinessEmails(integration) {
       if (isNew) {
         processedCount++;
 
-        // Generate AI draft for inbound messages
-        if (direction === 'INBOUND') {
-          try {
-            const savedMessage = await prisma.emailMessage.findFirst({
-              where: {
-                threadId: thread.id,
-                messageId: message.messageId
-              }
-            });
-
-            if (savedMessage) {
-              await emailAI.generateDraft(businessId, thread, savedMessage);
-              newDraftsCount++;
-              console.log(`[Email Sync] Draft generated for thread ${thread.id}`);
-            }
-          } catch (draftError) {
-            console.error(`[Email Sync] Draft generation error for business ${businessId}:`, draftError.message);
-          }
+        // For OUTBOUND messages (sent by user), mark thread as REPLIED
+        // This handles the case when user replies via external email app
+        if (direction === 'OUTBOUND' && thread.status !== 'REPLIED') {
+          await prisma.emailThread.update({
+            where: { id: thread.id },
+            data: { status: 'REPLIED' }
+          });
+          console.log(`[Email Sync] Thread ${thread.id} marked as REPLIED (outbound message detected)`);
         }
+        // For INBOUND messages, keep status as PENDING_REPLY (default)
+        // User will manually generate drafts or mark as no-reply-needed
       }
     }
 
-    console.log(`[Email Sync] Business ${businessId}: ${processedCount} messages, ${newDraftsCount} drafts`);
-    return { businessId, processed: processedCount, drafts: newDraftsCount };
+    console.log(`[Email Sync] Business ${businessId}: ${processedCount} new messages synced`);
+    return { businessId, processed: processedCount };
   } catch (error) {
     console.error(`[Email Sync] Error syncing business ${businessId}:`, error.message);
     return { businessId, error: error.message };
@@ -110,14 +104,12 @@ async function runEmailSync() {
     }
 
     const totalProcessed = results.reduce((sum, r) => sum + (r.processed || 0), 0);
-    const totalDrafts = results.reduce((sum, r) => sum + (r.drafts || 0), 0);
     const errors = results.filter(r => r.error).length;
 
     console.log('\n========================================');
     console.log('[Email Sync] Sync job completed');
     console.log(`Businesses: ${integrations.length}`);
-    console.log(`Messages processed: ${totalProcessed}`);
-    console.log(`Drafts generated: ${totalDrafts}`);
+    console.log(`Messages synced: ${totalProcessed}`);
     console.log(`Errors: ${errors}`);
     console.log('========================================\n');
 
@@ -125,7 +117,6 @@ async function runEmailSync() {
       success: true,
       synced: integrations.length,
       processed: totalProcessed,
-      drafts: totalDrafts,
       errors
     };
   } catch (error) {

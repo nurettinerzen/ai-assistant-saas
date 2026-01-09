@@ -247,6 +247,42 @@ router.post('/threads/:threadId/close', authenticateToken, async (req, res) => {
   }
 });
 
+/**
+ * Update Thread Status (Manual Tagging)
+ * PATCH /api/email/threads/:threadId
+ * Allows user to manually set thread status (e.g., NO_REPLY_NEEDED)
+ */
+router.patch('/threads/:threadId', authenticateToken, async (req, res) => {
+  try {
+    const { status } = req.body;
+    const validStatuses = ['PENDING_REPLY', 'NO_REPLY_NEEDED', 'CLOSED'];
+
+    if (!status || !validStatuses.includes(status)) {
+      return res.status(400).json({
+        error: `Invalid status. Must be one of: ${validStatuses.join(', ')}`
+      });
+    }
+
+    const thread = await prisma.emailThread.findFirst({
+      where: {
+        id: req.params.threadId,
+        businessId: req.businessId
+      }
+    });
+
+    if (!thread) {
+      return res.status(404).json({ error: 'Thread not found' });
+    }
+
+    await emailAggregator.updateThreadStatus(thread.id, status);
+
+    res.json({ success: true, message: `Thread status updated to ${status}` });
+  } catch (error) {
+    console.error('Update thread status error:', error);
+    res.status(500).json({ error: 'Failed to update thread status' });
+  }
+});
+
 // ==================== DRAFT ROUTES ====================
 
 /**
@@ -364,31 +400,46 @@ router.post('/drafts/:draftId/send', authenticateToken, async (req, res) => {
     );
 
     // Save the sent message to database
-await prisma.emailMessage.upsert({
-  where: {
-    threadId_messageId: {
-      threadId: thread.id,
-      messageId: result.messageId || `sent-${Date.now()}-${Math.random().toString(36).substring(7)}`
-    }
-  },
-  update: {
-    status: 'SENT',
-    sentAt: new Date()
-  },
-  create: {
-    threadId: thread.id,
-    messageId: result.messageId || `sent-${Date.now()}-${Math.random().toString(36).substring(7)}`,
-    direction: 'OUTBOUND',
-    fromEmail: integration.email,
-    fromName: null,
-    toEmail: thread.customerEmail,
-    subject: `Re: ${thread.subject}`,
-    bodyText: content,
-    bodyHtml: content,
-    status: 'SENT',
-    sentAt: new Date()
-  }
-});
+    await prisma.emailMessage.upsert({
+      where: {
+        threadId_messageId: {
+          threadId: thread.id,
+          messageId: result.messageId || `sent-${Date.now()}-${Math.random().toString(36).substring(7)}`
+        }
+      },
+      update: {
+        status: 'SENT',
+        sentAt: new Date()
+      },
+      create: {
+        threadId: thread.id,
+        messageId: result.messageId || `sent-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+        direction: 'OUTBOUND',
+        fromEmail: integration.email,
+        fromName: null,
+        toEmail: thread.customerEmail,
+        subject: `Re: ${thread.subject}`,
+        bodyText: content,
+        bodyHtml: content,
+        status: 'SENT',
+        sentAt: new Date()
+      }
+    });
+
+    // Update draft status to SENT
+    await prisma.emailDraft.update({
+      where: { id: draft.id },
+      data: {
+        status: 'SENT',
+        sentAt: new Date()
+      }
+    });
+
+    // Update thread status to REPLIED
+    await prisma.emailThread.update({
+      where: { id: thread.id },
+      data: { status: 'REPLIED' }
+    });
 
     res.json({
       success: true,
@@ -422,6 +473,75 @@ router.post('/drafts/:draftId/reject', authenticateToken, async (req, res) => {
 });
 
 /**
+ * Generate Draft Manually for a Thread
+ * POST /api/email/threads/:threadId/generate-draft
+ * Use this to manually create a draft for emails that were auto-classified as NO_REPLY_NEEDED
+ */
+router.post('/threads/:threadId/generate-draft', authenticateToken, async (req, res) => {
+  try {
+    const { threadId } = req.params;
+
+    // Get thread with latest inbound message
+    const thread = await prisma.emailThread.findFirst({
+      where: {
+        id: threadId,
+        businessId: req.businessId
+      }
+    });
+
+    if (!thread) {
+      return res.status(404).json({ error: 'Thread not found' });
+    }
+
+    // Get the latest inbound message from this thread
+    const latestInbound = await prisma.emailMessage.findFirst({
+      where: {
+        threadId: thread.id,
+        direction: 'INBOUND'
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    if (!latestInbound) {
+      return res.status(400).json({ error: 'No inbound message found in this thread' });
+    }
+
+    // Check if draft already exists
+    const existingDraft = await prisma.emailDraft.findFirst({
+      where: {
+        threadId: thread.id,
+        status: 'PENDING_REVIEW'
+      }
+    });
+
+    if (existingDraft) {
+      return res.status(400).json({
+        error: 'A pending draft already exists for this thread',
+        draftId: existingDraft.id
+      });
+    }
+
+    // Generate draft
+    const draft = await emailAI.generateDraft(req.businessId, thread, latestInbound);
+
+    // Update thread status
+    await prisma.emailThread.update({
+      where: { id: thread.id },
+      data: { status: 'DRAFT_READY' }
+    });
+
+    res.json({
+      success: true,
+      message: 'Draft generated successfully',
+      draft
+    });
+  } catch (error) {
+    console.error('Manual draft generation error:', error);
+    res.status(500).json({ error: 'Failed to generate draft' });
+  }
+});
+
+/**
  * Regenerate Draft
  * POST /api/email/drafts/:draftId/regenerate
  */
@@ -448,6 +568,9 @@ router.post('/drafts/:draftId/regenerate', authenticateToken, async (req, res) =
 /**
  * Manual Sync
  * POST /api/email/sync
+ *
+ * NOTE: This route ONLY syncs emails - NO automatic draft generation.
+ * Draft generation is 100% manual via the generate-draft endpoint.
  */
 router.post('/sync', authenticateToken, async (req, res) => {
   try {
@@ -465,7 +588,6 @@ router.post('/sync', authenticateToken, async (req, res) => {
     const connectedEmail = integration.email;
 
     let processedCount = 0;
-    let newDraftsCount = 0;
 
     for (const message of newMessages) {
       // Determine direction
@@ -483,50 +605,23 @@ router.post('/sync', authenticateToken, async (req, res) => {
       if (isNew) {
         processedCount++;
 
-        // Generate AI draft for inbound messages (only for PERSONAL emails)
-        if (direction === 'INBOUND') {
-          try {
-            // Classify the sender first
-            const classification = await classifyEmailSender(req.businessId, message.from.email, {
-              subject: message.subject,
-              snippet: message.snippet || message.bodyText?.substring(0, 200),
-            });
-
-            // Only generate draft for personal emails
-            if (classification.classification === 'PERSONAL') {
-              // Get the saved message
-              const savedMessage = await prisma.emailMessage.findFirst({
-                where: {
-                  threadId: thread.id,
-                  messageId: message.messageId
-                }
-              });
-
-              if (savedMessage) {
-                await emailAI.generateDraft(req.businessId, thread, savedMessage);
-                newDraftsCount++;
-              }
-            } else {
-              // Mark automated emails as NO_REPLY_NEEDED
-              await prisma.emailThread.update({
-                where: { id: thread.id },
-                data: { status: 'NO_REPLY_NEEDED' }
-              });
-              console.log(`[Email Sync] Marked as NO_REPLY_NEEDED: ${message.from.email}`);
-            }
-          } catch (draftError) {
-            console.error('Draft generation error:', draftError);
-            // Continue processing other messages
-          }
+        // For OUTBOUND messages (sent by user via external app), mark thread as REPLIED
+        if (direction === 'OUTBOUND' && thread.status !== 'REPLIED') {
+          await prisma.emailThread.update({
+            where: { id: thread.id },
+            data: { status: 'REPLIED' }
+          });
+          console.log(`[Email Sync] Thread ${thread.id} marked as REPLIED (outbound message detected)`);
         }
+        // For INBOUND messages, keep status as PENDING_REPLY (default)
+        // User will manually generate drafts or mark as no-reply-needed
       }
     }
 
     res.json({
       success: true,
-      message: `Synced ${processedCount} new messages, generated ${newDraftsCount} drafts`,
-      processedCount,
-      newDraftsCount
+      message: `Synced ${processedCount} new messages`,
+      processedCount
     });
   } catch (error) {
     console.error('Sync error:', error);
@@ -546,24 +641,43 @@ router.get('/stats', authenticateToken, async (req, res) => {
     today.setHours(0, 0, 0, 0);
 
     const [
+      newCount,
       pendingCount,
       draftReadyCount,
+      repliedCount,
       repliedTodayCount,
       noReplyNeededCount,
       totalThreads
     ] = await Promise.all([
+      // NEW status (new emails without any action)
+      prisma.emailThread.count({
+        where: {
+          businessId: req.businessId,
+          status: 'NEW'
+        }
+      }),
+      // PENDING_REPLY (legacy - kept for backward compatibility)
       prisma.emailThread.count({
         where: {
           businessId: req.businessId,
           status: 'PENDING_REPLY'
         }
       }),
+      // DRAFT_READY (AI draft generated)
       prisma.emailThread.count({
         where: {
           businessId: req.businessId,
           status: 'DRAFT_READY'
         }
       }),
+      // Total REPLIED count
+      prisma.emailThread.count({
+        where: {
+          businessId: req.businessId,
+          status: 'REPLIED'
+        }
+      }),
+      // Replied today count
       prisma.emailThread.count({
         where: {
           businessId: req.businessId,
@@ -571,20 +685,24 @@ router.get('/stats', authenticateToken, async (req, res) => {
           updatedAt: { gte: today }
         }
       }),
+      // NO_REPLY_NEEDED
       prisma.emailThread.count({
         where: {
           businessId: req.businessId,
           status: 'NO_REPLY_NEEDED'
         }
       }),
+      // Total threads
       prisma.emailThread.count({
         where: { businessId: req.businessId }
       })
     ]);
 
     res.json({
+      newCount,
       pendingCount,
       draftReadyCount,
+      repliedCount,
       repliedTodayCount,
       noReplyNeededCount,
       totalThreads

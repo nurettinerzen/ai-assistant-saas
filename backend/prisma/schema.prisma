@@ -761,11 +761,12 @@ enum EmailProvider {
 }
 
 enum EmailThreadStatus {
-  PENDING_REPLY
-  DRAFT_READY
-  REPLIED
-  CLOSED
-  NO_REPLY_NEEDED  // For automated/marketing emails
+  NEW              // New email, no action taken yet
+  PENDING_REPLY    // Legacy - kept for backward compatibility
+  DRAFT_READY      // AI draft generated, waiting for review
+  REPLIED          // Email has been replied to
+  CLOSED           // Thread closed manually
+  NO_REPLY_NEEDED  // User marked as no reply needed
 }
 
 enum EmailMessageDirection {

@@ -73,7 +73,7 @@ class EmailAIService {
 
       // Get style profile if available
       const styleProfile = business.emailIntegration?.styleProfile;
-      const styleContext = this.buildStyleContext(styleProfile);
+      const styleContext = this.buildStyleContext(styleProfile, language);
 
       // Build the prompt using central prompt builder
       const assistant = business.assistants[0] || null;
@@ -300,25 +300,47 @@ Before responding, ask yourself:
 - Brief greeting (use customer's name if available)
 - Direct response to their message
 - Short, friendly closing
-- NO signature (added automatically)
+- Include signature if provided in the style profile above
 
-### 6. TOOLS
+### 6. GREETING LANGUAGE RULE (CRITICAL)
+- If email is in ENGLISH → Use ONLY English greetings (Hi, Hello, Dear, etc.)
+- If email is in TURKISH → Use ONLY Turkish greetings (Merhaba, İyi günler, Selam, etc.)
+- NEVER start an English email with "Merhaba"
+- NEVER start a Turkish email with "Hello"
+
+### 7. NO PLACEHOLDERS (CRITICAL)
+- NEVER use placeholders like [Adınız], [Your Name], [İletişim Bilgileriniz], [Company], etc.
+- If you don't know specific information, simply omit it
+- If signature info is not provided, end the email naturally without a formal signature
+- If you don't know the sender's name, use their email or a generic greeting
+- Use REAL information only - never templated/placeholder text
+
+### 8. TONE AUTHENTICITY
+- Write naturally as a real person would
+- Do NOT use overly formal or robotic language
+- Do NOT use words that feel unnatural like "sabırsızlanıyorum" (I'm being impatient) unless the context truly requires it
+- Keep the tone professional but human
+- Avoid clichéd phrases and corporate speak
+
+### 9. TOOLS
 - Use available tools to check order status, appointments, etc. when relevant`;
   }
 
   /**
    * Build style context from style profile
+   * @param {object} styleProfile - The style profile from analyzer
+   * @param {string} emailLanguage - The detected language of the incoming email ('TR' or 'EN')
    */
-  buildStyleContext(styleProfile) {
+  buildStyleContext(styleProfile, emailLanguage = 'EN') {
     if (!styleProfile || !styleProfile.analyzed) {
       return '';
     }
 
-    let context = '=== USER WRITING STYLE ===\n';
-    context += 'Match the following writing style when drafting responses:\n\n';
+    let context = '=== USER WRITING STYLE (MATCH THIS EXACTLY) ===\n';
+    context += 'You MUST match this writing style when drafting responses:\n\n';
 
     if (styleProfile.formality) {
-      context += `- Formality: ${styleProfile.formality}\n`;
+      context += `- Formality Level: ${styleProfile.formality}\n`;
     }
 
     if (styleProfile.tone) {
@@ -329,16 +351,70 @@ Before responding, ask yourself:
       context += `- Response Length: ${styleProfile.averageLength} (keep responses similar in length)\n`;
     }
 
-    if (styleProfile.greetingPatterns && styleProfile.greetingPatterns.length > 0) {
-      context += `- Preferred Greetings: ${styleProfile.greetingPatterns.join(', ')}\n`;
+    // Language-specific greetings - CRITICAL for avoiding language mixing
+    const langKey = emailLanguage === 'TR' ? 'turkish' : 'english';
+    if (styleProfile.greetingPatterns) {
+      if (typeof styleProfile.greetingPatterns === 'object' && !Array.isArray(styleProfile.greetingPatterns)) {
+        const greetings = styleProfile.greetingPatterns[langKey];
+        if (greetings && greetings.length > 0) {
+          context += `- USE THESE GREETINGS (for ${emailLanguage} emails): ${greetings.join(', ')}\n`;
+          context += `  IMPORTANT: Do NOT use greetings from other languages!\n`;
+        }
+      } else if (Array.isArray(styleProfile.greetingPatterns)) {
+        context += `- Preferred Greetings: ${styleProfile.greetingPatterns.join(', ')}\n`;
+      }
     }
 
-    if (styleProfile.closingPatterns && styleProfile.closingPatterns.length > 0) {
-      context += `- Preferred Closings: ${styleProfile.closingPatterns.join(', ')}\n`;
+    // Language-specific closings
+    if (styleProfile.closingPatterns) {
+      if (typeof styleProfile.closingPatterns === 'object' && !Array.isArray(styleProfile.closingPatterns)) {
+        const closings = styleProfile.closingPatterns[langKey];
+        if (closings && closings.length > 0) {
+          context += `- USE THESE CLOSINGS (for ${emailLanguage} emails): ${closings.join(', ')}\n`;
+        }
+      } else if (Array.isArray(styleProfile.closingPatterns)) {
+        context += `- Preferred Closings: ${styleProfile.closingPatterns.join(', ')}\n`;
+      }
     }
 
-    if (styleProfile.language) {
-      context += `- Primary Language: ${styleProfile.language === 'tr' ? 'Turkish' : styleProfile.language === 'en' ? 'English' : 'Mixed'}\n`;
+    // Signature - CRITICAL for personalization
+    if (styleProfile.signature && styleProfile.signature.hasSignature) {
+      context += '\n### SIGNATURE (ALWAYS ADD AT THE END) ###\n';
+      if (styleProfile.signature.fullSignature) {
+        context += `Use this exact signature:\n${styleProfile.signature.fullSignature}\n`;
+      } else {
+        let sig = '';
+        if (styleProfile.signature.name) sig += styleProfile.signature.name;
+        if (styleProfile.signature.title) sig += '\n' + styleProfile.signature.title;
+        if (styleProfile.signature.company) sig += '\n' + styleProfile.signature.company;
+        if (styleProfile.signature.phone) sig += '\n' + styleProfile.signature.phone;
+        if (sig) context += `Build signature from:\n${sig}\n`;
+      }
+    }
+
+    // Writing characteristics
+    if (styleProfile.writingCharacteristics) {
+      const wc = styleProfile.writingCharacteristics;
+      context += '\n### WRITING STYLE DETAILS ###\n';
+      if (wc.usesEmoji === true) context += '- Uses emojis occasionally\n';
+      if (wc.usesEmoji === false) context += '- Does NOT use emojis\n';
+      if (wc.paragraphStyle) context += `- Paragraph style: ${wc.paragraphStyle}\n`;
+      if (wc.bulletPoints) context += '- Uses bullet points when listing\n';
+    }
+
+    // Response patterns
+    if (styleProfile.responsePatterns) {
+      const rp = styleProfile.responsePatterns;
+      context += '\n### RESPONSE PATTERNS ###\n';
+      if (rp.addressesRecipientByName) context += '- Addresses recipient by name when known\n';
+      if (rp.directToPoint) context += '- Gets directly to the point\n';
+      if (rp.includesPleasantries) context += '- Includes brief pleasantries\n';
+    }
+
+    // Primary language info (legacy support)
+    if (styleProfile.language || styleProfile.primaryLanguage) {
+      const lang = styleProfile.primaryLanguage || styleProfile.language;
+      context += `\n- User's Primary Language: ${lang === 'tr' ? 'Turkish' : lang === 'en' ? 'English' : 'Mixed'}\n`;
     }
 
     if (styleProfile.additionalNotes) {
@@ -350,15 +426,23 @@ Before responding, ask yourself:
 
   /**
    * Build user prompt with context
+   * NOTE: Subject is intentionally NOT included in the output - it's only for AI context
    */
   buildUserPrompt({ subject, from, fromName, body, threadHistory }) {
-    let prompt = `Please draft a reply to this email:\n\n`;
-    prompt += `From: ${fromName ? `${fromName} <${from}>` : from}\n`;
-    prompt += `Subject: ${subject}\n\n`;
-    prompt += `Email Content:\n${body}\n`;
+    let prompt = `Please draft a reply to this email.\n\n`;
+    prompt += `CONTEXT (for your understanding only - do NOT include in response):\n`;
+    prompt += `- From: ${fromName ? `${fromName} <${from}>` : from}\n`;
+    prompt += `- Subject: ${subject}\n\n`;
+    prompt += `IMPORTANT: Your response should be ONLY the email body. Do NOT include:\n`;
+    prompt += `- Subject line\n`;
+    prompt += `- "Subject:" prefix\n`;
+    prompt += `- Email headers\n`;
+    prompt += `- Any meta-information\n\n`;
+    prompt += `Just write the email reply content directly.\n\n`;
+    prompt += `Email to reply to:\n${body}\n`;
 
     if (threadHistory && threadHistory.length > 1) {
-      prompt += `\n\n--- PREVIOUS CONVERSATION ---\n`;
+      prompt += `\n\n--- PREVIOUS CONVERSATION (context only) ---\n`;
       for (const msg of threadHistory.slice(0, -1)) {
         const direction = msg.direction === 'INBOUND' ? 'Customer' : 'Us';
         prompt += `\n[${direction}]: ${msg.bodyText?.substring(0, 500)}...\n`;

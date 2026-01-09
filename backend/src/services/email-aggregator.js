@@ -233,6 +233,8 @@ async disconnect(businessId) {
     });
 
     if (!thread) {
+      // New thread - start with NEW status (no tag shown in UI)
+      // User will manually tag as needed (generate draft, mark no reply, etc.)
       thread = await prisma.emailThread.create({
         data: {
           businessId,
@@ -240,17 +242,17 @@ async disconnect(businessId) {
           subject: message.subject,
           customerEmail,
           customerName: direction === 'INBOUND' ? message.from.name : null,
-          status: 'PENDING_REPLY',
+          status: 'NEW',
           lastMessageAt: new Date(message.date)
         }
       });
     } else {
-      // Update thread
+      // Update thread - don't change status for existing threads
+      // Status is managed manually by user actions
       await prisma.emailThread.update({
         where: { id: thread.id },
         data: {
-          lastMessageAt: new Date(message.date),
-          status: direction === 'INBOUND' ? 'PENDING_REPLY' : thread.status
+          lastMessageAt: new Date(message.date)
         }
       });
     }
