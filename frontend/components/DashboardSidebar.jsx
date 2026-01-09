@@ -13,22 +13,31 @@ import { usePathname, useRouter } from 'next/navigation';
 import axios from 'axios';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
-  LayoutDashboard, 
-  Mic, 
-  Phone, 
-  TrendingUp, 
-  Settings, 
+import {
+  LayoutDashboard,
+  Mic,
+  Phone,
+  TrendingUp,
+  Settings,
   CreditCard,
   Book,
   Menu,
   X,
   Lock,
-  LogOut
+  LogOut,
+  Shield,
+  Users,
+  Bot,
+  PhoneForwarded,
+  FileText,
+  Building2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
+// Admin email whitelist - should match backend
+const ADMIN_EMAILS = ['nurettin@telyx.ai', 'admin@telyx.ai'];
 
 const NAVIGATION_ITEMS = [
   {
@@ -77,16 +86,74 @@ const NAVIGATION_ITEMS = [
   }
 ];
 
+const ADMIN_NAVIGATION_ITEMS = [
+  {
+    title: 'Admin Panel',
+    href: '/dashboard/admin',
+    icon: Shield,
+  },
+  {
+    title: 'Kullanıcılar',
+    href: '/dashboard/admin/users',
+    icon: Users,
+  },
+  {
+    title: 'Asistanlar',
+    href: '/dashboard/admin/assistants',
+    icon: Bot,
+  },
+  {
+    title: 'Aramalar',
+    href: '/dashboard/admin/calls',
+    icon: Phone,
+  },
+  {
+    title: 'Callbacks',
+    href: '/dashboard/admin/callbacks',
+    icon: PhoneForwarded,
+  },
+  {
+    title: 'Abonelikler',
+    href: '/dashboard/admin/subscriptions',
+    icon: CreditCard,
+  },
+  {
+    title: 'Kurumsal',
+    href: '/dashboard/admin/enterprise',
+    icon: Building2,
+  },
+  {
+    title: 'Audit Log',
+    href: '/dashboard/admin/audit-log',
+    icon: FileText,
+  },
+];
+
 export function DashboardSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [subscription, setSubscription] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [userEmail, setUserEmail] = useState(null);
 
   useEffect(() => {
     fetchSubscription();
+    fetchUserInfo();
   }, []);
+
+  const fetchUserInfo = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const headers = { Authorization: `Bearer ${token}` };
+      const res = await axios.get(`${API_URL}/api/auth/me`, { headers });
+      setUserEmail(res.data?.email);
+    } catch (error) {
+      console.error('User info fetch error:', error);
+    }
+  };
 
   const fetchSubscription = async () => {
     try {
@@ -102,6 +169,8 @@ export function DashboardSidebar() {
       setLoading(false);
     }
   };
+
+  const isAdmin = userEmail && ADMIN_EMAILS.includes(userEmail);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -210,6 +279,40 @@ export function DashboardSidebar() {
                 </Button>
               );
             })}
+
+            {/* Admin Navigation */}
+            {isAdmin && (
+              <>
+                <div className="my-4 border-t border-gray-200 dark:border-neutral-700" />
+                <div className="px-2 mb-2">
+                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Admin</span>
+                </div>
+                {ADMIN_NAVIGATION_ITEMS.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = pathname === item.href ||
+                    (item.href !== '/dashboard/admin' && pathname.startsWith(item.href));
+
+                  return (
+                    <Button
+                      key={item.href}
+                      variant={isActive ? 'secondary' : 'ghost'}
+                      className={cn(
+                        "w-full justify-start",
+                        isActive && "bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/50"
+                      )}
+                      onClick={() => {
+                        router.push(item.href);
+                        setIsOpen(false);
+                      }}
+                      data-testid={`admin-nav-${item.title.toLowerCase().replace(' ', '-')}`}
+                    >
+                      <Icon className="w-5 h-5 mr-3" />
+                      <span className="flex-1 text-left">{item.title}</span>
+                    </Button>
+                  );
+                })}
+              </>
+            )}
           </nav>
 
           {/* Bottom Section */}

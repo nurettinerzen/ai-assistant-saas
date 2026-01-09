@@ -110,7 +110,7 @@ export default function EnterpriseAdminPage() {
       ]);
 
       setCustomers(customersRes.data);
-      setUsers(usersRes.data);
+      setUsers(usersRes.data?.users || usersRes.data || []);
       setStats(statsRes.data);
     } catch (error) {
       console.error('Failed to load admin data:', error);

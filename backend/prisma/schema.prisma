@@ -21,6 +21,11 @@ model User {
   onboardingCompleted Boolean      @default(false)
   emailVerified       Boolean      @default(false)
   emailVerifiedAt     DateTime?
+  // Suspension fields (Admin Panel)
+  suspended           Boolean      @default(false)
+  suspendedAt         DateTime?
+  suspendReason       String?
+  deletedAt           DateTime?
   createdAt           DateTime     @default(now())
   updatedAt           DateTime     @updatedAt
   business            Business     @relation(fields: [businessId], references: [id])
@@ -31,6 +36,7 @@ model User {
 
   @@index([businessId])
   @@index([email])
+  @@index([suspended])
 }
 
 model Invitation {
@@ -95,6 +101,11 @@ model Business {
   whatsappAccessToken     String?
   whatsappVerifyToken     String?
   whatsappWebhookUrl      String?
+  // Suspension fields (Admin Panel)
+  suspended               Boolean                 @default(false)
+  suspendedAt             DateTime?
+  suspendReason           String?
+  deletedAt               DateTime?
   createdAt               DateTime                @default(now())
   updatedAt               DateTime                @updatedAt
   ownerPhone              String?
@@ -130,6 +141,7 @@ model Business {
   callbackRequests        CallbackRequest[]
 
   @@index([name])
+  @@index([suspended])
 }
 
 model Assistant {
@@ -1452,4 +1464,61 @@ model CustomerData {
   @@index([businessId])
   @@index([phone])
   @@index([vkn])
+}
+
+// ============================================================================
+// ADMİN PANELİ MODELLERİ
+// ============================================================================
+
+model AdminUser {
+  id        String    @id @default(cuid())
+  email     String    @unique
+  name      String
+  role      AdminRole @default(ADMIN)
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  lastLogin DateTime?
+  auditLogs AuditLog[]
+
+  @@index([email])
+  @@index([role])
+}
+
+enum AdminRole {
+  SUPER_ADMIN  // Tüm yetkiler
+  ADMIN        // Standart admin
+  SUPPORT      // Sadece görüntüleme + sınırlı düzenleme
+}
+
+model AuditLog {
+  id         String      @id @default(cuid())
+  adminId    String
+  admin      AdminUser   @relation(fields: [adminId], references: [id])
+  adminEmail String      // Denormalize - hızlı görüntüleme için
+  action     AuditAction
+  entityType String      // "User", "Business", "Assistant", "Subscription" vb.
+  entityId   String      // İlgili kaydın ID'si
+  changes    Json?       // { field: { old: x, new: y } }
+  metadata   Json?       // Ek bilgiler
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime    @default(now())
+
+  @@index([adminId])
+  @@index([entityType, entityId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+enum AuditAction {
+  VIEW
+  CREATE
+  UPDATE
+  DELETE
+  LOGIN
+  PASSWORD_RESET
+  PLAN_CHANGE
+  SUSPEND
+  ACTIVATE
 }

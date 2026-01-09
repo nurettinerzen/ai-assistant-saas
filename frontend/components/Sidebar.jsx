@@ -134,7 +134,14 @@ export default function Sidebar({ user, credits, business }) {
     {
       label: 'Admin',
       items: [
-        { icon: Shield, label: 'Kurumsal Musteriler', href: '/dashboard/admin/enterprise' },
+        { icon: Shield, label: 'Admin Panel', href: '/dashboard/admin' },
+        { icon: Users, label: 'Kullanıcılar', href: '/dashboard/admin/users' },
+        { icon: Bot, label: 'Asistanlar', href: '/dashboard/admin/assistants' },
+        { icon: Phone, label: 'Aramalar', href: '/dashboard/admin/calls' },
+        { icon: PhoneMissed, label: 'Callbacks', href: '/dashboard/admin/callbacks' },
+        { icon: CreditCard, label: 'Abonelikler', href: '/dashboard/admin/subscriptions' },
+        { icon: Database, label: 'Kurumsal', href: '/dashboard/admin/enterprise' },
+        { icon: BarChart3, label: 'Audit Log', href: '/dashboard/admin/audit-log' },
       ],
     },
   ] : [];

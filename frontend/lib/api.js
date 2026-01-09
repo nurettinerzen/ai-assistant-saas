@@ -262,6 +262,44 @@ export const apiClient = {
     }),
     downloadTemplate: () => api.get('/api/customer-data/template', { responseType: 'blob' }),
   },
+
+  // Admin Panel
+  admin: {
+    // Stats
+    getStats: () => api.get('/api/admin/stats'),
+
+    // Users
+    getUsers: (params) => api.get('/api/admin/users', { params }),
+    getUser: (id) => api.get(`/api/admin/users/${id}`),
+    updateUser: (id, data) => api.patch(`/api/admin/users/${id}`, data),
+    suspendUser: (id, data) => api.post(`/api/admin/users/${id}/suspend`, data),
+    resetPassword: (id) => api.post(`/api/admin/users/${id}/reset-password`),
+    deleteUser: (id) => api.delete(`/api/admin/users/${id}`),
+
+    // Assistants
+    getAssistants: (params) => api.get('/api/admin/assistants', { params }),
+    deleteAssistant: (id) => api.delete(`/api/admin/assistants/${id}`),
+
+    // Calls
+    getCalls: (params) => api.get('/api/admin/calls', { params }),
+
+    // Callbacks
+    getCallbacks: (params) => api.get('/api/admin/callbacks', { params }),
+    updateCallback: (id, data) => api.patch(`/api/admin/callbacks/${id}`, data),
+
+    // Subscriptions
+    getSubscriptions: (params) => api.get('/api/admin/subscriptions', { params }),
+    updateSubscription: (id, data) => api.patch(`/api/admin/subscriptions/${id}`, data),
+
+    // Audit Log
+    getAuditLogs: (params) => api.get('/api/admin/audit-log', { params }),
+
+    // Enterprise (existing)
+    getEnterpriseCustomers: () => api.get('/api/admin/enterprise-customers'),
+    createEnterpriseCustomer: (data) => api.post('/api/admin/enterprise-customers', data),
+    updateEnterpriseCustomer: (id, data) => api.put(`/api/admin/enterprise-customers/${id}`, data),
+    generatePaymentLink: (id) => api.post(`/api/admin/enterprise-customers/${id}/payment-link`),
+  },
 };
 
 export default api;
