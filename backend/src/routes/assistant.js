@@ -273,9 +273,9 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
           },
           turn: {
             mode: 'turn',
-            turn_timeout: 15,                    // 15sn bekle (default 7 çok kısa)
+            turn_timeout: 10,                    // 10sn bekle (müşteri konuşmasını bitirsin)
             turn_eagerness: 'patient',           // Sabırlı mod - müşterinin tamamlamasını bekle
-            silence_end_call_timeout: 45         // 45sn sessizlikten sonra kapat
+            silence_end_call_timeout: 30         // 30sn toplam sessizlikten sonra kapat
           },
           // Analysis settings for Turkish/language-specific summary
           analysis: {
@@ -642,9 +642,9 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
             },
             turn: {
               mode: 'turn',
-              turn_timeout: 15,                    // 15sn bekle (default 7 çok kısa)
+              turn_timeout: 10,                    // 10sn bekle (müşteri konuşmasını bitirsin)
               turn_eagerness: 'patient',           // Sabırlı mod - müşterinin tamamlamasını bekle
-              silence_end_call_timeout: 45         // 45sn sessizlikten sonra kapat
+              silence_end_call_timeout: 30         // 30sn toplam sessizlikten sonra kapat
             },
             // Analysis settings for Turkish/language-specific summary
             analysis: {
