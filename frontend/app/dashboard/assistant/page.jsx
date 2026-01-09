@@ -59,6 +59,7 @@ const CALL_PURPOSES = {
   // Available for all business types
   common: [
     { value: 'collection', labelTr: 'Tahsilat', labelEn: 'Collection' },
+    { value: 'sales', labelTr: 'Satış', labelEn: 'Sales' },
     { value: 'info', labelTr: 'Bilgilendirme', labelEn: 'Information' },
     { value: 'survey', labelTr: 'Anket', labelEn: 'Survey' },
     { value: 'custom', labelTr: 'Özel', labelEn: 'Custom' },
@@ -75,6 +76,7 @@ const CALL_PURPOSES = {
   // All purpose definitions
   definitions: {
     collection: { labelTr: 'Tahsilat', labelEn: 'Collection' },
+    sales: { labelTr: 'Satış', labelEn: 'Sales' },
     reminder: { labelTr: 'Randevu Hatırlatma', labelEn: 'Appointment Reminder' },
     reservation: { labelTr: 'Rezervasyon', labelEn: 'Reservation' },
     order_update: { labelTr: 'Sipariş Durumu', labelEn: 'Order Update' },
@@ -88,6 +90,10 @@ const CALL_PURPOSES = {
 // Default first messages based on call purpose (simple, natural greeting)
 const DEFAULT_FIRST_MESSAGES = {
   collection: {
+    tr: (businessName, assistantName) => `Merhaba, ben ${assistantName || 'asistan'}, ${businessName || 'şirketimiz'} adına arıyorum.`,
+    en: (businessName, assistantName) => `Hello, I'm ${assistantName || 'an assistant'} calling on behalf of ${businessName || 'our company'}.`
+  },
+  sales: {
     tr: (businessName, assistantName) => `Merhaba, ben ${assistantName || 'asistan'}, ${businessName || 'şirketimiz'} adına arıyorum.`,
     en: (businessName, assistantName) => `Hello, I'm ${assistantName || 'an assistant'} calling on behalf of ${businessName || 'our company'}.`
   },
@@ -126,6 +132,10 @@ const DEFAULT_SYSTEM_PROMPTS = {
   collection: {
     tr: `Borç hatırlatma araması yap. Kibar ol. Ödeme ne zaman yapılacak diye sor.`,
     en: `Make a debt reminder call. Be polite. Ask when the payment will be made.`
+  },
+  sales: {
+    tr: `Ürün/hizmet satış araması yap. Ürün bilgilerini Bilgi Bankası'ndan al. Bilgi Bankası'nda olmayan bilgileri uydurma. Müşterinin ilgisini çek ama baskıcı olma.`,
+    en: `Make a product/service sales call. Get product info from Knowledge Base. Don't make up information not in the Knowledge Base. Engage customer interest without being pushy.`
   },
   reminder: {
     tr: `Randevu hatırlatma araması yap. Randevuyu onayla veya iptal et.`,
@@ -191,9 +201,9 @@ export default function AssistantsPage() {
     loadData();
   }, []);
 
-  // Update first message when assistant name changes (for outbound)
+  // Update first message when assistant name changes (for outbound/sales)
   useEffect(() => {
-    if (formData.callDirection === 'outbound' && formData.callPurpose && !editingAssistant) {
+    if ((formData.callDirection === 'outbound' || formData.callDirection === 'outbound_sales') && formData.callPurpose && !editingAssistant) {
       setFormData(prev => ({
         ...prev,
         firstMessage: getDefaultFirstMessage(prev.callPurpose, prev.name),
@@ -297,11 +307,15 @@ export default function AssistantsPage() {
     }
   };
 
-  // Handle call purpose change - update prompts automatically
+  // Handle call purpose change - update prompts and callDirection automatically
   const handlePurposeChange = (purpose) => {
+    // Set callDirection based on purpose
+    const callDirection = purpose === 'sales' ? 'outbound_sales' : 'outbound';
+
     setFormData(prev => ({
       ...prev,
       callPurpose: purpose,
+      callDirection: callDirection,
       systemPrompt: getDefaultSystemPrompt(purpose),
       firstMessage: getDefaultFirstMessage(purpose, prev.name),
     }));
@@ -342,8 +356,8 @@ export default function AssistantsPage() {
       return;
     }
 
-    // For outbound, firstMessage is auto-generated so just check if it exists
-    if (formData.callDirection === 'outbound' && !formData.firstMessage) {
+    // For outbound/sales, firstMessage is auto-generated so just check if it exists
+    if ((formData.callDirection === 'outbound' || formData.callDirection === 'outbound_sales') && !formData.firstMessage) {
       toast.error(locale === 'tr' ? 'Lütfen asistan adı girin' : 'Please enter assistant name');
       return;
     }
@@ -364,10 +378,10 @@ export default function AssistantsPage() {
     const voice = voices.find(v => v.id === assistant.voiceId);
     const inferredLang = voice?.language || businessLanguage || 'en';
 
-    // For outbound assistants, show a simple default prompt based on callPurpose
+    // For outbound/sales assistants, show a simple default prompt based on callPurpose
     // instead of the full generated system prompt (which is too technical for customers)
     // For inbound, also show empty since full prompt is generated in backend
-    const isOutbound = assistant.callDirection === 'outbound';
+    const isOutbound = assistant.callDirection === 'outbound' || assistant.callDirection === 'outbound_sales';
     let displayPrompt = '';
 
     if (isOutbound && assistant.callPurpose) {
@@ -487,7 +501,8 @@ export default function AssistantsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredAssistants.map((assistant) => {
             const voice = voices.find((v) => v.id === assistant.voiceId);
-            const isOutbound = assistant.callDirection === 'outbound';
+            const isOutbound = assistant.callDirection === 'outbound' || assistant.callDirection === 'outbound_sales';
+            const isSales = assistant.callDirection === 'outbound_sales';
 
             return (
               <div
@@ -496,9 +511,15 @@ export default function AssistantsPage() {
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-lg ${isOutbound ? 'bg-orange-100 dark:bg-orange-900/30' : 'bg-primary-100 dark:bg-primary-900/30'}`}>
+                    <div className={`p-2 rounded-lg ${
+                      isSales
+                        ? 'bg-green-100 dark:bg-green-900/30'
+                        : isOutbound
+                          ? 'bg-orange-100 dark:bg-orange-900/30'
+                          : 'bg-primary-100 dark:bg-primary-900/30'
+                    }`}>
                       {isOutbound ? (
-                        <PhoneOutgoing className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                        <PhoneOutgoing className={`h-5 w-5 ${isSales ? 'text-green-600 dark:text-green-400' : 'text-orange-600 dark:text-orange-400'}`} />
                       ) : (
                         <PhoneIncoming className="h-5 w-5 text-primary-600 dark:text-primary-400" />
                       )}
@@ -513,9 +534,11 @@ export default function AssistantsPage() {
                 </div>
 
                 <p className="text-sm text-neutral-600 dark:text-neutral-400 line-clamp-2 mb-4">
-                  {isOutbound
-                    ? (locale === 'tr' ? 'Giden Arama Asistanı' : 'Outbound Call Assistant')
-                    : (locale === 'tr' ? 'Gelen Arama Asistanı' : 'Inbound Call Assistant')
+                  {isSales
+                    ? (locale === 'tr' ? 'Satış Asistanı' : 'Sales Assistant')
+                    : isOutbound
+                      ? (locale === 'tr' ? 'Giden Arama Asistanı' : 'Outbound Call Assistant')
+                      : (locale === 'tr' ? 'Gelen Arama Asistanı' : 'Inbound Call Assistant')
                   }
                   {assistant.callPurpose && (
                     <span className="text-primary-600"> • {
@@ -650,7 +673,7 @@ export default function AssistantsPage() {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              {formData.callDirection === 'outbound' ? (
+              {formData.callDirection === 'outbound' || formData.callDirection === 'outbound_sales' ? (
                 <PhoneOutgoing className="h-5 w-5 text-orange-600" />
               ) : (
                 <PhoneIncoming className="h-5 w-5 text-blue-600" />
@@ -658,11 +681,19 @@ export default function AssistantsPage() {
               {editingAssistant ? t('common.edit') : t('common.create')} {t('dashboard.assistantsPage.name')}
               <Badge
                 variant="secondary"
-                className={formData.callDirection === 'outbound' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'}
+                className={
+                  formData.callDirection === 'outbound_sales'
+                    ? 'bg-green-100 text-green-700'
+                    : formData.callDirection === 'outbound'
+                      ? 'bg-orange-100 text-orange-700'
+                      : 'bg-blue-100 text-blue-700'
+                }
               >
-                {formData.callDirection === 'outbound'
-                  ? (locale === 'tr' ? 'Giden Arama' : 'Outbound')
-                  : (locale === 'tr' ? 'Gelen Arama' : 'Inbound')
+                {formData.callDirection === 'outbound_sales'
+                  ? (locale === 'tr' ? 'Satış' : 'Sales')
+                  : formData.callDirection === 'outbound'
+                    ? (locale === 'tr' ? 'Giden Arama' : 'Outbound')
+                    : (locale === 'tr' ? 'Gelen Arama' : 'Inbound')
                 }
               </Badge>
             </DialogTitle>
@@ -693,8 +724,8 @@ export default function AssistantsPage() {
               />
             </div>
 
-            {/* Call Purpose (only for outbound) */}
-            {formData.callDirection === 'outbound' && (
+            {/* Call Purpose (only for outbound/sales) */}
+            {(formData.callDirection === 'outbound' || formData.callDirection === 'outbound_sales') && (
               <div>
                 <Label>{locale === 'tr' ? 'Arama Amacı' : 'Call Purpose'}</Label>
                 <Select
@@ -807,8 +838,8 @@ export default function AssistantsPage() {
               <Label htmlFor="firstMessage">
                 {locale === 'tr' ? 'Karşılama Mesajı' : 'Greeting Message'}
               </Label>
-              {formData.callDirection === 'outbound' ? (
-                // Outbound: Read-only, auto-generated
+              {(formData.callDirection === 'outbound' || formData.callDirection === 'outbound_sales') ? (
+                // Outbound/Sales: Read-only, auto-generated
                 <>
                   <div className="p-3 bg-neutral-50 border border-neutral-200 rounded-md text-sm text-neutral-700 dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-300">
                     {formData.firstMessage || (locale === 'tr' ? 'Asistan adı girilince otomatik oluşturulacak' : 'Will be auto-generated when assistant name is entered')}
@@ -843,8 +874,8 @@ export default function AssistantsPage() {
               )}
             </div>
 
-            {/* System Prompt / Instructions - Only for outbound */}
-            {formData.callDirection === 'outbound' && (
+            {/* System Prompt / Instructions - Only for outbound/sales */}
+            {(formData.callDirection === 'outbound' || formData.callDirection === 'outbound_sales') && (
               <div>
                 <Label htmlFor="prompt">
                   {locale === 'tr' ? 'Talimatlar' : 'Instructions'}
