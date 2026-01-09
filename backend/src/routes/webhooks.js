@@ -281,7 +281,9 @@ router.post('/elevenlabs/call-ended', async (req, res) => {
       agent_id,
       status,
       transcript,
-      analysis
+      analysis,
+      recording_url,
+      audio_url
     } = callData;
 
     // Duration is inside metadata, not at root level
@@ -372,12 +374,18 @@ router.post('/elevenlabs/call-ended', async (req, res) => {
     }
 
     // 3. Create call log FIRST (so we have callLogId for batch recipient)
+    // Generate 11Labs recording URL from conversation_id
+    const recordingUrl = callId
+      ? `https://api.elevenlabs.io/v1/convai/conversations/${callId}/audio`
+      : recording_url || audio_url || null;
+
     const callLog = await createCallLog(businessId, {
       callId: callId,
       agentId: agentId,
       duration: durationSeconds,
       transcript,
       analysis,
+      recordingUrl,
       // Phone info for caller display - use external number as it's the customer
       callerNumber: externalNumber,
       calledNumber: agentPhoneNumber,
@@ -767,6 +775,7 @@ async function createCallLog(businessId, data) {
         status: 'completed',
         transcript: transcriptData || null,
         transcriptText,
+        recordingUrl: data.recordingUrl || null,
         // Analysis fields
         summary: summary,
         sentiment: sentiment,

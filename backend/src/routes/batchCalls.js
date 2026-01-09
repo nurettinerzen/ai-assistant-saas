@@ -653,15 +653,18 @@ router.get('/', checkPermission('campaigns:view'), async (req, res) => {
             // All calls are truly done when finished == scheduled
             const allCallsFinished = totalFinished === totalScheduled && totalScheduled > 0;
 
-            if (elevenLabsData.status === 'completed' || elevenLabsData.status === 'done' || allCallsFinished) {
+            // IMPORTANT: Only mark as COMPLETED when ALL calls are actually finished
+            // Don't trust 11Labs status alone - verify with totalFinished
+            if (allCallsFinished) {
               newStatus = 'COMPLETED';
-            } else if (elevenLabsData.status === 'in_progress' || totalDispatched > 0) {
-              newStatus = 'IN_PROGRESS';
-            } else if (elevenLabsData.status === 'failed') {
+            } else if (elevenLabsData.status === 'failed' && totalFinished === 0) {
               newStatus = 'FAILED';
             } else if (elevenLabsData.status === 'cancelled') {
               newStatus = 'CANCELLED';
+            } else if (totalDispatched > 0 || elevenLabsData.status === 'in_progress') {
+              newStatus = 'IN_PROGRESS';
             }
+            // If 11Labs says completed/done but totalFinished < totalScheduled, keep as IN_PROGRESS
 
             // Calculate completed calls from 11Labs data
             // Note: 11Labs uses total_calls_finished for completed calls
@@ -763,15 +766,18 @@ router.get('/:id', checkPermission('campaigns:view'), async (req, res) => {
 
         console.log(`📊 Batch ${batchCall.id}: scheduled=${totalScheduled}, finished=${totalFinished}, 11Labs status=${elevenLabsData.status}`);
 
-        if (elevenLabsData.status === 'completed' || elevenLabsData.status === 'done' || allCallsDone) {
+        // IMPORTANT: Only mark as COMPLETED when ALL calls are actually finished
+        // Don't trust 11Labs status alone - verify with totalFinished
+        if (allCallsDone) {
           newStatus = 'COMPLETED';
-        } else if (elevenLabsData.status === 'in_progress' || elevenLabsData.total_calls_dispatched > 0) {
-          newStatus = 'IN_PROGRESS';
-        } else if (elevenLabsData.status === 'failed') {
+        } else if (elevenLabsData.status === 'failed' && totalFinished === 0) {
           newStatus = 'FAILED';
         } else if (elevenLabsData.status === 'cancelled') {
           newStatus = 'CANCELLED';
+        } else if (elevenLabsData.total_calls_dispatched > 0 || elevenLabsData.status === 'in_progress') {
+          newStatus = 'IN_PROGRESS';
         }
+        // If 11Labs says completed/done but totalFinished < totalScheduled, keep as IN_PROGRESS
 
         // Use total_calls_finished for completed count
         const completedCount = totalFinished;
@@ -809,7 +815,7 @@ router.get('/:id', checkPermission('campaigns:view'), async (req, res) => {
 
     // Merge recipients with call details from 11Labs
     // Priority: DB status (from webhook) > 11Labs status > 'pending'
-    const enrichedRecipients = recipients.map((recipient, index) => {
+    const enrichedRecipients = await Promise.all(recipients.map(async (recipient, index) => {
       const callDetail = callDetails.find(c => c.phone_number === recipient.phone_number) || {};
 
       // Use DB status if it was updated by webhook, otherwise use 11Labs status
@@ -829,17 +835,95 @@ router.get('/:id', checkPermission('campaigns:view'), async (req, res) => {
         }
       }
 
+      const conversationId = recipient.elevenLabsConversationId || callDetail.conversation_id || null;
+
+      // Try to find callLogId from our database using conversationId
+      let callLogId = recipient.callLogId || null;
+
+      if (!callLogId && conversationId) {
+        // First check if CallLog exists
+        let callLog = await prisma.callLog.findFirst({
+          where: { callId: conversationId },
+          select: { id: true }
+        });
+
+        // If no CallLog exists and call is completed, create one from 11Labs data
+        if (!callLog && (finalStatus === 'completed' || finalStatus === 'failed')) {
+          try {
+            // Fetch conversation details from 11Labs
+            const apiKey = process.env.ELEVENLABS_API_KEY;
+            const convResponse = await axios.get(
+              `https://api.elevenlabs.io/v1/convai/conversations/${conversationId}`,
+              { headers: { 'xi-api-key': apiKey } }
+            );
+            const convData = convResponse.data;
+
+            // Create or update CallLog from 11Labs data (upsert to handle duplicates)
+            callLog = await prisma.callLog.upsert({
+              where: { callId: conversationId },
+              update: {
+                duration: convData.metadata?.call_duration_secs || callDetail.duration || 0,
+                status: finalStatus,
+                direction: 'outbound', // Batch calls are always outbound
+                transcript: convData.transcript || null,
+                transcriptText: Array.isArray(convData.transcript)
+                  ? convData.transcript.map(t => `${t.role === 'agent' ? 'Asistan' : 'Müşteri'}: ${t.message || t.text || ''}`).join('\n')
+                  : null,
+                recordingUrl: `https://api.elevenlabs.io/v1/convai/conversations/${conversationId}/audio`,
+                summary: convData.analysis?.transcript_summary || null,
+                sentiment: convData.analysis?.user_sentiment || 'neutral'
+              },
+              create: {
+                businessId: batchCall.businessId,
+                callId: conversationId,
+                callerId: recipient.phone_number,
+                duration: convData.metadata?.call_duration_secs || callDetail.duration || 0,
+                status: finalStatus,
+                direction: 'outbound', // Batch calls are always outbound
+                transcript: convData.transcript || null,
+                transcriptText: Array.isArray(convData.transcript)
+                  ? convData.transcript.map(t => `${t.role === 'agent' ? 'Asistan' : 'Müşteri'}: ${t.message || t.text || ''}`).join('\n')
+                  : null,
+                recordingUrl: `https://api.elevenlabs.io/v1/convai/conversations/${conversationId}/audio`,
+                summary: convData.analysis?.transcript_summary || null,
+                sentiment: convData.analysis?.user_sentiment || 'neutral'
+              },
+              select: { id: true }
+            });
+            console.log(`✅ Upserted CallLog for conversation ${conversationId}`);
+          } catch (err) {
+            console.error(`Failed to create CallLog for ${conversationId}:`, err.message);
+          }
+        }
+
+        if (callLog) {
+          callLogId = callLog.id;
+        }
+      }
+
       return {
         ...recipient,
         status: finalStatus,
         duration: recipient.duration || callDetail.duration || null,
-        conversationId: recipient.elevenLabsConversationId || callDetail.conversation_id || null
+        conversationId,
+        callLogId
       };
-    });
+    }));
+
+    // Calculate stats from enriched recipients (most accurate)
+    const calculatedStats = {
+      completedCalls: enrichedRecipients.filter(r => r.status === 'completed' || r.status === 'failed').length,
+      successfulCalls: enrichedRecipients.filter(r => r.status === 'completed').length,
+      failedCalls: enrichedRecipients.filter(r => r.status === 'failed').length
+    };
 
     res.json({
       batchCall: {
         ...batchCall,
+        // Override with calculated stats from recipients
+        completedCalls: calculatedStats.completedCalls,
+        successfulCalls: calculatedStats.successfulCalls,
+        failedCalls: calculatedStats.failedCalls,
         recipients: enrichedRecipients
       }
     });

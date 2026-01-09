@@ -1,6 +1,7 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticateToken } from '../middleware/auth.js';
+import axios from 'axios';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -78,8 +79,9 @@ router.get('/:id', async (req, res) => {
     const { id } = req.params;
     const { businessId } = req;
 
+    // ID can be either integer or string - try to parse if numeric
     const callLog = await prisma.callLog.findUnique({
-      where: { id: parseInt(id) }
+      where: { id: isNaN(parseInt(id)) ? id : parseInt(id) }
     });
 
     if (!callLog) {
@@ -155,6 +157,71 @@ router.post('/', async (req, res) => {
   } catch (error) {
     console.error('Create call log error:', error);
     res.status(500).json({ error: 'Failed to create call log' });
+  }
+});
+
+// Get call recording audio (proxy from 11Labs)
+// Token can be passed via Authorization header or query param (for <audio> elements)
+router.get('/:id/audio', async (req, res) => {
+  try {
+    const { businessId } = req;
+    const { id } = req.params;
+
+    // Find call log - ID can be integer or string
+    const callLog = await prisma.callLog.findUnique({
+      where: { id: isNaN(parseInt(id)) ? id : parseInt(id) }
+    });
+
+    if (!callLog || callLog.businessId !== businessId) {
+      return res.status(404).json({ error: 'Call not found' });
+    }
+
+    // Get conversation ID from callId (which is the conversation_id from 11Labs)
+    const conversationId = callLog.callId;
+    if (!conversationId) {
+      return res.status(404).json({ error: 'No recording available' });
+    }
+
+    // Fetch audio from 11Labs
+    const elevenLabsApiKey = process.env.ELEVENLABS_API_KEY;
+    if (!elevenLabsApiKey) {
+      return res.status(500).json({ error: 'Audio service not configured' });
+    }
+
+    const audioUrl = `https://api.elevenlabs.io/v1/convai/conversations/${conversationId}/audio`;
+    console.log(`🎵 Fetching audio for conversation: ${conversationId}`);
+
+    const audioResponse = await axios.get(audioUrl, {
+      headers: { 'xi-api-key': elevenLabsApiKey },
+      responseType: 'stream'
+    });
+
+    console.log(`🎵 Audio response headers:`, {
+      contentType: audioResponse.headers['content-type'],
+      contentLength: audioResponse.headers['content-length']
+    });
+
+    // 11Labs returns audio/mpeg format
+    const contentType = audioResponse.headers['content-type'] || 'audio/mpeg';
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `inline; filename="call-${id}.mp3"`);
+    // Allow cross-origin audio playback
+    res.setHeader('Accept-Ranges', 'bytes');
+    if (audioResponse.headers['content-length']) {
+      res.setHeader('Content-Length', audioResponse.headers['content-length']);
+    }
+
+    // Stream the audio
+    audioResponse.data.pipe(res);
+  } catch (error) {
+    console.error('Get call audio error:', error.message, error.response?.status);
+    if (error.response?.status === 404) {
+      return res.status(404).json({ error: 'Recording not found' });
+    }
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      return res.status(403).json({ error: 'Audio access denied' });
+    }
+    res.status(500).json({ error: 'Failed to fetch recording' });
   }
 });
 
