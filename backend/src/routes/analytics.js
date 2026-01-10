@@ -25,11 +25,21 @@ router.get('/overview', authenticateToken, async (req, res) => {
       orderBy: { createdAt: 'asc' }
     });
 
-    // Get chat logs (sessions)
+    // Get chat logs (sessions) - separated by channel
     const chatLogs = await prisma.chatLog.findMany({
       where: {
         businessId,
-        createdAt: { gte: startDate }
+        createdAt: { gte: startDate },
+        channel: 'CHAT'
+      }
+    });
+
+    // Get WhatsApp logs (sessions)
+    const whatsappLogs = await prisma.chatLog.findMany({
+      where: {
+        businessId,
+        createdAt: { gte: startDate },
+        channel: 'WHATSAPP'
       }
     });
 
@@ -64,13 +74,17 @@ router.get('/overview', authenticateToken, async (req, res) => {
     // Calculate CHAT stats - count sessions (not individual messages)
     const chatSessions = chatLogs.length;
 
+    // Calculate WHATSAPP stats
+    const whatsappSessions = whatsappLogs.length;
+
     // Calculate EMAIL stats - count AI-answered emails
     const emailsAnswered = sentEmailDrafts.length;
     const totalEmailThreads = emailThreads.length;
 
-    // Calls over time WITH chats and emails
+    // Calls over time WITH chats, whatsapp, and emails
     const callsByDate = {};
     const chatsByDate = {};
+    const whatsappByDate = {};
     const emailsByDate = {};
 
     for (let i = 0; i < days; i++) {
@@ -79,6 +93,7 @@ router.get('/overview', authenticateToken, async (req, res) => {
       const dateStr = date.toISOString().split('T')[0];
       callsByDate[dateStr] = 0;
       chatsByDate[dateStr] = 0;
+      whatsappByDate[dateStr] = 0;
       emailsByDate[dateStr] = 0;
     }
 
@@ -96,6 +111,13 @@ router.get('/overview', authenticateToken, async (req, res) => {
       }
     });
 
+    whatsappLogs.forEach(log => {
+      const dateStr = log.createdAt.toISOString().split('T')[0];
+      if (whatsappByDate[dateStr] !== undefined) {
+        whatsappByDate[dateStr]++;
+      }
+    });
+
     sentEmailDrafts.forEach(draft => {
       const dateStr = draft.createdAt.toISOString().split('T')[0];
       if (emailsByDate[dateStr] !== undefined) {
@@ -107,6 +129,7 @@ router.get('/overview', authenticateToken, async (req, res) => {
       date: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
       calls: callsByDate[date],
       chats: chatsByDate[date] || 0,
+      whatsapp: whatsappByDate[date] || 0,
       emails: emailsByDate[date] || 0
     }));
 
@@ -148,16 +171,18 @@ router.get('/overview', authenticateToken, async (req, res) => {
     }));
 
     // Channel distribution - now with 4 channels
-    const totalInteractions = totalCalls + chatSessions + emailsAnswered;
+    const totalInteractions = totalCalls + chatSessions + whatsappSessions + emailsAnswered;
     const channelStats = {
       phone: { count: totalCalls, percentage: 0 },
       chat: { count: chatSessions, percentage: 0 },
+      whatsapp: { count: whatsappSessions, percentage: 0 },
       email: { count: emailsAnswered, percentage: 0 },
       total: totalInteractions
     };
     if (totalInteractions > 0) {
       channelStats.phone.percentage = parseFloat(((totalCalls / totalInteractions) * 100).toFixed(1));
       channelStats.chat.percentage = parseFloat(((chatSessions / totalInteractions) * 100).toFixed(1));
+      channelStats.whatsapp.percentage = parseFloat(((whatsappSessions / totalInteractions) * 100).toFixed(1));
       channelStats.email.percentage = parseFloat(((emailsAnswered / totalInteractions) * 100).toFixed(1));
     }
 
@@ -170,6 +195,9 @@ router.get('/overview', authenticateToken, async (req, res) => {
 
       // Chat metrics (session-based)
       chatSessions,
+
+      // WhatsApp metrics
+      whatsappSessions,
 
       // Email metrics
       emailsAnswered,
@@ -395,12 +423,13 @@ router.get('/top-questions', authenticateToken, async (req, res) => {
       });
     }
 
-    // 2. Get chat messages (first user message = their question/topic)
+    // 2. Get web chat messages (first user message = their question/topic)
     if (!channel || channel === 'chat') {
       const chatLogs = await prisma.chatLog.findMany({
         where: {
           businessId,
-          createdAt: { gte: startDate }
+          createdAt: { gte: startDate },
+          channel: 'CHAT'
         },
         select: {
           messages: true,
@@ -423,7 +452,36 @@ router.get('/top-questions', authenticateToken, async (req, res) => {
       });
     }
 
-    // 3. Get INBOUND email subjects
+    // 3. Get WhatsApp messages (first user message = their question/topic)
+    if (!channel || channel === 'whatsapp') {
+      const whatsappLogs = await prisma.chatLog.findMany({
+        where: {
+          businessId,
+          createdAt: { gte: startDate },
+          channel: 'WHATSAPP'
+        },
+        select: {
+          messages: true,
+          createdAt: true
+        }
+      });
+
+      whatsappLogs.forEach(log => {
+        if (log.messages && Array.isArray(log.messages)) {
+          // Find first user message as the main topic
+          const userMessage = log.messages.find(m => m.role === 'user');
+          if (userMessage && userMessage.content) {
+            topics.push({
+              text: userMessage.content.substring(0, 200),
+              channel: 'whatsapp',
+              date: log.createdAt
+            });
+          }
+        }
+      });
+    }
+
+    // 4. Get INBOUND email subjects
     if (!channel || channel === 'email') {
       const emailMessages = await prisma.emailMessage.findMany({
         where: {

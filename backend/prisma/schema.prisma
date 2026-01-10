@@ -323,7 +323,9 @@ model ChatLog {
   businessId    Int
   sessionId     String   @unique // Unique session identifier
   assistantId   String?
-  customerIp    String?  // For analytics
+  channel       String   @default("CHAT") // CHAT, WHATSAPP
+  customerIp    String?  // For analytics (web chat)
+  customerPhone String?  // For WhatsApp
   messageCount  Int      @default(0)
   messages      Json?    // Array of {role, content, timestamp}
   summary       String?  @db.Text
@@ -337,6 +339,7 @@ model ChatLog {
   @@index([businessId])
   @@index([createdAt])
   @@index([status])
+  @@index([channel])
 }
 
 model CallLog {

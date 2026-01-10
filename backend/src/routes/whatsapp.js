@@ -274,6 +274,31 @@ async function generateAIResponseWithTools(business, phoneNumber, userMessage, c
       conversations.set(conversationKey, history.slice(-40));
     }
 
+    // Save/Update ChatLog for analytics
+    try {
+      const sessionId = `whatsapp-${business.id}-${phoneNumber}`;
+      await prisma.chatLog.upsert({
+        where: { sessionId },
+        update: {
+          messages: history,
+          messageCount: history.length,
+          updatedAt: new Date()
+        },
+        create: {
+          sessionId,
+          businessId: business.id,
+          assistantId: assistant?.id || null,
+          channel: 'WHATSAPP',
+          customerPhone: phoneNumber,
+          messages: history,
+          messageCount: history.length,
+          status: 'active'
+        }
+      });
+    } catch (logError) {
+      console.error('⚠️ Failed to save WhatsApp chat log:', logError.message);
+    }
+
     console.log(`🤖 AI Response for ${business.name}:`, finalResponse);
     return finalResponse;
 
