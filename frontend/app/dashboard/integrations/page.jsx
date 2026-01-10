@@ -483,10 +483,10 @@ const handleShopifyConnect = async () => {
   };
 
   const copyWebhookUrl = () => {
-    if (whatsappStatus?.webhookUrl) {
-      navigator.clipboard.writeText(whatsappStatus.webhookUrl);
-      toast.success('Webhook URL copied!');
-    }
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://ai-assistant-saas.onrender.com';
+    const webhookUrl = whatsappStatus?.webhookUrl || `${backendUrl}/api/whatsapp/webhook`;
+    navigator.clipboard.writeText(webhookUrl);
+    toast.success('Webhook URL copied!');
   };
 
   // ikas handlers
@@ -1127,7 +1127,7 @@ const handleIdeasoftConnect = async () => {
             <div className="space-y-2">
               <Label>Webhook URL</Label>
               <div className="flex gap-2">
-                <Input type="text" readOnly value={whatsappStatus?.webhookUrl || `${typeof window !== 'undefined' ? window.location.origin : ''}/api/whatsapp/webhook`} className="bg-neutral-50" />
+                <Input type="text" readOnly value={whatsappStatus?.webhookUrl || `${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://ai-assistant-saas.onrender.com'}/api/whatsapp/webhook`} className="bg-neutral-50" />
                 <Button type="button" variant="outline" size="icon" onClick={copyWebhookUrl}><Copy className="h-4 w-4" /></Button>
               </div>
             </div>
