@@ -570,7 +570,9 @@
     "noCommitments": "Uzun vadeli taahhüt veya gizli ücret yok",
     "passwordMustBe8": "Şifre en az 8 karakter olmalıdır",
     "accountCreatedSuccess": "Hesap oluşturuldu! Asistanınızı ayarlayalım!",
-    "googleSignUpComingSoon": "Google ile kayıt yakında!"
+    "googleSignUpComingSoon": "Google ile kayıt yakında!",
+    "acceptTermsAndPrivacy": "Okudum ve kabul ediyorum:",
+    "acceptTermsRequired": "Devam etmek için Kullanım Koşulları ve Gizlilik Politikası'nı kabul etmelisiniz"
   },
   "dashboard": {
     "overview": "Panel",
@@ -2111,7 +2113,7 @@
     "sections": {
       "dataCollected": {
         "title": "Toplanan Veriler",
-        "content": "Hizmetlerimizi kullanırken aşağıdaki verileri topluyoruz:\n• Kimlik bilgileri (ad, soyad, e-posta adresi)\n• İletişim bilgileri (telefon numarası, adres)\n• Kullanım verileri (sayfa görüntülemeleri, tıklamalar)\n• Cihaz bilgileri (IP adresi, tarayıcı türü)"
+        "content": "Hizmetlerimizi kullanırken aşağıdaki verileri topluyoruz:\n• Kimlik bilgileri (ad, soyad, e-posta adresi)\n• İletişim bilgileri (telefon numarası, adres)\n• Kullanım verileri (sayfa görüntülemeleri, tıklamalar)\n• Cihaz bilgileri (IP adresi, tarayıcı türü)\n• AI asistan konuşma kayıtları (telefon, WhatsApp, chat, e-posta)"
       },
       "dataUsage": {
         "title": "Verilerin Kullanım Amacı",
@@ -2119,7 +2121,7 @@
       },
       "dataStorage": {
         "title": "Verilerin Saklanması",
-        "content": "Verileriniz:\n• Güvenli sunucularda şifrelenmiş olarak saklanır\n• Sadece gerekli süre boyunca tutulur\n• Endüstri standardı güvenlik önlemleriyle korunur"
+        "content": "Verileriniz:\n• Güvenli sunucularda şifrelenmiş olarak saklanır\n• Sadece gerekli süre boyunca tutulur\n• Endüstri standardı güvenlik önlemleriyle korunur\n• AI konuşma kayıtları 30 gün sonra otomatik olarak silinir"
       },
       "thirdParty": {
         "title": "Üçüncü Taraflarla Paylaşım",

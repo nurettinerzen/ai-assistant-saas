@@ -6,11 +6,12 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Phone, Mail, Lock, User, Loader2, Ticket } from 'lucide-react';
+import { Mail, Lock, User, Loader2, Ticket } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast, Toaster } from 'sonner';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { TelyxLogoFull } from '@/components/TelyxLogo';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -29,6 +30,7 @@ export default function SignupPage() {
     fullName: '',
     inviteCode: '',
   });
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   // Check if user is already logged in
   useEffect(() => {
@@ -66,6 +68,12 @@ export default function SignupPage() {
 
       if (!formData.inviteCode) {
         toast.error(t('invite.codeRequired'));
+        setLoading(false);
+        return;
+      }
+
+      if (!acceptedTerms) {
+        toast.error(t('auth.acceptTermsRequired'));
         setLoading(false);
         return;
       }
@@ -114,9 +122,8 @@ export default function SignupPage() {
 
       <div className="w-full max-w-md">
         <div className="flex justify-between items-center mb-8">
-          <Link href="/" className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
-            <Phone className="inline-block mr-2 h-8 w-8" />
-            TELYX.AI
+          <Link href="/">
+            <TelyxLogoFull className="h-10" />
           </Link>
           <LanguageSwitcher />
         </div>
@@ -200,6 +207,26 @@ export default function SignupPage() {
                   {t('invite.applyEarlyAccess')}
                 </Link>
               </p>
+            </div>
+
+            <div className="flex items-start space-x-3">
+              <input
+                type="checkbox"
+                id="acceptTerms"
+                checked={acceptedTerms}
+                onChange={(e) => setAcceptedTerms(e.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-neutral-600 dark:bg-neutral-700"
+              />
+              <label htmlFor="acceptTerms" className="text-sm text-gray-600 dark:text-neutral-400">
+                {t('auth.acceptTermsAndPrivacy')}{' '}
+                <Link href="/terms" className="text-indigo-600 dark:text-indigo-400 hover:underline font-medium">
+                  {t('auth.termsOfService')}
+                </Link>
+                {' '}{t('auth.and')}{' '}
+                <Link href="/privacy" className="text-indigo-600 dark:text-indigo-400 hover:underline font-medium">
+                  {t('auth.privacyPolicy')}
+                </Link>
+              </label>
             </div>
 
             <Button type="submit" className="w-full" disabled={loading}>

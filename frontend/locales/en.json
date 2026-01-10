@@ -570,7 +570,9 @@
     "noCommitments": "No long-term commitments or hidden fees",
     "passwordMustBe8": "Password must be at least 8 characters",
     "accountCreatedSuccess": "Account created! Let's set up your assistant!",
-    "googleSignUpComingSoon": "Google Sign-Up coming soon!"
+    "googleSignUpComingSoon": "Google Sign-Up coming soon!",
+    "acceptTermsAndPrivacy": "I have read and accept the",
+    "acceptTermsRequired": "You must accept the Terms of Service and Privacy Policy to continue"
   },
   "dashboard": {
     "overview": "Dashboard",
@@ -2097,7 +2099,7 @@
     "sections": {
       "dataCollected": {
         "title": "Data Collected",
-        "content": "When using our services, we collect the following data:\n• Identity information (name, email address)\n• Contact information (phone number, address)\n• Usage data (page views, clicks)\n• Device information (IP address, browser type)"
+        "content": "When using our services, we collect the following data:\n• Identity information (name, email address)\n• Contact information (phone number, address)\n• Usage data (page views, clicks)\n• Device information (IP address, browser type)\n• AI assistant conversation records (phone, WhatsApp, chat, email)"
       },
       "dataUsage": {
         "title": "Purpose of Data Usage",
@@ -2105,7 +2107,7 @@
       },
       "dataStorage": {
         "title": "Data Storage",
-        "content": "Your data:\n• Is stored encrypted on secure servers\n• Is kept only for the necessary duration\n• Is protected with industry-standard security measures"
+        "content": "Your data:\n• Is stored encrypted on secure servers\n• Is kept only for the necessary duration\n• Is protected with industry-standard security measures\n• AI conversation records are automatically deleted after 30 days"
       },
       "thirdParty": {
         "title": "Third-Party Sharing",

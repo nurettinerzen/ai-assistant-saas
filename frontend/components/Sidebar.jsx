@@ -54,6 +54,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import UpgradeModal from './UpgradeModal';
 import { VISIBILITY, getFeatureVisibility } from '@/lib/features';
+import { TelyxLogoCompact } from './TelyxLogo';
 
 // Admin email whitelist - should match backend
 const ADMIN_EMAILS = [
@@ -197,11 +198,8 @@ export default function Sidebar({ user, credits, business }) {
     <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900">
       {/* Logo */}
       <div className="h-14 flex items-center px-4 border-b border-gray-200 dark:border-gray-800">
-        <Link href="/dashboard" className="flex items-center gap-2.5">
-          <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
-            <Sparkles className="h-4.5 w-4.5 text-white" />
-          </div>
-          <span className="text-lg font-semibold text-gray-900 dark:text-white">Telyx.AI</span>
+        <Link href="/dashboard/assistant" className="flex items-center">
+          <TelyxLogoCompact />
         </Link>
       </div>
 

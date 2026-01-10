@@ -482,6 +482,71 @@ export async function billOverageUsage() {
 }
 
 /**
+ * Clean up old WhatsApp/Chat conversation logs
+ * - Delete conversations older than 30 days
+ * - Trim messages to max 50 per conversation
+ * Run daily
+ */
+export async function cleanupChatLogs() {
+  console.log('🧹 Cleaning up old chat/WhatsApp logs...');
+
+  try {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const MAX_MESSAGES_PER_CONVERSATION = 50;
+
+    // 1. Delete old conversations (no activity for 30 days)
+    const deletedOld = await prisma.chatLog.deleteMany({
+      where: {
+        updatedAt: { lt: thirtyDaysAgo }
+      }
+    });
+
+    console.log(`🗑️ Deleted ${deletedOld.count} old chat logs (>30 days)`);
+
+    // 2. Trim messages in active conversations to max 50
+    const largeConversations = await prisma.chatLog.findMany({
+      where: {
+        messageCount: { gt: MAX_MESSAGES_PER_CONVERSATION }
+      },
+      select: {
+        id: true,
+        sessionId: true,
+        messages: true,
+        messageCount: true
+      }
+    });
+
+    let trimmedCount = 0;
+    for (const log of largeConversations) {
+      if (Array.isArray(log.messages) && log.messages.length > MAX_MESSAGES_PER_CONVERSATION) {
+        const trimmedMessages = log.messages.slice(-MAX_MESSAGES_PER_CONVERSATION);
+
+        await prisma.chatLog.update({
+          where: { id: log.id },
+          data: {
+            messages: trimmedMessages,
+            messageCount: trimmedMessages.length
+          }
+        });
+
+        trimmedCount++;
+        console.log(`✂️ Trimmed ${log.sessionId}: ${log.messages.length} -> ${trimmedMessages.length} messages`);
+      }
+    }
+
+    console.log(`🧹 Chat log cleanup complete: ${deletedOld.count} deleted, ${trimmedCount} trimmed`);
+    return {
+      success: true,
+      deletedCount: deletedOld.count,
+      trimmedCount
+    };
+  } catch (error) {
+    console.error('❌ Chat log cleanup error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
  * Run all cron jobs - can be called by a scheduler or manually
  */
 export async function runAllJobs() {
@@ -492,7 +557,8 @@ export async function runAllJobs() {
     checkLowBalance: await checkLowBalance(),
     processAutoReload: await processAutoReload(),
     checkTrialExpired: await checkTrialExpired(),
-    billOverageUsage: await billOverageUsage()
+    billOverageUsage: await billOverageUsage(),
+    cleanupChatLogs: await cleanupChatLogs()
   };
 
   console.log('🕐 All cron jobs complete:', results);
@@ -505,6 +571,7 @@ export default {
   processAutoReload,
   checkTrialExpired,
   cleanupOldRecords,
+  cleanupChatLogs,
   billOverageUsage,
   runAllJobs
 };
