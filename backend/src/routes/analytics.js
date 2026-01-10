@@ -393,18 +393,14 @@ router.get('/top-questions', authenticateToken, async (req, res) => {
     // Collect topics from INBOUND channels only
     const topics = [];
 
-    // 1. Get INBOUND call summaries (direction = inbound, or callerId exists which indicates incoming)
+    // 1. Get INBOUND call summaries only (direction = inbound)
     if (!channel || channel === 'phone') {
       const calls = await prisma.callLog.findMany({
         where: {
           businessId,
           createdAt: { gte: startDate },
           summary: { not: null },
-          // Only inbound calls - those with a callerId (incoming) or direction = inbound
-          OR: [
-            { direction: 'inbound' },
-            { callerId: { not: null } }
-          ]
+          direction: 'inbound' // Only inbound calls
         },
         select: {
           summary: true,
