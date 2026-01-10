@@ -321,7 +321,7 @@ model Subscription {
 model ChatLog {
   id            String   @id @default(cuid())
   businessId    Int
-  sessionId     String   // Unique session identifier
+  sessionId     String   @unique // Unique session identifier
   assistantId   String?
   customerIp    String?  // For analytics
   messageCount  Int      @default(0)
@@ -335,7 +335,6 @@ model ChatLog {
   assistant     Assistant? @relation(fields: [assistantId], references: [id], onDelete: SetNull)
 
   @@index([businessId])
-  @@index([sessionId])
   @@index([createdAt])
   @@index([status])
 }

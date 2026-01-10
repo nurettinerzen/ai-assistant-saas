@@ -33,18 +33,13 @@ router.get('/overview', authenticateToken, async (req, res) => {
       }
     });
 
-    // 🔥 NEW: Get chat messages (if you have a ChatMessage model)
-    let chatMessages = [];
-    try {
-      chatMessages = await prisma.chatMessage.findMany({
-        where: {
-          businessId,
-          createdAt: { gte: startDate }
-        }
-      });
-    } catch (error) {
-      console.log('ChatMessage model not found, skipping chat metrics');
-    }
+    // Get chat logs
+    const chatLogs = await prisma.chatLog.findMany({
+      where: {
+        businessId,
+        createdAt: { gte: startDate }
+      }
+    });
 
     // Get assistants
     const assistants = await prisma.assistant.findMany({
@@ -59,9 +54,9 @@ router.get('/overview', authenticateToken, async (req, res) => {
     const successRate = totalCalls > 0 ? ((completedCalls / totalCalls) * 100).toFixed(1) : 0;
     const totalCost = totalDuration * 0.01;
 
-    // 🔥 NEW: Calculate CHAT stats
-    const totalChatMessages = chatMessages.length;
-    const chatConversations = [...new Set(chatMessages.map(m => m.sessionId || m.userId))].length;
+    // Calculate CHAT stats - count total messages from all chat logs
+    const totalChatMessages = chatLogs.reduce((sum, log) => sum + (log.messageCount || 0), 0);
+    const chatConversations = chatLogs.length;
 
     // 🔥 NEW: Calculate APPOINTMENT stats
     const totalAppointments = appointments.length;
@@ -96,8 +91,8 @@ router.get('/overview', authenticateToken, async (req, res) => {
       }
     });
 
-    chatMessages.forEach(msg => {
-      const dateStr = msg.createdAt.toISOString().split('T')[0];
+    chatLogs.forEach(log => {
+      const dateStr = log.createdAt.toISOString().split('T')[0];
       if (chatsByDate[dateStr] !== undefined) {
         chatsByDate[dateStr]++;
       }
