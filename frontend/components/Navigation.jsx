@@ -7,6 +7,7 @@ import { ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { TelyxLogoFull } from '@/components/TelyxLogo';
 
 export default function Navigation() {
   const pathname = usePathname();
@@ -35,8 +36,8 @@ export default function Navigation() {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link href="/" className="flex items-center space-x-2">
-            <span className="text-2xl font-bold gradient-text">TELYX.AI</span>
+          <Link href="/" className="flex items-center">
+            <TelyxLogoFull className="h-8" />
           </Link>
 
           {/* Desktop Navigation */}

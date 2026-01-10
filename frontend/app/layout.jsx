@@ -9,9 +9,9 @@ export const metadata = {
   title: 'Telyx AI - AI Phone & Chat Assistant for Business',
   description: 'Automate your business communications with AI-powered phone calls, chat, email, and WhatsApp integration.',
   icons: {
-    icon: '/favicon.svg',
-    shortcut: '/favicon.svg',
-    apple: '/logo-icon.svg',
+    icon: '/telyx-logo-icon-white.png',
+    shortcut: '/telyx-logo-icon-white.png',
+    apple: '/telyx-logo-icon-white.png',
   },
 };
 

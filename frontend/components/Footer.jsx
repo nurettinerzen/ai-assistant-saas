@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { TelyxLogoFull } from '@/components/TelyxLogo';
 
 export const Footer = () => {
   const { t } = useLanguage();
@@ -33,8 +34,8 @@ export const Footer = () => {
         <div className="grid md:grid-cols-5 gap-8">
           {/* Brand */}
           <div className="md:col-span-1">
-            <Link href="/" className="text-2xl font-bold gradient-text">
-              TELYX.AI
+            <Link href="/" className="inline-block">
+              <TelyxLogoFull className="h-8" darkMode />
             </Link>
             <p className="text-gray-400 mt-4 text-sm">
               {t('landing.footer.tagline')}

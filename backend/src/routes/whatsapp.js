@@ -285,12 +285,29 @@ async function generateAIResponseWithTools(business, phoneNumber, userMessage, c
     // Build system prompt (now async due to Knowledge Base query)
     const systemPrompt = await buildSystemPrompt(business, assistant);
 
-    // Get conversation history
+    // Get conversation history (from memory cache or database)
     const conversationKey = `${business.id}:${phoneNumber}`;
-    if (!conversations.has(conversationKey)) {
-      conversations.set(conversationKey, []);
+    let history;
+
+    if (conversations.has(conversationKey)) {
+      // Use cached history
+      history = conversations.get(conversationKey);
+    } else {
+      // Try to load from database (ChatLog)
+      const sessionId = `whatsapp-${business.id}-${phoneNumber}`;
+      const existingLog = await prisma.chatLog.findUnique({
+        where: { sessionId }
+      });
+
+      if (existingLog?.messages && Array.isArray(existingLog.messages)) {
+        // Load history from database (last 40 messages)
+        history = existingLog.messages.slice(-40);
+        console.log(`📚 [WhatsApp] Loaded ${history.length} messages from database for ${phoneNumber}`);
+      } else {
+        history = [];
+      }
+      conversations.set(conversationKey, history);
     }
-    const history = conversations.get(conversationKey);
 
     // Add user message to history
     history.push({
