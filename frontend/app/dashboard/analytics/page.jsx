@@ -16,17 +16,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { 
-  Phone, 
-  Clock, 
-  TrendingUp, 
+import {
+  Phone,
+  Clock,
+  TrendingUp,
   Calendar,
-  Smile,
-  Meh,
-  Frown,
   Download,
   MessageCircle,
-  CalendarCheck
+  CalendarCheck,
+  CheckCircle
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
@@ -46,12 +44,6 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-
-const SENTIMENT_COLORS = {
-  positive: '#10b981',
-  neutral: '#6b7280',
-  negative: '#ef4444'
-};
 
 const CHANNEL_COLORS = {
   phone: '#4f46e5',
@@ -96,14 +88,7 @@ export default function AnalyticsPage() {
     { value: '90d', label: t('dashboard.analyticsPage.last90Days') },
   ];
 
-  // Prepare sentiment data for pie chart
-  const sentimentData = analytics?.sentimentBreakdown ? [
-    { name: t('dashboard.analyticsPage.positive'), value: parseFloat(analytics.sentimentBreakdown.positive), color: SENTIMENT_COLORS.positive },
-    { name: t('dashboard.analyticsPage.neutral'), value: parseFloat(analytics.sentimentBreakdown.neutral), color: SENTIMENT_COLORS.neutral },
-    { name: t('dashboard.analyticsPage.negative'), value: parseFloat(analytics.sentimentBreakdown.negative), color: SENTIMENT_COLORS.negative }
-  ] : [];
-
-  // 🔥 NEW: Prepare channel data for pie chart
+  // Prepare channel data for pie chart
   const channelData = analytics?.channelStats ? [
     { name: t('dashboard.analyticsPage.phoneCalls'), value: analytics.channelStats.phone.count, percentage: analytics.channelStats.phone.percentage, color: CHANNEL_COLORS.phone },
     { name: t('dashboard.overviewPage.chatMessages'), value: analytics.channelStats.chat.count, percentage: analytics.channelStats.chat.percentage, color: CHANNEL_COLORS.chat }
@@ -211,8 +196,8 @@ export default function AnalyticsPage() {
 
         <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6">
           <div className="flex items-center justify-between mb-4">
-            <div className="p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg">
-              <Smile className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+            <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+              <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
             </div>
           </div>
           <h3 className="text-2xl font-bold text-neutral-900 dark:text-white">
@@ -286,47 +271,18 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      {/* Sentiment & Peak Hours Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Sentiment Distribution */}
-        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6">
-          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">{t('dashboard.analyticsPage.sentimentAnalysis')}</h3>
-          <div className="flex items-center justify-center">
-            <ResponsiveContainer width="100%" height={250}>
-              <PieChart>
-                <Pie
-                  data={sentimentData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={(entry) => `${entry.name} ${entry.value}%`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {sentimentData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Peak Hours Chart */}
-        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6">
-          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">{t('dashboard.analyticsPage.peakActivityHours')}</h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={peakHours}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="hour" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="calls" fill="#4f46e5" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+      {/* Peak Hours Chart */}
+      <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6">
+        <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">{t('dashboard.analyticsPage.peakActivityHours')}</h3>
+        <ResponsiveContainer width="100%" height={250}>
+          <BarChart data={peakHours}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="hour" />
+            <YAxis />
+            <Tooltip />
+            <Bar dataKey="calls" fill="#4f46e5" />
+          </BarChart>
+        </ResponsiveContainer>
       </div>
 
       {/* Recent Calls Table */}
@@ -344,9 +300,6 @@ export default function AnalyticsPage() {
                 </th>
                 <th className="text-left p-3 text-sm font-medium text-neutral-700 dark:text-neutral-300">
                   {t('dashboard.analyticsPage.duration')}
-                </th>
-                <th className="text-left p-3 text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                  {t('dashboard.analyticsPage.sentiment')}
                 </th>
                 <th className="text-left p-3 text-sm font-medium text-neutral-700 dark:text-neutral-300">
                   {t('dashboard.analyticsPage.status')}
@@ -367,20 +320,6 @@ export default function AnalyticsPage() {
                       {formatDuration(call.duration)}
                     </td>
                     <td className="p-3">
-                      <div className="flex items-center gap-2">
-                        {call.sentiment === 'positive' && (
-                          <Smile className="h-4 w-4 text-green-600 dark:text-green-400" />
-                        )}
-                        {call.sentiment === 'neutral' && (
-                          <Meh className="h-4 w-4 text-neutral-600 dark:text-neutral-400" />
-                        )}
-                        {call.sentiment === 'negative' && (
-                          <Frown className="h-4 w-4 text-red-600 dark:text-red-400" />
-                        )}
-                        <span className="text-sm capitalize text-neutral-700 dark:text-neutral-300">{call.sentiment || 'N/A'}</span>
-                      </div>
-                    </td>
-                    <td className="p-3">
                       <Badge
                         variant="secondary"
                         className={
@@ -396,7 +335,7 @@ export default function AnalyticsPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="p-8 text-center text-neutral-500 dark:text-neutral-400">
+                  <td colSpan={4} className="p-8 text-center text-neutral-500 dark:text-neutral-400">
                     {t('dashboard.analyticsPage.noCallsYet')}
                   </td>
                 </tr>
