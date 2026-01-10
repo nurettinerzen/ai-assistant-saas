@@ -33,6 +33,21 @@ const getOpenAI = () => {
 // Format: Map<conversationKey, Array<message>>
 const conversations = new Map();
 
+// In-memory set to track processed message IDs (prevents duplicates from Meta retries)
+// Messages are kept for 5 minutes then cleaned up
+const processedMessages = new Map();
+const MESSAGE_DEDUP_TTL = 5 * 60 * 1000; // 5 minutes
+
+// Cleanup old processed messages every minute
+setInterval(() => {
+  const now = Date.now();
+  for (const [messageId, timestamp] of processedMessages) {
+    if (now - timestamp > MESSAGE_DEDUP_TTL) {
+      processedMessages.delete(messageId);
+    }
+  }
+}, 60 * 1000);
+
 // Max iterations for recursive tool calling
 const MAX_TOOL_ITERATIONS = 5;
 
@@ -180,6 +195,15 @@ router.post('/webhook', webhookRateLimiter.middleware(), async (req, res) => {
           return res.sendStatus(200);
         }
 
+        // IMPORTANT: Check for duplicate messages (Meta may retry)
+        if (processedMessages.has(messageId)) {
+          console.log(`⚠️ Duplicate message detected, skipping: ${messageId}`);
+          return res.sendStatus(200);
+        }
+
+        // Mark message as being processed IMMEDIATELY
+        processedMessages.set(messageId, Date.now());
+
         console.log('📩 WhatsApp message received:', {
           businessId: business.id,
           businessName: business.name,
@@ -188,16 +212,16 @@ router.post('/webhook', webhookRateLimiter.middleware(), async (req, res) => {
           id: messageId
         });
 
-        // Generate AI response with tool support
-        const aiResponse = await generateAIResponseWithTools(
-          business,
-          from,
-          messageBody,
-          { messageId }
-        );
+        // IMPORTANT: Respond to Meta immediately to prevent retries
+        // Then process the message asynchronously
+        res.sendStatus(200);
 
-        // Send response using business's credentials
-        await sendWhatsAppMessage(business, from, aiResponse);
+        // Process message asynchronously (don't await)
+        processWhatsAppMessage(business, from, messageBody, messageId).catch(err => {
+          console.error('❌ Async message processing error:', err);
+        });
+
+        return; // Already sent response
       }
 
       res.sendStatus(200);
@@ -209,6 +233,41 @@ router.post('/webhook', webhookRateLimiter.middleware(), async (req, res) => {
     res.sendStatus(500);
   }
 });
+
+// ============================================================================
+// ASYNC MESSAGE PROCESSING
+// ============================================================================
+
+/**
+ * Process WhatsApp message asynchronously
+ * Called after webhook returns 200 to Meta
+ */
+async function processWhatsAppMessage(business, from, messageBody, messageId) {
+  try {
+    // Generate AI response with tool support
+    const aiResponse = await generateAIResponseWithTools(
+      business,
+      from,
+      messageBody,
+      { messageId }
+    );
+
+    // Send response using business's credentials
+    await sendWhatsAppMessage(business, from, aiResponse);
+  } catch (error) {
+    console.error('❌ Error processing WhatsApp message:', error);
+    // Try to send error message to user
+    try {
+      await sendWhatsAppMessage(
+        business,
+        from,
+        'Üzgünüm, şu anda bir sorun yaşıyorum. Lütfen daha sonra tekrar deneyin.'
+      );
+    } catch (sendError) {
+      console.error('❌ Failed to send error message:', sendError);
+    }
+  }
+}
 
 // ============================================================================
 // AI RESPONSE WITH TOOL SUPPORT
