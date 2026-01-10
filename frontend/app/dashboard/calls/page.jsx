@@ -239,25 +239,6 @@ export default function CallsPage() {
     );
   };
 
-  // Sentiment badge
-  const getSentimentBadge = (sentiment) => {
-    if (!sentiment) return <span className="text-xs text-gray-400">-</span>;
-
-    const sentimentConfig = {
-      positive: { emoji: '😊', bg: 'bg-success-50 dark:bg-success-900/20 text-success-700 dark:text-success-400' },
-      neutral: { emoji: '😐', bg: 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300' },
-      negative: { emoji: '😞', bg: 'bg-error-50 dark:bg-error-900/20 text-error-700 dark:text-error-400' },
-    };
-
-    const config = sentimentConfig[sentiment] || sentimentConfig.neutral;
-
-    return (
-      <Badge className={`${config.bg} text-xs`}>
-        {config.emoji} {sentiment.charAt(0).toUpperCase() + sentiment.slice(1)}
-      </Badge>
-    );
-  };
-
   // Format date in Turkish style
   const formatCallDate = (dateStr) => {
     const date = new Date(dateStr);
@@ -352,7 +333,6 @@ export default function CallsPage() {
                 <TableHead>{locale === 'tr' ? 'Yön' : 'Direction'}</TableHead>
                 <TableHead>{t('dashboard.callsPage.channel') || 'Kanal'}</TableHead>
                 <TableHead>{t('dashboard.callsPage.status')}</TableHead>
-                <TableHead>{t('dashboard.callsPage.sentiment')}</TableHead>
                 <TableHead>{t('dashboard.callsPage.phoneNumber')}</TableHead>
                 <TableHead className="text-right">{t('dashboard.callsPage.actions')}</TableHead>
               </TableRow>
@@ -378,9 +358,6 @@ export default function CallsPage() {
                   </TableCell>
                   <TableCell>
                     {getStatusIndicator(call.status)}
-                  </TableCell>
-                  <TableCell>
-                    {getSentimentBadge(call.sentiment)}
                   </TableCell>
                   <TableCell>
                     <span className="text-sm text-gray-600 dark:text-gray-400">

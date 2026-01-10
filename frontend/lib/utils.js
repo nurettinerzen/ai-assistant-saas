@@ -44,18 +44,17 @@ export function formatPhone(phone, format = 'display') {
  * @param {number} seconds - Duration in seconds
  */
 export function formatDuration(seconds) {
-  if (!seconds || seconds < 0) return '0s';
-  
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = Math.floor(seconds % 60);
-  
+  if (!seconds || seconds < 0 || !isFinite(seconds) || isNaN(seconds)) return '0s';
+
+  const totalSecs = Math.floor(seconds);
+  const hours = Math.floor(totalSecs / 3600);
+  const minutes = Math.floor((totalSecs % 3600) / 60);
+  const secs = totalSecs % 60;
+
   if (hours > 0) {
-    return `${hours}h ${minutes}m ${secs}s`;
-  } else if (minutes > 0) {
-    return `${minutes}m ${secs}s`;
+    return `${hours}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   } else {
-    return `${secs}s`;
+    return `${minutes}:${String(secs).padStart(2, '0')}`;
   }
 }
 

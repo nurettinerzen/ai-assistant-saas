@@ -15,7 +15,8 @@ import { useLanguage } from '@/contexts/LanguageContext';
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export default function ChatWidget({
-  assistantId,
+  embedKey,           // NEW: Business-specific embed key (preferred)
+  assistantId,        // LEGACY: Direct assistant ID (backward compatibility)
   position = 'bottom-right',
   primaryColor = '#6366f1',
   showBranding = true,
@@ -26,7 +27,42 @@ export default function ChatWidget({
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [conversationHistory, setConversationHistory] = useState([]);
+  const [sessionId, setSessionId] = useState(null);
+  const [isWidgetEnabled, setIsWidgetEnabled] = useState(null); // null = loading, true/false = result
   const { t } = useLanguage();
+
+  // Check widget status on mount
+  useEffect(() => {
+    const checkWidgetStatus = async () => {
+      try {
+        let statusUrl;
+        if (embedKey) {
+          statusUrl = `${API_URL}/api/chat/widget/status/embed/${embedKey}`;
+        } else if (assistantId) {
+          statusUrl = `${API_URL}/api/chat/widget/status/${assistantId}`;
+        } else {
+          setIsWidgetEnabled(false);
+          return;
+        }
+
+        const response = await fetch(statusUrl);
+        const data = await response.json();
+        setIsWidgetEnabled(data.active === true);
+      } catch (error) {
+        console.error('Failed to check widget status:', error);
+        setIsWidgetEnabled(false);
+      }
+    };
+
+    checkWidgetStatus();
+  }, [embedKey, assistantId]);
+
+  // Generate session ID on first open
+  useEffect(() => {
+    if (isOpen && !sessionId) {
+      setSessionId(`chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+    }
+  }, [isOpen, sessionId]);
 
   // Use translated default if buttonText is not provided
   const displayButtonText = buttonText || t('dashboard.chatWidgetPage.defaultButtonText');
@@ -70,14 +106,23 @@ useEffect(() => {
     setConversationHistory(newHistory);
 
     try {
+      // Build request body - prefer embedKey over assistantId
+      const requestBody = {
+        message: text,
+        conversationHistory: newHistory,
+        sessionId: sessionId
+      };
+
+      if (embedKey) {
+        requestBody.embedKey = embedKey;
+      } else if (assistantId) {
+        requestBody.assistantId = assistantId;
+      }
+
       const response = await fetch(`${API_URL}/api/chat/widget`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          assistantId: assistantId,
-          message: text,
-          conversationHistory: newHistory
-        })
+        body: JSON.stringify(requestBody)
       });
 
       const data = await response.json();
@@ -120,6 +165,11 @@ useEffect(() => {
     'top-right': 'top-6 right-6',
     'top-left': 'top-6 left-6',
   };
+
+  // Don't render if widget is disabled or still loading
+  if (isWidgetEnabled !== true) {
+    return null;
+  }
 
   return (
     <div className={`fixed ${positionClasses[position]} z-50`}>

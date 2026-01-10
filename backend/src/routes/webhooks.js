@@ -766,6 +766,18 @@ async function createCallLog(businessId, data) {
     const taskCompletedRaw = analysis.call_successful ?? analysis.task_completed ?? analysis.taskCompleted;
     const followUpNeededRaw = analysis.follow_up_needed ?? analysis.followUpNeeded;
 
+    // Determine end reason from metadata
+    const endReason = data.metadata?.end_reason ||
+                      data.metadata?.termination_reason ||
+                      analysis.call_ended_by ||
+                      (data.duration > 0 ? 'call_ended' : 'no_answer');
+
+    // Calculate call cost (based on duration)
+    // Cost: 0.60 TL per minute (adjustable)
+    const costPerMinute = 0.60;
+    const durationMinutes = Math.ceil((data.duration || 0) / 60);
+    const callCost = durationMinutes * costPerMinute;
+
     const callLog = await prisma.callLog.create({
       data: {
         businessId,
@@ -773,6 +785,7 @@ async function createCallLog(businessId, data) {
         callerId: callerId,
         duration: data.duration || 0,
         status: 'completed',
+        direction: data.direction || 'inbound',
         transcript: transcriptData || null,
         transcriptText,
         recordingUrl: data.recordingUrl || null,
@@ -784,7 +797,10 @@ async function createCallLog(businessId, data) {
         keyTopics: analysis.key_topics || analysis.keyTopics || [],
         actionItems: analysis.action_items || analysis.actionItems || [],
         taskCompleted: parseBoolean(taskCompletedRaw),
-        followUpNeeded: parseBoolean(followUpNeededRaw)
+        followUpNeeded: parseBoolean(followUpNeededRaw),
+        // New fields
+        endReason: endReason,
+        callCost: callCost
       }
     });
 

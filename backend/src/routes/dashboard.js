@@ -23,7 +23,8 @@ router.get('/stats', authenticateToken, async (req, res) => {
     const missedCalls = calls.filter(c => c.status === 'missed').length;
     
     const totalDuration = calls.reduce((sum, call) => sum + (call.duration || 0), 0);
-    const avgDuration = totalCalls > 0 ? Math.round(totalDuration / totalCalls / 60) : 0;
+    // avgDuration saniye cinsinden döndür (frontend formatDuration saniye bekliyor)
+    const avgDuration = totalCalls > 0 ? Math.round(totalDuration / totalCalls) : 0;
 
     const successRate = totalCalls > 0 ? ((completedCalls / totalCalls) * 100).toFixed(1) : 0;
 
@@ -101,7 +102,14 @@ router.get('/recent-calls', authenticateToken, async (req, res) => {
       take: 10,
     });
 
-    res.json({ calls: recentCalls });
+    // Transform calls to include phoneNumber (same format as /api/call-logs)
+    const calls = recentCalls.map(call => ({
+      ...call,
+      phoneNumber: call.callerId,
+      assistantName: null
+    }));
+
+    res.json({ calls });
   } catch (error) {
     console.error('Error fetching recent calls:', error);
     res.status(500).json({ error: 'Failed to fetch recent calls' });

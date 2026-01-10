@@ -227,10 +227,16 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
       const elevenLabsLang = getElevenLabsLanguage(lang);
       console.log('📝 Language mapping:', lang, '->', elevenLabsLang);
 
-      // NOTE: System tools (end_call, voicemail_detection) removed
-      // 11Labs handles call termination and voicemail detection automatically
-      // The new API format requires system_tool_type discriminator which changes frequently
-      const toolsWithSystemTools = [...activeToolsElevenLabs];
+      // Add end_call system tool so agent can hang up after goodbye
+      const endCallTool = {
+        type: 'system',
+        name: 'end_call',
+        description: 'Müşteri vedalaştığında veya "iyi günler", "görüşürüz", "hoşçakal", "bye", "goodbye" dediğinde aramayı sonlandır. Görüşme tamamlandığında ve müşteri veda ettiğinde bu aracı kullan.',
+        params: {
+          system_tool_type: 'end_call'
+        }
+      };
+      const toolsWithSystemTools = [...activeToolsElevenLabs, endCallTool];
 
       // Build language-specific analysis prompts for post-call summary
       const analysisPrompts = {
@@ -262,8 +268,9 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
           tts: {
             voice_id: elevenLabsVoiceId,
             model_id: 'eleven_turbo_v2_5',
-            stability: 0.5,
-            similarity_boost: 0.75,
+            stability: 0.4,                      // Daha doğal tonlama için
+            similarity_boost: 0.6,               // Daha doğal konuşma için
+            style: 0.15,                         // Hafif stil varyasyonu
             optimize_streaming_latency: 3
           },
           stt: {
@@ -273,14 +280,20 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
           },
           turn: {
             mode: 'turn',
-            turn_timeout: 10,                    // 10sn bekle (müşteri konuşmasını bitirsin)
-            turn_eagerness: 'patient',           // Sabırlı mod - müşterinin tamamlamasını bekle
+            turn_timeout: 8,                     // 8sn - tool çağrısı sırasında yoklama yapmasın
+            turn_eagerness: 'normal',            // Normal mod - dengeli tepki
             silence_end_call_timeout: 30         // 30sn toplam sessizlikten sonra kapat
           },
           // Analysis settings for Turkish/language-specific summary
           analysis: {
             transcript_summary_prompt: langAnalysis.transcript_summary,
             success_evaluation_prompt: langAnalysis.success_evaluation
+          },
+          // Webhook for conversation events
+          webhook: {
+            url: `${process.env.BACKEND_URL || 'https://api.telyx.com.tr'}/api/elevenlabs/webhook`,
+            events: ['conversation.ended', 'conversation.started'],
+            timing: 'after'
           }
         },
         metadata: {
@@ -299,8 +312,8 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
 
       // Now update tools with agentId in webhook URL so we can identify business in tool calls
       const activeToolsWithAgentId = getActiveToolsForElevenLabs(business, null, elevenLabsAgentId);
-      // NOTE: System tools removed - 11Labs handles end_call and voicemail automatically
-      const toolsWithSystemToolsAndAgentId = [...activeToolsWithAgentId];
+      // Add end_call system tool to the updated tools as well
+      const toolsWithSystemToolsAndAgentId = [...activeToolsWithAgentId, endCallTool];
 
       // Update agent with tools that include agentId in webhook URL
       await elevenLabsService.updateAgent(elevenLabsAgentId, {
@@ -315,7 +328,7 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
           }
         }
       });
-      console.log('✅ 11Labs Agent tools updated with agentId in webhook URL');
+      console.log('✅ 11Labs Agent tools updated with agentId in webhook URL (includes end_call)');
     } catch (elevenLabsError) {
       console.error('❌ 11Labs Agent creation failed:', elevenLabsError.response?.data || elevenLabsError.message);
       return res.status(500).json({
@@ -609,9 +622,16 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
         console.log('📝 Update language mapping:', lang, '->', elevenLabsLang);
         const effectiveCallDirection = callDirection || assistant.callDirection || 'inbound';
 
-        // NOTE: System tools (end_call, voicemail_detection) removed
-        // 11Labs handles call termination and voicemail detection automatically
-        const toolsWithSystemTools = [...activeToolsElevenLabs];
+        // Add end_call system tool so agent can hang up after goodbye
+        const endCallTool = {
+          type: 'system',
+          name: 'end_call',
+          description: 'Müşteri vedalaştığında veya "iyi günler", "görüşürüz", "hoşçakal", "bye", "goodbye" dediğinde aramayı sonlandır. Görüşme tamamlandığında ve müşteri veda ettiğinde bu aracı kullan.',
+          params: {
+            system_tool_type: 'end_call'
+          }
+        };
+        const toolsWithSystemTools = [...activeToolsElevenLabs, endCallTool];
 
         // Build language-specific analysis prompts for post-call summary
         const analysisPrompts = {
@@ -634,7 +654,7 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
                 prompt: fullSystemPrompt,
                 llm: 'gemini-2.5-flash-lite',
                 temperature: 0.1,
-                // System tools must be inside prompt.tools per 11Labs API
+                // System tools must be inside prompt.tools per 11Labs API (includes end_call)
                 tools: toolsWithSystemTools
               },
               first_message: firstMessage || assistant.firstMessage,
@@ -643,8 +663,9 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
             tts: {
               voice_id: elevenLabsVoiceId,
               model_id: 'eleven_turbo_v2_5',
-              stability: 0.5,
-              similarity_boost: 0.75,
+              stability: 0.4,                      // Daha doğal tonlama için
+              similarity_boost: 0.6,               // Daha doğal konuşma için
+              style: 0.15,                         // Hafif stil varyasyonu
               optimize_streaming_latency: 3
             },
             stt: {
@@ -654,8 +675,8 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
             },
             turn: {
               mode: 'turn',
-              turn_timeout: 10,                    // 10sn bekle (müşteri konuşmasını bitirsin)
-              turn_eagerness: 'patient',           // Sabırlı mod - müşterinin tamamlamasını bekle
+              turn_timeout: 8,                     // 8sn - tool çağrısı sırasında yoklama yapmasın
+              turn_eagerness: 'normal',            // Normal mod - dengeli tepki
               silence_end_call_timeout: 30         // 30sn toplam sessizlikten sonra kapat
             },
             // Analysis settings for Turkish/language-specific summary

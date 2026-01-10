@@ -85,6 +85,8 @@ model PasswordResetToken {
 model Business {
   id                      Int                     @id @default(autoincrement())
   name                    String
+  chatEmbedKey            String?                 @unique  // Unique key for chat widget embedding
+  chatWidgetEnabled       Boolean                 @default(false)  // Is chat widget active for this business
   language                String                  @default("TR")  // Uygulama dili (TR, EN, PR, DE, ES, FR...)
   country                 String                  @default("TR")  // Bölge kodu (TR, BR, US, DE...)
   currency                String                  @default("TRY") // Para birimi (TRY, BRL, USD, EUR...)
@@ -152,6 +154,7 @@ model Business {
   batchCalls              BatchCall[]
   customerData            CustomerData[]
   callbackRequests        CallbackRequest[]
+  chatLogs                ChatLog[]
 
   @@index([name])
   @@index([suspended])
@@ -181,6 +184,7 @@ model Assistant {
   phoneNumbers        PhoneNumber[]
   batchCalls          BatchCall[]
   callbackRequests    CallbackRequest[]
+  chatLogs            ChatLog[]
 
   @@index([businessId])
   @@index([isActive])
@@ -314,6 +318,28 @@ model Subscription {
   @@index([paymentProvider])
 }
 
+model ChatLog {
+  id            String   @id @default(cuid())
+  businessId    Int
+  sessionId     String   // Unique session identifier
+  assistantId   String?
+  customerIp    String?  // For analytics
+  messageCount  Int      @default(0)
+  messages      Json?    // Array of {role, content, timestamp}
+  summary       String?  @db.Text
+  status        String   @default("active")  // active, completed
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  business      Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  assistant     Assistant? @relation(fields: [assistantId], references: [id], onDelete: SetNull)
+
+  @@index([businessId])
+  @@index([sessionId])
+  @@index([createdAt])
+  @@index([status])
+}
+
 model CallLog {
   id                Int      @id @default(autoincrement())
   businessId        Int
@@ -348,6 +374,12 @@ model CallLog {
 
   // Voicemail detection
   voicemailDetected Boolean?        @default(false)
+
+  // Arama sonlanma bilgisi
+  endReason         String?         // client_ended, agent_ended, system_timeout, error vb.
+
+  // Maliyet bilgisi (TL cinsinden)
+  callCost          Float?          @default(0)
 
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt

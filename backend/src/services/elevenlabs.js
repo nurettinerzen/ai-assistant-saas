@@ -749,8 +749,9 @@ export function buildAgentConfig(assistant, business, tools = [], integrations =
       tts: {
         voice_id: assistant.voiceId,
         model_id: 'eleven_turbo_v2',
-        stability: 0.5,
-        similarity_boost: 0.75,
+        stability: 0.4,                   // 0.4 daha doğal tonlama için (0.5'ten düşük)
+        similarity_boost: 0.6,            // 0.6 daha doğal konuşma için
+        style: 0.15,                      // Hafif stil varyasyonu
         speed: 1.0,
         optimize_streaming_latency: 3,
         text_normalization: 'elevenlabs'
@@ -762,8 +763,8 @@ export function buildAgentConfig(assistant, business, tools = [], integrations =
       },
       turn: {
         mode: 'turn',
-        turn_timeout: 10,                    // 10sn bekle (müşteri konuşmasını bitirsin)
-        turn_eagerness: 'patient',           // Sabırlı mod
+        turn_timeout: 8,                     // 8sn - tool çağrısı sırasında yoklama yapmasın
+        turn_eagerness: 'normal',            // Normal mod - dengeli tepki
         silence_end_call_timeout: 30         // 30sn toplam sessizlikten sonra kapat
       },
       // Analysis settings for post-call summary in correct language

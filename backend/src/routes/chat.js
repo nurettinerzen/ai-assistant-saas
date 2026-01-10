@@ -127,30 +127,77 @@ router.post('/widget', async (req, res) => {
     headers: req.headers.authorization ? 'Auth present' : 'No auth'
   });
   try {
-    const { assistantId, message, conversationHistory = [] } = req.body;
+    const { embedKey, assistantId, sessionId, message, conversationHistory = [] } = req.body;
 
-    if (!assistantId || !message) {
-      return res.status(400).json({ error: 'assistantId and message are required' });
+    if (!message) {
+      return res.status(400).json({ error: 'message is required' });
     }
 
-    // Try to find assistant by internal ID first, then by vapiAssistantId (for backward compatibility)
-    const assistant = await prisma.assistant.findFirst({
-      where: {
-        OR: [
-          { id: assistantId },
-          { vapiAssistantId: assistantId }
-        ]
-      },
-      include: {
-        business: {
-          include: {
-            integrations: {
-              where: { isActive: true }
-            }
+    if (!embedKey && !assistantId) {
+      return res.status(400).json({ error: 'embedKey or assistantId is required' });
+    }
+
+    // Generate session ID if not provided
+    const chatSessionId = sessionId || `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    let assistant;
+
+    // New way: Use embedKey to find business and its inbound assistant
+    if (embedKey) {
+      const business = await prisma.business.findUnique({
+        where: { chatEmbedKey: embedKey },
+        include: {
+          assistants: {
+            where: {
+              isActive: true,
+              callDirection: 'inbound'
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 1
           },
+          integrations: {
+            where: { isActive: true }
+          }
         }
+      });
+
+      if (!business) {
+        return res.status(404).json({ error: 'Invalid embed key' });
       }
-    });
+
+      // Check if widget is enabled by business owner
+      if (!business.chatWidgetEnabled) {
+        return res.status(403).json({ error: 'Chat widget is disabled for this business' });
+      }
+
+      if (!business.assistants || business.assistants.length === 0) {
+        return res.status(404).json({ error: 'No active assistant found for this business' });
+      }
+
+      assistant = {
+        ...business.assistants[0],
+        business: business
+      };
+    } else {
+      // Legacy way: Use assistantId directly (backward compatibility)
+      assistant = await prisma.assistant.findFirst({
+        where: {
+          OR: [
+            { id: assistantId },
+            { vapiAssistantId: assistantId }
+          ]
+        },
+        include: {
+          business: {
+            include: {
+              integrations: {
+                where: { isActive: true }
+              }
+            },
+          }
+        }
+      });
+    }
 
     if (!assistant) {
       return res.status(404).json({ error: 'Assistant not found' });
@@ -189,7 +236,8 @@ router.post('/widget', async (req, res) => {
         if (item.type === 'FAQ' && item.question && item.answer) {
           kbByType.FAQ.push(`S: ${item.question}\nC: ${item.answer}`);
         } else if (item.content) {
-          kbByType[item.type]?.push(`[${item.title}]: ${item.content.substring(0, 1000)}`);
+          // Use full content up to 100000 chars per item to include all details
+          kbByType[item.type]?.push(`[${item.title}]: ${item.content.substring(0, 100000)}`);
         }
       }
 
@@ -233,11 +281,41 @@ When a customer wants to book an appointment:
 4. Ask for their preferred date and time
 5. Use the create_appointment function to book it`;
 
+    // Add KB usage instruction if knowledge base exists
+    const kbInstruction = knowledgeContext ? (language === 'TR'
+      ? `\n\n## BİLGİ BANKASI KULLANIM KURALLARI (KRİTİK!)
+Aşağıdaki bilgi bankası içeriğini AKTİF OLARAK KULLAN:
+- Fiyat sorulduğunda: KB'de varsa HEMEN SÖYLE
+- Entegrasyon sorulduğunda (Paraşüt, Google Calendar vb.): KB'de varsa SÖYLE
+- Özellik sorulduğunda: KB'de varsa SÖYLE
+- "Kesin bilgi veremiyorum" veya "müşteri temsilcisi" DEMEden ÖNCE KB'yi kontrol et
+- KB'de bilgi VARSA doğrudan paylaş, "bilgi veremiyorum" DEME
+- Sadece KB'de GERÇEKTEN YOKSA "Bu konuda detaylı bilgi için ekiple iletişime geçebilirsiniz" de
+
+DOĞAL KONUŞMA:
+- Her cevabın sonuna "Başka sorunuz var mı?" ekleme
+- Robotik kalıp cümleler kullanma
+- Kısa ve öz cevaplar ver`
+      : `\n\n## KNOWLEDGE BASE USAGE RULES (CRITICAL!)
+ACTIVELY USE the knowledge base content below:
+- When asked about pricing: If in KB, TELL THEM IMMEDIATELY
+- When asked about integrations: If in KB, TELL THEM
+- When asked about features: If in KB, TELL THEM
+- BEFORE saying "I cannot provide information", CHECK the KB
+- If info IS in KB, share it directly - do NOT say "I cannot provide information"
+- ONLY if info is REALLY NOT in KB, say "For detailed info on this, you can contact the team"
+
+NATURAL CONVERSATION:
+- Don't add "Any other questions?" to every response
+- Don't use robotic template phrases
+- Give short, concise answers`)
+      : '';
+
     // Build messages array with Knowledge Base context
     const messages = [
       {
         role: 'system',
-        content: `${systemPromptBase}
+        content: `${systemPromptBase}${kbInstruction}
 ${knowledgeContext}
 ${toolInstructions}`
       },
@@ -254,9 +332,39 @@ ${toolInstructions}`
     // Process with recursive tool loop (consistent with WhatsApp channel)
     const result = await processWithToolLoop(messages, tools, business, { channel: 'CHAT' });
 
+    // Save chat log (upsert - create or update)
+    try {
+      const updatedMessages = [
+        ...conversationHistory,
+        { role: 'user', content: message, timestamp: new Date().toISOString() },
+        { role: 'assistant', content: result.reply, timestamp: new Date().toISOString() }
+      ];
+
+      await prisma.chatLog.upsert({
+        where: { sessionId: chatSessionId },
+        create: {
+          sessionId: chatSessionId,
+          businessId: business.id,
+          assistantId: assistant.id,
+          messageCount: updatedMessages.length,
+          messages: updatedMessages,
+          status: 'active'
+        },
+        update: {
+          messageCount: updatedMessages.length,
+          messages: updatedMessages,
+          updatedAt: new Date()
+        }
+      });
+    } catch (logError) {
+      console.error('Failed to save chat log:', logError);
+      // Don't fail the request if logging fails
+    }
+
     res.json({
       success: true,
       reply: result.reply,
+      sessionId: chatSessionId,
       assistantName: assistant.name,
       toolCalled: result.toolsCalled.length > 0 ? result.toolsCalled.join(', ') : undefined,
       toolResult: result.toolsCalled.length > 0 ? true : undefined
@@ -301,6 +409,45 @@ router.get('/assistant/:assistantId', async (req, res) => {
   } catch (error) {
     console.error('Get assistant error:', error);
     res.status(500).json({ error: 'Failed to get assistant info' });
+  }
+});
+
+// GET /api/chat/embed/:embedKey - Get business info by embed key
+router.get('/embed/:embedKey', async (req, res) => {
+  try {
+    const { embedKey } = req.params;
+
+    const business = await prisma.business.findUnique({
+      where: { chatEmbedKey: embedKey },
+      include: {
+        assistants: {
+          where: {
+            isActive: true,
+            callDirection: 'inbound'
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: { name: true }
+        }
+      }
+    });
+
+    if (!business) {
+      return res.status(404).json({ error: 'Invalid embed key' });
+    }
+
+    if (!business.assistants || business.assistants.length === 0) {
+      return res.status(404).json({ error: 'No active assistant found' });
+    }
+
+    res.json({
+      name: business.assistants[0].name,
+      businessName: business.name
+    });
+
+  } catch (error) {
+    console.error('Get embed info error:', error);
+    res.status(500).json({ error: 'Failed to get embed info' });
   }
 });
 
@@ -351,6 +498,65 @@ router.get('/widget/status/:assistantId', async (req, res) => {
 
   } catch (error) {
     console.error('Widget status error:', error);
+    res.json({ active: false, reason: 'error' });
+  }
+});
+
+// GET /api/chat/widget/status/embed/:embedKey - Check if widget should be active by embed key
+router.get('/widget/status/embed/:embedKey', async (req, res) => {
+  try {
+    const { embedKey } = req.params;
+
+    const business = await prisma.business.findUnique({
+      where: { chatEmbedKey: embedKey },
+      include: {
+        assistants: {
+          where: {
+            isActive: true,
+            callDirection: 'inbound'
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 1
+        }
+      }
+    });
+
+    if (!business) {
+      return res.json({ active: false, reason: 'invalid_embed_key' });
+    }
+
+    // Check if widget is enabled by business owner
+    if (!business.chatWidgetEnabled) {
+      return res.json({ active: false, reason: 'widget_disabled' });
+    }
+
+    if (!business.assistants || business.assistants.length === 0) {
+      return res.json({ active: false, reason: 'no_assistant' });
+    }
+
+    // Check subscription
+    const subscription = await prisma.subscription.findUnique({
+      where: { businessId: business.id }
+    });
+
+    if (!subscription) {
+      return res.json({ active: false, reason: 'no_subscription' });
+    }
+
+    // Check FREE plan expiry
+    if (isFreePlanExpired(subscription)) {
+      return res.json({ active: false, reason: 'trial_expired' });
+    }
+
+    // Widget is active
+    res.json({
+      active: true,
+      assistantName: business.assistants[0].name,
+      businessName: business.name
+    });
+
+  } catch (error) {
+    console.error('Widget status by embed key error:', error);
     res.json({ active: false, reason: 'error' });
   }
 });

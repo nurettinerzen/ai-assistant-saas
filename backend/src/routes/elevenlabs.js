@@ -10,6 +10,7 @@
 import express from 'express';
 import crypto from 'crypto';
 import { PrismaClient } from '@prisma/client';
+import OpenAI from 'openai';
 import usageTracking from '../services/usageTracking.js';
 import usageService from '../services/usageService.js';
 import subscriptionService from '../services/subscriptionService.js';
@@ -19,6 +20,41 @@ import batchCallService from '../services/batch-call.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
+const openai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
+
+/**
+ * Translate summary to Turkish using OpenAI
+ */
+async function translateSummaryToTurkish(englishSummary, businessLanguage = 'tr') {
+  if (!englishSummary || !openai || businessLanguage !== 'tr') return englishSummary;
+  // If already in Turkish, return as is
+  if (/[ğüşıöçĞÜŞİÖÇ]/.test(englishSummary)) return englishSummary;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: 'Sen bir çevirmensin. Verilen İngilizce metni doğal Türkçe\'ye çevir. Kısa ve öz tut.'
+        },
+        {
+          role: 'user',
+          content: englishSummary
+        }
+      ],
+      max_tokens: 300,
+      temperature: 0.3
+    });
+
+    const turkishSummary = response.choices[0]?.message?.content?.trim();
+    console.log('🌐 Summary translated to Turkish');
+    return turkishSummary || englishSummary;
+  } catch (error) {
+    console.error('❌ Failed to translate summary:', error.message);
+    return englishSummary;
+  }
+}
 
 // ============================================================================
 // WEBHOOK SIGNATURE VERIFICATION
@@ -711,8 +747,25 @@ async function handleConversationEnded(event) {
 
     // Get analysis data if available
     const analysis = conversationData.analysis || {};
+    // Use transcript_summary from 11Labs analysis
+    let rawSummary = analysis.transcript_summary || analysis.summary || null;
+    console.log('📝 Raw summary from 11Labs:', rawSummary);
+    console.log('🏢 Business language:', business.language);
+
+    // Translate summary to Turkish (always translate if not already Turkish)
+    if (rawSummary) {
+      // Check if already in Turkish by looking for Turkish-specific characters
+      const hasTurkishChars = /[ğüşıöçĞÜŞİÖÇ]/.test(rawSummary);
+      console.log('🔍 Has Turkish chars:', hasTurkishChars);
+
+      if (!hasTurkishChars) {
+        console.log('🌐 Translating summary to Turkish...');
+        rawSummary = await translateSummaryToTurkish(rawSummary, 'tr');
+        console.log('✅ Translated summary:', rawSummary?.substring(0, 100));
+      }
+    }
     let aiAnalysis = {
-      summary: analysis.summary || null,
+      summary: rawSummary,
       keyTopics: analysis.key_topics || [],
       actionItems: analysis.action_items || [],
       sentiment: analysis.sentiment || 'neutral',
@@ -743,7 +796,59 @@ async function handleConversationEnded(event) {
     const duration = conversationData.call_duration_secs ||
                      conversationData.metadata?.call_duration_secs || 0;
     const callerPhone = conversationData.metadata?.caller_phone ||
+                        conversationData.metadata?.phone_call?.external_number ||
                         event.metadata?.caller_phone || 'Unknown';
+
+    // Extract termination reason from 11Labs
+    // Log full metadata to see what's available
+    console.log('📊 11Labs conversation metadata:', JSON.stringify(conversationData.metadata, null, 2));
+    console.log('📊 11Labs conversation status:', conversationData.status);
+    console.log('📊 11Labs conversation call_successful:', conversationData.call_successful);
+
+    // Try multiple locations for termination reason
+    const terminationReason = conversationData.metadata?.termination_reason ||
+                              conversationData.termination_reason ||
+                              conversationData.status ||
+                              null;
+    console.log('🔚 Termination reason:', terminationReason);
+
+    let endReason = null; // Default to null instead of generic value
+    if (terminationReason) {
+      const reason = terminationReason.toLowerCase();
+      if (reason.includes('client disconnected') || reason.includes('user_ended') || reason.includes('hangup')) {
+        endReason = 'client_ended';
+      } else if (reason.includes('agent') || reason.includes('assistant')) {
+        endReason = 'agent_ended';
+      } else if (reason.includes('timeout') || reason.includes('silence') || reason.includes('no_input')) {
+        endReason = 'system_timeout';
+      } else if (reason.includes('error') || reason.includes('failed')) {
+        endReason = 'error';
+      } else if (reason === 'done' || reason === 'completed') {
+        endReason = 'completed';
+      }
+    }
+    console.log('🏷️ Mapped endReason:', endReason);
+
+    // Calculate call cost based on subscription
+    const subscription = business.subscription || await prisma.subscription.findUnique({
+      where: { businessId: business.id }
+    });
+    console.log('💰 Subscription plan:', subscription?.plan);
+    console.log('⏱️ Duration (seconds):', duration);
+
+    // Default cost per minute in TL
+    let costPerMinute = 0.60;
+    if (subscription?.plan === 'STARTER') {
+      costPerMinute = 0.70;
+    } else if (subscription?.plan === 'PROFESSIONAL') {
+      costPerMinute = 0.50;
+    } else if (subscription?.plan === 'ENTERPRISE') {
+      costPerMinute = 0.40;
+    }
+    // Calculate cost - minimum 1 minute billing
+    const durationMinutes = duration > 0 ? Math.ceil(duration / 60) : 0;
+    const callCost = durationMinutes > 0 ? durationMinutes * costPerMinute : 0;
+    console.log('💵 Cost per minute:', costPerMinute, 'TL, Duration:', durationMinutes, 'min, Total cost:', callCost, 'TL');
 
     // Determine call direction
     let direction = conversationData.metadata?.channel ||
@@ -769,6 +874,8 @@ async function handleConversationEnded(event) {
         actionItems: aiAnalysis.actionItems,
         sentiment: aiAnalysis.sentiment,
         sentimentScore: aiAnalysis.sentimentScore,
+        endReason: endReason,
+        callCost: callCost,
         updatedAt: new Date()
       },
       create: {
@@ -785,6 +892,8 @@ async function handleConversationEnded(event) {
         actionItems: aiAnalysis.actionItems,
         sentiment: aiAnalysis.sentiment,
         sentimentScore: aiAnalysis.sentimentScore,
+        endReason: endReason,
+        callCost: callCost,
         createdAt: new Date()
       }
     });

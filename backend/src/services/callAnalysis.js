@@ -13,9 +13,10 @@ const openai = new OpenAI({
  * Analyze a call transcript using OpenAI GPT-4o-mini
  * @param {Array} messages - Array of transcript messages [{speaker, text, timestamp}]
  * @param {number} duration - Call duration in seconds
+ * @param {string} language - Output language ('tr' for Turkish, default)
  * @returns {Promise<Object>} Analysis results with summary, topics, actions, and sentiment
  */
-export async function analyzeCall(messages, duration) {
+export async function analyzeCall(messages, duration, language = 'tr') {
   try {
     if (!messages || messages.length === 0) {
       return {
@@ -29,27 +30,27 @@ export async function analyzeCall(messages, duration) {
 
     // Format transcript for analysis
     const transcriptText = messages
-      .map((msg) => `${msg.speaker === 'assistant' ? 'AI' : 'Customer'}: ${msg.text}`)
+      .map((msg) => `${msg.speaker === 'assistant' ? 'AI' : 'Müşteri'}: ${msg.text}`)
       .join('\n');
 
-    // Create analysis prompt
-    const prompt = `Analyze the following customer service call transcript and provide:
-1. A brief summary (1-2 sentences)
-2. Key topics discussed (max 5, as array)
-3. Action items identified (max 5, as array)
-4. Overall sentiment (positive/neutral/negative)
-5. Sentiment score (0.0 to 1.0, where 0.0 is very negative and 1.0 is very positive)
+    // Create analysis prompt in Turkish
+    const prompt = `Aşağıdaki müşteri hizmetleri görüşme kaydını analiz et ve şunları belirle:
+1. Kısa özet (1-2 cümle, Türkçe)
+2. Konuşulan ana konular (en fazla 5, dizi olarak, Türkçe)
+3. Tespit edilen aksiyon maddeleri (en fazla 5, dizi olarak, Türkçe)
+4. Genel duygu durumu (positive/neutral/negative)
+5. Duygu skoru (0.0 - 1.0 arası, 0.0 çok olumsuz, 1.0 çok olumlu)
 
-Call duration: ${Math.round(duration / 60)} minutes
+Görüşme süresi: ${Math.round(duration / 60)} dakika
 
-Transcript:
+Görüşme kaydı:
 ${transcriptText}
 
-Respond in JSON format:
+JSON formatında yanıt ver:
 {
-  "summary": "Brief summary of the call",
-  "keyTopics": ["topic1", "topic2", "topic3"],
-  "actionItems": ["action1", "action2"],
+  "summary": "Görüşmenin kısa özeti (Türkçe)",
+  "keyTopics": ["konu1", "konu2", "konu3"],
+  "actionItems": ["aksiyon1", "aksiyon2"],
   "sentiment": "positive|neutral|negative",
   "sentimentScore": 0.0-1.0
 }`;
@@ -59,7 +60,7 @@ Respond in JSON format:
       messages: [
         {
           role: 'system',
-          content: 'You are a call analysis assistant. Analyze call transcripts and provide structured insights in JSON format.',
+          content: 'Sen bir çağrı analiz asistanısın. Görüşme kayıtlarını analiz et ve yapılandırılmış içgörüleri JSON formatında TÜRKÇE olarak sun.',
         },
         {
           role: 'user',

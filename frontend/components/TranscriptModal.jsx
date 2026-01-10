@@ -29,7 +29,8 @@ import {
   FileText,
   Lightbulb,
   CheckCircle,
-  TrendingUp,
+  PhoneOff,
+  Coins,
 } from 'lucide-react';
 import { formatDate, formatDuration } from '@/lib/utils';
 import { apiClient } from '@/lib/api';
@@ -49,13 +50,29 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
     if (isOpen && callId) {
       loadCallDetails();
     }
+    // Reset audio state when modal closes
+    if (!isOpen) {
+      setCurrentTime(0);
+      setIsPlaying(false);
+    }
   }, [isOpen, callId]);
+
+  // Set duration from call data when loaded
+  useEffect(() => {
+    if (call?.duration && call.duration > 0) {
+      setDuration(call.duration);
+    }
+  }, [call]);
 
   const loadCallDetails = async () => {
     setLoading(true);
     try {
       const response = await apiClient.calls.getById(callId);
       setCall(response.data);
+      // Set duration from DB immediately
+      if (response.data?.duration && response.data.duration > 0) {
+        setDuration(response.data.duration);
+      }
     } catch (error) {
       toast.error('Failed to load call details');
       console.error('Load call details error:', error);
@@ -83,7 +100,11 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
 
   const handleLoadedMetadata = () => {
     if (audioRef.current) {
-      setDuration(audioRef.current.duration);
+      const audioDuration = audioRef.current.duration;
+      // Only update if audio duration is valid and better than DB duration
+      if (audioDuration && isFinite(audioDuration) && audioDuration > 0) {
+        setDuration(audioDuration);
+      }
     }
   };
 
@@ -104,7 +125,7 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
 
   const handleDownloadRecording = () => {
     if (call?.id) {
-      const audioUrl = `${process.env.NEXT_PUBLIC_API_URL || ''}/api/calls/${call.id}/audio`;
+      const audioUrl = `${process.env.NEXT_PUBLIC_API_URL || ''}/api/call-logs/${call.id}/audio`;
       window.open(audioUrl, '_blank');
       toast.success('Kayıt indiriliyor...');
     }
@@ -183,12 +204,6 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
     searchQuery ? msg.text.toLowerCase().includes(searchQuery.toLowerCase()) : true
   );
 
-  const sentimentColors = {
-    positive: 'bg-green-100 text-green-800 border-green-200',
-    neutral: 'bg-gray-100 text-gray-800 border-gray-200',
-    negative: 'bg-red-100 text-red-800 border-red-200',
-  };
-
   if (!isOpen) return null;
 
   return (
@@ -234,7 +249,7 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
 
                 <audio
                   ref={audioRef}
-                  src={`${process.env.NEXT_PUBLIC_API_URL || ''}/api/calls/${call.id}/audio?token=${typeof window !== 'undefined' ? localStorage.getItem('token') || '' : ''}`}
+                  src={`${process.env.NEXT_PUBLIC_API_URL || ''}/api/call-logs/${call.id}/audio?token=${typeof window !== 'undefined' ? localStorage.getItem('token') || '' : ''}`}
                   onTimeUpdate={handleTimeUpdate}
                   onLoadedMetadata={handleLoadedMetadata}
                   onEnded={() => setIsPlaying(false)}
@@ -273,7 +288,7 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
 
                     <div className="text-xs text-neutral-600 w-28 text-right">
                       {formatDuration(Math.floor(currentTime))} /{' '}
-                      {formatDuration(Math.floor(duration))}
+                      {formatDuration(Math.floor(duration || call?.duration || 0))}
                     </div>
                   </div>
 
@@ -295,6 +310,36 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
               </div>
             )}
 
+            {/* Call Info - End Reason & Cost */}
+            <div className="grid grid-cols-2 gap-4">
+              {/* End Reason */}
+              <div className="bg-white border rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <PhoneOff className="h-4 w-4 text-neutral-600" />
+                  <h4 className="text-xs font-medium text-neutral-500">Görüşme Sonlanma</h4>
+                </div>
+                <Badge variant="outline" className="text-xs">
+                  {call.endReason === 'client_ended' ? 'Müşteri kapattı' :
+                   call.endReason === 'agent_ended' ? 'Asistan kapattı' :
+                   call.endReason === 'system_timeout' ? 'Zaman aşımı' :
+                   call.endReason === 'no_answer' ? 'Cevap verilmedi' :
+                   call.endReason === 'call_ended' ? 'Görüşme tamamlandı' :
+                   call.endReason || 'Bilinmiyor'}
+                </Badge>
+              </div>
+
+              {/* Call Cost */}
+              <div className="bg-white border rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Coins className="h-4 w-4 text-neutral-600" />
+                  <h4 className="text-xs font-medium text-neutral-500">Görüşme Maliyeti</h4>
+                </div>
+                <span className="text-lg font-semibold text-neutral-900">
+                  ₺{call.callCost ? call.callCost.toFixed(2) : '0.00'}
+                </span>
+              </div>
+            </div>
+
             {/* Call Summary */}
             {call.summary && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -309,25 +354,7 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
             )}
 
             {/* Analysis Section */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Sentiment */}
-              {call.sentiment && (
-                <div className="bg-white border rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <TrendingUp className="h-4 w-4 text-neutral-600" />
-                    <h4 className="text-xs font-medium text-neutral-500">Duygu Analizi</h4>
-                  </div>
-                  <Badge className={sentimentColors[call.sentiment] || sentimentColors.neutral}>
-                    {call.sentiment === 'positive' ? 'Olumlu' : call.sentiment === 'negative' ? 'Olumsuz' : 'Nötr'}
-                  </Badge>
-                  {call.sentimentScore !== null && (
-                    <p className="text-xs text-neutral-500 mt-2">
-                      Skor: %{(call.sentimentScore * 100).toFixed(0)}
-                    </p>
-                  )}
-                </div>
-              )}
-
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Key Topics */}
               {call.keyTopics && call.keyTopics.length > 0 && (
                 <div className="bg-white border rounded-lg p-4">

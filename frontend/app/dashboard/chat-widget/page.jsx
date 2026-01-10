@@ -41,6 +41,8 @@ export default function ChatWidgetPage() {
   const [assistants, setAssistants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isPro, setIsPro] = useState(false);
+  const [embedKey, setEmbedKey] = useState('');
+  const [chatStats, setChatStats] = useState({ totalChats: 0, totalMessages: 0, avgMessagesPerChat: 0 });
 
   // Set default texts based on current locale
   useEffect(() => {
@@ -59,17 +61,49 @@ export default function ChatWidgetPage() {
     loadAssistants();
     loadSettings();
     loadSubscription();
+    loadEmbedKey();
+    loadChatStats();
   }, []);
+
+  const loadChatStats = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_URL}/api/chat-logs/stats`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setChatStats(response.data);
+    } catch (error) {
+      console.error('Failed to load chat stats:', error);
+    }
+  };
 
   const loadSubscription = async () => {
     try {
       const res = await apiClient.subscription.getCurrent();
-      const planId = res.data?.planId || '';
-      // Pro or higher plans can remove branding
-      setIsPro(['professional', 'enterprise'].includes(planId));
+      const plan = res.data?.plan || '';
+      // Pro or higher plans can remove branding (check uppercase plan names)
+      setIsPro(['PRO', 'PROFESSIONAL', 'ENTERPRISE'].includes(plan.toUpperCase()));
     } catch (error) {
       console.error('Failed to load subscription:', error);
     }
+  };
+
+  const loadChatWidgetSettings = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_URL}/api/business/chat-widget`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setEmbedKey(response.data.embedKey || '');
+      setIsEnabled(response.data.enabled || false);
+    } catch (error) {
+      console.error('Failed to load chat widget settings:', error);
+    }
+  };
+
+  // Legacy function for backward compatibility
+  const loadEmbedKey = async () => {
+    await loadChatWidgetSettings();
   };
 
   const loadAssistants = async () => {
@@ -116,19 +150,54 @@ export default function ChatWidgetPage() {
     }
   };
 
-  const saveSettings = () => {
-    const settings = {
-      isEnabled,
-      position,
-      primaryColor,
-      showBranding: isPro ? showBranding : true, // Free users always show branding
-      buttonText,
-      welcomeMessage,
-      placeholderText,
-      assistantId
-    };
-    localStorage.setItem('chatWidgetSettings', JSON.stringify(settings));
-    toast.success(t('dashboard.chatWidgetPage.settingsSaved'));
+  const saveSettings = async () => {
+    try {
+      const token = localStorage.getItem('token');
+
+      // Save enabled state to backend
+      await axios.put(`${API_URL}/api/business/chat-widget`, {
+        enabled: isEnabled
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      // Save other settings to localStorage (these are UI preferences)
+      const settings = {
+        position,
+        primaryColor,
+        showBranding: isPro ? showBranding : true,
+        buttonText,
+        welcomeMessage,
+        placeholderText,
+        assistantId
+      };
+      localStorage.setItem('chatWidgetSettings', JSON.stringify(settings));
+      toast.success(t('dashboard.chatWidgetPage.settingsSaved'));
+    } catch (error) {
+      console.error('Failed to save settings:', error);
+      toast.error(t('dashboard.chatWidgetPage.settingsSaveError'));
+    }
+  };
+
+  // Handle enable toggle change
+  const handleEnableChange = async (enabled) => {
+    setIsEnabled(enabled);
+    try {
+      const token = localStorage.getItem('token');
+      await axios.put(`${API_URL}/api/business/chat-widget`, {
+        enabled: enabled
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success(enabled
+        ? t('dashboard.chatWidgetPage.widgetEnabled')
+        : t('dashboard.chatWidgetPage.widgetDisabled')
+      );
+    } catch (error) {
+      console.error('Failed to update widget status:', error);
+      setIsEnabled(!enabled); // Revert on error
+      toast.error(t('dashboard.chatWidgetPage.statusUpdateError'));
+    }
   };
 
   const generateEmbedCode = () => {
@@ -152,7 +221,7 @@ export default function ChatWidgetPage() {
 <script>
 (function() {
   var CONFIG = {
-    assistantId: '${assistantId}',
+    embedKey: '${embedKey}',
     apiUrl: '${apiUrl}',
     position: '${positionMap[position] || positionMap['bottom-right']}',
     primaryColor: '${primaryColor}',
@@ -265,6 +334,7 @@ export default function ChatWidgetPage() {
 
   var conversationHistory = [];
   var isOpen = false;
+  var sessionId = 'chat_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 
   // Toggle chat
   btn.onclick = function() {
@@ -308,7 +378,8 @@ export default function ChatWidgetPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          assistantId: CONFIG.assistantId,
+          embedKey: CONFIG.embedKey,
+          sessionId: sessionId,
           message: text,
           conversationHistory: conversationHistory
         })
@@ -374,7 +445,7 @@ export default function ChatWidgetPage() {
               </div>
               <Switch
                 checked={isEnabled}
-                onCheckedChange={setIsEnabled}
+                onCheckedChange={handleEnableChange}
               />
             </div>
           </Card>
@@ -532,22 +603,27 @@ export default function ChatWidgetPage() {
             </ol>
           </Card>
 
-          {/* Stats (placeholder) */}
+          {/* Stats */}
           <Card className="p-6">
             <h3 className="text-lg font-semibold mb-3">{t('dashboard.chatWidgetPage.widgetAnalytics')}</h3>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-2xl font-bold text-primary-600">0</p>
+                <p className="text-2xl font-bold text-primary-600">{chatStats.totalChats}</p>
                 <p className="text-xs text-gray-600">{t('dashboard.chatWidgetPage.conversations')}</p>
               </div>
               <div>
-                <p className="text-2xl font-bold text-primary-600">0</p>
-                <p className="text-xs text-gray-600">{t('dashboard.chatWidgetPage.avgDuration')}</p>
+                <p className="text-2xl font-bold text-primary-600">{chatStats.totalMessages}</p>
+                <p className="text-xs text-gray-600">{t('dashboard.chatWidgetPage.totalMessages') || 'Toplam Mesaj'}</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-primary-600">{chatStats.avgMessagesPerChat}</p>
+                <p className="text-xs text-gray-600">{t('dashboard.chatWidgetPage.avgMessages') || 'Ort. Mesaj/Sohbet'}</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-primary-600">{chatStats.activeChats || 0}</p>
+                <p className="text-xs text-gray-600">{t('dashboard.chatWidgetPage.activeChats') || 'Aktif Sohbet'}</p>
               </div>
             </div>
-            <p className="text-xs text-gray-500 mt-3">
-              {t('dashboard.chatWidgetPage.analyticsComingSoon')}
-            </p>
           </Card>
         </div>
       </div>

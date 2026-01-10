@@ -8,9 +8,13 @@ import { IntegrationsSection } from '@/components/IntegrationsSection';
 import { HowItWorks } from '@/components/HowItWorks';
 import { LiveDemoSection } from '@/components/LiveDemoSection';
 import { Footer } from '@/components/Footer';
+import ChatWidget from '@/components/ChatWidget';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/contexts/LanguageContext';
+
+// Telyx embed key for landing page chat widget
+const TELYX_EMBED_KEY = 'emb_0f875ba550dde1c4836193e02231b7f6';
 
 export default function Home() {
   const { t } = useLanguage();
@@ -68,6 +72,15 @@ export default function Home() {
 
       {/* Footer */}
       <Footer />
+
+      {/* Chat Widget for visitor support */}
+      <ChatWidget
+        embedKey={TELYX_EMBED_KEY}
+        position="bottom-right"
+        primaryColor="#6366f1"
+        showBranding={false}
+        buttonText="Bize Yazın"
+      />
     </div>
   );
 }

@@ -22,6 +22,13 @@ const generateVerificationToken = () => {
 };
 
 /**
+ * Helper: Generate unique chat embed key for business
+ */
+const generateChatEmbedKey = () => {
+  return `emb_${crypto.randomBytes(16).toString('hex')}`;
+};
+
+/**
  * Helper: Create and send verification email
  */
 const createAndSendVerificationEmail = async (userId, email, businessName) => {
@@ -74,6 +81,7 @@ router.post('/register', async (req, res) => {
       const business = await tx.business.create({
         data: {
           name: businessName,
+          chatEmbedKey: generateChatEmbedKey(),
           businessType: req.body.businessType || 'OTHER',
           country: req.body.country?.toUpperCase() || 'TR', // Default to TR for iyzico
           users: {
@@ -195,7 +203,10 @@ router.post("/signup", async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     const result = await prisma.$transaction(async (tx) => {
       const business = await tx.business.create({
-        data: { name: businessName }
+        data: {
+          name: businessName,
+          chatEmbedKey: generateChatEmbedKey()
+        }
       });
       const user = await tx.user.create({
         data: {
@@ -530,6 +541,7 @@ router.post('/google', async (req, res) => {
         const business = await tx.business.create({
           data: {
             name: name || 'My Business',
+            chatEmbedKey: generateChatEmbedKey(),
             users: {
               create: {
                 email: email.toLowerCase(),

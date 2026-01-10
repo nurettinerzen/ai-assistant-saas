@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
-import { formatDate, formatDuration, getIntlLocale } from '@/lib/utils';
+import { formatDate, formatDuration, formatPhone, getIntlLocale } from '@/lib/utils';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function DashboardPage() {
@@ -333,7 +333,7 @@ export default function DashboardPage() {
                     }`} />
                     <div>
                       <p className="text-sm font-medium text-gray-900 dark:text-white">
-                        {call.phoneNumber || t('dashboard.overviewPage.unknownCaller')}
+                        {formatPhone(call.phoneNumber || call.callerId) || t('dashboard.overviewPage.unknownCaller')}
                       </p>
                       <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                         <span>{call.assistantName || t('dashboard.overviewPage.noAssistant')}</span>
