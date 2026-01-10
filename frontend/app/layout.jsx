@@ -6,8 +6,13 @@ import { ThemeProvider } from 'next-themes';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata = {
-  title: 'AI Assistant SaaS',
-  description: 'Manage your AI phone assistant for your business',
+  title: 'Telyx AI - AI Phone & Chat Assistant for Business',
+  description: 'Automate your business communications with AI-powered phone calls, chat, email, and WhatsApp integration.',
+  icons: {
+    icon: '/favicon.svg',
+    shortcut: '/favicon.svg',
+    apple: '/logo-icon.svg',
+  },
 };
 
 export default function RootLayout({ children }) {

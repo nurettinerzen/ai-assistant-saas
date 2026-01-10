@@ -6,11 +6,12 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Phone, Mail, Lock, User, Loader2, Ticket } from 'lucide-react';
+import { Mail, Lock, User, Loader2, Ticket } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast, Toaster } from 'sonner';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { TelyxLogoFull } from '@/components/TelyxLogo';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -114,9 +115,8 @@ export default function SignupPage() {
 
       <div className="w-full max-w-md">
         <div className="flex justify-between items-center mb-8">
-          <Link href="/" className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
-            <Phone className="inline-block mr-2 h-8 w-8" />
-            TELYX.AI
+          <Link href="/">
+            <TelyxLogoFull className="h-10" />
           </Link>
           <LanguageSwitcher />
         </div>
