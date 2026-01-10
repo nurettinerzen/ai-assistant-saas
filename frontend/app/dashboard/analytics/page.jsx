@@ -24,7 +24,6 @@ import {
   MessageCircle,
   Mail,
   HelpCircle,
-  Filter,
   Tag
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
@@ -63,15 +62,37 @@ const WhatsAppIcon = ({ className }) => (
 export default function AnalyticsPage() {
   const { t, locale } = useLanguage();
   const [loading, setLoading] = useState(true);
+  const [topicsLoading, setTopicsLoading] = useState(false);
   const [timeRange, setTimeRange] = useState('30d');
   const [analytics, setAnalytics] = useState(null);
   const [peakHours, setPeakHours] = useState([]);
   const [topTopics, setTopTopics] = useState([]);
   const [channelFilter, setChannelFilter] = useState('all');
 
+  // Load all analytics on initial load and time range change
   useEffect(() => {
     loadAnalytics();
-  }, [timeRange, channelFilter]);
+  }, [timeRange]);
+
+  // Load only top questions when channel filter changes
+  useEffect(() => {
+    if (!loading) {
+      loadTopQuestions();
+    }
+  }, [channelFilter]);
+
+  const loadTopQuestions = async () => {
+    setTopicsLoading(true);
+    try {
+      const channelParam = channelFilter !== 'all' ? `&channel=${channelFilter}` : '';
+      const questionsRes = await apiClient.get(`/api/analytics/top-questions?range=${timeRange}&limit=10${channelParam}`);
+      setTopTopics(questionsRes.data.topTopics || []);
+    } catch (error) {
+      console.error('Failed to load top questions:', error);
+    } finally {
+      setTopicsLoading(false);
+    }
+  };
 
   const loadAnalytics = async () => {
     setLoading(true);
@@ -249,7 +270,7 @@ export default function AnalyticsPage() {
           <ResponsiveContainer width="100%" height={250}>
             <LineChart data={analytics?.callsOverTime || []}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" tickFormatter={(date) => formatDate(date, 'chart', locale)} />
+              <XAxis dataKey="date" />
               <YAxis />
               <Tooltip />
               <Legend />
@@ -320,31 +341,81 @@ export default function AnalyticsPage() {
 
       {/* Top Topics Section */}
       <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
           <div className="flex items-center gap-2">
             <Tag className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
             <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">{t('dashboard.analyticsPage.topQuestions')}</h3>
           </div>
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-neutral-400" />
-            <Select value={channelFilter} onValueChange={setChannelFilter}>
-              <SelectTrigger className="w-32 h-8 text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t('dashboard.analyticsPage.allChannels')}</SelectItem>
-                <SelectItem value="phone">{t('dashboard.analyticsPage.phoneCalls')}</SelectItem>
-                <SelectItem value="chat">{t('dashboard.analyticsPage.chatSessions')}</SelectItem>
-                <SelectItem value="whatsapp">{t('dashboard.analyticsPage.whatsappMessages')}</SelectItem>
-                <SelectItem value="email">{t('dashboard.analyticsPage.emailsAnswered')}</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="flex items-center gap-1 flex-wrap">
+            <button
+              onClick={() => setChannelFilter('all')}
+              className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+                channelFilter === 'all'
+                  ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900'
+                  : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-700'
+              }`}
+            >
+              {t('dashboard.analyticsPage.allChannels')}
+            </button>
+            <button
+              onClick={() => setChannelFilter('phone')}
+              className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors flex items-center gap-1 ${
+                channelFilter === 'phone'
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-400 dark:hover:bg-indigo-900/50'
+              }`}
+            >
+              <Phone className="h-3 w-3" />
+              {t('dashboard.analyticsPage.phoneCalls')}
+            </button>
+            <button
+              onClick={() => setChannelFilter('chat')}
+              className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors flex items-center gap-1 ${
+                channelFilter === 'chat'
+                  ? 'bg-green-600 text-white'
+                  : 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50'
+              }`}
+            >
+              <MessageCircle className="h-3 w-3" />
+              {t('dashboard.analyticsPage.chatSessions')}
+            </button>
+            <button
+              onClick={() => setChannelFilter('whatsapp')}
+              className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors flex items-center gap-1 ${
+                channelFilter === 'whatsapp'
+                  ? 'bg-emerald-600 text-white'
+                  : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50'
+              }`}
+            >
+              <WhatsAppIcon className="h-3 w-3" />
+              WhatsApp
+            </button>
+            <button
+              onClick={() => setChannelFilter('email')}
+              className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors flex items-center gap-1 ${
+                channelFilter === 'email'
+                  ? 'bg-amber-600 text-white'
+                  : 'bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-900/50'
+              }`}
+            >
+              <Mail className="h-3 w-3" />
+              {t('dashboard.analyticsPage.emailsAnswered')}
+            </button>
           </div>
         </div>
         <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
           {t('dashboard.analyticsPage.topQuestionsDescription')}
         </p>
-        {topTopics.length > 0 ? (
+        {topicsLoading ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="p-4 bg-neutral-50 dark:bg-neutral-800 rounded-lg animate-pulse">
+                <div className="h-6 w-48 bg-neutral-200 dark:bg-neutral-700 rounded mb-2"></div>
+                <div className="h-4 w-full bg-neutral-200 dark:bg-neutral-700 rounded"></div>
+              </div>
+            ))}
+          </div>
+        ) : topTopics.length > 0 ? (
           <div className="space-y-3">
             {topTopics.map((topic, index) => (
               <div
