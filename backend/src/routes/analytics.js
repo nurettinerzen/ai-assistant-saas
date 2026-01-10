@@ -25,18 +25,27 @@ router.get('/overview', authenticateToken, async (req, res) => {
       orderBy: { createdAt: 'asc' }
     });
 
-    // 🔥 NEW: Get appointments in range
-    const appointments = await prisma.appointment.findMany({
+    // Get chat logs (sessions)
+    const chatLogs = await prisma.chatLog.findMany({
       where: {
         businessId,
         createdAt: { gte: startDate }
       }
     });
 
-    // Get chat logs
-    const chatLogs = await prisma.chatLog.findMany({
+    // Get email threads with AI responses
+    const emailThreads = await prisma.emailThread.findMany({
       where: {
         businessId,
+        createdAt: { gte: startDate }
+      }
+    });
+
+    // Get AI-generated email drafts that were sent
+    const sentEmailDrafts = await prisma.emailDraft.findMany({
+      where: {
+        businessId,
+        status: 'SENT',
         createdAt: { gte: startDate }
       }
     });
@@ -50,44 +59,33 @@ router.get('/overview', authenticateToken, async (req, res) => {
     const totalCalls = calls.length;
     const totalDuration = calls.reduce((sum, call) => sum + (call.duration || 0), 0);
     const avgDuration = totalCalls > 0 ? Math.round(totalDuration / totalCalls) : 0;
-    const completedCalls = calls.filter(c => c.status === 'completed').length;
-    const successRate = totalCalls > 0 ? ((completedCalls / totalCalls) * 100).toFixed(1) : 0;
     const totalCost = totalDuration * 0.01;
 
-    // Calculate CHAT stats - count total messages from all chat logs
-    const totalChatMessages = chatLogs.reduce((sum, log) => sum + (log.messageCount || 0), 0);
-    const chatConversations = chatLogs.length;
+    // Calculate CHAT stats - count sessions (not individual messages)
+    const chatSessions = chatLogs.length;
 
-    // 🔥 NEW: Calculate APPOINTMENT stats
-    const totalAppointments = appointments.length;
-    const confirmedAppointments = appointments.filter(a => a.status === 'CONFIRMED').length;
-    const appointmentRate = totalCalls > 0 ? ((totalAppointments / totalCalls) * 100).toFixed(1) : 0;
+    // Calculate EMAIL stats - count AI-answered emails
+    const emailsAnswered = sentEmailDrafts.length;
+    const totalEmailThreads = emailThreads.length;
 
-    // Calls over time WITH appointments and chats
+    // Calls over time WITH chats and emails
     const callsByDate = {};
-    const appointmentsByDate = {};
     const chatsByDate = {};
-    
+    const emailsByDate = {};
+
     for (let i = 0; i < days; i++) {
       const date = new Date();
       date.setDate(date.getDate() - (days - i - 1));
       const dateStr = date.toISOString().split('T')[0];
       callsByDate[dateStr] = 0;
-      appointmentsByDate[dateStr] = 0;
       chatsByDate[dateStr] = 0;
+      emailsByDate[dateStr] = 0;
     }
-    
+
     calls.forEach(call => {
       const dateStr = call.createdAt.toISOString().split('T')[0];
       if (callsByDate[dateStr] !== undefined) {
         callsByDate[dateStr]++;
-      }
-    });
-
-    appointments.forEach(apt => {
-      const dateStr = apt.createdAt.toISOString().split('T')[0];
-      if (appointmentsByDate[dateStr] !== undefined) {
-        appointmentsByDate[dateStr]++;
       }
     });
 
@@ -98,11 +96,18 @@ router.get('/overview', authenticateToken, async (req, res) => {
       }
     });
 
+    sentEmailDrafts.forEach(draft => {
+      const dateStr = draft.createdAt.toISOString().split('T')[0];
+      if (emailsByDate[dateStr] !== undefined) {
+        emailsByDate[dateStr]++;
+      }
+    });
+
     const callsOverTime = Object.keys(callsByDate).map((date) => ({
       date: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
       calls: callsByDate[date],
-      appointments: appointmentsByDate[date] || 0,
-      chats: chatsByDate[date] || 0
+      chats: chatsByDate[date] || 0,
+      emails: emailsByDate[date] || 0
     }));
 
     // Status distribution
@@ -142,76 +147,41 @@ router.get('/overview', authenticateToken, async (req, res) => {
       calls: assistantCalls[assistant.id] || 0
     }));
 
-    // Cost over time
-    const costByDate = {};
-    for (let i = 0; i < days; i++) {
-      const date = new Date();
-      date.setDate(date.getDate() - (days - i - 1));
-      const dateStr = date.toISOString().split('T')[0];
-      costByDate[dateStr] = 0;
-    }
-    calls.forEach(call => {
-      const dateStr = call.createdAt.toISOString().split('T')[0];
-      const cost = (call.duration || 0) * 0.01;
-      if (costByDate[dateStr] !== undefined) {
-        costByDate[dateStr] += cost;
-      }
-    });
-    const costOverTime = Object.entries(costByDate).map(([date, cost]) => ({
-      date: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      cost: parseFloat(cost.toFixed(2))
-    }));
-
-    // Sentiment breakdown
-    const sentimentCount = { positive: 0, neutral: 0, negative: 0 };
-    calls.forEach(call => {
-      const sentiment = call.sentiment || 'neutral';
-      if (sentimentCount[sentiment] !== undefined) {
-        sentimentCount[sentiment]++;
-      }
-    });
-    const totalSentiment = Object.values(sentimentCount).reduce((a, b) => a + b, 0);
-    const sentimentBreakdown = {
-      positive: totalSentiment > 0 ? ((sentimentCount.positive / totalSentiment) * 100).toFixed(1) : 0,
-      neutral: totalSentiment > 0 ? ((sentimentCount.neutral / totalSentiment) * 100).toFixed(1) : 0,
-      negative: totalSentiment > 0 ? ((sentimentCount.negative / totalSentiment) * 100).toFixed(1) : 0
-    };
-
-    // 🔥 NEW: Channel distribution
+    // Channel distribution - now with 4 channels
+    const totalInteractions = totalCalls + chatSessions + emailsAnswered;
     const channelStats = {
-      phone: { count: totalCalls, percentage: 100 },
-      chat: { count: totalChatMessages, percentage: 0 },
-      total: totalCalls + totalChatMessages
+      phone: { count: totalCalls, percentage: 0 },
+      chat: { count: chatSessions, percentage: 0 },
+      email: { count: emailsAnswered, percentage: 0 },
+      total: totalInteractions
     };
-    if (channelStats.total > 0) {
-      channelStats.phone.percentage = parseFloat(((totalCalls / channelStats.total) * 100).toFixed(1));
-      channelStats.chat.percentage = parseFloat(((totalChatMessages / channelStats.total) * 100).toFixed(1));
+    if (totalInteractions > 0) {
+      channelStats.phone.percentage = parseFloat(((totalCalls / totalInteractions) * 100).toFixed(1));
+      channelStats.chat.percentage = parseFloat(((chatSessions / totalInteractions) * 100).toFixed(1));
+      channelStats.email.percentage = parseFloat(((emailsAnswered / totalInteractions) * 100).toFixed(1));
     }
 
     res.json({
-      // Original metrics
+      // Phone metrics
       totalCalls,
       totalMinutes: Math.round(totalDuration / 60),
       avgDuration,
       totalCost: parseFloat(totalCost.toFixed(2)),
-      successRate: parseFloat(successRate),
-      sentimentBreakdown,
+
+      // Chat metrics (session-based)
+      chatSessions,
+
+      // Email metrics
+      emailsAnswered,
+      totalEmailThreads,
+
+      // Charts data
       callsOverTime,
       statusDistribution,
       durationDistribution,
       assistantPerformance,
-      costOverTime,
-      
-      // 🔥 NEW: Chat metrics
-      totalChatMessages,
-      chatConversations,
-      
-      // 🔥 NEW: Appointment metrics
-      totalAppointments,
-      confirmedAppointments,
-      appointmentRate: parseFloat(appointmentRate),
-      
-      // 🔥 NEW: Channel stats
+
+      // Channel stats
       channelStats
     });
   } catch (error) {
@@ -378,6 +348,174 @@ router.get('/peak-hours', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Error fetching peak hours:', error);
     res.status(500).json({ error: 'Failed to fetch peak hours' });
+  }
+});
+
+// GET /api/analytics/top-questions - Top topics/questions from INBOUND interactions only
+router.get('/top-questions', authenticateToken, async (req, res) => {
+  try {
+    const { businessId } = req;
+    const { range = '30d', limit = 10, channel } = req.query;
+
+    // Parse time range
+    const days = parseInt(range.replace(/[^0-9]/g, ''));
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+
+    // Collect topics from INBOUND channels only
+    const topics = [];
+
+    // 1. Get INBOUND call summaries (direction = inbound, or callerId exists which indicates incoming)
+    if (!channel || channel === 'phone') {
+      const calls = await prisma.callLog.findMany({
+        where: {
+          businessId,
+          createdAt: { gte: startDate },
+          summary: { not: null },
+          // Only inbound calls - those with a callerId (incoming) or direction = inbound
+          OR: [
+            { direction: 'inbound' },
+            { callerId: { not: null } }
+          ]
+        },
+        select: {
+          summary: true,
+          createdAt: true
+        }
+      });
+
+      calls.forEach(call => {
+        if (call.summary) {
+          topics.push({
+            text: call.summary,
+            channel: 'phone',
+            date: call.createdAt
+          });
+        }
+      });
+    }
+
+    // 2. Get chat messages (first user message = their question/topic)
+    if (!channel || channel === 'chat') {
+      const chatLogs = await prisma.chatLog.findMany({
+        where: {
+          businessId,
+          createdAt: { gte: startDate }
+        },
+        select: {
+          messages: true,
+          createdAt: true
+        }
+      });
+
+      chatLogs.forEach(log => {
+        if (log.messages && Array.isArray(log.messages)) {
+          // Find first user message as the main topic
+          const userMessage = log.messages.find(m => m.role === 'user');
+          if (userMessage && userMessage.content) {
+            topics.push({
+              text: userMessage.content.substring(0, 200),
+              channel: 'chat',
+              date: log.createdAt
+            });
+          }
+        }
+      });
+    }
+
+    // 3. Get INBOUND email subjects
+    if (!channel || channel === 'email') {
+      const emailMessages = await prisma.emailMessage.findMany({
+        where: {
+          thread: {
+            businessId
+          },
+          direction: 'INBOUND',
+          createdAt: { gte: startDate }
+        },
+        select: {
+          subject: true,
+          createdAt: true
+        },
+        take: 100
+      });
+
+      emailMessages.forEach(email => {
+        if (email.subject) {
+          topics.push({
+            text: email.subject,
+            channel: 'email',
+            date: email.createdAt
+          });
+        }
+      });
+    }
+
+    // Categorize topics into common themes
+    // Keywords for categorization
+    const categories = {
+      'Kargo/Teslimat': ['kargo', 'teslimat', 'gönderim', 'teslim', 'shipping', 'delivery', 'nerede', 'ne zaman gelecek', 'takip'],
+      'Sipariş Sorgulama': ['sipariş', 'order', 'durum', 'status', 'nerdeee', 'siparişim', 'sorgu'],
+      'Fiyat/Ücret': ['fiyat', 'ücret', 'price', 'maliyet', 'cost', 'kaç para', 'ne kadar', 'indirim', 'kampanya'],
+      'Ürün Bilgisi': ['ürün', 'product', 'stok', 'stock', 'mevcut', 'var mı', 'özellik', 'beden', 'renk'],
+      'İade/Değişim': ['iade', 'değişim', 'return', 'refund', 'geri', 'iptal', 'cancel'],
+      'Ödeme': ['ödeme', 'payment', 'kredi', 'kart', 'havale', 'eft', 'taksit'],
+      'Randevu': ['randevu', 'appointment', 'rezervasyon', 'booking', 'saat', 'gün'],
+      'Destek/Şikayet': ['şikayet', 'sorun', 'problem', 'yardım', 'help', 'destek', 'support', 'çalışmıyor'],
+      'Genel Bilgi': ['bilgi', 'information', 'soru', 'question', 'nasıl', 'nedir', 'hakkında']
+    };
+
+    // Categorize each topic
+    const categorizedTopics = topics.map(topic => {
+      const lowerText = topic.text.toLowerCase();
+      let category = 'Diğer';
+
+      for (const [cat, keywords] of Object.entries(categories)) {
+        if (keywords.some(kw => lowerText.includes(kw))) {
+          category = cat;
+          break;
+        }
+      }
+
+      return { ...topic, category };
+    });
+
+    // Group by category and count
+    const categoryStats = {};
+    categorizedTopics.forEach(t => {
+      if (!categoryStats[t.category]) {
+        categoryStats[t.category] = {
+          category: t.category,
+          count: 0,
+          channels: new Set(),
+          examples: []
+        };
+      }
+      categoryStats[t.category].count++;
+      categoryStats[t.category].channels.add(t.channel);
+      if (categoryStats[t.category].examples.length < 3) {
+        categoryStats[t.category].examples.push(t.text.substring(0, 100));
+      }
+    });
+
+    // Sort by count and get top N
+    const topTopics = Object.values(categoryStats)
+      .map(c => ({
+        category: c.category,
+        count: c.count,
+        channels: Array.from(c.channels),
+        examples: c.examples
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, parseInt(limit));
+
+    res.json({
+      topTopics,
+      totalInteractions: topics.length
+    });
+  } catch (error) {
+    console.error('Error fetching top questions:', error);
+    res.status(500).json({ error: 'Failed to fetch top questions' });
   }
 });
 

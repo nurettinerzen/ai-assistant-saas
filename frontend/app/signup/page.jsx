@@ -17,7 +17,7 @@ export default function SignupPage() {
   useEffect(() => {
   const token = localStorage.getItem('token');
   if (token) {
-    router.push('/dashboard');
+    router.push('/dashboard/assistant');
   }
 }, [router]);
   const { t } = useLanguage();
@@ -37,9 +37,9 @@ export default function SignupPage() {
       if (token) {
         try {
           const response = await apiClient.get('/api/auth/me');
-          // User is authenticated, redirect to dashboard
+          // User is authenticated, redirect to assistant page
           // Dashboard will handle onboarding if needed
-          router.push('/dashboard');
+          router.push('/dashboard/assistant');
           return;
         } catch (error) {
           // Token is invalid, remove it
@@ -80,8 +80,8 @@ export default function SignupPage() {
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
       toast.success('Account created successfully!');
-      // Skip email verification - go directly to dashboard
-      router.push('/dashboard');
+      // Skip email verification - go directly to assistant page
+      router.push('/dashboard/assistant');
     } catch (error) {
       console.error('Signup error:', error);
       // Handle invite code specific errors

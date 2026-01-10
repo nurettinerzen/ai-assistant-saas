@@ -1178,6 +1178,8 @@
       "successRate": "Success Rate",
       "activityOverTime": "Activity Over Time",
       "phoneCalls": "Phone Calls",
+      "chatSessions": "Chat Sessions",
+      "emailsAnswered": "AI Emails Sent",
       "channelDistribution": "Channel Distribution",
       "recentCalls": "Recent Calls",
       "dateTime": "Date & Time",
@@ -1186,10 +1188,14 @@
       "sentiment": "Sentiment",
       "status": "Status",
       "noCallsYet": "No calls yet",
+      "noDataYet": "No data yet",
       "positive": "Positive",
       "neutral": "Neutral",
       "negative": "Negative",
-      "failedToLoad": "Failed to load analytics"
+      "failedToLoad": "Failed to load analytics",
+      "topQuestions": "Top Questions",
+      "topQuestionsDescription": "Most frequently asked questions across all channels. Use this to improve your knowledge base.",
+      "noQuestionsYet": "No questions recorded yet"
     },
     "knowledgeBasePage": {
       "title": "Knowledge Base",

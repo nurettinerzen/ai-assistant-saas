@@ -89,7 +89,7 @@ router.post('/webhook', webhookRateLimiter.middleware(), async (req, res) => {
       }
 
       // Find the business by phone number ID (include integrations for tools)
-      const business = await prisma.business.findFirst({
+      let business = await prisma.business.findFirst({
         where: { whatsappPhoneNumberId: phoneNumberId },
         include: {
           assistants: {
@@ -102,6 +102,36 @@ router.post('/webhook', webhookRateLimiter.middleware(), async (req, res) => {
           }
         }
       });
+
+      // Fallback: If no business found but phoneNumberId matches env, use env credentials
+      // This is for testing/development with the default test account
+      if (!business && phoneNumberId === process.env.WHATSAPP_PHONE_NUMBER_ID) {
+        console.log('⚠️ Using env fallback for WhatsApp - phone number ID matched env');
+        // Find a default business (first one with an active assistant, or business ID 21 for dev)
+        business = await prisma.business.findFirst({
+          where: {
+            OR: [
+              { id: 21 }, // Dev account
+              { assistants: { some: { isActive: true } } }
+            ]
+          },
+          include: {
+            assistants: {
+              where: { isActive: true },
+              orderBy: { createdAt: 'desc' },
+              take: 1
+            },
+            integrations: {
+              where: { isActive: true }
+            }
+          }
+        });
+
+        if (business) {
+          // Inject env credentials for this request
+          business._useEnvCredentials = true;
+        }
+      }
 
       if (!business) {
         console.error(`❌ No business found for phone number ID: ${phoneNumberId}`);
@@ -417,11 +447,25 @@ function getErrorMessage(language) {
 
 /**
  * Send WhatsApp message using business credentials
+ * Falls back to env credentials if business._useEnvCredentials is set
  */
 async function sendWhatsAppMessage(business, to, text) {
   try {
-    const accessToken = decrypt(business.whatsappAccessToken);
-    const phoneNumberId = business.whatsappPhoneNumberId;
+    let accessToken, phoneNumberId;
+
+    // Check if we should use env credentials (fallback for testing)
+    if (business._useEnvCredentials) {
+      console.log('📱 Using env credentials for WhatsApp message');
+      accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+      phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+    } else {
+      accessToken = decrypt(business.whatsappAccessToken);
+      phoneNumberId = business.whatsappPhoneNumberId;
+    }
+
+    if (!accessToken || !phoneNumberId) {
+      throw new Error('WhatsApp credentials not configured');
+    }
 
     const response = await axios({
       method: 'POST',

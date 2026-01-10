@@ -1,6 +1,6 @@
 /**
- * Analytics Dashboard - UPDATED WITH CHAT & APPOINTMENTS
- * Replace your existing analytics page.jsx with this
+ * Analytics Dashboard
+ * Multi-channel analytics with phone, chat, and email metrics
  */
 
 'use client';
@@ -19,16 +19,17 @@ import {
 import {
   Phone,
   Clock,
-  TrendingUp,
   Calendar,
   Download,
   MessageCircle,
-  CalendarCheck,
-  CheckCircle
+  Mail,
+  HelpCircle,
+  Filter,
+  Tag
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
-import { formatDuration, formatDate } from '@/lib/utils';
+import { formatDuration } from '@/lib/utils';
 import {
   LineChart,
   Line,
@@ -47,7 +48,8 @@ import {
 
 const CHANNEL_COLORS = {
   phone: '#4f46e5',
-  chat: '#10b981'
+  chat: '#10b981',
+  email: '#f59e0b'
 };
 
 export default function AnalyticsPage() {
@@ -55,25 +57,27 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState('30d');
   const [analytics, setAnalytics] = useState(null);
-  const [recentCalls, setRecentCalls] = useState([]);
   const [peakHours, setPeakHours] = useState([]);
+  const [topTopics, setTopTopics] = useState([]);
+  const [channelFilter, setChannelFilter] = useState('all');
 
   useEffect(() => {
     loadAnalytics();
-  }, [timeRange]);
+  }, [timeRange, channelFilter]);
 
   const loadAnalytics = async () => {
     setLoading(true);
     try {
-      const [overviewRes, callsRes, peakRes] = await Promise.all([
-  apiClient.get(`/api/analytics/overview?range=${timeRange}`),
-  apiClient.get('/api/analytics/calls?limit=10'),
-  apiClient.get('/api/analytics/peak-hours')
-]);
+      const channelParam = channelFilter !== 'all' ? `&channel=${channelFilter}` : '';
+      const [overviewRes, peakRes, questionsRes] = await Promise.all([
+        apiClient.get(`/api/analytics/overview?range=${timeRange}`),
+        apiClient.get('/api/analytics/peak-hours'),
+        apiClient.get(`/api/analytics/top-questions?range=${timeRange}&limit=10${channelParam}`)
+      ]);
 
       setAnalytics(overviewRes.data);
-      setRecentCalls(callsRes.data.calls || []);
       setPeakHours(peakRes.data.peakHours || []);
+      setTopTopics(questionsRes.data.topTopics || []);
     } catch (error) {
       console.error('Failed to load analytics:', error);
       toast.error(t('dashboard.analyticsPage.failedToLoad'));
@@ -91,8 +95,28 @@ export default function AnalyticsPage() {
   // Prepare channel data for pie chart
   const channelData = analytics?.channelStats ? [
     { name: t('dashboard.analyticsPage.phoneCalls'), value: analytics.channelStats.phone.count, percentage: analytics.channelStats.phone.percentage, color: CHANNEL_COLORS.phone },
-    { name: t('dashboard.overviewPage.chatMessages'), value: analytics.channelStats.chat.count, percentage: analytics.channelStats.chat.percentage, color: CHANNEL_COLORS.chat }
+    { name: t('dashboard.analyticsPage.chatSessions'), value: analytics.channelStats.chat.count, percentage: analytics.channelStats.chat.percentage, color: CHANNEL_COLORS.chat },
+    { name: t('dashboard.analyticsPage.emailsAnswered'), value: analytics.channelStats.email.count, percentage: analytics.channelStats.email.percentage, color: CHANNEL_COLORS.email }
   ].filter(item => item.value > 0) : [];
+
+  // Channel icon helper
+  const getChannelIcon = (channel) => {
+    switch(channel) {
+      case 'phone': return <Phone className="h-3 w-3" />;
+      case 'chat': return <MessageCircle className="h-3 w-3" />;
+      case 'email': return <Mail className="h-3 w-3" />;
+      default: return <HelpCircle className="h-3 w-3" />;
+    }
+  };
+
+  const getChannelColor = (channel) => {
+    switch(channel) {
+      case 'phone': return 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400';
+      case 'chat': return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
+      case 'email': return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
+      default: return 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400';
+    }
+  };
 
   if (loading) {
     return (
@@ -138,14 +162,14 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      {/* Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+      {/* Overview Cards - 4 columns */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Total Calls */}
         <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6">
           <div className="flex items-center justify-between mb-4">
-            <div className="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-lg">
-              <Phone className="h-5 w-5 text-primary-600 dark:text-primary-400" />
+            <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
+              <Phone className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
             </div>
-            <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
           </div>
           <h3 className="text-2xl font-bold text-neutral-900 dark:text-white">
             {analytics?.totalCalls || 0}
@@ -153,7 +177,7 @@ export default function AnalyticsPage() {
           <p className="text-sm text-neutral-600 dark:text-neutral-400">{t('dashboard.analyticsPage.totalCalls')}</p>
         </div>
 
-        {/* Chat Messages Card */}
+        {/* Chat Sessions */}
         <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
@@ -161,27 +185,25 @@ export default function AnalyticsPage() {
             </div>
           </div>
           <h3 className="text-2xl font-bold text-neutral-900 dark:text-white">
-            {analytics?.totalChatMessages || 0}
+            {analytics?.chatSessions || 0}
           </h3>
-          <p className="text-sm text-neutral-600 dark:text-neutral-400">{t('dashboard.analyticsPage.chatMessages')}</p>
+          <p className="text-sm text-neutral-600 dark:text-neutral-400">{t('dashboard.analyticsPage.chatSessions')}</p>
         </div>
 
-        {/* Appointments Card */}
+        {/* Emails Answered */}
         <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6">
           <div className="flex items-center justify-between mb-4">
-            <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-              <CalendarCheck className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+            <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
+              <Mail className="h-5 w-5 text-amber-600 dark:text-amber-400" />
             </div>
           </div>
           <h3 className="text-2xl font-bold text-neutral-900 dark:text-white">
-            {analytics?.totalAppointments || 0}
+            {analytics?.emailsAnswered || 0}
           </h3>
-          <p className="text-sm text-neutral-600 dark:text-neutral-400">{t('dashboard.analyticsPage.appointments')}</p>
-          <p className="text-xs text-neutral-500 dark:text-neutral-500 mt-1">
-            {analytics?.appointmentRate || 0}% {t('dashboard.analyticsPage.conversionRate')}
-          </p>
+          <p className="text-sm text-neutral-600 dark:text-neutral-400">{t('dashboard.analyticsPage.emailsAnswered')}</p>
         </div>
 
+        {/* Average Call Duration */}
         <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
@@ -189,21 +211,9 @@ export default function AnalyticsPage() {
             </div>
           </div>
           <h3 className="text-2xl font-bold text-neutral-900 dark:text-white">
-            {analytics?.totalMinutes || 0}m
+            {formatDuration(analytics?.avgDuration || 0)}
           </h3>
-          <p className="text-sm text-neutral-600 dark:text-neutral-400">{t('dashboard.analyticsPage.totalMinutes')}</p>
-        </div>
-
-        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-              <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
-            </div>
-          </div>
-          <h3 className="text-2xl font-bold text-neutral-900 dark:text-white">
-            {analytics?.successRate || 0}%
-          </h3>
-          <p className="text-sm text-neutral-600 dark:text-neutral-400">{t('dashboard.analyticsPage.successRate')}</p>
+          <p className="text-sm text-neutral-600 dark:text-neutral-400">{t('dashboard.analyticsPage.avgCallDuration')}</p>
         </div>
       </div>
 
@@ -231,14 +241,14 @@ export default function AnalyticsPage() {
                 dataKey="chats"
                 stroke={CHANNEL_COLORS.chat}
                 strokeWidth={2}
-                name={t('dashboard.analyticsPage.chatMessages')}
+                name={t('dashboard.analyticsPage.chatSessions')}
               />
               <Line
                 type="monotone"
-                dataKey="appointments"
-                stroke="#a855f7"
+                dataKey="emails"
+                stroke={CHANNEL_COLORS.email}
                 strokeWidth={2}
-                name={t('dashboard.analyticsPage.appointments')}
+                name={t('dashboard.analyticsPage.emailsAnswered')}
               />
             </LineChart>
           </ResponsiveContainer>
@@ -247,28 +257,106 @@ export default function AnalyticsPage() {
         {/* Channel Distribution */}
         <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6">
           <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">{t('dashboard.analyticsPage.channelDistribution')}</h3>
-          <div className="flex items-center justify-center">
-            <ResponsiveContainer width="100%" height={250}>
-              <PieChart>
-                <Pie
-                  data={channelData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={(entry) => `${entry.name} ${entry.percentage}%`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {channelData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
+          {channelData.length > 0 ? (
+            <div className="flex items-center justify-center">
+              <ResponsiveContainer width="100%" height={250}>
+                <PieChart>
+                  <Pie
+                    data={channelData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={(entry) => `${entry.name} ${entry.percentage}%`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {channelData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center h-[250px] text-neutral-500 dark:text-neutral-400">
+              {t('dashboard.analyticsPage.noDataYet')}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Top Topics Section */}
+      <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Tag className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
+            <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">{t('dashboard.analyticsPage.topQuestions')}</h3>
+          </div>
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-neutral-400" />
+            <Select value={channelFilter} onValueChange={setChannelFilter}>
+              <SelectTrigger className="w-32 h-8 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t('dashboard.analyticsPage.allChannels')}</SelectItem>
+                <SelectItem value="phone">{t('dashboard.analyticsPage.phoneCalls')}</SelectItem>
+                <SelectItem value="chat">{t('dashboard.analyticsPage.chatSessions')}</SelectItem>
+                <SelectItem value="email">{t('dashboard.analyticsPage.emailsAnswered')}</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
+          {t('dashboard.analyticsPage.topQuestionsDescription')}
+        </p>
+        {topTopics.length > 0 ? (
+          <div className="space-y-3">
+            {topTopics.map((topic, index) => (
+              <div
+                key={index}
+                className="p-4 bg-neutral-50 dark:bg-neutral-800 rounded-lg"
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg font-semibold text-neutral-900 dark:text-white">
+                      {topic.category}
+                    </span>
+                    <Badge variant="outline" className="font-semibold">
+                      {topic.count}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {topic.channels.map((channel) => (
+                      <Badge
+                        key={channel}
+                        variant="secondary"
+                        className={`text-xs ${getChannelColor(channel)}`}
+                      >
+                        {getChannelIcon(channel)}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+                {topic.examples && topic.examples.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    {topic.examples.slice(0, 2).map((example, i) => (
+                      <p key={i} className="text-xs text-neutral-500 dark:text-neutral-400 line-clamp-1">
+                        "{example}"
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8 text-neutral-500 dark:text-neutral-400">
+            {t('dashboard.analyticsPage.noQuestionsYet')}
+          </div>
+        )}
       </div>
 
       {/* Peak Hours Chart */}
@@ -285,65 +373,6 @@ export default function AnalyticsPage() {
         </ResponsiveContainer>
       </div>
 
-      {/* Recent Calls Table */}
-      <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6">
-        <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">{t('dashboard.analyticsPage.recentCalls')}</h3>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-neutral-50 dark:bg-neutral-800">
-              <tr>
-                <th className="text-left p-3 text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                  {t('dashboard.analyticsPage.dateTime')}
-                </th>
-                <th className="text-left p-3 text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                  {t('dashboard.analyticsPage.caller')}
-                </th>
-                <th className="text-left p-3 text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                  {t('dashboard.analyticsPage.duration')}
-                </th>
-                <th className="text-left p-3 text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                  {t('dashboard.analyticsPage.status')}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentCalls.length > 0 ? (
-                recentCalls.map((call) => (
-                  <tr key={call.id} className="border-t border-neutral-100 dark:border-neutral-800">
-                    <td className="p-3 text-sm text-neutral-900 dark:text-neutral-100">
-                      {formatDate(call.createdAt, 'long', locale)}
-                    </td>
-                    <td className="p-3 text-sm text-neutral-900 dark:text-neutral-100">
-                      {call.callerId || t('dashboard.overviewPage.unknownCaller')}
-                    </td>
-                    <td className="p-3 text-sm text-neutral-900 dark:text-neutral-100">
-                      {formatDuration(call.duration)}
-                    </td>
-                    <td className="p-3">
-                      <Badge
-                        variant="secondary"
-                        className={
-                          call.status === 'completed'
-                            ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400'
-                            : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-300'
-                        }
-                      >
-                        {call.status}
-                      </Badge>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={4} className="p-8 text-center text-neutral-500 dark:text-neutral-400">
-                    {t('dashboard.analyticsPage.noCallsYet')}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
     </div>
   );
 }

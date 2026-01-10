@@ -59,8 +59,8 @@ export default function LoginPage() {
         toast.success('Login successful!');
       }
 
-      // Google users are already verified, redirect to dashboard
-      router.push('/dashboard');
+      // Google users are already verified, redirect to assistant page
+      router.push('/dashboard/assistant');
     } catch (error) {
       console.error('Google sign-in error:', error);
       toast.error(error.response?.data?.error || error.message || 'Google sign-in failed');
@@ -83,8 +83,8 @@ export default function LoginPage() {
 
       toast.success('Login successful!');
 
-      // Skip email verification check - go directly to dashboard
-      router.push('/dashboard');
+      // Skip email verification check - go directly to assistant page
+      router.push('/dashboard/assistant');
     } catch (error) {
       console.error('Login error:', error);
       const errorMsg = error.response?.data?.error || error.response?.data?.message || error.message || 'Invalid email or password';

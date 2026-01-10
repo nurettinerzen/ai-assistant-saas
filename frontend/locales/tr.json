@@ -1178,6 +1178,8 @@
       "successRate": "Başarı Oranı",
       "activityOverTime": "Zaman İçinde Aktivite",
       "phoneCalls": "Telefon Aramaları",
+      "chatSessions": "Chat Oturumları",
+      "emailsAnswered": "AI Mailler",
       "channelDistribution": "Kanal Dağılımı",
       "recentCalls": "Son Aramalar",
       "dateTime": "Tarih & Saat",
@@ -1186,10 +1188,14 @@
       "sentiment": "Duygu",
       "status": "Durum",
       "noCallsYet": "Henüz arama yok",
+      "noDataYet": "Henüz veri yok",
       "positive": "Pozitif",
       "neutral": "Nötr",
       "negative": "Negatif",
-      "failedToLoad": "Analitikler yüklenemedi"
+      "failedToLoad": "Analitikler yüklenemedi",
+      "topQuestions": "En Çok Sorulan Sorular",
+      "topQuestionsDescription": "Tüm kanallardan en sık sorulan sorular. Bilgi bankanızı geliştirmek için kullanın.",
+      "noQuestionsYet": "Henüz soru kaydedilmedi"
     },
     "knowledgeBasePage": {
       "title": "Bilgi Bankası",

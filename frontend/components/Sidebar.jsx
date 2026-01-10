@@ -9,7 +9,6 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import {
-  LayoutDashboard,
   Bot,
   Phone,
   BarChart3,
@@ -17,7 +16,6 @@ import {
   CreditCard,
   Puzzle,
   BookOpen,
-  Mic,
   PhoneCall,
   PhoneMissed,
   ChevronDown,
@@ -111,10 +109,9 @@ export default function Sidebar({ user, credits, business }) {
     {
       label: t('dashboard.sidebar.monitor'),
       items: [
-        { icon: LayoutDashboard, label: t('dashboard.sidebar.overview'), href: '/dashboard', permission: 'dashboard:view' },
+        { icon: BarChart3, label: t('dashboard.sidebar.analytics'), href: '/dashboard/analytics', permission: 'analytics:view' },
         { icon: Phone, label: t('dashboard.sidebar.callHistory'), href: '/dashboard/calls', permission: 'calls:view' },
         { icon: PhoneMissed, label: locale === 'tr' ? 'Geri Aramalar' : 'Callbacks', href: '/dashboard/callbacks', permission: 'calls:view' },
-        { icon: BarChart3, label: t('dashboard.sidebar.analytics'), href: '/dashboard/analytics', permission: 'analytics:view' },
       ],
     },
     {
