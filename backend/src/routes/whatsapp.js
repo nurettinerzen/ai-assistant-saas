@@ -107,14 +107,10 @@ router.post('/webhook', webhookRateLimiter.middleware(), async (req, res) => {
       // This is for testing/development with the default test account
       if (!business && phoneNumberId === process.env.WHATSAPP_PHONE_NUMBER_ID) {
         console.log('⚠️ Using env fallback for WhatsApp - phone number ID matched env');
-        // Find a default business (first one with an active assistant, or business ID 21 for dev)
-        business = await prisma.business.findFirst({
-          where: {
-            OR: [
-              { id: 21 }, // Dev account
-              { assistants: { some: { isActive: true } } }
-            ]
-          },
+
+        // First try to find the dev account (business ID 21)
+        business = await prisma.business.findUnique({
+          where: { id: 21 },
           include: {
             assistants: {
               where: { isActive: true },
@@ -126,6 +122,25 @@ router.post('/webhook', webhookRateLimiter.middleware(), async (req, res) => {
             }
           }
         });
+
+        // If dev account not found, fall back to first business with active assistant
+        if (!business) {
+          business = await prisma.business.findFirst({
+            where: {
+              assistants: { some: { isActive: true } }
+            },
+            include: {
+              assistants: {
+                where: { isActive: true },
+                orderBy: { createdAt: 'desc' },
+                take: 1
+              },
+              integrations: {
+                where: { isActive: true }
+              }
+            }
+          });
+        }
 
         if (business) {
           // Inject env credentials for this request
