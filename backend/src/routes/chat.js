@@ -1,13 +1,12 @@
 /**
  * Chat Widget API
  * Handles text-based chat for embedded widget
- * WITH FUNCTION CALLING SUPPORT - Using Central Tool System
+ * Using Google Gemini API
  */
 
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
-import OpenAI from 'openai';
-import { getActiveTools, executeTool } from '../tools/index.js';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { getDateTimeContext } from '../utils/dateTime.js';
 import { buildAssistantPrompt, getActiveTools as getPromptBuilderTools } from '../services/promptBuilder.js';
 import { isFreePlanExpired } from '../middleware/checkPlanExpiry.js';
@@ -15,107 +14,55 @@ import { isFreePlanExpired } from '../middleware/checkPlanExpiry.js';
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// Max iterations for recursive tool calling (consistent with WhatsApp)
-const MAX_TOOL_ITERATIONS = 5;
-
-// Lazy initialization
-let openai = null;
-const getOpenAI = () => {
-  if (!openai) {
-    openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY
-    });
+// Lazy initialization for Gemini
+let genAI = null;
+const getGemini = () => {
+  if (!genAI) {
+    genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
   }
-  return openai;
+  return genAI;
 };
 
 /**
- * Process messages with recursive tool calling loop
- * This ensures consistency with WhatsApp channel behavior
+ * Process chat with Gemini
  */
-async function processWithToolLoop(messages, tools, business, context = {}) {
-  const client = getOpenAI();
-  let iteration = 0;
-  const allToolNames = [];
-
-  while (iteration < MAX_TOOL_ITERATIONS) {
-    // Call OpenAI
-    const completionParams = {
-      model: 'gpt-4o-mini',
-      messages: messages,
-      max_tokens: 500,
-      temperature: 0.7
-    };
-
-    // Add tools if available
-    if (tools && tools.length > 0) {
-      completionParams.tools = tools;
-      completionParams.tool_choice = 'auto';
+async function processWithGemini(systemPrompt, conversationHistory, userMessage, language) {
+  const genAI = getGemini();
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-2.5-flash',
+    generationConfig: {
+      temperature: 0.9,
+      maxOutputTokens: 500,
     }
+  });
 
-    const completion = await client.chat.completions.create(completionParams);
-    const responseMessage = completion.choices[0].message;
+  // Build conversation context as a single prompt
+  // Gemini works better with context in the message itself for long system prompts
+  let contextMessages = '';
+  const recentHistory = conversationHistory.slice(-10);
 
-    // Check if AI wants to call tools
-    if (!responseMessage.tool_calls || responseMessage.tool_calls.length === 0) {
-      // No tool calls - return the text response
-      return {
-        reply: responseMessage.content || (business.language === 'TR'
-          ? 'Üzgünüm, bir yanıt oluşturamadım.'
-          : 'Sorry, I could not generate a response.'),
-        toolsCalled: allToolNames
-      };
-    }
-
-    console.log(`🔧 [Chat] Tool calls detected (iteration ${iteration + 1}):`,
-      responseMessage.tool_calls.map(tc => tc.function.name));
-
-    // Add assistant's response with tool_calls to messages
-    messages.push({
-      role: 'assistant',
-      content: responseMessage.content || '',
-      tool_calls: responseMessage.tool_calls
-    });
-
-    // Execute each tool call
-    for (const toolCall of responseMessage.tool_calls) {
-      const functionName = toolCall.function.name;
-      let functionArgs;
-
-      try {
-        functionArgs = JSON.parse(toolCall.function.arguments);
-      } catch (e) {
-        console.error(`❌ Failed to parse tool arguments for ${functionName}:`, e);
-        functionArgs = {};
-      }
-
-      console.log(`🔧 [Chat] Executing tool: ${functionName}`, JSON.stringify(functionArgs));
-
-      // Execute tool using central tool system
-      const result = await executeTool(functionName, functionArgs, business, context);
-
-      console.log(`🔧 [Chat] Tool result for ${functionName}:`, result.success ? 'SUCCESS' : 'FAILED');
-
-      // Add tool result to messages
-      messages.push({
-        role: 'tool',
-        tool_call_id: toolCall.id,
-        content: JSON.stringify(result)
-      });
-
-      allToolNames.push(functionName);
-    }
-
-    iteration++;
+  if (recentHistory.length > 0) {
+    contextMessages = '\n\nÖNCEKİ KONUŞMA:\n' + recentHistory.map(msg =>
+      `${msg.role === 'user' ? 'Müşteri' : 'Asistan'}: ${msg.content}`
+    ).join('\n');
   }
 
-  // Max iterations reached
-  console.warn(`⚠️ [Chat] Max tool iterations (${MAX_TOOL_ITERATIONS}) reached`);
+  // Combine system prompt + history + user message
+  const fullPrompt = `${systemPrompt}${contextMessages}
+
+Müşteri: ${userMessage}
+
+Asistan:`;
+
+  // Use generateContent for better handling of long prompts
+  const result = await model.generateContent(fullPrompt);
+  const response = result.response;
+  const text = response.text();
+
   return {
-    reply: business.language === 'TR'
-      ? 'İşleminiz tamamlanamadı. Lütfen tekrar deneyin.'
-      : 'Could not complete your request. Please try again.',
-    toolsCalled: allToolNames
+    reply: text || (language === 'TR'
+      ? 'Üzgünüm, bir yanıt oluşturamadım.'
+      : 'Sorry, I could not generate a response.')
   };
 }
 
@@ -205,6 +152,10 @@ router.post('/widget', async (req, res) => {
 
     const business = assistant.business;
     const language = business?.language || 'TR';
+    const timezone = business?.timezone || 'Europe/Istanbul';
+
+    // Get current date/time for this business's timezone
+    const dateTimeContext = getDateTimeContext(timezone, language);
 
     // Check subscription and plan expiry
     const subscription = await prisma.subscription.findUnique({
@@ -236,7 +187,6 @@ router.post('/widget', async (req, res) => {
         if (item.type === 'FAQ' && item.question && item.answer) {
           kbByType.FAQ.push(`S: ${item.question}\nC: ${item.answer}`);
         } else if (item.content) {
-          // Use full content up to 100000 chars per item to include all details
           kbByType[item.type]?.push(`[${item.title}]: ${item.content.substring(0, 100000)}`);
         }
       }
@@ -254,83 +204,44 @@ router.post('/widget', async (req, res) => {
       console.log(`📚 [Chat] Knowledge Base items added: ${knowledgeItems.length}`);
     }
 
-    // Get active tools for this business from central tool system
-    const tools = getActiveTools(business);
-    console.log(`🔧 [Chat] Active tools for business ${business.id}: ${tools.map(t => t.function.name).join(', ') || 'none'}`);
-
     // Get active tools list for prompt builder
     const activeToolsList = getPromptBuilderTools(business, business.integrations || []);
 
     // Build system prompt using central prompt builder
     const systemPromptBase = buildAssistantPrompt(assistant, business, activeToolsList);
 
-    // Add tool-specific instructions
-    const toolInstructions = language === 'TR'
-      ? `
-Müşteri randevu almak isterse:
-1. İsmini sor (verilmediyse)
-2. Telefon numarasını sor
-3. Hangi hizmeti istediğini sor
-4. Tercih ettiği tarih ve saati sor
-5. create_appointment fonksiyonunu kullanarak randevu oluştur`
-      : `
-When a customer wants to book an appointment:
-1. Ask for their name if not provided
-2. Ask for their phone number if not provided
-3. Ask what service they want (if applicable)
-4. Ask for their preferred date and time
-5. Use the create_appointment function to book it`;
-
     // Add KB usage instruction if knowledge base exists
     const kbInstruction = knowledgeContext ? (language === 'TR'
-      ? `\n\n## BİLGİ BANKASI KULLANIM KURALLARI (KRİTİK!)
+      ? `\n\n## BİLGİ BANKASI KULLANIM KURALLARI
 Aşağıdaki bilgi bankası içeriğini AKTİF OLARAK KULLAN:
 - Fiyat sorulduğunda: KB'de varsa HEMEN SÖYLE
-- Entegrasyon sorulduğunda (Paraşüt, Google Calendar vb.): KB'de varsa SÖYLE
 - Özellik sorulduğunda: KB'de varsa SÖYLE
-- "Kesin bilgi veremiyorum" veya "müşteri temsilcisi" DEMEden ÖNCE KB'yi kontrol et
-- KB'de bilgi VARSA doğrudan paylaş, "bilgi veremiyorum" DEME
-- Sadece KB'de GERÇEKTEN YOKSA "Bu konuda detaylı bilgi için ekiple iletişime geçebilirsiniz" de
-
-DOĞAL KONUŞMA:
-- Her cevabın sonuna "Başka sorunuz var mı?" ekleme
-- Robotik kalıp cümleler kullanma
-- Kısa ve öz cevaplar ver`
-      : `\n\n## KNOWLEDGE BASE USAGE RULES (CRITICAL!)
-ACTIVELY USE the knowledge base content below:
-- When asked about pricing: If in KB, TELL THEM IMMEDIATELY
-- When asked about integrations: If in KB, TELL THEM
-- When asked about features: If in KB, TELL THEM
-- BEFORE saying "I cannot provide information", CHECK the KB
-- If info IS in KB, share it directly - do NOT say "I cannot provide information"
-- ONLY if info is REALLY NOT in KB, say "For detailed info on this, you can contact the team"
-
-NATURAL CONVERSATION:
-- Don't add "Any other questions?" to every response
-- Don't use robotic template phrases
-- Give short, concise answers`)
+- KB'de bilgi VARSA doğrudan paylaş`
+      : `\n\n## KNOWLEDGE BASE USAGE
+ACTIVELY USE the knowledge base content below when answering questions.`)
       : '';
 
-    // Build messages array with Knowledge Base context
-    const messages = [
-      {
-        role: 'system',
-        content: `${systemPromptBase}${kbInstruction}
-${knowledgeContext}
-${toolInstructions}`
-      },
-      ...conversationHistory.slice(-10).map(msg => ({
-        role: msg.role,
-        content: msg.content
-      })),
-      {
-        role: 'user',
-        content: message
-      }
-    ];
+    // Build full system prompt
+    const fullSystemPrompt = `${dateTimeContext}
 
-    // Process with recursive tool loop (consistent with WhatsApp channel)
-    const result = await processWithToolLoop(messages, tools, business, { channel: 'CHAT' });
+${systemPromptBase}${kbInstruction}
+${knowledgeContext}`;
+
+    console.log('📝 [Chat] Full system prompt length:', fullSystemPrompt.length, 'chars');
+    console.log('🤖 [Chat] Using Gemini model');
+
+    // Process with Gemini
+    const result = await processWithGemini(fullSystemPrompt, conversationHistory, message, language);
+
+    // Human-like delay: reading + typing time
+    // 1. Reading delay: 1-2 seconds (before typing starts)
+    // 2. Typing delay: based on response length
+    const replyLength = result.reply?.length || 0;
+    const readingDelay = 1000 + Math.random() * 1000; // 1-2 seconds
+    const typingDelay = Math.min(Math.max(replyLength * 20, 500), 6000); // 500ms-6s based on length
+    const totalDelay = readingDelay + typingDelay;
+    console.log(`⏱️ Total delay: ${Math.round(totalDelay)}ms (read: ${Math.round(readingDelay)}ms + type: ${Math.round(typingDelay)}ms for ${replyLength} chars)`);
+    await new Promise(resolve => setTimeout(resolve, totalDelay));
 
     // Save chat log (upsert - create or update)
     try {
@@ -358,16 +269,13 @@ ${toolInstructions}`
       });
     } catch (logError) {
       console.error('Failed to save chat log:', logError);
-      // Don't fail the request if logging fails
     }
 
     res.json({
       success: true,
       reply: result.reply,
       sessionId: chatSessionId,
-      assistantName: assistant.name,
-      toolCalled: result.toolsCalled.length > 0 ? result.toolsCalled.join(', ') : undefined,
-      toolResult: result.toolsCalled.length > 0 ? true : undefined
+      assistantName: assistant.name
     });
 
   } catch (error) {
@@ -381,7 +289,6 @@ router.get('/assistant/:assistantId', async (req, res) => {
   try {
     const { assistantId } = req.params;
 
-    // Try to find assistant by internal ID first, then by vapiAssistantId (for backward compatibility)
     const assistant = await prisma.assistant.findFirst({
       where: {
         OR: [
@@ -452,12 +359,10 @@ router.get('/embed/:embedKey', async (req, res) => {
 });
 
 // GET /api/chat/widget/status/:assistantId - Check if widget should be active
-// This is called by the widget JS before rendering
 router.get('/widget/status/:assistantId', async (req, res) => {
   try {
     const { assistantId } = req.params;
 
-    // Find assistant and business
     const assistant = await prisma.assistant.findFirst({
       where: {
         OR: [
@@ -474,7 +379,6 @@ router.get('/widget/status/:assistantId', async (req, res) => {
       return res.json({ active: false, reason: 'not_found' });
     }
 
-    // Check subscription
     const subscription = await prisma.subscription.findUnique({
       where: { businessId: assistant.business.id },
       include: { business: true }
@@ -484,12 +388,10 @@ router.get('/widget/status/:assistantId', async (req, res) => {
       return res.json({ active: false, reason: 'no_subscription' });
     }
 
-    // Check FREE plan expiry
     if (isFreePlanExpired(subscription)) {
       return res.json({ active: false, reason: 'trial_expired' });
     }
 
-    // Widget is active
     res.json({
       active: true,
       assistantName: assistant.name,
@@ -525,7 +427,6 @@ router.get('/widget/status/embed/:embedKey', async (req, res) => {
       return res.json({ active: false, reason: 'invalid_embed_key' });
     }
 
-    // Check if widget is enabled by business owner
     if (!business.chatWidgetEnabled) {
       return res.json({ active: false, reason: 'widget_disabled' });
     }
@@ -534,7 +435,6 @@ router.get('/widget/status/embed/:embedKey', async (req, res) => {
       return res.json({ active: false, reason: 'no_assistant' });
     }
 
-    // Check subscription
     const subscription = await prisma.subscription.findUnique({
       where: { businessId: business.id }
     });
@@ -543,12 +443,10 @@ router.get('/widget/status/embed/:embedKey', async (req, res) => {
       return res.json({ active: false, reason: 'no_subscription' });
     }
 
-    // Check FREE plan expiry
     if (isFreePlanExpired(subscription)) {
       return res.json({ active: false, reason: 'trial_expired' });
     }
 
-    // Widget is active
     res.json({
       active: true,
       assistantName: business.assistants[0].name,
