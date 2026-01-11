@@ -1,16 +1,15 @@
 /**
  * WhatsApp Webhook Handler
  * Multi-tenant WhatsApp Business API integration
- * WITH FUNCTION CALLING SUPPORT - Using Central Tool System
+ * Using Google Gemini API
  */
 
 import express from 'express';
 import axios from 'axios';
-import OpenAI from 'openai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { PrismaClient } from '@prisma/client';
 import { decrypt } from '../utils/encryption.js';
 import { webhookRateLimiter } from '../middleware/rateLimiter.js';
-import { getActiveTools, executeTool } from '../tools/index.js';
 import { getDateTimeContext } from '../utils/dateTime.js';
 import { buildAssistantPrompt, getActiveTools as getPromptBuilderTools } from '../services/promptBuilder.js';
 import { isFreePlanExpired } from '../middleware/checkPlanExpiry.js';
@@ -18,18 +17,16 @@ import { isFreePlanExpired } from '../middleware/checkPlanExpiry.js';
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// OpenAI client (lazy initialization)
-let openai;
-const getOpenAI = () => {
-  if (!openai) {
-    openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY
-    });
+// Gemini client (lazy initialization)
+let genAI = null;
+const getGemini = () => {
+  if (!genAI) {
+    genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
   }
-  return openai;
+  return genAI;
 };
 
-// In-memory conversation history (includes tool calls)
+// In-memory conversation history
 // Format: Map<conversationKey, Array<message>>
 const conversations = new Map();
 
@@ -47,9 +44,6 @@ setInterval(() => {
     }
   }
 }, 60 * 1000);
-
-// Max iterations for recursive tool calling
-const MAX_TOOL_ITERATIONS = 5;
 
 // ============================================================================
 // WEBHOOK ENDPOINTS
@@ -244,8 +238,8 @@ router.post('/webhook', webhookRateLimiter.middleware(), async (req, res) => {
  */
 async function processWhatsAppMessage(business, from, messageBody, messageId) {
   try {
-    // Generate AI response with tool support
-    const aiResponse = await generateAIResponseWithTools(
+    // Generate AI response with Gemini
+    const aiResponse = await generateAIResponse(
       business,
       from,
       messageBody,
@@ -270,23 +264,23 @@ async function processWhatsAppMessage(business, from, messageBody, messageId) {
 }
 
 // ============================================================================
-// AI RESPONSE WITH TOOL SUPPORT
+// AI RESPONSE WITH GEMINI
 // ============================================================================
 
 /**
- * Generate AI response with function calling support
- * Uses recursive loop to handle multiple tool calls
+ * Generate AI response using Gemini
  */
-async function generateAIResponseWithTools(business, phoneNumber, userMessage, context = {}) {
+async function generateAIResponse(business, phoneNumber, userMessage, context = {}) {
   try {
-    const client = getOpenAI();
+    const genAI = getGemini();
     const assistant = business.assistants?.[0];
+    const conversationKey = `${business.id}:${phoneNumber}`;
+    const language = business?.language || 'TR';
 
-    // Build system prompt (now async due to Knowledge Base query)
+    // Build system prompt
     const systemPrompt = await buildSystemPrompt(business, assistant);
 
     // Get conversation history (from memory cache or database)
-    const conversationKey = `${business.id}:${phoneNumber}`;
     let history;
 
     if (conversations.has(conversationKey)) {
@@ -315,31 +309,43 @@ async function generateAIResponseWithTools(business, phoneNumber, userMessage, c
       content: userMessage
     });
 
-    // Build messages array for OpenAI
-    const messages = [
-      { role: 'system', content: systemPrompt },
-      ...history.slice(-20) // Last 20 messages for context
-    ];
+    // Build conversation context as a single prompt
+    // Gemini works better with context in the message itself for long system prompts
+    let contextMessages = '';
+    const recentHistory = history.slice(-10, -1); // Exclude the current message we just added
 
-    // Get active tools for this business
-    const tools = getActiveTools(business);
-    console.log(`🔧 [WhatsApp] Active tools for ${business.name}: ${tools.map(t => t.function.name).join(', ') || 'none'}`);
+    if (recentHistory.length > 0) {
+      contextMessages = '\n\nÖNCEKİ KONUŞMA:\n' + recentHistory.map(msg =>
+        `${msg.role === 'user' ? 'Müşteri' : 'Asistan'}: ${msg.content}`
+      ).join('\n');
+    }
 
-    // Process with tool loop
-    const finalResponse = await processWithToolLoop(
-      client,
-      messages,
-      tools,
-      business,
-      {
-        ...context,
-        channel: 'WHATSAPP',
-        customerPhone: phoneNumber
-      },
-      assistant?.model || 'gpt-4o-mini'
-    );
+    // Combine system prompt + history + user message
+    const fullPrompt = `${systemPrompt}${contextMessages}
 
-    // Add final AI response to history
+Müşteri: ${userMessage}
+
+Asistan:`;
+
+    // Create Gemini model
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-2.5-flash',
+      generationConfig: {
+        temperature: 0.9,
+        maxOutputTokens: 500,
+      }
+    });
+
+    // Use generateContent for better handling of long prompts
+    const result = await model.generateContent(fullPrompt);
+    const response = result.response;
+    const text = response.text();
+
+    const finalResponse = text || (language === 'TR'
+      ? 'Üzgünüm, bir yanıt oluşturamadım.'
+      : 'Sorry, I could not generate a response.');
+
+    // Add AI response to history
     history.push({
       role: 'assistant',
       content: finalResponse
@@ -375,7 +381,7 @@ async function generateAIResponseWithTools(business, phoneNumber, userMessage, c
       console.error('⚠️ Failed to save WhatsApp chat log:', logError.message);
     }
 
-    console.log(`🤖 AI Response for ${business.name}:`, finalResponse);
+    console.log(`🤖 [WhatsApp] Gemini Response for ${business.name}:`, finalResponse);
     return finalResponse;
 
   } catch (error) {
@@ -384,95 +390,20 @@ async function generateAIResponseWithTools(business, phoneNumber, userMessage, c
   }
 }
 
-/**
- * Process messages with recursive tool calling loop
- */
-async function processWithToolLoop(client, messages, tools, business, context, model) {
-  let iteration = 0;
-
-  while (iteration < MAX_TOOL_ITERATIONS) {
-    // Call OpenAI
-    const completionParams = {
-      model: model,
-      messages: messages,
-      temperature: 0.7,
-      max_tokens: 500
-    };
-
-    // Add tools if available
-    if (tools && tools.length > 0) {
-      completionParams.tools = tools;
-      completionParams.tool_choice = 'auto';
-    }
-
-    const completion = await client.chat.completions.create(completionParams);
-    const responseMessage = completion.choices[0].message;
-
-    // Check if AI wants to call tools
-    if (!responseMessage.tool_calls || responseMessage.tool_calls.length === 0) {
-      // No tool calls - return the text response
-      return responseMessage.content || getErrorMessage(business.language);
-    }
-
-    console.log(`🔧 Tool calls detected (iteration ${iteration + 1}):`,
-      responseMessage.tool_calls.map(tc => tc.function.name));
-
-    // Add assistant's response with tool_calls to messages
-    // NOTE: Do NOT use responseMessage.content here - it may contain debug text
-    // that we don't want to show to the user (e.g., "Checking order status...")
-    messages.push({
-      role: 'assistant',
-      content: null, // Explicitly null - we only want the final response after tools complete
-      tool_calls: responseMessage.tool_calls
-    });
-
-    // Execute each tool call
-    for (const toolCall of responseMessage.tool_calls) {
-      const functionName = toolCall.function.name;
-      let functionArgs;
-
-      try {
-        functionArgs = JSON.parse(toolCall.function.arguments);
-      } catch (e) {
-        console.error(`❌ Failed to parse tool arguments for ${functionName}:`, e);
-        functionArgs = {};
-      }
-
-      console.log(`🔧 [WhatsApp] Executing tool: ${functionName}`, JSON.stringify(functionArgs));
-
-      // Execute tool using central tool system
-      const result = await executeTool(functionName, functionArgs, business, context);
-
-      console.log(`🔧 [WhatsApp] Tool result for ${functionName}:`, result.success ? 'SUCCESS' : 'FAILED', result);
-
-      // Add tool result to messages
-      messages.push({
-        role: 'tool',
-        tool_call_id: toolCall.id,
-        content: JSON.stringify(result)
-      });
-    }
-
-    iteration++;
-  }
-
-  // Max iterations reached
-  console.warn(`⚠️ Max tool iterations (${MAX_TOOL_ITERATIONS}) reached`);
-  return business.language === 'TR'
-    ? 'İşleminiz tamamlanamadı. Lütfen tekrar deneyin.'
-    : 'Could not complete your request. Please try again.';
-}
-
 // ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
 
 /**
  * Build system prompt for the assistant
- * Now uses the central promptBuilder service
+ * Uses the central promptBuilder service
  */
 async function buildSystemPrompt(business, assistant) {
   const language = business?.language || 'TR';
+  const timezone = business?.timezone || 'Europe/Istanbul';
+
+  // Get current date/time for this business's timezone
+  const dateTimeContext = getDateTimeContext(timezone, language);
 
   // Get active tools list for prompt
   const activeToolsList = getPromptBuilderTools(business, business.integrations || []);
@@ -511,40 +442,21 @@ async function buildSystemPrompt(business, assistant) {
     console.log(`📚 [WhatsApp] Knowledge Base items added: ${knowledgeItems.length}`);
   }
 
-  // Tool calling instructions - CRITICAL: No debug info to user
-  const toolInstructions = language === 'TR'
-    ? `
-ARAÇ KULLANIMI KURALLARI:
-- Araç (function) çağırırken kullanıcıya HİÇBİR ŞEY söyleme
-- "Kontrol ediyorum", "Bir saniye", "Bakıyorum" gibi mesajlar GÖNDERME
-- Araç sonucu döndükten sonra SADECE sonucu kullanıcıya açıkla
-- Araç adı, function name veya teknik bilgi ASLA gösterme
-- Doğrudan sonucu paylaş, ara mesaj gönderme
+  // Add KB usage instruction if knowledge base exists
+  const kbInstruction = knowledgeContext ? (language === 'TR'
+    ? `\n\n## BİLGİ BANKASI KULLANIM KURALLARI
+Aşağıdaki bilgi bankası içeriğini AKTİF OLARAK KULLAN:
+- Fiyat sorulduğunda: KB'de varsa HEMEN SÖYLE
+- Özellik sorulduğunda: KB'de varsa SÖYLE
+- KB'de bilgi VARSA doğrudan paylaş`
+    : `\n\n## KNOWLEDGE BASE USAGE
+ACTIVELY USE the knowledge base content below when answering questions.`)
+    : '';
 
-Müşteri istekleri:
-- Randevu almak isterse: İsim, telefon, tarih/saat ve hizmet türünü sor, sonra create_appointment kullan
-- Sipariş durumu sormak isterse: Sipariş numarası veya telefon numarasını sor, sonra check_order_status kullan
-- Ürün stok sormak isterse: Ürün adını sor, sonra get_product_stock kullan
+  return `${dateTimeContext}
 
-Sonucu müşteriye samimi bir şekilde ilet.`
-    : `
-TOOL USAGE RULES:
-- When calling a tool (function), DO NOT send ANY message to the user
-- DO NOT send messages like "Checking", "One moment", "Let me look"
-- After the tool returns, ONLY explain the result to the user
-- NEVER show tool names, function names or technical information
-- Share the result directly, do not send intermediate messages
-
-Customer requests:
-- To book an appointment: Ask for name, phone, date/time, service type, then use create_appointment
-- To check order status: Ask for order number or phone, then use check_order_status
-- To check product stock: Ask for product name, then use get_product_stock
-
-Confirm the result with the customer in a friendly manner.`;
-
-  return `${basePrompt}
-${knowledgeContext}
-${toolInstructions}`;
+${basePrompt}${kbInstruction}
+${knowledgeContext}`;
 }
 
 /**

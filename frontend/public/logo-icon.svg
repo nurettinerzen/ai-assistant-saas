@@ -1,6 +1,0 @@
-<svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- T shape with arrow/movement element -->
-  <path d="M20 15 L80 15 L80 28 L58 28 L58 35 L70 47 L70 85 L50 65 L50 35 L38 28 L20 28 Z" fill="#1a2e3b"/>
-  <!-- Accent dot -->
-  <circle cx="78" cy="38" r="8" fill="#00b5b5"/>
-</svg>
