@@ -332,7 +332,7 @@ Asistan:`;
       model: 'gemini-2.5-flash',
       generationConfig: {
         temperature: 0.9,
-        maxOutputTokens: 500,
+        maxOutputTokens: 1500,
       }
     });
 
