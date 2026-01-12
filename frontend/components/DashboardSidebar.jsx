@@ -32,6 +32,7 @@ import {
   FileText,
   Building2,
 } from 'lucide-react';
+import { TelyxLogoCompact } from '@/components/TelyxLogo';
 import { cn } from '@/lib/utils';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -230,9 +231,9 @@ export function DashboardSidebar() {
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="p-6 border-b border-gray-200 dark:border-neutral-700">
-            <h1 className="text-2xl font-bold text-purple-600 dark:text-purple-400">Telyx</h1>
+            <TelyxLogoCompact />
             {!loading && (
-              <Badge 
+              <Badge
                 variant={plan === 'FREE' ? 'secondary' : 'default'}
                 className="mt-2"
               >

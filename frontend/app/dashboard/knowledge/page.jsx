@@ -60,7 +60,14 @@ export default function KnowledgeBasePage() {
         apiClient.knowledge.getFaqs(),
         apiClient.knowledge.getUrls(),
       ]);
-      setDocuments(docsRes.data.documents || []);
+      // Map backend fields to frontend expected fields
+      const mappedDocs = (docsRes.data.documents || []).map(doc => ({
+        ...doc,
+        name: doc.title || doc.name || '',
+        size: doc.fileSize || doc.size || 0,
+        uploadedAt: doc.createdAt || doc.uploadedAt
+      }));
+      setDocuments(mappedDocs);
       setFaqs(faqsRes.data.faqs || []);
       setUrls(urlsRes.data.urls || []);
     } catch (error) {

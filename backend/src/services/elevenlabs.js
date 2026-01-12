@@ -741,7 +741,8 @@ export function buildAgentConfig(assistant, business, tools = [], integrations =
       agent: {
         prompt: {
           // Use central promptBuilder for consistent system prompt across all channels
-          prompt: systemPrompt
+          prompt: systemPrompt,
+          llm: 'gemini-2.0-flash'         // Fast and good quality for Turkish
         },
         first_message: assistant.firstMessage || getDefaultFirstMessage(language, assistant.name),
         language: language
@@ -752,7 +753,7 @@ export function buildAgentConfig(assistant, business, tools = [], integrations =
         stability: 0.4,                   // 0.4 daha doğal tonlama için (0.5'ten düşük)
         similarity_boost: 0.6,            // 0.6 daha doğal konuşma için
         style: 0.15,                      // Hafif stil varyasyonu
-        speed: 1.0,
+        speed: 1.1,                       // Biraz daha hızlı konuşma
         optimize_streaming_latency: 3,
         text_normalization: 'elevenlabs'
       },

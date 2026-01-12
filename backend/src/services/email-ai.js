@@ -103,7 +103,7 @@ class EmailAIService {
 
       // Call OpenAI with tools
       const completionParams = {
-        model: 'gpt-4o-mini',
+        model: 'gpt-4o',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
@@ -145,7 +145,7 @@ class EmailAIService {
 
         // Get final response with tool results
         const secondResponse = await openai.chat.completions.create({
-          model: 'gpt-4o-mini',
+          model: 'gpt-4o',
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userPrompt },
@@ -522,7 +522,7 @@ Before responding, ask yourself:
 
       // Call OpenAI
       const response = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4o',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
