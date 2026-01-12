@@ -13,6 +13,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { toast, Toaster } from 'sonner';
 import { apiClient } from '@/lib/api';
+import { TelyxLogoFull } from '@/components/TelyxLogo';
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
@@ -134,9 +135,8 @@ export default function RegisterPage() {
       <div className="w-full max-w-2xl">
         {/* Logo/Header */}
         <div className="text-center mb-8 flex items-center justify-between max-w-2xl mx-auto">
-          <Link href="/" className="inline-block flex-1">
-            <h1 className="text-4xl font-bold gradient-text mb-2">TELYX.AI</h1>
-            <p className="text-gray-600 dark:text-neutral-400">{t('auth.signupSubtitle')}</p>
+          <Link href="/" className="inline-block">
+            <TelyxLogoFull className="h-10" />
           </Link>
           <LanguageSwitcher />
         </div>
