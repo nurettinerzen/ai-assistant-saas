@@ -37,7 +37,7 @@ export default function Navigation() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center">
-            <TelyxLogoFull className="h-8" />
+            <TelyxLogoFull width={260} height={75} />
           </Link>
 
           {/* Desktop Navigation */}
