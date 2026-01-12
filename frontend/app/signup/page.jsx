@@ -123,7 +123,7 @@ export default function SignupPage() {
       <div className="w-full max-w-md">
         <div className="flex justify-between items-center mb-8">
           <Link href="/">
-            <TelyxLogoFull className="h-10" />
+            <TelyxLogoFull width={200} height={60} />
           </Link>
           <LanguageSwitcher />
         </div>

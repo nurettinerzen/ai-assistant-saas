@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast, Toaster } from 'sonner';
 import { apiClient } from '@/lib/api';
+import { TelyxLogoFull } from '@/components/TelyxLogo';
 
 export default function EmailPendingPage() {
   const router = useRouter();
@@ -139,12 +140,7 @@ export default function EmailPendingPage() {
         <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-xl border border-neutral-200 dark:border-neutral-700 p-8">
           {/* Logo */}
           <div className="flex items-center justify-center mb-8">
-            <div className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-gradient-to-br from-primary-600 to-primary-700 rounded-lg flex items-center justify-center">
-                <Phone className="h-6 w-6 text-white" />
-              </div>
-              <span className="text-2xl font-bold text-neutral-900 dark:text-white">Telyx</span>
-            </div>
+            <TelyxLogoFull width={200} height={60} />
           </div>
 
           {/* Main Content */}

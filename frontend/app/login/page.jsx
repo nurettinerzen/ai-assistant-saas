@@ -144,7 +144,7 @@ export default function LoginPage() {
         <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-xl border border-neutral-200 dark:border-neutral-700 p-8">
           {/* Logo and Language Switcher */}
           <div className="flex items-center justify-between mb-8">
-            <TelyxLogoFull className="h-10" />
+            <TelyxLogoFull width={200} height={60} />
             <LanguageSwitcher />
           </div>
 

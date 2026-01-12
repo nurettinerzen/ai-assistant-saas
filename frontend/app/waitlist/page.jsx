@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Phone, Mail, User, Building2, Briefcase, MessageSquare, Loader2, CheckCircle } from 'lucide-react';
+import { Mail, User, Building2, Briefcase, MessageSquare, Loader2, CheckCircle } from 'lucide-react';
+import { TelyxLogoFull } from '@/components/TelyxLogo';
 import { apiClient } from '@/lib/api';
 import { toast, Toaster } from 'sonner';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
@@ -62,9 +63,8 @@ export default function WaitlistPage() {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
           <div className="flex justify-between items-center mb-8">
-            <Link href="/" className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
-              <Phone className="inline-block mr-2 h-8 w-8" />
-              TELYX.AI
+            <Link href="/">
+              <TelyxLogoFull width={200} height={60} />
             </Link>
             <LanguageSwitcher />
           </div>
@@ -96,9 +96,8 @@ export default function WaitlistPage() {
 
       <div className="w-full max-w-md">
         <div className="flex justify-between items-center mb-8">
-          <Link href="/" className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
-            <Phone className="inline-block mr-2 h-8 w-8" />
-            TELYX.AI
+          <Link href="/">
+            <TelyxLogoFull width={200} height={60} />
           </Link>
           <LanguageSwitcher />
         </div>
