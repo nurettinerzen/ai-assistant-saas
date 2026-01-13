@@ -21,7 +21,8 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import EmptyState from '@/components/EmptyState';
-import { Upload, FileText, MessageSquare, Link as LinkIcon, Plus, Trash2 } from 'lucide-react';
+import { Upload, FileText, MessageSquare, Link as LinkIcon, Plus, Trash2, Eye, Loader2, X } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { apiClient } from '@/lib/api';
 import { toast, Toaster } from 'sonner';
 import { formatDate, formatFileSize } from '@/lib/utils';
@@ -47,6 +48,11 @@ export default function KnowledgeBasePage() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [faqForm, setFaqForm] = useState({ question: '', answer: '', category: '' });
   const [urlForm, setUrlForm] = useState({ url: '', crawlDepth: 1 });
+
+  // Content viewer modal states
+  const [showContentModal, setShowContentModal] = useState(false);
+  const [contentModalData, setContentModalData] = useState(null);
+  const [loadingContent, setLoadingContent] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -217,6 +223,54 @@ export default function KnowledgeBasePage() {
     }
   };
 
+  // View document content
+  const handleViewDocument = async (doc) => {
+    setLoadingContent(true);
+    setShowContentModal(true);
+    setContentModalData({ type: 'document', title: doc.name || doc.title, content: null });
+
+    try {
+      const response = await apiClient.knowledge.getDocument(doc.id);
+      setContentModalData({
+        type: 'document',
+        title: response.data.document?.title || doc.name,
+        content: response.data.document?.content || t('dashboard.knowledgeBasePage.noContent')
+      });
+    } catch (error) {
+      setContentModalData({
+        type: 'document',
+        title: doc.name || doc.title,
+        content: t('dashboard.knowledgeBasePage.failedToLoadContent')
+      });
+    } finally {
+      setLoadingContent(false);
+    }
+  };
+
+  // View URL content
+  const handleViewUrl = async (urlItem) => {
+    setLoadingContent(true);
+    setShowContentModal(true);
+    setContentModalData({ type: 'url', title: urlItem.url, content: null });
+
+    try {
+      const response = await apiClient.knowledge.getUrl(urlItem.id);
+      setContentModalData({
+        type: 'url',
+        title: response.data.url?.title || urlItem.url,
+        content: response.data.url?.content || t('dashboard.knowledgeBasePage.noContent')
+      });
+    } catch (error) {
+      setContentModalData({
+        type: 'url',
+        title: urlItem.url,
+        content: t('dashboard.knowledgeBasePage.failedToLoadContent')
+      });
+    } finally {
+      setLoadingContent(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -259,12 +313,16 @@ export default function KnowledgeBasePage() {
                 </thead>
                 <tbody className="divide-y divide-neutral-200 dark:divide-neutral-700">
                   {documents.map((doc) => (
-                    <tr key={doc.id}>
+                    <tr key={doc.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50">
                       <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleViewDocument(doc)}
+                          className="flex items-center gap-2 text-left hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+                        >
                           <FileText className="h-4 w-4 text-neutral-400 dark:text-neutral-500" />
-                          <span className="text-sm font-medium text-neutral-900 dark:text-white">{doc.name}</span>
-                        </div>
+                          <span className="text-sm font-medium text-neutral-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400">{doc.name}</span>
+                          <Eye className="h-3 w-3 text-neutral-400 dark:text-neutral-500 opacity-0 group-hover:opacity-100" />
+                        </button>
                       </td>
                       <td className="px-6 py-4 text-sm text-neutral-600 dark:text-neutral-400">{doc.type}</td>
                       <td className="px-6 py-4 text-sm text-neutral-600 dark:text-neutral-400">{formatFileSize(doc.size)}</td>
@@ -381,18 +439,16 @@ export default function KnowledgeBasePage() {
                 </thead>
                 <tbody className="divide-y divide-neutral-200 dark:divide-neutral-700">
                   {urls.map((url) => (
-                    <tr key={url.id}>
+                    <tr key={url.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
                           <LinkIcon className="h-4 w-4 text-neutral-400 dark:text-neutral-500" />
-                          <a
-                            href={url.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm text-primary-600 dark:text-primary-400 hover:underline"
+                          <button
+                            onClick={() => handleViewUrl(url)}
+                            className="text-sm text-primary-600 dark:text-primary-400 hover:underline text-left"
                           >
                             {url.url}
-                          </a>
+                          </button>
                         </div>
                       </td>
                       <td className="px-6 py-4">
@@ -598,6 +654,45 @@ export default function KnowledgeBasePage() {
               {t('common.cancel')}
             </Button>
             <Button onClick={handleAddUrl}>{t('dashboard.knowledgeBasePage.addUrlSubmit')}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Content Viewer Modal */}
+      <Dialog open={showContentModal} onOpenChange={setShowContentModal}>
+        <DialogContent className="max-w-3xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {contentModalData?.type === 'document' ? (
+                <FileText className="h-5 w-5 text-primary-600" />
+              ) : (
+                <LinkIcon className="h-5 w-5 text-primary-600" />
+              )}
+              {contentModalData?.title || t('dashboard.knowledgeBasePage.contentViewer')}
+            </DialogTitle>
+            <DialogDescription>
+              {contentModalData?.type === 'document'
+                ? t('dashboard.knowledgeBasePage.documentContentDesc')
+                : t('dashboard.knowledgeBasePage.urlContentDesc')}
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="h-[50vh] mt-4">
+            {loadingContent ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+              </div>
+            ) : (
+              <div className="bg-neutral-50 dark:bg-neutral-800 rounded-lg p-4">
+                <pre className="whitespace-pre-wrap text-sm text-neutral-700 dark:text-neutral-300 font-mono">
+                  {contentModalData?.content || t('dashboard.knowledgeBasePage.noContent')}
+                </pre>
+              </div>
+            )}
+          </ScrollArea>
+          <div className="flex justify-end pt-4 border-t">
+            <Button variant="outline" onClick={() => setShowContentModal(false)}>
+              {t('common.close')}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

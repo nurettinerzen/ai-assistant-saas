@@ -12,13 +12,6 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import EmptyState from '@/components/EmptyState';
 import {
@@ -43,12 +36,22 @@ import {
   Wrench,
   Calendar,
   Package,
-  HelpCircle
+  HelpCircle,
+  FileText,
+  ArrowLeft,
+  MoreVertical,
+  Clock
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useLanguage } from '@/contexts/LanguageContext';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 // Data type options for inbound calls
 const DATA_TYPE_OPTIONS = {
@@ -80,22 +83,13 @@ const DATA_TYPE_OPTIONS = {
     icon: Package,
     color: 'bg-purple-100 text-purple-600 dark:bg-purple-900 dark:text-purple-400'
   },
-  other: {
+  custom: {
     tr: 'Diğer',
     en: 'Other',
     description: { tr: 'Özel müşteri verileri', en: 'Custom customer data' },
     icon: HelpCircle,
     color: 'bg-neutral-100 text-neutral-600 dark:bg-neutral-900 dark:text-neutral-400'
   }
-};
-
-// Format money for display
-const formatMoney = (value) => {
-  if (value === null || value === undefined) return '-';
-  return new Intl.NumberFormat('tr-TR', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }).format(value) + ' TL';
 };
 
 // Format date for display
@@ -116,53 +110,56 @@ const formatDateDisplay = (dateValue, locale = 'tr') => {
 
 export default function CustomerDataPage() {
   const { t, locale } = useLanguage();
-  const [customerData, setCustomerData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [pagination, setPagination] = useState({
+
+  // View mode: 'files' or 'records'
+  const [viewMode, setViewMode] = useState('files');
+  const [selectedFile, setSelectedFile] = useState(null);
+
+  // Files state
+  const [files, setFiles] = useState([]);
+  const [loadingFiles, setLoadingFiles] = useState(true);
+
+  // Records state (when viewing a file)
+  const [records, setRecords] = useState([]);
+  const [loadingRecords, setLoadingRecords] = useState(false);
+  const [recordsPagination, setRecordsPagination] = useState({
     page: 1,
-    limit: 20,
+    limit: 50,
     total: 0,
     totalPages: 0
   });
 
-  // Search and filter
+  // Search
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
-  // Selection
-  const [selectedIds, setSelectedIds] = useState([]);
-
   // Modals
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showDetailModal, setShowDetailModal] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-
-  // Current customer for edit/view
-  const [currentCustomer, setCurrentCustomer] = useState(null);
+  const [showDeleteFileModal, setShowDeleteFileModal] = useState(false);
+  const [showRecordDetailModal, setShowRecordDetailModal] = useState(false);
+  const [fileToDelete, setFileToDelete] = useState(null);
+  const [currentRecord, setCurrentRecord] = useState(null);
 
   // Upload state
   const [uploadFile, setUploadFile] = useState(null);
   const [uploadPreview, setUploadPreview] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [importResult, setImportResult] = useState(null);
-  const [uploadStep, setUploadStep] = useState(1); // 1: Select type, 2: Upload file, 3: Preview, 4: Result
+  const [uploadStep, setUploadStep] = useState(1);
   const [selectedDataType, setSelectedDataType] = useState('');
 
-  // Form state
-  const [formData, setFormData] = useState({
-    companyName: '',
-    contactName: '',
-    phone: '',
-    email: '',
-    vkn: '',
-    tcNo: '',
-    notes: '',
-    customFields: {}
-  });
-  const [saving, setSaving] = useState(false);
-
   const fileInputRef = useRef(null);
+
+  // Records view state (for bulk operations, edit, add)
+  const [selectedRecords, setSelectedRecords] = useState([]);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [addFormData, setAddFormData] = useState({});
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Inline editing state
+  const [editingCell, setEditingCell] = useState(null); // {recordId, columnName}
+  const [editingValue, setEditingValue] = useState('');
 
   // Debounce search
   useEffect(() => {
@@ -172,44 +169,115 @@ export default function CustomerDataPage() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Load data when search or page changes
+  // Load files on mount
   useEffect(() => {
-    loadData();
-  }, [debouncedSearch, pagination.page]);
+    loadFiles();
+  }, []);
 
-  const loadData = async () => {
-    setLoading(true);
+  // Load records when file is selected or search changes
+  useEffect(() => {
+    if (viewMode === 'records' && selectedFile) {
+      loadRecords();
+    }
+  }, [selectedFile, debouncedSearch, recordsPagination.page]);
+
+  const loadFiles = async () => {
+    setLoadingFiles(true);
     try {
-      const res = await apiClient.customerData.getAll({
-        page: pagination.page,
-        limit: pagination.limit,
+      const res = await apiClient.customerData.getFiles();
+      setFiles(res.data.files || []);
+    } catch (error) {
+      console.error('Error loading files:', error);
+      toast.error(locale === 'tr' ? 'Dosyalar yüklenirken hata oluştu' : 'Failed to load files');
+    } finally {
+      setLoadingFiles(false);
+    }
+  };
+
+  const loadRecords = async () => {
+    if (!selectedFile) return;
+
+    setLoadingRecords(true);
+    try {
+      const res = await apiClient.customerData.getFile(selectedFile.id, {
+        page: recordsPagination.page,
+        limit: recordsPagination.limit,
         search: debouncedSearch || undefined
       });
-      setCustomerData(res.data.customerData || []);
-      setPagination(prev => ({
+      setRecords(res.data.records || []);
+      setRecordsPagination(prev => ({
         ...prev,
         ...res.data.pagination
       }));
     } catch (error) {
-      console.error('Error loading customer data:', error);
-      toast.error(locale === 'tr' ? 'Veriler yüklenirken hata oluştu' : 'Failed to load data');
+      console.error('Error loading records:', error);
+      toast.error(locale === 'tr' ? 'Kayıtlar yüklenirken hata oluştu' : 'Failed to load records');
     } finally {
-      setLoading(false);
+      setLoadingRecords(false);
     }
   };
 
-  // Download template
-  const handleDownloadTemplate = async (type = 'accounting') => {
+  // Open file to view records
+  const openFile = (file) => {
+    setSelectedFile(file);
+    setViewMode('records');
+    setSearchQuery('');
+    setDebouncedSearch('');
+    setRecordsPagination(prev => ({ ...prev, page: 1 }));
+  };
+
+  // Go back to file list
+  const goBackToFiles = () => {
+    setViewMode('files');
+    setSelectedFile(null);
+    setRecords([]);
+    setSearchQuery('');
+    setDebouncedSearch('');
+  };
+
+  // Delete file
+  const handleDeleteFile = async () => {
+    if (!fileToDelete) return;
+
     try {
-      const res = await apiClient.customerData.downloadTemplate();
-      const url = window.URL.createObjectURL(new Blob([res.data]));
+      await apiClient.customerData.deleteFile(fileToDelete.id);
+      toast.success(locale === 'tr' ? 'Dosya silindi' : 'File deleted');
+      setShowDeleteFileModal(false);
+      setFileToDelete(null);
+      loadFiles();
+    } catch (error) {
+      console.error('Error deleting file:', error);
+      toast.error(locale === 'tr' ? 'Silme başarısız' : 'Delete failed');
+    }
+  };
+
+  // Download template based on selected data type
+  const handleDownloadTemplate = async () => {
+    try {
+      const res = await apiClient.customerData.downloadTemplate(selectedDataType || 'custom');
+      const blob = new Blob([res.data], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
+      link.style.display = 'none';
       link.href = url;
-      link.setAttribute('download', 'musteri-verileri-sablon.xlsx');
+      // Use data type specific filename
+      const fileNames = {
+        accounting: 'muhasebe-sablon.xlsx',
+        support: 'ariza-takip-sablon.xlsx',
+        appointment: 'randevu-sablon.xlsx',
+        order: 'siparis-sablon.xlsx',
+        custom: 'musteri-verileri-sablon.xlsx'
+      };
+      link.download = fileNames[selectedDataType] || 'musteri-verileri-sablon.xlsx';
       document.body.appendChild(link);
       link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+      // Clean up after a delay to ensure download starts
+      setTimeout(() => {
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }, 100);
       toast.success(locale === 'tr' ? 'Şablon indirildi' : 'Template downloaded');
     } catch (error) {
       console.error('Error downloading template:', error);
@@ -260,11 +328,12 @@ export default function CustomerDataPage() {
     try {
       const formData = new FormData();
       formData.append('file', uploadFile);
+      formData.append('dataType', selectedDataType);
 
       const res = await apiClient.customerData.importFile(formData);
       setImportResult(res.data.results);
       setUploadStep(4);
-      loadData(); // Reload list
+      loadFiles();
     } catch (error) {
       console.error('Error importing file:', error);
       toast.error(error.response?.data?.error || (locale === 'tr' ? 'İçe aktarma başarısız' : 'Import failed'));
@@ -286,198 +355,771 @@ export default function CustomerDataPage() {
     }
   };
 
-  // Open create/edit modal
-  const openCreateModal = (customer = null) => {
-    if (customer) {
-      setFormData({
-        companyName: customer.companyName || '',
-        contactName: customer.contactName || '',
-        phone: customer.phone || '',
-        email: customer.email || '',
-        vkn: customer.vkn || '',
-        tcNo: customer.tcNo || '',
-        notes: customer.notes || '',
-        customFields: customer.customFields || {}
-      });
-      setCurrentCustomer(customer);
-    } else {
-      setFormData({
-        companyName: '',
-        contactName: '',
-        phone: '',
-        email: '',
-        vkn: '',
-        tcNo: '',
-        notes: '',
-        customFields: {}
-      });
-      setCurrentCustomer(null);
-    }
-    setShowCreateModal(true);
-  };
-
-  // Save customer
-  const handleSave = async () => {
-    if (!formData.companyName || !formData.phone) {
-      toast.error(locale === 'tr' ? 'İşletme adı ve telefon zorunludur' : 'Company name and phone are required');
-      return;
-    }
-
-    setSaving(true);
-    try {
-      if (currentCustomer) {
-        await apiClient.customerData.update(currentCustomer.id, formData);
-        toast.success(locale === 'tr' ? 'Müşteri güncellendi' : 'Customer updated');
-      } else {
-        await apiClient.customerData.create(formData);
-        toast.success(locale === 'tr' ? 'Müşteri eklendi' : 'Customer added');
-      }
-      setShowCreateModal(false);
-      loadData();
-    } catch (error) {
-      console.error('Error saving customer:', error);
-      toast.error(error.response?.data?.error || error.response?.data?.errorTR || (locale === 'tr' ? 'Kayıt başarısız' : 'Save failed'));
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // Delete customer(s)
-  const handleDelete = async () => {
-    if (selectedIds.length === 0 && !currentCustomer) return;
-
-    const idsToDelete = selectedIds.length > 0 ? selectedIds : [currentCustomer.id];
-
-    try {
-      if (idsToDelete.length === 1) {
-        await apiClient.customerData.delete(idsToDelete[0]);
-      } else {
-        await apiClient.customerData.bulkDelete(idsToDelete);
-      }
-      toast.success(locale === 'tr'
-        ? `${idsToDelete.length} müşteri silindi`
-        : `${idsToDelete.length} customer(s) deleted`
-      );
-      setSelectedIds([]);
-      setCurrentCustomer(null);
-      setShowDeleteModal(false);
-      loadData();
-    } catch (error) {
-      console.error('Error deleting:', error);
-      toast.error(locale === 'tr' ? 'Silme başarısız' : 'Delete failed');
-    }
-  };
-
-  // View customer detail
-  const openDetailModal = (customer) => {
-    setCurrentCustomer(customer);
-    setShowDetailModal(true);
-  };
-
-  // Toggle selection
-  const toggleSelect = (id) => {
-    setSelectedIds(prev =>
-      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
-    );
-  };
-
-  // Select all
-  const toggleSelectAll = () => {
-    if (selectedIds.length === customerData.length) {
-      setSelectedIds([]);
-    } else {
-      setSelectedIds(customerData.map(c => c.id));
-    }
+  // Get data type info
+  const getDataTypeInfo = (dataType) => {
+    return DATA_TYPE_OPTIONS[dataType] || DATA_TYPE_OPTIONS.custom;
   };
 
   // Pagination
   const goToPage = (page) => {
-    setPagination(prev => ({ ...prev, page }));
+    setRecordsPagination(prev => ({ ...prev, page }));
+  };
+
+  // ============================================================
+  // FILE LIST VIEW
+  // ============================================================
+  if (viewMode === 'files') {
+    return (
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">
+              {locale === 'tr' ? 'Gelen Arama' : 'Inbound Calls'}
+            </h1>
+            <p className="text-neutral-600 dark:text-neutral-400 mt-1">
+              {locale === 'tr'
+                ? 'Gelen aramalarda müşteri telefon numarasına göre eşleşen veriler'
+                : 'Data matched by customer phone number for inbound calls'}
+            </p>
+          </div>
+
+          <Button onClick={() => setShowUploadModal(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            {locale === 'tr' ? 'Yeni Veri Yükle' : 'Upload New Data'}
+          </Button>
+        </div>
+
+        {/* Info Box */}
+        <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
+          <div className="flex gap-3">
+            <Phone className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-medium text-blue-900 dark:text-blue-100">
+                {locale === 'tr' ? 'Telefon Numarası Eşleştirme' : 'Phone Number Matching'}
+              </p>
+              <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                {locale === 'tr'
+                  ? 'Gelen aramalarda arayan kişinin telefon numarası bu veritabanı ile eşleştirilir. Eşleşen müşterinin bilgileri asistana iletilir.'
+                  : 'Caller\'s phone number is matched against this database during inbound calls. Matched customer info is sent to the assistant.'}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* File List */}
+        {loadingFiles ? (
+          <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-12 flex items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+          </div>
+        ) : files.length === 0 ? (
+          <EmptyState
+            icon={FileSpreadsheet}
+            title={locale === 'tr' ? 'Henüz dosya yüklenmemiş' : 'No files uploaded yet'}
+            description={locale === 'tr'
+              ? 'Excel veya CSV dosyası yükleyerek müşteri verilerinizi ekleyin'
+              : 'Upload an Excel or CSV file to add your customer data'}
+            action={
+              <Button onClick={() => setShowUploadModal(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                {locale === 'tr' ? 'Dosya Yükle' : 'Upload File'}
+              </Button>
+            }
+          />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {files.map((file) => {
+              const typeInfo = getDataTypeInfo(file.dataType);
+              const TypeIcon = typeInfo.icon;
+
+              return (
+                <div
+                  key={file.id}
+                  className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-4 hover:border-primary-300 dark:hover:border-primary-700 transition-colors cursor-pointer group"
+                  onClick={() => openFile(file)}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className={`p-2 rounded-lg ${typeInfo.color}`}>
+                      <TypeIcon className="h-5 w-5" />
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                        <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          className="text-red-600"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setFileToDelete(file);
+                            setShowDeleteFileModal(true);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          {locale === 'tr' ? 'Sil' : 'Delete'}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+
+                  <div className="mt-3">
+                    <h3 className="font-medium text-neutral-900 dark:text-white truncate">
+                      {file.fileName}
+                    </h3>
+                    <p className="text-sm text-neutral-500 mt-1">
+                      {typeInfo[locale]}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-4 mt-4 text-sm text-neutral-500">
+                    <div className="flex items-center gap-1">
+                      <Users className="h-4 w-4" />
+                      <span>{file.recordCount} {locale === 'tr' ? 'kayıt' : 'records'}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Clock className="h-4 w-4" />
+                      <span>{formatDateDisplay(file.createdAt, locale)}</span>
+                    </div>
+                  </div>
+
+                  {file.status === 'PROCESSING' && (
+                    <Badge variant="secondary" className="mt-3">
+                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                      {locale === 'tr' ? 'İşleniyor' : 'Processing'}
+                    </Badge>
+                  )}
+                  {file.status === 'FAILED' && (
+                    <Badge variant="destructive" className="mt-3">
+                      <XCircle className="h-3 w-3 mr-1" />
+                      {locale === 'tr' ? 'Başarısız' : 'Failed'}
+                    </Badge>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Upload Modal */}
+        <Dialog open={showUploadModal} onOpenChange={(open) => !open && resetUploadModal()}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <FileSpreadsheet className="h-5 w-5 text-primary-600" />
+                {locale === 'tr' ? 'Müşteri Verisi Yükle' : 'Upload Customer Data'}
+              </DialogTitle>
+              <DialogDescription>
+                {uploadStep === 1 && (locale === 'tr' ? 'Veri tipini seçin' : 'Select data type')}
+                {uploadStep === 2 && (locale === 'tr' ? 'Dosya yükleyin' : 'Upload file')}
+                {uploadStep === 3 && (locale === 'tr' ? 'Verileri önizleyin' : 'Preview data')}
+                {uploadStep === 4 && (locale === 'tr' ? 'İçe aktarma sonucu' : 'Import result')}
+              </DialogDescription>
+            </DialogHeader>
+
+            {/* Progress Steps */}
+            <div className="flex items-center justify-center gap-2 py-4">
+              {[1, 2, 3, 4].map((step) => (
+                <React.Fragment key={step}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
+                    uploadStep >= step
+                      ? 'bg-primary-600 text-white'
+                      : 'bg-neutral-200 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400'
+                  }`}>
+                    {step}
+                  </div>
+                  {step < 4 && (
+                    <div className={`w-12 h-1 rounded-full transition-colors ${
+                      uploadStep > step
+                        ? 'bg-primary-600'
+                        : 'bg-neutral-200 dark:bg-neutral-700'
+                    }`} />
+                  )}
+                </React.Fragment>
+              ))}
+            </div>
+
+            {/* Step 1: Select Data Type */}
+            {uploadStep === 1 && (
+              <div className="space-y-4 py-4">
+                <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                  {locale === 'tr'
+                    ? 'Hangi tür müşteri verisi yüklemek istiyorsunuz?'
+                    : 'What type of customer data do you want to upload?'}
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {Object.entries(DATA_TYPE_OPTIONS).map(([key, option]) => {
+                    const Icon = option.icon;
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => setSelectedDataType(key)}
+                        className={`p-4 border-2 rounded-xl text-left transition-colors ${
+                          selectedDataType === key
+                            ? 'border-primary-500 bg-primary-50 dark:bg-primary-950'
+                            : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`p-2 rounded-lg ${option.color}`}>
+                            <Icon className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-neutral-900 dark:text-white">
+                              {option[locale]}
+                            </p>
+                            <p className="text-sm text-neutral-500">
+                              {option.description[locale]}
+                            </p>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Step 2: Upload File */}
+            {uploadStep === 2 && (
+              <div className="space-y-6 py-4">
+                {/* Template Download */}
+                <div className="bg-neutral-50 dark:bg-neutral-800 rounded-lg p-4 flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-neutral-900 dark:text-white">
+                      {locale === 'tr' ? 'Örnek Şablon' : 'Sample Template'}
+                    </p>
+                    <p className="text-sm text-neutral-500">
+                      {locale === 'tr' ? 'Doğru format için şablonu indirin' : 'Download template for correct format'}
+                    </p>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={handleDownloadTemplate}>
+                    <Download className="h-4 w-4 mr-2" />
+                    {locale === 'tr' ? 'İndir' : 'Download'}
+                  </Button>
+                </div>
+
+                {/* File Upload Area */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".csv,.xlsx,.xls"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors
+                    ${uploadFile ? 'border-primary-300 bg-primary-50 dark:bg-primary-950' : 'border-neutral-300 hover:border-primary-400 dark:border-neutral-600'}
+                  `}
+                >
+                  {uploading ? (
+                    <div className="flex flex-col items-center">
+                      <Loader2 className="h-12 w-12 text-primary-600 animate-spin mb-3" />
+                      <p className="text-neutral-600 dark:text-neutral-400">
+                        {locale === 'tr' ? 'Dosya okunuyor...' : 'Reading file...'}
+                      </p>
+                    </div>
+                  ) : uploadFile ? (
+                    <div className="flex flex-col items-center">
+                      <FileSpreadsheet className="h-12 w-12 text-primary-600 mb-3" />
+                      <p className="font-medium text-neutral-900 dark:text-white">{uploadFile.name}</p>
+                      <p className="text-sm text-neutral-500 mb-2">
+                        {(uploadFile.size / 1024).toFixed(1)} KB
+                      </p>
+                      <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); setUploadFile(null); }}>
+                        <X className="h-4 w-4 mr-1" />
+                        {locale === 'tr' ? 'Kaldır' : 'Remove'}
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center">
+                      <Upload className="h-12 w-12 text-neutral-400 mb-3" />
+                      <p className="font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+                        {locale === 'tr' ? 'Dosya yüklemek için tıklayın' : 'Click to upload file'}
+                      </p>
+                      <p className="text-sm text-neutral-500">
+                        CSV, XLS, XLSX (max 5MB)
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Step 3: Preview */}
+            {uploadStep === 3 && uploadPreview && (
+              <div className="space-y-4 py-4">
+                <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg flex items-center gap-2">
+                  <CheckCircle2 className="w-5 h-5 text-green-600" />
+                  <span className="text-green-700 dark:text-green-300">
+                    {locale === 'tr'
+                      ? `${uploadPreview.totalRows} satır bulundu`
+                      : `${uploadPreview.totalRows} rows found`}
+                  </span>
+                </div>
+
+                <div className="max-h-64 overflow-auto border dark:border-neutral-700 rounded-lg">
+                  <table className="w-full text-sm">
+                    <thead className="bg-neutral-50 dark:bg-neutral-800 sticky top-0">
+                      <tr>
+                        {uploadPreview.columns.slice(0, 6).map((col, i) => (
+                          <th key={i} className="px-3 py-2 text-left font-medium text-neutral-600 dark:text-neutral-300 truncate max-w-[120px]">
+                            {col}
+                          </th>
+                        ))}
+                        {uploadPreview.columns.length > 6 && (
+                          <th className="px-3 py-2 text-left font-medium text-neutral-400">
+                            +{uploadPreview.columns.length - 6}
+                          </th>
+                        )}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-neutral-200 dark:divide-neutral-700">
+                      {uploadPreview.preview.map((row, i) => (
+                        <tr key={i}>
+                          {uploadPreview.columns.slice(0, 6).map((col, j) => (
+                            <td key={j} className="px-3 py-2 text-neutral-700 dark:text-neutral-300 truncate max-w-[120px]">
+                              {String(row[col] || '').substring(0, 20)}
+                            </td>
+                          ))}
+                          {uploadPreview.columns.length > 6 && (
+                            <td className="px-3 py-2 text-neutral-400">...</td>
+                          )}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Phone Matching Info */}
+                <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+                  <div className="flex gap-2">
+                    <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                    <p className="text-sm text-amber-800 dark:text-amber-200">
+                      {locale === 'tr'
+                        ? 'Telefon numarası kolonu otomatik olarak algılanacaktır. Gelen aramalarda bu numara ile eşleştirme yapılacak.'
+                        : 'Phone number column will be auto-detected. Inbound calls will be matched against these numbers.'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Step 4: Result */}
+            {uploadStep === 4 && importResult && (
+              <div className="space-y-4 py-4">
+                {importResult.success > 0 && (
+                  <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg flex items-center gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-green-600" />
+                    <span className="text-green-700 dark:text-green-300">
+                      {importResult.success} {locale === 'tr' ? 'yeni kayıt oluşturuldu' : 'new records created'}
+                    </span>
+                  </div>
+                )}
+                {importResult.updated > 0 && (
+                  <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-center gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-blue-600" />
+                    <span className="text-blue-700 dark:text-blue-300">
+                      {importResult.updated} {locale === 'tr' ? 'kayıt güncellendi' : 'records updated'}
+                    </span>
+                  </div>
+                )}
+                {importResult.failed > 0 && (
+                  <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <XCircle className="w-5 h-5 text-red-600" />
+                      <span className="text-red-700 dark:text-red-300">
+                        {importResult.failed} {locale === 'tr' ? 'kayıt başarısız' : 'records failed'}
+                      </span>
+                    </div>
+                    {importResult.errors && importResult.errors.length > 0 && (
+                      <ul className="mt-2 text-sm text-red-600 dark:text-red-400 list-disc list-inside max-h-32 overflow-auto">
+                        {importResult.errors.slice(0, 10).map((err, i) => (
+                          <li key={i}>
+                            {locale === 'tr' ? `Satır ${err.row}: ${err.error}` : `Row ${err.row}: ${err.error}`}
+                          </li>
+                        ))}
+                        {importResult.errors.length > 10 && (
+                          <li>...{locale === 'tr' ? `ve ${importResult.errors.length - 10} hata daha` : `and ${importResult.errors.length - 10} more errors`}</li>
+                        )}
+                      </ul>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Footer Buttons */}
+            <div className="flex justify-between pt-4 border-t">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (uploadStep === 1) {
+                    resetUploadModal();
+                  } else if (uploadStep === 4) {
+                    setUploadFile(null);
+                    setUploadPreview(null);
+                    setImportResult(null);
+                    setUploadStep(2);
+                  } else {
+                    setUploadStep(uploadStep - 1);
+                    if (uploadStep === 3) {
+                      setUploadFile(null);
+                      setUploadPreview(null);
+                    }
+                  }
+                }}
+              >
+                {uploadStep === 1
+                  ? (locale === 'tr' ? 'Kapat' : 'Close')
+                  : (locale === 'tr' ? 'Geri' : 'Back')
+                }
+              </Button>
+
+              {uploadStep === 1 && (
+                <Button
+                  onClick={() => setUploadStep(2)}
+                  disabled={!selectedDataType}
+                >
+                  {locale === 'tr' ? 'Devam' : 'Continue'}
+                </Button>
+              )}
+
+              {uploadStep === 2 && (
+                <Button disabled>
+                  {locale === 'tr' ? 'Dosya Yükleyin' : 'Upload File'}
+                </Button>
+              )}
+
+              {uploadStep === 3 && (
+                <Button onClick={handleImport} disabled={uploading}>
+                  {uploading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  {locale === 'tr' ? 'İçe Aktar' : 'Import'}
+                </Button>
+              )}
+
+              {uploadStep === 4 && (
+                <Button onClick={resetUploadModal}>
+                  {locale === 'tr' ? 'Tamam' : 'Done'}
+                </Button>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete File Confirmation Modal */}
+        <Dialog open={showDeleteFileModal} onOpenChange={setShowDeleteFileModal}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="text-red-600">
+                {locale === 'tr' ? 'Dosya Sil' : 'Delete File'}
+              </DialogTitle>
+              <DialogDescription>
+                {locale === 'tr'
+                  ? `"${fileToDelete?.fileName}" dosyası ve tüm kayıtları silinecek. Bu işlem geri alınamaz.`
+                  : `"${fileToDelete?.fileName}" and all its records will be deleted. This action cannot be undone.`}
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowDeleteFileModal(false)}>
+                {locale === 'tr' ? 'İptal' : 'Cancel'}
+              </Button>
+              <Button variant="destructive" onClick={handleDeleteFile}>
+                <Trash2 className="w-4 h-4 mr-2" />
+                {locale === 'tr' ? 'Sil' : 'Delete'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  }
+
+  // ============================================================
+  // RECORDS VIEW (when a file is selected)
+  // ============================================================
+  const typeInfo = selectedFile ? getDataTypeInfo(selectedFile.dataType) : null;
+  const fileColumns = selectedFile?.columns || [];
+
+  // Toggle single record selection
+  const toggleRecordSelection = (recordId) => {
+    setSelectedRecords(prev =>
+      prev.includes(recordId)
+        ? prev.filter(id => id !== recordId)
+        : [...prev, recordId]
+    );
+  };
+
+  // Toggle all records selection
+  const toggleAllRecords = () => {
+    if (selectedRecords.length === records.length) {
+      setSelectedRecords([]);
+    } else {
+      setSelectedRecords(records.map(r => r.id));
+    }
+  };
+
+  // Start inline editing
+  const startEditing = (record, columnName) => {
+    setEditingCell({ recordId: record.id, columnName });
+    setEditingValue(getRecordValue(record, columnName) === '-' ? '' : getRecordValue(record, columnName));
+  };
+
+  // Save inline edit
+  const saveInlineEdit = async (record, columnName) => {
+    if (!editingCell) return;
+
+    const newValue = editingValue.trim();
+    const oldValue = getRecordValue(record, columnName);
+
+    // If value hasn't changed, just cancel
+    if (newValue === oldValue || (newValue === '' && oldValue === '-')) {
+      setEditingCell(null);
+      setEditingValue('');
+      return;
+    }
+
+    try {
+      // Determine which field to update
+      const fieldMapping = {
+        'Müşteri Adı': 'companyName',
+        'İşletme/Müşteri Adı': 'companyName',
+        'Firma': 'companyName',
+        'İsim Soyisim': 'companyName',
+        'Yetkili': 'contactName',
+        'Telefon': 'phone',
+        'Telefon No': 'phone',
+        'Email': 'email',
+        'E-mail': 'email',
+        'VKN': 'vkn',
+        'TC No': 'tcNo',
+        'Notlar': 'notes'
+      };
+
+      const standardField = fieldMapping[columnName];
+      let updateData = {};
+
+      if (standardField) {
+        updateData[standardField] = newValue || null;
+      } else {
+        // Update in customFields
+        const customFields = { ...(record.customFields || {}) };
+        customFields[columnName] = newValue || null;
+        updateData.customFields = customFields;
+      }
+
+      await apiClient.customerData.update(record.id, updateData);
+      toast.success(locale === 'tr' ? 'Kaydedildi' : 'Saved');
+      loadRecords();
+    } catch (error) {
+      console.error('Error saving:', error);
+      toast.error(locale === 'tr' ? 'Kaydetme başarısız' : 'Save failed');
+    } finally {
+      setEditingCell(null);
+      setEditingValue('');
+    }
+  };
+
+  // Cancel inline edit
+  const cancelEditing = () => {
+    setEditingCell(null);
+    setEditingValue('');
+  };
+
+  // Delete single record
+  const handleDeleteRecord = async (recordId) => {
+    try {
+      await apiClient.customerData.delete(recordId);
+      toast.success(locale === 'tr' ? 'Kayıt silindi' : 'Record deleted');
+      loadRecords();
+    } catch (error) {
+      console.error('Error deleting record:', error);
+      toast.error(locale === 'tr' ? 'Silme başarısız' : 'Delete failed');
+    }
+  };
+
+  // Bulk delete selected records
+  const handleBulkDelete = async () => {
+    if (selectedRecords.length === 0) return;
+
+    try {
+      await apiClient.customerData.bulkDelete(selectedRecords);
+      toast.success(locale === 'tr' ? `${selectedRecords.length} kayıt silindi` : `${selectedRecords.length} records deleted`);
+      setSelectedRecords([]);
+      setShowDeleteConfirmModal(false);
+      loadRecords();
+    } catch (error) {
+      console.error('Error bulk deleting:', error);
+      toast.error(locale === 'tr' ? 'Silme başarısız' : 'Delete failed');
+    }
+  };
+
+  // Add new record manually
+  const handleAddRecord = async () => {
+    if (!addFormData.companyName || !addFormData.phone) {
+      toast.error(locale === 'tr' ? 'Firma adı ve telefon zorunludur' : 'Company name and phone are required');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await apiClient.customerData.create({
+        ...addFormData,
+        fileId: selectedFile?.id
+      });
+      toast.success(locale === 'tr' ? 'Kayıt eklendi' : 'Record added');
+      setShowAddModal(false);
+      setAddFormData({});
+      loadRecords();
+    } catch (error) {
+      console.error('Error adding record:', error);
+      const errorMsg = error.response?.data?.errorTR || error.response?.data?.error || (locale === 'tr' ? 'Ekleme başarısız' : 'Add failed');
+      toast.error(errorMsg);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Get value for a column from record
+  const getRecordValue = (record, columnName) => {
+    // First check customFields - this is where most imported data goes
+    if (record.customFields) {
+      // Direct match in customFields
+      if (record.customFields[columnName] !== undefined && record.customFields[columnName] !== null) {
+        const value = record.customFields[columnName];
+        // Format date values
+        if (typeof value === 'string' && value.includes('T') && value.includes('Z')) {
+          return formatDateDisplay(value, locale);
+        }
+        // Format currency values
+        if (typeof value === 'number') {
+          return value.toLocaleString(locale === 'tr' ? 'tr-TR' : 'en-US');
+        }
+        return String(value);
+      }
+    }
+
+    // Map common column names to record fields (for standard fields)
+    const fieldMapping = {
+      'İşletme/Müşteri Adı': 'companyName',
+      'Müşteri Adı': 'companyName',
+      'Firma': 'companyName',
+      'Şirket': 'companyName',
+      'İsim Soyisim': 'companyName',
+      'İsim': 'companyName',
+      'Ad Soyad': 'companyName',
+      'Yetkili': 'contactName',
+      'Telefon': 'phone',
+      'Telefon No': 'phone',
+      'Tel': 'phone',
+      'Numara': 'phone',
+      'Email': 'email',
+      'E-mail': 'email',
+      'E-posta': 'email',
+      'VKN': 'vkn',
+      'TC No': 'tcNo',
+      'Notlar': 'notes',
+      'Not': 'notes',
+      'Etiketler': 'tags'
+    };
+
+    const fieldName = fieldMapping[columnName];
+    if (fieldName) {
+      const value = record[fieldName];
+      if (fieldName === 'tags' && Array.isArray(value)) {
+        return value.join(', ');
+      }
+      if (value !== undefined && value !== null) {
+        return String(value);
+      }
+    }
+
+    // Direct field match on record
+    if (record[columnName] !== undefined && record[columnName] !== null) {
+      return String(record[columnName]);
+    }
+
+    return '-';
   };
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">
-            {locale === 'tr' ? 'Gelen Arama' : 'Inbound Calls'}
-          </h1>
+      {/* Header with Back Button */}
+      <div className="flex items-center gap-4">
+        <Button variant="ghost" size="sm" onClick={goBackToFiles}>
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          {locale === 'tr' ? 'Geri' : 'Back'}
+        </Button>
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            {typeInfo && (
+              <div className={`p-1.5 rounded-lg ${typeInfo.color}`}>
+                <typeInfo.icon className="h-4 w-4" />
+              </div>
+            )}
+            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">
+              {selectedFile?.fileName}
+            </h1>
+          </div>
           <p className="text-neutral-600 dark:text-neutral-400 mt-1">
-            {locale === 'tr'
-              ? 'Gelen aramalarda müşteri telefon numarasına göre eşleşen veriler'
-              : 'Data matched by customer phone number for inbound calls'}
+            {selectedFile?.recordCount} {locale === 'tr' ? 'kayıt' : 'records'} - {locale === 'tr' ? 'Yükleme' : 'Uploaded'}: {formatDateDisplay(selectedFile?.createdAt, locale)}
           </p>
         </div>
-
-        <Button onClick={() => setShowUploadModal(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          {locale === 'tr' ? 'Yeni Veri Ekle' : 'Add New Data'}
-        </Button>
       </div>
 
-      {/* Info Box */}
-      <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
-        <div className="flex gap-3">
-          <Phone className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="font-medium text-blue-900 dark:text-blue-100">
-              {locale === 'tr' ? 'Telefon Numarası Eşleştirme' : 'Phone Number Matching'}
-            </p>
-            <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-              {locale === 'tr'
-                ? 'Gelen aramalarda arayan kişinin telefon numarası bu veritabanı ile eşleştirilir. Eşleşen müşterinin bilgileri asistana iletilir.'
-                : 'Caller\'s phone number is matched against this database during inbound calls. Matched customer info is sent to the assistant.'}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Search and Bulk Actions */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="relative w-full sm:w-80">
+      {/* Search and Actions */}
+      <div className="flex items-center justify-between gap-4">
+        <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
           <Input
-            placeholder={locale === 'tr' ? 'İsim, telefon, VKN ile ara...' : 'Search by name, phone, VKN...'}
+            placeholder={locale === 'tr' ? 'Kayıtlarda ara...' : 'Search records...'}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
           />
         </div>
-
-        {selectedIds.length > 0 && (
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-neutral-500">
-              {selectedIds.length} {locale === 'tr' ? 'seçili' : 'selected'}
-            </span>
+        <div className="flex items-center gap-2">
+          {selectedRecords.length > 0 && (
             <Button
               variant="destructive"
               size="sm"
-              onClick={() => setShowDeleteModal(true)}
+              onClick={() => setShowDeleteConfirmModal(true)}
             >
-              <Trash2 className="w-4 h-4 mr-1" />
-              {locale === 'tr' ? 'Sil' : 'Delete'}
+              <Trash2 className="w-4 h-4 mr-2" />
+              {locale === 'tr' ? `${selectedRecords.length} Sil` : `Delete ${selectedRecords.length}`}
             </Button>
-          </div>
-        )}
+          )}
+          <Button
+            size="sm"
+            onClick={() => {
+              setAddFormData({});
+              setShowAddModal(true);
+            }}
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            {locale === 'tr' ? 'Manuel Ekle' : 'Add Manually'}
+          </Button>
+        </div>
       </div>
 
-      {/* Table */}
-      {loading && customerData.length === 0 ? (
+      {/* Records Table */}
+      {loadingRecords ? (
         <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-12 flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
         </div>
-      ) : customerData.length === 0 ? (
+      ) : records.length === 0 ? (
         <EmptyState
           icon={Users}
-          title={locale === 'tr' ? 'Henüz müşteri verisi yok' : 'No customer data yet'}
+          title={locale === 'tr' ? 'Kayıt bulunamadı' : 'No records found'}
           description={locale === 'tr'
-            ? 'Excel dosyası yükleyerek veya manuel olarak müşteri ekleyebilirsiniz'
-            : 'Upload an Excel file or add customers manually'}
+            ? 'Bu dosyada arama kriterlerine uyan kayıt yok'
+            : 'No records match your search criteria in this file'}
           action={
-            <Button onClick={() => setShowUploadModal(true)}>
+            <Button onClick={() => setShowAddModal(true)}>
               <Plus className="w-4 h-4 mr-2" />
-              {locale === 'tr' ? 'Veri Ekle' : 'Add Data'}
+              {locale === 'tr' ? 'Manuel Kayıt Ekle' : 'Add Record Manually'}
             </Button>
           }
         />
@@ -487,100 +1129,84 @@ export default function CustomerDataPage() {
             <table className="w-full">
               <thead className="bg-neutral-50 dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700">
                 <tr>
-                  <th className="px-4 py-3 text-left">
+                  {/* Checkbox column */}
+                  <th className="px-4 py-3 w-12">
                     <input
                       type="checkbox"
-                      checked={selectedIds.length === customerData.length && customerData.length > 0}
-                      onChange={toggleSelectAll}
-                      className="rounded border-neutral-300"
+                      checked={selectedRecords.length === records.length && records.length > 0}
+                      onChange={toggleAllRecords}
+                      className="w-4 h-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
                     />
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    {locale === 'tr' ? 'İşletme / Müşteri' : 'Company / Customer'}
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    {locale === 'tr' ? 'Telefon' : 'Phone'}
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    {locale === 'tr' ? 'SGK Borcu' : 'SSI Debt'}
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    {locale === 'tr' ? 'Vergi Borcu' : 'Tax Debt'}
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    {locale === 'tr' ? 'Son Güncelleme' : 'Last Updated'}
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                  {/* Dynamic columns from file */}
+                  {fileColumns.map((col, i) => (
+                    <th key={i} className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider whitespace-nowrap">
+                      {col.name}
+                    </th>
+                  ))}
+                  <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider w-24">
                     {locale === 'tr' ? 'İşlemler' : 'Actions'}
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-200 dark:divide-neutral-700">
-                {customerData.map((customer) => (
+                {records.map((record) => (
                   <tr
-                    key={customer.id}
-                    className="hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
+                    key={record.id}
+                    className={`hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors ${
+                      selectedRecords.includes(record.id) ? 'bg-primary-50 dark:bg-primary-900/20' : ''
+                    }`}
                   >
+                    {/* Checkbox */}
                     <td className="px-4 py-3">
                       <input
                         type="checkbox"
-                        checked={selectedIds.includes(customer.id)}
-                        onChange={() => toggleSelect(customer.id)}
-                        className="rounded border-neutral-300"
+                        checked={selectedRecords.includes(record.id)}
+                        onChange={() => toggleRecordSelection(record.id)}
+                        className="w-4 h-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
                       />
                     </td>
-                    <td className="px-4 py-3">
-                      <div>
-                        <p className="font-medium text-neutral-900 dark:text-white">
-                          {customer.companyName}
-                        </p>
-                        {customer.contactName && (
-                          <p className="text-sm text-neutral-500">
-                            {customer.contactName}
-                          </p>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-neutral-700 dark:text-neutral-300">
-                      {customer.phone}
-                    </td>
-                    <td className="px-4 py-3 text-neutral-700 dark:text-neutral-300">
-                      {formatMoney(customer.customFields?.sgkDebt)}
-                    </td>
-                    <td className="px-4 py-3 text-neutral-700 dark:text-neutral-300">
-                      {formatMoney(customer.customFields?.taxDebt)}
-                    </td>
-                    <td className="px-4 py-3 text-neutral-500 text-sm">
-                      {formatDateDisplay(customer.updatedAt, locale)}
-                    </td>
+                    {/* Dynamic column values - editable on double click */}
+                    {fileColumns.map((col, i) => {
+                      const isEditing = editingCell?.recordId === record.id && editingCell?.columnName === col.name;
+                      return (
+                        <td key={i} className="px-2 py-1">
+                          {isEditing ? (
+                            <input
+                              type="text"
+                              value={editingValue}
+                              onChange={(e) => setEditingValue(e.target.value)}
+                              onBlur={() => saveInlineEdit(record, col.name)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') saveInlineEdit(record, col.name);
+                                if (e.key === 'Escape') cancelEditing();
+                              }}
+                              autoFocus
+                              className="w-full px-2 py-1 text-sm border border-primary-500 rounded focus:outline-none focus:ring-1 focus:ring-primary-500 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white"
+                            />
+                          ) : (
+                            <div
+                              onDoubleClick={() => startEditing(record, col.name)}
+                              className="px-2 py-1 text-neutral-700 dark:text-neutral-300 max-w-[200px] truncate cursor-text hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded"
+                              title={locale === 'tr' ? 'Düzenlemek için çift tıkla' : 'Double-click to edit'}
+                            >
+                              {getRecordValue(record, col.name)}
+                            </div>
+                          )}
+                        </td>
+                      );
+                    })}
+                    {/* Actions - only delete */}
                     <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => openDetailModal(customer)}
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => openCreateModal(customer)}
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setCurrentCustomer(customer);
-                            setSelectedIds([]);
-                            setShowDeleteModal(true);
-                          }}
-                        >
-                          <Trash2 className="w-4 h-4 text-red-500" />
-                        </Button>
-                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteRecord(record.id)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        title={locale === 'tr' ? 'Sil' : 'Delete'}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </td>
                   </tr>
                 ))}
@@ -589,30 +1215,35 @@ export default function CustomerDataPage() {
           </div>
 
           {/* Pagination */}
-          {pagination.totalPages > 1 && (
+          {recordsPagination.totalPages > 1 && (
             <div className="flex items-center justify-between px-4 py-3 border-t border-neutral-200 dark:border-neutral-700">
               <p className="text-sm text-neutral-500">
-                {locale === 'tr'
-                  ? `Toplam ${pagination.total} kayıt`
-                  : `Total ${pagination.total} records`}
+                {selectedRecords.length > 0 ? (
+                  <span className="font-medium text-primary-600">
+                    {selectedRecords.length} {locale === 'tr' ? 'seçili' : 'selected'} -
+                  </span>
+                ) : null}
+                {' '}{locale === 'tr'
+                  ? `Toplam ${recordsPagination.total} kayıt`
+                  : `Total ${recordsPagination.total} records`}
               </p>
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={pagination.page <= 1}
-                  onClick={() => goToPage(pagination.page - 1)}
+                  disabled={recordsPagination.page <= 1}
+                  onClick={() => goToPage(recordsPagination.page - 1)}
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </Button>
                 <span className="text-sm text-neutral-700 dark:text-neutral-300">
-                  {pagination.page} / {pagination.totalPages}
+                  {recordsPagination.page} / {recordsPagination.totalPages}
                 </span>
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={pagination.page >= pagination.totalPages}
-                  onClick={() => goToPage(pagination.page + 1)}
+                  disabled={recordsPagination.page >= recordsPagination.totalPages}
+                  onClick={() => goToPage(recordsPagination.page + 1)}
                 >
                   <ChevronRight className="w-4 h-4" />
                 </Button>
@@ -622,573 +1253,117 @@ export default function CustomerDataPage() {
         </div>
       )}
 
-      {/* Upload Modal - Full Screen Style */}
-      <Dialog open={showUploadModal} onOpenChange={(open) => !open && resetUploadModal()}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      {/* Add Record Modal */}
+      <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5 text-primary-600" />
-              {locale === 'tr' ? 'Müşteri Verisi Ekle' : 'Add Customer Data'}
+              <Plus className="h-5 w-5" />
+              {locale === 'tr' ? 'Manuel Kayıt Ekle' : 'Add Record Manually'}
             </DialogTitle>
             <DialogDescription>
-              {uploadStep === 1 && (locale === 'tr' ? 'Veri tipini seçin' : 'Select data type')}
-              {uploadStep === 2 && (locale === 'tr' ? 'Dosya yükleyin' : 'Upload file')}
-              {uploadStep === 3 && (locale === 'tr' ? 'Verileri önizleyin' : 'Preview data')}
-              {uploadStep === 4 && (locale === 'tr' ? 'İçe aktarma sonucu' : 'Import result')}
+              {locale === 'tr' ? 'Yeni bir müşteri kaydı oluşturun' : 'Create a new customer record'}
             </DialogDescription>
           </DialogHeader>
 
-          {/* Progress Steps */}
-          <div className="flex items-center justify-center gap-2 py-4">
-            {[1, 2, 3, 4].map((step) => (
-              <React.Fragment key={step}>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
-                  uploadStep >= step
-                    ? 'bg-primary-600 text-white'
-                    : 'bg-neutral-200 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400'
-                }`}>
-                  {step}
-                </div>
-                {step < 4 && (
-                  <div className={`w-12 h-1 rounded-full transition-colors ${
-                    uploadStep > step
-                      ? 'bg-primary-600'
-                      : 'bg-neutral-200 dark:bg-neutral-700'
-                  }`} />
-                )}
-              </React.Fragment>
-            ))}
-          </div>
-
-          {/* Step 1: Select Data Type */}
-          {uploadStep === 1 && (
-            <div className="space-y-4 py-4">
-              <p className="text-sm text-neutral-600 dark:text-neutral-400">
-                {locale === 'tr'
-                  ? 'Hangi tür müşteri verisi yüklemek istiyorsunuz?'
-                  : 'What type of customer data do you want to upload?'}
-              </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {Object.entries(DATA_TYPE_OPTIONS).map(([key, option]) => {
-                  const Icon = option.icon;
-                  return (
-                    <button
-                      key={key}
-                      onClick={() => setSelectedDataType(key)}
-                      className={`p-4 border-2 rounded-xl text-left transition-colors ${
-                        selectedDataType === key
-                          ? 'border-primary-500 bg-primary-50 dark:bg-primary-950'
-                          : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-lg ${option.color}`}>
-                          <Icon className="h-5 w-5" />
-                        </div>
-                        <div>
-                          <p className="font-medium text-neutral-900 dark:text-white">
-                            {option[locale]}
-                          </p>
-                          <p className="text-sm text-neutral-500">
-                            {option.description[locale]}
-                          </p>
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Step 2: Upload File */}
-          {uploadStep === 2 && (
-            <div className="space-y-6 py-4">
-              {/* Template Download */}
-              {selectedDataType === 'accounting' && (
-                <div className="bg-neutral-50 dark:bg-neutral-800 rounded-lg p-4 flex items-center justify-between">
-                  <div>
-                    <p className="font-medium text-neutral-900 dark:text-white">
-                      {locale === 'tr' ? 'Muhasebe Şablonu' : 'Accounting Template'}
-                    </p>
-                    <p className="text-sm text-neutral-500">
-                      {locale === 'tr' ? 'SGK, vergi borcu ve beyanname bilgileri' : 'SSI, tax debt and declaration info'}
-                    </p>
-                  </div>
-                  <Button variant="outline" size="sm" onClick={() => handleDownloadTemplate('accounting')}>
-                    <Download className="h-4 w-4 mr-2" />
-                    {locale === 'tr' ? 'İndir' : 'Download'}
-                  </Button>
-                </div>
-              )}
-
-              {/* File Upload Area */}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".csv,.xlsx,.xls"
-                onChange={handleFileSelect}
-                className="hidden"
-              />
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors
-                  ${uploadFile ? 'border-primary-300 bg-primary-50 dark:bg-primary-950' : 'border-neutral-300 hover:border-primary-400 dark:border-neutral-600'}
-                `}
-              >
-                {uploading ? (
-                  <div className="flex flex-col items-center">
-                    <Loader2 className="h-12 w-12 text-primary-600 animate-spin mb-3" />
-                    <p className="text-neutral-600 dark:text-neutral-400">
-                      {locale === 'tr' ? 'Dosya okunuyor...' : 'Reading file...'}
-                    </p>
-                  </div>
-                ) : uploadFile ? (
-                  <div className="flex flex-col items-center">
-                    <FileSpreadsheet className="h-12 w-12 text-primary-600 mb-3" />
-                    <p className="font-medium text-neutral-900 dark:text-white">{uploadFile.name}</p>
-                    <p className="text-sm text-neutral-500 mb-2">
-                      {(uploadFile.size / 1024).toFixed(1)} KB
-                    </p>
-                    <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); setUploadFile(null); }}>
-                      <X className="h-4 w-4 mr-1" />
-                      {locale === 'tr' ? 'Kaldır' : 'Remove'}
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center">
-                    <Upload className="h-12 w-12 text-neutral-400 mb-3" />
-                    <p className="font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-                      {locale === 'tr' ? 'Dosya yüklemek için tıklayın' : 'Click to upload file'}
-                    </p>
-                    <p className="text-sm text-neutral-500">
-                      CSV, XLS, XLSX (max 5MB)
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Step 3: Preview */}
-          {uploadStep === 3 && uploadPreview && (
-            <div className="space-y-4 py-4">
-              <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg flex items-center gap-2">
-                <CheckCircle2 className="w-5 h-5 text-green-600" />
-                <span className="text-green-700 dark:text-green-300">
-                  {locale === 'tr'
-                    ? `${uploadPreview.totalRows} satır bulundu`
-                    : `${uploadPreview.totalRows} rows found`}
-                </span>
-              </div>
-
-              <div className="max-h-64 overflow-auto border dark:border-neutral-700 rounded-lg">
-                <table className="w-full text-sm">
-                  <thead className="bg-neutral-50 dark:bg-neutral-800 sticky top-0">
-                    <tr>
-                      {uploadPreview.columns.slice(0, 6).map((col, i) => (
-                        <th key={i} className="px-3 py-2 text-left font-medium text-neutral-600 dark:text-neutral-300 truncate max-w-[120px]">
-                          {col}
-                        </th>
-                      ))}
-                      {uploadPreview.columns.length > 6 && (
-                        <th className="px-3 py-2 text-left font-medium text-neutral-400">
-                          +{uploadPreview.columns.length - 6}
-                        </th>
-                      )}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-neutral-200 dark:divide-neutral-700">
-                    {uploadPreview.preview.map((row, i) => (
-                      <tr key={i}>
-                        {uploadPreview.columns.slice(0, 6).map((col, j) => (
-                          <td key={j} className="px-3 py-2 text-neutral-700 dark:text-neutral-300 truncate max-w-[120px]">
-                            {String(row[col] || '').substring(0, 20)}
-                          </td>
-                        ))}
-                        {uploadPreview.columns.length > 6 && (
-                          <td className="px-3 py-2 text-neutral-400">...</td>
-                        )}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Phone Matching Info */}
-              <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-                <div className="flex gap-2">
-                  <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
-                  <p className="text-sm text-amber-800 dark:text-amber-200">
-                    {locale === 'tr'
-                      ? 'Telefon numarası kolonu otomatik olarak algılanacaktır. Gelen aramalarda bu numara ile eşleşme yapılacak.'
-                      : 'Phone number column will be auto-detected. Inbound calls will be matched against these numbers.'}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Step 4: Result */}
-          {uploadStep === 4 && importResult && (
-            <div className="space-y-4 py-4">
-              {importResult.success > 0 && (
-                <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg flex items-center gap-2">
-                  <CheckCircle2 className="w-5 h-5 text-green-600" />
-                  <span className="text-green-700 dark:text-green-300">
-                    {importResult.success} {locale === 'tr' ? 'yeni kayıt oluşturuldu' : 'new records created'}
-                  </span>
-                </div>
-              )}
-              {importResult.updated > 0 && (
-                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-center gap-2">
-                  <CheckCircle2 className="w-5 h-5 text-blue-600" />
-                  <span className="text-blue-700 dark:text-blue-300">
-                    {importResult.updated} {locale === 'tr' ? 'kayıt güncellendi' : 'records updated'}
-                  </span>
-                </div>
-              )}
-              {importResult.failed > 0 && (
-                <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <XCircle className="w-5 h-5 text-red-600" />
-                    <span className="text-red-700 dark:text-red-300">
-                      {importResult.failed} {locale === 'tr' ? 'kayıt başarısız' : 'records failed'}
-                    </span>
-                  </div>
-                  {importResult.errors && importResult.errors.length > 0 && (
-                    <ul className="mt-2 text-sm text-red-600 dark:text-red-400 list-disc list-inside max-h-32 overflow-auto">
-                      {importResult.errors.slice(0, 10).map((err, i) => (
-                        <li key={i}>
-                          {locale === 'tr' ? `Satır ${err.row}: ${err.error}` : `Row ${err.row}: ${err.error}`}
-                        </li>
-                      ))}
-                      {importResult.errors.length > 10 && (
-                        <li>...{locale === 'tr' ? `ve ${importResult.errors.length - 10} hata daha` : `and ${importResult.errors.length - 10} more errors`}</li>
-                      )}
-                    </ul>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Footer Buttons */}
-          <div className="flex justify-between pt-4 border-t">
-            <Button
-              variant="outline"
-              onClick={() => {
-                if (uploadStep === 1) {
-                  resetUploadModal();
-                } else if (uploadStep === 4) {
-                  // Go back to step 2 to try again with a different file
-                  setUploadFile(null);
-                  setUploadPreview(null);
-                  setImportResult(null);
-                  setUploadStep(2);
-                } else {
-                  setUploadStep(uploadStep - 1);
-                  if (uploadStep === 3) {
-                    setUploadFile(null);
-                    setUploadPreview(null);
-                  }
-                }
-              }}
-            >
-              {uploadStep === 1
-                ? (locale === 'tr' ? 'Kapat' : 'Close')
-                : (locale === 'tr' ? 'Geri' : 'Back')
-              }
-            </Button>
-
-            {uploadStep === 1 && (
-              <Button
-                onClick={() => setUploadStep(2)}
-                disabled={!selectedDataType}
-              >
-                {locale === 'tr' ? 'Devam' : 'Continue'}
-              </Button>
-            )}
-
-            {uploadStep === 2 && (
-              <Button
-                onClick={() => {}}
-                disabled={!uploadFile || uploading}
-              >
-                {locale === 'tr' ? 'Dosya Yükleyin' : 'Upload File'}
-              </Button>
-            )}
-
-            {uploadStep === 3 && (
-              <Button onClick={handleImport} disabled={uploading}>
-                {uploading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                {locale === 'tr' ? 'İçe Aktar' : 'Import'}
-              </Button>
-            )}
-
-            {uploadStep === 4 && (
-              <Button onClick={resetUploadModal}>
-                {locale === 'tr' ? 'Tamam' : 'Done'}
-              </Button>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Create/Edit Modal */}
-      <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>
-              {currentCustomer
-                ? (locale === 'tr' ? 'Müşteri Düzenle' : 'Edit Customer')
-                : (locale === 'tr' ? 'Yeni Müşteri' : 'New Customer')}
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            <div>
-              <Label>{locale === 'tr' ? 'İşletme / Müşteri Adı *' : 'Company / Customer Name *'}</Label>
-              <Input
-                value={formData.companyName}
-                onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
-                placeholder={locale === 'tr' ? 'ABC Ticaret Ltd. Şti.' : 'ABC Company Ltd.'}
-                className="mt-1"
-              />
-            </div>
-
-            <div>
-              <Label>{locale === 'tr' ? 'Telefon *' : 'Phone *'}</Label>
-              <Input
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                placeholder="5321234567"
-                className="mt-1"
-              />
-              <p className="text-xs text-neutral-500 mt-1">
-                {locale === 'tr'
-                  ? 'Bu numara gelen aramalarda eşleştirme için kullanılır'
-                  : 'This number is used for matching inbound calls'}
-              </p>
-            </div>
-
-            <div>
-              <Label>{locale === 'tr' ? 'Yetkili Kişi' : 'Contact Person'}</Label>
-              <Input
-                value={formData.contactName}
-                onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
-                placeholder="Ahmet Yılmaz"
-                className="mt-1"
-              />
-            </div>
-
-            <div>
-              <Label>Email</Label>
-              <Input
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="info@sirket.com"
-                className="mt-1"
-              />
-            </div>
-
+          <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>{locale === 'tr' ? 'Firma Adı' : 'Company Name'} *</Label>
+                <Input
+                  value={addFormData.companyName || ''}
+                  onChange={(e) => setAddFormData({ ...addFormData, companyName: e.target.value })}
+                  placeholder={locale === 'tr' ? 'Firma veya müşteri adı' : 'Company or customer name'}
+                />
+              </div>
+              <div>
+                <Label>{locale === 'tr' ? 'Telefon' : 'Phone'} *</Label>
+                <Input
+                  value={addFormData.phone || ''}
+                  onChange={(e) => setAddFormData({ ...addFormData, phone: e.target.value })}
+                  placeholder="5XX XXX XX XX"
+                />
+              </div>
+              <div>
+                <Label>{locale === 'tr' ? 'Yetkili' : 'Contact'}</Label>
+                <Input
+                  value={addFormData.contactName || ''}
+                  onChange={(e) => setAddFormData({ ...addFormData, contactName: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label>Email</Label>
+                <Input
+                  type="email"
+                  value={addFormData.email || ''}
+                  onChange={(e) => setAddFormData({ ...addFormData, email: e.target.value })}
+                />
+              </div>
               <div>
                 <Label>VKN</Label>
                 <Input
-                  value={formData.vkn}
-                  onChange={(e) => setFormData({ ...formData, vkn: e.target.value })}
-                  placeholder="1234567890"
-                  className="mt-1"
+                  value={addFormData.vkn || ''}
+                  onChange={(e) => setAddFormData({ ...addFormData, vkn: e.target.value })}
                 />
               </div>
               <div>
                 <Label>TC No</Label>
                 <Input
-                  value={formData.tcNo}
-                  onChange={(e) => setFormData({ ...formData, tcNo: e.target.value })}
-                  placeholder="12345678901"
-                  className="mt-1"
+                  value={addFormData.tcNo || ''}
+                  onChange={(e) => setAddFormData({ ...addFormData, tcNo: e.target.value })}
                 />
               </div>
             </div>
-
             <div>
               <Label>{locale === 'tr' ? 'Notlar' : 'Notes'}</Label>
-              <textarea
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                className="mt-1 w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-md bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white"
-                rows={3}
-                placeholder={locale === 'tr' ? 'Ek notlar...' : 'Additional notes...'}
+              <Input
+                value={addFormData.notes || ''}
+                onChange={(e) => setAddFormData({ ...addFormData, notes: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label>{locale === 'tr' ? 'Etiketler' : 'Tags'} ({locale === 'tr' ? 'virgülle ayırın' : 'comma separated'})</Label>
+              <Input
+                value={addFormData.tags?.join(', ') || ''}
+                onChange={(e) => setAddFormData({
+                  ...addFormData,
+                  tags: e.target.value.split(',').map(t => t.trim()).filter(t => t)
+                })}
+                placeholder="VIP, Kurumsal"
               />
             </div>
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreateModal(false)}>
+            <Button variant="outline" onClick={() => setShowAddModal(false)}>
               {locale === 'tr' ? 'İptal' : 'Cancel'}
             </Button>
-            <Button onClick={handleSave} disabled={saving}>
-              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              {locale === 'tr' ? 'Kaydet' : 'Save'}
+            <Button onClick={handleAddRecord} disabled={isSaving}>
+              {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {locale === 'tr' ? 'Ekle' : 'Add'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Detail Modal */}
-      <Dialog open={showDetailModal} onOpenChange={setShowDetailModal}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>
-              {currentCustomer?.companyName}
-            </DialogTitle>
-          </DialogHeader>
-
-          {currentCustomer && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                {currentCustomer.contactName && (
-                  <div>
-                    <p className="text-neutral-500">{locale === 'tr' ? 'Yetkili' : 'Contact'}</p>
-                    <p className="font-medium text-neutral-900 dark:text-white">{currentCustomer.contactName}</p>
-                  </div>
-                )}
-                <div>
-                  <p className="text-neutral-500">{locale === 'tr' ? 'Telefon' : 'Phone'}</p>
-                  <p className="font-medium text-neutral-900 dark:text-white">{currentCustomer.phone}</p>
-                </div>
-                {currentCustomer.email && (
-                  <div>
-                    <p className="text-neutral-500">Email</p>
-                    <p className="font-medium text-neutral-900 dark:text-white">{currentCustomer.email}</p>
-                  </div>
-                )}
-                {currentCustomer.vkn && (
-                  <div>
-                    <p className="text-neutral-500">VKN</p>
-                    <p className="font-medium text-neutral-900 dark:text-white">{currentCustomer.vkn}</p>
-                  </div>
-                )}
-              </div>
-
-              {currentCustomer.customFields && Object.keys(currentCustomer.customFields).length > 0 && (
-                <>
-                  <hr className="border-neutral-200 dark:border-neutral-700" />
-                  <div>
-                    <h4 className="font-medium text-neutral-900 dark:text-white mb-3">
-                      {locale === 'tr' ? 'Mali Bilgiler' : 'Financial Information'}
-                    </h4>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      {currentCustomer.customFields.sgkDebt !== undefined && (
-                        <div>
-                          <p className="text-neutral-500">{locale === 'tr' ? 'SGK Borcu' : 'SSI Debt'}</p>
-                          <p className="font-medium text-neutral-900 dark:text-white">
-                            {formatMoney(currentCustomer.customFields.sgkDebt)}
-                          </p>
-                          {currentCustomer.customFields.sgkDueDate && (
-                            <p className="text-xs text-neutral-400">
-                              {locale === 'tr' ? 'Vade' : 'Due'}: {formatDateDisplay(currentCustomer.customFields.sgkDueDate, locale)}
-                            </p>
-                          )}
-                        </div>
-                      )}
-                      {currentCustomer.customFields.taxDebt !== undefined && (
-                        <div>
-                          <p className="text-neutral-500">{locale === 'tr' ? 'Vergi Borcu' : 'Tax Debt'}</p>
-                          <p className="font-medium text-neutral-900 dark:text-white">
-                            {formatMoney(currentCustomer.customFields.taxDebt)}
-                          </p>
-                          {currentCustomer.customFields.taxDueDate && (
-                            <p className="text-xs text-neutral-400">
-                              {locale === 'tr' ? 'Vade' : 'Due'}: {formatDateDisplay(currentCustomer.customFields.taxDueDate, locale)}
-                            </p>
-                          )}
-                        </div>
-                      )}
-                      {currentCustomer.customFields.declarationType && (
-                        <div className="col-span-2">
-                          <p className="text-neutral-500">{locale === 'tr' ? 'Beyanname' : 'Declaration'}</p>
-                          <p className="font-medium text-neutral-900 dark:text-white">
-                            {currentCustomer.customFields.declarationType}
-                            {currentCustomer.customFields.declarationPeriod && ` - ${currentCustomer.customFields.declarationPeriod}`}
-                          </p>
-                          {currentCustomer.customFields.declarationDueDate && (
-                            <p className="text-xs text-neutral-400">
-                              {locale === 'tr' ? 'Son Tarih' : 'Due Date'}: {formatDateDisplay(currentCustomer.customFields.declarationDueDate, locale)}
-                            </p>
-                          )}
-                          {currentCustomer.customFields.declarationStatus && (
-                            <Badge variant="outline" className="mt-1">
-                              {currentCustomer.customFields.declarationStatus}
-                            </Badge>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {currentCustomer.notes && (
-                <>
-                  <hr className="border-neutral-200 dark:border-neutral-700" />
-                  <div>
-                    <p className="text-neutral-500 text-sm">{locale === 'tr' ? 'Notlar' : 'Notes'}</p>
-                    <p className="text-neutral-900 dark:text-white mt-1">{currentCustomer.notes}</p>
-                  </div>
-                </>
-              )}
-
-              {currentCustomer.tags && currentCustomer.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {currentCustomer.tags.map((tag, i) => (
-                    <Badge key={i} variant="secondary">{tag}</Badge>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDetailModal(false)}>
-              {locale === 'tr' ? 'Kapat' : 'Close'}
-            </Button>
-            <Button onClick={() => {
-              setShowDetailModal(false);
-              openCreateModal(currentCustomer);
-            }}>
-              <Pencil className="w-4 h-4 mr-2" />
-              {locale === 'tr' ? 'Düzenle' : 'Edit'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Confirmation Modal */}
-      <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+      {/* Bulk Delete Confirmation Modal */}
+      <Dialog open={showDeleteConfirmModal} onOpenChange={setShowDeleteConfirmModal}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="text-red-600">
-              {locale === 'tr' ? 'Silme Onayı' : 'Confirm Delete'}
+              {locale === 'tr' ? 'Kayıtları Sil' : 'Delete Records'}
             </DialogTitle>
             <DialogDescription>
-              {selectedIds.length > 0
-                ? (locale === 'tr'
-                    ? `${selectedIds.length} müşteri silinecek. Bu işlem geri alınamaz.`
-                    : `${selectedIds.length} customer(s) will be deleted. This action cannot be undone.`)
-                : (locale === 'tr'
-                    ? `"${currentCustomer?.companyName}" silinecek. Bu işlem geri alınamaz.`
-                    : `"${currentCustomer?.companyName}" will be deleted. This action cannot be undone.`)}
+              {locale === 'tr'
+                ? `${selectedRecords.length} kayıt silinecek. Bu işlem geri alınamaz.`
+                : `${selectedRecords.length} records will be deleted. This action cannot be undone.`}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDeleteModal(false)}>
+            <Button variant="outline" onClick={() => setShowDeleteConfirmModal(false)}>
               {locale === 'tr' ? 'İptal' : 'Cancel'}
             </Button>
-            <Button variant="destructive" onClick={handleDelete}>
+            <Button variant="destructive" onClick={handleBulkDelete}>
               <Trash2 className="w-4 h-4 mr-2" />
               {locale === 'tr' ? 'Sil' : 'Delete'}
             </Button>

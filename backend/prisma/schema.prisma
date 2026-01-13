@@ -153,6 +153,7 @@ model Business {
   crmTickets              CrmTicket[]
   batchCalls              BatchCall[]
   customerData            CustomerData[]
+  customerDataFiles       CustomerDataFile[]
   callbackRequests        CallbackRequest[]
   chatLogs                ChatLog[]
 
@@ -1479,12 +1480,53 @@ enum CallbackPriority {
 // kullanılan özel müşteri verileri. Excel/CSV ile toplu yükleme destekli.
 // ============================================================================
 
+model CustomerDataFile {
+  id                String    @id @default(cuid())
+
+  // İlişki
+  businessId        Int
+  business          Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  // Dosya bilgileri
+  fileName          String              // Orijinal dosya adı (siparis_listesi.xlsx)
+  dataType          String              // Veri tipi (accounting, support, order, customer, custom)
+  recordCount       Int       @default(0) // Dosyadaki kayıt sayısı
+
+  // Sütun yapısı
+  columns           Json                // Dosyadaki sütun isimleri [{name: "Telefon", key: "phone"}, ...]
+
+  // Durum
+  status            CustomerDataFileStatus @default(PROCESSING)
+
+  // Zaman damgaları
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // İlişkiler
+  records           CustomerData[]
+
+  @@index([businessId])
+  @@index([dataType])
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum CustomerDataFileStatus {
+  PROCESSING    // İşleniyor
+  ACTIVE        // Aktif, kullanılabilir
+  FAILED        // İşlem başarısız
+}
+
 model CustomerData {
   id                String    @id @default(cuid())
 
   // İlişki
   businessId        Int
   business          Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  // Dosya ilişkisi
+  fileId            String?             // Hangi dosyadan geldiği
+  file              CustomerDataFile?   @relation(fields: [fileId], references: [id], onDelete: Cascade)
 
   // Temel bilgiler (zorunlu alanlar)
   companyName       String              // İşletme/Şirket adı veya müşteri adı
@@ -1514,6 +1556,7 @@ model CustomerData {
   @@index([businessId])
   @@index([phone])
   @@index([vkn])
+  @@index([fileId])
 }
 
 // ============================================================================

@@ -89,7 +89,7 @@ async function syncElevenLabsAgents(businessId) {
             agent: {
               prompt: {
                 prompt: fullSystemPrompt,
-                llm: 'gemini-2.5-flash-lite',
+                llm: 'gemini-2.0-flash',
                 temperature: 0.1,
                 tools: toolsWithSystemTools
               }
@@ -400,23 +400,169 @@ const SALES_TEMPLATE = {
 };
 
 /**
+ * Support (Arıza Takip) template
+ */
+const SUPPORT_TEMPLATE = {
+  sampleData: [
+    {
+      'Telefon': '5321234567',
+      'Müşteri Adı': 'Ahmet Yılmaz',
+      'Arıza Türü': 'Kombi arızası',
+      'Adres': 'Kadıköy, İstanbul',
+      'Tarih': '15.01.2025',
+      'Durum': 'Bekliyor',
+      'Öncelik': 'Yüksek',
+      'Notlar': 'Acil müdahale gerekiyor'
+    },
+    {
+      'Telefon': '5331234568',
+      'Müşteri Adı': 'Ayşe Kaya',
+      'Arıza Türü': 'Klima bakımı',
+      'Adres': 'Beşiktaş, İstanbul',
+      'Tarih': '16.01.2025',
+      'Durum': 'Randevu alındı',
+      'Öncelik': 'Normal',
+      'Notlar': ''
+    }
+  ],
+  colWidths: [
+    { wch: 15 }, { wch: 20 }, { wch: 20 }, { wch: 30 },
+    { wch: 12 }, { wch: 15 }, { wch: 12 }, { wch: 30 }
+  ],
+  sheetName: 'Arıza Kayıtları',
+  fileName: 'ariza-takip-sablon.xlsx'
+};
+
+/**
+ * Appointment (Randevu) template
+ */
+const APPOINTMENT_TEMPLATE = {
+  sampleData: [
+    {
+      'Telefon': '5321234567',
+      'Müşteri Adı': 'Ahmet Yılmaz',
+      'Randevu Tarihi': '15.01.2025',
+      'Randevu Saati': '14:00',
+      'Hizmet': 'Saç kesimi',
+      'Durum': 'Onaylı',
+      'Notlar': 'VIP müşteri'
+    },
+    {
+      'Telefon': '5331234568',
+      'Müşteri Adı': 'Ayşe Kaya',
+      'Randevu Tarihi': '16.01.2025',
+      'Randevu Saati': '10:30',
+      'Hizmet': 'Cilt bakımı',
+      'Durum': 'Bekliyor',
+      'Notlar': ''
+    }
+  ],
+  colWidths: [
+    { wch: 15 }, { wch: 20 }, { wch: 15 }, { wch: 12 },
+    { wch: 20 }, { wch: 12 }, { wch: 30 }
+  ],
+  sheetName: 'Randevular',
+  fileName: 'randevu-sablon.xlsx'
+};
+
+/**
+ * Order (Sipariş) template
+ */
+const ORDER_TEMPLATE = {
+  sampleData: [
+    {
+      'Telefon': '5321234567',
+      'Müşteri Adı': 'Ahmet Yılmaz',
+      'Sipariş No': 'SIP-001',
+      'Ürün': 'Laptop',
+      'Tutar': '25000',
+      'Sipariş Tarihi': '10.01.2025',
+      'Kargo Durumu': 'Yolda',
+      'Kargo Takip No': 'TR123456789',
+      'Notlar': ''
+    },
+    {
+      'Telefon': '5331234568',
+      'Müşteri Adı': 'Ayşe Kaya',
+      'Sipariş No': 'SIP-002',
+      'Ürün': 'Telefon Kılıfı',
+      'Tutar': '150',
+      'Sipariş Tarihi': '12.01.2025',
+      'Kargo Durumu': 'Hazırlanıyor',
+      'Kargo Takip No': '',
+      'Notlar': 'Hediye paketi istedi'
+    }
+  ],
+  colWidths: [
+    { wch: 15 }, { wch: 20 }, { wch: 12 }, { wch: 25 },
+    { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 18 }, { wch: 30 }
+  ],
+  sheetName: 'Siparişler',
+  fileName: 'siparis-sablon.xlsx'
+};
+
+/**
+ * Custom (Diğer) template - basic structure
+ */
+const CUSTOM_TEMPLATE = {
+  sampleData: [
+    {
+      'Telefon': '5321234567',
+      'Müşteri Adı': 'Ahmet Yılmaz',
+      'Alan 1': 'Değer 1',
+      'Alan 2': 'Değer 2',
+      'Alan 3': 'Değer 3',
+      'Notlar': 'Örnek not'
+    },
+    {
+      'Telefon': '5331234568',
+      'Müşteri Adı': 'Ayşe Kaya',
+      'Alan 1': 'Değer A',
+      'Alan 2': 'Değer B',
+      'Alan 3': 'Değer C',
+      'Notlar': ''
+    }
+  ],
+  colWidths: [
+    { wch: 15 }, { wch: 20 }, { wch: 15 }, { wch: 15 },
+    { wch: 15 }, { wch: 30 }
+  ],
+  sheetName: 'Müşteri Verileri',
+  fileName: 'musteri-verileri-sablon.xlsx'
+};
+
+/**
  * GET /api/customer-data/template/:type?
  * Download Excel template for customer data import
- * @param type - 'collection' (default) or 'sales'
+ * @param type - 'accounting', 'support', 'appointment', 'order', 'custom'
  */
 router.get('/template/:type?', async (req, res) => {
   try {
-    const templateType = req.params.type || req.query.type || 'collection';
+    const templateType = req.params.type || req.query.type || 'accounting';
 
     // Select template based on type
     let template;
     switch (templateType) {
+      case 'accounting':
+        template = COLLECTION_TEMPLATE;
+        break;
+      case 'support':
+        template = SUPPORT_TEMPLATE;
+        break;
+      case 'appointment':
+        template = APPOINTMENT_TEMPLATE;
+        break;
+      case 'order':
+        template = ORDER_TEMPLATE;
+        break;
+      case 'custom':
+        template = CUSTOM_TEMPLATE;
+        break;
       case 'sales':
         template = SALES_TEMPLATE;
         break;
-      case 'collection':
       default:
-        template = COLLECTION_TEMPLATE;
+        template = CUSTOM_TEMPLATE;
         break;
     }
 
@@ -474,6 +620,7 @@ router.post('/parse', upload.single('file'), async (req, res) => {
 /**
  * POST /api/customer-data/import
  * Import customer data from Excel/CSV file
+ * Creates a CustomerDataFile record and links all imported records to it
  */
 router.post('/import', upload.single('file'), async (req, res) => {
   try {
@@ -483,10 +630,22 @@ router.post('/import', upload.single('file'), async (req, res) => {
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    const { columnMapping } = req.body;
+    const { columnMapping, dataType = 'custom' } = req.body;
 
     // Parse file
-    const { data } = parseFile(req.file.buffer, req.file.originalname);
+    const { data, columns } = parseFile(req.file.buffer, req.file.originalname);
+
+    // Create CustomerDataFile record
+    const customerDataFile = await prisma.customerDataFile.create({
+      data: {
+        businessId,
+        fileName: req.file.originalname,
+        dataType,
+        recordCount: data.length,
+        columns: columns.map(name => ({ name, key: name })),
+        status: 'PROCESSING'
+      }
+    });
 
     // Parse column mapping
     let mapping = {};
@@ -496,26 +655,26 @@ router.post('/import', upload.single('file'), async (req, res) => {
       console.error('Column mapping parse error:', e);
     }
 
-    // Default column mappings (Turkish headers)
+    // Default column mappings (Turkish headers) - expanded for flexibility
     const defaultMapping = {
-      companyName: ['İşletme/Müşteri Adı', 'Müşteri Adı', 'İşletme Adı', 'Firma', 'Company', 'companyName'],
-      contactName: ['Yetkili', 'Yetkili Kişi', 'Contact', 'contactName'],
-      phone: ['Telefon', 'Tel', 'Phone', 'phone'],
-      email: ['Email', 'E-mail', 'E-posta', 'email'],
-      vkn: ['VKN', 'Vergi Kimlik No', 'vkn'],
-      tcNo: ['TC No', 'TC Kimlik No', 'TC', 'tcNo'],
-      sgkDebt: ['SGK Borcu', 'SGK', 'sgkDebt'],
-      sgkDueDate: ['SGK Vadesi', 'SGK Vade', 'sgkDueDate'],
-      taxDebt: ['Vergi Borcu', 'Vergi', 'taxDebt'],
-      taxDueDate: ['Vergi Vadesi', 'Vergi Vade', 'taxDueDate'],
-      otherDebt: ['Diğer Borç', 'Diğer', 'otherDebt'],
-      otherDebtNote: ['Diğer Borç Açıklama', 'otherDebtNote'],
-      declarationType: ['Beyanname Türü', 'declarationType'],
-      declarationPeriod: ['Beyanname Dönemi', 'declarationPeriod'],
+      companyName: ['İşletme/Müşteri Adı', 'Müşteri Adı', 'İşletme Adı', 'Firma', 'Company', 'companyName', 'Firma Adı', 'Şirket', 'Şirket Adı', 'İsim', 'Ad', 'Ad Soyad', 'Müşteri', 'Customer', 'Name', 'İsim Soyisim'],
+      contactName: ['Yetkili', 'Yetkili Kişi', 'Contact', 'contactName', 'İletişim Kişisi', 'Sorumlu', 'Contact Person'],
+      phone: ['Telefon', 'Tel', 'Phone', 'phone', 'Telefon No', 'Telefon Numarası', 'GSM', 'Cep', 'Cep Telefon', 'Cep Tel', 'Mobil', 'Mobile', 'Müşteri Telefon', 'İletişim', 'Tel No', 'Numara', 'No'],
+      email: ['Email', 'E-mail', 'E-posta', 'email', 'Eposta', 'Mail', 'E-Mail'],
+      vkn: ['VKN', 'Vergi Kimlik No', 'vkn', 'Vergi No', 'Vergi Numarası'],
+      tcNo: ['TC No', 'TC Kimlik No', 'TC', 'tcNo', 'TCKN', 'TC Kimlik', 'Kimlik No'],
+      sgkDebt: ['SGK Borcu', 'SGK', 'sgkDebt', 'SGK Borç'],
+      sgkDueDate: ['SGK Vadesi', 'SGK Vade', 'sgkDueDate', 'SGK Son Ödeme'],
+      taxDebt: ['Vergi Borcu', 'Vergi', 'taxDebt', 'Vergi Borç'],
+      taxDueDate: ['Vergi Vadesi', 'Vergi Vade', 'taxDueDate', 'Vergi Son Ödeme'],
+      otherDebt: ['Diğer Borç', 'Diğer', 'otherDebt', 'Diğer Borcu'],
+      otherDebtNote: ['Diğer Borç Açıklama', 'otherDebtNote', 'Diğer Açıklama'],
+      declarationType: ['Beyanname Türü', 'declarationType', 'Beyanname'],
+      declarationPeriod: ['Beyanname Dönemi', 'declarationPeriod', 'Dönem'],
       declarationDueDate: ['Beyanname Tarihi', 'Beyanname Son Tarih', 'declarationDueDate'],
       declarationStatus: ['Beyanname Durumu', 'declarationStatus'],
-      notes: ['Notlar', 'Not', 'Notes', 'notes'],
-      tags: ['Etiketler', 'Tags', 'tags']
+      notes: ['Notlar', 'Not', 'Notes', 'notes', 'Açıklama', 'Notları'],
+      tags: ['Etiketler', 'Tags', 'tags', 'Kategoriler']
     };
 
     // Helper to find column value
@@ -549,20 +708,19 @@ router.post('/import', upload.single('file'), async (req, res) => {
       const rowNum = i + 2; // +2 for 1-indexed + header row
 
       try {
-        // Get required fields
-        const companyName = findValue(row, 'companyName');
+        // Get fields - phone is required, companyName is optional (will use phone if not provided)
+        let companyName = findValue(row, 'companyName');
         const rawPhone = findValue(row, 'phone');
-
-        if (!companyName) {
-          results.failed++;
-          results.errors.push({ row: rowNum, error: 'İşletme/Müşteri adı zorunludur' });
-          continue;
-        }
 
         if (!rawPhone) {
           results.failed++;
           results.errors.push({ row: rowNum, error: 'Telefon numarası zorunludur' });
           continue;
+        }
+
+        // If no company name, use phone number as the name
+        if (!companyName) {
+          companyName = rawPhone;
         }
 
         const normalizedPhone = normalizePhoneNumber(rawPhone);
@@ -607,6 +765,15 @@ router.post('/import', upload.single('file'), async (req, res) => {
         const declarationStatus = findValue(row, 'declarationStatus');
         if (declarationStatus) customFields.declarationStatus = declarationStatus;
 
+        // Add ALL columns to customFields so they appear in the UI
+        // This ensures all Excel data is preserved regardless of column names
+        for (const [colName, colValue] of Object.entries(row)) {
+          if (colValue !== undefined && colValue !== null && colValue !== '') {
+            // Store all values in customFields for display
+            customFields[colName] = colValue;
+          }
+        }
+
         // Parse tags
         const tagsRaw = findValue(row, 'tags');
         let tags = [];
@@ -640,13 +807,17 @@ router.post('/import', upload.single('file'), async (req, res) => {
         if (existing) {
           await prisma.customerData.update({
             where: { id: existing.id },
-            data: customerDataObj
+            data: {
+              ...customerDataObj,
+              fileId: customerDataFile.id // Link to file
+            }
           });
           results.updated++;
         } else {
           await prisma.customerData.create({
             data: {
               businessId,
+              fileId: customerDataFile.id, // Link to file
               ...customerDataObj
             }
           });
@@ -660,6 +831,18 @@ router.post('/import', upload.single('file'), async (req, res) => {
       }
     }
 
+    // Update file status based on results
+    const actualRecordCount = results.success + results.updated;
+    const fileStatus = results.failed === data.length ? 'FAILED' : 'ACTIVE';
+
+    await prisma.customerDataFile.update({
+      where: { id: customerDataFile.id },
+      data: {
+        status: fileStatus,
+        recordCount: actualRecordCount
+      }
+    });
+
     // Sync 11Labs agents with new tools (async, don't wait)
     syncElevenLabsAgents(businessId).catch(err => {
       console.error('Background 11Labs sync error:', err);
@@ -668,7 +851,8 @@ router.post('/import', upload.single('file'), async (req, res) => {
     res.json({
       success: true,
       message: `Import completed: ${results.success} created, ${results.updated} updated, ${results.failed} failed`,
-      results
+      results,
+      fileId: customerDataFile.id
     });
 
   } catch (error) {
@@ -676,6 +860,137 @@ router.post('/import', upload.single('file'), async (req, res) => {
     res.status(500).json({
       error: error.message || 'Failed to import customer data'
     });
+  }
+});
+
+// ============================================================
+// FILE MANAGEMENT ROUTES
+// ============================================================
+
+/**
+ * GET /api/customer-data/files
+ * List all imported files for the business
+ */
+router.get('/files', async (req, res) => {
+  try {
+    const businessId = req.businessId;
+
+    const files = await prisma.customerDataFile.findMany({
+      where: { businessId },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        _count: {
+          select: { records: true }
+        }
+      }
+    });
+
+    res.json({ files });
+
+  } catch (error) {
+    console.error('List files error:', error);
+    res.status(500).json({ error: 'Failed to fetch files' });
+  }
+});
+
+/**
+ * GET /api/customer-data/files/:id
+ * Get a single file with its records
+ */
+router.get('/files/:id', async (req, res) => {
+  try {
+    const businessId = req.businessId;
+    const { id } = req.params;
+    const { page = 1, limit = 50, search } = req.query;
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const take = parseInt(limit);
+
+    // Get file info
+    const file = await prisma.customerDataFile.findFirst({
+      where: { id, businessId }
+    });
+
+    if (!file) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+
+    // Build where clause for records
+    const where = { businessId, fileId: id };
+
+    if (search) {
+      where.OR = [
+        { companyName: { contains: search, mode: 'insensitive' } },
+        { contactName: { contains: search, mode: 'insensitive' } },
+        { phone: { contains: search } },
+        { email: { contains: search, mode: 'insensitive' } }
+      ];
+    }
+
+    // Get records for this file
+    const [records, total] = await Promise.all([
+      prisma.customerData.findMany({
+        where,
+        skip,
+        take,
+        orderBy: { createdAt: 'asc' }
+      }),
+      prisma.customerData.count({ where })
+    ]);
+
+    res.json({
+      file,
+      records,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        totalPages: Math.ceil(total / take)
+      }
+    });
+
+  } catch (error) {
+    console.error('Get file error:', error);
+    res.status(500).json({ error: 'Failed to fetch file' });
+  }
+});
+
+/**
+ * DELETE /api/customer-data/files/:id
+ * Delete a file and all its associated records
+ */
+router.delete('/files/:id', async (req, res) => {
+  try {
+    const businessId = req.businessId;
+    const { id } = req.params;
+
+    // Check if file exists
+    const file = await prisma.customerDataFile.findFirst({
+      where: { id, businessId }
+    });
+
+    if (!file) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+
+    // Delete file (cascade will delete associated records due to onDelete: Cascade)
+    await prisma.customerDataFile.delete({
+      where: { id }
+    });
+
+    // Sync 11Labs agents (async, don't wait)
+    syncElevenLabsAgents(businessId).catch(err => {
+      console.error('Background 11Labs sync error:', err);
+    });
+
+    res.json({
+      success: true,
+      message: 'File and associated records deleted'
+    });
+
+  } catch (error) {
+    console.error('Delete file error:', error);
+    res.status(500).json({ error: 'Failed to delete file' });
   }
 });
 

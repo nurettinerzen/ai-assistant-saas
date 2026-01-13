@@ -161,12 +161,11 @@ router.post('/webhook', async (req, res) => {
     // Determine event type
     const eventType = event.type || event.event_type;
 
-    // 11Labs tool webhook sends tool_name directly without type field
-    // Check if this is a tool call by looking for tool_name in body
-    const isToolCall = event.tool_name || (eventType === 'tool_call') || (eventType === 'client_tool_call');
-
     // Get agentId from query param (we embed it in webhook URL)
     const agentIdFromQuery = req.query.agentId;
+
+    // 11Labs tool webhook sends tool_name directly OR we detect by parameters
+    const isToolCall = event.tool_name || (eventType === 'tool_call') || (eventType === 'client_tool_call');
 
     if (isToolCall && event.tool_name) {
       console.log('🔧 11Labs Tool Call (direct):', event.tool_name, 'AgentID:', agentIdFromQuery);
@@ -174,10 +173,20 @@ router.post('/webhook', async (req, res) => {
       return res.json(result);
     }
 
-    // 11Labs sometimes sends tool calls without tool_name - detect by parameters
-    // If we have query_type (customer_data_lookup specific param), it's that tool
-    if (!eventType && event.query_type) {
-      console.log('🔧 11Labs Tool Call (detected by params - customer_data_lookup):', event);
+    // 11Labs may send tool calls without tool_name - detect by parameters
+    // Check for customer_data_lookup parameters (query_type or phone)
+    if (!eventType && (event.query_type || (event.phone && !event.type))) {
+      console.log('🔧 11Labs Tool Call (detected by params - customer_data_lookup):', JSON.stringify(event));
+      const toolEvent = { ...event, tool_name: 'customer_data_lookup' };
+      const result = await handleToolCall(toolEvent, agentIdFromQuery);
+      return res.json(result);
+    }
+
+    // If no event type and we have agentId, this is likely a tool call
+    // Try to detect tool from parameters
+    if (!eventType && agentIdFromQuery && Object.keys(event).length > 0) {
+      console.log('🔧 11Labs Tool Call (unknown tool, detecting...):', JSON.stringify(event));
+      // Default to customer_data_lookup for now
       const toolEvent = { ...event, tool_name: 'customer_data_lookup' };
       const result = await handleToolCall(toolEvent, agentIdFromQuery);
       return res.json(result);

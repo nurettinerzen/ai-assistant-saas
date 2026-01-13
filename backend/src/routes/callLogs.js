@@ -114,22 +114,22 @@ async function fetchAndProcessConversation(conversationId, business) {
 
 router.use(authenticateToken);
 
-// Get all call logs for the user's business
+// Get all call logs for the user's business (including chat and WhatsApp)
 router.get('/', async (req, res) => {
   try {
     const { businessId } = req;
     const { status, search, limit = 100 } = req.query;
 
-    // Build where clause
-    const where = { businessId };
+    // Build where clause for CallLog (phone calls)
+    const callWhere = { businessId };
 
     if (status && status !== 'all') {
-      where.status = status;
+      callWhere.status = status;
     }
 
     if (search) {
       // Search in transcript text, caller ID, or call ID
-      where.OR = [
+      callWhere.OR = [
         {
           transcriptText: {
             contains: search,
@@ -151,13 +151,53 @@ router.get('/', async (req, res) => {
       ];
     }
 
-    const callLogs = await prisma.callLog.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      take: parseInt(limit)
-    });
+    // Build where clause for ChatLog (chat and WhatsApp)
+    const chatWhere = { businessId };
 
-    // Return with formatted data for frontend
+    if (status && status !== 'all') {
+      // Map status to chat status
+      if (status === 'completed' || status === 'answered') {
+        chatWhere.status = 'completed';
+      } else if (status === 'in_progress' || status === 'in-progress') {
+        chatWhere.status = 'active';
+      } else {
+        chatWhere.status = status;
+      }
+    }
+
+    if (search) {
+      // Search in sessionId or customerPhone
+      chatWhere.OR = [
+        {
+          sessionId: {
+            contains: search,
+            mode: 'insensitive'
+          }
+        },
+        {
+          customerPhone: {
+            contains: search,
+            mode: 'insensitive'
+          }
+        }
+      ];
+    }
+
+    // Fetch both call logs and chat logs in parallel
+    const [callLogs, chatLogs] = await Promise.all([
+      prisma.callLog.findMany({
+        where: callWhere,
+        orderBy: { createdAt: 'desc' },
+        take: parseInt(limit)
+      }),
+      prisma.chatLog.findMany({
+        where: chatWhere,
+        orderBy: { createdAt: 'desc' },
+        take: parseInt(limit)
+      })
+    ]);
+
+    // Format phone call logs
     const formattedCalls = callLogs.map(call => ({
       id: call.id,
       callId: call.callId,
@@ -165,6 +205,8 @@ router.get('/', async (req, res) => {
       duration: call.duration,
       status: call.status,
       direction: call.direction || 'inbound',
+      channel: 'phone',
+      type: 'phone',
       createdAt: call.createdAt,
       sentiment: call.sentiment,
       summary: call.summary,
@@ -172,19 +214,110 @@ router.get('/', async (req, res) => {
       hasTranscript: !!call.transcript || !!call.transcriptText,
     }));
 
-    res.json({ calls: formattedCalls });
+    // Format chat/WhatsApp logs
+    const formattedChats = chatLogs.map(chat => ({
+      id: `chat-${chat.id}`,
+      callId: chat.sessionId,
+      phoneNumber: chat.customerPhone || null,
+      duration: null, // Chats don't have duration
+      status: chat.status === 'active' ? 'in_progress' : 'completed',
+      direction: 'inbound',
+      channel: chat.channel?.toLowerCase() || 'chat',
+      type: chat.channel?.toLowerCase() || 'chat',
+      createdAt: chat.createdAt,
+      sentiment: null,
+      summary: chat.summary,
+      hasRecording: false,
+      hasTranscript: chat.messages && Array.isArray(chat.messages) && chat.messages.length > 0,
+      messageCount: chat.messageCount || 0,
+    }));
+
+    // Merge and sort by createdAt descending
+    const allLogs = [...formattedCalls, ...formattedChats]
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .slice(0, parseInt(limit));
+
+    res.json({ calls: allLogs });
   } catch (error) {
     console.error('Get call logs error:', error);
     res.status(500).json({ error: 'Failed to fetch call logs' });
   }
 });
 
-// Get a single call log by ID
+// Get a single call log by ID (supports both phone calls and chat/WhatsApp)
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { businessId } = req;
 
+    // Check if this is a chat log (ID starts with "chat-")
+    if (id.startsWith('chat-')) {
+      const chatId = id.replace('chat-', '');
+      const chatLog = await prisma.chatLog.findUnique({
+        where: { id: chatId }
+      });
+
+      if (!chatLog) {
+        return res.status(404).json({ error: 'Chat log not found' });
+      }
+
+      if (chatLog.businessId !== businessId) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      // Format chat messages to match transcript format
+      const transcript = chatLog.messages && Array.isArray(chatLog.messages)
+        ? chatLog.messages.map((msg, index) => ({
+            speaker: msg.role === 'user' ? 'user' : 'assistant',
+            text: msg.content || '',
+            timestamp: msg.timestamp || index
+          }))
+        : [];
+
+      const transcriptText = transcript.map(m => `${m.speaker}: ${m.text}`).join('\n');
+
+      // Return chat log in the same format as call log
+      const response = {
+        id: `chat-${chatLog.id}`,
+        callId: chatLog.sessionId,
+        phoneNumber: chatLog.customerPhone || null,
+        duration: null,
+        recordingDuration: null,
+        status: chatLog.status === 'active' ? 'in_progress' : 'completed',
+        createdAt: chatLog.createdAt,
+        updatedAt: chatLog.updatedAt,
+        channel: chatLog.channel?.toLowerCase() || 'chat',
+        type: chatLog.channel?.toLowerCase() || 'chat',
+
+        // No recording for chat
+        recordingUrl: null,
+
+        // Transcript
+        transcript: transcript,
+        transcriptText: transcriptText,
+
+        // Chat-specific
+        messageCount: chatLog.messageCount || 0,
+        summary: chatLog.summary,
+
+        // Not applicable for chat
+        sentiment: null,
+        sentimentScore: null,
+        keyTopics: null,
+        actionItems: null,
+        keyPoints: null,
+        intent: null,
+        taskCompleted: null,
+        followUpNeeded: null,
+        endReason: null,
+        callCost: null,
+        direction: 'inbound',
+      };
+
+      return res.json(response);
+    }
+
+    // Handle phone call logs (original logic)
     // ID can be either integer or string - try to parse if numeric
     let callLog = await prisma.callLog.findUnique({
       where: { id: isNaN(parseInt(id)) ? id : parseInt(id) },
@@ -234,6 +367,8 @@ router.get('/:id', async (req, res) => {
       status: callLog.status,
       createdAt: callLog.createdAt,
       updatedAt: callLog.updatedAt,
+      channel: 'phone',
+      type: 'phone',
 
       // Recording
       recordingUrl: callLog.recordingUrl,

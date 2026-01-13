@@ -126,7 +126,7 @@ router.get('/overview', authenticateToken, async (req, res) => {
     });
 
     const callsOverTime = Object.keys(callsByDate).map((date) => ({
-      date: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      date, // Return ISO date string, let frontend format it
       calls: callsByDate[date],
       chats: chatsByDate[date] || 0,
       whatsapp: whatsappByDate[date] || 0,
@@ -419,7 +419,7 @@ router.get('/top-questions', authenticateToken, async (req, res) => {
       });
     }
 
-    // 2. Get web chat messages (first user message = their question/topic)
+    // 2. Get web chat messages (summary or first user message = their question/topic)
     if (!channel || channel === 'chat') {
       const chatLogs = await prisma.chatLog.findMany({
         where: {
@@ -429,26 +429,46 @@ router.get('/top-questions', authenticateToken, async (req, res) => {
         },
         select: {
           messages: true,
+          summary: true,
           createdAt: true
         }
       });
 
       chatLogs.forEach(log => {
-        if (log.messages && Array.isArray(log.messages)) {
-          // Find first user message as the main topic
-          const userMessage = log.messages.find(m => m.role === 'user');
-          if (userMessage && userMessage.content) {
-            topics.push({
-              text: userMessage.content.substring(0, 200),
-              channel: 'chat',
-              date: log.createdAt
-            });
+        // Prefer summary if available (like phone calls)
+        if (log.summary) {
+          topics.push({
+            text: log.summary.substring(0, 200),
+            channel: 'chat',
+            date: log.createdAt
+          });
+        } else if (log.messages) {
+          // Parse messages - handle both array and JSON string
+          let messages = log.messages;
+          if (typeof messages === 'string') {
+            try {
+              messages = JSON.parse(messages);
+            } catch (e) {
+              messages = [];
+            }
+          }
+
+          if (Array.isArray(messages) && messages.length > 0) {
+            // Find first user message as the main topic
+            const userMessage = messages.find(m => m.role === 'user');
+            if (userMessage && userMessage.content) {
+              topics.push({
+                text: userMessage.content.substring(0, 200),
+                channel: 'chat',
+                date: log.createdAt
+              });
+            }
           }
         }
       });
     }
 
-    // 3. Get WhatsApp messages (first user message = their question/topic)
+    // 3. Get WhatsApp messages (summary or first user message = their question/topic)
     if (!channel || channel === 'whatsapp') {
       const whatsappLogs = await prisma.chatLog.findMany({
         where: {
@@ -458,20 +478,40 @@ router.get('/top-questions', authenticateToken, async (req, res) => {
         },
         select: {
           messages: true,
+          summary: true,
           createdAt: true
         }
       });
 
       whatsappLogs.forEach(log => {
-        if (log.messages && Array.isArray(log.messages)) {
-          // Find first user message as the main topic
-          const userMessage = log.messages.find(m => m.role === 'user');
-          if (userMessage && userMessage.content) {
-            topics.push({
-              text: userMessage.content.substring(0, 200),
-              channel: 'whatsapp',
-              date: log.createdAt
-            });
+        // Prefer summary if available (like phone calls)
+        if (log.summary) {
+          topics.push({
+            text: log.summary.substring(0, 200),
+            channel: 'whatsapp',
+            date: log.createdAt
+          });
+        } else if (log.messages) {
+          // Parse messages - handle both array and JSON string
+          let messages = log.messages;
+          if (typeof messages === 'string') {
+            try {
+              messages = JSON.parse(messages);
+            } catch (e) {
+              messages = [];
+            }
+          }
+
+          if (Array.isArray(messages) && messages.length > 0) {
+            // Find first user message as the main topic
+            const userMessage = messages.find(m => m.role === 'user');
+            if (userMessage && userMessage.content) {
+              topics.push({
+                text: userMessage.content.substring(0, 200),
+                channel: 'whatsapp',
+                date: log.createdAt
+              });
+            }
           }
         }
       });
@@ -505,24 +545,49 @@ router.get('/top-questions', authenticateToken, async (req, res) => {
       });
     }
 
-    // Categorize topics into common themes
-    // Keywords for categorization
+    // Filter out invalid/empty topics
+    const invalidPatterns = [
+      'yanıt vermedi',
+      'arama sona erdi',
+      'kullanıcı yanıt',
+      'no response',
+      'call ended',
+      'greeting in',
+      'turkish conversation',
+      'selam', 'merhaba', 'hello', 'hi', 'hey', // Pure greetings are not topics
+      'iyi günler', 'iyi akşamlar', 'günaydın'
+    ];
+
+    const filteredTopics = topics.filter(topic => {
+      const lowerText = topic.text.toLowerCase().trim();
+      // Skip very short messages (likely just greetings)
+      if (lowerText.length < 5) return false;
+      // Skip invalid patterns
+      if (invalidPatterns.some(p => lowerText.includes(p))) return false;
+      // Skip if it's ONLY a greeting (no other content)
+      const greetingOnly = /^(merhaba|selam|hi|hello|hey|günaydın|iyi günler|iyi akşamlar)[.,!?]?$/i.test(lowerText);
+      if (greetingOnly) return false;
+      return true;
+    });
+
+    // Categorize topics into main themes (Turkish)
     const categories = {
-      'Kargo/Teslimat': ['kargo', 'teslimat', 'gönderim', 'teslim', 'shipping', 'delivery', 'nerede', 'ne zaman gelecek', 'takip'],
-      'Sipariş Sorgulama': ['sipariş', 'order', 'durum', 'status', 'nerdeee', 'siparişim', 'sorgu'],
-      'Fiyat/Ücret': ['fiyat', 'ücret', 'price', 'maliyet', 'cost', 'kaç para', 'ne kadar', 'indirim', 'kampanya'],
-      'Ürün Bilgisi': ['ürün', 'product', 'stok', 'stock', 'mevcut', 'var mı', 'özellik', 'beden', 'renk'],
-      'İade/Değişim': ['iade', 'değişim', 'return', 'refund', 'geri', 'iptal', 'cancel'],
-      'Ödeme': ['ödeme', 'payment', 'kredi', 'kart', 'havale', 'eft', 'taksit'],
-      'Randevu': ['randevu', 'appointment', 'rezervasyon', 'booking', 'saat', 'gün'],
-      'Destek/Şikayet': ['şikayet', 'sorun', 'problem', 'yardım', 'help', 'destek', 'support', 'çalışmıyor'],
-      'Genel Bilgi': ['bilgi', 'information', 'soru', 'question', 'nasıl', 'nedir', 'hakkında']
+      'Muhasebe': ['borç', 'sgk', 'vergi', 'beyanname', 'kdv', 'gelir vergisi', 'cari', 'fatura', 'tahsilat', 'alacak', 'bakiye', 'hesap', 'ödeme tarihi', 'son ödeme', 'vade'],
+      'Sipariş': ['sipariş', 'order', 'durum', 'status', 'siparişim', 'ne oldu', 'kargo nerede', 'takip', 'sipariş ver'],
+      'Kargo': ['kargo', 'teslimat', 'gönderim', 'teslim', 'shipping', 'delivery', 'kurye', 'paket', 'ne zaman gelecek'],
+      'Ürün': ['ürün', 'product', 'stok', 'stock', 'mevcut', 'var mı', 'özellik', 'beden', 'renk', 'fiyat', 'ücret', 'kaç para', 'ne kadar'],
+      'İade': ['iade', 'değişim', 'return', 'refund', 'iptal', 'cancel', 'değiştirmek', 'geri almak'],
+      'Ödeme': ['ödeme', 'payment', 'kredi', 'kart', 'havale', 'eft', 'taksit', 'nakit', 'pos'],
+      'Randevu': ['randevu', 'appointment', 'rezervasyon', 'booking', 'saat', 'müsait', 'uygun'],
+      'Destek': ['şikayet', 'sorun', 'problem', 'yardım', 'help', 'destek', 'çalışmıyor', 'hata', 'bozuk', 'arıza'],
+      'Genel': ['bilgi', 'soru', 'nasıl', 'nedir', 'hakkında', 'adres', 'çalışma saatleri', 'iletişim', 'telefon']
     };
 
-    // Categorize each topic
-    const categorizedTopics = topics.map(topic => {
+    // Categorize each topic and extract subtopic
+    const categorizedTopics = filteredTopics.map(topic => {
       const lowerText = topic.text.toLowerCase();
       let category = 'Diğer';
+      let subtopic = topic.text.substring(0, 50).trim(); // Default subtopic is the text itself
 
       for (const [cat, keywords] of Object.entries(categories)) {
         if (keywords.some(kw => lowerText.includes(kw))) {
@@ -531,10 +596,22 @@ router.get('/top-questions', authenticateToken, async (req, res) => {
         }
       }
 
-      return { ...topic, category };
+      // Normalize subtopic - extract key phrase
+      // Remove common filler words and normalize
+      subtopic = subtopic
+        .replace(/^(merhaba|selam|hi|hello|hey)[,.\s]*/i, '')
+        .replace(/[.,!?]+$/, '')
+        .trim();
+
+      // Capitalize first letter
+      if (subtopic.length > 0) {
+        subtopic = subtopic.charAt(0).toUpperCase() + subtopic.slice(1);
+      }
+
+      return { ...topic, category, subtopic };
     });
 
-    // Group by category and count
+    // Group by category with subtopic aggregation
     const categoryStats = {};
     categorizedTopics.forEach(t => {
       if (!categoryStats[t.category]) {
@@ -542,24 +619,40 @@ router.get('/top-questions', authenticateToken, async (req, res) => {
           category: t.category,
           count: 0,
           channels: new Set(),
-          examples: []
+          subtopics: {} // Track subtopics with counts
         };
       }
       categoryStats[t.category].count++;
       categoryStats[t.category].channels.add(t.channel);
-      if (categoryStats[t.category].examples.length < 3) {
-        categoryStats[t.category].examples.push(t.text.substring(0, 100));
+
+      // Aggregate subtopics
+      const normalizedSubtopic = t.subtopic.toLowerCase();
+      if (!categoryStats[t.category].subtopics[normalizedSubtopic]) {
+        categoryStats[t.category].subtopics[normalizedSubtopic] = {
+          text: t.subtopic,
+          count: 0
+        };
       }
+      categoryStats[t.category].subtopics[normalizedSubtopic].count++;
     });
 
     // Sort by count and get top N
     const topTopics = Object.values(categoryStats)
-      .map(c => ({
-        category: c.category,
-        count: c.count,
-        channels: Array.from(c.channels),
-        examples: c.examples
-      }))
+      .map(c => {
+        // Get top 5 subtopics sorted by count
+        const sortedSubtopics = Object.values(c.subtopics)
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 5)
+          .map(s => ({ text: s.text, count: s.count }));
+
+        return {
+          category: c.category,
+          count: c.count,
+          channels: Array.from(c.channels),
+          subtopics: sortedSubtopics
+        };
+      })
+      .filter(c => c.count > 0) // Remove empty categories
       .sort((a, b) => b.count - a.count)
       .slice(0, parseInt(limit));
 

@@ -91,11 +91,11 @@ router.get('/', authenticateToken, async (req, res) => {
 router.get('/documents', authenticateToken, async (req, res) => {
   try {
     const businessId = req.businessId;
-    
+
     // Try to fetch documents, return empty array if table doesn't exist yet
     try {
       const documents = await prisma.knowledgeBase.findMany({
-        where: { 
+        where: {
           businessId,
           type: 'DOCUMENT'
         },
@@ -109,6 +109,56 @@ router.get('/documents', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Error fetching documents:', error);
     res.json({ documents: [] }); // Return empty array instead of error
+  }
+});
+
+// GET /api/knowledge/documents/:id - Get single document with content
+router.get('/documents/:id', authenticateToken, async (req, res) => {
+  try {
+    const businessId = req.businessId;
+    const { id } = req.params;
+
+    const document = await prisma.knowledgeBase.findFirst({
+      where: {
+        id,
+        businessId,
+        type: 'DOCUMENT'
+      }
+    });
+
+    if (!document) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+
+    res.json({ document });
+  } catch (error) {
+    console.error('Error fetching document:', error);
+    res.status(500).json({ error: 'Failed to fetch document' });
+  }
+});
+
+// GET /api/knowledge/urls/:id - Get single URL with content
+router.get('/urls/:id', authenticateToken, async (req, res) => {
+  try {
+    const businessId = req.businessId;
+    const { id } = req.params;
+
+    const url = await prisma.knowledgeBase.findFirst({
+      where: {
+        id,
+        businessId,
+        type: 'URL'
+      }
+    });
+
+    if (!url) {
+      return res.status(404).json({ error: 'URL not found' });
+    }
+
+    res.json({ url });
+  } catch (error) {
+    console.error('Error fetching URL:', error);
+    res.status(500).json({ error: 'Failed to fetch URL' });
   }
 });
 

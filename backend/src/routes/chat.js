@@ -1,7 +1,7 @@
 /**
  * Chat Widget API
  * Handles text-based chat for embedded widget
- * Using Google Gemini API
+ * Using Google Gemini API with function calling
  */
 
 import express from 'express';
@@ -10,6 +10,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { getDateTimeContext } from '../utils/dateTime.js';
 import { buildAssistantPrompt, getActiveTools as getPromptBuilderTools } from '../services/promptBuilder.js';
 import { isFreePlanExpired } from '../middleware/checkPlanExpiry.js';
+import { getActiveTools, executeTool } from '../tools/index.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -24,39 +25,119 @@ const getGemini = () => {
 };
 
 /**
- * Process chat with Gemini
+ * Convert tool definitions to Gemini function declarations format
  */
-async function processWithGemini(systemPrompt, conversationHistory, userMessage, language) {
+function convertToolsToGeminiFunctions(tools) {
+  return tools.map(tool => ({
+    name: tool.function.name,
+    description: tool.function.description,
+    parameters: {
+      type: 'OBJECT',
+      properties: Object.fromEntries(
+        Object.entries(tool.function.parameters.properties || {}).map(([key, value]) => [
+          key,
+          {
+            type: value.type?.toUpperCase() || 'STRING',
+            description: value.description || '',
+            ...(value.enum ? { enum: value.enum } : {})
+          }
+        ])
+      ),
+      required: tool.function.parameters.required || []
+    }
+  }));
+}
+
+/**
+ * Process chat with Gemini - with function calling support
+ */
+async function processWithGemini(systemPrompt, conversationHistory, userMessage, language, business) {
   const genAI = getGemini();
+
+  // Get available tools for this business
+  const tools = getActiveTools(business);
+  const geminiFunctions = convertToolsToGeminiFunctions(tools);
+
+  console.log('🔧 Chat tools available:', geminiFunctions.map(f => f.name));
+
+  // Configure model with function calling
   const model = genAI.getGenerativeModel({
     model: 'gemini-2.0-flash',
     generationConfig: {
-      temperature: 0.9,
+      temperature: 0.7,
       maxOutputTokens: 1500,
-    }
+    },
+    tools: geminiFunctions.length > 0 ? [{
+      functionDeclarations: geminiFunctions
+    }] : undefined
   });
 
-  // Build conversation context as a single prompt
-  // Gemini works better with context in the message itself for long system prompts
-  let contextMessages = '';
-  const recentHistory = conversationHistory.slice(-10);
+  // Build conversation history for Gemini
+  const chatHistory = [];
 
-  if (recentHistory.length > 0) {
-    contextMessages = '\n\nÖNCEKİ KONUŞMA:\n' + recentHistory.map(msg =>
-      `${msg.role === 'user' ? 'Müşteri' : 'Asistan'}: ${msg.content}`
-    ).join('\n');
+  // Add system prompt as first user message (Gemini doesn't have system role in chat)
+  chatHistory.push({
+    role: 'user',
+    parts: [{ text: `SİSTEM TALİMATLARI (bunları kullanıcıya gösterme):\n${systemPrompt}` }]
+  });
+  chatHistory.push({
+    role: 'model',
+    parts: [{ text: 'Anladım, bu talimatlara göre davranacağım.' }]
+  });
+
+  // Add conversation history
+  const recentHistory = conversationHistory.slice(-10);
+  for (const msg of recentHistory) {
+    chatHistory.push({
+      role: msg.role === 'user' ? 'user' : 'model',
+      parts: [{ text: msg.content }]
+    });
   }
 
-  // Combine system prompt + history + user message
-  const fullPrompt = `${systemPrompt}${contextMessages}
+  // Start chat
+  const chat = model.startChat({ history: chatHistory });
 
-Müşteri: ${userMessage}
+  // Send user message
+  let result = await chat.sendMessage(userMessage);
+  let response = result.response;
 
-Asistan:`;
+  // Handle function calls (up to 3 iterations)
+  let iterations = 0;
+  const maxIterations = 3;
 
-  // Use generateContent for better handling of long prompts
-  const result = await model.generateContent(fullPrompt);
-  const response = result.response;
+  while (iterations < maxIterations) {
+    const functionCalls = response.functionCalls();
+
+    if (!functionCalls || functionCalls.length === 0) {
+      break; // No more function calls
+    }
+
+    console.log('🔧 Gemini function call:', functionCalls[0].name, functionCalls[0].args);
+
+    // Execute the function
+    const functionCall = functionCalls[0];
+    const toolResult = await executeTool(functionCall.name, functionCall.args, business, {
+      channel: 'CHAT',
+      conversationId: null
+    });
+
+    console.log('🔧 Tool result:', toolResult.success ? 'SUCCESS' : 'FAILED', toolResult.message?.substring(0, 100));
+
+    // Send function response back to Gemini
+    result = await chat.sendMessage([{
+      functionResponse: {
+        name: functionCall.name,
+        response: {
+          success: toolResult.success,
+          data: toolResult.data || null,
+          message: toolResult.message || toolResult.error || 'Tool executed'
+        }
+      }
+    }]);
+    response = result.response;
+    iterations++;
+  }
+
   const text = response.text();
 
   return {
@@ -230,8 +311,8 @@ ${knowledgeContext}`;
     console.log('📝 [Chat] Full system prompt length:', fullSystemPrompt.length, 'chars');
     console.log('🤖 [Chat] Using Gemini model');
 
-    // Process with Gemini
-    const result = await processWithGemini(fullSystemPrompt, conversationHistory, message, language);
+    // Process with Gemini (with function calling support)
+    const result = await processWithGemini(fullSystemPrompt, conversationHistory, message, language, business);
 
     // Human-like delay: reading + typing time
     // 1. Reading delay: 1-2 seconds (before typing starts)

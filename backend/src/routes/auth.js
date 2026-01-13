@@ -689,8 +689,25 @@ router.post('/reset-password', async (req, res) => {
       return res.status(400).json({ error: 'Token and password are required' });
     }
 
-    if (password.length < 6) {
-      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    // Validate password strength
+    const passwordErrors = [];
+    if (password.length < 8) {
+      passwordErrors.push('at least 8 characters');
+    }
+    if (!/[A-Z]/.test(password)) {
+      passwordErrors.push('at least 1 uppercase letter');
+    }
+    if (!/[a-z]/.test(password)) {
+      passwordErrors.push('at least 1 lowercase letter');
+    }
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+      passwordErrors.push('at least 1 punctuation mark');
+    }
+    if (passwordErrors.length > 0) {
+      return res.status(400).json({
+        error: `Password must contain: ${passwordErrors.join(', ')}`,
+        code: 'WEAK_PASSWORD'
+      });
     }
 
     // Find token

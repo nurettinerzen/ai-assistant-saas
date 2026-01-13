@@ -39,7 +39,8 @@ Müşteri konuştuktan sonra sessiz kalırsa (8-10 saniye):
 Müşteri "bir dakika", "bekle" gibi şeyler derse sabırla bekle, yoklama yapma.
 
 ### BİLGİ KONTROL EDİYORSAN:
-Tool çağrısı yaparken: "Bir saniye, kontrol ediyorum..." de ve sessizce bekle.
+Tool çağrısı yaparken sessizce bekle - "bir saniye", "kontrol ediyorum" gibi şeyler SÖYLEME.
+Tool sonucunu al, sonra direkt bilgiyi aktar.
 
 ## GÖRÜŞME SONLANDIRMA
 Görüşme bittiğinde (veda edildiğinde, iş tamamlandığında) sessizce bekle, sistem aramayı otomatik sonlandıracak.
@@ -115,7 +116,8 @@ Müşteri konuştuktan sonra sessiz kalırsa (8-10 saniye):
 Müşteri "bir dakika", "bekle" gibi şeyler derse sabırla bekle, yoklama yapma.
 
 ### BİLGİ KONTROL EDİYORSAN:
-Tool çağrısı yaparken: "Bir saniye, kontrol ediyorum..." de ve sessizce bekle.
+Tool çağrısı yaparken sessizce bekle - "bir saniye", "kontrol ediyorum" gibi şeyler SÖYLEME.
+Tool sonucunu al, sonra direkt bilgiyi aktar.
 
 ## GÖRÜŞME SONLANDIRMA
 Görüşme bittiğinde (veda edildiğinde, iş tamamlandığında) sessizce bekle, sistem aramayı otomatik sonlandıracak.
@@ -214,9 +216,14 @@ Müşterinin telefon numarasına göre kayıtlı bilgilerini sorgulayabilirsin.
 - "Borcum ne kadar?", "Ne zaman ödemem lazım?" gibi sorularda
 
 ### NASIL KULLAN:
-1. customer_data_lookup aracını çağır
+1. customer_data_lookup aracını DİREKT çağır - "bakıyorum", "sorguluyorum" DEME
 2. query_type: sgk_borcu, vergi_borcu, beyanname veya tum_bilgiler
 3. phone: Müşteri numara söylediyse o numarayı yaz (boşlukları kaldır: "0532 123 45 67" -> "05321234567")
+
+### KRİTİK - TOOL ÇAĞRISINDA SESSİZ KAL:
+- Tool çağrısı yaparken "bir saniye", "bakıyorum", "sorguluyorum", "kontrol ediyorum" gibi şeyler SÖYLEME
+- DİREKT tool'u çağır ve sonucunu bekle
+- Sadece sonucu aldıktan sonra müşteriye bilgiyi aktar
 
 ### ÖNEMLİ:
 - Müşteri numara söylediyse phone parametresine YAZ

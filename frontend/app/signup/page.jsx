@@ -21,7 +21,7 @@ export default function SignupPage() {
     router.push('/dashboard/assistant');
   }
 }, [router]);
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [formData, setFormData] = useState({
@@ -78,8 +78,25 @@ export default function SignupPage() {
         return;
       }
 
+      // Validate password strength
+      const passwordErrors = [];
       if (formData.password.length < 8) {
-        toast.error(t('auth.passwordMinLength'));
+        passwordErrors.push(locale === 'tr' ? 'en az 8 karakter' : 'at least 8 characters');
+      }
+      if (!/[A-Z]/.test(formData.password)) {
+        passwordErrors.push(locale === 'tr' ? 'en az 1 büyük harf' : 'at least 1 uppercase letter');
+      }
+      if (!/[a-z]/.test(formData.password)) {
+        passwordErrors.push(locale === 'tr' ? 'en az 1 küçük harf' : 'at least 1 lowercase letter');
+      }
+      if (!/[!@#$%^&*(),.?":{}|<>]/.test(formData.password)) {
+        passwordErrors.push(locale === 'tr' ? 'en az 1 noktalama işareti' : 'at least 1 punctuation mark');
+      }
+      if (passwordErrors.length > 0) {
+        const errorMsg = locale === 'tr'
+          ? `Şifre şunları içermeli: ${passwordErrors.join(', ')}`
+          : `Password must contain: ${passwordErrors.join(', ')}`;
+        toast.error(errorMsg);
         setLoading(false);
         return;
       }
@@ -184,7 +201,11 @@ export default function SignupPage() {
                   minLength={8}
                 />
               </div>
-              <p className="text-xs text-gray-500 dark:text-neutral-500 mt-1">{t('auth.mustBe8Chars')}</p>
+              <p className="text-xs text-gray-500 dark:text-neutral-500 mt-1">
+                {locale === 'tr'
+                  ? 'En az 8 karakter, büyük/küçük harf ve noktalama işareti içermeli'
+                  : 'Must be 8+ chars with uppercase, lowercase and punctuation'}
+              </p>
             </div>
 
             <div>

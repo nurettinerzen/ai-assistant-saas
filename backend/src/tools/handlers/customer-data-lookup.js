@@ -66,7 +66,8 @@ export async function execute(args, business, context = {}) {
     // Look up customer
     console.log('🔍 Looking up customer:', { businessId: business.id, phone: normalizedPhone });
 
-    const customer = await prisma.customerData.findUnique({
+    // First try exact match
+    let customer = await prisma.customerData.findUnique({
       where: {
         businessId_phone: {
           businessId: business.id,
@@ -74,6 +75,44 @@ export async function execute(args, business, context = {}) {
         }
       }
     });
+
+    // If not found, try flexible search (phone contains or ends with)
+    if (!customer) {
+      console.log('🔍 Exact match not found, trying flexible search...');
+
+      // Get last 10 digits for flexible matching
+      const last10 = normalizedPhone.slice(-10);
+
+      // Search for phone ending with these digits
+      customer = await prisma.customerData.findFirst({
+        where: {
+          businessId: business.id,
+          phone: {
+            endsWith: last10
+          }
+        }
+      });
+
+      if (!customer) {
+        // Try with contains
+        customer = await prisma.customerData.findFirst({
+          where: {
+            businessId: business.id,
+            phone: {
+              contains: last10.slice(-7)  // Last 7 digits
+            }
+          }
+        });
+      }
+
+      // Debug: List all phones in this business
+      const allCustomers = await prisma.customerData.findMany({
+        where: { businessId: business.id },
+        select: { phone: true, companyName: true },
+        take: 10
+      });
+      console.log('🔍 Sample phones in DB:', allCustomers.map(c => ({ phone: c.phone, name: c.companyName })));
+    }
 
     console.log('🔍 Customer lookup result:', customer ? `Found: ${customer.companyName}` : 'NOT FOUND');
 

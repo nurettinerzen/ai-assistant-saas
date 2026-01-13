@@ -183,6 +183,14 @@ export default function CallsPage() {
 
   // Channel badge
   const getChannelBadge = (call) => {
+    if (call.channel === 'whatsapp' || call.type === 'whatsapp') {
+      return (
+        <Badge className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-xs">
+          <MessageSquare className="h-3 w-3 mr-1" />
+          WhatsApp
+        </Badge>
+      );
+    }
     if (call.channel === 'chat' || call.type === 'chat') {
       return (
         <Badge className="bg-info-50 dark:bg-info-900/20 text-info-700 dark:text-info-400 text-xs">

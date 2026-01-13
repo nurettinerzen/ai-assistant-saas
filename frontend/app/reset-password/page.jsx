@@ -43,8 +43,25 @@ function ResetPasswordContent() {
       return;
     }
 
-    if (formData.password.length < 6) {
-      toast.error(locale === 'tr' ? 'Şifre en az 6 karakter olmalı' : 'Password must be at least 6 characters');
+    // Validate password strength
+    const passwordErrors = [];
+    if (formData.password.length < 8) {
+      passwordErrors.push(locale === 'tr' ? 'en az 8 karakter' : 'at least 8 characters');
+    }
+    if (!/[A-Z]/.test(formData.password)) {
+      passwordErrors.push(locale === 'tr' ? 'en az 1 büyük harf' : 'at least 1 uppercase letter');
+    }
+    if (!/[a-z]/.test(formData.password)) {
+      passwordErrors.push(locale === 'tr' ? 'en az 1 küçük harf' : 'at least 1 lowercase letter');
+    }
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(formData.password)) {
+      passwordErrors.push(locale === 'tr' ? 'en az 1 noktalama işareti' : 'at least 1 punctuation mark');
+    }
+    if (passwordErrors.length > 0) {
+      const errorMsg = locale === 'tr'
+        ? `Şifre şunları içermeli: ${passwordErrors.join(', ')}`
+        : `Password must contain: ${passwordErrors.join(', ')}`;
+      toast.error(errorMsg);
       return;
     }
 
@@ -157,7 +174,7 @@ function ResetPasswordContent() {
               value={formData.password}
               onChange={handleChange}
               placeholder="******"
-              minLength={6}
+              minLength={8}
             />
             <button
               type="button"
@@ -168,7 +185,9 @@ function ResetPasswordContent() {
             </button>
           </div>
           <p className="text-xs text-neutral-500 mt-1">
-            {locale === 'tr' ? 'En az 6 karakter' : 'At least 6 characters'}
+            {locale === 'tr'
+              ? 'En az 8 karakter, büyük/küçük harf ve noktalama işareti içermeli'
+              : 'Must be 8+ chars with uppercase, lowercase and punctuation'}
           </p>
         </div>
 
@@ -183,7 +202,7 @@ function ResetPasswordContent() {
               value={formData.confirmPassword}
               onChange={handleChange}
               placeholder="******"
-              minLength={6}
+              minLength={8}
             />
             <button
               type="button"

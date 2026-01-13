@@ -27,7 +27,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import EmptyState from '@/components/EmptyState';
 import TemplateSelector from '@/components/TemplateSelector';
-import { Bot, Plus, Edit, Trash2, Search, Phone, PhoneOutgoing, PhoneIncoming } from 'lucide-react';
+import { Bot, Plus, Edit, Trash2, Search, Phone, PhoneOutgoing, PhoneIncoming, Loader2 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -196,6 +196,8 @@ export default function AssistantsPage() {
     callDirection: 'inbound',
     callPurpose: '',
   });
+  const [creating, setCreating] = useState(false);
+  const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -358,6 +360,7 @@ export default function AssistantsPage() {
       return;
     }
 
+    setCreating(true);
     try {
       await apiClient.assistants.create(formData);
       toast.success(t('dashboard.assistantsPage.createdSuccess'));
@@ -366,6 +369,8 @@ export default function AssistantsPage() {
       loadData();
     } catch (error) {
       toast.error(error.response?.data?.error || t('errors.generic'));
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -404,6 +409,7 @@ export default function AssistantsPage() {
   const handleUpdate = async () => {
     if (!editingAssistant) return;
 
+    setUpdating(true);
     try {
       await apiClient.assistants.update(editingAssistant.id, formData);
       toast.success(t('dashboard.assistantsPage.updatedSuccess'));
@@ -412,6 +418,8 @@ export default function AssistantsPage() {
       loadData();
     } catch (error) {
       toast.error(error.response?.data?.error || t('errors.generic'));
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -910,11 +918,17 @@ export default function AssistantsPage() {
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t">
-            <Button variant="outline" onClick={() => setShowCreateModal(false)}>
+            <Button variant="outline" onClick={() => setShowCreateModal(false)} disabled={creating || updating}>
               {t('common.cancel')}
             </Button>
-            <Button onClick={editingAssistant ? handleUpdate : handleCreate}>
-              {editingAssistant ? t('dashboard.assistantsPage.updateBtn') : t('dashboard.assistantsPage.create')}
+            <Button onClick={editingAssistant ? handleUpdate : handleCreate} disabled={creating || updating}>
+              {(creating || updating) && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {creating
+                ? (locale === 'tr' ? 'Oluşturuluyor...' : 'Creating...')
+                : updating
+                  ? (locale === 'tr' ? 'Güncelleniyor...' : 'Updating...')
+                  : editingAssistant ? t('dashboard.assistantsPage.updateBtn') : t('dashboard.assistantsPage.create')
+              }
             </Button>
           </div>
         </DialogContent>

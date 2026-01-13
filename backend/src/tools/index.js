@@ -46,11 +46,12 @@ export function getActiveToolsForElevenLabs(business, serverUrl = null, agentId 
     : `${backendUrl}/api/elevenlabs/webhook`;
 
   // Convert OpenAI format to 11Labs webhook format
-  // 11Labs uses api_schema - omit path_params_schema and query_params_schema if not needed
+  // Include tool_name in body so webhook knows which tool was called
   return baseTools.map(tool => ({
     type: 'webhook',
     name: tool.function.name,
     description: tool.function.description,
+    response_timeout_secs: 20,
     api_schema: {
       url: webhookUrl,
       method: 'POST',
@@ -59,7 +60,8 @@ export function getActiveToolsForElevenLabs(business, serverUrl = null, agentId 
         properties: {
           tool_name: {
             type: 'string',
-            description: 'Name of the tool being called'
+            description: 'Tool name',
+            default: tool.function.name
           },
           ...tool.function.parameters.properties
         },

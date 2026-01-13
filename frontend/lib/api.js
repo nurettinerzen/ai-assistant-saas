@@ -162,19 +162,21 @@ export const apiClient = {
   knowledge: {
     // Documents
     getDocuments: () => api.get('/api/knowledge/documents'),
+    getDocument: (id) => api.get(`/api/knowledge/documents/${id}`),
     uploadDocument: (formData) => api.post('/api/knowledge/documents', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
     deleteDocument: (id) => api.delete(`/api/knowledge/documents/${id}`),
-    
+
     // FAQs
     getFaqs: () => api.get('/api/knowledge/faqs'),
     createFaq: (data) => api.post('/api/knowledge/faqs', data),
     updateFaq: (id, data) => api.put(`/api/knowledge/faqs/${id}`, data),
     deleteFaq: (id) => api.delete(`/api/knowledge/faqs/${id}`),
-    
+
     // URLs
     getUrls: () => api.get('/api/knowledge/urls'),
+    getUrl: (id) => api.get(`/api/knowledge/urls/${id}`),
     addUrl: (data) => api.post('/api/knowledge/urls', data),
     deleteUrl: (id) => api.delete(`/api/knowledge/urls/${id}`),
   },
@@ -266,6 +268,11 @@ export const apiClient = {
 
   // Customer Data (for AI assistant matching)
   customerData: {
+    // File management (new file-based structure)
+    getFiles: () => api.get('/api/customer-data/files'),
+    getFile: (id, params) => api.get(`/api/customer-data/files/${id}`, { params }),
+    deleteFile: (id) => api.delete(`/api/customer-data/files/${id}`),
+    // Record management
     getAll: (params) => api.get('/api/customer-data', { params }),
     getById: (id) => api.get(`/api/customer-data/${id}`),
     create: (data) => api.post('/api/customer-data', data),
@@ -281,7 +288,7 @@ export const apiClient = {
     importFile: (formData) => api.post('/api/customer-data/import', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
-    downloadTemplate: () => api.get('/api/customer-data/template', { responseType: 'blob' }),
+    downloadTemplate: (type = 'accounting') => api.get(`/api/customer-data/template/${type}`, { responseType: 'blob' }),
   },
 
   // Admin Panel

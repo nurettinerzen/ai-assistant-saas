@@ -268,7 +268,10 @@ export default function AnalyticsPage() {
         <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6">
           <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">{t('dashboard.analyticsPage.activityOverTime')}</h3>
           <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={analytics?.callsOverTime || []}>
+            <LineChart data={(analytics?.callsOverTime || []).map(item => ({
+              ...item,
+              date: new Date(item.date).toLocaleDateString(locale === 'tr' ? 'tr-TR' : 'en-US', { month: 'short', day: 'numeric' })
+            }))}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="date" />
               <YAxis />
@@ -443,7 +446,24 @@ export default function AnalyticsPage() {
                     ))}
                   </div>
                 </div>
-                {topic.examples && topic.examples.length > 0 && (
+                {/* Subtopics with counts */}
+                {topic.subtopics && topic.subtopics.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {topic.subtopics.map((subtopic, i) => (
+                      <span
+                        key={i}
+                        className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-white dark:bg-neutral-700 rounded-full border border-neutral-200 dark:border-neutral-600 text-neutral-700 dark:text-neutral-300"
+                      >
+                        {subtopic.text}
+                        <span className="font-semibold text-primary-600 dark:text-primary-400">
+                          {subtopic.count}
+                        </span>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {/* Fallback for old examples format */}
+                {!topic.subtopics && topic.examples && topic.examples.length > 0 && (
                   <div className="mt-2 space-y-1">
                     {topic.examples.slice(0, 2).map((example, i) => (
                       <p key={i} className="text-xs text-neutral-500 dark:text-neutral-400 line-clamp-1">

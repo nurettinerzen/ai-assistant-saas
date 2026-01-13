@@ -227,7 +227,8 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
       const elevenLabsLang = getElevenLabsLanguage(lang);
       console.log('📝 Language mapping:', lang, '->', elevenLabsLang);
 
-      // Add end_call system tool so agent can hang up after goodbye
+      // System tools (end_call) go inside prompt.tools
+      // Webhook tools (customer_data_lookup etc) will be added at root level after agent creation
       const endCallTool = {
         type: 'system',
         name: 'end_call',
@@ -236,7 +237,6 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
           system_tool_type: 'end_call'
         }
       };
-      const toolsWithSystemTools = [...activeToolsElevenLabs, endCallTool];
 
       // Build language-specific analysis prompts for post-call summary
       const analysisPrompts = {
@@ -257,10 +257,10 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
           agent: {
             prompt: {
               prompt: fullSystemPrompt,
-              llm: 'gemini-2.5-flash-lite',
+              llm: 'gemini-2.0-flash',
               temperature: 0.1,
-              // System tools must be inside prompt.tools per 11Labs API
-              tools: toolsWithSystemTools
+              // Only system tools go inside prompt.tools
+              tools: [endCallTool]
             },
             first_message: finalFirstMessage,
             language: elevenLabsLang
@@ -302,8 +302,7 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
         }
       };
 
-      // DEBUG: Log the full agent config and tools
-      console.log('🔍 DEBUG - toolsWithSystemTools:', JSON.stringify(toolsWithSystemTools, null, 2));
+      // DEBUG: Log the full agent config
       console.log('🔍 DEBUG - agentConfig:', JSON.stringify(agentConfig, null, 2));
 
       const elevenLabsResponse = await elevenLabsService.createAgent(agentConfig);
@@ -312,23 +311,24 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
 
       // Now update tools with agentId in webhook URL so we can identify business in tool calls
       const activeToolsWithAgentId = getActiveToolsForElevenLabs(business, null, elevenLabsAgentId);
-      // Add end_call system tool to the updated tools as well
-      const toolsWithSystemToolsAndAgentId = [...activeToolsWithAgentId, endCallTool];
 
-      // Update agent with tools that include agentId in webhook URL
+      // Update agent with:
+      // - System tools (end_call) in prompt.tools
+      // - Webhook tools at ROOT level with agentId in URL
       await elevenLabsService.updateAgent(elevenLabsAgentId, {
         conversation_config: {
           agent: {
             prompt: {
               prompt: fullSystemPrompt,
-              llm: 'gemini-2.5-flash-lite',
+              llm: 'gemini-2.0-flash',
               temperature: 0.1,
-              tools: toolsWithSystemToolsAndAgentId
+              tools: [endCallTool]  // System tools stay in prompt.tools
             }
           }
-        }
+        },
+        tools: activeToolsWithAgentId  // Webhook tools at ROOT level with agentId in URL
       });
-      console.log('✅ 11Labs Agent tools updated with agentId in webhook URL (includes end_call)');
+      console.log('✅ 11Labs Agent tools updated with agentId in webhook URL');
     } catch (elevenLabsError) {
       console.error('❌ 11Labs Agent creation failed:', elevenLabsError.response?.data || elevenLabsError.message);
       return res.status(500).json({
@@ -622,7 +622,8 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
         console.log('📝 Update language mapping:', lang, '->', elevenLabsLang);
         const effectiveCallDirection = callDirection || assistant.callDirection || 'inbound';
 
-        // Add end_call system tool so agent can hang up after goodbye
+        // System tools (end_call) go inside prompt.tools
+        // Webhook tools (customer_data_lookup etc) go in root level tools array
         const endCallTool = {
           type: 'system',
           name: 'end_call',
@@ -631,7 +632,6 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
             system_tool_type: 'end_call'
           }
         };
-        const toolsWithSystemTools = [...activeToolsElevenLabs, endCallTool];
 
         // Build language-specific analysis prompts for post-call summary
         const analysisPrompts = {
@@ -652,10 +652,10 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
             agent: {
               prompt: {
                 prompt: fullSystemPrompt,
-                llm: 'gemini-2.5-flash-lite',
+                llm: 'gemini-2.0-flash',
                 temperature: 0.1,
-                // System tools must be inside prompt.tools per 11Labs API (includes end_call)
-                tools: toolsWithSystemTools
+                // Only system tools go inside prompt.tools
+                tools: [endCallTool]
               },
               first_message: firstMessage || assistant.firstMessage,
               language: elevenLabsLang
@@ -684,7 +684,9 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
               transcript_summary_prompt: langAnalysis.transcript_summary,
               success_evaluation_prompt: langAnalysis.success_evaluation
             }
-          }
+          },
+          // IMPORTANT: Webhook tools go at ROOT level, not inside conversation_config
+          tools: activeToolsElevenLabs
         };
 
         await elevenLabsService.updateAgent(assistant.elevenLabsAgentId, agentUpdateConfig);
