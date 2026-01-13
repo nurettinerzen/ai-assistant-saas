@@ -483,7 +483,7 @@ const handleShopifyConnect = async () => {
   };
 
   const copyWebhookUrl = () => {
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://ai-assistant-saas.onrender.com';
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.telyx.ai';
     // Always use production URL, ignore old database values
     const webhookUrl = `${backendUrl}/api/whatsapp/webhook`;
     navigator.clipboard.writeText(webhookUrl);
@@ -1131,7 +1131,7 @@ const handleIdeasoftConnect = async () => {
             <div className="space-y-2">
               <Label>Webhook URL</Label>
               <div className="flex gap-2">
-                <Input type="text" readOnly value={`${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://ai-assistant-saas.onrender.com'}/api/whatsapp/webhook`} className="bg-neutral-50" />
+                <Input type="text" readOnly value={`${process.env.NEXT_PUBLIC_API_URL || 'https://api.telyx.ai'}/api/whatsapp/webhook`} className="bg-neutral-50" />
                 <Button type="button" variant="outline" size="icon" onClick={copyWebhookUrl}><Copy className="h-4 w-4" /></Button>
               </div>
               <p className="text-xs text-neutral-500">
