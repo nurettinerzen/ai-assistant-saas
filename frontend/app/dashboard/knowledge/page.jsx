@@ -432,6 +432,7 @@ export default function KnowledgeBasePage() {
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">{t('dashboard.knowledgeBasePage.urlTableHeader')}</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">{t('dashboard.knowledgeBasePage.statusTableHeader')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">{t('dashboard.knowledgeBasePage.errorReasonHeader') || 'Hata Nedeni'}</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">{t('dashboard.knowledgeBasePage.pagesTableHeader')}</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">{t('dashboard.knowledgeBasePage.lastCrawledHeader')}</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">{t('dashboard.knowledgeBasePage.actionsTableHeader')}</th>
@@ -463,6 +464,11 @@ export default function KnowledgeBasePage() {
                         >
                         {t((url.status === 'ACTIVE' || url.status === 'ready') ? 'dashboard.knowledgeBasePage.ready' : (url.status === 'PROCESSING' || url.status === 'crawling') ? 'dashboard.knowledgeBasePage.crawling' : 'dashboard.knowledgeBasePage.failed')}
                         </Badge>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-neutral-600 dark:text-neutral-400">
+                        {url.status === 'FAILED' && url.content?.startsWith('Error:') ? (
+                          <span className="text-red-600 dark:text-red-400 text-xs">{url.content.replace('Error: ', '')}</span>
+                        ) : '-'}
                       </td>
                       <td className="px-6 py-4 text-sm text-neutral-600 dark:text-neutral-400">{url.pageCount}</td>
                       <td className="px-6 py-4 text-sm text-neutral-600 dark:text-neutral-400">

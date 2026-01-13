@@ -1108,21 +1108,21 @@ const handleIdeasoftConnect = async () => {
       <Dialog open={whatsappModalOpen} onOpenChange={setWhatsappModalOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Connect WhatsApp Business API</DialogTitle>
-            <DialogDescription>Connect your WhatsApp Business API to enable AI-powered conversations.</DialogDescription>
+            <DialogTitle>{language === 'tr' ? 'WhatsApp Business API Bağlantısı' : 'Connect WhatsApp Business API'}</DialogTitle>
+            <DialogDescription>{language === 'tr' ? 'WhatsApp Business API\'nizi bağlayarak AI destekli konuşmaları etkinleştirin.' : 'Connect your WhatsApp Business API to enable AI-powered conversations.'}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Access Token *</Label>
-              <Input type="password" placeholder="Enter your WhatsApp access token" value={whatsappForm.accessToken} onChange={(e) => setWhatsappForm({ ...whatsappForm, accessToken: e.target.value })} />
+              <Label>{language === 'tr' ? 'Erişim Tokeni *' : 'Access Token *'}</Label>
+              <Input type="password" placeholder={language === 'tr' ? 'WhatsApp erişim tokeninizi girin' : 'Enter your WhatsApp access token'} value={whatsappForm.accessToken} onChange={(e) => setWhatsappForm({ ...whatsappForm, accessToken: e.target.value })} />
             </div>
             <div className="space-y-2">
-              <Label>Phone Number ID *</Label>
-              <Input type="text" placeholder="Enter your phone number ID" value={whatsappForm.phoneNumberId} onChange={(e) => setWhatsappForm({ ...whatsappForm, phoneNumberId: e.target.value })} />
+              <Label>{language === 'tr' ? 'Telefon Numarası ID *' : 'Phone Number ID *'}</Label>
+              <Input type="text" placeholder={language === 'tr' ? 'Telefon numarası ID\'nizi girin' : 'Enter your phone number ID'} value={whatsappForm.phoneNumberId} onChange={(e) => setWhatsappForm({ ...whatsappForm, phoneNumberId: e.target.value })} />
             </div>
             <div className="space-y-2">
-              <Label>Verify Token *</Label>
-              <Input type="text" placeholder="Create a secure verify token" value={whatsappForm.verifyToken} onChange={(e) => setWhatsappForm({ ...whatsappForm, verifyToken: e.target.value })} />
+              <Label>{language === 'tr' ? 'Doğrulama Tokeni *' : 'Verify Token *'}</Label>
+              <Input type="text" placeholder={language === 'tr' ? 'Güvenli bir doğrulama tokeni oluşturun' : 'Create a secure verify token'} value={whatsappForm.verifyToken} onChange={(e) => setWhatsappForm({ ...whatsappForm, verifyToken: e.target.value })} />
             </div>
             <div className="space-y-2">
               <Label>Webhook URL</Label>
@@ -1133,8 +1133,8 @@ const handleIdeasoftConnect = async () => {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setWhatsappModalOpen(false)} disabled={whatsappLoading}>Cancel</Button>
-            <Button onClick={handleWhatsAppConnect} disabled={whatsappLoading}>{whatsappLoading ? 'Connecting...' : 'Connect WhatsApp'}</Button>
+            <Button variant="outline" onClick={() => setWhatsappModalOpen(false)} disabled={whatsappLoading}>{language === 'tr' ? 'İptal' : 'Cancel'}</Button>
+            <Button onClick={handleWhatsAppConnect} disabled={whatsappLoading}>{whatsappLoading ? (language === 'tr' ? 'Bağlanıyor...' : 'Connecting...') : (language === 'tr' ? 'WhatsApp\'ı Bağla' : 'Connect WhatsApp')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
