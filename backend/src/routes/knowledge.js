@@ -165,15 +165,25 @@ router.get('/urls/:id', authenticateToken, async (req, res) => {
 // Helper function to extract text from PDF (using pdf-parse v2 API)
 async function extractTextFromPDF(filePath) {
   try {
-    const dataBuffer = await fs.readFile(filePath);
-    // PDFParse v2: constructor takes LoadParameters, getText() returns TextResult
-    const parser = new PDFParse({ data: dataBuffer });
+    // pdf-parse v2: use file:// URL for local files
+    const fileUrl = `file://${filePath}`;
+    const parser = new PDFParse({ url: fileUrl });
     const result = await parser.getText();
     await parser.destroy(); // Clean up resources
-    return result.text.trim();
+    return result.text?.trim() || '';
   } catch (error) {
     console.error('PDF parsing error:', error);
-    throw new Error('Failed to extract text from PDF');
+    // Try fallback with data buffer
+    try {
+      const dataBuffer = await fs.readFile(filePath);
+      const parser = new PDFParse({ data: dataBuffer });
+      const result = await parser.getText();
+      await parser.destroy();
+      return result.text?.trim() || '';
+    } catch (fallbackError) {
+      console.error('PDF parsing fallback also failed:', fallbackError);
+      throw new Error('Failed to extract text from PDF');
+    }
   }
 }
 
@@ -308,11 +318,14 @@ async function processDocument(documentId, filePath, ext, businessId) {
     
   } catch (error) {
     console.error(`❌ Document ${documentId} processing failed:`, error);
-    
-    // Mark as failed
+
+    // Mark as failed with error message
     await prisma.knowledgeBase.update({
       where: { id: documentId },
-      data: { status: 'FAILED' }
+      data: {
+        status: 'FAILED',
+        content: `Error: ${error.message || 'Unknown error during processing'}`
+      }
     });
   }
 }
