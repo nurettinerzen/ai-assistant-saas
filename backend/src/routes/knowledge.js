@@ -520,28 +520,53 @@ router.delete('/faqs/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// Helper function to scrape URL content
-async function scrapeURL(url) {
+// Helper function to scrape URL content and extract links
+async function scrapeURL(url, extractLinks = false) {
   try {
     const response = await axios.get(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; TelyxBot/1.0)'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
       },
-      timeout: 10000
+      timeout: 15000,
+      maxRedirects: 5
     });
-    
+
     const $ = cheerio.load(response.data);
-    
+
+    // Extract links before removing elements (if needed)
+    let links = [];
+    if (extractLinks) {
+      const baseUrl = new URL(url);
+      $('a[href]').each((_, el) => {
+        try {
+          const href = $(el).attr('href');
+          if (!href || href.startsWith('#') || href.startsWith('javascript:') || href.startsWith('mailto:') || href.startsWith('tel:')) {
+            return;
+          }
+          // Convert relative URLs to absolute
+          const absoluteUrl = new URL(href, url).href;
+          // Only include links from same domain
+          const linkUrl = new URL(absoluteUrl);
+          if (linkUrl.hostname === baseUrl.hostname && !links.includes(absoluteUrl)) {
+            links.push(absoluteUrl);
+          }
+        } catch (e) {
+          // Invalid URL, skip
+        }
+      });
+    }
+
     // Remove script and style elements
-    $('script, style, nav, header, footer, aside').remove();
-    
+    $('script, style, nav, header, footer, aside, noscript, iframe').remove();
+
     // Extract text content
-    const title = $('title').text();
+    const title = $('title').text().trim();
     const bodyText = $('body').text().trim().replace(/\s+/g, ' ');
-    
+
     return {
       title,
       content: bodyText,
+      links,
       success: true
     };
   } catch (error) {
@@ -549,6 +574,7 @@ async function scrapeURL(url) {
     return {
       title: url,
       content: '',
+      links: [],
       success: false,
       error: error.message
     };
@@ -621,84 +647,129 @@ router.post('/urls', authenticateToken, async (req, res) => {
   }
 });
 
-// Async function to crawl URL
+// Async function to crawl URL with depth support
 async function crawlURL(entryId, url) {
   try {
-    const result = await scrapeURL(url);
+    // Get entry to find businessId and crawlDepth
+    const entry = await prisma.knowledgeBase.findUnique({
+      where: { id: entryId },
+      select: { businessId: true, crawlDepth: true }
+    });
 
-    if (result.success) {
-      // Get entry to find businessId
-      const entry = await prisma.knowledgeBase.findUnique({
-        where: { id: entryId },
-        select: { businessId: true }
-      });
+    const maxDepth = entry.crawlDepth || 1;
+    const crawledUrls = new Set();
+    const allContent = [];
+    let totalPages = 0;
+    let mainTitle = '';
 
-      // Get ALL active assistants with 11Labs agent ID
-      const assistants = await prisma.assistant.findMany({
-        where: { businessId: entry.businessId, isActive: true },
-        select: { id: true, elevenLabsAgentId: true, name: true }
-      });
+    // BFS crawling with depth limit
+    const urlQueue = [{ url, depth: 1 }];
 
-      const elevenLabsDocIds = [];
+    while (urlQueue.length > 0 && totalPages < 50) { // Max 50 pages to prevent infinite crawling
+      const { url: currentUrl, depth } = urlQueue.shift();
 
-      // Upload to 11Labs for ALL assistants
-      for (const assistant of assistants) {
-        if (assistant.elevenLabsAgentId) {
-          try {
-            const elevenLabsDoc = await elevenLabsService.addKnowledgeDocument(assistant.elevenLabsAgentId, {
-              name: result.title || url,
-              url: url  // Let 11Labs scrape the URL directly
-            });
-            if (elevenLabsDoc?.id) {
-              elevenLabsDocIds.push({ assistantId: assistant.id, docId: elevenLabsDoc.id });
-              console.log(`✅ URL uploaded to 11Labs for assistant "${assistant.name}": ${elevenLabsDoc.id}`);
-            }
-          } catch (elevenLabsError) {
-            console.error(`11Labs URL upload failed for assistant "${assistant.name}":`, elevenLabsError);
-            // Fallback: try with scraped content
-            try {
-              const elevenLabsDoc = await elevenLabsService.addKnowledgeDocument(assistant.elevenLabsAgentId, {
-                name: result.title || url,
-                content: result.content
-              });
-              if (elevenLabsDoc?.id) {
-                elevenLabsDocIds.push({ assistantId: assistant.id, docId: elevenLabsDoc.id });
-                console.log(`✅ URL content uploaded to 11Labs (fallback) for assistant "${assistant.name}": ${elevenLabsDoc.id}`);
-              }
-            } catch (fallbackError) {
-              console.error(`11Labs fallback upload also failed for assistant "${assistant.name}":`, fallbackError);
+      // Skip if already crawled
+      if (crawledUrls.has(currentUrl)) continue;
+      crawledUrls.add(currentUrl);
+
+      console.log(`🔍 Crawling (depth ${depth}/${maxDepth}): ${currentUrl}`);
+
+      // Scrape with link extraction if we need to go deeper
+      const needLinks = depth < maxDepth;
+      const result = await scrapeURL(currentUrl, needLinks);
+
+      if (result.success && result.content) {
+        totalPages++;
+
+        // Save main title from first page
+        if (!mainTitle && result.title) {
+          mainTitle = result.title;
+        }
+
+        // Add content with page info
+        allContent.push(`--- Sayfa: ${currentUrl} ---\n${result.content}`);
+
+        // Add child links to queue if we haven't reached max depth
+        if (needLinks && result.links?.length > 0) {
+          for (const link of result.links) {
+            if (!crawledUrls.has(link) && urlQueue.length < 100) {
+              urlQueue.push({ url: link, depth: depth + 1 });
             }
           }
         }
       }
 
+      // Small delay between requests to be respectful
+      if (urlQueue.length > 0) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
+
+    if (totalPages === 0) {
+      // No pages crawled successfully
+      const result = await scrapeURL(url, false);
       await prisma.knowledgeBase.update({
         where: { id: entryId },
         data: {
-          title: result.title || url,
-          content: result.content,
-          pageCount: 1,
-          lastCrawled: new Date(),
-          elevenLabsDocId: elevenLabsDocIds.length > 0 ? elevenLabsDocIds[0].docId : null,
-          status: 'ACTIVE'
-        }
-      });
-      console.log(`✅ URL ${entryId} crawled successfully`);
-    } else {
-      await prisma.knowledgeBase.update({
-        where: { id: entryId },
-        data: { 
           status: 'FAILED',
-          content: `Error: ${result.error}`
+          content: `Error: ${result.error || 'No content could be extracted'}`
         }
       });
-      console.log(`❌ URL ${entryId} crawling failed`);
+      console.log(`❌ URL ${entryId} crawling failed - no pages`);
+      return;
     }
+
+    // Combine all content
+    const combinedContent = allContent.join('\n\n');
+
+    // Get ALL active assistants with 11Labs agent ID
+    const assistants = await prisma.assistant.findMany({
+      where: { businessId: entry.businessId, isActive: true },
+      select: { id: true, elevenLabsAgentId: true, name: true }
+    });
+
+    const elevenLabsDocIds = [];
+
+    // Upload combined content to 11Labs for ALL assistants
+    for (const assistant of assistants) {
+      if (assistant.elevenLabsAgentId) {
+        try {
+          const docName = `${mainTitle || url} (${totalPages} sayfa)`;
+          const elevenLabsDoc = await elevenLabsService.addKnowledgeDocument(assistant.elevenLabsAgentId, {
+            name: docName,
+            content: combinedContent
+          });
+          if (elevenLabsDoc?.id) {
+            elevenLabsDocIds.push({ assistantId: assistant.id, docId: elevenLabsDoc.id });
+            console.log(`✅ ${totalPages} pages uploaded to 11Labs for assistant "${assistant.name}": ${elevenLabsDoc.id}`);
+          }
+        } catch (elevenLabsError) {
+          console.error(`11Labs upload failed for assistant "${assistant.name}":`, elevenLabsError);
+        }
+      }
+    }
+
+    await prisma.knowledgeBase.update({
+      where: { id: entryId },
+      data: {
+        title: mainTitle || url,
+        content: combinedContent,
+        pageCount: totalPages,
+        lastCrawled: new Date(),
+        elevenLabsDocId: elevenLabsDocIds.length > 0 ? elevenLabsDocIds[0].docId : null,
+        status: 'ACTIVE'
+      }
+    });
+    console.log(`✅ URL ${entryId} crawled successfully - ${totalPages} pages`);
+
   } catch (error) {
     console.error(`❌ URL ${entryId} crawling error:`, error);
     await prisma.knowledgeBase.update({
       where: { id: entryId },
-      data: { status: 'FAILED' }
+      data: {
+        status: 'FAILED',
+        content: `Error: ${error.message || 'Unknown error'}`
+      }
     });
   }
 }

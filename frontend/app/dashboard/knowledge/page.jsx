@@ -652,7 +652,7 @@ export default function KnowledgeBasePage() {
                 id="depth"
                 type="number"
                 min="1"
-                max="5"
+                max="10"
                 value={urlForm.crawlDepth}
                 onChange={(e) => setUrlForm({ ...urlForm, crawlDepth: parseInt(e.target.value) })}
               />
