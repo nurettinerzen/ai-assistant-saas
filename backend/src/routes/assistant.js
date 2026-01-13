@@ -238,7 +238,7 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
       };
 
       // Webhook tools - inline in agent config (not separate via tool_ids)
-      const backendUrl = process.env.BACKEND_URL || 'https://ai-assistant-saas.onrender.com';
+      const backendUrl = process.env.BACKEND_URL || 'https://api.telyx.ai';
       const webhookUrl = `${backendUrl}/api/elevenlabs/webhook`;
       const activeToolDefinitions = getActiveTools(business);
 
@@ -644,7 +644,7 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
         };
 
         // Webhook tools - inline in agent config
-        const backendUrl = process.env.BACKEND_URL || 'https://ai-assistant-saas.onrender.com';
+        const backendUrl = process.env.BACKEND_URL || 'https://api.telyx.ai';
         const webhookUrl = `${backendUrl}/api/elevenlabs/webhook`;
         const activeToolDefinitions = getActiveTools(business);
 
