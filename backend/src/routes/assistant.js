@@ -254,16 +254,14 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
             properties: {
               tool_name: {
                 type: 'string',
-                description: 'Tool name',
-                constant_value: tool.function.name
+                constant_value: tool.function.name  // Only constant_value, no description
               },
               ...Object.fromEntries(
                 Object.entries(tool.function.parameters.properties || {}).map(([key, value]) => [
                   key,
                   {
                     type: value.type || 'string',
-                    description: value.description || '',
-                    ...(value.enum ? { enum: value.enum } : {})
+                    description: value.description || ''
                   }
                 ])
               )
@@ -662,7 +660,6 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
               properties: {
                 tool_name: {
                   type: 'string',
-                  description: 'Tool name',
                   constant_value: tool.function.name
                 },
                 ...Object.fromEntries(
