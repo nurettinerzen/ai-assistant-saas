@@ -107,6 +107,177 @@ const elevenLabsService = {
   },
 
   // ============================================================================
+  // TOOL MANAGEMENT
+  // ============================================================================
+
+  /**
+   * Create a webhook tool in 11Labs
+   * @param {Object} toolConfig - Tool configuration
+   * @returns {Object} Created tool with id
+   */
+  async createTool(toolConfig) {
+    try {
+      const response = await elevenLabsClient.post('/convai/tools', {
+        tool_config: toolConfig
+      });
+      console.log('✅ 11Labs Tool created:', response.data.id, '-', toolConfig.name);
+      return response.data;
+    } catch (error) {
+      console.error('❌ 11Labs createTool error:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  /**
+   * Delete a tool from 11Labs
+   * @param {string} toolId - Tool ID
+   */
+  async deleteTool(toolId) {
+    try {
+      await elevenLabsClient.delete(`/convai/tools/${toolId}`);
+      console.log('✅ 11Labs Tool deleted:', toolId);
+      return true;
+    } catch (error) {
+      console.error('❌ 11Labs deleteTool error:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  /**
+   * List all tools
+   */
+  async listTools() {
+    try {
+      const response = await elevenLabsClient.get('/convai/tools');
+      return response.data.tools || [];
+    } catch (error) {
+      console.error('❌ 11Labs listTools error:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  /**
+   * Add tools to an agent by tool IDs
+   * @param {string} agentId - Agent ID
+   * @param {string[]} toolIds - Array of tool IDs to add
+   */
+  async addToolsToAgent(agentId, toolIds) {
+    try {
+      // Get current agent to preserve existing tools
+      const agent = await this.getAgent(agentId);
+      const currentToolIds = agent.tool_ids || [];
+
+      // Merge with new tool IDs (avoid duplicates)
+      const allToolIds = [...new Set([...currentToolIds, ...toolIds])];
+
+      const response = await elevenLabsClient.patch(`/convai/agents/${agentId}`, {
+        tool_ids: allToolIds
+      });
+      console.log('✅ 11Labs Tools added to agent:', agentId, 'Tool IDs:', toolIds);
+      return response.data;
+    } catch (error) {
+      console.error('❌ 11Labs addToolsToAgent error:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  /**
+   * Find or create webhook tools and add them to an agent
+   * First tries to find existing tools with matching names, then creates if needed
+   * @param {string} agentId - Agent ID
+   * @param {Object[]} toolDefinitions - Array of tool definitions in our format
+   * @param {string} webhookUrl - Webhook URL for tools
+   * @returns {string[]} Array of tool IDs added to agent
+   */
+  async setupAgentTools(agentId, toolDefinitions, webhookUrl) {
+    const toolIdsToAdd = [];
+
+    // Get all existing tools
+    const existingTools = await this.listTools();
+    console.log(`📋 Found ${existingTools.length} existing tools in 11Labs`);
+
+    for (const toolDef of toolDefinitions) {
+      const toolName = toolDef.function.name;
+
+      // Find existing tool with same name and matching webhook URL (or create new)
+      let existingTool = existingTools.find(t => {
+        const config = t.tool_config || {};
+        const url = config.api_schema?.url || '';
+        // Match by name and URL containing our domain
+        return config.name === toolName && url.includes('api/elevenlabs/webhook');
+      });
+
+      if (existingTool) {
+        console.log(`✅ Using existing tool: ${toolName} (${existingTool.id})`);
+
+        // Update the tool's webhook URL to include this agent's ID
+        try {
+          await elevenLabsClient.patch(`/convai/tools/${existingTool.id}`, {
+            tool_config: {
+              ...existingTool.tool_config,
+              api_schema: {
+                ...existingTool.tool_config.api_schema,
+                url: webhookUrl
+              }
+            }
+          });
+          console.log(`🔄 Updated tool webhook URL: ${existingTool.id}`);
+        } catch (updateErr) {
+          console.warn(`⚠️ Could not update tool URL, using as-is:`, updateErr.message);
+        }
+
+        toolIdsToAdd.push(existingTool.id);
+      } else {
+        // Create new tool
+        try {
+          const toolConfig = {
+            type: 'webhook',
+            name: toolName,
+            description: toolDef.function.description,
+            api_schema: {
+              url: webhookUrl,
+              method: 'POST',
+              request_body_schema: {
+                type: 'object',
+                properties: {
+                  tool_name: {
+                    type: 'string',
+                    description: 'Tool name',
+                    constant_value: toolName
+                  },
+                  ...Object.fromEntries(
+                    Object.entries(toolDef.function.parameters.properties || {}).map(([key, value]) => [
+                      key,
+                      {
+                        type: value.type || 'string',
+                        description: value.description || '',
+                        ...(value.enum ? { enum: value.enum } : {})
+                      }
+                    ])
+                  )
+                },
+                required: toolDef.function.parameters.required || []
+              }
+            }
+          };
+
+          const createdTool = await this.createTool(toolConfig);
+          toolIdsToAdd.push(createdTool.id);
+        } catch (err) {
+          console.error(`❌ Failed to create tool ${toolName}:`, err.message);
+        }
+      }
+    }
+
+    // Add all tools to the agent
+    if (toolIdsToAdd.length > 0) {
+      await this.addToolsToAgent(agentId, toolIdsToAdd);
+    }
+
+    return toolIdsToAdd;
+  },
+
+  // ============================================================================
   // PHONE NUMBER MANAGEMENT
   // ============================================================================
 

@@ -7,7 +7,7 @@ import cargoAggregator from '../services/cargo-aggregator.js';
 import { removeStaticDateTimeFromPrompt } from '../utils/dateTime.js';
 import { buildAssistantPrompt, getActiveTools as getPromptBuilderTools } from '../services/promptBuilder.js';
 // ✅ Use central tool system for 11Labs
-import { getActiveToolsForElevenLabs } from '../tools/index.js';
+import { getActiveToolsForElevenLabs, getActiveTools } from '../tools/index.js';
 // ✅ Central voice mapping
 import { getElevenLabsVoiceId } from '../constants/voices.js';
 
@@ -309,26 +309,20 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
       elevenLabsAgentId = elevenLabsResponse.agent_id;
       console.log('✅ 11Labs Agent created:', elevenLabsAgentId);
 
-      // Now update tools with agentId in webhook URL so we can identify business in tool calls
-      const activeToolsWithAgentId = getActiveToolsForElevenLabs(business, null, elevenLabsAgentId);
+      // Create webhook tools via 11Labs /convai/tools endpoint and add to agent
+      // Tools must be created separately then linked via tool_ids
+      const backendUrl = process.env.BACKEND_URL || 'https://ai-assistant-saas.onrender.com';
+      const webhookUrl = `${backendUrl}/api/elevenlabs/webhook?agentId=${elevenLabsAgentId}`;
 
-      // Update agent with:
-      // - System tools (end_call) in prompt.tools
-      // - Webhook tools at ROOT level with agentId in URL
-      await elevenLabsService.updateAgent(elevenLabsAgentId, {
-        conversation_config: {
-          agent: {
-            prompt: {
-              prompt: fullSystemPrompt,
-              llm: 'gemini-2.0-flash',
-              temperature: 0.1,
-              tools: [endCallTool]  // System tools stay in prompt.tools
-            }
-          }
-        },
-        tools: activeToolsWithAgentId  // Webhook tools at ROOT level with agentId in URL
-      });
-      console.log('✅ 11Labs Agent tools updated with agentId in webhook URL');
+      const activeToolDefinitions = getActiveTools(business);
+      console.log('🔧 Creating webhook tools for agent:', activeToolDefinitions.map(t => t.function.name));
+
+      const createdToolIds = await elevenLabsService.setupAgentTools(
+        elevenLabsAgentId,
+        activeToolDefinitions,
+        webhookUrl
+      );
+      console.log('✅ 11Labs Agent tools created and linked:', createdToolIds);
     } catch (elevenLabsError) {
       console.error('❌ 11Labs Agent creation failed:', elevenLabsError.response?.data || elevenLabsError.message);
       return res.status(500).json({
@@ -684,13 +678,23 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
               transcript_summary_prompt: langAnalysis.transcript_summary,
               success_evaluation_prompt: langAnalysis.success_evaluation
             }
-          },
-          // IMPORTANT: Webhook tools go at ROOT level, not inside conversation_config
-          tools: activeToolsElevenLabs
+          }
         };
 
         await elevenLabsService.updateAgent(assistant.elevenLabsAgentId, agentUpdateConfig);
-        console.log('✅ 11Labs Agent updated with tools');
+        console.log('✅ 11Labs Agent config updated');
+
+        // Setup webhook tools via 11Labs /convai/tools endpoint
+        const backendUrl = process.env.BACKEND_URL || 'https://ai-assistant-saas.onrender.com';
+        const webhookUrl = `${backendUrl}/api/elevenlabs/webhook?agentId=${assistant.elevenLabsAgentId}`;
+        const activeToolDefinitions = getActiveTools(business);
+
+        const toolIds = await elevenLabsService.setupAgentTools(
+          assistant.elevenLabsAgentId,
+          activeToolDefinitions,
+          webhookUrl
+        );
+        console.log('✅ 11Labs Agent tools linked:', toolIds);
 
         // Sync all phone numbers connected to this assistant in 11Labs
         const connectedPhones = await prisma.phoneNumber.findMany({
