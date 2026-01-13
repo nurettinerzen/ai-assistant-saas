@@ -91,6 +91,9 @@ if (allowedOrigins.length === 0) {
   console.warn('WARNING: ALLOWED_ORIGINS is not defined. CORS will block all cross-origin requests.');
 }
 
+// Routes that should allow ANY origin (for embeddable widgets)
+const publicCorsRoutes = ['/api/chat', '/api/widget'];
+
 app.use(cors({
   origin: function (origin, callback) {
     // Allow requests with no origin (mobile apps, curl, etc.)
@@ -99,10 +102,16 @@ app.use(cors({
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      console.warn(`CORS blocked origin: ${origin}`);
-      callback(new Error('Not allowed by CORS'));
+      // Will be checked per-route below
+      callback(null, false);
     }
   },
+  credentials: true
+}));
+
+// Special CORS for public widget routes - allow ANY origin
+app.use(publicCorsRoutes, cors({
+  origin: true, // Allow all origins for chat widget
   credentials: true
 }));
 
