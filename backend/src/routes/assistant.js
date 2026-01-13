@@ -325,9 +325,19 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
       elevenLabsAgentId = elevenLabsResponse.agent_id;
       console.log('✅ 11Labs Agent created:', elevenLabsAgentId);
 
-      // Verify tools were attached
+      // Verify tools were attached (they might not be - 11Labs may ignore tool_ids in create)
       const createdAgent = await elevenLabsService.getAgent(elevenLabsAgentId);
       console.log('✅ Agent tool_ids after creation:', createdAgent.tool_ids);
+
+      // If tool_ids were not attached during creation, try PATCH
+      if ((!createdAgent.tool_ids || createdAgent.tool_ids.length === 0) && toolIds.length > 0) {
+        console.log('⚠️ tool_ids not set in create, trying PATCH...');
+        await elevenLabsService.addToolsToAgent(elevenLabsAgentId, toolIds);
+
+        // Verify again
+        const patchedAgent = await elevenLabsService.getAgent(elevenLabsAgentId);
+        console.log('✅ Agent tool_ids after PATCH:', patchedAgent.tool_ids);
+      }
     } catch (elevenLabsError) {
       console.error('❌ 11Labs Agent creation failed:', elevenLabsError.response?.data || elevenLabsError.message);
       return res.status(500).json({
