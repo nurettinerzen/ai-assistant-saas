@@ -484,9 +484,10 @@ const handleShopifyConnect = async () => {
 
   const copyWebhookUrl = () => {
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://ai-assistant-saas.onrender.com';
-    const webhookUrl = whatsappStatus?.webhookUrl || `${backendUrl}/api/whatsapp/webhook`;
+    // Always use production URL, ignore old database values
+    const webhookUrl = `${backendUrl}/api/whatsapp/webhook`;
     navigator.clipboard.writeText(webhookUrl);
-    toast.success('Webhook URL copied!');
+    toast.success(language === 'tr' ? 'Webhook URL kopyalandı!' : 'Webhook URL copied!');
   };
 
   // ikas handlers
