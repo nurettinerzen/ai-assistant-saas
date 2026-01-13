@@ -158,6 +158,7 @@ const elevenLabsService = {
 
   /**
    * Add tools to an agent by tool IDs
+   * NOTE: 11Labs requires tool_ids at root level in PATCH request
    * @param {string} agentId - Agent ID
    * @param {string[]} toolIds - Array of tool IDs to add
    */
@@ -170,15 +171,120 @@ const elevenLabsService = {
       // Merge with new tool IDs (avoid duplicates)
       const allToolIds = [...new Set([...currentToolIds, ...toolIds])];
 
+      console.log('🔧 Adding tool_ids to agent:', agentId);
+      console.log('🔧 Current tool_ids:', currentToolIds);
+      console.log('🔧 New tool_ids to add:', toolIds);
+      console.log('🔧 Final tool_ids:', allToolIds);
+
+      // PATCH with tool_ids at root level
       const response = await elevenLabsClient.patch(`/convai/agents/${agentId}`, {
         tool_ids: allToolIds
       });
-      console.log('✅ 11Labs Tools added to agent:', agentId, 'Tool IDs:', toolIds);
+
+      // Verify the update
+      console.log('🔧 PATCH response tool_ids:', response.data?.tool_ids);
+
+      // Double-check by fetching the agent again
+      const verifyAgent = await this.getAgent(agentId);
+      console.log('🔧 Verified agent tool_ids:', verifyAgent.tool_ids);
+
+      if (!verifyAgent.tool_ids || verifyAgent.tool_ids.length === 0) {
+        console.warn('⚠️ tool_ids did not persist! Trying alternative approach...');
+
+        // Try updating via conversation_config approach
+        // Some 11Labs API versions require tools in a different structure
+        const altResponse = await elevenLabsClient.patch(`/convai/agents/${agentId}`, {
+          conversation_config: {
+            agent: {
+              tools: {
+                tool_ids: allToolIds
+              }
+            }
+          }
+        });
+        console.log('🔧 Alternative PATCH response:', altResponse.data?.tool_ids || altResponse.data?.conversation_config?.agent?.tools);
+      }
+
+      console.log('✅ 11Labs Tools added to agent:', agentId, 'Tool IDs:', allToolIds);
       return response.data;
     } catch (error) {
       console.error('❌ 11Labs addToolsToAgent error:', error.response?.data || error.message);
       throw error;
     }
+  },
+
+  /**
+   * Get or create webhook tools without linking to an agent
+   * Use this to get tool IDs that can be included in agent creation
+   * @param {Object[]} toolDefinitions - Array of tool definitions in our format
+   * @param {string} backendUrl - Backend URL for webhook
+   * @returns {string[]} Array of tool IDs
+   */
+  async getOrCreateTools(toolDefinitions, backendUrl) {
+    const toolIds = [];
+    const webhookUrl = `${backendUrl}/api/elevenlabs/webhook`;
+
+    // Get all existing tools
+    const existingTools = await this.listTools();
+    console.log(`📋 Found ${existingTools.length} existing tools in 11Labs`);
+
+    for (const toolDef of toolDefinitions) {
+      const toolName = toolDef.function.name;
+
+      // Find existing tool with same name
+      let existingTool = existingTools.find(t => {
+        const config = t.tool_config || {};
+        const url = config.api_schema?.url || '';
+        return config.name === toolName && url.includes('api/elevenlabs/webhook');
+      });
+
+      if (existingTool) {
+        console.log(`✅ Found existing tool: ${toolName} (${existingTool.id})`);
+        toolIds.push(existingTool.id);
+      } else {
+        // Create new tool
+        try {
+          const toolConfig = {
+            type: 'webhook',
+            name: toolName,
+            description: toolDef.function.description,
+            api_schema: {
+              url: webhookUrl,
+              method: 'POST',
+              request_body_schema: {
+                type: 'object',
+                properties: {
+                  tool_name: {
+                    type: 'string',
+                    description: 'Tool name',
+                    constant_value: toolName
+                  },
+                  ...Object.fromEntries(
+                    Object.entries(toolDef.function.parameters.properties || {}).map(([key, value]) => [
+                      key,
+                      {
+                        type: value.type || 'string',
+                        description: value.description || '',
+                        ...(value.enum ? { enum: value.enum } : {})
+                      }
+                    ])
+                  )
+                },
+                required: toolDef.function.parameters.required || []
+              }
+            }
+          };
+
+          const createdTool = await this.createTool(toolConfig);
+          console.log(`✅ Created new tool: ${toolName} (${createdTool.id})`);
+          toolIds.push(createdTool.id);
+        } catch (err) {
+          console.error(`❌ Failed to create tool ${toolName}:`, err.message);
+        }
+      }
+    }
+
+    return toolIds;
   },
 
   /**
@@ -857,41 +963,14 @@ import { buildAssistantPrompt, getActiveTools as getPromptBuilderTools } from '.
 export function buildAgentConfig(assistant, business, tools = [], integrations = []) {
   const language = business.language?.toLowerCase() || 'tr';
   const backendUrl = process.env.BACKEND_URL || 'https://api.aicallcenter.app';
-  const webhookUrl = `${backendUrl}/api/elevenlabs/webhook`;
 
   // Build system prompt using central promptBuilder for consistency
   const activeToolsList = getPromptBuilderTools(business, integrations);
   const systemPrompt = buildAssistantPrompt(assistant, business, activeToolsList);
 
-  // Convert tools to 11Labs format using api_schema
-  const elevenLabsTools = tools.map(tool => ({
-    type: 'webhook',
-    name: tool.function.name,
-    description: tool.function.description,
-    api_schema: {
-      url: webhookUrl,
-      method: 'POST',
-      path_params_schema: {},
-      query_params_schema: {},
-      request_body_schema: {
-        type: 'object',
-        properties: {
-          tool_name: {
-            type: 'string',
-            description: 'Name of the tool being called'
-          },
-          ...tool.function.parameters.properties
-        },
-        required: tool.function.parameters.required || []
-      },
-      request_headers: {
-        'Content-Type': 'application/json'
-      }
-    }
-  }));
-
-  // NOTE: end_call system tool removed - 11Labs handles call termination automatically
-  // The agent will end calls based on conversation flow without explicit tool
+  // NOTE: Webhook tools are now created separately via /convai/tools endpoint
+  // and linked to agents via tool_ids in setupAgentTools() function.
+  // This buildAgentConfig only creates the base agent config without tools.
 
   // Build analysis prompt based on language
   const analysisPrompt = language === 'tr'
@@ -906,6 +985,8 @@ export function buildAgentConfig(assistant, business, tools = [], integrations =
         success_evaluation: 'Was the conversation successful? Was the customer\'s request fulfilled?'
       };
 
+  // NOTE: Do NOT include 'tools' array here - webhook tools are created separately via
+  // /convai/tools endpoint and linked via tool_ids. Including inline tools here may conflict.
   return {
     name: assistant.name,
     conversation_config: {
@@ -957,7 +1038,8 @@ export function buildAgentConfig(assistant, business, tools = [], integrations =
         variant: 'full'
       }
     },
-    tools: elevenLabsTools,
+    // NOTE: tools array removed - use tool_ids with separately created webhook tools
+    // The elevenLabsTools were defined but are now linked via setupAgentTools() instead
     metadata: {
       telyx_assistant_id: assistant.id,
       telyx_business_id: business.id,

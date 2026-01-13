@@ -305,24 +305,29 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
       // DEBUG: Log the full agent config
       console.log('🔍 DEBUG - agentConfig:', JSON.stringify(agentConfig, null, 2));
 
+      // First, create/find webhook tools BEFORE creating the agent
+      // This way we can include tool_ids in the initial agent creation request
+      const backendUrl = process.env.BACKEND_URL || 'https://ai-assistant-saas.onrender.com';
+      const activeToolDefinitions = getActiveTools(business);
+      console.log('🔧 Preparing webhook tools:', activeToolDefinitions.map(t => t.function.name));
+
+      // Get or create tools and get their IDs
+      const toolIds = await elevenLabsService.getOrCreateTools(activeToolDefinitions, backendUrl);
+      console.log('🔧 Tool IDs ready:', toolIds);
+
+      // Include tool_ids in the agent creation request
+      if (toolIds.length > 0) {
+        agentConfig.tool_ids = toolIds;
+        console.log('🔧 Including tool_ids in agent creation:', toolIds);
+      }
+
       const elevenLabsResponse = await elevenLabsService.createAgent(agentConfig);
       elevenLabsAgentId = elevenLabsResponse.agent_id;
       console.log('✅ 11Labs Agent created:', elevenLabsAgentId);
 
-      // Create webhook tools via 11Labs /convai/tools endpoint and add to agent
-      // Tools must be created separately then linked via tool_ids
-      const backendUrl = process.env.BACKEND_URL || 'https://ai-assistant-saas.onrender.com';
-      const webhookUrl = `${backendUrl}/api/elevenlabs/webhook?agentId=${elevenLabsAgentId}`;
-
-      const activeToolDefinitions = getActiveTools(business);
-      console.log('🔧 Creating webhook tools for agent:', activeToolDefinitions.map(t => t.function.name));
-
-      const createdToolIds = await elevenLabsService.setupAgentTools(
-        elevenLabsAgentId,
-        activeToolDefinitions,
-        webhookUrl
-      );
-      console.log('✅ 11Labs Agent tools created and linked:', createdToolIds);
+      // Verify tools were attached
+      const createdAgent = await elevenLabsService.getAgent(elevenLabsAgentId);
+      console.log('✅ Agent tool_ids after creation:', createdAgent.tool_ids);
     } catch (elevenLabsError) {
       console.error('❌ 11Labs Agent creation failed:', elevenLabsError.response?.data || elevenLabsError.message);
       return res.status(500).json({
@@ -604,17 +609,12 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
       },
     });
 
-// ✅ YENİ: 11Labs'deki agent'ı da güncelle (PATCH)
+// ✅ Update 11Labs agent
     if (assistant.elevenLabsAgentId) {
-      // Get active tools for this business (using central tool system) - include agentId in webhook URL!
-      const activeToolsElevenLabs = getActiveToolsForElevenLabs(business, null, assistant.elevenLabsAgentId);
-      console.log('📤 11Labs Update - tools:', activeToolsElevenLabs.map(t => t.name));
-
       try {
         const lang = language || business?.language || 'TR';
         const elevenLabsLang = getElevenLabsLanguage(lang);
         console.log('📝 Update language mapping:', lang, '->', elevenLabsLang);
-        const effectiveCallDirection = callDirection || assistant.callDirection || 'inbound';
 
         // System tools (end_call) go inside prompt.tools
         // Webhook tools (customer_data_lookup etc) go in root level tools array
@@ -640,8 +640,18 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
         };
         const langAnalysis = analysisPrompts[elevenLabsLang] || analysisPrompts.en;
 
+        // Get or create webhook tools first, then include in update
+        const backendUrl = process.env.BACKEND_URL || 'https://ai-assistant-saas.onrender.com';
+        const activeToolDefinitions = getActiveTools(business);
+        console.log('🔧 Updating tools for agent:', activeToolDefinitions.map(t => t.function.name));
+
+        const toolIds = await elevenLabsService.getOrCreateTools(activeToolDefinitions, backendUrl);
+        console.log('🔧 Tool IDs for update:', toolIds);
+
         const agentUpdateConfig = {
           name,
+          // Include tool_ids in the update
+          tool_ids: toolIds,
           conversation_config: {
             agent: {
               prompt: {
@@ -682,19 +692,11 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
         };
 
         await elevenLabsService.updateAgent(assistant.elevenLabsAgentId, agentUpdateConfig);
-        console.log('✅ 11Labs Agent config updated');
+        console.log('✅ 11Labs Agent updated with tool_ids:', toolIds);
 
-        // Setup webhook tools via 11Labs /convai/tools endpoint
-        const backendUrl = process.env.BACKEND_URL || 'https://ai-assistant-saas.onrender.com';
-        const webhookUrl = `${backendUrl}/api/elevenlabs/webhook?agentId=${assistant.elevenLabsAgentId}`;
-        const activeToolDefinitions = getActiveTools(business);
-
-        const toolIds = await elevenLabsService.setupAgentTools(
-          assistant.elevenLabsAgentId,
-          activeToolDefinitions,
-          webhookUrl
-        );
-        console.log('✅ 11Labs Agent tools linked:', toolIds);
+        // Verify the update
+        const verifiedAgent = await elevenLabsService.getAgent(assistant.elevenLabsAgentId);
+        console.log('✅ Verified agent tool_ids:', verifiedAgent.tool_ids);
 
         // Sync all phone numbers connected to this assistant in 11Labs
         const connectedPhones = await prisma.phoneNumber.findMany({
