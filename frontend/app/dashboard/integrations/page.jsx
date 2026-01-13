@@ -1122,14 +1122,20 @@ const handleIdeasoftConnect = async () => {
             </div>
             <div className="space-y-2">
               <Label>{language === 'tr' ? 'Doğrulama Tokeni *' : 'Verify Token *'}</Label>
-              <Input type="text" placeholder={language === 'tr' ? 'Güvenli bir doğrulama tokeni oluşturun' : 'Create a secure verify token'} value={whatsappForm.verifyToken} onChange={(e) => setWhatsappForm({ ...whatsappForm, verifyToken: e.target.value })} />
+              <Input type="text" placeholder={language === 'tr' ? 'Örn: my-secret-token-123' : 'e.g. my-secret-token-123'} value={whatsappForm.verifyToken} onChange={(e) => setWhatsappForm({ ...whatsappForm, verifyToken: e.target.value })} />
+              <p className="text-xs text-neutral-500">
+                {language === 'tr' ? 'Kendiniz güvenli bir token oluşturun ve aynısını Meta Developer Console\'da da kullanın' : 'Create a secure token and use the same in Meta Developer Console'}
+              </p>
             </div>
             <div className="space-y-2">
               <Label>Webhook URL</Label>
               <div className="flex gap-2">
-                <Input type="text" readOnly value={whatsappStatus?.webhookUrl || `${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://ai-assistant-saas.onrender.com'}/api/whatsapp/webhook`} className="bg-neutral-50" />
+                <Input type="text" readOnly value={`${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://ai-assistant-saas.onrender.com'}/api/whatsapp/webhook`} className="bg-neutral-50" />
                 <Button type="button" variant="outline" size="icon" onClick={copyWebhookUrl}><Copy className="h-4 w-4" /></Button>
               </div>
+              <p className="text-xs text-neutral-500">
+                {language === 'tr' ? 'Bu URL\'i Meta Developer Console\'da Webhook ayarlarına yapıştırın' : 'Paste this URL in Meta Developer Console Webhook settings'}
+              </p>
             </div>
           </div>
           <DialogFooter>
