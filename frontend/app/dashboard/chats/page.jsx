@@ -127,6 +127,20 @@ export default function ChatsPage() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
+  // Real-time polling for new chats (every 30 seconds)
+  useEffect(() => {
+    if (isInitialLoad) return;
+
+    const pollInterval = setInterval(() => {
+      // Only poll if page is visible and no filters active
+      if (document.visibilityState === 'visible' && statusFilter === 'all' && channelFilter === 'all' && !searchQuery) {
+        refreshChats(true); // Silent refresh
+      }
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(pollInterval);
+  }, [isInitialLoad, statusFilter, channelFilter, searchQuery]);
+
   const loadChats = async () => {
     setLoading(true);
     try {

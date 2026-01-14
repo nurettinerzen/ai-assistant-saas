@@ -44,6 +44,7 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
+  const [audioError, setAudioError] = useState(false);
   const audioRef = useRef(null);
 
   useEffect(() => {
@@ -54,6 +55,7 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
     if (!isOpen) {
       setCurrentTime(0);
       setIsPlaying(false);
+      setAudioError(false);
     }
   }, [isOpen, callId]);
 
@@ -254,61 +256,69 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
                   onTimeUpdate={handleTimeUpdate}
                   onLoadedMetadata={handleLoadedMetadata}
                   onEnded={() => setIsPlaying(false)}
-                  onError={(e) => console.log('Audio error:', e.target.error)}
-                  onCanPlay={() => console.log('Audio can play')}
+                  onError={() => setAudioError(true)}
+                  onCanPlay={() => setAudioError(false)}
                 />
 
-                <div className="space-y-2">
-                  <div className="flex items-center gap-3">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handlePlayPause}
-                      className="w-20"
-                    >
-                      {isPlaying ? (
-                        <>
-                          <Pause className="h-3 w-3 mr-1" />
-                          Durdur
-                        </>
-                      ) : (
-                        <>
-                          <Play className="h-3 w-3 mr-1" />
-                          Oynat
-                        </>
-                      )}
-                    </Button>
+                {audioError ? (
+                  <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                    <p className="text-sm text-amber-700 dark:text-amber-400">
+                      Ses kaydı bulunamadı. 11Labs tarafında ses kaydı etkinleştirilmemiş olabilir veya kayıt henüz hazır değil.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-3">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handlePlayPause}
+                        className="w-20"
+                      >
+                        {isPlaying ? (
+                          <>
+                            <Pause className="h-3 w-3 mr-1" />
+                            Durdur
+                          </>
+                        ) : (
+                          <>
+                            <Play className="h-3 w-3 mr-1" />
+                            Oynat
+                          </>
+                        )}
+                      </Button>
 
-                    <input
-                      type="range"
-                      min="0"
-                      max={duration || 0}
-                      value={currentTime}
-                      onChange={handleSeek}
-                      className="flex-1 h-2 bg-neutral-200 rounded-lg appearance-none cursor-pointer"
-                    />
+                      <input
+                        type="range"
+                        min="0"
+                        max={duration || 0}
+                        value={currentTime}
+                        onChange={handleSeek}
+                        className="flex-1 h-2 bg-neutral-200 rounded-lg appearance-none cursor-pointer"
+                      />
 
-                    <div className="text-xs text-neutral-600 w-28 text-right">
-                      {formatDuration(Math.floor(currentTime))} /{' '}
-                      {formatDuration(Math.floor(duration || call?.duration || 0))}
+                      <div className="text-xs text-neutral-600 w-28 text-right">
+                        {formatDuration(Math.floor(currentTime))} /{' '}
+                        {formatDuration(Math.floor(duration || call?.duration || 0))}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-neutral-600">Hız:</span>
+                      {[0.5, 1, 1.5, 2].map((speed) => (
+                        <Button
+                          key={speed}
+                          variant={playbackSpeed === speed ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => handleSpeedChange(speed)}
+                          className="h-7 px-2 text-xs"
+                        >
+                          {speed}x
+                        </Button>
+                      ))}
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-neutral-600">Hız:</span>
-                    {[0.5, 1, 1.5, 2].map((speed) => (
-                      <Button
-                        key={speed}
-                        variant={playbackSpeed === speed ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => handleSpeedChange(speed)}
-                        className="h-7 px-2 text-xs"
-                      >
-                        {speed}x
-                      </Button>
-                    ))}
-                  </div>
-                </div>
+                )}
               </div>
             )}
 

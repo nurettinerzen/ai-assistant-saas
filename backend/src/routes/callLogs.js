@@ -210,7 +210,7 @@ router.get('/', async (req, res) => {
       createdAt: call.createdAt,
       sentiment: call.sentiment,
       summary: call.summary,
-      hasRecording: !!call.recordingUrl,
+      hasRecording: !!call.recordingUrl && call.duration > 0,
       hasTranscript: !!call.transcript || !!call.transcriptText,
       endReason: call.endReason,
       callCost: call.callCost,
@@ -338,8 +338,9 @@ router.get('/:id', async (req, res) => {
       return res.status(403).json({ error: 'Access denied' });
     }
 
-    // Lazy load: If missing endReason/callCost/summary, fetch from 11Labs
-    const needsUpdate = callLog.callId && (!callLog.endReason || !callLog.callCost || !callLog.summary);
+    // Lazy load: If missing endReason/callCost/summary, or summary needs translation
+    const summaryNeedsTranslation = callLog.summary && !/[ğüşıöçĞÜŞİÖÇ]/.test(callLog.summary) && /^[A-Za-z]/.test(callLog.summary);
+    const needsUpdate = callLog.callId && (!callLog.endReason || !callLog.callCost || !callLog.summary || summaryNeedsTranslation);
 
     if (needsUpdate) {
       try {
@@ -452,8 +453,11 @@ router.get('/:id/audio', async (req, res) => {
 
     // Get conversation ID from callId (which is the conversation_id from 11Labs)
     const conversationId = callLog.callId;
+    console.log(`🎵 Audio request for call ${id}, conversationId: ${conversationId}, duration: ${callLog.duration}s`);
+
     if (!conversationId) {
-      return res.status(404).json({ error: 'No recording available' });
+      console.log(`❌ No conversationId for call ${id}`);
+      return res.status(404).json({ error: 'No recording available - missing conversation ID' });
     }
 
     // Fetch audio from 11Labs
@@ -462,8 +466,28 @@ router.get('/:id/audio', async (req, res) => {
       return res.status(500).json({ error: 'Audio service not configured' });
     }
 
+    // First check if audio is available by fetching conversation metadata
+    try {
+      const conversationResponse = await axios.get(
+        `https://api.elevenlabs.io/v1/convai/conversations/${conversationId}`,
+        { headers: { 'xi-api-key': elevenLabsApiKey } }
+      );
+
+      const convData = conversationResponse.data;
+      console.log(`🎵 Conversation metadata: status=${convData.status}, has_audio=${!!convData.has_audio}`);
+
+      // 11Labs may indicate audio unavailable in metadata
+      if (convData.has_audio === false) {
+        console.log(`❌ Audio not available for conversation ${conversationId}`);
+        return res.status(404).json({ error: 'Audio recording not available for this call' });
+      }
+    } catch (metaError) {
+      console.warn(`⚠️ Could not fetch conversation metadata: ${metaError.message}`);
+      // Continue anyway - try to fetch audio directly
+    }
+
     const audioUrl = `https://api.elevenlabs.io/v1/convai/conversations/${conversationId}/audio`;
-    console.log(`🎵 Fetching audio for conversation: ${conversationId}`);
+    console.log(`🎵 Fetching audio from 11Labs: ${audioUrl}`);
 
     // Fetch full audio file to buffer for seek support
     const audioResponse = await axios.get(audioUrl, {
@@ -505,7 +529,10 @@ router.get('/:id/audio', async (req, res) => {
   } catch (error) {
     console.error('Get call audio error:', error.message, error.response?.status);
     if (error.response?.status === 404) {
-      return res.status(404).json({ error: 'Recording not found' });
+      // Provide more helpful error message
+      return res.status(404).json({
+        error: 'Ses kaydı bulunamadı. 11Labs tarafında kayıt etkinleştirilmemiş olabilir.'
+      });
     }
     if (error.response?.status === 401 || error.response?.status === 403) {
       return res.status(403).json({ error: 'Audio access denied' });

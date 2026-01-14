@@ -87,43 +87,35 @@ const CALL_PURPOSES = {
   }
 };
 
-// Default first messages based on call purpose (simple, natural greeting)
+// Default first messages - simple and dynamic based on assistant name
 const DEFAULT_FIRST_MESSAGES = {
-  collection: {
-    tr: (businessName, assistantName) => `Merhaba, ben ${assistantName || 'asistan'}, ${businessName || 'şirketimiz'} adına arıyorum.`,
-    en: (businessName, assistantName) => `Hello, I'm ${assistantName || 'an assistant'} calling on behalf of ${businessName || 'our company'}.`
+  // Inbound: "Merhaba! Ben (asistan adı). Size nasıl yardımcı olabilirim?"
+  inbound: {
+    tr: (businessName, assistantName) => assistantName
+      ? `Merhaba! Ben ${assistantName}. Size nasıl yardımcı olabilirim?`
+      : `Merhaba! Size nasıl yardımcı olabilirim?`,
+    en: (businessName, assistantName) => assistantName
+      ? `Hello! I'm ${assistantName}. How can I help you?`
+      : `Hello! How can I help you?`
   },
-  sales: {
-    tr: (businessName, assistantName) => `Merhaba, ben ${assistantName || 'asistan'}, ${businessName || 'şirketimiz'} adına arıyorum.`,
-    en: (businessName, assistantName) => `Hello, I'm ${assistantName || 'an assistant'} calling on behalf of ${businessName || 'our company'}.`
-  },
-  reminder: {
-    tr: (businessName, assistantName) => `Merhaba, ben ${assistantName || 'asistan'}, ${businessName || 'şirketimiz'} adına arıyorum.`,
-    en: (businessName, assistantName) => `Hello, I'm ${assistantName || 'an assistant'} calling on behalf of ${businessName || 'our company'}.`
-  },
-  order_update: {
-    tr: (businessName, assistantName) => `Merhaba, ben ${assistantName || 'asistan'}, ${businessName || 'şirketimiz'} adına arıyorum.`,
-    en: (businessName, assistantName) => `Hello, I'm ${assistantName || 'an assistant'} calling on behalf of ${businessName || 'our company'}.`
-  },
-  survey: {
-    tr: (businessName, assistantName) => `Merhaba, ben ${assistantName || 'asistan'}, ${businessName || 'şirketimiz'} adına arıyorum.`,
-    en: (businessName, assistantName) => `Hello, I'm ${assistantName || 'an assistant'} calling on behalf of ${businessName || 'our company'}.`
-  },
-  info: {
-    tr: (businessName, assistantName) => `Merhaba, ben ${assistantName || 'asistan'}, ${businessName || 'şirketimiz'} adına arıyorum.`,
-    en: (businessName, assistantName) => `Hello, I'm ${assistantName || 'an assistant'} calling on behalf of ${businessName || 'our company'}.`
-  },
-  custom: {
-    tr: (businessName, assistantName) => `Merhaba, ben ${assistantName || 'asistan'}, ${businessName || 'şirketimiz'} adına arıyorum.`,
-    en: (businessName, assistantName) => `Hello, I'm ${assistantName || 'an assistant'} calling on behalf of ${businessName || 'our company'}.`
-  },
-  reservation: {
-    tr: (businessName, assistantName) => `Merhaba, ben ${assistantName || 'asistan'}, ${businessName || 'şirketimiz'} adına arıyorum.`,
-    en: (businessName, assistantName) => `Hello, I'm ${assistantName || 'an assistant'} calling on behalf of ${businessName || 'our company'}.`
-  },
-  shipping: {
-    tr: (businessName, assistantName) => `Merhaba, ben ${assistantName || 'asistan'}, ${businessName || 'şirketimiz'} adına arıyorum.`,
-    en: (businessName, assistantName) => `Hello, I'm ${assistantName || 'an assistant'} calling on behalf of ${businessName || 'our company'}.`
+  // Outbound: "Merhaba! Ben (asistan adı). (şirket adı) adına arıyorum."
+  outbound: {
+    tr: (businessName, assistantName) => {
+      const name = assistantName || '';
+      const company = businessName || '';
+      if (name && company) return `Merhaba! Ben ${name}. ${company} adına arıyorum.`;
+      if (name) return `Merhaba! Ben ${name}.`;
+      if (company) return `Merhaba! ${company} adına arıyorum.`;
+      return `Merhaba!`;
+    },
+    en: (businessName, assistantName) => {
+      const name = assistantName || '';
+      const company = businessName || '';
+      if (name && company) return `Hello! I'm ${name}. I'm calling on behalf of ${company}.`;
+      if (name) return `Hello! I'm ${name}.`;
+      if (company) return `Hello! I'm calling on behalf of ${company}.`;
+      return `Hello!`;
+    }
   }
 };
 
@@ -203,15 +195,28 @@ export default function AssistantsPage() {
     loadData();
   }, []);
 
-  // Update first message when assistant name changes (for outbound)
+  // Update first message when assistant name changes
   useEffect(() => {
-    if (formData.callDirection === 'outbound' && formData.callPurpose && !editingAssistant) {
+    if (editingAssistant) return; // Don't update when editing existing assistant
+
+    if (formData.callDirection === 'outbound') {
+      // Outbound: "Merhaba! Ben (asistan adı). (şirket adı) adına arıyorum."
+      const lang = businessLanguage === 'tr' ? 'tr' : 'en';
+      const outboundGreeting = DEFAULT_FIRST_MESSAGES.outbound?.[lang]?.(businessName, formData.name) || '';
       setFormData(prev => ({
         ...prev,
-        firstMessage: getDefaultFirstMessage(prev.callPurpose, prev.name),
+        firstMessage: outboundGreeting,
+      }));
+    } else if (formData.callDirection === 'inbound') {
+      // Inbound: "Merhaba! Ben (asistan adı). Size nasıl yardımcı olabilirim?"
+      const lang = businessLanguage === 'tr' ? 'tr' : 'en';
+      const inboundGreeting = DEFAULT_FIRST_MESSAGES.inbound?.[lang]?.(businessName, formData.name) || '';
+      setFormData(prev => ({
+        ...prev,
+        firstMessage: inboundGreeting,
       }));
     }
-  }, [formData.name, formData.callDirection, formData.callPurpose, editingAssistant, businessName, businessLanguage]);
+  }, [formData.name, formData.callDirection, editingAssistant, businessName, businessLanguage]);
 
   const loadData = async () => {
     setLoading(true);
@@ -270,10 +275,11 @@ export default function AssistantsPage() {
     }));
   };
 
-  // Get default first message for a call purpose
-  const getDefaultFirstMessage = (purpose, assistantName) => {
+  // Get default first message based on call direction
+  const getDefaultFirstMessage = (direction, assistantName) => {
     const lang = businessLanguage === 'tr' ? 'tr' : 'en';
-    const messageFn = DEFAULT_FIRST_MESSAGES[purpose]?.[lang];
+    const type = direction === 'outbound' ? 'outbound' : 'inbound';
+    const messageFn = DEFAULT_FIRST_MESSAGES[type]?.[lang];
     return messageFn ? messageFn(businessName, assistantName) : '';
   };
 
@@ -298,7 +304,7 @@ export default function AssistantsPage() {
         name: '',
         voiceId: '',
         systemPrompt: getDefaultSystemPrompt(defaultPurpose),
-        firstMessage: getDefaultFirstMessage(defaultPurpose, ''),
+        firstMessage: getDefaultFirstMessage('outbound', ''),
         language: businessLanguage || 'tr',
         tone: 'formal',
         customNotes: '',
@@ -315,17 +321,21 @@ export default function AssistantsPage() {
       ...prev,
       callPurpose: purpose,
       systemPrompt: getDefaultSystemPrompt(purpose),
-      firstMessage: getDefaultFirstMessage(purpose, prev.name),
+      firstMessage: getDefaultFirstMessage('outbound', prev.name),
     }));
   };
 
   const handleTemplateSelect = (template) => {
+    // Get default inbound greeting
+    const lang = businessLanguage === 'tr' ? 'tr' : 'en';
+    const inboundGreeting = DEFAULT_FIRST_MESSAGES.inbound?.[lang]?.(businessName, template?.name || '') || '';
+
     if (template) {
       setFormData({
         name: template.name,
         voiceId: '',
         systemPrompt: template.prompt,
-        firstMessage: '',
+        firstMessage: inboundGreeting,
         language: template.language || businessLanguage || 'tr',
         tone: 'formal',
         customNotes: '',
@@ -337,7 +347,7 @@ export default function AssistantsPage() {
         name: '',
         voiceId: '',
         systemPrompt: '',
-        firstMessage: '',
+        firstMessage: inboundGreeting,
         language: businessLanguage || 'tr',
         tone: 'formal',
         customNotes: '',
