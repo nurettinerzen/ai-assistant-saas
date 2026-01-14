@@ -200,45 +200,52 @@ async function processWithGemini(systemPrompt, conversationHistory, userMessage,
 
   // BUGFIX: If Gemini said something like "kontrol ediyorum" but didn't call a tool,
   // and there was no function call at all, this is a problem - the AI should have called the tool
-  const waitingPhrases = ['kontrol', 'bakıyorum', 'sorguluyorum', 'checking', 'looking', 'bir saniye', 'bir dakika'];
+  const waitingPhrases = ['kontrol', 'bakıyorum', 'sorguluyorum', 'checking', 'looking', 'bir saniye', 'bir dakika', 'hemen'];
   const isWaitingResponse = waitingPhrases.some(phrase => text.toLowerCase().includes(phrase));
 
   if (isWaitingResponse && !hadFunctionCall) {
-    console.log('⚠️ BUGFIX: Gemini said waiting phrase but did NOT call a tool! Asking for proper response...');
+    console.log('⚠️ BUGFIX: Gemini said waiting phrase but did NOT call a tool! Extracting phone and calling tool directly...');
 
-    // Ask Gemini to respond properly without the waiting phrase
-    const fixPrompt = language === 'TR'
-      ? 'Müşteriye "kontrol ediyorum" gibi şeyler SÖYLEME. Eğer bilgi soruyorsa customer_data_lookup aracını KULLAN veya doğrudan cevap ver.'
-      : 'Do NOT say "checking" to the customer. If they are asking for information, USE the customer_data_lookup tool or respond directly.';
+    // Extract phone number from user message or conversation
+    const phoneRegex = /(?:\+?90|0)?[5][0-9]{9}|[5][0-9]{9}/g;
+    const phoneMatches = userMessage.match(phoneRegex);
 
-    try {
-      result = await chat.sendMessage(fixPrompt);
-      response = result.response;
+    // Also check conversation history for phone numbers
+    let phoneFromHistory = null;
+    if (!phoneMatches && conversationHistory.length > 0) {
+      for (const msg of conversationHistory.slice().reverse()) {
+        const historyMatches = msg.content?.match(phoneRegex);
+        if (historyMatches) {
+          phoneFromHistory = historyMatches[0];
+          break;
+        }
+      }
+    }
 
-      // Check if this time it made a function call
-      const retryFunctionCalls = response.functionCalls();
-      if (retryFunctionCalls && retryFunctionCalls.length > 0) {
-        console.log('🔧 Retry: Gemini now calling function:', retryFunctionCalls[0].name);
+    const extractedPhone = phoneMatches?.[0] || phoneFromHistory;
+    console.log('📞 Extracted phone from message/history:', extractedPhone);
 
-        const functionCall = retryFunctionCalls[0];
-        const toolResult = await executeTool(functionCall.name, functionCall.args, business, {
-          channel: 'CHAT',
-          conversationId: null
-        });
+    if (extractedPhone) {
+      // Call tool directly since Gemini won't do it
+      console.log('🔧 DIRECT TOOL CALL: customer_data_lookup with phone:', extractedPhone);
 
-        console.log('🔧 Retry tool result:', toolResult.success ? 'SUCCESS' : 'FAILED');
+      const toolResult = await executeTool('customer_data_lookup', {
+        phone: extractedPhone,
+        query_type: 'tum_bilgiler'
+      }, business, {
+        channel: 'CHAT',
+        conversationId: null
+      });
 
-        // Send function response back to Gemini
-        result = await chat.sendMessage([{
-          functionResponse: {
-            name: functionCall.name,
-            response: {
-              success: toolResult.success,
-              data: toolResult.data || null,
-              message: toolResult.message || toolResult.error || 'Tool executed'
-            }
-          }
-        }]);
+      console.log('🔧 Direct tool result:', toolResult.success ? 'SUCCESS' : 'FAILED', toolResult.message?.substring(0, 100));
+
+      // Send tool result to Gemini to format the response
+      const toolResultPrompt = language === 'TR'
+        ? `Müşteri veri sorgulama sonucu:\n${toolResult.message || toolResult.error}\n\nBu bilgiyi müşteriye doğal bir şekilde aktar. "Kontrol ediyorum" DEME.`
+        : `Customer data lookup result:\n${toolResult.message || toolResult.error}\n\nShare this information naturally with the customer. Do NOT say "checking".`;
+
+      try {
+        result = await chat.sendMessage(toolResultPrompt);
         response = result.response;
 
         // Track tokens
@@ -246,17 +253,17 @@ async function processWithGemini(systemPrompt, conversationHistory, userMessage,
           totalInputTokens += response.usageMetadata.promptTokenCount || 0;
           totalOutputTokens += response.usageMetadata.candidatesTokenCount || 0;
         }
-      }
 
-      // Get the new text
-      try {
+        // Get the new text
         text = response.text() || '';
-        console.log('📝 Fixed response text:', text?.substring(0, 100));
-      } catch (e) {
-        // ignore
+        console.log('📝 Fixed response after direct tool call:', text?.substring(0, 100));
+      } catch (formatError) {
+        console.error('⚠️ Format failed, using raw tool result:', formatError.message);
+        // Use tool result directly if Gemini fails
+        text = toolResult.message || toolResult.error || text;
       }
-    } catch (retryError) {
-      console.error('⚠️ Retry failed:', retryError.message);
+    } else {
+      console.log('⚠️ Could not extract phone number, cannot call tool directly');
     }
   }
 
