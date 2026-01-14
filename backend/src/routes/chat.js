@@ -11,6 +11,7 @@ import { getDateTimeContext } from '../utils/dateTime.js';
 import { buildAssistantPrompt, getActiveTools as getPromptBuilderTools } from '../services/promptBuilder.js';
 import { isFreePlanExpired } from '../middleware/checkPlanExpiry.js';
 import { getActiveTools, executeTool } from '../tools/index.js';
+import { calculateTokenCost, hasFreeChat } from '../config/plans.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -50,6 +51,7 @@ function convertToolsToGeminiFunctions(tools) {
 
 /**
  * Process chat with Gemini - with function calling support
+ * Returns: { reply: string, inputTokens: number, outputTokens: number }
  */
 async function processWithGemini(systemPrompt, conversationHistory, userMessage, language, business) {
   const genAI = getGemini();
@@ -97,9 +99,19 @@ async function processWithGemini(systemPrompt, conversationHistory, userMessage,
   // Start chat
   const chat = model.startChat({ history: chatHistory });
 
+  // Token tracking
+  let totalInputTokens = 0;
+  let totalOutputTokens = 0;
+
   // Send user message
   let result = await chat.sendMessage(userMessage);
   let response = result.response;
+
+  // Track tokens from first response
+  if (response.usageMetadata) {
+    totalInputTokens += response.usageMetadata.promptTokenCount || 0;
+    totalOutputTokens += response.usageMetadata.candidatesTokenCount || 0;
+  }
 
   // Handle function calls (up to 3 iterations)
   let iterations = 0;
@@ -135,15 +147,26 @@ async function processWithGemini(systemPrompt, conversationHistory, userMessage,
       }
     }]);
     response = result.response;
+
+    // Track tokens from function call response
+    if (response.usageMetadata) {
+      totalInputTokens += response.usageMetadata.promptTokenCount || 0;
+      totalOutputTokens += response.usageMetadata.candidatesTokenCount || 0;
+    }
+
     iterations++;
   }
 
   const text = response.text();
 
+  console.log(`📊 Token usage - Input: ${totalInputTokens}, Output: ${totalOutputTokens}`);
+
   return {
     reply: text || (language === 'TR'
       ? 'Üzgünüm, bir yanıt oluşturamadım.'
-      : 'Sorry, I could not generate a response.')
+      : 'Sorry, I could not generate a response.'),
+    inputTokens: totalInputTokens,
+    outputTokens: totalOutputTokens
   };
 }
 
@@ -324,13 +347,40 @@ ${knowledgeContext}`;
     console.log(`⏱️ Total delay: ${Math.round(totalDelay)}ms (read: ${Math.round(readingDelay)}ms + type: ${Math.round(typingDelay)}ms for ${replyLength} chars)`);
     await new Promise(resolve => setTimeout(resolve, totalDelay));
 
-    // Save chat log (upsert - create or update)
+    // Calculate token cost based on plan
+    const planName = subscription?.plan || 'FREE';
+    const countryCode = business?.country || 'TR';
+    const isFree = hasFreeChat(planName);
+
+    let tokenCost = { inputCost: 0, outputCost: 0, totalCost: 0 };
+    if (!isFree) {
+      tokenCost = calculateTokenCost(
+        result.inputTokens,
+        result.outputTokens,
+        planName,
+        countryCode
+      );
+    }
+
+    console.log(`💰 Chat cost: ${tokenCost.totalCost.toFixed(6)} TL (Plan: ${planName}, Free: ${isFree})`);
+
+    // Save chat log (upsert - create or update with token info)
     try {
       const updatedMessages = [
         ...conversationHistory,
         { role: 'user', content: message, timestamp: new Date().toISOString() },
         { role: 'assistant', content: result.reply, timestamp: new Date().toISOString() }
       ];
+
+      // Get existing chat log to accumulate tokens
+      const existingLog = await prisma.chatLog.findUnique({
+        where: { sessionId: chatSessionId },
+        select: { inputTokens: true, outputTokens: true, totalCost: true }
+      });
+
+      const accumulatedInputTokens = (existingLog?.inputTokens || 0) + result.inputTokens;
+      const accumulatedOutputTokens = (existingLog?.outputTokens || 0) + result.outputTokens;
+      const accumulatedCost = (existingLog?.totalCost || 0) + tokenCost.totalCost;
 
       await prisma.chatLog.upsert({
         where: { sessionId: chatSessionId },
@@ -340,14 +390,54 @@ ${knowledgeContext}`;
           assistantId: assistant.id,
           messageCount: updatedMessages.length,
           messages: updatedMessages,
-          status: 'active'
+          status: 'active',
+          inputTokens: result.inputTokens,
+          outputTokens: result.outputTokens,
+          totalCost: tokenCost.totalCost
         },
         update: {
           messageCount: updatedMessages.length,
           messages: updatedMessages,
+          inputTokens: accumulatedInputTokens,
+          outputTokens: accumulatedOutputTokens,
+          totalCost: accumulatedCost,
           updatedAt: new Date()
         }
       });
+
+      // If not free plan, deduct from balance (PAYG) or track for billing
+      if (!isFree && tokenCost.totalCost > 0 && subscription) {
+        // For PAYG: deduct from balance
+        // For STARTER/PRO: track as usage (will be billed if over included amount)
+        await prisma.subscription.update({
+          where: { id: subscription.id },
+          data: {
+            balance: {
+              decrement: planName === 'PAYG' ? tokenCost.totalCost : 0
+            }
+          }
+        });
+
+        // Create usage record for tracking
+        await prisma.usageRecord.create({
+          data: {
+            subscriptionId: subscription.id,
+            channel: 'CHAT',
+            conversationId: chatSessionId,
+            durationSeconds: 0,
+            durationMinutes: 0,
+            chargeType: planName === 'PAYG' ? 'BALANCE' : 'INCLUDED',
+            totalCharge: tokenCost.totalCost,
+            assistantId: assistant.id,
+            metadata: {
+              inputTokens: result.inputTokens,
+              outputTokens: result.outputTokens,
+              inputCost: tokenCost.inputCost,
+              outputCost: tokenCost.outputCost
+            }
+          }
+        });
+      }
     } catch (logError) {
       console.error('Failed to save chat log:', logError);
     }

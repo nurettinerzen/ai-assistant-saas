@@ -17,7 +17,9 @@ import {
   Zap,
   Wallet,
   RefreshCw,
-  Settings
+  Settings,
+  MessageSquare,
+  MessageCircle
 } from 'lucide-react';
 
 // UI translations for CreditBalance - YENİ FİYATLANDIRMA SİSTEMİ
@@ -34,6 +36,13 @@ const TRANSLATIONS = {
     trialChat: 'Chat/WhatsApp',
     trialDaysLeft: 'gün kaldı',
     trialExpired: 'Süresi doldu',
+    chatUsage: 'Chat Kullanımı',
+    whatsappUsage: 'WhatsApp Kullanımı',
+    tokenUsage: 'Token kullanımı',
+    inputTokens: 'Input',
+    outputTokens: 'Output',
+    totalCost: 'Toplam maliyet',
+    sessions: 'oturum',
     payPerMinute: 'Dakika başı ücret',
     used80Package: "Dahil dakikalarınızın %80'ini kullandınız",
     usedAllPackage: 'Dahil dakikalarınız tükendi, aşım ay sonu faturalanır',
@@ -72,6 +81,13 @@ const TRANSLATIONS = {
     trialChat: 'Chat/WhatsApp',
     trialDaysLeft: 'days left',
     trialExpired: 'Expired',
+    chatUsage: 'Chat Usage',
+    whatsappUsage: 'WhatsApp Usage',
+    tokenUsage: 'Token usage',
+    inputTokens: 'Input',
+    outputTokens: 'Output',
+    totalCost: 'Total cost',
+    sessions: 'sessions',
     payPerMinute: 'Per minute rate',
     used80Package: "You've used 80% of your included minutes",
     usedAllPackage: 'Included minutes used up, overage will be billed monthly',
@@ -406,6 +422,85 @@ export default function CreditBalance({ onBuyCredit, refreshTrigger }) {
               </div>
             )}
           </>
+        )}
+
+        {/* Chat/WhatsApp Token Usage - All paid plans */}
+        {balance.tokenUsage && (balance.tokenUsage.chat?.sessionCount > 0 || balance.tokenUsage.whatsapp?.sessionCount > 0) && (
+          <div className="space-y-3 pt-3 border-t border-neutral-200 dark:border-neutral-700">
+            <h4 className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+              {txt.tokenUsage}
+            </h4>
+
+            {/* Chat Usage */}
+            {balance.tokenUsage.chat?.sessionCount > 0 && (
+              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <MessageCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <span className="font-medium text-neutral-700 dark:text-neutral-300 text-sm">{txt.chatUsage}</span>
+                  </div>
+                  <span className="text-xs text-neutral-500">
+                    {balance.tokenUsage.chat.sessionCount} {txt.sessions}
+                  </span>
+                </div>
+                <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
+                  <div>
+                    <span className="text-neutral-500">{txt.inputTokens}</span>
+                    <p className="font-semibold text-neutral-700 dark:text-neutral-300">
+                      {(balance.tokenUsage.chat.inputTokens / 1000).toFixed(1)}K
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-neutral-500">{txt.outputTokens}</span>
+                    <p className="font-semibold text-neutral-700 dark:text-neutral-300">
+                      {(balance.tokenUsage.chat.outputTokens / 1000).toFixed(1)}K
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-neutral-500">{txt.totalCost}</span>
+                    <p className="font-semibold text-blue-600 dark:text-blue-400">
+                      {currency}{balance.tokenUsage.chat.cost?.toFixed(2) || '0.00'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* WhatsApp Usage */}
+            {balance.tokenUsage.whatsapp?.sessionCount > 0 && (
+              <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4 text-green-600 dark:text-green-400" />
+                    <span className="font-medium text-neutral-700 dark:text-neutral-300 text-sm">{txt.whatsappUsage}</span>
+                  </div>
+                  <span className="text-xs text-neutral-500">
+                    {balance.tokenUsage.whatsapp.sessionCount} {txt.sessions}
+                  </span>
+                </div>
+                <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
+                  <div>
+                    <span className="text-neutral-500">{txt.inputTokens}</span>
+                    <p className="font-semibold text-neutral-700 dark:text-neutral-300">
+                      {(balance.tokenUsage.whatsapp.inputTokens / 1000).toFixed(1)}K
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-neutral-500">{txt.outputTokens}</span>
+                    <p className="font-semibold text-neutral-700 dark:text-neutral-300">
+                      {(balance.tokenUsage.whatsapp.outputTokens / 1000).toFixed(1)}K
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-neutral-500">{txt.totalCost}</span>
+                    <p className="font-semibold text-green-600 dark:text-green-400">
+                      {currency}{balance.tokenUsage.whatsapp.cost?.toFixed(2) || '0.00'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         )}
 
         {/* Auto-Reload Status */}

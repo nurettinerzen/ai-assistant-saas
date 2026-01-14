@@ -26,7 +26,8 @@ import {
   getFixedOveragePrice,
   getPlanConfig,
   isPrepaidPlan,
-  isPostpaidPlan
+  isPostpaidPlan,
+  getTokenPricePerK
 } from '../config/plans.js';
 import balanceService from './balanceService.js';
 
@@ -464,6 +465,8 @@ export async function getUsageStats(subscriptionId, startDate = null, endDate = 
     // Calculate totals
     let totalMinutes = 0;
     let totalCharge = 0;
+    let totalInputTokens = 0;
+    let totalOutputTokens = 0;
     const byChannel = {};
     const byChargeType = {};
 
@@ -471,13 +474,26 @@ export async function getUsageStats(subscriptionId, startDate = null, endDate = 
       totalMinutes += record.durationMinutes;
       totalCharge += record.totalCharge || 0;
 
+      // Extract token info from metadata for CHAT/WHATSAPP
+      if (record.metadata && (record.channel === 'CHAT' || record.channel === 'WHATSAPP')) {
+        const metadata = record.metadata;
+        totalInputTokens += metadata.inputTokens || 0;
+        totalOutputTokens += metadata.outputTokens || 0;
+      }
+
       // By channel
       if (!byChannel[record.channel]) {
-        byChannel[record.channel] = { minutes: 0, charge: 0, count: 0 };
+        byChannel[record.channel] = { minutes: 0, charge: 0, count: 0, inputTokens: 0, outputTokens: 0 };
       }
       byChannel[record.channel].minutes += record.durationMinutes;
       byChannel[record.channel].charge += record.totalCharge || 0;
       byChannel[record.channel].count++;
+
+      // Add token info for CHAT/WHATSAPP channels
+      if (record.metadata && (record.channel === 'CHAT' || record.channel === 'WHATSAPP')) {
+        byChannel[record.channel].inputTokens += record.metadata.inputTokens || 0;
+        byChannel[record.channel].outputTokens += record.metadata.outputTokens || 0;
+      }
 
       // By charge type
       if (!byChargeType[record.chargeType]) {
@@ -493,13 +509,59 @@ export async function getUsageStats(subscriptionId, startDate = null, endDate = 
       where: { id: subscriptionId },
       include: {
         business: {
-          select: { country: true }
+          select: { country: true, id: true }
         }
       }
     });
 
     const country = subscription?.business?.country || 'TR';
     const includedMinutes = getIncludedMinutes(subscription?.plan, country);
+    const tokenPricing = getTokenPricePerK(subscription?.plan, country);
+
+    // Get chat/whatsapp usage from ChatLog for this period
+    const chatLogWhere = {
+      businessId: subscription?.business?.id
+    };
+    if (startDate || endDate) {
+      chatLogWhere.createdAt = {};
+      if (startDate) chatLogWhere.createdAt.gte = startDate;
+      if (endDate) chatLogWhere.createdAt.lte = endDate;
+    }
+
+    const chatLogs = await prisma.chatLog.findMany({
+      where: chatLogWhere,
+      select: {
+        channel: true,
+        inputTokens: true,
+        outputTokens: true,
+        totalCost: true,
+        messageCount: true
+      }
+    });
+
+    // Calculate chat/whatsapp totals from ChatLog
+    let chatTotalInputTokens = 0;
+    let chatTotalOutputTokens = 0;
+    let chatTotalCost = 0;
+    let whatsappTotalInputTokens = 0;
+    let whatsappTotalOutputTokens = 0;
+    let whatsappTotalCost = 0;
+    let chatSessionCount = 0;
+    let whatsappSessionCount = 0;
+
+    for (const log of chatLogs) {
+      if (log.channel === 'CHAT') {
+        chatTotalInputTokens += log.inputTokens || 0;
+        chatTotalOutputTokens += log.outputTokens || 0;
+        chatTotalCost += log.totalCost || 0;
+        chatSessionCount++;
+      } else if (log.channel === 'WHATSAPP') {
+        whatsappTotalInputTokens += log.inputTokens || 0;
+        whatsappTotalOutputTokens += log.outputTokens || 0;
+        whatsappTotalCost += log.totalCost || 0;
+        whatsappSessionCount++;
+      }
+    }
 
     return {
       totalMinutes,
@@ -507,6 +569,25 @@ export async function getUsageStats(subscriptionId, startDate = null, endDate = 
       recordCount: records.length,
       byChannel,
       byChargeType,
+      // Token usage summary
+      tokenUsage: {
+        totalInputTokens: chatTotalInputTokens + whatsappTotalInputTokens,
+        totalOutputTokens: chatTotalOutputTokens + whatsappTotalOutputTokens,
+        totalCost: chatTotalCost + whatsappTotalCost,
+        chat: {
+          inputTokens: chatTotalInputTokens,
+          outputTokens: chatTotalOutputTokens,
+          cost: chatTotalCost,
+          sessionCount: chatSessionCount
+        },
+        whatsapp: {
+          inputTokens: whatsappTotalInputTokens,
+          outputTokens: whatsappTotalOutputTokens,
+          cost: whatsappTotalCost,
+          sessionCount: whatsappSessionCount
+        },
+        pricing: tokenPricing
+      },
       currentPeriod: {
         plan: subscription?.plan,
         includedMinutes,

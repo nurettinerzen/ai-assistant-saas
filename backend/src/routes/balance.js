@@ -25,11 +25,84 @@ import {
   isPrepaidPlan,
   isPostpaidPlan,
   getPaymentModel,
-  getFixedOveragePrice
+  getFixedOveragePrice,
+  getTokenPricePerK
 } from '../config/plans.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
+
+// Helper: Get chat/whatsapp token usage for current period
+async function getTokenUsage(businessId, country, plan) {
+  try {
+    // Get current period start (beginning of month for simplicity)
+    const now = new Date();
+    const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // Get ChatLog entries for this period
+    const chatLogs = await prisma.chatLog.findMany({
+      where: {
+        businessId,
+        createdAt: { gte: periodStart }
+      },
+      select: {
+        channel: true,
+        inputTokens: true,
+        outputTokens: true,
+        totalCost: true
+      }
+    });
+
+    // Calculate totals
+    let chatInputTokens = 0;
+    let chatOutputTokens = 0;
+    let chatCost = 0;
+    let chatSessionCount = 0;
+    let whatsappInputTokens = 0;
+    let whatsappOutputTokens = 0;
+    let whatsappCost = 0;
+    let whatsappSessionCount = 0;
+
+    for (const log of chatLogs) {
+      if (log.channel === 'CHAT') {
+        chatInputTokens += log.inputTokens || 0;
+        chatOutputTokens += log.outputTokens || 0;
+        chatCost += log.totalCost || 0;
+        chatSessionCount++;
+      } else if (log.channel === 'WHATSAPP') {
+        whatsappInputTokens += log.inputTokens || 0;
+        whatsappOutputTokens += log.outputTokens || 0;
+        whatsappCost += log.totalCost || 0;
+        whatsappSessionCount++;
+      }
+    }
+
+    // Get token pricing for plan
+    const pricing = getTokenPricePerK(plan, country);
+
+    return {
+      totalInputTokens: chatInputTokens + whatsappInputTokens,
+      totalOutputTokens: chatOutputTokens + whatsappOutputTokens,
+      totalCost: chatCost + whatsappCost,
+      chat: {
+        inputTokens: chatInputTokens,
+        outputTokens: chatOutputTokens,
+        cost: chatCost,
+        sessionCount: chatSessionCount
+      },
+      whatsapp: {
+        inputTokens: whatsappInputTokens,
+        outputTokens: whatsappOutputTokens,
+        cost: whatsappCost,
+        sessionCount: whatsappSessionCount
+      },
+      pricing
+    };
+  } catch (error) {
+    console.error('Error fetching token usage:', error);
+    return null;
+  }
+}
 
 // All routes require authentication
 router.use(authenticateToken);
@@ -210,7 +283,10 @@ router.get('/', async (req, res) => {
       enterprise: enterpriseInfo,
 
       // Period info
-      periodEnd: subscription.currentPeriodEnd
+      periodEnd: subscription.currentPeriodEnd,
+
+      // Chat/WhatsApp token usage
+      tokenUsage: await getTokenUsage(businessId, country, plan)
     });
 
   } catch (error) {

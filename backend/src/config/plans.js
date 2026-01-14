@@ -34,6 +34,63 @@ export const OVERAGE_PRICE = {
 };
 
 // ============================================================================
+// CHAT/WHATSAPP TOKEN FİYATLANDIRMASI
+// ============================================================================
+// Gemini 2.0 Flash maliyetleri (1 USD = 45 TL):
+// - Input: $0.10/1M token = 0.0045 TL/1K token
+// - Output: $0.40/1M token = 0.018 TL/1K token
+//
+// Kar marjı: ~2.5x
+// WhatsApp service messages (24 saatlik pencere): Meta ücreti YOK
+// ============================================================================
+export const TOKEN_PRICING = {
+  TR: {
+    currency: 'TRY',
+    symbol: '₺',
+    // Fiyatlar 1K token başına TL cinsinden
+    plans: {
+      FREE: { inputPer1K: 0, outputPer1K: 0 },
+      TRIAL: { inputPer1K: 0, outputPer1K: 0 },           // Deneme ücretsiz
+      PAYG: { inputPer1K: 0.012, outputPer1K: 0.045 },    // En yüksek fiyat
+      STARTER: { inputPer1K: 0.010, outputPer1K: 0.040 }, // Orta fiyat
+      PRO: { inputPer1K: 0.009, outputPer1K: 0.036 },     // Düşük fiyat
+      ENTERPRISE: { inputPer1K: 0.008, outputPer1K: 0.032 }, // En düşük fiyat
+      // Legacy
+      BASIC: { inputPer1K: 0.010, outputPer1K: 0.040 },
+      PROFESSIONAL: { inputPer1K: 0.009, outputPer1K: 0.036 }
+    }
+  },
+  BR: {
+    currency: 'BRL',
+    symbol: 'R$',
+    plans: {
+      FREE: { inputPer1K: 0, outputPer1K: 0 },
+      TRIAL: { inputPer1K: 0, outputPer1K: 0 },
+      PAYG: { inputPer1K: 0.0024, outputPer1K: 0.009 },
+      STARTER: { inputPer1K: 0.002, outputPer1K: 0.008 },
+      PRO: { inputPer1K: 0.0018, outputPer1K: 0.0072 },
+      ENTERPRISE: { inputPer1K: 0.0016, outputPer1K: 0.0064 },
+      BASIC: { inputPer1K: 0.002, outputPer1K: 0.008 },
+      PROFESSIONAL: { inputPer1K: 0.0018, outputPer1K: 0.0072 }
+    }
+  },
+  US: {
+    currency: 'USD',
+    symbol: '$',
+    plans: {
+      FREE: { inputPer1K: 0, outputPer1K: 0 },
+      TRIAL: { inputPer1K: 0, outputPer1K: 0 },
+      PAYG: { inputPer1K: 0.00027, outputPer1K: 0.001 },
+      STARTER: { inputPer1K: 0.00022, outputPer1K: 0.00089 },
+      PRO: { inputPer1K: 0.0002, outputPer1K: 0.0008 },
+      ENTERPRISE: { inputPer1K: 0.00018, outputPer1K: 0.00071 },
+      BASIC: { inputPer1K: 0.00022, outputPer1K: 0.00089 },
+      PROFESSIONAL: { inputPer1K: 0.0002, outputPer1K: 0.0008 }
+    }
+  }
+};
+
+// ============================================================================
 // ÖDEME MODELİ
 // ============================================================================
 export const PAYMENT_MODELS = {
@@ -763,6 +820,62 @@ export function getFixedOveragePrice(countryCode = 'TR') {
 }
 
 // ============================================================================
+// CHAT/WHATSAPP TOKEN FİYATLANDIRMA FONKSİYONLARI
+// ============================================================================
+
+/**
+ * Get token pricing configuration for a region
+ * @param {string} countryCode - Country code (TR, BR, US)
+ * @returns {object} Token pricing configuration
+ */
+export function getTokenPricing(countryCode = 'TR') {
+  return TOKEN_PRICING[countryCode] || TOKEN_PRICING.US;
+}
+
+/**
+ * Get token price per 1K tokens for a plan
+ * @param {string} planName - Plan name
+ * @param {string} countryCode - Country code
+ * @returns {{ inputPer1K: number, outputPer1K: number }}
+ */
+export function getTokenPricePerK(planName, countryCode = 'TR') {
+  const pricing = getTokenPricing(countryCode);
+  return pricing.plans[planName] || pricing.plans.FREE;
+}
+
+/**
+ * Calculate token cost for input and output tokens
+ * @param {number} inputTokens - Number of input tokens
+ * @param {number} outputTokens - Number of output tokens
+ * @param {string} planName - Plan name
+ * @param {string} countryCode - Country code
+ * @returns {{ inputCost: number, outputCost: number, totalCost: number }}
+ */
+export function calculateTokenCost(inputTokens, outputTokens, planName, countryCode = 'TR') {
+  const pricing = getTokenPricePerK(planName, countryCode);
+
+  // 1K token başına fiyat ile hesapla
+  const inputCost = (inputTokens / 1000) * pricing.inputPer1K;
+  const outputCost = (outputTokens / 1000) * pricing.outputPer1K;
+  const totalCost = inputCost + outputCost;
+
+  return {
+    inputCost: +inputCost.toFixed(6),
+    outputCost: +outputCost.toFixed(6),
+    totalCost: +totalCost.toFixed(6)
+  };
+}
+
+/**
+ * Check if a plan has free chat/whatsapp
+ * @param {string} planName - Plan name
+ * @returns {boolean}
+ */
+export function hasFreeChat(planName) {
+  return ['FREE', 'TRIAL'].includes(planName);
+}
+
+// ============================================================================
 // LEGACY EXPORTS (for backward compatibility)
 // ============================================================================
 
@@ -778,6 +891,7 @@ export default {
   USD_TO_TRY,
   OVERAGE_PRICE,
   PAYMENT_MODELS,
+  TOKEN_PRICING,
   getRegionalPricing,
   getPlanConfig,
   getPlanWithPricing,
@@ -805,5 +919,10 @@ export default {
   getPaymentModel,
   isPrepaidPlan,
   isPostpaidPlan,
-  getFixedOveragePrice
+  getFixedOveragePrice,
+  // Token fiyatlandırma fonksiyonları
+  getTokenPricing,
+  getTokenPricePerK,
+  calculateTokenCost,
+  hasFreeChat
 };
