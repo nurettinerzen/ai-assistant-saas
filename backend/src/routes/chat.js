@@ -188,8 +188,53 @@ router.post('/widget', async (req, res) => {
       return res.status(400).json({ error: 'embedKey or assistantId is required' });
     }
 
-    // Generate session ID if not provided
-    const chatSessionId = sessionId || `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    // Session timeout: 30 minutes of inactivity = new session
+    const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+
+    // Check if existing session should be continued or a new one started
+    let chatSessionId = sessionId;
+    let shouldStartNewSession = !sessionId;
+    let previousHistory = conversationHistory;
+
+    if (sessionId) {
+      // Check existing session
+      const existingSession = await prisma.chatLog.findUnique({
+        where: { sessionId },
+        select: { id: true, updatedAt: true, status: true, messages: true }
+      });
+
+      if (existingSession) {
+        const lastActivity = new Date(existingSession.updatedAt);
+        const timeSinceActivity = Date.now() - lastActivity.getTime();
+
+        if (timeSinceActivity > SESSION_TIMEOUT_MS || existingSession.status === 'ended') {
+          // Session timed out or was ended - mark as ended and start new session
+          console.log(`⏰ Session ${sessionId} timed out (${Math.round(timeSinceActivity / 60000)} min inactive) - starting new session`);
+
+          // Mark old session as ended
+          await prisma.chatLog.update({
+            where: { sessionId },
+            data: { status: 'ended', updatedAt: new Date() }
+          });
+
+          // Generate new session ID
+          chatSessionId = `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          shouldStartNewSession = true;
+          previousHistory = []; // Clear history for new session
+        } else {
+          // Session still active - continue with existing history if not provided
+          console.log(`✅ Session ${sessionId} is active (${Math.round(timeSinceActivity / 60000)} min since last activity)`);
+          if (conversationHistory.length === 0 && existingSession.messages) {
+            previousHistory = Array.isArray(existingSession.messages) ? existingSession.messages : [];
+          }
+        }
+      }
+    }
+
+    // Generate session ID if needed
+    if (!chatSessionId) {
+      chatSessionId = `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    }
 
     let assistant;
 
@@ -335,7 +380,7 @@ ${knowledgeContext}`;
     console.log('🤖 [Chat] Using Gemini model');
 
     // Process with Gemini (with function calling support)
-    const result = await processWithGemini(fullSystemPrompt, conversationHistory, message, language, business);
+    const result = await processWithGemini(fullSystemPrompt, previousHistory, message, language, business);
 
     // Human-like delay: reading + typing time
     // 1. Reading delay: 1-2 seconds (before typing starts)
@@ -367,7 +412,7 @@ ${knowledgeContext}`;
     // Save chat log (upsert - create or update with token info)
     try {
       const updatedMessages = [
-        ...conversationHistory,
+        ...previousHistory,
         { role: 'user', content: message, timestamp: new Date().toISOString() },
         { role: 'assistant', content: result.reply, timestamp: new Date().toISOString() }
       ];
@@ -446,6 +491,7 @@ ${knowledgeContext}`;
       success: true,
       reply: result.reply,
       sessionId: chatSessionId,
+      newSession: shouldStartNewSession, // true if a new session was started (timeout or first message)
       assistantName: assistant.name
     });
 

@@ -288,32 +288,53 @@ async function generateAIResponse(business, phoneNumber, userMessage, context = 
     // Build system prompt
     const systemPrompt = await buildSystemPrompt(business, assistant);
 
+    // Session timeout: 30 minutes of inactivity = new session
+    const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+
     // Get conversation history (from memory cache or database)
     let history;
     let existingLog;
-    const sessionId = `whatsapp-${business.id}-${phoneNumber}`;
+    let sessionId = `whatsapp-${business.id}-${phoneNumber}`;
 
-    if (conversations.has(conversationKey)) {
-      // Use cached history
-      history = conversations.get(conversationKey);
-      // Still load existing log for token accumulation
-      existingLog = await prisma.chatLog.findUnique({
-        where: { sessionId },
-        select: { inputTokens: true, outputTokens: true, totalCost: true }
-      });
-    } else {
-      // Try to load from database (ChatLog)
-      existingLog = await prisma.chatLog.findUnique({
-        where: { sessionId }
-      });
+    // Check if existing session has timed out
+    existingLog = await prisma.chatLog.findUnique({
+      where: { sessionId },
+      select: { id: true, inputTokens: true, outputTokens: true, totalCost: true, updatedAt: true, status: true, messages: true }
+    });
 
-      if (existingLog?.messages && Array.isArray(existingLog.messages)) {
+    if (existingLog) {
+      const lastActivity = new Date(existingLog.updatedAt);
+      const timeSinceActivity = Date.now() - lastActivity.getTime();
+
+      if (timeSinceActivity > SESSION_TIMEOUT_MS || existingLog.status === 'ended') {
+        // Session timed out - mark as ended and start fresh
+        console.log(`⏰ [WhatsApp] Session for ${phoneNumber} timed out (${Math.round(timeSinceActivity / 60000)} min) - starting new session`);
+
+        await prisma.chatLog.update({
+          where: { sessionId },
+          data: { status: 'ended', updatedAt: new Date() }
+        });
+
+        // Generate new session ID with timestamp
+        sessionId = `whatsapp-${business.id}-${phoneNumber}-${Date.now()}`;
+        history = [];
+        existingLog = null;
+        conversations.delete(conversationKey);
+      } else if (conversations.has(conversationKey)) {
+        // Use cached history (session still active)
+        history = conversations.get(conversationKey);
+        console.log(`✅ [WhatsApp] Session active (${Math.round(timeSinceActivity / 60000)} min since last activity)`);
+      } else if (existingLog.messages && Array.isArray(existingLog.messages)) {
         // Load history from database (last 40 messages)
         history = existingLog.messages.slice(-40);
+        conversations.set(conversationKey, history);
         console.log(`📚 [WhatsApp] Loaded ${history.length} messages from database for ${phoneNumber}`);
       } else {
         history = [];
+        conversations.set(conversationKey, history);
       }
+    } else {
+      history = [];
       conversations.set(conversationKey, history);
     }
 
