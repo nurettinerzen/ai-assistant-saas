@@ -331,6 +331,12 @@ model ChatLog {
   messages      Json?    // Array of {role, content, timestamp}
   summary       String?  @db.Text
   status        String   @default("active")  // active, completed
+
+  // Token kullanımı ve maliyet bilgileri
+  inputTokens   Int      @default(0)  // Toplam input token sayısı
+  outputTokens  Int      @default(0)  // Toplam output token sayısı
+  totalCost     Float    @default(0)  // Toplam maliyet TL cinsinden
+
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 

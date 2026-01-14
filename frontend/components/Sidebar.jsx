@@ -112,6 +112,7 @@ export default function Sidebar({ user, credits, business }) {
       items: [
         { icon: BarChart3, label: t('dashboard.sidebar.analytics'), href: '/dashboard/analytics', permission: 'analytics:view' },
         { icon: Phone, label: t('dashboard.sidebar.callHistory'), href: '/dashboard/calls', permission: 'calls:view' },
+        { icon: MessageSquare, label: locale === 'tr' ? 'Sohbet Geçmişi' : 'Chat History', href: '/dashboard/chats', permission: 'calls:view' },
         { icon: PhoneMissed, label: locale === 'tr' ? 'Geri Aramalar' : 'Callbacks', href: '/dashboard/callbacks', permission: 'calls:view' },
       ],
     },

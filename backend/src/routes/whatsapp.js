@@ -13,6 +13,7 @@ import { webhookRateLimiter } from '../middleware/rateLimiter.js';
 import { getDateTimeContext } from '../utils/dateTime.js';
 import { buildAssistantPrompt, getActiveTools as getPromptBuilderTools } from '../services/promptBuilder.js';
 import { isFreePlanExpired } from '../middleware/checkPlanExpiry.js';
+import { calculateTokenCost, hasFreeChat } from '../config/plans.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -238,12 +239,17 @@ router.post('/webhook', webhookRateLimiter.middleware(), async (req, res) => {
  */
 async function processWhatsAppMessage(business, from, messageBody, messageId) {
   try {
+    // Get subscription for cost calculation
+    const subscription = await prisma.subscription.findUnique({
+      where: { businessId: business.id }
+    });
+
     // Generate AI response with Gemini
     const aiResponse = await generateAIResponse(
       business,
       from,
       messageBody,
-      { messageId }
+      { messageId, subscription }
     );
 
     // Send response using business's credentials
@@ -269,6 +275,7 @@ async function processWhatsAppMessage(business, from, messageBody, messageId) {
 
 /**
  * Generate AI response using Gemini
+ * Tracks token usage and costs
  */
 async function generateAIResponse(business, phoneNumber, userMessage, context = {}) {
   try {
@@ -276,20 +283,27 @@ async function generateAIResponse(business, phoneNumber, userMessage, context = 
     const assistant = business.assistants?.[0];
     const conversationKey = `${business.id}:${phoneNumber}`;
     const language = business?.language || 'TR';
+    const subscription = context.subscription;
 
     // Build system prompt
     const systemPrompt = await buildSystemPrompt(business, assistant);
 
     // Get conversation history (from memory cache or database)
     let history;
+    let existingLog;
+    const sessionId = `whatsapp-${business.id}-${phoneNumber}`;
 
     if (conversations.has(conversationKey)) {
       // Use cached history
       history = conversations.get(conversationKey);
+      // Still load existing log for token accumulation
+      existingLog = await prisma.chatLog.findUnique({
+        where: { sessionId },
+        select: { inputTokens: true, outputTokens: true, totalCost: true }
+      });
     } else {
       // Try to load from database (ChatLog)
-      const sessionId = `whatsapp-${business.id}-${phoneNumber}`;
-      const existingLog = await prisma.chatLog.findUnique({
+      existingLog = await prisma.chatLog.findUnique({
         where: { sessionId }
       });
 
@@ -341,6 +355,12 @@ Asistan:`;
     const response = result.response;
     const text = response.text();
 
+    // Track tokens
+    const inputTokens = response.usageMetadata?.promptTokenCount || 0;
+    const outputTokens = response.usageMetadata?.candidatesTokenCount || 0;
+
+    console.log(`📊 [WhatsApp] Token usage - Input: ${inputTokens}, Output: ${outputTokens}`);
+
     const finalResponse = text || (language === 'TR'
       ? 'Üzgünüm, bir yanıt oluşturamadım.'
       : 'Sorry, I could not generate a response.');
@@ -356,14 +376,33 @@ Asistan:`;
       conversations.set(conversationKey, history.slice(-40));
     }
 
-    // Save/Update ChatLog for analytics
+    // Calculate token cost based on plan
+    const planName = subscription?.plan || 'FREE';
+    const countryCode = business?.country || 'TR';
+    const isFree = hasFreeChat(planName);
+
+    let tokenCost = { inputCost: 0, outputCost: 0, totalCost: 0 };
+    if (!isFree) {
+      tokenCost = calculateTokenCost(inputTokens, outputTokens, planName, countryCode);
+    }
+
+    console.log(`💰 [WhatsApp] Chat cost: ${tokenCost.totalCost.toFixed(6)} TL (Plan: ${planName}, Free: ${isFree})`);
+
+    // Accumulate tokens
+    const accumulatedInputTokens = (existingLog?.inputTokens || 0) + inputTokens;
+    const accumulatedOutputTokens = (existingLog?.outputTokens || 0) + outputTokens;
+    const accumulatedCost = (existingLog?.totalCost || 0) + tokenCost.totalCost;
+
+    // Save/Update ChatLog for analytics with token info
     try {
-      const sessionId = `whatsapp-${business.id}-${phoneNumber}`;
       await prisma.chatLog.upsert({
         where: { sessionId },
         update: {
           messages: history,
           messageCount: history.length,
+          inputTokens: accumulatedInputTokens,
+          outputTokens: accumulatedOutputTokens,
+          totalCost: accumulatedCost,
           updatedAt: new Date()
         },
         create: {
@@ -374,9 +413,45 @@ Asistan:`;
           customerPhone: phoneNumber,
           messages: history,
           messageCount: history.length,
+          inputTokens: inputTokens,
+          outputTokens: outputTokens,
+          totalCost: tokenCost.totalCost,
           status: 'active'
         }
       });
+
+      // If not free plan, track usage
+      if (!isFree && tokenCost.totalCost > 0 && subscription) {
+        // For PAYG: deduct from balance
+        await prisma.subscription.update({
+          where: { id: subscription.id },
+          data: {
+            balance: {
+              decrement: planName === 'PAYG' ? tokenCost.totalCost : 0
+            }
+          }
+        });
+
+        // Create usage record for tracking
+        await prisma.usageRecord.create({
+          data: {
+            subscriptionId: subscription.id,
+            channel: 'WHATSAPP',
+            conversationId: sessionId,
+            durationSeconds: 0,
+            durationMinutes: 0,
+            chargeType: planName === 'PAYG' ? 'BALANCE' : 'INCLUDED',
+            totalCharge: tokenCost.totalCost,
+            assistantId: assistant?.id || null,
+            metadata: {
+              inputTokens,
+              outputTokens,
+              inputCost: tokenCost.inputCost,
+              outputCost: tokenCost.outputCost
+            }
+          }
+        });
+      }
     } catch (logError) {
       console.error('⚠️ Failed to save WhatsApp chat log:', logError.message);
     }
