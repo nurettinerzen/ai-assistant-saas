@@ -97,14 +97,19 @@ function verifyWebhookSignature(req, secret) {
       return false;
     }
 
-    // Verify signature
-    const payload = `${timestamp}.${JSON.stringify(req.body)}`;
+    // Verify signature using raw body (captured by middleware)
+    const rawBody = req.rawBody || JSON.stringify(req.body);
+    const payload = `${timestamp}.${rawBody}`;
     const expectedHash = crypto
       .createHmac('sha256', secret)
       .update(payload)
       .digest('hex');
 
-    return hash === expectedHash;
+    const isValid = hash === expectedHash;
+    if (!isValid) {
+      console.warn('⚠️ Signature mismatch:', { received: hash, expected: expectedHash });
+    }
+    return isValid;
   } catch (error) {
     console.error('❌ Signature verification error:', error);
     return false;

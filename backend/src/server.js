@@ -117,8 +117,17 @@ app.use(publicCorsRoutes, cors({
 
 // ⚠️ WEBHOOK ROUTES - RAW BODY (BEFORE express.json())
 app.use('/api/subscription/webhook', express.raw({ type: 'application/json' }));
-app.use('/api/elevenlabs/webhook', express.json()); // 11Labs webhook needs parsed JSON
-app.use('/api/elevenlabs/post-call', express.json()); // 11Labs post-call webhook
+// 11Labs webhook - capture raw body for signature verification, then parse JSON
+app.use('/api/elevenlabs/webhook', express.json({
+  verify: (req, res, buf) => {
+    req.rawBody = buf.toString('utf8');
+  }
+}));
+app.use('/api/elevenlabs/post-call', express.json({
+  verify: (req, res, buf) => {
+    req.rawBody = buf.toString('utf8');
+  }
+}));
 app.use('/api/webhook/incoming', express.json()); // External webhooks (Zapier, etc.)
 
 // ✅ OTHER ROUTES - JSON PARSE

@@ -903,6 +903,12 @@ export default function CustomerDataPage() {
 
       if (standardField) {
         updateData[standardField] = newValue || null;
+        // Also update customFields if the column exists there (keeps display in sync)
+        if (record.customFields && record.customFields[columnName] !== undefined) {
+          const customFields = { ...(record.customFields || {}) };
+          customFields[columnName] = newValue || null;
+          updateData.customFields = customFields;
+        }
       } else {
         // Update in customFields
         const customFields = { ...(record.customFields || {}) };

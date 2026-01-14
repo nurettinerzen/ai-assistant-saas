@@ -1123,7 +1123,7 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const businessId = req.businessId;
-    const { companyName, phone, contactName, email, vkn, tcNo, notes, tags, customFields } = req.body;
+    const { companyName, phone, contactName, email, vkn, tcNo, notes, tags, customFields, fileId } = req.body;
 
     if (!companyName || !phone) {
       return res.status(400).json({
@@ -1154,9 +1154,23 @@ router.post('/', async (req, res) => {
       });
     }
 
+    // Validate fileId if provided (must belong to this business)
+    if (fileId) {
+      const file = await prisma.customerDataFile.findFirst({
+        where: { id: fileId, businessId }
+      });
+      if (!file) {
+        return res.status(400).json({
+          error: 'Invalid file ID',
+          errorTR: 'Geçersiz dosya ID\'si'
+        });
+      }
+    }
+
     const customer = await prisma.customerData.create({
       data: {
         businessId,
+        fileId: fileId || null,
         companyName,
         phone: normalizedPhone,
         contactName,

@@ -66,32 +66,33 @@ export async function execute(args, business, context = {}) {
       }
     }
 
-    // If not found by order_number, try phone
+    // If not found by order_number, try phone with flexible matching
     if (!customer && lookupPhone) {
-      const normalizedPhone = normalizePhone(lookupPhone);
-      console.log('🔍 Searching by phone:', normalizedPhone);
+      const phoneVariants = getPhoneVariants(lookupPhone);
+      console.log('🔍 Searching by phone variants:', phoneVariants);
 
-      if (normalizedPhone) {
-        // Try exact match first
-        customer = await prisma.customerData.findUnique({
-          where: {
-            businessId_phone: {
-              businessId: business.id,
-              phone: normalizedPhone
-            }
+      // Get all customers for this business to do flexible matching
+      const allCustomers = await prisma.customerData.findMany({
+        where: { businessId: business.id }
+      });
+
+      // Try to match any phone variant
+      for (const variant of phoneVariants) {
+        for (const c of allCustomers) {
+          const dbPhoneClean = String(c.phone || '').replace(/\D/g, '');
+          const dbVariants = getPhoneVariants(c.phone);
+
+          // Check if any variant matches
+          if (dbPhoneClean === variant ||
+              dbPhoneClean.endsWith(variant) ||
+              variant.endsWith(dbPhoneClean) ||
+              dbVariants.includes(variant)) {
+            customer = c;
+            console.log('✅ Found by phone match:', c.phone, '↔', lookupPhone);
+            break;
           }
-        });
-
-        // Try flexible search if exact match fails
-        if (!customer) {
-          const last10 = normalizedPhone.slice(-10);
-          customer = await prisma.customerData.findFirst({
-            where: {
-              businessId: business.id,
-              phone: { endsWith: last10 }
-            }
-          });
         }
+        if (customer) break;
       }
     }
 
@@ -136,6 +137,7 @@ export async function execute(args, business, context = {}) {
 
 /**
  * Normalize phone number for consistent matching
+ * Returns the raw digits - we'll do flexible matching in search
  */
 function normalizePhone(phone) {
   if (!phone) return null;
@@ -143,7 +145,7 @@ function normalizePhone(phone) {
   let cleaned = String(phone).replace(/[^\d+]/g, '');
   cleaned = cleaned.replace(/^\+/, '');
 
-  // Handle Turkish numbers
+  // Handle Turkish numbers - normalize to 90XXXXXXXXXX format
   if (cleaned.startsWith('90') && cleaned.length >= 12) {
     return cleaned;
   } else if (cleaned.startsWith('0') && cleaned.length === 11) {
@@ -152,7 +154,50 @@ function normalizePhone(phone) {
     return '90' + cleaned;
   }
 
+  // For other formats, just return cleaned digits
   return cleaned || null;
+}
+
+/**
+ * Get all possible phone formats for flexible matching
+ */
+function getPhoneVariants(phone) {
+  if (!phone) return [];
+
+  const cleaned = String(phone).replace(/\D/g, '');
+  const variants = new Set();
+
+  variants.add(cleaned);
+
+  // If starts with 90, also try without
+  if (cleaned.startsWith('90') && cleaned.length > 10) {
+    variants.add(cleaned.substring(2)); // Remove 90
+    variants.add('0' + cleaned.substring(2)); // Add leading 0
+  }
+
+  // If starts with 0, also try without and with 90
+  if (cleaned.startsWith('0')) {
+    variants.add(cleaned.substring(1)); // Remove 0
+    variants.add('90' + cleaned.substring(1)); // Replace 0 with 90
+  }
+
+  // If 10 digits starting with 5, add 90 prefix
+  if (cleaned.length === 10 && cleaned.startsWith('5')) {
+    variants.add('90' + cleaned);
+    variants.add('0' + cleaned);
+  }
+
+  // Last 10 digits (most common for matching)
+  if (cleaned.length >= 10) {
+    variants.add(cleaned.slice(-10));
+  }
+
+  // Last 7 digits (for partial matching)
+  if (cleaned.length >= 7) {
+    variants.add(cleaned.slice(-7));
+  }
+
+  return Array.from(variants);
 }
 
 /**
