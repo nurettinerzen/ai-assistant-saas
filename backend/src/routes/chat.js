@@ -63,6 +63,7 @@ async function processWithGemini(systemPrompt, conversationHistory, userMessage,
   console.log('🔧 Chat tools available:', geminiFunctions.map(f => f.name));
 
   // Configure model with function calling
+  // toolConfig with mode: 'AUTO' ensures Gemini uses tools when appropriate
   const model = genAI.getGenerativeModel({
     model: 'gemini-2.0-flash',
     generationConfig: {
@@ -71,7 +72,12 @@ async function processWithGemini(systemPrompt, conversationHistory, userMessage,
     },
     tools: geminiFunctions.length > 0 ? [{
       functionDeclarations: geminiFunctions
-    }] : undefined
+    }] : undefined,
+    toolConfig: geminiFunctions.length > 0 ? {
+      functionCallingConfig: {
+        mode: 'AUTO' // Ensures Gemini will use tools when needed
+      }
+    } : undefined
   });
 
   // Build conversation history for Gemini
@@ -116,12 +122,36 @@ async function processWithGemini(systemPrompt, conversationHistory, userMessage,
   // Handle function calls (up to 3 iterations)
   let iterations = 0;
   const maxIterations = 3;
+  let hadFunctionCall = false; // Track if we had any function calls
+
+  // Get initial text and function calls
+  let initialText = '';
+  try {
+    initialText = response.text() || '';
+  } catch (e) {
+    // text() might throw if response only contains function call
+  }
+  const initialFunctionCalls = response.functionCalls();
+
+  console.log('🔍 Initial response - Text:', initialText?.substring(0, 100), 'FunctionCalls:', initialFunctionCalls?.length || 0);
 
   while (iterations < maxIterations) {
     const functionCalls = response.functionCalls();
 
     if (!functionCalls || functionCalls.length === 0) {
       break; // No more function calls
+    }
+
+    hadFunctionCall = true; // Mark that we had at least one function call
+
+    // Log if Gemini sent text along with function call (this is the "kontrol ediyorum" issue)
+    try {
+      const intermediateText = response.text();
+      if (intermediateText) {
+        console.log('⚠️ Gemini sent text WITH function call (will be replaced by tool result):', intermediateText.substring(0, 100));
+      }
+    } catch (e) {
+      // text() might throw if response only contains function call
     }
 
     console.log('🔧 Gemini function call:', functionCalls[0].name, functionCalls[0].args);
@@ -136,16 +166,18 @@ async function processWithGemini(systemPrompt, conversationHistory, userMessage,
     console.log('🔧 Tool result:', toolResult.success ? 'SUCCESS' : 'FAILED', toolResult.message?.substring(0, 100));
 
     // Send function response back to Gemini
-    result = await chat.sendMessage([{
-      functionResponse: {
-        name: functionCall.name,
-        response: {
-          success: toolResult.success,
-          data: toolResult.data || null,
-          message: toolResult.message || toolResult.error || 'Tool executed'
+    result = await chat.sendMessage([
+      {
+        functionResponse: {
+          name: functionCall.name,
+          response: {
+            success: toolResult.success,
+            data: toolResult.data || null,
+            message: toolResult.message || toolResult.error || 'Tool executed'
+          }
         }
       }
-    }]);
+    ]);
     response = result.response;
 
     // Track tokens from function call response
@@ -157,7 +189,76 @@ async function processWithGemini(systemPrompt, conversationHistory, userMessage,
     iterations++;
   }
 
-  const text = response.text();
+  let text = '';
+  try {
+    text = response.text() || '';
+  } catch (e) {
+    console.log('⚠️ Could not get text from response');
+  }
+
+  console.log('📝 Final response text:', text?.substring(0, 100));
+
+  // BUGFIX: If Gemini said something like "kontrol ediyorum" but didn't call a tool,
+  // and there was no function call at all, this is a problem - the AI should have called the tool
+  const waitingPhrases = ['kontrol', 'bakıyorum', 'sorguluyorum', 'checking', 'looking', 'bir saniye', 'bir dakika'];
+  const isWaitingResponse = waitingPhrases.some(phrase => text.toLowerCase().includes(phrase));
+
+  if (isWaitingResponse && !hadFunctionCall) {
+    console.log('⚠️ BUGFIX: Gemini said waiting phrase but did NOT call a tool! Asking for proper response...');
+
+    // Ask Gemini to respond properly without the waiting phrase
+    const fixPrompt = language === 'TR'
+      ? 'Müşteriye "kontrol ediyorum" gibi şeyler SÖYLEME. Eğer bilgi soruyorsa customer_data_lookup aracını KULLAN veya doğrudan cevap ver.'
+      : 'Do NOT say "checking" to the customer. If they are asking for information, USE the customer_data_lookup tool or respond directly.';
+
+    try {
+      result = await chat.sendMessage(fixPrompt);
+      response = result.response;
+
+      // Check if this time it made a function call
+      const retryFunctionCalls = response.functionCalls();
+      if (retryFunctionCalls && retryFunctionCalls.length > 0) {
+        console.log('🔧 Retry: Gemini now calling function:', retryFunctionCalls[0].name);
+
+        const functionCall = retryFunctionCalls[0];
+        const toolResult = await executeTool(functionCall.name, functionCall.args, business, {
+          channel: 'CHAT',
+          conversationId: null
+        });
+
+        console.log('🔧 Retry tool result:', toolResult.success ? 'SUCCESS' : 'FAILED');
+
+        // Send function response back to Gemini
+        result = await chat.sendMessage([{
+          functionResponse: {
+            name: functionCall.name,
+            response: {
+              success: toolResult.success,
+              data: toolResult.data || null,
+              message: toolResult.message || toolResult.error || 'Tool executed'
+            }
+          }
+        }]);
+        response = result.response;
+
+        // Track tokens
+        if (response.usageMetadata) {
+          totalInputTokens += response.usageMetadata.promptTokenCount || 0;
+          totalOutputTokens += response.usageMetadata.candidatesTokenCount || 0;
+        }
+      }
+
+      // Get the new text
+      try {
+        text = response.text() || '';
+        console.log('📝 Fixed response text:', text?.substring(0, 100));
+      } catch (e) {
+        // ignore
+      }
+    } catch (retryError) {
+      console.error('⚠️ Retry failed:', retryError.message);
+    }
+  }
 
   console.log(`📊 Token usage - Input: ${totalInputTokens}, Output: ${totalOutputTokens}`);
 

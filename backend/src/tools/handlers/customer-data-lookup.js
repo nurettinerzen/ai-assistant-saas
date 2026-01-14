@@ -49,16 +49,31 @@ export async function execute(args, business, context = {}) {
       });
 
       // Find customer with matching order number in customFields
+      console.log('🔍 Searching through', allCustomers.length, 'customers for order:', order_number);
+
       for (const c of allCustomers) {
         if (c.customFields) {
           const fields = c.customFields;
-          // Check common order number field names
-          const orderFields = ['Sipariş No', 'Siparis No', 'SİPARİŞ NO', 'order_number', 'orderNumber', 'Order Number', 'siparis_no'];
+          // Log first customer's customFields keys for debugging
+          if (allCustomers.indexOf(c) === 0) {
+            console.log('📋 Sample customFields keys:', Object.keys(fields));
+          }
+          // Check common order number field names (expanded for various CSV formats)
+          const orderFields = [
+            'Sipariş No', 'Siparis No', 'SİPARİŞ NO', 'Sipariş Numarası', 'Siparis Numarasi',
+            'SİPARİŞ NUMARASI', 'Sipariş no', 'sipariş no', 'SİPARİS NO', 'Siparis no',
+            'order_number', 'orderNumber', 'Order Number', 'Order No', 'OrderNo',
+            'ORDER NUMBER', 'ORDER NO', 'siparis_no', 'siparisNo', 'SiparisNo',
+            'Sipariş', 'SIPARIS', 'siparis', 'order', 'Order', 'ORDER'
+          ];
           for (const fieldName of orderFields) {
-            if (fields[fieldName] && String(fields[fieldName]).toUpperCase() === order_number.toUpperCase()) {
-              customer = c;
-              console.log('✅ Found by order number:', order_number);
-              break;
+            if (fields[fieldName]) {
+              console.log(`🔎 Found field "${fieldName}" with value "${fields[fieldName]}" - comparing to "${order_number}"`);
+              if (String(fields[fieldName]).toUpperCase() === order_number.toUpperCase()) {
+                customer = c;
+                console.log('✅ Found by order number:', order_number);
+                break;
+              }
             }
           }
           if (customer) break;
@@ -99,11 +114,15 @@ export async function execute(args, business, context = {}) {
     if (!customer) {
       const searchTerm = order_number || lookupPhone;
       console.log('❌ Customer not found for:', searchTerm);
+      const notFoundMessage = business.language === 'TR'
+        ? `${order_number ? 'Bu sipariş numarasına' : 'Bu telefon numarasına'} ait kayıt bulunamadı.`
+        : `No record found for this ${order_number ? 'order number' : 'phone number'}.`;
+      const notFoundInstruction = business.language === 'TR'
+        ? '\n\n[TALİMAT: Bu bilgiyi müşteriye HEMEN sesli olarak aktar.]'
+        : '\n\n[INSTRUCTION: Speak this information to the customer NOW.]';
       return {
         success: false,
-        error: business.language === 'TR'
-          ? `${order_number ? 'Bu sipariş numarasına' : 'Bu telefon numarasına'} ait kayıt bulunamadı.`
-          : `No record found for this ${order_number ? 'order number' : 'phone number'}.`,
+        error: notFoundMessage + notFoundInstruction,
         notFound: true
       };
     }
@@ -117,10 +136,15 @@ export async function execute(args, business, context = {}) {
     const responseData = formatAllData(customer, customFields);
     const responseMessage = formatResponseMessage(customer, customFields, query_type, business.language);
 
+    // Add instruction for AI to speak the result (fixes "kontrol ediyorum" without follow-up issue)
+    const instruction = business.language === 'TR'
+      ? '\n\n[TALİMAT: Bu bilgiyi müşteriye HEMEN sesli olarak aktar. "Kontrol ediyorum" gibi şeyler SÖYLEME - direkt bilgiyi paylaş.]'
+      : '\n\n[INSTRUCTION: Speak this information to the customer NOW. Do NOT say "checking" - share the info directly.]';
+
     return {
       success: true,
       data: responseData,
-      message: responseMessage
+      message: responseMessage + instruction
     };
 
   } catch (error) {
@@ -181,15 +205,29 @@ function formatResponseMessage(customer, customFields, queryType, language) {
   const isTR = language === 'TR';
   let message = '';
 
-  // Detect data type from customFields
-  const hasOrderData = customFields['Sipariş No'] || customFields['Siparis No'] || customFields['order_number'];
+  // Detect data type from customFields (expanded detection for various field names)
+  const orderFieldNames = [
+    'Sipariş No', 'Siparis No', 'SİPARİŞ NO', 'Sipariş Numarası', 'Siparis Numarasi',
+    'SİPARİŞ NUMARASI', 'Sipariş no', 'sipariş no', 'SİPARİS NO', 'Siparis no',
+    'order_number', 'orderNumber', 'Order Number', 'Order No', 'OrderNo',
+    'ORDER NUMBER', 'ORDER NO', 'siparis_no', 'siparisNo', 'SiparisNo',
+    'Sipariş', 'SIPARIS', 'siparis', 'order', 'Order', 'ORDER'
+  ];
+  const hasOrderData = orderFieldNames.some(fieldName => customFields[fieldName]);
   const hasAccountingData = customFields.sgkDebt || customFields['SGK Borcu'] || customFields.taxDebt || customFields['Vergi Borcu'];
   const hasSupportData = customFields['Arıza Türü'] || customFields['Durum'] || customFields['ariza_turu'];
   const hasAppointmentData = customFields['Randevu Tarihi'] || customFields['randevu_tarihi'];
 
   // ORDER DATA
   if (hasOrderData || queryType === 'siparis' || queryType === 'order') {
-    const orderNo = customFields['Sipariş No'] || customFields['Siparis No'] || customFields['SİPARİŞ NO'] || customFields['order_number'] || '-';
+    // Find order number from any of the possible field names
+    let orderNo = '-';
+    for (const fieldName of orderFieldNames) {
+      if (customFields[fieldName]) {
+        orderNo = customFields[fieldName];
+        break;
+      }
+    }
     const product = customFields['Ürün'] || customFields['Urun'] || customFields['ÜRÜN'] || customFields['product'] || '-';
     const amount = customFields['Tutar'] || customFields['TUTAR'] || customFields['tutar'] || customFields['amount'] || '-';
     const orderDate = customFields['Sipariş Tarihi'] || customFields['Siparis Tarihi'] || customFields['order_date'] || '-';
