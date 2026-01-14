@@ -118,8 +118,43 @@ async function processWithGemini(systemPrompt, conversationHistory, userMessage,
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
 
-  // Send user message
-  let result = await chat.sendMessage(userMessage);
+  // PRE-EMPTIVE TOOL CALL: If user message contains order number or phone number,
+  // call the tool BEFORE sending to Gemini to prevent hallucination
+  let preemptiveToolResult = null;
+  const orderNumberRegex = /\b(SIP|ORD|ORDER|SIPARIS|SPR)[-_]?\d+\b/gi;
+  const phoneRegex = /(?:\+?90|0)?[5][0-9]{9}|[5][0-9]{9}/g;
+
+  const orderMatch = userMessage.match(orderNumberRegex);
+  const phoneMatch = userMessage.match(phoneRegex);
+
+  if (orderMatch) {
+    console.log('🔧 PRE-EMPTIVE: Order number detected, calling tool before Gemini:', orderMatch[0]);
+    preemptiveToolResult = await executeTool('customer_data_lookup', {
+      order_number: orderMatch[0],
+      query_type: 'siparis'
+    }, business, { channel: 'CHAT', conversationId: null });
+    console.log('🔧 Pre-emptive result:', preemptiveToolResult.success ? 'SUCCESS' : 'NOT FOUND');
+  } else if (phoneMatch) {
+    console.log('🔧 PRE-EMPTIVE: Phone number detected, calling tool before Gemini:', phoneMatch[0]);
+    preemptiveToolResult = await executeTool('customer_data_lookup', {
+      phone: phoneMatch[0],
+      query_type: 'genel'
+    }, business, { channel: 'CHAT', conversationId: null });
+    console.log('🔧 Pre-emptive result:', preemptiveToolResult.success ? 'SUCCESS' : 'NOT FOUND');
+  }
+
+  // Build message with pre-emptive result if available
+  let messageToSend = userMessage;
+  if (preemptiveToolResult) {
+    const toolInfo = preemptiveToolResult.success
+      ? preemptiveToolResult.message
+      : (language === 'TR' ? 'Kayıt bulunamadı.' : 'Record not found.');
+
+    messageToSend = `${userMessage}\n\n[SİSTEM: Veritabanı sorgusu yapıldı. Sonuç: ${toolInfo}]\n[TALİMAT: SADECE yukarıdaki sorgu sonucunu kullan. Başka veri UYDURMA!]`;
+  }
+
+  // Send user message (with tool result if available)
+  let result = await chat.sendMessage(messageToSend);
   let response = result.response;
 
   // Track tokens from first response
