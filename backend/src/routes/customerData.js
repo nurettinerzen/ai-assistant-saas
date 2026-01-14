@@ -1092,6 +1092,42 @@ router.get('/lookup', async (req, res) => {
 });
 
 /**
+ * GET /api/customer-data/debug
+ * Debug endpoint to see raw customFields data
+ * Helps identify field name mismatches
+ * NOTE: Must be before /:id route to avoid being caught by it
+ */
+router.get('/debug', async (req, res) => {
+  try {
+    const businessId = req.businessId;
+    const { limit = 5 } = req.query;
+
+    const customers = await prisma.customerData.findMany({
+      where: { businessId },
+      take: parseInt(limit),
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const debug = customers.map(c => ({
+      id: c.id,
+      companyName: c.companyName,
+      phone: c.phone,
+      customFieldKeys: c.customFields ? Object.keys(c.customFields) : [],
+      customFields: c.customFields
+    }));
+
+    res.json({
+      total: customers.length,
+      customers: debug
+    });
+
+  } catch (error) {
+    console.error('Debug error:', error);
+    res.status(500).json({ error: 'Failed to get debug data' });
+  }
+});
+
+/**
  * GET /api/customer-data/:id
  * Get a single customer data record
  */
@@ -1337,41 +1373,6 @@ router.get('/tags/list', async (req, res) => {
   } catch (error) {
     console.error('Get tags error:', error);
     res.status(500).json({ error: 'Failed to fetch tags' });
-  }
-});
-
-/**
- * GET /api/customer-data/debug
- * Debug endpoint to see raw customFields data
- * Helps identify field name mismatches
- */
-router.get('/debug', async (req, res) => {
-  try {
-    const businessId = req.businessId;
-    const { limit = 5 } = req.query;
-
-    const customers = await prisma.customerData.findMany({
-      where: { businessId },
-      take: parseInt(limit),
-      orderBy: { createdAt: 'desc' }
-    });
-
-    const debug = customers.map(c => ({
-      id: c.id,
-      companyName: c.companyName,
-      phone: c.phone,
-      customFieldKeys: c.customFields ? Object.keys(c.customFields) : [],
-      customFields: c.customFields
-    }));
-
-    res.json({
-      total: customers.length,
-      customers: debug
-    });
-
-  } catch (error) {
-    console.error('Debug error:', error);
-    res.status(500).json({ error: 'Failed to get debug data' });
   }
 });
 
