@@ -91,8 +91,8 @@ if (allowedOrigins.length === 0) {
   console.warn('WARNING: ALLOWED_ORIGINS is not defined. CORS will block all cross-origin requests.');
 }
 
-// Routes that should allow ANY origin (for embeddable widgets)
-const publicCorsRoutes = ['/api/chat', '/api/widget'];
+// Routes that should allow ANY origin (for embeddable widgets and auth)
+const publicCorsRoutes = ['/api/chat', '/api/widget', '/api/auth'];
 
 app.use(cors({
   origin: function (origin, callback) {
