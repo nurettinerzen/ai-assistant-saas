@@ -207,12 +207,47 @@ async function processWithGemini(systemPrompt, conversationHistory, userMessage,
 
   console.log('📝 Final response text:', text?.substring(0, 100));
 
-  // BUGFIX: If Gemini said something like "kontrol ediyorum" but didn't call a tool,
-  // and there was no function call at all, this is a problem - the AI should have called the tool
+  // BUGFIX 1: If Gemini said something like "kontrol ediyorum" but didn't call a tool
   const waitingPhrases = ['kontrol', 'bakıyorum', 'sorguluyorum', 'checking', 'looking', 'bir saniye', 'bir dakika', 'hemen'];
   const isWaitingResponse = waitingPhrases.some(phrase => text.toLowerCase().includes(phrase));
 
-  if (isWaitingResponse && !hadFunctionCall) {
+  // BUGFIX 2: If user asked about an order number but Gemini didn't call tool (hallucination prevention)
+  // Detect order number pattern in user message
+  const orderNumberRegex = /\b(SIP|ORD|ORDER|SIPARIS|SPR)[-_]?\d+\b/gi;
+  const orderInUserMessage = userMessage.match(orderNumberRegex);
+  const isOrderQuery = orderInUserMessage && orderInUserMessage.length > 0;
+
+  // Check if Gemini responded with order info without calling tool (hallucination!)
+  const orderInfoInResponse = text.match(/sipariş.*kayıtlı|numaralı sipariş|order.*registered/i);
+  const isHallucinatedOrder = isOrderQuery && !hadFunctionCall && orderInfoInResponse;
+
+  if (isHallucinatedOrder) {
+    console.log('⚠️ BUGFIX: Gemini hallucinated order info without calling tool! Forcing tool call...');
+    console.log('📦 Order number from user message:', orderInUserMessage[0]);
+
+    // Call tool directly with the order number
+    const toolResult = await executeTool('customer_data_lookup', {
+      order_number: orderInUserMessage[0],
+      query_type: 'siparis'
+    }, business, {
+      channel: 'CHAT',
+      conversationId: null
+    });
+
+    console.log('🔧 Direct tool result:', toolResult.success ? 'SUCCESS' : 'FAILED', toolResult.message?.substring(0, 100));
+
+    // Use the REAL tool result, not Gemini's hallucination
+    if (toolResult.success) {
+      text = toolResult.message;
+    } else {
+      // Order not found - tell the truth
+      text = language === 'TR'
+        ? `${orderInUserMessage[0]} numaralı sipariş bulunamadı. Lütfen sipariş numaranızı kontrol edin.`
+        : `Order ${orderInUserMessage[0]} not found. Please check your order number.`;
+    }
+    console.log('📝 Corrected response (no hallucination):', text?.substring(0, 100));
+  }
+  else if (isWaitingResponse && !hadFunctionCall) {
     console.log('⚠️ BUGFIX: Gemini said waiting phrase but did NOT call a tool! Extracting phone and calling tool directly...');
 
     // Extract phone number from user message or conversation
