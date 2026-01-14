@@ -16,15 +16,16 @@ KULLANIM:
 - Randevu bilgisi: phone ile ara
 
 ÖNEMLİ:
-- Müşteri sipariş numarası verirse (örn: SIP-001, ORD-123) -> order_number parametresini kullan
+- Müşteri sipariş numarası verirse -> order_number parametresini kullan (müşterinin verdiği numarayı AYNEN kullan)
 - Müşteri telefon numarası verirse -> phone parametresini kullan
-- İKİSİNDEN BİRİ ZORUNLU!`,
+- İKİSİNDEN BİRİ ZORUNLU!
+- SADECE veritabanında bulunan kayıtları döndür. Kayıt bulunamazsa "bulunamadı" de, ASLA veri uydurma!`,
   parameters: {
     type: 'object',
     properties: {
       order_number: {
         type: 'string',
-        description: 'Sipariş numarası (örn: SIP-001, SIP-002, ORD-123). Müşteri sipariş numarası verirse bunu kullan.'
+        description: 'Sipariş numarası. Müşterinin verdiği numarayı AYNEN kullan, değiştirme veya tahmin etme.'
       },
       phone: {
         type: 'string',
