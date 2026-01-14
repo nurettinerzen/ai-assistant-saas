@@ -250,10 +250,12 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
                 <audio
                   ref={audioRef}
                   src={`${process.env.NEXT_PUBLIC_API_URL || ''}/api/call-logs/${call.id}/audio?token=${typeof window !== 'undefined' ? localStorage.getItem('token') || '' : ''}`}
+                  preload="metadata"
                   onTimeUpdate={handleTimeUpdate}
                   onLoadedMetadata={handleLoadedMetadata}
                   onEnded={() => setIsPlaying(false)}
-                  onError={() => console.log('Audio not available')}
+                  onError={(e) => console.log('Audio error:', e.target.error)}
+                  onCanPlay={() => console.log('Audio can play')}
                 />
 
                 <div className="space-y-2">

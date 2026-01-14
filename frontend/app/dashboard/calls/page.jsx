@@ -29,7 +29,7 @@ import {
 import TranscriptModal from '@/components/TranscriptModal';
 import EmptyState from '@/components/EmptyState';
 import { GradientLoaderInline } from '@/components/GradientLoader';
-import { Phone, Search, Download, Filter, FileText, Volume2, MessageSquare, PhoneIncoming, PhoneOutgoing, Coins } from 'lucide-react';
+import { Phone, Search, Download, Filter, FileText, Volume2, PhoneIncoming, PhoneOutgoing, Coins } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
 import { formatDate, formatDuration, formatPhone } from '@/lib/utils';
@@ -132,7 +132,14 @@ export default function CallsPage() {
       if (searchQuery) params.search = searchQuery;
 
       const response = await apiClient.calls.getAll(params);
-      const callsData = response.data.calls || [];
+      let callsData = response.data.calls || [];
+
+      // Filter out chat and whatsapp - only show phone calls
+      callsData = callsData.filter(call =>
+        call.channel === 'phone' || call.type === 'phone' ||
+        (!call.channel && !call.type)
+      );
+
       setCalls(callsData);
 
       // Only cache if no filters
@@ -150,7 +157,14 @@ export default function CallsPage() {
     if (!silent) setLoading(true);
     try {
       const response = await apiClient.calls.getAll({});
-      const callsData = response.data.calls || [];
+      let callsData = response.data.calls || [];
+
+      // Filter out chat and whatsapp - only show phone calls
+      callsData = callsData.filter(call =>
+        call.channel === 'phone' || call.type === 'phone' ||
+        (!call.channel && !call.type)
+      );
+
       setCalls(callsData);
       callsCache.set(callsData);
     } catch (error) {
@@ -181,32 +195,6 @@ export default function CallsPage() {
     setShowTranscriptModal(true);
   };
 
-  // Channel badge
-  const getChannelBadge = (call) => {
-    if (call.channel === 'whatsapp' || call.type === 'whatsapp') {
-      return (
-        <Badge className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-xs">
-          <MessageSquare className="h-3 w-3 mr-1" />
-          WhatsApp
-        </Badge>
-      );
-    }
-    if (call.channel === 'chat' || call.type === 'chat') {
-      return (
-        <Badge className="bg-info-50 dark:bg-info-900/20 text-info-700 dark:text-info-400 text-xs">
-          <MessageSquare className="h-3 w-3 mr-1" />
-          Chat
-        </Badge>
-      );
-    }
-    return (
-      <Badge className="bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400 text-xs">
-        <Phone className="h-3 w-3 mr-1" />
-        {t('dashboard.callsPage.phone') || 'Telefon'}
-      </Badge>
-    );
-  };
-
   // Direction badge (inbound/outbound)
   const getDirectionBadge = (call) => {
     const isOutbound = call.direction === 'outbound';
@@ -222,6 +210,27 @@ export default function CallsPage() {
       <Badge className="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 text-xs">
         <PhoneIncoming className="h-3 w-3 mr-1" />
         {locale === 'tr' ? 'Gelen' : 'Inbound'}
+      </Badge>
+    );
+  };
+
+  // End reason badge
+  const getEndReasonBadge = (endReason) => {
+    if (!endReason) return <span className="text-sm text-gray-400">-</span>;
+
+    const reasonConfig = {
+      client_ended: { label: locale === 'tr' ? 'Müşteri kapattı' : 'Customer ended', color: 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400' },
+      agent_ended: { label: locale === 'tr' ? 'Asistan kapattı' : 'Agent ended', color: 'bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400' },
+      system_timeout: { label: locale === 'tr' ? 'Zaman aşımı' : 'Timeout', color: 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400' },
+      error: { label: locale === 'tr' ? 'Hata' : 'Error', color: 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400' },
+      completed: { label: locale === 'tr' ? 'Tamamlandı' : 'Completed', color: 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400' },
+    };
+
+    const config = reasonConfig[endReason] || { label: endReason, color: 'bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-400' };
+
+    return (
+      <Badge className={`${config.color} text-xs`}>
+        {config.label}
       </Badge>
     );
   };
@@ -339,8 +348,8 @@ export default function CallsPage() {
                 <TableHead>{t('dashboard.callsPage.dateTime')}</TableHead>
                 <TableHead>{t('dashboard.callsPage.duration')}</TableHead>
                 <TableHead>{locale === 'tr' ? 'Yön' : 'Direction'}</TableHead>
-                <TableHead>{t('dashboard.callsPage.channel') || 'Kanal'}</TableHead>
                 <TableHead>{t('dashboard.callsPage.status')}</TableHead>
+                <TableHead>{locale === 'tr' ? 'Sonlandırma' : 'End Reason'}</TableHead>
                 <TableHead>{t('dashboard.callsPage.phoneNumber')}</TableHead>
                 <TableHead>{locale === 'tr' ? 'Maliyet' : 'Cost'}</TableHead>
                 <TableHead className="text-right">{t('dashboard.callsPage.actions')}</TableHead>
@@ -363,10 +372,10 @@ export default function CallsPage() {
                     {getDirectionBadge(call)}
                   </TableCell>
                   <TableCell>
-                    {getChannelBadge(call)}
+                    {getStatusIndicator(call.status)}
                   </TableCell>
                   <TableCell>
-                    {getStatusIndicator(call.status)}
+                    {getEndReasonBadge(call.endReason)}
                   </TableCell>
                   <TableCell>
                     <span className="text-sm text-gray-600 dark:text-gray-400">
@@ -374,7 +383,7 @@ export default function CallsPage() {
                     </span>
                   </TableCell>
                   <TableCell>
-                    {call.callCost > 0 ? (
+                    {(call.callCost && call.callCost > 0) ? (
                       <span className="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-1">
                         <Coins className="h-3 w-3 text-warning-500" />
                         {call.callCost.toFixed(2)} ₺
