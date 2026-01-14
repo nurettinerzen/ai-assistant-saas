@@ -212,6 +212,8 @@ router.get('/', async (req, res) => {
       summary: call.summary,
       hasRecording: !!call.recordingUrl,
       hasTranscript: !!call.transcript || !!call.transcriptText,
+      endReason: call.endReason,
+      callCost: call.callCost,
     }));
 
     // Format chat/WhatsApp logs

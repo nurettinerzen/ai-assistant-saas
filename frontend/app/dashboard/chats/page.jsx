@@ -1,6 +1,6 @@
 /**
  * Chat History Page
- * View chat and WhatsApp conversation history with token usage
+ * View chat and WhatsApp conversation history
  */
 
 'use client';
@@ -50,10 +50,36 @@ import { toast } from 'sonner';
 import { formatDate } from '@/lib/utils';
 import { useLanguage } from '@/contexts/LanguageContext';
 
+// Simple cache for chats data
+const chatsCache = {
+  data: null,
+  timestamp: null,
+  CACHE_DURATION: 5 * 60 * 1000, // 5 minutes
+
+  isValid() {
+    return this.data && this.timestamp && (Date.now() - this.timestamp < this.CACHE_DURATION);
+  },
+
+  set(data) {
+    this.data = data;
+    this.timestamp = Date.now();
+  },
+
+  get() {
+    return this.data;
+  },
+
+  clear() {
+    this.data = null;
+    this.timestamp = null;
+  }
+};
+
 export default function ChatsPage() {
   const { t, locale } = useLanguage();
   const [chats, setChats] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [channelFilter, setChannelFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -61,12 +87,38 @@ export default function ChatsPage() {
   const [showChatModal, setShowChatModal] = useState(false);
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 0 });
 
+  // Initial load with cache
   useEffect(() => {
-    loadChats();
+    const loadInitial = async () => {
+      // Check cache first
+      if (chatsCache.isValid()) {
+        setChats(chatsCache.get());
+        setLoading(false);
+        setIsInitialLoad(false);
+        // Background refresh
+        refreshChats(true);
+        return;
+      }
+
+      // No cache, load fresh
+      await loadChats();
+      setIsInitialLoad(false);
+    };
+
+    loadInitial();
+  }, []);
+
+  // Reload when filters change
+  useEffect(() => {
+    if (!isInitialLoad) {
+      loadChats();
+    }
   }, [pagination.page, channelFilter, statusFilter]);
 
   // Debounced search
   useEffect(() => {
+    if (isInitialLoad) return;
+
     const timer = setTimeout(() => {
       setPagination(prev => ({ ...prev, page: 1 }));
       loadChats();
@@ -108,10 +160,29 @@ export default function ChatsPage() {
         total: response.data.pagination?.total || 0,
         totalPages: response.data.pagination?.totalPages || 0
       }));
+
+      // Only cache if no filters
+      if (statusFilter === 'all' && channelFilter === 'all' && !searchQuery) {
+        chatsCache.set(chatLogs);
+      }
     } catch (error) {
       toast.error(locale === 'tr' ? 'Sohbetler yüklenemedi' : 'Failed to load chats');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const refreshChats = async (silent = false) => {
+    if (!silent) setLoading(true);
+    try {
+      const response = await apiClient.get('/api/chat-logs', { params: { page: 1, limit: 20 } });
+      const chatLogs = response.data.chatLogs || [];
+      setChats(chatLogs);
+      chatsCache.set(chatLogs);
+    } catch (error) {
+      if (!silent) toast.error(locale === 'tr' ? 'Sohbetler yüklenemedi' : 'Failed to load chats');
+    } finally {
+      if (!silent) setLoading(false);
     }
   };
 
@@ -129,15 +200,13 @@ export default function ChatsPage() {
     try {
       // Simple CSV export
       const csvContent = [
-        ['Tarih', 'Kanal', 'Mesaj Sayısı', 'Input Token', 'Output Token', 'Maliyet (TL)', 'Durum'].join(','),
+        ['Tarih', 'Kanal', 'Mesaj Sayısı', 'Maliyet (TL)', 'Durum'].join(','),
         ...chats.map(chat => [
           new Date(chat.createdAt).toLocaleString(locale === 'tr' ? 'tr-TR' : 'en-US'),
-          chat.channel,
+          chat.channel === 'CHAT' ? 'Sohbet' : 'WhatsApp',
           chat.messageCount,
-          chat.inputTokens || 0,
-          chat.outputTokens || 0,
           (chat.totalCost || 0).toFixed(4),
-          chat.status
+          chat.status === 'active' ? 'Aktif' : (chat.status === 'completed' || chat.status === 'ended') ? 'Tamamlandı' : chat.status
         ].join(','))
       ].join('\n');
 
@@ -168,7 +237,7 @@ export default function ChatsPage() {
     return (
       <Badge className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 text-xs">
         <MessageCircle className="h-3 w-3 mr-1" />
-        Chat
+        {locale === 'tr' ? 'Sohbet' : 'Chat'}
       </Badge>
     );
   };
@@ -178,9 +247,10 @@ export default function ChatsPage() {
     const statusConfig = {
       active: { color: 'bg-green-500', label: locale === 'tr' ? 'Aktif' : 'Active' },
       completed: { color: 'bg-gray-400', label: locale === 'tr' ? 'Tamamlandı' : 'Completed' },
+      ended: { color: 'bg-gray-400', label: locale === 'tr' ? 'Tamamlandı' : 'Ended' },
     };
 
-    const config = statusConfig[status] || { color: 'bg-gray-400', label: status };
+    const config = statusConfig[status] || { color: 'bg-gray-400', label: locale === 'tr' ? 'Bilinmiyor' : status };
 
     return (
       <div className="flex items-center gap-2">
@@ -202,16 +272,7 @@ export default function ChatsPage() {
     });
   };
 
-  // Format token count
-  const formatTokens = (tokens) => {
-    if (!tokens) return '-';
-    if (tokens >= 1000) {
-      return `${(tokens / 1000).toFixed(1)}K`;
-    }
-    return tokens.toString();
-  };
-
-  if (loading && chats.length === 0) {
+  if (loading && isInitialLoad) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -298,8 +359,6 @@ export default function ChatsPage() {
                 <TableHead>{locale === 'tr' ? 'Tarih' : 'Date'}</TableHead>
                 <TableHead>{locale === 'tr' ? 'Kanal' : 'Channel'}</TableHead>
                 <TableHead>{locale === 'tr' ? 'Mesaj' : 'Messages'}</TableHead>
-                <TableHead>Input Token</TableHead>
-                <TableHead>Output Token</TableHead>
                 <TableHead>{locale === 'tr' ? 'Maliyet' : 'Cost'}</TableHead>
                 <TableHead>{locale === 'tr' ? 'Durum' : 'Status'}</TableHead>
                 <TableHead className="text-right">{locale === 'tr' ? 'İşlem' : 'Actions'}</TableHead>
@@ -323,17 +382,7 @@ export default function ChatsPage() {
                     </span>
                   </TableCell>
                   <TableCell>
-                    <span className="text-sm text-gray-600 dark:text-gray-400">
-                      {formatTokens(chat.inputTokens)}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <span className="text-sm text-gray-600 dark:text-gray-400">
-                      {formatTokens(chat.outputTokens)}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    {chat.totalCost > 0 ? (
+                    {(chat.totalCost && chat.totalCost > 0) ? (
                       <span className="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-1">
                         <Coins className="h-3 w-3 text-warning-500" />
                         {chat.totalCost.toFixed(4)} ₺
@@ -424,19 +473,11 @@ export default function ChatsPage() {
               <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg text-sm">
                 <div>
                   <span className="text-gray-500">{locale === 'tr' ? 'Kanal' : 'Channel'}</span>
-                  <p className="font-medium">{selectedChat.channel}</p>
+                  <p className="font-medium">{selectedChat.channel === 'CHAT' ? (locale === 'tr' ? 'Sohbet' : 'Chat') : 'WhatsApp'}</p>
                 </div>
                 <div>
                   <span className="text-gray-500">{locale === 'tr' ? 'Tarih' : 'Date'}</span>
                   <p className="font-medium">{formatChatDate(selectedChat.createdAt)}</p>
-                </div>
-                <div>
-                  <span className="text-gray-500">Input Token</span>
-                  <p className="font-medium">{formatTokens(selectedChat.inputTokens)}</p>
-                </div>
-                <div>
-                  <span className="text-gray-500">Output Token</span>
-                  <p className="font-medium">{formatTokens(selectedChat.outputTokens)}</p>
                 </div>
                 <div>
                   <span className="text-gray-500">{locale === 'tr' ? 'Maliyet' : 'Cost'}</span>

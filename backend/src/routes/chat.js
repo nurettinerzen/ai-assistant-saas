@@ -630,4 +630,40 @@ router.get('/widget/status/embed/:embedKey', async (req, res) => {
   }
 });
 
+// POST /api/chat/widget/end-session - End a chat session
+router.post('/widget/end-session', async (req, res) => {
+  try {
+    const { sessionId, embedKey } = req.body;
+
+    if (!sessionId) {
+      return res.status(400).json({ error: 'Session ID is required' });
+    }
+
+    // Find the chat log
+    const chatLog = await prisma.chatLog.findFirst({
+      where: { sessionId }
+    });
+
+    if (!chatLog) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
+    // Update status to ended
+    await prisma.chatLog.update({
+      where: { id: chatLog.id },
+      data: {
+        status: 'ended',
+        updatedAt: new Date()
+      }
+    });
+
+    console.log(`📝 Chat session ended: ${sessionId}`);
+    res.json({ success: true, message: 'Session ended' });
+
+  } catch (error) {
+    console.error('End session error:', error);
+    res.status(500).json({ error: 'Failed to end session' });
+  }
+});
+
 export default router;
