@@ -519,9 +519,12 @@ ${knowledgeContext}`;
 
     // Save chat log (upsert - create or update with token info)
     try {
+      // IMPORTANT: Frontend sends conversationHistory that ALREADY contains the current user message
+      // So we should NOT add it again here - only add the assistant reply
+      // previousHistory already has: [...oldMessages, currentUserMessage]
+      // We only need to add: assistantReply
       const updatedMessages = [
         ...previousHistory,
-        { role: 'user', content: message, timestamp: new Date().toISOString() },
         { role: 'assistant', content: result.reply, timestamp: new Date().toISOString() }
       ];
 
