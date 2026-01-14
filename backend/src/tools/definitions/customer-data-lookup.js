@@ -1,26 +1,42 @@
 /**
  * Customer Data Lookup Tool Definition
- * Retrieves customer information based on phone number
- * Used by AI assistant to access customer-specific data during calls
+ * Retrieves customer information based on phone number OR order number
+ * Supports all data types: orders, accounting, support tickets, appointments, etc.
+ * Used by AI assistant to access customer-specific data during calls/chats
  */
 
 export default {
   name: 'customer_data_lookup',
-  description: 'Müşterinin kayıtlı bilgilerini getirir (SGK borcu, vergi borcu, beyanname durumu). ÖNEMLİ: Müşteri telefon numarası söylediğinde, bu numarayı MUTLAKA phone parametresine yaz! Örnek: Müşteri "0532 123 45 67" derse phone alanına "05321234567" yaz.',
+  description: `Müşteri verilerini sorgular. SİPARİŞ, MUHASEBE, ARIZA TAKİP, RANDEVU gibi TÜM VERİ TİPLERİNİ destekler.
+
+KULLANIM:
+- Sipariş sorgusu: order_number VEYA phone ile ara
+- Muhasebe (SGK/vergi borcu): phone ile ara
+- Arıza/servis durumu: phone ile ara
+- Randevu bilgisi: phone ile ara
+
+ÖNEMLİ:
+- Müşteri sipariş numarası verirse (örn: SIP-001, ORD-123) -> order_number parametresini kullan
+- Müşteri telefon numarası verirse -> phone parametresini kullan
+- İKİSİNDEN BİRİ ZORUNLU!`,
   parameters: {
     type: 'object',
     properties: {
-      query_type: {
+      order_number: {
         type: 'string',
-        enum: ['sgk_borcu', 'vergi_borcu', 'beyanname', 'tum_bilgiler', 'genel'],
-        description: 'Sorgulanacak bilgi türü. Müşteri spesifik bir konu sormadıysa "tum_bilgiler" veya "genel" kullan.'
+        description: 'Sipariş numarası (örn: SIP-001, SIP-002, ORD-123). Müşteri sipariş numarası verirse bunu kullan.'
       },
       phone: {
         type: 'string',
-        description: 'ZORUNLU: Müşterinin söylediği telefon numarası. Müşteri hangi numarayı söylediyse onu buraya yaz. Boşlukları ve tireleri kaldır. Örnek: "0532 123 45 67" -> "05321234567", "532 123 4567" -> "5321234567"'
+        description: 'Telefon numarası. Boşlukları ve tireleri kaldır. Örnek: "0533 123 45 68" -> "05331234568"'
+      },
+      query_type: {
+        type: 'string',
+        enum: ['siparis', 'order', 'muhasebe', 'sgk_borcu', 'vergi_borcu', 'ariza', 'randevu', 'genel'],
+        description: 'Sorgu türü. Sipariş için "siparis" veya "order", muhasebe için "muhasebe", arıza için "ariza", randevu için "randevu" kullan. Emin değilsen "genel" kullan.'
       }
     },
-    required: ['query_type']
+    required: []  // At least one of order_number or phone should be provided
   },
   // Available for all business types - can store custom data
   allowedBusinessTypes: ['RESTAURANT', 'SALON', 'ECOMMERCE', 'CLINIC', 'SERVICE', 'OTHER'],
