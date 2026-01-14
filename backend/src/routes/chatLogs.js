@@ -39,10 +39,10 @@ router.get('/', authenticateToken, async (req, res) => {
       prisma.chatLog.count({ where })
     ]);
 
-    // Auto-mark old "active" chats as "ended" (older than 1 hour)
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    // Auto-mark old "active" chats as "ended" (older than 30 minutes - matches session timeout)
+    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
     const processedLogs = chatLogs.map(log => {
-      if (log.status === 'active' && new Date(log.updatedAt) < oneHourAgo) {
+      if (log.status === 'active' && new Date(log.updatedAt) < thirtyMinutesAgo) {
         return { ...log, status: 'ended' };
       }
       return log;
