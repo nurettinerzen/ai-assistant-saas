@@ -503,7 +503,10 @@ async function handleToolCall(event, agentIdFromQuery = null) {
           const result = await executeTool(toolName, parameters, business, {
             channel: 'PHONE',
             conversationId: conversation_id,
-            callerPhone: resolvedCallerPhone
+            assistantId: callLog.assistant.id,
+            callerPhone: resolvedCallerPhone,
+            phone: resolvedCallerPhone,
+            from: resolvedCallerPhone
           });
 
           // Apply same response format as main path
@@ -571,6 +574,7 @@ async function handleToolCall(event, agentIdFromQuery = null) {
     const result = await executeTool(toolName, parameters, business, {
       channel: 'PHONE',
       conversationId: conversation_id,
+      assistantId: assistant.id,
       callerPhone: resolvedCallerPhone,
       phone: resolvedCallerPhone,
       from: resolvedCallerPhone
