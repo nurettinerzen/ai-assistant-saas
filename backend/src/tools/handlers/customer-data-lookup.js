@@ -84,28 +84,64 @@ export async function execute(args, business, context = {}) {
     // If not found by order_number, try phone
     if (!customer && lookupPhone) {
       const normalizedPhone = normalizePhone(lookupPhone);
-      console.log('🔍 Searching by phone:', normalizedPhone);
+      const rawPhone = String(lookupPhone).replace(/[^\d]/g, ''); // Just digits
+      const last10 = rawPhone.slice(-10); // Last 10 digits (Turkish mobile format)
 
-      if (normalizedPhone) {
-        // Try exact match first
-        customer = await prisma.customerData.findUnique({
+      console.log('🔍 Searching by phone:', { normalizedPhone, rawPhone, last10 });
+
+      // Try multiple formats to find the customer
+      const phoneVariants = [
+        normalizedPhone,           // e.g., 905321234567
+        rawPhone,                  // e.g., 05321234567 or 5321234567
+        last10,                    // e.g., 5321234567
+        '0' + last10,              // e.g., 05321234567
+        '90' + last10,             // e.g., 905321234567
+        '+90' + last10             // e.g., +905321234567
+      ].filter(Boolean);
+
+      // Remove duplicates
+      const uniqueVariants = [...new Set(phoneVariants)];
+      console.log('🔍 Phone variants to try:', uniqueVariants);
+
+      // Try exact match with each variant
+      for (const phone of uniqueVariants) {
+        customer = await prisma.customerData.findFirst({
           where: {
-            businessId_phone: {
-              businessId: business.id,
-              phone: normalizedPhone
-            }
+            businessId: business.id,
+            phone: phone
           }
         });
+        if (customer) {
+          console.log('✅ Found by exact match with:', phone);
+          break;
+        }
+      }
 
-        // Try flexible search if exact match fails
-        if (!customer) {
-          const last10 = normalizedPhone.slice(-10);
-          customer = await prisma.customerData.findFirst({
-            where: {
-              businessId: business.id,
-              phone: { endsWith: last10 }
-            }
-          });
+      // Try flexible endsWith search if exact match fails
+      if (!customer && last10) {
+        console.log('🔍 Trying endsWith search with last 10 digits:', last10);
+        customer = await prisma.customerData.findFirst({
+          where: {
+            businessId: business.id,
+            phone: { endsWith: last10 }
+          }
+        });
+        if (customer) {
+          console.log('✅ Found by endsWith with:', last10);
+        }
+      }
+
+      // Try contains search as last resort
+      if (!customer && last10) {
+        console.log('🔍 Trying contains search with last 10 digits:', last10);
+        customer = await prisma.customerData.findFirst({
+          where: {
+            businessId: business.id,
+            phone: { contains: last10 }
+          }
+        });
+        if (customer) {
+          console.log('✅ Found by contains with:', last10);
         }
       }
     }
@@ -275,14 +311,35 @@ function formatResponseMessage(customer, customFields, queryType, language) {
   if (hasAccountingData || queryType === 'muhasebe' || queryType === 'sgk_borcu' || queryType === 'vergi_borcu') {
     message = isTR ? `Müşteri: ${customer.companyName}` : `Customer: ${customer.companyName}`;
 
-    const sgkDebt = customFields.sgkDebt || customFields['SGK Borcu'];
-    const taxDebt = customFields.taxDebt || customFields['Vergi Borcu'];
+    // SGK Debt and Due Date
+    const sgkDebt = customFields.sgkDebt || customFields['SGK Borcu'] || customFields['SGK BORCU'];
+    const sgkDueDate = customFields.sgkDueDate || customFields['SGK Vadesi'] || customFields['SGK VADESİ'] || customFields['SGK VADESI'];
+
+    // Tax Debt and Due Date
+    const taxDebt = customFields.taxDebt || customFields['Vergi Borcu'] || customFields['VERGİ BORCU'] || customFields['VERGI BORCU'];
+    const taxDueDate = customFields.taxDueDate || customFields['Vergi Vadesi'] || customFields['VERGİ VADESİ'] || customFields['VERGI VADESI'];
+
+    // Other Debt
+    const otherDebt = customFields.otherDebt || customFields['Diğer Borç'] || customFields['DİĞER BORÇ'] || customFields['DIGER BORC'];
+    const otherDebtDesc = customFields.otherDebtDescription || customFields['Diğer Borç Açıklama'] || customFields['DİĞER BORÇ AÇIKLAMA'];
 
     if (sgkDebt) {
       message += isTR ? `\nSGK Borcu: ${formatMoney(sgkDebt)}` : `\nSSI Debt: ${formatMoney(sgkDebt)}`;
+      if (sgkDueDate) {
+        message += isTR ? ` (Son ödeme: ${sgkDueDate})` : ` (Due: ${sgkDueDate})`;
+      }
     }
     if (taxDebt) {
       message += isTR ? `\nVergi Borcu: ${formatMoney(taxDebt)}` : `\nTax Debt: ${formatMoney(taxDebt)}`;
+      if (taxDueDate) {
+        message += isTR ? ` (Son ödeme: ${taxDueDate})` : ` (Due: ${taxDueDate})`;
+      }
+    }
+    if (otherDebt && parseFloat(otherDebt) > 0) {
+      message += isTR ? `\nDiğer Borç: ${formatMoney(otherDebt)}` : `\nOther Debt: ${formatMoney(otherDebt)}`;
+      if (otherDebtDesc) {
+        message += ` (${otherDebtDesc})`;
+      }
     }
     return message;
   }
