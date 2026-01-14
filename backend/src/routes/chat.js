@@ -94,7 +94,16 @@ async function processWithGemini(systemPrompt, conversationHistory, userMessage,
   });
 
   // Add conversation history
-  const recentHistory = conversationHistory.slice(-10);
+  // IMPORTANT: Frontend sends conversationHistory that ALREADY contains the current user message
+  // Since we send userMessage separately via chat.sendMessage(), we need to exclude the last
+  // user message from history to avoid duplicates (which cause issues like phone numbers being doubled)
+  let recentHistory = conversationHistory.slice(-10);
+
+  // Remove the last message if it's a user message (it will be sent separately)
+  if (recentHistory.length > 0 && recentHistory[recentHistory.length - 1]?.role === 'user') {
+    recentHistory = recentHistory.slice(0, -1);
+  }
+
   for (const msg of recentHistory) {
     chatHistory.push({
       role: msg.role === 'user' ? 'user' : 'model',
