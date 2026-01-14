@@ -245,7 +245,7 @@ export const PLANS = {
       email: true,
       ecommerce: true,
       calendar: true,
-      googleSheets: false,
+      googleSheets: true,
       batchCalls: false,
       prioritySupport: false,
       analytics: true,
@@ -280,7 +280,7 @@ export const PLANS = {
       email: true,
       ecommerce: true,
       calendar: true,
-      googleSheets: false,
+      googleSheets: true,
       batchCalls: false,
       prioritySupport: false,
       analytics: true,
@@ -311,17 +311,17 @@ export const PLANS = {
       whatsappCalling: true,
       whatsappMessaging: true,
       chatWidget: true,
-      email: false,           // Pro'da açık
+      email: true,            // Tüm planlarda açık
       ecommerce: true,
       calendar: true,
-      googleSheets: false,    // Pro'da açık
+      googleSheets: true,     // Tüm planlarda açık
       batchCalls: false,      // Pro'da açık
       prioritySupport: false, // Pro'da açık
       analytics: true,        // Basic analytics
       advancedAnalytics: false,
       apiAccess: false
     },
-    channels: ['phone', 'whatsapp', 'chat_widget'],
+    channels: ['phone', 'whatsapp', 'chat_widget', 'email'],
     analyticsLevel: 'basic',
     supportLevel: 'email'
   },
@@ -414,16 +414,16 @@ export const PLANS = {
       whatsappCalling: true,
       whatsappMessaging: true,
       chatWidget: true,
-      email: false,
+      email: true,
       ecommerce: true,
       calendar: true,
-      googleSheets: false,
+      googleSheets: true,
       batchCalls: false,
       prioritySupport: false,
       analytics: true,
       apiAccess: false
     },
-    channels: ['phone', 'whatsapp', 'chat_widget']
+    channels: ['phone', 'whatsapp', 'chat_widget', 'email']
   },
   PROFESSIONAL: {
     id: 'PROFESSIONAL',
