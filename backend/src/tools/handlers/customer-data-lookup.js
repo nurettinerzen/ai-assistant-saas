@@ -1,6 +1,7 @@
 /**
  * Customer Data Lookup Handler
- * Retrieves customer information based on phone number
+ * Retrieves customer information based on phone number OR order number
+ * Supports all data types: orders, accounting, support, appointments, etc.
  */
 
 import prisma from '../../prismaClient.js';
@@ -14,125 +15,106 @@ import prisma from '../../prismaClient.js';
  */
 export async function execute(args, business, context = {}) {
   try {
-    const { query_type, phone } = args;
+    const { query_type, phone, order_number } = args;
 
-    // PRIORITY: Use phone from args first (user-provided), then fallback to context (caller ID)
+    console.log('🔍 Customer Data Lookup:', { query_type, phone, order_number, businessId: business.id });
+
+    // Get phone from args or context
     const lookupPhone = phone || context.callerPhone || context.phone || context.from;
 
-    console.log('🔍 Customer Data Lookup:', { query_type, phone: lookupPhone, businessId: business.id });
-
-    // Debug: Log all context info
-    console.log('🔍 Context info:', {
-      argsPhone: phone,
-      contextCallerPhone: context.callerPhone,
-      contextPhone: context.phone,
-      contextFrom: context.from,
-      resolvedPhone: lookupPhone
-    });
-
-    // If no phone from args and user is asking, prompt them to provide phone
-    if (!phone && !lookupPhone) {
+    // Must have either order_number or phone
+    if (!order_number && !lookupPhone) {
       return {
         success: false,
         error: business.language === 'TR'
-          ? 'Lütfen telefon numaranızı söyleyin, kayıtlarınıza bakayım.'
-          : 'Please tell me your phone number so I can look up your records.'
+          ? 'Lütfen sipariş numaranızı veya telefon numaranızı söyleyin.'
+          : 'Please provide your order number or phone number.'
       };
     }
 
-    // If no phone in args but we have context phone, that's OK - use caller ID
-    if (!lookupPhone) {
-      return {
-        success: false,
-        error: business.language === 'TR'
-          ? 'Telefon numarası bulunamadı. Lütfen numaranızı söyleyin.'
-          : 'Phone number not found. Please provide your phone number.'
-      };
-    }
+    let customer = null;
 
-    // Normalize phone number
-    const normalizedPhone = normalizePhone(lookupPhone);
-    console.log('🔍 Phone normalization:', { original: lookupPhone, normalized: normalizedPhone });
+    // SEARCH STRATEGY:
+    // 1. If order_number provided -> search by order number in customFields
+    // 2. If phone provided -> search by phone
+    // 3. If both -> try order_number first, then phone
 
-    if (!normalizedPhone) {
-      return {
-        success: false,
-        error: business.language === 'TR'
-          ? 'Geçersiz telefon numarası formatı.'
-          : 'Invalid phone number format.'
-      };
-    }
+    if (order_number) {
+      // Search by order number in customFields
+      console.log('🔍 Searching by order number:', order_number);
 
-    // Look up customer
-    console.log('🔍 Looking up customer:', { businessId: business.id, phone: normalizedPhone });
-
-    // First try exact match
-    let customer = await prisma.customerData.findUnique({
-      where: {
-        businessId_phone: {
-          businessId: business.id,
-          phone: normalizedPhone
-        }
-      }
-    });
-
-    // If not found, try flexible search (phone contains or ends with)
-    if (!customer) {
-      console.log('🔍 Exact match not found, trying flexible search...');
-
-      // Get last 10 digits for flexible matching
-      const last10 = normalizedPhone.slice(-10);
-
-      // Search for phone ending with these digits
-      customer = await prisma.customerData.findFirst({
-        where: {
-          businessId: business.id,
-          phone: {
-            endsWith: last10
-          }
-        }
+      // Search in customFields JSON for matching order number
+      const allCustomers = await prisma.customerData.findMany({
+        where: { businessId: business.id }
       });
 
-      if (!customer) {
-        // Try with contains
-        customer = await prisma.customerData.findFirst({
+      // Find customer with matching order number in customFields
+      for (const c of allCustomers) {
+        if (c.customFields) {
+          const fields = c.customFields;
+          // Check common order number field names
+          const orderFields = ['Sipariş No', 'Siparis No', 'SİPARİŞ NO', 'order_number', 'orderNumber', 'Order Number', 'siparis_no'];
+          for (const fieldName of orderFields) {
+            if (fields[fieldName] && String(fields[fieldName]).toUpperCase() === order_number.toUpperCase()) {
+              customer = c;
+              console.log('✅ Found by order number:', order_number);
+              break;
+            }
+          }
+          if (customer) break;
+        }
+      }
+    }
+
+    // If not found by order_number, try phone
+    if (!customer && lookupPhone) {
+      const normalizedPhone = normalizePhone(lookupPhone);
+      console.log('🔍 Searching by phone:', normalizedPhone);
+
+      if (normalizedPhone) {
+        // Try exact match first
+        customer = await prisma.customerData.findUnique({
           where: {
-            businessId: business.id,
-            phone: {
-              contains: last10.slice(-7)  // Last 7 digits
+            businessId_phone: {
+              businessId: business.id,
+              phone: normalizedPhone
             }
           }
         });
-      }
 
-      // Debug: List all phones in this business
-      const allCustomers = await prisma.customerData.findMany({
-        where: { businessId: business.id },
-        select: { phone: true, companyName: true },
-        take: 10
-      });
-      console.log('🔍 Sample phones in DB:', allCustomers.map(c => ({ phone: c.phone, name: c.companyName })));
+        // Try flexible search if exact match fails
+        if (!customer) {
+          const last10 = normalizedPhone.slice(-10);
+          customer = await prisma.customerData.findFirst({
+            where: {
+              businessId: business.id,
+              phone: { endsWith: last10 }
+            }
+          });
+        }
+      }
     }
 
-    console.log('🔍 Customer lookup result:', customer ? `Found: ${customer.companyName}` : 'NOT FOUND');
-
+    // Not found
     if (!customer) {
+      const searchTerm = order_number || lookupPhone;
+      console.log('❌ Customer not found for:', searchTerm);
       return {
         success: false,
         error: business.language === 'TR'
-          ? 'Bu telefon numarasına kayıtlı müşteri bilgisi bulunamadı.'
-          : 'No customer information found for this phone number.',
+          ? `${order_number ? 'Bu sipariş numarasına' : 'Bu telefon numarasına'} ait kayıt bulunamadı.`
+          : `No record found for this ${order_number ? 'order number' : 'phone number'}.`,
         notFound: true
       };
     }
 
-    console.log(`✅ Customer found: ${customer.companyName}`);
+    console.log('✅ Customer found:', customer.companyName);
 
     // Parse custom fields
     const customFields = customer.customFields || {};
 
-    // Format response based on query type
-    const responseData = formatResponseData(customer, customFields, query_type, business.language);
+    // Format response based on data type
+    const responseData = formatAllData(customer, customFields);
     const responseMessage = formatResponseMessage(customer, customFields, query_type, business.language);
 
     return {
@@ -146,8 +128,8 @@ export async function execute(args, business, context = {}) {
     return {
       success: false,
       error: business.language === 'TR'
-        ? 'Müşteri bilgileri sorgulanırken bir hata oluştu.'
-        : 'An error occurred while looking up customer information.'
+        ? 'Veri sorgulanırken bir hata oluştu.'
+        : 'An error occurred while looking up data.'
     };
   }
 }
@@ -174,305 +156,167 @@ function normalizePhone(phone) {
 }
 
 /**
- * Format response data based on query type
+ * Format all data from customer record
+ * Returns ALL customFields so AI can use any data
  */
-function formatResponseData(customer, customFields, queryType, language) {
-  const baseData = {
-    company_name: customer.companyName,
+function formatAllData(customer, customFields) {
+  return {
+    // Base customer info
+    customer_name: customer.companyName,
     contact_name: customer.contactName,
     phone: customer.phone,
     email: customer.email,
-    vkn: customer.vkn,
-    tc_no: customer.tcNo
+    notes: customer.notes,
+    tags: customer.tags,
+    // ALL custom fields - includes order info, accounting, support, etc.
+    ...customFields
   };
-
-  switch (queryType) {
-    case 'sgk_borcu':
-      return {
-        ...baseData,
-        sgk_debt: customFields.sgkDebt,
-        sgk_due_date: customFields.sgkDueDate ? formatDate(customFields.sgkDueDate, language) : null
-      };
-
-    case 'vergi_borcu':
-      return {
-        ...baseData,
-        tax_debt: customFields.taxDebt,
-        tax_due_date: customFields.taxDueDate ? formatDate(customFields.taxDueDate, language) : null
-      };
-
-    case 'beyanname':
-      return {
-        ...baseData,
-        declaration_type: customFields.declarationType,
-        declaration_period: customFields.declarationPeriod,
-        declaration_due_date: customFields.declarationDueDate ? formatDate(customFields.declarationDueDate, language) : null,
-        declaration_status: customFields.declarationStatus
-      };
-
-    case 'tum_bilgiler':
-    case 'genel':
-    default:
-      return {
-        ...baseData,
-        sgk_debt: customFields.sgkDebt,
-        sgk_due_date: customFields.sgkDueDate ? formatDate(customFields.sgkDueDate, language) : null,
-        tax_debt: customFields.taxDebt,
-        tax_due_date: customFields.taxDueDate ? formatDate(customFields.taxDueDate, language) : null,
-        other_debt: customFields.otherDebt,
-        other_debt_note: customFields.otherDebtNote,
-        declaration_type: customFields.declarationType,
-        declaration_period: customFields.declarationPeriod,
-        declaration_due_date: customFields.declarationDueDate ? formatDate(customFields.declarationDueDate, language) : null,
-        declaration_status: customFields.declarationStatus,
-        notes: customer.notes,
-        tags: customer.tags,
-        custom_fields: customFields
-      };
-  }
 }
 
 /**
  * Format human-readable response message
+ * Automatically detects data type from customFields
  */
 function formatResponseMessage(customer, customFields, queryType, language) {
   const isTR = language === 'TR';
   let message = '';
 
-  // Header
-  message += isTR
-    ? `Müşteri: ${customer.companyName}`
-    : `Customer: ${customer.companyName}`;
+  // Detect data type from customFields
+  const hasOrderData = customFields['Sipariş No'] || customFields['Siparis No'] || customFields['order_number'];
+  const hasAccountingData = customFields.sgkDebt || customFields['SGK Borcu'] || customFields.taxDebt || customFields['Vergi Borcu'];
+  const hasSupportData = customFields['Arıza Türü'] || customFields['Durum'] || customFields['ariza_turu'];
+  const hasAppointmentData = customFields['Randevu Tarihi'] || customFields['randevu_tarihi'];
 
-  if (customer.contactName) {
-    message += isTR
-      ? `\nYetkili: ${customer.contactName}`
-      : `\nContact: ${customer.contactName}`;
+  // ORDER DATA
+  if (hasOrderData || queryType === 'siparis' || queryType === 'order') {
+    const orderNo = customFields['Sipariş No'] || customFields['Siparis No'] || customFields['SİPARİŞ NO'] || customFields['order_number'] || '-';
+    const product = customFields['Ürün'] || customFields['Urun'] || customFields['ÜRÜN'] || customFields['product'] || '-';
+    const amount = customFields['Tutar'] || customFields['TUTAR'] || customFields['tutar'] || customFields['amount'] || '-';
+    const orderDate = customFields['Sipariş Tarihi'] || customFields['Siparis Tarihi'] || customFields['order_date'] || '-';
+    const status = customFields['Kargo Durumu'] || customFields['Durum'] || customFields['status'] || '-';
+    const trackingNo = customFields['Kargo Takip No'] || customFields['tracking_number'] || '-';
+    const customerName = customFields['Müşteri Adı'] || customFields['Musteri Adi'] || customer.companyName;
+    const notes = customFields['Notlar'] || customFields['NOTLAR'] || customer.notes || '';
+
+    if (isTR) {
+      message = `${orderNo} numaralı siparişiniz ${customerName} adına kayıtlı`;
+      if (orderDate !== '-') message += ` ve ${orderDate} tarihinde oluşturulmuş`;
+      message += `. Şu anda "${status}" aşamasında.`;
+
+      if (product !== '-') {
+        message += ` Siparişinizdeki ürünler: ${product}.`;
+      }
+      if (amount !== '-') {
+        message += ` Toplam tutar: ${amount} TL.`;
+      }
+      if (trackingNo !== '-') {
+        message += ` Kargo takip numaranız: ${trackingNo}.`;
+      }
+      if (notes) {
+        message += ` Not: ${notes}`;
+      }
+    } else {
+      message = `Order ${orderNo} is registered to ${customerName}`;
+      if (orderDate !== '-') message += ` and was created on ${orderDate}`;
+      message += `. Current status: "${status}".`;
+
+      if (product !== '-') {
+        message += ` Products: ${product}.`;
+      }
+      if (amount !== '-') {
+        message += ` Total amount: ${amount}.`;
+      }
+      if (trackingNo !== '-') {
+        message += ` Tracking number: ${trackingNo}.`;
+      }
+    }
+    return message;
   }
 
-  message += '\n';
+  // ACCOUNTING DATA
+  if (hasAccountingData || queryType === 'muhasebe' || queryType === 'sgk_borcu' || queryType === 'vergi_borcu') {
+    message = isTR ? `Müşteri: ${customer.companyName}` : `Customer: ${customer.companyName}`;
 
-  switch (queryType) {
-    case 'sgk_borcu':
-      if (customFields.sgkDebt !== undefined && customFields.sgkDebt !== null) {
-        message += isTR
-          ? `\nSGK Borcu: ${formatMoney(customFields.sgkDebt)}`
-          : `\nSSI Debt: ${formatMoney(customFields.sgkDebt)}`;
+    const sgkDebt = customFields.sgkDebt || customFields['SGK Borcu'];
+    const taxDebt = customFields.taxDebt || customFields['Vergi Borcu'];
 
-        if (customFields.sgkDueDate) {
-          message += isTR
-            ? ` (Vade: ${formatDate(customFields.sgkDueDate, language)})`
-            : ` (Due: ${formatDate(customFields.sgkDueDate, language)})`;
-        }
-      } else {
-        message += isTR
-          ? '\nSGK borcu kaydı bulunmuyor.'
-          : '\nNo SSI debt record found.';
-      }
-      break;
-
-    case 'vergi_borcu':
-      if (customFields.taxDebt !== undefined && customFields.taxDebt !== null) {
-        message += isTR
-          ? `\nVergi Borcu: ${formatMoney(customFields.taxDebt)}`
-          : `\nTax Debt: ${formatMoney(customFields.taxDebt)}`;
-
-        if (customFields.taxDueDate) {
-          message += isTR
-            ? ` (Vade: ${formatDate(customFields.taxDueDate, language)})`
-            : ` (Due: ${formatDate(customFields.taxDueDate, language)})`;
-        }
-      } else {
-        message += isTR
-          ? '\nVergi borcu kaydı bulunmuyor.'
-          : '\nNo tax debt record found.';
-      }
-      break;
-
-    case 'beyanname':
-      if (customFields.declarationType) {
-        message += isTR
-          ? `\nBeyanname Türü: ${customFields.declarationType}`
-          : `\nDeclaration Type: ${customFields.declarationType}`;
-
-        if (customFields.declarationPeriod) {
-          message += isTR
-            ? `\nDönem: ${customFields.declarationPeriod}`
-            : `\nPeriod: ${customFields.declarationPeriod}`;
-        }
-
-        if (customFields.declarationDueDate) {
-          message += isTR
-            ? `\nSon Tarih: ${formatDate(customFields.declarationDueDate, language)}`
-            : `\nDue Date: ${formatDate(customFields.declarationDueDate, language)}`;
-        }
-
-        if (customFields.declarationStatus) {
-          message += isTR
-            ? `\nDurum: ${customFields.declarationStatus}`
-            : `\nStatus: ${customFields.declarationStatus}`;
-        }
-      } else {
-        message += isTR
-          ? '\nBeyanname kaydı bulunmuyor.'
-          : '\nNo declaration record found.';
-      }
-      break;
-
-    case 'tum_bilgiler':
-    case 'genel':
-    default:
-      // SGK Debt
-      if (customFields.sgkDebt !== undefined && customFields.sgkDebt !== null) {
-        message += isTR
-          ? `\nSGK Borcu: ${formatMoney(customFields.sgkDebt)}`
-          : `\nSSI Debt: ${formatMoney(customFields.sgkDebt)}`;
-
-        if (customFields.sgkDueDate) {
-          message += isTR
-            ? ` (Vade: ${formatDate(customFields.sgkDueDate, language)})`
-            : ` (Due: ${formatDate(customFields.sgkDueDate, language)})`;
-        }
-      }
-
-      // Tax Debt
-      if (customFields.taxDebt !== undefined && customFields.taxDebt !== null) {
-        message += isTR
-          ? `\nVergi Borcu: ${formatMoney(customFields.taxDebt)}`
-          : `\nTax Debt: ${formatMoney(customFields.taxDebt)}`;
-
-        if (customFields.taxDueDate) {
-          message += isTR
-            ? ` (Vade: ${formatDate(customFields.taxDueDate, language)})`
-            : ` (Due: ${formatDate(customFields.taxDueDate, language)})`;
-        }
-      }
-
-      // Other Debt
-      if (customFields.otherDebt !== undefined && customFields.otherDebt !== null) {
-        message += isTR
-          ? `\nDiğer Borç: ${formatMoney(customFields.otherDebt)}`
-          : `\nOther Debt: ${formatMoney(customFields.otherDebt)}`;
-
-        if (customFields.otherDebtNote) {
-          message += ` (${customFields.otherDebtNote})`;
-        }
-      }
-
-      // Declaration
-      if (customFields.declarationType) {
-        message += isTR
-          ? `\n\nBeyanname: ${customFields.declarationType}`
-          : `\n\nDeclaration: ${customFields.declarationType}`;
-
-        if (customFields.declarationPeriod) {
-          message += ` - ${customFields.declarationPeriod}`;
-        }
-
-        if (customFields.declarationDueDate) {
-          message += isTR
-            ? `\nSon Tarih: ${formatDate(customFields.declarationDueDate, language)}`
-            : `\nDue Date: ${formatDate(customFields.declarationDueDate, language)}`;
-        }
-
-        if (customFields.declarationStatus) {
-          message += isTR
-            ? `\nDurum: ${customFields.declarationStatus}`
-            : `\nStatus: ${customFields.declarationStatus}`;
-        }
-      }
-
-      // Notes
-      if (customer.notes) {
-        message += isTR
-          ? `\n\nNotlar: ${customer.notes}`
-          : `\n\nNotes: ${customer.notes}`;
-      }
-
-      // If no data at all
-      if (!customFields.sgkDebt && !customFields.taxDebt && !customFields.declarationType && !customer.notes) {
-        message += isTR
-          ? '\n\nMüşteri için ek bilgi kaydı bulunmuyor.'
-          : '\n\nNo additional information recorded for this customer.';
-      }
-      break;
+    if (sgkDebt) {
+      message += isTR ? `\nSGK Borcu: ${formatMoney(sgkDebt)}` : `\nSSI Debt: ${formatMoney(sgkDebt)}`;
+    }
+    if (taxDebt) {
+      message += isTR ? `\nVergi Borcu: ${formatMoney(taxDebt)}` : `\nTax Debt: ${formatMoney(taxDebt)}`;
+    }
+    return message;
   }
 
-  return message;
+  // SUPPORT/SERVICE DATA
+  if (hasSupportData || queryType === 'ariza') {
+    const issueType = customFields['Arıza Türü'] || customFields['ariza_turu'] || '-';
+    const status = customFields['Durum'] || customFields['status'] || '-';
+    const address = customFields['Adres'] || customFields['address'] || '';
+
+    if (isTR) {
+      message = `${customer.companyName} için kayıtlı arıza/servis talebi:\n`;
+      message += `Arıza Türü: ${issueType}\n`;
+      message += `Durum: ${status}`;
+      if (address) message += `\nAdres: ${address}`;
+    } else {
+      message = `Service request for ${customer.companyName}:\n`;
+      message += `Issue Type: ${issueType}\n`;
+      message += `Status: ${status}`;
+      if (address) message += `\nAddress: ${address}`;
+    }
+    return message;
+  }
+
+  // APPOINTMENT DATA
+  if (hasAppointmentData || queryType === 'randevu') {
+    const date = customFields['Randevu Tarihi'] || customFields['randevu_tarihi'] || '-';
+    const time = customFields['Randevu Saati'] || customFields['randevu_saati'] || '';
+    const service = customFields['Hizmet'] || customFields['hizmet'] || '';
+    const status = customFields['Durum'] || customFields['status'] || '';
+
+    if (isTR) {
+      message = `${customer.companyName} için randevu bilgisi:\n`;
+      message += `Tarih: ${date}`;
+      if (time) message += ` Saat: ${time}`;
+      if (service) message += `\nHizmet: ${service}`;
+      if (status) message += `\nDurum: ${status}`;
+    } else {
+      message = `Appointment for ${customer.companyName}:\n`;
+      message += `Date: ${date}`;
+      if (time) message += ` Time: ${time}`;
+      if (service) message += `\nService: ${service}`;
+      if (status) message += `\nStatus: ${status}`;
+    }
+    return message;
+  }
+
+  // GENERIC - Show all available data
+  message = isTR ? `${customer.companyName} bilgileri:\n` : `${customer.companyName} info:\n`;
+
+  // Add all custom fields
+  for (const [key, value] of Object.entries(customFields)) {
+    if (value && !key.startsWith('_')) {
+      message += `${key}: ${value}\n`;
+    }
+  }
+
+  if (customer.notes) {
+    message += isTR ? `\nNotlar: ${customer.notes}` : `\nNotes: ${customer.notes}`;
+  }
+
+  return message.trim();
 }
 
 /**
- * Format money value for AI to read correctly
- * Uses space as thousands separator to avoid AI confusion with decimal points
- * Example: 8320.50 -> "8 bin 320 lira 50 kuruş" or "8320.50" for simple values
+ * Format money value
  */
 function formatMoney(value) {
   if (value === null || value === undefined) return '0 TL';
-
   const num = Number(value);
-  if (isNaN(num)) return '0 TL';
-
-  // For values under 1000, just show the number simply
-  if (num < 1000) {
-    return `${num.toFixed(2)} TL`;
-  }
-
-  // For larger values, format with Turkish words to avoid AI confusion
-  // e.g., 8320.00 -> "8 bin 320 TL"
-  // e.g., 125000.50 -> "125 bin TL"
-  const intPart = Math.floor(num);
-  const decPart = Math.round((num - intPart) * 100);
-
-  let result = '';
-
-  if (intPart >= 1000000) {
-    const millions = Math.floor(intPart / 1000000);
-    const remainder = intPart % 1000000;
-    result = `${millions} milyon`;
-    if (remainder >= 1000) {
-      const thousands = Math.floor(remainder / 1000);
-      const units = remainder % 1000;
-      result += ` ${thousands} bin`;
-      if (units > 0) result += ` ${units}`;
-    } else if (remainder > 0) {
-      result += ` ${remainder}`;
-    }
-  } else if (intPart >= 1000) {
-    const thousands = Math.floor(intPart / 1000);
-    const units = intPart % 1000;
-    result = `${thousands} bin`;
-    if (units > 0) result += ` ${units}`;
-  } else {
-    result = String(intPart);
-  }
-
-  result += ' TL';
-
-  if (decPart > 0) {
-    result += ` ${decPart} kuruş`;
-  }
-
-  return result;
-}
-
-/**
- * Format date value
- */
-function formatDate(dateValue, language) {
-  if (!dateValue) return '';
-
-  try {
-    const date = new Date(dateValue);
-    if (isNaN(date.getTime())) return dateValue;
-
-    return date.toLocaleDateString(language === 'TR' ? 'tr-TR' : 'en-US', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    });
-  } catch {
-    return dateValue;
-  }
+  if (isNaN(num)) return String(value);
+  return `${num.toLocaleString('tr-TR')} TL`;
 }
 
 export default { execute };
