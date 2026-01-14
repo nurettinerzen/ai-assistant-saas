@@ -433,6 +433,7 @@ ${knowledgeContext}`;
           sessionId: chatSessionId,
           businessId: business.id,
           assistantId: assistant.id,
+          channel: 'CHAT', // Explicitly set channel for analytics filtering
           messageCount: updatedMessages.length,
           messages: updatedMessages,
           status: 'active',

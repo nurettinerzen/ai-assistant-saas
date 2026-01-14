@@ -63,20 +63,34 @@ async function fetchAndProcessConversation(conversationId, business) {
       }
     }
 
-    // Parse termination reason
-    const terminationReason = data.metadata?.termination_reason || data.status || null;
+    // Parse termination reason from 11Labs metadata
+    const terminationReason = data.metadata?.termination_reason ||
+                              data.analysis?.call_ended_by ||
+                              data.status ||
+                              null;
+    console.log(`🔍 Termination reason from 11Labs: ${terminationReason}`);
+
     let endReason = null;
     if (terminationReason) {
       const reason = terminationReason.toLowerCase();
-      if (reason.includes('client disconnected') || reason.includes('user_ended') || reason.includes('hangup')) {
+      if (reason.includes('client') || reason.includes('user') || reason.includes('hangup') || reason.includes('customer')) {
         endReason = 'client_ended';
-      } else if (reason.includes('agent') || reason.includes('assistant')) {
+      } else if (reason.includes('agent') || reason.includes('assistant') || reason.includes('ai')) {
         endReason = 'agent_ended';
-      } else if (reason.includes('timeout') || reason.includes('silence') || reason.includes('no_input')) {
+      } else if (reason.includes('timeout') || reason.includes('silence') || reason.includes('no_input') || reason.includes('inactivity')) {
         endReason = 'system_timeout';
       } else if (reason.includes('error') || reason.includes('failed')) {
         endReason = 'error';
-      } else if (reason === 'done' || reason === 'completed') {
+      } else if (reason === 'done' || reason === 'completed' || reason === 'finished') {
+        endReason = 'completed';
+      } else {
+        // Default: if call has duration, mark as completed
+        endReason = 'completed';
+      }
+    } else {
+      // No termination reason - if we have duration, mark as completed
+      const duration = data.call_duration_secs || data.metadata?.call_duration_secs || 0;
+      if (duration > 0) {
         endReason = 'completed';
       }
     }
