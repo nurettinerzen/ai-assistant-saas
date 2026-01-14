@@ -109,10 +109,11 @@ export default function PricingPage() {
   ];
 
   // Feature availability per plan (in display order) - YENİ PAKET YAPISI
+  // Calendar ve Sheets tüm planlarda açık
   const PLAN_FEATURES = {
-    STARTER: ['minutes', 'concurrent', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'ecommerce', 'calendar', 'analytics'],
-    PRO: ['minutes', 'concurrent', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'ecommerce', 'calendar', 'analytics', 'email', 'googleSheets', 'batchCalls', 'prioritySupport', 'apiAccess'],
-    ENTERPRISE: ['minutes', 'concurrent', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'ecommerce', 'calendar', 'analytics', 'email', 'googleSheets', 'batchCalls', 'prioritySupport', 'apiAccess', 'slaGuarantee']
+    STARTER: ['minutes', 'concurrent', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'ecommerce', 'calendar', 'googleSheets', 'analytics', 'email'],
+    PRO: ['minutes', 'concurrent', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'ecommerce', 'calendar', 'googleSheets', 'analytics', 'email', 'batchCalls', 'prioritySupport', 'apiAccess'],
+    ENTERPRISE: ['minutes', 'concurrent', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'ecommerce', 'calendar', 'googleSheets', 'analytics', 'email', 'batchCalls', 'prioritySupport', 'apiAccess', 'slaGuarantee']
   };
 
   // Plan names by region - YENİ

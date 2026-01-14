@@ -92,12 +92,13 @@ const LOCALE_TO_LANG = {
 // Sıralama: PAYG → Başlangıç → Pro → Kurumsal
 // NOT: TRIAL plan burada gösterilmez, yeni kayıtlarda otomatik başlar
 // PAYG = PREPAID (bakiye), Paketler = POSTPAID (ay sonu fatura)
+// Calendar ve Sheets tüm planlarda açık
 const BASE_PLANS = [
   {
     id: 'PAYG',
     name: { TR: 'Kullandıkça Öde', EN: 'Pay As You Go' },
     description: { TR: 'Taahhütsüz, bakiye yükle kullan', EN: 'No commitment, top up and use' },
-    includedFeatures: ['payPerMinute', 'concurrent', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'ecommerce', 'calendar', 'analytics'],
+    includedFeatures: ['payPerMinute', 'concurrent', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'ecommerce', 'calendar', 'googleSheets', 'analytics', 'email'],
     isPayg: true,
     paymentModel: 'PREPAID',
   },
@@ -105,7 +106,7 @@ const BASE_PLANS = [
     id: 'STARTER',
     name: { TR: 'Başlangıç', EN: 'Starter' },
     description: { TR: '150 dakika dahil, aşım ay sonu faturalanır', EN: '150 minutes included, overage billed monthly' },
-    includedFeatures: ['minutes', 'concurrent', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'ecommerce', 'calendar', 'analytics'],
+    includedFeatures: ['minutes', 'concurrent', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'ecommerce', 'calendar', 'googleSheets', 'analytics', 'email'],
     paymentModel: 'POSTPAID',
   },
   {
@@ -113,14 +114,14 @@ const BASE_PLANS = [
     name: { TR: 'Profesyonel', EN: 'Pro' },
     description: { TR: '500 dakika dahil, öncelikli destek', EN: '500 minutes included, priority support' },
     popular: true,
-    includedFeatures: ['minutes', 'concurrent', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'ecommerce', 'calendar', 'analytics', 'email', 'googleSheets', 'batchCalls', 'prioritySupport', 'apiAccess'],
+    includedFeatures: ['minutes', 'concurrent', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'ecommerce', 'calendar', 'googleSheets', 'analytics', 'email', 'batchCalls', 'prioritySupport', 'apiAccess'],
     paymentModel: 'POSTPAID',
   },
   {
     id: 'ENTERPRISE',
     name: { TR: 'Kurumsal', EN: 'Enterprise' },
     description: { TR: 'Özel fiyatlandırma, SLA garantisi', EN: 'Custom pricing, SLA guarantee' },
-    includedFeatures: ['minutes', 'concurrent', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'ecommerce', 'calendar', 'analytics', 'email', 'googleSheets', 'batchCalls', 'prioritySupport', 'apiAccess', 'slaGuarantee'],
+    includedFeatures: ['minutes', 'concurrent', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'ecommerce', 'calendar', 'googleSheets', 'analytics', 'email', 'batchCalls', 'prioritySupport', 'apiAccess', 'slaGuarantee'],
     paymentModel: 'POSTPAID',
   },
 ];
