@@ -12,13 +12,13 @@ export const INTEGRATION_METADATA = {
   // ============================================================================
   
   GOOGLE_CALENDAR: {
-    relevantFor: ['RESTAURANT', 'CLINIC', 'SALON', 'SERVICE', 'OTHER'],
+    relevantFor: ['RESTAURANT', 'CLINIC', 'SALON', 'SERVICE', 'ECOMMERCE', 'OTHER'],
     priority: {
       RESTAURANT: 'ESSENTIAL',
       CLINIC: 'ESSENTIAL',
       SALON: 'ESSENTIAL',
       SERVICE: 'RECOMMENDED',
-      ECOMMERCE: 'OPTIONAL',
+      ECOMMERCE: 'RECOMMENDED',
       OTHER: 'RECOMMENDED'
     },
     name: 'Google Calendar',
