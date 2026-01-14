@@ -6,7 +6,8 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,9 +30,15 @@ import { formatDate, formatFileSize } from '@/lib/utils';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePermissions } from '@/hooks/usePermissions';
 
-export default function KnowledgeBasePage() {
+function KnowledgeBaseContent() {
   const { t } = useLanguage();
   const { can } = usePermissions();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  // Get active tab from URL or default to 'documents'
+  const activeTab = searchParams.get('tab') || 'documents';
+
   const [documents, setDocuments] = useState([]);
   const [faqs, setFaqs] = useState([]);
   const [urls, setUrls] = useState([]);
@@ -280,7 +287,13 @@ export default function KnowledgeBasePage() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="documents" className="space-y-6">
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => {
+          router.push(`/dashboard/knowledge?tab=${value}`, { scroll: false });
+        }}
+        className="space-y-6"
+      >
         <TabsList>
           <TabsTrigger value="documents">{t('dashboard.knowledgeBasePage.documentsTab')} ({documents.length})</TabsTrigger>
           <TabsTrigger value="faqs">{t('dashboard.knowledgeBasePage.faqsTab')} ({faqs.length})</TabsTrigger>
@@ -712,5 +725,20 @@ export default function KnowledgeBasePage() {
       {/* Toast notifications */}
       <Toaster position="top-right" richColors />
     </div>
+  );
+}
+
+// Wrap with Suspense for useSearchParams
+export default function KnowledgeBasePage() {
+  return (
+    <Suspense fallback={
+      <div className="space-y-6">
+        <div className="h-8 w-64 bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse"></div>
+        <div className="h-12 w-full bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse"></div>
+        <div className="h-64 w-full bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse"></div>
+      </div>
+    }>
+      <KnowledgeBaseContent />
+    </Suspense>
   );
 }

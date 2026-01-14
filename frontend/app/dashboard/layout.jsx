@@ -1,11 +1,43 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
 import { apiClient } from '@/lib/api';
 import { Toaster } from 'sonner';
 import { OnboardingModal } from '@/components/OnboardingModal';
+
+// Cache for user data (5 minutes)
+const USER_CACHE_KEY = 'dashboard_user_cache';
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+const getCachedUserData = () => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const cached = sessionStorage.getItem(USER_CACHE_KEY);
+    if (!cached) return null;
+    const { data, timestamp } = JSON.parse(cached);
+    if (Date.now() - timestamp > CACHE_DURATION) {
+      sessionStorage.removeItem(USER_CACHE_KEY);
+      return null;
+    }
+    return data;
+  } catch {
+    return null;
+  }
+};
+
+const setCachedUserData = (data) => {
+  if (typeof window === 'undefined') return;
+  try {
+    sessionStorage.setItem(USER_CACHE_KEY, JSON.stringify({
+      data,
+      timestamp: Date.now()
+    }));
+  } catch {
+    // Ignore storage errors
+  }
+};
 
 export default function DashboardLayout({ children }) {
   const router = useRouter();
@@ -14,6 +46,7 @@ export default function DashboardLayout({ children }) {
   const [credits, setCredits] = useState(0);
   const [loading, setLoading] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const initialLoadDone = useRef(false);
 
   useEffect(() => {
     // Check authentication
@@ -23,8 +56,21 @@ export default function DashboardLayout({ children }) {
       return;
     }
 
-    // Load user data
-    loadUserData();
+    // Try to load from cache first for instant display
+    const cachedData = getCachedUserData();
+    if (cachedData && !initialLoadDone.current) {
+      setUser(cachedData.user);
+      setCredits(cachedData.credits);
+      setLoading(false);
+      // Check onboarding from cached data
+      if (cachedData.user?.onboardingCompleted === false && !cachedData.isInvitedMember) {
+        setShowOnboarding(true);
+      }
+    }
+
+    // Load fresh user data (in background if cache exists)
+    loadUserData(!cachedData);
+    initialLoadDone.current = true;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -39,13 +85,15 @@ export default function DashboardLayout({ children }) {
     }
   }, [pathname]);
 
-  const loadUserData = async () => {
+  const loadUserData = async (showLoading = true) => {
+    if (showLoading) {
+      setLoading(true);
+    }
     try {
       // Load user profile from /api/auth/me (includes onboardingCompleted)
       const userResponse = await apiClient.get('/api/auth/me');
-      setUser(userResponse.data);
-
       const userData = userResponse.data;
+      setUser(userData);
 
       // Email verification check disabled - users can access dashboard without verification
       const isInvitedMember = userData.acceptedAt || (userData.role && userData.role !== 'OWNER');
@@ -67,9 +115,13 @@ export default function DashboardLayout({ children }) {
       }
 
       // Load subscription/credits - hatası olsa bile devam et
+      let creditsValue = 0;
+      let subscriptionData = null;
       try {
         const subResponse = await apiClient.subscription.getCurrent();
-        setCredits(subResponse.data.credits || 0);
+        creditsValue = subResponse.data.credits || 0;
+        subscriptionData = subResponse.data;
+        setCredits(creditsValue);
         // Add subscription info to user object for Sidebar feature visibility
         setUser(prev => ({
           ...prev,
@@ -79,10 +131,18 @@ export default function DashboardLayout({ children }) {
         console.warn('Failed to load subscription:', subError);
         setCredits(0);
       }
+
+      // Cache the data for next page navigation
+      setCachedUserData({
+        user: { ...userData, subscription: subscriptionData },
+        credits: creditsValue,
+        isInvitedMember
+      });
     } catch (error) {
       console.error('Failed to load user data:', error);
       if (error.response?.status === 401) {
         localStorage.removeItem('token');
+        sessionStorage.removeItem(USER_CACHE_KEY);
         router.push('/login');
       }
     } finally {
