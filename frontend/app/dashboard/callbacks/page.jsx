@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { apiClient } from '@/lib/api';
 import {
   Phone,
   Clock,
@@ -148,15 +149,8 @@ export default function CallbacksPage() {
   const fetchCallbacks = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/callbacks', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setCallbacks(data);
-      }
+      const res = await apiClient.callbacks.getAll();
+      setCallbacks(res.data);
     } catch (error) {
       console.error('Error fetching callbacks:', error);
     } finally {
@@ -166,15 +160,8 @@ export default function CallbacksPage() {
 
   const fetchStats = async () => {
     try {
-      const res = await fetch('/api/callbacks/stats', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setStats(data);
-      }
+      const res = await apiClient.callbacks.getStats();
+      setStats(res.data);
     } catch (error) {
       console.error('Error fetching stats:', error);
     }
@@ -182,19 +169,9 @@ export default function CallbacksPage() {
 
   const updateStatus = async (id, status) => {
     try {
-      const res = await fetch(`/api/callbacks/${id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ status })
-      });
-
-      if (res.ok) {
-        fetchCallbacks();
-        fetchStats();
-      }
+      await apiClient.callbacks.update(id, { status });
+      fetchCallbacks();
+      fetchStats();
     } catch (error) {
       console.error('Error updating status:', error);
     }
@@ -202,17 +179,9 @@ export default function CallbacksPage() {
 
   const retryCallback = async (id) => {
     try {
-      const res = await fetch(`/api/callbacks/${id}/retry`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (res.ok) {
-        fetchCallbacks();
-        fetchStats();
-      }
+      await apiClient.callbacks.retry(id);
+      fetchCallbacks();
+      fetchStats();
     } catch (error) {
       console.error('Error retrying callback:', error);
     }
@@ -222,19 +191,9 @@ export default function CallbacksPage() {
     if (!selectedCallback) return;
 
     try {
-      const res = await fetch(`/api/callbacks/${selectedCallback.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ notes, callbackNotes })
-      });
-
-      if (res.ok) {
-        setIsDetailsOpen(false);
-        fetchCallbacks();
-      }
+      await apiClient.callbacks.update(selectedCallback.id, { notes, callbackNotes });
+      setIsDetailsOpen(false);
+      fetchCallbacks();
     } catch (error) {
       console.error('Error saving notes:', error);
     }

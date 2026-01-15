@@ -291,6 +291,16 @@ export const apiClient = {
     downloadTemplate: (type = 'accounting') => api.get(`/api/customer-data/template/${type}`, { responseType: 'blob' }),
   },
 
+  // Callbacks (Geri Arama)
+  callbacks: {
+    getAll: (params) => api.get('/api/callbacks', { params }),
+    getStats: () => api.get('/api/callbacks/stats'),
+    getById: (id) => api.get(`/api/callbacks/${id}`),
+    update: (id, data) => api.patch(`/api/callbacks/${id}`, data),
+    delete: (id) => api.delete(`/api/callbacks/${id}`),
+    retry: (id) => api.post(`/api/callbacks/${id}/retry`),
+  },
+
   // Admin Panel
   admin: {
     // Stats

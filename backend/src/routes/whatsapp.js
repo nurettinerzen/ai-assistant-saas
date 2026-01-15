@@ -14,6 +14,7 @@ import { getDateTimeContext } from '../utils/dateTime.js';
 import { buildAssistantPrompt, getActiveTools as getPromptBuilderTools } from '../services/promptBuilder.js';
 import { isFreePlanExpired } from '../middleware/checkPlanExpiry.js';
 import { calculateTokenCost, hasFreeChat } from '../config/plans.js';
+import { executeTool } from '../tools/executor.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -355,10 +356,44 @@ async function generateAIResponse(business, phoneNumber, userMessage, context = 
       ).join('\n');
     }
 
+    // PRE-EMPTIVE TOOL CALL: If user message contains order number or phone number,
+    // call the tool BEFORE sending to Gemini to prevent hallucination
+    let preemptiveToolResult = null;
+    const orderNumberRegex = /\b(SIP|ORD|ORDER|SIPARIS|SPR)[-_]?\d+\b/gi;
+    const phoneRegexPattern = /(?:\+?90|0)?[5][0-9]{9}|[5][0-9]{9}/g;
+
+    const orderMatch = userMessage.match(orderNumberRegex);
+    const phoneMatch = userMessage.match(phoneRegexPattern);
+
+    if (orderMatch) {
+      console.log('🔧 [WhatsApp] PRE-EMPTIVE: Order number detected:', orderMatch[0]);
+      preemptiveToolResult = await executeTool('customer_data_lookup', {
+        order_number: orderMatch[0],
+        query_type: 'siparis'
+      }, business, { channel: 'WHATSAPP', conversationId: null });
+      console.log('🔧 [WhatsApp] Pre-emptive result:', preemptiveToolResult.success ? 'SUCCESS' : 'NOT FOUND');
+    } else if (phoneMatch) {
+      console.log('🔧 [WhatsApp] PRE-EMPTIVE: Phone number detected:', phoneMatch[0]);
+      preemptiveToolResult = await executeTool('customer_data_lookup', {
+        phone: phoneMatch[0],
+        query_type: 'genel'
+      }, business, { channel: 'WHATSAPP', conversationId: null });
+      console.log('🔧 [WhatsApp] Pre-emptive result:', preemptiveToolResult.success ? 'SUCCESS' : 'NOT FOUND');
+    }
+
+    // Build message with pre-emptive result if available
+    let messageToSend = userMessage;
+    if (preemptiveToolResult) {
+      const toolInfo = preemptiveToolResult.success
+        ? preemptiveToolResult.message
+        : (language === 'TR' ? 'Kayıt bulunamadı.' : 'Record not found.');
+      messageToSend = `${userMessage}\n\n[SİSTEM: Veritabanı sorgusu yapıldı. Sonuç: ${toolInfo}]\n[TALİMAT: SADECE yukarıdaki sorgu sonucunu kullan. Başka veri UYDURMA!]`;
+    }
+
     // Combine system prompt + history + user message
     const fullPrompt = `${systemPrompt}${contextMessages}
 
-Müşteri: ${userMessage}
+Müşteri: ${messageToSend}
 
 Asistan:`;
 
