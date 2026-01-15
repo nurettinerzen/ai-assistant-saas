@@ -14,7 +14,7 @@ import { getDateTimeContext } from '../utils/dateTime.js';
 import { buildAssistantPrompt, getActiveTools as getPromptBuilderTools } from '../services/promptBuilder.js';
 import { isFreePlanExpired } from '../middleware/checkPlanExpiry.js';
 import { calculateTokenCost, hasFreeChat } from '../config/plans.js';
-import { executeTool } from '../tools/executor.js';
+import { executeTool } from '../tools/index.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
