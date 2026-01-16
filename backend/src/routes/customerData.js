@@ -89,7 +89,7 @@ async function syncElevenLabsAgents(businessId) {
             agent: {
               prompt: {
                 prompt: fullSystemPrompt,
-                llm: 'gemini-2.0-flash',
+                llm: 'gemini-2.5-flash',
                 temperature: 0.1,
                 tools: toolsWithSystemTools
               }

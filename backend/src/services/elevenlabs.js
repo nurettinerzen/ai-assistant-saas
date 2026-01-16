@@ -994,7 +994,7 @@ export function buildAgentConfig(assistant, business, tools = [], integrations =
         prompt: {
           // Use central promptBuilder for consistent system prompt across all channels
           prompt: systemPrompt,
-          llm: 'gemini-2.0-flash'         // Fast and good quality for Turkish
+          llm: 'gemini-2.5-flash'         // Fast and good quality for Turkish
         },
         first_message: assistant.firstMessage || getDefaultFirstMessage(language, assistant.name),
         language: language

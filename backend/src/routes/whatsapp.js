@@ -396,7 +396,7 @@ async function generateAIResponse(business, phoneNumber, userMessage, context = 
     // Configure model with function calling (same as chat.js)
     // toolConfig with mode: 'AUTO' ensures Gemini uses tools when appropriate
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-2.5-flash',
       generationConfig: {
         temperature: 0.7,
         maxOutputTokens: 1500,
@@ -441,79 +441,14 @@ async function generateAIResponse(business, phoneNumber, userMessage, context = 
     let totalInputTokens = 0;
     let totalOutputTokens = 0;
 
-    // PRE-EMPTIVE TOOL CALL: If user message contains order number or phone number,
-    // call the tool BEFORE sending to Gemini to prevent hallucination
-    let preemptiveToolResult = null;
-    // Order number regex - no trailing \b to allow Turkish suffixes like 'ü, 'yi, 'nu etc.
-    // Examples matched: SIP-001, sip001, SIP_002, sip-003'ü, sip003u, SIPARIS-004
-    const orderNumberRegex = /\b(SIP|ORD|ORDER|SIPARIS|SPR)[-_]?(\d+)/gi;
-    const phoneRegexPattern = /(?:\+?90|0)?[5][0-9]{9}|[5][0-9]{9}/g;
-
-    const orderMatch = orderNumberRegex.exec(userMessage);
-    const phoneMatch = userMessage.match(phoneRegexPattern);
-
-    if (orderMatch) {
-      // orderMatch[1] = prefix (SIP, ORD, etc), orderMatch[2] = number
-      // Normalize to SIP-XXX format for database lookup
-      const normalizedOrderNumber = `SIP-${orderMatch[2].padStart(3, '0')}`;
-      console.log('🔧 [WhatsApp] PRE-EMPTIVE: Order number detected:', orderMatch[0], '-> normalized:', normalizedOrderNumber);
-      preemptiveToolResult = await executeTool('customer_data_lookup', {
-        order_number: normalizedOrderNumber,
-        query_type: 'siparis'
-      }, business, { channel: 'WHATSAPP', sessionId: sessionId, conversationId: sessionId });
-      console.log('🔧 [WhatsApp] Pre-emptive result:', preemptiveToolResult.success ? 'SUCCESS' : 'NOT FOUND');
-    } else if (phoneMatch) {
-      console.log('🔧 [WhatsApp] PRE-EMPTIVE: Phone number detected:', phoneMatch[0]);
-      preemptiveToolResult = await executeTool('customer_data_lookup', {
-        phone: phoneMatch[0],
-        query_type: 'genel'
-      }, business, { channel: 'WHATSAPP', sessionId: sessionId, conversationId: sessionId });
-      console.log('🔧 [WhatsApp] Pre-emptive result:', preemptiveToolResult.success ? 'SUCCESS' : 'NOT FOUND');
-    }
-
-    // Build message with pre-emptive result if available
-    let messageToSend = userMessage;
-    if (preemptiveToolResult) {
-      if (preemptiveToolResult.success) {
-        // Kayıt bulundu - doğrulama iste
-        messageToSend = `${userMessage}
-
-═══════════════════════════════════════
-📊 VERİTABANI SORGU SONUCU (GERÇEK VERİ):
-${preemptiveToolResult.message}
-═══════════════════════════════════════
-
-⚠️ KRİTİK TALİMATLAR:
-1. Yukarıdaki VERİTABANI SONUCU %100 GERÇEK ve DOĞRU veridir
-2. Bu veriyi DEĞİŞTİRME, EKLEME yapma, olduğu gibi kullan
-3. Müşteriden telefon veya isim ile DOĞRULAMA iste
-4. Doğrulama yapılmadan sipariş detayını VERME
-5. Asla veri UYDURMA - sadece veritabanındaki bilgiyi kullan`;
-      } else {
-        // Kayıt bulunamadı - kesinlikle uydurma
-        messageToSend = `${userMessage}
-
-═══════════════════════════════════════
-❌ VERİTABANI SORGU SONUCU: KAYIT BULUNAMADI
-═══════════════════════════════════════
-
-⚠️ KRİTİK TALİMATLAR:
-1. Bu sipariş numarası veritabanında MEVCUT DEĞİL
-2. Kesinlikle sipariş bilgisi UYDURMA
-3. Müşteriye "Bu sipariş numarası sistemimizde bulunamadı" de
-4. Sipariş numarasını tekrar kontrol etmesini iste
-5. ASLA sahte/hayali sipariş detayı verme`;
-      }
-    }
-
     // Add user message to history (before sending to Gemini)
     history.push({
       role: 'user',
       content: userMessage
     });
 
-    // Send user message
-    let result = await chat.sendMessage(messageToSend);
+    // Send user message to Gemini - it will call tools when needed
+    let result = await chat.sendMessage(userMessage);
     let response = result.response;
 
     // Track tokens from first response
@@ -522,10 +457,9 @@ ${preemptiveToolResult.message}
       totalOutputTokens += response.usageMetadata.candidatesTokenCount || 0;
     }
 
-    // Handle function calls (up to 3 iterations) - same as chat.js
+    // Handle function calls (up to 3 iterations)
     let iterations = 0;
     const maxIterations = 3;
-    let hadFunctionCall = false;
 
     while (iterations < maxIterations) {
       const functionCalls = response.functionCalls();
@@ -533,8 +467,6 @@ ${preemptiveToolResult.message}
       if (!functionCalls || functionCalls.length === 0) {
         break; // No more function calls
       }
-
-      hadFunctionCall = true;
 
       console.log('🔧 [WhatsApp] Gemini function call:', functionCalls[0].name, functionCalls[0].args);
 
@@ -580,63 +512,6 @@ ${preemptiveToolResult.message}
     }
 
     console.log('📝 [WhatsApp] Final response text:', text?.substring(0, 100));
-
-    // BUGFIX: If Gemini said something like "kontrol ediyorum" but didn't call a tool
-    const waitingPhrases = ['kontrol', 'bakıyorum', 'sorguluyorum', 'checking', 'looking', 'bir saniye', 'bir dakika', 'bekleyin', 'lütfen bekle'];
-    const isWaitingResponse = waitingPhrases.some(phrase => text.toLowerCase().includes(phrase));
-
-    if (isWaitingResponse && !hadFunctionCall) {
-      console.log('⚠️ [WhatsApp] BUGFIX: Gemini said waiting phrase but did NOT call a tool! Calling tool directly...');
-
-      // Extract phone from message or conversation
-      let extractedPhone = phoneMatch?.[0];
-      if (!extractedPhone && history.length > 0) {
-        for (const msg of history.slice().reverse()) {
-          const historyMatches = msg.content?.match(phoneRegexPattern);
-          if (historyMatches) {
-            extractedPhone = historyMatches[0];
-            break;
-          }
-        }
-      }
-
-      if (extractedPhone) {
-        console.log('🔧 [WhatsApp] DIRECT TOOL CALL with phone:', extractedPhone);
-
-        const toolResult = await executeTool('customer_data_lookup', {
-          phone: extractedPhone,
-          query_type: 'tum_bilgiler'
-        }, business, {
-          channel: 'WHATSAPP',
-          sessionId: sessionId,
-          conversationId: sessionId
-        });
-
-        console.log('🔧 [WhatsApp] Direct tool result:', toolResult.success ? 'SUCCESS' : 'FAILED');
-
-        // Send tool result to Gemini to format
-        const toolResultPrompt = language === 'TR'
-          ? `Müşteri veri sorgulama sonucu:\n${toolResult.message || toolResult.error}\n\nBu bilgiyi müşteriye doğal bir şekilde aktar. "Kontrol ediyorum" DEME.`
-          : `Customer data lookup result:\n${toolResult.message || toolResult.error}\n\nShare this information naturally with the customer. Do NOT say "checking".`;
-
-        try {
-          result = await chat.sendMessage(toolResultPrompt);
-          response = result.response;
-
-          if (response.usageMetadata) {
-            totalInputTokens += response.usageMetadata.promptTokenCount || 0;
-            totalOutputTokens += response.usageMetadata.candidatesTokenCount || 0;
-          }
-
-          text = response.text() || '';
-          console.log('📝 [WhatsApp] Fixed response:', text?.substring(0, 100));
-        } catch (formatError) {
-          console.error('⚠️ [WhatsApp] Format failed, using raw tool result:', formatError.message);
-          text = toolResult.message || toolResult.error || text;
-        }
-      }
-    }
-
     console.log(`📊 [WhatsApp] Token usage - Input: ${totalInputTokens}, Output: ${totalOutputTokens}`);
 
     const finalResponse = text || (language === 'TR'

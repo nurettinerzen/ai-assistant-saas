@@ -294,7 +294,7 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
           agent: {
             prompt: {
               prompt: fullSystemPrompt,
-              llm: 'gemini-2.0-flash',
+              llm: 'gemini-2.5-flash',
               temperature: 0.1,
               // All tools: system + webhook (inline)
               tools: allTools
@@ -701,7 +701,7 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
             agent: {
               prompt: {
                 prompt: fullSystemPrompt,
-                llm: 'gemini-2.0-flash',
+                llm: 'gemini-2.5-flash',
                 temperature: 0.1,
                 // All tools: system + webhook (inline)
                 tools: allTools

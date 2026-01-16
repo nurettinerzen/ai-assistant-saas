@@ -66,7 +66,7 @@ async function processWithGemini(systemPrompt, conversationHistory, userMessage,
   // Configure model with function calling
   // toolConfig with mode: 'AUTO' ensures Gemini uses tools when appropriate
   const model = genAI.getGenerativeModel({
-    model: 'gemini-2.0-flash',
+    model: 'gemini-2.5-flash',
     generationConfig: {
       temperature: 0.7,
       maxOutputTokens: 1500,
@@ -119,73 +119,8 @@ async function processWithGemini(systemPrompt, conversationHistory, userMessage,
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
 
-  // PRE-EMPTIVE TOOL CALL: If user message contains order number or phone number,
-  // call the tool BEFORE sending to Gemini to prevent hallucination
-  let preemptiveToolResult = null;
-  // Order number regex - no trailing \b to allow Turkish suffixes like 'ü, 'yi, 'nu etc.
-  // Examples matched: SIP-001, sip001, SIP_002, sip-003'ü, sip003u, SIPARIS-004
-  const orderNumberRegex = /\b(SIP|ORD|ORDER|SIPARIS|SPR)[-_]?(\d+)/gi;
-  const phoneRegex = /(?:\+?90|0)?[5][0-9]{9}|[5][0-9]{9}/g;
-
-  const orderMatch = orderNumberRegex.exec(userMessage);
-  const phoneMatch = userMessage.match(phoneRegex);
-
-  if (orderMatch) {
-    // orderMatch[1] = prefix (SIP, ORD, etc), orderMatch[2] = number
-    // Normalize to SIP-XXX format for database lookup
-    const normalizedOrderNumber = `SIP-${orderMatch[2].padStart(3, '0')}`;
-    console.log('🔧 PRE-EMPTIVE: Order number detected:', orderMatch[0], '-> normalized:', normalizedOrderNumber);
-    preemptiveToolResult = await executeTool('customer_data_lookup', {
-      order_number: normalizedOrderNumber,
-      query_type: 'siparis'
-    }, business, { channel: 'CHAT', sessionId: sessionId, conversationId: sessionId });
-    console.log('🔧 Pre-emptive result:', preemptiveToolResult.success ? 'SUCCESS' : 'NOT FOUND');
-  } else if (phoneMatch) {
-    console.log('🔧 PRE-EMPTIVE: Phone number detected, calling tool before Gemini:', phoneMatch[0]);
-    preemptiveToolResult = await executeTool('customer_data_lookup', {
-      phone: phoneMatch[0],
-      query_type: 'genel'
-    }, business, { channel: 'CHAT', sessionId: sessionId, conversationId: sessionId });
-    console.log('🔧 Pre-emptive result:', preemptiveToolResult.success ? 'SUCCESS' : 'NOT FOUND');
-  }
-
-  // Build message with pre-emptive result if available
-  let messageToSend = userMessage;
-  if (preemptiveToolResult) {
-    if (preemptiveToolResult.success) {
-      // Kayıt bulundu - doğrulama iste
-      messageToSend = `${userMessage}
-
-═══════════════════════════════════════
-📊 VERİTABANI SORGU SONUCU (GERÇEK VERİ):
-${preemptiveToolResult.message}
-═══════════════════════════════════════
-
-⚠️ KRİTİK TALİMATLAR:
-1. Yukarıdaki VERİTABANI SONUCU %100 GERÇEK ve DOĞRU veridir
-2. Bu veriyi DEĞİŞTİRME, EKLEME yapma, olduğu gibi kullan
-3. Müşteriden telefon veya isim ile DOĞRULAMA iste
-4. Doğrulama yapılmadan sipariş detayını VERME
-5. Asla veri UYDURMA - sadece veritabanındaki bilgiyi kullan`;
-    } else {
-      // Kayıt bulunamadı - kesinlikle uydurma
-      messageToSend = `${userMessage}
-
-═══════════════════════════════════════
-❌ VERİTABANI SORGU SONUCU: KAYIT BULUNAMADI
-═══════════════════════════════════════
-
-⚠️ KRİTİK TALİMATLAR:
-1. Bu sipariş numarası veritabanında MEVCUT DEĞİL
-2. Kesinlikle sipariş bilgisi UYDURMA
-3. Müşteriye "Bu sipariş numarası sistemimizde bulunamadı" de
-4. Sipariş numarasını tekrar kontrol etmesini iste
-5. ASLA sahte/hayali sipariş detayı verme`;
-    }
-  }
-
-  // Send user message (with tool result if available)
-  let result = await chat.sendMessage(messageToSend);
+  // Send user message to Gemini - it will call tools when needed
+  let result = await chat.sendMessage(userMessage);
   let response = result.response;
 
   // Track tokens from first response
