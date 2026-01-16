@@ -286,7 +286,8 @@ export async function execute(args, business, context = {}) {
     }
     // CASE 3: First query with SINGLE identifier - require verification
     // Only if user provided ONLY one of: order_number OR phone (not both)
-    else if ((order_number && !lookupPhone) || (lookupPhone && !order_number)) {
+    // AND user did NOT provide customer_name (if they did, skip to CASE 5 for direct verification)
+    else if (((order_number && !lookupPhone) || (lookupPhone && !order_number)) && !customer_name) {
       // Check if this is sensitive data (accounting, orders with financial info)
       const hasSensitiveData = customFields.sgkDebt || customFields['SGK Borcu'] ||
                                customFields.taxDebt || customFields['Vergi Borcu'] ||
