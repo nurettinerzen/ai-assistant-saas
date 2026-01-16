@@ -147,11 +147,36 @@ async function processWithGemini(systemPrompt, conversationHistory, userMessage,
   // Build message with pre-emptive result if available
   let messageToSend = userMessage;
   if (preemptiveToolResult) {
-    const toolInfo = preemptiveToolResult.success
-      ? preemptiveToolResult.message
-      : (language === 'TR' ? 'Kayıt bulunamadı.' : 'Record not found.');
+    if (preemptiveToolResult.success) {
+      // Kayıt bulundu - doğrulama iste
+      messageToSend = `${userMessage}
 
-    messageToSend = `${userMessage}\n\n[SİSTEM: Veritabanı sorgusu yapıldı. Sonuç: ${toolInfo}]\n[TALİMAT: SADECE yukarıdaki sorgu sonucunu kullan. Başka veri UYDURMA!]`;
+═══════════════════════════════════════
+📊 VERİTABANI SORGU SONUCU (GERÇEK VERİ):
+${preemptiveToolResult.message}
+═══════════════════════════════════════
+
+⚠️ KRİTİK TALİMATLAR:
+1. Yukarıdaki VERİTABANI SONUCU %100 GERÇEK ve DOĞRU veridir
+2. Bu veriyi DEĞİŞTİRME, EKLEME yapma, olduğu gibi kullan
+3. Müşteriden telefon veya isim ile DOĞRULAMA iste
+4. Doğrulama yapılmadan sipariş detayını VERME
+5. Asla veri UYDURMA - sadece veritabanındaki bilgiyi kullan`;
+    } else {
+      // Kayıt bulunamadı - kesinlikle uydurma
+      messageToSend = `${userMessage}
+
+═══════════════════════════════════════
+❌ VERİTABANI SORGU SONUCU: KAYIT BULUNAMADI
+═══════════════════════════════════════
+
+⚠️ KRİTİK TALİMATLAR:
+1. Bu sipariş numarası veritabanında MEVCUT DEĞİL
+2. Kesinlikle sipariş bilgisi UYDURMA
+3. Müşteriye "Bu sipariş numarası sistemimizde bulunamadı" de
+4. Sipariş numarasını tekrar kontrol etmesini iste
+5. ASLA sahte/hayali sipariş detayı verme`;
+    }
   }
 
   // Send user message (with tool result if available)
