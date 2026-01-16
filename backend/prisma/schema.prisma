@@ -561,6 +561,8 @@ model KnowledgeBase {
   crawlDepth      Int?
   pageCount       Int?
   lastCrawled     DateTime?
+  autoScan        Boolean         @default(false)  // Otomatik tarama aktif mi
+  scanInterval    Int?            @default(24)     // Tarama aralığı (saat cinsinden)
   question        String?
   answer          String?
   category        String?
@@ -856,12 +858,20 @@ model EmailIntegration {
   styleProfile         Json?                    // User's writing style profile
   styleAnalysisStatus  StyleAnalysisStatus      @default(PENDING)
   styleAnalyzedAt      DateTime?
+  // Custom Email Signature
+  emailSignature       String?                  @db.Text // User's custom email signature (HTML or plain text)
+  signatureType        SignatureType            @default(PLAIN) // PLAIN or HTML
   createdAt            DateTime                 @default(now())
   updatedAt            DateTime                 @updatedAt
   business             Business                 @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
   @@index([businessId])
   @@index([provider])
+}
+
+enum SignatureType {
+  PLAIN
+  HTML
 }
 
 enum StyleAnalysisStatus {

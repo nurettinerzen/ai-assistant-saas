@@ -19,7 +19,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { User, Bell, AlertTriangle, Globe } from 'lucide-react';
+import { User, Bell, AlertTriangle, Globe, Mail, Loader2 } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
 import { apiClient } from '@/lib/api';
 import { toast, toastHelpers } from '@/lib/toast';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -42,6 +43,11 @@ export default function SettingsPage() {
     newPassword: '',
     confirmPassword: '',
   });
+  const [emailSignature, setEmailSignature] = useState({
+    signature: '',
+    signatureType: 'PLAIN',
+  });
+  const [signatureLoading, setSignatureLoading] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -75,6 +81,20 @@ export default function SettingsPage() {
         country: bizData.country || 'TR',
         timezone: bizData.timezone || 'Europe/Istanbul'
       });
+
+      // Load email signature
+      try {
+        const signatureRes = await apiClient.email.getSignature();
+        if (signatureRes.data) {
+          setEmailSignature({
+            signature: signatureRes.data.emailSignature || '',
+            signatureType: signatureRes.data.signatureType || 'PLAIN',
+          });
+        }
+      } catch (sigError) {
+        // Email integration might not exist yet, ignore
+        console.log('Email signature not found:', sigError.message);
+      }
     } catch (error) {
       console.error('Load settings error:', error);
       toast.error(t('errors.generic'));
@@ -119,6 +139,21 @@ export default function SettingsPage() {
     toast.error(t('dashboard.settingsPage.regionUpdateFailed'));
   }
 };
+
+  const handleSaveSignature = async () => {
+    setSignatureLoading(true);
+    try {
+      await apiClient.email.updateSignature({
+        emailSignature: emailSignature.signature,
+        signatureType: emailSignature.signatureType,
+      });
+      toast.success(t('dashboard.settingsPage.signatureSaved') || 'Email imzası kaydedildi');
+    } catch (error) {
+      toast.error(t('dashboard.settingsPage.signatureFailed') || 'İmza kaydedilemedi');
+    } finally {
+      setSignatureLoading(false);
+    }
+  };
 
   const handleChangePassword = async () => {
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
@@ -282,6 +317,73 @@ export default function SettingsPage() {
         </div>
       </div>
       )}
+
+      {/* Email Signature Section */}
+      <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6 shadow-sm">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-lg">
+            <Mail className="h-5 w-5 text-primary-600 dark:text-primary-400" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">
+              {t('dashboard.settingsPage.emailSignatureTitle') || 'Email İmzası'}
+            </h2>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">
+              {t('dashboard.settingsPage.emailSignatureDescription') || 'AI asistanınız tarafından gönderilen emaillerde kullanılacak imza'}
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="signatureType">
+              {t('dashboard.settingsPage.signatureTypeLabel') || 'İmza Türü'}
+            </Label>
+            <Select
+              value={emailSignature.signatureType}
+              onValueChange={(val) => setEmailSignature({...emailSignature, signatureType: val})}
+            >
+              <SelectTrigger id="signatureType" className="w-full md:w-48">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="PLAIN">Düz Metin</SelectItem>
+                <SelectItem value="HTML">HTML</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="emailSignature">
+              {t('dashboard.settingsPage.signatureLabel') || 'İmza İçeriği'}
+            </Label>
+            <Textarea
+              id="emailSignature"
+              rows={6}
+              placeholder={emailSignature.signatureType === 'HTML'
+                ? '<p>Saygılarımla,</p><p><strong>Ad Soyad</strong></p><p>Şirket Adı</p>'
+                : 'Saygılarımla,\nAd Soyad\nŞirket Adı\nTel: +90 xxx xxx xx xx'
+              }
+              value={emailSignature.signature}
+              onChange={(e) => setEmailSignature({...emailSignature, signature: e.target.value})}
+              className="font-mono text-sm"
+            />
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+              {emailSignature.signatureType === 'HTML'
+                ? 'HTML etiketleri kullanabilirsiniz (p, strong, a, br vb.)'
+                : 'Her satır için yeni satır karakteri kullanın'
+              }
+            </p>
+          </div>
+        </div>
+
+        <div className="flex justify-end mt-6">
+          <Button onClick={handleSaveSignature} disabled={signatureLoading}>
+            {signatureLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            {t('dashboard.settingsPage.saveSignatureBtn') || 'İmzayı Kaydet'}
+          </Button>
+        </div>
+      </div>
 
       {/* Notifications Section */}
       <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6 shadow-sm">

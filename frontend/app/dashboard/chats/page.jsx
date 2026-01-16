@@ -219,7 +219,7 @@ export default function ChatsPage() {
           new Date(chat.createdAt).toLocaleString(locale === 'tr' ? 'tr-TR' : 'en-US'),
           chat.channel === 'CHAT' ? 'Sohbet' : 'WhatsApp',
           chat.messageCount,
-          (chat.totalCost || 0).toFixed(4),
+          (chat.totalCost || 0).toFixed(2),
           chat.status === 'active' ? 'Aktif' : (chat.status === 'completed' || chat.status === 'ended') ? 'Tamamlandı' : chat.status
         ].join(','))
       ].join('\n');
@@ -399,7 +399,7 @@ export default function ChatsPage() {
                     {(chat.totalCost && chat.totalCost > 0) ? (
                       <span className="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-1">
                         <Coins className="h-3 w-3 text-warning-500" />
-                        {chat.totalCost.toFixed(4)} ₺
+                        {chat.totalCost.toLocaleString(locale === 'tr' ? 'tr-TR' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺
                       </span>
                     ) : (
                       <span className="text-sm text-gray-400">-</span>
@@ -495,7 +495,7 @@ export default function ChatsPage() {
                 </div>
                 <div>
                   <span className="text-gray-500">{locale === 'tr' ? 'Maliyet' : 'Cost'}</span>
-                  <p className="font-medium">{selectedChat.totalCost?.toFixed(4) || '0'} ₺</p>
+                  <p className="font-medium">{(selectedChat.totalCost || 0).toLocaleString(locale === 'tr' ? 'tr-TR' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺</p>
                 </div>
                 <div>
                   <span className="text-gray-500">{locale === 'tr' ? 'Asistan' : 'Assistant'}</span>

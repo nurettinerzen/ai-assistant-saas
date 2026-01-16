@@ -547,6 +547,94 @@ export async function cleanupChatLogs() {
 }
 
 /**
+ * Auto-scan URLs that have autoScan enabled
+ * Checks if lastCrawled + scanInterval hours has passed
+ * Run every hour
+ */
+export async function autoScanUrls() {
+  console.log('🔄 Starting automatic URL scanning...');
+
+  try {
+    const now = new Date();
+
+    // Find all URLs with autoScan enabled that need rescanning
+    const urlsToScan = await prisma.knowledgeBase.findMany({
+      where: {
+        type: 'URL',
+        autoScan: true,
+        status: { not: 'PROCESSING' }, // Don't scan if already processing
+        url: { not: null }
+      },
+      select: {
+        id: true,
+        url: true,
+        lastCrawled: true,
+        scanInterval: true,
+        businessId: true
+      }
+    });
+
+    console.log(`📊 Found ${urlsToScan.length} URLs with auto-scan enabled`);
+
+    let scannedCount = 0;
+    let skippedCount = 0;
+
+    for (const urlEntry of urlsToScan) {
+      // Check if scan interval has passed
+      const scanIntervalHours = urlEntry.scanInterval || 24;
+      const lastCrawled = urlEntry.lastCrawled ? new Date(urlEntry.lastCrawled) : null;
+
+      // If never crawled or interval has passed, scan it
+      const shouldScan = !lastCrawled ||
+        (now.getTime() - lastCrawled.getTime()) > (scanIntervalHours * 60 * 60 * 1000);
+
+      if (!shouldScan) {
+        skippedCount++;
+        continue;
+      }
+
+      console.log(`🔍 Auto-scanning URL: ${urlEntry.url} (last: ${lastCrawled?.toISOString() || 'never'})`);
+
+      try {
+        // Import crawlURL dynamically to avoid circular dependency
+        const { crawlURL } = await import('../routes/knowledge.js');
+
+        // Set status to PROCESSING
+        await prisma.knowledgeBase.update({
+          where: { id: urlEntry.id },
+          data: { status: 'PROCESSING' }
+        });
+
+        // Start crawling (async, don't wait)
+        crawlURL(urlEntry.id, urlEntry.url).catch(error => {
+          console.error(`❌ Auto-scan failed for ${urlEntry.url}:`, error.message);
+        });
+
+        scannedCount++;
+      } catch (err) {
+        console.error(`❌ Failed to start auto-scan for ${urlEntry.url}:`, err.message);
+      }
+
+      // Small delay between starting scans to not overload
+      if (scannedCount < urlsToScan.length - skippedCount) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+
+    console.log(`🔄 Auto-scan complete: ${scannedCount} started, ${skippedCount} skipped (not due yet)`);
+    return {
+      success: true,
+      scannedCount,
+      skippedCount,
+      total: urlsToScan.length
+    };
+  } catch (error) {
+    console.error('❌ Auto-scan URLs error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
  * Run all cron jobs - can be called by a scheduler or manually
  */
 export async function runAllJobs() {
@@ -558,7 +646,8 @@ export async function runAllJobs() {
     processAutoReload: await processAutoReload(),
     checkTrialExpired: await checkTrialExpired(),
     billOverageUsage: await billOverageUsage(),
-    cleanupChatLogs: await cleanupChatLogs()
+    cleanupChatLogs: await cleanupChatLogs(),
+    autoScanUrls: await autoScanUrls()
   };
 
   console.log('🕐 All cron jobs complete:', results);
@@ -573,5 +662,6 @@ export default {
   cleanupOldRecords,
   cleanupChatLogs,
   billOverageUsage,
+  autoScanUrls,
   runAllJobs
 };

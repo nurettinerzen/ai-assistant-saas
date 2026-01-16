@@ -17,6 +17,7 @@ import subscriptionService from '../services/subscriptionService.js';
 import callAnalysis from '../services/callAnalysis.js';
 import { executeTool } from '../tools/index.js';
 import batchCallService from '../services/batch-call.js';
+import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -701,24 +702,44 @@ async function handleConversationEnded(event) {
 
     console.log(`📞 Conversation ended: ${conversationId}, fetching details...`);
 
-    // Wait a bit for 11Labs to process the conversation
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // Wait for 11Labs to process the conversation data (they need time to calculate duration, cost, etc.)
+    await new Promise(resolve => setTimeout(resolve, 3000));
 
-    // Fetch conversation details from 11Labs API
+    // Fetch conversation details from 11Labs API with retry
     const elevenLabsService = (await import('../services/elevenlabs.js')).default;
     let conversationData;
+    let retryCount = 0;
+    const maxRetries = 2;
 
-    try {
-      conversationData = await elevenLabsService.getConversation(conversationId);
-      console.log(`✅ Fetched conversation data for ${conversationId}`);
-    } catch (fetchError) {
-      console.warn(`⚠️ Could not fetch conversation details: ${fetchError.message}`);
-      // Still update status even if we can't get details
-      await prisma.callLog.updateMany({
-        where: { callId: conversationId },
-        data: { status: 'completed', updatedAt: new Date() }
-      });
-      return;
+    while (retryCount <= maxRetries) {
+      try {
+        conversationData = await elevenLabsService.getConversation(conversationId);
+
+        // Check if critical data is present - if not, retry
+        if (!conversationData.call_duration_secs && retryCount < maxRetries) {
+          console.log(`⏳ Duration not ready yet, retry ${retryCount + 1}/${maxRetries}...`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          retryCount++;
+          continue;
+        }
+
+        console.log(`✅ Fetched conversation data for ${conversationId} (duration: ${conversationData.call_duration_secs}s)`);
+        break;
+      } catch (fetchError) {
+        if (retryCount < maxRetries) {
+          console.log(`⏳ Fetch failed, retry ${retryCount + 1}/${maxRetries}...`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          retryCount++;
+          continue;
+        }
+        console.warn(`⚠️ Could not fetch conversation details after ${maxRetries} retries: ${fetchError.message}`);
+        // Still update status even if we can't get details
+        await prisma.callLog.updateMany({
+          where: { callId: conversationId },
+          data: { status: 'completed', updatedAt: new Date() }
+        });
+        return;
+      }
     }
 
     // Find assistant by agent ID
@@ -824,15 +845,16 @@ async function handleConversationEnded(event) {
     let endReason = null; // Default to null instead of generic value
     if (terminationReason) {
       const reason = terminationReason.toLowerCase();
-      if (reason.includes('client disconnected') || reason.includes('user_ended') || reason.includes('hangup')) {
+      // 11Labs specific: "Remote party ended call" = customer hung up
+      if (reason.includes('remote party') || reason.includes('client disconnected') || reason.includes('client') || reason.includes('user_ended') || reason.includes('hangup') || reason.includes('customer')) {
         endReason = 'client_ended';
-      } else if (reason.includes('agent') || reason.includes('assistant')) {
+      } else if (reason.includes('agent') || reason.includes('assistant') || reason.includes('ai') || reason.includes('local')) {
         endReason = 'agent_ended';
-      } else if (reason.includes('timeout') || reason.includes('silence') || reason.includes('no_input')) {
+      } else if (reason.includes('timeout') || reason.includes('silence') || reason.includes('no_input') || reason.includes('inactivity')) {
         endReason = 'system_timeout';
       } else if (reason.includes('error') || reason.includes('failed')) {
         endReason = 'error';
-      } else if (reason === 'done' || reason === 'completed') {
+      } else if (reason === 'done' || reason === 'completed' || reason === 'finished') {
         endReason = 'completed';
       }
     }
@@ -999,20 +1021,39 @@ function mapStatus(elevenLabsStatus) {
 // Fetch recent conversations from 11Labs and sync to CallLog
 // This is needed because 11Labs phone call webhooks are not reliable
 
-router.post('/sync-conversations', async (req, res) => {
+router.post('/sync-conversations', authenticateToken, async (req, res) => {
   try {
-    console.log('🔄 Starting 11Labs conversation sync...');
+    const businessId = req.user.businessId;
+    console.log(`🔄 Starting 11Labs conversation sync for business ${businessId}...`);
 
     const elevenLabsService = (await import('../services/elevenlabs.js')).default;
 
-    // Get recent conversations from 11Labs (last 50)
-    const conversations = await elevenLabsService.listConversations(50);
+    // Get this business's assistant agent IDs
+    const businessAssistants = await prisma.assistant.findMany({
+      where: {
+        businessId: businessId,
+        elevenLabsAgentId: { not: null }
+      },
+      select: { elevenLabsAgentId: true, id: true, name: true, callDirection: true }
+    });
 
-    if (!conversations || conversations.length === 0) {
+    if (businessAssistants.length === 0) {
+      return res.json({ synced: 0, message: 'No assistants with 11Labs configured' });
+    }
+
+    const agentIds = businessAssistants.map(a => a.elevenLabsAgentId);
+    console.log(`📋 Business has ${businessAssistants.length} assistants to sync`);
+
+    // Get recent conversations from 11Labs (last 50)
+    const allConversations = await elevenLabsService.listConversations(50);
+
+    if (!allConversations || allConversations.length === 0) {
       return res.json({ synced: 0, message: 'No conversations found' });
     }
 
-    console.log(`📞 Found ${conversations.length} conversations to check`);
+    // Filter only this business's conversations
+    const conversations = allConversations.filter(conv => agentIds.includes(conv.agent_id));
+    console.log(`📞 Found ${conversations.length} conversations for this business (filtered from ${allConversations.length})`);
 
     let syncedCount = 0;
     let skippedCount = 0;
@@ -1030,9 +1071,12 @@ router.post('/sync-conversations', async (req, res) => {
           continue;
         }
 
-        // Find assistant by agent ID
+        // Find assistant by agent ID (we know it exists since we filtered)
         const assistant = await prisma.assistant.findFirst({
-          where: { elevenLabsAgentId: conv.agent_id },
+          where: {
+            elevenLabsAgentId: conv.agent_id,
+            businessId: businessId  // Extra safety check
+          },
           include: {
             business: {
               include: {
@@ -1043,7 +1087,7 @@ router.post('/sync-conversations', async (req, res) => {
         });
 
         if (!assistant) {
-          console.log(`⚠️ No assistant found for agent ${conv.agent_id}`);
+          // Should not happen but just in case
           continue;
         }
 
@@ -1086,6 +1130,28 @@ router.post('/sync-conversations', async (req, res) => {
         }
 
         const duration = conv.call_duration_secs || 0;
+
+        // Extract endReason from conversation data (same logic as webhook)
+        const terminationReason = conversationData.metadata?.termination_reason ||
+                                  conversationData.termination_reason ||
+                                  conversationData.status ||
+                                  null;
+
+        let endReason = null;
+        if (terminationReason) {
+          const reason = terminationReason.toLowerCase();
+          if (reason.includes('remote party') || reason.includes('client disconnected') || reason.includes('client') || reason.includes('user_ended') || reason.includes('hangup') || reason.includes('customer')) {
+            endReason = 'client_ended';
+          } else if (reason.includes('agent') || reason.includes('assistant') || reason.includes('ai') || reason.includes('local')) {
+            endReason = 'agent_ended';
+          } else if (reason.includes('timeout') || reason.includes('silence') || reason.includes('no_input') || reason.includes('inactivity')) {
+            endReason = 'system_timeout';
+          } else if (reason.includes('error') || reason.includes('failed')) {
+            endReason = 'error';
+          } else if (reason === 'done' || reason === 'completed' || reason === 'finished') {
+            endReason = 'completed';
+          }
+        }
 
         // Run AI analysis for eligible plans
         const business = assistant.business;
@@ -1131,6 +1197,7 @@ router.post('/sync-conversations', async (req, res) => {
             actionItems: aiAnalysis.actionItems,
             sentiment: aiAnalysis.sentiment,
             sentimentScore: aiAnalysis.sentimentScore,
+            endReason: endReason,
             updatedAt: new Date()
           },
           create: {
@@ -1147,17 +1214,51 @@ router.post('/sync-conversations', async (req, res) => {
             actionItems: aiAnalysis.actionItems,
             sentiment: aiAnalysis.sentiment,
             sentimentScore: aiAnalysis.sentimentScore,
+            endReason: endReason,
             createdAt: new Date(conv.start_time_unix_secs * 1000)
           }
         });
 
         // Track usage only for new calls (not updates)
         if (duration > 0 && !existing) {
-          await usageTracking.trackCallUsage(business.id, duration, {
-            callId: conv.conversation_id,
-            transcript: transcriptText,
-            status: 'answered'
+          // Get subscription for proper billing
+          const subscription = await prisma.subscription.findUnique({
+            where: { businessId: business.id }
           });
+
+          if (subscription) {
+            try {
+              // Use new usage service for proper billing (updates includedMinutesUsed)
+              await usageService.recordUsage({
+                subscriptionId: subscription.id,
+                channel: 'PHONE',
+                durationSeconds: duration,
+                callId: conv.conversation_id,
+                assistantId: assistant?.id,
+                metadata: {
+                  transcript: transcriptText,
+                  status: 'answered',
+                  source: 'sync' // Mark as synced vs webhook
+                }
+              });
+              console.log(`💰 Usage recorded via sync: ${Math.ceil(duration / 60)} dk`);
+            } catch (usageError) {
+              console.error('⚠️ Usage service failed during sync:', usageError.message);
+              // Fallback to legacy tracking
+              await usageTracking.trackCallUsage(business.id, duration, {
+                callId: conv.conversation_id,
+                transcript: transcriptText,
+                status: 'answered'
+              });
+            }
+          } else {
+            // No subscription, use legacy tracking
+            await usageTracking.trackCallUsage(business.id, duration, {
+              callId: conv.conversation_id,
+              transcript: transcriptText,
+              status: 'answered'
+            });
+          }
         }
 
         syncedCount++;

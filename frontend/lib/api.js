@@ -264,6 +264,10 @@ export const apiClient = {
     classifyEmail: (data) => api.post('/api/email/classify', data),
     overrideClassification: (data) => api.post('/api/email/classify/override', data),
     getClassificationStats: () => api.get('/api/email/classify/stats'),
+
+    // Email Signature
+    getSignature: () => api.get('/api/email/signature'),
+    updateSignature: (data) => api.put('/api/email/signature', data),
   },
 
   // Customer Data (for AI assistant matching)

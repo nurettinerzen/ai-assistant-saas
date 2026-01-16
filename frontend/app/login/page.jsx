@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Script from 'next/script';
+import { useTheme } from 'next-themes';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,12 +20,19 @@ const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 export default function LoginPage() {
   const router = useRouter();
   const { t } = useLanguage();
+  const { theme, resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
   });
+
+  // Prevent hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Initialize Google Sign-In
   useEffect(() => {
@@ -144,7 +152,7 @@ export default function LoginPage() {
         <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-xl border border-neutral-200 dark:border-neutral-700 p-8">
           {/* Logo and Language Switcher */}
           <div className="flex items-center justify-between mb-8">
-            <TelyxLogoFull width={200} height={60} />
+            <TelyxLogoFull width={200} height={60} darkMode={mounted && resolvedTheme === 'dark'} />
             <LanguageSwitcher />
           </div>
 

@@ -53,7 +53,7 @@ function convertToolsToGeminiFunctions(tools) {
  * Process chat with Gemini - with function calling support
  * Returns: { reply: string, inputTokens: number, outputTokens: number }
  */
-async function processWithGemini(systemPrompt, conversationHistory, userMessage, language, business) {
+async function processWithGemini(systemPrompt, conversationHistory, userMessage, language, business, sessionId) {
   const genAI = getGemini();
 
   // Get available tools for this business
@@ -132,14 +132,14 @@ async function processWithGemini(systemPrompt, conversationHistory, userMessage,
     preemptiveToolResult = await executeTool('customer_data_lookup', {
       order_number: orderMatch[0],
       query_type: 'siparis'
-    }, business, { channel: 'CHAT', conversationId: null });
+    }, business, { channel: 'CHAT', sessionId: sessionId, conversationId: sessionId });
     console.log('🔧 Pre-emptive result:', preemptiveToolResult.success ? 'SUCCESS' : 'NOT FOUND');
   } else if (phoneMatch) {
     console.log('🔧 PRE-EMPTIVE: Phone number detected, calling tool before Gemini:', phoneMatch[0]);
     preemptiveToolResult = await executeTool('customer_data_lookup', {
       phone: phoneMatch[0],
       query_type: 'genel'
-    }, business, { channel: 'CHAT', conversationId: null });
+    }, business, { channel: 'CHAT', sessionId: sessionId, conversationId: sessionId });
     console.log('🔧 Pre-emptive result:', preemptiveToolResult.success ? 'SUCCESS' : 'NOT FOUND');
   }
 
@@ -204,7 +204,8 @@ async function processWithGemini(systemPrompt, conversationHistory, userMessage,
     const functionCall = functionCalls[0];
     const toolResult = await executeTool(functionCall.name, functionCall.args, business, {
       channel: 'CHAT',
-      conversationId: null
+      sessionId: sessionId,
+      conversationId: sessionId
     });
 
     console.log('🔧 Tool result:', toolResult.success ? 'SUCCESS' : 'FAILED', toolResult.message?.substring(0, 100));
@@ -280,7 +281,8 @@ async function processWithGemini(systemPrompt, conversationHistory, userMessage,
         query_type: 'tum_bilgiler'
       }, business, {
         channel: 'CHAT',
-        conversationId: null
+        sessionId: sessionId,
+        conversationId: sessionId
       });
 
       console.log('🔧 Direct tool result:', toolResult.success ? 'SUCCESS' : 'FAILED', toolResult.message?.substring(0, 100));
@@ -534,7 +536,7 @@ ${knowledgeContext}`;
     console.log('🤖 [Chat] Using Gemini model');
 
     // Process with Gemini (with function calling support)
-    const result = await processWithGemini(fullSystemPrompt, previousHistory, message, language, business);
+    const result = await processWithGemini(fullSystemPrompt, previousHistory, message, language, business, chatSessionId);
 
     // Human-like delay: reading + typing time
     // 1. Reading delay: 1-2 seconds (before typing starts)

@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useTheme } from 'next-themes';
 import { ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
@@ -12,8 +13,14 @@ import { TelyxLogoFull } from '@/components/TelyxLogo';
 export default function Navigation() {
   const pathname = usePathname();
   const { t } = useLanguage();
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const navigation = [
     { name: t('navigation.features'), href: '/features' },
@@ -37,7 +44,7 @@ export default function Navigation() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center">
-            <TelyxLogoFull width={260} height={75} />
+            <TelyxLogoFull width={260} height={75} darkMode={mounted && resolvedTheme === 'dark'} />
           </Link>
 
           {/* Desktop Navigation */}

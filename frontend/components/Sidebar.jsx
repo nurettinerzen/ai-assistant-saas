@@ -80,8 +80,37 @@ export default function Sidebar({ user, credits, business }) {
   const [selectedFeatureId, setSelectedFeatureId] = useState(null);
 
   // Get user's current plan and country
-  const userPlan = user?.subscription?.plan || user?.plan || 'STARTER';
+  // Only use actual plan from subscription - don't assume STARTER as default
+  // This prevents flash where features appear/disappear as plan loads
+  const userPlan = user?.subscription?.plan || user?.plan || null;
   const userCountry = business?.country || user?.business?.country || 'TR';
+
+  // Show skeleton until BOTH conditions are met:
+  // 1. Component is mounted (hydration complete)
+  // 2. Plan is loaded from API (not null/undefined)
+  // This prevents the "flash" where sidebar shows wrong state
+  const isReady = mounted && userPlan !== null && userPlan !== undefined;
+
+  // Sidebar Skeleton while loading
+  const SidebarSkeleton = () => (
+    <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900">
+      <div className="h-14 flex items-center px-4 border-b border-gray-200 dark:border-gray-800">
+        <div className="h-8 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+      </div>
+      <nav className="flex-1 overflow-y-auto py-4 px-3">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="mb-6">
+            <div className="h-3 w-16 bg-gray-200 dark:bg-gray-700 rounded mb-2 animate-pulse" />
+            <div className="space-y-1">
+              {[1, 2].map((j) => (
+                <div key={j} className="h-9 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+              ))}
+            </div>
+          </div>
+        ))}
+      </nav>
+    </div>
+  );
 
   // Navigation structure - Retell AI inspired
   const NAVIGATION = [
@@ -200,7 +229,7 @@ export default function Sidebar({ user, credits, business }) {
       {/* Logo */}
       <div className="h-14 flex items-center px-4 border-b border-gray-200 dark:border-gray-800">
         <Link href="/dashboard/assistant" className="flex items-center">
-          <TelyxLogoCompact />
+          <TelyxLogoCompact darkMode={mounted && theme === 'dark'} />
         </Link>
       </div>
 
@@ -386,14 +415,14 @@ export default function Sidebar({ user, credits, business }) {
             className="w-60 h-full shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <SidebarContent />
+            {isReady ? <SidebarContent /> : <SidebarSkeleton />}
           </div>
         </div>
       )}
 
       {/* Desktop sidebar - 240px width as per spec */}
       <div className="hidden lg:block w-60 border-r border-gray-200 dark:border-gray-800 fixed left-0 top-0 bottom-0 overflow-hidden">
-        <SidebarContent />
+        {isReady ? <SidebarContent /> : <SidebarSkeleton />}
       </div>
 
       {/* Upgrade Modal */}

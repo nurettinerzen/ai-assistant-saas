@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { authenticateToken } from '../middleware/auth.js';
 import axios from 'axios';
 import OpenAI from 'openai';
+import { getPricePerMinute } from '../config/plans.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -73,9 +74,10 @@ async function fetchAndProcessConversation(conversationId, business) {
     let endReason = null;
     if (terminationReason) {
       const reason = terminationReason.toLowerCase();
-      if (reason.includes('client') || reason.includes('user') || reason.includes('hangup') || reason.includes('customer')) {
+      // 11Labs specific: "Remote party ended call" = customer hung up
+      if (reason.includes('remote party') || reason.includes('client') || reason.includes('user') || reason.includes('hangup') || reason.includes('customer')) {
         endReason = 'client_ended';
-      } else if (reason.includes('agent') || reason.includes('assistant') || reason.includes('ai')) {
+      } else if (reason.includes('agent') || reason.includes('assistant') || reason.includes('ai') || reason.includes('local')) {
         endReason = 'agent_ended';
       } else if (reason.includes('timeout') || reason.includes('silence') || reason.includes('no_input') || reason.includes('inactivity')) {
         endReason = 'system_timeout';
@@ -95,15 +97,26 @@ async function fetchAndProcessConversation(conversationId, business) {
       }
     }
 
-    // Calculate call cost
+    // Calculate call cost dynamically based on plan
+    // SANİYE BAZLI HESAPLAMA - daha adil fiyatlandırma
     const duration = data.call_duration_secs || data.metadata?.call_duration_secs || 0;
-    const plan = business?.subscription?.plan;
-    let costPerMinute = 0.60;
-    if (plan === 'STARTER') costPerMinute = 0.70;
-    else if (plan === 'PROFESSIONAL') costPerMinute = 0.50;
-    else if (plan === 'ENTERPRISE') costPerMinute = 0.40;
-    const durationMinutes = duration > 0 ? Math.ceil(duration / 60) : 0;
-    const callCost = durationMinutes > 0 ? durationMinutes * costPerMinute : 0;
+    const plan = business?.subscription?.plan || 'PAYG';
+    const subscription = business?.subscription;
+
+    // Get cost per minute - Enterprise uses custom pricing from subscription
+    let costPerMinute;
+    if (plan === 'ENTERPRISE' && subscription?.enterpriseMinutes > 0 && subscription?.enterprisePrice > 0) {
+      // Enterprise: dakika maliyeti = toplam fiyat / toplam dakika
+      costPerMinute = subscription.enterprisePrice / subscription.enterpriseMinutes;
+    } else {
+      // Standard plans: use plan configuration
+      costPerMinute = getPricePerMinute(plan, 'TR') || 23; // Default to PAYG rate
+    }
+
+    // Saniye bazlı hesaplama: duration(sn) / 60 * dakika fiyatı
+    // Örnek: 127 sn = 2.1167 dk * 15 TL = 31.75 TL (eski yöntem: 3 dk * 15 = 45 TL)
+    const durationMinutes = duration > 0 ? duration / 60 : 0;
+    const callCost = durationMinutes > 0 ? Math.round(durationMinutes * costPerMinute * 100) / 100 : 0;
 
     // Determine direction
     let direction = data.metadata?.phone_call?.direction || data.metadata?.channel || 'inbound';
@@ -198,7 +211,7 @@ router.get('/', async (req, res) => {
     }
 
     // Fetch both call logs and chat logs in parallel
-    const [callLogs, chatLogs] = await Promise.all([
+    const [callLogs, chatLogs, business] = await Promise.all([
       prisma.callLog.findMany({
         where: callWhere,
         orderBy: { createdAt: 'desc' },
@@ -208,8 +221,44 @@ router.get('/', async (req, res) => {
         where: chatWhere,
         orderBy: { createdAt: 'desc' },
         take: parseInt(limit)
+      }),
+      prisma.business.findUnique({
+        where: { id: businessId },
+        include: { subscription: { select: { plan: true } } }
       })
     ]);
+
+    // Lazy load missing data for recent calls (last 5 minutes)
+    // This catches cases where webhook hasn't finished processing yet
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+    const recentCallsWithMissingData = callLogs.filter(call =>
+      call.createdAt > fiveMinutesAgo &&
+      call.callId &&
+      call.status !== 'in_progress' &&
+      (!call.endReason || !call.callCost)
+    );
+
+    // Update missing data and wait for it (only for recent calls, max 3)
+    if (recentCallsWithMissingData.length > 0 && business) {
+      const callsToUpdate = recentCallsWithMissingData.slice(0, 3); // Limit to 3 to avoid slow response
+      await Promise.all(
+        callsToUpdate.map(async (call) => {
+          try {
+            const updatedData = await fetchAndProcessConversation(call.callId, business);
+            if (updatedData) {
+              await prisma.callLog.update({
+                where: { id: call.id },
+                data: updatedData
+              });
+              // Update in-memory for this response
+              Object.assign(call, updatedData);
+            }
+          } catch (err) {
+            console.warn(`Failed to lazy load call ${call.callId}:`, err.message);
+          }
+        })
+      );
+    }
 
     // Format phone call logs
     const formattedCalls = callLogs.map(call => ({

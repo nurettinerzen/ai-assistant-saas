@@ -2,25 +2,110 @@
  * Customer Data Lookup Handler
  * Retrieves customer information based on phone number OR order number
  * Supports all data types: orders, accounting, support, appointments, etc.
+ *
+ * SECURITY: 2-way verification for sensitive data
+ * - First query with single identifier → requires verification
+ * - Second query with both identifiers → verifies and returns data
  */
 
 import prisma from '../../prismaClient.js';
+
+// In-memory verification state cache
+// Key: sessionId, Value: { pendingOrderNumber, pendingPhone, foundCustomerId, timestamp }
+const verificationCache = new Map();
+const VERIFICATION_TTL = 10 * 60 * 1000; // 10 minutes
+
+// Cleanup old verification states every 2 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, state] of verificationCache) {
+    if (now - state.timestamp > VERIFICATION_TTL) {
+      verificationCache.delete(key);
+    }
+  }
+}, 2 * 60 * 1000);
 
 /**
  * Execute customer data lookup
  * @param {Object} args - Tool arguments from AI
  * @param {Object} business - Business object
- * @param {Object} context - Execution context (callerPhone, channel, etc.)
+ * @param {Object} context - Execution context (callerPhone, channel, sessionId, etc.)
  * @returns {Object} Result object
  */
 export async function execute(args, business, context = {}) {
   try {
-    const { query_type, phone, order_number } = args;
+    let { query_type, phone, order_number, customer_name } = args;
+    const sessionId = context.sessionId || context.conversationId || `${business.id}-unknown`;
 
-    console.log('🔍 Customer Data Lookup:', { query_type, phone, order_number, businessId: business.id });
+    console.log('🔍 Customer Data Lookup:', { query_type, phone, order_number, customer_name, businessId: business.id, sessionId });
 
     // Get phone from args or context
-    const lookupPhone = phone || context.callerPhone || context.phone || context.from;
+    let lookupPhone = phone || context.callerPhone || context.phone || context.from;
+
+    // ============================================================================
+    // PENDING VERIFICATION CHECK - Merge with previous query if exists
+    // ============================================================================
+    const pendingVerification = verificationCache.get(sessionId);
+
+    if (pendingVerification) {
+      console.log('🔐 Found pending verification for session:', sessionId, pendingVerification);
+
+      // If user provided phone and we were waiting for verification (had order_number pending)
+      if (lookupPhone && pendingVerification.pendingOrderNumber && !order_number) {
+        console.log('🔐 Merging: User provided phone for pending order verification');
+        order_number = pendingVerification.pendingOrderNumber;
+      }
+      // If user provided customer_name for verification
+      else if (customer_name && pendingVerification.pendingOrderNumber) {
+        console.log('🔐 Verifying by customer name:', customer_name);
+        // Check if name matches
+        const pendingCustomerName = pendingVerification.foundCustomerName?.toLowerCase().trim();
+        const providedName = customer_name.toLowerCase().trim();
+
+        // Fuzzy match: check if provided name contains or is contained in customer name
+        const nameMatches = pendingCustomerName?.includes(providedName) ||
+                           providedName.includes(pendingCustomerName) ||
+                           pendingCustomerName === providedName;
+
+        if (nameMatches) {
+          console.log('✅ VERIFICATION SUCCESS: Name matches');
+          verificationCache.delete(sessionId);
+          // Return the customer data directly
+          const customer = await prisma.customerData.findUnique({
+            where: { id: pendingVerification.foundCustomerId }
+          });
+          if (customer) {
+            const customFields = customer.customFields || {};
+            const responseData = formatAllData(customer, customFields);
+            const responseMessage = formatResponseMessage(customer, customFields, query_type, business.language);
+            const instruction = business.language === 'TR'
+              ? '\n\n[TALİMAT: Bu bilgiyi müşteriye HEMEN aktar.]'
+              : '\n\n[INSTRUCTION: Share this information with the customer NOW.]';
+            return {
+              success: true,
+              data: responseData,
+              message: responseMessage + instruction
+            };
+          }
+        } else {
+          console.log('❌ VERIFICATION FAILED: Name does not match');
+          verificationCache.delete(sessionId);
+          const failMessage = business.language === 'TR'
+            ? 'Verdiğiniz isim bu siparişle eşleşmiyor. Güvenlik nedeniyle bilgileri paylaşamıyorum.'
+            : 'The name you provided does not match this order. For security reasons, I cannot share the details.';
+          return {
+            success: false,
+            error: failMessage,
+            verificationFailed: true
+          };
+        }
+      }
+      // If user provided order_number and we were waiting for order (had phone pending)
+      else if (order_number && pendingVerification.pendingPhone && !lookupPhone) {
+        console.log('🔐 Merging: User provided order for pending phone verification');
+        lookupPhone = pendingVerification.pendingPhone;
+      }
+    }
 
     // Must have either order_number or phone
     if (!order_number && !lookupPhone) {
@@ -167,6 +252,118 @@ export async function execute(args, business, context = {}) {
 
     // Parse custom fields
     const customFields = customer.customFields || {};
+
+    // ============================================================================
+    // 2-WAY VERIFICATION LOGIC
+    // ============================================================================
+
+    // Note: pendingVerification was already fetched at the top for merge logic
+    // Re-fetch here in case it was modified (though currently it shouldn't be)
+    const currentPendingVerification = verificationCache.get(sessionId);
+
+    // CASE 1: Verification in progress - user provided second identifier
+    if (pendingVerification && pendingVerification.foundCustomerId === customer.id) {
+      // User's second identifier matched the same customer record = VERIFIED
+      console.log('✅ VERIFICATION SUCCESS: Both identifiers match customer', customer.id);
+      verificationCache.delete(sessionId); // Clear verification state
+
+      // Proceed to return full data (fall through to existing logic)
+    }
+    // CASE 2: Verification in progress but second identifier points to DIFFERENT customer
+    else if (pendingVerification && pendingVerification.foundCustomerId !== customer.id) {
+      console.log('❌ VERIFICATION FAILED: Identifiers point to different customers');
+      verificationCache.delete(sessionId);
+
+      const failMessage = business.language === 'TR'
+        ? 'Verdiğiniz bilgiler birbiriyle eşleşmiyor. Güvenlik nedeniyle bilgileri paylaşamıyorum. Lütfen doğru bilgilerle tekrar deneyin.'
+        : 'The information you provided does not match. For security reasons, I cannot share the details. Please try again with correct information.';
+
+      return {
+        success: false,
+        error: failMessage,
+        verificationFailed: true
+      };
+    }
+    // CASE 3: First query with SINGLE identifier - require verification
+    // Only if user provided ONLY one of: order_number OR phone (not both)
+    else if ((order_number && !lookupPhone) || (lookupPhone && !order_number)) {
+      // Check if this is sensitive data (accounting, orders with financial info)
+      const hasSensitiveData = customFields.sgkDebt || customFields['SGK Borcu'] ||
+                               customFields.taxDebt || customFields['Vergi Borcu'] ||
+                               customFields['Tutar'] || customFields['Toplam'] ||
+                               customFields['Bakiye'] || customFields['Borç'];
+
+      // For sensitive data, require verification
+      // Also require verification for order lookups (to prevent unauthorized tracking)
+      if (hasSensitiveData || order_number) {
+        console.log('🔐 VERIFICATION REQUIRED: Sensitive data or order lookup');
+
+        // Store pending verification
+        verificationCache.set(sessionId, {
+          pendingOrderNumber: order_number || null,
+          pendingPhone: lookupPhone || null,
+          foundCustomerId: customer.id,
+          foundCustomerName: customer.companyName,
+          timestamp: Date.now()
+        });
+
+        // Ask for second identifier - MUST be phone number for order lookups
+        // SECURITY: Do NOT reveal customer name or any other info before verification!
+        const askForPhone = order_number != null; // User gave order, ask for phone
+        const verificationMessage = business.language === 'TR'
+          ? (askForPhone
+              ? `Bu sipariş numarasına ait bir kayıt buldum. Güvenlik doğrulaması için siparişe kayıtlı telefon numaranızı veya adınızı söyler misiniz?`
+              : `Kaydınızı buldum. Güvenlik doğrulaması için sipariş numaranızı söyler misiniz?`)
+          : (askForPhone
+              ? `I found a record for this order number. For security verification, could you please provide your phone number or name registered with this order?`
+              : `I found your record. For security verification, could you please provide your order number?`);
+
+        // Add instruction for AI - do NOT reveal any customer info before verification
+        const aiInstruction = business.language === 'TR'
+          ? '\n\n[AI TALİMAT: GÜVENLİK UYARISI - Doğrulama tamamlanana kadar müşteriye HİÇBİR BİLGİ VERME! İsim, adres, sipariş detayı vs. SÖYLEME. Sadece telefon veya isim iste.]'
+          : '\n\n[AI INSTRUCTION: SECURITY WARNING - Do NOT reveal ANY customer info until verification is complete! Do not say name, address, order details etc. Just ask for phone or name.]';
+
+        return {
+          success: true,
+          requiresVerification: true,
+          message: verificationMessage + aiInstruction,
+          verificationPending: true,
+          requiredVerificationType: 'phone_or_name' // Accept phone or name for verification
+        };
+      }
+    }
+
+    // CASE 4: User provided BOTH identifiers at once - verify they match
+    if (order_number && lookupPhone) {
+      // We already found a customer, but need to verify the other identifier matches
+      // Check if customer's phone matches the provided phone
+      const customerPhoneNormalized = normalizePhone(customer.phone);
+      const providedPhoneNormalized = normalizePhone(lookupPhone);
+      const providedLast10 = String(lookupPhone).replace(/[^\d]/g, '').slice(-10);
+      const customerLast10 = String(customer.phone).replace(/[^\d]/g, '').slice(-10);
+
+      const phoneMatches = customerPhoneNormalized === providedPhoneNormalized ||
+                          customerLast10 === providedLast10 ||
+                          customer.phone?.includes(providedLast10);
+
+      if (!phoneMatches) {
+        console.log('❌ VERIFICATION FAILED: Phone does not match order record');
+        const failMessage = business.language === 'TR'
+          ? 'Verdiğiniz telefon numarası bu siparişle eşleşmiyor. Güvenlik nedeniyle bilgileri paylaşamıyorum.'
+          : 'The phone number you provided does not match this order. For security reasons, I cannot share the details.';
+
+        return {
+          success: false,
+          error: failMessage,
+          verificationFailed: true
+        };
+      }
+      console.log('✅ Both identifiers provided and match - verification passed');
+    }
+
+    // ============================================================================
+    // END VERIFICATION LOGIC - Proceed to return data
+    // ============================================================================
 
     // Format response based on data type
     const responseData = formatAllData(customer, customFields);

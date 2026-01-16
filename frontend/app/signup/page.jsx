@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,6 +16,13 @@ import { TelyxLogoFull } from '@/components/TelyxLogo';
 
 export default function SignupPage() {
   const router = useRouter();
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   useEffect(() => {
   const token = localStorage.getItem('token');
   if (token) {
@@ -140,7 +148,7 @@ export default function SignupPage() {
       <div className="w-full max-w-md">
         <div className="flex justify-between items-center mb-8">
           <Link href="/">
-            <TelyxLogoFull width={200} height={60} />
+            <TelyxLogoFull width={200} height={60} darkMode={mounted && resolvedTheme === 'dark'} />
           </Link>
           <LanguageSwitcher />
         </div>

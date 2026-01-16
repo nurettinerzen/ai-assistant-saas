@@ -283,6 +283,50 @@ router.patch('/threads/:threadId', authenticateToken, async (req, res) => {
   }
 });
 
+// ==================== ATTACHMENT ROUTES ====================
+
+/**
+ * Download Attachment
+ * GET /api/email/attachments/:messageId/:attachmentId
+ */
+router.get('/attachments/:messageId/:attachmentId', authenticateToken, async (req, res) => {
+  try {
+    const { messageId, attachmentId } = req.params;
+
+    // Get the message to verify ownership
+    const message = await prisma.emailMessage.findFirst({
+      where: { messageId },
+      include: {
+        thread: {
+          select: { businessId: true }
+        }
+      }
+    });
+
+    if (!message || message.thread?.businessId !== req.businessId) {
+      return res.status(404).json({ error: 'Message not found' });
+    }
+
+    // Get attachment data from provider
+    const attachmentData = await emailAggregator.getAttachment(req.businessId, messageId, attachmentId);
+
+    if (!attachmentData) {
+      return res.status(404).json({ error: 'Attachment not found' });
+    }
+
+    // Set headers for download
+    res.setHeader('Content-Type', attachmentData.mimeType || 'application/octet-stream');
+    res.setHeader('Content-Disposition', `attachment; filename="${attachmentData.filename || 'attachment'}"`);
+
+    // Send the data
+    const buffer = Buffer.from(attachmentData.data, 'base64');
+    res.send(buffer);
+  } catch (error) {
+    console.error('Download attachment error:', error);
+    res.status(500).json({ error: 'Failed to download attachment' });
+  }
+});
+
 // ==================== DRAFT ROUTES ====================
 
 /**
@@ -361,6 +405,63 @@ router.post('/drafts/:draftId/approve', authenticateToken, async (req, res) => {
 });
 
 /**
+ * Convert plain text to HTML with proper formatting
+ * @param {string} text - Plain text content
+ * @returns {string} - HTML formatted content
+ */
+function textToHtml(text) {
+  if (!text) return '';
+  // Escape HTML entities
+  let html = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+
+  // Convert newlines to <br> tags
+  html = html.replace(/\n/g, '<br>');
+
+  return html;
+}
+
+/**
+ * Build HTML email with styling and signature
+ * @param {string} bodyContent - The email body content (plain text)
+ * @param {object} business - Business object with name
+ * @param {string} senderEmail - Sender's email address
+ * @returns {string} - Full HTML email
+ */
+function buildHtmlEmail(bodyContent, business, senderEmail) {
+  const htmlBody = textToHtml(bodyContent);
+  const businessName = business?.name || '';
+
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+    .email-body { padding: 0; }
+    .signature { margin-top: 24px; padding-top: 16px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px; }
+    .signature-name { font-weight: 600; color: #333; }
+  </style>
+</head>
+<body>
+  <div class="email-body">
+    ${htmlBody}
+  </div>
+  <div class="signature">
+    <p class="signature-name">${businessName}</p>
+    <p>${senderEmail}</p>
+  </div>
+</body>
+</html>`.trim();
+}
+
+/**
  * Send Draft
  * POST /api/email/drafts/:draftId/send
  */
@@ -373,10 +474,18 @@ router.post('/drafts/:draftId/send', authenticateToken, async (req, res) => {
     }
 
     const thread = draft.thread;
-    const content = draft.editedContent || draft.generatedContent;
+    const plainContent = draft.editedContent || draft.generatedContent;
 
     // Get the email integration to find connected email
     const integration = await emailAggregator.getIntegration(req.businessId);
+
+    // Get business for signature
+    const business = await prisma.business.findUnique({
+      where: { id: req.businessId }
+    });
+
+    // Convert plain text to HTML with signature
+    const htmlContent = buildHtmlEmail(plainContent, business, integration.email);
 
     // Build reply options
     const options = {
@@ -390,12 +499,12 @@ router.post('/drafts/:draftId/send', authenticateToken, async (req, res) => {
       options.replyToId = draft.message.messageId;
     }
 
-    // Send the email
+    // Send the email (with HTML content)
     const result = await emailAggregator.sendMessage(
       req.businessId,
       thread.customerEmail,
       `Re: ${thread.subject}`,
-      content,
+      htmlContent,
       options
     );
 
@@ -416,11 +525,11 @@ router.post('/drafts/:draftId/send', authenticateToken, async (req, res) => {
         messageId: result.messageId || `sent-${Date.now()}-${Math.random().toString(36).substring(7)}`,
         direction: 'OUTBOUND',
         fromEmail: integration.email,
-        fromName: null,
+        fromName: business?.name || null,
         toEmail: thread.customerEmail,
         subject: `Re: ${thread.subject}`,
-        bodyText: content,
-        bodyHtml: content,
+        bodyText: plainContent,
+        bodyHtml: htmlContent,
         status: 'SENT',
         sentAt: new Date()
       }
@@ -506,17 +615,17 @@ router.post('/threads/:threadId/generate-draft', authenticateToken, async (req, 
       return res.status(400).json({ error: 'No inbound message found in this thread' });
     }
 
-    // Check if draft already exists
+    // Check if draft already exists for THIS SPECIFIC MESSAGE (not just thread)
     const existingDraft = await prisma.emailDraft.findFirst({
       where: {
-        threadId: thread.id,
+        messageId: latestInbound.id,
         status: 'PENDING_REVIEW'
       }
     });
 
     if (existingDraft) {
       return res.status(400).json({
-        error: 'A pending draft already exists for this thread',
+        error: 'A pending draft already exists for this message',
         draftId: existingDraft.id
       });
     }
@@ -613,8 +722,16 @@ router.post('/sync', authenticateToken, async (req, res) => {
           });
           console.log(`[Email Sync] Thread ${thread.id} marked as REPLIED (outbound message detected)`);
         }
-        // For INBOUND messages, keep status as PENDING_REPLY (default)
-        // User will manually generate drafts or mark as no-reply-needed
+
+        // For INBOUND messages: If thread was REPLIED or CLOSED, reopen it as PENDING_REPLY
+        // This handles the case where a customer sends a follow-up email after we replied
+        if (direction === 'INBOUND' && (thread.status === 'REPLIED' || thread.status === 'CLOSED')) {
+          await prisma.emailThread.update({
+            where: { id: thread.id },
+            data: { status: 'PENDING_REPLY' }
+          });
+          console.log(`[Email Sync] Thread ${thread.id} reopened as PENDING_REPLY (new inbound message after reply)`);
+        }
       }
     }
 
@@ -915,6 +1032,88 @@ router.get('/classify/stats', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Get classification stats error:', error);
     res.status(500).json({ error: 'Failed to get classification stats' });
+  }
+});
+
+// ==================== SIGNATURE ROUTES ====================
+
+/**
+ * Get email signature settings
+ * GET /api/email/signature
+ */
+router.get('/signature', authenticateToken, async (req, res) => {
+  try {
+    const integration = await prisma.emailIntegration.findUnique({
+      where: { businessId: req.businessId },
+      select: {
+        emailSignature: true,
+        signatureType: true
+      }
+    });
+
+    if (!integration) {
+      return res.json({
+        emailSignature: null,
+        signatureType: 'PLAIN'
+      });
+    }
+
+    res.json({
+      emailSignature: integration.emailSignature,
+      signatureType: integration.signatureType
+    });
+  } catch (error) {
+    console.error('Get signature error:', error);
+    res.status(500).json({ error: 'Failed to get email signature' });
+  }
+});
+
+/**
+ * Update email signature
+ * PUT /api/email/signature
+ */
+router.put('/signature', authenticateToken, async (req, res) => {
+  try {
+    const { emailSignature, signatureType } = req.body;
+
+    // Validate signatureType
+    if (signatureType && !['PLAIN', 'HTML'].includes(signatureType)) {
+      return res.status(400).json({ error: 'signatureType must be PLAIN or HTML' });
+    }
+
+    // Check if email integration exists
+    const existing = await prisma.emailIntegration.findUnique({
+      where: { businessId: req.businessId }
+    });
+
+    if (!existing) {
+      return res.status(404).json({
+        error: 'Email integration not found. Please connect your email first.'
+      });
+    }
+
+    // Update signature
+    const updated = await prisma.emailIntegration.update({
+      where: { businessId: req.businessId },
+      data: {
+        emailSignature: emailSignature || null,
+        signatureType: signatureType || 'PLAIN'
+      },
+      select: {
+        emailSignature: true,
+        signatureType: true
+      }
+    });
+
+    res.json({
+      success: true,
+      emailSignature: updated.emailSignature,
+      signatureType: updated.signatureType,
+      message: 'Email signature updated successfully'
+    });
+  } catch (error) {
+    console.error('Update signature error:', error);
+    res.status(500).json({ error: 'Failed to update email signature' });
   }
 });
 

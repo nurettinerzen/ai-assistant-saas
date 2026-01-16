@@ -233,11 +233,11 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
           <div className="flex-1 overflow-y-auto space-y-6">
             {/* Audio Player */}
             {call.id && (
-              <div className="bg-neutral-50 rounded-lg p-4 space-y-3">
+              <div className="bg-neutral-50 dark:bg-neutral-800 rounded-lg p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Volume2 className="h-4 w-4 text-neutral-600" />
-                    <h4 className="text-sm font-semibold text-neutral-900">Arama Kaydı</h4>
+                    <Volume2 className="h-4 w-4 text-neutral-600 dark:text-neutral-400" />
+                    <h4 className="text-sm font-semibold text-neutral-900 dark:text-white">Arama Kaydı</h4>
                   </div>
                   <Button
                     variant="ghost"
@@ -294,17 +294,17 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
                         max={duration || 0}
                         value={currentTime}
                         onChange={handleSeek}
-                        className="flex-1 h-2 bg-neutral-200 rounded-lg appearance-none cursor-pointer"
+                        className="flex-1 h-2 bg-neutral-200 dark:bg-neutral-700 rounded-lg appearance-none cursor-pointer"
                       />
 
-                      <div className="text-xs text-neutral-600 w-28 text-right">
+                      <div className="text-xs text-neutral-600 dark:text-neutral-400 w-28 text-right">
                         {formatDuration(Math.floor(currentTime))} /{' '}
                         {formatDuration(Math.floor(duration || call?.duration || 0))}
                       </div>
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-neutral-600">Hız:</span>
+                      <span className="text-xs text-neutral-600 dark:text-neutral-400">Hız:</span>
                       {[0.5, 1, 1.5, 2].map((speed) => (
                         <Button
                           key={speed}
@@ -325,10 +325,10 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
             {/* Call Info - End Reason & Cost */}
             <div className="grid grid-cols-2 gap-4">
               {/* End Reason */}
-              <div className="bg-white border rounded-lg p-4">
+              <div className="bg-white dark:bg-neutral-800 border dark:border-neutral-700 rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <PhoneOff className="h-4 w-4 text-neutral-600" />
-                  <h4 className="text-xs font-medium text-neutral-500">Görüşme Sonlanma</h4>
+                  <PhoneOff className="h-4 w-4 text-neutral-600 dark:text-neutral-400" />
+                  <h4 className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Görüşme Sonlanma</h4>
                 </div>
                 <Badge variant="outline" className="text-xs">
                   {call.endReason === 'client_ended' ? 'Müşteri kapattı' :
@@ -341,25 +341,25 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
               </div>
 
               {/* Call Cost */}
-              <div className="bg-white border rounded-lg p-4">
+              <div className="bg-white dark:bg-neutral-800 border dark:border-neutral-700 rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Coins className="h-4 w-4 text-neutral-600" />
-                  <h4 className="text-xs font-medium text-neutral-500">Görüşme Maliyeti</h4>
+                  <Coins className="h-4 w-4 text-neutral-600 dark:text-neutral-400" />
+                  <h4 className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Görüşme Maliyeti</h4>
                 </div>
-                <span className="text-lg font-semibold text-neutral-900">
-                  ₺{call.callCost ? call.callCost.toFixed(2) : '0.00'}
+                <span className="text-lg font-semibold text-neutral-900 dark:text-white">
+                  {(call.callCost || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺
                 </span>
               </div>
             </div>
 
             {/* Call Summary */}
             {call.summary && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
                 <div className="flex items-start gap-3">
-                  <FileText className="h-5 w-5 text-blue-600 mt-0.5" />
+                  <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
                   <div className="flex-1">
-                    <h4 className="text-sm font-semibold text-blue-900 mb-1">Arama Özeti</h4>
-                    <p className="text-sm text-blue-800">{call.summary}</p>
+                    <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-1">Arama Özeti</h4>
+                    <p className="text-sm text-blue-800 dark:text-blue-300">{call.summary}</p>
                   </div>
                 </div>
               </div>
@@ -369,10 +369,10 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Key Topics */}
               {call.keyTopics && call.keyTopics.length > 0 && (
-                <div className="bg-white border rounded-lg p-4">
+                <div className="bg-white dark:bg-neutral-800 border dark:border-neutral-700 rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <Lightbulb className="h-4 w-4 text-neutral-600" />
-                    <h4 className="text-xs font-medium text-neutral-500">Ana Konular</h4>
+                    <Lightbulb className="h-4 w-4 text-neutral-600 dark:text-neutral-400" />
+                    <h4 className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Ana Konular</h4>
                   </div>
                   <div className="flex flex-wrap gap-1">
                     {call.keyTopics.map((topic, index) => (
@@ -386,14 +386,14 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
 
               {/* Action Items */}
               {call.actionItems && call.actionItems.length > 0 && (
-                <div className="bg-white border rounded-lg p-4">
+                <div className="bg-white dark:bg-neutral-800 border dark:border-neutral-700 rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <CheckCircle className="h-4 w-4 text-neutral-600" />
-                    <h4 className="text-xs font-medium text-neutral-500">Yapılacaklar</h4>
+                    <CheckCircle className="h-4 w-4 text-neutral-600 dark:text-neutral-400" />
+                    <h4 className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Yapılacaklar</h4>
                   </div>
                   <ul className="space-y-1">
                     {call.actionItems.map((item, index) => (
-                      <li key={index} className="text-xs text-neutral-700 flex items-start gap-1">
+                      <li key={index} className="text-xs text-neutral-700 dark:text-neutral-300 flex items-start gap-1">
                         <span className="text-neutral-400 mt-0.5">•</span>
                         {item}
                       </li>
@@ -410,8 +410,8 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
               <div>
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-neutral-600" />
-                    <h4 className="text-sm font-semibold text-neutral-900">Transkript</h4>
+                    <FileText className="h-4 w-4 text-neutral-600 dark:text-neutral-400" />
+                    <h4 className="text-sm font-semibold text-neutral-900 dark:text-white">Transkript</h4>
                   </div>
                   <Button
                     variant="outline"
@@ -435,7 +435,7 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
                 </div>
 
                 {/* Messages */}
-                <div className="space-y-3 max-h-96 overflow-y-auto bg-neutral-50 rounded-lg p-4">
+                <div className="space-y-3 max-h-96 overflow-y-auto bg-neutral-50 dark:bg-neutral-800 rounded-lg p-4">
                   {call.transcript && Array.isArray(call.transcript) ? (
                     filteredMessages && filteredMessages.length > 0 ? (
                       filteredMessages.map((msg, index) => {
@@ -471,8 +471,8 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
                             <div
                               className={`max-w-[80%] rounded-lg p-3 ${
                                 isAssistant
-                                  ? 'bg-blue-100 text-blue-900'
-                                  : 'bg-white text-neutral-900 border border-neutral-200'
+                                  ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-900 dark:text-blue-200'
+                                  : 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 border border-neutral-200 dark:border-neutral-600'
                               }`}
                             >
                               <div className="flex items-center gap-2 mb-1">
@@ -480,7 +480,7 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
                                   {isAssistant ? 'Asistan' : 'Müşteri'}
                                 </span>
                                 {formatMsgTime() && (
-                                  <span className="text-xs text-neutral-500">
+                                  <span className="text-xs text-neutral-500 dark:text-neutral-400">
                                     {formatMsgTime()}
                                   </span>
                                 )}
@@ -491,16 +491,16 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
                         );
                       })
                     ) : (
-                      <p className="text-center text-neutral-500 py-4">
+                      <p className="text-center text-neutral-500 dark:text-neutral-400 py-4">
                         Aramanızla eşleşen mesaj bulunamadı
                       </p>
                     )
                   ) : call.transcriptText ? (
-                    <pre className="text-sm text-neutral-700 whitespace-pre-wrap font-sans">
+                    <pre className="text-sm text-neutral-700 dark:text-neutral-300 whitespace-pre-wrap font-sans">
                       {highlightText(call.transcriptText)}
                     </pre>
                   ) : (
-                    <p className="text-center text-neutral-500 py-4">
+                    <p className="text-center text-neutral-500 dark:text-neutral-400 py-4">
                       Transkript bulunamadı
                     </p>
                   )}
@@ -509,21 +509,21 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
             )}
 
             {/* Call Info */}
-            <div className="grid grid-cols-2 gap-4 bg-neutral-50 rounded-lg p-4">
+            <div className="grid grid-cols-2 gap-4 bg-neutral-50 dark:bg-neutral-800 rounded-lg p-4">
               <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-neutral-600" />
+                <Calendar className="h-4 w-4 text-neutral-600 dark:text-neutral-400" />
                 <div>
-                  <p className="text-xs text-neutral-500">Tarih ve Saat</p>
-                  <p className="text-sm font-medium text-neutral-900">
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400">Tarih ve Saat</p>
+                  <p className="text-sm font-medium text-neutral-900 dark:text-white">
                     {formatDate(call.createdAt, 'long')}
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-neutral-600" />
+                <Clock className="h-4 w-4 text-neutral-600 dark:text-neutral-400" />
                 <div>
-                  <p className="text-xs text-neutral-500">Süre</p>
-                  <p className="text-sm font-medium text-neutral-900">
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400">Süre</p>
+                  <p className="text-sm font-medium text-neutral-900 dark:text-white">
                     {formatDuration(call.duration)}
                   </p>
                 </div>
@@ -533,7 +533,7 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
         )}
 
         {/* Footer */}
-        <div className="border-t border-neutral-200 pt-4 flex justify-end gap-2">
+        <div className="border-t border-neutral-200 dark:border-neutral-700 pt-4 flex justify-end gap-2">
           <Button variant="outline" onClick={onClose}>
             Kapat
           </Button>

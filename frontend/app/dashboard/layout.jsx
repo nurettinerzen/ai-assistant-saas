@@ -57,8 +57,11 @@ export default function DashboardLayout({ children }) {
     }
 
     // Try to load from cache first for instant display
+    // IMPORTANT: Only use cache if it has subscription data to prevent sidebar flash
     const cachedData = getCachedUserData();
-    if (cachedData && !initialLoadDone.current) {
+    const hasCachedSubscription = cachedData?.user?.subscription?.plan;
+
+    if (cachedData && hasCachedSubscription && !initialLoadDone.current) {
       setUser(cachedData.user);
       setCredits(cachedData.credits);
       setLoading(false);
@@ -68,8 +71,9 @@ export default function DashboardLayout({ children }) {
       }
     }
 
-    // Load fresh user data (in background if cache exists)
-    loadUserData(!cachedData);
+    // Load fresh user data
+    // Show loading if no valid cache (with subscription), load in background if cache exists
+    loadUserData(!hasCachedSubscription);
     initialLoadDone.current = true;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

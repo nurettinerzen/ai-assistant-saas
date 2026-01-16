@@ -71,9 +71,11 @@ class EmailAIService {
       // Build Knowledge Base context
       const knowledgeContext = this.buildKnowledgeContext(knowledgeItems);
 
-      // Get style profile if available
+      // Get style profile and custom signature if available
       const styleProfile = business.emailIntegration?.styleProfile;
-      const styleContext = this.buildStyleContext(styleProfile, language);
+      const customSignature = business.emailIntegration?.emailSignature;
+      const signatureType = business.emailIntegration?.signatureType || 'PLAIN';
+      const styleContext = this.buildStyleContext(styleProfile, language, customSignature, signatureType);
 
       // Build the prompt using central prompt builder
       const assistant = business.assistants[0] || null;
@@ -330,9 +332,22 @@ Before responding, ask yourself:
    * Build style context from style profile
    * @param {object} styleProfile - The style profile from analyzer
    * @param {string} emailLanguage - The detected language of the incoming email ('TR' or 'EN')
+   * @param {string} customSignature - Custom email signature from user settings
+   * @param {string} signatureType - 'PLAIN' or 'HTML'
    */
-  buildStyleContext(styleProfile, emailLanguage = 'EN') {
+  buildStyleContext(styleProfile, emailLanguage = 'EN', customSignature = null, signatureType = 'PLAIN') {
     if (!styleProfile || !styleProfile.analyzed) {
+      // Even without style profile, we might have a custom signature
+      if (customSignature) {
+        let context = '=== EMAIL SIGNATURE ===\n';
+        context += 'ALWAYS add this exact signature at the end of every email:\n';
+        if (signatureType === 'HTML') {
+          context += `[HTML SIGNATURE - Use exactly as provided, do not modify]\n${customSignature}\n`;
+        } else {
+          context += `${customSignature}\n`;
+        }
+        return context;
+      }
       return '';
     }
 
@@ -377,19 +392,18 @@ Before responding, ask yourself:
       }
     }
 
-    // Signature - CRITICAL for personalization
-    if (styleProfile.signature && styleProfile.signature.hasSignature) {
-      context += '\n### SIGNATURE (ALWAYS ADD AT THE END) ###\n';
-      if (styleProfile.signature.fullSignature) {
-        context += `Use this exact signature:\n${styleProfile.signature.fullSignature}\n`;
+    // Signature - Use custom signature if provided, otherwise use business name
+    context += '\n### SIGNATURE (ALWAYS ADD AT THE END) ###\n';
+    if (customSignature) {
+      context += 'ALWAYS add this exact signature at the end of every email:\n';
+      if (signatureType === 'HTML') {
+        context += `[HTML SIGNATURE - Use exactly as provided, do not modify]\n${customSignature}\n`;
       } else {
-        let sig = '';
-        if (styleProfile.signature.name) sig += styleProfile.signature.name;
-        if (styleProfile.signature.title) sig += '\n' + styleProfile.signature.title;
-        if (styleProfile.signature.company) sig += '\n' + styleProfile.signature.company;
-        if (styleProfile.signature.phone) sig += '\n' + styleProfile.signature.phone;
-        if (sig) context += `Build signature from:\n${sig}\n`;
+        context += `${customSignature}\n`;
       }
+    } else {
+      context += `DO NOT use personal names in signature. Use only the business name.\n`;
+      context += `Sign off with just the business name - nothing else.\n`;
     }
 
     // Writing characteristics

@@ -462,6 +462,62 @@ async disconnect(businessId) {
       isUnread: (message.labelIds || []).includes('UNREAD')
     };
   }
+
+  /**
+   * Get attachment data from Gmail
+   */
+  async getAttachment(businessId, messageId, attachmentId) {
+    const gmail = await this.getClient(businessId);
+
+    try {
+      const response = await gmail.users.messages.attachments.get({
+        userId: 'me',
+        messageId,
+        id: attachmentId
+      });
+
+      // Get the message to find filename
+      const message = await gmail.users.messages.get({
+        userId: 'me',
+        id: messageId
+      });
+
+      let filename = 'attachment';
+      let mimeType = 'application/octet-stream';
+
+      // Find attachment details from message parts
+      const findAttachment = (parts) => {
+        for (const part of parts || []) {
+          if (part.body?.attachmentId === attachmentId) {
+            filename = part.filename || 'attachment';
+            mimeType = part.mimeType || 'application/octet-stream';
+            return true;
+          }
+          if (part.parts && findAttachment(part.parts)) {
+            return true;
+          }
+        }
+        return false;
+      };
+
+      if (message.data.payload) {
+        findAttachment([message.data.payload]);
+        if (message.data.payload.parts) {
+          findAttachment(message.data.payload.parts);
+        }
+      }
+
+      return {
+        data: response.data.data, // Base64 encoded
+        filename,
+        mimeType,
+        size: response.data.size
+      };
+    } catch (error) {
+      console.error('Gmail getAttachment error:', error);
+      return null;
+    }
+  }
 }
 
 export default new GmailService();

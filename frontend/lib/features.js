@@ -391,8 +391,11 @@ export function getFeatureVisibility(featureId, userPlan, countryCode = null) {
   const feature = Object.values(FEATURES).find(f => f.id === featureId);
   if (!feature) return VISIBILITY.VISIBLE;
 
+  // If plan is not loaded yet (null/undefined), hide features to prevent flash
+  if (!userPlan) return VISIBILITY.HIDDEN;
+
   // Normalize plan name - handle both 'PRO' and 'PROFESSIONAL'
-  let normalizedPlan = userPlan?.toUpperCase() || PLANS.FREE;
+  let normalizedPlan = userPlan.toUpperCase();
 
   // Map 'PRO' to 'PROFESSIONAL' for consistency
   if (normalizedPlan === 'PRO') {

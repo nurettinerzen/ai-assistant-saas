@@ -609,8 +609,8 @@ router.get('/urls', authenticateToken, async (req, res) => {
 router.post('/urls', authenticateToken, async (req, res) => {
   try {
     const businessId = req.businessId;
-    const { url, crawlDepth } = req.body;
-    
+    const { url, crawlDepth, autoScan, scanInterval } = req.body;
+
     if (!url) {
       return res.status(400).json({ error: 'URL is required' });
     }
@@ -631,7 +631,9 @@ router.post('/urls', authenticateToken, async (req, res) => {
         url,
         crawlDepth: crawlDepth || 1,
         pageCount: 0,
-        status: 'PROCESSING'
+        status: 'PROCESSING',
+        autoScan: autoScan || false,
+        scanInterval: scanInterval || 24 // Default: günde bir kez
       }
     });
 
@@ -774,6 +776,78 @@ async function crawlURL(entryId, url) {
   }
 }
 
+// PUT /api/knowledge/urls/:id - Update URL settings (autoScan, scanInterval, etc.)
+router.put('/urls/:id', authenticateToken, async (req, res) => {
+  try {
+    const businessId = req.businessId;
+    const { id } = req.params;
+    const { autoScan, scanInterval, crawlDepth } = req.body;
+
+    const urlEntry = await prisma.knowledgeBase.findFirst({
+      where: {
+        id,
+        businessId,
+        type: 'URL'
+      }
+    });
+
+    if (!urlEntry) {
+      return res.status(404).json({ error: 'URL not found' });
+    }
+
+    const updateData = {};
+    if (typeof autoScan === 'boolean') updateData.autoScan = autoScan;
+    if (typeof scanInterval === 'number') updateData.scanInterval = scanInterval;
+    if (typeof crawlDepth === 'number') updateData.crawlDepth = crawlDepth;
+
+    const updatedUrl = await prisma.knowledgeBase.update({
+      where: { id },
+      data: updateData
+    });
+
+    res.json({ url: updatedUrl, message: 'URL settings updated' });
+  } catch (error) {
+    console.error('Error updating URL:', error);
+    res.status(500).json({ error: 'Failed to update URL' });
+  }
+});
+
+// POST /api/knowledge/urls/:id/rescan - Yeniden tarama (manuel)
+router.post('/urls/:id/rescan', authenticateToken, async (req, res) => {
+  try {
+    const businessId = req.businessId;
+    const { id } = req.params;
+
+    const urlEntry = await prisma.knowledgeBase.findFirst({
+      where: {
+        id,
+        businessId,
+        type: 'URL'
+      }
+    });
+
+    if (!urlEntry) {
+      return res.status(404).json({ error: 'URL not found' });
+    }
+
+    // Update status to processing
+    await prisma.knowledgeBase.update({
+      where: { id },
+      data: { status: 'PROCESSING' }
+    });
+
+    // Start re-crawling asynchronously
+    crawlURL(id, urlEntry.url).catch(error => {
+      console.error('URL re-crawling failed:', error);
+    });
+
+    res.json({ message: 'URL rescan started', url: urlEntry });
+  } catch (error) {
+    console.error('Error rescanning URL:', error);
+    res.status(500).json({ error: 'Failed to rescan URL' });
+  }
+});
+
 // DELETE /api/knowledge/urls/:id
 router.delete('/urls/:id', authenticateToken, async (req, res) => {
   try {
@@ -820,4 +894,6 @@ router.delete('/urls/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// Export crawlURL for cron job usage
+export { crawlURL };
 export default router;

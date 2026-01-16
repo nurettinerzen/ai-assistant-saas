@@ -119,7 +119,7 @@ export default function CallsPage() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Real-time polling for new calls (every 30 seconds)
+  // Real-time polling for new calls (every 10 seconds)
   useEffect(() => {
     if (isInitialLoad) return;
 
@@ -128,7 +128,7 @@ export default function CallsPage() {
       if (document.visibilityState === 'visible' && statusFilter === 'all' && !searchQuery) {
         refreshCalls(true); // Silent refresh
       }
-    }, 30000); // 30 seconds
+    }, 10000); // 10 seconds - faster updates for new calls
 
     return () => clearInterval(pollInterval);
   }, [isInitialLoad, statusFilter, searchQuery]);
@@ -136,10 +136,10 @@ export default function CallsPage() {
   const loadCalls = async () => {
     setLoading(true);
     try {
-      // Sync 11Labs silently
-      try {
-        await apiClient.elevenlabs.syncConversations();
-      } catch {}
+      // Sync conversations from 11Labs (runs in background, doesn't block)
+      apiClient.elevenlabs.syncConversations().catch(err => {
+        console.warn('Sync failed:', err.message);
+      });
 
       const params = {};
       if (statusFilter !== 'all') params.status = statusFilter;
@@ -400,7 +400,7 @@ export default function CallsPage() {
                     {(call.callCost && call.callCost > 0) ? (
                       <span className="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-1">
                         <Coins className="h-3 w-3 text-warning-500" />
-                        {call.callCost.toFixed(2)} ₺
+                        {call.callCost.toLocaleString(locale === 'tr' ? 'tr-TR' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺
                       </span>
                     ) : (
                       <span className="text-sm text-gray-400">-</span>
@@ -459,6 +459,8 @@ export default function CallsPage() {
         onClose={() => {
           setShowTranscriptModal(false);
           setSelectedCallId(null);
+          // Refresh table to show updated data (endReason, cost, etc.)
+          refreshCalls(true);
         }}
       />
     </div>

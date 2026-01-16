@@ -370,14 +370,14 @@ async function generateAIResponse(business, phoneNumber, userMessage, context = 
       preemptiveToolResult = await executeTool('customer_data_lookup', {
         order_number: orderMatch[0],
         query_type: 'siparis'
-      }, business, { channel: 'WHATSAPP', conversationId: null });
+      }, business, { channel: 'WHATSAPP', sessionId: sessionId, conversationId: sessionId });
       console.log('🔧 [WhatsApp] Pre-emptive result:', preemptiveToolResult.success ? 'SUCCESS' : 'NOT FOUND');
     } else if (phoneMatch) {
       console.log('🔧 [WhatsApp] PRE-EMPTIVE: Phone number detected:', phoneMatch[0]);
       preemptiveToolResult = await executeTool('customer_data_lookup', {
         phone: phoneMatch[0],
         query_type: 'genel'
-      }, business, { channel: 'WHATSAPP', conversationId: null });
+      }, business, { channel: 'WHATSAPP', sessionId: sessionId, conversationId: sessionId });
       console.log('🔧 [WhatsApp] Pre-emptive result:', preemptiveToolResult.success ? 'SUCCESS' : 'NOT FOUND');
     }
 

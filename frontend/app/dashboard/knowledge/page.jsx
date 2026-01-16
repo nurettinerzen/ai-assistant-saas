@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import EmptyState from '@/components/EmptyState';
-import { Upload, FileText, MessageSquare, Link as LinkIcon, Plus, Trash2, Eye, Loader2, X } from 'lucide-react';
+import { Upload, FileText, MessageSquare, Link as LinkIcon, Plus, Trash2, Eye, Loader2, X, RefreshCw } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { apiClient } from '@/lib/api';
 import { toast, Toaster } from 'sonner';
@@ -31,13 +31,26 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { usePermissions } from '@/hooks/usePermissions';
 
 function KnowledgeBaseContent() {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const { can } = usePermissions();
   const searchParams = useSearchParams();
   const router = useRouter();
 
   // Get active tab from URL or default to 'documents'
-  const activeTab = searchParams.get('tab') || 'documents';
+  // CRITICAL: Initialize directly from URL param to prevent flash on refresh
+  const urlTab = searchParams.get('tab');
+  const validTabs = ['documents', 'faqs', 'urls'];
+  const initialTab = validTabs.includes(urlTab) ? urlTab : 'documents';
+  const [activeTab, setActiveTab] = useState(initialTab);
+
+  // Sync activeTab with URL when URL changes (e.g., browser back/forward)
+  useEffect(() => {
+    const currentUrlTab = searchParams.get('tab');
+    if (currentUrlTab && validTabs.includes(currentUrlTab) && currentUrlTab !== activeTab) {
+      setActiveTab(currentUrlTab);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const [documents, setDocuments] = useState([]);
   const [faqs, setFaqs] = useState([]);
@@ -54,7 +67,7 @@ function KnowledgeBaseContent() {
   const [docName, setDocName] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
   const [faqForm, setFaqForm] = useState({ question: '', answer: '', category: '' });
-  const [urlForm, setUrlForm] = useState({ url: '', crawlDepth: 1 });
+  const [urlForm, setUrlForm] = useState({ url: '', crawlDepth: 1, autoScan: true, scanInterval: 24 });
 
   // Content viewer modal states
   const [showContentModal, setShowContentModal] = useState(false);
@@ -230,6 +243,46 @@ function KnowledgeBaseContent() {
     }
   };
 
+  // Rescan URL - yeniden tara
+  const handleRescanUrl = async (id) => {
+    try {
+      const rescanToast = toast.loading(locale === 'tr' ? 'URL yeniden taranıyor...' : 'Rescanning URL...');
+
+      // Update local state to show processing
+      setUrls(urls.map(url => url.id === id ? { ...url, status: 'PROCESSING' } : url));
+
+      await apiClient.post(`/api/knowledge/urls/${id}/rescan`);
+      toast.success(locale === 'tr' ? 'Yeniden tarama başlatıldı' : 'Rescan started', { id: rescanToast });
+
+      // Reload URLs after a delay to get updated content
+      setTimeout(() => loadData(), 5000);
+    } catch (error) {
+      toast.error(locale === 'tr' ? 'Yeniden tarama başarısız' : 'Failed to rescan URL');
+      // Reload to get correct status
+      loadData();
+    }
+  };
+
+  // Toggle autoScan for URL
+  const handleToggleAutoScan = async (id, currentValue) => {
+    try {
+      const newValue = !currentValue;
+      // Update local state optimistically
+      setUrls(urls.map(url => url.id === id ? { ...url, autoScan: newValue } : url));
+
+      await apiClient.put(`/api/knowledge/urls/${id}`, { autoScan: newValue });
+      toast.success(
+        newValue
+          ? (locale === 'tr' ? 'Otomatik tarama aktif' : 'Auto-scan enabled')
+          : (locale === 'tr' ? 'Otomatik tarama kapalı' : 'Auto-scan disabled')
+      );
+    } catch (error) {
+      // Revert on error
+      setUrls(urls.map(url => url.id === id ? { ...url, autoScan: currentValue } : url));
+      toast.error(locale === 'tr' ? 'Güncelleme başarısız' : 'Failed to update');
+    }
+  };
+
   // View document content
   const handleViewDocument = async (doc) => {
     setLoadingContent(true);
@@ -278,6 +331,47 @@ function KnowledgeBaseContent() {
     }
   };
 
+  // Skeleton loader for initial loading state
+  const KnowledgeBaseSkeleton = () => (
+    <div className="space-y-6">
+      {/* Header skeleton */}
+      <div>
+        <div className="h-9 w-48 bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse" />
+        <div className="h-5 w-96 bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse mt-2" />
+      </div>
+
+      {/* Tabs skeleton */}
+      <div className="border-b border-neutral-200 dark:border-neutral-700">
+        <div className="flex gap-4 pb-2">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-9 w-24 bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse" />
+          ))}
+        </div>
+      </div>
+
+      {/* Content skeleton */}
+      <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700">
+        <div className="p-4 space-y-3">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="flex items-center gap-4 p-4 border-b border-neutral-100 dark:border-neutral-800 last:border-0">
+              <div className="h-10 w-10 bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse" />
+              <div className="flex-1 space-y-2">
+                <div className="h-4 w-48 bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse" />
+                <div className="h-3 w-24 bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse" />
+              </div>
+              <div className="h-6 w-16 bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  // Show skeleton while loading initial data
+  if (loading) {
+    return <KnowledgeBaseSkeleton />;
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -290,7 +384,8 @@ function KnowledgeBaseContent() {
       <Tabs
         value={activeTab}
         onValueChange={(value) => {
-          router.push(`/dashboard/knowledge?tab=${value}`, { scroll: false });
+          setActiveTab(value);
+          router.replace(`/dashboard/knowledge?tab=${value}`, { scroll: false });
         }}
         className="space-y-6"
       >
@@ -454,6 +549,7 @@ function KnowledgeBaseContent() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">{t('dashboard.knowledgeBasePage.errorReasonHeader') || 'Hata Nedeni'}</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">{t('dashboard.knowledgeBasePage.pagesTableHeader')}</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">{t('dashboard.knowledgeBasePage.lastCrawledHeader')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">{locale === 'tr' ? 'Otomatik Tarama' : 'Auto Scan'}</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">{t('dashboard.knowledgeBasePage.actionsTableHeader')}</th>
                   </tr>
                 </thead>
@@ -494,15 +590,46 @@ function KnowledgeBaseContent() {
                         {url.lastCrawled ? formatDate(url.lastCrawled, 'short') : 'N/A'}
                       </td>
                       <td className="px-6 py-4">
-                        {can('knowledge:delete') && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteUrl(url.id)}
+                        <button
+                          onClick={() => handleToggleAutoScan(url.id, url.autoScan)}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                            url.autoScan
+                              ? 'bg-green-500'
+                              : 'bg-neutral-300 dark:bg-neutral-600'
+                          }`}
+                          title={url.autoScan
+                            ? (locale === 'tr' ? `Her ${url.scanInterval || 24} saatte bir taranır` : `Scans every ${url.scanInterval || 24} hours`)
+                            : (locale === 'tr' ? 'Otomatik tarama kapalı' : 'Auto-scan disabled')
+                          }
                         >
-                          <Trash2 className="h-4 w-4 text-red-600" />
-                        </Button>
-                        )}
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                              url.autoScan ? 'translate-x-6' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRescanUrl(url.id)}
+                            disabled={url.status === 'PROCESSING'}
+                            title={locale === 'tr' ? 'Yeniden tara' : 'Rescan'}
+                          >
+                            <RefreshCw className={`h-4 w-4 text-blue-600 ${url.status === 'PROCESSING' ? 'animate-spin' : ''}`} />
+                          </Button>
+                          {can('knowledge:delete') && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteUrl(url.id)}
+                          >
+                            <Trash2 className="h-4 w-4 text-red-600" />
+                          </Button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -673,6 +800,50 @@ function KnowledgeBaseContent() {
                 {t('dashboard.knowledgeBasePage.crawlDepthDesc')}
               </p>
             </div>
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setUrlForm({ ...urlForm, autoScan: !urlForm.autoScan })}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  urlForm.autoScan
+                    ? 'bg-green-500'
+                    : 'bg-neutral-300 dark:bg-neutral-600'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    urlForm.autoScan ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+              <Label className="cursor-pointer" onClick={() => setUrlForm({ ...urlForm, autoScan: !urlForm.autoScan })}>
+                {locale === 'tr' ? 'Otomatik Tarama' : 'Auto Scan'}
+              </Label>
+              {urlForm.autoScan && (
+                <div className="flex items-center gap-2 ml-4">
+                  <Label htmlFor="scanInterval" className="text-xs whitespace-nowrap">
+                    {locale === 'tr' ? 'Her' : 'Every'}
+                  </Label>
+                  <Input
+                    id="scanInterval"
+                    type="number"
+                    min="1"
+                    max="168"
+                    className="w-16 h-8"
+                    value={urlForm.scanInterval}
+                    onChange={(e) => setUrlForm({ ...urlForm, scanInterval: parseInt(e.target.value) || 24 })}
+                  />
+                  <span className="text-xs text-neutral-500">
+                    {locale === 'tr' ? 'saatte bir' : 'hours'}
+                  </span>
+                </div>
+              )}
+            </div>
+            <p className="text-xs text-neutral-500">
+              {locale === 'tr'
+                ? 'Otomatik tarama açıkken, URL belirlenen aralıklarla otomatik olarak yeniden taranır ve içerik güncellenir.'
+                : 'When auto-scan is enabled, the URL will be automatically re-scanned at the specified interval.'}
+            </p>
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t">
             <Button variant="outline" onClick={() => setShowUrlModal(false)}>
@@ -709,7 +880,15 @@ function KnowledgeBaseContent() {
             ) : (
               <div className="bg-neutral-50 dark:bg-neutral-800 rounded-lg p-4">
                 <pre className="whitespace-pre-wrap text-sm text-neutral-700 dark:text-neutral-300 font-mono">
-                  {contentModalData?.content || t('dashboard.knowledgeBasePage.noContent')}
+                  {(() => {
+                    const content = contentModalData?.content || t('dashboard.knowledgeBasePage.noContent');
+                    const lines = content.split('\n');
+                    const MAX_LINES = 50;
+                    if (lines.length > MAX_LINES) {
+                      return lines.slice(0, MAX_LINES).join('\n') + '\n\n... ' + (lines.length - MAX_LINES) + ' satır daha (toplam ' + lines.length + ' satır)';
+                    }
+                    return content;
+                  })()}
                 </pre>
               </div>
             )}
