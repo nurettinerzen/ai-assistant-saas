@@ -529,35 +529,6 @@ export default function EmailDashboardPage() {
                         {message.bodyText?.substring(0, 500)}
                         {message.bodyText?.length > 500 && '...'}
                       </p>
-                      {message.attachments && message.attachments.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {message.attachments.map((att, idx) => (
-                            <button
-                              key={idx}
-                              onClick={() => {
-                                const token = localStorage.getItem('token');
-                                fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/email/attachments/${message.messageId}/${att.attachmentId}`, {
-                                  headers: { Authorization: `Bearer ${token}` }
-                                })
-                                .then(res => res.blob())
-                                .then(blob => {
-                                  const url = window.URL.createObjectURL(blob);
-                                  const a = document.createElement('a');
-                                  a.href = url;
-                                  a.download = att.name;
-                                  document.body.appendChild(a);
-                                  a.click();
-                                  document.body.removeChild(a);
-                                  window.URL.revokeObjectURL(url);
-                                });
-                              }}
-                              className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors cursor-pointer"
-                            >
-                              📎 {att.name}
-                            </button>
-                          ))}
-                        </div>
-                      )}
                     </div>
                   ))}
                 </div>

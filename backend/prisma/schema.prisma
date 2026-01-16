@@ -854,6 +854,7 @@ enum EmailDraftStatus {
   APPROVED
   SENT
   REJECTED
+  CANCELLED // Draft cancelled because a new inbound message arrived
 }
 
 model EmailIntegration {

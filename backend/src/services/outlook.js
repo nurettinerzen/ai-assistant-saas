@@ -9,6 +9,44 @@ import { convert } from 'html-to-text';
 
 const prisma = new PrismaClient();
 
+/**
+ * Strip quoted reply content from email body
+ * Removes the "On ... wrote:" pattern and everything after it
+ */
+function stripQuotedContent(text) {
+  if (!text) return '';
+
+  // Common patterns for quoted replies in different languages
+  const patterns = [
+    // English: "On Mon, Jan 15, 2024 at 10:30 AM John Doe <john@example.com> wrote:"
+    /\n\s*On\s+.*\s+wrote:\s*\n[\s\S]*/i,
+    // Turkish: "15 Oca 2024 Pzt, 10:30 tarihinde John Doe <john@example.com> şunu yazdı:"
+    /\n\s*\d+\s+\w+\s+\d+.*şunu yazdı:\s*\n[\s\S]*/i,
+    // Gmail style separator
+    /\n\s*---------- Forwarded message ---------[\s\S]*/i,
+    // Common reply markers
+    /\n\s*-{3,}\s*Original Message\s*-{3,}[\s\S]*/i,
+    /\n\s*_{3,}\s*[\s\S]*/,
+    // Quote markers (lines starting with >)
+    /(\n\s*>.*)+$/,
+    // "From:" header pattern (Outlook style)
+    /\n\s*From:.*\n\s*Sent:.*\n\s*To:.*\n\s*Subject:[\s\S]*/i,
+    // "Kimden:" Turkish Outlook pattern
+    /\n\s*Kimden:.*\n\s*Gönderildi:.*\n\s*Kime:.*\n\s*Konu:[\s\S]*/i
+  ];
+
+  let cleanedText = text;
+
+  for (const pattern of patterns) {
+    cleanedText = cleanedText.replace(pattern, '');
+  }
+
+  // Also strip signature blocks
+  cleanedText = cleanedText.replace(/\n\s*--\s*\n[\s\S]*$/, '');
+
+  return cleanedText.trim();
+}
+
 // Microsoft Graph API endpoints
 const MICROSOFT_AUTH_URL = 'https://login.microsoftonline.com/common/oauth2/v2.0';
 const GRAPH_API_URL = 'https://graph.microsoft.com/v1.0';
@@ -443,6 +481,7 @@ async syncNewMessages(businessId) {
 
   /**
    * Parse Outlook message to standard format
+   * Note: Attachments are intentionally not processed for security reasons
    */
   parseMessage(message) {
     const bodyHtml = message.body?.contentType === 'html' ? message.body.content : '';
@@ -456,12 +495,8 @@ async syncNewMessages(businessId) {
           ]
         });
 
-    const attachments = (message.attachments || []).map(att => ({
-      name: att.name,
-      mimeType: att.contentType,
-      size: att.size,
-      attachmentId: att.id
-    }));
+    // Strip quoted content from replies to show only the new message
+    const cleanBodyText = stripQuotedContent(bodyText);
 
     return {
       messageId: message.id,
@@ -475,9 +510,9 @@ async syncNewMessages(businessId) {
       date: message.receivedDateTime || '',
       inReplyTo: null,
       references: null,
-      bodyText,
+      bodyText: cleanBodyText,
       bodyHtml,
-      attachments,
+      attachments: [], // Attachments disabled for security
       snippet: message.bodyPreview || '',
       isUnread: !message.isRead
     };

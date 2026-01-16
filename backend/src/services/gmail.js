@@ -9,6 +9,44 @@ import { convert } from 'html-to-text';
 
 const prisma = new PrismaClient();
 
+/**
+ * Strip quoted reply content from email body
+ * Removes the "On ... wrote:" pattern and everything after it
+ */
+function stripQuotedContent(text) {
+  if (!text) return '';
+
+  // Common patterns for quoted replies in different languages
+  const patterns = [
+    // English: "On Mon, Jan 15, 2024 at 10:30 AM John Doe <john@example.com> wrote:"
+    /\n\s*On\s+.*\s+wrote:\s*\n[\s\S]*/i,
+    // Turkish: "15 Oca 2024 Pzt, 10:30 tarihinde John Doe <john@example.com> şunu yazdı:"
+    /\n\s*\d+\s+\w+\s+\d+.*şunu yazdı:\s*\n[\s\S]*/i,
+    // Gmail style separator
+    /\n\s*---------- Forwarded message ---------[\s\S]*/i,
+    // Common reply markers
+    /\n\s*-{3,}\s*Original Message\s*-{3,}[\s\S]*/i,
+    /\n\s*_{3,}\s*[\s\S]*/,
+    // Quote markers (lines starting with >)
+    /(\n\s*>.*)+$/,
+    // "From:" header pattern (Outlook style)
+    /\n\s*From:.*\n\s*Sent:.*\n\s*To:.*\n\s*Subject:[\s\S]*/i,
+    // "Kimden:" Turkish Outlook pattern
+    /\n\s*Kimden:.*\n\s*Gönderildi:.*\n\s*Kime:.*\n\s*Konu:[\s\S]*/i
+  ];
+
+  let cleanedText = text;
+
+  for (const pattern of patterns) {
+    cleanedText = cleanedText.replace(pattern, '');
+  }
+
+  // Also strip signature blocks
+  cleanedText = cleanedText.replace(/\n\s*--\s*\n[\s\S]*$/, '');
+
+  return cleanedText.trim();
+}
+
 // Gmail API Scopes
 const GMAIL_SCOPES = [
   'https://www.googleapis.com/auth/gmail.readonly',
@@ -393,10 +431,9 @@ async disconnect(businessId) {
       return header ? header.value : null;
     };
 
-    // Get body content
+    // Get body content (attachments are intentionally not processed - security measure)
     let bodyHtml = '';
     let bodyText = '';
-    const attachments = [];
 
     const processPayload = (payload) => {
       if (payload.mimeType === 'text/html') {
@@ -407,14 +444,8 @@ async disconnect(businessId) {
 
       if (payload.parts) {
         for (const part of payload.parts) {
-          if (part.filename && part.body.attachmentId) {
-            attachments.push({
-              name: part.filename,
-              mimeType: part.mimeType,
-              size: part.body.size,
-              attachmentId: part.body.attachmentId
-            });
-          } else {
+          // Skip attachments - only process text content (security measure)
+          if (!part.filename && !part.body?.attachmentId) {
             processPayload(part);
           }
         }
@@ -436,6 +467,9 @@ async disconnect(businessId) {
       });
     }
 
+    // Strip quoted content from replies to show only the new message
+    const cleanBodyText = stripQuotedContent(bodyText);
+
     // Parse from address
     const fromRaw = getHeader('From') || '';
     const fromMatch = fromRaw.match(/^(?:(.+?)\s*)?<?([^\s<>]+@[^\s<>]+)>?$/);
@@ -454,69 +488,13 @@ async disconnect(businessId) {
       date: getHeader('Date') || '',
       inReplyTo: getHeader('In-Reply-To'),
       references: getHeader('References'),
-      bodyText,
+      bodyText: cleanBodyText,
       bodyHtml,
-      attachments,
+      attachments: [], // Attachments disabled for security
       snippet: message.snippet,
       labelIds: message.labelIds || [],
       isUnread: (message.labelIds || []).includes('UNREAD')
     };
-  }
-
-  /**
-   * Get attachment data from Gmail
-   */
-  async getAttachment(businessId, messageId, attachmentId) {
-    const gmail = await this.getClient(businessId);
-
-    try {
-      const response = await gmail.users.messages.attachments.get({
-        userId: 'me',
-        messageId,
-        id: attachmentId
-      });
-
-      // Get the message to find filename
-      const message = await gmail.users.messages.get({
-        userId: 'me',
-        id: messageId
-      });
-
-      let filename = 'attachment';
-      let mimeType = 'application/octet-stream';
-
-      // Find attachment details from message parts
-      const findAttachment = (parts) => {
-        for (const part of parts || []) {
-          if (part.body?.attachmentId === attachmentId) {
-            filename = part.filename || 'attachment';
-            mimeType = part.mimeType || 'application/octet-stream';
-            return true;
-          }
-          if (part.parts && findAttachment(part.parts)) {
-            return true;
-          }
-        }
-        return false;
-      };
-
-      if (message.data.payload) {
-        findAttachment([message.data.payload]);
-        if (message.data.payload.parts) {
-          findAttachment(message.data.payload.parts);
-        }
-      }
-
-      return {
-        data: response.data.data, // Base64 encoded
-        filename,
-        mimeType,
-        size: response.data.size
-      };
-    } catch (error) {
-      console.error('Gmail getAttachment error:', error);
-      return null;
-    }
   }
 }
 

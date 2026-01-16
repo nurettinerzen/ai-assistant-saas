@@ -355,19 +355,6 @@ async disconnect(businessId) {
       data: { status }
     });
   }
-
-  /**
-   * Get attachment data
-   */
-  async getAttachment(businessId, messageId, attachmentId) {
-    const provider = await this.getProvider(businessId);
-    if (!provider) {
-      throw new Error('No email provider connected');
-    }
-
-    const service = this.getService(provider);
-    return await service.getAttachment(businessId, messageId, attachmentId);
-  }
 }
 
 export default new EmailAggregatorService();

@@ -57,8 +57,25 @@ async function syncBusinessEmails(integration) {
           });
           console.log(`[Email Sync] Thread ${thread.id} marked as REPLIED (outbound message detected)`);
         }
-        // For INBOUND messages, keep status as PENDING_REPLY (default)
-        // User will manually generate drafts or mark as no-reply-needed
+
+        // For INBOUND messages: If thread was REPLIED or CLOSED, reopen it as PENDING_REPLY
+        // This handles the case where a customer sends a follow-up email after we replied
+        if (direction === 'INBOUND' && (thread.status === 'REPLIED' || thread.status === 'CLOSED' || thread.status === 'NO_REPLY_NEEDED')) {
+          // Cancel any pending drafts for this thread (they're for old messages)
+          await prisma.emailDraft.updateMany({
+            where: {
+              threadId: thread.id,
+              status: 'PENDING_REVIEW'
+            },
+            data: { status: 'CANCELLED' }
+          });
+
+          await prisma.emailThread.update({
+            where: { id: thread.id },
+            data: { status: 'PENDING_REPLY' }
+          });
+          console.log(`[Email Sync] Thread ${thread.id} reopened as PENDING_REPLY (new inbound message)`);
+        }
       }
     }
 

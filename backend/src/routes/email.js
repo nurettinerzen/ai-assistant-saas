@@ -283,50 +283,6 @@ router.patch('/threads/:threadId', authenticateToken, async (req, res) => {
   }
 });
 
-// ==================== ATTACHMENT ROUTES ====================
-
-/**
- * Download Attachment
- * GET /api/email/attachments/:messageId/:attachmentId
- */
-router.get('/attachments/:messageId/:attachmentId', authenticateToken, async (req, res) => {
-  try {
-    const { messageId, attachmentId } = req.params;
-
-    // Get the message to verify ownership
-    const message = await prisma.emailMessage.findFirst({
-      where: { messageId },
-      include: {
-        thread: {
-          select: { businessId: true }
-        }
-      }
-    });
-
-    if (!message || message.thread?.businessId !== req.businessId) {
-      return res.status(404).json({ error: 'Message not found' });
-    }
-
-    // Get attachment data from provider
-    const attachmentData = await emailAggregator.getAttachment(req.businessId, messageId, attachmentId);
-
-    if (!attachmentData) {
-      return res.status(404).json({ error: 'Attachment not found' });
-    }
-
-    // Set headers for download
-    res.setHeader('Content-Type', attachmentData.mimeType || 'application/octet-stream');
-    res.setHeader('Content-Disposition', `attachment; filename="${attachmentData.filename || 'attachment'}"`);
-
-    // Send the data
-    const buffer = Buffer.from(attachmentData.data, 'base64');
-    res.send(buffer);
-  } catch (error) {
-    console.error('Download attachment error:', error);
-    res.status(500).json({ error: 'Failed to download attachment' });
-  }
-});
-
 // ==================== DRAFT ROUTES ====================
 
 /**
@@ -725,7 +681,16 @@ router.post('/sync', authenticateToken, async (req, res) => {
 
         // For INBOUND messages: If thread was REPLIED or CLOSED, reopen it as PENDING_REPLY
         // This handles the case where a customer sends a follow-up email after we replied
-        if (direction === 'INBOUND' && (thread.status === 'REPLIED' || thread.status === 'CLOSED')) {
+        if (direction === 'INBOUND' && (thread.status === 'REPLIED' || thread.status === 'CLOSED' || thread.status === 'NO_REPLY_NEEDED')) {
+          // Cancel any pending drafts for this thread (they're for old messages)
+          await prisma.emailDraft.updateMany({
+            where: {
+              threadId: thread.id,
+              status: 'PENDING_REVIEW'
+            },
+            data: { status: 'CANCELLED' }
+          });
+
           await prisma.emailThread.update({
             where: { id: thread.id },
             data: { status: 'PENDING_REPLY' }
