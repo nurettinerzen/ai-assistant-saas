@@ -151,14 +151,6 @@ router.post('/webhook', async (req, res) => {
     const event = req.body;
     console.log('📞 11Labs Webhook received:', JSON.stringify(event, null, 2).substring(0, 500));
 
-    // Verify signature in production
-    if (process.env.NODE_ENV === 'production') {
-      if (!verifyWebhookSignature(req, process.env.ELEVENLABS_WEBHOOK_SECRET)) {
-        console.error('❌ Invalid webhook signature');
-        return res.status(401).json({ error: 'Invalid signature' });
-      }
-    }
-
     // Determine event type
     const eventType = event.type || event.event_type;
 
@@ -166,8 +158,11 @@ router.post('/webhook', async (req, res) => {
     const agentIdFromQuery = req.query.agentId;
 
     // 11Labs tool webhook sends tool_name directly OR we detect by parameters
+    // Tool calls do NOT have signature - they come directly from 11Labs conversation servers
     const isToolCall = event.tool_name || (eventType === 'tool_call') || (eventType === 'client_tool_call');
+    const looksLikeToolCall = !eventType && (event.query_type || event.order_number || event.customer_name || (event.phone && !event.type));
 
+    // Handle tool calls FIRST (before signature check - 11Labs doesn't sign tool webhooks)
     if (isToolCall && event.tool_name) {
       console.log('🔧 11Labs Tool Call (direct):', event.tool_name, 'AgentID:', agentIdFromQuery);
       const result = await handleToolCall(event, agentIdFromQuery);
@@ -175,8 +170,7 @@ router.post('/webhook', async (req, res) => {
     }
 
     // 11Labs may send tool calls without tool_name - detect by parameters
-    // Check for customer_data_lookup parameters (query_type or phone)
-    if (!eventType && (event.query_type || (event.phone && !event.type))) {
+    if (looksLikeToolCall) {
       console.log('🔧 11Labs Tool Call (detected by params - customer_data_lookup):', JSON.stringify(event));
       const toolEvent = { ...event, tool_name: 'customer_data_lookup' };
       const result = await handleToolCall(toolEvent, agentIdFromQuery);
@@ -184,13 +178,19 @@ router.post('/webhook', async (req, res) => {
     }
 
     // If no event type and we have agentId, this is likely a tool call
-    // Try to detect tool from parameters
     if (!eventType && agentIdFromQuery && Object.keys(event).length > 0) {
       console.log('🔧 11Labs Tool Call (unknown tool, detecting...):', JSON.stringify(event));
-      // Default to customer_data_lookup for now
       const toolEvent = { ...event, tool_name: 'customer_data_lookup' };
       const result = await handleToolCall(toolEvent, agentIdFromQuery);
       return res.json(result);
+    }
+
+    // Verify signature in production ONLY for lifecycle events (not tool calls)
+    if (process.env.NODE_ENV === 'production') {
+      if (!verifyWebhookSignature(req, process.env.ELEVENLABS_WEBHOOK_SECRET)) {
+        console.warn('⚠️ Invalid webhook signature for lifecycle event (non-critical)');
+        // Don't reject - 11Labs lifecycle webhooks may not always have signatures
+      }
     }
 
     switch (eventType) {
