@@ -58,9 +58,9 @@ export async function execute(args, business, context = {}) {
       // If user provided customer_name for verification
       else if (customer_name && pendingVerification.pendingOrderNumber) {
         console.log('🔐 Verifying by customer name:', customer_name);
-        // Check if name matches
-        const pendingCustomerName = pendingVerification.foundCustomerName?.toLowerCase().trim();
-        const providedName = customer_name.toLowerCase().trim();
+        // Check if name matches - normalize Turkish characters for comparison
+        const pendingCustomerName = normalizeTurkish(pendingVerification.foundCustomerName?.toLowerCase().trim());
+        const providedName = normalizeTurkish(customer_name.toLowerCase().trim());
 
         // Fuzzy match: check if provided name contains or is contained in customer name
         const nameMatches = pendingCustomerName?.includes(providedName) ||
@@ -366,8 +366,9 @@ export async function execute(args, business, context = {}) {
     // This handles the case when user corrects their name after a failed verification
     if (order_number && customer_name && !lookupPhone) {
       // Verify customer name matches
-      const storedCustomerName = customer.companyName?.toLowerCase().trim();
-      const providedName = customer_name.toLowerCase().trim();
+      // Normalize Turkish characters for comparison (ı→i, ş→s, ğ→g, ü→u, ö→o, ç→c)
+      const storedCustomerName = normalizeTurkish(customer.companyName?.toLowerCase().trim());
+      const providedName = normalizeTurkish(customer_name.toLowerCase().trim());
 
       // Fuzzy match: check if provided name contains or is contained in customer name
       const nameMatches = storedCustomerName?.includes(providedName) ||
@@ -420,6 +421,27 @@ export async function execute(args, business, context = {}) {
         : 'An error occurred while looking up data.'
     };
   }
+}
+
+/**
+ * Normalize Turkish characters for comparison
+ * Converts: ı→i, İ→i, ş→s, Ş→s, ğ→g, Ğ→g, ü→u, Ü→u, ö→o, Ö→o, ç→c, Ç→c
+ */
+function normalizeTurkish(str) {
+  if (!str) return str;
+  return str
+    .replace(/ı/g, 'i')
+    .replace(/İ/g, 'i')
+    .replace(/ş/g, 's')
+    .replace(/Ş/g, 's')
+    .replace(/ğ/g, 'g')
+    .replace(/Ğ/g, 'g')
+    .replace(/ü/g, 'u')
+    .replace(/Ü/g, 'u')
+    .replace(/ö/g, 'o')
+    .replace(/Ö/g, 'o')
+    .replace(/ç/g, 'c')
+    .replace(/Ç/g, 'c');
 }
 
 /**
