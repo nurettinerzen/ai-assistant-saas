@@ -333,8 +333,8 @@ async function generateAIResponse(business, phoneNumber, userMessage, context = 
       const lastActivity = new Date(existingLog.updatedAt);
       const timeSinceActivity = Date.now() - lastActivity.getTime();
 
-      if (timeSinceActivity > SESSION_TIMEOUT_MS || existingLog.status === 'ended') {
-        // Session timed out - mark as ended and start fresh
+      if (timeSinceActivity > SESSION_TIMEOUT_MS) {
+        // Session timed out (30 min inactivity) - archive old session and start fresh
         console.log(`⏰ [WhatsApp] Session for ${phoneNumber} timed out (${Math.round(timeSinceActivity / 60000)} min) - starting new session`);
 
         // Determine normalized topic for timed out session
@@ -354,18 +354,21 @@ async function generateAIResponse(business, phoneNumber, userMessage, context = 
           }
         }
 
+        // Archive old session with timestamp suffix
+        const archivedSessionId = `${sessionId}-${existingLog.updatedAt.getTime()}`;
         await prisma.chatLog.update({
           where: { sessionId },
           data: {
+            sessionId: archivedSessionId,
             status: 'ended',
             normalizedCategory: normalizedCategory,
             normalizedTopic: normalizedTopic,
             updatedAt: new Date()
           }
         });
+        console.log(`📦 [WhatsApp] Archived old session as: ${archivedSessionId}`);
 
-        // Generate new session ID with timestamp
-        sessionId = `whatsapp-${business.id}-${phoneNumber}-${Date.now()}`;
+        // Start fresh with same base session ID (will be created on save)
         history = [];
         existingLog = null;
         conversations.delete(conversationKey);
