@@ -122,16 +122,21 @@ async function processWithGemini(systemPrompt, conversationHistory, userMessage,
   // PRE-EMPTIVE TOOL CALL: If user message contains order number or phone number,
   // call the tool BEFORE sending to Gemini to prevent hallucination
   let preemptiveToolResult = null;
-  const orderNumberRegex = /\b(SIP|ORD|ORDER|SIPARIS|SPR)[-_]?\d+\b/gi;
+  // Order number regex - no trailing \b to allow Turkish suffixes like 'ü, 'yi, 'nu etc.
+  // Examples matched: SIP-001, sip001, SIP_002, sip-003'ü, sip003u, SIPARIS-004
+  const orderNumberRegex = /\b(SIP|ORD|ORDER|SIPARIS|SPR)[-_]?(\d+)/gi;
   const phoneRegex = /(?:\+?90|0)?[5][0-9]{9}|[5][0-9]{9}/g;
 
-  const orderMatch = userMessage.match(orderNumberRegex);
+  const orderMatch = orderNumberRegex.exec(userMessage);
   const phoneMatch = userMessage.match(phoneRegex);
 
   if (orderMatch) {
-    console.log('🔧 PRE-EMPTIVE: Order number detected, calling tool before Gemini:', orderMatch[0]);
+    // orderMatch[1] = prefix (SIP, ORD, etc), orderMatch[2] = number
+    // Normalize to SIP-XXX format for database lookup
+    const normalizedOrderNumber = `SIP-${orderMatch[2].padStart(3, '0')}`;
+    console.log('🔧 PRE-EMPTIVE: Order number detected:', orderMatch[0], '-> normalized:', normalizedOrderNumber);
     preemptiveToolResult = await executeTool('customer_data_lookup', {
-      order_number: orderMatch[0],
+      order_number: normalizedOrderNumber,
       query_type: 'siparis'
     }, business, { channel: 'CHAT', sessionId: sessionId, conversationId: sessionId });
     console.log('🔧 Pre-emptive result:', preemptiveToolResult.success ? 'SUCCESS' : 'NOT FOUND');
