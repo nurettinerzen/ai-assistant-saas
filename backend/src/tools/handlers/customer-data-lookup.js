@@ -361,6 +361,36 @@ export async function execute(args, business, context = {}) {
       console.log('✅ Both identifiers provided and match - verification passed');
     }
 
+    // CASE 5: User provided order_number AND customer_name together (no pending verification needed)
+    // This handles the case when user corrects their name after a failed verification
+    if (order_number && customer_name && !lookupPhone) {
+      // Verify customer name matches
+      const storedCustomerName = customer.companyName?.toLowerCase().trim();
+      const providedName = customer_name.toLowerCase().trim();
+
+      // Fuzzy match: check if provided name contains or is contained in customer name
+      const nameMatches = storedCustomerName?.includes(providedName) ||
+                          providedName.includes(storedCustomerName) ||
+                          storedCustomerName === providedName;
+
+      if (nameMatches) {
+        console.log('✅ DIRECT VERIFICATION SUCCESS: Name matches with order');
+        verificationCache.delete(sessionId); // Clear any old state
+        // Fall through to return data
+      } else {
+        console.log('❌ DIRECT VERIFICATION FAILED: Name does not match order record');
+        const failMessage = business.language === 'TR'
+          ? 'Verdiğiniz isim bu siparişle eşleşmiyor. Güvenlik nedeniyle bilgileri paylaşamıyorum. Lütfen siparişe kayıtlı telefon numaranızı söyleyin.'
+          : 'The name you provided does not match this order. For security reasons, I cannot share the details. Please provide your registered phone number.';
+
+        return {
+          success: false,
+          error: failMessage,
+          verificationFailed: true
+        };
+      }
+    }
+
     // ============================================================================
     // END VERIFICATION LOGIC - Proceed to return data
     // ============================================================================
