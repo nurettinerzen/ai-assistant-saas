@@ -14,8 +14,33 @@ import { getDateTimeContext } from '../utils/dateTime.js';
 import { buildAssistantPrompt, getActiveTools as getPromptBuilderTools } from '../services/promptBuilder.js';
 import { isFreePlanExpired } from '../middleware/checkPlanExpiry.js';
 import { calculateTokenCost, hasFreeChat } from '../config/plans.js';
-import { executeTool } from '../tools/index.js';
+import { getActiveTools, executeTool } from '../tools/index.js';
 import callAnalysis from '../services/callAnalysis.js';
+
+/**
+ * Convert tool definitions to Gemini function declarations format
+ * Same as chat.js - ensures consistent function calling across channels
+ */
+function convertToolsToGeminiFunctions(tools) {
+  return tools.map(tool => ({
+    name: tool.function.name,
+    description: tool.function.description,
+    parameters: {
+      type: 'OBJECT',
+      properties: Object.fromEntries(
+        Object.entries(tool.function.parameters.properties || {}).map(([key, value]) => [
+          key,
+          {
+            type: value.type?.toUpperCase() || 'STRING',
+            description: value.description || '',
+            ...(value.enum ? { enum: value.enum } : {})
+          }
+        ])
+      ),
+      required: tool.function.parameters.required || []
+    }
+  }));
+}
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -276,8 +301,8 @@ async function processWhatsAppMessage(business, from, messageBody, messageId) {
 // ============================================================================
 
 /**
- * Generate AI response using Gemini
- * Tracks token usage and costs
+ * Generate AI response using Gemini with proper function calling
+ * Same architecture as chat.js - model calls tools when needed
  */
 async function generateAIResponse(business, phoneNumber, userMessage, context = {}) {
   try {
@@ -362,22 +387,59 @@ async function generateAIResponse(business, phoneNumber, userMessage, context = 
       conversations.set(conversationKey, history);
     }
 
-    // Add user message to history
-    history.push({
-      role: 'user',
-      content: userMessage
+    // Get available tools for this business
+    const tools = getActiveTools(business);
+    const geminiFunctions = convertToolsToGeminiFunctions(tools);
+
+    console.log('🔧 [WhatsApp] Tools available:', geminiFunctions.map(f => f.name));
+
+    // Configure model with function calling (same as chat.js)
+    // toolConfig with mode: 'AUTO' ensures Gemini uses tools when appropriate
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-2.0-flash',
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 1500,
+      },
+      tools: geminiFunctions.length > 0 ? [{
+        functionDeclarations: geminiFunctions
+      }] : undefined,
+      toolConfig: geminiFunctions.length > 0 ? {
+        functionCallingConfig: {
+          mode: 'AUTO' // Ensures Gemini will use tools when needed
+        }
+      } : undefined
     });
 
-    // Build conversation context as a single prompt
-    // Gemini works better with context in the message itself for long system prompts
-    let contextMessages = '';
-    const recentHistory = history.slice(-10, -1); // Exclude the current message we just added
+    // Build chat history for Gemini
+    const chatHistory = [];
 
-    if (recentHistory.length > 0) {
-      contextMessages = '\n\nÖNCEKİ KONUŞMA:\n' + recentHistory.map(msg =>
-        `${msg.role === 'user' ? 'Müşteri' : 'Asistan'}: ${msg.content}`
-      ).join('\n');
+    // Add system prompt as first user message (Gemini doesn't have system role in chat)
+    chatHistory.push({
+      role: 'user',
+      parts: [{ text: `SİSTEM TALİMATLARI (bunları kullanıcıya gösterme):\n${systemPrompt}` }]
+    });
+    chatHistory.push({
+      role: 'model',
+      parts: [{ text: 'Anladım, bu talimatlara göre davranacağım.' }]
+    });
+
+    // Add conversation history (last 10 messages, excluding the one we'll send)
+    const recentHistory = history.slice(-10);
+
+    for (const msg of recentHistory) {
+      chatHistory.push({
+        role: msg.role === 'user' ? 'user' : 'model',
+        parts: [{ text: msg.content }]
+      });
     }
+
+    // Start chat with history
+    const chat = model.startChat({ history: chatHistory });
+
+    // Token tracking
+    let totalInputTokens = 0;
+    let totalOutputTokens = 0;
 
     // PRE-EMPTIVE TOOL CALL: If user message contains order number or phone number,
     // call the tool BEFORE sending to Gemini to prevent hallucination
@@ -410,35 +472,142 @@ async function generateAIResponse(business, phoneNumber, userMessage, context = 
       const toolInfo = preemptiveToolResult.success
         ? preemptiveToolResult.message
         : (language === 'TR' ? 'Kayıt bulunamadı.' : 'Record not found.');
+
       messageToSend = `${userMessage}\n\n[SİSTEM: Veritabanı sorgusu yapıldı. Sonuç: ${toolInfo}]\n[TALİMAT: SADECE yukarıdaki sorgu sonucunu kullan. Başka veri UYDURMA!]`;
     }
 
-    // Combine system prompt + history + user message
-    const fullPrompt = `${systemPrompt}${contextMessages}
-
-Müşteri: ${messageToSend}
-
-Asistan:`;
-
-    // Create Gemini model
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash',
-      generationConfig: {
-        temperature: 0.9,
-        maxOutputTokens: 1500,
-      }
+    // Add user message to history (before sending to Gemini)
+    history.push({
+      role: 'user',
+      content: userMessage
     });
 
-    // Use generateContent for better handling of long prompts
-    const result = await model.generateContent(fullPrompt);
-    const response = result.response;
-    const text = response.text();
+    // Send user message
+    let result = await chat.sendMessage(messageToSend);
+    let response = result.response;
 
-    // Track tokens
-    const inputTokens = response.usageMetadata?.promptTokenCount || 0;
-    const outputTokens = response.usageMetadata?.candidatesTokenCount || 0;
+    // Track tokens from first response
+    if (response.usageMetadata) {
+      totalInputTokens += response.usageMetadata.promptTokenCount || 0;
+      totalOutputTokens += response.usageMetadata.candidatesTokenCount || 0;
+    }
 
-    console.log(`📊 [WhatsApp] Token usage - Input: ${inputTokens}, Output: ${outputTokens}`);
+    // Handle function calls (up to 3 iterations) - same as chat.js
+    let iterations = 0;
+    const maxIterations = 3;
+    let hadFunctionCall = false;
+
+    while (iterations < maxIterations) {
+      const functionCalls = response.functionCalls();
+
+      if (!functionCalls || functionCalls.length === 0) {
+        break; // No more function calls
+      }
+
+      hadFunctionCall = true;
+
+      console.log('🔧 [WhatsApp] Gemini function call:', functionCalls[0].name, functionCalls[0].args);
+
+      // Execute the function
+      const functionCall = functionCalls[0];
+      const toolResult = await executeTool(functionCall.name, functionCall.args, business, {
+        channel: 'WHATSAPP',
+        sessionId: sessionId,
+        conversationId: sessionId
+      });
+
+      console.log('🔧 [WhatsApp] Tool result:', toolResult.success ? 'SUCCESS' : 'FAILED', toolResult.message?.substring(0, 100));
+
+      // Send function response back to Gemini
+      result = await chat.sendMessage([
+        {
+          functionResponse: {
+            name: functionCall.name,
+            response: {
+              success: toolResult.success,
+              data: toolResult.data || null,
+              message: toolResult.message || toolResult.error || 'Tool executed'
+            }
+          }
+        }
+      ]);
+      response = result.response;
+
+      // Track tokens from function call response
+      if (response.usageMetadata) {
+        totalInputTokens += response.usageMetadata.promptTokenCount || 0;
+        totalOutputTokens += response.usageMetadata.candidatesTokenCount || 0;
+      }
+
+      iterations++;
+    }
+
+    let text = '';
+    try {
+      text = response.text() || '';
+    } catch (e) {
+      console.log('⚠️ [WhatsApp] Could not get text from response');
+    }
+
+    console.log('📝 [WhatsApp] Final response text:', text?.substring(0, 100));
+
+    // BUGFIX: If Gemini said something like "kontrol ediyorum" but didn't call a tool
+    const waitingPhrases = ['kontrol', 'bakıyorum', 'sorguluyorum', 'checking', 'looking', 'bir saniye', 'bir dakika', 'bekleyin', 'lütfen bekle'];
+    const isWaitingResponse = waitingPhrases.some(phrase => text.toLowerCase().includes(phrase));
+
+    if (isWaitingResponse && !hadFunctionCall) {
+      console.log('⚠️ [WhatsApp] BUGFIX: Gemini said waiting phrase but did NOT call a tool! Calling tool directly...');
+
+      // Extract phone from message or conversation
+      let extractedPhone = phoneMatch?.[0];
+      if (!extractedPhone && history.length > 0) {
+        for (const msg of history.slice().reverse()) {
+          const historyMatches = msg.content?.match(phoneRegexPattern);
+          if (historyMatches) {
+            extractedPhone = historyMatches[0];
+            break;
+          }
+        }
+      }
+
+      if (extractedPhone) {
+        console.log('🔧 [WhatsApp] DIRECT TOOL CALL with phone:', extractedPhone);
+
+        const toolResult = await executeTool('customer_data_lookup', {
+          phone: extractedPhone,
+          query_type: 'tum_bilgiler'
+        }, business, {
+          channel: 'WHATSAPP',
+          sessionId: sessionId,
+          conversationId: sessionId
+        });
+
+        console.log('🔧 [WhatsApp] Direct tool result:', toolResult.success ? 'SUCCESS' : 'FAILED');
+
+        // Send tool result to Gemini to format
+        const toolResultPrompt = language === 'TR'
+          ? `Müşteri veri sorgulama sonucu:\n${toolResult.message || toolResult.error}\n\nBu bilgiyi müşteriye doğal bir şekilde aktar. "Kontrol ediyorum" DEME.`
+          : `Customer data lookup result:\n${toolResult.message || toolResult.error}\n\nShare this information naturally with the customer. Do NOT say "checking".`;
+
+        try {
+          result = await chat.sendMessage(toolResultPrompt);
+          response = result.response;
+
+          if (response.usageMetadata) {
+            totalInputTokens += response.usageMetadata.promptTokenCount || 0;
+            totalOutputTokens += response.usageMetadata.candidatesTokenCount || 0;
+          }
+
+          text = response.text() || '';
+          console.log('📝 [WhatsApp] Fixed response:', text?.substring(0, 100));
+        } catch (formatError) {
+          console.error('⚠️ [WhatsApp] Format failed, using raw tool result:', formatError.message);
+          text = toolResult.message || toolResult.error || text;
+        }
+      }
+    }
+
+    console.log(`📊 [WhatsApp] Token usage - Input: ${totalInputTokens}, Output: ${totalOutputTokens}`);
 
     const finalResponse = text || (language === 'TR'
       ? 'Üzgünüm, bir yanıt oluşturamadım.'
@@ -462,14 +631,14 @@ Asistan:`;
 
     let tokenCost = { inputCost: 0, outputCost: 0, totalCost: 0 };
     if (!isFree) {
-      tokenCost = calculateTokenCost(inputTokens, outputTokens, planName, countryCode);
+      tokenCost = calculateTokenCost(totalInputTokens, totalOutputTokens, planName, countryCode);
     }
 
     console.log(`💰 [WhatsApp] Chat cost: ${tokenCost.totalCost.toFixed(6)} TL (Plan: ${planName}, Free: ${isFree})`);
 
     // Accumulate tokens
-    const accumulatedInputTokens = (existingLog?.inputTokens || 0) + inputTokens;
-    const accumulatedOutputTokens = (existingLog?.outputTokens || 0) + outputTokens;
+    const accumulatedInputTokens = (existingLog?.inputTokens || 0) + totalInputTokens;
+    const accumulatedOutputTokens = (existingLog?.outputTokens || 0) + totalOutputTokens;
     const accumulatedCost = (existingLog?.totalCost || 0) + tokenCost.totalCost;
 
     // Save/Update ChatLog for analytics with token info
@@ -492,8 +661,8 @@ Asistan:`;
           customerPhone: phoneNumber,
           messages: history,
           messageCount: history.length,
-          inputTokens: inputTokens,
-          outputTokens: outputTokens,
+          inputTokens: totalInputTokens,
+          outputTokens: totalOutputTokens,
           totalCost: tokenCost.totalCost,
           status: 'active'
         }
@@ -523,8 +692,8 @@ Asistan:`;
             totalCharge: tokenCost.totalCost,
             assistantId: assistant?.id || null,
             metadata: {
-              inputTokens,
-              outputTokens,
+              inputTokens: totalInputTokens,
+              outputTokens: totalOutputTokens,
               inputCost: tokenCost.inputCost,
               outputCost: tokenCost.outputCost
             }
