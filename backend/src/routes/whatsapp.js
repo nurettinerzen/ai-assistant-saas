@@ -403,6 +403,11 @@ async function generateAIResponse(business, phoneNumber, userMessage, context = 
       generationConfig: {
         temperature: 0.7,
         maxOutputTokens: 1500,
+        // Disable thinking mode to prevent empty responses
+        // Gemini 2.5 thinking feature can cause 0 output tokens
+        thinkingConfig: {
+          thinkingBudget: 0
+        }
       },
       tools: geminiFunctions.length > 0 ? [{
         functionDeclarations: geminiFunctions
