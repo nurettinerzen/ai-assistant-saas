@@ -153,8 +153,11 @@ export async function execute(args, business, context = {}) {
           ];
           for (const fieldName of orderFields) {
             if (fields[fieldName]) {
-              console.log(`🔎 Found field "${fieldName}" with value "${fields[fieldName]}" - comparing to "${order_number}"`);
-              if (String(fields[fieldName]).toUpperCase() === order_number.toUpperCase()) {
+              // Normalize order numbers: remove dashes, spaces, and compare case-insensitively
+              const storedOrder = String(fields[fieldName]).toUpperCase().replace(/[-\s]/g, '');
+              const providedOrder = order_number.toUpperCase().replace(/[-\s]/g, '');
+              console.log(`🔎 Found field "${fieldName}" with value "${fields[fieldName]}" (normalized: ${storedOrder}) - comparing to "${order_number}" (normalized: ${providedOrder})`);
+              if (storedOrder === providedOrder) {
                 customer = c;
                 console.log('✅ Found by order number:', order_number);
                 break;
@@ -397,19 +400,24 @@ export async function execute(args, business, context = {}) {
     // END VERIFICATION LOGIC - Proceed to return data
     // ============================================================================
 
-    // Format response based on data type
+    // Return ALL data - let Gemini format it naturally
     const responseData = formatAllData(customer, customFields);
-    const responseMessage = formatResponseMessage(customer, customFields, query_type, business.language);
 
-    // Add instruction for AI to speak the result (fixes "kontrol ediyorum" without follow-up issue)
+    // Add instruction for AI
     const instruction = business.language === 'TR'
-      ? '\n\n[TALİMAT: Bu bilgiyi müşteriye HEMEN sesli olarak aktar. "Kontrol ediyorum" gibi şeyler SÖYLEME - direkt bilgiyi paylaş.]'
-      : '\n\n[INSTRUCTION: Speak this information to the customer NOW. Do NOT say "checking" - share the info directly.]';
+      ? '[TALİMAT: Aşağıdaki müşteri verisini oku ve müşteriye SADECE ilgili bilgileri doğal bir şekilde aktar. Olmayan bilgileri UYDURMА.]'
+      : '[INSTRUCTION: Read the customer data below and share ONLY relevant information naturally. Do NOT make up information that is not present.]';
+
+    // Convert data to readable format for Gemini
+    const dataString = Object.entries(responseData)
+      .filter(([key, value]) => value && value !== '-' && value !== '')
+      .map(([key, value]) => `${key}: ${value}`)
+      .join('\n');
 
     return {
       success: true,
       data: responseData,
-      message: responseMessage + instruction
+      message: `${instruction}\n\nMÜŞTERİ VERİSİ:\n${dataString}`
     };
 
   } catch (error) {
@@ -515,9 +523,10 @@ function formatResponseMessage(customer, customFields, queryType, language) {
       }
     }
     const product = customFields['Ürün'] || customFields['Urun'] || customFields['ÜRÜN'] || customFields['product'] || '-';
-    const amount = customFields['Tutar'] || customFields['TUTAR'] || customFields['tutar'] || customFields['amount'] || '-';
+    const quantity = customFields['Adet'] || customFields['adet'] || customFields['Miktar'] || customFields['quantity'] || '';
+    const amount = customFields['Fiyat (TL)'] || customFields['Fiyat'] || customFields['Tutar'] || customFields['TUTAR'] || customFields['tutar'] || customFields['amount'] || '-';
     const orderDate = customFields['Sipariş Tarihi'] || customFields['Siparis Tarihi'] || customFields['order_date'] || '-';
-    const status = customFields['Kargo Durumu'] || customFields['Durum'] || customFields['status'] || '-';
+    const status = customFields['Sipariş Durumu'] || customFields['Siparis Durumu'] || customFields['Kargo Durumu'] || customFields['Durum'] || customFields['status'] || '-';
     const trackingNo = customFields['Kargo Takip No'] || customFields['tracking_number'] || '-';
     const customerName = customFields['Müşteri Adı'] || customFields['Musteri Adi'] || customer.companyName;
     const notes = customFields['Notlar'] || customFields['NOTLAR'] || customer.notes || '';
@@ -525,13 +534,14 @@ function formatResponseMessage(customer, customFields, queryType, language) {
     if (isTR) {
       message = `${orderNo} numaralı siparişiniz ${customerName} adına kayıtlı`;
       if (orderDate !== '-') message += ` ve ${orderDate} tarihinde oluşturulmuş`;
-      message += `. Şu anda "${status}" aşamasında.`;
+      message += `. Şu anda "${status}" durumunda.`;
 
       if (product !== '-') {
-        message += ` Siparişinizdeki ürünler: ${product}.`;
+        const qtyStr = quantity ? ` (${quantity} adet)` : '';
+        message += ` Ürün: ${product}${qtyStr}.`;
       }
       if (amount !== '-') {
-        message += ` Toplam tutar: ${amount} TL.`;
+        message += ` Fiyat: ${amount} TL.`;
       }
       if (trackingNo !== '-') {
         message += ` Kargo takip numaranız: ${trackingNo}.`;
@@ -545,10 +555,11 @@ function formatResponseMessage(customer, customFields, queryType, language) {
       message += `. Current status: "${status}".`;
 
       if (product !== '-') {
-        message += ` Products: ${product}.`;
+        const qtyStr = quantity ? ` (quantity: ${quantity})` : '';
+        message += ` Product: ${product}${qtyStr}.`;
       }
       if (amount !== '-') {
-        message += ` Total amount: ${amount}.`;
+        message += ` Price: ${amount}.`;
       }
       if (trackingNo !== '-') {
         message += ` Tracking number: ${trackingNo}.`;
