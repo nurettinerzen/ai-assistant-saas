@@ -151,6 +151,179 @@ export function extractTranscriptText(messages) {
 }
 
 // ============================================================================
+// NORMALLEŞTİRİLMİŞ KATEGORİ/KONU BELİRLEME
+// ============================================================================
+
+/**
+ * Tanımlı kategori ve konular
+ * Her iş için standart kategoriler ve alt konular
+ */
+const NORMALIZED_CATEGORIES = {
+  'Sipariş': [
+    'Sipariş Durumu Sorgulama',
+    'Yeni Sipariş Verme',
+    'Sipariş İptali',
+    'Sipariş Değişikliği',
+    'Sipariş Onayı'
+  ],
+  'İade': [
+    'İade Talebi',
+    'İade Durumu',
+    'İade Koşulları',
+    'Değişim Talebi'
+  ],
+  'Ödeme': [
+    'Ödeme Sorunu',
+    'Fatura Bilgisi',
+    'Ödeme Yöntemleri',
+    'Taksit Seçenekleri'
+  ],
+  'Muhasebe': [
+    'Borç Bilgisi',
+    'Cari Hesap',
+    'Mutabakat',
+    'Beyanname Bilgisi',
+    'Vergi Hesaplaması'
+  ],
+  'Ürün': [
+    'Ürün Bilgisi',
+    'Stok Durumu',
+    'Fiyat Bilgisi',
+    'Ürün Karşılaştırma'
+  ],
+  'Teslimat': [
+    'Teslimat Takibi',
+    'Teslimat Süresi',
+    'Teslimat Adresi Değişikliği',
+    'Teslimat Sorunu'
+  ],
+  'Destek': [
+    'Teknik Destek',
+    'Şikayet',
+    'Öneri',
+    'Genel Bilgi'
+  ],
+  'Randevu': [
+    'Randevu Alma',
+    'Randevu İptali',
+    'Randevu Değişikliği',
+    'Randevu Hatırlatma'
+  ],
+  'Genel': [
+    'Selamlama',
+    'Teşekkür',
+    'Diğer'
+  ]
+};
+
+/**
+ * Transkript veya mesajlardan normalleştirilmiş kategori ve konu belirle
+ * @param {string} transcript - Transkript metni
+ * @returns {Promise<Object>} { normalizedCategory, normalizedTopic }
+ */
+export async function determineNormalizedTopic(transcript) {
+  try {
+    if (!transcript || transcript.trim().length < 20) {
+      return {
+        normalizedCategory: 'Genel',
+        normalizedTopic: 'Diğer'
+      };
+    }
+
+    // Kategorileri ve konuları prompt için hazırla
+    const categoriesDescription = Object.entries(NORMALIZED_CATEGORIES)
+      .map(([category, topics]) => `- ${category}: ${topics.join(', ')}`)
+      .join('\n');
+
+    const prompt = `Aşağıdaki müşteri görüşmesinin ana konusunu belirle.
+
+## Mevcut Kategoriler ve Konular:
+${categoriesDescription}
+
+## Görüşme:
+${transcript.slice(0, 2000)}
+
+## Talimatlar:
+1. Görüşmenin ANA konusunu belirle (müşterinin asıl amacı neydi?)
+2. Yukarıdaki listeden en uygun kategori ve konuyu seç
+3. Eğer hiçbir konu tam uymuyorsa, en yakın olanı seç
+4. Selamlama/vedalaşma dışında bir konu yoksa "Genel > Diğer" seç
+
+JSON formatında yanıt ver:
+{
+  "normalizedCategory": "Kategori adı",
+  "normalizedTopic": "Konu adı"
+}`;
+
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: 'Sen bir görüşme sınıflandırma asistanısın. Görüşmeleri önceden tanımlı kategorilere göre sınıflandır.'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      temperature: 0.2,
+      max_tokens: 100,
+      response_format: { type: 'json_object' }
+    });
+
+    const result = JSON.parse(response.choices[0].message.content);
+
+    // Geçerli kategori/konu kontrolü
+    const category = result.normalizedCategory;
+    const topic = result.normalizedTopic;
+
+    // Kategori geçerli mi?
+    if (NORMALIZED_CATEGORIES[category]) {
+      // Konu bu kategoride var mı?
+      if (NORMALIZED_CATEGORIES[category].includes(topic)) {
+        return { normalizedCategory: category, normalizedTopic: topic };
+      }
+      // Konu geçersiz ama kategori geçerli - ilk konuyu kullan
+      return {
+        normalizedCategory: category,
+        normalizedTopic: NORMALIZED_CATEGORIES[category][0]
+      };
+    }
+
+    // Kategori geçersiz - varsayılan döndür
+    return {
+      normalizedCategory: 'Genel',
+      normalizedTopic: 'Diğer'
+    };
+  } catch (error) {
+    console.error('❌ determineNormalizedTopic error:', error);
+    return {
+      normalizedCategory: 'Genel',
+      normalizedTopic: 'Diğer'
+    };
+  }
+}
+
+/**
+ * Chat mesajlarından transcript metni oluştur
+ * @param {Array} messages - Chat mesajları [{role, content}]
+ * @returns {string} Transcript metni
+ */
+export function formatChatMessagesAsTranscript(messages) {
+  if (!messages || !Array.isArray(messages)) {
+    return '';
+  }
+
+  return messages
+    .map((msg) => {
+      const speaker = msg.role === 'assistant' ? 'AI' : 'Müşteri';
+      return `${speaker}: ${msg.content || msg.text || ''}`;
+    })
+    .join('\n');
+}
+
+// ============================================================================
 // YENİ DURUM ANALİZİ FONKSİYONLARI
 // ============================================================================
 
@@ -337,8 +510,12 @@ export default {
   analyzeCall,
   generateQuickSummary,
   extractTranscriptText,
-  // Yeni fonksiyonlar
+  // Durum analizi fonksiyonları
   analyzeCallContent,
   determineCallResult,
-  analyzeCompletedCall
+  analyzeCompletedCall,
+  // Normalleştirilmiş konu fonksiyonları
+  determineNormalizedTopic,
+  formatChatMessagesAsTranscript,
+  NORMALIZED_CATEGORIES
 };

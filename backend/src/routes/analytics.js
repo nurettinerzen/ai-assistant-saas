@@ -393,33 +393,55 @@ router.get('/top-questions', authenticateToken, async (req, res) => {
     // Collect topics from INBOUND channels only
     const topics = [];
 
-    // 1. Get INBOUND call summaries only (direction = inbound)
+    // 1. Get INBOUND call topics (direction = inbound)
+    // PRIORITY: Use normalizedCategory/normalizedTopic if available (AI-determined)
+    // FALLBACK: Use summary with keyword matching
     if (!channel || channel === 'phone') {
       const calls = await prisma.callLog.findMany({
         where: {
           businessId,
           createdAt: { gte: startDate },
-          summary: { not: null },
-          direction: 'inbound' // Only inbound calls
+          direction: 'inbound', // Only inbound calls
+          OR: [
+            { normalizedCategory: { not: null } },
+            { summary: { not: null } }
+          ]
         },
         select: {
           summary: true,
+          normalizedCategory: true,
+          normalizedTopic: true,
           createdAt: true
         }
       });
 
       calls.forEach(call => {
-        if (call.summary) {
+        // If normalized category exists, use it directly (already AI-determined)
+        if (call.normalizedCategory && call.normalizedTopic) {
+          topics.push({
+            text: call.summary || '',
+            channel: 'phone',
+            date: call.createdAt,
+            // Pre-normalized - skip keyword matching
+            preNormalized: true,
+            category: call.normalizedCategory,
+            normalizedTopic: call.normalizedTopic
+          });
+        } else if (call.summary) {
+          // Fallback to summary with keyword matching
           topics.push({
             text: call.summary,
             channel: 'phone',
-            date: call.createdAt
+            date: call.createdAt,
+            preNormalized: false
           });
         }
       });
     }
 
-    // 2. Get web chat messages (summary or first user message = their question/topic)
+    // 2. Get web chat topics
+    // PRIORITY: Use normalizedCategory/normalizedTopic if available (AI-determined)
+    // FALLBACK: Use summary or first user message with keyword matching
     if (!channel || channel === 'chat') {
       const chatLogs = await prisma.chatLog.findMany({
         where: {
@@ -430,20 +452,33 @@ router.get('/top-questions', authenticateToken, async (req, res) => {
         select: {
           messages: true,
           summary: true,
+          normalizedCategory: true,
+          normalizedTopic: true,
           createdAt: true
         }
       });
 
       chatLogs.forEach(log => {
-        // Prefer summary if available (like phone calls)
-        if (log.summary) {
+        // If normalized category exists, use it directly
+        if (log.normalizedCategory && log.normalizedTopic) {
+          topics.push({
+            text: log.summary || '',
+            channel: 'chat',
+            date: log.createdAt,
+            preNormalized: true,
+            category: log.normalizedCategory,
+            normalizedTopic: log.normalizedTopic
+          });
+        } else if (log.summary) {
+          // Fallback to summary
           topics.push({
             text: log.summary.substring(0, 200),
             channel: 'chat',
-            date: log.createdAt
+            date: log.createdAt,
+            preNormalized: false
           });
         } else if (log.messages) {
-          // Parse messages - handle both array and JSON string
+          // Fallback to first user message
           let messages = log.messages;
           if (typeof messages === 'string') {
             try {
@@ -454,13 +489,13 @@ router.get('/top-questions', authenticateToken, async (req, res) => {
           }
 
           if (Array.isArray(messages) && messages.length > 0) {
-            // Find first user message as the main topic
             const userMessage = messages.find(m => m.role === 'user');
             if (userMessage && userMessage.content) {
               topics.push({
                 text: userMessage.content.substring(0, 200),
                 channel: 'chat',
-                date: log.createdAt
+                date: log.createdAt,
+                preNormalized: false
               });
             }
           }
@@ -468,7 +503,9 @@ router.get('/top-questions', authenticateToken, async (req, res) => {
       });
     }
 
-    // 3. Get WhatsApp messages (summary or first user message = their question/topic)
+    // 3. Get WhatsApp topics
+    // PRIORITY: Use normalizedCategory/normalizedTopic if available (AI-determined)
+    // FALLBACK: Use summary or first user message with keyword matching
     if (!channel || channel === 'whatsapp') {
       const whatsappLogs = await prisma.chatLog.findMany({
         where: {
@@ -479,20 +516,33 @@ router.get('/top-questions', authenticateToken, async (req, res) => {
         select: {
           messages: true,
           summary: true,
+          normalizedCategory: true,
+          normalizedTopic: true,
           createdAt: true
         }
       });
 
       whatsappLogs.forEach(log => {
-        // Prefer summary if available (like phone calls)
-        if (log.summary) {
+        // If normalized category exists, use it directly
+        if (log.normalizedCategory && log.normalizedTopic) {
+          topics.push({
+            text: log.summary || '',
+            channel: 'whatsapp',
+            date: log.createdAt,
+            preNormalized: true,
+            category: log.normalizedCategory,
+            normalizedTopic: log.normalizedTopic
+          });
+        } else if (log.summary) {
+          // Fallback to summary
           topics.push({
             text: log.summary.substring(0, 200),
             channel: 'whatsapp',
-            date: log.createdAt
+            date: log.createdAt,
+            preNormalized: false
           });
         } else if (log.messages) {
-          // Parse messages - handle both array and JSON string
+          // Fallback to first user message
           let messages = log.messages;
           if (typeof messages === 'string') {
             try {
@@ -503,13 +553,13 @@ router.get('/top-questions', authenticateToken, async (req, res) => {
           }
 
           if (Array.isArray(messages) && messages.length > 0) {
-            // Find first user message as the main topic
             const userMessage = messages.find(m => m.role === 'user');
             if (userMessage && userMessage.content) {
               topics.push({
                 text: userMessage.content.substring(0, 200),
                 channel: 'whatsapp',
-                date: log.createdAt
+                date: log.createdAt,
+                preNormalized: false
               });
             }
           }
@@ -554,64 +604,139 @@ router.get('/top-questions', authenticateToken, async (req, res) => {
       'call ended',
       'greeting in',
       'turkish conversation',
-      'selam', 'merhaba', 'hello', 'hi', 'hey', // Pure greetings are not topics
+      'ai assistant introduction',
+      'greeting and',
+      'selam', 'merhaba', 'hello', 'hi', 'hey',
       'iyi günler', 'iyi akşamlar', 'günaydın'
     ];
 
     const filteredTopics = topics.filter(topic => {
       const lowerText = topic.text.toLowerCase().trim();
-      // Skip very short messages (likely just greetings)
       if (lowerText.length < 5) return false;
-      // Skip invalid patterns
       if (invalidPatterns.some(p => lowerText.includes(p))) return false;
-      // Skip if it's ONLY a greeting (no other content)
       const greetingOnly = /^(merhaba|selam|hi|hello|hey|günaydın|iyi günler|iyi akşamlar)[.,!?]?$/i.test(lowerText);
       if (greetingOnly) return false;
       return true;
     });
 
-    // Categorize topics into main themes (Turkish)
-    const categories = {
-      'Muhasebe': ['borç', 'sgk', 'vergi', 'beyanname', 'kdv', 'gelir vergisi', 'cari', 'fatura', 'tahsilat', 'alacak', 'bakiye', 'hesap', 'ödeme tarihi', 'son ödeme', 'vade'],
-      'Sipariş': ['sipariş', 'order', 'durum', 'status', 'siparişim', 'ne oldu', 'kargo nerede', 'takip', 'sipariş ver'],
-      'Kargo': ['kargo', 'teslimat', 'gönderim', 'teslim', 'shipping', 'delivery', 'kurye', 'paket', 'ne zaman gelecek'],
-      'Ürün': ['ürün', 'product', 'stok', 'stock', 'mevcut', 'var mı', 'özellik', 'beden', 'renk', 'fiyat', 'ücret', 'kaç para', 'ne kadar'],
-      'İade': ['iade', 'değişim', 'return', 'refund', 'iptal', 'cancel', 'değiştirmek', 'geri almak'],
-      'Ödeme': ['ödeme', 'payment', 'kredi', 'kart', 'havale', 'eft', 'taksit', 'nakit', 'pos'],
-      'Randevu': ['randevu', 'appointment', 'rezervasyon', 'booking', 'saat', 'müsait', 'uygun'],
-      'Destek': ['şikayet', 'sorun', 'problem', 'yardım', 'help', 'destek', 'çalışmıyor', 'hata', 'bozuk', 'arıza'],
-      'Genel': ['bilgi', 'soru', 'nasıl', 'nedir', 'hakkında', 'adres', 'çalışma saatleri', 'iletişim', 'telefon']
-    };
-
-    // Categorize each topic and extract subtopic
-    const categorizedTopics = filteredTopics.map(topic => {
-      const lowerText = topic.text.toLowerCase();
-      let category = 'Diğer';
-      let subtopic = topic.text.substring(0, 50).trim(); // Default subtopic is the text itself
-
-      for (const [cat, keywords] of Object.entries(categories)) {
-        if (keywords.some(kw => lowerText.includes(kw))) {
-          category = cat;
-          break;
+    // ============================================================================
+    // NORMALIZED TOPIC CATEGORIES - Standardized topic names
+    // ============================================================================
+    // Category -> Normalized Topics mapping
+    const normalizedTopics = {
+      'Sipariş': {
+        keywords: ['sipariş', 'order', 'siparişim', 'siparis'],
+        topics: {
+          'Sipariş Durumu Sorgulama': ['sipariş durumu', 'siparişim nerede', 'siparis nerde', 'order status', 'order inquiry', 'takip', 'ne durumda', 'ne oldu', 'kargom', 'nerede kaldı', 'nerda', 'nerde'],
+          'Sipariş Verme': ['sipariş vermek', 'sipariş ver', 'satın al', 'almak istiyorum', 'sipariş oluştur'],
+          'Sipariş İptali': ['sipariş iptal', 'iptal etmek', 'vazgeç', 'cancel order'],
+          'Sipariş Değişikliği': ['sipariş değiştir', 'adres değiştir', 'güncelle']
+        }
+      },
+      'İade': {
+        keywords: ['iade', 'return', 'refund', 'değişim', 'geri'],
+        topics: {
+          'İade Talebi': ['iade etmek', 'iade başlat', 'iade istiyorum', 'return request', 'geri vermek', 'iade sürecini başlat'],
+          'İade Durumu Sorgulama': ['iade durumu', 'iadem ne oldu', 'return status', 'iade nerede'],
+          'Değişim Talebi': ['değişim', 'değiştirmek', 'exchange', 'başka beden', 'başka renk']
+        }
+      },
+      'Ödeme': {
+        keywords: ['ödeme', 'payment', 'borç', 'fatura', 'kredi', 'taksit', 'eft', 'havale'],
+        topics: {
+          'Borç Sorgulama': ['borç', 'borcum', 'ne kadar borç', 'bakiye', 'hesap durumu', 'cari'],
+          'Ödeme Bilgisi': ['nasıl ödenir', 'ödeme yöntemi', 'kredi kartı', 'taksit', 'havale', 'eft'],
+          'Fatura Talebi': ['fatura', 'e-fatura', 'fatura iste', 'fatura gönder'],
+          'Ödeme Onayı': ['ödeme yaptım', 'ödeme onay', 'dekont', 'payment confirm']
+        }
+      },
+      'Muhasebe': {
+        keywords: ['sgk', 'vergi', 'beyanname', 'kdv', 'gelir vergisi', 'muhasebe'],
+        topics: {
+          'Vergi Sorgulama': ['vergi borcu', 'vergi durumu', 'kdv', 'gelir vergisi'],
+          'SGK Sorgulama': ['sgk', 'sigorta', 'prim'],
+          'Beyanname': ['beyanname', 'beyan']
+        }
+      },
+      'Ürün': {
+        keywords: ['ürün', 'product', 'stok', 'fiyat', 'beden', 'renk'],
+        topics: {
+          'Ürün Bilgisi': ['ürün hakkında', 'özellik', 'product info', 'bilgi almak'],
+          'Stok Durumu': ['stok', 'var mı', 'mevcut mu', 'stock'],
+          'Fiyat Bilgisi': ['fiyat', 'ne kadar', 'kaç para', 'ücret', 'price']
+        }
+      },
+      'Teslimat': {
+        keywords: ['kargo', 'teslimat', 'teslim', 'kurye', 'gönderim'],
+        topics: {
+          'Teslimat Durumu': ['kargo nerede', 'ne zaman gelir', 'teslimat durumu', 'delivery status'],
+          'Adres Değişikliği': ['adres değiştir', 'teslimat adresi', 'yeni adres'],
+          'Teslimat Sorunu': ['kargo gelmedi', 'teslim edilmedi', 'hasarlı']
+        }
+      },
+      'Destek': {
+        keywords: ['şikayet', 'sorun', 'problem', 'hata', 'çalışmıyor', 'arıza', 'bozuk'],
+        topics: {
+          'Şikayet': ['şikayet', 'memnun değil', 'complaint'],
+          'Teknik Sorun': ['çalışmıyor', 'hata', 'bozuk', 'arıza', 'error'],
+          'Yardım Talebi': ['yardım', 'help', 'destek']
+        }
+      },
+      'Randevu': {
+        keywords: ['randevu', 'appointment', 'rezervasyon', 'booking'],
+        topics: {
+          'Randevu Alma': ['randevu almak', 'randevu oluştur', 'rezervasyon yap'],
+          'Randevu İptali': ['randevu iptal', 'vazgeç'],
+          'Randevu Sorgulama': ['randevum ne zaman', 'randevu durumu']
+        }
+      },
+      'Genel': {
+        keywords: ['bilgi', 'adres', 'çalışma saatleri', 'iletişim', 'telefon'],
+        topics: {
+          'Genel Bilgi': ['bilgi almak', 'hakkında', 'nasıl'],
+          'İletişim Bilgisi': ['adres', 'telefon', 'iletişim', 'çalışma saatleri']
         }
       }
+    };
 
-      // Normalize subtopic - extract key phrase
-      // Remove common filler words and normalize
-      subtopic = subtopic
-        .replace(/^(merhaba|selam|hi|hello|hey)[,.\s]*/i, '')
-        .replace(/[.,!?]+$/, '')
-        .trim();
+    // Function to normalize a topic text to a standard topic name
+    const normalizeTopicText = (text) => {
+      const lowerText = text.toLowerCase();
 
-      // Capitalize first letter
-      if (subtopic.length > 0) {
-        subtopic = subtopic.charAt(0).toUpperCase() + subtopic.slice(1);
+      for (const [category, config] of Object.entries(normalizedTopics)) {
+        // Check if text belongs to this category
+        const matchesCategory = config.keywords.some(kw => lowerText.includes(kw));
+        if (!matchesCategory) continue;
+
+        // Find matching normalized topic
+        for (const [normalizedName, patterns] of Object.entries(config.topics)) {
+          if (patterns.some(pattern => lowerText.includes(pattern))) {
+            return { category, topic: normalizedName };
+          }
+        }
+
+        // Category matched but no specific topic - use first topic as default
+        const defaultTopic = Object.keys(config.topics)[0];
+        return { category, topic: defaultTopic };
       }
 
-      return { ...topic, category, subtopic };
+      return { category: 'Diğer', topic: 'Diğer Konular' };
+    };
+
+    // Categorize and normalize each topic
+    // If preNormalized = true, use the AI-determined category/topic directly
+    // If preNormalized = false, use keyword matching
+    const categorizedTopics = filteredTopics.map(topic => {
+      if (topic.preNormalized) {
+        // Already normalized by AI - use directly
+        return { ...topic };
+      }
+      // Fallback: use keyword matching
+      const { category, topic: normalizedTopic } = normalizeTopicText(topic.text);
+      return { ...topic, category, normalizedTopic };
     });
 
-    // Group by category with subtopic aggregation
+    // Group by category with normalized subtopic aggregation
     const categoryStats = {};
     categorizedTopics.forEach(t => {
       if (!categoryStats[t.category]) {
@@ -619,27 +744,25 @@ router.get('/top-questions', authenticateToken, async (req, res) => {
           category: t.category,
           count: 0,
           channels: new Set(),
-          subtopics: {} // Track subtopics with counts
+          subtopics: {}
         };
       }
       categoryStats[t.category].count++;
       categoryStats[t.category].channels.add(t.channel);
 
-      // Aggregate subtopics
-      const normalizedSubtopic = t.subtopic.toLowerCase();
-      if (!categoryStats[t.category].subtopics[normalizedSubtopic]) {
-        categoryStats[t.category].subtopics[normalizedSubtopic] = {
-          text: t.subtopic,
+      // Aggregate by normalized topic name
+      if (!categoryStats[t.category].subtopics[t.normalizedTopic]) {
+        categoryStats[t.category].subtopics[t.normalizedTopic] = {
+          text: t.normalizedTopic,
           count: 0
         };
       }
-      categoryStats[t.category].subtopics[normalizedSubtopic].count++;
+      categoryStats[t.category].subtopics[t.normalizedTopic].count++;
     });
 
     // Sort by count and get top N
     const topTopics = Object.values(categoryStats)
       .map(c => {
-        // Get top 5 subtopics sorted by count
         const sortedSubtopics = Object.values(c.subtopics)
           .sort((a, b) => b.count - a.count)
           .slice(0, 5)
@@ -652,7 +775,7 @@ router.get('/top-questions', authenticateToken, async (req, res) => {
           subtopics: sortedSubtopics
         };
       })
-      .filter(c => c.count > 0) // Remove empty categories
+      .filter(c => c.count > 0)
       .sort((a, b) => b.count - a.count)
       .slice(0, parseInt(limit));
 

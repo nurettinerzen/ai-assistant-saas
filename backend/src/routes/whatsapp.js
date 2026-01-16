@@ -15,6 +15,7 @@ import { buildAssistantPrompt, getActiveTools as getPromptBuilderTools } from '.
 import { isFreePlanExpired } from '../middleware/checkPlanExpiry.js';
 import { calculateTokenCost, hasFreeChat } from '../config/plans.js';
 import { executeTool } from '../tools/index.js';
+import callAnalysis from '../services/callAnalysis.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -311,9 +312,31 @@ async function generateAIResponse(business, phoneNumber, userMessage, context = 
         // Session timed out - mark as ended and start fresh
         console.log(`⏰ [WhatsApp] Session for ${phoneNumber} timed out (${Math.round(timeSinceActivity / 60000)} min) - starting new session`);
 
+        // Determine normalized topic for timed out session
+        let normalizedCategory = null;
+        let normalizedTopic = null;
+        if (existingLog.messages && Array.isArray(existingLog.messages) && existingLog.messages.length > 0) {
+          try {
+            const transcriptText = callAnalysis.formatChatMessagesAsTranscript(existingLog.messages);
+            if (transcriptText && transcriptText.length > 20) {
+              const topicResult = await callAnalysis.determineNormalizedTopic(transcriptText);
+              normalizedCategory = topicResult.normalizedCategory;
+              normalizedTopic = topicResult.normalizedTopic;
+              console.log(`📊 [WhatsApp] Timed out session topic: ${normalizedCategory} > ${normalizedTopic}`);
+            }
+          } catch (topicError) {
+            console.error('⚠️ [WhatsApp] Topic determination failed:', topicError.message);
+          }
+        }
+
         await prisma.chatLog.update({
           where: { sessionId },
-          data: { status: 'ended', updatedAt: new Date() }
+          data: {
+            status: 'ended',
+            normalizedCategory: normalizedCategory,
+            normalizedTopic: normalizedTopic,
+            updatedAt: new Date()
+          }
         });
 
         // Generate new session ID with timestamp

@@ -1198,7 +1198,12 @@
       "failedToLoad": "Analitikler yüklenemedi",
       "topQuestions": "En Çok Sorulan Sorular",
       "topQuestionsDescription": "Tüm kanallardan en sık sorulan sorular. Bilgi bankanızı geliştirmek için kullanın.",
-      "noQuestionsYet": "Henüz soru kaydedilmedi"
+      "noQuestionsYet": "Henüz soru kaydedilmedi",
+      "allChannels": "Tüm Kanallar",
+      "phone": "Telefon",
+      "chat": "Chat",
+      "whatsapp": "WhatsApp",
+      "email": "E-posta"
     },
     "knowledgeBasePage": {
       "title": "Bilgi Bankası",

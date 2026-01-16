@@ -360,6 +360,20 @@ router.post('/post-call', async (req, res) => {
       }
     }
 
+    // === NORMALLEŞTİRİLMİŞ KONU BELİRLEME ===
+    let normalizedCategory = null;
+    let normalizedTopic = null;
+    if (transcriptText && transcriptText.length > 20) {
+      try {
+        const topicResult = await callAnalysis.determineNormalizedTopic(transcriptText);
+        normalizedCategory = topicResult.normalizedCategory;
+        normalizedTopic = topicResult.normalizedTopic;
+        console.log(`📊 Post-call topic determined: ${normalizedCategory} > ${normalizedTopic}`);
+      } catch (topicError) {
+        console.error('⚠️ Topic determination failed (non-critical):', topicError.message);
+      }
+    }
+
     // Save/update call log
     await prisma.callLog.upsert({
       where: { callId: conversation_id },
@@ -378,6 +392,8 @@ router.post('/post-call', async (req, res) => {
         callStatus,
         analysisData,
         voicemailDetected,
+        normalizedCategory,
+        normalizedTopic,
         updatedAt: new Date()
       },
       create: {
@@ -398,6 +414,8 @@ router.post('/post-call', async (req, res) => {
         callStatus,
         analysisData,
         voicemailDetected,
+        normalizedCategory,
+        normalizedTopic,
         createdAt: new Date()
       }
     });
@@ -891,6 +909,20 @@ async function handleConversationEnded(event) {
       direction = 'inbound';
     }
 
+    // === NORMALLEŞTİRİLMİŞ KONU BELİRLEME ===
+    let normalizedCategory = null;
+    let normalizedTopic = null;
+    if (transcriptText && transcriptText.length > 20) {
+      try {
+        const topicResult = await callAnalysis.determineNormalizedTopic(transcriptText);
+        normalizedCategory = topicResult.normalizedCategory;
+        normalizedTopic = topicResult.normalizedTopic;
+        console.log(`📊 Topic determined: ${normalizedCategory} > ${normalizedTopic}`);
+      } catch (topicError) {
+        console.error('⚠️ Topic determination failed (non-critical):', topicError.message);
+      }
+    }
+
     // Save/update call log
     await prisma.callLog.upsert({
       where: { callId: conversationId },
@@ -907,6 +939,8 @@ async function handleConversationEnded(event) {
         sentimentScore: aiAnalysis.sentimentScore,
         endReason: endReason,
         callCost: callCost,
+        normalizedCategory: normalizedCategory,
+        normalizedTopic: normalizedTopic,
         updatedAt: new Date()
       },
       create: {
@@ -925,6 +959,8 @@ async function handleConversationEnded(event) {
         sentimentScore: aiAnalysis.sentimentScore,
         endReason: endReason,
         callCost: callCost,
+        normalizedCategory: normalizedCategory,
+        normalizedTopic: normalizedTopic,
         createdAt: new Date()
       }
     });
@@ -1182,6 +1218,20 @@ router.post('/sync-conversations', authenticateToken, async (req, res) => {
           }
         }
 
+        // === NORMALLEŞTİRİLMİŞ KONU BELİRLEME ===
+        let normalizedCategory = null;
+        let normalizedTopic = null;
+        if (transcriptText && transcriptText.length > 20) {
+          try {
+            const topicResult = await callAnalysis.determineNormalizedTopic(transcriptText);
+            normalizedCategory = topicResult.normalizedCategory;
+            normalizedTopic = topicResult.normalizedTopic;
+            console.log(`📊 Sync topic determined: ${normalizedCategory} > ${normalizedTopic}`);
+          } catch (topicError) {
+            console.error('⚠️ Topic determination failed (non-critical):', topicError.message);
+          }
+        }
+
         // Create or update call log (upsert for in_progress calls)
         await prisma.callLog.upsert({
           where: { callId: conv.conversation_id },
@@ -1198,6 +1248,8 @@ router.post('/sync-conversations', authenticateToken, async (req, res) => {
             sentiment: aiAnalysis.sentiment,
             sentimentScore: aiAnalysis.sentimentScore,
             endReason: endReason,
+            normalizedCategory: normalizedCategory,
+            normalizedTopic: normalizedTopic,
             updatedAt: new Date()
           },
           create: {
@@ -1215,6 +1267,8 @@ router.post('/sync-conversations', authenticateToken, async (req, res) => {
             sentiment: aiAnalysis.sentiment,
             sentimentScore: aiAnalysis.sentimentScore,
             endReason: endReason,
+            normalizedCategory: normalizedCategory,
+            normalizedTopic: normalizedTopic,
             createdAt: new Date(conv.start_time_unix_secs * 1000)
           }
         });

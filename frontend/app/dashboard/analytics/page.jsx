@@ -115,6 +115,76 @@ export default function AnalyticsPage() {
     }
   };
 
+  const handleExport = () => {
+    if (!analytics) return;
+
+    // Prepare CSV data
+    const csvRows = [];
+
+    // Header
+    csvRows.push(['Analitik Raporu', `Dönem: ${timeRange}`]);
+    csvRows.push([]);
+
+    // Overview stats
+    csvRows.push(['Genel İstatistikler']);
+    csvRows.push(['Toplam Arama', analytics.totalCalls || 0]);
+    csvRows.push(['Toplam Dakika', analytics.totalMinutes || 0]);
+    csvRows.push(['Ortalama Süre (sn)', analytics.avgDuration || 0]);
+    csvRows.push(['Chat Oturumları', analytics.chatSessions || 0]);
+    csvRows.push(['WhatsApp Oturumları', analytics.whatsappSessions || 0]);
+    csvRows.push(['Cevaplanan E-postalar', analytics.emailsAnswered || 0]);
+    csvRows.push([]);
+
+    // Channel distribution
+    csvRows.push(['Kanal Dağılımı']);
+    csvRows.push(['Kanal', 'Sayı', 'Yüzde']);
+    if (analytics.channelStats) {
+      csvRows.push(['Telefon', analytics.channelStats.phone.count, `${analytics.channelStats.phone.percentage}%`]);
+      csvRows.push(['Chat', analytics.channelStats.chat.count, `${analytics.channelStats.chat.percentage}%`]);
+      csvRows.push(['WhatsApp', analytics.channelStats.whatsapp?.count || 0, `${analytics.channelStats.whatsapp?.percentage || 0}%`]);
+      csvRows.push(['E-posta', analytics.channelStats.email.count, `${analytics.channelStats.email.percentage}%`]);
+    }
+    csvRows.push([]);
+
+    // Calls over time
+    if (analytics.callsOverTime?.length > 0) {
+      csvRows.push(['Günlük Etkileşimler']);
+      csvRows.push(['Tarih', 'Aramalar', 'Chat', 'WhatsApp', 'E-posta']);
+      analytics.callsOverTime.forEach(day => {
+        csvRows.push([day.date, day.calls, day.chats, day.whatsapp, day.emails]);
+      });
+      csvRows.push([]);
+    }
+
+    // Top topics
+    if (topTopics?.length > 0) {
+      csvRows.push(['En Çok Sorulan Konular']);
+      csvRows.push(['Kategori', 'Sayı', 'Alt Konular']);
+      topTopics.forEach(topic => {
+        const subtopics = topic.subtopics?.map(s => `${s.text} (${s.count})`).join('; ') || '';
+        csvRows.push([topic.category, topic.count, subtopics]);
+      });
+    }
+
+    // Convert to CSV string
+    const csvContent = csvRows.map(row =>
+      row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')
+    ).join('\n');
+
+    // Download
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `analitik-rapor-${timeRange}-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    toast.success(locale === 'tr' ? 'Rapor indirildi' : 'Report downloaded');
+  };
+
   const TIME_RANGES = [
     { value: '7d', label: t('dashboard.analyticsPage.last7Days') },
     { value: '30d', label: t('dashboard.analyticsPage.last30Days') },
@@ -187,7 +257,7 @@ export default function AnalyticsPage() {
               ))}
             </SelectContent>
           </Select>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={handleExport} disabled={!analytics}>
             <Download className="h-4 w-4 mr-2" />
             {t('dashboard.analyticsPage.export')}
           </Button>

@@ -1198,7 +1198,12 @@
       "failedToLoad": "Failed to load analytics",
       "topQuestions": "Top Questions",
       "topQuestionsDescription": "Most frequently asked questions across all channels. Use this to improve your knowledge base.",
-      "noQuestionsYet": "No questions recorded yet"
+      "noQuestionsYet": "No questions recorded yet",
+      "allChannels": "All Channels",
+      "phone": "Phone",
+      "chat": "Chat",
+      "whatsapp": "WhatsApp",
+      "email": "Email"
     },
     "knowledgeBasePage": {
       "title": "Knowledge Base",

@@ -337,6 +337,10 @@ model ChatLog {
   outputTokens  Int      @default(0)  // Toplam output token sayısı
   totalCost     Float    @default(0)  // Toplam maliyet TL cinsinden
 
+  // Normalleştirilmiş konu kategorileri (AI tarafından belirlenir)
+  normalizedCategory  String?  // Sipariş, İade, Ödeme, Muhasebe, Ürün, Teslimat, Destek, Randevu, Genel
+  normalizedTopic     String?  // Kategori içindeki spesifik konu (örn: "Sipariş Durumu Sorgulama")
+
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -347,6 +351,7 @@ model ChatLog {
   @@index([createdAt])
   @@index([status])
   @@index([channel])
+  @@index([normalizedCategory])
 }
 
 model CallLog {
@@ -390,6 +395,10 @@ model CallLog {
   // Maliyet bilgisi (TL cinsinden)
   callCost          Float?          @default(0)
 
+  // Normalleştirilmiş konu kategorileri (AI tarafından belirlenir)
+  normalizedCategory  String?       // Sipariş, İade, Ödeme, Muhasebe, Ürün, Teslimat, Destek, Randevu, Genel
+  normalizedTopic     String?       // Kategori içindeki spesifik konu (örn: "Sipariş Durumu Sorgulama")
+
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
   business          Business @relation(fields: [businessId], references: [id])
@@ -401,6 +410,7 @@ model CallLog {
   @@index([direction])
   @@index([callResult])
   @@index([callStatus])
+  @@index([normalizedCategory])
 }
 
 // Arama teknik sonucu

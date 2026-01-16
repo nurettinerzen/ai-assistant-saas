@@ -12,6 +12,7 @@ import { buildAssistantPrompt, getActiveTools as getPromptBuilderTools } from '.
 import { isFreePlanExpired } from '../middleware/checkPlanExpiry.js';
 import { getActiveTools, executeTool } from '../tools/index.js';
 import { calculateTokenCost, hasFreeChat } from '../config/plans.js';
+import callAnalysis from '../services/callAnalysis.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -367,10 +368,32 @@ router.post('/widget', async (req, res) => {
           // Session timed out or was ended - mark as ended and start new session
           console.log(`⏰ Session ${sessionId} timed out (${Math.round(timeSinceActivity / 60000)} min inactive) - starting new session`);
 
-          // Mark old session as ended
+          // Determine normalized topic for timed out session
+          let normalizedCategory = null;
+          let normalizedTopic = null;
+          if (existingSession.messages && Array.isArray(existingSession.messages) && existingSession.messages.length > 0) {
+            try {
+              const transcriptText = callAnalysis.formatChatMessagesAsTranscript(existingSession.messages);
+              if (transcriptText && transcriptText.length > 20) {
+                const topicResult = await callAnalysis.determineNormalizedTopic(transcriptText);
+                normalizedCategory = topicResult.normalizedCategory;
+                normalizedTopic = topicResult.normalizedTopic;
+                console.log(`📊 Timed out chat topic: ${normalizedCategory} > ${normalizedTopic}`);
+              }
+            } catch (topicError) {
+              console.error('⚠️ Topic determination for timed out session failed:', topicError.message);
+            }
+          }
+
+          // Mark old session as ended with normalized topic
           await prisma.chatLog.update({
             where: { sessionId },
-            data: { status: 'ended', updatedAt: new Date() }
+            data: {
+              status: 'ended',
+              normalizedCategory: normalizedCategory,
+              normalizedTopic: normalizedTopic,
+              updatedAt: new Date()
+            }
           });
 
           // Generate new session ID
@@ -854,11 +877,33 @@ router.post('/widget/end-session', async (req, res) => {
       return res.status(404).json({ error: 'Session not found' });
     }
 
-    // Update status to ended
+    // === NORMALLEŞTİRİLMİŞ KONU BELİRLEME ===
+    let normalizedCategory = null;
+    let normalizedTopic = null;
+
+    // Chat mesajlarından transcript oluştur
+    const messages = chatLog.messages;
+    if (messages && Array.isArray(messages) && messages.length > 0) {
+      try {
+        const transcriptText = callAnalysis.formatChatMessagesAsTranscript(messages);
+        if (transcriptText && transcriptText.length > 20) {
+          const topicResult = await callAnalysis.determineNormalizedTopic(transcriptText);
+          normalizedCategory = topicResult.normalizedCategory;
+          normalizedTopic = topicResult.normalizedTopic;
+          console.log(`📊 Chat topic determined: ${normalizedCategory} > ${normalizedTopic}`);
+        }
+      } catch (topicError) {
+        console.error('⚠️ Chat topic determination failed (non-critical):', topicError.message);
+      }
+    }
+
+    // Update status to ended with normalized topic
     await prisma.chatLog.update({
       where: { id: chatLog.id },
       data: {
         status: 'ended',
+        normalizedCategory: normalizedCategory,
+        normalizedTopic: normalizedTopic,
         updatedAt: new Date()
       }
     });
