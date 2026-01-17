@@ -435,7 +435,6 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
         systemPrompt: fullSystemPrompt,
         model: model || 'gpt-4',
         elevenLabsAgentId: elevenLabsAgentId,  // ✅ 11Labs'den dönen YENİ agent ID
-        voiceProvider: 'elevenlabs',
         timezone: businessTimezone,
         firstMessage: finalFirstMessage,
         tone: tone || 'professional',  // "friendly" or "professional"
