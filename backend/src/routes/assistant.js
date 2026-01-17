@@ -195,6 +195,20 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
     const businessTimezone = timezone || business?.timezone || 'Europe/Istanbul';
     const defaults = ASSISTANT_DEFAULTS[lang] || ASSISTANT_DEFAULTS.TR;
 
+    // Determine effective callDirection based on callPurpose
+    // For outbound calls, callPurpose determines the actual callDirection for prompt selection
+    let effectiveCallDirection = callDirection || 'inbound';
+    if (effectiveCallDirection === 'outbound' && callPurpose) {
+      // Map callPurpose to specific callDirection for promptBuilder
+      if (callPurpose === 'sales') {
+        effectiveCallDirection = 'outbound_sales';
+      } else if (callPurpose === 'collection' || callPurpose === 'reminder') {
+        effectiveCallDirection = 'outbound_collection';
+      }
+      // For other purposes (survey, info, custom), keep 'outbound' which defaults to collection
+      console.log('📞 Outbound call purpose mapping:', callPurpose, '->', effectiveCallDirection);
+    }
+
     // Build full system prompt using promptBuilder
     // Create temporary assistant object for promptBuilder
     const tempAssistant = {
@@ -202,7 +216,7 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
       systemPrompt: systemPrompt,
       tone: tone || 'professional',
       customNotes: customNotes || null,
-      callDirection: callDirection || 'inbound'
+      callDirection: effectiveCallDirection
     };
 
     // Get active tools list for prompt builder
@@ -412,6 +426,7 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
     }
 
     // ✅ Database'e 11Labs'den dönen agent ID'yi kaydet
+    // Save effectiveCallDirection so promptBuilder uses correct prompt on updates too
     const assistant = await prisma.assistant.create({
       data: {
         businessId,
@@ -425,7 +440,7 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
         firstMessage: finalFirstMessage,
         tone: tone || 'professional',  // "friendly" or "professional"
         customNotes: customNotes || null,  // Business-specific notes
-        callDirection: callDirection || 'inbound',  // "inbound" or "outbound"
+        callDirection: effectiveCallDirection,  // "inbound", "outbound", "outbound_sales", or "outbound_collection"
         callPurpose: callPurpose || null,  // For outbound: "collection", "reminder", "survey", "info", "custom"
         dynamicVariables: dynamicVariables || [],  // Dynamic variable names for outbound calls
       },
@@ -445,9 +460,7 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
     // NOT: Outbound asistanlar için otomatik atama yapılmaz - onlar batch call için kullanılır
     // Ayrıca telefon numarasında zaten bir asistan varsa, onu koruruz
     try {
-      const effectiveCallDirection = callDirection || 'inbound';
-
-      // Only auto-assign for inbound assistants
+      // Only auto-assign for inbound assistants (effectiveCallDirection already defined above)
       if (effectiveCallDirection === 'inbound') {
         const phoneNumber = await prisma.phoneNumber.findFirst({
           where: { businessId }
@@ -651,8 +664,21 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
       console.log('📚 Knowledge Base items added:', knowledgeItems.length);
     }
 
+    // Determine effective callDirection based on callPurpose
+    // For outbound calls, callPurpose determines the actual callDirection for prompt selection
+    const effectivePurpose = callPurpose !== undefined ? callPurpose : assistant.callPurpose;
+    let effectiveCallDirection = callDirection || assistant.callDirection || 'inbound';
+    if (effectiveCallDirection === 'outbound' && effectivePurpose) {
+      // Map callPurpose to specific callDirection for promptBuilder
+      if (effectivePurpose === 'sales') {
+        effectiveCallDirection = 'outbound_sales';
+      } else if (effectivePurpose === 'collection' || effectivePurpose === 'reminder') {
+        effectiveCallDirection = 'outbound_collection';
+      }
+      console.log('📞 Outbound call purpose mapping (update):', effectivePurpose, '->', effectiveCallDirection);
+    }
+
     // Build full system prompt using promptBuilder
-    const effectiveCallDirection = callDirection || assistant.callDirection || 'inbound';
     const tempAssistant = {
       name,
       systemPrompt: systemPrompt,
@@ -667,7 +693,7 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
     // Use central prompt builder to create the full system prompt, then add knowledge context
     const fullSystemPrompt = buildAssistantPrompt(tempAssistant, business, activeToolsList) + knowledgeContext;
 
-    // Update in database
+    // Update in database - save effectiveCallDirection so promptBuilder uses correct prompt
     const updatedAssistant = await prisma.assistant.update({
       where: { id },
       data: {
@@ -678,7 +704,7 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
         model,
         tone: tone || assistant.tone || 'professional',  // Keep existing if not provided
         customNotes: customNotes !== undefined ? customNotes : assistant.customNotes,  // Allow null/empty
-        callDirection: callDirection || assistant.callDirection || 'inbound',
+        callDirection: effectiveCallDirection,  // "inbound", "outbound", "outbound_sales", or "outbound_collection"
         callPurpose: callPurpose !== undefined ? callPurpose : assistant.callPurpose,
         dynamicVariables: dynamicVariables || assistant.dynamicVariables || [],
       },
