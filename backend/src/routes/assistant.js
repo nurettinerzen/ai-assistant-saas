@@ -673,11 +673,13 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
     });
 
 // ✅ Update 11Labs agent
+    console.log('🔄 Checking 11Labs update - elevenLabsAgentId:', assistant.elevenLabsAgentId);
     if (assistant.elevenLabsAgentId) {
       try {
         const lang = language || business?.language || 'TR';
         const elevenLabsLang = getElevenLabsLanguage(lang);
         console.log('📝 Update language mapping:', lang, '->', elevenLabsLang);
+        console.log('🔧 Updating 11Labs agent:', assistant.elevenLabsAgentId);
 
         // System tools (end_call) go inside prompt.tools
         const endCallTool = {
@@ -806,7 +808,15 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
         }
       } catch (updateError) {
         console.error('❌ 11Labs update failed:', updateError.response?.data || updateError.message);
+        // Don't fail the request, but warn in response
+        return res.json({
+          message: 'Assistant updated in database but 11Labs sync failed',
+          assistant: updatedAssistant,
+          warning: '11Labs sync failed: ' + (updateError.response?.data?.detail || updateError.message)
+        });
       }
+    } else {
+      console.warn('⚠️ No elevenLabsAgentId found for assistant:', assistant.id);
     }
 
     res.json({
