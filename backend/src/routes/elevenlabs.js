@@ -570,9 +570,6 @@ async function handleToolCall(event, agentIdFromQuery = null) {
 
     // If no caller phone in event, try to get from call log
     let resolvedCallerPhone = callerPhone;
-    let resolvedConversationId = conversation_id;
-
-    // Try to get from specific conversation first
     if (!resolvedCallerPhone && conversation_id) {
       const callLog = await prisma.callLog.findFirst({
         where: { callId: conversation_id },
@@ -584,30 +581,10 @@ async function handleToolCall(event, agentIdFromQuery = null) {
       }
     }
 
-    // If still no caller phone and no conversation_id, get from most recent active call
-    // This handles the case where 11Labs doesn't send conversation_id in tool calls
-    if (!resolvedCallerPhone) {
-      const recentCall = await prisma.callLog.findFirst({
-        where: {
-          businessId: business.id,
-          callerId: { not: 'Unknown' },
-          // Look for calls in the last 10 minutes (active call window)
-          createdAt: { gte: new Date(Date.now() - 10 * 60 * 1000) }
-        },
-        orderBy: { createdAt: 'desc' },
-        select: { callerId: true, callId: true }
-      });
-      if (recentCall?.callerId) {
-        resolvedCallerPhone = recentCall.callerId;
-        resolvedConversationId = resolvedConversationId || recentCall.callId;
-        console.log(`📞 Got caller phone from recent call: ${resolvedCallerPhone} (conv: ${recentCall.callId})`);
-      }
-    }
-
     // Execute tool using central tool system with caller phone in context
     const result = await executeTool(toolName, parameters, business, {
       channel: 'PHONE',
-      conversationId: resolvedConversationId,
+      conversationId: conversation_id,
       callerPhone: resolvedCallerPhone,
       phone: resolvedCallerPhone,
       from: resolvedCallerPhone
