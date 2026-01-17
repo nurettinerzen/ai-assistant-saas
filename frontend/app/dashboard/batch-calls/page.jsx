@@ -73,15 +73,11 @@ const STATUS_CONFIG = {
   }
 };
 
-// Call purpose options
+// Call purpose options - simplified to 3 main purposes
 const CALL_PURPOSE_OPTIONS = {
   sales: { tr: 'Satış', en: 'Sales' },
   collection: { tr: 'Tahsilat', en: 'Collection' },
-  appointment: { tr: 'Randevu Hatırlatma', en: 'Appointment Reminder' },
-  order: { tr: 'Sipariş Bildirimi', en: 'Order Notification' },
-  support: { tr: 'Arıza Takip', en: 'Support Follow-up' },
-  info: { tr: 'Genel Bilgilendirme', en: 'General Information' },
-  other: { tr: 'Diğer', en: 'Other' }
+  general: { tr: 'Genel Bilgilendirme', en: 'General Information' }
 };
 
 // Template variable labels based on purpose
@@ -95,6 +91,10 @@ const TEMPLATE_VARIABLES = {
     product_name: { tr: 'Ürün/Hizmet Adı', en: 'Product/Service Name' },
     product_price: { tr: 'Fiyat', en: 'Price' },
     campaign_name: { tr: 'Kampanya Adı', en: 'Campaign Name' }
+  },
+  general: {
+    info_type: { tr: 'Bilgi Türü', en: 'Info Type' },
+    custom_data: { tr: 'Özel Veri', en: 'Custom Data' }
   }
 };
 
