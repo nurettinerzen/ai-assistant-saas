@@ -168,6 +168,23 @@ export async function execute(args, business, context = {}) {
 
       console.log('🔍 Searching by phone:', { normalizedPhone, rawPhone, last10 });
 
+      // Map query_type to dataType for filtering by file type
+      // This ensures we get the right record when same phone has multiple records
+      const queryTypeToDataType = {
+        'muhasebe': 'accounting',
+        'accounting': 'accounting',
+        'siparis': 'order',
+        'order': 'order',
+        'sipariş': 'order',
+        'destek': 'support',
+        'support': 'support',
+        'musteri': 'customer',
+        'customer': 'customer',
+        'müşteri': 'customer'
+      };
+      const targetDataType = query_type ? queryTypeToDataType[query_type.toLowerCase()] : null;
+      console.log('🔍 Query type:', query_type, '-> Target data type:', targetDataType);
+
       // Try multiple formats to find the customer
       const phoneVariants = [
         normalizedPhone,           // e.g., 905321234567
@@ -182,8 +199,38 @@ export async function execute(args, business, context = {}) {
       const uniqueVariants = [...new Set(phoneVariants)];
       console.log('🔍 Phone variants to try:', uniqueVariants);
 
-      // Try exact match with each variant
+      // Build file filter based on query_type
+      let fileFilter = {};
+      if (targetDataType) {
+        // Get files of the target type
+        const targetFiles = await prisma.customerDataFile.findMany({
+          where: { businessId: business.id, dataType: targetDataType },
+          select: { id: true }
+        });
+        if (targetFiles.length > 0) {
+          fileFilter = { fileId: { in: targetFiles.map(f => f.id) } };
+          console.log('🔍 Filtering by file type:', targetDataType, '- found', targetFiles.length, 'files');
+        }
+      }
+
+      // Try exact match with each variant, prioritizing target data type
       for (const phone of uniqueVariants) {
+        // First try with file type filter
+        if (Object.keys(fileFilter).length > 0) {
+          customer = await prisma.customerData.findFirst({
+            where: {
+              businessId: business.id,
+              phone: phone,
+              ...fileFilter
+            }
+          });
+          if (customer) {
+            console.log('✅ Found by exact match with file type filter:', phone);
+            break;
+          }
+        }
+
+        // Fallback: try without file filter
         customer = await prisma.customerData.findFirst({
           where: {
             businessId: business.id,
@@ -199,12 +246,25 @@ export async function execute(args, business, context = {}) {
       // Try flexible endsWith search if exact match fails
       if (!customer && last10) {
         console.log('🔍 Trying endsWith search with last 10 digits:', last10);
-        customer = await prisma.customerData.findFirst({
-          where: {
-            businessId: business.id,
-            phone: { endsWith: last10 }
-          }
-        });
+        // First with file type filter
+        if (Object.keys(fileFilter).length > 0) {
+          customer = await prisma.customerData.findFirst({
+            where: {
+              businessId: business.id,
+              phone: { endsWith: last10 },
+              ...fileFilter
+            }
+          });
+        }
+        // Fallback without filter
+        if (!customer) {
+          customer = await prisma.customerData.findFirst({
+            where: {
+              businessId: business.id,
+              phone: { endsWith: last10 }
+            }
+          });
+        }
         if (customer) {
           console.log('✅ Found by endsWith with:', last10);
         }
