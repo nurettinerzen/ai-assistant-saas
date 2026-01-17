@@ -107,8 +107,8 @@ export default function RegisterPage() {
 
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
-      // Skip email verification - go directly to dashboard
-      router.push('/dashboard');
+      // Redirect to email verification pending page
+      router.push('/auth/email-pending');
     } catch (err) {
       setError(err.response?.data?.error || 'Registration failed');
     } finally {

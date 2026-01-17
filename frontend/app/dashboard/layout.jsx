@@ -99,8 +99,13 @@ export default function DashboardLayout({ children }) {
       const userData = userResponse.data;
       setUser(userData);
 
-      // Email verification check disabled - users can access dashboard without verification
+      // Email verification check - redirect to pending page if not verified
+      // Skip check for invited team members (they were invited via email, so implicitly verified)
       const isInvitedMember = userData.acceptedAt || (userData.role && userData.role !== 'OWNER');
+      if (!userData.emailVerified && !isInvitedMember) {
+        router.push('/auth/email-pending');
+        return;
+      }
 
       // Check if onboarding is needed
       // Team members (non-owners) who were invited should skip onboarding

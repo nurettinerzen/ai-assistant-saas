@@ -854,6 +854,10 @@ router.get('/:id', checkPermission('campaigns:view'), async (req, res) => {
         });
 
         // If no CallLog exists and call is completed, create one from 11Labs data
+        // Variables to store conversation data
+        let convDuration = null;
+        let terminationReason = null;
+
         if (!callLog && (finalStatus === 'completed' || finalStatus === 'failed')) {
           try {
             // Fetch conversation details from 11Labs
@@ -864,11 +868,15 @@ router.get('/:id', checkPermission('campaigns:view'), async (req, res) => {
             );
             const convData = convResponse.data;
 
+            // Extract duration and termination reason
+            convDuration = convData.metadata?.call_duration_secs || callDetail.duration || 0;
+            terminationReason = convData.metadata?.termination_reason || null;
+
             // Create or update CallLog from 11Labs data (upsert to handle duplicates)
             callLog = await prisma.callLog.upsert({
               where: { callId: conversationId },
               update: {
-                duration: convData.metadata?.call_duration_secs || callDetail.duration || 0,
+                duration: convDuration,
                 status: finalStatus,
                 direction: 'outbound', // Batch calls are always outbound
                 transcript: convData.transcript || null,
@@ -883,7 +891,7 @@ router.get('/:id', checkPermission('campaigns:view'), async (req, res) => {
                 businessId: batchCall.businessId,
                 callId: conversationId,
                 callerId: recipient.phone_number,
-                duration: convData.metadata?.call_duration_secs || callDetail.duration || 0,
+                duration: convDuration,
                 status: finalStatus,
                 direction: 'outbound', // Batch calls are always outbound
                 transcript: convData.transcript || null,
@@ -900,6 +908,20 @@ router.get('/:id', checkPermission('campaigns:view'), async (req, res) => {
           } catch (err) {
             console.error(`Failed to create CallLog for ${conversationId}:`, err.message);
           }
+        } else if (conversationId && (finalStatus === 'completed' || finalStatus === 'failed')) {
+          // CallLog exists, still fetch termination_reason from 11Labs for display
+          try {
+            const apiKey = process.env.ELEVENLABS_API_KEY;
+            const convResponse = await axios.get(
+              `https://api.elevenlabs.io/v1/convai/conversations/${conversationId}`,
+              { headers: { 'xi-api-key': apiKey } }
+            );
+            const convData = convResponse.data;
+            convDuration = convData.metadata?.call_duration_secs || callDetail.duration || null;
+            terminationReason = convData.metadata?.termination_reason || null;
+          } catch (err) {
+            // Ignore - just won't have termination reason
+          }
         }
 
         if (callLog) {
@@ -911,6 +933,7 @@ router.get('/:id', checkPermission('campaigns:view'), async (req, res) => {
         ...recipient,
         status: finalStatus,
         duration: recipient.duration || callDetail.duration || null,
+        terminationReason: terminationReason || callDetail.termination_reason || null,
         conversationId,
         callLogId
       };
