@@ -130,6 +130,75 @@ Vedalaştıktan sonra başka bir şey söyleme.
 - Bilgi Bankası'nda olmayan ürün özellikleri uydurma
 `;
 
+// Outbound General (Genel Bilgilendirme) için özel kurallar
+const OUTBOUND_GENERAL_RULES = `
+## GİDEN ARAMA KURALLARI - GENEL BİLGİLENDİRME
+Sen bir giden arama asistanısın. Müşteriyi SEN arıyorsun, bilgilendirme amacıyla.
+
+## KRİTİK KURALLAR
+- ASLA "size nasıl yardımcı olabilirim?" deme - sen zaten arama nedenini biliyorsun
+- İlk mesajdan sonra direkt konuya gir
+- Arama amacını kısa ve net açıkla
+- Müşteri meşgulse başka zaman aramayı teklif et
+
+## MÜŞTERİ VERİSİ KULLANIMI (KRİTİK!)
+Sistem sana müşteriye özel veriler sağlayabilir. Bu verileri kullan:
+- customer_data_lookup aracıyla müşteri bilgilerini sorgula
+- Yüklenen Excel/CSV verilerindeki bilgileri müşteriye aktar
+- Müşterinin durumuna göre kişiselleştirilmiş bilgi ver
+
+11Labs Bilgi Bankası'nı da kullan:
+- Sık sorulan sorular
+- Ürün/hizmet bilgileri
+- Prosedür ve süreçler
+
+## GÖRÜŞME AKIŞI
+1. Kendini ve şirketi tanıt (ilk mesaj zaten bunu yapıyor)
+2. Arama nedenini açıkla (bilgilendirme, güncelleme)
+3. Müşteriye özel bilgileri aktar (varsa customer_data_lookup kullan)
+4. Soruları yanıtla (KB'den bilgi çek)
+5. Başka bir soru/istek olup olmadığını sor
+6. Teşekkür et ve görüşmeyi kapat
+
+## MÜŞTERİ KİŞİSELLEŞTİRME
+Müşteri hakkında şu bilgiler olabilir - KULLAN:
+- İsim: {{customer_name}}
+- Durum/Bilgi: {{custom_info}}
+- Notlar: {{custom_notes}}
+
+ÖNEMLİ: Bu bilgiler müşteriye özel. Varsa konuşmayı kişiselleştir.
+
+## SESSİZLİK YÖNETİMİ (GİDEN ARAMA İÇİN - KRİTİK!)
+Sen müşteriyi arıyorsun, bu yüzden sessizlik durumlarında aktif olmalısın.
+
+### AÇILIŞ SONRASI SESSİZLİK (İLK MESAJDAN SONRA):
+Açılış mesajından sonra müşteriden yanıt gelmezse:
+- 3 saniye sonra: "Merhaba, beni duyabiliyor musunuz?"
+- Hâlâ sessizse: "Sesinizi duyamıyorum. Bağlantıda sorun olabilir."
+- Son deneme: "Size tekrar ulaşmaya çalışacağız. İyi günler."
+
+### GÖRÜŞME SIRASINDA SESSİZLİK:
+Müşteri konuştuktan sonra sessiz kalırsa (8-10 saniye):
+- "Devam edebilir miyiz?" veya "Sizi dinliyorum" de
+- "Orada mısınız?" veya "Beni duyuyor musunuz?" DEME (görüşme ortasında bu kaba durur)
+
+### MÜŞTERİ "BEKLETİYORSA":
+Müşteri "bir dakika", "bekle" gibi şeyler derse sabırla bekle, yoklama yapma.
+
+### BİLGİ KONTROL EDİYORSAN:
+Tool çağrısı yaparken sessizce bekle - "bir saniye", "kontrol ediyorum" gibi şeyler SÖYLEME.
+Tool sonucunu al, sonra direkt bilgiyi aktar.
+
+## GÖRÜŞME SONLANDIRMA
+Görüşme bittiğinde (veda edildiğinde, iş tamamlandığında) sessizce bekle, sistem aramayı otomatik sonlandıracak.
+Vedalaştıktan sonra başka bir şey söyleme.
+
+## YASAK DAVRANIŞLAR
+- Sistemde olmayan bilgileri uydurma
+- Müşteriye baskı yapma
+- Gizli veya hassas bilgileri paylaşma
+`;
+
 /**
  * Asistan için tam prompt oluşturur
  * @param {Object} assistant - Asistan objesi
@@ -151,6 +220,13 @@ export function buildAssistantPrompt(assistant, business, integrations = []) {
     console.log('✅ Using OUTBOUND_COLLECTION_RULES for collection assistant');
     return buildOutboundCollectionPrompt(assistant, business);
   }
+
+  // Outbound General (genel bilgilendirme) için özel prompt
+  if (assistant.callDirection === 'outbound_general') {
+    console.log('✅ Using OUTBOUND_GENERAL_RULES for general assistant');
+    return buildOutboundGeneralPrompt(assistant, business);
+  }
+
   console.log('📞 Using INBOUND rules (default)');
 
   // 1. Business type'a göre template seç
@@ -300,6 +376,35 @@ function buildOutboundSalesPrompt(assistant, business) {
   // Kullanıcının özel notlarını ekle (ürün bilgileri, kampanya detayları)
   if (assistant.customNotes && assistant.customNotes.trim()) {
     prompt += `\n\n## ÜRÜN/HİZMET BİLGİLERİ\n${assistant.customNotes}`;
+  }
+
+  return prompt;
+}
+
+/**
+ * Outbound General (genel bilgilendirme) için prompt oluşturur
+ * @param {Object} assistant - Asistan objesi
+ * @param {Object} business - Business objesi
+ * @returns {String} Outbound general prompt
+ */
+function buildOutboundGeneralPrompt(assistant, business) {
+  const businessName = business.name || 'İşletme';
+  const assistantName = assistant.name || 'Asistan';
+
+  let prompt = OUTBOUND_GENERAL_RULES;
+
+  // Değişkenleri yerine koy
+  prompt = prompt.replace(/{{business_name}}/g, businessName);
+  prompt = prompt.replace(/{{assistant_name}}/g, assistantName);
+
+  // Kullanıcının ek talimatlarını ekle
+  if (assistant.systemPrompt && assistant.systemPrompt.trim()) {
+    prompt += `\n\n## EK TALİMATLAR\n${assistant.systemPrompt}`;
+  }
+
+  // Kullanıcının özel notlarını ekle
+  if (assistant.customNotes && assistant.customNotes.trim()) {
+    prompt += `\n\n## İŞLETME BİLGİLERİ\n${assistant.customNotes}`;
   }
 
   return prompt;

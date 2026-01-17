@@ -197,15 +197,17 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
 
     // Determine effective callDirection based on callPurpose
     // For outbound calls, callPurpose determines the actual callDirection for prompt selection
+    // 3 main purposes: sales, collection, general
     let effectiveCallDirection = callDirection || 'inbound';
     if (effectiveCallDirection === 'outbound' && callPurpose) {
       // Map callPurpose to specific callDirection for promptBuilder
       if (callPurpose === 'sales') {
         effectiveCallDirection = 'outbound_sales';
-      } else if (callPurpose === 'collection' || callPurpose === 'reminder') {
+      } else if (callPurpose === 'collection') {
         effectiveCallDirection = 'outbound_collection';
+      } else if (callPurpose === 'general') {
+        effectiveCallDirection = 'outbound_general';
       }
-      // For other purposes (survey, info, custom), keep 'outbound' which defaults to collection
       console.log('📞 Outbound call purpose mapping:', callPurpose, '->', effectiveCallDirection);
     }
 
@@ -666,14 +668,17 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
 
     // Determine effective callDirection based on callPurpose
     // For outbound calls, callPurpose determines the actual callDirection for prompt selection
+    // 3 main purposes: sales, collection, general
     const effectivePurpose = callPurpose !== undefined ? callPurpose : assistant.callPurpose;
     let effectiveCallDirection = callDirection || assistant.callDirection || 'inbound';
     if (effectiveCallDirection === 'outbound' && effectivePurpose) {
       // Map callPurpose to specific callDirection for promptBuilder
       if (effectivePurpose === 'sales') {
         effectiveCallDirection = 'outbound_sales';
-      } else if (effectivePurpose === 'collection' || effectivePurpose === 'reminder') {
+      } else if (effectivePurpose === 'collection') {
         effectiveCallDirection = 'outbound_collection';
+      } else if (effectivePurpose === 'general') {
+        effectiveCallDirection = 'outbound_general';
       }
       console.log('📞 Outbound call purpose mapping (update):', effectivePurpose, '->', effectiveCallDirection);
     }

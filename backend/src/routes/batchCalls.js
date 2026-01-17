@@ -332,7 +332,7 @@ router.post('/', upload.single('file'), checkPermission('campaigns:view'), async
     }
 
     // Verify assistant belongs to this business and is outbound type
-    // callDirection can be 'outbound', 'outbound_sales', or 'outbound_collection'
+    // callDirection can be 'outbound', 'outbound_sales', 'outbound_collection', or 'outbound_general'
     const assistant = await prisma.assistant.findFirst({
       where: {
         id: assistantId,
@@ -341,7 +341,8 @@ router.post('/', upload.single('file'), checkPermission('campaigns:view'), async
         OR: [
           { callDirection: 'outbound' },
           { callDirection: 'outbound_sales' },
-          { callDirection: 'outbound_collection' }
+          { callDirection: 'outbound_collection' },
+          { callDirection: 'outbound_general' }
         ]
       }
     });
