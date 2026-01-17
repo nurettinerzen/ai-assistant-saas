@@ -287,9 +287,39 @@ export async function execute(args, business, context = {}) {
                                customFields['Tutar'] || customFields['Toplam'] ||
                                customFields['Bakiye'] || customFields['Borç'];
 
-      // For sensitive data, require verification
+      // ============================================================================
+      // CALLER ID VERIFICATION - Skip verification if caller's phone matches record
+      // This applies to PHONE and WHATSAPP channels where we have trusted caller ID
+      // ============================================================================
+      const callerPhone = context.callerPhone || context.phone || context.from;
+      const channel = context.channel?.toUpperCase();
+      const isTrustedChannel = channel === 'PHONE' || channel === 'WHATSAPP';
+
+      if (isTrustedChannel && callerPhone && customer.phone) {
+        const callerNormalized = normalizePhone(callerPhone);
+        const customerNormalized = normalizePhone(customer.phone);
+        const callerLast10 = String(callerPhone).replace(/[^\d]/g, '').slice(-10);
+        const customerLast10 = String(customer.phone).replace(/[^\d]/g, '').slice(-10);
+
+        const callerMatchesRecord = callerNormalized === customerNormalized ||
+                                    callerLast10 === customerLast10 ||
+                                    (callerLast10.length >= 7 && customerLast10.includes(callerLast10));
+
+        if (callerMatchesRecord) {
+          console.log('✅ CALLER ID VERIFICATION: Caller phone matches record - skipping verification');
+          console.log(`   Caller: ${callerPhone} → Record: ${customer.phone}`);
+          // Skip verification - caller is verified by their phone number
+          // Fall through to return data directly
+        }
+      }
+
+      // For sensitive data, require verification (unless caller was verified above)
       // Also require verification for order lookups (to prevent unauthorized tracking)
-      if (hasSensitiveData || order_number) {
+      const callerWasVerified = isTrustedChannel && callerPhone && customer.phone &&
+        (normalizePhone(callerPhone) === normalizePhone(customer.phone) ||
+         String(callerPhone).replace(/[^\d]/g, '').slice(-10) === String(customer.phone).replace(/[^\d]/g, '').slice(-10));
+
+      if ((hasSensitiveData || order_number) && !callerWasVerified) {
         console.log('🔐 VERIFICATION REQUIRED: Sensitive data or order lookup');
 
         // Dynamically determine which fields can be used for verification
