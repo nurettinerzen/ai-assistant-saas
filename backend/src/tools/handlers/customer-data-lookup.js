@@ -171,16 +171,34 @@ export async function execute(args, business, context = {}) {
       // Map query_type to dataType for filtering by file type
       // This ensures we get the right record when same phone has multiple records
       const queryTypeToDataType = {
+        // Muhasebe/Accounting queries
         'muhasebe': 'accounting',
         'accounting': 'accounting',
+        'sgk_borcu': 'accounting',
+        'sgk borcu': 'accounting',
+        'vergi_borcu': 'accounting',
+        'vergi borcu': 'accounting',
+        'borc': 'accounting',
+        'borç': 'accounting',
+        'debt': 'accounting',
+        // Sipariş/Order queries
         'siparis': 'order',
         'order': 'order',
         'sipariş': 'order',
+        'kargo': 'order',
+        // Destek/Support queries
         'destek': 'support',
         'support': 'support',
+        'ariza': 'support',
+        'arıza': 'support',
+        'servis': 'support',
+        // Müşteri/Customer queries
         'musteri': 'customer',
         'customer': 'customer',
-        'müşteri': 'customer'
+        'müşteri': 'customer',
+        // Randevu/Appointment queries
+        'randevu': 'appointment',
+        'appointment': 'appointment'
       };
       const targetDataType = query_type ? queryTypeToDataType[query_type.toLowerCase()] : null;
       console.log('🔍 Query type:', query_type, '-> Target data type:', targetDataType);
