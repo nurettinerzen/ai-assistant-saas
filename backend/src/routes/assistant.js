@@ -345,6 +345,52 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
       const elevenLabsResponse = await elevenLabsService.createAgent(agentConfig);
       elevenLabsAgentId = elevenLabsResponse.agent_id;
       console.log('✅ 11Labs Agent created:', elevenLabsAgentId);
+
+      // Update webhook tools with agentId in URL (11Labs doesn't send agentId in webhook body)
+      if (activeToolDefinitions.length > 0) {
+        const webhookUrlWithAgent = `${backendUrl}/api/elevenlabs/webhook?agentId=${elevenLabsAgentId}`;
+        const updatedWebhookTools = activeToolDefinitions.map(tool => ({
+          type: 'webhook',
+          name: tool.function.name,
+          description: tool.function.description,
+          api_schema: {
+            url: webhookUrlWithAgent,
+            method: 'POST',
+            request_body_schema: {
+              type: 'object',
+              properties: {
+                tool_name: {
+                  type: 'string',
+                  constant_value: tool.function.name
+                },
+                ...Object.fromEntries(
+                  Object.entries(tool.function.parameters.properties || {}).map(([key, value]) => [
+                    key,
+                    {
+                      type: value.type || 'string',
+                      description: value.description || ''
+                    }
+                  ])
+                )
+              },
+              required: tool.function.parameters.required || []
+            }
+          }
+        }));
+
+        // Update agent with correct webhook URLs including agentId
+        const allToolsWithAgentId = [endCallTool, ...updatedWebhookTools];
+        await elevenLabsService.updateAgent(elevenLabsAgentId, {
+          conversation_config: {
+            agent: {
+              prompt: {
+                tools: allToolsWithAgentId
+              }
+            }
+          }
+        });
+        console.log('✅ 11Labs Agent tools updated with agentId in webhook URLs');
+      }
     } catch (elevenLabsError) {
       console.error('❌ 11Labs Agent creation failed:', elevenLabsError.response?.data || elevenLabsError.message);
       return res.status(500).json({
