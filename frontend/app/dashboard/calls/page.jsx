@@ -29,7 +29,7 @@ import {
 import TranscriptModal from '@/components/TranscriptModal';
 import EmptyState from '@/components/EmptyState';
 import { GradientLoaderInline } from '@/components/GradientLoader';
-import { Phone, Search, Download, Filter, FileText, Volume2, PhoneIncoming, PhoneOutgoing, Coins } from 'lucide-react';
+import { Phone, Search, Download, Filter, FileText, Volume2, PhoneIncoming, PhoneOutgoing } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
 import { formatDate, formatDuration, formatPhone } from '@/lib/utils';
@@ -365,7 +365,6 @@ export default function CallsPage() {
                 <TableHead>{t('dashboard.callsPage.status')}</TableHead>
                 <TableHead>{locale === 'tr' ? 'Sonlandırma' : 'End Reason'}</TableHead>
                 <TableHead>{t('dashboard.callsPage.phoneNumber')}</TableHead>
-                <TableHead>{locale === 'tr' ? 'Maliyet' : 'Cost'}</TableHead>
                 <TableHead className="text-right">{t('dashboard.callsPage.actions')}</TableHead>
               </TableRow>
             </TableHeader>
@@ -395,16 +394,6 @@ export default function CallsPage() {
                     <span className="text-sm text-gray-600 dark:text-gray-400">
                       {formatPhone(call.phoneNumber || call.callerId) || '-'}
                     </span>
-                  </TableCell>
-                  <TableCell>
-                    {(call.callCost && call.callCost > 0) ? (
-                      <span className="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-1">
-                        <Coins className="h-3 w-3 text-warning-500" />
-                        {call.callCost.toLocaleString(locale === 'tr' ? 'tr-TR' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺
-                      </span>
-                    ) : (
-                      <span className="text-sm text-gray-400">-</span>
-                    )}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">

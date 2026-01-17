@@ -30,7 +30,6 @@ import {
   Lightbulb,
   CheckCircle,
   PhoneOff,
-  Coins,
 } from 'lucide-react';
 import { formatDate, formatDuration } from '@/lib/utils';
 import { apiClient } from '@/lib/api';
@@ -322,34 +321,20 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
               </div>
             )}
 
-            {/* Call Info - End Reason & Cost */}
-            <div className="grid grid-cols-2 gap-4">
-              {/* End Reason */}
-              <div className="bg-white dark:bg-neutral-800 border dark:border-neutral-700 rounded-lg p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <PhoneOff className="h-4 w-4 text-neutral-600 dark:text-neutral-400" />
-                  <h4 className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Görüşme Sonlanma</h4>
-                </div>
-                <Badge variant="outline" className="text-xs">
-                  {call.endReason === 'client_ended' ? 'Müşteri kapattı' :
-                   call.endReason === 'agent_ended' ? 'Asistan kapattı' :
-                   call.endReason === 'system_timeout' ? 'Zaman aşımı' :
-                   call.endReason === 'no_answer' ? 'Cevap verilmedi' :
-                   call.endReason === 'call_ended' ? 'Görüşme tamamlandı' :
-                   call.endReason || 'Bilinmiyor'}
-                </Badge>
+            {/* Call Info - End Reason */}
+            <div className="bg-white dark:bg-neutral-800 border dark:border-neutral-700 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <PhoneOff className="h-4 w-4 text-neutral-600 dark:text-neutral-400" />
+                <h4 className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Görüşme Sonlanma</h4>
               </div>
-
-              {/* Call Cost */}
-              <div className="bg-white dark:bg-neutral-800 border dark:border-neutral-700 rounded-lg p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Coins className="h-4 w-4 text-neutral-600 dark:text-neutral-400" />
-                  <h4 className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Görüşme Maliyeti</h4>
-                </div>
-                <span className="text-lg font-semibold text-neutral-900 dark:text-white">
-                  {(call.callCost || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺
-                </span>
-              </div>
+              <Badge variant="outline" className="text-xs">
+                {call.endReason === 'client_ended' ? 'Müşteri kapattı' :
+                 call.endReason === 'agent_ended' ? 'Asistan kapattı' :
+                 call.endReason === 'system_timeout' ? 'Zaman aşımı' :
+                 call.endReason === 'no_answer' ? 'Cevap verilmedi' :
+                 call.endReason === 'call_ended' ? 'Görüşme tamamlandı' :
+                 call.endReason || 'Bilinmiyor'}
+              </Badge>
             </div>
 
             {/* Call Summary */}

@@ -237,6 +237,18 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
         }
       };
 
+      // Voicemail detection tool - automatically ends call when voicemail is detected
+      const voicemailDetectionTool = {
+        type: 'system',
+        name: 'voicemail_detection',
+        description: 'Sesli mesaj (voicemail) algılandığında aramayı otomatik olarak sonlandırır.',
+        params: {
+          system_tool_type: 'voicemail_detection',
+          voicemail_message: '',  // Empty = just hang up, don't leave message
+          use_out_of_band_dtmf: false
+        }
+      };
+
       // Webhook tools - inline in agent config (not separate via tool_ids)
       const backendUrl = process.env.BACKEND_URL || 'https://api.telyx.ai';
       const webhookUrl = `${backendUrl}/api/elevenlabs/webhook`;
@@ -271,8 +283,8 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
         }
       }));
 
-      // All tools: system + webhook
-      const allTools = [endCallTool, ...webhookTools];
+      // All tools: system (end_call, voicemail_detection) + webhook
+      const allTools = [endCallTool, voicemailDetectionTool, ...webhookTools];
       console.log('🔧 Tools for agent:', allTools.map(t => t.name));
 
       // Build language-specific analysis prompts for post-call summary
@@ -681,13 +693,25 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
         console.log('📝 Update language mapping:', lang, '->', elevenLabsLang);
         console.log('🔧 Updating 11Labs agent:', assistant.elevenLabsAgentId);
 
-        // System tools (end_call) go inside prompt.tools
+        // System tools (end_call, voicemail_detection) go inside prompt.tools
         const endCallTool = {
           type: 'system',
           name: 'end_call',
           description: 'Müşteri vedalaştığında veya "iyi günler", "görüşürüz", "hoşçakal", "bye", "goodbye" dediğinde aramayı sonlandır. Görüşme tamamlandığında ve müşteri veda ettiğinde bu aracı kullan.',
           params: {
             system_tool_type: 'end_call'
+          }
+        };
+
+        // Voicemail detection tool - automatically ends call when voicemail is detected
+        const voicemailDetectionTool = {
+          type: 'system',
+          name: 'voicemail_detection',
+          description: 'Sesli mesaj (voicemail) algılandığında aramayı otomatik olarak sonlandırır.',
+          params: {
+            system_tool_type: 'voicemail_detection',
+            voicemail_message: '',  // Empty = just hang up, don't leave message
+            use_out_of_band_dtmf: false
           }
         };
 
@@ -727,8 +751,8 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
           }
         }));
 
-        // All tools: system + webhook
-        const allTools = [endCallTool, ...webhookTools];
+        // All tools: system (end_call, voicemail_detection) + webhook
+        const allTools = [endCallTool, voicemailDetectionTool, ...webhookTools];
         console.log('🔧 Updating tools for agent:', allTools.map(t => t.name));
 
         // Build language-specific analysis prompts for post-call summary

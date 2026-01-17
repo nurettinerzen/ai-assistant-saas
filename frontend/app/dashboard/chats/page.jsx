@@ -38,7 +38,6 @@ import {
   Download,
   Filter,
   MessageCircle,
-  Coins,
   Eye,
   User,
   Bot,
@@ -214,12 +213,11 @@ export default function ChatsPage() {
     try {
       // Simple CSV export
       const csvContent = [
-        ['Tarih', 'Kanal', 'Mesaj Sayısı', 'Maliyet (TL)', 'Durum'].join(','),
+        ['Tarih', 'Kanal', 'Mesaj Sayısı', 'Durum'].join(','),
         ...chats.map(chat => [
           new Date(chat.createdAt).toLocaleString(locale === 'tr' ? 'tr-TR' : 'en-US'),
           chat.channel === 'CHAT' ? 'Sohbet' : 'WhatsApp',
           chat.messageCount,
-          (chat.totalCost || 0).toFixed(2),
           chat.status === 'active' ? 'Aktif' : (chat.status === 'completed' || chat.status === 'ended') ? 'Tamamlandı' : chat.status
         ].join(','))
       ].join('\n');
@@ -373,7 +371,6 @@ export default function ChatsPage() {
                 <TableHead>{locale === 'tr' ? 'Tarih' : 'Date'}</TableHead>
                 <TableHead>{locale === 'tr' ? 'Kanal' : 'Channel'}</TableHead>
                 <TableHead>{locale === 'tr' ? 'Mesaj' : 'Messages'}</TableHead>
-                <TableHead>{locale === 'tr' ? 'Maliyet' : 'Cost'}</TableHead>
                 <TableHead>{locale === 'tr' ? 'Durum' : 'Status'}</TableHead>
                 <TableHead className="text-right">{locale === 'tr' ? 'İşlem' : 'Actions'}</TableHead>
               </TableRow>
@@ -394,16 +391,6 @@ export default function ChatsPage() {
                       <Hash className="h-3 w-3 text-gray-400" />
                       {chat.messageCount || 0}
                     </span>
-                  </TableCell>
-                  <TableCell>
-                    {(chat.totalCost && chat.totalCost > 0) ? (
-                      <span className="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-1">
-                        <Coins className="h-3 w-3 text-warning-500" />
-                        {chat.totalCost.toLocaleString(locale === 'tr' ? 'tr-TR' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺
-                      </span>
-                    ) : (
-                      <span className="text-sm text-gray-400">-</span>
-                    )}
                   </TableCell>
                   <TableCell>
                     {getStatusIndicator(chat.status)}
@@ -492,10 +479,6 @@ export default function ChatsPage() {
                 <div>
                   <span className="text-gray-500">{locale === 'tr' ? 'Tarih' : 'Date'}</span>
                   <p className="font-medium">{formatChatDate(selectedChat.createdAt)}</p>
-                </div>
-                <div>
-                  <span className="text-gray-500">{locale === 'tr' ? 'Maliyet' : 'Cost'}</span>
-                  <p className="font-medium">{(selectedChat.totalCost || 0).toLocaleString(locale === 'tr' ? 'tr-TR' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺</p>
                 </div>
                 <div>
                   <span className="text-gray-500">{locale === 'tr' ? 'Asistan' : 'Assistant'}</span>
