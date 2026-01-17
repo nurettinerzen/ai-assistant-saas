@@ -403,32 +403,38 @@ function tryDynamicVerification(pendingVerification, providedData, language) {
     let storedValue = expectedField.value;
 
     // Get provided value based on field type
+    // AI may send the value in various argument names
     switch (expectedField.type) {
       case 'phone':
         providedValue = providedData.phone;
         break;
       case 'name':
-        providedValue = providedData.customer_name;
+        providedValue = providedData.customer_name || providedData.name || providedData.firma || providedData.isletme;
         if (!storedValue) storedValue = storedName;
         break;
       case 'vkn':
-        // Check multiple possible arg names for VKN
-        providedValue = providedData.vkn || providedData.vergi_kimlik || providedData.tax_id;
+        providedValue = providedData.vkn || providedData.vergi_kimlik || providedData.tax_id || providedData.vergi_no;
         break;
       case 'tc':
-        providedValue = providedData.tc || providedData.tckn || providedData.tc_kimlik || providedData.national_id;
+        providedValue = providedData.tc || providedData.tckn || providedData.tc_kimlik || providedData.tc_no || providedData.national_id;
         break;
       case 'order':
-        providedValue = providedData.order_number;
+        providedValue = providedData.order_number || providedData.siparis_no || providedData.siparis;
         break;
       case 'email':
-        providedValue = providedData.email;
+        providedValue = providedData.email || providedData.eposta;
         break;
       case 'plate':
-        providedValue = providedData.plaka || providedData.plate;
+        providedValue = providedData.plaka || providedData.plate || providedData.arac_plaka;
         break;
       case 'customer_id':
         providedValue = providedData.musteri_no || providedData.customer_id || providedData.hesap_no;
+        break;
+      case 'appointment':
+        providedValue = providedData.randevu || providedData.randevu_tarihi || providedData.appointment;
+        break;
+      case 'ticket':
+        providedValue = providedData.ariza_no || providedData.servis_no || providedData.ticket || providedData.destek_no;
         break;
     }
 
@@ -475,6 +481,7 @@ function fuzzyMatch(provided, stored, fieldType) {
     case 'vkn':
     case 'tc':
     case 'customer_id':
+    case 'ticket':
       // Exact match for ID numbers (after removing spaces/dashes)
       const providedClean = providedStr.replace(/[\s\-]/g, '');
       const storedClean = storedStr.replace(/[\s\-]/g, '');
@@ -492,6 +499,13 @@ function fuzzyMatch(provided, stored, fieldType) {
     case 'order':
       // Case-insensitive order number match
       return providedStr === storedStr || providedStr.replace(/[\s\-]/g, '') === storedStr.replace(/[\s\-]/g, '');
+
+    case 'appointment':
+      // Date matching - flexible format comparison
+      // Remove common separators and compare
+      const providedDate = providedStr.replace(/[\s\.\/\-]/g, '');
+      const storedDate = storedStr.replace(/[\s\.\/\-]/g, '');
+      return providedDate === storedDate || storedStr.includes(providedStr) || providedStr.includes(storedStr);
 
     default:
       return providedStr === storedStr;
@@ -515,25 +529,29 @@ function getAvailableVerificationFields(customer, customFields, providedData) {
       labelEN: 'your phone number'
     },
     {
+      // VKN - Vergi Kimlik Numarası (10 haneli)
       patterns: ['vkn', 'vergi kimlik', 'vergi no', 'tax id', 'tax number'],
       type: 'vkn',
       labelTR: 'vergi kimlik numaranızı',
       labelEN: 'your tax ID number'
     },
     {
-      patterns: ['tc', 'tckn', 'tc kimlik', 'kimlik no', 'national id', 'identity'],
+      // TC Kimlik No (11 haneli)
+      patterns: ['tc no', 'tc kimlik', 'tckn', 'kimlik no', 'national id', 'identity'],
       type: 'tc',
       labelTR: 'TC kimlik numaranızı',
       labelEN: 'your national ID number'
     },
     {
-      patterns: ['isim', 'ad', 'name', 'müşteri adı', 'musteri adi', 'firma', 'işletme', 'isletme', 'company', 'şirket', 'sirket'],
+      // İsim/Firma - birçok varyasyon
+      patterns: ['işletme', 'isletme', 'müşteri adı', 'musteri adi', 'yetkili', 'firma', 'şirket', 'sirket', 'company', 'isim soyisim', 'ad soyad', 'name'],
       type: 'name',
       labelTR: 'adınızı veya firma adınızı',
       labelEN: 'your name or company name'
     },
     {
-      patterns: ['sipariş', 'siparis', 'order', 'sipariş no', 'siparis no', 'order number'],
+      // Sipariş numarası
+      patterns: ['sipariş no', 'siparis no', 'sipariş', 'siparis', 'order no', 'order number', 'order'],
       type: 'order',
       labelTR: 'sipariş numaranızı',
       labelEN: 'your order number'
@@ -555,6 +573,20 @@ function getAvailableVerificationFields(customer, customFields, providedData) {
       type: 'customer_id',
       labelTR: 'müşteri numaranızı',
       labelEN: 'your customer number'
+    },
+    {
+      // Randevu için tarih/saat
+      patterns: ['randevu tarihi', 'randevu', 'appointment date', 'appointment'],
+      type: 'appointment',
+      labelTR: 'randevu tarihinizi',
+      labelEN: 'your appointment date'
+    },
+    {
+      // Arıza/Servis için
+      patterns: ['arıza no', 'ariza no', 'servis no', 'ticket', 'ticket no', 'destek no'],
+      type: 'ticket',
+      labelTR: 'arıza/servis numaranızı',
+      labelEN: 'your service ticket number'
     }
   ];
 
