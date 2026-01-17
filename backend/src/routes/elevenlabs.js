@@ -16,7 +16,6 @@ import usageService from '../services/usageService.js';
 import subscriptionService from '../services/subscriptionService.js';
 import callAnalysis from '../services/callAnalysis.js';
 import { executeTool } from '../tools/index.js';
-import batchCallService from '../services/batch-call.js';
 import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -429,23 +428,6 @@ router.post('/post-call', async (req, res) => {
         transcript: transcriptText,
         status: status
       });
-    }
-
-    // Handle batch call updates
-    try {
-      await batchCallService.handleCallWebhook({
-        type: 'call.ended',
-        call: {
-          id: conversation_id,
-          duration: call_duration_secs,
-          transcript: transcriptMessages,
-          transcriptText,
-          endedReason: status,
-          summary: aiAnalysis.summary
-        }
-      });
-    } catch (batchError) {
-      console.log('ℹ️ No batch call found for this conversation (normal for regular calls)');
     }
 
     res.json({ success: true });
@@ -1010,23 +992,6 @@ async function handleConversationEnded(event) {
 
       // Decrement active calls
       await subscriptionService.decrementActiveCalls(business.id);
-    }
-
-    // Handle batch call updates
-    try {
-      await batchCallService.handleCallWebhook({
-        type: 'call.ended',
-        call: {
-          id: conversationId,
-          duration: duration,
-          transcript: transcriptMessages,
-          transcriptText,
-          endedReason: 'completed',
-          summary: aiAnalysis.summary
-        }
-      });
-    } catch (batchError) {
-      // Normal for regular calls
     }
 
   } catch (error) {

@@ -71,24 +71,24 @@ export const VOIP_PROVIDERS = {
     name: 'United States',
     code: 'US',
     flag: '🇺🇸',
-    recommended: 'vapi',
+    recommended: 'elevenlabs',
     providers: [
       {
-        id: 'vapi',
-        name: 'VAPI (Ücretsiz)',
-        website: 'https://vapi.ai',
-        sipServer: null, // VAPI manages this
+        id: 'elevenlabs',
+        name: '11Labs (Önerilen)',
+        website: 'https://elevenlabs.io',
+        sipServer: null, // 11Labs manages this
         pricing: '$0 (max 10 numara)',
         setupGuide: null,
         features: [
           'Anlık aktivasyon',
           'Alan kodu seçimi',
           'Otomatik kurulum',
-          'Ücretsiz (limit dahilinde)'
+          'En iyi ses kalitesi'
         ],
         difficulty: 'auto',
         rating: 5.0,
-        supportLanguages: ['EN']
+        supportLanguages: ['EN', 'TR']
       },
       {
         id: 'twilio',

@@ -424,14 +424,9 @@ router.post('/widget', async (req, res) => {
         business: business
       };
     } else {
-      // Legacy way: Use assistantId directly (backward compatibility)
+      // Use assistantId directly
       assistant = await prisma.assistant.findFirst({
-        where: {
-          OR: [
-            { id: assistantId },
-            { vapiAssistantId: assistantId }
-          ]
-        },
+        where: { id: assistantId },
         include: {
           business: {
             include: {
@@ -660,12 +655,7 @@ router.get('/assistant/:assistantId', async (req, res) => {
     const { assistantId } = req.params;
 
     const assistant = await prisma.assistant.findFirst({
-      where: {
-        OR: [
-          { id: assistantId },
-          { vapiAssistantId: assistantId }
-        ]
-      },
+      where: { id: assistantId },
       select: {
         name: true,
         business: {
@@ -734,12 +724,7 @@ router.get('/widget/status/:assistantId', async (req, res) => {
     const { assistantId } = req.params;
 
     const assistant = await prisma.assistant.findFirst({
-      where: {
-        OR: [
-          { id: assistantId },
-          { vapiAssistantId: assistantId }
-        ]
-      },
+      where: { id: assistantId },
       include: {
         business: true
       }

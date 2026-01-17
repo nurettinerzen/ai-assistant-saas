@@ -45,10 +45,7 @@ import emailRoutes from './routes/email.js';
 import shopifyRoutes from './routes/shopify.js';
 import woocommerceRoutes from './routes/woocommerce.js';
 import webhookRoutes from './routes/webhook.js';
-// Batch call / Collection campaigns (Legacy)
-import batchCallRoutes from './routes/batch-call.js';
-import { processAllQueues } from './services/batch-call.js';
-// New Batch Calls (Excel/CSV Upload)
+// Batch Calls (Excel/CSV Upload with 11Labs)
 import batchCallsRoutes from './routes/batchCalls.js';
 // Team management
 import teamRoutes from './routes/team.js';
@@ -168,7 +165,6 @@ app.use('/api/email', emailRoutes);
 app.use('/api/shopify', shopifyRoutes);
 app.use('/api/woocommerce', woocommerceRoutes);
 app.use('/api/webhook', webhookRoutes);
-app.use('/api/batch-call', batchCallRoutes);
 app.use('/api/batch-calls', batchCallsRoutes);
 app.use('/api/team', teamRoutes);
 app.use('/api/waitlist', waitlistRoutes);

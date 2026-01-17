@@ -82,9 +82,9 @@ export const trackCallUsage = async (businessId, durationInSeconds, callData = {
  * @param {Number} businessId
  * @param {Object} subscription - Current subscription
  * @param {Number} minutes - Minutes to deduct
- * @param {String} vapiCallId - VAPI call ID (optional)
+ * @param {String} callId - Call ID (optional, 11Labs conversation_id)
  */
-async function deductMinutesWithCredits(businessId, subscription, minutes, vapiCallId = null) {
+async function deductMinutesWithCredits(businessId, subscription, minutes, callId = null) {
   let remainingMinutes = minutes;
   let fromPackage = 0;
   let fromCredit = 0;
@@ -128,7 +128,7 @@ async function deductMinutesWithCredits(businessId, subscription, minutes, vapiC
       type: 'CALL',
       minutes,
       source: fromOverage > 0 ? 'OVERAGE' : (fromCredit > 0 ? 'CREDIT' : 'PACKAGE'),
-      vapiCallId,
+      callId,
       metadata: { fromPackage, fromCredit, fromOverage }
     }
   });

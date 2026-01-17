@@ -92,13 +92,6 @@ model Business {
   currency                String                  @default("TRY") // Para birimi (TRY, BRL, USD, EUR...)
   timezone                String                  @default("Europe/Istanbul")
   phoneNumbers            String[]                @default([])
-  vapiPhoneNumber         String?
-  vapiAssistantId         String?
-  vapiPitch               Float?                  @default(1.0)
-  vapiSpeed               Float?                  @default(1.0)
-  vapiTone                VoiceTone?              @default(PROFESSIONAL)
-  vapiVoiceGender         VoiceGender?            @default(MALE)
-  vapiVoiceId             String?                 @default("male-1-professional")
   businessType            BusinessType            @default(OTHER)
   customGreeting          String?
   customInstructions      String?
@@ -168,9 +161,7 @@ model Assistant {
   voiceId             String
   systemPrompt        String        @db.Text
   model               String        @default("gpt-4")
-  vapiAssistantId     String?       @unique  // DEPRECATED: Use elevenLabsAgentId
   elevenLabsAgentId   String?       @unique  // 11Labs Conversational AI Agent ID
-  voiceProvider       String        @default("elevenlabs")  // "elevenlabs" or "vapi" for transition
   isActive            Boolean       @default(true)
   timezone            String?       // Business timezone for date/time context
   firstMessage        String?       // Custom first message
@@ -198,7 +189,6 @@ model PhoneNumber {
   phoneNumber             String        @unique
   countryCode             String
   provider                PhoneProvider
-  vapiPhoneId             String?       @unique  // DEPRECATED: Use elevenLabsPhoneId
   elevenLabsPhoneId       String?       @unique  // 11Labs phone number ID
   netgsmNumberId          String?
   sipUsername             String?
@@ -674,7 +664,6 @@ enum VoiceTone {
 }
 
 enum PhoneProvider {
-  VAPI       // DEPRECATED: Use ELEVENLABS
   ELEVENLABS // 11Labs Conversational AI
   NETGSM
   TWILIO
@@ -1109,91 +1098,6 @@ enum CampaignCallOutcome {
   OTHER               // Diğer
 }
 
-model Campaign {
-  id              Int             @id @default(autoincrement())
-  businessId      Int
-  name            String?
-  channel         CampaignChannel
-  status          CampaignStatus  @default(PENDING)
-
-  // Statistics
-  totalCalls      Int             @default(0)
-  completedCalls  Int             @default(0)
-  successfulCalls Int             @default(0)
-  failedCalls     Int             @default(0)
-
-  // Configuration
-  maxConcurrent   Int             @default(5)    // Max concurrent calls
-  callDelay       Int             @default(5)    // Seconds between calls
-  maxRetries      Int             @default(2)    // Max retry attempts per call
-
-  // Script/Prompt for AI
-  collectionScript String?        @db.Text       // Custom script for this campaign
-
-  // Timestamps
-  startedAt       DateTime?
-  completedAt     DateTime?
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-
-  // Relations
-  calls           CampaignCall[]
-
-  @@index([businessId])
-  @@index([status])
-  @@index([createdAt])
-}
-
-model CampaignCall {
-  id              Int                   @id @default(autoincrement())
-  campaignId      Int
-
-  // Customer Info
-  customerName    String
-  customerPhone   String
-  customerEmail   String?
-
-  // Invoice Info (from Paraşüt)
-  invoiceId       String?               // Paraşüt invoice ID
-  invoiceNumber   String?
-  invoiceAmount   Float
-  invoiceCurrency String                @default("TRY")
-  daysOverdue     Int
-
-  // Call Status
-  status          CampaignCallStatus    @default(PENDING)
-  outcome         CampaignCallOutcome?
-  retryCount      Int                   @default(0)
-
-  // VAPI Integration
-  vapiCallId      String?               @unique
-
-  // Call Details
-  startedAt       DateTime?
-  completedAt     DateTime?
-  duration        Int?                  // Duration in seconds
-
-  // Results
-  transcript      Json?                 // Call transcript from VAPI
-  transcriptText  String?               @db.Text
-  summary         String?               @db.Text
-  paymentDate     DateTime?             // Promised payment date
-  paymentAmount   Float?                // Promised payment amount
-  notes           String?               @db.Text
-
-  // Timestamps
-  createdAt       DateTime              @default(now())
-  updatedAt       DateTime              @updatedAt
-
-  // Relations
-  campaign        Campaign              @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-
-  @@index([campaignId])
-  @@index([status])
-  @@index([customerPhone])
-  @@index([vapiCallId])
-}
-
 // ============================================================================
 // INVITE CODE & WAITLIST TABLES
 // ============================================================================
@@ -1254,7 +1158,7 @@ model UsageLog {
   type          String                       // CALL, WHATSAPP, CHAT, EMAIL
   minutes       Float                        // Dakika (çağrı için) veya 0 (diğerleri)
   source        String                       // PACKAGE, CREDIT, OVERAGE
-  vapiCallId    String?                      // VAPI call ID (eğer çağrıysa)
+  callId        String?                      // Call ID (11Labs conversation_id)
   metadata      Json?                        // Ek bilgiler (fromPackage, fromCredit, fromOverage)
   createdAt     DateTime @default(now())
 

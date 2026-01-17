@@ -80,7 +80,7 @@ router.get('/', async (req, res) => {
         monthlyCost: pn.monthlyCost,
         nextBillingDate: pn.nextBillingDate,
         createdAt: pn.createdAt,
-        vapiPhoneId: pn.vapiPhoneId
+        elevenLabsPhoneId: pn.elevenLabsPhoneId
       })),
       count: phoneNumbers.length
     });
@@ -669,7 +669,6 @@ router.patch('/:id/assistant', async (req, res) => {
 
     console.log('   Phone Number:', phoneNumber.phoneNumber);
     console.log('   elevenLabsPhoneId:', phoneNumber.elevenLabsPhoneId || 'NULL');
-    console.log('   vapiPhoneId:', phoneNumber.vapiPhoneId || 'NULL');
 
     // Get new assistant
     const assistant = await prisma.assistant.findFirst({
