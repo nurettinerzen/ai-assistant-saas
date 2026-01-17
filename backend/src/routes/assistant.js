@@ -405,7 +405,8 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
         }));
 
         // Update agent with correct webhook URLs including agentId
-        const allToolsWithAgentId = [endCallTool, ...updatedWebhookTools];
+        // Include voicemailDetectionTool along with endCallTool and webhook tools
+        const allToolsWithAgentId = [endCallTool, voicemailDetectionTool, ...updatedWebhookTools];
         await elevenLabsService.updateAgent(elevenLabsAgentId, {
           conversation_config: {
             agent: {
