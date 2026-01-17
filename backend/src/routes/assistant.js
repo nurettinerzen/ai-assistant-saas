@@ -691,7 +691,8 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
 
         // Webhook tools - inline in agent config
         const backendUrl = process.env.BACKEND_URL || 'https://api.telyx.ai';
-        const webhookUrl = `${backendUrl}/api/elevenlabs/webhook`;
+        // IMPORTANT: Include agentId in webhook URL since 11Labs doesn't send it in body
+        const webhookUrl = `${backendUrl}/api/elevenlabs/webhook?agentId=${assistant.elevenLabsAgentId}`;
         const activeToolDefinitions = getActiveTools(business);
 
         const webhookTools = activeToolDefinitions.map(tool => ({
