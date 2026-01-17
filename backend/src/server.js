@@ -200,14 +200,6 @@ if (process.env.NODE_ENV !== 'test') {
   console.log('\n🚀 Initializing background jobs...');
   initMonthlyResetJob();
   initEmailSyncJob();
-
-  // Batch Call Queue Worker - processes collection campaigns every 10 seconds
-  setInterval(() => {
-    processAllQueues().catch(err => {
-      console.error('Batch call queue error:', err);
-    });
-  }, 10000);
-  console.log('📞 Batch call queue worker started (10s interval)');
   console.log('✅ Background jobs initialized\n');
 }
 
