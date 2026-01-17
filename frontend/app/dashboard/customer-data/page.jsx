@@ -390,23 +390,6 @@ export default function CustomerDataPage() {
           </Button>
         </div>
 
-        {/* Info Box */}
-        <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
-          <div className="flex gap-3">
-            <Phone className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-medium text-blue-900 dark:text-blue-100">
-                {locale === 'tr' ? 'Telefon Numarası Eşleştirme' : 'Phone Number Matching'}
-              </p>
-              <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                {locale === 'tr'
-                  ? 'Gelen aramalarda arayan kişinin telefon numarası bu veritabanı ile eşleştirilir. Eşleşen müşterinin bilgileri asistana iletilir.'
-                  : 'Caller\'s phone number is matched against this database during inbound calls. Matched customer info is sent to the assistant.'}
-              </p>
-            </div>
-          </div>
-        </div>
-
         {/* File List */}
         {loadingFiles ? (
           <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-12 flex items-center justify-center">
