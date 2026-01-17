@@ -123,8 +123,8 @@ export default function ChatWidgetPage() {
         // Use saved assistant if it still exists
         setAssistantId(savedSettings.assistantId);
       } else if (allAssistants.length > 0) {
-        // Find first inbound assistant, or fallback to first assistant
-        const inboundAssistant = allAssistants.find(a => a.callDirection === 'inbound' || !a.callDirection);
+        // Find first inbound assistant (not outbound*), or fallback to first assistant
+        const inboundAssistant = allAssistants.find(a => !a.callDirection?.startsWith('outbound'));
         setAssistantId(inboundAssistant?.id || allAssistants[0].id);
       }
     } catch (error) {

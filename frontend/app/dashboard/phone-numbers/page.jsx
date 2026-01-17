@@ -86,9 +86,9 @@ export default function PhoneNumbersPage() {
         setPhoneNumbers(phoneResponse.data.phoneNumbers || []);
         // Filter to only INBOUND active assistants
         // Phone numbers should only be assigned to inbound assistants
-        // Outbound assistants are selected in batch call campaigns
+        // Outbound assistants (outbound, outbound_sales, outbound_collection) are selected in batch call campaigns
         const allAssistants = assistantsResponse.data.assistants || [];
-        setAssistants(allAssistants.filter(a => a.isActive && a.callDirection === 'inbound'));
+        setAssistants(allAssistants.filter(a => a.isActive && !a.callDirection?.startsWith('outbound')));
       } catch (error) {
         console.error('Failed to load data:', error);
         toast.error('Failed to load phone numbers');

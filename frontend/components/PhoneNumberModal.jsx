@@ -104,8 +104,8 @@ export default function PhoneNumberModal({ isOpen, onClose, onSuccess }) {
     try {
       const response = await apiClient.assistants.getAll();
       const assistantList = response.data.assistants || [];
-      // Only show INBOUND assistants for phone number assignment
-      const inboundAssistants = assistantList.filter(a => a.isActive && a.callDirection === 'inbound');
+      // Only show INBOUND assistants for phone number assignment (exclude outbound*)
+      const inboundAssistants = assistantList.filter(a => a.isActive && !a.callDirection?.startsWith('outbound'));
       setAssistants(inboundAssistants);
 
       if (inboundAssistants.length > 0) {

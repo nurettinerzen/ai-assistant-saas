@@ -181,10 +181,10 @@ export default function BatchCallsPage() {
         }
       }
 
-      // Load assistants (only outbound)
+      // Load assistants (only outbound - includes outbound, outbound_sales, outbound_collection)
       const assistantsRes = await apiClient.assistants.getAll();
       const outboundAssistants = (assistantsRes.data.assistants || []).filter(
-        a => a.callDirection === 'outbound'
+        a => a.callDirection?.startsWith('outbound')
       );
       setAssistants(outboundAssistants);
 

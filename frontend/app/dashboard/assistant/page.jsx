@@ -392,7 +392,8 @@ export default function AssistantsPage() {
     // For outbound assistants, show a simple default prompt based on callPurpose
     // instead of the full generated system prompt (which is too technical for customers)
     // For inbound, also show empty since full prompt is generated in backend
-    const isOutbound = assistant.callDirection === 'outbound';
+    // Check for all outbound variants: 'outbound', 'outbound_sales', 'outbound_collection'
+    const isOutbound = assistant.callDirection?.startsWith('outbound');
     let displayPrompt = '';
 
     if (isOutbound && assistant.callPurpose) {
@@ -515,7 +516,8 @@ export default function AssistantsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredAssistants.map((assistant) => {
             const voice = voices.find((v) => v.id === assistant.voiceId);
-            const isOutbound = assistant.callDirection === 'outbound';
+            // Check for all outbound variants: 'outbound', 'outbound_sales', 'outbound_collection'
+            const isOutbound = assistant.callDirection?.startsWith('outbound');
 
             return (
               <div
