@@ -881,6 +881,10 @@ export default function CustomerDataPage() {
       return;
     }
 
+    // Clear editing state immediately for better UX
+    setEditingCell(null);
+    setEditingValue('');
+
     try {
       // Determine which field to update
       const fieldMapping = {
@@ -904,21 +908,39 @@ export default function CustomerDataPage() {
       if (standardField) {
         updateData[standardField] = newValue || null;
       } else {
-        // Update in customFields
-        const customFields = { ...(record.customFields || {}) };
-        customFields[columnName] = newValue || null;
-        updateData.customFields = customFields;
+        // Update in customFields - merge with existing data
+        // Get current customFields from the record in state
+        const currentRecord = records.find(r => r.id === record.id);
+        const existingCustomFields = currentRecord?.customFields || record.customFields || {};
+        const updatedCustomFields = { ...existingCustomFields, [columnName]: newValue || null };
+        updateData.customFields = updatedCustomFields;
       }
 
       await apiClient.customerData.update(record.id, updateData);
       toast.success(locale === 'tr' ? 'Kaydedildi' : 'Saved');
+
+      // Optimistically update the local state for immediate feedback
+      setRecords(prevRecords => prevRecords.map(r => {
+        if (r.id === record.id) {
+          if (standardField) {
+            return { ...r, [standardField]: newValue || null };
+          } else {
+            return {
+              ...r,
+              customFields: { ...(r.customFields || {}), [columnName]: newValue || null }
+            };
+          }
+        }
+        return r;
+      }));
+
+      // Also reload from server to ensure consistency
       loadRecords();
     } catch (error) {
       console.error('Error saving:', error);
       toast.error(locale === 'tr' ? 'Kaydetme başarısız' : 'Save failed');
-    } finally {
-      setEditingCell(null);
-      setEditingValue('');
+      // Reload to restore original state on error
+      loadRecords();
     }
   };
 
@@ -956,17 +978,41 @@ export default function CustomerDataPage() {
     }
   };
 
-  // Add new record manually
+  // Add new record manually - dynamic based on file columns
   const handleAddRecord = async () => {
-    if (!addFormData.companyName || !addFormData.phone) {
-      toast.error(locale === 'tr' ? 'Firma adı ve telefon zorunludur' : 'Company name and phone are required');
+    // Find phone column dynamically
+    const phoneColNames = ['Telefon', 'Telefon No', 'Tel', 'Phone', 'Numara', 'GSM', 'Cep'];
+    const nameColNames = ['Müşteri Adı', 'İşletme/Müşteri Adı', 'Firma', 'İsim', 'Ad Soyad', 'İsim Soyisim', 'Şirket', 'Company', 'Name'];
+
+    // Get column names from file
+    const columnNames = fileColumns.map(c => c.name);
+
+    // Find which columns exist for phone and name
+    const phoneCol = columnNames.find(col => phoneColNames.some(p => col.toLowerCase().includes(p.toLowerCase())));
+    const nameCol = columnNames.find(col => nameColNames.some(n => col.toLowerCase().includes(n.toLowerCase())));
+
+    // Get values from form data
+    const phoneValue = phoneCol ? addFormData[phoneCol] : addFormData.phone;
+    const nameValue = nameCol ? addFormData[nameCol] : addFormData.companyName;
+
+    if (!nameValue || !phoneValue) {
+      toast.error(locale === 'tr' ? 'Ad ve telefon zorunludur' : 'Name and phone are required');
       return;
     }
 
     setIsSaving(true);
     try {
+      // Build customFields from all form data
+      const customFields = { ...addFormData };
+
+      // Extract standard fields and keep rest in customFields
+      const companyName = nameValue;
+      const phone = phoneValue;
+
       await apiClient.customerData.create({
-        ...addFormData,
+        companyName,
+        phone,
+        customFields,
         fileId: selectedFile?.id
       });
       toast.success(locale === 'tr' ? 'Kayıt eklendi' : 'Record added');
@@ -1253,85 +1299,67 @@ export default function CustomerDataPage() {
         </div>
       )}
 
-      {/* Add Record Modal */}
+      {/* Add Record Modal - Dynamic based on file columns */}
       <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Plus className="h-5 w-5" />
               {locale === 'tr' ? 'Manuel Kayıt Ekle' : 'Add Record Manually'}
             </DialogTitle>
             <DialogDescription>
-              {locale === 'tr' ? 'Yeni bir müşteri kaydı oluşturun' : 'Create a new customer record'}
+              {locale === 'tr' ? 'Yeni bir kayıt oluşturun' : 'Create a new record'}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
+            {/* Dynamic fields based on file columns */}
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>{locale === 'tr' ? 'Firma Adı' : 'Company Name'} *</Label>
-                <Input
-                  value={addFormData.companyName || ''}
-                  onChange={(e) => setAddFormData({ ...addFormData, companyName: e.target.value })}
-                  placeholder={locale === 'tr' ? 'Firma veya müşteri adı' : 'Company or customer name'}
-                />
-              </div>
-              <div>
-                <Label>{locale === 'tr' ? 'Telefon' : 'Phone'} *</Label>
-                <Input
-                  value={addFormData.phone || ''}
-                  onChange={(e) => setAddFormData({ ...addFormData, phone: e.target.value })}
-                  placeholder="5XX XXX XX XX"
-                />
-              </div>
-              <div>
-                <Label>{locale === 'tr' ? 'Yetkili' : 'Contact'}</Label>
-                <Input
-                  value={addFormData.contactName || ''}
-                  onChange={(e) => setAddFormData({ ...addFormData, contactName: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label>Email</Label>
-                <Input
-                  type="email"
-                  value={addFormData.email || ''}
-                  onChange={(e) => setAddFormData({ ...addFormData, email: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label>VKN</Label>
-                <Input
-                  value={addFormData.vkn || ''}
-                  onChange={(e) => setAddFormData({ ...addFormData, vkn: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label>TC No</Label>
-                <Input
-                  value={addFormData.tcNo || ''}
-                  onChange={(e) => setAddFormData({ ...addFormData, tcNo: e.target.value })}
-                />
-              </div>
+              {fileColumns.map((col, index) => {
+                // Determine if this is a required field (phone or name)
+                const phoneColNames = ['telefon', 'telefon no', 'tel', 'phone', 'numara', 'gsm', 'cep'];
+                const nameColNames = ['müşteri adı', 'işletme/müşteri adı', 'firma', 'isim', 'ad soyad', 'isim soyisim', 'şirket', 'company', 'name'];
+                const colNameLower = col.name.toLowerCase();
+                const isPhoneField = phoneColNames.some(p => colNameLower.includes(p));
+                const isNameField = nameColNames.some(n => colNameLower.includes(n));
+                const isRequired = isPhoneField || isNameField;
+
+                return (
+                  <div key={col.name || index}>
+                    <Label>
+                      {col.name}
+                      {isRequired && <span className="text-red-500 ml-1">*</span>}
+                    </Label>
+                    <Input
+                      value={addFormData[col.name] || ''}
+                      onChange={(e) => setAddFormData({ ...addFormData, [col.name]: e.target.value })}
+                      placeholder={col.name}
+                    />
+                  </div>
+                );
+              })}
             </div>
-            <div>
-              <Label>{locale === 'tr' ? 'Notlar' : 'Notes'}</Label>
-              <Input
-                value={addFormData.notes || ''}
-                onChange={(e) => setAddFormData({ ...addFormData, notes: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label>{locale === 'tr' ? 'Etiketler' : 'Tags'} ({locale === 'tr' ? 'virgülle ayırın' : 'comma separated'})</Label>
-              <Input
-                value={addFormData.tags?.join(', ') || ''}
-                onChange={(e) => setAddFormData({
-                  ...addFormData,
-                  tags: e.target.value.split(',').map(t => t.trim()).filter(t => t)
-                })}
-                placeholder="VIP, Kurumsal"
-              />
-            </div>
+
+            {/* If no columns, show fallback fields */}
+            {fileColumns.length === 0 && (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>{locale === 'tr' ? 'Müşteri Adı' : 'Customer Name'} *</Label>
+                  <Input
+                    value={addFormData.companyName || ''}
+                    onChange={(e) => setAddFormData({ ...addFormData, companyName: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label>{locale === 'tr' ? 'Telefon' : 'Phone'} *</Label>
+                  <Input
+                    value={addFormData.phone || ''}
+                    onChange={(e) => setAddFormData({ ...addFormData, phone: e.target.value })}
+                    placeholder="5XX XXX XX XX"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           <DialogFooter>
