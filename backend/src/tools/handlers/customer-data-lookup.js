@@ -48,61 +48,55 @@ export async function execute(args, business, context = {}) {
     const pendingVerification = verificationCache.get(sessionId);
 
     if (pendingVerification) {
-      console.log('🔐 Found pending verification for session:', sessionId, pendingVerification);
+      console.log('🔐 Found pending verification for session:', sessionId);
+      console.log('🔐 Expected fields:', pendingVerification.expectedVerificationFields?.map(f => f.type));
 
-      // If user provided phone and we were waiting for verification (had order_number pending)
-      if (lookupPhone && pendingVerification.pendingOrderNumber && !order_number) {
-        console.log('🔐 Merging: User provided phone for pending order verification');
-        order_number = pendingVerification.pendingOrderNumber;
-      }
-      // If user provided customer_name for verification
-      else if (customer_name && pendingVerification.pendingOrderNumber) {
-        console.log('🔐 Verifying by customer name:', customer_name);
-        // Check if name matches
-        const pendingCustomerName = pendingVerification.foundCustomerName?.toLowerCase().trim();
-        const providedName = customer_name.toLowerCase().trim();
+      // Try to verify with any of the expected fields
+      const verificationResult = tryDynamicVerification(pendingVerification, {
+        phone: lookupPhone,
+        order_number,
+        customer_name,
+        query_type,
+        // Pass all args in case user provides VKN, TC, etc.
+        ...args
+      }, business.language);
 
-        // Fuzzy match: check if provided name contains or is contained in customer name
-        const nameMatches = pendingCustomerName?.includes(providedName) ||
-                           providedName.includes(pendingCustomerName) ||
-                           pendingCustomerName === providedName;
+      if (verificationResult.verified) {
+        console.log('✅ VERIFICATION SUCCESS:', verificationResult.matchedField);
+        verificationCache.delete(sessionId);
 
-        if (nameMatches) {
-          console.log('✅ VERIFICATION SUCCESS: Name matches');
-          verificationCache.delete(sessionId);
-          // Return the customer data directly
-          const customer = await prisma.customerData.findUnique({
-            where: { id: pendingVerification.foundCustomerId }
-          });
-          if (customer) {
-            const customFields = customer.customFields || {};
-            const responseData = formatAllData(customer, customFields);
-            const responseMessage = formatResponseMessage(customer, customFields, query_type, business.language);
-            const instruction = business.language === 'TR'
-              ? '\n\n[TALİMAT: Bu bilgiyi müşteriye HEMEN aktar.]'
-              : '\n\n[INSTRUCTION: Share this information with the customer NOW.]';
-            return {
-              success: true,
-              data: responseData,
-              message: responseMessage + instruction
-            };
-          }
-        } else {
-          console.log('❌ VERIFICATION FAILED: Name does not match');
-          verificationCache.delete(sessionId);
-          const failMessage = business.language === 'TR'
-            ? 'Verdiğiniz isim bu siparişle eşleşmiyor. Güvenlik nedeniyle bilgileri paylaşamıyorum.'
-            : 'The name you provided does not match this order. For security reasons, I cannot share the details.';
+        // Return the customer data directly
+        const customer = await prisma.customerData.findUnique({
+          where: { id: pendingVerification.foundCustomerId }
+        });
+        if (customer) {
+          const customFields = customer.customFields || {};
+          const responseData = formatAllData(customer, customFields);
+          const responseMessage = formatResponseMessage(customer, customFields, query_type, business.language);
+          const instruction = business.language === 'TR'
+            ? '\n\n[TALİMAT: Bu bilgiyi müşteriye HEMEN aktar.]'
+            : '\n\n[INSTRUCTION: Share this information with the customer NOW.]';
           return {
-            success: false,
-            error: failMessage,
-            verificationFailed: true
+            success: true,
+            data: responseData,
+            message: responseMessage + instruction
           };
         }
+      } else if (verificationResult.failed) {
+        console.log('❌ VERIFICATION FAILED:', verificationResult.reason);
+        verificationCache.delete(sessionId);
+        return {
+          success: false,
+          error: verificationResult.message,
+          verificationFailed: true
+        };
       }
-      // If user provided order_number and we were waiting for order (had phone pending)
-      else if (order_number && pendingVerification.pendingPhone && !lookupPhone) {
-        console.log('🔐 Merging: User provided order for pending phone verification');
+      // else: no verification attempt yet, continue with normal flow
+
+      // Merge pending data if user is providing second identifier
+      if (lookupPhone && pendingVerification.pendingOrderNumber && !order_number) {
+        order_number = pendingVerification.pendingOrderNumber;
+      } else if (order_number && pendingVerification.pendingPhone && !lookupPhone) {
         lookupPhone = pendingVerification.pendingPhone;
       }
     }
@@ -298,37 +292,39 @@ export async function execute(args, business, context = {}) {
       if (hasSensitiveData || order_number) {
         console.log('🔐 VERIFICATION REQUIRED: Sensitive data or order lookup');
 
-        // Store pending verification
+        // Dynamically determine which fields can be used for verification
+        // Based on what fields exist in the record and what user already provided
+        const verificationOptions = getAvailableVerificationFields(customer, customFields, {
+          providedPhone: lookupPhone,
+          providedOrderNumber: order_number,
+          providedName: customer_name
+        });
+
+        // Store pending verification with expected verification fields
         verificationCache.set(sessionId, {
           pendingOrderNumber: order_number || null,
           pendingPhone: lookupPhone || null,
           foundCustomerId: customer.id,
           foundCustomerName: customer.companyName,
+          foundCustomerData: customFields, // Store all data for verification matching
+          expectedVerificationFields: verificationOptions, // What fields we expect for verification
           timestamp: Date.now()
         });
 
-        // Ask for second identifier - MUST be phone number for order lookups
-        // SECURITY: Do NOT reveal customer name or any other info before verification!
-        const askForPhone = order_number != null; // User gave order, ask for phone
-        const verificationMessage = business.language === 'TR'
-          ? (askForPhone
-              ? `Bu sipariş numarasına ait bir kayıt buldum. Güvenlik doğrulaması için siparişe kayıtlı telefon numaranızı veya adınızı söyler misiniz?`
-              : `Kaydınızı buldum. Güvenlik doğrulaması için sipariş numaranızı söyler misiniz?`)
-          : (askForPhone
-              ? `I found a record for this order number. For security verification, could you please provide your phone number or name registered with this order?`
-              : `I found your record. For security verification, could you please provide your order number?`);
+        // Build verification question based on available fields
+        const verificationMessage = buildVerificationMessage(verificationOptions, business.language);
 
         // Add instruction for AI - do NOT reveal any customer info before verification
         const aiInstruction = business.language === 'TR'
-          ? '\n\n[AI TALİMAT: GÜVENLİK UYARISI - Doğrulama tamamlanana kadar müşteriye HİÇBİR BİLGİ VERME! İsim, adres, sipariş detayı vs. SÖYLEME. Sadece telefon veya isim iste.]'
-          : '\n\n[AI INSTRUCTION: SECURITY WARNING - Do NOT reveal ANY customer info until verification is complete! Do not say name, address, order details etc. Just ask for phone or name.]';
+          ? '\n\n[AI TALİMAT: GÜVENLİK UYARISI - Doğrulama tamamlanana kadar müşteriye HİÇBİR BİLGİ VERME! İsim, adres, borç detayı vs. SÖYLEME. Sadece doğrulama bilgisi iste.]'
+          : '\n\n[AI INSTRUCTION: SECURITY WARNING - Do NOT reveal ANY customer info until verification is complete! Do not say name, address, debt details etc. Just ask for verification info.]';
 
         return {
           success: true,
           requiresVerification: true,
           message: verificationMessage + aiInstruction,
           verificationPending: true,
-          requiredVerificationType: 'phone_or_name' // Accept phone or name for verification
+          requiredVerificationType: verificationOptions.map(f => f.type).join('_or_')
         };
       }
     }
@@ -389,6 +385,257 @@ export async function execute(args, business, context = {}) {
         : 'An error occurred while looking up data.'
     };
   }
+}
+
+/**
+ * Try to verify user with dynamically expected fields
+ * Returns { verified: true, matchedField } or { failed: true, message } or { verified: false, failed: false }
+ */
+function tryDynamicVerification(pendingVerification, providedData, language) {
+  const isTR = language === 'TR';
+  const expectedFields = pendingVerification.expectedVerificationFields || [];
+  const storedData = pendingVerification.foundCustomerData || {};
+  const storedName = pendingVerification.foundCustomerName;
+
+  // Check each expected verification field type
+  for (const expectedField of expectedFields) {
+    let providedValue = null;
+    let storedValue = expectedField.value;
+
+    // Get provided value based on field type
+    switch (expectedField.type) {
+      case 'phone':
+        providedValue = providedData.phone;
+        break;
+      case 'name':
+        providedValue = providedData.customer_name;
+        if (!storedValue) storedValue = storedName;
+        break;
+      case 'vkn':
+        // Check multiple possible arg names for VKN
+        providedValue = providedData.vkn || providedData.vergi_kimlik || providedData.tax_id;
+        break;
+      case 'tc':
+        providedValue = providedData.tc || providedData.tckn || providedData.tc_kimlik || providedData.national_id;
+        break;
+      case 'order':
+        providedValue = providedData.order_number;
+        break;
+      case 'email':
+        providedValue = providedData.email;
+        break;
+      case 'plate':
+        providedValue = providedData.plaka || providedData.plate;
+        break;
+      case 'customer_id':
+        providedValue = providedData.musteri_no || providedData.customer_id || providedData.hesap_no;
+        break;
+    }
+
+    // If user provided this field, try to verify
+    if (providedValue && storedValue) {
+      const matches = fuzzyMatch(providedValue, storedValue, expectedField.type);
+
+      if (matches) {
+        return { verified: true, matchedField: expectedField.type };
+      } else {
+        // User provided a value but it doesn't match
+        const failMessage = isTR
+          ? 'Verdiğiniz bilgi kayıtlarımızla eşleşmiyor. Güvenlik nedeniyle bilgileri paylaşamıyorum.'
+          : 'The information you provided does not match our records. For security reasons, I cannot share the details.';
+        return { failed: true, message: failMessage, reason: `${expectedField.type} mismatch` };
+      }
+    }
+  }
+
+  // No verification attempted yet (user didn't provide any expected field)
+  return { verified: false, failed: false };
+}
+
+/**
+ * Fuzzy match values based on field type
+ */
+function fuzzyMatch(provided, stored, fieldType) {
+  if (!provided || !stored) return false;
+
+  const providedStr = String(provided).toLowerCase().trim();
+  const storedStr = String(stored).toLowerCase().trim();
+
+  switch (fieldType) {
+    case 'phone':
+      // Compare last 10 digits for phone
+      const providedDigits = providedStr.replace(/[^\d]/g, '').slice(-10);
+      const storedDigits = storedStr.replace(/[^\d]/g, '').slice(-10);
+      return providedDigits === storedDigits || providedDigits.length >= 7 && storedDigits.includes(providedDigits);
+
+    case 'name':
+      // Fuzzy name match - check if one contains the other
+      return storedStr.includes(providedStr) || providedStr.includes(storedStr) || storedStr === providedStr;
+
+    case 'vkn':
+    case 'tc':
+    case 'customer_id':
+      // Exact match for ID numbers (after removing spaces/dashes)
+      const providedClean = providedStr.replace(/[\s\-]/g, '');
+      const storedClean = storedStr.replace(/[\s\-]/g, '');
+      return providedClean === storedClean;
+
+    case 'email':
+      return providedStr === storedStr;
+
+    case 'plate':
+      // Normalize plate (remove spaces, dashes)
+      const providedPlate = providedStr.replace(/[\s\-]/g, '').toUpperCase();
+      const storedPlate = storedStr.replace(/[\s\-]/g, '').toUpperCase();
+      return providedPlate === storedPlate;
+
+    case 'order':
+      // Case-insensitive order number match
+      return providedStr === storedStr || providedStr.replace(/[\s\-]/g, '') === storedStr.replace(/[\s\-]/g, '');
+
+    default:
+      return providedStr === storedStr;
+  }
+}
+
+/**
+ * Get available fields that can be used for verification
+ * Automatically detects verifiable fields from record and excludes already provided ones
+ */
+function getAvailableVerificationFields(customer, customFields, providedData) {
+  const verificationFields = [];
+
+  // Define field patterns that can be used for verification
+  // Format: { patterns: [...], type: 'identifier', labelTR: '...', labelEN: '...' }
+  const verifiableFieldPatterns = [
+    {
+      patterns: ['telefon', 'phone', 'tel', 'gsm', 'cep', 'mobile'],
+      type: 'phone',
+      labelTR: 'telefon numaranızı',
+      labelEN: 'your phone number'
+    },
+    {
+      patterns: ['vkn', 'vergi kimlik', 'vergi no', 'tax id', 'tax number'],
+      type: 'vkn',
+      labelTR: 'vergi kimlik numaranızı',
+      labelEN: 'your tax ID number'
+    },
+    {
+      patterns: ['tc', 'tckn', 'tc kimlik', 'kimlik no', 'national id', 'identity'],
+      type: 'tc',
+      labelTR: 'TC kimlik numaranızı',
+      labelEN: 'your national ID number'
+    },
+    {
+      patterns: ['isim', 'ad', 'name', 'müşteri adı', 'musteri adi', 'firma', 'işletme', 'isletme', 'company', 'şirket', 'sirket'],
+      type: 'name',
+      labelTR: 'adınızı veya firma adınızı',
+      labelEN: 'your name or company name'
+    },
+    {
+      patterns: ['sipariş', 'siparis', 'order', 'sipariş no', 'siparis no', 'order number'],
+      type: 'order',
+      labelTR: 'sipariş numaranızı',
+      labelEN: 'your order number'
+    },
+    {
+      patterns: ['email', 'e-posta', 'eposta', 'mail'],
+      type: 'email',
+      labelTR: 'e-posta adresinizi',
+      labelEN: 'your email address'
+    },
+    {
+      patterns: ['plaka', 'plate', 'araç plaka', 'arac plaka'],
+      type: 'plate',
+      labelTR: 'araç plakanızı',
+      labelEN: 'your vehicle plate number'
+    },
+    {
+      patterns: ['müşteri no', 'musteri no', 'customer id', 'customer number', 'hesap no', 'account'],
+      type: 'customer_id',
+      labelTR: 'müşteri numaranızı',
+      labelEN: 'your customer number'
+    }
+  ];
+
+  // Check base customer fields
+  if (customer.phone && !providedData.providedPhone) {
+    verificationFields.push({ type: 'phone', labelTR: 'telefon numaranızı', labelEN: 'your phone number', value: customer.phone });
+  }
+  if (customer.companyName && !providedData.providedName) {
+    verificationFields.push({ type: 'name', labelTR: 'adınızı veya firma adınızı', labelEN: 'your name or company name', value: customer.companyName });
+  }
+  if (customer.email) {
+    verificationFields.push({ type: 'email', labelTR: 'e-posta adresinizi', labelEN: 'your email address', value: customer.email });
+  }
+
+  // Check customFields for verifiable data
+  for (const [fieldName, fieldValue] of Object.entries(customFields)) {
+    if (!fieldValue) continue;
+
+    const fieldNameLower = fieldName.toLowerCase();
+
+    for (const pattern of verifiableFieldPatterns) {
+      const matches = pattern.patterns.some(p => fieldNameLower.includes(p));
+      if (matches) {
+        // Check if this type was already provided by user
+        const alreadyProvided =
+          (pattern.type === 'phone' && providedData.providedPhone) ||
+          (pattern.type === 'order' && providedData.providedOrderNumber) ||
+          (pattern.type === 'name' && providedData.providedName);
+
+        // Check if we already have this type in verification fields
+        const alreadyAdded = verificationFields.some(f => f.type === pattern.type);
+
+        if (!alreadyProvided && !alreadyAdded) {
+          verificationFields.push({
+            type: pattern.type,
+            labelTR: pattern.labelTR,
+            labelEN: pattern.labelEN,
+            value: fieldValue,
+            fieldName: fieldName
+          });
+        }
+        break;
+      }
+    }
+  }
+
+  // Limit to max 3 verification options (don't overwhelm user)
+  return verificationFields.slice(0, 3);
+}
+
+/**
+ * Build verification message based on available fields
+ */
+function buildVerificationMessage(verificationOptions, language) {
+  const isTR = language === 'TR';
+
+  if (verificationOptions.length === 0) {
+    // No verification fields available - shouldn't happen but handle gracefully
+    return isTR
+      ? 'Kaydınızı buldum. Güvenlik doğrulaması için bilgilerinizi onaylar mısınız?'
+      : 'I found your record. Could you please verify your information for security purposes?';
+  }
+
+  // Build list of what we can ask for
+  const options = verificationOptions.map(f => isTR ? f.labelTR : f.labelEN);
+
+  let optionsList;
+  if (options.length === 1) {
+    optionsList = options[0];
+  } else if (options.length === 2) {
+    optionsList = isTR ? `${options[0]} veya ${options[1]}` : `${options[0]} or ${options[1]}`;
+  } else {
+    const lastOption = options.pop();
+    optionsList = isTR
+      ? `${options.join(', ')} veya ${lastOption}`
+      : `${options.join(', ')}, or ${lastOption}`;
+  }
+
+  return isTR
+    ? `Kaydınızı buldum. Güvenlik doğrulaması için ${optionsList} söyler misiniz?`
+    : `I found your record. For security verification, could you please provide ${optionsList}?`;
 }
 
 /**
