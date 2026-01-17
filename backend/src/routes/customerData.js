@@ -794,35 +794,15 @@ router.post('/import', upload.single('file'), async (req, res) => {
           customFields: Object.keys(customFields).length > 0 ? customFields : null
         };
 
-        // Upsert - update if phone exists, create otherwise
-        const existing = await prisma.customerData.findUnique({
-          where: {
-            businessId_phone: {
-              businessId,
-              phone: normalizedPhone
-            }
+        // Import always creates new records (same customer can have multiple records)
+        await prisma.customerData.create({
+          data: {
+            businessId,
+            fileId: customerDataFile.id, // Link to file
+            ...customerDataObj
           }
         });
-
-        if (existing) {
-          await prisma.customerData.update({
-            where: { id: existing.id },
-            data: {
-              ...customerDataObj,
-              fileId: customerDataFile.id // Link to file
-            }
-          });
-          results.updated++;
-        } else {
-          await prisma.customerData.create({
-            data: {
-              businessId,
-              fileId: customerDataFile.id, // Link to file
-              ...customerDataObj
-            }
-          });
-          results.success++;
-        }
+        results.success++;
 
       } catch (error) {
         console.error(`Error processing row ${rowNum}:`, error);
@@ -1067,23 +1047,28 @@ router.get('/lookup', async (req, res) => {
       return res.status(400).json({ error: 'Invalid phone number format' });
     }
 
-    const customer = await prisma.customerData.findUnique({
+    // Aynı telefonla birden fazla kayıt olabilir - tümünü dön
+    const customers = await prisma.customerData.findMany({
       where: {
-        businessId_phone: {
-          businessId,
-          phone: normalizedPhone
-        }
-      }
+        businessId,
+        phone: normalizedPhone
+      },
+      orderBy: { createdAt: 'desc' }
     });
 
-    if (!customer) {
+    if (customers.length === 0) {
       return res.status(404).json({
         error: 'Customer not found',
         errorTR: 'Müşteri bulunamadı'
       });
     }
 
-    res.json({ customer });
+    // Geriye dönük uyumluluk için tek kayıt varsa customer, çoksa customers dön
+    if (customers.length === 1) {
+      res.json({ customer: customers[0] });
+    } else {
+      res.json({ customer: customers[0], customers });
+    }
 
   } catch (error) {
     console.error('Lookup error:', error);
@@ -1174,22 +1159,8 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Invalid phone number format' });
     }
 
-    // Check if phone already exists
-    const existing = await prisma.customerData.findUnique({
-      where: {
-        businessId_phone: {
-          businessId,
-          phone: normalizedPhone
-        }
-      }
-    });
-
-    if (existing) {
-      return res.status(409).json({
-        error: 'A customer with this phone number already exists',
-        errorTR: 'Bu telefon numarasına sahip müşteri zaten mevcut'
-      });
-    }
+    // Aynı müşterinin birden fazla kaydı olabilir (farklı siparişler, borçlar vb.)
+    // Unique kontrol kaldırıldı
 
     // If fileId provided, verify it belongs to this business
     if (fileId) {
@@ -1260,29 +1231,14 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Customer not found' });
     }
 
-    // If phone is being changed, check for duplicates
+    // If phone is being changed, normalize it
     let normalizedPhone = existing.phone;
     if (phone && phone !== existing.phone) {
       normalizedPhone = normalizePhoneNumber(phone);
       if (!normalizedPhone) {
         return res.status(400).json({ error: 'Invalid phone number format' });
       }
-
-      const duplicate = await prisma.customerData.findUnique({
-        where: {
-          businessId_phone: {
-            businessId,
-            phone: normalizedPhone
-          }
-        }
-      });
-
-      if (duplicate && duplicate.id !== id) {
-        return res.status(409).json({
-          error: 'A customer with this phone number already exists',
-          errorTR: 'Bu telefon numarasına sahip başka bir müşteri mevcut'
-        });
-      }
+      // Aynı müşterinin birden fazla kaydı olabilir - duplicate kontrolü kaldırıldı
     }
 
     const customer = await prisma.customerData.update({

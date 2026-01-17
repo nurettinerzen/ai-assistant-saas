@@ -903,39 +903,39 @@ export default function CustomerDataPage() {
       };
 
       const standardField = fieldMapping[columnName];
+      const currentRecord = records.find(r => r.id === record.id);
+      const existingCustomFields = currentRecord?.customFields || record.customFields || {};
       let updateData = {};
 
       if (standardField) {
+        // Update standard field
         updateData[standardField] = newValue || null;
+        // Also update the same value in customFields if it exists there (for display consistency)
+        if (existingCustomFields[columnName] !== undefined) {
+          updateData.customFields = { ...existingCustomFields, [columnName]: newValue || null };
+        }
       } else {
         // Update in customFields - merge with existing data
-        // Get current customFields from the record in state
-        const currentRecord = records.find(r => r.id === record.id);
-        const existingCustomFields = currentRecord?.customFields || record.customFields || {};
         const updatedCustomFields = { ...existingCustomFields, [columnName]: newValue || null };
         updateData.customFields = updatedCustomFields;
       }
 
-      await apiClient.customerData.update(record.id, updateData);
+      const response = await apiClient.customerData.update(record.id, updateData);
+      console.log('[Inline Edit] Update response:', response.data);
       toast.success(locale === 'tr' ? 'Kaydedildi' : 'Saved');
 
-      // Optimistically update the local state for immediate feedback
-      setRecords(prevRecords => prevRecords.map(r => {
-        if (r.id === record.id) {
-          if (standardField) {
-            return { ...r, [standardField]: newValue || null };
-          } else {
-            return {
-              ...r,
-              customFields: { ...(r.customFields || {}), [columnName]: newValue || null }
-            };
+      // Update local state with server response for consistency
+      if (response.data?.customer) {
+        setRecords(prevRecords => prevRecords.map(r => {
+          if (r.id === record.id) {
+            return response.data.customer;
           }
-        }
-        return r;
-      }));
-
-      // Also reload from server to ensure consistency
-      loadRecords();
+          return r;
+        }));
+      } else {
+        // Fallback: reload from server
+        loadRecords();
+      }
     } catch (error) {
       console.error('Error saving:', error);
       toast.error(locale === 'tr' ? 'Kaydetme başarısız' : 'Save failed');
