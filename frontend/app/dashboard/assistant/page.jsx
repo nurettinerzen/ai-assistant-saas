@@ -443,6 +443,17 @@ export default function AssistantsPage() {
         )}
       </div>
 
+      {/* Info Box */}
+      <div className="p-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg">
+        <p className="text-sm text-purple-800 dark:text-purple-300">
+          <strong>💡 {locale === 'tr' ? 'Asistan türleri nedir?' : 'What are assistant types?'}</strong>{' '}
+          {locale === 'tr'
+            ? 'İki tür asistan oluşturabilirsiniz: (1) Gelen Arama Asistanı - Müşterilerinizin sizi aradığında cevap verir, randevu alır, sorularını yanıtlar. (2) Giden Arama Asistanı - Siz müşterilerinizi ararsınız: hatırlatma, tahsilat veya satış aramaları yapabilir. Her asistanın kendi ses tonu, dili ve davranış kuralları olabilir.'
+            : 'You can create two types of assistants: (1) Inbound Assistant - Answers when your customers call you, takes appointments, answers questions. (2) Outbound Assistant - You call your customers: reminders, collections, or sales calls. Each assistant can have its own voice tone, language, and behavior rules.'
+          }
+        </p>
+      </div>
+
       {/* Search */}
       {assistants.length > 0 && (
         <div className="relative max-w-md">
