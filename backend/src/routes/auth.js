@@ -625,6 +625,47 @@ router.post('/google', async (req, res) => {
   }
 });
 
+// ============================================================================
+// MICROSOFT OAUTH CALLBACK (for Outlook email integration)
+// ============================================================================
+
+// Microsoft OAuth Callback - redirects to email route handler
+// Azure Portal'da kayıtlı redirect URI: /api/auth/microsoft/callback
+import outlookService from '../services/outlook.js';
+
+router.get('/microsoft/callback', async (req, res) => {
+  try {
+    const { code, state, error: oauthError } = req.query;
+
+    if (oauthError) {
+      console.error('Microsoft OAuth error:', oauthError);
+      return res.redirect(`${FRONTEND_URL}/dashboard/integrations?error=outlook-denied`);
+    }
+
+    if (!code || !state) {
+      return res.redirect(`${FRONTEND_URL}/dashboard/integrations?error=outlook-invalid`);
+    }
+
+    const businessId = parseInt(state);
+
+    await outlookService.handleCallback(code, businessId);
+
+    console.log(`Outlook connected for business ${businessId}`);
+
+    // Trigger style analysis in background
+    import('../services/email-style-analyzer.js').then((module) => {
+      module.analyzeWritingStyle(businessId).catch((err) => {
+        console.error('Background style analysis failed:', err);
+      });
+    });
+
+    res.redirect(`${FRONTEND_URL}/dashboard/integrations?success=outlook`);
+  } catch (error) {
+    console.error('Microsoft callback error:', error);
+    res.redirect(`${FRONTEND_URL}/dashboard/integrations?error=outlook-failed`);
+  }
+});
+
 // Google OAuth - Handle authorization code flow
 router.post('/google/code', async (req, res) => {
   try {

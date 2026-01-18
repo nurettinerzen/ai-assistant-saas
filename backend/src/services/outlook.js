@@ -69,7 +69,7 @@ class OutlookService {
       clientId: process.env.MICROSOFT_CLIENT_ID,
       clientSecret: process.env.MICROSOFT_CLIENT_SECRET,
       redirectUri: process.env.MICROSOFT_REDIRECT_URI ||
-        `${process.env.BACKEND_URL}/api/email/outlook/callback`,
+        `${process.env.BACKEND_URL}/api/auth/microsoft/callback`,
       tenantId: process.env.MICROSOFT_TENANT_ID || 'common'
     };
   }
