@@ -54,6 +54,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import UpgradeModal from './UpgradeModal';
 import { VISIBILITY, getFeatureVisibility } from '@/lib/features';
+import { getPlanDisplayName } from '@/lib/planConfig';
 import { TelyxLogoCompact } from './TelyxLogo';
 
 // Admin email whitelist - should match backend
@@ -198,31 +199,8 @@ export default function Sidebar({ user, credits, business }) {
     window.location.href = '/login';
   };
 
-  // Get plan display name - Turkish names for TR locale
-  const getPlanDisplay = () => {
-    const plansEn = {
-      FREE: 'Free',
-      TRIAL: 'Trial',
-      PAYG: 'PAYG',
-      STARTER: 'Starter',
-      BASIC: 'Basic',
-      PRO: 'Pro',
-      PROFESSIONAL: 'Pro',
-      ENTERPRISE: 'Enterprise',
-    };
-    const plansTr = {
-      FREE: 'Ücretsiz',
-      TRIAL: 'Deneme',
-      PAYG: 'Kullandıkça Öde',
-      STARTER: 'Başlangıç',
-      BASIC: 'Temel',
-      PRO: 'Pro',
-      PROFESSIONAL: 'Pro',
-      ENTERPRISE: 'Kurumsal',
-    };
-    const plans = locale === 'tr' ? plansTr : plansEn;
-    return plans[userPlan] || userPlan || (locale === 'tr' ? 'Ücretsiz' : 'Free');
-  };
+  // Get plan display name from centralized config
+  const getPlanDisplay = () => getPlanDisplayName(userPlan, locale);
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900">

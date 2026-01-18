@@ -1,214 +1,30 @@
 /**
  * Plan Features Configuration
- * Defines feature access for each subscription plan
+ * Re-exports from centralized planConfig for backward compatibility
+ *
+ * @deprecated Use @/lib/planConfig directly for new code
  */
 
-export const PLAN_FEATURES = {
-  FREE: {
-    inboundCalls: true,
-    outboundCalls: false,  // Batch calling
-    whatsapp: true,
-    chatWidget: true,
-    email: true,
-    googleCalendar: true,
-    googleSheets: true,
-    ecommerce: true,
-    customCrm: false,
-    maxMinutes: 15,
-    maxAssistants: 1,
-    maxConcurrentCalls: 1,
-    trialDays: 7  // Free plan expires after 7 days
-  },
-  TRIAL: {
-    // Deneme planı - 15 dk telefon, 7 gün chat/whatsapp
-    inboundCalls: true,
-    outboundCalls: false,
-    whatsapp: true,
-    chatWidget: true,
-    email: true,
-    googleCalendar: true,
-    googleSheets: true,
-    ecommerce: true,
-    customCrm: false,
-    maxMinutes: 15,
-    maxAssistants: 1,
-    maxConcurrentCalls: 1,
-    trialDays: 7
-  },
-  PAYG: {
-    // Kullandıkça Öde - Taahhütsüz, bakiye bazlı
-    inboundCalls: true,
-    outboundCalls: false,  // Batch calling sadece PRO+
-    whatsapp: true,
-    chatWidget: true,
-    email: true,
-    googleCalendar: true,
-    googleSheets: true,
-    ecommerce: true,
-    customCrm: false,
-    maxMinutes: null,  // Bakiyeye göre sınırsız
-    maxAssistants: 1,
-    maxConcurrentCalls: 1
-  },
-  STARTER: {
-    inboundCalls: true,
-    outboundCalls: false,
-    whatsapp: true,
-    chatWidget: true,
-    email: true,
-    googleCalendar: true,
-    googleSheets: true,
-    ecommerce: true,
-    customCrm: false,
-    maxMinutes: 150,
-    maxAssistants: 3,
-    maxConcurrentCalls: 1
-  },
-  PRO: {
-    inboundCalls: true,
-    outboundCalls: true,
-    whatsapp: true,
-    chatWidget: true,
-    email: true,
-    googleCalendar: true,
-    googleSheets: true,
-    ecommerce: true,
-    customCrm: true,
-    maxMinutes: 500,
-    maxAssistants: 10,
-    maxConcurrentCalls: 5
-  },
-  PROFESSIONAL: {
-    // Alias for PRO (backend uses PROFESSIONAL)
-    inboundCalls: true,
-    outboundCalls: true,
-    whatsapp: true,
-    chatWidget: true,
-    email: true,
-    googleCalendar: true,
-    googleSheets: true,
-    ecommerce: true,
-    customCrm: true,
-    maxMinutes: 500,
-    maxAssistants: 10,
-    maxConcurrentCalls: 5
-  },
-  ENTERPRISE: {
-    // All features enabled, limits are custom per customer (from DB)
-    inboundCalls: true,
-    outboundCalls: true,
-    whatsapp: true,
-    chatWidget: true,
-    email: true,
-    googleCalendar: true,
-    googleSheets: true,
-    ecommerce: true,
-    customCrm: true,
-    // maxMinutes, maxAssistants, maxConcurrentCalls come from DB
-    maxMinutes: null,
-    maxAssistants: null,
-    maxConcurrentCalls: null
-  }
-};
-
-/**
- * Check if a plan has access to a specific feature
- * @param {string} plan - User's current plan
- * @param {string} feature - Feature name (e.g., 'outboundCalls', 'customCrm')
- * @returns {boolean}
- */
-export function canAccessFeature(plan, feature) {
-  const normalizedPlan = plan?.toUpperCase() || 'FREE';
-  return PLAN_FEATURES[normalizedPlan]?.[feature] ?? false;
-}
-
-/**
- * Get plan limits for a specific plan
- * @param {string} plan - User's current plan
- * @returns {object} Plan limits
- */
-export function getPlanLimits(plan) {
-  const normalizedPlan = plan?.toUpperCase() || 'FREE';
-  return PLAN_FEATURES[normalizedPlan] || PLAN_FEATURES.FREE;
-}
-
-/**
- * Get required plan for a feature
- * @param {string} feature - Feature name
- * @returns {string} Required plan name
- */
-export function getRequiredPlanForFeature(feature) {
-  // Check which plan first has access to this feature
-  // PAYG has same features as STARTER (basic features, no batch calls)
-  const plans = ['FREE', 'TRIAL', 'PAYG', 'STARTER', 'PRO', 'ENTERPRISE'];
-
-  for (const plan of plans) {
-    if (PLAN_FEATURES[plan]?.[feature]) {
-      return plan;
-    }
-  }
-
-  return 'ENTERPRISE';
-}
-
-/**
- * Check if free trial has expired
- * @param {Date|string} createdAt - User's account creation date
- * @returns {boolean}
- */
-export function isTrialExpired(createdAt) {
-  if (!createdAt) return false;
-
-  const created = new Date(createdAt);
-  const now = new Date();
-  const daysSinceCreation = (now - created) / (1000 * 60 * 60 * 24);
-
-  return daysSinceCreation > PLAN_FEATURES.FREE.trialDays;
-}
-
-/**
- * Get remaining trial days
- * @param {Date|string} createdAt - User's account creation date
- * @returns {number} Remaining days (can be negative if expired)
- */
-export function getTrialDaysRemaining(createdAt) {
-  if (!createdAt) return PLAN_FEATURES.FREE.trialDays;
-
-  const created = new Date(createdAt);
-  const now = new Date();
-  const daysSinceCreation = (now - created) / (1000 * 60 * 60 * 24);
-
-  return Math.ceil(PLAN_FEATURES.FREE.trialDays - daysSinceCreation);
-}
-
-/**
- * Get display name for a plan
- * @param {string} plan - Plan code
- * @param {string} locale - 'tr' or 'en'
- * @returns {string}
- */
-export function getPlanDisplayName(plan, locale = 'tr') {
-  const names = {
-    FREE: { tr: 'Ücretsiz Deneme', en: 'Free Trial' },
-    TRIAL: { tr: 'Deneme', en: 'Trial' },
-    PAYG: { tr: 'Kullandıkça Öde', en: 'Pay As You Go' },
-    STARTER: { tr: 'Başlangıç', en: 'Starter' },
-    BASIC: { tr: 'Temel', en: 'Basic' },
-    PRO: { tr: 'Pro', en: 'Pro' },
-    PROFESSIONAL: { tr: 'Pro', en: 'Pro' },
-    ENTERPRISE: { tr: 'Kurumsal', en: 'Enterprise' }
-  };
-
-  const normalizedPlan = plan?.toUpperCase() || 'FREE';
-  return names[normalizedPlan]?.[locale] || plan;
-}
-
-export default {
+// Re-export everything from planConfig
+export {
   PLAN_FEATURES,
+  PLAN_NAMES,
+  PLAN_HIERARCHY,
+  LEGACY_PLAN_MAP,
+  PLAN_COLORS,
+  REGIONAL_PRICING,
+  getPlanDisplayName,
+  normalizePlan,
   canAccessFeature,
   getPlanLimits,
   getRequiredPlanForFeature,
   isTrialExpired,
   getTrialDaysRemaining,
-  getPlanDisplayName
-};
+  comparePlans,
+  hasPlanAccess,
+  getRegionalConfig,
+  formatPrice,
+} from './planConfig';
+
+// Default export for backward compatibility
+export { default } from './planConfig';

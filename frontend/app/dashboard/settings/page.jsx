@@ -6,9 +6,10 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { SecurePasswordInput } from '@/components/ui/secure-password-input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
@@ -38,10 +39,12 @@ export default function SettingsPage() {
     weeklySummary: true,
     smsNotifications: false,
   });
-  const [passwordForm, setPasswordForm] = useState({
+  // Password values stored in refs to avoid React DevTools exposure
+  // SecurePasswordInput handles type tampering protection internally
+  const passwordValues = useRef({
     currentPassword: '',
     newPassword: '',
-    confirmPassword: '',
+    confirmPassword: ''
   });
   const [emailSignature, setEmailSignature] = useState({
     signature: '',
@@ -147,20 +150,22 @@ export default function SettingsPage() {
         emailSignature: emailSignature.signature,
         signatureType: emailSignature.signatureType,
       });
-      toast.success(t('dashboard.settingsPage.signatureSaved') || 'Email imzası kaydedildi');
+      toast.success(t('dashboard.settingsPage.signatureSaved'));
     } catch (error) {
-      toast.error(t('dashboard.settingsPage.signatureFailed') || 'İmza kaydedilemedi');
+      toast.error(t('dashboard.settingsPage.signatureFailed'));
     } finally {
       setSignatureLoading(false);
     }
   };
 
   const handleChangePassword = async () => {
-    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+    const { currentPassword, newPassword, confirmPassword } = passwordValues.current;
+
+    if (newPassword !== confirmPassword) {
       toast.error(t('dashboard.settingsPage.passwordsDoNotMatch'));
       return;
     }
-    if (passwordForm.newPassword.length < 8) {
+    if (newPassword.length < 8) {
       toast.error(t('errors.passwordTooShort'));
       return;
     }
@@ -168,13 +173,16 @@ export default function SettingsPage() {
     try {
       await toastHelpers.async(
         apiClient.settings.changePassword({
-          currentPassword: passwordForm.currentPassword,
-          newPassword: passwordForm.newPassword,
+          currentPassword,
+          newPassword,
         }),
         t('dashboard.settingsPage.changingPassword'),
         t('dashboard.settingsPage.passwordChangedSuccess')
       );
-      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      // Clear password values after successful change
+      passwordValues.current = { currentPassword: '', newPassword: '', confirmPassword: '' };
+      // Force re-render to clear inputs
+      window.location.reload();
     } catch (error) {
       // Error handled
     }
@@ -326,10 +334,10 @@ export default function SettingsPage() {
           </div>
           <div>
             <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">
-              {t('dashboard.settingsPage.emailSignatureTitle') || 'Email İmzası'}
+              {t('dashboard.settingsPage.emailSignatureTitle')}
             </h2>
             <p className="text-sm text-neutral-500 dark:text-neutral-400">
-              {t('dashboard.settingsPage.emailSignatureDescription') || 'AI asistanınız tarafından gönderilen emaillerde kullanılacak imza'}
+              {t('dashboard.settingsPage.emailSignatureDescription')}
             </p>
           </div>
         </div>
@@ -337,7 +345,7 @@ export default function SettingsPage() {
         <div className="space-y-4">
           <div>
             <Label htmlFor="signatureType">
-              {t('dashboard.settingsPage.signatureTypeLabel') || 'İmza Türü'}
+              {t('dashboard.settingsPage.signatureTypeLabel')}
             </Label>
             <Select
               value={emailSignature.signatureType}
@@ -347,22 +355,22 @@ export default function SettingsPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="PLAIN">Düz Metin</SelectItem>
-                <SelectItem value="HTML">HTML</SelectItem>
+                <SelectItem value="PLAIN">{t('dashboard.settingsPage.signatureTypePlain')}</SelectItem>
+                <SelectItem value="HTML">{t('dashboard.settingsPage.signatureTypeHtml')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div>
             <Label htmlFor="emailSignature">
-              {t('dashboard.settingsPage.signatureLabel') || 'İmza İçeriği'}
+              {t('dashboard.settingsPage.signatureLabel')}
             </Label>
             <Textarea
               id="emailSignature"
               rows={6}
               placeholder={emailSignature.signatureType === 'HTML'
-                ? '<p>Saygılarımla,</p><p><strong>Ad Soyad</strong></p><p>Şirket Adı</p>'
-                : 'Saygılarımla,\nAd Soyad\nŞirket Adı\nTel: +90 xxx xxx xx xx'
+                ? t('dashboard.settingsPage.signaturePlaceholderHtml')
+                : t('dashboard.settingsPage.signaturePlaceholderPlain')
               }
               value={emailSignature.signature}
               onChange={(e) => setEmailSignature({...emailSignature, signature: e.target.value})}
@@ -370,8 +378,8 @@ export default function SettingsPage() {
             />
             <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
               {emailSignature.signatureType === 'HTML'
-                ? 'HTML etiketleri kullanabilirsiniz (p, strong, a, br vb.)'
-                : 'Her satır için yeni satır karakteri kullanın'
+                ? t('dashboard.settingsPage.signatureHelpHtml')
+                : t('dashboard.settingsPage.signatureHelpPlain')
               }
             </p>
           </div>
@@ -380,7 +388,7 @@ export default function SettingsPage() {
         <div className="flex justify-end mt-6">
           <Button onClick={handleSaveSignature} disabled={signatureLoading}>
             {signatureLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            {t('dashboard.settingsPage.saveSignatureBtn') || 'İmzayı Kaydet'}
+            {t('dashboard.settingsPage.saveSignatureBtn')}
           </Button>
         </div>
       </div>
@@ -477,33 +485,27 @@ export default function SettingsPage() {
         <div className="space-y-4">
           <div>
             <Label htmlFor="currentPassword">{t('dashboard.settingsPage.currentPasswordLabel')}</Label>
-            <Input
+            <SecurePasswordInput
               id="currentPassword"
-              type="password"
-              value={passwordForm.currentPassword}
-              onChange={(e) =>
-                setPasswordForm({ ...passwordForm, currentPassword: e.target.value })
-              }
+              autoComplete="current-password"
+              onValueChange={(val) => passwordValues.current.currentPassword = val}
             />
           </div>
           <div>
             <Label htmlFor="newPassword">{t('dashboard.settingsPage.newPasswordLabel')}</Label>
-            <Input
+            <SecurePasswordInput
               id="newPassword"
-              type="password"
-              value={passwordForm.newPassword}
-              onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+              autoComplete="new-password"
+              showToggle
+              onValueChange={(val) => passwordValues.current.newPassword = val}
             />
           </div>
           <div>
             <Label htmlFor="confirmPassword">{t('dashboard.settingsPage.confirmNewPassword')}</Label>
-            <Input
+            <SecurePasswordInput
               id="confirmPassword"
-              type="password"
-              value={passwordForm.confirmPassword}
-              onChange={(e) =>
-                setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })
-              }
+              autoComplete="new-password"
+              onValueChange={(val) => passwordValues.current.confirmPassword = val}
             />
           </div>
         </div>

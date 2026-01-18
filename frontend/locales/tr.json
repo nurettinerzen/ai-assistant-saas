@@ -720,7 +720,16 @@
       "tryAdjustingFilters": "Arama veya filtreleri değiştirmeyi deneyin",
       "callsExportedSuccess": "Aramalar başarıyla dışa aktarıldı",
       "failedToLoadCalls": "Aramalar yüklenemedi",
-      "failedToExportCalls": "Aramalar dışa aktarılamadı"
+      "failedToExportCalls": "Aramalar dışa aktarılamadı",
+      "queued": "Sırada",
+      "loadingCalls": "Arama geçmişi yükleniyor...",
+      "allDirections": "Tüm Yönler",
+      "allEndReasons": "Tüm Sonlandırmalar",
+      "endReason": "Sonlandırma",
+      "clientEnded": "Müşteri Kapattı",
+      "agentEnded": "Asistan Kapattı",
+      "systemTimeout": "Zaman Aşımı",
+      "error": "Hata"
     },
     "integrationsPage": {
       "title": "Entegrasyonlar",
@@ -833,7 +842,20 @@
       "saveRegion": "Bölge Ayarlarını Kaydet",
       "savingRegion": "Bölge ayarları kaydediliyor...",
       "regionUpdated": "Bölge ayarları güncellendi!",
-      "regionUpdateFailed": "Bölge ayarları güncellenemedi"
+      "regionUpdateFailed": "Bölge ayarları güncellenemedi",
+      "emailSignatureTitle": "Email İmzası",
+      "emailSignatureDescription": "AI asistanınız tarafından gönderilen emaillerde kullanılacak imza",
+      "signatureTypeLabel": "İmza Türü",
+      "signatureTypePlain": "Düz Metin",
+      "signatureTypeHtml": "HTML",
+      "signatureLabel": "İmza İçeriği",
+      "signaturePlaceholderHtml": "<p>Saygılarımla,</p><p><strong>Ad Soyad</strong></p><p>Şirket Adı</p>",
+      "signaturePlaceholderPlain": "Saygılarımla,\nAd Soyad\nŞirket Adı\nTel: +90 xxx xxx xx xx",
+      "signatureHelpHtml": "HTML etiketleri kullanabilirsiniz (p, strong, a, br vb.)",
+      "signatureHelpPlain": "Her satır için yeni satır karakteri kullanın",
+      "saveSignatureBtn": "İmzayı Kaydet",
+      "signatureSaved": "Email imzası kaydedildi",
+      "signatureFailed": "İmza kaydedilemedi"
     },
     "voicesPage": {
       "title": "Ses Kütüphanesi",

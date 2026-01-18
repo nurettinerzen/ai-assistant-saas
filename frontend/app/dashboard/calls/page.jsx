@@ -68,6 +68,8 @@ export default function CallsPage() {
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [directionFilter, setDirectionFilter] = useState('all');
+  const [endReasonFilter, setEndReasonFilter] = useState('all');
   const [selectedCallId, setSelectedCallId] = useState(null);
   const [showTranscriptModal, setShowTranscriptModal] = useState(false);
 
@@ -106,7 +108,7 @@ export default function CallsPage() {
     if (!isInitialLoad) {
       loadCalls();
     }
-  }, [statusFilter]);
+  }, [statusFilter, directionFilter, endReasonFilter]);
 
   // Debounced search
   useEffect(() => {
@@ -144,6 +146,8 @@ export default function CallsPage() {
       const params = {};
       if (statusFilter !== 'all') params.status = statusFilter;
       if (searchQuery) params.search = searchQuery;
+      if (directionFilter !== 'all') params.direction = directionFilter;
+      if (endReasonFilter !== 'all') params.endReason = endReasonFilter;
 
       const response = await apiClient.calls.getAll(params);
       let callsData = response.data.calls || [];
@@ -154,10 +158,25 @@ export default function CallsPage() {
         (!call.channel && !call.type)
       );
 
+      // Client-side filtering for direction (if backend doesn't filter)
+      if (directionFilter !== 'all') {
+        callsData = callsData.filter(call => {
+          if (directionFilter === 'outbound') {
+            return call.direction?.startsWith('outbound');
+          }
+          return call.direction === directionFilter || (!call.direction && directionFilter === 'inbound');
+        });
+      }
+
+      // Client-side filtering for end reason (if backend doesn't filter)
+      if (endReasonFilter !== 'all') {
+        callsData = callsData.filter(call => call.endReason === endReasonFilter);
+      }
+
       setCalls(callsData);
 
       // Only cache if no filters
-      if (statusFilter === 'all' && !searchQuery) {
+      if (statusFilter === 'all' && !searchQuery && directionFilter === 'all' && endReasonFilter === 'all') {
         callsCache.set(callsData);
       }
     } catch (error) {
@@ -320,8 +339,8 @@ export default function CallsPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
+      <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
+        <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
             placeholder={t('dashboard.callsPage.searchByPhone')}
@@ -331,16 +350,37 @@ export default function CallsPage() {
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full sm:w-44">
-            <Filter className="h-4 w-4 mr-2 text-gray-400" />
+          <SelectTrigger className="w-full sm:w-40">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t('dashboard.callsPage.allStatus')}</SelectItem>
             <SelectItem value="answered">{t('dashboard.callsPage.answered')}</SelectItem>
-            <SelectItem value="completed">{t('dashboard.callsPage.completed')}</SelectItem>
             <SelectItem value="failed">{t('dashboard.callsPage.failed')}</SelectItem>
             <SelectItem value="in_progress">{t('dashboard.callsPage.inProgress')}</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={directionFilter} onValueChange={setDirectionFilter}>
+          <SelectTrigger className="w-full sm:w-40">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t('dashboard.callsPage.allDirections')}</SelectItem>
+            <SelectItem value="inbound">{t('dashboard.callsPage.inbound')}</SelectItem>
+            <SelectItem value="outbound">{t('dashboard.callsPage.outbound')}</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={endReasonFilter} onValueChange={setEndReasonFilter}>
+          <SelectTrigger className="w-full sm:w-44">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t('dashboard.callsPage.allEndReasons')}</SelectItem>
+            <SelectItem value="client_ended">{t('dashboard.callsPage.clientEnded')}</SelectItem>
+            <SelectItem value="agent_ended">{t('dashboard.callsPage.agentEnded')}</SelectItem>
+            <SelectItem value="system_timeout">{t('dashboard.callsPage.systemTimeout')}</SelectItem>
+            <SelectItem value="error">{t('dashboard.callsPage.error')}</SelectItem>
+            <SelectItem value="completed">{t('dashboard.callsPage.completed')}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -361,9 +401,9 @@ export default function CallsPage() {
               <TableRow>
                 <TableHead>{t('dashboard.callsPage.dateTime')}</TableHead>
                 <TableHead>{t('dashboard.callsPage.duration')}</TableHead>
-                <TableHead>{locale === 'tr' ? 'Yön' : 'Direction'}</TableHead>
+                <TableHead>{t('dashboard.callsPage.direction')}</TableHead>
                 <TableHead>{t('dashboard.callsPage.status')}</TableHead>
-                <TableHead>{locale === 'tr' ? 'Sonlandırma' : 'End Reason'}</TableHead>
+                <TableHead>{t('dashboard.callsPage.endReason')}</TableHead>
                 <TableHead>{t('dashboard.callsPage.phoneNumber')}</TableHead>
                 <TableHead className="text-right">{t('dashboard.callsPage.actions')}</TableHead>
               </TableRow>
@@ -431,10 +471,10 @@ export default function CallsPage() {
         <div className="bg-white dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-800 p-8">
           <EmptyState
             icon={Phone}
-            title={searchQuery || statusFilter !== 'all'
+            title={searchQuery || statusFilter !== 'all' || directionFilter !== 'all' || endReasonFilter !== 'all'
               ? t('dashboard.callsPage.noCallsFound')
               : t('dashboard.callsPage.noCalls')}
-            description={searchQuery || statusFilter !== 'all'
+            description={searchQuery || statusFilter !== 'all' || directionFilter !== 'all' || endReasonFilter !== 'all'
               ? t('dashboard.callsPage.tryAdjustingFilters')
               : t('dashboard.callsPage.callsWillAppear')}
           />

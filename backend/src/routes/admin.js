@@ -810,7 +810,7 @@ router.get('/stats', async (req, res) => {
       prisma.business.count({ where: { deletedAt: null, suspended: false } }),
       prisma.business.count({ where: { suspended: true } }),
       prisma.subscription.count({ where: { plan: 'ENTERPRISE' } }),
-      prisma.subscription.count({ where: { plan: { in: ['PRO', 'PROFESSIONAL'] } } }),
+      prisma.subscription.count({ where: { plan: 'PRO' } }),
       prisma.subscription.count({ where: { plan: 'STARTER' } }),
       prisma.subscription.count({ where: { plan: 'PAYG' } }),
       prisma.subscription.count({ where: { plan: 'TRIAL' } }),

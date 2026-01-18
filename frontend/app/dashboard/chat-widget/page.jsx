@@ -82,7 +82,7 @@ export default function ChatWidgetPage() {
       const res = await apiClient.subscription.getCurrent();
       const plan = res.data?.plan || '';
       // Pro or higher plans can remove branding (check uppercase plan names)
-      setIsPro(['PRO', 'PROFESSIONAL', 'ENTERPRISE'].includes(plan.toUpperCase()));
+      setIsPro(['PRO', 'ENTERPRISE'].includes(plan.toUpperCase()));
     } catch (error) {
       console.error('Failed to load subscription:', error);
     }

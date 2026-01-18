@@ -10,6 +10,7 @@
 
 import { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import { useTheme } from 'next-themes';
 import axios from 'axios';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -34,6 +35,7 @@ import {
 } from 'lucide-react';
 import { TelyxLogoCompact } from '@/components/TelyxLogo';
 import { cn } from '@/lib/utils';
+import { PLAN_HIERARCHY, hasPlanAccess } from '@/lib/planConfig';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -65,7 +67,7 @@ const NAVIGATION_ITEMS = [
     icon: TrendingUp,
     requiresPlan: 'STARTER',
     badge: 'PRO',
-    badgeCondition: (plan) => plan === 'PROFESSIONAL' || plan === 'ENTERPRISE'
+    badgeCondition: (plan) => plan === 'PRO' || plan === 'ENTERPRISE'
   },
   {
     title: 'Integrations',
@@ -133,10 +135,16 @@ const ADMIN_NAVIGATION_ITEMS = [
 export function DashboardSidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const { theme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [subscription, setSubscription] = useState(null);
   const [loading, setLoading] = useState(true);
   const [userEmail, setUserEmail] = useState(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     fetchSubscription();
@@ -181,11 +189,11 @@ export function DashboardSidebar() {
   const canAccessRoute = (item) => {
     if (!item.requiresPlan) return true;
     if (!subscription) return false;
-    
-    const planHierarchy = { FREE: 0, STARTER: 1, PROFESSIONAL: 2, ENTERPRISE: 3 };
-    const userPlanLevel = planHierarchy[subscription.plan] || 0;
-    const requiredLevel = planHierarchy[item.requiresPlan] || 0;
-    
+
+    // Use centralized plan hierarchy
+    const userPlanLevel = PLAN_HIERARCHY[subscription.plan] || 0;
+    const requiredLevel = PLAN_HIERARCHY[item.requiresPlan] || 0;
+
     return userPlanLevel >= requiredLevel;
   };
 
@@ -231,7 +239,7 @@ export function DashboardSidebar() {
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="p-6 border-b border-gray-200 dark:border-neutral-700">
-            <TelyxLogoCompact />
+            <TelyxLogoCompact darkMode={mounted && theme === 'dark'} />
             {!loading && (
               <Badge
                 variant={plan === 'FREE' ? 'secondary' : 'default'}

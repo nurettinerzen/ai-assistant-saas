@@ -17,6 +17,7 @@ import subscriptionService from '../services/subscriptionService.js';
 import callAnalysis from '../services/callAnalysis.js';
 import { executeTool } from '../tools/index.js';
 import { authenticateToken } from '../middleware/auth.js';
+import { hasProFeatures, isProTier } from '../config/plans.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -311,7 +312,7 @@ router.post('/post-call', async (req, res) => {
     };
 
     const plan = business.subscription?.plan;
-    const shouldAnalyze = (plan === 'PROFESSIONAL' || plan === 'PRO' || plan === 'ENTERPRISE') &&
+    const shouldAnalyze = (plan === 'PRO' || plan === 'ENTERPRISE') &&
                           transcriptMessages.length > 0;
 
     if (shouldAnalyze && !aiAnalysis.summary) {
@@ -804,7 +805,7 @@ async function handleConversationEnded(event) {
 
     // Run AI analysis for eligible plans if no summary
     const plan = business.subscription?.plan;
-    const shouldAnalyze = (plan === 'PROFESSIONAL' || plan === 'ENTERPRISE') &&
+    const shouldAnalyze = hasProFeatures(plan) &&
                           transcriptMessages.length > 0 && !aiAnalysis.summary;
 
     if (shouldAnalyze) {
@@ -871,7 +872,7 @@ async function handleConversationEnded(event) {
     let costPerMinute = 0.60;
     if (subscription?.plan === 'STARTER') {
       costPerMinute = 0.70;
-    } else if (subscription?.plan === 'PROFESSIONAL') {
+    } else if (isProTier(subscription?.plan)) {
       costPerMinute = 0.50;
     } else if (subscription?.plan === 'ENTERPRISE') {
       costPerMinute = 0.40;
@@ -1165,7 +1166,7 @@ router.post('/sync-conversations', authenticateToken, async (req, res) => {
           sentimentScore: 0.5
         };
 
-        const shouldAnalyze = (plan === 'PROFESSIONAL' || plan === 'ENTERPRISE') &&
+        const shouldAnalyze = hasProFeatures(plan) &&
                               transcriptMessages.length > 2 && !aiAnalysis.summary;
 
         if (shouldAnalyze) {

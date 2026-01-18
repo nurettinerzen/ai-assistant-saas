@@ -74,7 +74,7 @@ export const PLAN_PRICES = {
       currency: 'TRY'
     }
   },
-  PROFESSIONAL: {
+  PRO: {
     stripe: {
       priceId: process.env.STRIPE_PRO_PRICE_ID,
       amount: 349,
@@ -86,7 +86,7 @@ export const PLAN_PRICES = {
       currency: 'BRL'
     },
     iyzico: {
-      pricingPlanRef: process.env.IYZICO_PROFESSIONAL_PLAN_REF,
+      pricingPlanRef: process.env.IYZICO_PRO_PLAN_REF,
       amount: 3499,
       currency: 'TRY'
     }
@@ -182,7 +182,7 @@ class PaymentProviderService {
 
   /**
    * Get plan pricing for a specific provider
-   * @param {string} planId - Plan ID (STARTER, PROFESSIONAL, ENTERPRISE)
+   * @param {string} planId - Plan ID (STARTER, PRO, ENTERPRISE)
    * @param {string} provider - Provider name ('stripe' or 'iyzico')
    * @returns {Object} Price details
    */

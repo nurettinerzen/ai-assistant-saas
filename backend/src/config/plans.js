@@ -56,8 +56,7 @@ export const TOKEN_PRICING = {
       PRO: { inputPer1K: 0.009, outputPer1K: 0.036 },     // Düşük fiyat
       ENTERPRISE: { inputPer1K: 0.008, outputPer1K: 0.032 }, // En düşük fiyat
       // Legacy
-      BASIC: { inputPer1K: 0.010, outputPer1K: 0.040 },
-      PROFESSIONAL: { inputPer1K: 0.009, outputPer1K: 0.036 }
+      BASIC: { inputPer1K: 0.010, outputPer1K: 0.040 }
     }
   },
   BR: {
@@ -70,8 +69,7 @@ export const TOKEN_PRICING = {
       STARTER: { inputPer1K: 0.002, outputPer1K: 0.008 },
       PRO: { inputPer1K: 0.0018, outputPer1K: 0.0072 },
       ENTERPRISE: { inputPer1K: 0.0016, outputPer1K: 0.0064 },
-      BASIC: { inputPer1K: 0.002, outputPer1K: 0.008 },
-      PROFESSIONAL: { inputPer1K: 0.0018, outputPer1K: 0.0072 }
+      BASIC: { inputPer1K: 0.002, outputPer1K: 0.008 }
     }
   },
   US: {
@@ -84,8 +82,7 @@ export const TOKEN_PRICING = {
       STARTER: { inputPer1K: 0.00022, outputPer1K: 0.00089 },
       PRO: { inputPer1K: 0.0002, outputPer1K: 0.0008 },
       ENTERPRISE: { inputPer1K: 0.00018, outputPer1K: 0.00071 },
-      BASIC: { inputPer1K: 0.00022, outputPer1K: 0.00089 },
-      PROFESSIONAL: { inputPer1K: 0.0002, outputPer1K: 0.0008 }
+      BASIC: { inputPer1K: 0.00022, outputPer1K: 0.00089 }
     }
   }
 };
@@ -98,8 +95,7 @@ export const PAYMENT_MODELS = {
   STARTER: 'POSTPAID',    // Ay sonu aşım faturası
   PRO: 'POSTPAID',
   ENTERPRISE: 'POSTPAID',
-  BASIC: 'POSTPAID',      // Legacy
-  PROFESSIONAL: 'POSTPAID' // Legacy
+  BASIC: 'POSTPAID'       // Legacy
 };
 
 // ============================================================================
@@ -129,8 +125,7 @@ export const REGIONAL_PRICING = {
       ENTERPRISE: { price: null, minutes: null, overageRate: 23, concurrentLimit: 5, pricePerMinute: 12, assistantsLimit: -1, phoneNumbersLimit: -1, paymentModel: 'POSTPAID' },
 
       // Legacy plan aliases - SABİT 23 TL AŞIM
-      BASIC: { price: 2499, minutes: 150, overageRate: 23, concurrentLimit: 1, pricePerMinute: 17, assistantsLimit: 3, paymentModel: 'POSTPAID' },
-      PROFESSIONAL: { price: 7499, minutes: 500, overageRate: 23, concurrentLimit: 5, pricePerMinute: 15, assistantsLimit: 10, paymentModel: 'POSTPAID' }
+      BASIC: { price: 2499, minutes: 150, overageRate: 23, concurrentLimit: 1, pricePerMinute: 17, assistantsLimit: 3, paymentModel: 'POSTPAID' }
     },
     // PAYG dakika fiyatı: 23 TL/dk (PREPAID)
     creditTiers: [
@@ -151,8 +146,7 @@ export const REGIONAL_PRICING = {
       STARTER: { price: 500, minutes: 150, overageRate: 4.60, concurrentLimit: 1, pricePerMinute: 3.40, assistantsLimit: 3, paymentModel: 'POSTPAID' },
       PRO: { price: 1500, minutes: 500, overageRate: 4.60, concurrentLimit: 5, pricePerMinute: 3.00, assistantsLimit: 10, paymentModel: 'POSTPAID' },
       ENTERPRISE: { price: null, minutes: null, overageRate: 4.60, concurrentLimit: 5, pricePerMinute: 2.40, assistantsLimit: -1, paymentModel: 'POSTPAID' },
-      BASIC: { price: 500, minutes: 150, overageRate: 4.60, concurrentLimit: 1, paymentModel: 'POSTPAID' },
-      PROFESSIONAL: { price: 1500, minutes: 500, overageRate: 4.60, concurrentLimit: 5, paymentModel: 'POSTPAID' }
+      BASIC: { price: 500, minutes: 150, overageRate: 4.60, concurrentLimit: 1, paymentModel: 'POSTPAID' }
     },
     creditTiers: [
       { minMinutes: 1, unitPrice: 4.60 }
@@ -170,8 +164,7 @@ export const REGIONAL_PRICING = {
       STARTER: { price: 55, minutes: 150, overageRate: 0.51, concurrentLimit: 1, pricePerMinute: 0.38, assistantsLimit: 3, paymentModel: 'POSTPAID' },
       PRO: { price: 167, minutes: 500, overageRate: 0.51, concurrentLimit: 5, pricePerMinute: 0.33, assistantsLimit: 10, paymentModel: 'POSTPAID' },
       ENTERPRISE: { price: null, minutes: null, overageRate: 0.51, concurrentLimit: 5, pricePerMinute: 0.27, assistantsLimit: -1, paymentModel: 'POSTPAID' },
-      BASIC: { price: 55, minutes: 150, overageRate: 0.51, concurrentLimit: 1, paymentModel: 'POSTPAID' },
-      PROFESSIONAL: { price: 167, minutes: 500, overageRate: 0.51, concurrentLimit: 5, paymentModel: 'POSTPAID' }
+      BASIC: { price: 55, minutes: 150, overageRate: 0.51, concurrentLimit: 1, paymentModel: 'POSTPAID' }
     },
     creditTiers: [
       { minMinutes: 1, unitPrice: 0.51 }
@@ -422,35 +415,6 @@ export const PLANS = {
       prioritySupport: false,
       analytics: true,
       apiAccess: false
-    },
-    channels: ['phone', 'whatsapp', 'chat_widget', 'email']
-  },
-  PROFESSIONAL: {
-    id: 'PROFESSIONAL',
-    name: 'Professional',
-    nameTR: 'Profesyonel',
-    nameEN: 'Professional',
-    namePR: 'Profissional',
-    deprecated: true,
-    minutesLimit: 500,
-    callsLimit: -1,
-    assistantsLimit: 10,
-    phoneNumbersLimit: -1,
-    overageLimit: 500,
-    concurrentLimit: 5,
-    features: {
-      phone: true,
-      whatsappCalling: true,
-      whatsappMessaging: true,
-      chatWidget: true,
-      email: true,
-      ecommerce: true,
-      calendar: true,
-      googleSheets: true,
-      batchCalls: true,
-      prioritySupport: true,
-      analytics: true,
-      apiAccess: true
     },
     channels: ['phone', 'whatsapp', 'chat_widget', 'email']
   }
@@ -771,7 +735,7 @@ export function getAssistantsLimit(planName, countryCode = 'TR') {
  * @returns {boolean}
  */
 export function isPaidPlan(planName) {
-  return ['STARTER', 'PRO', 'ENTERPRISE', 'BASIC', 'PROFESSIONAL'].includes(planName);
+  return ['STARTER', 'PRO', 'ENTERPRISE', 'BASIC'].includes(planName);
 }
 
 /**
@@ -875,6 +839,38 @@ export function hasFreeChat(planName) {
   return ['FREE', 'TRIAL'].includes(planName);
 }
 
+/**
+ * Normalize plan name to canonical form
+ * Maps deprecated plan names to current ones:
+ * - BASIC -> STARTER (optional)
+ * @param {string} planName - Plan name
+ * @returns {string} Normalized plan name
+ */
+export function normalizePlanName(planName) {
+  const planMap = {
+    // 'BASIC': 'STARTER',  // Uncomment if you want to migrate BASIC users too
+  };
+  return planMap[planName] || planName;
+}
+
+/**
+ * Check if plan is PRO tier
+ * @param {string} planName - Plan name
+ * @returns {boolean}
+ */
+export function isProTier(planName) {
+  return planName === 'PRO';
+}
+
+/**
+ * Check if plan has PRO features (PRO or ENTERPRISE)
+ * @param {string} planName - Plan name
+ * @returns {boolean}
+ */
+export function hasProFeatures(planName) {
+  return ['PRO', 'ENTERPRISE'].includes(planName);
+}
+
 // ============================================================================
 // LEGACY EXPORTS (for backward compatibility)
 // ============================================================================
@@ -924,5 +920,9 @@ export default {
   getTokenPricing,
   getTokenPricePerK,
   calculateTokenCost,
-  hasFreeChat
+  hasFreeChat,
+  // Plan normalization helpers
+  normalizePlanName,
+  isProTier,
+  hasProFeatures
 };

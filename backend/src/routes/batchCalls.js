@@ -2,6 +2,7 @@ import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticateToken } from '../middleware/auth.js';
 import { checkPermission } from '../middleware/permissions.js';
+import { hasProFeatures } from '../config/plans.js';
 import multer from 'multer';
 import XLSX from 'xlsx';
 import axios from 'axios';
@@ -122,9 +123,8 @@ async function checkBatchCallAccess(businessId) {
     where: { businessId }
   });
 
-  // Only PROFESSIONAL and ENTERPRISE plans have batch call access
-  const allowedPlans = ['PROFESSIONAL', 'ENTERPRISE'];
-  return allowedPlans.includes(subscription?.plan);
+  // PRO and ENTERPRISE plans have batch call access
+  return hasProFeatures(subscription?.plan);
 }
 
 // ============================================================

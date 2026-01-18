@@ -77,18 +77,6 @@ const PLAN_LIMITS = {
     integrations: true,
     analytics: true,
     aiAnalysis: false
-  },
-  PROFESSIONAL: {
-    minutes: 800,            // → PRO
-    calls: -1,
-    assistants: -1,
-    phoneNumbers: -1,
-    concurrent: 5,
-    trainings: -1,
-    voices: -1,
-    integrations: true,
-    analytics: true,
-    aiAnalysis: true
   }
 };
 
@@ -141,10 +129,10 @@ export const checkLimit = (action) => {
           if (limits.minutes > 0 && subscription.minutesUsed >= limits.minutes) {
             return res.status(403).json({
               error: 'Monthly minute limit reached',
-              message: `You've used ${subscription.minutesUsed}/${limits.minutes} minutes this month. Upgrade to PROFESSIONAL for 1500 minutes.`,
+              message: `You've used ${subscription.minutesUsed}/${limits.minutes} minutes this month. Upgrade to PRO for 1500 minutes.`,
               upgradeRequired: true,
               currentPlan: plan,
-              suggestedPlan: 'PROFESSIONAL',
+              suggestedPlan: 'PRO',
               usage: {
                 used: subscription.minutesUsed,
                 limit: limits.minutes,
@@ -168,10 +156,10 @@ export const checkLimit = (action) => {
           if (limits.calls > 0 && subscription.callsThisMonth >= limits.calls) {
             return res.status(403).json({
               error: 'Monthly call limit reached',
-              message: `You've received ${subscription.callsThisMonth}/${limits.calls} calls this month. Upgrade to PROFESSIONAL for unlimited calls.`,
+              message: `You've received ${subscription.callsThisMonth}/${limits.calls} calls this month. Upgrade to PRO for unlimited calls.`,
               upgradeRequired: true,
               currentPlan: plan,
-              suggestedPlan: 'PROFESSIONAL',
+              suggestedPlan: 'PRO',
               usage: {
                 used: subscription.callsThisMonth,
                 limit: limits.calls,
@@ -197,10 +185,10 @@ export const checkLimit = (action) => {
           if (limits.assistants > 0 && currentAssistants >= limits.assistants) {
             return res.status(403).json({
               error: 'Assistant limit reached',
-              message: `You've created ${currentAssistants}/${limits.assistants} assistants. Upgrade to PROFESSIONAL for 2 assistants.`,
+              message: `You've created ${currentAssistants}/${limits.assistants} assistants. Upgrade to PRO for 2 assistants.`,
               upgradeRequired: true,
               currentPlan: plan,
-              suggestedPlan: 'PROFESSIONAL',
+              suggestedPlan: 'PRO',
               usage: {
                 used: currentAssistants,
                 limit: limits.assistants
@@ -225,10 +213,10 @@ export const checkLimit = (action) => {
           if (limits.phoneNumbers > 0 && currentPhoneNumbers >= limits.phoneNumbers) {
             return res.status(403).json({
               error: 'Phone number limit reached',
-              message: `You've provisioned ${currentPhoneNumbers}/${limits.phoneNumbers} phone numbers. Upgrade to PROFESSIONAL for 3 numbers.`,
+              message: `You've provisioned ${currentPhoneNumbers}/${limits.phoneNumbers} phone numbers. Upgrade to PRO for 3 numbers.`,
               upgradeRequired: true,
               currentPlan: plan,
-              suggestedPlan: 'PROFESSIONAL',
+              suggestedPlan: 'PRO',
               usage: {
                 used: currentPhoneNumbers,
                 limit: limits.phoneNumbers
@@ -265,10 +253,10 @@ export const checkLimit = (action) => {
           if (!limits.aiAnalysis) {
             return res.status(403).json({
               error: 'AI Analysis is a PRO feature',
-              message: 'Upgrade to PROFESSIONAL plan for AI-powered call insights, sentiment analysis, and transcripts',
+              message: 'Upgrade to PRO plan for AI-powered call insights, sentiment analysis, and transcripts',
               upgradeRequired: true,
               currentPlan: plan,
-              suggestedPlan: 'PROFESSIONAL'
+              suggestedPlan: 'PRO'
             });
           }
           break;

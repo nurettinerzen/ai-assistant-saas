@@ -4,11 +4,12 @@
 // FILE: backend/src/services/aiAnalysis.js
 //
 // Analyzes call transcripts using OpenAI to extract insights
-// Only runs for PROFESSIONAL and ENTERPRISE plans
+// Only runs for PRO and ENTERPRISE plans
 // ============================================================================
 
 import { PrismaClient } from '@prisma/client';
 import OpenAI from 'openai';
+import { hasProFeatures } from '../config/plans.js';
 
 const prisma = new PrismaClient();
 
@@ -50,9 +51,9 @@ export const analyzeCall = async (callLogId) => {
       return null;
     }
 
-    // Check if plan supports AI analysis
+    // Check if plan supports AI analysis (PRO or ENTERPRISE)
     const plan = callLog.business.subscription?.plan;
-    if (plan !== 'PROFESSIONAL' && plan !== 'ENTERPRISE') {
+    if (!hasProFeatures(plan)) {
       console.log(`ℹ️ Skipping AI analysis - ${plan} plan doesn't include this feature`);
       return null;
     }

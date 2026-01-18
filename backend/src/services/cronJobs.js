@@ -39,7 +39,7 @@ export async function resetIncludedMinutes() {
     const subscriptionsToReset = await prisma.subscription.findMany({
       where: {
         status: 'active',
-        plan: { in: ['STARTER', 'PRO', 'ENTERPRISE', 'BASIC', 'PROFESSIONAL'] },
+        plan: { in: ['STARTER', 'PRO', 'ENTERPRISE', 'BASIC'] },
         currentPeriodEnd: { lte: now },
         includedMinutesUsed: { gt: 0 }
       },
@@ -347,7 +347,7 @@ export async function billOverageUsage() {
     const subscriptionsWithOverage = await prisma.subscription.findMany({
       where: {
         status: 'active',
-        plan: { in: ['STARTER', 'PRO', 'ENTERPRISE', 'BASIC', 'PROFESSIONAL'] },
+        plan: { in: ['STARTER', 'PRO', 'ENTERPRISE', 'BASIC'] },
         overageMinutes: { gt: 0 },
         currentPeriodEnd: { lte: now },
         // Don't bill if already billed for this period

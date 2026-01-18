@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { apiClient } from '@/lib/api';
+import { getPlanDisplayName } from '@/lib/planConfig';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -204,7 +205,7 @@ export default function CreditBalance({ onBuyCredit, refreshTrigger }) {
     const isTrial = plan === 'TRIAL';
     const isPayg = plan === 'PAYG';
     const isEnterprise = plan === 'ENTERPRISE';
-    const hasIncludedMinutes = ['STARTER', 'PRO', 'ENTERPRISE', 'BASIC', 'PROFESSIONAL'].includes(plan);
+    const hasIncludedMinutes = ['STARTER', 'PRO', 'ENTERPRISE', 'BASIC'].includes(plan);
 
     // Calculate percentages
     const includedPercent = balance.includedMinutes?.limit > 0
@@ -226,11 +227,7 @@ export default function CreditBalance({ onBuyCredit, refreshTrigger }) {
             </h3>
           </div>
           <Badge variant="secondary" className="bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400">
-            {plan === 'TRIAL' ? (lang === 'TR' ? 'Deneme' : 'Trial') :
-             plan === 'PAYG' ? (lang === 'TR' ? 'Kullandıkça Öde' : 'PAYG') :
-             plan === 'STARTER' || plan === 'BASIC' ? (lang === 'TR' ? 'Başlangıç' : 'Starter') :
-             plan === 'PRO' || plan === 'PROFESSIONAL' ? (lang === 'TR' ? 'Pro' : 'Pro') :
-             plan === 'ENTERPRISE' ? (lang === 'TR' ? 'Kurumsal' : 'Enterprise') : plan}
+            {getPlanDisplayName(plan, lang.toLowerCase())}
           </Badge>
         </div>
 

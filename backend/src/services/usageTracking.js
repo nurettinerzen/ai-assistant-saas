@@ -277,7 +277,7 @@ export const checkLimit = async (businessId, limitType) => {
     const limits = {
       FREE: { minutes: 0, calls: 0, assistants: 0, phoneNumbers: 0 },
       STARTER: { minutes: 300, calls: 50, assistants: 1, phoneNumbers: 1 },
-      PROFESSIONAL: { minutes: 1500, calls: -1, assistants: 2, phoneNumbers: 3 },
+      PRO: { minutes: 1500, calls: -1, assistants: 2, phoneNumbers: 3 },
       ENTERPRISE: { minutes: -1, calls: -1, assistants: 5, phoneNumbers: 10 }
     };
 
@@ -554,7 +554,7 @@ export const getUsageStats = async (businessId) => {
     const limits = {
       FREE: { minutes: 0, calls: 0, assistants: 0, phoneNumbers: 0 },
       STARTER: { minutes: 300, calls: 50, assistants: 1, phoneNumbers: 1 },
-      PROFESSIONAL: { minutes: 1500, calls: -1, assistants: 2, phoneNumbers: 3 },
+      PRO: { minutes: 1500, calls: -1, assistants: 2, phoneNumbers: 3 },
       ENTERPRISE: { minutes: -1, calls: -1, assistants: 5, phoneNumbers: 10 }
     };
 

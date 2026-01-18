@@ -399,7 +399,7 @@ export async function resetIncludedMinutes() {
       where: {
         status: 'ACTIVE',
         plan: {
-          in: ['STARTER', 'PRO', 'BASIC', 'PROFESSIONAL']
+          in: ['STARTER', 'PRO', 'BASIC']
         },
         includedMinutesResetAt: {
           lte: now

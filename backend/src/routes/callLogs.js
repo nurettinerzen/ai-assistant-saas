@@ -141,6 +141,79 @@ async function fetchAndProcessConversation(conversationId, business) {
 
 router.use(authenticateToken);
 
+// Export calls as CSV - MUST be defined before /:id route
+router.get('/export', async (req, res) => {
+  try {
+    const { businessId } = req;
+
+    // Get business language for localized export
+    const business = await prisma.business.findUnique({
+      where: { id: businessId },
+      select: { language: true }
+    });
+    const isTurkish = business?.language === 'TR';
+
+    const callLogs = await prisma.callLog.findMany({
+      where: { businessId },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    // Localized headers
+    const headers = isTurkish
+      ? ['Tarih', 'Telefon Numarası', 'Süre (sn)', 'Yön', 'Durum', 'Sonlandırma Nedeni']
+      : ['Date', 'Phone Number', 'Duration (sec)', 'Direction', 'Status', 'End Reason'];
+
+    // Localized values
+    const translateDirection = (dir) => {
+      if (!dir) return isTurkish ? 'Gelen' : 'Inbound';
+      if (dir.startsWith('outbound')) return isTurkish ? 'Giden' : 'Outbound';
+      return isTurkish ? 'Gelen' : 'Inbound';
+    };
+
+    const translateStatus = (status) => {
+      const statusMap = {
+        answered: isTurkish ? 'Yanıtlandı' : 'Answered',
+        failed: isTurkish ? 'Başarısız' : 'Failed',
+        in_progress: isTurkish ? 'Devam Ediyor' : 'In Progress',
+        completed: isTurkish ? 'Tamamlandı' : 'Completed',
+      };
+      return statusMap[status] || status || (isTurkish ? 'Bilinmiyor' : 'Unknown');
+    };
+
+    const translateEndReason = (reason) => {
+      if (!reason) return '-';
+      const reasonMap = {
+        client_ended: isTurkish ? 'Müşteri Sonlandırdı' : 'Client Ended',
+        agent_ended: isTurkish ? 'Asistan Sonlandırdı' : 'Agent Ended',
+        system_timeout: isTurkish ? 'Zaman Aşımı' : 'System Timeout',
+        error: isTurkish ? 'Hata' : 'Error',
+        completed: isTurkish ? 'Tamamlandı' : 'Completed',
+      };
+      return reasonMap[reason] || reason;
+    };
+
+    const rows = callLogs.map(call => [
+      new Date(call.createdAt).toLocaleString(isTurkish ? 'tr-TR' : 'en-US'),
+      call.callerId || (isTurkish ? 'Bilinmiyor' : 'Unknown'),
+      call.duration || 0,
+      translateDirection(call.direction),
+      translateStatus(call.status),
+      translateEndReason(call.endReason)
+    ]);
+
+    // Add BOM for Excel Turkish character support
+    const BOM = '\uFEFF';
+    const csv = BOM + [headers, ...rows].map(row => row.join(',')).join('\n');
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename=aramalar-${Date.now()}.csv`);
+    res.send(csv);
+  } catch (error) {
+    console.error('Export calls error:', error);
+    res.status(500).json({ error: 'Failed to export calls' });
+  }
+});
+
 // Get all call logs for the user's business (including chat and WhatsApp)
 router.get('/', async (req, res) => {
   try {
@@ -649,37 +722,6 @@ router.get('/stats/summary', async (req, res) => {
   } catch (error) {
     console.error('Get call stats error:', error);
     res.status(500).json({ error: 'Failed to fetch call statistics' });
-  }
-});
-
-// Export calls as CSV
-router.get('/export', async (req, res) => {
-  try {
-    const { businessId } = req;
-
-    const callLogs = await prisma.callLog.findMany({
-      where: { businessId },
-      orderBy: { createdAt: 'desc' }
-    });
-
-    // Create CSV
-    const headers = ['Date', 'Phone Number', 'Duration', 'Status', 'Cost'];
-    const rows = callLogs.map(call => [
-      new Date(call.createdAt).toISOString(),
-      call.callerId || 'Unknown',
-      call.duration || 0,
-      call.status,
-      (call.duration * 0.01).toFixed(2) // Example cost calculation
-    ]);
-
-    const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
-
-    res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', 'attachment; filename=calls.csv');
-    res.send(csv);
-  } catch (error) {
-    console.error('Export calls error:', error);
-    res.status(500).json({ error: 'Failed to export calls' });
   }
 });
 

@@ -50,7 +50,7 @@ const BUSINESS_TYPE_TO_INDUSTRY = {
   'HEALTHCARE': 'Healthcare',
   'SUPPORT': 'Support',
   'REAL_ESTATE': 'Real Estate',
-  'PROFESSIONAL': 'Professional',
+  'PRO': 'Pro',
   'OTHER': null, // Show all for OTHER
 };
 
