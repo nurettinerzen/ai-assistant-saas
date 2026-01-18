@@ -433,6 +433,17 @@ export default function BatchCallsPage() {
         )}
       </div>
 
+      {/* Info Box */}
+      <div className="p-4 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
+        <p className="text-sm text-orange-800 dark:text-orange-300">
+          <strong>💡 {locale === 'tr' ? 'Giden arama nedir?' : 'What are outbound calls?'}</strong>{' '}
+          {locale === 'tr'
+            ? 'Bu sayfa, müşterilerinizi toplu olarak aramanızı sağlar. Excel/CSV dosyası yükleyerek tek seferde yüzlerce kişiyi arayabilirsiniz. Kullanım örnekleri: Randevu hatırlatmaları, borç tahsilatı, anket aramaları, satış kampanyaları. Aramalar seçtiğiniz "Giden Arama Asistanı" tarafından yapılır.'
+            : 'This page allows you to call your customers in bulk. You can call hundreds of people at once by uploading an Excel/CSV file. Use cases: Appointment reminders, debt collection, survey calls, sales campaigns. Calls are made by your selected "Outbound Assistant".'
+          }
+        </p>
+      </div>
+
       {/* Call History Table */}
       {loading ? (
         <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-12 flex items-center justify-center">
