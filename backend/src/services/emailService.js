@@ -56,47 +56,36 @@ export const sendVerificationEmail = async (email, verificationUrl, businessName
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f4f4f5; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0; }
-        .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
-        .content { background: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px; }
-        .button { display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white !important; text-decoration: none; border-radius: 8px; margin: 24px 0; font-weight: 600; font-size: 16px; }
-        .warning { background: #fef3c7; padding: 16px; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 24px 0; }
-        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
-        .link { color: #667eea; word-break: break-all; }
-      </style>
     </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h1>Email Adresinizi Doğrulayın</h1>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333333; margin: 0; padding: 0; background-color: #f4f4f5;">
+      <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background-color: #667eea; color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
+          <h1 style="margin: 0; font-size: 24px; font-weight: 600; color: #ffffff;">Email Adresinizi Doğrulayın</h1>
         </div>
-        <div class="content">
-          <p>Merhaba${businessName ? ` <strong>${businessName}</strong>` : ''},</p>
-          <p>Telyx.AI'a kayıt olduğunuz için teşekkürler! Hesabınızı aktif hale getirmek için email adresinizi doğrulamanız gerekmektedir.</p>
+        <div style="background-color: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px;">
+          <p style="margin: 0 0 16px 0; color: #333333;">Merhaba${businessName ? ` <strong>${businessName}</strong>` : ''},</p>
+          <p style="margin: 0 0 16px 0; color: #333333;">Telyx.AI'a kayıt olduğunuz için teşekkürler! Hesabınızı aktif hale getirmek için email adresinizi doğrulamanız gerekmektedir.</p>
 
           <p style="text-align: center;">
-            <a href="${verificationUrl}" class="button">Email Adresimi Doğrula</a>
+            <a href="${verificationUrl}" style="display: inline-block; padding: 16px 48px; background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; margin: 24px 0; font-weight: 600; font-size: 16px;">Email Adresimi Doğrula</a>
           </p>
 
-          <div class="warning">
-            <p style="margin: 0;"><strong>⏰ Önemli:</strong> Bu link 24 saat geçerlidir. Süre dolarsa yeni bir doğrulama linki talep edebilirsiniz.</p>
+          <div style="background-color: #fef3c7; padding: 16px; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 24px 0;">
+            <p style="margin: 0; color: #333333;"><strong>⏰ Önemli:</strong> Bu link 24 saat geçerlidir. Süre dolarsa yeni bir doğrulama linki talep edebilirsiniz.</p>
           </div>
 
-          <p style="font-size: 14px; color: #6b7280;">
+          <p style="font-size: 14px; color: #6b7280; margin: 0 0 16px 0;">
             Eğer butona tıklayamıyorsanız, aşağıdaki linki tarayıcınıza kopyalayabilirsiniz:<br>
-            <a href="${verificationUrl}" class="link">${verificationUrl}</a>
+            <a href="${verificationUrl}" style="color: #667eea; word-break: break-all;">${verificationUrl}</a>
           </p>
 
-          <p style="font-size: 14px; color: #6b7280;">
+          <p style="font-size: 14px; color: #6b7280; margin: 0;">
             Bu hesabı siz oluşturmadıysanız, bu emaili görmezden gelebilirsiniz.
           </p>
         </div>
-        <div class="footer">
-          <p>Telyx.AI Ekibi<br>
-          <a href="https://telyx.ai" class="link">https://telyx.ai</a></p>
+        <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 14px;">
+          <p style="margin: 0;">Telyx.AI Ekibi<br>
+          <a href="https://telyx.ai" style="color: #667eea;">https://telyx.ai</a></p>
         </div>
       </div>
     </body>
