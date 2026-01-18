@@ -292,6 +292,9 @@ export default function BatchCallDetailPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                   {locale === 'tr' ? 'Süre' : 'Duration'}
                 </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                  {locale === 'tr' ? 'Sonlanma' : 'Termination'}
+                </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">
                   {locale === 'tr' ? 'İşlem' : 'Action'}
                 </th>
@@ -332,6 +335,25 @@ export default function BatchCallDetailPage() {
                           {recipient.duration ? `${Math.floor(recipient.duration / 60)}:${String(recipient.duration % 60).padStart(2, '0')}` : '-'}
                         </span>
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm text-neutral-600">
+                          {recipient.terminationReason ? (
+                            <Badge variant="outline" className={
+                              recipient.terminationReason === 'agent_goodbye' ? 'bg-green-50 text-green-700 border-green-200' :
+                              recipient.terminationReason === 'user_goodbye' ? 'bg-green-50 text-green-700 border-green-200' :
+                              recipient.terminationReason === 'voicemail_detected' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                              recipient.terminationReason === 'no_input' ? 'bg-red-50 text-red-700 border-red-200' :
+                              'bg-neutral-50 text-neutral-700 border-neutral-200'
+                            }>
+                              {recipient.terminationReason === 'agent_goodbye' ? (locale === 'tr' ? 'Asistan Kapattı' : 'Agent Ended') :
+                               recipient.terminationReason === 'user_goodbye' ? (locale === 'tr' ? 'Müşteri Kapattı' : 'User Ended') :
+                               recipient.terminationReason === 'voicemail_detected' ? (locale === 'tr' ? 'Sesli Yanıt' : 'Voicemail') :
+                               recipient.terminationReason === 'no_input' ? (locale === 'tr' ? 'Yanıt Yok' : 'No Input') :
+                               recipient.terminationReason}
+                            </Badge>
+                          ) : '-'}
+                        </span>
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right">
                         {recipient.callLogId ? (
                           <Button
@@ -353,7 +375,7 @@ export default function BatchCallDetailPage() {
                 })
               ) : (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-neutral-500">
+                  <td colSpan={6} className="px-6 py-12 text-center text-neutral-500">
                     {locale === 'tr' ? 'Alıcı bulunamadı' : 'No recipients found'}
                   </td>
                 </tr>

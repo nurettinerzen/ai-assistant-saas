@@ -113,8 +113,8 @@ export default function SignupPage() {
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
       toast.success('Account created successfully!');
-      // Skip email verification - go directly to assistant page
-      router.push('/dashboard/assistant');
+      // Redirect to email verification pending page
+      router.push('/auth/email-pending');
     } catch (error) {
       console.error('Signup error:', error);
       // Handle invite code specific errors

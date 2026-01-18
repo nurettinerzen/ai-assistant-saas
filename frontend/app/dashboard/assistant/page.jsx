@@ -54,36 +54,19 @@ const LANGUAGE_TO_ACCENT = {
   'sv': 'Swedish',
 };
 
-// Call purpose options for outbound calls - filtered by business type
+// Call purpose options for outbound calls - simplified to 3 main purposes
 const CALL_PURPOSES = {
-  // Available for all business types
+  // All available purposes (same for all business types)
   common: [
-    { value: 'collection', labelTr: 'Tahsilat', labelEn: 'Collection' },
     { value: 'sales', labelTr: 'Satış', labelEn: 'Sales' },
-    { value: 'info', labelTr: 'Bilgilendirme', labelEn: 'Information' },
-    { value: 'survey', labelTr: 'Anket', labelEn: 'Survey' },
-    { value: 'custom', labelTr: 'Özel', labelEn: 'Custom' },
+    { value: 'collection', labelTr: 'Tahsilat', labelEn: 'Collection' },
+    { value: 'general', labelTr: 'Genel Bilgilendirme', labelEn: 'General Information' },
   ],
-  // Business-specific purposes
-  byBusinessType: {
-    RESTAURANT: ['reminder', 'reservation'], // Randevu hatırlatma, rezervasyon
-    SALON: ['reminder'], // Randevu hatırlatma
-    CLINIC: ['reminder'], // Randevu hatırlatma
-    SERVICE: ['reminder'], // Randevu hatırlatma
-    ECOMMERCE: ['order_update', 'shipping'], // Sipariş durumu, kargo
-    OTHER: ['reminder'], // Randevu hatırlatma
-  },
   // All purpose definitions
   definitions: {
-    collection: { labelTr: 'Tahsilat', labelEn: 'Collection' },
     sales: { labelTr: 'Satış', labelEn: 'Sales' },
-    reminder: { labelTr: 'Randevu Hatırlatma', labelEn: 'Appointment Reminder' },
-    reservation: { labelTr: 'Rezervasyon', labelEn: 'Reservation' },
-    order_update: { labelTr: 'Sipariş Durumu', labelEn: 'Order Update' },
-    shipping: { labelTr: 'Kargo Takibi', labelEn: 'Shipping Update' },
-    survey: { labelTr: 'Anket', labelEn: 'Survey' },
-    info: { labelTr: 'Bilgilendirme', labelEn: 'Information' },
-    custom: { labelTr: 'Özel', labelEn: 'Custom' },
+    collection: { labelTr: 'Tahsilat', labelEn: 'Collection' },
+    general: { labelTr: 'Genel Bilgilendirme', labelEn: 'General Information' },
   }
 };
 
@@ -121,41 +104,17 @@ const DEFAULT_FIRST_MESSAGES = {
 
 // Default system prompts based on call purpose (simple instructions)
 const DEFAULT_SYSTEM_PROMPTS = {
-  collection: {
-    tr: `Borç hatırlatma araması yap. Kibar ol. Ödeme ne zaman yapılacak diye sor.`,
-    en: `Make a debt reminder call. Be polite. Ask when the payment will be made.`
-  },
   sales: {
     tr: `Satış araması yap. Ürün veya hizmeti tanıt. Müşterinin ihtiyaçlarını dinle ve uygun çözümler sun.`,
     en: `Make a sales call. Introduce the product or service. Listen to customer needs and offer suitable solutions.`
   },
-  reminder: {
-    tr: `Randevu hatırlatma araması yap. Randevuyu onayla veya iptal et.`,
-    en: `Make an appointment reminder call. Confirm or cancel the appointment.`
+  collection: {
+    tr: `Borç hatırlatma araması yap. Kibar ol. Ödeme ne zaman yapılacak diye sor.`,
+    en: `Make a debt reminder call. Be polite. Ask when the payment will be made.`
   },
-  order_update: {
-    tr: `Sipariş durumu hakkında bilgi ver. Soruları yanıtla.`,
-    en: `Give information about order status. Answer questions.`
-  },
-  survey: {
-    tr: `Kısa bir memnuniyet anketi yap. Müşterinin zamanına saygı göster.`,
-    en: `Conduct a short satisfaction survey. Respect the customer's time.`
-  },
-  info: {
-    tr: `Önemli bilgileri aktar. Net ve kısa konuş.`,
-    en: `Convey important information. Speak clearly and briefly.`
-  },
-  custom: {
-    tr: `Kibar ve profesyonel ol.`,
-    en: `Be polite and professional.`
-  },
-  reservation: {
-    tr: `Rezervasyonu onayla veya güncelle.`,
-    en: `Confirm or update the reservation.`
-  },
-  shipping: {
-    tr: `Kargo durumu hakkında bilgi ver.`,
-    en: `Give information about shipping status.`
+  general: {
+    tr: `Müşteriye bilgilendirme araması yap. Yüklenen müşteri verilerini kullanarak kişiselleştirilmiş bilgi ver. Bilgi Bankası'ndaki içerikleri referans al.`,
+    en: `Make an information call to the customer. Use uploaded customer data for personalized information. Reference Knowledge Base content.`
   }
 };
 
@@ -262,16 +221,12 @@ export default function AssistantsPage() {
     setShowTypeSelector(true);
   };
 
-  // Get available call purposes for current business type
+  // Get available call purposes (simplified - same for all business types)
   const getAvailablePurposes = () => {
-    const specificPurposes = CALL_PURPOSES.byBusinessType[businessType] || [];
-    const allPurposes = [...CALL_PURPOSES.common.map(p => p.value), ...specificPurposes];
-
-    // Return unique purposes with their labels
-    return allPurposes.map(value => ({
-      value,
-      labelTr: CALL_PURPOSES.definitions[value]?.labelTr || value,
-      labelEn: CALL_PURPOSES.definitions[value]?.labelEn || value,
+    return CALL_PURPOSES.common.map(p => ({
+      value: p.value,
+      labelTr: p.labelTr,
+      labelEn: p.labelEn,
     }));
   };
 
