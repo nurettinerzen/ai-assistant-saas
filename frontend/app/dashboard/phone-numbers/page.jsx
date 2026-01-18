@@ -32,7 +32,7 @@ const PLAN_LIMITS = {
   TRIAL: { phoneNumbers: 1, trialMinutes: 15 },
   PAYG: { phoneNumbers: 1 },
   STARTER: { phoneNumbers: 1 },
-  PROFESSIONAL: { phoneNumbers: 3 },
+  PRO: { phoneNumbers: 3 },
   ENTERPRISE: { phoneNumbers: 10 }
 };
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTheme } from 'next-themes';
 import Link from 'next/link';
 import { Phone, Mail, RefreshCw, Loader2, CheckCircle, Edit3, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -13,6 +14,8 @@ import { TelyxLogoFull } from '@/components/TelyxLogo';
 
 export default function EmailPendingPage() {
   const router = useRouter();
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [resending, setResending] = useState(false);
@@ -23,6 +26,10 @@ export default function EmailPendingPage() {
     newEmail: '',
     password: ''
   });
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     checkAuthStatus();
@@ -140,7 +147,7 @@ export default function EmailPendingPage() {
         <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-xl border border-neutral-200 dark:border-neutral-700 p-8">
           {/* Logo */}
           <div className="flex items-center justify-center mb-8">
-            <TelyxLogoFull width={200} height={60} />
+            <TelyxLogoFull width={200} height={60} darkMode={mounted && resolvedTheme === 'dark'} />
           </div>
 
           {/* Main Content */}

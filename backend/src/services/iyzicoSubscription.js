@@ -41,8 +41,8 @@ const IYZICO_PLAN_CONFIG = {
     assistantsLimit: 1,
     phoneNumbersLimit: 1
   },
-  PROFESSIONAL: {
-    name: 'PROFESSIONAL',
+  PRO: {
+    name: 'PRO',
     priceTRY: 2599, // ~$77 in TRY
     minutesLimit: 1500,
     callsLimit: -1,
@@ -169,7 +169,7 @@ class IyzicoSubscriptionService {
   /**
    * Create pricing plan for a product
    * @param {string} productReferenceCode - Product reference code
-   * @param {string} planName - Plan name (STARTER, PROFESSIONAL, ENTERPRISE)
+   * @param {string} planName - Plan name (STARTER, PRO, ENTERPRISE)
    * @returns {Promise<Object>} Plan details
    */
   async createPricingPlan(productReferenceCode, planName) {
@@ -608,8 +608,8 @@ class IyzicoSubscriptionService {
 
     // Determine plan from pricing plan reference
     let plan = 'STARTER';
-    if (pricingPlanReferenceCode === process.env.IYZICO_PROFESSIONAL_PLAN_REF) {
-      plan = 'PROFESSIONAL';
+    if (pricingPlanReferenceCode === process.env.IYZICO_PRO_PLAN_REF) {
+      plan = 'PRO';
     } else if (pricingPlanReferenceCode === process.env.IYZICO_ENTERPRISE_PLAN_REF) {
       plan = 'ENTERPRISE';
     }
@@ -710,8 +710,8 @@ class IyzicoSubscriptionService {
     const { newPricingPlanReferenceCode } = webhookData;
 
     let plan = 'STARTER';
-    if (newPricingPlanReferenceCode === process.env.IYZICO_PROFESSIONAL_PLAN_REF) {
-      plan = 'PROFESSIONAL';
+    if (newPricingPlanReferenceCode === process.env.IYZICO_PRO_PLAN_REF) {
+      plan = 'PRO';
     } else if (newPricingPlanReferenceCode === process.env.IYZICO_ENTERPRISE_PLAN_REF) {
       plan = 'ENTERPRISE';
     }

@@ -16,8 +16,7 @@ export const PLANS = {
   PAYG: 'PAYG',             // Pay as you go - same level as STARTER
   STARTER: 'STARTER',
   BASIC: 'BASIC',
-  PRO: 'PROFESSIONAL',      // Backend uses PROFESSIONAL
-  PROFESSIONAL: 'PROFESSIONAL',
+  PRO: 'PRO',
   ENTERPRISE: 'ENTERPRISE'
 };
 
@@ -27,7 +26,7 @@ export const PLAN_HIERARCHY = {
   [PLANS.PAYG]: 1,          // PAYG = STARTER level
   [PLANS.STARTER]: 1,
   [PLANS.BASIC]: 2,
-  [PLANS.PROFESSIONAL]: 3,
+  [PLANS.PRO]: 3,
   [PLANS.ENTERPRISE]: 4
 };
 
@@ -77,12 +76,12 @@ export const FEATURES = {
     id: 'email',
     name: 'E-posta',
     nameEN: 'Email',
-    requiredPlan: PLANS.PROFESSIONAL,
+    requiredPlan: PLANS.PRO,
     visibility: {
       [PLANS.FREE]: VISIBILITY.HIDDEN,
       [PLANS.STARTER]: VISIBILITY.HIDDEN,
       [PLANS.BASIC]: VISIBILITY.LOCKED,
-      [PLANS.PROFESSIONAL]: VISIBILITY.VISIBLE,
+      [PLANS.PRO]: VISIBILITY.VISIBLE,
       [PLANS.ENTERPRISE]: VISIBILITY.VISIBLE
     },
     description: 'E-posta ile müşteri hizmetleri otomasyonu yapın.',
@@ -98,7 +97,7 @@ export const FEATURES = {
       [PLANS.FREE]: VISIBILITY.HIDDEN,
       [PLANS.STARTER]: VISIBILITY.HIDDEN,
       [PLANS.BASIC]: VISIBILITY.VISIBLE,
-      [PLANS.PROFESSIONAL]: VISIBILITY.VISIBLE,
+      [PLANS.PRO]: VISIBILITY.VISIBLE,
       [PLANS.ENTERPRISE]: VISIBILITY.VISIBLE
     },
     description: 'Üçüncü parti uygulamalarla entegrasyon yapın.',
@@ -109,12 +108,12 @@ export const FEATURES = {
     id: 'batch_calls',
     name: 'Toplu Arama',
     nameEN: 'Batch Calls',
-    requiredPlan: PLANS.PROFESSIONAL,
+    requiredPlan: PLANS.PRO,
     visibility: {
       [PLANS.FREE]: VISIBILITY.LOCKED,
       [PLANS.STARTER]: VISIBILITY.LOCKED,
       [PLANS.BASIC]: VISIBILITY.LOCKED,
-      [PLANS.PROFESSIONAL]: VISIBILITY.VISIBLE,
+      [PLANS.PRO]: VISIBILITY.VISIBLE,
       [PLANS.ENTERPRISE]: VISIBILITY.VISIBLE
     },
     description: 'Excel/CSV yükleyerek toplu tahsilat ve hatırlatma aramaları yapın.',
@@ -126,12 +125,12 @@ export const FEATURES = {
     id: 'calendar_integration',
     name: 'Takvim Entegrasyonu',
     nameEN: 'Calendar Integration',
-    requiredPlan: PLANS.PROFESSIONAL,
+    requiredPlan: PLANS.PRO,
     visibility: {
       [PLANS.FREE]: VISIBILITY.HIDDEN,
       [PLANS.STARTER]: VISIBILITY.HIDDEN,
       [PLANS.BASIC]: VISIBILITY.LOCKED,
-      [PLANS.PROFESSIONAL]: VISIBILITY.VISIBLE,
+      [PLANS.PRO]: VISIBILITY.VISIBLE,
       [PLANS.ENTERPRISE]: VISIBILITY.VISIBLE
     },
     description: 'Google Calendar ile randevu yönetimi yapın.',
@@ -142,12 +141,12 @@ export const FEATURES = {
     id: 'sheets_integration',
     name: 'Google Sheets',
     nameEN: 'Google Sheets',
-    requiredPlan: PLANS.PROFESSIONAL,
+    requiredPlan: PLANS.PRO,
     visibility: {
       [PLANS.FREE]: VISIBILITY.HIDDEN,
       [PLANS.STARTER]: VISIBILITY.HIDDEN,
       [PLANS.BASIC]: VISIBILITY.LOCKED,
-      [PLANS.PROFESSIONAL]: VISIBILITY.VISIBLE,
+      [PLANS.PRO]: VISIBILITY.VISIBLE,
       [PLANS.ENTERPRISE]: VISIBILITY.VISIBLE
     },
     description: 'Google Sheets ile veri senkronizasyonu yapın.',
@@ -158,13 +157,13 @@ export const FEATURES = {
     id: 'crm_integration',
     name: 'Custom CRM',
     nameEN: 'Custom CRM',
-    requiredPlan: PLANS.PROFESSIONAL,
+    requiredPlan: PLANS.PRO,
     visibility: {
       [PLANS.FREE]: VISIBILITY.LOCKED,
       [PLANS.PAYG]: VISIBILITY.LOCKED,
       [PLANS.STARTER]: VISIBILITY.LOCKED,
       [PLANS.BASIC]: VISIBILITY.LOCKED,
-      [PLANS.PROFESSIONAL]: VISIBILITY.VISIBLE,
+      [PLANS.PRO]: VISIBILITY.VISIBLE,
       [PLANS.ENTERPRISE]: VISIBILITY.VISIBLE
     },
     description: 'Kendi CRM sisteminizi entegre edin.',
@@ -182,7 +181,7 @@ export const FEATURES = {
       [PLANS.FREE]: VISIBILITY.HIDDEN,
       [PLANS.STARTER]: VISIBILITY.HIDDEN,
       [PLANS.BASIC]: VISIBILITY.VISIBLE,
-      [PLANS.PROFESSIONAL]: VISIBILITY.VISIBLE,
+      [PLANS.PRO]: VISIBILITY.VISIBLE,
       [PLANS.ENTERPRISE]: VISIBILITY.VISIBLE
     },
     description: 'Shopify, WooCommerce, ikas ve daha fazlası.',
@@ -207,7 +206,7 @@ export const FEATURES = {
         [PLANS.FREE]: VISIBILITY.HIDDEN,
         [PLANS.STARTER]: VISIBILITY.VISIBLE,
         [PLANS.BASIC]: VISIBILITY.VISIBLE,
-        [PLANS.PROFESSIONAL]: VISIBILITY.VISIBLE,
+        [PLANS.PRO]: VISIBILITY.VISIBLE,
         [PLANS.ENTERPRISE]: VISIBILITY.VISIBLE
       },
       BR: {
@@ -215,21 +214,21 @@ export const FEATURES = {
         [PLANS.FREE]: VISIBILITY.HIDDEN,
         [PLANS.STARTER]: VISIBILITY.HIDDEN,
         [PLANS.BASIC]: VISIBILITY.HIDDEN,
-        [PLANS.PROFESSIONAL]: VISIBILITY.BYOC,
+        [PLANS.PRO]: VISIBILITY.BYOC,
         [PLANS.ENTERPRISE]: VISIBILITY.BYOC
       },
       US: {
         [PLANS.FREE]: VISIBILITY.HIDDEN,
         [PLANS.STARTER]: VISIBILITY.VISIBLE,
         [PLANS.BASIC]: VISIBILITY.VISIBLE,
-        [PLANS.PROFESSIONAL]: VISIBILITY.VISIBLE,
+        [PLANS.PRO]: VISIBILITY.VISIBLE,
         [PLANS.ENTERPRISE]: VISIBILITY.VISIBLE
       },
       EU: {
         [PLANS.FREE]: VISIBILITY.HIDDEN,
         [PLANS.STARTER]: VISIBILITY.VISIBLE,
         [PLANS.BASIC]: VISIBILITY.VISIBLE,
-        [PLANS.PROFESSIONAL]: VISIBILITY.VISIBLE,
+        [PLANS.PRO]: VISIBILITY.VISIBLE,
         [PLANS.ENTERPRISE]: VISIBILITY.VISIBLE
       }
     },
@@ -251,7 +250,7 @@ export const FEATURES = {
         [PLANS.FREE]: VISIBILITY.HIDDEN,
         [PLANS.STARTER]: VISIBILITY.HIDDEN,
         [PLANS.BASIC]: VISIBILITY.HIDDEN,
-        [PLANS.PROFESSIONAL]: VISIBILITY.HIDDEN,
+        [PLANS.PRO]: VISIBILITY.HIDDEN,
         [PLANS.ENTERPRISE]: VISIBILITY.HIDDEN
       },
       BR: {
@@ -259,7 +258,7 @@ export const FEATURES = {
         [PLANS.FREE]: VISIBILITY.HIDDEN,
         [PLANS.STARTER]: VISIBILITY.VISIBLE,
         [PLANS.BASIC]: VISIBILITY.VISIBLE,
-        [PLANS.PROFESSIONAL]: VISIBILITY.VISIBLE,
+        [PLANS.PRO]: VISIBILITY.VISIBLE,
         [PLANS.ENTERPRISE]: VISIBILITY.VISIBLE
       },
       US: {
@@ -267,7 +266,7 @@ export const FEATURES = {
         [PLANS.FREE]: VISIBILITY.HIDDEN,
         [PLANS.STARTER]: VISIBILITY.HIDDEN,
         [PLANS.BASIC]: VISIBILITY.HIDDEN,
-        [PLANS.PROFESSIONAL]: VISIBILITY.LOCKED,
+        [PLANS.PRO]: VISIBILITY.LOCKED,
         [PLANS.ENTERPRISE]: VISIBILITY.VISIBLE
       },
       EU: {
@@ -275,7 +274,7 @@ export const FEATURES = {
         [PLANS.FREE]: VISIBILITY.HIDDEN,
         [PLANS.STARTER]: VISIBILITY.HIDDEN,
         [PLANS.BASIC]: VISIBILITY.HIDDEN,
-        [PLANS.PROFESSIONAL]: VISIBILITY.LOCKED,
+        [PLANS.PRO]: VISIBILITY.LOCKED,
         [PLANS.ENTERPRISE]: VISIBILITY.VISIBLE
       }
     },
@@ -296,7 +295,7 @@ export const FEATURES = {
         [PLANS.FREE]: VISIBILITY.HIDDEN,
         [PLANS.STARTER]: VISIBILITY.LOCKED,
         [PLANS.BASIC]: VISIBILITY.VISIBLE,
-        [PLANS.PROFESSIONAL]: VISIBILITY.VISIBLE,
+        [PLANS.PRO]: VISIBILITY.VISIBLE,
         [PLANS.ENTERPRISE]: VISIBILITY.VISIBLE
       },
       BR: {
@@ -304,21 +303,21 @@ export const FEATURES = {
         [PLANS.FREE]: VISIBILITY.HIDDEN,
         [PLANS.STARTER]: VISIBILITY.VISIBLE,
         [PLANS.BASIC]: VISIBILITY.VISIBLE,
-        [PLANS.PROFESSIONAL]: VISIBILITY.VISIBLE,
+        [PLANS.PRO]: VISIBILITY.VISIBLE,
         [PLANS.ENTERPRISE]: VISIBILITY.VISIBLE
       },
       US: {
         [PLANS.FREE]: VISIBILITY.HIDDEN,
         [PLANS.STARTER]: VISIBILITY.LOCKED,
         [PLANS.BASIC]: VISIBILITY.VISIBLE,
-        [PLANS.PROFESSIONAL]: VISIBILITY.VISIBLE,
+        [PLANS.PRO]: VISIBILITY.VISIBLE,
         [PLANS.ENTERPRISE]: VISIBILITY.VISIBLE
       },
       EU: {
         [PLANS.FREE]: VISIBILITY.HIDDEN,
         [PLANS.STARTER]: VISIBILITY.LOCKED,
         [PLANS.BASIC]: VISIBILITY.VISIBLE,
-        [PLANS.PROFESSIONAL]: VISIBILITY.VISIBLE,
+        [PLANS.PRO]: VISIBILITY.VISIBLE,
         [PLANS.ENTERPRISE]: VISIBILITY.VISIBLE
       }
     },
@@ -338,7 +337,7 @@ export const FEATURES = {
       [PLANS.FREE]: VISIBILITY.HIDDEN,
       [PLANS.STARTER]: VISIBILITY.LOCKED,
       [PLANS.BASIC]: VISIBILITY.VISIBLE,
-      [PLANS.PROFESSIONAL]: VISIBILITY.VISIBLE,
+      [PLANS.PRO]: VISIBILITY.VISIBLE,
       [PLANS.ENTERPRISE]: VISIBILITY.VISIBLE
     },
     description: 'Web sitenize eklenebilir sohbet widget\'ı.',
@@ -394,13 +393,8 @@ export function getFeatureVisibility(featureId, userPlan, countryCode = null) {
   // If plan is not loaded yet (null/undefined), hide features to prevent flash
   if (!userPlan) return VISIBILITY.HIDDEN;
 
-  // Normalize plan name - handle both 'PRO' and 'PROFESSIONAL'
+  // Normalize plan name
   let normalizedPlan = userPlan.toUpperCase();
-
-  // Map 'PRO' to 'PROFESSIONAL' for consistency
-  if (normalizedPlan === 'PRO') {
-    normalizedPlan = PLANS.PROFESSIONAL;
-  }
 
   // Check if this feature has region-based visibility
   if (feature.regionVisibility && countryCode) {
@@ -485,7 +479,7 @@ export function getRequiredPlanName(featureId, locale = 'tr') {
 
   const planNames = {
     [PLANS.BASIC]: locale === 'tr' ? 'Temel' : 'Basic',
-    [PLANS.PROFESSIONAL]: locale === 'tr' ? 'Pro' : 'Pro',
+    [PLANS.PRO]: locale === 'tr' ? 'Pro' : 'Pro',
     [PLANS.ENTERPRISE]: locale === 'tr' ? 'Kurumsal' : 'Enterprise'
   };
 
@@ -532,13 +526,8 @@ export function getIntegrationFeatureInfo(integrationType, userPlan) {
     return { isLocked: false, feature: null };
   }
 
-  // Normalize plan name - handle both 'PRO' and 'PROFESSIONAL'
+  // Normalize plan name
   let normalizedPlan = userPlan?.toUpperCase() || PLANS.FREE;
-
-  // Map 'PRO' to 'PROFESSIONAL' for consistency
-  if (normalizedPlan === 'PRO') {
-    normalizedPlan = PLANS.PROFESSIONAL;
-  }
 
   // PAYG plan should behave like STARTER for feature access
   let visibility = featureMapping.visibility[normalizedPlan];

@@ -75,19 +75,6 @@ const PLAN_CONFIG = {
     assistantsLimit: 10,
     phoneNumbersLimit: -1 // unlimited
   },
-  // PROFESSIONAL is deprecated alias for PRO
-  PROFESSIONAL: {
-    name: 'PROFESSIONAL',
-    stripePriceId: process.env.STRIPE_PRO_PRICE_ID || 'price_pro',
-    iyzicoPlanRef: process.env.IYZICO_PRO_PLAN_REF,
-    price: 167,
-    priceTRY: 7499,
-    minutesLimit: 500,
-    callsLimit: -1,
-    assistantsLimit: 10,
-    phoneNumbersLimit: -1,
-    deprecated: true // Use PRO instead
-  },
   ENTERPRISE: {
     name: 'ENTERPRISE',
     stripePriceId: process.env.STRIPE_ENTERPRISE_PRICE_ID || 'price_enterprise',
@@ -220,7 +207,7 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
 
         // Determine plan from price ID
         let plan = 'STARTER';
-        if (priceId === PLAN_CONFIG.PROFESSIONAL.stripePriceId) plan = 'PROFESSIONAL';
+        if (priceId === PLAN_CONFIG.PRO.stripePriceId) plan = 'PRO';
         if (priceId === PLAN_CONFIG.ENTERPRISE.stripePriceId) plan = 'ENTERPRISE';
 
         const planConfig = PLAN_CONFIG[plan];
@@ -289,7 +276,7 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
 
         const priceId = subscription.items.data[0]?.price?.id;
         let plan = 'STARTER';
-        if (priceId === PLAN_CONFIG.PROFESSIONAL.stripePriceId) plan = 'PROFESSIONAL';
+        if (priceId === PLAN_CONFIG.PRO.stripePriceId) plan = 'PRO';
         if (priceId === PLAN_CONFIG.ENTERPRISE.stripePriceId) plan = 'ENTERPRISE';
 
         const planConfig = PLAN_CONFIG[plan];
@@ -1215,9 +1202,8 @@ router.post('/upgrade', verifyBusinessAccess, async (req, res) => {
     // Normalize planId to uppercase and map aliases
     let normalizedPlanId = planId.toUpperCase();
 
-    // Map common aliases
+    // Map common aliases (BASIC is legacy alias for STARTER)
     const planAliases = {
-      'PRO': 'PROFESSIONAL',
       'BASIC': 'STARTER'
     };
     normalizedPlanId = planAliases[normalizedPlanId] || normalizedPlanId;
@@ -1419,7 +1405,7 @@ router.post('/upgrade', verifyBusinessAccess, async (req, res) => {
       }
 
       // Get current plan level
-      const planLevels = { STARTER: 1, PROFESSIONAL: 2, ENTERPRISE: 3 };
+      const planLevels = { STARTER: 1, PRO: 2, ENTERPRISE: 3 };
       const currentLevel = planLevels[currentSubscription.plan] || 0;
       const newLevel = planLevels[normalizedPlanId] || 0;
 

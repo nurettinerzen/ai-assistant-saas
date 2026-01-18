@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTheme } from 'next-themes';
 import Link from 'next/link';
 import { Phone, Loader2, ArrowLeft, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -16,9 +17,15 @@ import { TelyxLogoFull } from '@/components/TelyxLogo';
 export default function ForgotPasswordPage() {
   const router = useRouter();
   const { t, locale } = useLanguage();
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [email, setEmail] = useState('');
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -52,7 +59,7 @@ export default function ForgotPasswordPage() {
         <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-xl border border-neutral-200 dark:border-neutral-700 p-8">
           {/* Logo and Language Switcher */}
           <div className="flex items-center justify-between mb-8">
-            <TelyxLogoFull width={200} height={60} />
+            <TelyxLogoFull width={200} height={60} darkMode={mounted && resolvedTheme === 'dark'} />
             <LanguageSwitcher />
           </div>
 

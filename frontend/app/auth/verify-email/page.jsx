@@ -2,6 +2,7 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useTheme } from 'next-themes';
 import Link from 'next/link';
 import { Phone, CheckCircle, XCircle, Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -14,11 +15,17 @@ function VerifyEmailContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { t } = useLanguage();
+  const { resolvedTheme } = useTheme();
   const token = searchParams.get('token');
 
+  const [mounted, setMounted] = useState(false);
   const [status, setStatus] = useState('verifying'); // verifying, success, error, expired
   const [email, setEmail] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!token) {
@@ -80,7 +87,7 @@ function VerifyEmailContent() {
         <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-xl border border-neutral-200 dark:border-neutral-700 p-8">
           {/* Logo */}
           <div className="flex items-center justify-center mb-8">
-            <TelyxLogoFull width={200} height={60} />
+            <TelyxLogoFull width={200} height={60} darkMode={mounted && resolvedTheme === 'dark'} />
           </div>
 
           {/* Verifying State */}

@@ -51,7 +51,7 @@ export const REGIONAL_PRICING = {
         overageRate: 11,
         overageLimit: 50
       },
-      PROFESSIONAL: {
+      PRO: {
         price: 3499,
         minutesLimit: 500,
         callsLimit: -1,
@@ -113,7 +113,7 @@ export const REGIONAL_PRICING = {
         overageRate: 2.5,
         overageLimit: 50
       },
-      PROFESSIONAL: {
+      PRO: {
         price: 999,
         minutesLimit: 600,
         callsLimit: -1,
@@ -175,7 +175,7 @@ export const REGIONAL_PRICING = {
         overageRate: 0.45,
         overageLimit: 50
       },
-      PROFESSIONAL: {
+      PRO: {
         price: 349,
         minutesLimit: 1000,
         callsLimit: -1,
@@ -237,7 +237,7 @@ export const REGIONAL_PRICING = {
         overageRate: 0.40,
         overageLimit: 50
       },
-      PROFESSIONAL: {
+      PRO: {
         price: 299,
         minutesLimit: 1000,
         callsLimit: -1,
@@ -299,7 +299,7 @@ export const REGIONAL_PRICING = {
         overageRate: 0.35,
         overageLimit: 50
       },
-      PROFESSIONAL: {
+      PRO: {
         price: 279,
         minutesLimit: 1000,
         callsLimit: -1,
@@ -393,7 +393,7 @@ export const PLAN_FEATURES = {
     googleSheets: false,
     customCrm: false
   },
-  PROFESSIONAL: {
+  PRO: {
     phone: true,
     whatsapp: true,
     chatWidget: true,
@@ -456,13 +456,13 @@ export const PLAN_NAMES = {
     ES: 'Básico',
     FR: 'Basique'
   },
-  PROFESSIONAL: {
+  PRO: {
     TR: 'Profesyonel',
-    EN: 'Professional',
-    PR: 'Profissional',
-    DE: 'Professionell',
-    ES: 'Profesional',
-    FR: 'Professionnel'
+    EN: 'Pro',
+    PR: 'Pro',
+    DE: 'Pro',
+    ES: 'Pro',
+    FR: 'Pro'
   },
   ENTERPRISE: {
     TR: 'Kurumsal',

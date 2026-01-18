@@ -48,18 +48,9 @@ import {
 } from '@/components/ui/dialog';
 import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
+import { PLAN_COLORS } from '@/lib/planConfig';
 
 const ADMIN_EMAILS = ['nurettin@telyx.ai', 'admin@telyx.ai'];
-
-const PLAN_COLORS = {
-  ENTERPRISE: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
-  PRO: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-  PROFESSIONAL: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-  STARTER: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-  PAYG: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
-  TRIAL: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
-  FREE: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400',
-};
 
 export default function AdminUsersPage() {
   const router = useRouter();

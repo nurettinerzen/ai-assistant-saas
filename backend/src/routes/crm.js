@@ -2,21 +2,19 @@
  * CRM Management API Routes
  * Authenticated endpoints for managing CRM webhook and viewing CRM data
  *
- * Available only for PRO and KURUMSAL plans
+ * Available only for PRO and ENTERPRISE plans
  */
 
 import express from 'express';
 import crypto from 'crypto';
 import prisma from '../prismaClient.js';
 import { authenticateToken } from '../middleware/auth.js';
+import { hasProFeatures } from '../config/plans.js';
 
 const router = express.Router();
 
 // All routes require authentication
 router.use(authenticateToken);
-
-// Allowed plans for CRM integration
-const ALLOWED_PLANS = ['PRO', 'PROFESSIONAL', 'ENTERPRISE', 'KURUMSAL'];
 
 /**
  * Check if user's plan allows CRM integration
@@ -33,7 +31,7 @@ async function checkPlanAccess(businessId) {
 
   const currentPlan = business.subscription?.plan || 'FREE';
 
-  if (!ALLOWED_PLANS.includes(currentPlan.toUpperCase())) {
+  if (!hasProFeatures(currentPlan)) {
     return {
       allowed: false,
       error: 'upgrade_required',

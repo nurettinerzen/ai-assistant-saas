@@ -18,65 +18,12 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import CreditBalance from '@/components/CreditBalance';
 import BuyCreditModal from '@/components/BuyCreditModal';
-
-// Regional pricing configuration - YENİ FİYATLANDIRMA SİSTEMİ (Ocak 2026)
-// TRIAL: 15 dk telefon, 7 gün chat/whatsapp - ücretsiz
-// PAYG: Kullandıkça öde - 23 TL/dk, PREPAID (bakiye yükle)
-// STARTER: 2.499 TL/ay, 150 dk dahil, SABİT 23 TL aşım (POSTPAID)
-// PRO: 7.499 TL/ay, 500 dk dahil, SABİT 23 TL aşım (POSTPAID)
-// ENTERPRISE: Özel fiyat, SABİT 23 TL aşım (POSTPAID)
-//
-// ÖNEMLİ: Aşım fiyatı tüm planlar için SABİT 23 TL/dk
-// PAYG: Prepaid - bakiye yükle, kullan
-// Paketler: Postpaid - aşım ay sonu faturalanır
-const REGIONAL_PRICING = {
-  TR: {
-    currency: '₺',
-    currencyPosition: 'after',
-    locale: 'tr-TR',
-    plans: {
-      TRIAL: { price: 0, minutes: 15, concurrent: 1, pricePerMinute: 0, chatDays: 7, paymentModel: null },
-      PAYG: { price: 0, minutes: 0, concurrent: 1, pricePerMinute: 23, minTopup: 4, paymentModel: 'PREPAID' },
-      // SABİT 23 TL AŞIM - POSTPAID
-      STARTER: { price: 2499, minutes: 150, concurrent: 1, pricePerMinute: 17, overageRate: 23, paymentModel: 'POSTPAID' },
-      PRO: { price: 7499, minutes: 500, concurrent: 5, pricePerMinute: 15, overageRate: 23, paymentModel: 'POSTPAID' },
-      ENTERPRISE: { price: null, minutes: null, concurrent: 5, pricePerMinute: 12, overageRate: 23, paymentModel: 'POSTPAID' },
-      // Legacy plan aliases
-      BASIC: { price: 2499, minutes: 150, concurrent: 1, pricePerMinute: 17, overageRate: 23, paymentModel: 'POSTPAID' },
-      PROFESSIONAL: { price: 7499, minutes: 500, concurrent: 5, pricePerMinute: 15, overageRate: 23, paymentModel: 'POSTPAID' }
-    }
-  },
-  BR: {
-    currency: 'R$',
-    currencyPosition: 'before',
-    locale: 'pt-BR',
-    plans: {
-      TRIAL: { price: 0, minutes: 15, concurrent: 1, pricePerMinute: 0, chatDays: 7, paymentModel: null },
-      PAYG: { price: 0, minutes: 0, concurrent: 1, pricePerMinute: 4.60, minTopup: 4, paymentModel: 'PREPAID' },
-      // SABİT 4.60 R$ AŞIM - POSTPAID
-      STARTER: { price: 500, minutes: 150, concurrent: 1, pricePerMinute: 3.40, overageRate: 4.60, paymentModel: 'POSTPAID' },
-      PRO: { price: 1500, minutes: 500, concurrent: 5, pricePerMinute: 3.00, overageRate: 4.60, paymentModel: 'POSTPAID' },
-      ENTERPRISE: { price: null, minutes: null, concurrent: 5, pricePerMinute: 2.40, overageRate: 4.60, paymentModel: 'POSTPAID' },
-      BASIC: { price: 500, minutes: 150, concurrent: 1, pricePerMinute: 3.40, overageRate: 4.60, paymentModel: 'POSTPAID' },
-      PROFESSIONAL: { price: 1500, minutes: 500, concurrent: 5, pricePerMinute: 3.00, overageRate: 4.60, paymentModel: 'POSTPAID' }
-    }
-  },
-  US: {
-    currency: '$',
-    currencyPosition: 'before',
-    locale: 'en-US',
-    plans: {
-      TRIAL: { price: 0, minutes: 15, concurrent: 1, pricePerMinute: 0, chatDays: 7, paymentModel: null },
-      PAYG: { price: 0, minutes: 0, concurrent: 1, pricePerMinute: 0.51, minTopup: 4, paymentModel: 'PREPAID' },
-      // SABİT $0.51 AŞIM - POSTPAID
-      STARTER: { price: 55, minutes: 150, concurrent: 1, pricePerMinute: 0.38, overageRate: 0.51, paymentModel: 'POSTPAID' },
-      PRO: { price: 167, minutes: 500, concurrent: 5, pricePerMinute: 0.33, overageRate: 0.51, paymentModel: 'POSTPAID' },
-      ENTERPRISE: { price: null, minutes: null, concurrent: 5, pricePerMinute: 0.27, overageRate: 0.51, paymentModel: 'POSTPAID' },
-      BASIC: { price: 55, minutes: 150, concurrent: 1, pricePerMinute: 0.38, overageRate: 0.51, paymentModel: 'POSTPAID' },
-      PROFESSIONAL: { price: 167, minutes: 500, concurrent: 5, pricePerMinute: 0.33, overageRate: 0.51, paymentModel: 'POSTPAID' }
-    }
-  }
-};
+import {
+  REGIONAL_PRICING,
+  PLAN_HIERARCHY,
+  LEGACY_PLAN_MAP,
+  getPlanDisplayName,
+} from '@/lib/planConfig';
 
 // Note: Region is determined by business.country, NOT by UI language
 // Language (locale) only affects UI text, not pricing
@@ -111,7 +58,7 @@ const BASE_PLANS = [
   },
   {
     id: 'PRO',
-    name: { TR: 'Profesyonel', EN: 'Pro' },
+    name: { TR: 'Pro', EN: 'Pro' },
     description: { TR: '500 dakika dahil, öncelikli destek', EN: '500 minutes included, priority support' },
     popular: true,
     includedFeatures: ['minutes', 'concurrent', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'ecommerce', 'calendar', 'googleSheets', 'analytics', 'email', 'batchCalls', 'prioritySupport', 'apiAccess'],
@@ -408,15 +355,7 @@ export default function SubscriptionPage() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">{t('dashboard.subscriptionPage.currentPlan')}</h2>
               <Badge className="bg-primary-100 dark:bg-primary-900/30 text-primary-800 dark:text-primary-400">
-                {subscription.plan === 'FREE' ? t('dashboard.subscriptionPage.freePlan') :
-                 subscription.plan === 'TRIAL' ? (uiLang === 'TR' ? 'Deneme' : 'Trial') :
-                 subscription.plan === 'PAYG' ? (uiLang === 'TR' ? 'Kullandıkça Öde' : 'Pay As You Go') :
-                 subscription.plan === 'STARTER' ? (uiLang === 'TR' ? 'Başlangıç' : 'Starter') :
-                 subscription.plan === 'PRO' ? (uiLang === 'TR' ? 'Profesyonel' : 'Pro') :
-                 subscription.plan === 'BASIC' ? (uiLang === 'TR' ? 'Başlangıç' : 'Starter') :
-                 subscription.plan === 'PROFESSIONAL' ? (uiLang === 'TR' ? 'Profesyonel' : 'Pro') :
-                 subscription.plan === 'ENTERPRISE' ? t('dashboard.subscriptionPage.enterprisePlan') :
-                 subscription.planName || t('dashboard.subscriptionPage.freePlan')}
+                {getPlanDisplayName(subscription.plan, locale)}
               </Badge>
             </div>
             <div className="space-y-3">
@@ -519,18 +458,15 @@ export default function SubscriptionPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 items-stretch">
           {BASE_PLANS.map((plan) => {
             const planPricing = getPlanPricing(plan.id);
-            // Legacy plan mapping: BASIC → STARTER, PROFESSIONAL → PRO
-            const LEGACY_PLAN_MAP = { BASIC: 'STARTER', PROFESSIONAL: 'PRO' };
+            // Legacy plan mapping from centralized config
             const userPlanMapped = LEGACY_PLAN_MAP[subscription?.plan] || subscription?.plan;
             const isCurrentPlan = userPlanMapped === plan.id;
             // Only show "Popular" badge if user has no plan or is on FREE plan
             const showPopularBadge = plan.popular && !isCurrentPlan && (!subscription?.plan || subscription?.plan === 'FREE');
 
-            // Plan order for upgrade/downgrade logic - YENİ FİYATLANDIRMA SİSTEMİ
-            // TRIAL ve PAYG özel planlar - normal hiyerarşi dışında
-            const PLAN_ORDER = { FREE: 0, TRIAL: 0, PAYG: 1, STARTER: 2, BASIC: 2, PRO: 3, PROFESSIONAL: 3, ENTERPRISE: 4 };
-            const currentPlanIndex = PLAN_ORDER[subscription?.plan] || 0;
-            const thisPlanIndex = PLAN_ORDER[plan.id];
+            // Plan order for upgrade/downgrade logic from centralized config
+            const currentPlanIndex = PLAN_HIERARCHY[subscription?.plan] || 0;
+            const thisPlanIndex = PLAN_HIERARCHY[plan.id];
             const isUpgrade = thisPlanIndex > currentPlanIndex;
             const isDowngrade = thisPlanIndex < currentPlanIndex;
 
@@ -637,22 +573,22 @@ export default function SubscriptionPage() {
             return (
               <div
                 key={plan.id}
-                className={`bg-white dark:bg-neutral-900 rounded-xl border-2 p-6 shadow-sm relative flex flex-col ${
+                className={`bg-white dark:bg-neutral-900 rounded-xl border-2 p-6 shadow-sm relative flex flex-col h-full ${
                   isCurrentPlan ? 'border-green-500 ring-2 ring-green-200 dark:ring-green-900' : 'border-neutral-200 dark:border-neutral-700'
                 }`}
               >
                 {/* Show "Current Plan" badge if this is the current plan */}
                 {isCurrentPlan && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                    <Badge className="bg-green-600 text-white">
+                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-10 bg-white dark:bg-neutral-900 px-1">
+                    <Badge className="bg-green-600 text-white px-3 py-1">
                       {t('dashboard.subscriptionPage.currentPlan')}
                     </Badge>
                   </div>
                 )}
                 {/* Show "Popular" badge only if user has no plan */}
                 {showPopularBadge && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                    <Badge className="bg-primary-600 text-white">
+                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-10 bg-white dark:bg-neutral-900 px-1">
+                    <Badge className="bg-primary-600 text-white px-3 py-1">
                       {t('dashboard.subscriptionPage.popular')}
                     </Badge>
                   </div>
@@ -708,7 +644,7 @@ export default function SubscriptionPage() {
                 </div>
 
                 {/* Features list - only shows included features, no gaps */}
-                <ul className="space-y-2 mb-6 flex-grow">
+                <ul className="space-y-2 mb-6 flex-1 min-h-0">
                   {getPlanFeatures().map((feature, i) => (
                     <li
                       key={i}

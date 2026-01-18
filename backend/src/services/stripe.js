@@ -66,7 +66,7 @@ class StripeService {
    * Create a checkout session with multi-currency support
    * @param {object} options - Checkout options
    * @param {string} options.stripeCustomerId - Stripe customer ID
-   * @param {string} options.planId - Plan ID (STARTER, BASIC, PROFESSIONAL)
+   * @param {string} options.planId - Plan ID (STARTER, BASIC, PRO)
    * @param {string} options.countryCode - Country code for pricing
    * @param {string} options.successUrl - Success redirect URL
    * @param {string} options.cancelUrl - Cancel redirect URL

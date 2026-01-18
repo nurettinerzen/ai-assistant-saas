@@ -684,7 +684,6 @@ enum SubscriptionPlan {
   PRO         // Profesyonel: 7.499 TL/ay, 500 dk dahil
   ENTERPRISE  // Kurumsal: Özel fiyat
   BASIC       // Deprecated: eski paket, geriye dönük uyumluluk için
-  PROFESSIONAL // Deprecated: eski paket, geriye dönük uyumluluk için
 }
 
 enum SubscriptionStatus {

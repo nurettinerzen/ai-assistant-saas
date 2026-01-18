@@ -720,7 +720,16 @@
       "tryAdjustingFilters": "Try adjusting your search or filters",
       "callsExportedSuccess": "Calls exported successfully",
       "failedToLoadCalls": "Failed to load calls",
-      "failedToExportCalls": "Failed to export calls"
+      "failedToExportCalls": "Failed to export calls",
+      "queued": "Queued",
+      "loadingCalls": "Loading call history...",
+      "allDirections": "All Directions",
+      "allEndReasons": "All End Reasons",
+      "endReason": "End Reason",
+      "clientEnded": "Customer Ended",
+      "agentEnded": "Agent Ended",
+      "systemTimeout": "Timeout",
+      "error": "Error"
     },
     "integrationsPage": {
       "title": "Integrations",
@@ -833,7 +842,20 @@
       "saveRegion": "Save Region Settings",
       "savingRegion": "Saving region settings...",
       "regionUpdated": "Region settings updated!",
-      "regionUpdateFailed": "Failed to update region settings"
+      "regionUpdateFailed": "Failed to update region settings",
+      "emailSignatureTitle": "Email Signature",
+      "emailSignatureDescription": "Signature to be used in emails sent by your AI assistant",
+      "signatureTypeLabel": "Signature Type",
+      "signatureTypePlain": "Plain Text",
+      "signatureTypeHtml": "HTML",
+      "signatureLabel": "Signature Content",
+      "signaturePlaceholderHtml": "<p>Best regards,</p><p><strong>Full Name</strong></p><p>Company Name</p>",
+      "signaturePlaceholderPlain": "Best regards,\nFull Name\nCompany Name\nPhone: +1 xxx xxx xxxx",
+      "signatureHelpHtml": "You can use HTML tags (p, strong, a, br, etc.)",
+      "signatureHelpPlain": "Use a new line for each line",
+      "saveSignatureBtn": "Save Signature",
+      "signatureSaved": "Email signature saved",
+      "signatureFailed": "Failed to save signature"
     },
     "voicesPage": {
       "title": "Voice Library",

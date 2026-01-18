@@ -147,10 +147,22 @@ export default function ChatsPage() {
         page: pagination.page,
         limit: pagination.limit
       };
-      if (statusFilter !== 'all') params.status = statusFilter;
+      // Don't send status filter to backend - we'll filter client-side to handle "ended" status
+      // if (statusFilter !== 'all') params.status = statusFilter;
 
       const response = await apiClient.get('/api/chat-logs', { params });
       let chatLogs = response.data.chatLogs || [];
+
+      // Apply status filter (client-side to handle "ended" status from backend)
+      if (statusFilter !== 'all') {
+        if (statusFilter === 'completed') {
+          // "Tamamlandı" should show both "completed" and "ended" statuses
+          chatLogs = chatLogs.filter(chat => chat.status === 'completed' || chat.status === 'ended');
+        } else if (statusFilter === 'active') {
+          // "Aktif" should only show "active" status
+          chatLogs = chatLogs.filter(chat => chat.status === 'active');
+        }
+      }
 
       // Apply channel filter (frontend for now)
       if (channelFilter !== 'all') {
@@ -332,7 +344,7 @@ export default function ChatsPage() {
           />
         </div>
         <Select value={channelFilter} onValueChange={setChannelFilter}>
-          <SelectTrigger className="w-full sm:w-36">
+          <SelectTrigger className="w-full sm:w-44">
             <Filter className="h-4 w-4 mr-2 text-gray-400" />
             <SelectValue />
           </SelectTrigger>
@@ -343,7 +355,7 @@ export default function ChatsPage() {
           </SelectContent>
         </Select>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full sm:w-36">
+          <SelectTrigger className="w-full sm:w-44">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

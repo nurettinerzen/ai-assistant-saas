@@ -60,7 +60,7 @@ export const config = {
     secretKey: process.env.IYZICO_SECRET_KEY,
     baseUrl: process.env.IYZICO_BASE_URL || 'https://sandbox-api.iyzipay.com',
     starterPlanRef: process.env.IYZICO_STARTER_PLAN_REF,
-    professionalPlanRef: process.env.IYZICO_PROFESSIONAL_PLAN_REF,
+    proPlanRef: process.env.IYZICO_PRO_PLAN_REF,
     enterprisePlanRef: process.env.IYZICO_ENTERPRISE_PLAN_REF,
   },
   resend: {
