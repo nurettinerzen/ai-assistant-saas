@@ -625,6 +625,173 @@ router.post('/google', async (req, res) => {
   }
 });
 
+// Google OAuth - Handle authorization code flow
+router.post('/google/code', async (req, res) => {
+  try {
+    const { code } = req.body;
+
+    if (!code) {
+      return res.status(400).json({ error: 'Authorization code is required' });
+    }
+
+    const { OAuth2Client } = await import('google-auth-library');
+    const client = new OAuth2Client(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      'postmessage' // For popup flow
+    );
+
+    let tokens;
+    try {
+      const response = await client.getToken(code);
+      tokens = response.tokens;
+    } catch (tokenError) {
+      console.error('Google token exchange failed:', tokenError);
+      return res.status(401).json({ error: 'Invalid authorization code' });
+    }
+
+    // Verify the ID token
+    let payload;
+    try {
+      const ticket = await client.verifyIdToken({
+        idToken: tokens.id_token,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
+      payload = ticket.getPayload();
+    } catch (verifyError) {
+      console.error('Google ID token verification failed:', verifyError);
+      return res.status(401).json({ error: 'Invalid Google credential' });
+    }
+
+    const { email, name, picture, email_verified } = payload;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email not provided by Google' });
+    }
+
+    // Check if user exists
+    let user = await prisma.user.findUnique({
+      where: { email: email.toLowerCase() },
+      include: {
+        business: {
+          include: {
+            subscription: true,
+          },
+        },
+      },
+    });
+
+    let isNewUser = false;
+
+    if (user) {
+      // Existing user - link Google account if not already verified
+      if (email_verified && !user.emailVerified) {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            emailVerified: true,
+            emailVerifiedAt: new Date(),
+          },
+        });
+        user.emailVerified = true;
+      }
+
+      // Clean up any verification tokens
+      await prisma.emailVerificationToken.deleteMany({
+        where: { userId: user.id }
+      });
+    } else {
+      // New user - create account
+      isNewUser = true;
+
+      const randomPassword = crypto.randomBytes(32).toString('hex');
+      const hashedPassword = await bcrypt.hash(randomPassword, 10);
+
+      const result = await prisma.$transaction(async (tx) => {
+        const business = await tx.business.create({
+          data: {
+            name: name || 'My Business',
+            chatEmbedKey: generateChatEmbedKey(),
+            users: {
+              create: {
+                email: email.toLowerCase(),
+                password: hashedPassword,
+                name: name || null,
+                role: 'OWNER',
+                emailVerified: email_verified || false,
+                emailVerifiedAt: email_verified ? new Date() : null,
+              },
+            },
+          },
+          include: {
+            users: true,
+          },
+        });
+
+        const newUser = business.users[0];
+
+        const trialChatExpiry = new Date();
+        trialChatExpiry.setDate(trialChatExpiry.getDate() + 7);
+
+        await tx.subscription.create({
+          data: {
+            businessId: business.id,
+            plan: 'TRIAL',
+            status: 'ACTIVE',
+            trialStartDate: new Date(),
+            trialMinutesUsed: 0,
+            trialChatExpiry: trialChatExpiry,
+            minutesLimit: 15,
+            assistantsLimit: 1,
+            phoneNumbersLimit: 1,
+            concurrentLimit: 1
+          },
+        });
+
+        return { user: newUser, business };
+      });
+
+      user = await prisma.user.findUnique({
+        where: { id: result.user.id },
+        include: {
+          business: {
+            include: {
+              subscription: true,
+            },
+          },
+        },
+      });
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      {
+        userId: user.id,
+        email: user.email,
+        businessId: user.businessId,
+        role: user.role,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    const { password: _, ...userWithoutPassword } = user;
+
+    res.json({
+      message: isNewUser ? 'Account created successfully' : 'Login successful',
+      token,
+      user: {
+        ...userWithoutPassword,
+        emailVerified: user.emailVerified,
+      },
+      isNewUser,
+    });
+  } catch (error) {
+    console.error('Google auth code error:', error);
+    res.status(500).json({ error: 'Google authentication failed' });
+  }
+});
+
 // ============================================================================
 // PASSWORD RESET ENDPOINTS
 // ============================================================================

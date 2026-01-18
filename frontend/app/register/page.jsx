@@ -39,16 +39,27 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
-  // Initialize Google Sign-In
+  // Initialize Google Sign-In with OAuth2 popup flow
   useEffect(() => {
     if (typeof window !== 'undefined' && window.google && GOOGLE_CLIENT_ID) {
+      // Initialize for One Tap (optional)
       window.google.accounts.id.initialize({
         client_id: GOOGLE_CLIENT_ID,
         callback: handleGoogleCallback,
+        use_fedcm_for_prompt: false,
+      });
+
+      // Initialize OAuth2 client for popup flow (more reliable)
+      window.googleOAuth2Client = window.google.accounts.oauth2.initCodeClient({
+        client_id: GOOGLE_CLIENT_ID,
+        scope: 'email profile openid',
+        ux_mode: 'popup',
+        callback: handleGoogleAuthCode,
       });
     }
   }, []);
 
+  // Handle Google One Tap callback (ID token flow)
   const handleGoogleCallback = async (response) => {
     if (!response.credential) {
       toast.error('Google sign-in failed');
@@ -74,7 +85,44 @@ export default function RegisterPage() {
       }
 
       // Google users are already verified, redirect to dashboard
-      router.push('/dashboard');
+      router.push('/dashboard/assistant');
+    } catch (err) {
+      console.error('Google sign-in error:', err);
+      toast.error(err.response?.data?.error || err.message || 'Google sign-in failed');
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  // Handle Google OAuth2 authorization code flow
+  const handleGoogleAuthCode = async (response) => {
+    if (response.error) {
+      console.error('Google OAuth error:', response.error);
+      toast.error('Google sign-in was cancelled');
+      setGoogleLoading(false);
+      return;
+    }
+
+    setGoogleLoading(true);
+    try {
+      const res = await apiClient.post('/api/auth/google/code', {
+        code: response.code,
+      });
+
+      const data = res.data;
+
+      // Save token and user data
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+
+      if (data.isNewUser) {
+        toast.success('Account created successfully!');
+      } else {
+        toast.success('Login successful!');
+      }
+
+      // Google users are already verified, redirect to dashboard
+      router.push('/dashboard/assistant');
     } catch (err) {
       console.error('Google sign-in error:', err);
       toast.error(err.response?.data?.error || err.message || 'Google sign-in failed');
@@ -89,7 +137,11 @@ export default function RegisterPage() {
       return;
     }
 
-    if (typeof window !== 'undefined' && window.google) {
+    if (typeof window !== 'undefined' && window.googleOAuth2Client) {
+      // Use OAuth2 popup flow - more reliable than FedCM/One Tap
+      window.googleOAuth2Client.requestCode();
+    } else if (typeof window !== 'undefined' && window.google) {
+      // Fallback to One Tap prompt
       window.google.accounts.id.prompt();
     } else {
       toast.error('Google Sign-In is not available');
@@ -124,9 +176,19 @@ export default function RegisterPage() {
         strategy="afterInteractive"
         onLoad={() => {
           if (window.google && GOOGLE_CLIENT_ID) {
+            // Initialize One Tap
             window.google.accounts.id.initialize({
               client_id: GOOGLE_CLIENT_ID,
               callback: handleGoogleCallback,
+              use_fedcm_for_prompt: false,
+            });
+
+            // Initialize OAuth2 client for popup flow
+            window.googleOAuth2Client = window.google.accounts.oauth2.initCodeClient({
+              client_id: GOOGLE_CLIENT_ID,
+              scope: 'email profile openid',
+              ux_mode: 'popup',
+              callback: handleGoogleAuthCode,
             });
           }
         }}

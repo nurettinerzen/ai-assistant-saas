@@ -34,16 +34,27 @@ export default function LoginPage() {
     setMounted(true);
   }, []);
 
-  // Initialize Google Sign-In
+  // Initialize Google Sign-In with OAuth2 popup flow
   useEffect(() => {
     if (typeof window !== 'undefined' && window.google && GOOGLE_CLIENT_ID) {
+      // Initialize for One Tap (optional, may not work in all browsers)
       window.google.accounts.id.initialize({
         client_id: GOOGLE_CLIENT_ID,
         callback: handleGoogleCallback,
+        use_fedcm_for_prompt: false, // Disable FedCM to avoid AbortError
+      });
+
+      // Initialize OAuth2 client for popup flow (more reliable)
+      window.googleOAuth2Client = window.google.accounts.oauth2.initCodeClient({
+        client_id: GOOGLE_CLIENT_ID,
+        scope: 'email profile openid',
+        ux_mode: 'popup',
+        callback: handleGoogleAuthCode,
       });
     }
   }, []);
 
+  // Handle Google One Tap callback (ID token flow)
   const handleGoogleCallback = async (response) => {
     if (!response.credential) {
       toast.error('Google sign-in failed');
@@ -54,6 +65,43 @@ export default function LoginPage() {
     try {
       const res = await apiClient.post('/api/auth/google', {
         credential: response.credential,
+      });
+
+      const data = res.data;
+
+      // Save token and user data
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+
+      if (data.isNewUser) {
+        toast.success('Account created successfully!');
+      } else {
+        toast.success('Login successful!');
+      }
+
+      // Google users are already verified, redirect to assistant page
+      router.push('/dashboard/assistant');
+    } catch (error) {
+      console.error('Google sign-in error:', error);
+      toast.error(error.response?.data?.error || error.message || 'Google sign-in failed');
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  // Handle Google OAuth2 authorization code flow
+  const handleGoogleAuthCode = async (response) => {
+    if (response.error) {
+      console.error('Google OAuth error:', response.error);
+      toast.error('Google sign-in was cancelled');
+      setGoogleLoading(false);
+      return;
+    }
+
+    setGoogleLoading(true);
+    try {
+      const res = await apiClient.post('/api/auth/google/code', {
+        code: response.code,
       });
 
       const data = res.data;
@@ -116,16 +164,12 @@ export default function LoginPage() {
       return;
     }
 
-    if (typeof window !== 'undefined' && window.google) {
-      window.google.accounts.id.prompt((notification) => {
-        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-          // Fallback to popup
-          window.google.accounts.id.renderButton(
-            document.getElementById('google-signin-button'),
-            { theme: 'outline', size: 'large', width: '100%' }
-          );
-        }
-      });
+    if (typeof window !== 'undefined' && window.googleOAuth2Client) {
+      // Use OAuth2 popup flow - more reliable than FedCM/One Tap
+      window.googleOAuth2Client.requestCode();
+    } else if (typeof window !== 'undefined' && window.google) {
+      // Fallback to One Tap prompt
+      window.google.accounts.id.prompt();
     } else {
       toast.error('Google Sign-In is not available');
     }
@@ -139,9 +183,19 @@ export default function LoginPage() {
         strategy="afterInteractive"
         onLoad={() => {
           if (window.google && GOOGLE_CLIENT_ID) {
+            // Initialize One Tap
             window.google.accounts.id.initialize({
               client_id: GOOGLE_CLIENT_ID,
               callback: handleGoogleCallback,
+              use_fedcm_for_prompt: false,
+            });
+
+            // Initialize OAuth2 client for popup flow
+            window.googleOAuth2Client = window.google.accounts.oauth2.initCodeClient({
+              client_id: GOOGLE_CLIENT_ID,
+              scope: 'email profile openid',
+              ux_mode: 'popup',
+              callback: handleGoogleAuthCode,
             });
           }
         }}
