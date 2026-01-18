@@ -382,10 +382,9 @@ function KnowledgeBaseContent() {
         {/* Info Box */}
         <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
           <p className="text-sm text-blue-800 dark:text-blue-300">
-            <strong>💡 {locale === 'tr' ? 'Bu sayfa ne işe yarar?' : 'What is this page for?'}</strong>{' '}
             {locale === 'tr'
-              ? 'Bilgi Bankası, AI asistanınızın konuşmalar sırasında referans aldığı içerik deposudur. Buraya eklediğiniz belgeler, SSS\'ler ve web sayfaları, asistanınızın müşterilerinize doğru ve güncel bilgiler vermesini sağlar. Bu bir veri merkezi veya dosya depolama alanı değildir - asistanınızın "bilgi kaynağı"dır.'
-              : 'The Knowledge Base is the content repository your AI assistant references during conversations. Documents, FAQs, and web pages you add here enable your assistant to provide accurate and up-to-date information to your customers. This is not a data center or file storage - it\'s your assistant\'s "knowledge source".'
+              ? 'Bilgi Bankası, AI asistanınızın konuşmalar sırasında referans aldığı içerik deposudur. Buraya eklediğiniz belgeler ve SSS\'ler, asistanınızın müşterilerinize doğru ve güncel bilgiler vermesini sağlar. Bu bir veri merkezi veya dosya depolama alanı değildir - asistanınızın "bilgi kaynağı"dır.'
+              : 'The Knowledge Base is the content repository your AI assistant references during conversations. Documents and FAQs you add here enable your assistant to provide accurate and up-to-date information to your customers. This is not a data center or file storage - it\'s your assistant\'s "knowledge source".'
             }
           </p>
         </div>

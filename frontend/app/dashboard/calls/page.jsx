@@ -341,7 +341,6 @@ export default function CallsPage() {
       {/* Info Box */}
       <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
         <p className="text-sm text-green-800 dark:text-green-300">
-          <strong>💡 {locale === 'tr' ? 'Arama kayıtları' : 'Call logs'}</strong>{' '}
           {locale === 'tr'
             ? 'Bu sayfa tüm arama geçmişinizi gösterir. Gelen aramalar (müşteriler sizi aradığında) ve giden aramalar (toplu arama kampanyaları) burada listelenir. Her aramanın transkriptini görüntüleyebilir, durumunu ve sonuç nedenini inceleyebilirsiniz. Filtreleri kullanarak gelen/giden aramaları ayırabilirsiniz.'
             : 'This page shows all your call history. Inbound calls (when customers call you) and outbound calls (batch call campaigns) are listed here. You can view the transcript of each call, check its status and end reason. Use filters to separate inbound/outbound calls.'

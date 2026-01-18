@@ -1229,7 +1229,7 @@
     },
     "knowledgeBasePage": {
       "title": "Knowledge Base",
-      "description": "Train your AI with documents, FAQs, and web content",
+      "description": "Train your assistant with documents and FAQs",
       "documentsTab": "Documents",
       "faqsTab": "FAQs",
       "urlsTab": "URLs",

@@ -145,7 +145,7 @@ export default function NetGSMConnectionGuidePage() {
                 </li>
               </ul>
               <p className="text-xs text-neutral-500 mt-2">
-                💡 Şifreyi görmek için "Şifreyi Göster" butonuna tıklayın
+                Şifreyi görmek için "Şifreyi Göster" butonuna tıklayın
               </p>
             </div>
           </div>

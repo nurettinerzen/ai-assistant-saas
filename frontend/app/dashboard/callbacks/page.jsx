@@ -238,6 +238,16 @@ export default function CallbacksPage() {
         </Button>
       </div>
 
+      {/* Info Box */}
+      <div className="mb-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+        <p className="text-sm text-yellow-800 dark:text-yellow-300">
+          {locale === 'tr'
+            ? 'AI asistanınız görüşme sırasında müşterinin geri aranmak istediğini tespit ettiğinde burada bir kayıt oluşturur. Müşteriyi aradığınızda "Arandı" işaretleyebilir, ulaşamadıysanız "Cevap Yok" seçip daha sonra tekrar deneyebilirsiniz. Notlar ekleyerek görüşme detaylarını kaydedebilirsiniz.'
+            : 'When your AI assistant detects that a customer wants to be called back during a conversation, it creates a record here. When you call the customer, you can mark "Called", or if you couldn\'t reach them, select "No Answer" and try again later. You can add notes to record conversation details.'
+          }
+        </p>
+      </div>
+
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
         <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
