@@ -410,14 +410,16 @@ export async function execute(args, business, context = {}) {
         console.log('⚠️ CALLER ID CHECK SKIPPED:', { isTrustedChannel, callerPhone: !!callerPhone, customerPhone: !!customer.phone });
       }
 
-      // For sensitive data, require verification (unless caller was verified above)
-      // Also require verification for order lookups (to prevent unauthorized tracking)
+      // SECURITY: Always require verification unless caller's phone matches the record
+      // This prevents unauthorized access to someone else's data
       const callerWasVerified = isTrustedChannel && callerPhone && customer.phone &&
         (normalizePhone(callerPhone) === normalizePhone(customer.phone) ||
          String(callerPhone).replace(/[^\d]/g, '').slice(-10) === String(customer.phone).replace(/[^\d]/g, '').slice(-10));
 
-      if ((hasSensitiveData || order_number) && !callerWasVerified) {
-        console.log('🔐 VERIFICATION REQUIRED: Sensitive data or order lookup');
+      // ALWAYS require verification if caller phone doesn't match record phone
+      // This is critical for security - prevents accessing someone else's data
+      if (!callerWasVerified) {
+        console.log('🔐 VERIFICATION REQUIRED: Caller phone does not match record - security verification needed');
 
         // Dynamically determine which fields can be used for verification
         // Based on what fields exist in the record and what user already provided
