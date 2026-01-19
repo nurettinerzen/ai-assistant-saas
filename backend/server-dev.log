@@ -647,434 +647,117 @@ API Key: ✅ Exists
 🌍 Environment: development
 ========================================
 
-Restarting 'src/server.js'
-📞 Netgsm Configuration:
-Username: ✅ Exists
-Password: ✅ Exists
-API Key: ✅ Exists
-✅ ToolRegistry: 10 tools registered
-
-🚀 Initializing background jobs...
-⏰ Initializing monthly usage reset cron job...
-✅ Monthly reset job initialized (runs at 00:00 UTC on 1st of each month)
-[Email Sync] Initializing email sync cron job...
-[Email Sync] Cron job initialized (runs every 3 minutes)
-✅ Background jobs initialized
-
-node:events:502
-      throw er; // Unhandled 'error' event
-      ^
-
-Error: listen EADDRINUSE: address already in use :::3001
-    at Server.setupListenHandle [as _listen2] (node:net:1908:16)
-    at listenInCluster (node:net:1965:12)
-    at Server.listen (node:net:2067:7)
-    at Function.listen (/Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/node_modules/express/lib/application.js:635:24)
-    at file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/server.js:211:7
-Emitted 'error' event on Server instance at:
-    at emitErrorNT (node:net:1944:8)
-    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
-  code: 'EADDRINUSE',
-  errno: -48,
-  syscall: 'listen',
-  address: '::',
-  port: 3001
-}
-
-Node.js v20.19.5
-Failed running 'src/server.js'
-Restarting 'src/server.js'
-📞 Netgsm Configuration:
-Username: ✅ Exists
-Password: ✅ Exists
-API Key: ✅ Exists
-✅ ToolRegistry: 10 tools registered
-
-🚀 Initializing background jobs...
-⏰ Initializing monthly usage reset cron job...
-✅ Monthly reset job initialized (runs at 00:00 UTC on 1st of each month)
-[Email Sync] Initializing email sync cron job...
-[Email Sync] Cron job initialized (runs every 3 minutes)
-✅ Background jobs initialized
-
-node:events:502
-      throw er; // Unhandled 'error' event
-      ^
-
-Error: listen EADDRINUSE: address already in use :::3001
-    at Server.setupListenHandle [as _listen2] (node:net:1908:16)
-    at listenInCluster (node:net:1965:12)
-    at Server.listen (node:net:2067:7)
-    at Function.listen (/Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/node_modules/express/lib/application.js:635:24)
-    at file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/server.js:211:7
-Emitted 'error' event on Server instance at:
-    at emitErrorNT (node:net:1944:8)
-    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
-  code: 'EADDRINUSE',
-  errno: -48,
-  syscall: 'listen',
-  address: '::',
-  port: 3001
-}
-
-Node.js v20.19.5
-Failed running 'src/server.js'
-Restarting 'src/server.js'
-📞 Netgsm Configuration:
-Username: ✅ Exists
-Password: ✅ Exists
-API Key: ✅ Exists
-✅ ToolRegistry: 10 tools registered
-
-🚀 Initializing background jobs...
-⏰ Initializing monthly usage reset cron job...
-✅ Monthly reset job initialized (runs at 00:00 UTC on 1st of each month)
-[Email Sync] Initializing email sync cron job...
-[Email Sync] Cron job initialized (runs every 3 minutes)
-✅ Background jobs initialized
-
-node:events:502
-      throw er; // Unhandled 'error' event
-      ^
-
-Error: listen EADDRINUSE: address already in use :::3001
-    at Server.setupListenHandle [as _listen2] (node:net:1908:16)
-    at listenInCluster (node:net:1965:12)
-    at Server.listen (node:net:2067:7)
-    at Function.listen (/Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/node_modules/express/lib/application.js:635:24)
-    at file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/server.js:211:7
-Emitted 'error' event on Server instance at:
-    at emitErrorNT (node:net:1944:8)
-    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
-  code: 'EADDRINUSE',
-  errno: -48,
-  syscall: 'listen',
-  address: '::',
-  port: 3001
-}
-
-Node.js v20.19.5
-Failed running 'src/server.js'
-Restarting 'src/server.js'
-📞 Netgsm Configuration:
-Username: ✅ Exists
-Password: ✅ Exists
-API Key: ✅ Exists
-✅ ToolRegistry: 10 tools registered
-
-🚀 Initializing background jobs...
-⏰ Initializing monthly usage reset cron job...
-✅ Monthly reset job initialized (runs at 00:00 UTC on 1st of each month)
-[Email Sync] Initializing email sync cron job...
-[Email Sync] Cron job initialized (runs every 3 minutes)
-✅ Background jobs initialized
-
-node:events:502
-      throw er; // Unhandled 'error' event
-      ^
-
-Error: listen EADDRINUSE: address already in use :::3001
-    at Server.setupListenHandle [as _listen2] (node:net:1908:16)
-    at listenInCluster (node:net:1965:12)
-    at Server.listen (node:net:2067:7)
-    at Function.listen (/Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/node_modules/express/lib/application.js:635:24)
-    at file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/server.js:211:7
-Emitted 'error' event on Server instance at:
-    at emitErrorNT (node:net:1944:8)
-    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
-  code: 'EADDRINUSE',
-  errno: -48,
-  syscall: 'listen',
-  address: '::',
-  port: 3001
-}
-
-Node.js v20.19.5
-Failed running 'src/server.js'
-Restarting 'src/server.js'
-📞 Netgsm Configuration:
-Username: ✅ Exists
-Password: ✅ Exists
-API Key: ✅ Exists
-✅ ToolRegistry: 10 tools registered
-
-🚀 Initializing background jobs...
-⏰ Initializing monthly usage reset cron job...
-✅ Monthly reset job initialized (runs at 00:00 UTC on 1st of each month)
-[Email Sync] Initializing email sync cron job...
-[Email Sync] Cron job initialized (runs every 3 minutes)
-✅ Background jobs initialized
-
-node:events:502
-      throw er; // Unhandled 'error' event
-      ^
-
-Error: listen EADDRINUSE: address already in use :::3001
-    at Server.setupListenHandle [as _listen2] (node:net:1908:16)
-    at listenInCluster (node:net:1965:12)
-    at Server.listen (node:net:2067:7)
-    at Function.listen (/Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/node_modules/express/lib/application.js:635:24)
-    at file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/server.js:211:7
-Emitted 'error' event on Server instance at:
-    at emitErrorNT (node:net:1944:8)
-    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
-  code: 'EADDRINUSE',
-  errno: -48,
-  syscall: 'listen',
-  address: '::',
-  port: 3001
-}
-
-Node.js v20.19.5
-Failed running 'src/server.js'
-Restarting 'src/server.js'
-📞 Netgsm Configuration:
-Username: ✅ Exists
-Password: ✅ Exists
-API Key: ✅ Exists
-✅ ToolRegistry: 10 tools registered
-
-🚀 Initializing background jobs...
-⏰ Initializing monthly usage reset cron job...
-✅ Monthly reset job initialized (runs at 00:00 UTC on 1st of each month)
-[Email Sync] Initializing email sync cron job...
-[Email Sync] Cron job initialized (runs every 3 minutes)
-✅ Background jobs initialized
-
-node:events:502
-      throw er; // Unhandled 'error' event
-      ^
-
-Error: listen EADDRINUSE: address already in use :::3001
-    at Server.setupListenHandle [as _listen2] (node:net:1908:16)
-    at listenInCluster (node:net:1965:12)
-    at Server.listen (node:net:2067:7)
-    at Function.listen (/Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/node_modules/express/lib/application.js:635:24)
-    at file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/server.js:211:7
-Emitted 'error' event on Server instance at:
-    at emitErrorNT (node:net:1944:8)
-    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
-  code: 'EADDRINUSE',
-  errno: -48,
-  syscall: 'listen',
-  address: '::',
-  port: 3001
-}
-
-Node.js v20.19.5
-Failed running 'src/server.js'
-Restarting 'src/server.js'
-📞 Netgsm Configuration:
-Username: ✅ Exists
-Password: ✅ Exists
-API Key: ✅ Exists
-✅ ToolRegistry: 10 tools registered
-
-🚀 Initializing background jobs...
-⏰ Initializing monthly usage reset cron job...
-✅ Monthly reset job initialized (runs at 00:00 UTC on 1st of each month)
-[Email Sync] Initializing email sync cron job...
-[Email Sync] Cron job initialized (runs every 3 minutes)
-✅ Background jobs initialized
-
-node:events:502
-      throw er; // Unhandled 'error' event
-      ^
-
-Error: listen EADDRINUSE: address already in use :::3001
-    at Server.setupListenHandle [as _listen2] (node:net:1908:16)
-    at listenInCluster (node:net:1965:12)
-    at Server.listen (node:net:2067:7)
-    at Function.listen (/Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/node_modules/express/lib/application.js:635:24)
-    at file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/server.js:211:7
-Emitted 'error' event on Server instance at:
-    at emitErrorNT (node:net:1944:8)
-    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
-  code: 'EADDRINUSE',
-  errno: -48,
-  syscall: 'listen',
-  address: '::',
-  port: 3001
-}
-
-Node.js v20.19.5
-Failed running 'src/server.js'
-inerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/node_modules/express/lib/application.js:635:24)
-    at file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/server.js:211:7
-Emitted 'error' event on Server instance at:
-    at emitErrorNT (node:net:1944:8)
-    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
-  code: 'EADDRINUSE',
-  errno: -48,
-  syscall: 'listen',
-  address: '::',
-  port: 3001
-}
-
-Node.js v20.19.5
-Failed running 'src/server.js'
-Restarting 'src/server.js'
-📞 Netgsm Configuration:
-Us📞 Netgsm Configuration:
-Username: ✅ Exists
-Password: �✅ ToolRegistry: 10 tools re✅ ToolR
-🚀 Initializing background jobs...
-⏰ Initializing monthly usage reset cron job...
-✅ Monthly reset job initialized (runs at 00:00 UTC on 1st of each month)
-[Email Sync] Initializing email sync cron job...
-[Email Sync] Cron job initialized (runs every 3 minutes)
-✅ Background jobs initialized
-
-node:events:502
-      throw er; // Unhandled 'error' event
-      ^
-
-Error: listen EADDRINUSE: address already in use :::3001
-    at Server.setupListenHandle [as _listen2] (node:net:1908:16)
-    at listenInCluster (node:net:1965:12)
-    at Server.listen (node:net:2067:7)
-    at Function.listen (/Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/node_modules/express/lib/application.js:635:24)
-    at file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/server.js:211:7
-Emitted 'error' event on Server instance at:
-    at emitErrorNT (node:net:1944:8)
-    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
-  code: 'EADDRINUSE',
-  errno: -48,
-  syscall: 'listen',
-  address: '::',
-  port: 3001
-}
-
-Node.js v20.19.5
-Failed running 'src/server.js'
-Restarting 'src/server.js'
-📞 Netgsm Configuration:
-Us📞 Netgsm Configuration:
-Username: ✅ Exists
-Password: ✅ Exists
-API Key: ✅ Exists
-✅ ToolR
-🚀 Initializing background
-🚀 Initializing background jobs...
-⏰ Initializing mon✅ Monthly reset job initial✅ Monthly reset job initialized (runs at 00:00 UTC on 1st of each month)
-[Email Sync] Initializing email sync cron job...
-[Email Sync] Cron job initialized (runs every 3 minutes)
-✅ node:events:502
-      throw enode:events:502
-      throw er; // Unhandled 'error' event
-      ^
-
-Error: listen EADDRINUSE: address already in use :::3001
-    at Server.setupListenHandle [as _listen2] (node:net:1908:16)
-    at listenInCluster (node:net:1965:12)
-    at Server.listen (node:net:2067:7)
-    at Function.listen (/Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/node_modules/express/lib/application.js:635:24)
-    at file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/server.js:211:7
-Emitted 'error' event on Server instance at:
-    at emitErrorNT (node:net:1944:8)
-    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
-  code: 'EADDRINUSE',
-  errno: -48,
-  syscall: 'listen',
-  address: '::',
-  poFailed running 'src/server.jsFaRestarting 'src/server.js'
-📞 Netgsm Configuration:
-Username: ✅ Exists
-Password: ✅ Exists
-API Key: ✅ Exists
-✅ ToolRegistry: 10 tools re✅ ToolR
-🚀 Initializing background jobs...
-⏰ Initializing monthly usage reset cron job...
-✅ Monthly reset job initialized (runs at 00:00 UTC on 1st of each month)
-[Email Sync] Initializing email sync cron job...
-[Email Sync] Cron job initialized (runs every 3 minutes)
-✅ Background jobs initialized
-
-node:events:502
-      throw er; // Unhandled 'error' event
-      ^
-
-Error: listen EADDRINUSE: address already in use :::3001
-    at Server.setupListenHandle [as _listen2] (node:net:1908:16)
-    at listenInCluster (node:net:1965:12)
-    at Server.listen (node:net:2067:7)
-    at Function.listen (/Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/node_modules/express/lib/application.js:635:24)
-    at file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/server.js:211:7
-Emitted 'error' event on Server instance at:
-    at emitErrorNT (node:net:1944:8)
-    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
-  code: 'EADDRINUSE',
-  errno: -48,
-  syscall: 'listen',
-  address: '::',
-  port: 3001
-}
-
-Node.js v20.19.5
-Failed running 'src/server.js'
-Restarting 'src/server.js'
-📞 Netgsm Configuration:
-Username: ✅ Exists
-Password: ✅ Exists
-API Key: ✅ Exists
-✅ ToolRegistry: 10 tools registered
-
-🚀 Initializing background
-🚀 Initializing background jobs...
-⏰ Initializing monthly usage reset cron job...
-✅ Monthly reset job initialized (runs at 00:00 UTC on 1st of each month)
-[Email Sync] Initializing email sync cron job...
-[Email Sync] Cron job initialized (runs every 3 minutes)
-✅ 
-============================node:events:502
-      throw er; // Unhandled 'error' event
-      ^
-
-Error: listen EADDRINUSE: address already in use :::3001
-    at Server.setupListenHandle [as _listen2] (node:net:1908:16)
-    at listenInCluster (node:net:1965:12)
+[2026-01-18T02:51:02.454Z] [PID: 95483] [32m[NODE-CRON][32m [33m[WARN][0m missed execution at Sat Jan 17 2026 18:51:00 GMT-0800 (Pacific Standard Time)! Possible blocking IO or high CPU user at the same process used by node-cron.
+[2026-01-18T03:06:00.259Z] [PID: 95483] [32m[NODE-CRON][32m [33m[WARN][0m missed execution at Sat Jan 17 2026 18:54:00 GMT-0800 (Pacific Standard Time)! Possible blocking IO or high CPU user at the same process used by node-cron.
+[2026-01-18T03:06:00.272Z] [PID: 95483] [32m[NODE-CRON][32m [33m[WARN][0m missed execution at Sat Jan 17 2026 18:57:00 GMT-0800 (Pacific Standard Time)! Possible blocking IO or high CPU user at the same process used by node-cron.
+[2026-01-18T03:06:00.274Z] [PID: 95483] [32m[NODE-CRON][32m [33m[WARN][0m missed execution at Sat Jan 17 2026 19:00:00 GMT-0800 (Pacific Standard Time)! Possible blocking IO or high CPU user at the same process used by node-cron.
+[2026-01-18T03:06:00.276Z] [PID: 95483] [32m[NODE-CRON][32m [33m[WARN][0m missed execution at Sat Jan 17 2026 19:03:00 GMT-0800 (Pacific Standard Time)! Possible blocking IO or high CPU user at the same process used by node-cron.
 
 ========================================
 [Email Sync] Starting email sync job
-Time: 2026-01-18T01:18:00.030Z
+Time: 2026-01-18T03:06:00.297Z
 ========================================
 
 [Email Sync] Found 5 connected accounts
 [Email Sync] Syncing GMAIL for business 1 (nurettinerzen@gmail.com)
 === GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:15:01.614Z
-Date.now(): 1768699081195
-Current date: 2026-01-18T01:18:01.196Z
-Using effective timestamp: 2026-01-18T01:15:01.000Z
+lastSync from DB: 2026-01-18T03:06:00.987Z
+Date.now(): 1768705562046
+Current date: 2026-01-18T03:06:02.047Z
+Using effective timestamp: 2026-01-18T03:06:00.000Z
 [Email Sync] No new messages for business 1
-[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:18:02.643Z
-Date.now(): 1768699082958
-Current date: 2026-01-18T01:18:02.958Z
-Using effective timestamp: 2026-01-18T01:18:02.000Z
-[Email Sync] No new messages for business 22
-[Email Sync] Syncing GMAIL for business 29 (rickie.111222@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:18:04.332Z
-Date.now(): 1768699084529
-Current date: 2026-01-18T01:18:04.530Z
-Using effective timestamp: 2026-01-18T01:18:04.000Z
-[Email Sync] No new messages for business 29
 [Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
 === GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:18:05.910Z
-Date.now(): 1768699086130
-Current date: 2026-01-18T01:18:06.130Z
-Using effective timestamp: 2026-01-18T01:18:05.000Z
+lastSync from DB: 2026-01-18T03:06:02.531Z
+Date.now(): 1768705564064
+Current date: 2026-01-18T03:06:04.065Z
+Using effective timestamp: 2026-01-18T03:06:02.000Z
 [Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 29 (rickie.111222@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-18T03:06:04.184Z
+Date.now(): 1768705565773
+Current date: 2026-01-18T03:06:05.773Z
+Using effective timestamp: 2026-01-18T03:06:04.000Z
+[Email Sync] No new messages for business 29
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-18T03:06:05.715Z
+Date.now(): 1768705567439
+Current date: 2026-01-18T03:06:07.439Z
+Using effective timestamp: 2026-01-18T03:06:05.000Z
+[Email Sync] No new messages for business 22
 [Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
 === GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:18:07.495Z
-Date.now(): 1768699087684
-Current date: 2026-01-18T01:18:07.684Z
-Using effective timestamp: 2026-01-18T01:18:07.000Z
+lastSync from DB: 2026-01-18T03:06:07.243Z
+Date.now(): 1768705568993
+Current date: 2026-01-18T03:06:08.993Z
+Using effective timestamp: 2026-01-18T03:06:07.000Z
 [Email Sync] No new messages for business 28
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 5
+Messages synced: 0
+Errors: 0
+========================================
+
+[2026-01-18T03:24:41.903Z] [PID: 95483] [32m[NODE-CRON][32m [33m[WARN][0m missed execution at Sat Jan 17 2026 19:09:00 GMT-0800 (Pacific Standard Time)! Possible blocking IO or high CPU user at the same process used by node-cron.
+[2026-01-18T03:24:41.930Z] [PID: 95483] [32m[NODE-CRON][32m [33m[WARN][0m missed execution at Sat Jan 17 2026 19:12:00 GMT-0800 (Pacific Standard Time)! Possible blocking IO or high CPU user at the same process used by node-cron.
+[2026-01-18T03:24:41.932Z] [PID: 95483] [32m[NODE-CRON][32m [33m[WARN][0m missed execution at Sat Jan 17 2026 19:15:00 GMT-0800 (Pacific Standard Time)! Possible blocking IO or high CPU user at the same process used by node-cron.
+[2026-01-18T03:24:41.934Z] [PID: 95483] [32m[NODE-CRON][32m [33m[WARN][0m missed execution at Sat Jan 17 2026 19:18:00 GMT-0800 (Pacific Standard Time)! Possible blocking IO or high CPU user at the same process used by node-cron.
+[2026-01-18T03:24:41.935Z] [PID: 95483] [32m[NODE-CRON][32m [33m[WARN][0m missed execution at Sat Jan 17 2026 19:21:00 GMT-0800 (Pacific Standard Time)! Possible blocking IO or high CPU user at the same process used by node-cron.
+[2026-01-18T03:24:41.936Z] [PID: 95483] [32m[NODE-CRON][32m [33m[WARN][0m missed execution at Sat Jan 17 2026 19:24:00 GMT-0800 (Pacific Standard Time)! Possible blocking IO or high CPU user at the same process used by node-cron.
+[2026-01-18T03:44:34.671Z] [PID: 95483] [32m[NODE-CRON][32m [33m[WARN][0m missed execution at Sat Jan 17 2026 19:27:00 GMT-0800 (Pacific Standard Time)! Possible blocking IO or high CPU user at the same process used by node-cron.
+[2026-01-18T03:44:34.719Z] [PID: 95483] [32m[NODE-CRON][32m [33m[WARN][0m missed execution at Sat Jan 17 2026 19:30:00 GMT-0800 (Pacific Standard Time)! Possible blocking IO or high CPU user at the same process used by node-cron.
+[2026-01-18T03:44:34.722Z] [PID: 95483] [32m[NODE-CRON][32m [33m[WARN][0m missed execution at Sat Jan 17 2026 19:33:00 GMT-0800 (Pacific Standard Time)! Possible blocking IO or high CPU user at the same process used by node-cron.
+[2026-01-18T03:44:34.723Z] [PID: 95483] [32m[NODE-CRON][32m [33m[WARN][0m missed execution at Sat Jan 17 2026 19:36:00 GMT-0800 (Pacific Standard Time)! Possible blocking IO or high CPU user at the same process used by node-cron.
+[2026-01-18T03:44:34.724Z] [PID: 95483] [32m[NODE-CRON][32m [33m[WARN][0m missed execution at Sat Jan 17 2026 19:39:00 GMT-0800 (Pacific Standard Time)! Possible blocking IO or high CPU user at the same process used by node-cron.
+[2026-01-18T03:44:34.725Z] [PID: 95483] [32m[NODE-CRON][32m [33m[WARN][0m missed execution at Sat Jan 17 2026 19:42:00 GMT-0800 (Pacific Standard Time)! Possible blocking IO or high CPU user at the same process used by node-cron.
+[2026-01-18T03:50:59.095Z] [PID: 95483] [32m[NODE-CRON][32m [33m[WARN][0m missed execution at Sat Jan 17 2026 19:45:00 GMT-0800 (Pacific Standard Time)! Possible blocking IO or high CPU user at the same process used by node-cron.
+[2026-01-18T03:50:59.101Z] [PID: 95483] [32m[NODE-CRON][32m [33m[WARN][0m missed execution at Sat Jan 17 2026 19:48:00 GMT-0800 (Pacific Standard Time)! Possible blocking IO or high CPU user at the same process used by node-cron.
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-18T03:51:00.016Z
+========================================
+
+[Email Sync] Found 5 connected accounts
+[Email Sync] Syncing GMAIL for business 1 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-18T03:51:00.699Z
+Date.now(): 1768708261951
+Current date: 2026-01-18T03:51:01.951Z
+Using effective timestamp: 2026-01-18T03:51:00.000Z
+[Email Sync] No new messages for business 1
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-18T03:51:02.317Z
+Date.now(): 1768708264394
+Current date: 2026-01-18T03:51:04.395Z
+Using effective timestamp: 2026-01-18T03:51:02.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 29 (rickie.111222@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-18T03:51:04.013Z
+Date.now(): 1768708266191
+Current date: 2026-01-18T03:51:06.191Z
+Using effective timestamp: 2026-01-18T03:51:04.000Z
+[Email Sync] No new messages for business 29
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-18T03:51:05.805Z
+Date.now(): 1768708267875
+Current date: 2026-01-18T03:51:07.875Z
+Using effective timestamp: 2026-01-18T03:51:05.000Z
+[Email Sync] No new messages for business 28
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-18T03:51:07.374Z
+Date.now(): 1768708269502
+Current date: 2026-01-18T03:51:09.503Z
+Using effective timestamp: 2026-01-18T03:51:07.000Z
+[Email Sync] No new messages for business 22
 
 ========================================
 [Email Sync] Sync job completed
@@ -1086,45 +769,151 @@ Errors: 0
 
 ========================================
 [Email Sync] Starting email sync job
-Time: 2026-01-18T01:21:00.034Z
+Time: 2026-01-18T03:54:00.054Z
 ========================================
 
 [Email Sync] Found 5 connected accounts
 [Email Sync] Syncing GMAIL for business 1 (nurettinerzen@gmail.com)
 === GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:18:01.599Z
-Date.now(): 1768699260378
-Current date: 2026-01-18T01:21:00.379Z
-Using effective timestamp: 2026-01-18T01:18:01.000Z
+lastSync from DB: 2026-01-18T03:54:01.011Z
+Date.now(): 1768708447390
+Current date: 2026-01-18T03:54:07.390Z
+Using effective timestamp: 2026-01-18T03:54:01.000Z
 [Email Sync] No new messages for business 1
-[Email Sync] Syncing GMAIL for business 29 (rickie.111222@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:18:04.854Z
-Date.now(): 1768699262224
-Current date: 2026-01-18T01:21:02.225Z
-Using effective timestamp: 2026-01-18T01:18:04.000Z
-[Email Sync] No new messages for business 29
-[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:21:04.072Z
-Date.now(): 1768699264254
-Current date: 2026-01-18T01:21:04.254Z
-Using effective timestamp: 2026-01-18T01:21:04.000Z
-[Email Sync] No new messages for business 22
 [Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
 === GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:21:05.654Z
-Date.now(): 1768699265797
-Current date: 2026-01-18T01:21:05.797Z
-Using effective timestamp: 2026-01-18T01:21:05.000Z
+lastSync from DB: 2026-01-18T03:54:02.563Z
+Date.now(): 1768708449083
+Current date: 2026-01-18T03:54:09.083Z
+Using effective timestamp: 2026-01-18T03:54:02.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 29 (rickie.111222@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-18T03:54:04.229Z
+Date.now(): 1768708450657
+Current date: 2026-01-18T03:54:10.657Z
+Using effective timestamp: 2026-01-18T03:54:04.000Z
+[Email Sync] No new messages for business 29
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-18T03:54:05.775Z
+Date.now(): 1768708452273
+Current date: 2026-01-18T03:54:12.273Z
+Using effective timestamp: 2026-01-18T03:54:05.000Z
+[Email Sync] No new messages for business 28
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-18T03:54:07.285Z
+Date.now(): 1768708453806
+Current date: 2026-01-18T03:54:13.806Z
+Using effective timestamp: 2026-01-18T03:54:07.000Z
+[Email Sync] No new messages for business 22
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 5
+Messages synced: 0
+Errors: 0
+========================================
+
+[2026-01-18T04:05:29.571Z] [PID: 95483] [32m[NODE-CRON][32m [33m[WARN][0m missed execution at Sat Jan 17 2026 19:57:00 GMT-0800 (Pacific Standard Time)! Possible blocking IO or high CPU user at the same process used by node-cron.
+[2026-01-18T04:05:29.613Z] [PID: 95483] [32m[NODE-CRON][32m [33m[WARN][0m missed execution at Sat Jan 17 2026 20:00:00 GMT-0800 (Pacific Standard Time)! Possible blocking IO or high CPU user at the same process used by node-cron.
+[2026-01-18T04:05:29.615Z] [PID: 95483] [32m[NODE-CRON][32m [33m[WARN][0m missed execution at Sat Jan 17 2026 20:03:00 GMT-0800 (Pacific Standard Time)! Possible blocking IO or high CPU user at the same process used by node-cron.
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-18T04:06:00.022Z
+========================================
+
+[Email Sync] Found 5 connected accounts
+[Email Sync] Syncing GMAIL for business 1 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-18T04:06:01.047Z
+Date.now(): 1768709161171
+Current date: 2026-01-18T04:06:01.171Z
+Using effective timestamp: 2026-01-18T04:06:01.000Z
+[Email Sync] No new messages for business 1
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-18T04:06:02.589Z
+Date.now(): 1768709162895
+Current date: 2026-01-18T04:06:02.895Z
+Using effective timestamp: 2026-01-18T04:06:02.000Z
 [Email Sync] No new messages for business 21
 [Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
 === GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:21:07.232Z
-Date.now(): 1768699267357
-Current date: 2026-01-18T01:21:07.357Z
-Using effective timestamp: 2026-01-18T01:21:07.000Z
+lastSync from DB: 2026-01-18T04:06:04.122Z
+Date.now(): 1768709164471
+Current date: 2026-01-18T04:06:04.471Z
+Using effective timestamp: 2026-01-18T04:06:04.000Z
 [Email Sync] No new messages for business 28
+[Email Sync] Syncing GMAIL for business 29 (rickie.111222@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-18T04:06:05.775Z
+Date.now(): 1768709166046
+Current date: 2026-01-18T04:06:06.046Z
+Using effective timestamp: 2026-01-18T04:06:05.000Z
+[Email Sync] No new messages for business 29
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-18T04:06:07.305Z
+Date.now(): 1768709167661
+Current date: 2026-01-18T04:06:07.661Z
+Using effective timestamp: 2026-01-18T04:06:07.000Z
+[Email Sync] No new messages for business 22
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 5
+Messages synced: 0
+Errors: 0
+========================================
+
+[2026-01-18T04:13:02.507Z] [PID: 95483] [32m[NODE-CRON][32m [33m[WARN][0m missed execution at Sat Jan 17 2026 20:09:00 GMT-0800 (Pacific Standard Time)! Possible blocking IO or high CPU user at the same process used by node-cron.
+[2026-01-18T04:13:02.518Z] [PID: 95483] [32m[NODE-CRON][32m [33m[WARN][0m missed execution at Sat Jan 17 2026 20:12:00 GMT-0800 (Pacific Standard Time)! Possible blocking IO or high CPU user at the same process used by node-cron.
+[2026-01-18T04:16:13.727Z] [PID: 95483] [32m[NODE-CRON][32m [33m[WARN][0m missed execution at Sat Jan 17 2026 20:15:00 GMT-0800 (Pacific Standard Time)! Possible blocking IO or high CPU user at the same process used by node-cron.
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-18T04:18:00.070Z
+========================================
+
+[Email Sync] Found 5 connected accounts
+[Email Sync] Syncing GMAIL for business 1 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-18T04:18:01.010Z
+Date.now(): 1768709881146
+Current date: 2026-01-18T04:18:01.146Z
+Using effective timestamp: 2026-01-18T04:18:01.000Z
+[Email Sync] No new messages for business 1
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-18T04:18:02.563Z
+Date.now(): 1768709882851
+Current date: 2026-01-18T04:18:02.851Z
+Using effective timestamp: 2026-01-18T04:18:02.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 29 (rickie.111222@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-18T04:18:04.214Z
+Date.now(): 1768709958361
+Current date: 2026-01-18T04:19:18.361Z
+Using effective timestamp: 2026-01-18T04:18:04.000Z
+[Email Sync] No new messages for business 29
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-18T04:18:05.739Z
+Date.now(): 1768709960806
+Current date: 2026-01-18T04:19:20.806Z
+Using effective timestamp: 2026-01-18T04:18:05.000Z
+[Email Sync] No new messages for business 28
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-18T04:18:07.256Z
+Date.now(): 1768709962749
+Current date: 2026-01-18T04:19:22.749Z
+Using effective timestamp: 2026-01-18T04:18:07.000Z
+[Email Sync] No new messages for business 22
 
 ========================================
 [Email Sync] Sync job completed
@@ -1136,49 +925,559 @@ Errors: 0
 
 ========================================
 [Email Sync] Starting email sync job
-Time: 2026-01-18T01:24:00.055Z
+Time: 2026-01-18T04:21:00.021Z
 ========================================
 
 [Email Sync] Found 5 connected accounts
 [Email Sync] Syncing GMAIL for business 1 (nurettinerzen@gmail.com)
 === GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:21:00.831Z
-Date.now(): 1768699441063
-Current date: 2026-01-18T01:24:01.063Z
-Using effective timestamp: 2026-01-18T01:21:00.000Z
+lastSync from DB: 2026-01-18T04:18:01.501Z
+Date.now(): 1768710060399
+Current date: 2026-01-18T04:21:00.399Z
+Using effective timestamp: 2026-01-18T04:18:01.000Z
 [Email Sync] No new messages for business 1
-[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:24:02.594Z
-Date.now(): 1768699442802
-Current date: 2026-01-18T01:24:02.802Z
-Using effective timestamp: 2026-01-18T01:24:02.000Z
-[Email Sync] No new messages for business 22
-[Email Sync] Syncing GMAIL for business 29 (rickie.111222@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:21:02.891Z
-Date.now(): 1768699444374
-Current date: 2026-01-18T01:24:04.374Z
-Using effective timestamp: 2026-01-18T01:21:02.000Z
-[Email Sync] No new messages for business 29
 [Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
 === GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:21:05.987Z
-Date.now(): 1768699446122
-Current date: 2026-01-18T01:24:06.122Z
-Using effective timestamp: 2026-01-18T01:21:05.000Z
+lastSync from DB: 2026-01-18T04:18:03.041Z
+Date.now(): 1768710062253
+Current date: 2026-01-18T04:21:02.253Z
+Using effective timestamp: 2026-01-18T04:18:03.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+[2026-01-18T04:34:56.402Z] [PID: 95483] [32m[NODE-CRON][32m [33m[WARN][0m missed execution at Sat Jan 17 2026 20:24:00 GMT-0800 (Pacific Standard Time)! Possible blocking IO or high CPU user at the same process used by node-cron.
+[2026-01-18T04:34:56.406Z] [PID: 95483] [32m[NODE-CRON][32m [33m[WARN][0m missed execution at Sat Jan 17 2026 20:27:00 GMT-0800 (Pacific Standard Time)! Possible blocking IO or high CPU user at the same process used by node-cron.
+[2026-01-18T04:34:56.409Z] [PID: 95483] [32m[NODE-CRON][32m [33m[WARN][0m missed execution at Sat Jan 17 2026 20:30:00 GMT-0800 (Pacific Standard Time)! Possible blocking IO or high CPU user at the same process used by node-cron.
+[2026-01-18T04:34:56.411Z] [PID: 95483] [32m[NODE-CRON][32m [33m[WARN][0m missed execution at Sat Jan 17 2026 20:33:00 GMT-0800 (Pacific Standard Time)! Possible blocking IO or high CPU user at the same process used by node-cron.
+[Email Sync] Error syncing business 28: 
+Invalid `prisma.emailIntegration.findUnique()` invocation:
+
+
+Server has closed the connection.
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+Sync messages error: PrismaClientKnownRequestError: 
+Invalid `prisma.emailIntegration.findUnique()` invocation:
+
+
+Server has closed the connection.
+    at $n.handleRequestError (/Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/node_modules/@prisma/clienRestarting 'src/server.js'
+📞 Netgsm Configuration:
+Username: ✅ Exists
+Password: ✅ Exists
+API Key: ✅ Exists
+✅ ToolRegistry: 10 tools registered
+
+🚀 Initializing background jobs...
+⏰ Initializing monthly usage reset cron job...
+✅ Monthly reset job initialized (runs at 00:00 UTC on 1st of each month)
+[Email Sync] Initializing email sync cron job...
+[Email Sync] Cron job initialized (runs every 3 minutes)
+✅ Background jobs initialized
+
+node:events:502
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1908:16)
+    at listenInCluster (node:net:1965:12)
+    at Server.listen (node:net:2067:7)
+    at Function.listen (/Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/node_modules/express/lib/application.js:635:24)
+    at file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/server.js:211:7
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:1944:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
+  code: 'EADDRINUSE',
+  errno: -48,
+  syscall: 'listen',
+  address: '::',
+  port: 3001
+}
+
+Node.js v20.19.5
+Failed running 'src/server.js'
+Restarting 'src/server.js'
+📞 Netgsm Configuration:
+Username: ✅ Exists
+Password: ✅ Exists
+API Key: ✅ Exists
+✅ ToolRegistry: 10 tools registered
+
+🚀 Initializing background jobs...
+⏰ Initializing monthly usage reset cron job...
+✅ Monthly reset job initialized (runs at 00:00 UTC on 1st of each month)
+[Email Sync] Initializing email sync cron job...
+[Email Sync] Cron job initialized (runs every 3 minutes)
+✅ Background jobs initialized
+
+node:events:502
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1908:16)
+    at listenInCluster (node:net:1965:12)
+    at Server.listen (node:net:2067:7)
+    at Function.listen (/Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/node_modules/express/lib/application.js:635:24)
+    at file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/server.js:211:7
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:1944:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
+  code: 'EADDRINUSE',
+  errno: -48,
+  syscall: 'listen',
+  address: '::',
+  port: 3001
+}
+
+Node.js v20.19.5
+Failed running 'src/server.js'
+Restarting 'src/server.js'
+📞 Netgsm Configuration:
+Username: ✅ Exists
+Password: ✅ Exists
+API Key: ✅ Exists
+✅ ToolRegistry: 10 tools registered
+
+🚀 Initializing background jobs...
+⏰ Initializing monthly usage reset cron job...
+✅ Monthly reset job initialized (runs at 00:00 UTC on 1st of each month)
+[Email Sync] Initializing email sync cron job...
+[Email Sync] Cron job initialized (runs every 3 minutes)
+✅ Background jobs initialized
+
+node:events:502
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1908:16)
+    at listenInCluster (node:net:1965:12)
+    at Server.listen (node:net:2067:7)
+    at Function.listen (/Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/node_modules/express/lib/application.js:635:24)
+    at file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/server.js:211:7
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:1944:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
+  code: 'EADDRINUSE',
+  errno: -48,
+  syscall: 'listen',
+  address: '::',
+  port: 3001
+}
+
+Node.js v20.19.5
+Failed running 'src/server.js'
+Restarting 'src/server.js'
+📞 Netgsm Configuration:
+Username: ✅ Exists
+Password: ✅ Exists
+API Key: ✅ Exists
+✅ ToolRegistry: 10 tools registered
+
+🚀 Initializing background jobs...
+⏰ Initializing monthly usage reset cron job...
+✅ Monthly reset job initialized (runs at 00:00 UTC on 1st of each month)
+[Email Sync] Initializing email sync cron job...
+[Email Sync] Cron job initialized (runs every 3 minutes)
+✅ Background jobs initialized
+
+node:events:502
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1908:16)
+    at listenInCluster (node:net:1965:12)
+    at Server.listen (node:net:2067:7)
+    at Function.listen (/Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/node_modules/express/lib/application.js:635:24)
+    at file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/server.js:211:7
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:1944:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
+  code: 'EADDRINUSE',
+  errno: -48,
+  syscall: 'listen',
+  address: '::',
+  port: 3001
+}
+
+Node.js v20.19.5
+Failed running 'src/server.js'
+(/Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/node_modules/express/lib/application.js:635:24)
+    at file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/server.js:211:7
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:1944:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
+  code: 'EADDRINUSE',
+  errno: -48,
+  syscall: 'listen',
+  address: '::',
+  port: 3001
+}
+
+Node.js v20.19.5
+Failed running 'src/server.js'
+Restarting 'src/server.js'
+📞 Netgsm Configuration:
+Username: ✅ Exists
+Password: ✅ Exists
+API Key: ✅ Exists
+✅ ToolRegistry: 10 tools registered
+
+🚀 Initializing background jobs...
+⏰ Initializing monthly usage reset cron job...
+✅ Monthly reset job initialized (runs at 00:00 UTC on 1st of each month)
+[Email Sync] Initializing email sync cron job...
+[Email Sync] Cron job initialized (runs every 3 minutes)
+✅ Background jobs initialized
+
+node:events:502
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1908:16)
+    at listenInCluster (node:net:1965:12)
+    at Server.listen (node:net:2067:7)
+    at Function.listen (/Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/node_modules/express/lib/application.js:635:24)
+    at file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/server.js:211:7
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:1944:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
+  code: 'EADDRINUSE',
+  errno: -48,
+  syscall: 'listen',
+  address: '::',
+  port: 3001
+}
+
+Node.js v20.19.5
+Failed running 'src/server.js'
+Restarting 'src/server.js'
+📞 Netgsm Configuration:
+Username: ✅ Exists
+Password: ✅ Exists
+API Key: ✅ Exists
+✅ ToolRegistry: 10 tools registered
+
+🚀 Initializing background jobs...
+⏰ Initializing monthly usage reset cron job...
+✅ Monthly reset job initialized (runs at 00:00 UTC on 1st of each month)
+[Email Sync] Initializing email sync cron job...
+[Email Sync] Cron job initialized (runs every 3 minutes)
+✅ Background jobs initialized
+
+node:events:502
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1908:16)
+    at listenInCluster (node:net:1965:12)
+    at Server.listen (node:net:2067:7)
+    at Function.listen (/Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/node_modules/express/lib/application.js:635:24)
+    at file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/server.js:211:7
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:1944:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
+  code: 'EADDRINUSE',
+  errno: -48,
+  syscall: 'listen',
+  address: '::',
+  port: 3001
+}
+
+Node.js v20.19.5
+Failed running 'src/server.js'
+Restarting 'src/server.js'
+📞 Netgsm Configuration:
+Username: ✅ Exists
+Password: ✅ Exists
+API Key: ✅ Exists
+✅ ToolRegistry: 10 tools registered
+
+🚀 Initializing background jobs...
+⏰ Initializing monthly usage reset cron job...
+✅ Monthly reset job initialized (runs at 00:00 UTC on 1st of each month)
+[Email Sync] Initializing email sync cron job...
+[Email Sync] Cron job initialized (runs every 3 minutes)
+✅ Background jobs initialized
+
+node:events:502
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1908:16)
+    at listenInCluster (node:net:1965:12)
+    at Server.listen (node:net:2067:7)
+    at Function.listen (/Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/node_modules/express/lib/application.js:635:24)
+    at file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/server.js:211:7
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:1944:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
+  code: 'EADDRINUSE',
+  errno: -48,
+  syscall: 'listen',
+  address: '::',
+  port: 3001
+}
+
+Node.js v20.19.5
+Failed running 'src/server.js'
+on.
+[2026-01-18T06:02:51.291Z] [PID: 95483] [32m[NODE-CRON][32m [33m[WARN][0m missed execution at Sat Jan 17 2026 21:48:00 GMT-0800 (Pacific Standard Time)! Possible blocking IO or high CPU user at the same process used by node-cron.
+[2026-01-18T06:02:51.292Z] [PID: 95483] [32m[NODE-CRON][32m [33m[WARN][0m missed execution at Sat Jan 17 2026 21:51:00 GMT-0800 (Pacific Standard Time)! Possible blocking IO or high CPU user at the same process used by node-cron.
+[2026-01-18T06:02:51.293Z] [PID: 95483] [32m[NODE-CRON][32m [33m[WARN][0m missed execution at Sat Jan 17 2026 21:54:00 GMT-0800 (Pacific Standard Time)! Possible blocking IO or high CPU user at the same process used by node-cron.
+[2026-01-18T06:02:51.295Z] [PID: 95483] [32m[NODE-CRON][32m [33m[WARN][0m missed execution at Sat Jan 17 2026 21:57:00 GMT-0800 (Pacific Standard Time)! Possible blocking IO or high CPU user at the same process used by node-cron.
+[2026-01-18T06:02:51.296Z] [PID: 95483] [32m[NODE-CRON][32m [33m[WARN][0m missed execution at Sat Jan 17 2026 22:00:00 GMT-0800 (Pacific Standard Time)! Possible blocking IO or high CPU user at the same process used by node-cron.
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-18T06:03:00.025Z
+========================================
+
+[Email Sync] Found 5 connected accounts
+[Email Sync] Syncing GMAIL for business 1 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-18T06:03:00.745Z
+Date.now(): 1768716181096
+Current date: 2026-01-18T06:03:01.097Z
+Using effective timestamp: 2026-01-18T06:03:00.000Z
+[Email Sync] No new messages for business 1
+[Email Sync] Syncing GMAIL for business 29 (rickie.111222@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-18T05:51:02.312Z
+Date.now(): 1768716182794
+Current date: 2026-01-18T06:03:02.794Z
+Using effective timestamp: 2026-01-18T05:51:02.000Z
+Get messages error: GaxiosError: Invalid Credentials
+    at Gaxios._request (/Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/node_modules/gaxios/build/src/gaxios.js:142:23)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async OAuth2Client.requestAsync (/Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/node_modules/googleapis-common/node_modules/google-auth-library/build/src/auth/oauth2client.js:429:18)
+    at async GmailService.getMessages (file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/services/gmail.js:194:24)
+    at async GmailService.syncNewMessages (file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/services/gmail.js:385:26)
+    at async EmailAggregatorService.syncNewMessages (file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/services/email-aggregator.js:140:12)
+    at async syncBusinessEmails (file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/jobs/emailSync.js:26:25)
+    at async runEmailSync (file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/jobs/emailSync.js:122:22)
+    at async cron.schedule.scheduled (file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/jobs/emailSync.js:160:5)
+    at async Timeout._onTimeout (/Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/node_modules/node-cron/dist/esm/scheduler/runner.js:70:44) {
+  config: {
+    url: 'https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=500&labelIds=INBOX&q=in%3Ainbox%20after%3A1768715462&pageToken=',
+    method: 'GET',
+    userAgentDirectives: [ [Object] ],
+    paramsSerializer: [Function (anonymous)],
+    headers: {
+      'x-goog-api-client': 'gdcl/7.2.0 gl-node/20.19.5',
+      'Accept-Encoding': 'gzip',
+      'User-Agent': 'google-api-nodejs-client/7.2.0 (gzip)',
+      Authorization: '<<REDACTED> - See `errorRedactor` option in `gaxios` for configuration>.'
+    },
+    params: {
+      maxResults: 500,
+      labelIds: [Array],
+      q: 'in:inbox after:1768715462',
+      pageToken: null
+    },
+    validateStatus: [Function (anonymous)],
+    retry: true,
+    responseType: 'unknown',
+    errorRedactor: [Function: defaultErrorRedactor],
+    retryConfig: {
+      currentRetryAttempt: 0,
+      retry: 3,
+      httpMethodsToRetry: [Array],
+      noResponseRetries: 2,
+      retryDelayMultiplier: 2,
+      timeOfFirstRequest: 1768716182963,
+      totalTimeout: 9007199254740991,
+      maxRetryDelay: 9007199254740991,
+      statusCodesToRetry: [Array]
+    }
+  },
+  response: {
+    config: {
+      url: 'https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=500&labelIds=INBOX&q=in%3Ainbox%20after%3A1768715462&pageToken=',
+      method: 'GET',
+      userAgentDirectives: [Array],
+      paramsSerializer: [Function (anonymous)],
+      headers: [Object],
+      params: [Object],
+      validateStatus: [Function (anonymous)],
+      retry: true,
+      responseType: 'unknown',
+      errorRedactor: [Function: defaultErrorRedactor]
+    },
+    data: { error: [Object] },
+    headers: {
+      'alt-svc': 'h3=":443"; ma=2592000,h3-29=":443"; ma=2592000',
+      'content-encoding': 'gzip',
+      'content-type': 'application/json; charset=UTF-8',
+      date: 'Sun, 18 Jan 2026 06:03:02 GMT',
+      server: 'ESF',
+      'transfer-encoding': 'chunked',
+      vary: 'Origin, X-Origin, Referer',
+      'www-authenticate': 'Bearer realm="https://accounts.google.com/", error="invalid_token"',
+      'x-content-type-options': 'nosniff',
+      'x-frame-options': 'SAMEORIGIN',
+      'x-xss-protection': '0'
+    },
+    status: 401,
+    statusText: 'Unauthorized',
+    request: {
+      responseURL: 'https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=500&labelIds=INBOX&q=in%3Ainbox%20after%3A1768715462&pageToken='
+    }
+  },
+  error: undefined,
+  status: 401,
+  code: 401,
+  errors: [
+    {
+      message: 'Invalid Credentials',
+      domain: 'global',
+      reason: 'authError',
+      location: 'Authorization',
+      locationType: 'header'
+    }
+  ],
+  [Symbol(gaxios-gaxios-error)]: '6.7.1'
+}
+Sync messages error: GaxiosError: Invalid Credentials
+    at Gaxios._request (/Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/node_modules/gaxios/build/src/gaxios.js:142:23)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async OAuth2Client.requestAsync (/Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/node_modules/googleapis-common/node_modules/google-auth-library/build/src/auth/oauth2client.js:429:18)
+    at async GmailService.getMessages (file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/services/gmail.js:194:24)
+    at async GmailService.syncNewMessages (file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/services/gmail.js:385:26)
+    at async EmailAggregatorService.syncNewMessages (file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/services/email-aggregator.js:140:12)
+    at async syncBusinessEmails (file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/jobs/emailSync.js:26:25)
+    at async runEmailSync (file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/jobs/emailSync.js:122:22)
+    at async cron.schedule.scheduled (file:///Users/nurettinerzen/.claude-worktrees/ai-assistanRestarting 'src/server.js'
+📞 Netgsm Configuration:
+Username: ✅ Exists
+Password: ✅ Exists
+API Key: ✅ Exists
+✅ ToolRegistry: 10 tools registered
+
+🚀 Initializing background jobs...
+⏰ Initializing monthly usage reset cron job...
+✅ Monthly reset job initialized (runs at 00:00 UTC on 1st of each month)
+[Email Sync] Initializing email sync cron job...
+[Email Sync] Cron job initialized (runs every 3 minutes)
+✅ Background jobs initialized
+
+node:events:502
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1908:16)
+    at listenInCluster (node:net:1965:12)
+    at Server.listen (node:net:2067:7)
+    at Function.listen (/Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/node_modules/express/lib/application.js:635:24)
+    at file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/server.js:211:7
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:1944:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
+  code: 'EADDRINUSE',
+  errno: -48,
+  syscall: 'listen',
+  address: '::',
+  port: 3001
+}
+
+Node.js v20.19.5
+Failed running 'src/server.js'
+Restarting 'src/server.js'
+📞 Netgsm Configuration:
+Username: ✅ Exists
+Password: ✅ Exists
+API Key: ✅ Exists
+✅ ToolRegistry: 10 tools registered
+
+🚀 Initializing background jobs...
+⏰ Initializing monthly usage reset cron job...
+✅ Monthly reset job initialized (runs at 00:00 UTC on 1st of each month)
+[Email Sync] Initializing email sync cron job...
+[Email Sync] Cron job initialized (runs every 3 minutes)
+✅ Background jobs initialized
+
+node:events:502
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1908:16)
+    at listenInCluster (node:net:1965:12)
+    at Server.listen (node:net:2067:7)
+    at Function.listen (/Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/node_modules/express/lib/application.js:635:24)
+    at file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/server.js:211:7
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:1944:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
+  code: 'EADDRINUSE',
+  errno: -48,
+  syscall: 'listen',
+  address: '::',
+  port: 3001
+}
+
+Node.js v20.19.5
+Failed running 'src/server.js'
+Restarting 'src/server.js'
+📞 Netgsm Configuration:
+Username: ✅ Exists
+Password: ✅ Exists
+API Key: ✅ Exists
+✅ ToolRegistry: 10 tools registered
+
+🚀 Initializing background jobs...
+⏰ Initializing monthly usage reset cron job...
+✅ Monthly reset job initialized (runs at 00:00 UTC on 1st of each month)
+[Email Sync] Initializing email sync cron job...
+[Email Sync] Cron job initialized (runs every 3 minutes)
+✅ Background jobs initialized
+
+
+========================================
+🚀 TELYX BACKEND SERVER
+========================================
+✅ Server running on port 3001
+🔗 Health check: http://localhost:3001/health
+🌍 Environment: development
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-18T23:36:00.033Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-18T23:36:00.751Z
+Date.now(): 1768779361343
+Current date: 2026-01-18T23:36:01.343Z
+Using effective timestamp: 2026-01-18T23:36:00.000Z
 [Email Sync] No new messages for business 21
 [Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
 === GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:21:07.558Z
-Date.now(): 1768699447647
-Current date: 2026-01-18T01:24:07.647Z
-Using effective timestamp: 2026-01-18T01:21:07.000Z
+lastSync from DB: 2026-01-18T23:36:02.377Z
+Date.now(): 1768779363106
+Current date: 2026-01-18T23:36:03.106Z
+Using effective timestamp: 2026-01-18T23:36:02.000Z
 [Email Sync] No new messages for business 28
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-18T23:36:03.907Z
+Date.now(): 1768779364657
+Current date: 2026-01-18T23:36:04.657Z
+Using effective timestamp: 2026-01-18T23:36:03.000Z
+[Email Sync] No new messages for business 22
 
 ========================================
 [Email Sync] Sync job completed
-Businesses: 5
+Businesses: 3
 Messages synced: 0
 Errors: 0
 ========================================
@@ -1186,49 +1485,35 @@ Errors: 0
 
 ========================================
 [Email Sync] Starting email sync job
-Time: 2026-01-18T01:27:00.030Z
+Time: 2026-01-18T23:39:00.025Z
 ========================================
 
-[Email Sync] Found 5 connected accounts
-[Email Sync] Syncing GMAIL for business 1 (nurettinerzen@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:24:01.521Z
-Date.now(): 1768699620459
-Current date: 2026-01-18T01:27:00.459Z
-Using effective timestamp: 2026-01-18T01:24:01.000Z
-[Email Sync] No new messages for business 1
-[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:24:03.105Z
-Date.now(): 1768699622245
-Current date: 2026-01-18T01:27:02.245Z
-Using effective timestamp: 2026-01-18T01:24:03.000Z
-[Email Sync] No new messages for business 22
-[Email Sync] Syncing GMAIL for business 29 (rickie.111222@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:24:04.779Z
-Date.now(): 1768699623849
-Current date: 2026-01-18T01:27:03.849Z
-Using effective timestamp: 2026-01-18T01:24:04.000Z
-[Email Sync] No new messages for business 29
+[Email Sync] Found 3 connected accounts
 [Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
 === GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:24:06.304Z
-Date.now(): 1768699625522
-Current date: 2026-01-18T01:27:05.522Z
-Using effective timestamp: 2026-01-18T01:24:06.000Z
+lastSync from DB: 2026-01-18T23:36:01.846Z
+Date.now(): 1768779540451
+Current date: 2026-01-18T23:39:00.451Z
+Using effective timestamp: 2026-01-18T23:36:01.000Z
 [Email Sync] No new messages for business 21
 [Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
 === GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:24:07.856Z
-Date.now(): 1768699627106
-Current date: 2026-01-18T01:27:07.106Z
-Using effective timestamp: 2026-01-18T01:24:07.000Z
+lastSync from DB: 2026-01-18T23:36:03.391Z
+Date.now(): 1768779542200
+Current date: 2026-01-18T23:39:02.200Z
+Using effective timestamp: 2026-01-18T23:36:03.000Z
 [Email Sync] No new messages for business 28
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-18T23:36:04.955Z
+Date.now(): 1768779543792
+Current date: 2026-01-18T23:39:03.792Z
+Using effective timestamp: 2026-01-18T23:36:04.000Z
+[Email Sync] No new messages for business 22
 
 ========================================
 [Email Sync] Sync job completed
-Businesses: 5
+Businesses: 3
 Messages synced: 0
 Errors: 0
 ========================================
@@ -1236,49 +1521,35 @@ Errors: 0
 
 ========================================
 [Email Sync] Starting email sync job
-Time: 2026-01-18T01:30:00.016Z
+Time: 2026-01-18T23:42:00.051Z
 ========================================
 
-[Email Sync] Found 5 connected accounts
-[Email Sync] Syncing GMAIL for business 1 (nurettinerzen@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:27:00.880Z
-Date.now(): 1768699800855
-Current date: 2026-01-18T01:30:00.855Z
-Using effective timestamp: 2026-01-18T01:27:00.000Z
-[Email Sync] No new messages for business 1
-[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:27:02.489Z
-Date.now(): 1768699802677
-Current date: 2026-01-18T01:30:02.678Z
-Using effective timestamp: 2026-01-18T01:27:02.000Z
-[Email Sync] No new messages for business 22
-[Email Sync] Syncing GMAIL for business 29 (rickie.111222@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:27:04.148Z
-Date.now(): 1768699804208
-Current date: 2026-01-18T01:30:04.208Z
-Using effective timestamp: 2026-01-18T01:27:04.000Z
-[Email Sync] No new messages for business 29
+[Email Sync] Found 3 connected accounts
 [Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
 === GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:27:05.740Z
-Date.now(): 1768699805884
-Current date: 2026-01-18T01:30:05.884Z
-Using effective timestamp: 2026-01-18T01:27:05.000Z
+lastSync from DB: 2026-01-18T23:42:00.963Z
+Date.now(): 1768779721160
+Current date: 2026-01-18T23:42:01.160Z
+Using effective timestamp: 2026-01-18T23:42:00.000Z
 [Email Sync] No new messages for business 21
 [Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
 === GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:27:07.293Z
-Date.now(): 1768699807446
-Current date: 2026-01-18T01:30:07.446Z
-Using effective timestamp: 2026-01-18T01:27:07.000Z
+lastSync from DB: 2026-01-18T23:42:02.530Z
+Date.now(): 1768779722986
+Current date: 2026-01-18T23:42:02.986Z
+Using effective timestamp: 2026-01-18T23:42:02.000Z
 [Email Sync] No new messages for business 28
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-18T23:42:04.063Z
+Date.now(): 1768779724599
+Current date: 2026-01-18T23:42:04.599Z
+Using effective timestamp: 2026-01-18T23:42:04.000Z
+[Email Sync] No new messages for business 22
 
 ========================================
 [Email Sync] Sync job completed
-Businesses: 5
+Businesses: 3
 Messages synced: 0
 Errors: 0
 ========================================
@@ -1286,53 +1557,1947 @@ Errors: 0
 
 ========================================
 [Email Sync] Starting email sync job
-Time: 2026-01-18T01:33:00.010Z
+Time: 2026-01-18T23:45:00.053Z
 ========================================
 
-[Email Sync] Found 5 connected accounts
-[Email Sync] Syncing GMAIL for business 1 (nurettinerzen@gmail.com)
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
 === GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:30:01.331Z
-Date.now(): 1768699980402
-Current date: 2026-01-18T01:33:00.403Z
-Using effective timestamp: 2026-01-18T01:30:01.000Z
-[Email Sync] No new messages for business 1
-[Email Sync] Syncing GMAIL for business 29 (rickie.111222@gmail.com)
+lastSync from DB: 2026-01-18T23:42:01.616Z
+Date.now(): 1768779900583
+Current date: 2026-01-18T23:45:00.583Z
+Using effective timestamp: 2026-01-18T23:42:01.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
 === GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:30:04.532Z
-Date.now(): 1768699982044
-Current date: 2026-01-18T01:33:02.044Z
-Using effective timestamp: 2026-01-18T01:30:04.000Z
-[Email Sync] Error syncing business 29: 
+lastSync from DB: 2026-01-18T23:42:03.218Z
+Date.now(): 1768779902330
+Current date: 2026-01-18T23:45:02.330Z
+Using effective timestamp: 2026-01-18T23:42:03.000Z
+[Email Sync] No new messages for business 28
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-18T23:45:03.790Z
+Date.now(): 1768779903926
+Current date: 2026-01-18T23:45:03.926Z
+Using effective timestamp: 2026-01-18T23:45:03.000Z
+[Email Sync] No new messages for business 22
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-18T23:48:00.051Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-18T23:45:00.959Z
+Date.now(): 1768780081096
+Current date: 2026-01-18T23:48:01.096Z
+Using effective timestamp: 2026-01-18T23:45:00.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-18T23:45:02.554Z
+Date.now(): 1768780082717
+Current date: 2026-01-18T23:48:02.717Z
+Using effective timestamp: 2026-01-18T23:45:02.000Z
+[Email Sync] No new messages for business 28
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-18T23:45:04.137Z
+Date.now(): 1768780084245
+Current date: 2026-01-18T23:48:04.245Z
+Using effective timestamp: 2026-01-18T23:45:04.000Z
+[Email Sync] No new messages for business 22
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-18T23:51:00.052Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-18T23:48:01.463Z
+Date.now(): 1768780260507
+Current date: 2026-01-18T23:51:00.507Z
+Using effective timestamp: 2026-01-18T23:48:01.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-18T23:48:02.913Z
+Date.now(): 1768780262342
+Current date: 2026-01-18T23:51:02.342Z
+Using effective timestamp: 2026-01-18T23:48:02.000Z
+[Email Sync] No new messages for business 28
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-18T23:48:04.715Z
+Date.now(): 1768780263788
+Current date: 2026-01-18T23:51:03.788Z
+Using effective timestamp: 2026-01-18T23:48:04.000Z
+[Email Sync] No new messages for business 22
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-18T23:54:00.055Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-18T23:54:00.770Z
+Date.now(): 1768780441154
+Current date: 2026-01-18T23:54:01.154Z
+Using effective timestamp: 2026-01-18T23:54:00.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-18T23:54:02.309Z
+Date.now(): 1768780442919
+Current date: 2026-01-18T23:54:02.919Z
+Using effective timestamp: 2026-01-18T23:54:02.000Z
+[Email Sync] No new messages for business 28
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-18T23:54:04.009Z
+Date.now(): 1768780444481
+Current date: 2026-01-18T23:54:04.481Z
+Using effective timestamp: 2026-01-18T23:54:04.000Z
+[Email Sync] No new messages for business 22
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-18T23:57:00.057Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-18T23:54:01.558Z
+Date.now(): 1768780620576
+Current date: 2026-01-18T23:57:00.577Z
+Using effective timestamp: 2026-01-18T23:54:01.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-18T23:54:03.202Z
+Date.now(): 1768780622601
+Current date: 2026-01-18T23:57:02.601Z
+Using effective timestamp: 2026-01-18T23:54:03.000Z
+[Email Sync] No new messages for business 28
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-18T23:54:04.672Z
+Date.now(): 1768780624194
+Current date: 2026-01-18T23:57:04.194Z
+Using effective timestamp: 2026-01-18T23:54:04.000Z
+[Email Sync] No new messages for business 22
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T00:00:00.068Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:00:00.707Z
+Date.now(): 1768780801053
+Current date: 2026-01-19T00:00:01.053Z
+Using effective timestamp: 2026-01-19T00:00:00.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:00:02.281Z
+Date.now(): 1768780802712
+Current date: 2026-01-19T00:00:02.712Z
+Using effective timestamp: 2026-01-19T00:00:02.000Z
+[Email Sync] No new messages for business 28
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:00:03.841Z
+Date.now(): 1768780804234
+Current date: 2026-01-19T00:00:04.234Z
+Using effective timestamp: 2026-01-19T00:00:03.000Z
+[Email Sync] No new messages for business 22
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T00:03:00.069Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:00:04.423Z
+Date.now(): 1768780980403
+Current date: 2026-01-19T00:03:00.403Z
+Using effective timestamp: 2026-01-19T00:00:04.000Z
+[Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:00:01.461Z
+Date.now(): 1768780982221
+Current date: 2026-01-19T00:03:02.221Z
+Using effective timestamp: 2026-01-19T00:00:01.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:00:02.982Z
+Date.now(): 1768780983782
+Current date: 2026-01-19T00:03:03.782Z
+Using effective timestamp: 2026-01-19T00:00:02.000Z
+[Email Sync] No new messages for business 28
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors:Restarting 'src/server.js'
+📞 Netgsm Configuration:
+Username: ✅ Exists
+Password: ✅ Exists
+API Key: ✅ Exists
+✅ ToolRegistry: 10 tools registered
+
+🚀 Initializing background jobs...
+⏰ Initializing monthly usage reset cron job...
+✅ Monthly reset job initialized (runs at 00:00 UTC on 1st of each month)
+[Email Sync] Initializing email sync cron job...
+[Email Sync] Cron job initialized (runs every 3 minutes)
+✅ Background jobs initialized
+
+node:events:502
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1908:16)
+    at listenInCluster (node:net:1965:12)
+    at Server.listen (node:net:2067:7)
+    at Function.listen (/Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/node_modules/express/lib/application.js:635:24)
+    at file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/server.js:211:7
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:1944:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
+  code: 'EADDRINUSE',
+  errno: -48,
+  syscall: 'listen',
+  address: '::',
+  port: 3001
+}
+
+Node.js v20.19.5
+Failed running 'src/server.js'
+=
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T00:09:00.059Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:06:01.467Z
+Date.now(): 1768781340525
+Current date: 2026-01-19T00:09:00.525Z
+Using effective timestamp: 2026-01-19T00:06:01.000Z
+[Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:06:03.027Z
+Date.now(): 1768781342339
+Current date: 2026-01-19T00:09:02.339Z
+Using effective timestamp: 2026-01-19T00:06:03.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:06:04.502Z
+Date.now(): 1768781343895
+Current date: 2026-01-19T00:09:03.895Z
+Using effective timestamp: 2026-01-19T00:06:04.000Z
+[Email Sync] No new messages for business 28
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T00:12:00.075Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:12:00.610Z
+Date.now(): 1768781521202
+Current date: 2026-01-19T00:12:01.202Z
+Using effective timestamp: 2026-01-19T00:12:00.000Z
+[Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:12:02.152Z
+Date.now(): 1768781522935
+Current date: 2026-01-19T00:12:02.935Z
+Using effective timestamp: 2026-01-19T00:12:02.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:12:03.664Z
+Date.now(): 1768781524518
+Current date: 2026-01-19T00:12:04.518Z
+Using effective timestamp: 2026-01-19T00:12:03.000Z
+[Email Sync] No new messages for business 28
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T00:15:00.057Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:12:03.196Z
+Date.now(): 1768781700662
+Current date: 2026-01-19T00:15:00.662Z
+Using effective timestamp: 2026-01-19T00:12:03.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:12:01.631Z
+Date.now(): 1768781702496
+Current date: 2026-01-19T00:15:02.496Z
+Using effective timestamp: 2026-01-19T00:12:01.000Z
+[Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:12:04.768Z
+Date.now(): 1768781704161
+Current date: 2026-01-19T00:15:04.161Z
+Using effective timestamp: 2026-01-19T00:12:04.000Z
+[Email Sync] No new messages for business 28
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T00:18:00.073Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:18:00.684Z
+Date.now(): 1768781881168
+Current date: 2026-01-19T00:18:01.168Z
+Using effective timestamp: 2026-01-19T00:18:00.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:18:02.221Z
+Date.now(): 1768781883050
+Current date: 2026-01-19T00:18:03.050Z
+Using effective timestamp: 2026-01-19T00:18:02.000Z
+[Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:18:03.797Z
+Date.now(): 1768781884620
+Current date: 2026-01-19T00:18:04.620Z
+Using effective timestamp: 2026-01-19T00:18:03.000Z
+[Email Sync] No new messages for business 28
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T00:21:00.038Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:18:01.667Z
+Date.now(): 1768782060390
+Current date: 2026-01-19T00:21:00.390Z
+Using effective timestamp: 2026-01-19T00:18:01.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:18:03.242Z
+Date.now(): 1768782062184
+Current date: 2026-01-19T00:21:02.184Z
+Using effective timestamp: 2026-01-19T00:18:03.000Z
+[Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:18:04.831Z
+Date.now(): 1768782063788
+Current date: 2026-01-19T00:21:03.788Z
+Using effective timestamp: 2026-01-19T00:18:04.000Z
+[Email Sync] No new messages for business 28
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T00:24:00.034Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:24:00.707Z
+Date.now(): 1768782241181
+Current date: 2026-01-19T00:24:01.181Z
+Using effective timestamp: 2026-01-19T00:24:00.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:24:02.266Z
+Date.now(): 1768782242897
+Current date: 2026-01-19T00:24:02.897Z
+Using effective timestamp: 2026-01-19T00:24:02.000Z
+[Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:24:03.840Z
+Date.now(): 1768782244585
+Current date: 2026-01-19T00:24:04.585Z
+Using effective timestamp: 2026-01-19T00:24:03.000Z
+[Email Sync] No new messages for business 28
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T00:27:00.033Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:24:03.189Z
+Date.now(): 1768782420507
+Current date: 2026-01-19T00:27:00.507Z
+Using effective timestamp: 2026-01-19T00:24:03.000Z
+[Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:24:01.605Z
+Date.now(): 1768782422376
+Current date: 2026-01-19T00:27:02.376Z
+Using effective timestamp: 2026-01-19T00:24:01.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:24:04.803Z
+Date.now(): 1768782424207
+Current date: 2026-01-19T00:27:04.207Z
+Using effective timestamp: 2026-01-19T00:24:04.000Z
+[Email Sync] No new messages for business 28
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T00:30:00.034Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:30:00.665Z
+Date.now(): 1768782601150
+Current date: 2026-01-19T00:30:01.151Z
+Using effective timestamp: 2026-01-19T00:30:00.000Z
+[Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:30:02.444Z
+Date.now(): 1768782602849
+Current date: 2026-01-19T00:30:02.849Z
+Using effective timestamp: 2026-01-19T00:30:02.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:30:04.013Z
+Date.now(): 1768782604410
+Current date: 2026-01-19T00:30:04.410Z
+Using effective timestamp: 2026-01-19T00:30:04.000Z
+[Email Sync] No new messages for business 28
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T00:33:00.043Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:30:03.054Z
+Date.now(): 1768782780452
+Current date: 2026-01-19T00:33:00.452Z
+Using effective timestamp: 2026-01-19T00:30:03.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:30:01.496Z
+Date.now(): 1768782782200
+Current date: 2026-01-19T00:33:02.200Z
+Using effective timestamp: 2026-01-19T00:30:01.000Z
+[Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:30:04.614Z
+Date.now(): 1768782783755
+Current date: 2026-01-19T00:33:03.755Z
+Using effective timestamp: 2026-01-19T00:30:04.000Z
+[Email Sync] No new messages for business 28
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T00:36:00.026Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:36:00.693Z
+Date.now(): 1768782961089
+Current date: 2026-01-19T00:36:01.089Z
+Using effective timestamp: 2026-01-19T00:36:00.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:36:02.259Z
+Date.now(): 1768782962897
+Current date: 2026-01-19T00:36:02.897Z
+Using effective timestamp: 2026-01-19T00:36:02.000Z
+[Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:36:03.835Z
+Date.now(): 1768782964640
+Current date: 2026-01-19T00:36:04.640Z
+Using effective timestamp: 2026-01-19T00:36:03.000Z
+[Email Sync] No new messages for business 28
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T00:39:00.026Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:36:01.544Z
+Date.now(): 1768783140363
+Current date: 2026-01-19T00:39:00.363Z
+Using effective timestamp: 2026-01-19T00:36:01.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:36:03.088Z
+Date.now(): 1768783142179
+Current date: 2026-01-19T00:39:02.179Z
+Using effective timestamp: 2026-01-19T00:36:03.000Z
+[Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:36:04.835Z
+Date.now(): 1768783143870
+Current date: 2026-01-19T00:39:03.870Z
+Using effective timestamp: 2026-01-19T00:36:04.000Z
+[Email Sync] No new messages for business 28
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T00:42:00.031Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:42:00.633Z
+Date.now(): 1768783321430
+Current date: 2026-01-19T00:42:01.430Z
+Using effective timestamp: 2026-01-19T00:42:00.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:42:02.144Z
+Date.now(): 1768783323579
+Current date: 2026-01-19T00:42:03.579Z
+Using effective timestamp: 2026-01-19T00:42:02.000Z
+[Email Sync] No new messages for business 28
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:42:03.644Z
+Date.now(): 1768783325301
+Current date: 2026-01-19T00:42:05.302Z
+Using effective timestamp: 2026-01-19T00:42:03.000Z
+[Email Sync] No new messages for business 22
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T00:45:00.032Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:42:01.810Z
+Date.now(): 1768783500492
+Current date: 2026-01-19T00:45:00.492Z
+Using effective timestamp: 2026-01-19T00:42:01.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:42:03.874Z
+Date.now(): 1768783502358
+Current date: 2026-01-19T00:45:02.358Z
+Using effective timestamp: 2026-01-19T00:42:03.000Z
+[Email Sync] No new messages for business 28
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:42:05.523Z
+Date.now(): 1768783503952
+Current date: 2026-01-19T00:45:03.952Z
+Using effective timestamp: 2026-01-19T00:42:05.000Z
+[Email Sync] No new messages for business 22
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T00:48:00.031Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:48:00.623Z
+Date.now(): 1768783681127
+Current date: 2026-01-19T00:48:01.127Z
+Using effective timestamp: 2026-01-19T00:48:00.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:48:02.145Z
+Date.now(): 1768783682835
+Current date: 2026-01-19T00:48:02.835Z
+Using effective timestamp: 2026-01-19T00:48:02.000Z
+[Email Sync] No new messages for business 28
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:48:03.658Z
+Date.now(): 1768783684404
+Current date: 2026-01-19T00:48:04.404Z
+Using effective timestamp: 2026-01-19T00:48:03.000Z
+[Email Sync] No new messages for business 22
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T00:51:00.026Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:48:01.477Z
+Date.now(): 1768783860437
+Current date: 2026-01-19T00:51:00.437Z
+Using effective timestamp: 2026-01-19T00:48:01.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:48:04.606Z
+Date.now(): 1768783862169
+Current date: 2026-01-19T00:51:02.169Z
+Using effective timestamp: 2026-01-19T00:48:04.000Z
+[Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:48:03.049Z
+Date.now(): 1768783863945
+Current date: 2026-01-19T00:51:03.945Z
+Using effective timestamp: 2026-01-19T00:48:03.000Z
+[Email Sync] No new messages for business 28
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T00:54:00.053Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:54:00.700Z
+Date.now(): 1768784041110
+Current date: 2026-01-19T00:54:01.111Z
+Using effective timestamp: 2026-01-19T00:54:00.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:54:02.267Z
+Date.now(): 1768784042932
+Current date: 2026-01-19T00:54:02.932Z
+Using effective timestamp: 2026-01-19T00:54:02.000Z
+[Email Sync] No new messages for business 28
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:54:04.010Z
+Date.now(): 1768784044526
+Current date: 2026-01-19T00:54:04.526Z
+Using effective timestamp: 2026-01-19T00:54:04.000Z
+[Email Sync] No new messages for business 22
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T00:57:00.069Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:54:01.543Z
+Date.now(): 1768784220544
+Current date: 2026-01-19T00:57:00.544Z
+Using effective timestamp: 2026-01-19T00:54:01.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:54:03.152Z
+Date.now(): 1768784222385
+Current date: 2026-01-19T00:57:02.385Z
+Using effective timestamp: 2026-01-19T00:54:03.000Z
+[Email Sync] No new messages for business 28
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T00:54:04.730Z
+Date.now(): 1768784223994
+Current date: 2026-01-19T00:57:03.994Z
+Using effective timestamp: 2026-01-19T00:54:04.000Z
+[Email Sync] No new messages for business 22
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T01:00:00.024Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:00:00.710Z
+Date.now(): 1768784401019
+Current date: 2026-01-19T01:00:01.019Z
+Using effective timestamp: 2026-01-19T01:00:00.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:00:02.289Z
+Date.now(): 1768784402703
+Current date: 2026-01-19T01:00:02.703Z
+Using effective timestamp: 2026-01-19T01:00:02.000Z
+[Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:00:03.856Z
+Date.now(): 1768784404277
+Current date: 2026-01-19T01:00:04.277Z
+Using effective timestamp: 2026-01-19T01:00:03.000Z
+[Email Sync] No new messages for business 28
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T01:03:00.027Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:00:01.422Z
+Date.now(): 1768784580470
+Current date: 2026-01-19T01:03:00.470Z
+Using effective timestamp: 2026-01-19T01:00:01.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:00:02.985Z
+Date.now(): 1768784582189
+Current date: 2026-01-19T01:03:02.189Z
+Using effective timestamp: 2026-01-19T01:00:02.000Z
+[Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:00:04.559Z
+Date.now(): 1768784583740
+Current date: 2026-01-19T01:03:03.740Z
+Using effective timestamp: 2026-01-19T01:00:04.000Z
+[Email Sync] No new messages for business 28
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting emaiRestarting 'src/server.js'
+📞 Netgsm Configuration:
+Username: ✅ Exists
+Password: ✅ Exists
+API Key: ✅ Exists
+✅ ToolRegistry: 10 tools registered
+
+🚀 Initializing background jobs...
+⏰ Initializing monthly usage reset cron job...
+✅ Monthly reset job initialized (runs at 00:00 UTC on 1st of each month)
+[Email Sync] Initializing email sync cron job...
+[Email Sync] Cron job initialized (runs every 3 minutes)
+✅ Background jobs initialized
+
+node:events:502
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1908:16)
+    at listenInCluster (node:net:1965:12)
+    at Server.listen (node:net:2067:7)
+    at Function.listen (/Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/node_modules/express/lib/application.js:635:24)
+    at file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/server.js:211:7
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:1944:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
+  code: 'EADDRINUSE',
+  errno: -48,
+  syscall: 'listen',
+  address: '::',
+  port: 3001
+}
+
+Node.js v20.19.5
+Failed running 'src/server.js'
+nc job
+Time: 2026-01-19T01:09:00.038Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:06:01.587Z
+Date.now(): 1768784940575
+Current date: 2026-01-19T01:09:00.575Z
+Using effective timestamp: 2026-01-19T01:06:01.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:06:03.458Z
+Date.now(): 1768784942349
+Current date: 2026-01-19T01:09:02.349Z
+Using effective timestamp: 2026-01-19T01:06:03.000Z
+[Email Sync] No new messages for business 28
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:06:05.039Z
+Date.now(): 1768784943933
+Current date: 2026-01-19T01:09:03.933Z
+Using effective timestamp: 2026-01-19T01:06:05.000Z
+[Email Sync] No new messages for business 22
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T01:12:00.018Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:12:00.619Z
+Date.now(): 1768785121408
+Current date: 2026-01-19T01:12:01.409Z
+Using effective timestamp: 2026-01-19T01:12:00.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:12:02.147Z
+Date.now(): 1768785123076
+Current date: 2026-01-19T01:12:03.076Z
+Using effective timestamp: 2026-01-19T01:12:02.000Z
+[Email Sync] No new messages for business 28
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:12:03.671Z
+Date.now(): 1768785124630
+Current date: 2026-01-19T01:12:04.631Z
+Using effective timestamp: 2026-01-19T01:12:03.000Z
+[Email Sync] No new messages for business 22
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T01:15:00.038Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:12:01.773Z
+Date.now(): 1768785300526
+Current date: 2026-01-19T01:15:00.526Z
+Using effective timestamp: 2026-01-19T01:12:01.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:12:03.327Z
+Date.now(): 1768785302270
+Current date: 2026-01-19T01:15:02.270Z
+Using effective timestamp: 2026-01-19T01:12:03.000Z
+[Email Sync] No new messages for business 28
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:12:04.899Z
+Date.now(): 1768785303847
+Current date: 2026-01-19T01:15:03.847Z
+Using effective timestamp: 2026-01-19T01:12:04.000Z
+[Email Sync] No new messages for business 22
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T01:18:00.044Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:18:00.625Z
+Date.now(): 1768785481084
+Current date: 2026-01-19T01:18:01.084Z
+Using effective timestamp: 2026-01-19T01:18:00.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:18:02.131Z
+Date.now(): 1768785482820
+Current date: 2026-01-19T01:18:02.820Z
+Using effective timestamp: 2026-01-19T01:18:02.000Z
+[Email Sync] No new messages for business 28
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:18:03.644Z
+Date.now(): 1768785484404
+Current date: 2026-01-19T01:18:04.404Z
+Using effective timestamp: 2026-01-19T01:18:03.000Z
+[Email Sync] No new messages for business 22
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T01:21:00.026Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:18:01.511Z
+Date.now(): 1768785660492
+Current date: 2026-01-19T01:21:00.492Z
+Using effective timestamp: 2026-01-19T01:18:01.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:18:03.111Z
+Date.now(): 1768785662345
+Current date: 2026-01-19T01:21:02.346Z
+Using effective timestamp: 2026-01-19T01:18:03.000Z
+[Email Sync] No new messages for business 28
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:18:04.691Z
+Date.now(): 1768785663921
+Current date: 2026-01-19T01:21:03.921Z
+Using effective timestamp: 2026-01-19T01:18:04.000Z
+[Email Sync] No new messages for business 22
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T01:24:00.026Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:24:00.680Z
+Date.now(): 1768785840949
+Current date: 2026-01-19T01:24:00.949Z
+Using effective timestamp: 2026-01-19T01:24:00.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:24:02.258Z
+Date.now(): 1768785842814
+Current date: 2026-01-19T01:24:02.814Z
+Using effective timestamp: 2026-01-19T01:24:02.000Z
+[Email Sync] No new messages for business 28
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:24:03.814Z
+Date.now(): 1768785844444
+Current date: 2026-01-19T01:24:04.444Z
+Using effective timestamp: 2026-01-19T01:24:03.000Z
+[Email Sync] No new messages for business 22
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T01:27:00.071Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:24:04.620Z
+Date.now(): 1768786020617
+Current date: 2026-01-19T01:27:00.617Z
+Using effective timestamp: 2026-01-19T01:24:04.000Z
+[Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:24:01.427Z
+Date.now(): 1768786022314
+Current date: 2026-01-19T01:27:02.314Z
+Using effective timestamp: 2026-01-19T01:24:01.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:27:04.164Z
+Date.now(): 1768786024304
+Current date: 2026-01-19T01:27:04.304Z
+Using effective timestamp: 2026-01-19T01:27:04.000Z
+[Email Sync] No new messages for business 28
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T01:30:00.032Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:30:00.603Z
+Date.now(): 1768786201076
+Current date: 2026-01-19T01:30:01.076Z
+Using effective timestamp: 2026-01-19T01:30:00.000Z
+[Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:30:02.341Z
+Date.now(): 1768786202881
+Current date: 2026-01-19T01:30:02.881Z
+Using effective timestamp: 2026-01-19T01:30:02.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:30:03.873Z
+Date.now(): 1768786204474
+Current date: 2026-01-19T01:30:04.474Z
+Using effective timestamp: 2026-01-19T01:30:03.000Z
+[Email Sync] No new messages for business 28
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T01:33:00.029Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:30:01.506Z
+Date.now(): 1768786380528
+Current date: 2026-01-19T01:33:00.528Z
+Using effective timestamp: 2026-01-19T01:30:01.000Z
+[Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:30:03.097Z
+Date.now(): 1768786382286
+Current date: 2026-01-19T01:33:02.286Z
+Using effective timestamp: 2026-01-19T01:30:03.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:30:04.672Z
+Date.now(): 1768786383881
+Current date: 2026-01-19T01:33:03.881Z
+Using effective timestamp: 2026-01-19T01:30:04.000Z
+[Email Sync] No new messages for business 28
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T01:36:00.026Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:36:00.664Z
+Date.now(): 1768786561035
+Current date: 2026-01-19T01:36:01.035Z
+Using effective timestamp: 2026-01-19T01:36:00.000Z
+[Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:36:02.310Z
+Date.now(): 1768786562681
+Current date: 2026-01-19T01:36:02.681Z
+Using effective timestamp: 2026-01-19T01:36:02.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:36:03.889Z
+Date.now(): 1768786564225
+Current date: 2026-01-19T01:36:04.225Z
+Using effective timestamp: 2026-01-19T01:36:03.000Z
+[Email Sync] No new messages for business 28
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T01:39:00.041Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:36:01.392Z
+Date.now(): 1768786740472
+Current date: 2026-01-19T01:39:00.472Z
+Using effective timestamp: 2026-01-19T01:36:01.000Z
+[Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:36:02.956Z
+Date.now(): 1768786742288
+Current date: 2026-01-19T01:39:02.289Z
+Using effective timestamp: 2026-01-19T01:36:02.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:36:04.530Z
+Date.now(): 1768786743859
+Current date: 2026-01-19T01:39:03.859Z
+Using effective timestamp: 2026-01-19T01:36:04.000Z
+[Email Sync] No new messages for business 28
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T01:42:00.074Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:42:00.652Z
+Date.now(): 1768786921252
+Current date: 2026-01-19T01:42:01.252Z
+Using effective timestamp: 2026-01-19T01:42:00.000Z
+[Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:42:02.178Z
+Date.now(): 1768786923318
+Current date: 2026-01-19T01:42:03.318Z
+Using effective timestamp: 2026-01-19T01:42:02.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:42:03.710Z
+Date.now(): 1768786925014
+Current date: 2026-01-19T01:42:05.014Z
+Using effective timestamp: 2026-01-19T01:42:03.000Z
+[Email Sync] No new messages for business 28
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T01:45:00.079Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:42:01.754Z
+Date.now(): 1768787100541
+Current date: 2026-01-19T01:45:00.541Z
+Using effective timestamp: 2026-01-19T01:42:01.000Z
+[Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:42:03.653Z
+Date.now(): 1768787102325
+Current date: 2026-01-19T01:45:02.325Z
+Using effective timestamp: 2026-01-19T01:42:03.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:45:03.986Z
+Date.now(): 1768787104282
+Current date: 2026-01-19T01:45:04.283Z
+Using effective timestamp: 2026-01-19T01:45:03.000Z
+[Email Sync] No new messages for business 28
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T01:48:00.090Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:48:00.627Z
+Date.now(): 1768787281222
+Current date: 2026-01-19T01:48:01.223Z
+Using effective timestamp: 2026-01-19T01:48:00.000Z
+[Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:48:02.149Z
+Date.now(): 1768787282963
+Current date: 2026-01-19T01:48:02.963Z
+Using effective timestamp: 2026-01-19T01:48:02.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:48:03.672Z
+Date.now(): 1768787284520
+Current date: 2026-01-19T01:48:04.521Z
+Using effective timestamp: 2026-01-19T01:48:03.000Z
+[Email Sync] No new messages for business 28
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T01:51:00.068Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:48:01.598Z
+Date.now(): 1768787460527
+Current date: 2026-01-19T01:51:00.527Z
+Using effective timestamp: 2026-01-19T01:48:01.000Z
+[Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:48:03.169Z
+Date.now(): 1768787462469
+Current date: 2026-01-19T01:51:02.469Z
+Using effective timestamp: 2026-01-19T01:48:03.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:48:04.733Z
+Date.now(): 1768787464030
+Current date: 2026-01-19T01:51:04.031Z
+Using effective timestamp: 2026-01-19T01:48:04.000Z
+[Email Sync] No new messages for business 28
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T01:54:00.020Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:54:00.753Z
+Date.now(): 1768787641201
+Current date: 2026-01-19T01:54:01.201Z
+Using effective timestamp: 2026-01-19T01:54:00.000Z
+[Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:54:02.280Z
+Date.now(): 1768787643195
+Current date: 2026-01-19T01:54:03.195Z
+Using effective timestamp: 2026-01-19T01:54:02.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:54:03.801Z
+Date.now(): 1768787644750
+Current date: 2026-01-19T01:54:04.750Z
+Using effective timestamp: 2026-01-19T01:54:03.000Z
+[Email Sync] No new messages for business 28
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T01:57:00.037Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:54:01.903Z
+Date.now(): 1768787820535
+Current date: 2026-01-19T01:57:00.535Z
+Using effective timestamp: 2026-01-19T01:54:01.000Z
+Gmail token refreshed for business 22
+[Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:54:03.469Z
+Date.now(): 1768787822840
+Current date: 2026-01-19T01:57:02.840Z
+Using effective timestamp: 2026-01-19T01:54:03.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T01:54:04.951Z
+Date.now(): 1768787824409
+Current date: 2026-01-19T01:57:04.409Z
+Using effective timestamp: 2026-01-19T01:54:04.000Z
+[Email Sync] No new messages for business 28
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T02:00:00.025Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T02:00:00.677Z
+Date.now(): 1768788001203
+Current date: 2026-01-19T02:00:01.204Z
+Using effective timestamp: 2026-01-19T02:00:00.000Z
+[Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T02:00:02.271Z
+Date.now(): 1768788002820
+Current date: 2026-01-19T02:00:02.820Z
+Using effective timestamp: 2026-01-19T02:00:02.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T02:00:03.852Z
+Date.now(): 1768788004373
+Current date: 2026-01-19T02:00:04.373Z
+Using effective timestamp: 2026-01-19T02:00:03.000Z
+[Email Sync] No new messages for business 28
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T02:03:00.021Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T02:00:01.552Z
+Date.now(): 1768788180514
+Current date: 2026-01-19T02:03:00.514Z
+Using effective timestamp: 2026-01-19T02:00:01.000Z
+[Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T02:00:03.117Z
+Date.now(): 1768788182219
+Current date: 2026-01-19T02:03:02.219Z
+Using effective timestamp: 2026-01-19T02:00:03.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T02:00:04.688Z
+Date.now(): 1768788183694
+Current date: 2026-01-19T02:03:03.694Z
+Using effective timestamp: 2026-01-19T02:00:04.000Z
+[Email Sync] No new messages for business 28
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T02:06:00.029Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T02:06:00.668Z
+Date.now(): 1768788361430
+Current date: 2026-01-19T02:06:01.430Z
+Using effective timestamp: 2026-01-19T02:06:00.000Z
+[Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T02:06:02.224Z
+Date.now(): 1768788363309
+Current date: 2026-01-19T02:06:03.309Z
+Using effective timestamp: 2026-01-19T02:06:02.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T02:06:03.973Z
+Date.now(): 1768788364901
+Current date: 2026-01-19T02:06:04.901Z
+Using effective timestamp: 2026-01-19T02:06:03.000Z
+[Email Sync] No new messages for business 28
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T02:09:00.029Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T02:06:03.514Z
+Date.now(): 1768788540441
+Current date: 2026-01-19T02:09:00.441Z
+Using effective timestamp: 2026-01-19T02:06:03.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T02:06:01.911Z
+Date.now(): 1768788542272
+Current date: 2026-01-19T02:09:02.272Z
+Using effective timestamp: 2026-01-19T02:06:01.000Z
+[Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T02:06:05.098Z
+Date.now(): 1768788543860
+Current date: 2026-01-19T02:09:03.860Z
+Using effective timestamp: 2026-01-19T02:06:05.000Z
+[Email Sync] No new messages for business 28
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T02:12:00.063Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T02:12:00.785Z
+Date.now(): 1768788721221
+Current date: 2026-01-19T02:12:01.221Z
+Using effective timestamp: 2026-01-19T02:12:00.000Z
+[Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T02:12:02.326Z
+Date.now(): 1768788722982
+Current date: 2026-01-19T02:12:02.982Z
+Using effective timestamp: 2026-01-19T02:12:02.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T02:12:03.853Z
+Date.now(): 1768788724516
+Current date: 2026-01-19T02:12:04.516Z
+Using effective timestamp: 2026-01-19T02:12:03.000Z
+[Email Sync] No new messages for business 28
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T02:15:00.061Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T02:12:03.183Z
+Date.now(): 1768788900502
+Current date: 2026-01-19T02:15:00.502Z
+Using effective timestamp: 2026-01-19T02:12:03.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T02:12:01.618Z
+Date.now(): 1768788902243
+Current date: 2026-01-19T02:15:02.243Z
+Using effective timestamp: 2026-01-19T02:12:01.000Z
+[Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T02:12:04.725Z
+Date.now(): 1768788903815
+Current date: 2026-01-19T02:15:03.815Z
+Using effective timestamp: 2026-01-19T02:12:04.000Z
+[Email Sync] No new messages for business 28
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T02:18:00.074Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T02:18:00.631Z
+Date.now(): 1768789081171
+Current date: 2026-01-19T02:18:01.171Z
+Using effective timestamp: 2026-01-19T02:18:00.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T02:18:02.152Z
+Date.now(): 1768789083035
+Current date: 2026-01-19T02:18:03.035Z
+Using effective timestamp: 2026-01-19T02:18:02.000Z
+[Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T02:18:03.661Z
+Date.now(): 1768789084614
+Current date: 2026-01-19T02:18:04.615Z
+Using effective timestamp: 2026-01-19T02:18:03.000Z
+[Email Sync] No new messages for business 28
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T02:21:00.069Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T02:18:01.672Z
+Date.now(): 1768789260489
+Current date: 2026-01-19T02:21:00.489Z
+Using effective timestamp: 2026-01-19T02:18:01.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T02:18:03.234Z
+Date.now(): 1768789262352
+Current date: 2026-01-19T02:21:02.353Z
+Using effective timestamp: 2026-01-19T02:18:03.000Z
+[Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T02:18:04.821Z
+Date.now(): 1768789264015
+Current date: 2026-01-19T02:21:04.015Z
+Using effective timestamp: 2026-01-19T02:18:04.000Z
+[Email Sync] No new messages for business 28
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T02:24:00.076Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T02:24:00.893Z
+Date.now(): 1768789441114
+Current date: 2026-01-19T02:24:01.114Z
+Using effective timestamp: 2026-01-19T02:24:00.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T02:21:02.618Z
+Date.now(): 1768789442810
+Current date: 2026-01-19T02:24:02.810Z
+Using effective timestamp: 2026-01-19T02:21:02.000Z
+[Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T02:21:04.241Z
+Date.now(): 1768789444378
+Current date: 2026-01-19T02:24:04.378Z
+Using effective timestamp: 2026-01-19T02:21:04.000Z
+[Email Sync] Error syncing business 28: 
 Invalid `prisma.emailThread.create()` invocation:
 
 
 Unique constraint failed on the fields: (`businessId`,`threadId`)
-[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:30:02.875Z
-Date.now(): 1768699984267
-Current date: 2026-01-18T01:33:04.267Z
-Using effective timestamp: 2026-01-18T01:30:02.000Z
-[Email Sync] No new messages for business 22
-[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:30:06.097Z
-Date.now(): 1768699986064
-Current date: 2026-01-18T01:33:06.064Z
-Using effective timestamp: 2026-01-18T01:30:06.000Z
-[Email Sync] No new messages for business 21
-[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:30:07.649Z
-Date.now(): 1768699987624
-Current date: 2026-01-18T01:33:07.624Z
-Using effective timestamp: 2026-01-18T01:30:07.000Z
-[Email Sync] No new messages for business 28
 
 ========================================
 [Email Sync] Sync job completed
-Businesses: 5
+Businesses: 3
 Messages synced: 0
 Errors: 1
 ========================================
@@ -1340,49 +3505,35 @@ Errors: 1
 
 ========================================
 [Email Sync] Starting email sync job
-Time: 2026-01-18T01:36:00.013Z
+Time: 2026-01-19T02:27:00.066Z
 ========================================
 
-[Email Sync] Found 5 connected accounts
-[Email Sync] Syncing GMAIL for business 1 (nurettinerzen@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:33:00.712Z
-Date.now(): 1768700161018
-Current date: 2026-01-18T01:36:01.018Z
-Using effective timestamp: 2026-01-18T01:33:00.000Z
-[Email Sync] No new messages for business 1
-[Email Sync] Syncing GMAIL for business 29 (rickie.111222@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:33:02.637Z
-Date.now(): 1768700162788
-Current date: 2026-01-18T01:36:02.788Z
-Using effective timestamp: 2026-01-18T01:33:02.000Z
-[Email Sync] No new messages for business 29
+[Email Sync] Found 3 connected accounts
 [Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
 === GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:36:04.295Z
-Date.now(): 1768700164467
-Current date: 2026-01-18T01:36:04.467Z
-Using effective timestamp: 2026-01-18T01:36:04.000Z
+lastSync from DB: 2026-01-19T02:24:01.546Z
+Date.now(): 1768789620519
+Current date: 2026-01-19T02:27:00.519Z
+Using effective timestamp: 2026-01-19T02:24:01.000Z
 [Email Sync] No new messages for business 21
-[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:36:05.867Z
-Date.now(): 1768700166081
-Current date: 2026-01-18T01:36:06.081Z
-Using effective timestamp: 2026-01-18T01:36:05.000Z
-[Email Sync] No new messages for business 28
 [Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
 === GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:36:07.621Z
-Date.now(): 1768700168672
-Current date: 2026-01-18T01:36:08.672Z
-Using effective timestamp: 2026-01-18T01:36:07.000Z
+lastSync from DB: 2026-01-19T02:24:03.165Z
+Date.now(): 1768789622672
+Current date: 2026-01-19T02:27:02.672Z
+Using effective timestamp: 2026-01-19T02:24:03.000Z
 [Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T02:24:04.842Z
+Date.now(): 1768789624239
+Current date: 2026-01-19T02:27:04.239Z
+Using effective timestamp: 2026-01-19T02:24:04.000Z
+[Email Sync] No new messages for business 28
 
 ========================================
 [Email Sync] Sync job completed
-Businesses: 5
+Businesses: 3
 Messages synced: 0
 Errors: 0
 ========================================
@@ -1390,49 +3541,36 @@ Errors: 0
 
 ========================================
 [Email Sync] Starting email sync job
-Time: 2026-01-18T01:39:00.022Z
+Time: 2026-01-19T02:30:00.060Z
 ========================================
 
-[Email Sync] Found 5 connected accounts
-[Email Sync] Syncing GMAIL for business 1 (nurettinerzen@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:36:01.454Z
-Date.now(): 1768700340332
-Current date: 2026-01-18T01:39:00.332Z
-Using effective timestamp: 2026-01-18T01:36:01.000Z
-[Email Sync] No new messages for business 1
-[Email Sync] Syncing GMAIL for business 29 (rickie.111222@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:36:03.100Z
-Date.now(): 1768700342086
-Current date: 2026-01-18T01:39:02.086Z
-Using effective timestamp: 2026-01-18T01:36:03.000Z
-[Email Sync] No new messages for business 29
+[Email Sync] Found 3 connected accounts
 [Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
 === GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:36:04.669Z
-Date.now(): 1768700343796
-Current date: 2026-01-18T01:39:03.796Z
-Using effective timestamp: 2026-01-18T01:36:04.000Z
+lastSync from DB: 2026-01-19T02:30:00.758Z
+Date.now(): 1768789801053
+Current date: 2026-01-19T02:30:01.053Z
+Using effective timestamp: 2026-01-19T02:30:00.000Z
+Gmail token refreshed for business 21
 [Email Sync] No new messages for business 21
-[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:36:07.285Z
-Date.now(): 1768700345444
-Current date: 2026-01-18T01:39:05.444Z
-Using effective timestamp: 2026-01-18T01:36:07.000Z
-[Email Sync] No new messages for business 28
 [Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
 === GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:36:08.858Z
-Date.now(): 1768700346965
-Current date: 2026-01-18T01:39:06.965Z
-Using effective timestamp: 2026-01-18T01:36:08.000Z
+lastSync from DB: 2026-01-19T02:30:02.330Z
+Date.now(): 1768789803320
+Current date: 2026-01-19T02:30:03.320Z
+Using effective timestamp: 2026-01-19T02:30:02.000Z
 [Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T02:30:03.883Z
+Date.now(): 1768789804912
+Current date: 2026-01-19T02:30:04.912Z
+Using effective timestamp: 2026-01-19T02:30:03.000Z
+[Email Sync] No new messages for business 28
 
 ========================================
 [Email Sync] Sync job completed
-Businesses: 5
+Businesses: 3
 Messages synced: 0
 Errors: 0
 ========================================
@@ -1440,49 +3578,35 @@ Errors: 0
 
 ========================================
 [Email Sync] Starting email sync job
-Time: 2026-01-18T01:42:00.043Z
+Time: 2026-01-19T02:33:00.067Z
 ========================================
 
-[Email Sync] Found 5 connected accounts
-[Email Sync] Syncing GMAIL for business 1 (nurettinerzen@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:39:00.752Z
-Date.now(): 1768700521175
-Current date: 2026-01-18T01:42:01.176Z
-Using effective timestamp: 2026-01-18T01:39:00.000Z
-[Email Sync] No new messages for business 1
-[Email Sync] Syncing GMAIL for business 29 (rickie.111222@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:42:02.739Z
-Date.now(): 1768700523090
-Current date: 2026-01-18T01:42:03.090Z
-Using effective timestamp: 2026-01-18T01:42:02.000Z
-[Email Sync] No new messages for business 29
+[Email Sync] Found 3 connected accounts
 [Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
 === GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:42:04.310Z
-Date.now(): 1768700524710
-Current date: 2026-01-18T01:42:04.710Z
-Using effective timestamp: 2026-01-18T01:42:04.000Z
+lastSync from DB: 2026-01-19T02:30:01.893Z
+Date.now(): 1768789980521
+Current date: 2026-01-19T02:33:00.521Z
+Using effective timestamp: 2026-01-19T02:30:01.000Z
 [Email Sync] No new messages for business 21
-[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:42:05.978Z
-Date.now(): 1768700526261
-Current date: 2026-01-18T01:42:06.261Z
-Using effective timestamp: 2026-01-18T01:42:05.000Z
-[Email Sync] No new messages for business 28
 [Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
 === GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:42:07.557Z
-Date.now(): 1768700528042
-Current date: 2026-01-18T01:42:08.042Z
-Using effective timestamp: 2026-01-18T01:42:07.000Z
+lastSync from DB: 2026-01-19T02:30:03.553Z
+Date.now(): 1768789982291
+Current date: 2026-01-19T02:33:02.291Z
+Using effective timestamp: 2026-01-19T02:30:03.000Z
 [Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T02:30:05.115Z
+Date.now(): 1768789983875
+Current date: 2026-01-19T02:33:03.875Z
+Using effective timestamp: 2026-01-19T02:30:05.000Z
+[Email Sync] No new messages for business 28
 
 ========================================
 [Email Sync] Sync job completed
-Businesses: 5
+Businesses: 3
 Messages synced: 0
 Errors: 0
 ========================================
@@ -1490,49 +3614,35 @@ Errors: 0
 
 ========================================
 [Email Sync] Starting email sync job
-Time: 2026-01-18T01:45:00.060Z
+Time: 2026-01-19T02:36:00.061Z
 ========================================
 
-[Email Sync] Found 5 connected accounts
-[Email Sync] Syncing GMAIL for business 1 (nurettinerzen@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:42:01.748Z
-Date.now(): 1768700700489
-Current date: 2026-01-18T01:45:00.489Z
-Using effective timestamp: 2026-01-18T01:42:01.000Z
-[Email Sync] No new messages for business 1
-[Email Sync] Syncing GMAIL for business 29 (rickie.111222@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:42:03.447Z
-Date.now(): 1768700702265
-Current date: 2026-01-18T01:45:02.265Z
-Using effective timestamp: 2026-01-18T01:42:03.000Z
-[Email Sync] No new messages for business 29
+[Email Sync] Found 3 connected accounts
 [Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
 === GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:42:04.905Z
-Date.now(): 1768700703938
-Current date: 2026-01-18T01:45:03.938Z
-Using effective timestamp: 2026-01-18T01:42:04.000Z
+lastSync from DB: 2026-01-19T02:36:00.689Z
+Date.now(): 1768790161134
+Current date: 2026-01-19T02:36:01.134Z
+Using effective timestamp: 2026-01-19T02:36:00.000Z
 [Email Sync] No new messages for business 21
-[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:42:06.774Z
-Date.now(): 1768700705509
-Current date: 2026-01-18T01:45:05.510Z
-Using effective timestamp: 2026-01-18T01:42:06.000Z
-[Email Sync] No new messages for business 28
 [Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
 === GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:42:08.310Z
-Date.now(): 1768700707227
-Current date: 2026-01-18T01:45:07.228Z
-Using effective timestamp: 2026-01-18T01:42:08.000Z
+lastSync from DB: 2026-01-19T02:36:02.262Z
+Date.now(): 1768790162992
+Current date: 2026-01-19T02:36:02.992Z
+Using effective timestamp: 2026-01-19T02:36:02.000Z
 [Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T02:36:03.829Z
+Date.now(): 1768790164555
+Current date: 2026-01-19T02:36:04.555Z
+Using effective timestamp: 2026-01-19T02:36:03.000Z
+[Email Sync] No new messages for business 28
 
 ========================================
 [Email Sync] Sync job completed
-Businesses: 5
+Businesses: 3
 Messages synced: 0
 Errors: 0
 ========================================
@@ -1540,49 +3650,35 @@ Errors: 0
 
 ========================================
 [Email Sync] Starting email sync job
-Time: 2026-01-18T01:48:00.060Z
+Time: 2026-01-19T02:39:00.078Z
 ========================================
 
-[Email Sync] Found 5 connected accounts
-[Email Sync] Syncing GMAIL for business 1 (nurettinerzen@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:45:00.929Z
-Date.now(): 1768700881014
-Current date: 2026-01-18T01:48:01.014Z
-Using effective timestamp: 2026-01-18T01:45:00.000Z
-[Email Sync] No new messages for business 1
+[Email Sync] Found 3 connected accounts
 [Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
 === GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:48:02.614Z
-Date.now(): 1768700882758
-Current date: 2026-01-18T01:48:02.759Z
-Using effective timestamp: 2026-01-18T01:48:02.000Z
+lastSync from DB: 2026-01-19T02:36:01.610Z
+Date.now(): 1768790340510
+Current date: 2026-01-19T02:39:00.510Z
+Using effective timestamp: 2026-01-19T02:36:01.000Z
 [Email Sync] No new messages for business 21
-[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:45:05.965Z
-Date.now(): 1768700884312
-Current date: 2026-01-18T01:48:04.312Z
-Using effective timestamp: 2026-01-18T01:45:05.000Z
-[Email Sync] No new messages for business 28
-[Email Sync] Syncing GMAIL for business 29 (rickie.111222@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:45:02.580Z
-Date.now(): 1768700885882
-Current date: 2026-01-18T01:48:05.882Z
-Using effective timestamp: 2026-01-18T01:45:02.000Z
-[Email Sync] No new messages for business 29
 [Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
 === GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:45:07.441Z
-Date.now(): 1768700887489
-Current date: 2026-01-18T01:48:07.489Z
-Using effective timestamp: 2026-01-18T01:45:07.000Z
+lastSync from DB: 2026-01-19T02:36:03.196Z
+Date.now(): 1768790342442
+Current date: 2026-01-19T02:39:02.443Z
+Using effective timestamp: 2026-01-19T02:36:03.000Z
 [Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T02:36:04.743Z
+Date.now(): 1768790344002
+Current date: 2026-01-19T02:39:04.002Z
+Using effective timestamp: 2026-01-19T02:36:04.000Z
+[Email Sync] No new messages for business 28
 
 ========================================
 [Email Sync] Sync job completed
-Businesses: 5
+Businesses: 3
 Messages synced: 0
 Errors: 0
 ========================================
@@ -1590,50 +3686,167 @@ Errors: 0
 
 ========================================
 [Email Sync] Starting email sync job
-Time: 2026-01-18T01:51:00.026Z
+Time: 2026-01-19T02:42:00.094Z
 ========================================
 
-[Email Sync] Found 5 connected accounts
-[Email Sync] Syncing GMAIL for business 1 (nurettinerzen@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:48:01.390Z
-Date.now(): 1768701060473
-Current date: 2026-01-18T01:51:00.473Z
-Using effective timestamp: 2026-01-18T01:48:01.000Z
-[Email Sync] No new messages for business 1
+[Email Sync] Found 3 connected accounts
 [Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
 === GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:48:02.956Z
-Date.now(): 1768701062192
-Current date: 2026-01-18T01:51:02.192Z
-Using effective timestamp: 2026-01-18T01:48:02.000Z
+lastSync from DB: 2026-01-19T02:42:00.635Z
+Date.now(): 1768790521156
+Current date: 2026-01-19T02:42:01.156Z
+Using effective timestamp: 2026-01-19T02:42:00.000Z
 [Email Sync] No new messages for business 21
-[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:48:04.515Z
-Date.now(): 1768701063663
-Current date: 2026-01-18T01:51:03.663Z
-Using effective timestamp: 2026-01-18T01:48:04.000Z
-[Email Sync] No new messages for business 28
-[Email Sync] Syncing GMAIL for business 29 (rickie.111222@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:48:06.220Z
-Date.now(): 1768701065224
-Current date: 2026-01-18T01:51:05.224Z
-Using effective timestamp: 2026-01-18T01:48:06.000Z
-[Email Sync] No new messages for business 29
 [Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
 === GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-18T01:48:07.680Z
-Date.now(): 1768701066817
-Current date: 2026-01-18T01:51:06.818Z
-Using effective timestamp: 2026-01-18T01:48:07.000Z
+lastSync from DB: 2026-01-19T02:42:02.162Z
+Date.now(): 1768790522806
+Current date: 2026-01-19T02:42:02.806Z
+Using effective timestamp: 2026-01-19T02:42:02.000Z
 [Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T02:42:03.696Z
+Date.now(): 1768790524414
+Current date: 2026-01-19T02:42:04.414Z
+Using effective timestamp: 2026-01-19T02:42:03.000Z
+[Email Sync] No new messages for business 28
 
 ========================================
 [Email Sync] Sync job completed
-Businesses: 5
+Businesses: 3
 Messages synced: 0
 Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T02:45:00.062Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T02:42:01.536Z
+Date.now(): 1768790700502
+Current date: 2026-01-19T02:45:00.502Z
+Using effective timestamp: 2026-01-19T02:42:01.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T02:42:03.105Z
+Date.now(): 1768790702227
+Current date: 2026-01-19T02:45:02.227Z
+Using effective timestamp: 2026-01-19T02:42:03.000Z
+[Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T02:42:04.672Z
+Date.now(): 1768790703757
+Current date: 2026-01-19T02:45:03.757Z
+Using effective timestamp: 2026-01-19T02:42:04.000Z
+[Email Sync] No new messages for business 28
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T02:48:00.065Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T02:48:00.736Z
+Date.now(): 1768790881212
+Current date: 2026-01-19T02:48:01.212Z
+Using effective timestamp: 2026-01-19T02:48:00.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T02:48:02.836Z
+Date.now(): 1768790882981
+Current date: 2026-01-19T02:48:02.982Z
+Using effective timestamp: 2026-01-19T02:48:02.000Z
+[Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T02:45:04.003Z
+Date.now(): 1768790884571
+Current date: 2026-01-19T02:48:04.571Z
+Using effective timestamp: 2026-01-19T02:45:04.000Z
+[Email Sync] Business 28: 0 new messages synced
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T02:51:00.061Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T02:48:01.598Z
+Date.now(): 1768791060567
+Current date: 2026-01-19T02:51:00.567Z
+Using effective timestamp: 2026-01-19T02:48:01.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T02:48:03.277Z
+Date.now(): 1768791062628
+Current date: 2026-01-19T02:51:02.628Z
+Using effective timestamp: 2026-01-19T02:48:03.000Z
+[Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T02:48:04.984Z
+Date.now(): 1768791064214
+Current date: 2026-01-19T02:51:04.214Z
+Using effective timestamp: 2026-01-19T02:48:04.000Z
+[Email Sync] No new messages for business 28
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+Restarting 'src/server.js'
+📞 Netgsm Configuration:
+Username: ✅ Exists
+Password: ✅ Exists
+API Key: ✅ Exists
+✅ ToolRegistry: 10 tools registered
+
+🚀 Initializing background jobs...
+⏰ Initializing monthly usage reset cron job...
+✅ Monthly reset job initialized (runs at 00:00 UTC on 1st of each month)
+[Email Sync] Initializing email sync cron job...
+[Email Sync] Cron job initialized (runs every 3 minutes)
+✅ Background jobs initialized
+
+
+========================================
+🚀 TELYX BACKEND SERVER
+========================================
+✅ Server running on port 3001
+🔗 Health check: http://localhost:3001/health
+🌍 Environment: development
 ========================================
 

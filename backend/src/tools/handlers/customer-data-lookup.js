@@ -231,6 +231,13 @@ export async function execute(args, business, context = {}) {
         }
       }
 
+      // DEBUG: List all phones in database for this business
+      const allPhones = await prisma.customerData.findMany({
+        where: { businessId: business.id },
+        select: { phone: true, companyName: true }
+      });
+      console.log('📱 All phones in DB:', allPhones.map(p => `${p.companyName}: "${p.phone}"`));
+
       // Try exact match with each variant, prioritizing target data type
       for (const phone of uniqueVariants) {
         // First try with file type filter
