@@ -386,16 +386,28 @@ export async function execute(args, business, context = {}) {
         const callerLast10 = String(callerPhone).replace(/[^\d]/g, '').slice(-10);
         const customerLast10 = String(customer.phone).replace(/[^\d]/g, '').slice(-10);
 
+        console.log('🔍 CALLER ID CHECK:', {
+          callerPhone,
+          callerNormalized,
+          callerLast10,
+          customerPhone: customer.phone,
+          customerNormalized,
+          customerLast10
+        });
+
         const callerMatchesRecord = callerNormalized === customerNormalized ||
                                     callerLast10 === customerLast10 ||
                                     (callerLast10.length >= 7 && customerLast10.includes(callerLast10));
 
         if (callerMatchesRecord) {
           console.log('✅ CALLER ID VERIFICATION: Caller phone matches record - skipping verification');
-          console.log(`   Caller: ${callerPhone} → Record: ${customer.phone}`);
           // Skip verification - caller is verified by their phone number
           // Fall through to return data directly
+        } else {
+          console.log('❌ CALLER ID MISMATCH: Caller phone does NOT match record');
         }
+      } else {
+        console.log('⚠️ CALLER ID CHECK SKIPPED:', { isTrustedChannel, callerPhone: !!callerPhone, customerPhone: !!customer.phone });
       }
 
       // For sensitive data, require verification (unless caller was verified above)

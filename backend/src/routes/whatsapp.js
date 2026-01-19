@@ -483,7 +483,10 @@ async function generateAIResponse(business, phoneNumber, userMessage, context = 
       const toolResult = await executeTool(functionCall.name, functionCall.args, business, {
         channel: 'WHATSAPP',
         sessionId: sessionId,
-        conversationId: sessionId
+        conversationId: sessionId,
+        callerPhone: phoneNumber, // WhatsApp phone number for verification
+        phone: phoneNumber,
+        from: phoneNumber
       });
 
       console.log('🔧 [WhatsApp] Tool result:', toolResult.success ? 'SUCCESS' : 'FAILED', toolResult.message?.substring(0, 100));

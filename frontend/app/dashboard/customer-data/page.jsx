@@ -157,9 +157,7 @@ export default function CustomerDataPage() {
   const [addFormData, setAddFormData] = useState({});
   const [isSaving, setIsSaving] = useState(false);
 
-  // Inline editing state
-  const [editingCell, setEditingCell] = useState(null); // {recordId, columnName}
-  const [editingValue, setEditingValue] = useState('');
+  // Inline editing removed - was causing data sync issues
 
   // Debounce search
   useEffect(() => {
@@ -844,94 +842,6 @@ export default function CustomerDataPage() {
     }
   };
 
-  // Start inline editing
-  const startEditing = (record, columnName) => {
-    setEditingCell({ recordId: record.id, columnName });
-    setEditingValue(getRecordValue(record, columnName) === '-' ? '' : getRecordValue(record, columnName));
-  };
-
-  // Save inline edit
-  const saveInlineEdit = async (record, columnName) => {
-    if (!editingCell) return;
-
-    const newValue = editingValue.trim();
-    const oldValue = getRecordValue(record, columnName);
-
-    // If value hasn't changed, just cancel
-    if (newValue === oldValue || (newValue === '' && oldValue === '-')) {
-      setEditingCell(null);
-      setEditingValue('');
-      return;
-    }
-
-    // Clear editing state immediately for better UX
-    setEditingCell(null);
-    setEditingValue('');
-
-    try {
-      // Determine which field to update
-      const fieldMapping = {
-        'Müşteri Adı': 'companyName',
-        'İşletme/Müşteri Adı': 'companyName',
-        'Firma': 'companyName',
-        'İsim Soyisim': 'companyName',
-        'Yetkili': 'contactName',
-        'Telefon': 'phone',
-        'Telefon No': 'phone',
-        'Email': 'email',
-        'E-mail': 'email',
-        'VKN': 'vkn',
-        'TC No': 'tcNo',
-        'Notlar': 'notes'
-      };
-
-      const standardField = fieldMapping[columnName];
-      const currentRecord = records.find(r => r.id === record.id);
-      const existingCustomFields = currentRecord?.customFields || record.customFields || {};
-      let updateData = {};
-
-      if (standardField) {
-        // Update standard field
-        updateData[standardField] = newValue || null;
-        // Also update the same value in customFields if it exists there (for display consistency)
-        if (existingCustomFields[columnName] !== undefined) {
-          updateData.customFields = { ...existingCustomFields, [columnName]: newValue || null };
-        }
-      } else {
-        // Update in customFields - merge with existing data
-        const updatedCustomFields = { ...existingCustomFields, [columnName]: newValue || null };
-        updateData.customFields = updatedCustomFields;
-      }
-
-      const response = await apiClient.customerData.update(record.id, updateData);
-      console.log('[Inline Edit] Update response:', response.data);
-      toast.success(locale === 'tr' ? 'Kaydedildi' : 'Saved');
-
-      // Update local state with server response for consistency
-      if (response.data?.customer) {
-        setRecords(prevRecords => prevRecords.map(r => {
-          if (r.id === record.id) {
-            return response.data.customer;
-          }
-          return r;
-        }));
-      } else {
-        // Fallback: reload from server
-        loadRecords();
-      }
-    } catch (error) {
-      console.error('Error saving:', error);
-      toast.error(locale === 'tr' ? 'Kaydetme başarısız' : 'Save failed');
-      // Reload to restore original state on error
-      loadRecords();
-    }
-  };
-
-  // Cancel inline edit
-  const cancelEditing = () => {
-    setEditingCell(null);
-    setEditingValue('');
-  };
 
   // Delete single record
   const handleDeleteRecord = async (recordId) => {
@@ -1195,36 +1105,14 @@ export default function CustomerDataPage() {
                         className="w-4 h-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
                       />
                     </td>
-                    {/* Dynamic column values - editable on double click */}
-                    {fileColumns.map((col, i) => {
-                      const isEditing = editingCell?.recordId === record.id && editingCell?.columnName === col.name;
-                      return (
-                        <td key={i} className="px-2 py-1">
-                          {isEditing ? (
-                            <input
-                              type="text"
-                              value={editingValue}
-                              onChange={(e) => setEditingValue(e.target.value)}
-                              onBlur={() => saveInlineEdit(record, col.name)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') saveInlineEdit(record, col.name);
-                                if (e.key === 'Escape') cancelEditing();
-                              }}
-                              autoFocus
-                              className="w-full px-2 py-1 text-sm border border-primary-500 rounded focus:outline-none focus:ring-1 focus:ring-primary-500 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white"
-                            />
-                          ) : (
-                            <div
-                              onDoubleClick={() => startEditing(record, col.name)}
-                              className="px-2 py-1 text-neutral-700 dark:text-neutral-300 max-w-[200px] truncate cursor-text hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded"
-                              title={locale === 'tr' ? 'Düzenlemek için çift tıkla' : 'Double-click to edit'}
-                            >
-                              {getRecordValue(record, col.name)}
-                            </div>
-                          )}
-                        </td>
-                      );
-                    })}
+                    {/* Dynamic column values - read only */}
+                    {fileColumns.map((col, i) => (
+                      <td key={i} className="px-4 py-3">
+                        <div className="text-neutral-700 dark:text-neutral-300 max-w-[200px] truncate">
+                          {getRecordValue(record, col.name)}
+                        </div>
+                      </td>
+                    ))}
                     {/* Actions - only delete */}
                     <td className="px-4 py-3 text-right">
                       <Button
