@@ -15,6 +15,11 @@ import prisma from '../../prismaClient.js';
 const verificationCache = new Map();
 const VERIFICATION_TTL = 10 * 60 * 1000; // 10 minutes
 
+// Failed verification attempt counter (security - prevent brute force)
+const failedAttemptCache = new Map();
+const MAX_FAILED_ATTEMPTS = 3;
+const FAILED_ATTEMPT_TTL = 30 * 60 * 1000; // 30 minutes lockout
+
 // Cleanup old verification states every 2 minutes
 setInterval(() => {
   const now = Date.now();
@@ -23,7 +28,28 @@ setInterval(() => {
       verificationCache.delete(key);
     }
   }
+  // Also cleanup failed attempts
+  for (const [key, data] of failedAttemptCache) {
+    if (now - data.timestamp > FAILED_ATTEMPT_TTL) {
+      failedAttemptCache.delete(key);
+    }
+  }
 }, 2 * 60 * 1000);
+
+/**
+ * Track failed verification attempt
+ * Returns true if max attempts reached (should end call)
+ */
+function trackFailedAttempt(sessionId) {
+  const existing = failedAttemptCache.get(sessionId) || { count: 0, timestamp: Date.now() };
+  existing.count++;
+  existing.timestamp = Date.now();
+  failedAttemptCache.set(sessionId, existing);
+
+  console.log(`🚨 Failed attempt #${existing.count} for session: ${sessionId}`);
+
+  return existing.count >= MAX_FAILED_ATTEMPTS;
+}
 
 /**
  * Execute customer data lookup
@@ -85,6 +111,17 @@ export async function execute(args, business, context = {}) {
       } else if (verificationResult.failed) {
         console.log('❌ VERIFICATION FAILED:', verificationResult.reason);
         verificationCache.delete(sessionId);
+        const shouldEndCall = trackFailedAttempt(sessionId);
+        if (shouldEndCall) {
+          return {
+            success: false,
+            error: business.language === 'TR'
+              ? 'Çok fazla yanlış bilgi girdiniz. Güvenlik nedeniyle bu görüşmeyi sonlandırıyorum.'
+              : 'Too many incorrect attempts. Ending this conversation for security reasons.',
+            verificationFailed: true,
+            forceEndCall: true
+          };
+        }
         return {
           success: false,
           error: verificationResult.message,
@@ -353,6 +390,18 @@ export async function execute(args, business, context = {}) {
       console.log('❌ VERIFICATION FAILED: Identifiers point to different customers');
       verificationCache.delete(sessionId);
 
+      const shouldEndCall = trackFailedAttempt(sessionId);
+      if (shouldEndCall) {
+        return {
+          success: false,
+          error: business.language === 'TR'
+            ? 'Çok fazla yanlış bilgi girdiniz. Güvenlik nedeniyle bu görüşmeyi sonlandırıyorum.'
+            : 'Too many incorrect attempts. Ending this conversation for security reasons.',
+          verificationFailed: true,
+          forceEndCall: true
+        };
+      }
+
       const failMessage = business.language === 'TR'
         ? 'Verdiğiniz bilgiler birbiriyle eşleşmiyor. Güvenlik nedeniyle bilgileri paylaşamıyorum. Lütfen doğru bilgilerle tekrar deneyin.'
         : 'The information you provided does not match. For security reasons, I cannot share the details. Please try again with correct information.';
@@ -473,6 +522,17 @@ export async function execute(args, business, context = {}) {
 
       if (!phoneMatches) {
         console.log('❌ VERIFICATION FAILED: Phone does not match order record');
+        const shouldEndCall = trackFailedAttempt(sessionId);
+        if (shouldEndCall) {
+          return {
+            success: false,
+            error: business.language === 'TR'
+              ? 'Çok fazla yanlış bilgi girdiniz. Güvenlik nedeniyle bu görüşmeyi sonlandırıyorum.'
+              : 'Too many incorrect attempts. Ending this conversation for security reasons.',
+            verificationFailed: true,
+            forceEndCall: true
+          };
+        }
         const failMessage = business.language === 'TR'
           ? 'Verdiğiniz telefon numarası bu siparişle eşleşmiyor. Güvenlik nedeniyle bilgileri paylaşamıyorum.'
           : 'The phone number you provided does not match this order. For security reasons, I cannot share the details.';

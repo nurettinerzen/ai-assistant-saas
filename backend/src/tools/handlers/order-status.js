@@ -13,6 +13,11 @@ import ecommerceAggregator from '../../services/ecommerce-aggregator.js';
 const verificationCache = new Map();
 const VERIFICATION_TTL = 10 * 60 * 1000; // 10 minutes
 
+// Failed verification attempt counter (security - prevent brute force)
+const failedAttemptCache = new Map();
+const MAX_FAILED_ATTEMPTS = 3;
+const FAILED_ATTEMPT_TTL = 30 * 60 * 1000; // 30 minutes lockout
+
 // Cleanup old verification states every 2 minutes
 setInterval(() => {
   const now = Date.now();
@@ -21,7 +26,28 @@ setInterval(() => {
       verificationCache.delete(key);
     }
   }
+  // Also cleanup failed attempts
+  for (const [key, data] of failedAttemptCache) {
+    if (now - data.timestamp > FAILED_ATTEMPT_TTL) {
+      failedAttemptCache.delete(key);
+    }
+  }
 }, 2 * 60 * 1000);
+
+/**
+ * Track failed verification attempt
+ * Returns true if max attempts reached (should end call)
+ */
+function trackFailedAttempt(sessionId) {
+  const existing = failedAttemptCache.get(sessionId) || { count: 0, timestamp: Date.now() };
+  existing.count++;
+  existing.timestamp = Date.now();
+  failedAttemptCache.set(sessionId, existing);
+
+  console.log(`🚨 Failed attempt #${existing.count} for session: ${sessionId}`);
+
+  return existing.count >= MAX_FAILED_ATTEMPTS;
+}
 
 /**
  * Normalize Turkish characters to ASCII equivalents
@@ -121,6 +147,17 @@ export async function execute(args, business, context = {}) {
         } else {
           console.log('❌ Phone verification failed:', customer_phone, 'vs', order.customerPhone);
           verificationCache.delete(sessionId);
+          const shouldEndCall = trackFailedAttempt(sessionId);
+          if (shouldEndCall) {
+            return {
+              success: false,
+              error: business.language === 'TR'
+                ? 'Çok fazla yanlış bilgi girdiniz. Güvenlik nedeniyle bu görüşmeyi sonlandırıyorum.'
+                : 'Too many incorrect attempts. Ending this conversation for security reasons.',
+              verificationFailed: true,
+              forceEndCall: true
+            };
+          }
           return {
             success: false,
             error: business.language === 'TR'
@@ -139,6 +176,17 @@ export async function execute(args, business, context = {}) {
         } else {
           console.log('❌ Name verification failed:', customer_name, 'vs', order.customerName);
           verificationCache.delete(sessionId);
+          const shouldEndCall = trackFailedAttempt(sessionId);
+          if (shouldEndCall) {
+            return {
+              success: false,
+              error: business.language === 'TR'
+                ? 'Çok fazla yanlış bilgi girdiniz. Güvenlik nedeniyle bu görüşmeyi sonlandırıyorum.'
+                : 'Too many incorrect attempts. Ending this conversation for security reasons.',
+              verificationFailed: true,
+              forceEndCall: true
+            };
+          }
           return {
             success: false,
             error: business.language === 'TR'
@@ -157,6 +205,17 @@ export async function execute(args, business, context = {}) {
         } else {
           console.log('❌ Email verification failed');
           verificationCache.delete(sessionId);
+          const shouldEndCall = trackFailedAttempt(sessionId);
+          if (shouldEndCall) {
+            return {
+              success: false,
+              error: business.language === 'TR'
+                ? 'Çok fazla yanlış bilgi girdiniz. Güvenlik nedeniyle bu görüşmeyi sonlandırıyorum.'
+                : 'Too many incorrect attempts. Ending this conversation for security reasons.',
+              verificationFailed: true,
+              forceEndCall: true
+            };
+          }
           return {
             success: false,
             error: business.language === 'TR'
@@ -272,6 +331,17 @@ export async function execute(args, business, context = {}) {
 
         if (matchCount < 2) {
           console.log('❌ Two identifiers provided but they point to different orders');
+          const shouldEndCall = trackFailedAttempt(sessionId);
+          if (shouldEndCall) {
+            return {
+              success: false,
+              error: business.language === 'TR'
+                ? 'Çok fazla yanlış bilgi girdiniz. Güvenlik nedeniyle bu görüşmeyi sonlandırıyorum.'
+                : 'Too many incorrect attempts. Ending this conversation for security reasons.',
+              verificationFailed: true,
+              forceEndCall: true
+            };
+          }
           return {
             success: false,
             error: business.language === 'TR'
