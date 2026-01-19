@@ -588,6 +588,21 @@ function tryDynamicVerification(pendingVerification, providedData, language) {
 }
 
 /**
+ * Normalize Turkish characters to ASCII equivalents
+ * ş→s, ı→i, ğ→g, ü→u, ö→o, ç→c, İ→i, Ş→s, Ğ→g, Ü→u, Ö→o, Ç→c
+ */
+function normalizeTurkish(str) {
+  if (!str) return '';
+  return str
+    .replace(/ş/g, 's').replace(/Ş/g, 's')
+    .replace(/ı/g, 'i').replace(/İ/g, 'i')
+    .replace(/ğ/g, 'g').replace(/Ğ/g, 'g')
+    .replace(/ü/g, 'u').replace(/Ü/g, 'u')
+    .replace(/ö/g, 'o').replace(/Ö/g, 'o')
+    .replace(/ç/g, 'c').replace(/Ç/g, 'c');
+}
+
+/**
  * Fuzzy match values based on field type
  */
 function fuzzyMatch(provided, stored, fieldType) {
@@ -604,8 +619,10 @@ function fuzzyMatch(provided, stored, fieldType) {
       return providedDigits === storedDigits || providedDigits.length >= 7 && storedDigits.includes(providedDigits);
 
     case 'name':
-      // Fuzzy name match - check if one contains the other
-      return storedStr.includes(providedStr) || providedStr.includes(storedStr) || storedStr === providedStr;
+      // Fuzzy name match - normalize Turkish chars and check if one contains the other
+      const providedNorm = normalizeTurkish(providedStr);
+      const storedNorm = normalizeTurkish(storedStr);
+      return storedNorm.includes(providedNorm) || providedNorm.includes(storedNorm) || storedNorm === providedNorm;
 
     case 'vkn':
     case 'tc':
