@@ -187,7 +187,13 @@ export async function getOrderByEmail(businessId, email) {
 
 /**
  * Search orders by any criteria (order number, phone, or email)
- * Tries each method in order until a match is found
+ *
+ * IMPORTANT: If multiple criteria are provided, we search by the PRIMARY one only.
+ * We do NOT fall back to other criteria if the primary one fails.
+ * This prevents returning a different order than what the user asked for.
+ *
+ * Priority: orderNumber > phone > email
+ *
  * @param {number} businessId - Business ID
  * @param {Object} criteria - Search criteria
  * @param {string} [criteria.orderNumber] - Order number
@@ -198,29 +204,54 @@ export async function getOrderByEmail(businessId, email) {
 export async function searchOrder(businessId, criteria) {
   const { orderNumber, phone, email } = criteria;
 
-  // Try order number first (most precise)
+  // Determine primary search method based on what was provided
+  // DO NOT fall back to other criteria - this would return wrong order!
+
+  // If order number is provided, search ONLY by order number
   if (orderNumber) {
+    console.log('🔍 Aggregator: Searching by order number ONLY (no fallback)');
     const result = await getOrderByNumber(businessId, orderNumber);
     if (result.success) return result;
+
+    // Order number not found - return not found, don't try phone/email
+    return {
+      success: false,
+      error: 'Bu sipariş numarası ile kayıt bulunamadı.',
+      code: 'NOT_FOUND'
+    };
   }
 
-  // Try phone
+  // If phone is provided (no order number), search by phone
   if (phone) {
+    console.log('🔍 Aggregator: Searching by phone ONLY');
     const result = await getOrderByPhone(businessId, phone);
     if (result.success) return result;
+
+    return {
+      success: false,
+      error: 'Bu telefon numarası ile sipariş bulunamadı.',
+      code: 'NOT_FOUND'
+    };
   }
 
-  // Try email
+  // If email is provided (no order number, no phone), search by email
   if (email) {
+    console.log('🔍 Aggregator: Searching by email ONLY');
     const result = await getOrderByEmail(businessId, email);
     if (result.success) return result;
+
+    return {
+      success: false,
+      error: 'Bu e-posta adresi ile sipariş bulunamadı.',
+      code: 'NOT_FOUND'
+    };
   }
 
-  // Nothing found
+  // Nothing provided
   return {
     success: false,
-    error: 'Sipariş bulunamadı. Lütfen sipariş numaranızı veya telefon numaranızı kontrol edin.',
-    code: 'NOT_FOUND'
+    error: 'Sipariş numarası, telefon numarası veya e-posta gerekli.',
+    code: 'MISSING_CRITERIA'
   };
 }
 
