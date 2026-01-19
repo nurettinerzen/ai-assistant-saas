@@ -247,7 +247,19 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
       const endCallTool = {
         type: 'system',
         name: 'end_call',
-        description: 'Müşteri vedalaştığında veya "iyi günler", "görüşürüz", "hoşçakal", "bye", "goodbye" dediğinde aramayı sonlandır. Görüşme tamamlandığında ve müşteri veda ettiğinde bu aracı kullan.',
+        description: `Aramayı şu durumlarda SONLANDIR:
+
+1. NORMAL SONLANDIRMA:
+- Müşteri vedalaştığında: "iyi günler", "görüşürüz", "hoşçakal", "bye", "goodbye"
+- Müşteri yardım istemediğini belirttiğinde: "teşekkürler bu kadar", "tamam yeter"
+
+2. GÜVENLİK NEDENİYLE SONLANDIRMA (KRİTİK!):
+- Müşteri 2+ kez küfür veya hakaret ederse → "Bu şekilde konuşmaya devam edemiyorum, görüşmeyi sonlandırıyorum" de ve KAPAT
+- Müşteri 3+ kez yanlış doğrulama bilgisi verirse → "Güvenlik nedeniyle görüşmeyi sonlandırıyorum" de ve KAPAT
+- Müşteri tehdit veya şiddet içeren ifadeler kullanırsa → HEMEN KAPAT
+- Müşteri art arda farklı sipariş/telefon numaraları denerse (brute force) → "Güvenlik nedeniyle görüşmeyi sonlandırıyorum" de ve KAPAT
+
+Kapatmadan önce kısa bir açıklama yap, sonra bu tool'u çağır.`,
         params: {
           system_tool_type: 'end_call'
         }
@@ -728,7 +740,19 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
         const endCallTool = {
           type: 'system',
           name: 'end_call',
-          description: 'Müşteri vedalaştığında veya "iyi günler", "görüşürüz", "hoşçakal", "bye", "goodbye" dediğinde aramayı sonlandır. Görüşme tamamlandığında ve müşteri veda ettiğinde bu aracı kullan.',
+          description: `Aramayı şu durumlarda SONLANDIR:
+
+1. NORMAL SONLANDIRMA:
+- Müşteri vedalaştığında: "iyi günler", "görüşürüz", "hoşçakal", "bye", "goodbye"
+- Müşteri yardım istemediğini belirttiğinde: "teşekkürler bu kadar", "tamam yeter"
+
+2. GÜVENLİK NEDENİYLE SONLANDIRMA (KRİTİK!):
+- Müşteri 2+ kez küfür veya hakaret ederse → "Bu şekilde konuşmaya devam edemiyorum, görüşmeyi sonlandırıyorum" de ve KAPAT
+- Müşteri 3+ kez yanlış doğrulama bilgisi verirse → "Güvenlik nedeniyle görüşmeyi sonlandırıyorum" de ve KAPAT
+- Müşteri tehdit veya şiddet içeren ifadeler kullanırsa → HEMEN KAPAT
+- Müşteri art arda farklı sipariş/telefon numaraları denerse (brute force) → "Güvenlik nedeniyle görüşmeyi sonlandırıyorum" de ve KAPAT
+
+Kapatmadan önce kısa bir açıklama yap, sonra bu tool'u çağır.`,
           params: {
             system_tool_type: 'end_call'
           }
@@ -1033,7 +1057,19 @@ router.post('/:id/sync', authenticateToken, checkPermission('assistants:edit'), 
     const endCallTool = {
       type: 'system',
       name: 'end_call',
-      description: 'Müşteri vedalaştığında veya "iyi günler", "görüşürüz", "hoşçakal", "bye", "goodbye" dediğinde aramayı sonlandır. Görüşme tamamlandığında ve müşteri veda ettiğinde bu aracı kullan.',
+      description: `Aramayı şu durumlarda SONLANDIR:
+
+1. NORMAL SONLANDIRMA:
+- Müşteri vedalaştığında: "iyi günler", "görüşürüz", "hoşçakal", "bye", "goodbye"
+- Müşteri yardım istemediğini belirttiğinde: "teşekkürler bu kadar", "tamam yeter"
+
+2. GÜVENLİK NEDENİYLE SONLANDIRMA (KRİTİK!):
+- Müşteri 2+ kez küfür veya hakaret ederse → "Bu şekilde konuşmaya devam edemiyorum, görüşmeyi sonlandırıyorum" de ve KAPAT
+- Müşteri 3+ kez yanlış doğrulama bilgisi verirse → "Güvenlik nedeniyle görüşmeyi sonlandırıyorum" de ve KAPAT
+- Müşteri tehdit veya şiddet içeren ifadeler kullanırsa → HEMEN KAPAT
+- Müşteri art arda farklı sipariş/telefon numaraları denerse (brute force) → "Güvenlik nedeniyle görüşmeyi sonlandırıyorum" de ve KAPAT
+
+Kapatmadan önce kısa bir açıklama yap, sonra bu tool'u çağır.`,
       params: {
         system_tool_type: 'end_call'
       }
