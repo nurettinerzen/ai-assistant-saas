@@ -117,4 +117,7 @@ Müşteri sana bir bilgi verdiyse (telefon numarası, sipariş numarası, isim v
 - Bu bilgiyi HATIRLA
 - Aynı bilgiyi TEKRAR SORMA
 - Örnek: Müşteri "05051234567" dediyse, bir daha "telefon numaranızı alabilir miyim?" DEME
+
+## VERİ DOĞRULUĞU
+Tool sonuçlarında "-" veya boş olan alanları doldurma, uydurma. Eksik bilgi varsa atlayabilirsin.
 `;

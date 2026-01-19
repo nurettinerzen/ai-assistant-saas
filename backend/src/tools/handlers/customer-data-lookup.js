@@ -74,8 +74,8 @@ export async function execute(args, business, context = {}) {
           const responseData = formatAllData(customer, customFields);
           const responseMessage = formatResponseMessage(customer, customFields, query_type, business.language);
           const instruction = business.language === 'TR'
-            ? '\n\n[TALİMAT: Bu bilgiyi müşteriye HEMEN aktar.]'
-            : '\n\n[INSTRUCTION: Share this information with the customer NOW.]';
+            ? '\n\n[Bilgiyi aktar.]'
+            : '\n\n[Share this info.]';
           return {
             success: true,
             data: responseData,
@@ -494,10 +494,10 @@ export async function execute(args, business, context = {}) {
     const responseData = formatAllData(customer, customFields);
     const responseMessage = formatResponseMessage(customer, customFields, query_type, business.language);
 
-    // Add instruction for AI to speak the result (fixes "kontrol ediyorum" without follow-up issue)
+    // Add instruction for AI
     const instruction = business.language === 'TR'
-      ? '\n\n[TALİMAT: Bu bilgiyi müşteriye HEMEN sesli olarak aktar. "Kontrol ediyorum" gibi şeyler SÖYLEME - direkt bilgiyi paylaş.]'
-      : '\n\n[INSTRUCTION: Speak this information to the customer NOW. Do NOT say "checking" - share the info directly.]';
+      ? '\n\n[Bilgiyi aktar. Eksik alanları atlayabilirsin.]'
+      : '\n\n[Share this info. Skip missing fields.]';
 
     return {
       success: true,
@@ -872,42 +872,26 @@ function formatResponseMessage(customer, customFields, queryType, language) {
     const product = customFields['Ürün'] || customFields['Urun'] || customFields['ÜRÜN'] || customFields['product'] || '-';
     const amount = customFields['Tutar'] || customFields['TUTAR'] || customFields['tutar'] || customFields['amount'] || '-';
     const orderDate = customFields['Sipariş Tarihi'] || customFields['Siparis Tarihi'] || customFields['order_date'] || '-';
-    const status = customFields['Kargo Durumu'] || customFields['Durum'] || customFields['status'] || '-';
+    const status = customFields['Sipariş Durumu'] || customFields['Siparis Durumu'] || customFields['Kargo Durumu'] || customFields['Durum'] || customFields['status'] || '-';
     const trackingNo = customFields['Kargo Takip No'] || customFields['tracking_number'] || '-';
     const customerName = customFields['Müşteri Adı'] || customFields['Musteri Adi'] || customer.companyName;
     const notes = customFields['Notlar'] || customFields['NOTLAR'] || customer.notes || '';
 
     if (isTR) {
-      message = `${orderNo} numaralı siparişiniz ${customerName} adına kayıtlı`;
-      if (orderDate !== '-') message += ` ve ${orderDate} tarihinde oluşturulmuş`;
-      message += `. Şu anda "${status}" aşamasında.`;
-
-      if (product !== '-') {
-        message += ` Siparişinizdeki ürünler: ${product}.`;
-      }
-      if (amount !== '-') {
-        message += ` Toplam tutar: ${amount} TL.`;
-      }
-      if (trackingNo !== '-') {
-        message += ` Kargo takip numaranız: ${trackingNo}.`;
-      }
-      if (notes) {
-        message += ` Not: ${notes}`;
-      }
+      message = `${orderNo} numaralı siparişiniz ${customerName} adına kayıtlı.`;
+      if (status !== '-') message += ` Durum: ${status}.`;
+      if (orderDate !== '-') message += ` Tarih: ${orderDate}.`;
+      if (product !== '-') message += ` Ürün: ${product}.`;
+      if (amount !== '-') message += ` Tutar: ${amount} TL.`;
+      if (trackingNo !== '-') message += ` Kargo takip: ${trackingNo}.`;
+      if (notes) message += ` Not: ${notes}`;
     } else {
-      message = `Order ${orderNo} is registered to ${customerName}`;
-      if (orderDate !== '-') message += ` and was created on ${orderDate}`;
-      message += `. Current status: "${status}".`;
-
-      if (product !== '-') {
-        message += ` Products: ${product}.`;
-      }
-      if (amount !== '-') {
-        message += ` Total amount: ${amount}.`;
-      }
-      if (trackingNo !== '-') {
-        message += ` Tracking number: ${trackingNo}.`;
-      }
+      message = `Order ${orderNo} is registered to ${customerName}.`;
+      if (status !== '-') message += ` Status: ${status}.`;
+      if (orderDate !== '-') message += ` Date: ${orderDate}.`;
+      if (product !== '-') message += ` Product: ${product}.`;
+      if (amount !== '-') message += ` Amount: ${amount}.`;
+      if (trackingNo !== '-') message += ` Tracking: ${trackingNo}.`;
     }
     return message;
   }
