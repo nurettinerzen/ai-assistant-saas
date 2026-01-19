@@ -892,7 +892,7 @@ router.delete('/:id', authenticateToken, checkPermission('assistants:edit'), asy
 
     // Check if assistant belongs to this business
     const assistant = await prisma.assistant.findFirst({
-      where: { 
+      where: {
         id,
         businessId,
       },
@@ -922,6 +922,250 @@ router.delete('/:id', authenticateToken, checkPermission('assistants:edit'), asy
   } catch (error) {
     console.error('Error deleting assistant:', error);
     res.status(500).json({ error: 'Failed to delete assistant' });
+  }
+});
+
+// GET /api/assistants/:id/debug - Debug 11Labs agent status
+router.get('/:id/debug', authenticateToken, async (req, res) => {
+  try {
+    const businessId = req.businessId;
+    const { id } = req.params;
+
+    const assistant = await prisma.assistant.findFirst({
+      where: { id, businessId, isActive: true },
+    });
+
+    if (!assistant) {
+      return res.status(404).json({ error: 'Assistant not found' });
+    }
+
+    if (!assistant.elevenLabsAgentId) {
+      return res.status(400).json({ error: 'No 11Labs agent ID' });
+    }
+
+    // Get agent from 11Labs
+    const agent = await elevenLabsService.getAgent(assistant.elevenLabsAgentId);
+
+    // Extract tool info
+    const toolIds = agent.tool_ids || [];
+    const inlineTools = agent.conversation_config?.agent?.prompt?.tools || [];
+
+    res.json({
+      assistant: {
+        id: assistant.id,
+        name: assistant.name,
+        elevenLabsAgentId: assistant.elevenLabsAgentId,
+        createdAt: assistant.createdAt
+      },
+      elevenLabs: {
+        agentId: agent.agent_id,
+        name: agent.name,
+        tool_ids: toolIds,
+        tool_ids_count: toolIds.length,
+        inline_tools: inlineTools.map(t => ({ name: t.name, type: t.type })),
+        inline_tools_count: inlineTools.length,
+        hasToolIdsProblem: toolIds.length > 0,
+        hasInlineTools: inlineTools.length > 0
+      },
+      diagnosis: toolIds.length > 0
+        ? '⚠️ Agent uses tool_ids (may cause Unknown tool error). Run SYNC to fix.'
+        : inlineTools.length > 0
+          ? '✅ Agent uses inline tools (correct setup)'
+          : '❌ Agent has no tools at all!'
+    });
+  } catch (error) {
+    console.error('Debug error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/assistants/:id/sync - Sync assistant to 11Labs (fix tools)
+router.post('/:id/sync', authenticateToken, checkPermission('assistants:edit'), async (req, res) => {
+  try {
+    const businessId = req.businessId;
+    const { id } = req.params;
+
+    // Get assistant with business info
+    const assistant = await prisma.assistant.findFirst({
+      where: {
+        id,
+        businessId,
+        isActive: true,
+      },
+    });
+
+    if (!assistant) {
+      return res.status(404).json({ error: 'Assistant not found' });
+    }
+
+    if (!assistant.elevenLabsAgentId) {
+      return res.status(400).json({ error: 'Assistant has no 11Labs agent ID' });
+    }
+
+    // Get business with integrations
+    const business = await prisma.business.findUnique({
+      where: { id: businessId },
+      include: { integrations: { where: { isActive: true } } }
+    });
+
+    const lang = business?.language || 'TR';
+    const elevenLabsLang = getElevenLabsLanguage(lang);
+    const elevenLabsVoiceId = getElevenLabsVoiceId(assistant.voiceId, lang);
+
+    console.log('🔄 Syncing assistant to 11Labs:', assistant.id, '->', assistant.elevenLabsAgentId);
+
+    // First, check current agent state
+    try {
+      const currentAgent = await elevenLabsService.getAgent(assistant.elevenLabsAgentId);
+      const currentToolIds = currentAgent.tool_ids || [];
+      const currentInlineTools = currentAgent.conversation_config?.agent?.prompt?.tools || [];
+      console.log('📊 CURRENT AGENT STATE:');
+      console.log('   - tool_ids:', currentToolIds.length > 0 ? currentToolIds : 'none');
+      console.log('   - inline_tools:', currentInlineTools.length > 0 ? currentInlineTools.map(t => t.name) : 'none');
+      if (currentToolIds.length > 0) {
+        console.log('   ⚠️ PROBLEM: Agent has tool_ids which may be broken!');
+      }
+    } catch (checkErr) {
+      console.warn('⚠️ Could not check current agent state:', checkErr.message);
+    }
+
+    // System tools (end_call, voicemail_detection)
+    const endCallTool = {
+      type: 'system',
+      name: 'end_call',
+      description: 'Müşteri vedalaştığında veya "iyi günler", "görüşürüz", "hoşçakal", "bye", "goodbye" dediğinde aramayı sonlandır. Görüşme tamamlandığında ve müşteri veda ettiğinde bu aracı kullan.',
+      params: {
+        system_tool_type: 'end_call'
+      }
+    };
+
+    const voicemailDetectionTool = {
+      type: 'system',
+      name: 'voicemail_detection',
+      description: 'Sesli mesaj (voicemail) algılandığında aramayı otomatik olarak sonlandırır.',
+      params: {
+        system_tool_type: 'voicemail_detection',
+        voicemail_message: '',
+        use_out_of_band_dtmf: false
+      }
+    };
+
+    // Webhook tools - inline in agent config
+    const backendUrl = process.env.BACKEND_URL || 'https://api.telyx.ai';
+    const webhookUrl = `${backendUrl}/api/elevenlabs/webhook?agentId=${assistant.elevenLabsAgentId}`;
+    const activeToolDefinitions = getActiveTools(business);
+
+    const webhookTools = activeToolDefinitions.map(tool => ({
+      type: 'webhook',
+      name: tool.function.name,
+      description: tool.function.description,
+      api_schema: {
+        url: webhookUrl,
+        method: 'POST',
+        request_body_schema: {
+          type: 'object',
+          properties: {
+            tool_name: {
+              type: 'string',
+              constant_value: tool.function.name
+            },
+            ...Object.fromEntries(
+              Object.entries(tool.function.parameters.properties || {}).map(([key, value]) => [
+                key,
+                {
+                  type: value.type || 'string',
+                  description: value.description || '',
+                  ...(value.enum ? { enum: value.enum } : {})
+                }
+              ])
+            )
+          },
+          required: tool.function.parameters.required || []
+        }
+      }
+    }));
+
+    // All tools: system + webhook (inline)
+    const allTools = [endCallTool, voicemailDetectionTool, ...webhookTools];
+    console.log('🔧 Tools to sync:', allTools.map(t => t.name));
+
+    // Language-specific analysis prompts
+    const analysisPrompts = {
+      tr: {
+        transcript_summary: 'Bu görüşmenin kısa bir özetini Türkçe olarak yaz. Müşterinin amacını, konuşulan konuları ve sonucu belirt.',
+        success_evaluation: 'Görüşme başarılı mı? Müşterinin talebi karşılandı mı?'
+      },
+      en: {
+        transcript_summary: 'Write a brief summary of this conversation. State the customer purpose, topics discussed, and outcome.',
+        success_evaluation: 'Was the conversation successful? Was the customer request fulfilled?'
+      }
+    };
+    const langAnalysis = analysisPrompts[elevenLabsLang] || analysisPrompts.en;
+
+    // Build the update config - this replaces tool_ids with inline tools
+    const agentUpdateConfig = {
+      name: assistant.name,
+      conversation_config: {
+        agent: {
+          prompt: {
+            prompt: assistant.systemPrompt,
+            llm: 'gemini-2.5-flash',
+            temperature: 0.1,
+            tools: allTools  // Inline tools replace tool_ids
+          },
+          first_message: assistant.firstMessage,
+          language: elevenLabsLang
+        },
+        tts: {
+          voice_id: elevenLabsVoiceId,
+          model_id: 'eleven_turbo_v2_5',
+          stability: 0.4,
+          similarity_boost: 0.6,
+          style: 0.15,
+          optimize_streaming_latency: 3
+        },
+        stt: {
+          provider: 'elevenlabs',
+          model: 'scribe_v1',
+          language: elevenLabsLang
+        },
+        turn: {
+          mode: 'turn',
+          turn_timeout: 8,
+          turn_eagerness: 'normal',
+          silence_end_call_timeout: 30
+        },
+        analysis: {
+          transcript_summary_prompt: langAnalysis.transcript_summary,
+          success_evaluation_prompt: langAnalysis.success_evaluation
+        }
+      }
+    };
+
+    // Also clear any existing tool_ids to ensure clean switch to inline tools
+    try {
+      // First, try to clear tool_ids
+      await elevenLabsService.updateAgent(assistant.elevenLabsAgentId, {
+        tool_ids: []  // Clear external tool references
+      });
+      console.log('✅ Cleared tool_ids from agent');
+    } catch (clearError) {
+      console.warn('⚠️ Could not clear tool_ids (may not exist):', clearError.message);
+    }
+
+    // Now update with inline tools
+    await elevenLabsService.updateAgent(assistant.elevenLabsAgentId, agentUpdateConfig);
+    console.log('✅ 11Labs Agent synced with inline tools');
+
+    res.json({
+      success: true,
+      message: 'Assistant synced to 11Labs successfully',
+      tools: allTools.map(t => t.name)
+    });
+
+  } catch (error) {
+    console.error('Error syncing assistant:', error);
+    res.status(500).json({ error: 'Failed to sync assistant: ' + (error.response?.data?.detail || error.message) });
   }
 });
 

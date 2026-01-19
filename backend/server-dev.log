@@ -1211,7 +1211,29 @@ Emitted 'error' event on Server instance at:
 
 Node.js v20.19.5
 Failed running 'src/server.js'
-(/Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/node_modules/express/lib/application.js:635:24)
+Restarting 'src/server.js'
+📞 Netgsm Configuration:
+Username: ✅ Exists
+Password: ✅ Exists
+API Key: ✅ Exists
+✅ ToolRegistry: 10 tools registered
+
+🚀 Initializing background jobs...
+⏰ Initializing monthly usage reset cron job...
+✅ Monthly reset job initialized (runs at 00:00 UTC on 1st of each month)
+[Email Sync] Initializing email sync cron job...
+[Email Sync] Cron job initialized (runs every 3 minutes)
+✅ Background jobs initialized
+
+node:events:502
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1908:16)
+    at listenInCluster (node:net:1965:12)
+    at Server.listen (node:net:2067:7)
+    at Function.listen (/Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/node_modules/express/lib/application.js:635:24)
     at file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/server.js:211:7
 Emitted 'error' event on Server instance at:
     at emitErrorNT (node:net:1944:8)
@@ -1225,6 +1247,217 @@ Emitted 'error' event on Server instance at:
 
 Node.js v20.19.5
 Failed running 'src/server.js'
+Restarting 'src/server.js'
+📞 Netgsm Configuration:
+Username: ✅ Exists
+Password: ✅ Exists
+API Key: ✅ Exists
+✅ ToolRegistry: 10 tools registered
+
+🚀 Initializing background jobs...
+⏰ Initializing monthly usage reset cron job...
+✅ Monthly reset job initialized (runs at 00:00 UTC on 1st of each month)
+[Email Sync] Initializing email sync cron job...
+[Email Sync] Cron job initialized (runs every 3 minutes)
+✅ Background jobs initialized
+
+
+========================================
+🚀 TELYX BACKEND SERVER
+========================================
+✅ Server running on port 3001
+🔗 Health check: http://localhost:3001/health
+🌍 Environment: development
+========================================
+
+Restarting 'src/server.js'
+📞 Netgsm Configuration:
+Username: ✅ Exists
+Password: ✅ Exists
+API Key: ✅ Exists
+✅ ToolRegistry: 10 tools registered
+
+🚀 Initializing background jobs...
+⏰ Initializing monthly usage reset cron job...
+✅ Monthly reset job initialized (runs at 00:00 UTC on 1st of each month)
+[Email Sync] Initializing email sync cron job...
+[Email Sync] Cron job initialized (runs every 3 minutes)
+✅ Background jobs initialized
+
+
+========================================
+🚀 TELYX BACKEND SERVER
+========================================
+✅ Server running on port 3001
+🔗 Health check: http://localhost:3001/health
+🌍 Environment: development
+========================================
+
+🔄 Syncing assistant to 11Labs: cmkircxht000110c6k1pytkqr -> agent_0901kf6t6w6jfnqvevggc5bkg8hn
+📊 CURRENT AGENT STATE:
+   - tool_ids: none
+   - inline_tools: [
+  'customer_data_lookup',
+  'create_callback',
+  'end_call',
+  'voicemail_detection'
+]
+🔧 Tools to sync: [
+  'end_call',
+  'voicemail_detection',
+  'customer_data_lookup',
+  'create_callback'
+]
+✅ 11Labs Agent updated: agent_0901kf6t6w6jfnqvevggc5bkg8hn
+✅ Cleared tool_ids from agent
+✅ 11Labs Agent updated: agent_0901kf6t6w6jfnqvevggc5bkg8hn
+✅ 11Labs Agent synced with inline tools
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T03:54:00.034Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T03:54:00.623Z
+Date.now(): 1768794841068
+Current date: 2026-01-19T03:54:01.068Z
+Using effective timestamp: 2026-01-19T03:54:00.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T03:54:02.250Z
+Date.now(): 1768794842777
+Current date: 2026-01-19T03:54:02.778Z
+Using effective timestamp: 2026-01-19T03:54:02.000Z
+[Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T03:54:03.776Z
+Date.now(): 1768794844650
+Current date: 2026-01-19T03:54:04.651Z
+Using effective timestamp: 2026-01-19T03:54:03.000Z
+[Email Sync] No new messages for business 28
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+xists
+✅ ToolRegistry: 10 tools registered
+
+🚀 Initializing background jobs...
+⏰ Initializing monthly usage reset cron job...
+✅ Monthly reset job initialized (runs at 00:00 UTC on 1st of each month)
+[Email Sync] Initializing email sync cron job...
+[Email Sync] Cron job initialized (runs every 3 minutes)
+✅ Background jobs initialized
+
+
+========================================
+🚀 TELYX BACKEND SERVER
+========================================
+✅ Server running on port 3001
+🔗 Health check: http://localhost:3001/health
+🌍 Environment: development
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T03:45:00.045Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T03:45:01.106Z
+Date.now(): 1768794301267
+Current date: 2026-01-19T03:45:01.267Z
+Using effective timestamp: 2026-01-19T03:45:01.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T03:45:02.642Z
+Date.now(): 1768794303250
+Current date: 2026-01-19T03:45:03.250Z
+Using effective timestamp: 2026-01-19T03:45:02.000Z
+[Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T03:45:04.180Z
+Date.now(): 1768794304829
+Current date: 2026-01-19T03:45:04.829Z
+Using effective timestamp: 2026-01-19T03:45:04.000Z
+[Email Sync] No new messages for business 28
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T03:48:00.048Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T03:45:01.863Z
+Date.now(): 1768794480564
+Current date: 2026-01-19T03:48:00.564Z
+Using effective timestamp: 2026-01-19T03:45:01.000Z
+[Email Sync] Business 21: 0 new messages synced
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T03:48:03.535Z
+Date.now(): 1768794484249
+Current date: 2026-01-19T03:48:04.249Z
+Using effective timestamp: 2026-01-19T03:48:03.000Z
+[Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T03:48:05.320Z
+Date.now(): 1768794485746
+Current date: 2026-01-19T03:48:05.746Z
+Using effective timestamp: 2026-01-19T03:48:05.000Z
+[Email Sync] No new messages for business 28
+🔄 Syncing assistant to 11Labs: cmkircxht000110c6k1pytkqr -> agent_0901kf6t6w6jfnqvevggc5bkg8hn
+🔧 Tools to sync: [
+  'end_call',
+  'voicemail_detection',
+  'customer_data_lookup',
+  'create_callback'
+]
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+✅ 11Labs Agent updated: agent_0901kf6t6w6jfnqvevggc5bkg8hn
+✅ Cleared tool_ids from agent
+✅ 11Labs Agent updated: agent_0901kf6t6w6jfnqvevggc5bkg8hn
+✅ 11Labs Agent synced with inline tools
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T03:51:00.075Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
 Restarting 'src/server.js'
 📞 Netgsm Configuration:
 Username: ✅ Exists
@@ -1297,204 +1530,7 @@ Emitted 'error' event on Server instance at:
 
 Node.js v20.19.5
 Failed running 'src/server.js'
-Restarting 'src/server.js'
-📞 Netgsm Configuration:
-Username: ✅ Exists
-Password: ✅ Exists
-API Key: ✅ Exists
-✅ ToolRegistry: 10 tools registered
-
-🚀 Initializing background jobs...
-⏰ Initializing monthly usage reset cron job...
-✅ Monthly reset job initialized (runs at 00:00 UTC on 1st of each month)
-[Email Sync] Initializing email sync cron job...
-[Email Sync] Cron job initialized (runs every 3 minutes)
-✅ Background jobs initialized
-
-node:events:502
-      throw er; // Unhandled 'error' event
-      ^
-
-Error: listen EADDRINUSE: address already in use :::3001
-    at Server.setupListenHandle [as _listen2] (node:net:1908:16)
-    at listenInCluster (node:net:1965:12)
-    at Server.listen (node:net:2067:7)
-    at Function.listen (/Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/node_modules/express/lib/application.js:635:24)
-    at file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/server.js:211:7
-Emitted 'error' event on Server instance at:
-    at emitErrorNT (node:net:1944:8)
-    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
-  code: 'EADDRINUSE',
-  errno: -48,
-  syscall: 'listen',
-  address: '::',
-  port: 3001
-}
-
-Node.js v20.19.5
-Failed running 'src/server.js'
-g': 'gzip',
-      'User-Agent': 'google-api-nodejs-client/7.2.0 (gzip)',
-      Authorization: '<<REDACTED> - See `errorRedactor` option in `gaxios` for configuration>.'
-    },
-    params: {
-      maxResults: 500,
-      labelIds: [Array],
-      q: 'in:inbox after:1768715462',
-      pageToken: null
-    },
-    validateStatus: [Function (anonymous)],
-    retry: true,
-    responseType: 'unknown',
-    errorRedactor: [Function: defaultErrorRedactor],
-    retryConfig: {
-      currentRetryAttempt: 0,
-      retry: 3,
-      httpMethodsToRetry: [Array],
-      noResponseRetries: 2,
-      retryDelayMultiplier: 2,
-      timeOfFirstRequest: 1768716182963,
-      totalTimeout: 9007199254740991,
-      maxRetryDelay: 9007199254740991,
-      statusCodesToRetry: [Array]
-    }
-  },
-  response: {
-    config: {
-      url: 'https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=500&labelIds=INBOX&q=in%3Ainbox%20after%3A1768715462&pageToken=',
-      method: 'GET',
-      userAgentDirectives: [Array],
-      paramsSerializer: [Function (anonymous)],
-      headers: [Object],
-      params: [Object],
-      validateStatus: [Function (anonymous)],
-      retry: true,
-      responseType: 'unknown',
-      errorRedactor: [Function: defaultErrorRedactor]
-    },
-    data: { error: [Object] },
-    headers: {
-      'alt-svc': 'h3=":443"; ma=2592000,h3-29=":443"; ma=2592000',
-      'content-encoding': 'gzip',
-      'content-type': 'application/json; charset=UTF-8',
-      date: 'Sun, 18 Jan 2026 06:03:02 GMT',
-      server: 'ESF',
-      'transfer-encoding': 'chunked',
-      vary: 'Origin, X-Origin, Referer',
-      'www-authenticate': 'Bearer realm="https://accounts.google.com/", error="invalid_token"',
-      'x-content-type-options': 'nosniff',
-      'x-frame-options': 'SAMEORIGIN',
-      'x-xss-protection': '0'
-    },
-    status: 401,
-    statusText: 'Unauthorized',
-    request: {
-      responseURL: 'https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=500&labelIds=INBOX&q=in%3Ainbox%20after%3A1768715462&pageToken='
-    }
-  },
-  error: undefined,
-  status: 401,
-  code: 401,
-  errors: [
-    {
-      message: 'Invalid Credentials',
-      domain: 'global',
-      reason: 'authError',
-      location: 'Authorization',
-      locationType: 'header'
-    }
-  ],
-  [Symbol(gaxios-gaxios-error)]: '6.7.1'
-}
-Sync messages error: GaxiosError: Invalid Credentials
-    at Gaxios._request (/Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/node_modules/gaxios/build/src/gaxios.js:142:23)
-    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
-    at async OAuth2Client.requestAsync (/Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/node_modules/googleapis-common/node_modules/google-auth-library/build/src/auth/oauth2client.js:429:18)
-    at async GmailService.getMessages (file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/services/gmail.js:194:24)
-    at async GmailService.syncNewMessages (file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/services/gmail.js:385:26)
-    at async EmailAggregatorService.syncNewMessages (file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/services/email-aggregator.js:140:12)
-    at async syncBusinessEmails (file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/jobs/emailSync.js:26:25)
-    at async runEmailSync (file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/jobs/emailSync.js:122:22)
-    at async cron.schedule.scheduled (file:///Users/nurettinerzen/.claude-worktrees/ai-assistanRestarting 'src/server.js'
-📞 Netgsm Configuration:
-Username: ✅ Exists
-Password: ✅ Exists
-API Key: ✅ Exists
-✅ ToolRegistry: 10 tools registered
-
-🚀 Initializing background jobs...
-⏰ Initializing monthly usage reset cron job...
-✅ Monthly reset job initialized (runs at 00:00 UTC on 1st of each month)
-[Email Sync] Initializing email sync cron job...
-[Email Sync] Cron job initialized (runs every 3 minutes)
-✅ Background jobs initialized
-
-node:events:502
-      throw er; // Unhandled 'error' event
-      ^
-
-Error: listen EADDRINUSE: address already in use :::3001
-    at Server.setupListenHandle [as _listen2] (node:net:1908:16)
-    at listenInCluster (node:net:1965:12)
-    at Server.listen (node:net:2067:7)
-    at Function.listen (/Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/node_modules/express/lib/application.js:635:24)
-    at file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/server.js:211:7
-Emitted 'error' event on Server instance at:
-    at emitErrorNT (node:net:1944:8)
-    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
-  code: 'EADDRINUSE',
-  errno: -48,
-  syscall: 'listen',
-  address: '::',
-  port: 3001
-}
-
-Node.js v20.19.5
-Failed running 'src/server.js'
-Restarting 'src/server.js'
-📞 Netgsm Configuration:
-Username: ✅ Exists
-Password: ✅ Exists
-API Key: ✅ Exists
-✅ ToolRegistry: 10 tools registered
-
-🚀 Initializing background jobs...
-⏰ Initializing monthly usage reset cron job...
-✅ Monthly reset job initialized (runs at 00:00 UTC on 1st of each month)
-[Email Sync] Initializing email sync cron job...
-[Email Sync] Cron job initialized (runs every 3 minutes)
-✅ Background jobs initialized
-
-node:events:502
-      throw er; // Unhandled 'error' event
-      ^
-
-Error: listen EADDRINUSE: address already in use :::3001
-    at Server.setupListenHandle [as _listen2] (node:net:1908:16)
-    at listenInCluster (node:net:1965:12)
-    at Server.listen (node:net:2067:7)
-    at Function.listen (/Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/node_modules/express/lib/application.js:635:24)
-    at file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/server.js:211:7
-Emitted 'error' event on Server instance at:
-    at emitErrorNT (node:net:1944:8)
-    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
-  code: 'EADDRINUSE',
-  errno: -48,
-  syscall: 'listen',
-  address: '::',
-  port: 3001
-}
-
-Node.js v20.19.5
-Failed running 'src/server.js'
-Restarting 'src/server.js'
-📞 Netgsm Configuration:
-Username: ✅ Exists
-Password: ✅ Exists
-API Key: ✅ Exists
-✅ ToolRegistry: 10 tools registered
-
-🚀 Initializing background jobs...
+s...
 ⏰ Initializing monthly usage reset cron job...
 ✅ Monthly reset job initialized (runs at 00:00 UTC on 1st of each month)
 [Email Sync] Initializing email sync cron job...
@@ -2011,118 +2047,115 @@ Emitted 'error' event on Server instance at:
 
 Node.js v20.19.5
 Failed running 'src/server.js'
-===========================
+Restarting 'src/server.js'
+📞 Netgsm Configuration:
+Username: ✅ Exists
+Password: ✅ Exists
+API Key: ✅ Exists
+✅ ToolRegistry: 10 tools registered
 
-[Email Sync] Found 3 connected accounts
-[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-19T00:18:00.684Z
-Date.now(): 1768781881168
-Current date: 2026-01-19T00:18:01.168Z
-Using effective timestamp: 2026-01-19T00:18:00.000Z
-[Email Sync] No new messages for business 21
-[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-19T00:18:02.221Z
-Date.now(): 1768781883050
-Current date: 2026-01-19T00:18:03.050Z
-Using effective timestamp: 2026-01-19T00:18:02.000Z
-[Email Sync] No new messages for business 22
-[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-19T00:18:03.797Z
-Date.now(): 1768781884620
-Current date: 2026-01-19T00:18:04.620Z
-Using effective timestamp: 2026-01-19T00:18:03.000Z
-[Email Sync] No new messages for business 28
+🚀 Initializing background jobs...
+⏰ Initializing monthly usage reset cron job...
+✅ Monthly reset job initialized (runs at 00:00 UTC on 1st of each month)
+[Email Sync] Initializing email sync cron job...
+[Email Sync] Cron job initialized (runs every 3 minutes)
+✅ Background jobs initialized
 
-========================================
-[Email Sync] Sync job completed
-Businesses: 3
-Messages synced: 0
-Errors: 0
-========================================
+node:events:502
+      throw er; // Unhandled 'error' event
+      ^
 
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1908:16)
+    at listenInCluster (node:net:1965:12)
+    at Server.listen (node:net:2067:7)
+    at Function.listen (/Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/node_modules/express/lib/application.js:635:24)
+    at file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/server.js:211:7
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:1944:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
+  code: 'EADDRINUSE',
+  errno: -48,
+  syscall: 'listen',
+  address: '::',
+  port: 3001
+}
 
-========================================
-[Email Sync] Starting email sync job
-Time: 2026-01-19T00:21:00.038Z
-========================================
+Node.js v20.19.5
+Failed running 'src/server.js'
+Restarting 'src/server.js'
+📞 Netgsm Configuration:
+Username: ✅ Exists
+Password: ✅ Exists
+API Key: ✅ Exists
+✅ ToolRegistry: 10 tools registered
 
-[Email Sync] Found 3 connected accounts
-[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-19T00:18:01.667Z
-Date.now(): 1768782060390
-Current date: 2026-01-19T00:21:00.390Z
-Using effective timestamp: 2026-01-19T00:18:01.000Z
-[Email Sync] No new messages for business 21
-[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-19T00:18:03.242Z
-Date.now(): 1768782062184
-Current date: 2026-01-19T00:21:02.184Z
-Using effective timestamp: 2026-01-19T00:18:03.000Z
-[Email Sync] No new messages for business 22
-[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-19T00:18:04.831Z
-Date.now(): 1768782063788
-Current date: 2026-01-19T00:21:03.788Z
-Using effective timestamp: 2026-01-19T00:18:04.000Z
-[Email Sync] No new messages for business 28
+🚀 Initializing background jobs...
+⏰ Initializing monthly usage reset cron job...
+✅ Monthly reset job initialized (runs at 00:00 UTC on 1st of each month)
+[Email Sync] Initializing email sync cron job...
+[Email Sync] Cron job initialized (runs every 3 minutes)
+✅ Background jobs initialized
 
-========================================
-[Email Sync] Sync job completed
-Businesses: 3
-Messages synced: 0
-Errors: 0
-========================================
+node:events:502
+      throw er; // Unhandled 'error' event
+      ^
 
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1908:16)
+    at listenInCluster (node:net:1965:12)
+    at Server.listen (node:net:2067:7)
+    at Function.listen (/Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/node_modules/express/lib/application.js:635:24)
+    at file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/server.js:211:7
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:1944:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
+  code: 'EADDRINUSE',
+  errno: -48,
+  syscall: 'listen',
+  address: '::',
+  port: 3001
+}
 
-========================================
-[Email Sync] Starting email sync job
-Time: 2026-01-19T00:24:00.034Z
-========================================
+Node.js v20.19.5
+Failed running 'src/server.js'
+Restarting 'src/server.js'
+📞 Netgsm Configuration:
+Username: ✅ Exists
+Password: ✅ Exists
+API Key: ✅ Exists
+✅ ToolRegistry: 10 tools registered
 
-[Email Sync] Found 3 connected accounts
-[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-19T00:24:00.707Z
-Date.now(): 1768782241181
-Current date: 2026-01-19T00:24:01.181Z
-Using effective timestamp: 2026-01-19T00:24:00.000Z
-[Email Sync] No new messages for business 21
-[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-19T00:24:02.266Z
-Date.now(): 1768782242897
-Current date: 2026-01-19T00:24:02.897Z
-Using effective timestamp: 2026-01-19T00:24:02.000Z
-[Email Sync] No new messages for business 22
-[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-19T00:24:03.840Z
-Date.now(): 1768782244585
-Current date: 2026-01-19T00:24:04.585Z
-Using effective timestamp: 2026-01-19T00:24:03.000Z
-[Email Sync] No new messages for business 28
+🚀 Initializing background jobs...
+⏰ Initializing monthly usage reset cron job...
+✅ Monthly reset job initialized (runs at 00:00 UTC on 1st of each month)
+[Email Sync] Initializing email sync cron job...
+[Email Sync] Cron job initialized (runs every 3 minutes)
+✅ Background jobs initialized
 
-========================================
-[Email Sync] Sync job completed
-Businesses: 3
-Messages synced: 0
-Errors: 0
-========================================
+node:events:502
+      throw er; // Unhandled 'error' event
+      ^
 
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1908:16)
+    at listenInCluster (node:net:1965:12)
+    at Server.listen (node:net:2067:7)
+    at Function.listen (/Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/node_modules/express/lib/application.js:635:24)
+    at file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/server.js:211:7
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:1944:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
+  code: 'EADDRINUSE',
+  errno: -48,
+  syscall: 'listen',
+  address: '::',
+  port: 3001
+}
 
-========================================
-[Email Sync] Starting email sync job
-Time: 2026-01-19T00:27:00.033Z
-========================================
-
-[Email Sync] Found 3 connected accounts
-[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+Node.js v20.19.5
+Failed running 'src/server.js'
+zen@gmail.com)
 === GMAIL SYNC DEBUG ===
 lastSync from DB: 2026-01-19T00:24:03.189Z
 Date.now(): 1768782420507
@@ -2824,119 +2857,115 @@ Emitted 'error' event on Server instance at:
 
 Node.js v20.19.5
 Failed running 'src/server.js'
-SYNC DEBUG ===
-lastSync from DB: 2026-01-19T01:24:03.814Z
-Date.now(): 1768785844444
-Current date: 2026-01-19T01:24:04.444Z
-Using effective timestamp: 2026-01-19T01:24:03.000Z
-[Email Sync] No new messages for business 22
+Restarting 'src/server.js'
+📞 Netgsm Configuration:
+Username: ✅ Exists
+Password: ✅ Exists
+API Key: ✅ Exists
+✅ ToolRegistry: 10 tools registered
 
-========================================
-[Email Sync] Sync job completed
-Businesses: 3
-Messages synced: 0
-Errors: 0
-========================================
+🚀 Initializing background jobs...
+⏰ Initializing monthly usage reset cron job...
+✅ Monthly reset job initialized (runs at 00:00 UTC on 1st of each month)
+[Email Sync] Initializing email sync cron job...
+[Email Sync] Cron job initialized (runs every 3 minutes)
+✅ Background jobs initialized
 
+node:events:502
+      throw er; // Unhandled 'error' event
+      ^
 
-========================================
-[Email Sync] Starting email sync job
-Time: 2026-01-19T01:27:00.071Z
-========================================
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1908:16)
+    at listenInCluster (node:net:1965:12)
+    at Server.listen (node:net:2067:7)
+    at Function.listen (/Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/node_modules/express/lib/application.js:635:24)
+    at file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/server.js:211:7
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:1944:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
+  code: 'EADDRINUSE',
+  errno: -48,
+  syscall: 'listen',
+  address: '::',
+  port: 3001
+}
 
-[Email Sync] Found 3 connected accounts
-[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-19T01:24:04.620Z
-Date.now(): 1768786020617
-Current date: 2026-01-19T01:27:00.617Z
-Using effective timestamp: 2026-01-19T01:24:04.000Z
-[Email Sync] No new messages for business 22
-[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-19T01:24:01.427Z
-Date.now(): 1768786022314
-Current date: 2026-01-19T01:27:02.314Z
-Using effective timestamp: 2026-01-19T01:24:01.000Z
-[Email Sync] No new messages for business 21
-[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-19T01:27:04.164Z
-Date.now(): 1768786024304
-Current date: 2026-01-19T01:27:04.304Z
-Using effective timestamp: 2026-01-19T01:27:04.000Z
-[Email Sync] No new messages for business 28
+Node.js v20.19.5
+Failed running 'src/server.js'
+Restarting 'src/server.js'
+📞 Netgsm Configuration:
+Username: ✅ Exists
+Password: ✅ Exists
+API Key: ✅ Exists
+✅ ToolRegistry: 10 tools registered
 
-========================================
-[Email Sync] Sync job completed
-Businesses: 3
-Messages synced: 0
-Errors: 0
-========================================
+🚀 Initializing background jobs...
+⏰ Initializing monthly usage reset cron job...
+✅ Monthly reset job initialized (runs at 00:00 UTC on 1st of each month)
+[Email Sync] Initializing email sync cron job...
+[Email Sync] Cron job initialized (runs every 3 minutes)
+✅ Background jobs initialized
 
+node:events:502
+      throw er; // Unhandled 'error' event
+      ^
 
-========================================
-[Email Sync] Starting email sync job
-Time: 2026-01-19T01:30:00.032Z
-========================================
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1908:16)
+    at listenInCluster (node:net:1965:12)
+    at Server.listen (node:net:2067:7)
+    at Function.listen (/Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/node_modules/express/lib/application.js:635:24)
+    at file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/server.js:211:7
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:1944:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
+  code: 'EADDRINUSE',
+  errno: -48,
+  syscall: 'listen',
+  address: '::',
+  port: 3001
+}
 
-[Email Sync] Found 3 connected accounts
-[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-19T01:30:00.603Z
-Date.now(): 1768786201076
-Current date: 2026-01-19T01:30:01.076Z
-Using effective timestamp: 2026-01-19T01:30:00.000Z
-[Email Sync] No new messages for business 22
-[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-19T01:30:02.341Z
-Date.now(): 1768786202881
-Current date: 2026-01-19T01:30:02.881Z
-Using effective timestamp: 2026-01-19T01:30:02.000Z
-[Email Sync] No new messages for business 21
-[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-19T01:30:03.873Z
-Date.now(): 1768786204474
-Current date: 2026-01-19T01:30:04.474Z
-Using effective timestamp: 2026-01-19T01:30:03.000Z
-[Email Sync] No new messages for business 28
+Node.js v20.19.5
+Failed running 'src/server.js'
+Restarting 'src/server.js'
+📞 Netgsm Configuration:
+Username: ✅ Exists
+Password: ✅ Exists
+API Key: ✅ Exists
+✅ ToolRegistry: 10 tools registered
 
-========================================
-[Email Sync] Sync job completed
-Businesses: 3
-Messages synced: 0
-Errors: 0
-========================================
+🚀 Initializing background jobs...
+⏰ Initializing monthly usage reset cron job...
+✅ Monthly reset job initialized (runs at 00:00 UTC on 1st of each month)
+[Email Sync] Initializing email sync cron job...
+[Email Sync] Cron job initialized (runs every 3 minutes)
+✅ Background jobs initialized
 
+node:events:502
+      throw er; // Unhandled 'error' event
+      ^
 
-========================================
-[Email Sync] Starting email sync job
-Time: 2026-01-19T01:33:00.029Z
-========================================
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1908:16)
+    at listenInCluster (node:net:1965:12)
+    at Server.listen (node:net:2067:7)
+    at Function.listen (/Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/node_modules/express/lib/application.js:635:24)
+    at file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/server.js:211:7
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:1944:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
+  code: 'EADDRINUSE',
+  errno: -48,
+  syscall: 'listen',
+  address: '::',
+  port: 3001
+}
 
-[Email Sync] Found 3 connected accounts
-[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-19T01:30:01.506Z
-Date.now(): 1768786380528
-Current date: 2026-01-19T01:33:00.528Z
-Using effective timestamp: 2026-01-19T01:30:01.000Z
-[Email Sync] No new messages for business 22
-[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-19T01:30:03.097Z
-Date.now(): 1768786382286
-Current date: 2026-01-19T01:33:02.286Z
-Using effective timestamp: 2026-01-19T01:30:03.000Z
-[Email Sync] No new messages for business 21
-[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
-=== GMAIL SYNC DEBUG ===
-lastSync from DB: 2026-01-19T01:30:04.672Z
-Date.now(): 1768786383881
-Current date: 2026-01-19T01:33:03.881Z
-Using effective timestamp: 2026-01-19T01:30:04.000Z
+Node.js v20.19.5
+Failed running 'src/server.js'
+ng effective timestamp: 2026-01-19T01:30:04.000Z
 [Email Sync] No new messages for business 28
 
 ========================================
@@ -4188,3 +4217,327 @@ API Key: ✅ Exists
 🌍 Environment: development
 ========================================
 
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T03:27:00.037Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T03:27:01.065Z
+Date.now(): 1768793221263
+Current date: 2026-01-19T03:27:01.263Z
+Using effective timestamp: 2026-01-19T03:27:01.000Z
+[Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T03:27:02.674Z
+Date.now(): 1768793223226
+Current date: 2026-01-19T03:27:03.226Z
+Using effective timestamp: 2026-01-19T03:27:02.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T03:27:04.193Z
+Date.now(): 1768793224999
+Current date: 2026-01-19T03:27:04.999Z
+Using effective timestamp: 2026-01-19T03:27:04.000Z
+[Email Sync] No new messages for business 28
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T03:30:00.071Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T03:27:01.830Z
+Date.now(): 1768793400580
+Current date: 2026-01-19T03:30:00.580Z
+Using effective timestamp: 2026-01-19T03:27:01.000Z
+[Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T03:27:03.710Z
+Date.now(): 1768793402445
+Current date: 2026-01-19T03:30:02.445Z
+Using effective timestamp: 2026-01-19T03:27:03.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T03:30:03.847Z
+Date.now(): 1768793404016
+Current date: 2026-01-19T03:30:04.016Z
+Using effective timestamp: 2026-01-19T03:30:03.000Z
+[Email Sync] No new messages for business 28
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T03:33:00.059Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T03:30:02.656Z
+Date.now(): 1768793581056
+Current date: 2026-01-19T03:33:01.056Z
+Using effective timestamp: 2026-01-19T03:30:02.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T03:33:02.486Z
+Date.now(): 1768793582843
+Current date: 2026-01-19T03:33:02.843Z
+Using effective timestamp: 2026-01-19T03:33:02.000Z
+[Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T03:33:03.988Z
+Date.now(): 1768793584509
+Current date: 2026-01-19T03:33:04.509Z
+Using effective timestamp: 2026-01-19T03:33:03.000Z
+[Email Sync] No new messages for business 28
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T03:36:00.047Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T03:33:01.463Z
+Date.now(): 1768793760575
+Current date: 2026-01-19T03:36:00.575Z
+Using effective timestamp: 2026-01-19T03:33:01.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T03:33:03.081Z
+Date.now(): 1768793762261
+Current date: 2026-01-19T03:36:02.261Z
+Using effective timestamp: 2026-01-19T03:33:03.000Z
+[Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T03:36:03.679Z
+Date.now(): 1768793763849
+Current date: 2026-01-19T03:36:03.849Z
+Using effective timestamp: 2026-01-19T03:36:03.000Z
+[Email Sync] No new messages for business 28
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T03:39:00.072Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T03:39:01.065Z
+Date.now(): 1768793942006
+Current date: 2026-01-19T03:39:02.006Z
+Using effective timestamp: 2026-01-19T03:39:01.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T03:39:02.629Z
+Date.now(): 1768793944168
+Current date: 2026-01-19T03:39:04.168Z
+Using effective timestamp: 2026-01-19T03:39:02.000Z
+[Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T03:39:04.185Z
+Date.now(): 1768793945879
+Current date: 2026-01-19T03:39:05.880Z
+Using effective timestamp: 2026-01-19T03:39:04.000Z
+[Email Sync] No new messages for business 28
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+
+========================================
+[Email Sync] Starting email sync job
+Time: 2026-01-19T03:42:00.065Z
+========================================
+
+[Email Sync] Found 3 connected accounts
+[Email Sync] Syncing GMAIL for business 21 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T03:39:02.558Z
+Date.now(): 1768794120448
+Current date: 2026-01-19T03:42:00.448Z
+Using effective timestamp: 2026-01-19T03:39:02.000Z
+[Email Sync] No new messages for business 21
+[Email Sync] Syncing GMAIL for business 22 (managefiraterzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T03:39:04.467Z
+Date.now(): 1768794122302
+Current date: 2026-01-19T03:42:02.302Z
+Using effective timestamp: 2026-01-19T03:39:04.000Z
+[Email Sync] No new messages for business 22
+[Email Sync] Syncing GMAIL for business 28 (nurettinerzen@gmail.com)
+=== GMAIL SYNC DEBUG ===
+lastSync from DB: 2026-01-19T03:39:06.230Z
+Date.now(): 1768794123870
+Current date: 2026-01-19T03:42:03.870Z
+Using effective timestamp: 2026-01-19T03:39:06.000Z
+[Email Sync] No new messages for business 28
+
+========================================
+[Email Sync] Sync job completed
+Businesses: 3
+Messages synced: 0
+Errors: 0
+========================================
+
+Restarting 'src/server.js'
+📞 Netgsm Configuration:
+Username: ✅ Exists
+Password: ✅ Exists
+API Key: ✅ Exists
+✅ ToolRegistry: 10 tools registered
+
+🚀 Initializing background jobs...
+⏰ Initializing monthly usage reset cron job...
+✅ Monthly reset job initialized (runs at 00:00 UTC on 1st of each month)
+[Email Sync] Initializing email sync cron job...
+[Email Sync] Cron job initialized (runs every 3 minutes)
+✅ Background jobs initialized
+
+node:events:502
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1908:16)
+    at listenInCluster (node:net:1965:12)
+    at Server.listen (node:net:2067:7)
+    at Function.listen (/Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/node_modules/express/lib/application.js:635:24)
+    at file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/server.js:211:7
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:1944:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
+  code: 'EADDRINUSE',
+  errno: -48,
+  syscall: 'listen',
+  address: '::',
+  port: 3001
+}
+
+Node.js v20.19.5
+Failed running 'src/server.js'
+Restarting 'src/server.js'
+📞 Netgsm Configuration:
+Username: ✅ Exists
+Password: ✅ Exists
+API Key: ✅ Exists
+✅ ToolRegistry: 10 tools registered
+
+🚀 Initializing background jobs...
+⏰ Initializing monthly usage reset cron job...
+✅ Monthly reset job initialized (runs at 00:00 UTC on 1st of each month)
+[Email Sync] Initializing email sync cron job...
+[Email Sync] Cron job initialized (runs every 3 minutes)
+✅ Background jobs initialized
+
+node:events:502
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1908:16)
+    at listenInCluster (node:net:1965:12)
+    at Server.listen (node:net:2067:7)
+    at Function.listen (/Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/node_modules/express/lib/application.js:635:24)
+    at file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/server.js:211:7
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:1944:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
+  code: 'EADDRINUSE',
+  errno: -48,
+  syscall: 'listen',
+  address: '::',
+  port: 3001
+}
+
+Node.js v20.19.5
+Failed running 'src/server.js'
+Restarting 'src/server.js'
+📞 Netgsm Configuration:
+Username: ✅ Exists
+Password: ✅ Exists
+API Key: ✅ Exists
+✅ ToolRegistry: 10 tools registered
+
+🚀 Initializing background jobs...
+⏰ Initializing monthly usage reset cron job...
+✅ Monthly reset job initialized (runs at 00:00 UTC on 1st of each month)
+[Email Sync] Initializing email sync cron job...
+[Email Sync] Cron job initialized (runs every 3 minutes)
+✅ Background jobs initialized
+
+node:events:502
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1908:16)
+    at listenInCluster (node:net:1965:12)
+    at Server.listen (node:net:2067:7)
+    at Function.listen (/Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/node_modules/express/lib/application.js:635:24)
+    at file:///Users/nurettinerzen/.claude-worktrees/ai-assistant-saas/upbeat-hertz/backend/src/server.js:211:7
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:1944:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
+  code: 'EADDRINUSE',
+  errno: -48,
+  syscall: 'listen',
+  address: '::',
+  port: 3001
+}
+
+Node.js v20.19.5
+Failed running 'src/server.js'

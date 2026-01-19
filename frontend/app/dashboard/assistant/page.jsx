@@ -27,7 +27,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import EmptyState from '@/components/EmptyState';
 import TemplateSelector from '@/components/TemplateSelector';
-import { Bot, Plus, Edit, Trash2, Search, Phone, PhoneOutgoing, PhoneIncoming, Loader2 } from 'lucide-react';
+import { Bot, Plus, Edit, Trash2, Search, Phone, PhoneOutgoing, PhoneIncoming, Loader2, RefreshCw } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -149,6 +149,7 @@ export default function AssistantsPage() {
   });
   const [creating, setCreating] = useState(false);
   const [updating, setUpdating] = useState(false);
+  const [syncing, setSyncing] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -402,6 +403,21 @@ export default function AssistantsPage() {
     }
   };
 
+  const handleSync = async (assistant) => {
+    setSyncing(assistant.id);
+    try {
+      const response = await apiClient.assistants.sync(assistant.id);
+      toast.success(locale === 'tr'
+        ? `11Labs senkronize edildi: ${response.data.tools?.join(', ') || 'tools updated'}`
+        : `11Labs synced: ${response.data.tools?.join(', ') || 'tools updated'}`
+      );
+    } catch (error) {
+      toast.error(error.response?.data?.error || t('errors.generic'));
+    } finally {
+      setSyncing(null);
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       name: '',
@@ -543,6 +559,17 @@ export default function AssistantsPage() {
                     >
                       <Edit className="h-3 w-3 mr-2" />
                       {t('dashboard.assistantsPage.edit')}
+                    </Button>
+                  )}
+                  {can('assistants:edit') && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleSync(assistant)}
+                      disabled={syncing === assistant.id}
+                      title={locale === 'tr' ? '11Labs ile senkronize et' : 'Sync with 11Labs'}
+                    >
+                      <RefreshCw className={`h-3 w-3 ${syncing === assistant.id ? 'animate-spin' : ''}`} />
                     </Button>
                   )}
                   {can('assistants:delete') && (

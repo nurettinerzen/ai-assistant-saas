@@ -100,6 +100,7 @@ export const apiClient = {
     update: (id, data) => api.put(`/api/assistants/${id}`, data),
     delete: (id) => api.delete(`/api/assistants/${id}`),
     getTemplates: (language) => api.get('/api/assistants/templates', { params: { language } }),
+    sync: (id) => api.post(`/api/assistants/${id}/sync`),
   },
 
   // Calls
