@@ -73,13 +73,7 @@ export function buildGatewayToolConfig(backendUrl, agentId) {
   return {
     type: 'webhook',
     name: 'agent_gateway',
-    description: `Her kullanıcı mesajı için bu tool'u çağır. Kullanıcının ne söylediğini gönder,
-backend intent'i belirleyecek ve ne söylemen gerektiğini döndürecek.
-Dönen 'say' alanını sesli olarak söyle.
-'next_action' alanına göre:
-- "continue": Konuşmaya devam et
-- "end_call": Söyledikten sonra görüşmeyi sonlandır
-- "transfer": Söyledikten sonra belirtilen numaraya aktar`,
+    description: `Her kullanıcı mesajı için bu tool'u çağır. Kullanıcının ne söylediğini gönder, backend intent'i belirleyecek ve ne söylemen gerektiğini döndürecek. Dönen 'say' alanını sesli olarak söyle. 'next_action' alanına göre: "continue" konuşmaya devam et, "end_call" görüşmeyi sonlandır, "transfer" belirtilen numaraya aktar.`,
     api_schema: {
       url: webhookUrl,
       method: 'POST',
@@ -92,25 +86,18 @@ Dönen 'say' alanını sesli olarak söyle.
           },
           conversation_id: {
             type: 'string',
-            description: 'Konuşma ID',
             // 11Labs dynamic variable - will be filled automatically
+            // NOTE: Can only use ONE of: description, dynamic_variable, is_system_provided, constant_value
             dynamic_variable: 'conversation_id'
           },
           caller_phone: {
             type: 'string',
-            description: 'Arayan telefon numarası',
             // 11Labs dynamic variable - will be filled automatically
             dynamic_variable: 'caller_id'
           }
         },
         required: ['user_message']
       }
-    },
-    // Tool call sound configuration - plays while waiting for response
-    tool_call_sound: {
-      enabled: true,
-      sound_type: 'typing', // or 'thinking', 'processing'
-      message: 'Kontrol ediyorum...'
     }
   };
 }
