@@ -440,19 +440,18 @@ router.post('/agent-gateway', async (req, res) => {
     });
 
     const totalTime = Date.now() - startTime;
+
+    // 🔍 DEBUG: Log exactly what responder returns
+    console.log('🔍 [Agent Gateway] Responder result:', JSON.stringify(responderResult, null, 2));
     console.log(`✅ [Agent Gateway] Response generated in ${totalTime}ms`);
 
-    // Return response in gateway format
-    return res.json({
-      say: responderResult.response,
-      next_action: 'continue',
-      data: {
-        domain: routerResult.domain,
-        intent: routerResult.intent,
-        toolsExecuted: orchestratorResult.toolsExecuted,
-        processingTimeMs: totalTime
-      }
-    });
+    // 🧪 TEST: Return plain text to see if agent speaks it
+    // If this works, problem is JSON parsing/prompt
+    // If this doesn't work, problem is tool config/execution_mode
+    const responseText = responderResult.response || 'Merhaba, size nasıl yardımcı olabilirim?';
+    console.log('📤 [Agent Gateway] Sending plain text response:', responseText);
+
+    return res.status(200).type('text/plain').send(responseText);
 
   } catch (error) {
     console.error('❌ [Agent Gateway] Error:', error);
