@@ -2,12 +2,11 @@ import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticateToken } from '../middleware/auth.js';
 import { checkPermission } from '../middleware/permissions.js';
-import elevenLabsService, { buildAgentConfig } from '../services/elevenlabs.js';
+import elevenLabsService, { buildGatewayAgentConfig } from '../services/elevenlabs.js';
 import cargoAggregator from '../services/cargo-aggregator.js';
 import { removeStaticDateTimeFromPrompt } from '../utils/dateTime.js';
 import { buildAssistantPrompt, getActiveTools as getPromptBuilderTools } from '../services/promptBuilder.js';
-// ✅ Use central tool system for 11Labs
-import { getActiveToolsForElevenLabs, getActiveTools } from '../tools/index.js';
+// Note: Tool system now handled via gateway architecture in elevenlabs.js
 // ✅ Central voice mapping
 import { getElevenLabsVoiceId } from '../constants/voices.js';
 
@@ -231,11 +230,7 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
     const defaultFirstMessage = defaults.firstMessage.replace('{name}', name);
     const finalFirstMessage = firstMessage || defaultFirstMessage;
 
-    // Get active tools based on business integrations (using central tool system)
-    const activeToolsElevenLabs = getActiveToolsForElevenLabs(business);
-    console.log('📤 11Labs Request - tools:', activeToolsElevenLabs.map(t => t.name));
-
-    // ✅ 11Labs Conversational AI'da YENİ agent oluştur
+    // ✅ 11Labs Conversational AI'da YENİ agent oluştur (GATEWAY MİMARİSİ)
     let elevenLabsAgentId = null;
 
     try {
@@ -243,195 +238,44 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
       const elevenLabsLang = getElevenLabsLanguage(lang);
       console.log('📝 Language mapping:', lang, '->', elevenLabsLang);
 
-      // System tools (end_call) go inside prompt.tools
-      const endCallTool = {
-        type: 'system',
-        name: 'end_call',
-        description: `Aramayı şu durumlarda SONLANDIR:
+      // ✅ Gateway mimarisi kullan - tek bir agent_gateway tool
+      const agentConfig = buildGatewayAgentConfig({
+        name,
+        systemPrompt: fullSystemPrompt,
+        firstMessage: finalFirstMessage,
+        tone: tone || 'professional'
+      }, business);
 
-1. NORMAL SONLANDIRMA:
-- Müşteri vedalaştığında: "iyi günler", "görüşürüz", "hoşçakal", "bye", "goodbye"
-- Müşteri yardım istemediğini belirttiğinde: "teşekkürler bu kadar", "tamam yeter"
-
-2. GÜVENLİK NEDENİYLE SONLANDIRMA (KRİTİK!):
-- Müşteri 2+ kez küfür veya hakaret ederse → "Bu şekilde konuşmaya devam edemiyorum, görüşmeyi sonlandırıyorum" de ve KAPAT
-- Müşteri 3+ kez yanlış doğrulama bilgisi verirse → "Güvenlik nedeniyle görüşmeyi sonlandırıyorum" de ve KAPAT
-- Müşteri tehdit veya şiddet içeren ifadeler kullanırsa → HEMEN KAPAT
-- Müşteri art arda farklı sipariş/telefon numaraları denerse (brute force) → "Güvenlik nedeniyle görüşmeyi sonlandırıyorum" de ve KAPAT
-
-Kapatmadan önce kısa bir açıklama yap, sonra bu tool'u çağır.`,
-        params: {
-          system_tool_type: 'end_call'
-        }
+      // Override voice settings
+      agentConfig.conversation_config.tts = {
+        voice_id: elevenLabsVoiceId,
+        model_id: 'eleven_turbo_v2_5',
+        stability: 0.4,
+        similarity_boost: 0.6,
+        style: 0.15,
+        optimize_streaming_latency: 3
       };
 
-      // Voicemail detection tool - automatically ends call when voicemail is detected
-      const voicemailDetectionTool = {
-        type: 'system',
-        name: 'voicemail_detection',
-        description: 'Sesli mesaj (voicemail) algılandığında aramayı otomatik olarak sonlandırır.',
-        params: {
-          system_tool_type: 'voicemail_detection',
-          voicemail_message: '',  // Empty = just hang up, don't leave message
-          use_out_of_band_dtmf: false
-        }
+      // Override language settings
+      agentConfig.conversation_config.agent.language = elevenLabsLang;
+      agentConfig.conversation_config.stt.language = elevenLabsLang;
+
+      // Add metadata
+      agentConfig.metadata = {
+        ...agentConfig.metadata,
+        telyx_business_id: businessId.toString(),
+        model: model || 'gpt-4'
       };
 
-      // Webhook tools - inline in agent config (not separate via tool_ids)
-      const backendUrl = process.env.BACKEND_URL || 'https://api.telyx.ai';
-      const webhookUrl = `${backendUrl}/api/elevenlabs/webhook`;
-      const activeToolDefinitions = getActiveTools(business);
-
-      const webhookTools = activeToolDefinitions.map(tool => ({
-        type: 'webhook',
-        name: tool.function.name,
-        description: tool.function.description,
-        api_schema: {
-          url: webhookUrl,
-          method: 'POST',
-          request_body_schema: {
-            type: 'object',
-            properties: {
-              tool_name: {
-                type: 'string',
-                constant_value: tool.function.name  // Only constant_value, no description
-              },
-              ...Object.fromEntries(
-                Object.entries(tool.function.parameters.properties || {}).map(([key, value]) => [
-                  key,
-                  {
-                    type: value.type || 'string',
-                    description: value.description || ''
-                  }
-                ])
-              )
-            },
-            required: tool.function.parameters.required || []
-          }
-        }
-      }));
-
-      // All tools: system (end_call, voicemail_detection) + webhook
-      const allTools = [endCallTool, voicemailDetectionTool, ...webhookTools];
-      console.log('🔧 Tools for agent:', allTools.map(t => t.name));
-
-      // Build language-specific analysis prompts for post-call summary
-      const analysisPrompts = {
-        tr: {
-          transcript_summary: 'Bu görüşmenin kısa bir özetini Türkçe olarak yaz. Müşterinin amacını, konuşulan konuları ve sonucu belirt.',
-          success_evaluation: 'Görüşme başarılı mı? Müşterinin talebi karşılandı mı?'
-        },
-        en: {
-          transcript_summary: 'Write a brief summary of this conversation. State the customer purpose, topics discussed, and outcome.',
-          success_evaluation: 'Was the conversation successful? Was the customer request fulfilled?'
-        }
-      };
-      const langAnalysis = analysisPrompts[elevenLabsLang] || analysisPrompts.en;
-
-      const agentConfig = {
-        name: `${name} - ${Date.now()}`,
-        conversation_config: {
-          agent: {
-            prompt: {
-              prompt: fullSystemPrompt,
-              llm: 'gemini-2.5-flash',
-              temperature: 0.1,
-              // All tools: system + webhook (inline)
-              tools: allTools
-            },
-            first_message: finalFirstMessage,
-            language: elevenLabsLang
-          },
-          tts: {
-            voice_id: elevenLabsVoiceId,
-            model_id: 'eleven_turbo_v2_5',
-            stability: 0.4,                      // Daha doğal tonlama için
-            similarity_boost: 0.6,               // Daha doğal konuşma için
-            style: 0.15,                         // Hafif stil varyasyonu
-            optimize_streaming_latency: 3
-          },
-          stt: {
-            provider: 'elevenlabs',
-            model: 'scribe_v1',
-            language: elevenLabsLang
-          },
-          turn: {
-            mode: 'turn',
-            turn_timeout: 8,                     // 8sn - tool çağrısı sırasında yoklama yapmasın
-            turn_eagerness: 'normal',            // Normal mod - dengeli tepki
-            silence_end_call_timeout: 30         // 30sn toplam sessizlikten sonra kapat
-          },
-          // Analysis settings for Turkish/language-specific summary
-          analysis: {
-            transcript_summary_prompt: langAnalysis.transcript_summary,
-            success_evaluation_prompt: langAnalysis.success_evaluation
-          },
-          // Webhook for conversation events
-          webhook: {
-            url: `${process.env.BACKEND_URL || 'https://api.telyx.com.tr'}/api/elevenlabs/webhook`,
-            events: ['conversation.ended', 'conversation.started'],
-            timing: 'after'
-          }
-        },
-        metadata: {
-          telyx_business_id: businessId.toString(),
-          model: model || 'gpt-4'
-        }
-      };
-
-      // DEBUG: Log the full agent config
-      console.log('🔍 DEBUG - agentConfig tools:', allTools.map(t => ({ name: t.name, type: t.type })));
+      console.log('🔧 Creating agent with GATEWAY architecture (single agent_gateway tool)');
 
       const elevenLabsResponse = await elevenLabsService.createAgent(agentConfig);
       elevenLabsAgentId = elevenLabsResponse.agent_id;
       console.log('✅ 11Labs Agent created:', elevenLabsAgentId);
 
-      // Update webhook tools with agentId in URL (11Labs doesn't send agentId in webhook body)
-      if (activeToolDefinitions.length > 0) {
-        const webhookUrlWithAgent = `${backendUrl}/api/elevenlabs/webhook?agentId=${elevenLabsAgentId}`;
-        const updatedWebhookTools = activeToolDefinitions.map(tool => ({
-          type: 'webhook',
-          name: tool.function.name,
-          description: tool.function.description,
-          api_schema: {
-            url: webhookUrlWithAgent,
-            method: 'POST',
-            request_body_schema: {
-              type: 'object',
-              properties: {
-                tool_name: {
-                  type: 'string',
-                  constant_value: tool.function.name
-                },
-                ...Object.fromEntries(
-                  Object.entries(tool.function.parameters.properties || {}).map(([key, value]) => [
-                    key,
-                    {
-                      type: value.type || 'string',
-                      description: value.description || ''
-                    }
-                  ])
-                )
-              },
-              required: tool.function.parameters.required || []
-            }
-          }
-        }));
-
-        // Update agent with correct webhook URLs including agentId
-        // Include voicemailDetectionTool along with endCallTool and webhook tools
-        const allToolsWithAgentId = [endCallTool, voicemailDetectionTool, ...updatedWebhookTools];
-        await elevenLabsService.updateAgent(elevenLabsAgentId, {
-          conversation_config: {
-            agent: {
-              prompt: {
-                tools: allToolsWithAgentId
-              }
-            }
-          }
-        });
-        console.log('✅ 11Labs Agent tools updated with agentId in webhook URLs');
-      }
+      // ✅ Setup gateway tool with agentId in webhook URL
+      await elevenLabsService.setupGatewayTool(elevenLabsAgentId);
+      console.log('✅ Gateway tool configured with agentId in webhook URL');
     } catch (elevenLabsError) {
       console.error('❌ 11Labs Agent creation failed:', elevenLabsError.response?.data || elevenLabsError.message);
       return res.status(500).json({
@@ -736,105 +580,18 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
         console.log('📝 Update language mapping:', lang, '->', elevenLabsLang);
         console.log('🔧 Updating 11Labs agent:', assistant.elevenLabsAgentId);
 
-        // System tools (end_call, voicemail_detection) go inside prompt.tools
-        const endCallTool = {
-          type: 'system',
-          name: 'end_call',
-          description: `Aramayı şu durumlarda SONLANDIR:
-
-1. NORMAL SONLANDIRMA:
-- Müşteri vedalaştığında: "iyi günler", "görüşürüz", "hoşçakal", "bye", "goodbye"
-- Müşteri yardım istemediğini belirttiğinde: "teşekkürler bu kadar", "tamam yeter"
-
-2. GÜVENLİK NEDENİYLE SONLANDIRMA (KRİTİK!):
-- Müşteri 2+ kez küfür veya hakaret ederse → "Bu şekilde konuşmaya devam edemiyorum, görüşmeyi sonlandırıyorum" de ve KAPAT
-- Müşteri 3+ kez yanlış doğrulama bilgisi verirse → "Güvenlik nedeniyle görüşmeyi sonlandırıyorum" de ve KAPAT
-- Müşteri tehdit veya şiddet içeren ifadeler kullanırsa → HEMEN KAPAT
-- Müşteri art arda farklı sipariş/telefon numaraları denerse (brute force) → "Güvenlik nedeniyle görüşmeyi sonlandırıyorum" de ve KAPAT
-
-Kapatmadan önce kısa bir açıklama yap, sonra bu tool'u çağır.`,
-          params: {
-            system_tool_type: 'end_call'
-          }
-        };
-
-        // Voicemail detection tool - automatically ends call when voicemail is detected
-        const voicemailDetectionTool = {
-          type: 'system',
-          name: 'voicemail_detection',
-          description: 'Sesli mesaj (voicemail) algılandığında aramayı otomatik olarak sonlandırır.',
-          params: {
-            system_tool_type: 'voicemail_detection',
-            voicemail_message: '',  // Empty = just hang up, don't leave message
-            use_out_of_band_dtmf: false
-          }
-        };
-
-        // Webhook tools - inline in agent config
-        const backendUrl = process.env.BACKEND_URL || 'https://api.telyx.ai';
-        // IMPORTANT: Include agentId in webhook URL since 11Labs doesn't send it in body
-        const webhookUrl = `${backendUrl}/api/elevenlabs/webhook?agentId=${assistant.elevenLabsAgentId}`;
-        const activeToolDefinitions = getActiveTools(business);
-
-        const webhookTools = activeToolDefinitions.map(tool => ({
-          type: 'webhook',
-          name: tool.function.name,
-          description: tool.function.description,
-          api_schema: {
-            url: webhookUrl,
-            method: 'POST',
-            request_body_schema: {
-              type: 'object',
-              properties: {
-                tool_name: {
-                  type: 'string',
-                  constant_value: tool.function.name
-                },
-                ...Object.fromEntries(
-                  Object.entries(tool.function.parameters.properties || {}).map(([key, value]) => [
-                    key,
-                    {
-                      type: value.type || 'string',
-                      description: value.description || '',
-                      ...(value.enum ? { enum: value.enum } : {})
-                    }
-                  ])
-                )
-              },
-              required: tool.function.parameters.required || []
-            }
-          }
-        }));
-
-        // All tools: system (end_call, voicemail_detection) + webhook
-        const allTools = [endCallTool, voicemailDetectionTool, ...webhookTools];
-        console.log('🔧 Updating tools for agent:', allTools.map(t => t.name));
-
-        // Build language-specific analysis prompts for post-call summary
-        const analysisPrompts = {
-          tr: {
-            transcript_summary: 'Bu görüşmenin kısa bir özetini Türkçe olarak yaz. Müşterinin amacını, konuşulan konuları ve sonucu belirt.',
-            success_evaluation: 'Görüşme başarılı mı? Müşterinin talebi karşılandı mı?'
-          },
-          en: {
-            transcript_summary: 'Write a brief summary of this conversation. State the customer purpose, topics discussed, and outcome.',
-            success_evaluation: 'Was the conversation successful? Was the customer request fulfilled?'
-          }
-        };
-        const langAnalysis = analysisPrompts[elevenLabsLang] || analysisPrompts.en;
-
-        const agentUpdateConfig = {
+        // ✅ Gateway mimarisi kullan - migrateToGateway ile güncelle
+        await elevenLabsService.migrateToGateway(assistant.elevenLabsAgentId, {
           name,
+          systemPrompt: fullSystemPrompt,
+          firstMessage: firstMessage || assistant.firstMessage,
+          tone: tone || assistant.tone || 'professional'
+        }, business);
+
+        // Update voice and language settings
+        await elevenLabsService.updateAgent(assistant.elevenLabsAgentId, {
           conversation_config: {
             agent: {
-              prompt: {
-                prompt: fullSystemPrompt,
-                llm: 'gemini-2.5-flash',
-                temperature: 0.1,
-                // All tools: system + webhook (inline)
-                tools: allTools
-              },
-              first_message: firstMessage || assistant.firstMessage,
               language: elevenLabsLang
             },
             tts: {
@@ -846,25 +603,12 @@ Kapatmadan önce kısa bir açıklama yap, sonra bu tool'u çağır.`,
               optimize_streaming_latency: 3
             },
             stt: {
-              provider: 'elevenlabs',
-              model: 'scribe_v1',
               language: elevenLabsLang
-            },
-            turn: {
-              mode: 'turn',
-              turn_timeout: 8,
-              turn_eagerness: 'normal',
-              silence_end_call_timeout: 30
-            },
-            analysis: {
-              transcript_summary_prompt: langAnalysis.transcript_summary,
-              success_evaluation_prompt: langAnalysis.success_evaluation
             }
           }
-        };
+        });
 
-        await elevenLabsService.updateAgent(assistant.elevenLabsAgentId, agentUpdateConfig);
-        console.log('✅ 11Labs Agent updated with inline tools');
+        console.log('✅ 11Labs Agent updated with GATEWAY architecture');
 
         // Sync all phone numbers connected to this assistant in 11Labs
         const connectedPhones = await prisma.phoneNumber.findMany({
@@ -1043,113 +787,33 @@ router.post('/:id/sync', authenticateToken, checkPermission('assistants:edit'), 
       const currentAgent = await elevenLabsService.getAgent(assistant.elevenLabsAgentId);
       const currentToolIds = currentAgent.tool_ids || [];
       const currentInlineTools = currentAgent.conversation_config?.agent?.prompt?.tools || [];
+      const architecture = currentAgent.metadata?.architecture;
       console.log('📊 CURRENT AGENT STATE:');
       console.log('   - tool_ids:', currentToolIds.length > 0 ? currentToolIds : 'none');
       console.log('   - inline_tools:', currentInlineTools.length > 0 ? currentInlineTools.map(t => t.name) : 'none');
+      console.log('   - architecture:', architecture || 'legacy (multi-tool)');
       if (currentToolIds.length > 0) {
         console.log('   ⚠️ PROBLEM: Agent has tool_ids which may be broken!');
+      }
+      if (architecture !== 'gateway') {
+        console.log('   🔄 Will migrate to GATEWAY architecture');
       }
     } catch (checkErr) {
       console.warn('⚠️ Could not check current agent state:', checkErr.message);
     }
 
-    // System tools (end_call, voicemail_detection)
-    const endCallTool = {
-      type: 'system',
-      name: 'end_call',
-      description: `Aramayı şu durumlarda SONLANDIR:
-
-1. NORMAL SONLANDIRMA:
-- Müşteri vedalaştığında: "iyi günler", "görüşürüz", "hoşçakal", "bye", "goodbye"
-- Müşteri yardım istemediğini belirttiğinde: "teşekkürler bu kadar", "tamam yeter"
-
-2. GÜVENLİK NEDENİYLE SONLANDIRMA (KRİTİK!):
-- Müşteri 2+ kez küfür veya hakaret ederse → "Bu şekilde konuşmaya devam edemiyorum, görüşmeyi sonlandırıyorum" de ve KAPAT
-- Müşteri 3+ kez yanlış doğrulama bilgisi verirse → "Güvenlik nedeniyle görüşmeyi sonlandırıyorum" de ve KAPAT
-- Müşteri tehdit veya şiddet içeren ifadeler kullanırsa → HEMEN KAPAT
-- Müşteri art arda farklı sipariş/telefon numaraları denerse (brute force) → "Güvenlik nedeniyle görüşmeyi sonlandırıyorum" de ve KAPAT
-
-Kapatmadan önce kısa bir açıklama yap, sonra bu tool'u çağır.`,
-      params: {
-        system_tool_type: 'end_call'
-      }
-    };
-
-    const voicemailDetectionTool = {
-      type: 'system',
-      name: 'voicemail_detection',
-      description: 'Sesli mesaj (voicemail) algılandığında aramayı otomatik olarak sonlandırır.',
-      params: {
-        system_tool_type: 'voicemail_detection',
-        voicemail_message: '',
-        use_out_of_band_dtmf: false
-      }
-    };
-
-    // Webhook tools - inline in agent config
-    const backendUrl = process.env.BACKEND_URL || 'https://api.telyx.ai';
-    const webhookUrl = `${backendUrl}/api/elevenlabs/webhook?agentId=${assistant.elevenLabsAgentId}`;
-    const activeToolDefinitions = getActiveTools(business);
-
-    const webhookTools = activeToolDefinitions.map(tool => ({
-      type: 'webhook',
-      name: tool.function.name,
-      description: tool.function.description,
-      api_schema: {
-        url: webhookUrl,
-        method: 'POST',
-        request_body_schema: {
-          type: 'object',
-          properties: {
-            tool_name: {
-              type: 'string',
-              constant_value: tool.function.name
-            },
-            ...Object.fromEntries(
-              Object.entries(tool.function.parameters.properties || {}).map(([key, value]) => [
-                key,
-                {
-                  type: value.type || 'string',
-                  description: value.description || '',
-                  ...(value.enum ? { enum: value.enum } : {})
-                }
-              ])
-            )
-          },
-          required: tool.function.parameters.required || []
-        }
-      }
-    }));
-
-    // All tools: system + webhook (inline)
-    const allTools = [endCallTool, voicemailDetectionTool, ...webhookTools];
-    console.log('🔧 Tools to sync:', allTools.map(t => t.name));
-
-    // Language-specific analysis prompts
-    const analysisPrompts = {
-      tr: {
-        transcript_summary: 'Bu görüşmenin kısa bir özetini Türkçe olarak yaz. Müşterinin amacını, konuşulan konuları ve sonucu belirt.',
-        success_evaluation: 'Görüşme başarılı mı? Müşterinin talebi karşılandı mı?'
-      },
-      en: {
-        transcript_summary: 'Write a brief summary of this conversation. State the customer purpose, topics discussed, and outcome.',
-        success_evaluation: 'Was the conversation successful? Was the customer request fulfilled?'
-      }
-    };
-    const langAnalysis = analysisPrompts[elevenLabsLang] || analysisPrompts.en;
-
-    // Build the update config - this replaces tool_ids with inline tools
-    const agentUpdateConfig = {
+    // ✅ Gateway mimarisi kullan - migrateToGateway ile senkronize et
+    await elevenLabsService.migrateToGateway(assistant.elevenLabsAgentId, {
       name: assistant.name,
+      systemPrompt: assistant.systemPrompt,
+      firstMessage: assistant.firstMessage,
+      tone: assistant.tone || 'professional'
+    }, business);
+
+    // Update voice and language settings
+    await elevenLabsService.updateAgent(assistant.elevenLabsAgentId, {
       conversation_config: {
         agent: {
-          prompt: {
-            prompt: assistant.systemPrompt,
-            llm: 'gemini-2.5-flash',
-            temperature: 0.1,
-            tools: allTools  // Inline tools replace tool_ids
-          },
-          first_message: assistant.firstMessage,
           language: elevenLabsLang
         },
         tts: {
@@ -1161,42 +825,18 @@ Kapatmadan önce kısa bir açıklama yap, sonra bu tool'u çağır.`,
           optimize_streaming_latency: 3
         },
         stt: {
-          provider: 'elevenlabs',
-          model: 'scribe_v1',
           language: elevenLabsLang
-        },
-        turn: {
-          mode: 'turn',
-          turn_timeout: 8,
-          turn_eagerness: 'normal',
-          silence_end_call_timeout: 30
-        },
-        analysis: {
-          transcript_summary_prompt: langAnalysis.transcript_summary,
-          success_evaluation_prompt: langAnalysis.success_evaluation
         }
       }
-    };
+    });
 
-    // Also clear any existing tool_ids to ensure clean switch to inline tools
-    try {
-      // First, try to clear tool_ids
-      await elevenLabsService.updateAgent(assistant.elevenLabsAgentId, {
-        tool_ids: []  // Clear external tool references
-      });
-      console.log('✅ Cleared tool_ids from agent');
-    } catch (clearError) {
-      console.warn('⚠️ Could not clear tool_ids (may not exist):', clearError.message);
-    }
-
-    // Now update with inline tools
-    await elevenLabsService.updateAgent(assistant.elevenLabsAgentId, agentUpdateConfig);
-    console.log('✅ 11Labs Agent synced with inline tools');
+    console.log('✅ 11Labs Agent synced with GATEWAY architecture');
 
     res.json({
       success: true,
-      message: 'Assistant synced to 11Labs successfully',
-      tools: allTools.map(t => t.name)
+      message: 'Assistant synced to 11Labs with GATEWAY architecture',
+      architecture: 'gateway',
+      tools: ['agent_gateway', 'end_call', 'voicemail_detection']
     });
 
   } catch (error) {
