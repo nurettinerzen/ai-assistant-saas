@@ -1099,13 +1099,40 @@ export function buildGatewayAgentConfig(assistant, business) {
         success_evaluation: 'Was the conversation successful? Was the customer\'s request fulfilled?'
       };
 
+  // System tools for end_call and voicemail_detection
+  const systemTools = [
+    {
+      type: 'system',
+      name: 'end_call',
+      description: language === 'tr'
+        ? 'Görüşmeyi sonlandır. next_action "end_call" olduğunda veya müşteri vedalaştığında kullan.'
+        : 'End the call. Use when next_action is "end_call" or customer says goodbye.',
+      params: {
+        system_tool_type: 'end_call'
+      }
+    },
+    {
+      type: 'system',
+      name: 'voicemail_detection',
+      description: language === 'tr'
+        ? 'Sesli mesaj algılandığında aramayı otomatik sonlandır.'
+        : 'Automatically end call when voicemail is detected.',
+      params: {
+        system_tool_type: 'voicemail_detection',
+        voicemail_message: '',
+        use_out_of_band_dtmf: false
+      }
+    }
+  ];
+
   return {
     name: assistant.name,
     conversation_config: {
       agent: {
         prompt: {
           prompt: gatewaySystemPrompt,
-          llm: 'gemini-2.5-flash'  // Fast and cost-effective
+          llm: 'gemini-2.5-flash',  // Fast and cost-effective
+          tools: systemTools  // Inline system tools
         },
         first_message: assistant.firstMessage || getDefaultFirstMessage(language, assistant.name),
         language: language
