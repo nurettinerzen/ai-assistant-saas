@@ -34,15 +34,15 @@ GÜVENLİK DOĞRULAMASI:
     properties: {
       order_number: {
         type: 'string',
-        description: 'Sipariş numarası'
+        description: 'Sipariş numarası. Genellikle 4-6 haneli sayı (örn: 1001, 1234). SADECE sipariş numarasını buraya yaz!'
       },
       phone: {
         type: 'string',
-        description: 'Telefon numarası. Boşlukları ve tireleri kaldır. Örnek: "0533 123 45 68" -> "05331234568"'
+        description: 'Telefon numarası. 10-11 haneli, 05 ile başlar (örn: 05321234567). Boşluk/tire varsa kaldır. SADECE telefon numarasını buraya yaz!'
       },
       customer_name: {
         type: 'string',
-        description: 'Müşteri adı soyadı. Doğrulama için kullanılır.'
+        description: 'Müşteri adı veya adı soyadı. Doğrulama için kullanılır (örn: Ali, Ayşe Yılmaz)'
       },
       query_type: {
         type: 'string',

@@ -68,7 +68,7 @@ async function processWithGemini(systemPrompt, conversationHistory, userMessage,
   const model = genAI.getGenerativeModel({
     model: 'gemini-2.5-flash',
     generationConfig: {
-      temperature: 0.7,
+      temperature: 0.1,
       maxOutputTokens: 1500,
       // Disable thinking mode to prevent empty responses
       // Gemini 2.5 thinking feature can cause 0 output tokens

@@ -110,15 +110,67 @@ function valuesMatch(provided, stored, type) {
  */
 export async function execute(args, business, context = {}) {
   try {
-    const { order_number, customer_phone, customer_email, customer_name } = args;
+    let { order_number, customer_phone, customer_email, customer_name } = args;
     const sessionId = context.sessionId || `order-${business.id}-${Date.now()}`;
     const callerPhone = context.callerPhone;
+
+    // ================================================================
+    // PARAMETRE NORMALİZASYONU (Gemini bazen karıştırıyor)
+    // ================================================================
+
+    // Telefon numarası pattern: 10-11 hane, 05 veya 5 ile başlar
+    const isPhone = (val) => val && /^[05]\d{9,10}$/.test(val.replace(/\D/g, ''));
+    // Sipariş numarası pattern: genelde 3-7 hane
+    const isOrderNumber = (val) => val && /^\d{3,7}$/.test(val.replace(/\D/g, ''));
+    // Email pattern
+    const isEmail = (val) => val && /@/.test(val);
+
+    // Telefon, order_number alanına gönderilmişse düzelt
+    if (order_number && isPhone(order_number)) {
+      console.log('⚠️ NORMALIZE: Phone detected in order_number, swapping:', order_number);
+      if (!customer_phone) customer_phone = order_number;
+      order_number = undefined;
+    }
+
+    // Sipariş no, customer_phone alanına gönderilmişse düzelt
+    if (customer_phone && isOrderNumber(customer_phone) && !isPhone(customer_phone)) {
+      console.log('⚠️ NORMALIZE: Order number detected in customer_phone, swapping:', customer_phone);
+      if (!order_number) order_number = customer_phone;
+      customer_phone = undefined;
+    }
+
+    // Email, yanlış alana gönderilmişse düzelt
+    if (order_number && isEmail(order_number)) {
+      console.log('⚠️ NORMALIZE: Email detected in order_number, swapping:', order_number);
+      if (!customer_email) customer_email = order_number;
+      order_number = undefined;
+    }
+    if (customer_phone && isEmail(customer_phone)) {
+      console.log('⚠️ NORMALIZE: Email detected in customer_phone, swapping:', customer_phone);
+      if (!customer_email) customer_email = customer_phone;
+      customer_phone = undefined;
+    }
+
+    // Telefon numarasını normalize et (boşluk, tire kaldır)
+    if (customer_phone) {
+      customer_phone = normalizePhone(customer_phone);
+      // 10 haneli hale getir
+      if (customer_phone.length === 10) {
+        customer_phone = '0' + customer_phone;
+      }
+    }
 
     console.log('🔍 Checking order status:', { order_number, customer_phone, customer_email, customer_name, sessionId });
 
     // Validate - at least one parameter required
     if (!order_number && !customer_phone && !customer_email) {
       return {
+        ok: false,
+        error_code: 'INVALID_INPUT',
+        user_message: business.language === 'TR'
+          ? 'Sipariş numarası, telefon numarası veya e-posta gerekli. Lütfen birini belirtin.'
+          : 'Order number, phone number, or email required. Please provide at least one.',
+        // Backward compatibility
         success: false,
         error: business.language === 'TR'
           ? 'Sipariş numarası, telefon numarası veya e-posta gerekli. Lütfen birini belirtin.'
@@ -267,6 +319,12 @@ export async function execute(args, business, context = {}) {
     if (!result.success) {
       if (result.code === 'NO_PLATFORM') {
         return {
+          ok: false,
+          error_code: 'NO_PLATFORM',
+          user_message: business.language === 'TR'
+            ? 'E-ticaret platformu bağlı değil.'
+            : 'No e-commerce platform connected.',
+          // Backward compatibility
           success: false,
           error: business.language === 'TR'
             ? 'E-ticaret platformu bağlı değil.'
@@ -275,6 +333,12 @@ export async function execute(args, business, context = {}) {
       }
 
       return {
+        ok: false,
+        error_code: 'NOT_FOUND',
+        user_message: result.error || (business.language === 'TR'
+          ? 'Bu bilgilerle sipariş bulamadım. Sipariş numaranızı veya telefon numaranızı kontrol edebilir misiniz?'
+          : 'I could not find an order with this information. Could you please check your order number or phone number?'),
+        // Backward compatibility
         success: false,
         error: result.error || (business.language === 'TR'
           ? 'Sipariş bulunamadı. Lütfen sipariş numaranızı veya telefon numaranızı kontrol edin.'
@@ -451,6 +515,12 @@ export async function execute(args, business, context = {}) {
     console.error('❌ Check order status error:', error);
 
     return {
+      ok: false,
+      error_code: 'UPSTREAM_ERROR',
+      user_message: business.language === 'TR'
+        ? 'Sipariş bilgisine şu an ulaşamıyorum. Biraz sonra tekrar deneyebilir misiniz?'
+        : 'I cannot access order information right now. Could you please try again shortly?',
+      // Backward compatibility
       success: false,
       error: business.language === 'TR'
         ? 'Sipariş sorgulanırken bir hata oluştu. Lütfen daha sonra tekrar deneyin.'

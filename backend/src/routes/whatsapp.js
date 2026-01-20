@@ -16,6 +16,8 @@ import { isFreePlanExpired } from '../middleware/checkPlanExpiry.js';
 import { calculateTokenCost, hasFreeChat } from '../config/plans.js';
 import { getActiveTools, executeTool } from '../tools/index.js';
 import callAnalysis from '../services/callAnalysis.js';
+// NEW: 3-Stage AI Pipeline
+import { processMessage as pipelineProcess } from '../services/ai-pipeline/index.js';
 
 /**
  * Convert tool definitions to Gemini function declarations format
@@ -297,14 +299,149 @@ async function processWhatsAppMessage(business, from, messageBody, messageId) {
 }
 
 // ============================================================================
-// AI RESPONSE WITH GEMINI
+// AI RESPONSE WITH 3-STAGE PIPELINE
 // ============================================================================
 
+// Feature flag for new pipeline (set to true to enable)
+const USE_NEW_PIPELINE = process.env.USE_AI_PIPELINE === 'true';
+
 /**
- * Generate AI response using Gemini with proper function calling
+ * Generate AI response using 3-Stage Pipeline (NEW)
+ * Router → Orchestrator → Responder
+ */
+async function generateAIResponsePipeline(business, phoneNumber, userMessage, context = {}) {
+  try {
+    const assistant = business.assistants?.[0];
+    const conversationKey = `${business.id}:${phoneNumber}`;
+    const language = business?.language || 'TR';
+    const subscription = context.subscription;
+    const sessionId = `whatsapp-${business.id}-${phoneNumber}`;
+
+    // Get/manage conversation history
+    let history = conversations.get(conversationKey) || [];
+
+    // Check for existing session
+    let existingLog = await prisma.chatLog.findUnique({
+      where: { sessionId },
+      select: { id: true, inputTokens: true, outputTokens: true, totalCost: true, updatedAt: true, messages: true }
+    });
+
+    // Session timeout: 30 minutes
+    const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
+
+    if (existingLog) {
+      const timeSinceActivity = Date.now() - new Date(existingLog.updatedAt).getTime();
+
+      if (timeSinceActivity > SESSION_TIMEOUT_MS) {
+        // Archive old session
+        console.log(`⏰ [Pipeline] Session timed out - starting fresh`);
+        const archivedSessionId = `${sessionId}-${existingLog.updatedAt.getTime()}`;
+        await prisma.chatLog.update({
+          where: { sessionId },
+          data: { sessionId: archivedSessionId, status: 'ended', updatedAt: new Date() }
+        });
+        history = [];
+        existingLog = null;
+        conversations.delete(conversationKey);
+      } else if (!history.length && existingLog.messages) {
+        history = existingLog.messages.slice(-40);
+        conversations.set(conversationKey, history);
+      }
+    }
+
+    // Add user message to history
+    history.push({ role: 'user', content: userMessage });
+
+    // Process through pipeline
+    console.log('🚀 [Pipeline] Processing message through 3-stage pipeline...');
+    const pipelineResult = await pipelineProcess({
+      userMessage,
+      business,
+      assistant,
+      history: history.slice(0, -1), // Exclude current message
+      context: {
+        channel: 'WHATSAPP',
+        sessionId,
+        callerPhone: phoneNumber,
+        phone: phoneNumber,
+        from: phoneNumber
+      }
+    });
+
+    // Handle force end call
+    if (pipelineResult.forceEndCall) {
+      console.log('🚨 [Pipeline] Force end - security termination');
+      conversations.delete(conversationKey);
+      return pipelineResult.response;
+    }
+
+    const finalResponse = pipelineResult.response || (language === 'TR'
+      ? 'Üzgünüm, bir yanıt oluşturamadım.'
+      : 'Sorry, I could not generate a response.');
+
+    // Add response to history
+    history.push({ role: 'assistant', content: finalResponse });
+    if (history.length > 40) history = history.slice(-40);
+    conversations.set(conversationKey, history);
+
+    // Calculate costs
+    const totalInputTokens = pipelineResult.tokens?.input || 0;
+    const totalOutputTokens = pipelineResult.tokens?.output || 0;
+    const planName = subscription?.plan || 'FREE';
+    const isFree = hasFreeChat(planName);
+    let tokenCost = { inputCost: 0, outputCost: 0, totalCost: 0 };
+    if (!isFree) {
+      tokenCost = calculateTokenCost(totalInputTokens, totalOutputTokens, planName, business?.country || 'TR');
+    }
+
+    // Save to database
+    const accumulatedInputTokens = (existingLog?.inputTokens || 0) + totalInputTokens;
+    const accumulatedOutputTokens = (existingLog?.outputTokens || 0) + totalOutputTokens;
+    const accumulatedCost = (existingLog?.totalCost || 0) + tokenCost.totalCost;
+
+    try {
+      await prisma.chatLog.upsert({
+        where: { sessionId },
+        update: {
+          messages: history,
+          messageCount: history.length,
+          inputTokens: accumulatedInputTokens,
+          outputTokens: accumulatedOutputTokens,
+          totalCost: accumulatedCost,
+          updatedAt: new Date()
+        },
+        create: {
+          sessionId,
+          businessId: business.id,
+          assistantId: assistant?.id || null,
+          channel: 'WHATSAPP',
+          customerPhone: phoneNumber,
+          messages: history,
+          messageCount: history.length,
+          inputTokens: totalInputTokens,
+          outputTokens: totalOutputTokens,
+          totalCost: tokenCost.totalCost,
+          status: 'active'
+        }
+      });
+    } catch (logError) {
+      console.error('⚠️ [Pipeline] Failed to save chat log:', logError.message);
+    }
+
+    console.log(`✅ [Pipeline] Response: ${finalResponse.substring(0, 100)}...`);
+    return finalResponse;
+
+  } catch (error) {
+    console.error('❌ [Pipeline] Error:', error);
+    return getErrorMessage(business.language);
+  }
+}
+
+/**
+ * Generate AI response using Gemini with proper function calling (LEGACY)
  * Same architecture as chat.js - model calls tools when needed
  */
-async function generateAIResponse(business, phoneNumber, userMessage, context = {}) {
+async function generateAIResponseLegacy(business, phoneNumber, userMessage, context = {}) {
   try {
     const genAI = getGemini();
     const assistant = business.assistants?.[0];
@@ -401,7 +538,7 @@ async function generateAIResponse(business, phoneNumber, userMessage, context = 
     const model = genAI.getGenerativeModel({
       model: 'gemini-2.5-flash',
       generationConfig: {
-        temperature: 0.7,
+        temperature: 0.1,
         maxOutputTokens: 1500,
         // Disable thinking mode to prevent empty responses
         // Gemini 2.5 thinking feature can cause 0 output tokens
@@ -490,6 +627,28 @@ async function generateAIResponse(business, phoneNumber, userMessage, context = 
       });
 
       console.log('🔧 [WhatsApp] Tool result:', toolResult.success ? 'SUCCESS' : 'FAILED', toolResult.message?.substring(0, 100));
+
+      // Check for forceEndCall flag (security termination)
+      if (toolResult.forceEndCall) {
+        console.log('🚨 [WhatsApp] FORCE END CONVERSATION - Too many failed attempts');
+        // Return the security message and end the conversation
+        const securityMessage = toolResult.error || toolResult.message ||
+          (language === 'TR'
+            ? 'Güvenlik nedeniyle bu görüşmeyi sonlandırıyorum.'
+            : 'Ending this conversation for security reasons.');
+
+        // Clear conversation history for this user
+        conversations.delete(conversationKey);
+
+        // Add to history before returning
+        history.push({
+          role: 'assistant',
+          content: securityMessage
+        });
+
+        // Return immediately - don't continue the conversation
+        return securityMessage;
+      }
 
       // Send function response back to Gemini
       result = await chat.sendMessage([
@@ -627,6 +786,18 @@ async function generateAIResponse(business, phoneNumber, userMessage, context = 
     console.error('❌ Error generating AI response:', error);
     return getErrorMessage(business.language);
   }
+}
+
+/**
+ * Main entry point - routes to new pipeline or legacy based on feature flag
+ */
+async function generateAIResponse(business, phoneNumber, userMessage, context = {}) {
+  if (USE_NEW_PIPELINE) {
+    console.log('🚀 [WhatsApp] Using NEW 3-stage pipeline');
+    return generateAIResponsePipeline(business, phoneNumber, userMessage, context);
+  }
+  console.log('📟 [WhatsApp] Using LEGACY Gemini function calling');
+  return generateAIResponseLegacy(business, phoneNumber, userMessage, context);
 }
 
 // ============================================================================

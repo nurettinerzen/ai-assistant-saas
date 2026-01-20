@@ -5,7 +5,9 @@
  * Active tools:
  * - create_appointment: Appointments for service businesses
  * - send_order_notification: Order notifications to business owners
- * - check_order_status: E-commerce order lookup (Shopify/WooCommerce)
+ * - check_order_by_number: E-commerce order lookup by order number
+ * - check_order_by_phone: E-commerce order lookup by phone
+ * - check_order_by_email: E-commerce order lookup by email
  * - get_product_stock: E-commerce product stock (Shopify/WooCommerce)
  * - get_tracking_info: E-commerce shipping tracking (Shopify/WooCommerce)
  * - check_order_status_crm: CRM order lookup
@@ -31,7 +33,10 @@ import createCallbackHandler from './create-callback.js';
 const handlers = {
   'create_appointment': appointmentHandler,
   'send_order_notification': orderNotificationHandler,
-  'check_order_status': orderStatusHandler,
+  // Order tools - all use the same handler, split by identifier type
+  'check_order_by_number': orderStatusHandler,
+  'check_order_by_phone': orderStatusHandler,
+  'check_order_by_email': orderStatusHandler,
   'get_product_stock': productStockHandler,
   'get_tracking_info': trackingInfoHandler,
   // CRM Handlers

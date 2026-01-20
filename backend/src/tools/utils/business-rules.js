@@ -5,7 +5,9 @@
  * ACTIVE TOOLS (tested, production-ready):
  * - create_appointment: Creates appointments, saves to DB + Google Calendar
  * - send_order_notification: Sends order notification to business owner
- * - check_order_status: E-commerce order lookup (Shopify/WooCommerce via aggregator)
+ * - check_order_by_number: E-commerce order lookup by order number
+ * - check_order_by_phone: E-commerce order lookup by phone
+ * - check_order_by_email: E-commerce order lookup by email
  * - get_product_stock: E-commerce product stock check (Shopify/WooCommerce via aggregator)
  * - get_tracking_info: E-commerce shipping tracking (Shopify/WooCommerce via aggregator)
  * - check_order_status_crm: CRM order lookup (custom webhook)
@@ -45,7 +47,10 @@ export const BUSINESS_TYPE_TOOLS = {
     'create_callback'          // ✅ Geri arama talebi
   ],
   ECOMMERCE: [
-    'check_order_status',      // ✅ Shopify/WooCommerce via aggregator
+    // Order tools - split by identifier type for better accuracy
+    'check_order_by_number',   // ✅ Order lookup by order number
+    'check_order_by_phone',    // ✅ Order lookup by phone
+    'check_order_by_email',    // ✅ Order lookup by email
     'get_product_stock',       // ✅ Shopify/WooCommerce via aggregator
     'get_tracking_info',       // ✅ Shopify/WooCommerce via aggregator
     'check_order_status_crm',  // ✅ CRM orders
@@ -68,11 +73,11 @@ export const BUSINESS_TYPE_TOOLS = {
 // Tools are only enabled if the business has the corresponding integration active
 export const INTEGRATION_REQUIRED_TOOLS = {
   'GOOGLE_CALENDAR': [],
-  'SHOPIFY': ['check_order_status', 'get_product_stock', 'get_tracking_info'],
-  'WOOCOMMERCE': ['check_order_status', 'get_product_stock', 'get_tracking_info'],
-  'IKAS': ['check_order_status', 'get_product_stock', 'get_tracking_info'],
-  'IDEASOFT': ['check_order_status', 'get_product_stock', 'get_tracking_info'],
-  'TICIMAX': ['check_order_status', 'get_product_stock', 'get_tracking_info'],
+  'SHOPIFY': ['check_order_by_number', 'check_order_by_phone', 'check_order_by_email', 'get_product_stock', 'get_tracking_info'],
+  'WOOCOMMERCE': ['check_order_by_number', 'check_order_by_phone', 'check_order_by_email', 'get_product_stock', 'get_tracking_info'],
+  'IKAS': ['check_order_by_number', 'check_order_by_phone', 'check_order_by_email', 'get_product_stock', 'get_tracking_info'],
+  'IDEASOFT': ['check_order_by_number', 'check_order_by_phone', 'check_order_by_email', 'get_product_stock', 'get_tracking_info'],
+  'TICIMAX': ['check_order_by_number', 'check_order_by_phone', 'check_order_by_email', 'get_product_stock', 'get_tracking_info'],
   'CRM_WEBHOOK': ['check_order_status_crm', 'check_stock_crm', 'check_ticket_status_crm']
 };
 

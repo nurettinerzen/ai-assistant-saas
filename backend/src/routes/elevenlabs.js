@@ -15,9 +15,12 @@ import usageTracking from '../services/usageTracking.js';
 import usageService from '../services/usageService.js';
 import subscriptionService from '../services/subscriptionService.js';
 import callAnalysis from '../services/callAnalysis.js';
-import { executeTool } from '../tools/index.js';
+import { executeTool, getActiveTools } from '../tools/index.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { hasProFeatures, isProTier } from '../config/plans.js';
+import HeuristicRouter from '../services/ai-pipeline/heuristic-router.js';
+import Orchestrator from '../services/ai-pipeline/orchestrator.js';
+import Responder from '../services/ai-pipeline/responder.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -248,6 +251,215 @@ router.post('/webhook', async (req, res) => {
     console.error('❌ 11Labs webhook error:', error);
     // Still return 200 to acknowledge receipt
     res.status(200).json({ received: true, error: error.message });
+  }
+});
+
+// ============================================================================
+// AGENT GATEWAY - Single Tool Architecture for Phone Channel
+// ============================================================================
+// This endpoint replaces multiple tools with a single "agent_gateway" tool
+// Benefits:
+// - Model never decides tool calls (backend controls)
+// - Ultra-fast heuristic routing (1-5ms vs 300-500ms LLM)
+// - Consistent response format for 11Labs
+// - Supports end_call and transfer via next_action field
+// ============================================================================
+
+/**
+ * Agent Gateway Endpoint
+ *
+ * 11Labs calls this single tool for ALL user utterances.
+ * We use heuristic router to determine intent and execute appropriate backend logic.
+ *
+ * Request from 11Labs:
+ * {
+ *   tool_name: "agent_gateway",
+ *   user_message: "Siparişim nerede?",
+ *   conversation_id: "xxx",
+ *   caller_phone: "+905551234567" (from dynamic variable)
+ * }
+ *
+ * Response to 11Labs:
+ * {
+ *   say: "Sipariş durumunuzu kontrol ediyorum...",
+ *   next_action: "continue" | "end_call" | "transfer",
+ *   end_reason?: "customer_goodbye" | "security_termination",
+ *   transfer_number?: "+905001234567",
+ *   data?: { ... }  // Optional data for logging
+ * }
+ */
+router.post('/agent-gateway', async (req, res) => {
+  const startTime = Date.now();
+
+  try {
+    const {
+      user_message,
+      conversation_id,
+      caller_phone,
+      conversation_history
+    } = req.body;
+
+    // Get agentId from query param (embedded in webhook URL)
+    const agentId = req.query.agentId;
+
+    console.log('🚀 [Agent Gateway] Received:', {
+      message: user_message?.substring(0, 100),
+      conversationId: conversation_id,
+      callerPhone: caller_phone,
+      agentId
+    });
+
+    // Validate required fields
+    if (!user_message) {
+      return res.json({
+        say: 'Sizi duyamadım, tekrar eder misiniz?',
+        next_action: 'continue'
+      });
+    }
+
+    // Find business from agent ID
+    if (!agentId) {
+      console.error('❌ [Agent Gateway] No agentId provided');
+      return res.json({
+        say: 'Bir teknik sorun oluştu. Lütfen daha sonra tekrar arayın.',
+        next_action: 'end_call',
+        end_reason: 'error'
+      });
+    }
+
+    const assistant = await prisma.assistant.findFirst({
+      where: { elevenLabsAgentId: agentId },
+      include: {
+        business: {
+          include: {
+            integrations: { where: { isActive: true } }
+          }
+        }
+      }
+    });
+
+    if (!assistant || !assistant.business) {
+      console.error(`❌ [Agent Gateway] No business found for agent ${agentId}`);
+      return res.json({
+        say: 'Bir teknik sorun oluştu.',
+        next_action: 'end_call',
+        end_reason: 'error'
+      });
+    }
+
+    const business = assistant.business;
+    const language = business.language || 'TR';
+
+    console.log(`✅ [Agent Gateway] Business: ${business.name} (ID: ${business.id})`);
+
+    // Stage 1: Heuristic Router - Ultra-fast intent detection (1-5ms)
+    const heuristicRouter = new HeuristicRouter({ language });
+    const routerResult = heuristicRouter.extractIntent(user_message, conversation_history || []);
+
+    console.log('🔀 [Agent Gateway] Router result:', {
+      domain: routerResult.domain,
+      intent: routerResult.intent,
+      confidence: routerResult.confidence,
+      processingTimeMs: routerResult.processingTimeMs
+    });
+
+    // Check for immediate actions (end_call, transfer)
+    const immediateAction = heuristicRouter.determineNextAction(routerResult.domain, routerResult.intent);
+
+    if (immediateAction.next_action === 'end_call') {
+      console.log('👋 [Agent Gateway] End call requested');
+      return res.json({
+        say: language === 'TR'
+          ? 'Görüşmek üzere, iyi günler dilerim!'
+          : 'Goodbye, have a great day!',
+        next_action: 'end_call',
+        end_reason: immediateAction.end_reason || 'customer_goodbye'
+      });
+    }
+
+    if (immediateAction.next_action === 'transfer') {
+      console.log('📞 [Agent Gateway] Transfer requested');
+      // Get transfer number from business config if available
+      const transferNumber = business.transferNumber || process.env.DEFAULT_TRANSFER_NUMBER;
+
+      if (transferNumber) {
+        return res.json({
+          say: language === 'TR'
+            ? 'Sizi yetkili bir temsilcimize bağlıyorum, lütfen bekleyin.'
+            : 'Connecting you to a representative, please hold.',
+          next_action: 'transfer',
+          transfer_number: transferNumber
+        });
+      } else {
+        // No transfer number configured, create callback instead
+        return res.json({
+          say: language === 'TR'
+            ? 'Şu anda tüm temsilcilerimiz meşgul. Size en kısa sürede geri dönüş yapılacaktır.'
+            : 'All our representatives are currently busy. We will call you back as soon as possible.',
+          next_action: 'continue'
+        });
+      }
+    }
+
+    // Stage 2: Orchestrator - Execute tools if needed
+    const context = {
+      channel: 'PHONE',
+      callerPhone: caller_phone,
+      phone: caller_phone,
+      conversationId: conversation_id
+    };
+
+    const orchestrator = new Orchestrator(business, context);
+    const orchestratorResult = await orchestrator.process(routerResult, conversation_history || []);
+
+    console.log('⚙️ [Agent Gateway] Orchestrator result:', {
+      toolsExecuted: orchestratorResult.toolsExecuted,
+      success: orchestratorResult.success,
+      forceEndCall: orchestratorResult.forceEndCall
+    });
+
+    // Check for security termination
+    if (orchestratorResult.forceEndCall) {
+      console.log('🚨 [Agent Gateway] Security termination');
+      return res.json({
+        say: orchestratorResult.securityMessage || (language === 'TR'
+          ? 'Güvenlik nedeniyle bu görüşmeyi sonlandırıyorum.'
+          : 'Ending this conversation for security reasons.'),
+        next_action: 'end_call',
+        end_reason: 'security_termination'
+      });
+    }
+
+    // Stage 3: Responder - Generate response
+    const responder = new Responder(business, assistant);
+    const responderResult = await responder.generateResponse({
+      routerResult,
+      orchestratorResult,
+      userMessage: user_message,
+      history: conversation_history || []
+    });
+
+    const totalTime = Date.now() - startTime;
+    console.log(`✅ [Agent Gateway] Response generated in ${totalTime}ms`);
+
+    // Return response in gateway format
+    return res.json({
+      say: responderResult.response,
+      next_action: 'continue',
+      data: {
+        domain: routerResult.domain,
+        intent: routerResult.intent,
+        toolsExecuted: orchestratorResult.toolsExecuted,
+        processingTimeMs: totalTime
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ [Agent Gateway] Error:', error);
+    return res.json({
+      say: 'Bir sorun oluştu, lütfen tekrar deneyin.',
+      next_action: 'continue'
+    });
   }
 });
 

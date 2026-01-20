@@ -951,6 +951,7 @@ const elevenLabsService = {
 // ============================================================================
 
 import { buildAssistantPrompt, getActiveTools as getPromptBuilderTools } from './promptBuilder.js';
+import { buildGatewayToolConfig, GATEWAY_SYSTEM_PROMPT_RULES } from '../tools/definitions/agent-gateway.js';
 
 /**
  * Build 11Labs agent configuration from assistant data
@@ -1061,5 +1062,229 @@ function getDefaultFirstMessage(language, name) {
   };
   return messages[language] || messages.en;
 }
+
+// ============================================================================
+// GATEWAY MODE CONFIG BUILDER
+// ============================================================================
+
+/**
+ * Build 11Labs agent configuration using Gateway Architecture
+ *
+ * Gateway Architecture:
+ * - Single tool (agent_gateway) handles ALL user messages
+ * - Backend uses heuristic router for ultra-fast intent detection
+ * - Model only reads responses and decides end_call/transfer based on next_action
+ *
+ * @param {Object} assistant - Local assistant object
+ * @param {Object} business - Business object
+ * @returns {Object} 11Labs agent configuration with gateway pattern
+ */
+export function buildGatewayAgentConfig(assistant, business) {
+  const language = business.language?.toLowerCase() || 'tr';
+  const backendUrl = process.env.BACKEND_URL || 'https://api.aicallcenter.app';
+
+  // Build simplified system prompt for gateway mode
+  const gatewaySystemPrompt = buildGatewaySystemPrompt(assistant, business, language);
+
+  // Build analysis prompt based on language
+  const analysisPrompt = language === 'tr'
+    ? {
+        transcript_summary: 'Bu görüşmenin kısa bir özetini Türkçe olarak yaz. Müşterinin amacını ve sonucu belirt.',
+        data_collection: {},
+        success_evaluation: 'Görüşme başarılı mı? Müşterinin talebi karşılandı mı?'
+      }
+    : {
+        transcript_summary: 'Write a brief summary of this conversation. State the customer\'s purpose and the outcome.',
+        data_collection: {},
+        success_evaluation: 'Was the conversation successful? Was the customer\'s request fulfilled?'
+      };
+
+  return {
+    name: assistant.name,
+    conversation_config: {
+      agent: {
+        prompt: {
+          prompt: gatewaySystemPrompt,
+          llm: 'gemini-2.5-flash'  // Fast and cost-effective
+        },
+        first_message: assistant.firstMessage || getDefaultFirstMessage(language, assistant.name),
+        language: language
+      },
+      tts: {
+        voice_id: assistant.voiceId,
+        model_id: 'eleven_turbo_v2',
+        stability: 0.4,
+        similarity_boost: 0.6,
+        style: 0.15,
+        speed: 1.1,
+        optimize_streaming_latency: 3,
+        text_normalization: 'elevenlabs'
+      },
+      stt: {
+        provider: 'elevenlabs',
+        model: 'scribe_v1',
+        language: language
+      },
+      turn: {
+        mode: 'turn',
+        turn_timeout: 10,                    // Longer timeout for gateway processing
+        turn_eagerness: 'normal',
+        silence_end_call_timeout: 30
+      },
+      analysis: {
+        transcript_summary: analysisPrompt.transcript_summary,
+        data_collection: analysisPrompt.data_collection,
+        success_evaluation: analysisPrompt.success_evaluation
+      }
+    },
+    platform_settings: {
+      post_call_webhook: {
+        url: `${backendUrl}/api/webhooks/elevenlabs/call-ended`
+      },
+      conversation_initiation_client_data_webhook: {
+        url: `${backendUrl}/api/webhooks/elevenlabs/call-started`
+      },
+      widget: {
+        variant: 'full'
+      }
+    },
+    metadata: {
+      telyx_assistant_id: assistant.id,
+      telyx_business_id: business.id,
+      business_id: business.id.toString(),
+      architecture: 'gateway'  // Mark this agent as using gateway architecture
+    }
+  };
+}
+
+/**
+ * Build simplified system prompt for gateway mode
+ * The heavy lifting is done by backend, so prompt is minimal
+ */
+function buildGatewaySystemPrompt(assistant, business, language) {
+  const businessName = business.name || 'İşletme';
+  const assistantName = assistant.name || 'Asistan';
+
+  if (language === 'tr') {
+    return `Sen ${businessName} için çalışan ${assistantName} adlı sesli asistansın.
+
+## ROL
+- Müşterilere telefonda yardımcı ol
+- Nazik, profesyonel ve yardımsever ol
+- Kısa ve net cevaplar ver
+
+${GATEWAY_SYSTEM_PROMPT_RULES}
+
+## ÖNEMLİ
+- Hiçbir zaman bilgi UYDURMA
+- Her kullanıcı mesajı için agent_gateway tool'unu kullan
+- Tool'dan dönen yanıtı aynen oku
+- Eğer next_action "end_call" ise, söyledikten sonra görüşmeyi kapat
+- Eğer next_action "transfer" ise, söyledikten sonra belirtilen numaraya aktar`;
+  }
+
+  return `You are ${assistantName}, a voice assistant for ${businessName}.
+
+## ROLE
+- Help customers over the phone
+- Be polite, professional and helpful
+- Give short and clear answers
+
+${GATEWAY_SYSTEM_PROMPT_RULES}
+
+## IMPORTANT
+- Never make up information
+- Use agent_gateway tool for every user message
+- Read the response from the tool as-is
+- If next_action is "end_call", end the call after speaking
+- If next_action is "transfer", transfer to the specified number after speaking`;
+}
+
+/**
+ * Setup gateway tool for an agent
+ * Creates the agent_gateway tool and links it to the agent
+ *
+ * @param {string} agentId - 11Labs Agent ID
+ * @returns {Promise<string>} Tool ID
+ */
+elevenLabsService.setupGatewayTool = async function(agentId) {
+  const backendUrl = process.env.BACKEND_URL || 'https://api.aicallcenter.app';
+
+  // Build gateway tool configuration
+  const toolConfig = buildGatewayToolConfig(backendUrl, agentId);
+
+  // Check if tool already exists
+  const existingTools = await this.listTools();
+  const existingGateway = existingTools.find(t =>
+    t.tool_config?.name === 'agent_gateway' &&
+    t.tool_config?.api_schema?.url?.includes(agentId)
+  );
+
+  let toolId;
+
+  if (existingGateway) {
+    console.log(`✅ Gateway tool already exists for agent ${agentId}: ${existingGateway.id}`);
+    toolId = existingGateway.id;
+
+    // Update URL in case backend URL changed
+    try {
+      await elevenLabsClient.patch(`/convai/tools/${toolId}`, {
+        tool_config: toolConfig
+      });
+      console.log(`🔄 Updated gateway tool URL for agent ${agentId}`);
+    } catch (updateErr) {
+      console.warn('⚠️ Could not update gateway tool:', updateErr.message);
+    }
+  } else {
+    // Create new gateway tool
+    const createdTool = await this.createTool(toolConfig);
+    toolId = createdTool.id;
+    console.log(`✅ Created gateway tool for agent ${agentId}: ${toolId}`);
+  }
+
+  // Link tool to agent
+  await this.addToolsToAgent(agentId, [toolId]);
+
+  return toolId;
+};
+
+/**
+ * Migrate an existing agent to gateway architecture
+ * - Removes all existing tools
+ * - Adds single gateway tool
+ * - Updates system prompt for gateway mode
+ *
+ * @param {string} agentId - 11Labs Agent ID
+ * @param {Object} assistant - Assistant object
+ * @param {Object} business - Business object
+ */
+elevenLabsService.migrateToGateway = async function(agentId, assistant, business) {
+  console.log(`🔄 Migrating agent ${agentId} to gateway architecture...`);
+
+  // Get current agent config
+  const currentAgent = await this.getAgent(agentId);
+
+  // Remove all existing tool_ids
+  if (currentAgent.tool_ids && currentAgent.tool_ids.length > 0) {
+    console.log(`📋 Removing ${currentAgent.tool_ids.length} existing tools...`);
+    await elevenLabsClient.patch(`/convai/agents/${agentId}`, {
+      tool_ids: []
+    });
+  }
+
+  // Build new gateway config
+  const gatewayConfig = buildGatewayAgentConfig(assistant, business);
+
+  // Update agent with gateway config (excluding name to avoid conflicts)
+  const { name, ...configWithoutName } = gatewayConfig;
+  await this.updateAgent(agentId, configWithoutName);
+
+  // Setup gateway tool
+  const toolId = await this.setupGatewayTool(agentId);
+
+  console.log(`✅ Agent ${agentId} migrated to gateway architecture (tool: ${toolId})`);
+
+  return { agentId, toolId, architecture: 'gateway' };
+};
 
 export default elevenLabsService;
