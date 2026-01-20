@@ -1099,8 +1099,44 @@ export function buildGatewayAgentConfig(assistant, business) {
         success_evaluation: 'Was the conversation successful? Was the customer\'s request fulfilled?'
       };
 
-  // System tools for end_call and voicemail_detection
-  const systemTools = [
+  // Build webhook URL for gateway tool
+  const webhookUrl = `${backendUrl}/api/elevenlabs/agent-gateway?agentId=${assistant.id || 'pending'}`;
+
+  // All tools: gateway webhook + system tools (inline in prompt.tools)
+  const allTools = [
+    // Gateway webhook tool - handles ALL user messages
+    {
+      type: 'webhook',
+      name: 'agent_gateway',
+      description: language === 'tr'
+        ? `Her kullanıcı mesajı için bu tool'u çağır. Kullanıcının söylediğini gönder, backend ne söylemen gerektiğini döndürecek. Dönen 'say' alanını sesli söyle. 'next_action': "continue" devam et, "end_call" görüşmeyi kapat, "transfer" numaraya aktar.`
+        : `Call this tool for every user message. Send what the user said, backend will return what to say. Speak the 'say' field. 'next_action': "continue" keep going, "end_call" end call, "transfer" transfer to number.`,
+      api_schema: {
+        url: webhookUrl,
+        method: 'POST',
+        request_body_schema: {
+          type: 'object',
+          properties: {
+            user_message: {
+              type: 'string',
+              description: language === 'tr'
+                ? 'Kullanıcının söylediği mesaj - olduğu gibi gönder'
+                : 'The user message - send as-is'
+            },
+            conversation_id: {
+              type: 'string',
+              dynamic_variable: 'system__conversation_id'
+            },
+            caller_phone: {
+              type: 'string',
+              dynamic_variable: 'system__caller_id'
+            }
+          },
+          required: ['user_message']
+        }
+      }
+    },
+    // System tool: end_call
     {
       type: 'system',
       name: 'end_call',
@@ -1111,6 +1147,7 @@ export function buildGatewayAgentConfig(assistant, business) {
         system_tool_type: 'end_call'
       }
     },
+    // System tool: voicemail_detection
     {
       type: 'system',
       name: 'voicemail_detection',
@@ -1132,7 +1169,7 @@ export function buildGatewayAgentConfig(assistant, business) {
         prompt: {
           prompt: gatewaySystemPrompt,
           llm: 'gemini-2.5-flash',  // Fast and cost-effective
-          tools: systemTools  // Inline system tools
+          tools: allTools  // Gateway webhook + system tools (all inline)
         },
         first_message: assistant.firstMessage || getDefaultFirstMessage(language, assistant.name),
         language: language

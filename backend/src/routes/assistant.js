@@ -273,9 +273,30 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
       elevenLabsAgentId = elevenLabsResponse.agent_id;
       console.log('✅ 11Labs Agent created:', elevenLabsAgentId);
 
-      // ✅ Setup gateway tool with agentId in webhook URL
-      await elevenLabsService.setupGatewayTool(elevenLabsAgentId);
-      console.log('✅ Gateway tool configured with agentId in webhook URL');
+      // ✅ Update gateway tool's webhook URL with actual agentId
+      // (Initial config used 'pending' placeholder since agentId wasn't known yet)
+      const correctWebhookUrl = `${process.env.BACKEND_URL || 'https://api.aicallcenter.app'}/api/elevenlabs/agent-gateway?agentId=${elevenLabsAgentId}`;
+      await elevenLabsService.updateAgent(elevenLabsAgentId, {
+        conversation_config: {
+          agent: {
+            prompt: {
+              tools: agentConfig.conversation_config.agent.prompt.tools.map(tool => {
+                if (tool.type === 'webhook' && tool.name === 'agent_gateway') {
+                  return {
+                    ...tool,
+                    api_schema: {
+                      ...tool.api_schema,
+                      url: correctWebhookUrl
+                    }
+                  };
+                }
+                return tool;
+              })
+            }
+          }
+        }
+      });
+      console.log('✅ Gateway tool webhook URL updated with agentId');
     } catch (elevenLabsError) {
       console.error('❌ 11Labs Agent creation failed:', elevenLabsError.response?.data || elevenLabsError.message);
       return res.status(500).json({
