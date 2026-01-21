@@ -74,7 +74,8 @@ import callbackRoutes from './routes/callback.js';
 
 // Import jobs
 import { initMonthlyResetJob } from './jobs/monthlyReset.js';
-import { initEmailSyncJob } from './jobs/emailSync.js';
+// Email sync is now MANUAL only - removed auto-sync job
+// import { initEmailSyncJob } from './jobs/emailSync.js';
 
 dotenv.config();
 
@@ -199,7 +200,8 @@ app.use((err, req, res, next) => {
 if (process.env.NODE_ENV !== 'test') {
   console.log('\n🚀 Initializing background jobs...');
   initMonthlyResetJob();
-  initEmailSyncJob();
+  // Email sync is now MANUAL only - users trigger sync from panel
+  // initEmailSyncJob();
   console.log('✅ Background jobs initialized\n');
 }
 
