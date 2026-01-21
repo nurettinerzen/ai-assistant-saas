@@ -571,8 +571,7 @@ export async function execute(args, business, context = {}) {
           success: true,
           requiresVerification: true,
           message: verificationMessage + aiInstruction,
-          verificationPending: true,
-          requiredVerificationType: verificationOptions.map(f => f.type).join('_or_')
+          verificationPending: true
         };
       }
     }

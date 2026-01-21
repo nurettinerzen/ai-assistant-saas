@@ -16,9 +16,11 @@ export default {
 ÖNCELİKLİ SORGULAMA AKIŞI (query_type'a göre):
 
 📦 SİPARİŞ SORGUSU (query_type: "siparis" veya "order"):
-1. ÖNCE sipariş numarası sor
-2. Sipariş no yoksa telefon numarası sor
+1. SADECE sipariş numarası sor - "Sipariş numaranız nedir?"
+2. EĞER kullanıcı "bilmiyorum" derse o zaman telefon numarası sor
 3. Doğrulama: İsim/soyisim sor
+
+DİKKAT: Sipariş sorgusunda HEM sipariş no HEM telefon no SORMA! Önce sadece sipariş no iste.
 
 💰 MUHASEBE SORGUSU (query_type: "muhasebe", "sgk_borcu", "vergi_borcu"):
 1. ÖNCE VKN veya TC Kimlik No sor (vkn veya tc parametresi)
@@ -40,8 +42,9 @@ GÜVENLİK DOĞRULAMASI:
 - TEKRAR bu aracı çağır ve doğrulama bilgisini ekle
 
 ÖNEMLİ:
-- Her sorgu türü için ÖNCELİKLİ BİLGİYİ SOR (sipariş no, VKN, servis no vb.)
-- Birden fazla seçenek sunma, öncelik sırasına göre sor
+- Her sorgu türü için SADECE ÖNCELİKLİ BİLGİYİ SOR (sipariş no, VKN, servis no vb.)
+- BİRDEN FAZLA SEÇENEK SUNMA! Önce primary bilgiyi sor, kullanıcı "bilmiyorum" derse secondary bilgiyi sor
+- Sipariş sorgusu için: "Sipariş numaranız nedir?" de, "Sipariş numaranız VEYA telefon numaranız" DEME!
 - Doğrulama her zaman isim/soyisim veya firma ismi ile yapılır`,
   parameters: {
     type: 'object',
