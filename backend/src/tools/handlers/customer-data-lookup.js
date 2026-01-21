@@ -456,7 +456,8 @@ export async function execute(args, business, context = {}) {
     // VKN/TC/order_number/ticket_number are PRIMARY identifiers
     // After finding record with PRIMARY identifier, always require NAME verification
     const usedPrimaryIdentifier = vkn || tc || order_number || ticket_number;
-    else if (usedPrimaryIdentifier && !customer_name) {
+
+    if (usedPrimaryIdentifier && !customer_name) {
       // Check if this is sensitive data (accounting, orders with financial info)
       const hasSensitiveData = customFields.sgkDebt || customFields['SGK Borcu'] ||
                                customFields.taxDebt || customFields['Vergi Borcu'] ||
