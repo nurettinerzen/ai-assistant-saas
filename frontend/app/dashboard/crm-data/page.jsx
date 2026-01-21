@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -35,7 +36,9 @@ import {
 
 export default function CRMDataPage() {
   const { t } = useLanguage();
-  const [activeTab, setActiveTab] = useState('orders');
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState(tabParam || 'orders');
   const [orders, setOrders] = useState([]);
   const [stock, setStock] = useState([]);
   const [tickets, setTickets] = useState([]);

@@ -303,7 +303,11 @@ export default function CustomCrmPage() {
 
       {/* Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white border border-neutral-200 rounded-xl p-5">
+        {/* Orders Card - Clickable */}
+        <div
+          className="bg-white border border-neutral-200 rounded-xl p-5 cursor-pointer hover:shadow-lg hover:border-blue-300 transition-all"
+          onClick={() => router.push('/dashboard/crm-data?tab=orders')}
+        >
           <div className="flex items-center gap-2 mb-1">
             <ShoppingCart className="h-4 w-4 text-blue-600" />
             <span className="text-sm text-neutral-600">Siparişler</span>
@@ -313,19 +317,39 @@ export default function CustomCrmPage() {
             Son: {formatDate(stats?.orders?.lastUpdate)}
           </div>
           {stats?.orders?.count > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="mt-2 text-red-600 hover:text-red-700 p-0 h-auto"
-              onClick={() => openDeleteModal('orders')}
-            >
-              <Trash2 className="h-3 w-3 mr-1" />
-              Temizle
-            </Button>
+            <div className="flex gap-2 mt-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-blue-600 hover:text-blue-700 p-0 h-auto"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  router.push('/dashboard/crm-data?tab=orders');
+                }}
+              >
+                Görüntüle →
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-red-600 hover:text-red-700 p-0 h-auto"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openDeleteModal('orders');
+                }}
+              >
+                <Trash2 className="h-3 w-3 mr-1" />
+                Temizle
+              </Button>
+            </div>
           )}
         </div>
 
-        <div className="bg-white border border-neutral-200 rounded-xl p-5">
+        {/* Stock Card - Clickable */}
+        <div
+          className="bg-white border border-neutral-200 rounded-xl p-5 cursor-pointer hover:shadow-lg hover:border-green-300 transition-all"
+          onClick={() => router.push('/dashboard/crm-data?tab=stock')}
+        >
           <div className="flex items-center gap-2 mb-1">
             <Package className="h-4 w-4 text-green-600" />
             <span className="text-sm text-neutral-600">Stok Kayıtları</span>
@@ -335,19 +359,39 @@ export default function CustomCrmPage() {
             Son: {formatDate(stats?.stock?.lastUpdate)}
           </div>
           {stats?.stock?.count > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="mt-2 text-red-600 hover:text-red-700 p-0 h-auto"
-              onClick={() => openDeleteModal('stock')}
-            >
-              <Trash2 className="h-3 w-3 mr-1" />
-              Temizle
-            </Button>
+            <div className="flex gap-2 mt-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-green-600 hover:text-green-700 p-0 h-auto"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  router.push('/dashboard/crm-data?tab=stock');
+                }}
+              >
+                Görüntüle →
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-red-600 hover:text-red-700 p-0 h-auto"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openDeleteModal('stock');
+                }}
+              >
+                <Trash2 className="h-3 w-3 mr-1" />
+                Temizle
+              </Button>
+            </div>
           )}
         </div>
 
-        <div className="bg-white border border-neutral-200 rounded-xl p-5">
+        {/* Tickets Card - Clickable */}
+        <div
+          className="bg-white border border-neutral-200 rounded-xl p-5 cursor-pointer hover:shadow-lg hover:border-orange-300 transition-all"
+          onClick={() => router.push('/dashboard/crm-data?tab=tickets')}
+        >
           <div className="flex items-center gap-2 mb-1">
             <Wrench className="h-4 w-4 text-orange-600" />
             <span className="text-sm text-neutral-600">Servis/Arıza</span>
@@ -357,15 +401,31 @@ export default function CustomCrmPage() {
             Son: {formatDate(stats?.tickets?.lastUpdate)}
           </div>
           {stats?.tickets?.count > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="mt-2 text-red-600 hover:text-red-700 p-0 h-auto"
-              onClick={() => openDeleteModal('tickets')}
-            >
-              <Trash2 className="h-3 w-3 mr-1" />
-              Temizle
-            </Button>
+            <div className="flex gap-2 mt-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-orange-600 hover:text-orange-700 p-0 h-auto"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  router.push('/dashboard/crm-data?tab=tickets');
+                }}
+              >
+                Görüntüle →
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-red-600 hover:text-red-700 p-0 h-auto"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openDeleteModal('tickets');
+                }}
+              >
+                <Trash2 className="h-3 w-3 mr-1" />
+                Temizle
+              </Button>
+            </div>
           )}
         </div>
       </div>
