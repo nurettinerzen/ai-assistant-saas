@@ -101,7 +101,8 @@ async function processWithGemini(systemPrompt, conversationHistory, userMessage,
     return {
       reply: intentResult.response,
       inputTokens: 0,
-      outputTokens: 0
+      outputTokens: 0,
+      isDirectResponse: true // Flag for skipping delay
     };
   }
 
@@ -579,14 +580,19 @@ ${knowledgeContext}`;
     const result = await processWithGemini(fullSystemPrompt, previousHistory, message, language, business, chatSessionId);
 
     // Human-like delay: reading + typing time
-    // 1. Reading delay: 1-2 seconds (before typing starts)
-    // 2. Typing delay: based on response length
-    const replyLength = result.reply?.length || 0;
-    const readingDelay = 1000 + Math.random() * 1000; // 1-2 seconds
-    const typingDelay = Math.min(Math.max(replyLength * 20, 500), 6000); // 500ms-6s based on length
-    const totalDelay = readingDelay + typingDelay;
-    console.log(`⏱️ Total delay: ${Math.round(totalDelay)}ms (read: ${Math.round(readingDelay)}ms + type: ${Math.round(typingDelay)}ms for ${replyLength} chars)`);
-    await new Promise(resolve => setTimeout(resolve, totalDelay));
+    // Skip delay for off-topic/direct responses (they're already pre-generated)
+    if (!result.isDirectResponse) {
+      // 1. Reading delay: 1-2 seconds (before typing starts)
+      // 2. Typing delay: based on response length
+      const replyLength = result.reply?.length || 0;
+      const readingDelay = 1000 + Math.random() * 1000; // 1-2 seconds
+      const typingDelay = Math.min(Math.max(replyLength * 20, 500), 6000); // 500ms-6s based on length
+      const totalDelay = readingDelay + typingDelay;
+      console.log(`⏱️ Total delay: ${Math.round(totalDelay)}ms (read: ${Math.round(readingDelay)}ms + type: ${Math.round(typingDelay)}ms for ${replyLength} chars)`);
+      await new Promise(resolve => setTimeout(resolve, totalDelay));
+    } else {
+      console.log('⚡ Skipping delay for direct response (off-topic/greeting)');
+    }
 
     // Calculate token cost based on plan
     const planName = subscription?.plan || 'FREE';

@@ -1,9 +1,11 @@
 /**
  * Product Stock Handler
  * Checks product availability via E-commerce Aggregator (Shopify, WooCommerce)
+ * PRIORITY: WebhookInventory > CrmStock > E-commerce platforms
  */
 
 import ecommerceAggregator from '../../services/ecommerce-aggregator.js';
+import prisma from '../../prismaClient.js';
 
 /**
  * Execute product stock check
@@ -28,7 +30,80 @@ export async function execute(args, business, context = {}) {
       };
     }
 
-    // Use aggregator to search product
+    // ============================================================================
+    // PRIORITY 1: Check WebhookInventory (Shopify/İkas webhook data)
+    // ============================================================================
+    console.log('🔗 Checking WebhookInventory');
+    const webhookStock = await prisma.webhookInventory.findFirst({
+      where: {
+        businessId: business.id,
+        productName: {
+          contains: product_name,
+          mode: 'insensitive'
+        }
+      }
+    });
+
+    if (webhookStock) {
+      console.log('✅ Found in WebhookInventory:', webhookStock.productName);
+      const inStock = webhookStock.stock > 0;
+      const responseMessage = business.language === 'TR'
+        ? `"${webhookStock.productName}" ${inStock ? `stoğumuzda mevcut (${webhookStock.stock} adet)` : 'şu anda stokta yok'}.`
+        : `"${webhookStock.productName}" is ${inStock ? `in stock (${webhookStock.stock} units)` : 'currently out of stock'}.`;
+
+      return {
+        success: true,
+        data: {
+          title: webhookStock.productName,
+          sku: webhookStock.sku,
+          available: inStock,
+          stock: webhookStock.stock,
+          platform: 'webhook'
+        },
+        message: responseMessage
+      };
+    }
+
+    // ============================================================================
+    // PRIORITY 2: Check CrmStock (Custom CRM data)
+    // ============================================================================
+    console.log('🔗 Checking CrmStock');
+    const crmStock = await prisma.crmStock.findFirst({
+      where: {
+        businessId: business.id,
+        productName: {
+          contains: product_name,
+          mode: 'insensitive'
+        }
+      }
+    });
+
+    if (crmStock) {
+      console.log('✅ Found in CrmStock:', crmStock.productName);
+      const inStock = crmStock.inStock && (crmStock.quantity === null || crmStock.quantity > 0);
+      const responseMessage = business.language === 'TR'
+        ? `"${crmStock.productName}" ${inStock ? (crmStock.quantity ? `stoğumuzda mevcut (${crmStock.quantity} adet)` : 'stoğumuzda mevcut') : 'şu anda stokta yok'}.${crmStock.price ? ` Fiyat: ${crmStock.price} TL` : ''}${crmStock.estimatedRestock && !inStock ? ` Tahmini stok girişi: ${crmStock.estimatedRestock.toLocaleDateString('tr-TR')}` : ''}`
+        : `"${crmStock.productName}" is ${inStock ? (crmStock.quantity ? `in stock (${crmStock.quantity} units)` : 'in stock') : 'currently out of stock'}.${crmStock.price ? ` Price: ${crmStock.price} TRY` : ''}${crmStock.estimatedRestock && !inStock ? ` Estimated restock: ${crmStock.estimatedRestock.toLocaleDateString('en-US')}` : ''}`;
+
+      return {
+        success: true,
+        data: {
+          title: crmStock.productName,
+          sku: crmStock.sku,
+          available: inStock,
+          stock: crmStock.quantity,
+          price: crmStock.price,
+          platform: 'crm'
+        },
+        message: responseMessage
+      };
+    }
+
+    console.log('⚠️ Not found in integrations, checking e-commerce platforms...');
+
+    // ============================================================================
+    // PRIORITY 3: Check E-commerce platforms (Shopify, İkas, etc.)
+    // ============================================================================
     const result = await ecommerceAggregator.searchProductStock(business.id, product_name);
 
     // Handle not found / no platform

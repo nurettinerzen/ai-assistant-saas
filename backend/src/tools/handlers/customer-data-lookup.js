@@ -180,7 +180,64 @@ export async function execute(args, business, context = {}) {
 
     // 3. Try ticket_number (for service/support queries)
     if (ticket_number && !customer) {
-      console.log('🔍 Searching by ticket number:', ticket_number);
+      // ============================================================================
+      // PRIORITY 1: Check Custom CRM integration first (if active)
+      // ============================================================================
+      const crmWebhook = await prisma.crmWebhook.findFirst({
+        where: { businessId: business.id, isActive: true }
+      });
+
+      if (crmWebhook) {
+        console.log('🔗 Custom CRM integration active - checking CRM tickets first');
+
+        // Search in CRM tickets
+        const crmTicket = await prisma.crmTicket.findFirst({
+          where: {
+            businessId: business.id,
+            ticketNumber: ticket_number
+          }
+        });
+
+        if (crmTicket) {
+          console.log('✅ Found in Custom CRM tickets:', ticket_number);
+
+          // Convert CRM ticket to customer format
+          const crmCustomer = {
+            id: `crm-ticket-${crmTicket.id}`,
+            companyName: crmTicket.customerName || crmTicket.customerPhone,
+            phone: crmTicket.customerPhone,
+            customFields: {
+              'Servis No': crmTicket.ticketNumber,
+              'Ürün': crmTicket.product,
+              'Arıza': crmTicket.issue,
+              'Durum': crmTicket.status,
+              'Notlar': crmTicket.notes,
+              'Tahmini Tamamlanma': crmTicket.estimatedCompletion?.toLocaleDateString('tr-TR'),
+              'Maliyet': crmTicket.cost
+            }
+          };
+
+          // Return CRM data immediately
+          const responseData = formatAllData(crmCustomer, crmCustomer.customFields);
+          const responseMessage = formatResponseMessage(crmCustomer, crmCustomer.customFields, query_type, business.language);
+          const instruction = business.language === 'TR'
+            ? '\n\n[TALİMAT: Bu bilgiyi müşteriye HEMEN aktar.]'
+            : '\n\n[INSTRUCTION: Share this information with the customer NOW.]';
+
+          return {
+            success: true,
+            data: responseData,
+            message: responseMessage + instruction
+          };
+        } else {
+          console.log('⚠️ Not found in Custom CRM tickets, checking customer data...');
+        }
+      }
+
+      // ============================================================================
+      // PRIORITY 2: Check Customer Data
+      // ============================================================================
+      console.log('🔍 Searching by ticket number in customer data:', ticket_number);
       const allCustomers = await prisma.customerData.findMany({
         where: { businessId: business.id }
       });
@@ -208,8 +265,103 @@ export async function execute(args, business, context = {}) {
 
     // 4. Try order_number (for order queries)
     if (order_number && !customer) {
-      // Search by order number in customFields
-      console.log('🔍 Searching by order number:', order_number);
+      // ============================================================================
+      // PRIORITY 1: Check ALL active integrations first
+      // (Shopify, İkas, Custom CRM)
+      // ============================================================================
+
+      // Check Shopify/İkas orders (WebhookOrder)
+      console.log('🔗 Checking Shopify/İkas orders (WebhookOrder)');
+      const webhookOrder = await prisma.webhookOrder.findFirst({
+        where: {
+          businessId: business.id,
+          externalId: order_number
+        }
+      });
+
+      if (webhookOrder) {
+        console.log('✅ Found in Shopify/İkas orders:', order_number);
+
+        // Convert webhook order to customer format
+        const integrationCustomer = {
+          id: `webhook-order-${webhookOrder.id}`,
+          companyName: webhookOrder.customerName || webhookOrder.customerPhone || webhookOrder.customerEmail,
+          phone: webhookOrder.customerPhone,
+          email: webhookOrder.customerEmail,
+          customFields: {
+            'Sipariş No': webhookOrder.externalId,
+            'Durum': webhookOrder.statusText || webhookOrder.status,
+            'Kargo Takip No': webhookOrder.trackingNumber,
+            'Kargo Firması': webhookOrder.trackingCarrier,
+            'Kargo Link': webhookOrder.trackingUrl,
+            'Ürünler': webhookOrder.items,
+            'Tutar': webhookOrder.totalAmount ? `${webhookOrder.totalAmount} ${webhookOrder.currency}` : null,
+            'Kaynak': webhookOrder.source
+          }
+        };
+
+        // Return integration data immediately
+        const responseData = formatAllData(integrationCustomer, integrationCustomer.customFields);
+        const responseMessage = formatResponseMessage(integrationCustomer, integrationCustomer.customFields, query_type, business.language);
+        const instruction = business.language === 'TR'
+          ? '\n\n[TALİMAT: Bu bilgiyi müşteriye HEMEN aktar.]'
+          : '\n\n[INSTRUCTION: Share this information with the customer NOW.]';
+
+        return {
+          success: true,
+          data: responseData,
+          message: responseMessage + instruction
+        };
+      }
+
+      // Check Custom CRM orders
+      console.log('🔗 Checking Custom CRM orders');
+      const crmOrder = await prisma.crmOrder.findFirst({
+        where: {
+          businessId: business.id,
+          orderNumber: order_number
+        }
+      });
+
+      if (crmOrder) {
+        console.log('✅ Found in Custom CRM orders:', order_number);
+
+        // Convert CRM order to customer format
+        const crmCustomer = {
+          id: `crm-order-${crmOrder.id}`,
+          companyName: crmOrder.customerName || crmOrder.customerPhone,
+          phone: crmOrder.customerPhone,
+          customFields: {
+            'Sipariş No': crmOrder.orderNumber,
+            'Durum': crmOrder.status,
+            'Kargo Takip No': crmOrder.trackingNumber,
+            'Kargo Firması': crmOrder.carrier,
+            'Ürünler': crmOrder.items,
+            'Tutar': crmOrder.totalAmount,
+            'Tahmini Teslimat': crmOrder.estimatedDelivery?.toLocaleDateString('tr-TR')
+          }
+        };
+
+        // Return CRM data immediately
+        const responseData = formatAllData(crmCustomer, crmCustomer.customFields);
+        const responseMessage = formatResponseMessage(crmCustomer, crmCustomer.customFields, query_type, business.language);
+        const instruction = business.language === 'TR'
+          ? '\n\n[TALİMAT: Bu bilgiyi müşteriye HEMEN aktar.]'
+          : '\n\n[INSTRUCTION: Share this information with the customer NOW.]';
+
+        return {
+          success: true,
+          data: responseData,
+          message: responseMessage + instruction
+        };
+      }
+
+      console.log('⚠️ Not found in integrations, checking customer data...');
+
+      // ============================================================================
+      // PRIORITY 2: Check Customer Data (Google Sheets, Manual CSV, etc.)
+      // ============================================================================
+      console.log('🔍 Searching by order number in customer data:', order_number);
 
       // Search in customFields JSON for matching order number
       const allCustomers = await prisma.customerData.findMany({
