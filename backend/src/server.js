@@ -118,6 +118,7 @@ app.use('/api/subscription/webhook', express.raw({ type: 'application/json' }));
 app.use('/api/elevenlabs/webhook', express.json()); // 11Labs webhook needs parsed JSON
 app.use('/api/elevenlabs/post-call', express.json()); // 11Labs post-call webhook
 app.use('/api/webhook/incoming', express.json()); // External webhooks (Zapier, etc.)
+app.use('/api/webhook/crm', express.json()); // CRM webhook (NO AUTH - secured by webhookSecret)
 
 // ✅ OTHER ROUTES - JSON PARSE
 app.use(express.json());
@@ -165,6 +166,8 @@ app.use('/api/email', emailRoutes);
 // E-commerce integrations
 app.use('/api/shopify', shopifyRoutes);
 app.use('/api/woocommerce', woocommerceRoutes);
+// CRM Webhook Integration (MUST be before /api/webhook to avoid conflicts!)
+app.use('/api/webhook/crm', crmWebhookRoutes);
 app.use('/api/webhook', webhookRoutes);
 app.use('/api/batch-calls', batchCallsRoutes);
 app.use('/api/team', teamRoutes);
@@ -174,8 +177,6 @@ app.use('/api/credits', creditsRoutes);
 // Balance and Usage (new pricing system)
 app.use('/api/balance', balanceRoutes);
 app.use('/api/usage', usageRoutes);
-// CRM Webhook Integration
-app.use('/api/webhook/crm', crmWebhookRoutes);
 app.use('/api/crm', crmRoutes);
 // Customer Data (for AI assistant matching)
 app.use('/api/customer-data', customerDataRoutes);

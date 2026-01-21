@@ -13,6 +13,8 @@ import { isFreePlanExpired } from '../middleware/checkPlanExpiry.js';
 import { getActiveTools, executeTool } from '../tools/index.js';
 import { calculateTokenCost, hasFreeChat } from '../config/plans.js';
 import callAnalysis from '../services/callAnalysis.js';
+import { routeIntent, handleVerificationFailure } from '../services/intent-router.js';
+import { getOrCreateSession, terminateSession, isSessionActive, getTerminationMessage } from '../utils/session-manager.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -57,9 +59,59 @@ function convertToolsToGeminiFunctions(tools) {
 async function processWithGemini(systemPrompt, conversationHistory, userMessage, language, business, sessionId) {
   const genAI = getGemini();
 
-  // Get available tools for this business
-  const tools = getActiveTools(business);
-  const geminiFunctions = convertToolsToGeminiFunctions(tools);
+  // ============================================
+  // INTENT ROUTING (NEW!)
+  // ============================================
+  console.log('🎯 Starting intent detection for session:', sessionId);
+
+  // Check if session is still active - if terminated, reject message
+  const session = getOrCreateSession(sessionId, 'chat');
+
+  if (!session.isActive) {
+    console.log('🛑 Session terminated - rejecting message');
+    return {
+      reply: getTerminationMessage(session.terminationReason || 'off_topic', language),
+      inputTokens: 0,
+      outputTokens: 0
+    };
+  }
+
+  // Detect user intent and get appropriate tools
+  const intentResult = await routeIntent(userMessage, sessionId, language, { name: business.name });
+
+  console.log('🎯 Intent result:', {
+    intent: intentResult.intent,
+    tools: intentResult.tools,
+    shouldTerminate: intentResult.shouldTerminate
+  });
+
+  // Handle session termination
+  if (intentResult.shouldTerminate) {
+    terminateSession(sessionId, intentResult.intent === 'off_topic' ? 'off_topic' : 'verification_failed');
+
+    return {
+      reply: intentResult.response,
+      inputTokens: 0,
+      outputTokens: 0
+    };
+  }
+
+  // Handle direct responses (no tools needed)
+  if (intentResult.response) {
+    return {
+      reply: intentResult.response,
+      inputTokens: 0,
+      outputTokens: 0
+    };
+  }
+
+  // Filter tools based on intent
+  const allTools = getActiveTools(business);
+  const filteredTools = intentResult.tools.length > 0
+    ? allTools.filter(tool => intentResult.tools.includes(tool.function.name))
+    : []; // No tools for greeting, company_info, etc.
+
+  const geminiFunctions = convertToolsToGeminiFunctions(filteredTools);
 
   console.log('🔧 Chat tools available:', geminiFunctions.map(f => f.name));
 

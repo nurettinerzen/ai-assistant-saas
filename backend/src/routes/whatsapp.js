@@ -16,6 +16,8 @@ import { isFreePlanExpired } from '../middleware/checkPlanExpiry.js';
 import { calculateTokenCost, hasFreeChat } from '../config/plans.js';
 import { getActiveTools, executeTool } from '../tools/index.js';
 import callAnalysis from '../services/callAnalysis.js';
+import { routeIntent, handleVerificationFailure } from '../services/intent-router.js';
+import { getOrCreateSession, terminateSession, isSessionActive, getTerminationMessage } from '../utils/session-manager.js';
 
 /**
  * Convert tool definitions to Gemini function declarations format
@@ -390,9 +392,97 @@ async function generateAIResponse(business, phoneNumber, userMessage, context = 
       conversations.set(conversationKey, history);
     }
 
-    // Get available tools for this business
-    const tools = getActiveTools(business);
-    const geminiFunctions = convertToolsToGeminiFunctions(tools);
+    // ============================================
+    // INTENT ROUTING (NEW!)
+    // ============================================
+    console.log('🎯 [WhatsApp] Starting intent detection for:', sessionId);
+
+    // Check if session is still active - if terminated, reject message
+    const session = getOrCreateSession(sessionId, 'whatsapp');
+
+    if (!session.isActive) {
+      console.log('🛑 [WhatsApp] Session terminated - rejecting message');
+
+      const terminationMessage = getTerminationMessage(session.terminationReason || 'off_topic', business.language);
+
+      // Send termination message
+      await sendWhatsAppMessage(business, phoneNumber, terminationMessage);
+
+      // Don't process further
+      return;
+    }
+
+    // Detect user intent and get appropriate tools
+    const intentResult = await routeIntent(messageText, sessionId, business.language, { name: business.name });
+
+    console.log('🎯 [WhatsApp] Intent result:', {
+      intent: intentResult.intent,
+      tools: intentResult.tools,
+      shouldTerminate: intentResult.shouldTerminate
+    });
+
+    // Handle session termination
+    if (intentResult.shouldTerminate) {
+      terminateSession(sessionId, intentResult.intent === 'off_topic' ? 'off_topic' : 'verification_failed');
+
+      // Send termination message
+      await sendWhatsAppMessage(business, phoneNumber, intentResult.response);
+
+      // Save to conversation history
+      history.push({ role: 'assistant', content: intentResult.response });
+
+      // Save conversation to database
+      await prisma.whatsappConversation.upsert({
+        where: { id: conversationKey },
+        update: {
+          messages: JSON.stringify(history),
+          lastMessageAt: new Date()
+        },
+        create: {
+          id: conversationKey,
+          businessId: business.id,
+          phoneNumber,
+          messages: JSON.stringify(history),
+          lastMessageAt: new Date()
+        }
+      });
+
+      return;
+    }
+
+    // Handle direct responses (no tools needed)
+    if (intentResult.response) {
+      await sendWhatsAppMessage(business, phoneNumber, intentResult.response);
+
+      // Save to conversation history
+      history.push({ role: 'assistant', content: intentResult.response });
+
+      // Save conversation to database
+      await prisma.whatsappConversation.upsert({
+        where: { id: conversationKey },
+        update: {
+          messages: JSON.stringify(history),
+          lastMessageAt: new Date()
+        },
+        create: {
+          id: conversationKey,
+          businessId: business.id,
+          phoneNumber,
+          messages: JSON.stringify(history),
+          lastMessageAt: new Date()
+        }
+      });
+
+      return;
+    }
+
+    // Filter tools based on intent
+    const allTools = getActiveTools(business);
+    const filteredTools = intentResult.tools.length > 0
+      ? allTools.filter(tool => intentResult.tools.includes(tool.function.name))
+      : []; // No tools for greeting, company_info, etc.
+
+    const geminiFunctions = convertToolsToGeminiFunctions(filteredTools);
 
     console.log('🔧 [WhatsApp] Tools available:', geminiFunctions.map(f => f.name));
 

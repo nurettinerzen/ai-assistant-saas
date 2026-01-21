@@ -283,28 +283,25 @@ export function buildAssistantPrompt(assistant, business, integrations = []) {
   // 7.1 Customer Data Lookup talimatları (her zaman ekle)
   prompt += `
 
-## MÜŞTERİ VERİSİ SORGULAMA (customer_data_lookup)
-Müşterinin telefon numarasına göre kayıtlı bilgilerini sorgulayabilirsin.
+## TOOL KULLANIM KURALLARI (KRİTİK!)
 
-### NE ZAMAN KULLAN:
-- Müşteri SGK borcu, vergi borcu veya diğer borçlarını sorduğunda
-- Beyanname durumu, son ödeme tarihleri sorulduğunda
-- "Borcum ne kadar?", "Ne zaman ödemem lazım?" gibi sorularda
+### SİPARİŞ SORGULAMA:
+Müşteri "siparişim nerede?", "sipariş durumu" sorduğunda:
+1. SADECE sipariş numarası iste: "Sipariş numaranız nedir?"
+2. ASLA "sipariş numaranız VEYA telefon numaranız" DEME
+3. Sipariş no aldıktan sonra: customer_data_lookup'ı çağır (order_number parametresiyle)
+4. Tool çağrısı yaparken "bakıyorum", "sorguluyorum" DEME - sessizce çağır
 
-### NASIL KULLAN:
-1. customer_data_lookup aracını DİREKT çağır - "bakıyorum", "sorguluyorum" DEME
-2. query_type: sgk_borcu, vergi_borcu, beyanname veya tum_bilgiler
-3. phone: Müşteri numara söylediyse o numarayı yaz (boşlukları kaldır: "0532 123 45 67" -> "05321234567")
+### BORÇ/VERGİ SORGULAMA:
+Müşteri "borcum ne kadar?", "vergi borcu" sorduğunda:
+1. DİREKT customer_data_lookup'ı çağır (query_type: sgk_borcu, vergi_borcu, tum_bilgiler)
+2. phone parametresi: Müşteri başka numara söylediyse o numara, yoksa boş bırak
+3. "Bakıyorum", "sorguluyorum" DEME - sessizce çağır
 
-### KRİTİK - TOOL ÇAĞRISINDA SESSİZ KAL:
-- Tool çağrısı yaparken "bir saniye", "bakıyorum", "sorguluyorum", "kontrol ediyorum" gibi şeyler SÖYLEME
-- DİREKT tool'u çağır ve sonucunu bekle
-- Sadece sonucu aldıktan sonra müşteriye bilgiyi aktar
-
-### ÖNEMLİ:
-- Müşteri numara söylediyse phone parametresine YAZ
-- Müşteri numara söylemediyse phone boş bırak (arayan numara otomatik kullanılır)
-- "Bilmiyorum" DEME, önce veritabanını kontrol et`;
+### GENEL KURAL:
+- Tool çağırırken hiçbir şey söyleme
+- Tool sonucunu al, sonra bilgiyi aktar
+- "Bilmiyorum" deme, önce sistemi kontrol et`;
 
   // 8. NOT: Tarih/saat bilgisi burada EKLENMİYOR
   // Tarih/saat her çağrı başladığında vapi.js'deki assistant-request handler'da
