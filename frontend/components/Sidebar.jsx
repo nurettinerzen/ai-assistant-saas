@@ -135,6 +135,7 @@ export default function Sidebar({ user, credits, business }) {
       items: [
         { icon: Megaphone, label: t('dashboard.sidebar.outboundCalls'), href: '/dashboard/batch-calls', permission: 'campaigns:view', featureId: 'batch_calls' },
         { icon: Database, label: t('dashboard.sidebar.inboundCalls'), href: '/dashboard/customer-data', permission: 'campaigns:view' },
+        { icon: Database, label: 'CRM Verileri', href: '/dashboard/crm-data', permission: 'campaigns:view' },
       ],
     },
     {
