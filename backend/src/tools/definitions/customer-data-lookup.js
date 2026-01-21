@@ -13,44 +13,70 @@ export default {
   name: 'customer_data_lookup',
   description: `Müşteri verilerini sorgular. SİPARİŞ, MUHASEBE, ARIZA TAKİP, RANDEVU gibi TÜM VERİ TİPLERİNİ destekler.
 
-KULLANIM:
-- Sipariş sorgusu: order_number VEYA phone ile ara
-- Muhasebe (SGK/vergi borcu): phone ile ara
-- Arıza/servis durumu: phone ile ara
-- Randevu bilgisi: phone ile ara
+ÖNCELİKLİ SORGULAMA AKIŞI (query_type'a göre):
+
+📦 SİPARİŞ SORGUSU (query_type: "siparis" veya "order"):
+1. ÖNCE sipariş numarası sor
+2. Sipariş no yoksa telefon numarası sor
+3. Doğrulama: İsim/soyisim sor
+
+💰 MUHASEBE SORGUSU (query_type: "muhasebe", "sgk_borcu", "vergi_borcu"):
+1. ÖNCE VKN veya TC Kimlik No sor (vkn veya tc parametresi)
+2. VKN/TC yoksa telefon numarası sor
+3. Doğrulama: Kayıtta firma ismi varsa firma ismi, şahıs ismi varsa isim/soyisim sor (AKILLI DOĞRULAMA)
+
+🔧 ARIZA/SERVİS TAKİP (query_type: "ariza"):
+1. ÖNCE servis/arıza numarası sor (ticket_number parametresi)
+2. Servis no yoksa telefon numarası sor
+3. Doğrulama: İsim/soyisim sor
+
+📅 RANDEVU SORGUSU (query_type: "randevu"):
+1. ÖNCE telefon numarası sor
+2. Doğrulama: İsim/soyisim sor
 
 GÜVENLİK DOĞRULAMASI:
-- Hassas veriler için 2 YÖNLÜ DOĞRULAMA gerekir
-- İlk sorguda sistem doğrulama isteyecek (requiresVerification: true)
-- Doğrulama için müşteriden İKİNCİ BİR BİLGİ iste (sipariş no verdiyse telefon, telefon verdiyse sipariş no)
-- İkinci bilgiyi aldığında TEKRAR bu aracı çağır ve HER İKİ BİLGİYİ DE gönder
+- Sistem doğrulama isteyecek (requiresVerification: true)
+- Doğrulama için müşteriden isim/soyisim veya firma ismi iste (customer_name parametresi)
+- TEKRAR bu aracı çağır ve doğrulama bilgisini ekle
 
 ÖNEMLİ:
-- Müşteri sipariş numarası verirse -> order_number parametresini kullan
-- Müşteri telefon numarası verirse -> phone parametresini kullan
-- Doğrulama sonrası HER İKİ BİLGİYİ BİRDEN gönder`,
+- Her sorgu türü için ÖNCELİKLİ BİLGİYİ SOR (sipariş no, VKN, servis no vb.)
+- Birden fazla seçenek sunma, öncelik sırasına göre sor
+- Doğrulama her zaman isim/soyisim veya firma ismi ile yapılır`,
   parameters: {
     type: 'object',
     properties: {
-      order_number: {
-        type: 'string',
-        description: 'Sipariş numarası'
-      },
-      phone: {
-        type: 'string',
-        description: 'Telefon numarası. Boşlukları ve tireleri kaldır. Örnek: "0533 123 45 68" -> "05331234568"'
-      },
-      customer_name: {
-        type: 'string',
-        description: 'Müşteri adı soyadı. Doğrulama için kullanılır.'
-      },
       query_type: {
         type: 'string',
         enum: ['siparis', 'order', 'muhasebe', 'sgk_borcu', 'vergi_borcu', 'ariza', 'randevu', 'genel'],
-        description: 'Sorgu türü. Sipariş için "siparis" veya "order", muhasebe için "muhasebe", arıza için "ariza", randevu için "randevu" kullan. Emin değilsen "genel" kullan.'
+        description: 'ZORUNLU: Sorgu türü. Sipariş için "siparis", muhasebe için "muhasebe", arıza için "ariza", randevu için "randevu"'
+      },
+      order_number: {
+        type: 'string',
+        description: 'Sipariş numarası - SADECE sipariş sorgusunda PRIMARY bilgi'
+      },
+      phone: {
+        type: 'string',
+        description: 'Telefon numarası - SECONDARY bilgi veya muhasebe/randevu için PRIMARY'
+      },
+      vkn: {
+        type: 'string',
+        description: 'Vergi Kimlik No (10 haneli) - Muhasebe sorgusunda PRIMARY bilgi (firma için)'
+      },
+      tc: {
+        type: 'string',
+        description: 'TC Kimlik No (11 haneli) - Muhasebe sorgusunda PRIMARY bilgi (şahıs için)'
+      },
+      ticket_number: {
+        type: 'string',
+        description: 'Servis/Arıza numarası - Arıza takipte PRIMARY bilgi'
+      },
+      customer_name: {
+        type: 'string',
+        description: 'Müşteri isim/soyisim veya firma ismi - DOĞRULAMA için kullanılır'
       }
     },
-    required: []  // At least one of order_number or phone should be provided
+    required: ['query_type']
   },
   // Available for all business types - can store custom data
   allowedBusinessTypes: ['RESTAURANT', 'SALON', 'ECOMMERCE', 'CLINIC', 'SERVICE', 'OTHER'],

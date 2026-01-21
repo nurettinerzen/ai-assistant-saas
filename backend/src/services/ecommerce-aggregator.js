@@ -186,8 +186,13 @@ export async function getOrderByEmail(businessId, email) {
 }
 
 /**
- * Search orders by any criteria (order number, phone, or email)
- * Tries each method in order until a match is found
+ * Search orders by any criteria with PRIORITY SYSTEM
+ *
+ * DATA SOURCE PRIORITY:
+ * 1. App Integrations (Shopify, WooCommerce, etc.) - Real-time, most accurate
+ * 2. CustomerData (Excel/CSV) - Handled by customer_data_lookup tool separately
+ * 3. Google Sheets - Future integration
+ *
  * @param {number} businessId - Business ID
  * @param {Object} criteria - Search criteria
  * @param {string} [criteria.orderNumber] - Order number
@@ -198,25 +203,38 @@ export async function getOrderByEmail(businessId, email) {
 export async function searchOrder(businessId, criteria) {
   const { orderNumber, phone, email } = criteria;
 
+  console.log('🔍 Aggregator: Searching order in App Integrations...');
+
   // Try order number first (most precise)
   if (orderNumber) {
     const result = await getOrderByNumber(businessId, orderNumber);
-    if (result.success) return result;
+    if (result.success) {
+      console.log('✅ Aggregator: Found by order number in App Integration');
+      return result;
+    }
   }
 
   // Try phone
   if (phone) {
     const result = await getOrderByPhone(businessId, phone);
-    if (result.success) return result;
+    if (result.success) {
+      console.log('✅ Aggregator: Found by phone in App Integration');
+      return result;
+    }
   }
 
   // Try email
   if (email) {
     const result = await getOrderByEmail(businessId, email);
-    if (result.success) return result;
+    if (result.success) {
+      console.log('✅ Aggregator: Found by email in App Integration');
+      return result;
+    }
   }
 
-  // Nothing found
+  // Not found in App Integrations
+  // The customer_data_lookup tool will handle CustomerData (Excel/CSV) separately
+  console.log('⚠️ Aggregator: Not found in App Integrations');
   return {
     success: false,
     error: 'Sipariş bulunamadı. Lütfen sipariş numaranızı veya telefon numaranızı kontrol edin.',

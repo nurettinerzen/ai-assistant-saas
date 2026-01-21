@@ -34,10 +34,10 @@ setInterval(() => {
  */
 export async function execute(args, business, context = {}) {
   try {
-    let { query_type, phone, order_number, customer_name } = args;
+    let { query_type, phone, order_number, customer_name, vkn, tc, ticket_number } = args;
     const sessionId = context.sessionId || context.conversationId || `${business.id}-unknown`;
 
-    console.log('🔍 Customer Data Lookup:', { query_type, phone, order_number, customer_name, businessId: business.id, sessionId });
+    console.log('🔍 Customer Data Lookup:', { query_type, phone, order_number, customer_name, vkn, tc, ticket_number, businessId: business.id, sessionId });
 
     // Get phone from args or context
     let lookupPhone = phone || context.callerPhone || context.phone || context.from;
@@ -49,49 +49,54 @@ export async function execute(args, business, context = {}) {
 
     if (pendingVerification) {
       console.log('🔐 Found pending verification for session:', sessionId);
-      console.log('🔐 Expected fields:', pendingVerification.expectedVerificationFields?.map(f => f.type));
+      console.log('🔐 Expected field type:', pendingVerification.expectedFieldType);
 
-      // Try to verify with any of the expected fields
-      const verificationResult = tryDynamicVerification(pendingVerification, {
-        phone: lookupPhone,
-        order_number,
-        customer_name,
-        query_type,
-        // Pass all args in case user provides VKN, TC, etc.
-        ...args
-      }, business.language);
+      // SMART VERIFICATION: Check if customer_name matches the stored name
+      if (customer_name && pendingVerification.foundCustomerName) {
+        const providedName = customer_name.toLowerCase().trim();
+        const storedName = pendingVerification.foundCustomerName.toLowerCase().trim();
 
-      if (verificationResult.verified) {
-        console.log('✅ VERIFICATION SUCCESS:', verificationResult.matchedField);
-        verificationCache.delete(sessionId);
+        // Fuzzy match: check if one contains the other
+        const nameMatches = storedName.includes(providedName) ||
+                           providedName.includes(storedName) ||
+                           storedName === providedName;
 
-        // Return the customer data directly
-        const customer = await prisma.customerData.findUnique({
-          where: { id: pendingVerification.foundCustomerId }
-        });
-        if (customer) {
-          const customFields = customer.customFields || {};
-          const responseData = formatAllData(customer, customFields);
-          const responseMessage = formatResponseMessage(customer, customFields, query_type, business.language);
-          const instruction = business.language === 'TR'
-            ? '\n\n[TALİMAT: Bu bilgiyi müşteriye HEMEN aktar.]'
-            : '\n\n[INSTRUCTION: Share this information with the customer NOW.]';
+      if (nameMatches) {
+          console.log('✅ VERIFICATION SUCCESS: Name matches');
+          verificationCache.delete(sessionId);
+
+          // Return the customer data directly
+          const customer = await prisma.customerData.findUnique({
+            where: { id: pendingVerification.foundCustomerId }
+          });
+          if (customer) {
+            const customFields = customer.customFields || {};
+            const responseData = formatAllData(customer, customFields);
+            const responseMessage = formatResponseMessage(customer, customFields, query_type, business.language);
+            const instruction = business.language === 'TR'
+              ? '\n\n[TALİMAT: Bu bilgiyi müşteriye HEMEN aktar.]'
+              : '\n\n[INSTRUCTION: Share this information with the customer NOW.]';
+            return {
+              success: true,
+              data: responseData,
+              message: responseMessage + instruction
+            };
+          }
+        } else {
+          // Name doesn't match - verification failed
+          console.log('❌ VERIFICATION FAILED: Name does not match');
+          verificationCache.delete(sessionId);
+          const failMessage = business.language === 'TR'
+            ? 'Verdiğiniz isim kayıtlarımızla eşleşmiyor. Güvenlik nedeniyle bilgileri paylaşamıyorum.'
+            : 'The name you provided does not match our records. For security reasons, I cannot share the details.';
           return {
-            success: true,
-            data: responseData,
-            message: responseMessage + instruction
+            success: false,
+            error: failMessage,
+            verificationFailed: true
           };
         }
-      } else if (verificationResult.failed) {
-        console.log('❌ VERIFICATION FAILED:', verificationResult.reason);
-        verificationCache.delete(sessionId);
-        return {
-          success: false,
-          error: verificationResult.message,
-          verificationFailed: true
-        };
       }
-      // else: no verification attempt yet, continue with normal flow
+      // else: no customer_name provided yet, continue with normal flow
 
       // Merge pending data if user is providing second identifier
       if (lookupPhone && pendingVerification.pendingOrderNumber && !order_number) {
@@ -101,24 +106,108 @@ export async function execute(args, business, context = {}) {
       }
     }
 
-    // Must have either order_number or phone
-    if (!order_number && !lookupPhone) {
+    // Must have at least one search parameter
+    if (!order_number && !lookupPhone && !vkn && !tc && !ticket_number) {
       return {
         success: false,
         error: business.language === 'TR'
-          ? 'Lütfen sipariş numaranızı veya telefon numaranızı söyleyin.'
-          : 'Please provide your order number or phone number.'
+          ? 'Lütfen bir arama kriteri belirtin (sipariş no, telefon, VKN, TC, servis no).'
+          : 'Please provide a search criteria (order number, phone, VKN, TC, ticket number).'
       };
     }
 
     let customer = null;
 
-    // SEARCH STRATEGY:
-    // 1. If order_number provided -> search by order number in customFields
-    // 2. If phone provided -> search by phone
-    // 3. If both -> try order_number first, then phone
+    // PRIORITY-BASED SEARCH STRATEGY based on query_type:
+    // SIPARIŞ: order_number (PRIMARY) > phone (SECONDARY)
+    // MUHASEBE: vkn/tc (PRIMARY) > phone (SECONDARY)
+    // ARIZA: ticket_number (PRIMARY) > phone (SECONDARY)
+    // RANDEVU: phone (PRIMARY)
 
-    if (order_number) {
+    // 1. Try VKN (for accounting queries)
+    if (vkn && !customer) {
+      console.log('🔍 Searching by VKN:', vkn);
+      const allCustomers = await prisma.customerData.findMany({
+        where: { businessId: business.id }
+      });
+
+      for (const c of allCustomers) {
+        if (c.customFields) {
+          const fields = c.customFields;
+          const vknFields = ['VKN', 'vkn', 'Vergi Kimlik No', 'Vergi Kimlik', 'Tax ID', 'tax_id'];
+          for (const fieldName of vknFields) {
+            if (fields[fieldName]) {
+              const storedVkn = String(fields[fieldName]).replace(/[^\d]/g, '');
+              const searchVkn = String(vkn).replace(/[^\d]/g, '');
+              if (storedVkn === searchVkn) {
+                customer = c;
+                console.log('✅ Found by VKN:', vkn);
+                break;
+              }
+            }
+          }
+          if (customer) break;
+        }
+      }
+    }
+
+    // 2. Try TC (for accounting queries)
+    if (tc && !customer) {
+      console.log('🔍 Searching by TC:', tc);
+      const allCustomers = await prisma.customerData.findMany({
+        where: { businessId: business.id }
+      });
+
+      for (const c of allCustomers) {
+        if (c.customFields) {
+          const fields = c.customFields;
+          const tcFields = ['TC', 'tc', 'TC Kimlik No', 'TCKN', 'tckn', 'Kimlik No', 'National ID', 'national_id'];
+          for (const fieldName of tcFields) {
+            if (fields[fieldName]) {
+              const storedTc = String(fields[fieldName]).replace(/[^\d]/g, '');
+              const searchTc = String(tc).replace(/[^\d]/g, '');
+              if (storedTc === searchTc) {
+                customer = c;
+                console.log('✅ Found by TC:', tc);
+                break;
+              }
+            }
+          }
+          if (customer) break;
+        }
+      }
+    }
+
+    // 3. Try ticket_number (for service/support queries)
+    if (ticket_number && !customer) {
+      console.log('🔍 Searching by ticket number:', ticket_number);
+      const allCustomers = await prisma.customerData.findMany({
+        where: { businessId: business.id }
+      });
+
+      for (const c of allCustomers) {
+        if (c.customFields) {
+          const fields = c.customFields;
+          const ticketFields = [
+            'Arıza No', 'Ariza No', 'Servis No', 'Ticket No', 'ticket_number',
+            'Destek No', 'Support No', 'ariza_no', 'servis_no'
+          ];
+          for (const fieldName of ticketFields) {
+            if (fields[fieldName]) {
+              if (String(fields[fieldName]).toUpperCase() === String(ticket_number).toUpperCase()) {
+                customer = c;
+                console.log('✅ Found by ticket number:', ticket_number);
+                break;
+              }
+            }
+          }
+          if (customer) break;
+        }
+      }
+    }
+
+    // 4. Try order_number (for order queries)
+    if (order_number && !customer) {
       // Search by order number in customFields
       console.log('🔍 Searching by order number:', order_number);
 
@@ -363,9 +452,11 @@ export async function execute(args, business, context = {}) {
         verificationFailed: true
       };
     }
-    // CASE 3: First query with SINGLE identifier - require verification
-    // Only if user provided ONLY one of: order_number OR phone (not both)
-    else if ((order_number && !lookupPhone) || (lookupPhone && !order_number)) {
+    // CASE 3: First query with PRIMARY identifier - require verification with NAME
+    // VKN/TC/order_number/ticket_number are PRIMARY identifiers
+    // After finding record with PRIMARY identifier, always require NAME verification
+    const usedPrimaryIdentifier = vkn || tc || order_number || ticket_number;
+    else if (usedPrimaryIdentifier && !customer_name) {
       // Check if this is sensitive data (accounting, orders with financial info)
       const hasSensitiveData = customFields.sgkDebt || customFields['SGK Borcu'] ||
                                customFields.taxDebt || customFields['Vergi Borcu'] ||
@@ -421,27 +512,54 @@ export async function execute(args, business, context = {}) {
       if (!callerWasVerified) {
         console.log('🔐 VERIFICATION REQUIRED: Caller phone does not match record - security verification needed');
 
-        // Dynamically determine which fields can be used for verification
-        // Based on what fields exist in the record and what user already provided
-        const verificationOptions = getAvailableVerificationFields(customer, customFields, {
-          providedPhone: lookupPhone,
-          providedOrderNumber: order_number,
-          providedName: customer_name
-        });
+        // SMART VERIFICATION: Determine what to ask based on PRIMARY identifier used
+        // VKN → Ask for firma ismi (company name)
+        // TC → Ask for isim/soyisim (person name)
+        // Order/Ticket → Ask for isim/soyisim
+        let verificationMessage;
+        const isTR = business.language === 'TR';
 
-        // Store pending verification with expected verification fields
-        verificationCache.set(sessionId, {
-          pendingOrderNumber: order_number || null,
-          pendingPhone: lookupPhone || null,
-          foundCustomerId: customer.id,
-          foundCustomerName: customer.companyName,
-          foundCustomerData: customFields, // Store all data for verification matching
-          expectedVerificationFields: verificationOptions, // What fields we expect for verification
-          timestamp: Date.now()
-        });
+        if (vkn) {
+          // VKN used → Ask for company name
+          verificationMessage = isTR
+            ? 'Kaydınızı buldum. Güvenlik doğrulaması için firma isminizi söyler misiniz?'
+            : 'I found your record. For security verification, could you please provide your company name?';
 
-        // Build verification question based on available fields
-        const verificationMessage = buildVerificationMessage(verificationOptions, business.language);
+          verificationCache.set(sessionId, {
+            pendingVkn: vkn,
+            foundCustomerId: customer.id,
+            foundCustomerName: customer.companyName,
+            expectedFieldType: 'company_name',
+            timestamp: Date.now()
+          });
+        } else if (tc) {
+          // TC used → Ask for person name
+          verificationMessage = isTR
+            ? 'Kaydınızı buldum. Güvenlik doğrulaması için isim ve soyisminizi söyler misiniz?'
+            : 'I found your record. For security verification, could you please provide your full name?';
+
+          verificationCache.set(sessionId, {
+            pendingTc: tc,
+            foundCustomerId: customer.id,
+            foundCustomerName: customer.companyName,
+            expectedFieldType: 'person_name',
+            timestamp: Date.now()
+          });
+        } else {
+          // Order/Ticket used → Ask for name
+          verificationMessage = isTR
+            ? 'Kaydınızı buldum. Güvenlik doğrulaması için isim/soyisim veya firma isminizi söyler misiniz?'
+            : 'I found your record. For security verification, could you please provide your name or company name?';
+
+          verificationCache.set(sessionId, {
+            pendingOrderNumber: order_number || null,
+            pendingTicketNumber: ticket_number || null,
+            foundCustomerId: customer.id,
+            foundCustomerName: customer.companyName,
+            expectedFieldType: 'name',
+            timestamp: Date.now()
+          });
+        }
 
         // Add instruction for AI - do NOT reveal any customer info before verification
         const aiInstruction = business.language === 'TR'

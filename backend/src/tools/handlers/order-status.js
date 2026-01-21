@@ -1,6 +1,14 @@
 /**
  * Order Status Handler
- * Checks order status via E-commerce Aggregator (Shopify, WooCommerce)
+ * Checks order status with PRIORITY SYSTEM
+ *
+ * DATA SOURCE PRIORITY:
+ * 1. App Integrations (Shopify, WooCommerce, etc.) - via ecommerce-aggregator
+ * 2. CustomerData (Excel/CSV) - If app integration doesn't find it, falls back to customer_data_lookup
+ * 3. Google Sheets - Future
+ *
+ * IMPORTANT: This tool checks ONLY App Integrations.
+ * If not found, AI should use customer_data_lookup tool to check Excel/CSV data.
  */
 
 import ecommerceAggregator from '../../services/ecommerce-aggregator.js';
@@ -14,9 +22,9 @@ import ecommerceAggregator from '../../services/ecommerce-aggregator.js';
  */
 export async function execute(args, business, context = {}) {
   try {
-    const { order_number, customer_phone, customer_email } = args;
+    const { order_number, customer_phone, customer_email, customer_name } = args;
 
-    console.log('🔍 Checking order status:', { order_number, customer_phone, customer_email });
+    console.log('🔍 Checking order status in App Integrations:', { order_number, customer_phone, customer_email, customer_name });
 
     // Validate - at least one parameter required
     if (!order_number && !customer_phone && !customer_email) {
@@ -38,19 +46,31 @@ export async function execute(args, business, context = {}) {
     // Handle not found / no platform
     if (!result.success) {
       if (result.code === 'NO_PLATFORM') {
+        // No app integration - tell AI to use customer_data_lookup instead
+        const instruction = business.language === 'TR'
+          ? '\n\n[TALİMAT: E-ticaret platformu bağlı değil. customer_data_lookup aracını kullan.]'
+          : '\n\n[INSTRUCTION: No e-commerce platform connected. Use customer_data_lookup tool instead.]';
+
         return {
           success: false,
-          error: business.language === 'TR'
+          error: (business.language === 'TR'
             ? 'E-ticaret platformu bağlı değil.'
-            : 'No e-commerce platform connected.'
+            : 'No e-commerce platform connected.') + instruction,
+          code: 'NO_PLATFORM'
         };
       }
 
+      // Not found in app integration - tell AI to try customer_data_lookup
+      const instruction = business.language === 'TR'
+        ? '\n\n[TALİMAT: App entegrasyonunda bulunamadı. customer_data_lookup aracı ile Excel/CSV verilerinde ara.]'
+        : '\n\n[INSTRUCTION: Not found in app integration. Try customer_data_lookup tool to search Excel/CSV data.]';
+
       return {
         success: false,
-        error: result.error || (business.language === 'TR'
-          ? 'Sipariş bulunamadı. Lütfen sipariş numaranızı veya telefon numaranızı kontrol edin.'
-          : 'Order not found. Please check your order number or phone number.')
+        error: (result.error || (business.language === 'TR'
+          ? 'Sipariş app entegrasyonunda bulunamadı.'
+          : 'Order not found in app integration.')) + instruction,
+        code: 'NOT_FOUND'
       };
     }
 
