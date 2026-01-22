@@ -306,7 +306,7 @@ async function processWhatsAppMessage(business, from, messageBody, messageId) {
  * Generate AI response using Gemini with proper function calling
  * Same architecture as chat.js - model calls tools when needed
  */
-async function generateAIResponse(business, phoneNumber, userMessage, context = {}) {
+async function generateAIResponse(business, phoneNumber, messageBody, context = {}) {
   try {
     const genAI = getGemini();
     const assistant = business.assistants?.[0];
