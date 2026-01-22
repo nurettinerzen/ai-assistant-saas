@@ -476,11 +476,70 @@ async function generateAIResponse(business, phoneNumber, userMessage, context = 
       return;
     }
 
+    // ============================================
+    // HANDLE VERIFICATION RESPONSE (SPECIAL CASE)
+    // ============================================
+    // When user is responding to a verification request, call tool directly
+    let verificationToolResult = null;
+    if (intentResult.intent === 'verification_response' && intentResult.verificationData) {
+      console.log('🔐 [WhatsApp] Processing verification response with tool');
+
+      const { verificationCache } = await import('../services/verification-manager.js');
+      const pendingVerification = verificationCache.get(sessionId);
+
+      if (pendingVerification) {
+        // Call customer_data_lookup with the cached data + user's provided verification data
+        const toolResult = await executeTool(
+          'customer_data_lookup',
+          {
+            query_type: pendingVerification.queryType || 'siparis',
+            order_number: pendingVerification.pendingOrderNumber,
+            customer_name: intentResult.verificationData.customer_name,
+            phone: pendingVerification.pendingPhone || intentResult.verificationData.phone,
+            vkn: intentResult.verificationData.vkn,
+            tc: intentResult.verificationData.tc
+          },
+          business,
+          {
+            sessionId,
+            intent: intentResult.intent,
+            requiresVerification: true,
+            channel: 'WHATSAPP',
+            from: phoneNumber
+          }
+        );
+
+        // Check if verification failed and should terminate
+        if (toolResult.shouldTerminate) {
+          terminateSession(sessionId, 'verification_failed');
+          await sendWhatsAppMessage(business, phoneNumber, toolResult.error || getTerminationMessage('verification_failed', business.language));
+
+          history.push({ role: 'assistant', content: toolResult.error || getTerminationMessage('verification_failed', business.language) });
+
+          await prisma.whatsappConversation.upsert({
+            where: { id: conversationKey },
+            update: { messages: JSON.stringify(history), lastMessageAt: new Date() },
+            create: { id: conversationKey, businessId: business.id, phoneNumber, messages: JSON.stringify(history), lastMessageAt: new Date() }
+          });
+
+          return;
+        }
+
+        // Store tool result to pass to Gemini
+        verificationToolResult = toolResult;
+        console.log('✅ [WhatsApp] Verification tool result received, will pass to Gemini for formatting');
+      }
+    }
+
     // Filter tools based on intent
+    // IMPORTANT: If we have verificationToolResult, we DON'T want Gemini to call tools
+    // We already called the tool pre-emptively, just need Gemini to format the response
     const allTools = getActiveTools(business);
-    const filteredTools = intentResult.tools.length > 0
-      ? allTools.filter(tool => intentResult.tools.includes(tool.function.name))
-      : []; // No tools for greeting, company_info, etc.
+    const filteredTools = verificationToolResult
+      ? [] // No tools when we have pre-emptive verification result
+      : (intentResult.tools.length > 0
+          ? allTools.filter(tool => intentResult.tools.includes(tool.function.name))
+          : []); // No tools for greeting, company_info, etc.
 
     const geminiFunctions = convertToolsToGeminiFunctions(filteredTools);
 
@@ -542,12 +601,43 @@ async function generateAIResponse(business, phoneNumber, userMessage, context = 
     // Add user message to history (before sending to Gemini)
     history.push({
       role: 'user',
-      content: userMessage
+      content: messageText
     });
 
-    // Send user message to Gemini - it will call tools when needed
-    let result = await chat.sendMessage(userMessage);
-    let response = result.response;
+    // Send user message to Gemini
+    let result;
+    let response;
+
+    if (verificationToolResult) {
+      console.log('💉 [WhatsApp] Including verification tool result in message for Gemini to interpret');
+
+      // Pass the STRUCTURED DATA to Gemini for interpretation
+      let contextMessage;
+
+      if (verificationToolResult.verificationPending) {
+        // Verification is pending - tool is asking for more info
+        contextMessage = `Doğrulama gerekli. Sistem mesajı: ${verificationToolResult.message}`;
+      } else if (verificationToolResult.success) {
+        // Verification successful - return data
+        contextMessage = `Doğrulama başarılı! Müşteri bilgileri: ${JSON.stringify(verificationToolResult.data)}`;
+      } else {
+        // Verification failed
+        contextMessage = `Doğrulama başarısız. Structured data: ${JSON.stringify({
+          validation: verificationToolResult.validation,
+          context: verificationToolResult.context,
+          verificationFailed: verificationToolResult.verificationFailed
+        })}`;
+      }
+
+      const messageWithContext = `Kullanıcı mesajı: "${messageText}"\n\nTool sonucu (bunu YORUMLA ve doğal yanıt üret):\n${contextMessage}`;
+
+      result = await chat.sendMessage(messageWithContext);
+      response = result.response;
+    } else {
+      // Normal flow: Send user message to Gemini - it will call tools when needed
+      result = await chat.sendMessage(messageText);
+      response = result.response;
+    }
 
     // Track tokens from first response
     if (response.usageMetadata) {

@@ -24,9 +24,12 @@ export async function execute(args, business, context = {}) {
     if (!product_name) {
       return {
         success: false,
-        error: business.language === 'TR'
-          ? 'Ürün adı gerekli.'
-          : 'Product name required.'
+        validation: {
+          status: "missing_params",
+          provided: { product_name },
+          missingParams: ['product_name']
+        },
+        context: { language: business.language }
       };
     }
 
@@ -111,17 +114,22 @@ export async function execute(args, business, context = {}) {
       if (result.code === 'NO_PLATFORM') {
         return {
           success: false,
-          error: business.language === 'TR'
-            ? 'E-ticaret platformu bağlı değil.'
-            : 'No e-commerce platform connected.'
+          validation: {
+            status: "configuration_error",
+            issue: "no_ecommerce_platform_connected"
+          },
+          context: { language: business.language }
         };
       }
 
       return {
         success: false,
-        error: result.error || (business.language === 'TR'
-          ? `"${product_name}" adlı ürün bulunamadı.`
-          : `Product "${product_name}" not found.`)
+        validation: {
+          status: "not_found",
+          searchCriteria: { product_name },
+          attemptedPlatforms: ["webhook", "crm", "ecommerce"]
+        },
+        context: { language: business.language }
       };
     }
 
@@ -152,9 +160,12 @@ export async function execute(args, business, context = {}) {
 
     return {
       success: false,
-      error: business.language === 'TR'
-        ? 'Stok sorgulanırken bir hata oluştu. Lütfen daha sonra tekrar deneyin.'
-        : 'An error occurred while checking stock. Please try again later.'
+      validation: {
+        status: "system_error",
+        issue: "stock_query_failed",
+        errorMessage: error.message
+      },
+      context: { language: business.language }
     };
   }
 }

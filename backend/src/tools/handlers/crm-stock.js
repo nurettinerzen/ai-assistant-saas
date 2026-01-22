@@ -22,9 +22,12 @@ export async function execute(args, business, context = {}) {
     if (!product_name && !sku) {
       return {
         success: false,
-        error: business.language === 'TR'
-          ? 'Ürün adı veya SKU kodu gerekli.'
-          : 'Product name or SKU required.'
+        validation: {
+          status: "missing_params",
+          provided: { product_name, sku },
+          expectedParams: ['product_name', 'sku']
+        },
+        context: { language: business.language }
       };
     }
 
@@ -52,9 +55,12 @@ export async function execute(args, business, context = {}) {
     if (!stock) {
       return {
         success: false,
-        error: business.language === 'TR'
-          ? 'Ürün bulunamadı. Lütfen ürün adını kontrol edin.'
-          : 'Product not found. Please check the product name.'
+        validation: {
+          status: "not_found",
+          searchCriteria: { product_name, sku },
+          platform: "crm"
+        },
+        context: { language: business.language }
       };
     }
 
@@ -81,9 +87,12 @@ export async function execute(args, business, context = {}) {
     console.error('❌ CRM stock lookup error:', error);
     return {
       success: false,
-      error: business.language === 'TR'
-        ? 'Stok sorgulanırken bir hata oluştu.'
-        : 'An error occurred while checking stock.'
+      validation: {
+        status: "system_error",
+        issue: "crm_query_failed",
+        errorMessage: error.message
+      },
+      context: { language: business.language }
     };
   }
 }

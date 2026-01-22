@@ -22,9 +22,12 @@ export async function execute(args, business, context = {}) {
     if (!order_number && !phone) {
       return {
         success: false,
-        error: business.language === 'TR'
-          ? 'Sipariş numarası veya telefon numarası gerekli.'
-          : 'Order number or phone number required.'
+        validation: {
+          status: "missing_params",
+          provided: { order_number, phone },
+          expectedParams: ['order_number', 'phone']
+        },
+        context: { language: business.language }
       };
     }
 
@@ -56,9 +59,12 @@ export async function execute(args, business, context = {}) {
     if (!order) {
       return {
         success: false,
-        error: business.language === 'TR'
-          ? 'Sipariş bulunamadı. Lütfen sipariş numaranızı kontrol edin.'
-          : 'Order not found. Please check your order number.'
+        validation: {
+          status: "not_found",
+          searchCriteria: { order_number, phone: normalizedPhone },
+          platform: "crm"
+        },
+        context: { language: business.language }
       };
     }
 
@@ -88,9 +94,12 @@ export async function execute(args, business, context = {}) {
     console.error('❌ CRM order lookup error:', error);
     return {
       success: false,
-      error: business.language === 'TR'
-        ? 'Sipariş sorgulanırken bir hata oluştu.'
-        : 'An error occurred while checking order.'
+      validation: {
+        status: "system_error",
+        issue: "crm_query_failed",
+        errorMessage: error.message
+      },
+      context: { language: business.language }
     };
   }
 }

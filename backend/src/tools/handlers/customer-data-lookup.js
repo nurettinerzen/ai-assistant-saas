@@ -9,21 +9,8 @@
  */
 
 import prisma from '../../prismaClient.js';
-
-// In-memory verification state cache
-// Key: sessionId, Value: { pendingOrderNumber, pendingPhone, foundCustomerId, timestamp }
-const verificationCache = new Map();
-const VERIFICATION_TTL = 10 * 60 * 1000; // 10 minutes
-
-// Cleanup old verification states every 2 minutes
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, state] of verificationCache) {
-    if (now - state.timestamp > VERIFICATION_TTL) {
-      verificationCache.delete(key);
-    }
-  }
-}, 2 * 60 * 1000);
+import { compareTurkishNames, comparePhones } from '../../utils/text.js';
+import { verificationCache, setFoundCustomer } from '../../services/verification-manager.js';
 
 /**
  * Execute customer data lookup
@@ -37,7 +24,13 @@ export async function execute(args, business, context = {}) {
     let { query_type, phone, order_number, customer_name, vkn, tc, ticket_number } = args;
     const sessionId = context.sessionId || context.conversationId || `${business.id}-unknown`;
 
-    console.log('🔍 Customer Data Lookup:', { query_type, phone, order_number, customer_name, vkn, tc, ticket_number, businessId: business.id, sessionId });
+    // Get intent-based verification requirement from context
+    const { intent, requiresVerification } = context;
+
+    console.log('🔍 Customer Data Lookup:', {
+      query_type, phone, order_number, customer_name, vkn, tc, ticket_number,
+      businessId: business.id, sessionId, intent, requiresVerification
+    });
 
     // Get phone from args or context
     let lookupPhone = phone || context.callerPhone || context.phone || context.from;
@@ -53,22 +46,53 @@ export async function execute(args, business, context = {}) {
 
       // SMART VERIFICATION: Check if customer_name matches the stored name
       if (customer_name && pendingVerification.foundCustomerName) {
-        const providedName = customer_name.toLowerCase().trim();
-        const storedName = pendingVerification.foundCustomerName.toLowerCase().trim();
+        // Use Turkish-aware name comparison
+        console.log(`🔍 Comparing: "${customer_name}" vs "${pendingVerification.foundCustomerName}"`);
+        const nameMatches = compareTurkishNames(customer_name, pendingVerification.foundCustomerName);
+        console.log(`🔍 Match result: ${nameMatches}`);
 
-        // Fuzzy match: check if one contains the other
-        const nameMatches = storedName.includes(providedName) ||
-                           providedName.includes(storedName) ||
-                           storedName === providedName;
-
-      if (nameMatches) {
+        if (nameMatches) {
           console.log('✅ VERIFICATION SUCCESS: Name matches');
           verificationCache.delete(sessionId);
 
           // Return the customer data directly
-          const customer = await prisma.customerData.findUnique({
-            where: { id: pendingVerification.foundCustomerId }
-          });
+          let customer = null;
+
+          // Check if this is a CRM order (fake ID starts with "crm-order-")
+          if (pendingVerification.foundCustomerId.startsWith('crm-order-')) {
+            // Extract the real CRM order ID
+            const crmOrderId = pendingVerification.foundCustomerId.replace('crm-order-', '');
+            console.log('🔍 Fetching CRM order with ID:', crmOrderId);
+
+            const crmOrder = await prisma.crmOrder.findUnique({
+              where: { id: crmOrderId }
+            });
+
+            if (crmOrder) {
+              console.log('✅ Found CRM order:', crmOrder.orderNumber);
+              // Convert CRM order to customer format
+              customer = {
+                id: `crm-order-${crmOrder.id}`,
+                companyName: crmOrder.customerName || crmOrder.customerPhone,
+                phone: crmOrder.customerPhone,
+                customFields: {
+                  'Sipariş No': crmOrder.orderNumber,
+                  'Durum': crmOrder.status,
+                  'Kargo Takip No': crmOrder.trackingNumber,
+                  'Kargo Firması': crmOrder.carrier,
+                  'Ürünler': crmOrder.items,
+                  'Tutar': crmOrder.totalAmount,
+                  'Tahmini Teslimat': crmOrder.estimatedDelivery?.toLocaleDateString('tr-TR')
+                }
+              };
+            }
+          } else {
+            // Regular customer from CustomerData table
+            customer = await prisma.customerData.findUnique({
+              where: { id: pendingVerification.foundCustomerId }
+            });
+          }
+
           if (customer) {
             const customFields = customer.customFields || {};
             const responseData = formatAllData(customer, customFields);
@@ -81,19 +105,63 @@ export async function execute(args, business, context = {}) {
               data: responseData,
               message: responseMessage + instruction
             };
+          } else {
+            // Customer not found in database (should never happen, but handle gracefully)
+            console.error('❌ Customer not found after verification:', pendingVerification.foundCustomerId);
+            return {
+              success: false,
+              validation: {
+                status: "system_error",
+                issue: "customer_disappeared_after_verification"
+              },
+              context: {
+                language: business.language
+              }
+            };
           }
         } else {
-          // Name doesn't match - verification failed
-          console.log('❌ VERIFICATION FAILED: Name does not match');
-          verificationCache.delete(sessionId);
-          const failMessage = business.language === 'TR'
-            ? 'Verdiğiniz isim kayıtlarımızla eşleşmiyor. Güvenlik nedeniyle bilgileri paylaşamıyorum.'
-            : 'The name you provided does not match our records. For security reasons, I cannot share the details.';
-          return {
-            success: false,
-            error: failMessage,
-            verificationFailed: true
-          };
+          // Name doesn't match - increment fail counter
+          const failedAttempts = (pendingVerification.failedAttempts || 0) + 1;
+          console.log(`❌ VERIFICATION FAILED: Name does not match (Attempt ${failedAttempts}/3)`);
+
+          if (failedAttempts >= 3) {
+            // 3rd failed attempt - clear cache and terminate
+            console.log('🚫 Max verification attempts reached - clearing cache');
+            verificationCache.delete(sessionId);
+            const failMessage = business.language === 'TR'
+              ? 'Maksimum deneme hakkınızı kullandınız. Güvenlik nedeniyle oturumunuz sonlandırıldı.'
+              : 'You have reached the maximum number of attempts. Your session has been terminated for security reasons.';
+            return {
+              success: false,
+              error: failMessage,
+              verificationFailed: true,
+              shouldTerminate: true
+            };
+          } else {
+            // Update fail counter, keep cache for retry
+            pendingVerification.failedAttempts = failedAttempts;
+            verificationCache.set(sessionId, pendingVerification);
+
+            const remainingAttempts = 3 - failedAttempts;
+
+            // Return STRUCTURED DATA for Gemini to interpret
+            return {
+              success: false,
+              validation: {
+                status: "mismatch",
+                provided: customer_name,
+                issue: customer_name && customer_name.split(' ').length < 2 ? "insufficient_words" : "name_mismatch",
+                wordCount: customer_name ? customer_name.split(' ').length : 0,
+                attemptsLeft: remainingAttempts,
+                expectedFormat: pendingVerification.expectedFieldType === 'company_name' ? 'company_name' : 'full_name'
+              },
+              context: {
+                language: business.language,
+                expectedFieldType: pendingVerification.expectedFieldType
+              },
+              verificationFailed: true
+            };
+          }
         }
       }
       // else: no customer_name provided yet, continue with normal flow
@@ -108,11 +176,31 @@ export async function execute(args, business, context = {}) {
 
     // Must have at least one search parameter
     if (!order_number && !lookupPhone && !vkn && !tc && !ticket_number) {
+      // Set cache to help next message - determine what to request based on query_type
+      let requestedField = 'phone'; // default
+      if (query_type && ['muhasebe', 'accounting', 'borc', 'borç', 'debt', 'sgk_borcu', 'vergi_borcu'].includes(query_type.toLowerCase())) {
+        requestedField = 'vkn';
+      } else if (query_type && ['siparis', 'order', 'sipariş', 'kargo'].includes(query_type.toLowerCase())) {
+        requestedField = 'order_number';
+      }
+
+      verificationCache.set(sessionId, {
+        requestedField,
+        queryType: query_type,
+        timestamp: Date.now()
+      });
+      console.log(`📝 No params provided - set cache requesting: ${requestedField}`);
+
       return {
         success: false,
-        error: business.language === 'TR'
-          ? 'Lütfen bir arama kriteri belirtin (sipariş no, telefon, VKN, TC, servis no).'
-          : 'Please provide a search criteria (order number, phone, VKN, TC, ticket number).'
+        validation: {
+          status: "missing_params",
+          provided: {},
+          expectedParams: ['order_number', 'phone', 'vkn', 'tc', 'ticket_number']
+        },
+        context: {
+          language: business.language
+        }
       };
     }
 
@@ -198,11 +286,11 @@ export async function execute(args, business, context = {}) {
           }
         });
 
-        if (crmTicket) {
+        if (crmTicket && !customer) {
           console.log('✅ Found in Custom CRM tickets:', ticket_number);
 
-          // Convert CRM ticket to customer format
-          const crmCustomer = {
+          // Convert CRM ticket to customer format for verification
+          customer = {
             id: `crm-ticket-${crmTicket.id}`,
             companyName: crmTicket.customerName || crmTicket.customerPhone,
             phone: crmTicket.customerPhone,
@@ -216,20 +304,10 @@ export async function execute(args, business, context = {}) {
               'Maliyet': crmTicket.cost
             }
           };
+          // Don't return yet - go through verification logic below
+        }
 
-          // Return CRM data immediately
-          const responseData = formatAllData(crmCustomer, crmCustomer.customFields);
-          const responseMessage = formatResponseMessage(crmCustomer, crmCustomer.customFields, query_type, business.language);
-          const instruction = business.language === 'TR'
-            ? '\n\n[TALİMAT: Bu bilgiyi müşteriye HEMEN aktar.]'
-            : '\n\n[INSTRUCTION: Share this information with the customer NOW.]';
-
-          return {
-            success: true,
-            data: responseData,
-            message: responseMessage + instruction
-          };
-        } else {
+        if (!customer && ticket_number) {
           console.log('⚠️ Not found in Custom CRM tickets, checking customer data...');
         }
       }
@@ -282,8 +360,8 @@ export async function execute(args, business, context = {}) {
       if (webhookOrder) {
         console.log('✅ Found in Shopify/İkas orders:', order_number);
 
-        // Convert webhook order to customer format
-        const integrationCustomer = {
+        // Convert webhook order to customer format for verification
+        customer = {
           id: `webhook-order-${webhookOrder.id}`,
           companyName: webhookOrder.customerName || webhookOrder.customerPhone || webhookOrder.customerEmail,
           phone: webhookOrder.customerPhone,
@@ -299,19 +377,7 @@ export async function execute(args, business, context = {}) {
             'Kaynak': webhookOrder.source
           }
         };
-
-        // Return integration data immediately
-        const responseData = formatAllData(integrationCustomer, integrationCustomer.customFields);
-        const responseMessage = formatResponseMessage(integrationCustomer, integrationCustomer.customFields, query_type, business.language);
-        const instruction = business.language === 'TR'
-          ? '\n\n[TALİMAT: Bu bilgiyi müşteriye HEMEN aktar.]'
-          : '\n\n[INSTRUCTION: Share this information with the customer NOW.]';
-
-        return {
-          success: true,
-          data: responseData,
-          message: responseMessage + instruction
-        };
+        // Don't return yet - go through verification logic below
       }
 
       // Check Custom CRM orders
@@ -323,11 +389,11 @@ export async function execute(args, business, context = {}) {
         }
       });
 
-      if (crmOrder) {
+      if (crmOrder && !customer) {
         console.log('✅ Found in Custom CRM orders:', order_number);
 
-        // Convert CRM order to customer format
-        const crmCustomer = {
+        // Convert CRM order to customer format for verification
+        customer = {
           id: `crm-order-${crmOrder.id}`,
           companyName: crmOrder.customerName || crmOrder.customerPhone,
           phone: crmOrder.customerPhone,
@@ -341,19 +407,7 @@ export async function execute(args, business, context = {}) {
             'Tahmini Teslimat': crmOrder.estimatedDelivery?.toLocaleDateString('tr-TR')
           }
         };
-
-        // Return CRM data immediately
-        const responseData = formatAllData(crmCustomer, crmCustomer.customFields);
-        const responseMessage = formatResponseMessage(crmCustomer, crmCustomer.customFields, query_type, business.language);
-        const instruction = business.language === 'TR'
-          ? '\n\n[TALİMAT: Bu bilgiyi müşteriye HEMEN aktar.]'
-          : '\n\n[INSTRUCTION: Share this information with the customer NOW.]';
-
-        return {
-          success: true,
-          data: responseData,
-          message: responseMessage + instruction
-        };
+        // Don't return yet - go through verification logic below
       }
 
       console.log('⚠️ Not found in integrations, checking customer data...');
@@ -553,17 +607,44 @@ export async function execute(args, business, context = {}) {
 
     // Not found
     if (!customer) {
-      const searchTerm = order_number || lookupPhone;
+      const searchTerm = order_number || lookupPhone || vkn || tc || ticket_number;
       console.log('❌ Customer not found for:', searchTerm);
-      const notFoundMessage = business.language === 'TR'
-        ? `${order_number ? 'Bu sipariş numarasına' : 'Bu telefon numarasına'} ait kayıt bulunamadı.`
-        : `No record found for this ${order_number ? 'order number' : 'phone number'}.`;
-      const notFoundInstruction = business.language === 'TR'
-        ? '\n\n[TALİMAT: Bu bilgiyi müşteriye HEMEN sesli olarak aktar.]'
-        : '\n\n[INSTRUCTION: Speak this information to the customer NOW.]';
+
+      // Set verification cache to request appropriate field for next message
+      // Determine which field to request based on query type
+      let requestedField = 'phone'; // default
+      if (query_type && ['muhasebe', 'accounting', 'borc', 'borç', 'debt', 'sgk_borcu', 'vergi_borcu'].includes(query_type.toLowerCase())) {
+        // For accounting queries, prefer VKN/TC over phone
+        requestedField = 'vkn';
+      } else if (query_type && ['siparis', 'order', 'sipariş', 'kargo'].includes(query_type.toLowerCase())) {
+        // For order queries, prefer order_number
+        requestedField = 'order_number';
+      }
+
+      // Cache the requested field so next user message is interpreted correctly
+      verificationCache.set(sessionId, {
+        requestedField,
+        queryType: query_type,
+        timestamp: Date.now()
+      });
+      console.log(`📝 Set verification cache - requesting field: ${requestedField}`);
+
       return {
         success: false,
-        error: notFoundMessage + notFoundInstruction,
+        validation: {
+          status: "not_found",
+          searchCriteria: {
+            order_number,
+            phone: lookupPhone,
+            vkn,
+            tc,
+            ticket_number
+          },
+          searchTerm
+        },
+        context: {
+          language: business.language
+        },
         notFound: true
       };
     }
@@ -590,17 +671,20 @@ export async function execute(args, business, context = {}) {
       // Proceed to return full data (fall through to existing logic)
     }
     // CASE 2: Verification in progress but second identifier points to DIFFERENT customer
-    else if (pendingVerification && pendingVerification.foundCustomerId !== customer.id) {
+    // Only check if foundCustomerId exists in cache (it won't exist on first VKN/TC query)
+    else if (pendingVerification && pendingVerification.foundCustomerId && pendingVerification.foundCustomerId !== customer.id) {
       console.log('❌ VERIFICATION FAILED: Identifiers point to different customers');
       verificationCache.delete(sessionId);
 
-      const failMessage = business.language === 'TR'
-        ? 'Verdiğiniz bilgiler birbiriyle eşleşmiyor. Güvenlik nedeniyle bilgileri paylaşamıyorum. Lütfen doğru bilgilerle tekrar deneyin.'
-        : 'The information you provided does not match. For security reasons, I cannot share the details. Please try again with correct information.';
-
       return {
         success: false,
-        error: failMessage,
+        validation: {
+          status: "verification_conflict",
+          issue: "identifiers_point_to_different_customers"
+        },
+        context: {
+          language: business.language
+        },
         verificationFailed: true
       };
     }
@@ -609,7 +693,14 @@ export async function execute(args, business, context = {}) {
     // After finding record with PRIMARY identifier, always require NAME verification
     const usedPrimaryIdentifier = vkn || tc || order_number || ticket_number;
 
-    if (usedPrimaryIdentifier && !customer_name) {
+    // ============================================================================
+    // INTENT-BASED VERIFICATION - Main security gate
+    // Intent router decides if verification is needed based on query intent
+    // ============================================================================
+    const needsVerification = requiresVerification && usedPrimaryIdentifier && !customer_name;
+
+    if (needsVerification) {
+      console.log('🔐 INTENT-BASED VERIFICATION REQUIRED:', intent, '- User must provide customer_name');
       // Check if this is sensitive data (accounting, orders with financial info)
       const hasSensitiveData = customFields.sgkDebt || customFields['SGK Borcu'] ||
                                customFields.taxDebt || customFields['Vergi Borcu'] ||
@@ -683,6 +774,7 @@ export async function execute(args, business, context = {}) {
             foundCustomerId: customer.id,
             foundCustomerName: customer.companyName,
             expectedFieldType: 'company_name',
+            queryType: query_type,
             timestamp: Date.now()
           });
         } else if (tc) {
@@ -691,25 +783,34 @@ export async function execute(args, business, context = {}) {
             ? 'Kaydınızı buldum. Güvenlik doğrulaması için isim ve soyisminizi söyler misiniz?'
             : 'I found your record. For security verification, could you please provide your full name?';
 
+          // Use contactName for individuals, fallback to companyName
+          const nameToVerify = customer.contactName || customer.companyName;
+
           verificationCache.set(sessionId, {
             pendingTc: tc,
             foundCustomerId: customer.id,
-            foundCustomerName: customer.companyName,
+            foundCustomerName: nameToVerify,
             expectedFieldType: 'person_name',
+            queryType: query_type,
             timestamp: Date.now()
           });
         } else {
-          // Order/Ticket used → Ask for name
+          // Order/Ticket used → Ask for full name
           verificationMessage = isTR
-            ? 'Kaydınızı buldum. Güvenlik doğrulaması için isim/soyisim veya firma isminizi söyler misiniz?'
-            : 'I found your record. For security verification, could you please provide your name or company name?';
+            ? 'Kaydınızı buldum. Güvenlik doğrulaması için isminizi ve soyisminizi ya da firma isminizi söyler misiniz?'
+            : 'I found your record. For security verification, could you please provide your full name or company name?';
+
+          // Use contactName if available, otherwise companyName
+          const nameToVerify = customer.contactName || customer.companyName;
+          console.log(`📝 Setting verification cache - Name to verify: "${nameToVerify}" (contactName: "${customer.contactName}", companyName: "${customer.companyName}")`);
 
           verificationCache.set(sessionId, {
             pendingOrderNumber: order_number || null,
             pendingTicketNumber: ticket_number || null,
             foundCustomerId: customer.id,
-            foundCustomerName: customer.companyName,
+            foundCustomerName: nameToVerify,
             expectedFieldType: 'name',
+            queryType: query_type,
             timestamp: Date.now()
           });
         }
@@ -743,13 +844,16 @@ export async function execute(args, business, context = {}) {
 
       if (!phoneMatches) {
         console.log('❌ VERIFICATION FAILED: Phone does not match order record');
-        const failMessage = business.language === 'TR'
-          ? 'Verdiğiniz telefon numarası bu siparişle eşleşmiyor. Güvenlik nedeniyle bilgileri paylaşamıyorum.'
-          : 'The phone number you provided does not match this order. For security reasons, I cannot share the details.';
-
         return {
           success: false,
-          error: failMessage,
+          validation: {
+            status: "phone_mismatch",
+            provided: { phone: lookupPhone },
+            issue: "phone_does_not_match_order"
+          },
+          context: {
+            language: business.language
+          },
           verificationFailed: true
         };
       }
@@ -779,9 +883,14 @@ export async function execute(args, business, context = {}) {
     console.error('❌ Customer data lookup error:', error);
     return {
       success: false,
-      error: business.language === 'TR'
-        ? 'Veri sorgulanırken bir hata oluştu.'
-        : 'An error occurred while looking up data.'
+      validation: {
+        status: "system_error",
+        issue: "database_error",
+        errorMessage: error.message
+      },
+      context: {
+        language: business.language
+      }
     };
   }
 }
@@ -874,8 +983,8 @@ function fuzzyMatch(provided, stored, fieldType) {
       return providedDigits === storedDigits || providedDigits.length >= 7 && storedDigits.includes(providedDigits);
 
     case 'name':
-      // Fuzzy name match - check if one contains the other
-      return storedStr.includes(providedStr) || providedStr.includes(storedStr) || storedStr === providedStr;
+      // Turkish-aware fuzzy name match with normalization
+      return compareTurkishNames(provided, stored);
 
     case 'vkn':
     case 'tc':
@@ -1144,6 +1253,8 @@ function formatResponseMessage(customer, customFields, queryType, language) {
     const orderDate = customFields['Sipariş Tarihi'] || customFields['Siparis Tarihi'] || customFields['order_date'] || '-';
     const status = customFields['Kargo Durumu'] || customFields['Durum'] || customFields['status'] || '-';
     const trackingNo = customFields['Kargo Takip No'] || customFields['tracking_number'] || '-';
+    const carrier = customFields['Kargo Firması'] || customFields['Kargo Firmasi'] || customFields['carrier'] || '';
+    const estimatedDelivery = customFields['Tahmini Teslimat'] || customFields['Tahmini Teslim'] || customFields['estimatedDelivery'] || '';
     const customerName = customFields['Müşteri Adı'] || customFields['Musteri Adi'] || customer.companyName;
     const notes = customFields['Notlar'] || customFields['NOTLAR'] || customer.notes || '';
 
@@ -1159,7 +1270,14 @@ function formatResponseMessage(customer, customFields, queryType, language) {
         message += ` Toplam tutar: ${amount} TL.`;
       }
       if (trackingNo !== '-') {
-        message += ` Kargo takip numaranız: ${trackingNo}.`;
+        message += ` Kargo takip numaranız: ${trackingNo}`;
+        if (carrier) {
+          message += ` (${carrier})`;
+        }
+        message += `.`;
+      }
+      if (estimatedDelivery) {
+        message += ` Tahmini teslimat: ${estimatedDelivery}.`;
       }
       if (notes) {
         message += ` Not: ${notes}`;
@@ -1176,7 +1294,14 @@ function formatResponseMessage(customer, customFields, queryType, language) {
         message += ` Total amount: ${amount}.`;
       }
       if (trackingNo !== '-') {
-        message += ` Tracking number: ${trackingNo}.`;
+        message += ` Tracking number: ${trackingNo}`;
+        if (carrier) {
+          message += ` (${carrier})`;
+        }
+        message += `.`;
+      }
+      if (estimatedDelivery) {
+        message += ` Estimated delivery: ${estimatedDelivery}.`;
       }
     }
     return message;

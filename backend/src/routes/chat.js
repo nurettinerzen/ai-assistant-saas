@@ -106,11 +106,64 @@ async function processWithGemini(systemPrompt, conversationHistory, userMessage,
     };
   }
 
+  // ============================================
+  // HANDLE VERIFICATION RESPONSE (SPECIAL CASE)
+  // ============================================
+  // When user is responding to a verification request, call tool directly
+  // but then pass result to Gemini for natural language formatting
+  let verificationToolResult = null;
+  if (intentResult.intent === 'verification_response' && intentResult.verificationData) {
+    console.log('🔐 Processing verification response with tool, then Gemini will format');
+
+    const { verificationCache } = await import('../services/verification-manager.js');
+    const pendingVerification = verificationCache.get(sessionId);
+
+    if (pendingVerification) {
+      // Call customer_data_lookup with the cached data + user's provided verification data
+      const toolResult = await executeTool(
+        'customer_data_lookup',
+        {
+          query_type: pendingVerification.queryType || 'siparis',
+          order_number: pendingVerification.pendingOrderNumber,
+          customer_name: intentResult.verificationData.customer_name,
+          phone: pendingVerification.pendingPhone || intentResult.verificationData.phone,
+          vkn: intentResult.verificationData.vkn,
+          tc: intentResult.verificationData.tc
+        },
+        business,
+        {
+          sessionId,
+          intent: intentResult.intent,
+          requiresVerification: true
+        }
+      );
+
+      // Check if verification failed and should terminate
+      if (toolResult.shouldTerminate) {
+        terminateSession(sessionId, 'verification_failed');
+        return {
+          reply: toolResult.error || getTerminationMessage('verification_failed', language),
+          inputTokens: 0,
+          outputTokens: 0,
+          isDirectResponse: true
+        };
+      }
+
+      // Store tool result to pass to Gemini
+      verificationToolResult = toolResult;
+      console.log('✅ Verification tool result received, will pass to Gemini for formatting');
+    }
+  }
+
   // Filter tools based on intent
+  // IMPORTANT: If we have verificationToolResult, we DON'T want Gemini to call tools
+  // We already called the tool pre-emptively, just need Gemini to format the response
   const allTools = getActiveTools(business);
-  const filteredTools = intentResult.tools.length > 0
-    ? allTools.filter(tool => intentResult.tools.includes(tool.function.name))
-    : []; // No tools for greeting, company_info, etc.
+  const filteredTools = verificationToolResult
+    ? [] // No tools when we have pre-emptive verification result
+    : (intentResult.tools.length > 0
+        ? allTools.filter(tool => intentResult.tools.includes(tool.function.name))
+        : []); // No tools for greeting, company_info, etc.
 
   const geminiFunctions = convertToolsToGeminiFunctions(filteredTools);
 
@@ -177,9 +230,41 @@ async function processWithGemini(systemPrompt, conversationHistory, userMessage,
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
 
-  // Send user message to Gemini - it will call tools when needed
-  let result = await chat.sendMessage(userMessage);
-  let response = result.response;
+  // If we have verification tool result, include it in the user message for Gemini to use
+  let result;
+  let response;
+
+  if (verificationToolResult) {
+    console.log('💉 Including verification tool result in message for Gemini to interpret');
+
+    // Pass the STRUCTURED DATA to Gemini for interpretation
+    // Include validation object so Gemini can generate natural response
+    let contextMessage;
+
+    if (verificationToolResult.verificationPending) {
+      // Verification is pending - tool is asking for more info
+      contextMessage = `Doğrulama gerekli. Sistem mesajı: ${verificationToolResult.message}`;
+    } else if (verificationToolResult.success) {
+      // Verification successful - return data
+      contextMessage = `Doğrulama başarılı! Müşteri bilgileri: ${JSON.stringify(verificationToolResult.data)}`;
+    } else {
+      // Verification failed
+      contextMessage = `Doğrulama başarısız. Structured data: ${JSON.stringify({
+        validation: verificationToolResult.validation,
+        context: verificationToolResult.context,
+        verificationFailed: verificationToolResult.verificationFailed
+      })}`;
+    }
+
+    const messageWithContext = `Kullanıcı mesajı: "${userMessage}"\n\nTool sonucu (bunu YORUMLA ve doğal yanıt üret):\n${contextMessage}`;
+
+    result = await chat.sendMessage(messageWithContext);
+    response = result.response;
+  } else {
+    // Normal flow: Send user message to Gemini - it will call tools when needed
+    result = await chat.sendMessage(userMessage);
+    response = result.response;
+  }
 
   // Track tokens from first response
   if (response.usageMetadata) {
@@ -202,6 +287,31 @@ async function processWithGemini(systemPrompt, conversationHistory, userMessage,
   const initialFunctionCalls = response.functionCalls();
 
   console.log('🔍 Initial response - Text:', initialText?.substring(0, 100), 'FunctionCalls:', initialFunctionCalls?.length || 0);
+
+  // If Gemini asked for VKN/TC/phone without calling tool, set cache
+  // This helps Gemini understand what field to use in the next message
+  if ((!initialFunctionCalls || initialFunctionCalls.length === 0) && initialText) {
+    const lowerText = initialText.toLowerCase();
+    let requestedField = null;
+
+    if (lowerText.includes('vkn') || lowerText.includes('vergi kimlik')) {
+      requestedField = 'vkn';
+    } else if ((lowerText.includes('tc') && lowerText.includes('kimlik')) || lowerText.includes('tc kimlik')) {
+      requestedField = 'tc';
+    } else if (lowerText.includes('telefon numara') || lowerText.includes('phone number')) {
+      requestedField = 'phone';
+    }
+
+    if (requestedField && intentResult.intent === 'debt_inquiry') {
+      const { verificationCache } = await import('../services/verification-manager.js');
+      verificationCache.set(sessionId, {
+        requestedField,
+        queryType: 'muhasebe',
+        timestamp: Date.now()
+      });
+      console.log(`📝 Gemini asked for ${requestedField} without calling tool - set cache for next message`);
+    }
+  }
 
   while (iterations < maxIterations) {
     const functionCalls = response.functionCalls();
@@ -229,12 +339,15 @@ async function processWithGemini(systemPrompt, conversationHistory, userMessage,
     const toolResult = await executeTool(functionCall.name, functionCall.args, business, {
       channel: 'CHAT',
       sessionId: sessionId,
-      conversationId: sessionId
+      conversationId: sessionId,
+      intent: intentResult.intent,  // Pass intent info for verification logic
+      requiresVerification: intentResult.requiresVerification  // Pass verification requirement
     });
 
     console.log('🔧 Tool result:', toolResult.success ? 'SUCCESS' : 'FAILED', toolResult.message?.substring(0, 100));
 
     // Send function response back to Gemini
+    // Include validation object for structured error handling
     result = await chat.sendMessage([
       {
         functionResponse: {
@@ -242,7 +355,12 @@ async function processWithGemini(systemPrompt, conversationHistory, userMessage,
           response: {
             success: toolResult.success,
             data: toolResult.data || null,
-            message: toolResult.message || toolResult.error || 'Tool executed'
+            message: toolResult.message || toolResult.error || 'Tool executed',
+            // Include structured validation data for Gemini to interpret
+            validation: toolResult.validation || null,
+            context: toolResult.context || null,
+            verificationFailed: toolResult.verificationFailed || false,
+            notFound: toolResult.notFound || false
           }
         }
       }
@@ -306,7 +424,9 @@ async function processWithGemini(systemPrompt, conversationHistory, userMessage,
       }, business, {
         channel: 'CHAT',
         sessionId: sessionId,
-        conversationId: sessionId
+        conversationId: sessionId,
+        intent: intentResult.intent,  // Pass intent info for verification logic
+        requiresVerification: intentResult.requiresVerification  // Pass verification requirement
       });
 
       console.log('🔧 Direct tool result:', toolResult.success ? 'SUCCESS' : 'FAILED', toolResult.message?.substring(0, 100));

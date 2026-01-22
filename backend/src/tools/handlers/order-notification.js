@@ -55,9 +55,16 @@ export async function execute(args, business, context = {}) {
     if (!customer_name || !customer_phone || !order_items) {
       return {
         success: false,
-        error: business.language === 'TR'
-          ? 'Eksik parametreler: müşteri adı, telefon ve sipariş detayları gerekli.'
-          : 'Missing required parameters: customer_name, customer_phone, and order_items are required'
+        validation: {
+          status: "missing_params",
+          provided: { customer_name, customer_phone, order_items },
+          missingParams: [
+            !customer_name && 'customer_name',
+            !customer_phone && 'customer_phone',
+            !order_items && 'order_items'
+          ].filter(Boolean)
+        },
+        context: { language: business.language }
       };
     }
 
@@ -67,9 +74,11 @@ export async function execute(args, business, context = {}) {
     if (!ownerPhone) {
       return {
         success: false,
-        error: business.language === 'TR'
-          ? 'İşletme sahibinin telefon numarası tanımlanmamış.'
-          : 'Business owner phone number not configured'
+        validation: {
+          status: "configuration_error",
+          issue: "owner_phone_not_configured"
+        },
+        context: { language: business.language }
       };
     }
 
@@ -135,9 +144,12 @@ export async function execute(args, business, context = {}) {
     console.error('❌ Send order notification error:', error);
     return {
       success: false,
-      error: business.language === 'TR'
-        ? 'Sipariş bildirimi gönderilirken bir hata oluştu. Lütfen tekrar deneyin.'
-        : 'Failed to send order notification. Please try again.'
+      validation: {
+        status: "system_error",
+        issue: "notification_send_failed",
+        errorMessage: error.message
+      },
+      context: { language: business.language }
     };
   }
 }

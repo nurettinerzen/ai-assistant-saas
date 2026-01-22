@@ -22,9 +22,12 @@ export async function execute(args, business, context = {}) {
     if (!ticket_number && !phone) {
       return {
         success: false,
-        error: business.language === 'TR'
-          ? 'Servis numarası veya telefon numarası gerekli.'
-          : 'Ticket number or phone number required.'
+        validation: {
+          status: "missing_params",
+          provided: { ticket_number, phone },
+          expectedParams: ['ticket_number', 'phone']
+        },
+        context: { language: business.language }
       };
     }
 
@@ -56,9 +59,12 @@ export async function execute(args, business, context = {}) {
     if (!ticket) {
       return {
         success: false,
-        error: business.language === 'TR'
-          ? 'Servis kaydı bulunamadı. Lütfen servis numaranızı kontrol edin.'
-          : 'Ticket not found. Please check your ticket number.'
+        validation: {
+          status: "not_found",
+          searchCriteria: { ticket_number, phone: normalizedPhone },
+          platform: "crm"
+        },
+        context: { language: business.language }
       };
     }
 
@@ -88,9 +94,12 @@ export async function execute(args, business, context = {}) {
     console.error('❌ CRM ticket lookup error:', error);
     return {
       success: false,
-      error: business.language === 'TR'
-        ? 'Servis kaydı sorgulanırken bir hata oluştu.'
-        : 'An error occurred while checking ticket.'
+      validation: {
+        status: "system_error",
+        issue: "crm_query_failed",
+        errorMessage: error.message
+      },
+      context: { language: business.language }
     };
   }
 }

@@ -5,6 +5,8 @@
  */
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { verificationCache } from './verification-manager.js';
+import { detectNumberType } from '../utils/text.js';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
@@ -18,7 +20,7 @@ export const INTENT_CONFIG = {
     requiresVerification: true,
     verificationFields: ['order_number'],
     maxAttempts: 3,
-    description: 'User asks about order status, delivery, or "where is my order"'
+    description: 'User asks about ORDER STATUS/DELIVERY: sipariş, siparişim, teslimat, ne zaman gelir. NOT debts or cargo tracking codes.'
   },
 
   debt_inquiry: {
@@ -26,7 +28,7 @@ export const INTENT_CONFIG = {
     requiresVerification: true,
     verificationFields: ['phone', 'tc', 'vkn'],
     maxAttempts: 3,
-    description: 'User asks about debts, payments, SGK, tax, invoices'
+    description: 'User asks about DEBTS/PAYMENTS ONLY: borç, borcum, ödeme, fatura, tahsilat, bakiye, SGK, vergi. NOT about orders or cargo.'
   },
 
   tracking_info: {
@@ -34,7 +36,7 @@ export const INTENT_CONFIG = {
     requiresVerification: true,
     verificationFields: ['order_number', 'tracking_number'],
     maxAttempts: 3,
-    description: 'User asks about cargo tracking, shipment status'
+    description: 'User asks about CARGO/SHIPMENT TRACKING ONLY: kargo, gönderi, takip kodu, nerede. NOT about payments or debts.'
   },
 
   // ============================================
@@ -62,7 +64,15 @@ export const INTENT_CONFIG = {
   complaint: {
     tools: ['create_callback'],
     requiresVerification: false,
-    description: 'User complains, reports problem, asks to speak to manager'
+    description: 'User complains, reports problem, asks to speak to manager (NOT profanity)'
+  },
+
+  profanity: {
+    tools: [],
+    requiresVerification: false,
+    maxCount: 3, // 3 strikes = session terminated
+    response: 'polite_warning',
+    description: 'User uses profanity, swear words, insults (küfür, hakaret)'
   },
 
   general_question: {
@@ -105,20 +115,20 @@ export async function detectIntent(userMessage, language = 'TR') {
     ).join('\n');
 
     const prompt = language === 'TR'
-      ? `Kullanıcının niyetini tespit et. SADECE aşağıdaki intent'lerden birini döndür (başka hiçbir şey yazma):
+      ? `Kullanıcı şunu dedi: "${userMessage}"
+
+Bu mesajın niyetini aşağıdaki listeden seç. Mesajın içeriğine göre EN UYGUN intent'i seç:
 
 ${intentList}
 
-Kullanıcı mesajı: "${userMessage}"
+Yanıt olarak SADECE intent adını yaz. Hiçbir açıklama yapma, sadece intent adı.`
+      : `User said: "${userMessage}"
 
-SADECE intent adını yaz (örnek: order_status, greeting, off_topic)`
-      : `Detect user intent. Return ONLY one of these intents (nothing else):
+Choose the intent from this list that BEST MATCHES the message content:
 
 ${intentList}
 
-User message: "${userMessage}"
-
-Write ONLY the intent name (example: order_status, greeting, off_topic)`;
+Reply with ONLY the intent name. No explanation, just the intent name.`;
 
     const result = await model.generateContent(prompt);
     const detectedIntent = result.response.text().trim().toLowerCase();
@@ -265,10 +275,79 @@ export function getVerificationFields(intent) {
  */
 export async function routeIntent(userMessage, sessionId, language = 'TR', businessInfo = {}) {
   try {
+    // PRIORITY CHECK: Is user responding to a verification request?
+    const pendingVerification = verificationCache.get(sessionId);
+
+    if (pendingVerification) {
+      console.log('🔐 Pending verification detected - treating message as verification response');
+
+      // Determine which field was requested based on cache
+      let requestedField = pendingVerification.requestedField || 'customer_name';
+      console.log(`🔍 Requested field from cache: ${requestedField}`);
+
+      // Smart detection: If requested VKN but user might have given TC or phone
+      if (requestedField === 'vkn') {
+        const detectedType = detectNumberType(userMessage);
+        console.log(`🔍 Auto-detected number type: ${detectedType}`);
+        if (detectedType === 'tc' || detectedType === 'phone') {
+          requestedField = detectedType;
+          console.log(`✅ Corrected field type from 'vkn' to '${requestedField}'`);
+        }
+      }
+
+      // User is providing verification info (name, phone, VKN, TC, etc.)
+      // Route to customer_data_lookup with the user's response in the appropriate field
+      return {
+        intent: 'verification_response',
+        tools: ['customer_data_lookup'],
+        shouldTerminate: false,
+        // Pass user message in the dynamically determined field
+        verificationData: {
+          [requestedField]: userMessage.trim()
+        }
+      };
+    }
+
     // 1. Detect intent
     const intent = await detectIntent(userMessage, language);
 
-    // 2. Handle off-topic
+    // 2. Handle profanity (küfür) - 3 strikes
+    if (intent === 'profanity') {
+      const counter = getSessionCounter(sessionId);
+
+      if (!counter.profanityCount) {
+        counter.profanityCount = 0;
+      }
+
+      counter.profanityCount += 1;
+      const profanityCount = counter.profanityCount;
+
+      console.log(`🚫 Profanity count for ${sessionId}: ${profanityCount}/3`);
+
+      if (profanityCount >= 3) {
+        // 3rd strike - terminate
+        return {
+          intent,
+          tools: [],
+          shouldTerminate: true,
+          response: language === 'TR'
+            ? 'Güvenlik nedeniyle oturumunuz sonlandırıldı.'
+            : 'Your session has been terminated for security reasons.'
+        };
+      }
+
+      // 1st and 2nd strike - polite warning
+      return {
+        intent,
+        tools: [],
+        shouldTerminate: false,
+        response: language === 'TR'
+          ? 'Lütfen saygılı bir dil kullanın. Size nasıl yardımcı olabilirim?'
+          : 'Please use respectful language. How can I help you?'
+      };
+    }
+
+    // 3. Handle off-topic
     if (intent === 'off_topic') {
       const { shouldTerminate, count } = incrementOffTopicCounter(sessionId);
 
@@ -291,37 +370,48 @@ export async function routeIntent(userMessage, sessionId, language = 'TR', busin
         const model = genAI.getGenerativeModel({
           model: 'gemini-2.5-flash',
           generationConfig: {
-            temperature: 0.8,
-            maxOutputTokens: 150
-          }
+            temperature: 0.7,
+            maxOutputTokens: 500,  // Plenty of tokens for a natural response
+            stopSequences: ['\n\n', '---', '*'],  // Stop at formatting attempts
+            // CRITICAL: Disable thinking mode - this is the real fix!
+            thinkingConfig: {
+              thinkingBudget: 0
+            }
+          },
+          safetySettings: [
+            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' }
+          ]
         });
 
+        // Simple, direct prompt - avoid any formatting instructions
         const aiPrompt = language === 'TR'
-          ? `Kullanıcı "${userMessage}" diye sordu. Bu ${businessName} ile alakalı değil.
+          ? `Kullanıcı şunu sordu: "${userMessage}"
 
-GÖREV: Kibarca reddet ve şirketin sunduğu hizmetleri hatırlat.
+Bu soruya kibarca hayır de ve ${businessName} için sadece sipariş takibi ve stok kontrolü yapabildiğini söyle. Sadece yanıtı yaz, başka bir şey ekleme.`
+          : `User asked: "${userMessage}"
 
-KURALLLAR:
-- Doğal ve samimi ol (robot gibi olma)
-- Kısa tut (max 2 cümle)
-- Şirketin sunduğu hizmetlerden bahset: sipariş takibi, stok kontrolü, şirket bilgileri
-- "Nasıl yardımcı olabilirim?" diye bitir
+Politely decline and say you can only help with order tracking and stock check for ${businessName}. Just write the response, nothing else.`;
 
-ÖRNEK: "Hava durumu konusunda bilgim yok maalesef 😊 Ama sipariş durumunuz, ürün stoğu veya ${businessName} hakkında sorularınızı yanıtlayabilirim. Size nasıl yardımcı olabilirim?"`
-          : `User asked: "${userMessage}". This is off-topic for ${businessName}.
-
-TASK: Politely decline and mention company services.
-
-RULES:
-- Be natural and friendly (not robotic)
-- Keep it short (max 2 sentences)
-- Mention services: order tracking, stock check, company info
-- End with "How can I help you?"
-
-EXAMPLE: "I don't have information about weather 😊 But I can help you with order status, product availability, or information about ${businessName}. How can I help you?"`;
+        console.log('📝 Off-topic prompt sent to Gemini (length:', aiPrompt.length, 'chars):', aiPrompt);
 
         const result = await model.generateContent(aiPrompt);
-        const aiResponse = result.response.text().trim();
+        const response = result.response;
+
+        console.log('🔍 Full Gemini result object:', JSON.stringify(result, null, 2));
+        console.log('🔍 Gemini response candidates:', response.candidates);
+        console.log('🔍 Gemini response object:', {
+          text: response.text ? response.text() : 'NO TEXT',
+          candidates: response.candidates?.length,
+          finishReason: response.candidates?.[0]?.finishReason,
+          promptFeedback: response.promptFeedback
+        });
+
+        const aiResponse = response.text().trim();
+
+        console.log('✅ Off-topic AI response generated (length:', aiResponse.length, '):', aiResponse);
 
         return {
           intent,

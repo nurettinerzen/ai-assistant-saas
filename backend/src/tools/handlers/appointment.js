@@ -60,9 +60,17 @@ export async function execute(args, business, context = {}) {
     if (!date || !time || !customer_name || !customer_phone) {
       return {
         success: false,
-        error: business.language === 'TR'
-          ? 'Eksik parametreler: tarih, saat, müşteri adı ve telefon numarası gerekli.'
-          : 'Missing required parameters: date, time, customer_name, and customer_phone are required'
+        validation: {
+          status: "missing_params",
+          provided: { date, time, customer_name, customer_phone },
+          missingParams: [
+            !date && 'date',
+            !time && 'time',
+            !customer_name && 'customer_name',
+            !customer_phone && 'customer_phone'
+          ].filter(Boolean)
+        },
+        context: { language: business.language }
       };
     }
 
@@ -81,9 +89,13 @@ export async function execute(args, business, context = {}) {
     } catch (error) {
       return {
         success: false,
-        error: business.language === 'TR'
-          ? 'Geçersiz tarih veya saat formatı. Lütfen tarihi YYYY-MM-DD ve saati HH:MM olarak belirtin.'
-          : 'Invalid date or time format. Please provide date as YYYY-MM-DD and time as HH:MM'
+        validation: {
+          status: "invalid_format",
+          provided: { date, time },
+          issue: "date_time_parse_failed",
+          expectedFormat: { date: "YYYY-MM-DD", time: "HH:MM" }
+        },
+        context: { language: business.language }
       };
     }
 
@@ -221,9 +233,12 @@ export async function execute(args, business, context = {}) {
     console.error('❌ Create appointment error:', error);
     return {
       success: false,
-      error: business.language === 'TR'
-        ? 'Randevu oluşturulurken bir hata oluştu. Lütfen tekrar deneyin veya bir temsilciyle görüşün.'
-        : 'Failed to create appointment. Please try again or speak with a representative.'
+      validation: {
+        status: "system_error",
+        issue: "appointment_creation_failed",
+        errorMessage: error.message
+      },
+      context: { language: business.language }
     };
   }
 }

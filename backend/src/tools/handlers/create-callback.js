@@ -30,9 +30,16 @@ export default {
       if (!customerName || !customerPhone || !topic) {
         return {
           success: false,
-          error: business.language === 'TR'
-            ? 'Müşteri adı, telefon numarası ve konu zorunludur.'
-            : 'Customer name, phone number and topic are required.'
+          validation: {
+            status: "missing_params",
+            provided: { customerName, customerPhone, topic },
+            missingParams: [
+              !customerName && 'customerName',
+              !customerPhone && 'customerPhone',
+              !topic && 'topic'
+            ].filter(Boolean)
+          },
+          context: { language: business.language }
         };
       }
 
@@ -71,9 +78,12 @@ export default {
       console.error('❌ create_callback error:', error);
       return {
         success: false,
-        error: business.language === 'TR'
-          ? 'Geri arama kaydı oluşturulurken bir hata oluştu.'
-          : 'An error occurred while creating the callback request.'
+        validation: {
+          status: "system_error",
+          issue: "callback_creation_failed",
+          errorMessage: error.message
+        },
+        context: { language: business.language }
       };
     }
   }
