@@ -413,7 +413,7 @@ async function generateAIResponse(business, phoneNumber, userMessage, context = 
     }
 
     // Detect user intent and get appropriate tools
-    const intentResult = await routeIntent(messageText, sessionId, business.language, { name: business.name });
+    const intentResult = await routeIntent(messageBody, sessionId, business.language, { name: business.name });
 
     console.log('🎯 [WhatsApp] Intent result:', {
       intent: intentResult.intent,
@@ -601,7 +601,7 @@ async function generateAIResponse(business, phoneNumber, userMessage, context = 
     // Add user message to history (before sending to Gemini)
     history.push({
       role: 'user',
-      content: messageText
+      content: messageBody
     });
 
     // Send user message to Gemini
@@ -629,13 +629,13 @@ async function generateAIResponse(business, phoneNumber, userMessage, context = 
         })}`;
       }
 
-      const messageWithContext = `Kullanıcı mesajı: "${messageText}"\n\nTool sonucu (bunu YORUMLA ve doğal yanıt üret):\n${contextMessage}`;
+      const messageWithContext = `Kullanıcı mesajı: "${messageBody}"\n\nTool sonucu (bunu YORUMLA ve doğal yanıt üret):\n${contextMessage}`;
 
       result = await chat.sendMessage(messageWithContext);
       response = result.response;
     } else {
       // Normal flow: Send user message to Gemini - it will call tools when needed
-      result = await chat.sendMessage(messageText);
+      result = await chat.sendMessage(messageBody);
       response = result.response;
     }
 
