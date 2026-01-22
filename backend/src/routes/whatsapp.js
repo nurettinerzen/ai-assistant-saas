@@ -679,7 +679,11 @@ async function generateAIResponse(business, phoneNumber, messageBody, context = 
             response: {
               success: toolResult.success,
               data: toolResult.data || null,
-              message: toolResult.message || toolResult.error || 'Tool executed'
+              message: toolResult.message || toolResult.error || 'Tool executed',
+              validation: toolResult.validation || null,
+              context: toolResult.context || null,
+              verificationFailed: toolResult.verificationFailed || false,
+              notFound: toolResult.notFound || false
             }
           }
         }
