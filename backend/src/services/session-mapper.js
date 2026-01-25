@@ -1,0 +1,198 @@
+/**
+ * Session Mapper
+ *
+ * Maps channel-specific user identifiers to universal session IDs.
+ *
+ * Critical design decisions:
+ * 1. NO PII in sessionId (no phone numbers, no emails)
+ * 2. Universal sessionId format: conv_${uuid}
+ * 3. Channel + channelUserId + businessId → sessionId mapping
+ * 4. Supports multi-channel conversations (same user, different channels)
+ *
+ * Channels:
+ * - CHAT: channelUserId = widget session ID
+ * - WHATSAPP: channelUserId = WhatsApp user ID (wa_id from Meta)
+ * - PHONE: channelUserId = call/conversation ID
+ */
+
+import { PrismaClient } from '@prisma/client';
+import { randomUUID } from 'crypto';
+
+const prisma = new PrismaClient();
+
+// In-memory cache for fast lookups
+const mappingCache = new Map();
+
+/**
+ * Generate cache key for mapping lookup
+ */
+function getCacheKey(businessId, channel, channelUserId) {
+  return `${businessId}:${channel}:${channelUserId}`;
+}
+
+/**
+ * Get or create a session ID for a channel user
+ *
+ * @param {number} businessId - Business ID
+ * @param {string} channel - Channel type (CHAT, WHATSAPP, PHONE)
+ * @param {string} channelUserId - Channel-specific user identifier
+ * @returns {Promise<string>} Universal session ID
+ */
+export async function getOrCreateSession(businessId, channel, channelUserId) {
+  const cacheKey = getCacheKey(businessId, channel, channelUserId);
+
+  // 1. Check cache
+  const cached = mappingCache.get(cacheKey);
+  if (cached) {
+    console.log(`[SessionMapper] Cache hit: ${cacheKey} → ${cached}`);
+    return cached;
+  }
+
+  // 2. Check DB
+  const existing = await prisma.sessionMapping.findUnique({
+    where: {
+      businessId_channel_channelUserId: {
+        businessId,
+        channel,
+        channelUserId
+      }
+    }
+  });
+
+  if (existing) {
+    console.log(`[SessionMapper] DB hit: ${cacheKey} → ${existing.sessionId}`);
+    mappingCache.set(cacheKey, existing.sessionId);
+    return existing.sessionId;
+  }
+
+  // 3. Create new session
+  const sessionId = `conv_${randomUUID()}`;
+
+  try {
+    await prisma.sessionMapping.create({
+      data: {
+        sessionId,
+        businessId,
+        channel,
+        channelUserId,
+      }
+    });
+
+    console.log(`[SessionMapper] Created new session: ${cacheKey} → ${sessionId}`);
+    mappingCache.set(cacheKey, sessionId);
+
+    return sessionId;
+  } catch (error) {
+    // Handle race condition - another process might have created it
+    if (error.code === 'P2002') { // Unique constraint violation
+      console.log(`[SessionMapper] Race condition detected, retrying lookup`);
+
+      const retryExisting = await prisma.sessionMapping.findUnique({
+        where: {
+          businessId_channel_channelUserId: {
+            businessId,
+            channel,
+            channelUserId
+          }
+        }
+      });
+
+      if (retryExisting) {
+        mappingCache.set(cacheKey, retryExisting.sessionId);
+        return retryExisting.sessionId;
+      }
+    }
+
+    console.error('[SessionMapper] Failed to create session mapping:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get session ID if exists (without creating)
+ *
+ * @param {number} businessId
+ * @param {string} channel
+ * @param {string} channelUserId
+ * @returns {Promise<string|null>} Session ID or null if not found
+ */
+export async function getSession(businessId, channel, channelUserId) {
+  const cacheKey = getCacheKey(businessId, channel, channelUserId);
+
+  // Check cache
+  const cached = mappingCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  // Check DB
+  const existing = await prisma.sessionMapping.findUnique({
+    where: {
+      businessId_channel_channelUserId: {
+        businessId,
+        channel,
+        channelUserId
+      }
+    }
+  });
+
+  if (existing) {
+    mappingCache.set(cacheKey, existing.sessionId);
+    return existing.sessionId;
+  }
+
+  return null;
+}
+
+/**
+ * Get all channel mappings for a session
+ * Useful for understanding multi-channel conversations
+ *
+ * @param {string} sessionId
+ * @returns {Promise<Array>} Array of channel mappings
+ */
+export async function getChannelsForSession(sessionId) {
+  return await prisma.sessionMapping.findMany({
+    where: { sessionId }
+  });
+}
+
+/**
+ * Delete session mapping
+ * Useful for testing or manual cleanup
+ *
+ * @param {number} businessId
+ * @param {string} channel
+ * @param {string} channelUserId
+ */
+export async function deleteSessionMapping(businessId, channel, channelUserId) {
+  const cacheKey = getCacheKey(businessId, channel, channelUserId);
+
+  // Remove from cache
+  mappingCache.delete(cacheKey);
+
+  // Remove from DB
+  await prisma.sessionMapping.delete({
+    where: {
+      businessId_channel_channelUserId: {
+        businessId,
+        channel,
+        channelUserId
+      }
+    }
+  }).catch(err => {
+    if (err.code !== 'P2025') { // Not found is OK
+      console.error('[SessionMapper] Failed to delete mapping:', err);
+    }
+  });
+}
+
+/**
+ * Get cache stats (for monitoring)
+ */
+export function getCacheStats() {
+  return {
+    cachedMappings: mappingCache.size,
+    cacheKeys: Array.from(mappingCache.keys()),
+  };
+}

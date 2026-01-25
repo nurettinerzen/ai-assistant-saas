@@ -37,6 +37,7 @@ import analyticsRoutes from './routes/analytics.js';
 import costCalculatorRoutes from './routes/costCalculator.js';
 import webhooksRoutes from './routes/webhooks.js';
 import chatRoutes from './routes/chat.js';
+import chatRefactoredRoutes from './routes/chat-refactored.js';
 import chatLogRoutes from './routes/chatLogs.js';
 import whatsappRoutes from './routes/whatsapp.js';
 import iyzicoRoutes from './routes/iyzico.js';
@@ -70,10 +71,13 @@ import cronRoutes from './routes/cron.js';
 import adminRoutes from './routes/admin.js';
 // Callback (geri arama) sistemi
 import callbackRoutes from './routes/callback.js';
+// Metrics (shadow mode, idempotency, health)
+import metricsRoutes from './routes/metrics.js';
 
 
 // Import jobs
 import { initMonthlyResetJob } from './jobs/monthlyReset.js';
+import { initializeStateCleanup } from './jobs/cleanup-expired-states.js';
 // Email sync is now MANUAL only - removed auto-sync job
 // import { initEmailSyncJob } from './jobs/emailSync.js';
 
@@ -159,6 +163,7 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/cost-calculator', costCalculatorRoutes);
 app.use('/api/webhooks', webhooksRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/chat-v2', chatRefactoredRoutes); // NEW: State machine version
 app.use('/api/chat-logs', chatLogRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
 app.use('/api/iyzico', iyzicoRoutes);
@@ -174,6 +179,7 @@ app.use('/api/team', teamRoutes);
 app.use('/api/waitlist', waitlistRoutes);
 app.use('/api/onboarding', onboardingRoutes);
 app.use('/api/credits', creditsRoutes);
+app.use('/api/metrics', metricsRoutes); // Internal metrics (protected)
 // Balance and Usage (new pricing system)
 app.use('/api/balance', balanceRoutes);
 app.use('/api/usage', usageRoutes);
@@ -201,6 +207,7 @@ app.use((err, req, res, next) => {
 if (process.env.NODE_ENV !== 'test') {
   console.log('\n🚀 Initializing background jobs...');
   initMonthlyResetJob();
+  initializeStateCleanup();
   // Email sync is now MANUAL only - users trigger sync from panel
   // initEmailSyncJob();
   console.log('✅ Background jobs initialized\n');

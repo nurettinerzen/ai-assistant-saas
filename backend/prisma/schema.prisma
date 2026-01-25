@@ -1545,3 +1545,115 @@ enum AuditAction {
   SUSPEND
   ACTIVATE
 }
+
+// ============================================================================
+// CONVERSATION STATE MACHINE MODELS
+// ============================================================================
+
+// Session mapping: Maps channel-specific user IDs to universal session IDs
+// Prevents PII in sessionId and handles multi-channel conversations
+model SessionMapping {
+  id             String   @id @default(cuid())
+  sessionId      String   @unique  // Universal session ID (conv_${uuid})
+  businessId     Int
+  channel        String             // CHAT, WHATSAPP, PHONE
+  channelUserId  String             // Channel-specific ID (wa_id, widget session, call id)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([businessId, channel, channelUserId])
+  @@index([sessionId])
+  @@index([businessId, channel])
+}
+
+// Conversation state: Stores full state machine state for each session
+model ConversationState {
+  id         String   @id @default(cuid())
+  sessionId  String   @unique
+  businessId Int
+
+  // Full state stored as JSON
+  state      Json     // { activeFlow, flowStatus, expectedSlot, collectedSlots, verification, allowedTools, ... }
+
+  // TTL for cleanup
+  expiresAt  DateTime
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([businessId])
+  @@index([expiresAt])  // For cleanup cron
+}
+
+// Customer Identity: Canonical customer identity (Phase 4)
+// Prevents data duplication across CrmOrder, CrmTicket, CustomerData, etc.
+model CustomerIdentity {
+  id            String   @id @default(cuid())
+  businessId    Int
+
+  // Primary identifiers (normalized)
+  primaryPhone  String              // Normalized: 905xxxxxxxxx format
+  primaryEmail  String?             // Normalized: lowercase
+
+  // Display information
+  displayName   String              // Customer/Company name for display
+
+  // External references (JSON for flexibility)
+  externalRefs  Json?               // { shopifyId, ikasId, crmId, erpId, ... }
+
+  // Metadata
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([businessId, primaryPhone])
+  @@index([businessId])
+  @@index([primaryPhone])
+  @@index([primaryEmail])
+}
+
+// Tool Execution Idempotency (restart-safe)
+model ToolExecution {
+  id          String   @id @default(cuid())
+
+  // Composite key for idempotency
+  businessId  Int
+  channel     String   // 'CHAT' | 'WHATSAPP' | 'PHONE'
+  messageId   String   // Webhook message ID
+  toolName    String   // Tool that was executed
+
+  // Result cache
+  success     Boolean
+  data        Json?    // Tool result data
+  error       String?  // Error message if failed
+
+  // Timestamps
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime // TTL: createdAt + 1 hour
+
+  @@unique([businessId, channel, messageId, toolName])
+  @@index([businessId])
+  @@index([expiresAt]) // For cleanup
+}
+
+// Outbound Message Idempotency (prevents duplicate sends)
+model OutboundMessage {
+  id              String   @id @default(cuid())
+
+  // Composite key for idempotency
+  businessId      Int
+  channel         String   // 'WHATSAPP' | 'SMS' | 'EMAIL'
+  recipientId     String   // Phone number or email
+  inboundMessageId String  // Original webhook message ID that triggered this
+
+  // Send result
+  sent            Boolean  @default(true)
+  externalId      String?  // WhatsApp message ID, email ID, etc.
+
+  // Timestamps
+  createdAt       DateTime @default(now())
+  expiresAt       DateTime // TTL: createdAt + 1 hour
+
+  @@unique([businessId, channel, recipientId, inboundMessageId])
+  @@index([businessId])
+  @@index([expiresAt]) // For cleanup
+}
