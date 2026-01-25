@@ -1,6 +1,37 @@
 /**
- * Email AI Service
- * Generates AI draft responses using OpenAI with Function Calling
+ * Email AI Service - LEGACY
+ *
+ * ⚠️ PARTIALLY DEPRECATED: Draft generation migrated to core/email orchestrator
+ *
+ * CURRENT USAGE:
+ * ✅ ACTIVE (CRUD Operations):
+ *    - getDraft(draftId)
+ *    - getPendingDrafts(businessId)
+ *    - updateDraft(draftId, content)
+ *    - approveDraft(draftId, userId)
+ *    - rejectDraft(draftId, userId)
+ *    - regenerateDraft(draftId, feedback)
+ *
+ * ❌ DEPRECATED (Draft Generation):
+ *    - generateDraft() → Migrated to core/email/handleEmailTurn.js
+ *    - Uses new orchestrator pipeline with RAG, guardrails, policies
+ *
+ * ROUTE OWNERSHIP:
+ * - Draft Generation: POST /api/email/threads/:id/generate-draft
+ *   → Uses: core/email/handleEmailTurn.js (NEW ✅)
+ *
+ * - Draft CRUD: GET/PUT/POST /api/email/drafts/*
+ *   → Uses: email-ai.js (THIS FILE - LEGACY ⚠️)
+ *
+ * MIGRATION PLAN:
+ * - Phase 1 (Current): Document usage and ownership ✅
+ * - Phase 2: Create core/email/drafts/ service for CRUD operations
+ * - Phase 3: Migrate routes to use new CRUD service
+ * - Phase 4: Remove this file
+ *
+ * @deprecated Draft generation methods deprecated as of v1.5.0
+ * @see src/core/email/handleEmailTurn.js for new draft generation
+ * @will-migrate CRUD operations to core/email/drafts/ in v2.0.0
  */
 
 import OpenAI from 'openai';

@@ -37,6 +37,12 @@ export const FEATURE_FLAGS = {
   // ROLLOUT_PERCENT: 0-100, uses new orchestrator for X% of traffic
   WHATSAPP_SHADOW_MODE: process.env.FEATURE_WHATSAPP_SHADOW_MODE === 'true' || false,
   WHATSAPP_ROLLOUT_PERCENT: parseInt(process.env.FEATURE_WHATSAPP_ROLLOUT_PERCENT || '0', 10), // 0 = disabled, 100 = full rollout
+
+  // Chat V2 Orchestrator
+  // When enabled: Use chat-refactored.js with core/orchestrator
+  // When disabled: Use legacy chat.js with direct Gemini
+  CHAT_USE_V2: process.env.FEATURE_CHAT_USE_V2 !== 'false', // Default: true (v2 is default)
+  CHAT_V2_ROLLOUT_PERCENT: parseInt(process.env.FEATURE_CHAT_V2_ROLLOUT_PERCENT || '100', 10), // 0-100
 };
 
 /**

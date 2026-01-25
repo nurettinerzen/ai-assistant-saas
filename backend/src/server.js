@@ -36,8 +36,8 @@ import knowledgeRoutes from './routes/knowledge.js';
 import analyticsRoutes from './routes/analytics.js';
 import costCalculatorRoutes from './routes/costCalculator.js';
 import webhooksRoutes from './routes/webhooks.js';
-import chatRoutes from './routes/chat.js';
-import chatRefactoredRoutes from './routes/chat-refactored.js';
+import chatLegacyRoutes from './routes/chat-legacy.js'; // DEPRECATED: Legacy chat implementation
+import chatRoutes from './routes/chat-refactored.js'; // Main chat implementation (uses core/orchestrator)
 import chatLogRoutes from './routes/chatLogs.js';
 import whatsappRoutes from './routes/whatsapp.js';
 import iyzicoRoutes from './routes/iyzico.js';
@@ -164,8 +164,10 @@ app.use('/api/knowledge', knowledgeRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/cost-calculator', costCalculatorRoutes);
 app.use('/api/webhooks', webhooksRoutes);
-app.use('/api/chat', chatRoutes);
-app.use('/api/chat-v2', chatRefactoredRoutes); // NEW: State machine version
+// Chat endpoints
+app.use('/api/chat-legacy', chatLegacyRoutes); // DEPRECATED: Old Gemini-based implementation
+app.use('/api/chat', chatRoutes); // Main endpoint (uses core/orchestrator)
+app.use('/api/chat-v2', chatRoutes); // Alias for backward compatibility
 app.use('/api/chat-logs', chatLogRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
 app.use('/api/iyzico', iyzicoRoutes);

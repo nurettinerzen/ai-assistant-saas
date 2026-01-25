@@ -1,7 +1,25 @@
 /**
- * Chat Widget API
- * Handles text-based chat for embedded widget
- * Using Google Gemini API with function calling
+ * Chat Widget API - LEGACY
+ *
+ * ⚠️ DEPRECATED: This file is being phased out in favor of chat-refactored.js
+ *
+ * CURRENT STATUS:
+ * - Used by: /api/chat-legacy endpoint (fallback only)
+ * - Production uses: chat-refactored.js (core/orchestrator)
+ *
+ * MIGRATION PATH:
+ * - Phase 1: Monitor usage via CHAT_USE_V2 metrics ✅
+ * - Phase 2: Move to /api/chat-legacy endpoint ✅
+ * - Phase 3: Remove if usage < 1% for 30 days
+ *
+ * NEW IMPLEMENTATION:
+ * - See: src/routes/chat-refactored.js
+ * - Uses: src/core/orchestrator/ (step-based pipeline)
+ * - Features: Intent normalization, argument normalization, enhanced tool gating
+ *
+ * @deprecated Use chat-refactored.js instead
+ * @since v1.0.0
+ * @will-remove v2.0.0
  */
 
 import express from 'express';
