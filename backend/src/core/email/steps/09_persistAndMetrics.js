@@ -37,6 +37,14 @@ export async function persistEmailMetrics(ctx) {
     // ============================================
     // 1. Save Draft to Database
     // ============================================
+    console.log('📧 [Persist] Creating draft with:', {
+      messageId: inboundMessage?.id,
+      threadId: thread?.id,
+      businessId,
+      contentLength: draftContent?.length,
+      hasContent: !!draftContent
+    });
+
     const draft = await prisma.emailDraft.create({
       data: {
         messageId: inboundMessage.id,

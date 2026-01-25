@@ -469,8 +469,26 @@ export async function handleEmailTurn(params) {
     metrics.steps.persist = Date.now() - step9Start;
     metrics.totalDuration = Date.now() - turnStartTime;
     console.log(`✅ [EmailTurn] Persisted (${metrics.steps.persist}ms)`);
+    console.log(`📧 [EmailTurn] PersistResult:`, {
+      success: persistResult.success,
+      hasDraft: !!persistResult.draft,
+      draftId: persistResult.draft?.id,
+      error: persistResult.error
+    });
 
     console.log(`\n📧 [EmailTurn] Complete in ${metrics.totalDuration}ms`);
+
+    // Check if persist failed
+    if (!persistResult.success) {
+      console.error(`❌ [EmailTurn] Persist failed:`, persistResult.error);
+      await failDraftLock(ctx.lockId, persistResult.error || 'Persist failed');
+      return {
+        success: false,
+        error: persistResult.error || 'Failed to save draft',
+        errorCode: 'PERSIST_FAILED',
+        metrics
+      };
+    }
 
     // Mark idempotency lock as complete with draft ID
     await completeDraftLock(ctx.lockId, persistResult.draft?.id);
