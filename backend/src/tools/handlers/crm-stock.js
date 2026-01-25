@@ -4,43 +4,34 @@
  */
 
 import prisma from '../../prismaClient.js';
+import { ok, notFound, validationError, systemError } from '../toolResult.js';
 
 /**
  * Execute CRM stock check
- * @param {Object} args - Tool arguments from AI
- * @param {Object} business - Business object with integrations
- * @param {Object} context - Execution context (channel, etc.)
- * @returns {Object} Result object
  */
 export async function execute(args, business, context = {}) {
   try {
     const { product_name, sku } = args;
+    const language = business.language || 'TR';
 
     console.log('🔍 CRM: Checking stock:', { product_name, sku });
 
     // Validate - at least one parameter required
     if (!product_name && !sku) {
-      return {
-        success: false,
-        validation: {
-          status: "missing_params",
-          provided: { product_name, sku },
-          expectedParams: ['product_name', 'sku']
-        },
-        context: { language: business.language }
-      };
+      return validationError(
+        language === 'TR'
+          ? 'Ürün adı veya SKU kodu gerekli.'
+          : 'Product name or SKU is required.',
+        'product_name | sku'
+      );
     }
 
     // Build query
-    const whereClause = {
-      businessId: business.id
-    };
+    const whereClause = { businessId: business.id };
 
     if (sku) {
-      // Exact match for SKU (case insensitive)
       whereClause.sku = { equals: sku, mode: 'insensitive' };
     } else if (product_name) {
-      // Partial match for product name or SKU
       whereClause.OR = [
         { sku: { contains: product_name, mode: 'insensitive' } },
         { productName: { contains: product_name, mode: 'insensitive' } }
@@ -53,47 +44,36 @@ export async function execute(args, business, context = {}) {
     });
 
     if (!stock) {
-      return {
-        success: false,
-        validation: {
-          status: "not_found",
-          searchCriteria: { product_name, sku },
-          platform: "crm"
-        },
-        context: { language: business.language }
-      };
+      return notFound(
+        language === 'TR'
+          ? `"${product_name || sku}" için stok bilgisi bulunamadı.`
+          : `Stock information not found for "${product_name || sku}".`
+      );
     }
 
     console.log(`✅ CRM Stock found: ${stock.productName}`);
 
     // Format response
-    const responseMessage = formatStockMessage(stock, business.language);
+    const responseMessage = formatStockMessage(stock, language);
 
-    return {
-      success: true,
-      data: {
-        sku: stock.sku,
-        product_name: stock.productName,
-        in_stock: stock.inStock,
-        quantity: stock.quantity,
-        price: stock.price,
-        estimated_restock: stock.estimatedRestock,
-        last_update: stock.externalUpdatedAt
-      },
-      message: responseMessage
-    };
+    return ok({
+      sku: stock.sku,
+      product_name: stock.productName,
+      in_stock: stock.inStock,
+      quantity: stock.quantity,
+      price: stock.price,
+      estimated_restock: stock.estimatedRestock,
+      last_update: stock.externalUpdatedAt
+    }, responseMessage);
 
   } catch (error) {
     console.error('❌ CRM stock lookup error:', error);
-    return {
-      success: false,
-      validation: {
-        status: "system_error",
-        issue: "crm_query_failed",
-        errorMessage: error.message
-      },
-      context: { language: business.language }
-    };
+    return systemError(
+      business.language === 'TR'
+        ? 'Stok sorgusunda sistem hatası oluştu.'
+        : 'System error during stock query.',
+      error
+    );
   }
 }
 

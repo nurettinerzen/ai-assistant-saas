@@ -6,6 +6,7 @@
 import { PrismaClient } from '@prisma/client';
 import netgsmService from '../../services/netgsm.js';
 import whatsappService from '../../services/whatsapp.js';
+import { ok, validationError, systemError } from '../toolResult.js';
 
 const prisma = new PrismaClient();
 
@@ -40,46 +41,40 @@ Order received and processing.`;
 
 /**
  * Execute order notification
- * @param {Object} args - Tool arguments from AI
- * @param {Object} business - Business object with integrations
- * @param {Object} context - Execution context (channel, etc.)
- * @returns {Object} Result object
  */
 export async function execute(args, business, context = {}) {
   try {
     const { customer_name, customer_phone, order_items } = args;
+    const language = business.language || 'TR';
 
     console.log('📦 Sending order notification:', { customer_name, customer_phone, order_items });
 
     // Validate required parameters
     if (!customer_name || !customer_phone || !order_items) {
-      return {
-        success: false,
-        validation: {
-          status: "missing_params",
-          provided: { customer_name, customer_phone, order_items },
-          missingParams: [
-            !customer_name && 'customer_name',
-            !customer_phone && 'customer_phone',
-            !order_items && 'order_items'
-          ].filter(Boolean)
-        },
-        context: { language: business.language }
-      };
+      const missing = [
+        !customer_name && 'customer_name',
+        !customer_phone && 'customer_phone',
+        !order_items && 'order_items'
+      ].filter(Boolean);
+
+      return validationError(
+        language === 'TR'
+          ? `Eksik bilgi: ${missing.join(', ')}`
+          : `Missing information: ${missing.join(', ')}`,
+        missing.join(', ')
+      );
     }
 
     // Get business owner's contact info
     const ownerPhone = business.phoneNumbers?.[0];
 
     if (!ownerPhone) {
-      return {
-        success: false,
-        validation: {
-          status: "configuration_error",
-          issue: "owner_phone_not_configured"
-        },
-        context: { language: business.language }
-      };
+      return validationError(
+        language === 'TR'
+          ? 'İşletme sahibinin telefon numarası yapılandırılmamış.'
+          : 'Business owner phone number not configured.',
+        'owner_phone'
+      );
     }
 
     // Format notification message
@@ -89,7 +84,7 @@ export async function execute(args, business, context = {}) {
         customerPhone: customer_phone,
         orderItems: order_items
       },
-      business.language
+      language
     );
 
     // Check if business prefers WhatsApp or SMS
@@ -128,29 +123,20 @@ export async function execute(args, business, context = {}) {
     }
 
     // Return result
-    const successMessage = business.language === 'TR'
+    const successMessage = language === 'TR'
       ? `Siparişiniz alındı. İşletme sahibine bildirim gönderildi. En kısa sürede sizinle iletişime geçilecek.`
       : `Your order has been received. Notification sent to business owner. They will contact you shortly.`;
 
-    return {
-      success: true,
-      data: {
-        notificationSent
-      },
-      message: successMessage
-    };
+    return ok({ notificationSent }, successMessage);
 
   } catch (error) {
     console.error('❌ Send order notification error:', error);
-    return {
-      success: false,
-      validation: {
-        status: "system_error",
-        issue: "notification_send_failed",
-        errorMessage: error.message
-      },
-      context: { language: business.language }
-    };
+    return systemError(
+      business.language === 'TR'
+        ? 'Sipariş bildirimi gönderilemedi. Lütfen tekrar deneyin.'
+        : 'Could not send order notification. Please try again.',
+      error
+    );
   }
 }
 

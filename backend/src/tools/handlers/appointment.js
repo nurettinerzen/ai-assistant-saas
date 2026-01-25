@@ -7,6 +7,7 @@ import { PrismaClient } from '@prisma/client';
 import googleCalendarService from '../../services/google-calendar.js';
 import netgsmService from '../../services/netgsm.js';
 import axios from 'axios';
+import { ok, validationError, systemError } from '../toolResult.js';
 
 const prisma = new PrismaClient();
 
@@ -45,33 +46,29 @@ Appointment saved to your system.`;
 
 /**
  * Execute appointment creation
- * @param {Object} args - Tool arguments from AI
- * @param {Object} business - Business object with integrations
- * @param {Object} context - Execution context (channel, etc.)
- * @returns {Object} Result object
  */
 export async function execute(args, business, context = {}) {
   try {
     const { date, time, customer_name, customer_phone, service_type } = args;
+    const language = business.language || 'TR';
 
     console.log('📅 Creating appointment:', { date, time, customer_name, customer_phone, service_type });
 
     // Validate required parameters
     if (!date || !time || !customer_name || !customer_phone) {
-      return {
-        success: false,
-        validation: {
-          status: "missing_params",
-          provided: { date, time, customer_name, customer_phone },
-          missingParams: [
-            !date && 'date',
-            !time && 'time',
-            !customer_name && 'customer_name',
-            !customer_phone && 'customer_phone'
-          ].filter(Boolean)
-        },
-        context: { language: business.language }
-      };
+      const missing = [
+        !date && 'date',
+        !time && 'time',
+        !customer_name && 'customer_name',
+        !customer_phone && 'customer_phone'
+      ].filter(Boolean);
+
+      return validationError(
+        language === 'TR'
+          ? `Eksik bilgi: ${missing.join(', ')}`
+          : `Missing information: ${missing.join(', ')}`,
+        missing.join(', ')
+      );
     }
 
     // Parse appointment date/time
@@ -87,16 +84,12 @@ export async function execute(args, business, context = {}) {
         throw new Error('Invalid date/time format');
       }
     } catch (error) {
-      return {
-        success: false,
-        validation: {
-          status: "invalid_format",
-          provided: { date, time },
-          issue: "date_time_parse_failed",
-          expectedFormat: { date: "YYYY-MM-DD", time: "HH:MM" }
-        },
-        context: { language: business.language }
-      };
+      return validationError(
+        language === 'TR'
+          ? 'Geçersiz tarih/saat formatı. Örnek: 2024-01-15, 14:30'
+          : 'Invalid date/time format. Example: 2024-01-15, 14:30',
+        'date, time'
+      );
     }
 
     // Check if business has Google Calendar connected
@@ -204,7 +197,7 @@ export async function execute(args, business, context = {}) {
             appointmentDate: appointmentDateTime,
             serviceType: service_type
           },
-          business.language
+          language
         );
 
         await netgsmService.sendSMS(ownerPhone, notificationMessage);
@@ -215,31 +208,24 @@ export async function execute(args, business, context = {}) {
     }
 
     // Return success message
-    const successMessage = business.language === 'TR'
+    const successMessage = language === 'TR'
       ? `Randevunuz ${date} tarihinde saat ${time} için başarıyla oluşturuldu. Randevu bilgileriniz ${customer_phone} numarasına SMS ile gönderilecek.`
       : `Your appointment has been successfully created for ${date} at ${time}. Appointment details will be sent to ${customer_phone} via SMS.`;
 
-    return {
-      success: true,
-      data: {
-        appointmentId: appointment.id,
-        calendarEventId: calendarEventId,
-        confirmedDate: appointmentDateTime.toISOString()
-      },
-      message: successMessage
-    };
+    return ok({
+      appointmentId: appointment.id,
+      calendarEventId: calendarEventId,
+      confirmedDate: appointmentDateTime.toISOString()
+    }, successMessage);
 
   } catch (error) {
     console.error('❌ Create appointment error:', error);
-    return {
-      success: false,
-      validation: {
-        status: "system_error",
-        issue: "appointment_creation_failed",
-        errorMessage: error.message
-      },
-      context: { language: business.language }
-    };
+    return systemError(
+      business.language === 'TR'
+        ? 'Randevu oluşturulamadı. Lütfen tekrar deneyin.'
+        : 'Could not create appointment. Please try again.',
+      error
+    );
   }
 }
 

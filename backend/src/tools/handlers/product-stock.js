@@ -6,31 +6,26 @@
 
 import ecommerceAggregator from '../../services/ecommerce-aggregator.js';
 import prisma from '../../prismaClient.js';
+import { ok, notFound, validationError, systemError } from '../toolResult.js';
 
 /**
  * Execute product stock check
- * @param {Object} args - Tool arguments from AI
- * @param {Object} business - Business object with integrations
- * @param {Object} context - Execution context (channel, etc.)
- * @returns {Object} Result object
  */
 export async function execute(args, business, context = {}) {
   try {
     const { product_name } = args;
+    const language = business.language || 'TR';
 
     console.log('🔍 Checking product stock:', { product_name });
 
     // Validate input
     if (!product_name) {
-      return {
-        success: false,
-        validation: {
-          status: "missing_params",
-          provided: { product_name },
-          missingParams: ['product_name']
-        },
-        context: { language: business.language }
-      };
+      return validationError(
+        language === 'TR'
+          ? 'Ürün adı gerekli.'
+          : 'Product name is required.',
+        'product_name'
+      );
     }
 
     // ============================================================================
@@ -50,21 +45,17 @@ export async function execute(args, business, context = {}) {
     if (webhookStock) {
       console.log('✅ Found in WebhookInventory:', webhookStock.productName);
       const inStock = webhookStock.stock > 0;
-      const responseMessage = business.language === 'TR'
+      const responseMessage = language === 'TR'
         ? `"${webhookStock.productName}" ${inStock ? `stoğumuzda mevcut (${webhookStock.stock} adet)` : 'şu anda stokta yok'}.`
         : `"${webhookStock.productName}" is ${inStock ? `in stock (${webhookStock.stock} units)` : 'currently out of stock'}.`;
 
-      return {
-        success: true,
-        data: {
-          title: webhookStock.productName,
-          sku: webhookStock.sku,
-          available: inStock,
-          stock: webhookStock.stock,
-          platform: 'webhook'
-        },
-        message: responseMessage
-      };
+      return ok({
+        title: webhookStock.productName,
+        sku: webhookStock.sku,
+        available: inStock,
+        stock: webhookStock.stock,
+        platform: 'webhook'
+      }, responseMessage);
     }
 
     // ============================================================================
@@ -84,22 +75,18 @@ export async function execute(args, business, context = {}) {
     if (crmStock) {
       console.log('✅ Found in CrmStock:', crmStock.productName);
       const inStock = crmStock.inStock && (crmStock.quantity === null || crmStock.quantity > 0);
-      const responseMessage = business.language === 'TR'
+      const responseMessage = language === 'TR'
         ? `"${crmStock.productName}" ${inStock ? (crmStock.quantity ? `stoğumuzda mevcut (${crmStock.quantity} adet)` : 'stoğumuzda mevcut') : 'şu anda stokta yok'}.${crmStock.price ? ` Fiyat: ${crmStock.price} TL` : ''}${crmStock.estimatedRestock && !inStock ? ` Tahmini stok girişi: ${crmStock.estimatedRestock.toLocaleDateString('tr-TR')}` : ''}`
         : `"${crmStock.productName}" is ${inStock ? (crmStock.quantity ? `in stock (${crmStock.quantity} units)` : 'in stock') : 'currently out of stock'}.${crmStock.price ? ` Price: ${crmStock.price} TRY` : ''}${crmStock.estimatedRestock && !inStock ? ` Estimated restock: ${crmStock.estimatedRestock.toLocaleDateString('en-US')}` : ''}`;
 
-      return {
-        success: true,
-        data: {
-          title: crmStock.productName,
-          sku: crmStock.sku,
-          available: inStock,
-          stock: crmStock.quantity,
-          price: crmStock.price,
-          platform: 'crm'
-        },
-        message: responseMessage
-      };
+      return ok({
+        title: crmStock.productName,
+        sku: crmStock.sku,
+        available: inStock,
+        stock: crmStock.quantity,
+        price: crmStock.price,
+        platform: 'crm'
+      }, responseMessage);
     }
 
     console.log('⚠️ Not found in integrations, checking e-commerce platforms...');
@@ -112,61 +99,47 @@ export async function execute(args, business, context = {}) {
     // Handle not found / no platform
     if (!result.success) {
       if (result.code === 'NO_PLATFORM') {
-        return {
-          success: false,
-          validation: {
-            status: "configuration_error",
-            issue: "no_ecommerce_platform_connected"
-          },
-          context: { language: business.language }
-        };
+        return validationError(
+          language === 'TR'
+            ? 'E-ticaret platformu bağlı değil.'
+            : 'No e-commerce platform connected.',
+          'integration'
+        );
       }
 
-      return {
-        success: false,
-        validation: {
-          status: "not_found",
-          searchCriteria: { product_name },
-          attemptedPlatforms: ["webhook", "crm", "ecommerce"]
-        },
-        context: { language: business.language }
-      };
+      return notFound(
+        language === 'TR'
+          ? `"${product_name}" için stok bilgisi bulunamadı.`
+          : `Stock information not found for "${product_name}".`
+      );
     }
 
     const product = result.product;
     console.log(`✅ Product found from ${product.platform}: ${product.title}`);
 
     // Format response message using aggregator helper
-    const responseMessage = ecommerceAggregator.formatProductStock(product, business.language);
+    const responseMessage = ecommerceAggregator.formatProductStock(product, language);
 
-    return {
-      success: true,
-      data: {
-        title: product.title,
-        available: product.available,
-        stock: product.totalStock,
-        variants: product.variants?.map(v => ({
-          title: v.title,
-          available: v.available,
-          stock: v.stock
-        })),
-        platform: product.platform
-      },
-      message: responseMessage
-    };
+    return ok({
+      title: product.title,
+      available: product.available,
+      stock: product.totalStock,
+      variants: product.variants?.map(v => ({
+        title: v.title,
+        available: v.available,
+        stock: v.stock
+      })),
+      platform: product.platform
+    }, responseMessage);
 
   } catch (error) {
     console.error('❌ Get product stock error:', error);
-
-    return {
-      success: false,
-      validation: {
-        status: "system_error",
-        issue: "stock_query_failed",
-        errorMessage: error.message
-      },
-      context: { language: business.language }
-    };
+    return systemError(
+      business.language === 'TR'
+        ? 'Stok sorgusunda sistem hatası oluştu.'
+        : 'System error during stock query.',
+      error
+    );
   }
 }
 

@@ -4,40 +4,33 @@
  */
 
 import prisma from '../../prismaClient.js';
+import { ok, notFound, validationError, systemError } from '../toolResult.js';
 
 /**
  * Execute CRM order status check
- * @param {Object} args - Tool arguments from AI
- * @param {Object} business - Business object with integrations
- * @param {Object} context - Execution context (channel, etc.)
- * @returns {Object} Result object
  */
 export async function execute(args, business, context = {}) {
   try {
     const { order_number, phone } = args;
+    const language = business.language || 'TR';
 
     console.log('🔍 CRM: Checking order status:', { order_number, phone });
 
     // Validate - at least one parameter required
     if (!order_number && !phone) {
-      return {
-        success: false,
-        validation: {
-          status: "missing_params",
-          provided: { order_number, phone },
-          expectedParams: ['order_number', 'phone']
-        },
-        context: { language: business.language }
-      };
+      return validationError(
+        language === 'TR'
+          ? 'Sipariş numarası veya telefon numarası gerekli.'
+          : 'Order number or phone number is required.',
+        'order_number | phone'
+      );
     }
 
     // Normalize phone if provided
     const normalizedPhone = phone ? normalizePhone(phone) : null;
 
     // Build query
-    const whereClause = {
-      businessId: business.id
-    };
+    const whereClause = { businessId: business.id };
 
     if (order_number && normalizedPhone) {
       whereClause.OR = [
@@ -57,50 +50,39 @@ export async function execute(args, business, context = {}) {
     });
 
     if (!order) {
-      return {
-        success: false,
-        validation: {
-          status: "not_found",
-          searchCriteria: { order_number, phone: normalizedPhone },
-          platform: "crm"
-        },
-        context: { language: business.language }
-      };
+      return notFound(
+        language === 'TR'
+          ? `${order_number || normalizedPhone} için sipariş bulunamadı.`
+          : `Order not found for ${order_number || normalizedPhone}.`
+      );
     }
 
     console.log(`✅ CRM Order found: ${order.orderNumber}`);
 
     // Format response
-    const statusText = translateOrderStatus(order.status, business.language);
-    const responseMessage = formatOrderMessage(order, statusText, business.language);
+    const statusText = translateOrderStatus(order.status, language);
+    const responseMessage = formatOrderMessage(order, statusText, language);
 
-    return {
-      success: true,
-      data: {
-        order_number: order.orderNumber,
-        status: statusText,
-        status_raw: order.status,
-        tracking_number: order.trackingNumber,
-        carrier: order.carrier,
-        items: order.items,
-        total_amount: order.totalAmount,
-        estimated_delivery: order.estimatedDelivery,
-        last_update: order.externalUpdatedAt
-      },
-      message: responseMessage
-    };
+    return ok({
+      order_number: order.orderNumber,
+      status: statusText,
+      status_raw: order.status,
+      tracking_number: order.trackingNumber,
+      carrier: order.carrier,
+      items: order.items,
+      total_amount: order.totalAmount,
+      estimated_delivery: order.estimatedDelivery,
+      last_update: order.externalUpdatedAt
+    }, responseMessage);
 
   } catch (error) {
     console.error('❌ CRM order lookup error:', error);
-    return {
-      success: false,
-      validation: {
-        status: "system_error",
-        issue: "crm_query_failed",
-        errorMessage: error.message
-      },
-      context: { language: business.language }
-    };
+    return systemError(
+      business.language === 'TR'
+        ? 'Sipariş sorgusunda sistem hatası oluştu.'
+        : 'System error during order query.',
+      error
+    );
   }
 }
 
@@ -127,7 +109,6 @@ function translateOrderStatus(status, language) {
     'cancelled': 'İptal Edildi',
     'returned': 'İade Edildi',
     'refunded': 'İade Yapıldı',
-    // Turkish status values
     'hazirlanıyor': 'Hazırlanıyor',
     'hazirlaniyor': 'Hazırlanıyor',
     'kargoda': 'Kargoya Verildi',

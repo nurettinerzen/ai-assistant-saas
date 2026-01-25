@@ -4,40 +4,33 @@
  */
 
 import prisma from '../../prismaClient.js';
+import { ok, notFound, validationError, systemError } from '../toolResult.js';
 
 /**
  * Execute CRM ticket status check
- * @param {Object} args - Tool arguments from AI
- * @param {Object} business - Business object with integrations
- * @param {Object} context - Execution context (channel, etc.)
- * @returns {Object} Result object
  */
 export async function execute(args, business, context = {}) {
   try {
     const { ticket_number, phone } = args;
+    const language = business.language || 'TR';
 
     console.log('🔍 CRM: Checking ticket status:', { ticket_number, phone });
 
     // Validate - at least one parameter required
     if (!ticket_number && !phone) {
-      return {
-        success: false,
-        validation: {
-          status: "missing_params",
-          provided: { ticket_number, phone },
-          expectedParams: ['ticket_number', 'phone']
-        },
-        context: { language: business.language }
-      };
+      return validationError(
+        language === 'TR'
+          ? 'Servis numarası veya telefon numarası gerekli.'
+          : 'Ticket number or phone number is required.',
+        'ticket_number | phone'
+      );
     }
 
     // Normalize phone if provided
     const normalizedPhone = phone ? normalizePhone(phone) : null;
 
     // Build query
-    const whereClause = {
-      businessId: business.id
-    };
+    const whereClause = { businessId: business.id };
 
     if (ticket_number && normalizedPhone) {
       whereClause.OR = [
@@ -57,50 +50,39 @@ export async function execute(args, business, context = {}) {
     });
 
     if (!ticket) {
-      return {
-        success: false,
-        validation: {
-          status: "not_found",
-          searchCriteria: { ticket_number, phone: normalizedPhone },
-          platform: "crm"
-        },
-        context: { language: business.language }
-      };
+      return notFound(
+        language === 'TR'
+          ? `${ticket_number || normalizedPhone} için servis kaydı bulunamadı.`
+          : `Service ticket not found for ${ticket_number || normalizedPhone}.`
+      );
     }
 
     console.log(`✅ CRM Ticket found: ${ticket.ticketNumber}`);
 
     // Format response
-    const statusText = translateTicketStatus(ticket.status, business.language);
-    const responseMessage = formatTicketMessage(ticket, statusText, business.language);
+    const statusText = translateTicketStatus(ticket.status, language);
+    const responseMessage = formatTicketMessage(ticket, statusText, language);
 
-    return {
-      success: true,
-      data: {
-        ticket_number: ticket.ticketNumber,
-        product: ticket.product,
-        issue: ticket.issue,
-        status: statusText,
-        status_raw: ticket.status,
-        notes: ticket.notes,
-        estimated_completion: ticket.estimatedCompletion,
-        cost: ticket.cost,
-        last_update: ticket.externalUpdatedAt
-      },
-      message: responseMessage
-    };
+    return ok({
+      ticket_number: ticket.ticketNumber,
+      product: ticket.product,
+      issue: ticket.issue,
+      status: statusText,
+      status_raw: ticket.status,
+      notes: ticket.notes,
+      estimated_completion: ticket.estimatedCompletion,
+      cost: ticket.cost,
+      last_update: ticket.externalUpdatedAt
+    }, responseMessage);
 
   } catch (error) {
     console.error('❌ CRM ticket lookup error:', error);
-    return {
-      success: false,
-      validation: {
-        status: "system_error",
-        issue: "crm_query_failed",
-        errorMessage: error.message
-      },
-      context: { language: business.language }
-    };
+    return systemError(
+      business.language === 'TR'
+        ? 'Servis sorgusunda sistem hatası oluştu.'
+        : 'System error during ticket query.',
+      error
+    );
   }
 }
 
@@ -127,7 +109,6 @@ function translateTicketStatus(status, language) {
     'ready': 'Teslime Hazır',
     'delivered': 'Teslim Edildi',
     'cancelled': 'İptal Edildi',
-    // Turkish status values
     'beklemede': 'Beklemede',
     'teslim_alindi': 'Teslim Alındı',
     'inceleniyor': 'İnceleniyor',

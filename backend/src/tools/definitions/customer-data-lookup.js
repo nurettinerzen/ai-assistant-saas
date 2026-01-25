@@ -15,37 +15,32 @@ export default {
 
 ÖNCELİKLİ SORGULAMA AKIŞI (query_type'a göre):
 
-📦 SİPARİŞ SORGUSU (query_type: "siparis" veya "order"):
-1. SADECE sipariş numarası sor - "Sipariş numaranız nedir?"
-2. EĞER kullanıcı "bilmiyorum" derse o zaman telefon numarası sor
+📦 SİPARİŞ SORGUSU (query_type: "siparis"):
+1. SADECE sipariş numarası sor
+2. EĞER kullanıcı bilmiyorsa telefon numarası sor
 3. Doğrulama: İsim/soyisim sor
 
-DİKKAT: Sipariş sorgusunda HEM sipariş no HEM telefon no SORMA! Önce sadece sipariş no iste.
-
 💰 MUHASEBE SORGUSU (query_type: "muhasebe", "sgk_borcu", "vergi_borcu"):
-1. ÖNCE VKN veya TC Kimlik No sor (vkn veya tc parametresi)
+1. ÖNCE VKN veya TC Kimlik No sor
 2. VKN/TC yoksa telefon numarası sor
-3. Doğrulama: Kayıtta firma ismi varsa firma ismi, şahıs ismi varsa isim/soyisim sor (AKILLI DOĞRULAMA)
+3. Doğrulama: Firma ismi veya isim/soyisim sor
 
 🔧 ARIZA/SERVİS TAKİP (query_type: "ariza"):
-1. ÖNCE servis/arıza numarası sor (ticket_number parametresi)
-2. Servis no yoksa telefon numarası sor
+1. ÖNCE servis/arıza numarası sor
+2. Yoksa telefon numarası sor
 3. Doğrulama: İsim/soyisim sor
 
 📅 RANDEVU SORGUSU (query_type: "randevu"):
-1. ÖNCE telefon numarası sor
+1. Telefon numarası sor
 2. Doğrulama: İsim/soyisim sor
 
-GÜVENLİK DOĞRULAMASI:
-- Sistem doğrulama isteyecek (requiresVerification: true)
-- Doğrulama için müşteriden isim/soyisim veya firma ismi iste (customer_name parametresi)
+GÜVENLİK:
+- Sistem doğrulama isterse müşteriden isim/soyisim veya firma ismi iste
 - TEKRAR bu aracı çağır ve doğrulama bilgisini ekle
 
 ÖNEMLİ:
-- Her sorgu türü için SADECE ÖNCELİKLİ BİLGİYİ SOR (sipariş no, VKN, servis no vb.)
-- BİRDEN FAZLA SEÇENEK SUNMA! Önce primary bilgiyi sor, kullanıcı "bilmiyorum" derse secondary bilgiyi sor
-- Sipariş sorgusu için: "Sipariş numaranız nedir?" de, "Sipariş numaranız VEYA telefon numaranız" DEME!
-- Doğrulama her zaman isim/soyisim veya firma ismi ile yapılır`,
+- Her sorgu için SADECE primary bilgiyi sor (önce sipariş no, sonra telefon)
+- Birden fazla seçenek sunma, tek tek sor`,
   parameters: {
     type: 'object',
     properties: {

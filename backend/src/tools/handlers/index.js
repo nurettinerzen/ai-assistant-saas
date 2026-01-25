@@ -24,7 +24,7 @@ import productStockHandler from './product-stock.js';
 import crmOrderStatusHandler from './crm-order-status.js';
 import crmStockHandler from './crm-stock.js';
 import crmTicketStatusHandler from './crm-ticket-status.js';
-// Customer Data Handler (replaces check_order_status and get_tracking_info)
+// Customer Data Handler - State-based verification (replaces check_order_status and get_tracking_info)
 import customerDataLookupHandler from './customer-data-lookup.js';
 // Callback Handler
 import createCallbackHandler from './create-callback.js';
@@ -38,7 +38,7 @@ const handlers = {
   'check_order_status_crm': crmOrderStatusHandler,
   'check_stock_crm': crmStockHandler,
   'check_ticket_status_crm': crmTicketStatusHandler,
-  // Customer Data Handler
+  // Customer Data Handler (state-based verification)
   'customer_data_lookup': customerDataLookupHandler,
   // Callback Handler
   'create_callback': createCallbackHandler
