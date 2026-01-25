@@ -10,6 +10,8 @@ import gmailService from '../services/gmail.js';
 import outlookService from '../services/outlook.js';
 import emailAggregator from '../services/email-aggregator.js';
 import emailAI from '../services/email-ai.js';
+import { handleEmailTurn } from '../core/email/index.js';
+import { onEmailSent } from '../core/email/rag/indexingHooks.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -506,6 +508,16 @@ router.post('/drafts/:draftId/send', authenticateToken, async (req, res) => {
       data: { status: 'REPLIED' }
     });
 
+    // Index sent email for RAG (async, non-blocking)
+    onEmailSent({
+      messageId: sentMessage.id,
+      threadId: thread.id,
+      businessId: req.businessId,
+      classification: draft.classification // If stored
+    }).catch(err => {
+      console.error('RAG indexing failed (non-blocking):', err);
+    });
+
     res.json({
       success: true,
       message: 'Email sent successfully',
@@ -538,15 +550,21 @@ router.post('/drafts/:draftId/reject', authenticateToken, async (req, res) => {
 });
 
 /**
- * Generate Draft Manually for a Thread
+ * Generate Draft Manually for a Thread (NEW ORCHESTRATOR)
  * POST /api/email/threads/:threadId/generate-draft
- * Use this to manually create a draft for emails that were auto-classified as NO_REPLY_NEEDED
+ *
+ * Uses the new email orchestrator pipeline with:
+ * - Classification
+ * - Tool gating (read-only)
+ * - Guardrails (recipient, action-claim, verification)
+ * - Provider draft creation
  */
 router.post('/threads/:threadId/generate-draft', authenticateToken, async (req, res) => {
   try {
     const { threadId } = req.params;
+    const { messageId, createProviderDraft = true } = req.body;
 
-    // Get thread with latest inbound message
+    // Validate thread exists and belongs to business
     const thread = await prisma.emailThread.findFirst({
       where: {
         id: threadId,
@@ -558,7 +576,7 @@ router.post('/threads/:threadId/generate-draft', authenticateToken, async (req, 
       return res.status(404).json({ error: 'Thread not found' });
     }
 
-    // Get the latest inbound message from this thread
+    // Check if draft already exists for the latest inbound message
     const latestInbound = await prisma.emailMessage.findFirst({
       where: {
         threadId: thread.id,
@@ -571,7 +589,101 @@ router.post('/threads/:threadId/generate-draft', authenticateToken, async (req, 
       return res.status(400).json({ error: 'No inbound message found in this thread' });
     }
 
-    // Check if draft already exists for THIS SPECIFIC MESSAGE (not just thread)
+    const targetMessageId = messageId || latestInbound.id;
+
+    // Check for existing pending draft
+    const existingDraft = await prisma.emailDraft.findFirst({
+      where: {
+        messageId: targetMessageId,
+        status: 'PENDING_REVIEW'
+      }
+    });
+
+    if (existingDraft) {
+      return res.status(400).json({
+        error: 'A pending draft already exists for this message',
+        draftId: existingDraft.id
+      });
+    }
+
+    // Use new orchestrator
+    const result = await handleEmailTurn({
+      businessId: req.businessId,
+      threadId,
+      messageId: targetMessageId,
+      options: {
+        createProviderDraft
+      }
+    });
+
+    if (!result.success) {
+      // Handle specific error codes
+      if (result.errorCode === 'GUARDRAIL_BLOCKED') {
+        return res.status(400).json({
+          error: result.error,
+          errorCode: result.errorCode,
+          blockedBy: result.blockedBy
+        });
+      }
+
+      return res.status(500).json({
+        error: result.error || 'Failed to generate draft',
+        errorCode: result.errorCode
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Draft generated successfully',
+      draft: result.draft,
+      classification: result.classification,
+      toolsCalled: result.toolsCalled,
+      guardrailsApplied: result.guardrailsApplied,
+      providerDraftId: result.providerDraftId,
+      metrics: {
+        totalDuration: result.metrics?.totalDuration,
+        steps: result.metrics?.steps
+      }
+    });
+  } catch (error) {
+    console.error('Manual draft generation error:', error);
+    res.status(500).json({ error: 'Failed to generate draft' });
+  }
+});
+
+/**
+ * Generate Draft using LEGACY method (fallback)
+ * POST /api/email/threads/:threadId/generate-draft-legacy
+ *
+ * Kept for backward compatibility if needed
+ */
+router.post('/threads/:threadId/generate-draft-legacy', authenticateToken, async (req, res) => {
+  try {
+    const { threadId } = req.params;
+
+    const thread = await prisma.emailThread.findFirst({
+      where: {
+        id: threadId,
+        businessId: req.businessId
+      }
+    });
+
+    if (!thread) {
+      return res.status(404).json({ error: 'Thread not found' });
+    }
+
+    const latestInbound = await prisma.emailMessage.findFirst({
+      where: {
+        threadId: thread.id,
+        direction: 'INBOUND'
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    if (!latestInbound) {
+      return res.status(400).json({ error: 'No inbound message found in this thread' });
+    }
+
     const existingDraft = await prisma.emailDraft.findFirst({
       where: {
         messageId: latestInbound.id,
@@ -586,10 +698,9 @@ router.post('/threads/:threadId/generate-draft', authenticateToken, async (req, 
       });
     }
 
-    // Generate draft
+    // Use legacy emailAI service
     const draft = await emailAI.generateDraft(req.businessId, thread, latestInbound);
 
-    // Update thread status
     await prisma.emailThread.update({
       where: { id: thread.id },
       data: { status: 'DRAFT_READY' }
@@ -597,11 +708,11 @@ router.post('/threads/:threadId/generate-draft', authenticateToken, async (req, 
 
     res.json({
       success: true,
-      message: 'Draft generated successfully',
+      message: 'Draft generated successfully (legacy)',
       draft
     });
   } catch (error) {
-    console.error('Manual draft generation error:', error);
+    console.error('Legacy draft generation error:', error);
     res.status(500).json({ error: 'Failed to generate draft' });
   }
 });

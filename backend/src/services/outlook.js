@@ -384,6 +384,98 @@ class OutlookService {
   }
 
   /**
+   * Create a draft email (not sent)
+   * @param {number} businessId
+   * @param {Object} options - { conversationId, to, subject, body, replyToId }
+   * @returns {Promise<Object>} { draftId, messageId, conversationId }
+   */
+  async createDraft(businessId, options) {
+    try {
+      const accessToken = await this.getAccessToken(businessId);
+      const { conversationId, to, subject, body, replyToId } = options;
+
+      // If replying to a message, create a reply draft
+      if (replyToId) {
+        const response = await axios.post(
+          `${GRAPH_API_URL}/me/messages/${replyToId}/createReply`,
+          {},
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+
+        const draftId = response.data.id;
+
+        // Update the draft with our content
+        await axios.patch(
+          `${GRAPH_API_URL}/me/messages/${draftId}`,
+          {
+            body: {
+              contentType: 'HTML',
+              content: body
+            }
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+
+        console.log(`✅ Outlook reply draft created: ${draftId}`);
+
+        return {
+          draftId,
+          messageId: draftId,
+          conversationId,
+          provider: 'OUTLOOK'
+        };
+      }
+
+      // New message draft (not a reply)
+      const response = await axios.post(
+        `${GRAPH_API_URL}/me/messages`,
+        {
+          subject,
+          body: {
+            contentType: 'HTML',
+            content: body
+          },
+          toRecipients: [
+            {
+              emailAddress: {
+                address: to
+              }
+            }
+          ]
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      console.log(`✅ Outlook draft created: ${response.data.id}`);
+
+      return {
+        draftId: response.data.id,
+        messageId: response.data.id,
+        conversationId: response.data.conversationId,
+        provider: 'OUTLOOK'
+      };
+    } catch (error) {
+      console.error('Create draft error:', error.response?.data || error);
+      throw error;
+    }
+  }
+
+  /**
    * Mark message as read
    */
   async markAsRead(businessId, messageId) {

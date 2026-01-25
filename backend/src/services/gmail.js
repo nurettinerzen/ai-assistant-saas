@@ -323,6 +323,70 @@ await prisma.emailIntegration.upsert({
   }
 
   /**
+   * Create a draft email (not sent)
+   * @param {number} businessId
+   * @param {Object} options - { threadId, to, subject, body, inReplyTo, references }
+   * @returns {Promise<Object>} { draftId, messageId, threadId }
+   */
+  async createDraft(businessId, options) {
+    try {
+      const auth = await this.getAccessToken(businessId);
+      const gmail = google.gmail({ version: 'v1', auth });
+
+      const integration = await prisma.emailIntegration.findUnique({
+        where: { businessId }
+      });
+
+      const { threadId, to, subject, body, inReplyTo, references } = options;
+
+      // Build email headers
+      const headers = [
+        `To: ${to}`,
+        `From: ${integration.email}`,
+        `Subject: ${subject}`,
+        'MIME-Version: 1.0',
+        'Content-Type: text/html; charset=utf-8'
+      ];
+
+      if (inReplyTo) {
+        headers.push(`In-Reply-To: ${inReplyTo}`);
+      }
+      if (references) {
+        headers.push(`References: ${references}`);
+      }
+
+      const emailContent = headers.join('\r\n') + '\r\n\r\n' + body;
+      const encodedMessage = Buffer.from(emailContent)
+        .toString('base64')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
+
+      const response = await gmail.users.drafts.create({
+        userId: 'me',
+        requestBody: {
+          message: {
+            raw: encodedMessage,
+            threadId: threadId || undefined
+          }
+        }
+      });
+
+      console.log(`✅ Gmail draft created: ${response.data.id}`);
+
+      return {
+        draftId: response.data.id,
+        messageId: response.data.message?.id,
+        threadId: response.data.message?.threadId,
+        provider: 'GMAIL'
+      };
+    } catch (error) {
+      console.error('Create draft error:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Mark message as read
    */
   async markAsRead(businessId, messageId) {

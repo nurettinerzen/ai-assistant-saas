@@ -42,6 +42,8 @@ import chatLogRoutes from './routes/chatLogs.js';
 import whatsappRoutes from './routes/whatsapp.js';
 import iyzicoRoutes from './routes/iyzico.js';
 import emailRoutes from './routes/email.js';
+import emailSnippetRoutes from './routes/email-snippets.js';
+import adminRAGMetricsRoutes from './routes/admin-rag-metrics.js';
 // E-commerce integrations
 import shopifyRoutes from './routes/shopify.js';
 import woocommerceRoutes from './routes/woocommerce.js';
@@ -168,6 +170,8 @@ app.use('/api/chat-logs', chatLogRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
 app.use('/api/iyzico', iyzicoRoutes);
 app.use('/api/email', emailRoutes);
+app.use('/api/email-snippets', emailSnippetRoutes);
+app.use('/api/admin/email-rag', adminRAGMetricsRoutes); // Phase 4 pilot dashboard
 // E-commerce integrations
 app.use('/api/shopify', shopifyRoutes);
 app.use('/api/woocommerce', woocommerceRoutes);

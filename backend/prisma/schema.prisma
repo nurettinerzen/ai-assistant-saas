@@ -118,6 +118,12 @@ model Business {
   updatedAt               DateTime                @updatedAt
   ownerPhone              String?
   ownerWhatsApp           String?
+  // Email RAG Settings
+  emailRagEnabled         Boolean                 @default(true)
+  emailSnippetsEnabled    Boolean                 @default(true)
+  emailRagMaxExamples     Int                     @default(3)
+  emailRagMaxSnippets     Int                     @default(2)
+  emailRagMinConfidence   Float                   @default(0.7) // Min classification confidence for RAG (0.0-1.0)
   aiTrainings             AiTraining[]
   appointments            Appointment[]
   assistants              Assistant[]
@@ -136,6 +142,8 @@ model Business {
   emailIntegration        EmailIntegration?
   emailThreads            EmailThread[]
   emailDrafts             EmailDraft[]
+  emailEmbeddings         EmailEmbedding[]
+  emailSnippets           EmailSnippet[]
   webhookConfig           WebhookConfig?
   invitations             Invitation[]
   creditPurchases         CreditPurchase[]
@@ -149,6 +157,7 @@ model Business {
   customerDataFiles       CustomerDataFile[]
   callbackRequests        CallbackRequest[]
   chatLogs                ChatLog[]
+  pilotBusinesses         PilotBusiness[]         @relation("PilotBusinesses")
 
   @@index([name])
   @@index([suspended])
@@ -922,6 +931,7 @@ model EmailThread {
   business      Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
   messages      EmailMessage[]
   drafts        EmailDraft[]
+  embeddings    EmailEmbedding[]
 
   @@unique([businessId, threadId])
   @@index([businessId])
@@ -977,6 +987,109 @@ model EmailDraft {
   @@index([threadId])
   @@index([businessId])
   @@index([status])
+}
+
+// Email Draft Generation Lock (Idempotency)
+// Prevents duplicate draft generation with DB-level guarantee
+model EmailDraftLock {
+  id              String   @id @default(cuid())
+  businessId      Int
+  threadId        String
+  sourceMessageId String   // The inbound message being replied to
+  requestHash     String   // Hash of request params for extra safety
+  status          String   @default("IN_PROGRESS") // IN_PROGRESS, COMPLETED, FAILED
+  draftId         String?  // Reference to created draft (if completed)
+  startedAt       DateTime @default(now())
+  completedAt     DateTime?
+  expiresAt       DateTime // Auto-cleanup stale locks
+
+  @@unique([businessId, threadId, sourceMessageId])
+  @@index([expiresAt])
+  @@index([status])
+}
+
+// ============================================================================
+// EMAIL RAG & RETRIEVAL TABLES
+// ============================================================================
+
+// Email embeddings for RAG - Only SENT + successful emails
+model EmailEmbedding {
+  id              String   @id @default(cuid())
+  businessId      Int
+  threadId        String
+  messageId       String?  // Null = thread-level embedding
+  chunkIndex      Int      @default(0)  // For long emails split into chunks
+
+  // Content (PII scrubbed before embedding)
+  content         String   @db.Text  // The actual text that was embedded
+  contentHash     String   // SHA256 of content for dedup/update detection
+
+  // Embedding vector - stored as JSON array (Supabase pgvector via raw SQL)
+  // For pgvector: use raw SQL to store as vector(1536)
+  embeddingModel  String   @default("text-embedding-3-small")
+  embeddingDim    Int      @default(1536)
+  embeddedAt      DateTime @default(now())
+
+  // Metadata for filtering/ranking
+  intent          String?  // ORDER, BILLING, etc.
+  language        String   @default("TR")
+  recipientDomain String?  // gmail.com, outlook.com, custom domain
+  tags            String[] @default([])
+  tokenCount      Int      @default(0)
+
+  // Source tracking
+  direction       String   // INBOUND or OUTBOUND
+  sentAt          DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  business        Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  thread          EmailThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@unique([threadId, messageId, chunkIndex])
+  @@index([businessId])
+  @@index([intent])
+  @@index([language])
+  @@index([contentHash])
+  @@index([sentAt])
+}
+
+// Email Snippet Library - Admin-curated templates
+model EmailSnippet {
+  id          String   @id @default(cuid())
+  businessId  Int
+  name        String   // "Order Confirmation TR", "Complaint Response EN"
+  intent      String   // ORDER, BILLING, APPOINTMENT, COMPLAINT, INQUIRY, GENERAL
+  language    String   @default("TR")
+  tone        String   @default("professional") // professional, friendly, formal
+  urgency     String?  // LOW, MEDIUM, HIGH, CRITICAL - optional filter
+
+  // Template content
+  subject     String?  // Optional subject template
+  body        String   @db.Text  // The snippet body with variables
+
+  // Variables: {customer_name}, {order_number}, {tracking_number}, etc.
+  variables   String[] @default([])  // List of required variables
+  optionalVars String[] @default([]) // Optional variables
+
+  // Usage tracking
+  usageCount  Int      @default(0)
+  lastUsedAt  DateTime?
+  enabled     Boolean  @default(true)
+
+  // Metadata
+  createdBy   Int?     // User ID who created
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, name])
+  @@index([businessId])
+  @@index([intent])
+  @@index([language])
+  @@index([enabled])
 }
 
 // ============================================================================
@@ -1656,4 +1769,19 @@ model OutboundMessage {
   @@unique([businessId, channel, recipientId, inboundMessageId])
   @@index([businessId])
   @@index([expiresAt]) // For cleanup
+}
+
+// Pilot Business Allowlist (Controlled Feature Rollout)
+model PilotBusiness {
+  id         String   @id @default(cuid())
+  businessId Int
+  feature    String   // 'RAG_PILOT' | 'SNIPPET_PILOT' | 'AUTO_DRAFT'
+  enabledAt  DateTime @default(now())
+  enabledBy  String   // Admin user email who enabled this
+  notes      String?  // Optional notes (cohort, vertical, contact)
+
+  business   Business @relation("PilotBusinesses", fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, feature]) // Prevent duplicate feature entries
+  @@index([feature, businessId])  // Query index for getPilotBusinesses()
 }

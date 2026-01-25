@@ -1248,6 +1248,336 @@ router.patch('/subscriptions/:id', async (req, res) => {
   }
 });
 
+// ==================== EMAIL RAG METRICS ====================
+
+/**
+ * GET /api/admin/email-rag/metrics
+ * Get Email RAG performance metrics
+ */
+router.get('/email-rag/metrics', async (req, res) => {
+  try {
+    const { businessId, days = 7 } = req.query;
+    const cutoffDate = new Date(Date.now() - parseInt(days) * 24 * 60 * 60 * 1000);
+
+    // Build where clause
+    const where = {
+      createdAt: { gte: cutoffDate }
+    };
+    if (businessId) {
+      where.businessId = parseInt(businessId);
+    }
+
+    // 1. Embedding stats
+    const [
+      totalEmbeddings,
+      embeddingsByBusiness,
+      embeddingsByIntent,
+      recentEmbeddings
+    ] = await Promise.all([
+      prisma.emailEmbedding.count({ where }),
+      prisma.emailEmbedding.groupBy({
+        by: ['businessId'],
+        where,
+        _count: { id: true },
+        orderBy: { _count: { id: 'desc' } },
+        take: 10
+      }),
+      prisma.emailEmbedding.groupBy({
+        by: ['intent'],
+        where,
+        _count: { id: true }
+      }),
+      prisma.emailEmbedding.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+        select: {
+          id: true,
+          businessId: true,
+          intent: true,
+          language: true,
+          createdAt: true
+        }
+      })
+    ]);
+
+    // 2. Snippet stats
+    const [
+      totalSnippets,
+      snippetsByIntent,
+      topUsedSnippets
+    ] = await Promise.all([
+      prisma.emailSnippet.count({
+        where: businessId ? { businessId: parseInt(businessId) } : {}
+      }),
+      prisma.emailSnippet.groupBy({
+        by: ['intent'],
+        where: businessId ? { businessId: parseInt(businessId) } : {},
+        _count: { id: true }
+      }),
+      prisma.emailSnippet.findMany({
+        where: businessId ? { businessId: parseInt(businessId) } : {},
+        orderBy: { usageCount: 'desc' },
+        take: 10,
+        select: {
+          id: true,
+          name: true,
+          intent: true,
+          usageCount: true,
+          lastUsedAt: true,
+          businessId: true
+        }
+      })
+    ]);
+
+    // 3. Draft stats (to calculate grounding/RAG usage)
+    const draftsWithRAG = await prisma.emailDraft.count({
+      where: {
+        createdAt: { gte: cutoffDate },
+        ...(businessId ? {
+          thread: { businessId: parseInt(businessId) }
+        } : {}),
+        metadata: {
+          path: ['ragExamplesUsed'],
+          gte: 1
+        }
+      }
+    });
+
+    const totalDrafts = await prisma.emailDraft.count({
+      where: {
+        createdAt: { gte: cutoffDate },
+        ...(businessId ? {
+          thread: { businessId: parseInt(businessId) }
+        } : {})
+      }
+    });
+
+    // 4. Calculate hit rate
+    const ragHitRate = totalDrafts > 0
+      ? Math.round((draftsWithRAG / totalDrafts) * 100)
+      : 0;
+
+    // 5. Business details for top embeddings
+    let businessDetails = {};
+    if (embeddingsByBusiness.length > 0) {
+      const businessIds = embeddingsByBusiness.map(b => b.businessId);
+      const businesses = await prisma.business.findMany({
+        where: { id: { in: businessIds } },
+        select: { id: true, name: true }
+      });
+      businessDetails = Object.fromEntries(
+        businesses.map(b => [b.id, b.name])
+      );
+    }
+
+    res.json({
+      period: {
+        days: parseInt(days),
+        from: cutoffDate,
+        to: new Date()
+      },
+      embeddings: {
+        total: totalEmbeddings,
+        byBusiness: embeddingsByBusiness.map(b => ({
+          businessId: b.businessId,
+          businessName: businessDetails[b.businessId] || 'Unknown',
+          count: b._count.id
+        })),
+        byIntent: Object.fromEntries(
+          embeddingsByIntent.map(i => [i.intent || 'unknown', i._count.id])
+        ),
+        recent: recentEmbeddings
+      },
+      snippets: {
+        total: totalSnippets,
+        byIntent: Object.fromEntries(
+          snippetsByIntent.map(i => [i.intent || 'unknown', i._count.id])
+        ),
+        topUsed: topUsedSnippets
+      },
+      performance: {
+        ragHitRate: `${ragHitRate}%`,
+        draftsWithRAG,
+        totalDrafts
+      }
+    });
+  } catch (error) {
+    console.error('Admin: Failed to get email RAG metrics:', error);
+    res.status(500).json({ error: 'Email RAG metrikleri alınamadı' });
+  }
+});
+
+/**
+ * GET /api/admin/email-rag/business/:businessId
+ * Get Email RAG stats for a specific business
+ */
+router.get('/email-rag/business/:businessId', async (req, res) => {
+  try {
+    const { businessId } = req.params;
+    const bid = parseInt(businessId);
+
+    // Get business info
+    const business = await prisma.business.findUnique({
+      where: { id: bid },
+      select: {
+        id: true,
+        name: true,
+        emailRagEnabled: true,
+        emailSnippetsEnabled: true,
+        emailRagMaxExamples: true,
+        emailRagMaxSnippets: true
+      }
+    });
+
+    if (!business) {
+      return res.status(404).json({ error: 'Business bulunamadı' });
+    }
+
+    // Get embedding stats
+    const [
+      embeddingCount,
+      oldestEmbedding,
+      newestEmbedding,
+      embeddingsByIntent
+    ] = await Promise.all([
+      prisma.emailEmbedding.count({ where: { businessId: bid } }),
+      prisma.emailEmbedding.findFirst({
+        where: { businessId: bid },
+        orderBy: { createdAt: 'asc' },
+        select: { createdAt: true }
+      }),
+      prisma.emailEmbedding.findFirst({
+        where: { businessId: bid },
+        orderBy: { createdAt: 'desc' },
+        select: { createdAt: true }
+      }),
+      prisma.emailEmbedding.groupBy({
+        by: ['intent'],
+        where: { businessId: bid },
+        _count: { id: true }
+      })
+    ]);
+
+    // Get snippet stats
+    const [
+      snippetCount,
+      snippets
+    ] = await Promise.all([
+      prisma.emailSnippet.count({ where: { businessId: bid } }),
+      prisma.emailSnippet.findMany({
+        where: { businessId: bid },
+        orderBy: { usageCount: 'desc' },
+        select: {
+          id: true,
+          name: true,
+          intent: true,
+          language: true,
+          usageCount: true,
+          lastUsedAt: true,
+          enabled: true
+        }
+      })
+    ]);
+
+    res.json({
+      business: {
+        id: business.id,
+        name: business.name,
+        ragEnabled: business.emailRagEnabled,
+        snippetsEnabled: business.emailSnippetsEnabled,
+        maxExamples: business.emailRagMaxExamples,
+        maxSnippets: business.emailRagMaxSnippets
+      },
+      embeddings: {
+        total: embeddingCount,
+        oldest: oldestEmbedding?.createdAt,
+        newest: newestEmbedding?.createdAt,
+        byIntent: Object.fromEntries(
+          embeddingsByIntent.map(i => [i.intent || 'unknown', i._count.id])
+        )
+      },
+      snippets: {
+        total: snippetCount,
+        list: snippets
+      }
+    });
+  } catch (error) {
+    console.error('Admin: Failed to get business RAG stats:', error);
+    res.status(500).json({ error: 'Business RAG istatistikleri alınamadı' });
+  }
+});
+
+/**
+ * PATCH /api/admin/email-rag/business/:businessId/settings
+ * Update business RAG settings
+ */
+router.patch('/email-rag/business/:businessId/settings', async (req, res) => {
+  try {
+    const { businessId } = req.params;
+    const { ragEnabled, snippetsEnabled, maxExamples, maxSnippets } = req.body;
+
+    const bid = parseInt(businessId);
+
+    const current = await prisma.business.findUnique({
+      where: { id: bid },
+      select: {
+        emailRagEnabled: true,
+        emailSnippetsEnabled: true,
+        emailRagMaxExamples: true,
+        emailRagMaxSnippets: true
+      }
+    });
+
+    if (!current) {
+      return res.status(404).json({ error: 'Business bulunamadı' });
+    }
+
+    const updates = {};
+    const changes = {};
+
+    if (ragEnabled !== undefined) {
+      updates.emailRagEnabled = ragEnabled;
+      changes.emailRagEnabled = { old: current.emailRagEnabled, new: ragEnabled };
+    }
+    if (snippetsEnabled !== undefined) {
+      updates.emailSnippetsEnabled = snippetsEnabled;
+      changes.emailSnippetsEnabled = { old: current.emailSnippetsEnabled, new: snippetsEnabled };
+    }
+    if (maxExamples !== undefined) {
+      updates.emailRagMaxExamples = maxExamples;
+      changes.emailRagMaxExamples = { old: current.emailRagMaxExamples, new: maxExamples };
+    }
+    if (maxSnippets !== undefined) {
+      updates.emailRagMaxSnippets = maxSnippets;
+      changes.emailRagMaxSnippets = { old: current.emailRagMaxSnippets, new: maxSnippets };
+    }
+
+    const updated = await prisma.business.update({
+      where: { id: bid },
+      data: updates,
+      select: {
+        id: true,
+        name: true,
+        emailRagEnabled: true,
+        emailSnippetsEnabled: true,
+        emailRagMaxExamples: true,
+        emailRagMaxSnippets: true
+      }
+    });
+
+    await logAuditAction(req.admin, 'UPDATE', 'Business', businessId, changes, req);
+
+    res.json({
+      success: true,
+      business: updated
+    });
+  } catch (error) {
+    console.error('Admin: Failed to update business RAG settings:', error);
+    res.status(500).json({ error: 'RAG ayarları güncellenemedi' });
+  }
+});
+
 // ==================== AUDIT LOG ====================
 
 /**
