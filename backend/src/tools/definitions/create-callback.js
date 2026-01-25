@@ -14,11 +14,11 @@ export default {
     properties: {
       customerName: {
         type: 'string',
-        description: 'Müşterinin adı soyadı'
+        description: 'Müşterinin adı soyadı (extractedSlots.customer_name kullanılabilir)'
       },
       customerPhone: {
         type: 'string',
-        description: 'Müşterinin telefon numarası'
+        description: 'Müşterinin telefon numarası (extractedSlots.phone kullanılabilir)'
       },
       topic: {
         type: 'string',

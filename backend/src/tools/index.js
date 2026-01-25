@@ -14,6 +14,7 @@
 
 import registry from './registry.js';
 import { getActiveToolNames } from './utils/business-rules.js';
+import { normalizeToolArguments } from './argumentNormalizer.js';
 
 /**
  * Get active tool definitions for a business (OpenAI format)
@@ -108,9 +109,26 @@ export async function executeTool(toolName, args, business, context = {}) {
     };
   }
 
+  // NORMALIZATION LAYER: Fill missing args from extractedSlots
+  const toolDefinition = registry.getDefinition(toolName);
+  const { normalizedArgs, filledCount } = normalizeToolArguments(
+    toolName,
+    args,
+    toolDefinition,
+    context
+  );
+
+  // Use normalized args for execution
+  const finalArgs = normalizedArgs;
+
+  // Add normalization metrics to context for observability
+  if (filledCount > 0) {
+    context._normalizedArgsCount = filledCount;
+  }
+
   // Execute handler
   try {
-    const result = await handler.execute(args, business, context);
+    const result = await handler.execute(finalArgs, business, context);
     return result;
   } catch (error) {
     console.error(`❌ Tool execution error for ${toolName}:`, error);
