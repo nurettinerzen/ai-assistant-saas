@@ -164,8 +164,8 @@ export async function retrieveSimilarEmails({
 
     const dbQueryPromise = prisma.$transaction(async (tx) => {
       // Set Postgres statement_timeout for this transaction
-      // Format: milliseconds as integer
-      await tx.$executeRaw`SET LOCAL statement_timeout = ${statementTimeout}`;
+      // Format: 'value' as string (e.g., '2000ms' or '2s')
+      await tx.$executeRawUnsafe(`SET LOCAL statement_timeout = '${statementTimeout}ms'`);
 
       // Execute retrieval query
       // Uses composite index: EmailEmbedding_retrieval_idx (businessId, direction, intent, sentAt DESC)
