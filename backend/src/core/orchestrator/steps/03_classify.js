@@ -7,6 +7,7 @@
  */
 
 import { applyClassifierPolicy } from '../../../policies/classifierPolicy.js';
+import { normalizeIntent } from '../../../policies/intentNormalizer.js';
 
 export async function classifyMessage(params) {
   const { state, conversationHistory, userMessage, language } = params;
@@ -25,13 +26,17 @@ export async function classifyMessage(params) {
     metrics: {} // Will be populated
   });
 
+  // INTENT NORMALIZATION: Convert generic NEW_INTENT to specific types
+  const normalizedClassification = normalizeIntent(classification, userMessage);
+
   console.log('📨 [Classify]:', {
-    type: classification.type,
-    confidence: classification.confidence,
-    hadFailure: classification.hadClassifierFailure || false
+    type: normalizedClassification.type,
+    confidence: normalizedClassification.confidence,
+    hadFailure: normalizedClassification.hadClassifierFailure || false,
+    normalized: normalizedClassification.normalizedBy || false
   });
 
-  return classification;
+  return normalizedClassification;
 }
 
 export default { classifyMessage };

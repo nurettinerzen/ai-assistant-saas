@@ -40,8 +40,8 @@ function applyFlowSpecificGating(flowTools, activeFlow, confidence) {
   // High-impact tools that need special gating
   const highImpactTools = {
     'create_callback': {
-      allowedFlows: ['COMPLAINT', 'GENERAL'], // Only in complaint or general flow
-      minConfidence: 0.85 // Higher threshold for callback
+      allowedFlows: ['COMPLAINT', 'GENERAL', 'CALLBACK_REQUEST'], // Callback, complaint, or general
+      minConfidence: 0.8 // Lowered from 0.85 for better UX
     },
     'calendly_book': {
       allowedFlows: ['APPOINTMENT'],
