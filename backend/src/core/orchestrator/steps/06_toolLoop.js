@@ -135,7 +135,8 @@ export async function executeToolLoop(params) {
               language,
               sessionId,
               messageId, // For tool-level idempotency
-              channel
+              channel,
+              extractedSlots: state.extractedSlots || {} // Pass extractedSlots for argument normalization
             });
           },
           toolName,
