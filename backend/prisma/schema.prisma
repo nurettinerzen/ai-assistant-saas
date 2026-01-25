@@ -974,6 +974,7 @@ model EmailDraft {
   generatedContent String           @db.Text  // AI-generated draft
   editedContent    String?          @db.Text  // User's edited version
   status           EmailDraftStatus @default(PENDING_REVIEW)
+  metadata         Json?            // Draft generation metadata (classification, tools, guardrails, RAG metrics)
   reviewedAt       DateTime?
   reviewedBy       Int?             // User ID who reviewed
   sentAt           DateTime?
