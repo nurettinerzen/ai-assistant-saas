@@ -3,7 +3,6 @@ import { PrismaClient } from '@prisma/client';
 import { authenticateToken } from '../middleware/auth.js';
 import { checkPermission } from '../middleware/permissions.js';
 import elevenLabsService, { buildAgentConfig } from '../services/elevenlabs.js';
-import cargoAggregator from '../services/cargo-aggregator.js';
 import { removeStaticDateTimeFromPrompt } from '../utils/dateTime.js';
 import { buildAssistantPrompt, getActiveTools as getPromptBuilderTools } from '../services/promptBuilder.js';
 // ✅ Use central tool system for 11Labs

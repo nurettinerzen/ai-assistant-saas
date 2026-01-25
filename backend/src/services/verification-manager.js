@@ -2,6 +2,16 @@
  * Verification Manager
  * Centralized 2-step verification for all sensitive data queries
  *
+ * ⚠️ DEPRECATED - This file is being phased out
+ *
+ * New architecture uses:
+ * - verification-handler.js for verification flow
+ * - customer-identity-resolver.js for database verification
+ * - State-based verification (stored in ConversationState)
+ *
+ * This file remains for backward compatibility (read-only fallback).
+ * Will be removed after 1-2 weeks.
+ *
  * FLOW:
  * 1. Check if intent is sensitive
  * 2. Request primary field (VKN/order_number/phone) based on intent

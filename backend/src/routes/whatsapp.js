@@ -6,7 +6,6 @@
 
 import express from 'express';
 import axios from 'axios';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { PrismaClient } from '@prisma/client';
 import { decrypt } from '../utils/encryption.js';
 import { webhookRateLimiter } from '../middleware/rateLimiter.js';
@@ -16,45 +15,40 @@ import { isFreePlanExpired } from '../middleware/checkPlanExpiry.js';
 import { calculateTokenCost, hasFreeChat } from '../config/plans.js';
 import { getActiveTools, executeTool } from '../tools/index.js';
 import callAnalysis from '../services/callAnalysis.js';
-import { routeIntent, handleVerificationFailure } from '../services/intent-router.js';
-import { getOrCreateSession, terminateSession, isSessionActive, getTerminationMessage } from '../utils/session-manager.js';
+import { routeIntent } from '../services/intent-router.js';
+import { validateActionClaim } from '../services/action-claim-validator.js';
+import { routeMessage, handleDispute } from '../services/message-router.js';
+import { isFeatureEnabled } from '../config/feature-flags.js';
+import { getToolFailResponse, validateResponseAfterToolFail, executeToolWithRetry } from '../services/tool-fail-handler.js';
+import { getGatedTools, canExecuteTool } from '../services/tool-gating.js';
+import { logClassification, logRoutingDecision, logViolation, logToolExecution } from '../services/routing-metrics.js';
+import { sendWhatsAppMessage as sendWhatsAppMessageCentral } from '../services/whatsapp-sender.js';
 
-/**
- * Convert tool definitions to Gemini function declarations format
- * Same as chat.js - ensures consistent function calling across channels
- */
-function convertToolsToGeminiFunctions(tools) {
-  return tools.map(tool => ({
-    name: tool.function.name,
-    description: tool.function.description,
-    parameters: {
-      type: 'OBJECT',
-      properties: Object.fromEntries(
-        Object.entries(tool.function.parameters.properties || {}).map(([key, value]) => [
-          key,
-          {
-            type: value.type?.toUpperCase() || 'STRING',
-            description: value.description || '',
-            ...(value.enum ? { enum: value.enum } : {})
-          }
-        ])
-      ),
-      required: tool.function.parameters.required || []
-    }
-  }));
-}
+// CORE: Channel-agnostic orchestrator
+import { handleTurn } from '../core/handleTurn.js';
+import { getOrCreateSession as getUniversalSession } from '../services/session-mapper.js';
+import {
+  getOrCreateSession,
+  addMessage,
+  getHistory,
+  getFullHistory,
+  getPendingVerification,
+  setVerificationRequest,
+  clearVerificationRequest,
+  terminateSession,
+  isSessionActive,
+  getTerminationMessage
+} from '../services/conversation-manager.js';
+import {
+  getGeminiClient,
+  convertToolsToGeminiFunctions,
+  getGeminiModel,
+  buildGeminiChatHistory,
+  extractTokenUsage
+} from '../services/gemini-utils.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
-
-// Gemini client (lazy initialization)
-let genAI = null;
-const getGemini = () => {
-  if (!genAI) {
-    genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-  }
-  return genAI;
-};
 
 // In-memory conversation history
 // Format: Map<conversationKey, Array<message>>
@@ -281,11 +275,11 @@ async function processWhatsAppMessage(business, from, messageBody, messageId) {
       { messageId, subscription }
     );
 
-    // Send response using business's credentials
-    await sendWhatsAppMessage(business, from, aiResponse);
+    // Send response using business's credentials (with idempotency)
+    await sendWhatsAppMessage(business, from, aiResponse, { inboundMessageId: messageId });
   } catch (error) {
     console.error('❌ Error processing WhatsApp message:', error);
-    // Try to send error message to user
+    // Try to send error message to user (no idempotency for error messages)
     try {
       await sendWhatsAppMessage(
         business,
@@ -308,11 +302,14 @@ async function processWhatsAppMessage(business, from, messageBody, messageId) {
  */
 async function generateAIResponse(business, phoneNumber, messageBody, context = {}) {
   try {
-    const genAI = getGemini();
+    console.log('\n📱 [WhatsApp] Delegating to core orchestrator...');
+
     const assistant = business.assistants?.[0];
-    const conversationKey = `${business.id}:${phoneNumber}`;
     const language = business?.language || 'TR';
     const subscription = context.subscription;
+
+    // Get universal session ID
+    const sessionId = await getUniversalSession(business.id, 'WHATSAPP', phoneNumber);
 
     // Build system prompt
     const systemPrompt = await buildSystemPrompt(business, assistant);
@@ -323,7 +320,6 @@ async function generateAIResponse(business, phoneNumber, messageBody, context = 
     // Get conversation history (from memory cache or database)
     let history;
     let existingLog;
-    let sessionId = `whatsapp-${business.id}-${phoneNumber}`;
 
     // Check if existing session has timed out
     existingLog = await prisma.chatLog.findUnique({
@@ -405,8 +401,8 @@ async function generateAIResponse(business, phoneNumber, messageBody, context = 
 
       const terminationMessage = getTerminationMessage(session.terminationReason || 'off_topic', business.language);
 
-      // Send termination message
-      await sendWhatsAppMessage(business, phoneNumber, terminationMessage);
+      // Send termination message (with idempotency)
+      await sendWhatsAppMessage(business, phoneNumber, terminationMessage, { inboundMessageId: context.messageId });
 
       // Don't process further
       return;
@@ -425,8 +421,8 @@ async function generateAIResponse(business, phoneNumber, messageBody, context = 
     if (intentResult.shouldTerminate) {
       terminateSession(sessionId, intentResult.intent === 'off_topic' ? 'off_topic' : 'verification_failed');
 
-      // Send termination message
-      await sendWhatsAppMessage(business, phoneNumber, intentResult.response);
+      // Send termination message (with idempotency)
+      await sendWhatsAppMessage(business, phoneNumber, intentResult.response, { inboundMessageId: context.messageId });
 
       // Save to conversation history
       history.push({ role: 'assistant', content: intentResult.response });
@@ -452,7 +448,7 @@ async function generateAIResponse(business, phoneNumber, messageBody, context = 
 
     // Handle direct responses (no tools needed)
     if (intentResult.response) {
-      await sendWhatsAppMessage(business, phoneNumber, intentResult.response);
+      await sendWhatsAppMessage(business, phoneNumber, intentResult.response, { inboundMessageId: context.messageId });
 
       // Save to conversation history
       history.push({ role: 'assistant', content: intentResult.response });
@@ -484,20 +480,17 @@ async function generateAIResponse(business, phoneNumber, messageBody, context = 
     if (intentResult.intent === 'verification_response' && intentResult.verificationData) {
       console.log('🔐 [WhatsApp] Processing verification response with tool');
 
-      const { verificationCache } = await import('../services/verification-manager.js');
-      const pendingVerification = verificationCache.get(sessionId);
+      const pendingVerification = getPendingVerification(sessionId);
 
       if (pendingVerification) {
         // Call customer_data_lookup with the cached data + user's provided verification data
+        // Merge all verification data from current response
         const toolResult = await executeTool(
           'customer_data_lookup',
           {
-            query_type: pendingVerification.queryType || 'siparis',
-            order_number: pendingVerification.pendingOrderNumber,
-            customer_name: intentResult.verificationData.customer_name,
-            phone: pendingVerification.pendingPhone || intentResult.verificationData.phone,
-            vkn: intentResult.verificationData.vkn,
-            tc: intentResult.verificationData.tc
+            query_type: intentResult.queryType || pendingVerification.queryType || 'siparis',
+            // Spread all verification data (order_number, phone, vkn, tc, customer_name, etc.)
+            ...intentResult.verificationData
           },
           business,
           {
@@ -512,7 +505,7 @@ async function generateAIResponse(business, phoneNumber, messageBody, context = 
         // Check if verification failed and should terminate
         if (toolResult.shouldTerminate) {
           terminateSession(sessionId, 'verification_failed');
-          await sendWhatsAppMessage(business, phoneNumber, toolResult.error || getTerminationMessage('verification_failed', business.language));
+          await sendWhatsAppMessage(business, phoneNumber, toolResult.error || getTerminationMessage('verification_failed', business.language), { inboundMessageId: context.messageId });
 
           history.push({ role: 'assistant', content: toolResult.error || getTerminationMessage('verification_failed', business.language) });
 
@@ -531,6 +524,58 @@ async function generateAIResponse(business, phoneNumber, messageBody, context = 
       }
     }
 
+    // ============================================
+    // HANDLE COMPLAINT (PRE-EMPTIVE CALLBACK)
+    // ============================================
+    // When user intent is complaint, automatically create callback
+    if (intentResult.intent === 'complaint') {
+      console.log('📞 [WhatsApp] Complaint detected, creating callback pre-emptively');
+
+      // Clear any pending verification (user gave up on providing info)
+      if (getPendingVerification(sessionId)) {
+        clearVerificationRequest(sessionId);
+        console.log('🧹 [WhatsApp] Cleared pending verification - user switched to complaint');
+      }
+
+      const {
+        extractCustomerInfoFromHistory,
+        extractTopicFromHistory,
+        buildCallbackContextMessage
+      } = await import('../services/callback-helper.js');
+
+      // Extract customer info from history (WhatsApp has phone number available)
+      const customerInfo = extractCustomerInfoFromHistory(history, { phone: phoneNumber, customerName: null });
+      const topic = extractTopicFromHistory(history);
+
+      // Call create_callback tool
+      const callbackResult = await executeTool(
+        'create_callback',
+        {
+          customer_name: customerInfo.name,
+          customer_phone: customerInfo.phone,
+          topic: topic,
+          priority: 'HIGH' // Complaints are always high priority
+        },
+        business,
+        {
+          sessionId,
+          intent: 'complaint',
+          channel: 'WHATSAPP',
+          from: phoneNumber
+        }
+      );
+
+      if (callbackResult.success) {
+        // Store tool result to pass to Gemini
+        verificationToolResult = {
+          success: true,
+          data: callbackResult.data,
+          message: buildCallbackContextMessage(callbackResult.data, business.language || 'TR')
+        };
+        console.log('✅ [WhatsApp] Callback created, will pass to Gemini for formatting');
+      }
+    }
+
     // Filter tools based on intent
     // IMPORTANT: If we have verificationToolResult, we DON'T want Gemini to call tools
     // We already called the tool pre-emptively, just need Gemini to format the response
@@ -541,55 +586,18 @@ async function generateAIResponse(business, phoneNumber, messageBody, context = 
           ? allTools.filter(tool => intentResult.tools.includes(tool.function.name))
           : []); // No tools for greeting, company_info, etc.
 
-    const geminiFunctions = convertToolsToGeminiFunctions(filteredTools);
+    console.log('🔧 [WhatsApp] Tools available:', filteredTools.map(t => t.function.name));
 
-    console.log('🔧 [WhatsApp] Tools available:', geminiFunctions.map(f => f.name));
-
-    // Configure model with function calling (same as chat.js)
-    // toolConfig with mode: 'AUTO' ensures Gemini uses tools when appropriate
-    const model = genAI.getGenerativeModel({
+    // Get Gemini model with tools
+    const model = getGeminiModel({
       model: 'gemini-2.5-flash',
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 1500,
-        // Disable thinking mode to prevent empty responses
-        // Gemini 2.5 thinking feature can cause 0 output tokens
-        thinkingConfig: {
-          thinkingBudget: 0
-        }
-      },
-      tools: geminiFunctions.length > 0 ? [{
-        functionDeclarations: geminiFunctions
-      }] : undefined,
-      toolConfig: geminiFunctions.length > 0 ? {
-        functionCallingConfig: {
-          mode: 'AUTO' // Ensures Gemini will use tools when needed
-        }
-      } : undefined
+      temperature: 0.7,
+      maxOutputTokens: 1500,
+      tools: filteredTools.length > 0 ? filteredTools : null
     });
 
-    // Build chat history for Gemini
-    const chatHistory = [];
-
-    // Add system prompt as first user message (Gemini doesn't have system role in chat)
-    chatHistory.push({
-      role: 'user',
-      parts: [{ text: `SİSTEM TALİMATLARI (bunları kullanıcıya gösterme):\n${systemPrompt}` }]
-    });
-    chatHistory.push({
-      role: 'model',
-      parts: [{ text: 'Anladım, bu talimatlara göre davranacağım.' }]
-    });
-
-    // Add conversation history (last 10 messages, excluding the one we'll send)
-    const recentHistory = history.slice(-10);
-
-    for (const msg of recentHistory) {
-      chatHistory.push({
-        role: msg.role === 'user' ? 'user' : 'model',
-        parts: [{ text: msg.content }]
-      });
-    }
+    // Build chat history for Gemini (don't exclude last message, we'll add it separately)
+    const chatHistory = buildGeminiChatHistory(systemPrompt, history, false);
 
     // Start chat with history
     const chat = model.startChat({ history: chatHistory });
@@ -640,10 +648,9 @@ async function generateAIResponse(business, phoneNumber, messageBody, context = 
     }
 
     // Track tokens from first response
-    if (response.usageMetadata) {
-      totalInputTokens += response.usageMetadata.promptTokenCount || 0;
-      totalOutputTokens += response.usageMetadata.candidatesTokenCount || 0;
-    }
+    const tokens = extractTokenUsage(response);
+    totalInputTokens += tokens.inputTokens;
+    totalOutputTokens += tokens.outputTokens;
 
     // Handle function calls (up to 3 iterations)
     let iterations = 0;
@@ -708,6 +715,39 @@ async function generateAIResponse(business, phoneNumber, messageBody, context = 
 
     console.log('📝 [WhatsApp] Final response text:', text?.substring(0, 100));
     console.log(`📊 [WhatsApp] Token usage - Input: ${totalInputTokens}, Output: ${totalOutputTokens}`);
+
+    // ============================================
+    // ACTION CLAIM VALIDATION (ENFORCEMENT)
+    // ============================================
+    // Prevent AI from claiming actions without backing them with tool calls
+    const actionValidation = validateActionClaim(text, hadFunctionCall, language);
+
+    if (!actionValidation.valid) {
+      console.warn('⚠️ [WhatsApp] ACTION CLAIM VIOLATION:', actionValidation.error);
+      console.log('🔧 [WhatsApp] Forcing AI to correct response...');
+
+      // Send correction prompt to Gemini
+      try {
+        const correctionResult = await chat.sendMessage(actionValidation.correctionPrompt);
+        const correctedText = correctionResult.response.text();
+
+        // Track tokens from correction
+        if (correctionResult.response.usageMetadata) {
+          totalInputTokens += correctionResult.response.usageMetadata.promptTokenCount || 0;
+          totalOutputTokens += correctionResult.response.usageMetadata.candidatesTokenCount || 0;
+        }
+
+        // Use corrected text
+        text = correctedText;
+        console.log('✅ [WhatsApp] Response corrected:', correctedText.substring(0, 100));
+      } catch (correctionError) {
+        console.error('❌ [WhatsApp] Correction failed:', correctionError.message);
+        // Fallback: strip action claims
+        text = language === 'TR'
+          ? 'Üzgünüm, bu konuda müşteri hizmetlerimize başvurmanız gerekiyor.'
+          : 'I apologize, for this you need to contact our customer service.';
+      }
+    }
 
     const finalResponse = text || (language === 'TR'
       ? 'Üzgünüm, bir yanıt oluşturamadım.'
@@ -898,47 +938,27 @@ function getErrorMessage(language) {
 
 /**
  * Send WhatsApp message using business credentials
- * Falls back to env credentials if business._useEnvCredentials is set
+ * Now routes through central whatsapp-sender.js with idempotency support
+ *
+ * @param {Object} business - Business object
+ * @param {string} to - Recipient phone number
+ * @param {string} text - Message text
+ * @param {Object} options - Options
+ * @param {string} options.inboundMessageId - Original webhook message ID (for idempotency)
  */
-async function sendWhatsAppMessage(business, to, text) {
+async function sendWhatsAppMessage(business, to, text, options = {}) {
   try {
-    let accessToken, phoneNumberId;
+    const result = await sendWhatsAppMessageCentral(business, to, text, options);
 
-    // Check if we should use env credentials (fallback for testing)
-    if (business._useEnvCredentials) {
-      console.log('📱 Using env credentials for WhatsApp message');
-      accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
-      phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+    if (result.duplicate) {
+      console.log(`♻️ [WhatsApp] Duplicate send blocked for business ${business.name}`);
     } else {
-      accessToken = decrypt(business.whatsappAccessToken);
-      phoneNumberId = business.whatsappPhoneNumberId;
+      console.log(`✅ WhatsApp message sent for business ${business.name}:`, result.messageId);
     }
 
-    if (!accessToken || !phoneNumberId) {
-      throw new Error('WhatsApp credentials not configured');
-    }
-
-    const response = await axios({
-      method: 'POST',
-      url: `https://graph.facebook.com/v22.0/${phoneNumberId}/messages`,
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json'
-      },
-      data: {
-        messaging_product: 'whatsapp',
-        to: to,
-        type: 'text',
-        text: {
-          body: text
-        }
-      }
-    });
-
-    console.log(`✅ WhatsApp message sent for business ${business.name}:`, response.data);
-    return response.data;
+    return result;
   } catch (error) {
-    console.error('❌ Error sending WhatsApp message:', error.response?.data || error.message);
+    console.error('❌ Error sending WhatsApp message:', error.message);
     throw error;
   }
 }

@@ -37,9 +37,9 @@ export default function ChatWidget({
       try {
         let statusUrl;
         if (embedKey) {
-          statusUrl = `${API_URL}/api/chat/widget/status/embed/${embedKey}`;
+          statusUrl = `${API_URL}/api/chat-v2/widget/status/embed/${embedKey}`;
         } else if (assistantId) {
-          statusUrl = `${API_URL}/api/chat/widget/status/${assistantId}`;
+          statusUrl = `${API_URL}/api/chat-v2/widget/status/${assistantId}`;
         } else {
           setIsWidgetEnabled(false);
           return;
@@ -119,7 +119,7 @@ useEffect(() => {
         requestBody.assistantId = assistantId;
       }
 
-      const response = await fetch(`${API_URL}/api/chat/widget`, {
+      const response = await fetch(`${API_URL}/api/chat-v2/widget`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody)

@@ -20,7 +20,7 @@ export const INTENT_CONFIG = {
     requiresVerification: true,
     verificationFields: ['order_number'],
     maxAttempts: 3,
-    description: 'User asks about ORDER STATUS/DELIVERY: sipariş, siparişim, teslimat, ne zaman gelir. NOT debts or cargo tracking codes.'
+    description: 'User asks about ORDER STATUS/DELIVERY (INCLUDES frustrated/angry questions): sipariş nerede, siparişim gelmedi, ne zaman gelir, hala gelmedi, gecikti. Priority over complaint if order-related. NOT debts.'
   },
 
   debt_inquiry: {
@@ -28,7 +28,7 @@ export const INTENT_CONFIG = {
     requiresVerification: true,
     verificationFields: ['phone', 'tc', 'vkn'],
     maxAttempts: 3,
-    description: 'User asks about DEBTS/PAYMENTS ONLY: borç, borcum, ödeme, fatura, tahsilat, bakiye, SGK, vergi. NOT about orders or cargo.'
+    description: 'User asks about DEBTS/PAYMENTS (INCLUDES frustrated questions): borcum var mı, ödeme, fatura, tahsilat. Priority over complaint if payment-related. NOT orders.'
   },
 
   tracking_info: {
@@ -36,7 +36,7 @@ export const INTENT_CONFIG = {
     requiresVerification: true,
     verificationFields: ['order_number', 'tracking_number'],
     maxAttempts: 3,
-    description: 'User asks about CARGO/SHIPMENT TRACKING ONLY: kargo, gönderi, takip kodu, nerede. NOT about payments or debts.'
+    description: 'User asks about CARGO/SHIPMENT TRACKING (INCLUDES frustrated questions): kargo, gönderi, takip kodu, nerede kargom. Priority over complaint if cargo-related. NOT payments.'
   },
 
   // ============================================
@@ -64,7 +64,7 @@ export const INTENT_CONFIG = {
   complaint: {
     tools: ['create_callback'],
     requiresVerification: false,
-    description: 'User complains, reports problem, asks to speak to manager (NOT profanity)'
+    description: 'User complains AFTER getting info/response OR asks to speak to manager. ONLY if NOT asking for specific order/payment/cargo info. Examples: "yöneticiyle görüşmek istiyorum", "berbat hizmet genel olarak", "müşteri hizmetleri arayın beni"'
   },
 
   profanity: {
@@ -117,18 +117,26 @@ export async function detectIntent(userMessage, language = 'TR') {
     const prompt = language === 'TR'
       ? `Kullanıcı şunu dedi: "${userMessage}"
 
-Bu mesajın niyetini aşağıdaki listeden seç. Mesajın içeriğine göre EN UYGUN intent'i seç:
+Bu mesajın niyetini aşağıdaki listeden seç:
 
 ${intentList}
 
-Yanıt olarak SADECE intent adını yaz. Hiçbir açıklama yapma, sadece intent adı.`
+ÖNEMLİ KURALLAR:
+1. Eğer kullanıcı SİPARİŞ/KARGO/BORÇ bilgisi soruyorsa (sinirli bile olsa), o intent'i seç
+2. "complaint" SADECE: Yönetici/müşteri hizmetleri istiyor VEYA genel şikayet (spesifik bilgi istemiyor)
+
+Yanıt olarak SADECE intent adını yaz.`
       : `User said: "${userMessage}"
 
-Choose the intent from this list that BEST MATCHES the message content:
+Choose the intent from this list:
 
 ${intentList}
 
-Reply with ONLY the intent name. No explanation, just the intent name.`;
+IMPORTANT RULES:
+1. If user asks about ORDER/CARGO/DEBT info (even if angry), choose that intent
+2. "complaint" ONLY: Asking for manager/customer service OR general complaint (NOT asking for specific info)
+
+Reply with ONLY the intent name.`;
 
     const result = await model.generateContent(prompt);
     const detectedIntent = result.response.text().trim().toLowerCase();
@@ -282,8 +290,24 @@ export async function routeIntent(userMessage, sessionId, language = 'TR', busin
       console.log('🔐 Pending verification detected - treating message as verification response');
 
       // Determine which field was requested based on cache
-      let requestedField = pendingVerification.requestedField || 'customer_name';
-      console.log(`🔍 Requested field from cache: ${requestedField}`);
+      // Priority: expectedFieldType (from tool metadata) > requestedField > field > default
+      let requestedField = pendingVerification.expectedFieldType
+        || pendingVerification.requestedField
+        || pendingVerification.field
+        || 'customer_name';
+
+      // Map expectedFieldType to actual tool parameter names
+      const fieldMapping = {
+        'name': 'customer_name',
+        'person_name': 'customer_name',
+        'company_name': 'customer_name'
+      };
+
+      if (fieldMapping[requestedField]) {
+        requestedField = fieldMapping[requestedField];
+      }
+
+      console.log(`🔍 Requested field from cache: ${requestedField} (expectedFieldType: ${pendingVerification.expectedFieldType})`);
 
       // Smart detection: If requested VKN but user might have given TC or phone
       if (requestedField === 'vkn') {
@@ -301,6 +325,7 @@ export async function routeIntent(userMessage, sessionId, language = 'TR', busin
         intent: 'verification_response',
         tools: ['customer_data_lookup'],
         shouldTerminate: false,
+        queryType: pendingVerification.queryType, // Pass queryType from cache
         // Pass user message in the dynamically determined field
         verificationData: {
           [requestedField]: userMessage.trim()

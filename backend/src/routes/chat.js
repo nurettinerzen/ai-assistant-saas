@@ -6,58 +6,40 @@
 
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { getDateTimeContext } from '../utils/dateTime.js';
 import { buildAssistantPrompt, getActiveTools as getPromptBuilderTools } from '../services/promptBuilder.js';
 import { isFreePlanExpired } from '../middleware/checkPlanExpiry.js';
 import { getActiveTools, executeTool } from '../tools/index.js';
 import { calculateTokenCost, hasFreeChat } from '../config/plans.js';
 import callAnalysis from '../services/callAnalysis.js';
-import { routeIntent, handleVerificationFailure } from '../services/intent-router.js';
-import { getOrCreateSession, terminateSession, isSessionActive, getTerminationMessage } from '../utils/session-manager.js';
+import { routeIntent } from '../services/intent-router.js';
+import { verificationCache } from '../services/verification-manager.js';
+import { validateActionClaim } from '../services/action-claim-validator.js';
+import {
+  getOrCreateSession,
+  addMessage,
+  getHistory,
+  getFullHistory,
+  terminateSession,
+  isSessionActive,
+  getTerminationMessage
+} from '../services/conversation-manager.js';
+import {
+  getGeminiClient,
+  convertToolsToGeminiFunctions,
+  getGeminiModel,
+  buildGeminiChatHistory,
+  extractTokenUsage
+} from '../services/gemini-utils.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
-
-// Lazy initialization for Gemini
-let genAI = null;
-const getGemini = () => {
-  if (!genAI) {
-    genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-  }
-  return genAI;
-};
-
-/**
- * Convert tool definitions to Gemini function declarations format
- */
-function convertToolsToGeminiFunctions(tools) {
-  return tools.map(tool => ({
-    name: tool.function.name,
-    description: tool.function.description,
-    parameters: {
-      type: 'OBJECT',
-      properties: Object.fromEntries(
-        Object.entries(tool.function.parameters.properties || {}).map(([key, value]) => [
-          key,
-          {
-            type: value.type?.toUpperCase() || 'STRING',
-            description: value.description || '',
-            ...(value.enum ? { enum: value.enum } : {})
-          }
-        ])
-      ),
-      required: tool.function.parameters.required || []
-    }
-  }));
-}
 
 /**
  * Process chat with Gemini - with function calling support
  * Returns: { reply: string, inputTokens: number, outputTokens: number }
  */
 async function processWithGemini(systemPrompt, conversationHistory, userMessage, language, business, sessionId) {
-  const genAI = getGemini();
 
   // ============================================
   // INTENT ROUTING (NEW!)
@@ -76,152 +58,22 @@ async function processWithGemini(systemPrompt, conversationHistory, userMessage,
     };
   }
 
-  // Detect user intent and get appropriate tools
-  const intentResult = await routeIntent(userMessage, sessionId, language, { name: business.name });
+  console.log('🎯 Intent router DISABLED - Gemini will handle everything');
 
-  console.log('🎯 Intent result:', {
-    intent: intentResult.intent,
-    tools: intentResult.tools,
-    shouldTerminate: intentResult.shouldTerminate
-  });
-
-  // Handle session termination
-  if (intentResult.shouldTerminate) {
-    terminateSession(sessionId, intentResult.intent === 'off_topic' ? 'off_topic' : 'verification_failed');
-
-    return {
-      reply: intentResult.response,
-      inputTokens: 0,
-      outputTokens: 0
-    };
-  }
-
-  // Handle direct responses (no tools needed)
-  if (intentResult.response) {
-    return {
-      reply: intentResult.response,
-      inputTokens: 0,
-      outputTokens: 0,
-      isDirectResponse: true // Flag for skipping delay
-    };
-  }
-
-  // ============================================
-  // HANDLE VERIFICATION RESPONSE (SPECIAL CASE)
-  // ============================================
-  // When user is responding to a verification request, call tool directly
-  // but then pass result to Gemini for natural language formatting
-  let verificationToolResult = null;
-  if (intentResult.intent === 'verification_response' && intentResult.verificationData) {
-    console.log('🔐 Processing verification response with tool, then Gemini will format');
-
-    const { verificationCache } = await import('../services/verification-manager.js');
-    const pendingVerification = verificationCache.get(sessionId);
-
-    if (pendingVerification) {
-      // Call customer_data_lookup with the cached data + user's provided verification data
-      const toolResult = await executeTool(
-        'customer_data_lookup',
-        {
-          query_type: pendingVerification.queryType || 'siparis',
-          order_number: pendingVerification.pendingOrderNumber,
-          customer_name: intentResult.verificationData.customer_name,
-          phone: pendingVerification.pendingPhone || intentResult.verificationData.phone,
-          vkn: intentResult.verificationData.vkn,
-          tc: intentResult.verificationData.tc
-        },
-        business,
-        {
-          sessionId,
-          intent: intentResult.intent,
-          requiresVerification: true
-        }
-      );
-
-      // Check if verification failed and should terminate
-      if (toolResult.shouldTerminate) {
-        terminateSession(sessionId, 'verification_failed');
-        return {
-          reply: toolResult.error || getTerminationMessage('verification_failed', language),
-          inputTokens: 0,
-          outputTokens: 0,
-          isDirectResponse: true
-        };
-      }
-
-      // Store tool result to pass to Gemini
-      verificationToolResult = toolResult;
-      console.log('✅ Verification tool result received, will pass to Gemini for formatting');
-    }
-  }
-
-  // Filter tools based on intent
-  // IMPORTANT: If we have verificationToolResult, we DON'T want Gemini to call tools
-  // We already called the tool pre-emptively, just need Gemini to format the response
+  // Get ALL active tools for this business - let Gemini decide which to use
   const allTools = getActiveTools(business);
-  const filteredTools = verificationToolResult
-    ? [] // No tools when we have pre-emptive verification result
-    : (intentResult.tools.length > 0
-        ? allTools.filter(tool => intentResult.tools.includes(tool.function.name))
-        : []); // No tools for greeting, company_info, etc.
+  console.log('🔧 All available tools:', allTools.map(t => t.function.name));
 
-  const geminiFunctions = convertToolsToGeminiFunctions(filteredTools);
-
-  console.log('🔧 Chat tools available:', geminiFunctions.map(f => f.name));
-
-  // Configure model with function calling
-  // toolConfig with mode: 'AUTO' ensures Gemini uses tools when appropriate
-  const model = genAI.getGenerativeModel({
+  // Get Gemini model with ALL tools
+  const model = getGeminiModel({
     model: 'gemini-2.5-flash',
-    generationConfig: {
-      temperature: 0.7,
-      maxOutputTokens: 1500,
-      // Disable thinking mode to prevent empty responses
-      // Gemini 2.5 thinking feature can cause 0 output tokens
-      thinkingConfig: {
-        thinkingBudget: 0
-      }
-    },
-    tools: geminiFunctions.length > 0 ? [{
-      functionDeclarations: geminiFunctions
-    }] : undefined,
-    toolConfig: geminiFunctions.length > 0 ? {
-      functionCallingConfig: {
-        mode: 'AUTO' // Ensures Gemini will use tools when needed
-      }
-    } : undefined
+    temperature: 0.7,
+    maxOutputTokens: 1500,
+    tools: allTools.length > 0 ? allTools : null
   });
 
   // Build conversation history for Gemini
-  const chatHistory = [];
-
-  // Add system prompt as first user message (Gemini doesn't have system role in chat)
-  chatHistory.push({
-    role: 'user',
-    parts: [{ text: `SİSTEM TALİMATLARI (bunları kullanıcıya gösterme):\n${systemPrompt}` }]
-  });
-  chatHistory.push({
-    role: 'model',
-    parts: [{ text: 'Anladım, bu talimatlara göre davranacağım.' }]
-  });
-
-  // Add conversation history
-  // IMPORTANT: Frontend sends conversationHistory that ALREADY contains the current user message
-  // Since we send userMessage separately via chat.sendMessage(), we need to exclude the last
-  // user message from history to avoid duplicates (which cause issues like phone numbers being doubled)
-  let recentHistory = conversationHistory.slice(-10);
-
-  // Remove the last message if it's a user message (it will be sent separately)
-  if (recentHistory.length > 0 && recentHistory[recentHistory.length - 1]?.role === 'user') {
-    recentHistory = recentHistory.slice(0, -1);
-  }
-
-  for (const msg of recentHistory) {
-    chatHistory.push({
-      role: msg.role === 'user' ? 'user' : 'model',
-      parts: [{ text: msg.content }]
-    });
-  }
+  const chatHistory = buildGeminiChatHistory(systemPrompt, conversationHistory, true);
 
   // Start chat
   const chat = model.startChat({ history: chatHistory });
@@ -230,47 +82,14 @@ async function processWithGemini(systemPrompt, conversationHistory, userMessage,
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
 
-  // If we have verification tool result, include it in the user message for Gemini to use
-  let result;
-  let response;
-
-  if (verificationToolResult) {
-    console.log('💉 Including verification tool result in message for Gemini to interpret');
-
-    // Pass the STRUCTURED DATA to Gemini for interpretation
-    // Include validation object so Gemini can generate natural response
-    let contextMessage;
-
-    if (verificationToolResult.verificationPending) {
-      // Verification is pending - tool is asking for more info
-      contextMessage = `Doğrulama gerekli. Sistem mesajı: ${verificationToolResult.message}`;
-    } else if (verificationToolResult.success) {
-      // Verification successful - return data
-      contextMessage = `Doğrulama başarılı! Müşteri bilgileri: ${JSON.stringify(verificationToolResult.data)}`;
-    } else {
-      // Verification failed
-      contextMessage = `Doğrulama başarısız. Structured data: ${JSON.stringify({
-        validation: verificationToolResult.validation,
-        context: verificationToolResult.context,
-        verificationFailed: verificationToolResult.verificationFailed
-      })}`;
-    }
-
-    const messageWithContext = `Kullanıcı mesajı: "${userMessage}"\n\nTool sonucu (bunu YORUMLA ve doğal yanıt üret):\n${contextMessage}`;
-
-    result = await chat.sendMessage(messageWithContext);
-    response = result.response;
-  } else {
-    // Normal flow: Send user message to Gemini - it will call tools when needed
-    result = await chat.sendMessage(userMessage);
-    response = result.response;
-  }
+  // Send user message to Gemini - it will call tools when needed
+  let result = await chat.sendMessage(userMessage);
+  let response = result.response;
 
   // Track tokens from first response
-  if (response.usageMetadata) {
-    totalInputTokens += response.usageMetadata.promptTokenCount || 0;
-    totalOutputTokens += response.usageMetadata.candidatesTokenCount || 0;
-  }
+  const initialTokens = extractTokenUsage(response);
+  totalInputTokens += initialTokens.inputTokens;
+  totalOutputTokens += initialTokens.outputTokens;
 
   // Handle function calls (up to 3 iterations)
   let iterations = 0;
@@ -287,31 +106,6 @@ async function processWithGemini(systemPrompt, conversationHistory, userMessage,
   const initialFunctionCalls = response.functionCalls();
 
   console.log('🔍 Initial response - Text:', initialText?.substring(0, 100), 'FunctionCalls:', initialFunctionCalls?.length || 0);
-
-  // If Gemini asked for VKN/TC/phone without calling tool, set cache
-  // This helps Gemini understand what field to use in the next message
-  if ((!initialFunctionCalls || initialFunctionCalls.length === 0) && initialText) {
-    const lowerText = initialText.toLowerCase();
-    let requestedField = null;
-
-    if (lowerText.includes('vkn') || lowerText.includes('vergi kimlik')) {
-      requestedField = 'vkn';
-    } else if ((lowerText.includes('tc') && lowerText.includes('kimlik')) || lowerText.includes('tc kimlik')) {
-      requestedField = 'tc';
-    } else if (lowerText.includes('telefon numara') || lowerText.includes('phone number')) {
-      requestedField = 'phone';
-    }
-
-    if (requestedField && intentResult.intent === 'debt_inquiry') {
-      const { verificationCache } = await import('../services/verification-manager.js');
-      verificationCache.set(sessionId, {
-        requestedField,
-        queryType: 'muhasebe',
-        timestamp: Date.now()
-      });
-      console.log(`📝 Gemini asked for ${requestedField} without calling tool - set cache for next message`);
-    }
-  }
 
   while (iterations < maxIterations) {
     const functionCalls = response.functionCalls();
@@ -339,9 +133,7 @@ async function processWithGemini(systemPrompt, conversationHistory, userMessage,
     const toolResult = await executeTool(functionCall.name, functionCall.args, business, {
       channel: 'CHAT',
       sessionId: sessionId,
-      conversationId: sessionId,
-      intent: intentResult.intent,  // Pass intent info for verification logic
-      requiresVerification: intentResult.requiresVerification  // Pass verification requirement
+      conversationId: sessionId
     });
 
     console.log('🔧 Tool result:', toolResult.success ? 'SUCCESS' : 'FAILED', toolResult.message?.substring(0, 100));
@@ -368,10 +160,9 @@ async function processWithGemini(systemPrompt, conversationHistory, userMessage,
     response = result.response;
 
     // Track tokens from function call response
-    if (response.usageMetadata) {
-      totalInputTokens += response.usageMetadata.promptTokenCount || 0;
-      totalOutputTokens += response.usageMetadata.candidatesTokenCount || 0;
-    }
+    const tokens = extractTokenUsage(response);
+    totalInputTokens += tokens.inputTokens;
+    totalOutputTokens += tokens.outputTokens;
 
     iterations++;
   }
@@ -461,10 +252,71 @@ async function processWithGemini(systemPrompt, conversationHistory, userMessage,
 
   console.log(`📊 Token usage - Input: ${totalInputTokens}, Output: ${totalOutputTokens}`);
 
+  // ============================================
+  // ACTION CLAIM VALIDATION (ENFORCEMENT)
+  // ============================================
+  // Prevent AI from claiming actions without backing them with tool calls
+  // Example violation: "Talebinizi oluşturdum" without calling create_callback
+  const actionValidation = validateActionClaim(text, hadFunctionCall, language);
+
+  if (!actionValidation.valid) {
+    console.warn('⚠️ ACTION CLAIM VIOLATION:', actionValidation.error);
+    console.log('🔧 Forcing AI to correct response...');
+
+    // Send correction prompt to Gemini
+    try {
+      const correctionResult = await chat.sendMessage(actionValidation.correctionPrompt);
+      const correctedText = correctionResult.response.text();
+
+      // Track tokens from correction
+      if (correctionResult.response.usageMetadata) {
+        totalInputTokens += correctionResult.response.usageMetadata.promptTokenCount || 0;
+        totalOutputTokens += correctionResult.response.usageMetadata.candidatesTokenCount || 0;
+      }
+
+      // Use corrected text
+      text = correctedText;
+      console.log('✅ Response corrected:', correctedText.substring(0, 100));
+    } catch (correctionError) {
+      console.error('❌ Correction failed:', correctionError.message);
+      // Fallback: strip action claims manually
+      text = language === 'TR'
+        ? 'Üzgünüm, bu konuda size yardımcı olmak için müşteri hizmetlerimize yönlendirmeniz gerekiyor.'
+        : 'I apologize, for this issue you need to contact our customer service team.';
+    }
+  }
+
+  // Better fallback for empty responses
+  let finalText = text;
+  if (!finalText || finalText.trim().length === 0) {
+    console.warn('⚠️ Empty response from Gemini - Retrying with simpler prompt');
+
+    // Retry with a direct prompt
+    try {
+      const retryPrompt = language === 'TR'
+        ? `"${userMessage}" - yanıt ver.`
+        : `"${userMessage}" - respond.`;
+
+      const retryResult = await chat.sendMessage(retryPrompt);
+      finalText = retryResult.response.text();
+
+      if (retryResult.response.usageMetadata) {
+        totalInputTokens += retryResult.response.usageMetadata.promptTokenCount || 0;
+        totalOutputTokens += retryResult.response.usageMetadata.candidatesTokenCount || 0;
+      }
+
+      console.log('✅ Retry successful');
+    } catch (retryError) {
+      console.error('❌ Retry failed:', retryError.message);
+      finalText = language === 'TR'
+        ? 'Üzgünüm, şu an yanıt veremiyorum.'
+        : 'Sorry, I cannot respond right now.';
+    }
+  }
+
+  // Return result object (will be used by caller to add assistant message)
   return {
-    reply: text || (language === 'TR'
-      ? 'Üzgünüm, bir yanıt oluşturamadım.'
-      : 'Sorry, I could not generate a response.'),
+    reply: finalText,
     inputTokens: totalInputTokens,
     outputTokens: totalOutputTokens
   };
@@ -478,7 +330,7 @@ router.post('/widget', async (req, res) => {
     headers: req.headers.authorization ? 'Auth present' : 'No auth'
   });
   try {
-    const { embedKey, assistantId, sessionId, message, conversationHistory = [] } = req.body;
+    const { embedKey, assistantId, sessionId, message } = req.body;
 
     if (!message) {
       return res.status(400).json({ error: 'message is required' });
@@ -494,7 +346,6 @@ router.post('/widget', async (req, res) => {
     // Check if existing session should be continued or a new one started
     let chatSessionId = sessionId;
     let shouldStartNewSession = !sessionId;
-    let previousHistory = conversationHistory;
 
     if (sessionId) {
       // Check existing session
@@ -542,13 +393,9 @@ router.post('/widget', async (req, res) => {
           // Generate new session ID
           chatSessionId = `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
           shouldStartNewSession = true;
-          previousHistory = []; // Clear history for new session
         } else {
-          // Session still active - continue with existing history if not provided
+          // Session still active
           console.log(`✅ Session ${sessionId} is active (${Math.round(timeSinceActivity / 60000)} min since last activity)`);
-          if (conversationHistory.length === 0 && existingSession.messages) {
-            previousHistory = Array.isArray(existingSession.messages) ? existingSession.messages : [];
-          }
         }
       }
     }
@@ -696,8 +543,15 @@ ${knowledgeContext}`;
     console.log('📝 [Chat] Full system prompt length:', fullSystemPrompt.length, 'chars');
     console.log('🤖 [Chat] Using Gemini model');
 
+    // Create/get session and add user message
+    getOrCreateSession(chatSessionId, 'chat');
+    addMessage(chatSessionId, 'user', message);
+
+    // Get conversation history from conversation-manager
+    const conversationHistory = getHistory(chatSessionId, 10);
+
     // Process with Gemini (with function calling support)
-    const result = await processWithGemini(fullSystemPrompt, previousHistory, message, language, business, chatSessionId);
+    const result = await processWithGemini(fullSystemPrompt, conversationHistory, message, language, business, chatSessionId);
 
     // Human-like delay: reading + typing time
     // Skip delay for off-topic/direct responses (they're already pre-generated)
@@ -731,16 +585,22 @@ ${knowledgeContext}`;
 
     console.log(`💰 Chat cost: ${tokenCost.totalCost.toFixed(6)} TL (Plan: ${planName}, Free: ${isFree})`);
 
+    // Add assistant reply to conversation history
+    addMessage(chatSessionId, 'assistant', result.reply, {
+      intent: result.intent,
+      tokens: { input: result.inputTokens, output: result.outputTokens }
+    });
+
+    // Get full conversation history for Prisma (including user + assistant messages)
+    const fullConversationHistory = getFullHistory(chatSessionId);
+
     // Save chat log (upsert - create or update with token info)
     try {
-      // IMPORTANT: Frontend sends conversationHistory that ALREADY contains the current user message
-      // So we should NOT add it again here - only add the assistant reply
-      // previousHistory already has: [...oldMessages, currentUserMessage]
-      // We only need to add: assistantReply
-      const updatedMessages = [
-        ...previousHistory,
-        { role: 'assistant', content: result.reply, timestamp: new Date().toISOString() }
-      ];
+      const updatedMessages = fullConversationHistory.map(msg => ({
+        role: msg.role,
+        content: msg.content,
+        timestamp: new Date(msg.timestamp).toISOString()
+      }));
 
       // Get existing chat log to accumulate tokens
       const existingLog = await prisma.chatLog.findUnique({
@@ -813,12 +673,18 @@ ${knowledgeContext}`;
       console.error('Failed to save chat log:', logError);
     }
 
+    // Return response with conversation history for frontend
     res.json({
       success: true,
       reply: result.reply,
       sessionId: chatSessionId,
       newSession: shouldStartNewSession, // true if a new session was started (timeout or first message)
-      assistantName: assistant.name
+      assistantName: assistant.name,
+      history: fullConversationHistory.map(msg => ({
+        role: msg.role,
+        content: msg.content,
+        timestamp: msg.timestamp
+      }))
     });
 
   } catch (error) {
