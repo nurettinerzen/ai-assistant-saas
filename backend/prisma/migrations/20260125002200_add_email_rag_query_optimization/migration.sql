@@ -8,21 +8,21 @@
 -- This index optimizes the most common retrieval pattern:
 -- WHERE businessId = X AND direction = 'OUTBOUND' AND intent = Y ORDER BY sentAt DESC
 
-CREATE INDEX CONCURRENTLY IF NOT EXISTS "EmailEmbedding_retrieval_idx"
+CREATE INDEX IF NOT EXISTS "EmailEmbedding_retrieval_idx"
 ON "EmailEmbedding" ("businessId", "direction", "intent", "sentAt" DESC)
 WHERE "direction" = 'OUTBOUND';
 
 -- ============================================
 -- 2. Add index for language-based filtering
 -- ============================================
-CREATE INDEX CONCURRENTLY IF NOT EXISTS "EmailEmbedding_language_idx"
+CREATE INDEX IF NOT EXISTS "EmailEmbedding_language_idx"
 ON "EmailEmbedding" ("businessId", "language", "sentAt" DESC)
 WHERE "direction" = 'OUTBOUND';
 
 -- ============================================
 -- 3. Add index for content hash (deduplication)
 -- ============================================
-CREATE INDEX CONCURRENTLY IF NOT EXISTS "EmailEmbedding_content_hash_idx"
+CREATE INDEX IF NOT EXISTS "EmailEmbedding_content_hash_idx"
 ON "EmailEmbedding" ("businessId", "contentHash");
 
 -- ============================================

@@ -72,7 +72,7 @@ function getModelBudget(model = 'gpt-4o') {
 /**
  * Estimate token count from text
  */
-function estimateTokens(text) {
+export function estimateTokens(text) {
   if (!text) return 0;
   return Math.ceil(text.length / CHARS_PER_TOKEN);
 }

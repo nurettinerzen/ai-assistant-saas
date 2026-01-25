@@ -11,8 +11,8 @@
  * Priority: Business data accuracy > prompt size > PII risk
  */
 
-import { preventPIILeak } from './email/policies/piiPreventionPolicy.js';
-import { applyWhitelist, validateToolResult } from './email/toolWhitelist.js';
+import { preventPIILeak } from './policies/piiPreventionPolicy.js';
+import { applyWhitelist, validateToolResult } from './toolWhitelist.js';
 
 // Max tokens per tool result (prevents single tool from dominating prompt)
 const MAX_TOKENS_PER_TOOL = 3000;

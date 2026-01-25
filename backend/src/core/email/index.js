@@ -55,5 +55,3 @@ export {
   isContentSafe,
   PIIPatterns
 } from './policies/piiPreventionPolicy.js';
-
-export default { handleEmailTurn };

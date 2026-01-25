@@ -31,11 +31,11 @@ import {
   enforceFactGrounding,
   getFactGroundingInstructions
 } from '../policies/toolRequiredPolicy.js';
-import { sanitizeToolResults } from '../../toolResultSanitizer.js';
+import { sanitizeToolResults } from '../toolResultSanitizer.js';
 import {
   estimateTokens,
   recordTokenAccuracy
-} from '../../promptBudget.js';
+} from '../promptBudget.js';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
