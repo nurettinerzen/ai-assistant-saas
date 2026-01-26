@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 // Telyx embed key for landing page chat widget
-const TELYX_EMBED_KEY = 'emb_e8e0f9cd48b9a5cd37d83b66c4dbe273';
+const TELYX_EMBED_KEY = 'emb_7c19b280dc26ef65274c35cccb5a050b';
 
 export default function Home() {
   const { t } = useLanguage();
