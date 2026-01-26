@@ -106,6 +106,8 @@ export async function handleIncomingMessage({
         lockUntil: contextResult.lockUntil,
         state: contextResult.state,
         metrics,
+        inputTokens: 0,
+        outputTokens: 0,
         debug: {
           terminationReason: contextResult.terminationReason,
           locked: contextResult.locked
@@ -213,6 +215,8 @@ export async function handleIncomingMessage({
         forceEnd: routingResult.forceEnd || false,
         state,
         metrics,
+        inputTokens: 0,
+        outputTokens: 0,
         debug: {
           directResponse: true,
           metadata: routingResult.metadata
@@ -299,6 +303,8 @@ export async function handleIncomingMessage({
         forceEnd: channel === 'PHONE', // Force end on phone if tool failed
         state,
         metrics,
+        inputTokens,
+        outputTokens,
         debug: {
           toolFailure: true,
           failedTool,
@@ -354,6 +360,8 @@ export async function handleIncomingMessage({
       forceEnd,
       state,
       metrics,
+      inputTokens,
+      outputTokens,
       debug: {
         classification: classification.type,
         confidence: classification.confidence,
@@ -385,6 +393,8 @@ export async function handleIncomingMessage({
       forceEnd: false,
       state: null,
       metrics,
+      inputTokens: 0,
+      outputTokens: 0,
       debug: {
         error: error.message,
         stack: error.stack?.substring(0, 500)

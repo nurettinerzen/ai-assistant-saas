@@ -88,8 +88,8 @@ async function handleMessage(sessionId, businessId, userMessage, systemPrompt, c
     locked: result.locked,
     lockReason: result.lockReason,
     lockUntil: result.lockUntil,
-    inputTokens: 0, // TODO: Add token tracking to orchestrator
-    outputTokens: 0
+    inputTokens: result.inputTokens || 0,
+    outputTokens: result.outputTokens || 0
   };
 }
 
