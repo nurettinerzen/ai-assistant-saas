@@ -12,6 +12,8 @@
  * - hint: string - User-friendly hint message
  */
 
+import { lockSession } from './session-lock.js';
+
 /**
  * Field-specific normalizers
  * CRITICAL: Different fields need different normalization!
@@ -98,13 +100,20 @@ export function processSlotInput(expectedSlot, message, state = null) {
       // Return will include more explicit hint below
     }
 
-    // After 3 failed attempts: escalate
+    // After 3 failed attempts: lock session temporarily (10 min)
     if (attempts >= 3) {
-      console.error(`🚫 [Loop Guard] Slot "${expectedSlot}" failed 3 times - escalating`);
+      console.error(`🚫 [Loop Guard] Slot "${expectedSlot}" failed 3 times - LOCKING SESSION`);
+
+      // Lock session for 10 minutes to prevent infinite loop
+      if (state.sessionId) {
+        await lockSession(state.sessionId, 'LOOP', 10 * 60 * 1000); // 10 minutes
+      }
+
       return {
         filled: false,
         error: 'loop_detected',
         escalate: true, // Signal to escalate to human/callback
+        locked: true,
         hint: 'Anlaşılmadı gibi görünüyor. Farklı bir yöntemle doğrulayalım - size geri dönüş yapabilir miyiz?'
       };
     }

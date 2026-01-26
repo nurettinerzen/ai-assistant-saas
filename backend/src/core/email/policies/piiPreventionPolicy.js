@@ -110,34 +110,60 @@ export function scanForPII(content) {
     return { findings: [], hasCritical: false, hasHigh: false };
   }
 
+  // Import validation (dynamic to avoid circular deps)
+  let validatePII;
+  try {
+    const validation = require('./piiValidation.js');
+    validatePII = validation.validatePII;
+  } catch (err) {
+    console.warn('[PII] Validation module not found, using regex-only detection');
+    validatePII = null;
+  }
+
   const findings = [];
 
   for (const [piiType, config] of Object.entries(PIIPatterns)) {
     const matches = content.match(config.pattern);
 
     if (matches && matches.length > 0) {
-      // For LIMIT action, only flag if exceeds max occurrences
-      if (config.action === 'LIMIT') {
-        if (matches.length > (config.maxOccurrences || 1)) {
+      // Filter out false positives using validation
+      let validatedMatches = matches;
+
+      if (validatePII && (piiType === 'TC_KIMLIK' || piiType === 'CREDIT_CARD')) {
+        validatedMatches = matches.filter(match =>
+          validatePII(content, match, piiType)
+        );
+
+        if (validatedMatches.length < matches.length) {
+          console.log(`[PII] ${piiType}: ${matches.length} regex matches, ${validatedMatches.length} validated matches`);
+        }
+      }
+
+      // Only flag if validated matches exist
+      if (validatedMatches.length > 0) {
+        // For LIMIT action, only flag if exceeds max occurrences
+        if (config.action === 'LIMIT') {
+          if (validatedMatches.length > (config.maxOccurrences || 1)) {
+            findings.push({
+              type: piiType,
+              name: config.name,
+              severity: config.severity,
+              action: config.action,
+              count: validatedMatches.length,
+              maxAllowed: config.maxOccurrences || 1,
+              matches: validatedMatches.slice(0, 3) // Only show first 3 for logging
+            });
+          }
+        } else {
           findings.push({
             type: piiType,
             name: config.name,
             severity: config.severity,
             action: config.action,
-            count: matches.length,
-            maxAllowed: config.maxOccurrences || 1,
-            matches: matches.slice(0, 3) // Only show first 3 for logging
+            count: validatedMatches.length,
+            matches: validatedMatches.slice(0, 3)
           });
         }
-      } else {
-        findings.push({
-          type: piiType,
-          name: config.name,
-          severity: config.severity,
-          action: config.action,
-          count: matches.length,
-          matches: matches.slice(0, 3)
-        });
       }
     }
   }

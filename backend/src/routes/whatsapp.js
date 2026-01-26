@@ -46,6 +46,9 @@ import {
   buildGeminiChatHistory,
   extractTokenUsage
 } from '../services/gemini-utils.js';
+import { isSessionLocked, getLockMessage, shouldSendAndMarkLockMessage, lockSession } from '../services/session-lock.js';
+import { detectUserRisks, getPIIWarningMessages } from '../services/user-risk-detector.js';
+import { getState, updateState } from '../services/state-manager.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -262,18 +265,77 @@ router.post('/webhook', webhookRateLimiter.middleware(), async (req, res) => {
  */
 async function processWhatsAppMessage(business, from, messageBody, messageId) {
   try {
+    // ===== ROUTE-LEVEL GUARD: CHECK SESSION LOCK =====
+    // Get universal session ID for this user
+    const sessionId = await getUniversalSession(business.id, 'WHATSAPP', from);
+    const language = business?.language || 'TR';
+
+    // GUARD 1: Check if session is locked
+    const lockStatus = await isSessionLocked(sessionId);
+    if (lockStatus.locked) {
+      console.log(`🔒 [WhatsApp Guard] Session ${sessionId} is LOCKED (${lockStatus.reason})`);
+
+      // Check spam prevention - only send lock message once per minute
+      const shouldSend = await shouldSendAndMarkLockMessage(sessionId);
+      if (shouldSend) {
+        const lockMsg = getLockMessage(lockStatus.reason, language);
+        await sendWhatsAppMessage(business, from, lockMsg, { inboundMessageId: messageId });
+        console.log(`🔒 [WhatsApp Guard] Lock message sent`);
+      } else {
+        console.log(`🔒 [WhatsApp Guard] Lock message skipped (spam prevention)`);
+      }
+
+      return; // EXIT - Do not process message
+    }
+
+    // GUARD 2: Detect user input risks (abuse, threats, spam, PII)
+    const state = await getState(sessionId);
+    const riskDetection = detectUserRisks(messageBody, language, state);
+
+    // Persist state if abuse counter was updated
+    if (riskDetection.warnings.some(w => w.type === 'PROFANITY')) {
+      await updateState(sessionId, state);
+      console.log(`[WhatsApp Guard] State updated - abuse counter: ${state.abuseCounter}`);
+    }
+
+    // If critical risk detected → lock session immediately
+    if (riskDetection.shouldLock) {
+      console.log(`🚨 [WhatsApp Guard] RISK DETECTED: ${riskDetection.reason}`);
+
+      // Lock the session
+      await lockSession(sessionId, riskDetection.reason);
+
+      // Send lock message to user
+      const lockMsg = getLockMessage(riskDetection.reason, language);
+      await sendWhatsAppMessage(business, from, lockMsg, { inboundMessageId: messageId });
+
+      return; // EXIT - Do not process message
+    }
+
+    // If PII warnings (but not locked yet), prepend warning to response
+    const piiWarnings = getPIIWarningMessages(riskDetection.warnings);
+    const hasPIIWarnings = piiWarnings.length > 0;
+
+    // ===== SESSION OK - CONTINUE NORMAL PROCESSING =====
+
     // Get subscription for cost calculation
     const subscription = await prisma.subscription.findUnique({
       where: { businessId: business.id }
     });
 
     // Generate AI response with Gemini
-    const aiResponse = await generateAIResponse(
+    let aiResponse = await generateAIResponse(
       business,
       from,
       messageBody,
       { messageId, subscription }
     );
+
+    // If PII warnings exist, prepend them to response
+    if (hasPIIWarnings) {
+      const warningText = piiWarnings.join('\n');
+      aiResponse = `${warningText}\n\n${aiResponse}`;
+    }
 
     // Send response using business's credentials (with idempotency)
     await sendWhatsAppMessage(business, from, aiResponse, { inboundMessageId: messageId });

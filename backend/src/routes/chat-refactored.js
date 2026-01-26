@@ -52,6 +52,10 @@ import {
   extractTokenUsage
 } from '../services/gemini-utils.js';
 
+// Session lock & risk detection
+import { isSessionLocked, getLockMessage, shouldSendLockMessage, markLockMessageSent, lockSession } from '../services/session-lock.js';
+import { detectUserRisks, getPIIWarningMessages } from '../services/user-risk-detector.js';
+
 const router = express.Router();
 const prisma = new PrismaClient();
 
@@ -861,6 +865,54 @@ router.post('/widget', async (req, res) => {
     const sessionId = await getOrCreateSession(business.id, 'CHAT', clientSessionId || `temp_${Date.now()}`);
     console.log(`🔑 [Session] Universal ID: ${sessionId}, Client ID: ${clientSessionId}`);
 
+    // ===== ROUTE-LEVEL GUARD: CHECK SESSION LOCK =====
+
+    // GUARD 1: Check if session is locked
+    const lockStatus = await isSessionLocked(sessionId);
+    if (lockStatus.locked) {
+      console.log(`🔒 [Chat Guard] Session ${sessionId} is LOCKED (${lockStatus.reason})`);
+
+      const lockMsg = getLockMessage(lockStatus.reason, language);
+      return res.json({
+        reply: lockMsg,
+        locked: true,
+        lockReason: lockStatus.reason,
+        lockUntil: lockStatus.until
+      });
+    }
+
+    // GUARD 2: Detect user input risks (abuse, threats, spam, PII)
+    const state = await getState(sessionId);
+    const riskDetection = detectUserRisks(message, language, state);
+
+    // Persist state if abuse counter was updated
+    if (riskDetection.warnings.some(w => w.type === 'PROFANITY')) {
+      await updateState(sessionId, state);
+      console.log(`[Chat Guard] State updated - abuse counter: ${state.abuseCounter}`);
+    }
+
+    // If critical risk detected → lock session immediately
+    if (riskDetection.shouldLock) {
+      console.log(`🚨 [Chat Guard] RISK DETECTED: ${riskDetection.reason}`);
+
+      // Lock the session
+      await lockSession(sessionId, riskDetection.reason);
+
+      // Return lock message
+      const lockMsg = getLockMessage(riskDetection.reason, language);
+      return res.json({
+        reply: lockMsg,
+        locked: true,
+        lockReason: riskDetection.reason
+      });
+    }
+
+    // If PII warnings (but not locked yet), we'll prepend warnings to response later
+    const piiWarnings = getPIIWarningMessages(riskDetection.warnings);
+    const hasPIIWarnings = piiWarnings.length > 0;
+
+    // ===== SESSION OK - CONTINUE NORMAL PROCESSING =====
+
     // Get date/time context
     const dateTimeContext = getDateTimeContext(timezone, language);
 
@@ -1021,13 +1073,21 @@ router.post('/widget', async (req, res) => {
       });
     }
 
+    // If PII warnings exist, prepend them to response
+    let finalReply = result.reply;
+    if (hasPIIWarnings) {
+      const warningText = piiWarnings.join('\n');
+      finalReply = `${warningText}\n\n${result.reply}`;
+    }
+
     // Return response
     res.json({
       success: true,
-      reply: result.reply,
+      reply: finalReply,
       sessionId: sessionId,
       assistantName: assistant.name,
-      history: updatedMessages
+      history: updatedMessages,
+      warnings: hasPIIWarnings ? piiWarnings : undefined
     });
 
   } catch (error) {

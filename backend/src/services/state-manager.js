@@ -51,9 +51,19 @@ export function createInitialState(sessionId) {
 
     // Flow Management
     activeFlow: null,           // ORDER_STATUS | DEBT_INQUIRY | COMPLAINT | APPOINTMENT | PRODUCT_INFO | GENERAL | null
-    flowStatus: 'idle',         // idle | in_progress | resolved | post_result | paused
+    flowStatus: 'idle',         // idle | in_progress | resolved | post_result | paused | terminated
     pauseReason: null,          // human_handoff | async_callback | null
     postResultTurns: 0,         // Turns since flow resolved (for follow-up handling)
+
+    // Session Lock (NEW - for hard termination)
+    lockReason: null,           // ABUSE | PII_RISK | THREAT | LOOP | SPAM | TOOL_FAIL | null
+    lockUntil: null,            // ISO timestamp or null (null = permanent lock)
+    lockedAt: null,             // ISO timestamp when locked
+    lockMessageSentAt: null,    // Last time lock message sent (spam prevention)
+
+    // Abuse Tracking (for counter-based detection)
+    abuseCounter: 0,            // Number of messages with profanity in window
+    abuseWindowStart: null,     // ISO timestamp of first profanity in window
 
     // Slot Filling
     expectedSlot: null,         // order_number | name | phone | complaint_details | null
