@@ -135,19 +135,113 @@ export default function EmailDashboardPage() {
     init();
   }, [loadEmailStatus, loadThreads, loadStats]);
 
-  // Sync emails
+  // Sync emails with real-time updates via SSE
   const handleSync = async () => {
     setSyncing(true);
+
     try {
-      const response = await apiClient.post('/api/email/sync');
-      toast.success(response.data.message || t('dashboard.emailPage.emailsSyncedSuccess'));
-      await Promise.all([loadThreads(), loadStats()]);
-      if (selectedThread) {
-        await loadThreadDetails(selectedThread.id);
+      // Get auth token
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast.error(t('dashboard.emailPage.authRequired'));
+        setSyncing(false);
+        return;
+      }
+
+      // Create EventSource with custom headers (requires polyfill or fetch workaround)
+      // Since EventSource doesn't support custom headers, we'll use fetch with stream
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/email/sync/stream`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: 'text/event-stream'
+          }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to start sync');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      // Process stream
+      while (true) {
+        const { done, value } = await reader.read();
+
+        if (done) {
+          setSyncing(false);
+          break;
+        }
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+
+          const eventMatch = line.match(/^event: (.+)$/m);
+          const dataMatch = line.match(/^data: (.+)$/m);
+
+          if (eventMatch && dataMatch) {
+            const eventType = eventMatch[1];
+            const data = JSON.parse(dataMatch[1]);
+
+            switch (eventType) {
+              case 'started':
+                console.log('Sync started:', data.message);
+                break;
+
+              case 'thread':
+                console.log('New thread:', data.thread);
+
+                // Add or update thread in list
+                setThreads(prevThreads => {
+                  const existingIndex = prevThreads.findIndex(t => t.id === data.thread.id);
+                  if (existingIndex >= 0) {
+                    // Update existing
+                    const updated = [...prevThreads];
+                    updated[existingIndex] = data.thread;
+                    return updated;
+                  } else {
+                    // Add new at the beginning
+                    return [data.thread, ...prevThreads];
+                  }
+                });
+
+                // Update stats incrementally
+                loadStats();
+                break;
+
+              case 'completed':
+                console.log('Sync completed:', data);
+                toast.success(data.message || t('dashboard.emailPage.emailsSyncedSuccess'));
+
+                // Final refresh
+                loadStats();
+                if (selectedThread) {
+                  loadThreadDetails(selectedThread.id);
+                }
+                setSyncing(false);
+                break;
+
+              case 'error':
+                console.error('Sync error:', data);
+                toast.error(data.error || t('dashboard.emailPage.failedToSyncEmails'));
+                setSyncing(false);
+                break;
+            }
+          }
+        }
       }
     } catch (error) {
+      console.error('Sync error:', error);
       toast.error(t('dashboard.emailPage.failedToSyncEmails'));
-    } finally {
       setSyncing(false);
     }
   };

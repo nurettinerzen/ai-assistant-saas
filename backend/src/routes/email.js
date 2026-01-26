@@ -743,7 +743,7 @@ router.post('/drafts/:draftId/regenerate', authenticateToken, async (req, res) =
 // ==================== SYNC ROUTES ====================
 
 /**
- * Manual Sync
+ * Manual Sync (Legacy - returns after completion)
  * POST /api/email/sync
  *
  * NOTE: This route ONLY syncs emails - NO automatic draft generation.
@@ -820,6 +820,129 @@ router.post('/sync', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Sync error:', error);
     res.status(500).json({ error: 'Failed to sync messages' });
+  }
+});
+
+/**
+ * Real-time Sync with Server-Sent Events (SSE)
+ * GET /api/email/sync/stream
+ *
+ * Streams sync progress events to frontend:
+ * - 'started': Sync initiated
+ * - 'thread': New thread processed (includes thread data)
+ * - 'completed': Sync finished
+ * - 'error': Error occurred
+ */
+router.get('/sync/stream', authenticateToken, async (req, res) => {
+  // Set SSE headers
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  const sendEvent = (event, data) => {
+    res.write(`event: ${event}\n`);
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
+  };
+
+  try {
+    const status = await emailAggregator.getStatus(req.businessId);
+
+    if (!status.connected) {
+      sendEvent('error', { error: 'No email provider connected' });
+      return res.end();
+    }
+
+    sendEvent('started', { message: 'Starting email sync...' });
+
+    // Get new messages from provider
+    const newMessages = await emailAggregator.syncNewMessages(req.businessId);
+
+    // Get connected email to determine direction
+    const integration = await emailAggregator.getIntegration(req.businessId);
+    const connectedEmail = integration.email;
+
+    let processedCount = 0;
+
+    for (const message of newMessages) {
+      // Determine direction
+      const direction = message.from.email.toLowerCase() === connectedEmail.toLowerCase()
+        ? 'OUTBOUND'
+        : 'INBOUND';
+
+      // Save to database
+      const { thread, isNew } = await emailAggregator.saveMessageToDb(
+        req.businessId,
+        message,
+        direction
+      );
+
+      if (isNew) {
+        processedCount++;
+
+        // For OUTBOUND messages (sent by user via external app), mark thread as REPLIED
+        if (direction === 'OUTBOUND' && thread.status !== 'REPLIED') {
+          await prisma.emailThread.update({
+            where: { id: thread.id },
+            data: { status: 'REPLIED' }
+          });
+        }
+
+        // For INBOUND messages: If thread was REPLIED or CLOSED, reopen it as PENDING_REPLY
+        if (direction === 'INBOUND' && (thread.status === 'REPLIED' || thread.status === 'CLOSED' || thread.status === 'NO_REPLY_NEEDED')) {
+          // Cancel any pending drafts for this thread (they're for old messages)
+          await prisma.emailDraft.updateMany({
+            where: {
+              threadId: thread.id,
+              status: 'PENDING_REVIEW'
+            },
+            data: { status: 'CANCELLED' }
+          });
+
+          await prisma.emailThread.update({
+            where: { id: thread.id },
+            data: { status: 'PENDING_REPLY' }
+          });
+        }
+
+        // Send thread update event to frontend
+        // Fetch full thread data with messages and drafts
+        const fullThread = await prisma.emailThread.findUnique({
+          where: { id: thread.id },
+          include: {
+            messages: {
+              orderBy: { createdAt: 'asc' },
+              take: 5
+            },
+            drafts: {
+              where: { status: 'PENDING_REVIEW' },
+              orderBy: { createdAt: 'desc' },
+              take: 1
+            }
+          }
+        });
+
+        sendEvent('thread', {
+          thread: fullThread,
+          isNew: true,
+          direction,
+          processedCount
+        });
+      }
+    }
+
+    // Send completion event
+    sendEvent('completed', {
+      message: `Synced ${processedCount} new messages`,
+      processedCount,
+      totalMessages: newMessages.length
+    });
+
+    res.end();
+  } catch (error) {
+    console.error('Sync stream error:', error);
+    sendEvent('error', { error: 'Failed to sync messages', message: error.message });
+    res.end();
   }
 });
 
