@@ -781,6 +781,9 @@ async function generateAIResponse(business, phoneNumber, messageBody, context = 
     console.log('📝 [WhatsApp] Final response text:', text?.substring(0, 100));
     console.log(`📊 [WhatsApp] Token usage - Input: ${totalInputTokens}, Output: ${totalOutputTokens}`);
 
+    // Check if any function calls were made during the conversation
+    const hadFunctionCall = iterations > 0;
+
     // ============================================
     // ACTION CLAIM VALIDATION (ENFORCEMENT)
     // ============================================
