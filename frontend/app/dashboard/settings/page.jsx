@@ -51,6 +51,7 @@ export default function SettingsPage() {
     signatureType: 'PLAIN',
   });
   const [signatureLoading, setSignatureLoading] = useState(false);
+  const [pairStats, setPairStats] = useState(null);
 
   useEffect(() => {
     loadSettings();
@@ -97,6 +98,16 @@ export default function SettingsPage() {
       } catch (sigError) {
         // Email integration might not exist yet, ignore
         console.log('Email signature not found:', sigError.message);
+      }
+
+      // Load email pair stats
+      try {
+        const statsRes = await apiClient.email.getPairStats();
+        if (statsRes.data) {
+          setPairStats(statsRes.data);
+        }
+      } catch (statsError) {
+        console.log('Pair stats not found:', statsError.message);
       }
     } catch (error) {
       console.error('Load settings error:', error);
@@ -376,6 +387,12 @@ export default function SettingsPage() {
               onChange={(e) => setEmailSignature({...emailSignature, signature: e.target.value})}
               className="font-mono text-sm"
             />
+            {!emailSignature.signature && (
+              <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" />
+                Adding a signature is recommended to avoid AI-generated names in drafts.
+              </p>
+            )}
             <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
               {emailSignature.signatureType === 'HTML'
                 ? t('dashboard.settingsPage.signatureHelpHtml')
@@ -383,6 +400,20 @@ export default function SettingsPage() {
               }
             </p>
           </div>
+
+          {/* Pair Stats */}
+          {pairStats && pairStats.total > 0 && (
+            <div className="mt-4 p-3 bg-neutral-50 dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-700">
+              <p className="text-xs text-neutral-600 dark:text-neutral-400">
+                <span className="font-semibold text-neutral-900 dark:text-white">{pairStats.total}</span> learned email patterns
+                {pairStats.byLanguage && pairStats.byLanguage.length > 0 && (
+                  <span className="ml-2">
+                    ({pairStats.byLanguage.map(l => `${l._count._all} ${l.language}`).join(', ')})
+                  </span>
+                )}
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="flex justify-end mt-6">

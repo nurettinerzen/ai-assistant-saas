@@ -269,6 +269,7 @@ export const apiClient = {
     // Email Signature
     getSignature: () => api.get('/api/email/signature'),
     updateSignature: (data) => api.put('/api/email/signature', data),
+    getPairStats: () => api.get('/api/email/pairs/stats'),
   },
 
   // Customer Data (for AI assistant matching)

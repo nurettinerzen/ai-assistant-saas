@@ -36,6 +36,12 @@ import {
   estimateTokens,
   recordTokenAccuracy
 } from '../promptBudget.js';
+import {
+  retrieveSimilarPairs,
+  formatPairsForPrompt
+} from '../../../services/email-pair-retrieval.js';
+import { classifyTone } from '../../../services/email-tone-classifier.js';
+import { cleanEmailText } from '../../../services/email-text-cleaner.js';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
@@ -123,6 +129,37 @@ export async function generateEmailDraft(ctx) {
 
     const ragLatencyMs = Date.now() - ragStartTime;
 
+    // NEW: Retrieve similar email PAIRS for tone/style matching
+    let similarPairs = [];
+    let pairConfidence = 0;
+    try {
+      // Classify inbound tone first
+      const inboundText = inboundMessage?.bodyText || inboundMessage?.body || '';
+      const cleanedInbound = cleanEmailText(inboundText, 'INBOUND');
+      const toneResult = await classifyTone(cleanedInbound.cleanedText, 'INBOUND');
+
+      similarPairs = await retrieveSimilarPairs({
+        businessId: effectiveBusinessId,
+        inboundText: cleanedInbound.cleanedText,
+        inboundTone: toneResult.tone,
+        intent: classification?.intent,
+        language: language || 'EN',
+        k: 3
+      });
+
+      pairConfidence = similarPairs.length > 0
+        ? similarPairs[0].totalScore
+        : 0;
+
+      console.log(`🎯 [GenerateDraft] Retrieved ${similarPairs.length} similar pairs (confidence: ${(pairConfidence * 100).toFixed(1)}%)`);
+
+      if (similarPairs.length === 0) {
+        console.warn('⚠️ [GenerateDraft] No similar pairs found - tone match confidence low');
+      }
+    } catch (pairError) {
+      console.warn('⚠️ [GenerateDraft] Pair retrieval failed:', pairError.message);
+    }
+
     // CRITICAL: Sanitize tool results before LLM
     // - Remove PII-sensitive fields
     // - Slim verbose data
@@ -153,7 +190,9 @@ export async function generateEmailDraft(ctx) {
       classification,
       ragExamples,
       snippets: resolvedSnippets,
-      factGrounding
+      factGrounding,
+      similarPairs, // NEW: Pass similar pairs for tone/style matching
+      pairConfidence // NEW: Pass confidence score
     });
 
     // Build user prompt (the email to reply to)
@@ -258,7 +297,9 @@ function buildEmailSystemPrompt({
   classification,
   ragExamples = [],
   snippets = [],
-  factGrounding = {}
+  factGrounding = {},
+  similarPairs = [],
+  pairConfidence = 0
 }) {
   const timezone = business.timezone || 'UTC';
   const dateTimeContext = getDateTimeContext(timezone, language);
@@ -296,6 +337,9 @@ function buildEmailSystemPrompt({
   // Fact grounding instructions (for tool-required intents)
   const factGroundingContext = getFactGroundingInstructions(factGrounding, language);
 
+  // NEW: Similar email pairs (tone/style matching)
+  const pairContext = formatPairsForPrompt(similarPairs);
+
   return `${basePrompt}
 
 ${dateTimeContext}
@@ -307,6 +351,7 @@ ${styleContext}
 ${toolContext}
 ${ragContext}
 ${snippetContext}
+${pairContext}
 ${factGroundingContext}
 ## CRITICAL EMAIL DRAFT RULES:
 
@@ -324,24 +369,32 @@ ${getToolDataInstructions(toolResults, language)}
 - Use tentative language: "I can help with...", "Based on our records...", "I see that..."
 - If tool data is not found, ask for clarifying information
 
-### 4. NO PLACEHOLDERS
-- NEVER use placeholders like [Your Name], [Company], [İletişim Bilgileri]
-- If you don't have information, either ask for it or omit it
-- Use only REAL information from context
+### 4. NO PLACEHOLDERS OR INVENTED INFORMATION
+- ABSOLUTELY FORBIDDEN: [Your Name], [Company], [İletişim Bilgileri], etc.
+- ABSOLUTELY FORBIDDEN: Inventing names like "Mr. Erzen", "John Doe", "Nurettin"
+- ABSOLUTELY FORBIDDEN: Inventing titles like "CEO", "Manager", "Representative"
+- If information is missing → ask for it or omit it entirely
+- Only use REAL data from: similar email pairs, manual signature, or tool results
 
-### 5. RESPONSE STYLE
+### 5. SIGNATURE ENFORCEMENT (ZERO TOLERANCE)
+- If manual signature is provided → use it EXACTLY (no modifications, no additions)
+- If NO manual signature → use ONLY closing pattern (e.g., "Best regards")
+- NEVER add name after closing if no manual signature exists
+- Review similar email pair examples to see what you actually use
+
+### 6. RESPONSE STYLE
 - Be natural and human-like
-- Match the formality level of the incoming email
+- Match the tone/formality from similar email pair examples (PRIORITY)
 - Keep responses concise but complete
 - Address the customer's actual question/concern
 
-### 6. FORMAT
+### 7. FORMAT
 - Brief greeting (use customer's name if known)
 - Direct response to their message
 - If applicable, next steps or what you need from them
-- Short closing with signature
+- Short closing (see signature rules above)
 
-### 7. VERIFICATION POLICY
+### 8. VERIFICATION POLICY
 - If sensitive information is requested but customer identity is not verified:
   - Ask for minimum required verification info (order number, phone, etc.)
   - Do NOT guess or assume customer details
@@ -419,44 +472,69 @@ function buildKnowledgeContext(knowledgeItems) {
 
 /**
  * Build style context from profile
+ *
+ * CRITICAL SIGNATURE RULES:
+ * 1. If manual signature exists → use it EXACTLY (no duplication)
+ * 2. If NO manual signature → NEVER invent name/title
+ * 3. Closing pattern only (e.g., "Best regards") without name
  */
 function buildStyleContext(styleProfile, language, emailSignature, signatureType) {
   let context = '';
 
-  // Custom signature
-  if (emailSignature) {
-    context += '=== EMAIL SIGNATURE ===\n';
-    context += 'ALWAYS add this exact signature at the end of every email:\n';
+  // SIGNATURE HANDLING (CRITICAL - NO HALLUCINATION)
+  if (emailSignature && emailSignature.trim().length > 0) {
+    // User has manually configured signature - use it EXACTLY
+    context += '=== EMAIL SIGNATURE (MANDATORY) ===\n';
+    context += 'CRITICAL: Add this EXACT signature at the end of your reply.\n';
+    context += 'DO NOT modify, duplicate, or add any additional name/title.\n';
     if (signatureType === 'HTML') {
-      context += `[HTML SIGNATURE - Use exactly as provided]\n${emailSignature}\n`;
+      context += `[HTML FORMAT - Use exactly as provided]:\n${emailSignature}\n`;
     } else {
       context += `${emailSignature}\n`;
     }
-    context += '\n';
+    context += '\nIMPORTANT: This signature already includes closing + name. Do NOT add another name after it.\n\n';
+  } else {
+    // NO manual signature configured
+    context += '=== EMAIL SIGNATURE (NONE CONFIGURED) ===\n';
+    context += 'CRITICAL RULES:\n';
+    context += '1. NO manual signature is configured\n';
+    context += '2. NEVER invent or add a name (like "Mr. Erzen", "John Doe", etc.)\n';
+    context += '3. NEVER add title (like "CEO", "Manager", etc.)\n';
+    context += '4. You MAY use a closing pattern only (e.g., "Best regards", "Thanks")\n';
+    context += '5. After closing, END THE EMAIL - no name, no signature block\n\n';
+    context += 'ACCEPTABLE:\n';
+    context += '  "Best regards" (and END)\n';
+    context += '  "Thanks" (and END)\n\n';
+    context += 'FORBIDDEN:\n';
+    context += '  "Best regards,\nMr. Erzen" ❌\n';
+    context += '  "Thanks,\nNurettin" ❌\n';
+    context += '  "[Your Name]" ❌\n\n';
   }
 
-  // Style profile
+  // Style profile (general patterns)
   if (styleProfile && styleProfile.analyzed) {
-    context += '=== WRITING STYLE (MATCH THIS) ===\n';
+    context += '=== WRITING STYLE (GENERAL PATTERNS) ===\n';
 
     if (styleProfile.formality) {
-      context += `- Formality: ${styleProfile.formality}\n`;
+      context += `- Formality level: ${styleProfile.formality}\n`;
     }
     if (styleProfile.tone) {
-      context += `- Tone: ${styleProfile.tone}\n`;
+      context += `- General tone: ${styleProfile.tone}\n`;
     }
     if (styleProfile.averageLength) {
-      context += `- Length: ${styleProfile.averageLength}\n`;
+      context += `- Typical length: ${styleProfile.averageLength}\n`;
     }
 
     // Language-specific greetings
     const langKey = language === 'TR' ? 'turkish' : 'english';
-    if (styleProfile.greetingPatterns?.[langKey]) {
-      context += `- Use these greetings: ${styleProfile.greetingPatterns[langKey].join(', ')}\n`;
+    if (styleProfile.greetingPatterns?.[langKey] && styleProfile.greetingPatterns[langKey].length > 0) {
+      context += `- Common greetings: ${styleProfile.greetingPatterns[langKey].join(', ')}\n`;
     }
-    if (styleProfile.closingPatterns?.[langKey]) {
-      context += `- Use these closings: ${styleProfile.closingPatterns[langKey].join(', ')}\n`;
+    if (styleProfile.closingPatterns?.[langKey] && styleProfile.closingPatterns[langKey].length > 0) {
+      context += `- Common closings: ${styleProfile.closingPatterns[langKey].join(', ')}\n`;
     }
+
+    context += '\nNote: These are general patterns. ALWAYS prioritize similar email pair examples over these general stats.\n';
   }
 
   return context;

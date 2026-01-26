@@ -9,6 +9,8 @@
 import cron from 'node-cron';
 import { PrismaClient } from '@prisma/client';
 import emailAggregator from '../services/email-aggregator.js';
+import { createPairForOutbound } from '../services/email-pair-incremental.js';
+import { createOutlookPairForOutbound } from '../services/outlook-pair-incremental.js';
 
 const prisma = new PrismaClient();
 
@@ -56,6 +58,27 @@ async function syncBusinessEmails(integration) {
             data: { status: 'REPLIED' }
           });
           console.log(`[Email Sync] Thread ${thread.id} marked as REPLIED (outbound message detected)`);
+
+          // AUTO-LEARNING: Create email pair for this outbound (async, non-blocking)
+          // This builds the learning dataset incrementally
+          // Route to appropriate provider
+          if (provider === 'GMAIL') {
+            createPairForOutbound({
+              businessId,
+              threadId: thread.id,
+              outboundMessageId: message.id
+            }).catch(err => {
+              console.warn(`[Email Sync] Failed to create Gmail pair for outbound ${message.id}:`, err.message);
+            });
+          } else if (provider === 'OUTLOOK') {
+            createOutlookPairForOutbound({
+              businessId,
+              threadId: thread.id,
+              outboundMessageId: message.id
+            }).catch(err => {
+              console.warn(`[Email Sync] Failed to create Outlook pair for outbound ${message.id}:`, err.message);
+            });
+          }
         }
 
         // For INBOUND messages: If thread was REPLIED or CLOSED, reopen it as PENDING_REPLY

@@ -158,6 +158,7 @@ model Business {
   callbackRequests        CallbackRequest[]
   chatLogs                ChatLog[]
   pilotBusinesses         PilotBusiness[]         @relation("PilotBusinesses")
+  emailPairs              EmailPair[]             @relation("EmailPairs")
 
   @@index([name])
   @@index([suspended])
@@ -1787,4 +1788,52 @@ model PilotBusiness {
 
   @@unique([businessId, feature]) // Prevent duplicate feature entries
   @@index([feature, businessId])  // Query index for getPilotBusinesses()
+}
+
+// Email Pair (INBOUND → OUTBOUND) - Learning Dataset
+// Used for tone matching, signature patterns, and style learning
+model EmailPair {
+  id                String   @id @default(cuid())
+  businessId        Int
+  threadId          String
+  inboundMessageId  String   // The incoming email
+  outboundMessageId String   // Our reply to it
+
+  // Extracted features for matching
+  inboundTone       String?  // formal / neutral / casual / angry
+  outboundTone      String?  // formal / neutral / casual
+  closingPattern    String?  // "Best regards", "Thanks", "Cheers", etc.
+  signatureUsed     String?  @db.Text // Full signature block from outbound
+  lengthBucket      String?  // short / medium / long
+
+  // Metadata for filtering
+  contactType       String?  // customer / business / personal
+  fromDomain        String?  // Sender's email domain
+  intent            String?  // COMPLAINT / INQUIRY / REQUEST / etc.
+  language          String?  // TR / EN
+
+  // Cleaned content (quoted text + signatures removed)
+  inboundText       String   @db.Text
+  outboundText      String   @db.Text
+
+  // Original content (for reference)
+  inboundRaw        String?  @db.Text
+  outboundRaw       String?  @db.Text
+
+  // Analysis metadata
+  confidence        Float    @default(1.0) // Match confidence (0-1)
+  analyzedAt        DateTime @default(now())
+
+  // Timestamps
+  sentAt            DateTime // When the outbound was sent
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  business          Business @relation("EmailPairs", fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, inboundMessageId, outboundMessageId])
+  @@index([businessId, inboundTone])
+  @@index([businessId, intent, language])
+  @@index([threadId])
+  @@index([sentAt])
 }

@@ -12,6 +12,7 @@ import emailAggregator from '../services/email-aggregator.js';
 import emailAI from '../services/email-ai.js';
 import { handleEmailTurn } from '../core/email/index.js';
 import { onEmailSent } from '../core/email/rag/indexingHooks.js';
+import { buildEmailPairs, getPairStatistics } from '../services/email-pair-builder.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -1190,6 +1191,42 @@ router.put('/signature', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Update signature error:', error);
     res.status(500).json({ error: 'Failed to update email signature' });
+  }
+});
+
+// ==================== EMAIL PAIR ROUTES (Learning Dataset) ====================
+
+/**
+ * Build email pairs from sent emails
+ * POST /api/email/pairs/build
+ * Body: { daysBack: 30, limit: 100 }
+ */
+router.post('/pairs/build', authenticateToken, async (req, res) => {
+  try {
+    const { daysBack = 30, limit = 100 } = req.body;
+
+    console.log(`[EmailPairs] Building pairs for business ${req.businessId}`);
+
+    const result = await buildEmailPairs(req.businessId, { daysBack, limit });
+
+    res.json(result);
+  } catch (error) {
+    console.error('Build pairs error:', error);
+    res.status(500).json({ error: 'Failed to build email pairs' });
+  }
+});
+
+/**
+ * Get pair statistics
+ * GET /api/email/pairs/stats
+ */
+router.get('/pairs/stats', authenticateToken, async (req, res) => {
+  try {
+    const stats = await getPairStatistics(req.businessId);
+    res.json(stats);
+  } catch (error) {
+    console.error('Get pair stats error:', error);
+    res.status(500).json({ error: 'Failed to get pair statistics' });
   }
 });
 
