@@ -25,7 +25,7 @@ import { logClassification, logRoutingDecision, logViolation, logToolExecution }
 import { sendWhatsAppMessage as sendWhatsAppMessageCentral } from '../services/whatsapp-sender.js';
 
 // CORE: Channel-agnostic orchestrator
-import { handleTurn } from '../core/handleTurn.js';
+import { handleIncomingMessage } from '../core/handleIncomingMessage.js';
 import { getOrCreateSession as getUniversalSession } from '../services/session-mapper.js';
 import {
   getOrCreateSession,
@@ -316,22 +316,28 @@ async function processWhatsAppMessage(business, from, messageBody, messageId) {
     const piiWarnings = getPIIWarningMessages(riskDetection.warnings);
     const hasPIIWarnings = piiWarnings.length > 0;
 
-    // ===== SESSION OK - CONTINUE NORMAL PROCESSING =====
+    // ===== SESSION OK - DELEGATE TO CORE ORCHESTRATOR =====
 
-    // Get subscription for cost calculation
-    const subscription = await prisma.subscription.findUnique({
-      where: { businessId: business.id }
+    console.log('\n📱 [WhatsApp Adapter] Delegating to core orchestrator...');
+
+    // Call core orchestrator (unified pipeline for all channels)
+    const result = await handleIncomingMessage({
+      channel: 'WHATSAPP',
+      business,
+      assistant: business.assistants?.[0],
+      channelUserId: from,
+      sessionId, // CRITICAL: Pass sessionId to prevent new session creation
+      messageId,
+      userMessage: messageBody,
+      language: business.language || 'TR',
+      timezone: business.timezone || 'Europe/Istanbul',
+      metadata: {
+        inboundMessageId: messageId
+      }
     });
 
-    // Generate AI response with Gemini
-    let aiResponse = await generateAIResponse(
-      business,
-      from,
-      messageBody,
-      { messageId, subscription }
-    );
-
-    // If PII warnings exist, prepend them to response
+    // Prepare final response (with PII warnings if any)
+    let aiResponse = result.reply;
     if (hasPIIWarnings) {
       const warningText = piiWarnings.join('\n');
       aiResponse = `${warningText}\n\n${aiResponse}`;
@@ -362,7 +368,11 @@ async function processWhatsAppMessage(business, from, messageBody, messageId) {
  * Generate AI response using Gemini with proper function calling
  * Same architecture as chat.js - model calls tools when needed
  */
-async function generateAIResponse(business, phoneNumber, messageBody, context = {}) {
+/**
+ * @deprecated This function is deprecated. WhatsApp now uses the unified orchestrator (handleIncomingMessage).
+ * Kept for reference during migration. Will be removed after validation.
+ */
+async function generateAIResponse_DEPRECATED(business, phoneNumber, messageBody, context = {}) {
   try {
     console.log('\n📱 [WhatsApp] Delegating to core orchestrator...');
 
