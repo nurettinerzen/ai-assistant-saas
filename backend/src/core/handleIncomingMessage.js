@@ -35,6 +35,7 @@ import prisma from '../config/database.js';
  * @param {Object} params.business - Business object with integrations
  * @param {Object} params.assistant - Assistant configuration
  * @param {string} params.channelUserId - Channel-specific user ID (phoneNumber, userId, etc.)
+ * @param {string} params.sessionId - OPTIONAL: Universal session ID (if provided, NEVER create new session)
  * @param {string} params.messageId - Unique message ID (for idempotency)
  * @param {string} params.userMessage - User's message text
  * @param {string} params.language - 'TR' | 'EN'
@@ -48,6 +49,7 @@ export async function handleIncomingMessage({
   business,
   assistant,
   channelUserId,
+  sessionId,
   messageId,
   userMessage,
   language = 'TR',
@@ -82,25 +84,37 @@ export async function handleIncomingMessage({
       channel,
       channelUserId,
       businessId: business.id,
+      sessionId, // CRITICAL: Pass sessionId to prevent new session creation
+      language,
       metadata
     });
 
     if (contextResult.terminated) {
-      console.log('⛔ [Orchestrator] Session terminated');
+      console.log(`⛔ [Orchestrator] Session ${contextResult.locked ? 'LOCKED' : 'terminated'}`);
+
+      // Return lock message if locked, generic message if terminated
+      const replyMessage = contextResult.locked
+        ? contextResult.lockMessage
+        : (language === 'TR' ? 'Bu görüşme sonlandırılmıştır.' : 'This conversation has ended.');
+
       return {
-        reply: language === 'TR'
-          ? 'Bu görüşme sonlandırılmıştır.'
-          : 'This conversation has ended.',
+        reply: replyMessage,
         shouldEndSession: true,
         forceEnd: true,
+        locked: contextResult.locked,
+        lockReason: contextResult.terminationReason,
+        lockUntil: contextResult.lockUntil,
         state: contextResult.state,
         metrics,
-        debug: { terminationReason: contextResult.terminationReason }
+        debug: {
+          terminationReason: contextResult.terminationReason,
+          locked: contextResult.locked
+        }
       };
     }
 
-    const { sessionId, state } = contextResult;
-    metrics.sessionId = sessionId;
+    const { sessionId: resolvedSessionId, state } = contextResult;
+    metrics.sessionId = resolvedSessionId;
 
     // ========================================
     // STEP 2: Prepare Context
@@ -113,7 +127,7 @@ export async function handleIncomingMessage({
       language,
       timezone,
       prisma,
-      sessionId
+      resolvedSessionId
     });
 
     console.log(`📚 History: ${conversationHistory.length} messages`);

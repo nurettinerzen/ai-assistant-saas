@@ -64,26 +64,30 @@ const prisma = new PrismaClient();
  * NOW USES CORE ORCHESTRATOR (step-by-step pipeline)
  */
 async function handleMessage(sessionId, businessId, userMessage, systemPrompt, conversationHistory, language, business, assistant, timezone, clientSessionId) {
-  console.log(`\n📨 [Chat Adapter] Delegating to core orchestrator...`);
+  console.log(`\n📨 [Chat Adapter] Delegating to core orchestrator with sessionId: ${sessionId}`);
 
   // Call core orchestrator (step-by-step pipeline)
+  // CRITICAL: Pass sessionId to prevent orchestrator from creating new session
   const result = await handleIncomingMessage({
     channel: 'CHAT',
     business,
     assistant,
     channelUserId: clientSessionId || `temp_${Date.now()}`,
+    sessionId, // CRITICAL: Prevent bypass by passing existing sessionId
     messageId: `chat_${Date.now()}_${Math.random().toString(36).substring(7)}`,
     userMessage,
     language,
     timezone: timezone || 'Europe/Istanbul',
     metadata: {
-      sessionId, // For backward compatibility
       businessId
     }
   });
 
   return {
     reply: result.reply,
+    locked: result.locked,
+    lockReason: result.lockReason,
+    lockUntil: result.lockUntil,
     inputTokens: 0, // TODO: Add token tracking to orchestrator
     outputTokens: 0
   };
