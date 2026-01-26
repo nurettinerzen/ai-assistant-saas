@@ -10,6 +10,9 @@
  * - PII_RISK: Sensitive data leak (1 hour lock)
  * - LOOP: Infinite loop detected (10 min lock)
  * - SPAM: Spam/flooding (5 min lock)
+ */
+
+import { getState, updateState } from './state-manager.js';
 
 /**
  * Lock durations (in milliseconds)

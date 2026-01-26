@@ -53,7 +53,7 @@ import {
 } from '../services/gemini-utils.js';
 
 // Session lock & risk detection
-import { isSessionLocked, getLockMessage, shouldSendLockMessage, markLockMessageSent, lockSession } from '../services/session-lock.js';
+import { isSessionLocked, getLockMessage, lockSession } from '../services/session-lock.js';
 import { detectUserRisks, getPIIWarningMessages } from '../services/user-risk-detector.js';
 
 const router = express.Router();

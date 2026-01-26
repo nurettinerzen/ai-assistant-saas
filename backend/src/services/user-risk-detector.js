@@ -11,6 +11,8 @@
  * 4. SPAM: Flooding, repetitive text
  */
 
+import { getLockMessage } from './session-lock.js';
+
 /**
  * Abuse/profanity patterns (Turkish focus)
  * Keep threshold conservative - we want to catch severe abuse, not casual language
@@ -296,28 +298,6 @@ export function detectUserRisks(message, language = 'TR', state = {}) {
     reason: null,
     warnings
   };
-}
-
-/**
- * Get lock message for a reason
- */
-function getLockMessage(reason, language = 'TR') {
-  const messages = {
-    ABUSE: {
-      TR: 'Bu dil nedeniyle sohbet kapatıldı. Lütfen daha sonra tekrar deneyin.',
-      EN: 'Conversation closed due to inappropriate language. Please try again later.'
-    },
-    THREAT: {
-      TR: 'Güvenlik nedeniyle sohbet kalıcı olarak kapatılmıştır.',
-      EN: 'Conversation permanently closed for security reasons.'
-    },
-    SPAM: {
-      TR: 'Spam tespit edildi. Lütfen 5 dakika sonra tekrar deneyin.',
-      EN: 'Spam detected. Please try again in 5 minutes.'
-    }
-  };
-
-  return messages[reason]?.[language] || messages.ABUSE[language];
 }
 
 /**
