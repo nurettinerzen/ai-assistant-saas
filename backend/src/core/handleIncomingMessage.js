@@ -137,6 +137,15 @@ export async function handleIncomingMessage({
       if (classification.hadClassifierFailure) {
         console.warn(`⚠️ Classifier ${classification.failureType} - Safe mode activated`);
       }
+
+      // CRITICAL: Update state with extractedSlots for argument normalization
+      if (classification.extractedSlots) {
+        state.extractedSlots = {
+          ...state.extractedSlots,
+          ...classification.extractedSlots
+        };
+        console.log('📝 [Classification] Updated extractedSlots:', state.extractedSlots);
+      }
     } else {
       // Fallback: assume high confidence if feature disabled
       classification = {
