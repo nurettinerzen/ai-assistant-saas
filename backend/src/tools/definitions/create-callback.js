@@ -8,7 +8,7 @@
 
 export default {
   name: 'create_callback',
-  description: 'Müşteriye geri arama kaydı oluşturur. Asistan yardımcı olamadığında, müşteri gerçek biriyle görüşmek istediğinde veya mesai dışında kullanılır.',
+  description: 'Müşteriye geri arama kaydı oluşturur. Asistan yardımcı olamadığında, müşteri gerçek biriyle görüşmek istediğinde veya mesai dışında kullanılır. ÖNEMLİ: extractedSlots\'ta customer_name ve phone varsa müşteriden TEKRAR SORMA, direkt çağır.',
   parameters: {
     type: 'object',
     properties: {

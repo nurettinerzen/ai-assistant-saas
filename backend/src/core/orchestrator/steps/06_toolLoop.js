@@ -63,6 +63,55 @@ export async function executeToolLoop(params) {
   let result;
   let responseText = '';
 
+  // ========================================
+  // FORCE TOOL CALL: Skip LLM, call tool directly
+  // ========================================
+  if (state.forceToolCall) {
+    const { tool: toolName, args: forcedArgs } = state.forceToolCall;
+    console.log(`🔧 [ToolLoop] FORCE TOOL CALL: ${toolName}`);
+
+    toolsCalled.push(toolName);
+
+    // Execute tool
+    const toolResult = await executeTool(toolName, forcedArgs, business, {
+      state,
+      language,
+      sessionId,
+      messageId,
+      channel,
+      conversationHistory,
+      extractedSlots: state.extractedSlots || {}
+    });
+
+    // Clear force flag
+    delete state.forceToolCall;
+
+    if (toolResult.outcome === 'OK') {
+      hadToolSuccess = true;
+      responseText = toolResult.message || (language === 'TR'
+        ? 'Talebiniz alındı, en kısa sürede size dönüş yapacağız.'
+        : 'Your request has been received, we will get back to you shortly.');
+    } else {
+      hadToolFailure = true;
+      failedTool = toolName;
+      responseText = toolResult.message || (language === 'TR'
+        ? 'İşlem sırasında bir sorun oluştu.'
+        : 'An error occurred during processing.');
+    }
+
+    return {
+      reply: responseText,
+      inputTokens: 0, // No LLM call
+      outputTokens: 0,
+      hadToolSuccess,
+      hadToolFailure,
+      failedTool,
+      toolsCalled,
+      iterations: 1,
+      chat: null
+    };
+  }
+
   // Send initial message to LLM
   result = await chat.sendMessage(userMessage);
 

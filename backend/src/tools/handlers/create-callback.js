@@ -5,8 +5,29 @@
 
 import { PrismaClient } from '@prisma/client';
 import { ok, validationError, systemError } from '../toolResult.js';
+import crypto from 'crypto';
 
 const prisma = new PrismaClient();
+
+/**
+ * Normalize topic for duplicate detection
+ * Removes common punctuation, lowercases, trims
+ */
+function normalizeTopic(topic) {
+  return topic
+    .toLowerCase()
+    .replace(/[.,!?;:\-]/g, '') // Remove punctuation
+    .replace(/\s+/g, ' ') // Normalize whitespace
+    .trim();
+}
+
+/**
+ * Generate hash from normalized topic
+ */
+function generateTopicHash(topic) {
+  const normalized = normalizeTopic(topic);
+  return crypto.createHash('sha256').update(normalized).digest('hex').substring(0, 16);
+}
 
 /**
  * Generate topic from conversation context (deterministic)
@@ -34,7 +55,7 @@ function generateTopicFromContext(context, language) {
     'şikayet', 'itiraz', 'yanlış', 'hatalı', 'eksik'
   ];
 
-  const recentMessages = context.conversationHistory?.slice(-5) || [];
+  const recentMessages = context.conversationHistory?.slice(-6) || [];
   const hasComplaint = recentMessages.some(msg =>
     msg.role === 'user' && complaintIndicators.some(indicator =>
       msg.content?.toLowerCase().includes(indicator)
@@ -114,6 +135,40 @@ export default {
         topic = topic.substring(0, 157) + '...';
       }
 
+      // Generate topic hash for duplicate detection
+      const topicHash = generateTopicHash(topic);
+
+      // DUPLICATE GUARD: Check for recent callback with same phone + topic hash
+      // Time window: 15 minutes
+      // Uses composite index: [customerPhone, topicHash, requestedAt]
+      const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
+
+      const recentCallback = await prisma.callbackRequest.findFirst({
+        where: {
+          businessId: business.id,
+          customerPhone,
+          topicHash, // Use hash in query for index performance
+          status: 'PENDING',
+          requestedAt: {
+            gte: fifteenMinutesAgo
+          }
+        },
+        orderBy: {
+          requestedAt: 'desc'
+        }
+      });
+
+      if (recentCallback) {
+        console.log(`🔒 [create_callback] Duplicate detected: ${recentCallback.id} (same phone + topic within 15min)`);
+
+        return ok(
+          { callbackId: recentCallback.id, status: 'PENDING', isDuplicate: true },
+          language === 'TR'
+            ? `Talebiniz zaten kaydedildi. Yeni bir kayıt açmadım. ${customerName} en kısa sürede aranacak.`
+            : `Your request is already registered. I did not create a new record. ${customerName} will be called back shortly.`
+        );
+      }
+
       // Priority validasyonu
       const validPriorities = ['LOW', 'NORMAL', 'HIGH', 'URGENT'];
       const finalPriority = validPriorities.includes(priority) ? priority : 'NORMAL';
@@ -127,6 +182,7 @@ export default {
           customerName,
           customerPhone,
           topic,
+          topicHash, // Store hash for future duplicate detection
           priority: finalPriority
         }
       });

@@ -17,6 +17,45 @@ export async function makeRoutingDecision(params) {
     .slice().reverse()
     .find(msg => msg.role === 'assistant')?.content || '';
 
+  // ========================================
+  // SPECIAL HANDLER: CALLBACK_REQUEST
+  // Backend-controlled slot collection + force tool call
+  // ========================================
+  if (classification.type === 'CALLBACK_REQUEST') {
+    const extractedSlots = state.extractedSlots || {};
+    const requiredSlots = ['customer_name', 'phone'];
+    const missing = requiredSlots.filter(slot => !extractedSlots[slot]);
+
+    if (missing.length > 0) {
+      // Ask for missing slot (only one question)
+      const missingSlot = missing[0];
+      const question = missingSlot === 'customer_name'
+        ? (language === 'TR' ? 'Adınız ve soyadınız nedir?' : 'What is your full name?')
+        : (language === 'TR' ? 'Telefon numaranız nedir?' : 'What is your phone number?');
+
+      console.log(`📞 [CALLBACK] Missing slot: ${missingSlot}, asking user`);
+
+      return {
+        directResponse: true,
+        reply: question,
+        forceEnd: false,
+        metadata: {
+          type: 'CALLBACK_SLOT_COLLECTION',
+          missingSlot,
+          remainingSlots: missing
+        }
+      };
+    } else {
+      // All slots ready - FORCE TOOL CALL
+      console.log('📞 [CALLBACK] All slots ready, forcing tool call');
+      state.forceToolCall = {
+        tool: 'create_callback',
+        args: {} // Args will be filled by argumentNormalizer from extractedSlots
+      };
+      // Continue to LLM with forced tool call instruction
+    }
+  }
+
   // Route message
   const messageRouting = await routeMessage(
     userMessage,
