@@ -127,7 +127,7 @@ export async function handleIncomingMessage({
       language,
       timezone,
       prisma,
-      resolvedSessionId
+      sessionId: resolvedSessionId
     });
 
     console.log(`📚 History: ${conversationHistory.length} messages`);
@@ -188,7 +188,7 @@ export async function handleIncomingMessage({
 
       // Save state and metrics (skip if dry-run)
       await persistAndEmitMetrics({
-        sessionId,
+        sessionId: resolvedSessionId,
         state,
         userMessage,
         finalResponse: routingResult.reply,
@@ -250,7 +250,7 @@ export async function handleIncomingMessage({
       business,
       language,
       channel,
-      sessionId,
+      sessionId: resolvedSessionId,
       messageId,
       metrics,
       effectsEnabled // DRY-RUN flag
@@ -274,7 +274,7 @@ export async function handleIncomingMessage({
       console.log('❌ [Orchestrator] Tool failure - returning forced template');
 
       await persistAndEmitMetrics({
-        sessionId,
+        sessionId: resolvedSessionId,
         state,
         userMessage,
         finalResponse: responseText,
@@ -317,7 +317,7 @@ export async function handleIncomingMessage({
       toolsCalled,
       chat: toolLoopResult.chat,
       language,
-      sessionId,
+      sessionId: resolvedSessionId,
       metrics
     });
 
@@ -326,7 +326,7 @@ export async function handleIncomingMessage({
     // ========================================
     console.log('\n[STEP 8] Persisting state and emitting metrics...');
     const { shouldEndSession, forceEnd, metadata: persistMetadata } = await persistAndEmitMetrics({
-      sessionId,
+      sessionId: resolvedSessionId,
       state,
       userMessage,
       finalResponse,
