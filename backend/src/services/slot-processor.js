@@ -85,7 +85,7 @@ function normalize(field, value) {
  * @param {Object} state - Current conversation state (for loop guard)
  * @returns {Object} Result
  */
-export function processSlotInput(expectedSlot, message, state = null) {
+export async function processSlotInput(expectedSlot, message, state = null) {
   const trimmed = message.trim();
 
   // ============================================
