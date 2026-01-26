@@ -510,7 +510,7 @@ router.post('/drafts/:draftId/send', authenticateToken, async (req, res) => {
 
     // Index sent email for RAG (async, non-blocking)
     onEmailSent({
-      messageId: sentMessage.id,
+      messageId: result.messageId,
       threadId: thread.id,
       businessId: req.businessId,
       classification: draft.classification // If stored
