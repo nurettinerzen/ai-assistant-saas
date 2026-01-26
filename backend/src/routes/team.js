@@ -10,9 +10,42 @@ import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 import { authenticateToken } from '../middleware/auth.js';
 import { checkPermission, requireOwner } from '../middleware/permissions.js';
+import rateLimit from 'express-rate-limit';
+import {
+  logInvitationCreated,
+  logInvitationAccepted,
+  logRoleChanged,
+  logMemberRemoved
+} from '../utils/auditLogger.js';
+import { sendTeamInvitationEmail } from '../services/emailService.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
+
+// ============================================================================
+// RATE LIMITERS
+// ============================================================================
+
+// Invitation send rate limiter (10 invites/hour per user)
+const invitationSendLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10,
+  keyGenerator: (req) => `invite_send:${req.userId}`,
+  message: { error: 'Çok fazla davet gönderdiniz. Lütfen 1 saat sonra tekrar deneyin.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+// Invitation accept rate limiter (5 attempts/15min per IP + token combo)
+const invitationAcceptLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5,
+  keyGenerator: (req) => `invite_accept:${req.ip}:${req.params.token}`,
+  message: { error: 'Çok fazla deneme yaptınız. Lütfen 15 dakika sonra tekrar deneyin.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true // Only count failed attempts
+});
 
 // ============================================================================
 // TEAM MEMBERS
@@ -108,6 +141,16 @@ router.put('/:userId/role', authenticateToken, requireOwner, async (req, res) =>
       }
     });
 
+    // Audit log: Role changed
+    await logRoleChanged({
+      changerId: req.userId,
+      businessId: req.businessId,
+      targetUserId,
+      oldRole: targetUser.role,
+      newRole: role,
+      req
+    });
+
     res.json({
       success: true,
       message: 'Rol başarıyla güncellendi',
@@ -153,6 +196,15 @@ router.delete('/:userId', authenticateToken, requireOwner, async (req, res) => {
     // Delete user
     await prisma.user.delete({
       where: { id: targetUserId }
+    });
+
+    // Audit log: Member removed
+    await logMemberRemoved({
+      removerId: req.userId,
+      businessId: req.businessId,
+      removedUserId: targetUserId,
+      removedEmail: targetUser.email,
+      req
     });
 
     res.json({
@@ -212,8 +264,9 @@ router.get('/invitations', authenticateToken, checkPermission('team:view'), asyn
 /**
  * POST /api/team/invite
  * Send an invitation to join the team
+ * SECURITY: Rate limited (10/hour), validated email/role
  */
-router.post('/invite', authenticateToken, checkPermission('team:invite'), async (req, res) => {
+router.post('/invite', authenticateToken, checkPermission('team:invite'), invitationSendLimiter, async (req, res) => {
   try {
     const { email, role } = req.body;
 
@@ -284,21 +337,33 @@ router.post('/invite', authenticateToken, checkPermission('team:invite'), async 
     });
 
     // Generate invitation link
-    const frontendUrl = process.env.FRONTEND_URL;
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
     const inviteLink = `${frontendUrl}/invitation/${token}`;
 
-    // TODO: Send email with invitation link
-    // For now, log to console
-    console.log('📧 ============================================');
-    console.log('📧 DAVET GÖNDERİLDİ');
-    console.log('📧 ============================================');
-    console.log(`📧 Email: ${email}`);
-    console.log(`📧 Rol: ${role}`);
-    console.log(`📧 İşletme: ${invitation.business.name}`);
-    console.log(`📧 Davet eden: ${invitation.invitedBy.name || invitation.invitedBy.email}`);
-    console.log(`📧 Link: ${inviteLink}`);
-    console.log(`📧 Geçerlilik: 7 gün`);
-    console.log('📧 ============================================');
+    // Send invitation email
+    try {
+      await sendTeamInvitationEmail({
+        email: invitation.email,
+        inviterName: invitation.invitedBy.name || invitation.invitedBy.email,
+        businessName: invitation.business.name,
+        role: invitation.role,
+        invitationUrl: inviteLink
+      });
+      console.log(`✅ Davet emaili gönderildi: ${email}`);
+    } catch (emailError) {
+      // Email failure should NOT block invitation creation
+      console.error('⚠️ Davet emaili gönderilemedi:', emailError);
+      console.log(`📧 Manuel davet linki: ${inviteLink}`);
+    }
+
+    // Audit log: Invitation created
+    await logInvitationCreated({
+      inviterId: req.userId,
+      businessId: req.businessId,
+      inviteeEmail: email,
+      role,
+      req
+    });
 
     res.status(201).json({
       success: true,
@@ -386,14 +451,28 @@ router.post('/invitations/:id/resend', authenticateToken, checkPermission('team:
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
       },
       include: {
-        business: { select: { name: true } }
+        business: { select: { name: true } },
+        invitedBy: { select: { name: true, email: true } }
       }
     });
 
-    const frontendUrl = process.env.FRONTEND_URL;
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
     const inviteLink = `${frontendUrl}/invitation/${newToken}`;
 
-    console.log('📧 DAVET YENİDEN GÖNDERİLDİ:', inviteLink);
+    // Resend invitation email
+    try {
+      await sendTeamInvitationEmail({
+        email: updatedInvitation.email,
+        inviterName: updatedInvitation.invitedBy.name || updatedInvitation.invitedBy.email,
+        businessName: updatedInvitation.business.name,
+        role: updatedInvitation.role,
+        invitationUrl: inviteLink
+      });
+      console.log(`✅ Davet emaili yeniden gönderildi: ${updatedInvitation.email}`);
+    } catch (emailError) {
+      console.error('⚠️ Davet emaili gönderilemedi:', emailError);
+      console.log(`📧 Manuel davet linki: ${inviteLink}`);
+    }
 
     res.json({
       success: true,
@@ -413,6 +492,7 @@ router.post('/invitations/:id/resend', authenticateToken, checkPermission('team:
 /**
  * GET /api/team/invitation/:token
  * Get invitation details by token (public)
+ * SECURITY: Normalized error messages (anti-enumeration)
  */
 router.get('/invitation/:token', async (req, res) => {
   try {
@@ -430,23 +510,10 @@ router.get('/invitation/:token', async (req, res) => {
       }
     });
 
-    if (!invitation) {
-      return res.status(404).json({ error: 'Davet bulunamadı' });
-    }
-
-    // Check if already accepted
-    if (invitation.acceptedAt) {
+    // Normalize error messages (anti-enumeration)
+    if (!invitation || invitation.acceptedAt || new Date() > invitation.expiresAt) {
       return res.status(400).json({
-        error: 'Bu davet zaten kabul edilmiş',
-        acceptedAt: invitation.acceptedAt
-      });
-    }
-
-    // Check if expired
-    if (new Date() > invitation.expiresAt) {
-      return res.status(400).json({
-        error: 'Bu davetin süresi dolmuş',
-        expiredAt: invitation.expiresAt
+        error: 'Davet linki geçersiz veya süresi dolmuş'
       });
     }
 
@@ -475,10 +542,11 @@ router.get('/invitation/:token', async (req, res) => {
 /**
  * POST /api/team/invitation/:token/accept
  * Accept an invitation (public)
+ * SECURITY: Rate limited (5/15min), replay prevention, transaction, normalized errors
  * - If user is logged in: Just add to business
  * - If new user: Requires name and password
  */
-router.post('/invitation/:token/accept', async (req, res) => {
+router.post('/invitation/:token/accept', invitationAcceptLimiter, async (req, res) => {
   try {
     const { token } = req.params;
     const { name, password } = req.body;
@@ -491,18 +559,9 @@ router.post('/invitation/:token/accept', async (req, res) => {
       }
     });
 
-    if (!invitation) {
-      return res.status(404).json({ error: 'Davet bulunamadı' });
-    }
-
-    // Check if already accepted
-    if (invitation.acceptedAt) {
-      return res.status(400).json({ error: 'Bu davet zaten kabul edilmiş' });
-    }
-
-    // Check if expired
-    if (new Date() > invitation.expiresAt) {
-      return res.status(400).json({ error: 'Bu davetin süresi dolmuş' });
+    // Normalize error messages (anti-enumeration + replay prevention)
+    if (!invitation || invitation.acceptedAt || new Date() > invitation.expiresAt) {
+      return res.status(400).json({ error: 'Davet linki geçersiz veya süresi dolmuş' });
     }
 
     // Check if email is already registered
@@ -543,27 +602,46 @@ router.post('/invitation/:token/accept', async (req, res) => {
       // Hash password
       const hashedPassword = await bcrypt.hash(password, 10);
 
-      // Create new user
-      // Team members don't need onboarding since they're joining an existing business
-      user = await prisma.user.create({
-        data: {
-          email: invitation.email,
-          password: hashedPassword,
-          name,
-          role: invitation.role,
-          businessId: invitation.businessId,
-          invitedById: invitation.invitedById,
-          invitedAt: invitation.createdAt,
-          acceptedAt: new Date(),
-          onboardingCompleted: true // Skip onboarding for invited team members
-        }
+      // TRANSACTION: Create user + invalidate invitation atomically
+      // SECURITY: Prevents race conditions and ensures replay protection
+      const result = await prisma.$transaction(async (tx) => {
+        // Create new user
+        const newUser = await tx.user.create({
+          data: {
+            email: invitation.email,
+            password: hashedPassword,
+            name,
+            role: invitation.role,
+            businessId: invitation.businessId,
+            invitedById: invitation.invitedById,
+            invitedAt: invitation.createdAt,
+            acceptedAt: new Date(),
+            onboardingCompleted: true // Skip onboarding for invited team members
+          }
+        });
+
+        // Hard invalidate token (replay prevention)
+        await tx.invitation.update({
+          where: { id: invitation.id },
+          data: {
+            acceptedAt: new Date(),
+            token: null // 🔒 Hard invalidate - prevents replay attacks
+          }
+        });
+
+        return newUser;
       });
+
+      user = result;
     }
 
-    // Mark invitation as accepted
-    await prisma.invitation.update({
-      where: { id: invitation.id },
-      data: { acceptedAt: new Date() }
+    // Audit log: Invitation accepted
+    await logInvitationAccepted({
+      newUserId: user.id,
+      businessId: invitation.businessId,
+      email: invitation.email,
+      role: invitation.role,
+      req
     });
 
     // Generate JWT token for the new user

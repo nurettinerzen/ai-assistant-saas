@@ -1112,6 +1112,90 @@ export const sendLowBalanceWarning = async ({ email, businessName, balance, thre
   return sendLowBalanceAlert(email, balance);
 };
 
+/**
+ * 21. Team Invitation Email
+ */
+export const sendTeamInvitationEmail = async ({ email, inviterName, businessName, role, invitationUrl }) => {
+  const subject = `${businessName} - Takıma Davet Edildiniz!`;
+
+  const roleNames = {
+    OWNER: 'Sahip',
+    MANAGER: 'Yönetici',
+    STAFF: 'Personel'
+  };
+
+  const roleName = roleNames[role] || role;
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f4f4f5; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0; }
+        .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
+        .content { background: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px; }
+        .button { display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white !important; text-decoration: none; border-radius: 8px; margin: 24px 0; font-weight: 600; font-size: 16px; }
+        .invite-box { background: #f9fafb; padding: 24px; border-radius: 8px; margin: 24px 0; border: 1px solid #e5e7eb; }
+        .role-badge { display: inline-block; padding: 6px 12px; background: #eff6ff; color: #1e40af; border-radius: 6px; font-weight: 600; font-size: 14px; margin: 8px 0; }
+        .warning { background: #fef3c7; padding: 16px; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 24px 0; }
+        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
+        .link { color: #667eea; word-break: break-all; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>🎉 Takıma Davet Edildiniz!</h1>
+        </div>
+        <div class="content">
+          <p>Merhaba,</p>
+          <p><strong>${inviterName}</strong> sizi <strong>${businessName}</strong> organizasyonuna davet etti.</p>
+
+          <div class="invite-box">
+            <p style="margin: 0 0 8px 0; color: #6b7280;">Davet Edilen Rol:</p>
+            <div class="role-badge">${roleName}</div>
+            <p style="margin: 16px 0 0 0; color: #6b7280; font-size: 14px;">
+              ${role === 'OWNER' ? 'Tam yönetici erişimi - tüm ayarları yönetebilir, takım ekleyebilir/çıkarabilir.' : ''}
+              ${role === 'MANAGER' ? 'Yönetici erişimi - asistanları yönetebilir, raporları görüntüleyebilir.' : ''}
+              ${role === 'STAFF' ? 'Personel erişimi - temel dashboard erişimi ve sınırlı yönetim.' : ''}
+            </p>
+          </div>
+
+          <p>Daveti kabul etmek için aşağıdaki butona tıklayın. Telyx.AI hesabınız yoksa, kabul sırasında yeni bir hesap oluşturabilirsiniz.</p>
+
+          <p style="text-align: center;">
+            <a href="${invitationUrl}" class="button">Daveti Kabul Et</a>
+          </p>
+
+          <div class="warning">
+            <p style="margin: 0;"><strong>⏰ Önemli:</strong> Bu davet linki 7 gün geçerlidir. Süre dolarsa yeni bir davet talep edebilirsiniz.</p>
+          </div>
+
+          <p style="font-size: 14px; color: #6b7280;">
+            Eğer butona tıklayamıyorsanız, aşağıdaki linki tarayıcınıza kopyalayabilirsiniz:<br>
+            <a href="${invitationUrl}" class="link">${invitationUrl}</a>
+          </p>
+
+          <p style="font-size: 14px; color: #6b7280;">
+            Bu daveti siz talep etmediyseniz, bu emaili görmezden gelebilirsiniz.
+          </p>
+        </div>
+        <div class="footer">
+          <p>Telyx.AI Ekibi<br>
+          <a href="https://telyx.ai" class="link">https://telyx.ai</a></p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return sendEmail(email, subject, html);
+};
+
 export default {
   sendVerificationEmail,
   sendPasswordResetEmail,
@@ -1132,5 +1216,6 @@ export default {
   sendOverageBillNotification,
   sendOverageLimitReachedEmail,
   sendAutoReloadFailedEmail,
-  sendLowBalanceWarning
+  sendLowBalanceWarning,
+  sendTeamInvitationEmail
 };

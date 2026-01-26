@@ -4,8 +4,97 @@
  */
 
 // Permission definitions for each role
+// SECURITY: Explicit permission list (NO wildcards)
+// Each permission must be explicitly listed for auditability
 export const ROLE_PERMISSIONS = {
-  OWNER: ['*'], // Full access to everything
+  OWNER: [
+    // Dashboard
+    'dashboard:view',
+    'dashboard:manage',
+
+    // Assistants
+    'assistants:view',
+    'assistants:create',
+    'assistants:edit',
+    'assistants:delete',
+
+    // Calls
+    'calls:view',
+    'calls:download',
+    'calls:delete',
+
+    // Campaigns
+    'campaigns:view',
+    'campaigns:create',
+    'campaigns:control',
+    'campaigns:delete',
+
+    // Knowledge Base
+    'knowledge:view',
+    'knowledge:edit',
+    'knowledge:delete',
+
+    // Integrations
+    'integrations:view',
+    'integrations:connect',
+    'integrations:disconnect',
+    'integrations:configure',
+
+    // Email
+    'email:view',
+    'email:send',
+    'email:manage',
+    'email:delete',
+
+    // WhatsApp
+    'whatsapp:view',
+    'whatsapp:send',
+    'whatsapp:manage',
+
+    // Widget
+    'widget:view',
+    'widget:edit',
+    'widget:manage',
+
+    // Team Management
+    'team:view',
+    'team:invite',
+    'team:edit',
+    'team:delete',
+
+    // Settings & Billing
+    'settings:view',
+    'settings:edit',
+    'settings:manage',
+    'billing:view',
+    'billing:manage',
+
+    // Analytics
+    'analytics:view',
+    'analytics:export',
+
+    // Phone Numbers
+    'phone:view',
+    'phone:manage',
+
+    // Voices
+    'voices:view',
+    'voices:manage',
+
+    // Chat Widget
+    'chat:view',
+    'chat:manage',
+
+    // Customer Data
+    'customers:view',
+    'customers:edit',
+    'customers:delete',
+
+    // Onboarding
+    'onboarding:view',
+    'onboarding:manage'
+  ],
+
   MANAGER: [
     'dashboard:view',
     'assistants:view', 'assistants:create', 'assistants:edit',
@@ -20,8 +109,11 @@ export const ROLE_PERMISSIONS = {
     'team:view', 'team:invite',
     'analytics:view',
     'phone:view',
-    'voices:view'
+    'voices:view',
+    'chat:view',
+    'customers:view', 'customers:edit'
   ],
+
   STAFF: [
     'dashboard:view',
     'assistants:view',
@@ -34,12 +126,15 @@ export const ROLE_PERMISSIONS = {
     'settings:view',
     'analytics:view',
     'phone:view',
-    'voices:view'
+    'voices:view',
+    'chat:view',
+    'customers:view'
   ]
 };
 
 /**
  * Check if a role has a specific permission
+ * SECURITY: Explicit permission check (NO wildcard support)
  * @param {string} role - User role (OWNER, MANAGER, STAFF)
  * @param {string} permission - Permission to check
  * @returns {boolean}
@@ -48,9 +143,7 @@ export const hasPermission = (role, permission) => {
   const permissions = ROLE_PERMISSIONS[role];
   if (!permissions) return false;
 
-  // OWNER has wildcard access
-  if (permissions.includes('*')) return true;
-
+  // Direct permission check
   return permissions.includes(permission);
 };
 

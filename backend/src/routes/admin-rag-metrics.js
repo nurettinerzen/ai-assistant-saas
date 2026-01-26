@@ -3,13 +3,21 @@
  *
  * Provides real-time metrics for Phase 4 pilot monitoring
  * All endpoints read from live database
+ *
+ * SECURITY: All routes require authentication + admin privileges
  */
 
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
+import { authenticateToken } from '../middleware/auth.js';
+import { isAdmin } from '../middleware/adminAuth.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
+
+// CRITICAL: Apply auth + admin middleware to ALL routes
+router.use(authenticateToken);
+router.use(isAdmin);
 
 // ============================================
 // GET /api/admin/email-rag/metrics/overview

@@ -75,6 +75,8 @@ import adminRoutes from './routes/admin.js';
 import callbackRoutes from './routes/callback.js';
 // Metrics (shadow mode, idempotency, health)
 import metricsRoutes from './routes/metrics.js';
+// Media (signed URL access)
+import mediaRoutes from './routes/media.js';
 
 
 // Import jobs
@@ -82,6 +84,9 @@ import { initMonthlyResetJob } from './jobs/monthlyReset.js';
 import { initializeStateCleanup } from './jobs/cleanup-expired-states.js';
 // Email sync is now MANUAL only - removed auto-sync job
 // import { initEmailSyncJob } from './jobs/emailSync.js';
+
+// Route protection enforcement
+import { assertAllRoutesProtected } from './middleware/routeEnforcement.js';
 
 dotenv.config();
 
@@ -186,6 +191,7 @@ app.use('/api/waitlist', waitlistRoutes);
 app.use('/api/onboarding', onboardingRoutes);
 app.use('/api/credits', creditsRoutes);
 app.use('/api/metrics', metricsRoutes); // Internal metrics (protected)
+app.use('/api/media', mediaRoutes); // Signed URL media access (secure)
 // Balance and Usage (new pricing system)
 app.use('/api/balance', balanceRoutes);
 app.use('/api/usage', usageRoutes);
@@ -208,6 +214,22 @@ app.use((err, req, res, next) => {
     message: process.env.NODE_ENV === 'development' ? err.message : undefined
   });
 });
+
+// ============================================================================
+// SECURITY: Route Protection Enforcement
+// ============================================================================
+// Check all routes are protected (except public ones)
+// FAILS in staging/dev/CI, WARNS in production
+if (process.env.NODE_ENV !== 'test') {
+  try {
+    assertAllRoutesProtected(app);
+  } catch (error) {
+    console.error(error.message);
+    if (process.env.NODE_ENV !== 'production') {
+      process.exit(1); // Fail deployment in staging/dev
+    }
+  }
+}
 
 // Initialize cron jobs
 if (process.env.NODE_ENV !== 'test') {

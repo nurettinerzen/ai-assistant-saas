@@ -6,11 +6,10 @@ const prisma = new PrismaClient();
 export const authenticateToken = async (req, res, next) => {
   try {
     const authHeader = req.headers['authorization'];
-    // Also accept token from query param (for audio/media elements that can't set headers)
-    const token = (authHeader && authHeader.split(' ')[1]) || req.query.token;
+    const token = authHeader && authHeader.split(' ')[1];
 
     if (!token) {
-      return res.status(401).json({ error: 'Access token required' });
+      return res.status(401).json({ error: 'Authorization header required' });
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
