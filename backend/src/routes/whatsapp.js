@@ -370,6 +370,9 @@ async function generateAIResponse(business, phoneNumber, messageBody, context = 
     const language = business?.language || 'TR';
     const subscription = context.subscription;
 
+    // Conversation key for in-memory cache
+    const conversationKey = `${business.id}:${phoneNumber}`;
+
     // Get universal session ID
     const sessionId = await getUniversalSession(business.id, 'WHATSAPP', phoneNumber);
 
