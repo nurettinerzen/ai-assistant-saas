@@ -33,7 +33,7 @@ export function emitTurnMetrics(metrics) {
   } = metrics;
 
   // Console log (dev)
-  console.log('📊 [TurnMetrics]', {
+  const metricsLog = {
     sessionId,
     channel,
     duration: `${turnDuration}ms`,
@@ -42,9 +42,15 @@ export function emitTurnMetrics(metrics) {
     toolsCalled: toolsCalled.length,
     hadToolSuccess,
     hadToolFailure,
-    tokens: { input: inputTokens, output: outputTokens },
-    error: error || null
-  });
+    tokens: { input: inputTokens, output: outputTokens }
+  };
+
+  // Only include error if it exists
+  if (error) {
+    metricsLog.error = error;
+  }
+
+  console.log('📊 [TurnMetrics]', metricsLog);
 
   // Log routing decision
   if (routing) {
