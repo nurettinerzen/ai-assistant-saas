@@ -22,7 +22,7 @@ export default {
       },
       topic: {
         type: 'string',
-        description: 'Görüşme konusu özeti'
+        description: 'Görüşme konusu özeti. OPSIYONEL - boş bırakılırsa sistem otomatik üretir.'
       },
       priority: {
         type: 'string',
@@ -30,7 +30,7 @@ export default {
         description: 'Öncelik seviyesi. Şikayet için HIGH, normal talepler için NORMAL'
       }
     },
-    required: ['customerName', 'customerPhone', 'topic']
+    required: ['customerName', 'customerPhone']
   },
   // Meta information
   metadata: {

@@ -18,6 +18,7 @@ export async function executeToolLoop(params) {
   const {
     chat,
     userMessage,
+    conversationHistory, // For topic generation in tools
     gatedTools,
     hasTools,
     state,
@@ -136,6 +137,7 @@ export async function executeToolLoop(params) {
               sessionId,
               messageId, // For tool-level idempotency
               channel,
+              conversationHistory, // For topic generation in create_callback
               extractedSlots: state.extractedSlots || {} // Pass extractedSlots for argument normalization
             });
           },

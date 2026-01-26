@@ -229,6 +229,7 @@ export async function handleIncomingMessage({
     const toolLoopResult = await executeToolLoop({
       chat,
       userMessage,
+      conversationHistory, // CRITICAL: Pass for topic generation in create_callback
       gatedTools,
       hasTools,
       state,
