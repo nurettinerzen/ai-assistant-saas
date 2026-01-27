@@ -9,8 +9,8 @@ import { buildAssistantPrompt, getActiveTools as getPromptBuilderTools } from '.
 import { getActiveToolsForElevenLabs, getActiveTools } from '../tools/index.js';
 // ✅ Central voice mapping
 import { getElevenLabsVoiceId } from '../constants/voices.js';
-// ✅ Plan configuration
-import { getRegionalPricing } from '../config/plans.js';
+// ✅ Plan configuration - P0-A: Single source of truth
+import { getEffectivePlanConfig, checkLimit } from '../services/planConfig.js';
 
 const router = express.Router();
 
@@ -168,32 +168,8 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
       });
     }
 
-    // RACE CONDITION PROTECTION: Lock + count within transaction
-    const limitCheck = await prisma.$transaction(async (tx) => {
-      // Lock business row to serialize assistant creation for this business
-      await tx.business.findUnique({
-        where: { id: businessId },
-        select: { id: true }
-      });
-
-      // Count active assistants within transaction (only isActive=true)
-      const count = await tx.assistant.count({
-        where: { businessId, isActive: true }
-      });
-
-      return count;
-    });
-
-    // P0-2: Enforce assistant limits (PAYG:5, STARTER:5, PRO:10, ENTERPRISE:25)
-    // CRITICAL FIX: Check enterpriseAssistants override first (Scenario 3 bug)
-    const country = subscription.business?.country || 'TR';
-    const regional = getRegionalPricing(country);
-    const planConfig = regional.plans[subscription.plan];
-
-    // Enterprise override takes precedence over plan default
-    const assistantsLimit = subscription.enterpriseAssistants
-      || planConfig?.assistantsLimit
-      || 1;
+    // P0-A: Use single source of truth for plan config
+    const planConfig = getEffectivePlanConfig(subscription);
 
     // FREE plan: No assistants allowed
     if (subscription.plan === 'FREE') {
@@ -203,13 +179,30 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
       });
     }
 
-    // Check limit (null or -1 means unlimited for Enterprise custom)
-    if (assistantsLimit && assistantsLimit !== -1 && limitCheck >= assistantsLimit) {
+    // RACE CONDITION PROTECTION: Lock + count within transaction
+    const assistantCount = await prisma.$transaction(async (tx) => {
+      // Lock business row to serialize assistant creation for this business
+      await tx.business.findUnique({
+        where: { id: businessId },
+        select: { id: true }
+      });
+
+      // Count active assistants within transaction (only isActive=true)
+      return await tx.assistant.count({
+        where: { businessId, isActive: true }
+      });
+    });
+
+    // Check limit using unified config
+    const assistantsLimit = planConfig.assistantsLimit;
+    const isUnlimited = assistantsLimit === null || assistantsLimit === -1;
+
+    if (!isUnlimited && assistantCount >= assistantsLimit) {
       return res.status(403).json({
         error: `ASSISTANT_LIMIT_REACHED`,
         message: `You've reached your plan limit of ${assistantsLimit} assistant${assistantsLimit > 1 ? 's' : ''}. Upgrade to create more.`,
         messageTR: `${assistantsLimit} asistan limitine ulaştınız. Daha fazla oluşturmak için planınızı yükseltin.`,
-        currentCount: limitCheck,
+        currentCount: assistantCount,
         limit: assistantsLimit,
         plan: subscription.plan
       });

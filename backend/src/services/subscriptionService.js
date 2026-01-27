@@ -19,6 +19,7 @@ import {
   getAssistantsLimit,
   getPricePerMinute
 } from '../config/plans.js';
+import { getEffectivePlanConfig } from './planConfig.js';
 
 const prisma = new PrismaClient();
 
@@ -314,8 +315,9 @@ export async function canMakeCall_OLD(businessId) {
         };
       }
 
-      // Enterprise dahil dakika kontrolü
-      const enterpriseMinutes = subscription.enterpriseMinutes || 1000;
+      // P0-A: Use unified plan config for enterprise minutes
+      const planConfig = getEffectivePlanConfig(subscription);
+      const enterpriseMinutes = planConfig.includedMinutes;
       const remainingMinutes = enterpriseMinutes - (subscription.includedMinutesUsed || 0);
 
       if (remainingMinutes <= 0) {

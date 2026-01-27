@@ -25,6 +25,7 @@ import {
   getIncludedMinutes,
   getFixedOveragePrice
 } from '../config/plans.js';
+import { getEffectivePlanConfig } from './planConfig.js';
 
 const prisma = new PrismaClient();
 
@@ -278,17 +279,15 @@ export async function canMakeCallWithBalance(businessId) {
       return { canMakeCall: false, reason: 'SUBSCRIPTION_INACTIVE' };
     }
 
-    // Concurrent call limit (check enterprise override first)
-    const concurrentLimit = subscription.enterpriseConcurrent
-      || subscription.concurrentLimit
-      || 1;
+    // P0-A: Use unified plan config for concurrent limit
+    const planConfig = getEffectivePlanConfig(subscription);
 
-    if (subscription.activeCalls >= concurrentLimit) {
+    if (subscription.activeCalls >= planConfig.concurrentLimit) {
       return {
         canMakeCall: false,
         reason: 'CONCURRENT_LIMIT_REACHED',
         activeCalls: subscription.activeCalls,
-        limit: concurrentLimit
+        limit: planConfig.concurrentLimit
       };
     }
 
