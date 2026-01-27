@@ -106,24 +106,14 @@ export const sendPasswordResetEmail = async (email, resetUrl) => {
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f4f4f5; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0; }
-        .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
-        .content { background: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px; }
-        .button { display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white !important; text-decoration: none; border-radius: 8px; margin: 24px 0; font-weight: 600; font-size: 16px; }
-        .warning { background: #fef3c7; padding: 16px; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 24px 0; }
-        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
-        .link { color: #667eea; word-break: break-all; }
-      </style>
+      
     </head>
-    <body>
-      <div class="container">
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333333; margin: 0; padding: 0; background-color: #f4f4f5;">
+      <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background-color: #667eea; color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
           <h1 style="margin: 0; font-size: 24px; font-weight: 600; color: #ffffff;">Şifre Sıfırlama</h1>
         </div>
-        <div class="content">
+        <div style="background-color: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px;">
           <p>Merhaba,</p>
           <p>Şifrenizi sıfırlamak için bir talep aldık. Yeni şifre belirlemek için aşağıdaki butona tıklayın:</p>
 
@@ -131,7 +121,7 @@ export const sendPasswordResetEmail = async (email, resetUrl) => {
             <a href="${resetUrl}" style="display: inline-block; padding: 16px 48px; background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; margin: 24px 0; font-weight: 600; font-size: 16px;">Şifremi Sıfırla</a>
           </p>
 
-          <div class="warning">
+          <div style="background-color: #fef3c7; padding: 16px; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 24px 0;">
             <p style="margin: 0;"><strong>⏰ Önemli:</strong> Bu link 1 saat geçerlidir.</p>
           </div>
 
@@ -139,9 +129,9 @@ export const sendPasswordResetEmail = async (email, resetUrl) => {
             Eğer bu talebi siz yapmadıysanız, bu emaili görmezden gelebilirsiniz. Şifreniz değişmeyecektir.
           </p>
         </div>
-        <div class="footer">
+        <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 14px;">
           <p>Telyx.AI Ekibi<br>
-          <a href="https://telyx.ai" class="link">https://telyx.ai</a></p>
+          <a href="https://telyx.ai" style="color: #667eea; word-break: break-all;">https://telyx.ai</a></p>
         </div>
       </div>
     </body>
@@ -162,34 +152,22 @@ export const sendWelcomeEmail = async (email, userName) => {
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f4f4f5; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0; }
-        .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
-        .content { background: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px; }
-        .button { display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white !important; text-decoration: none; border-radius: 8px; margin: 24px 0; font-weight: 600; font-size: 16px; }
-        .steps { background: #f9fafb; padding: 20px; border-radius: 8px; margin: 24px 0; }
-        .step { margin: 12px 0; padding-left: 28px; position: relative; }
-        .step:before { content: '✓'; position: absolute; left: 0; color: #667eea; font-weight: bold; }
-        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
-        .link { color: #667eea; }
-      </style>
+      
     </head>
-    <body>
-      <div class="container">
-        <div class="header">
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333333; margin: 0; padding: 0; background-color: #f4f4f5;">
+      <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
           <h1>Telyx.AI'a Hoş Geldiniz!</h1>
         </div>
-        <div class="content">
+        <div style="background-color: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px;">
           <p>Merhaba${userName ? ` <strong>${userName}</strong>` : ''},</p>
           <p>Telyx.AI ailesine hoş geldiniz! Hesabınız aktif ve kullanıma hazır.</p>
 
-          <div class="steps">
+          <div style="background-color: #f9fafb; padding: 20px; border-radius: 8px; margin: 24px 0;">
             <h3 style="margin-top: 0;">Başlamanız için birkaç adım:</h3>
-            <div class="step">İlk asistanınızı oluşturun</div>
-            <div class="step">Kanallarınızı bağlayın (WhatsApp, Telefon, Chat)</div>
-            <div class="step">Bilgi bankasına dökümanlarınızı ekleyin</div>
+            <div style="padding: 8px 0; color: #333333;">İlk asistanınızı oluşturun</div>
+            <div style="padding: 8px 0; color: #333333;">Kanallarınızı bağlayın (WhatsApp, Telefon, Chat)</div>
+            <div style="padding: 8px 0; color: #333333;">Bilgi bankasına dökümanlarınızı ekleyin</div>
           </div>
 
           <p style="background: #ecfdf5; padding: 16px; border-radius: 8px; border-left: 4px solid #10b981;">
@@ -198,16 +176,16 @@ export const sendWelcomeEmail = async (email, userName) => {
           </p>
 
           <p style="text-align: center;">
-            <a href="${FRONTEND_URL}/dashboard" class="button">Dashboard'a Git</a>
+            <a href="${FRONTEND_URL}/dashboard" style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Dashboard'a Git</a>
           </p>
 
           <p style="font-size: 14px; color: #6b7280;">
-            Sorularınız mı var? <a href="mailto:info@telyx.ai" class="link">info@telyx.ai</a> adresinden bize ulaşabilirsiniz.
+            Sorularınız mı var? <a href="mailto:info@telyx.ai" style="color: #667eea; word-break: break-all;">info@telyx.ai</a> adresinden bize ulaşabilirsiniz.
           </p>
         </div>
-        <div class="footer">
+        <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 14px;">
           <p>Telyx.AI Ekibi<br>
-          <a href="https://telyx.ai" class="link">https://telyx.ai</a></p>
+          <a href="https://telyx.ai" style="color: #667eea; word-break: break-all;">https://telyx.ai</a></p>
         </div>
       </div>
     </body>
@@ -228,45 +206,33 @@ export const sendLowBalanceAlert = async (email, currentBalance) => {
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f4f4f5; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0; }
-        .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
-        .content { background: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px; }
-        .button { display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white !important; text-decoration: none; border-radius: 8px; margin: 24px 0; font-weight: 600; font-size: 16px; }
-        .balance-box { background: #fef3c7; padding: 24px; border-radius: 8px; text-align: center; margin: 24px 0; }
-        .balance { font-size: 32px; font-weight: bold; color: #d97706; }
-        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
-        .link { color: #667eea; }
-        .tip { background: #eff6ff; padding: 16px; border-radius: 8px; border-left: 4px solid #3b82f6; margin: 24px 0; }
-      </style>
+      
     </head>
-    <body>
-      <div class="container">
-        <div class="header">
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333333; margin: 0; padding: 0; background-color: #f4f4f5;">
+      <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
           <h1>⚠️ Bakiyeniz Azalıyor</h1>
         </div>
-        <div class="content">
+        <div style="background-color: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px;">
           <p>Merhaba,</p>
           <p>Telyx.AI bakiyeniz düşük seviyeye geldi. Kesintisiz hizmet için bakiye yüklemenizi öneririz.</p>
 
-          <div class="balance-box">
+          <div style="background-color: #fef3c7; padding: 24px; border-radius: 8px; text-align: center; margin: 24px 0;">
             <p style="margin: 0 0 8px 0; color: #6b7280;">Mevcut Bakiye:</p>
-            <p class="balance">${currentBalance} TL</p>
+            <p style="font-size: 32px; font-weight: bold; color: #d97706;">${currentBalance} TL</p>
           </div>
 
           <p style="text-align: center;">
-            <a href="${FRONTEND_URL}/dashboard/billing" class="button">Bakiye Yükle</a>
+            <a href="${FRONTEND_URL}/dashboard/billing" style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Bakiye Yükle</a>
           </p>
 
-          <div class="tip">
+          <div style="background-color: #eff6ff; padding: 16px; border-radius: 8px; border-left: 4px solid #3b82f6; margin: 24px 0;">
             <p style="margin: 0;"><strong>💡 İpucu:</strong> Otomatik yükleme özelliğini açarak bakiyenizin bitmesini önleyebilirsiniz.</p>
           </div>
         </div>
-        <div class="footer">
+        <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 14px;">
           <p>Telyx.AI Ekibi<br>
-          <a href="https://telyx.ai" class="link">https://telyx.ai</a></p>
+          <a href="https://telyx.ai" style="color: #667eea; word-break: break-all;">https://telyx.ai</a></p>
         </div>
       </div>
     </body>
@@ -287,39 +253,27 @@ export const sendOverageInvoice = async (email, overageMinutes, amount, billingP
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f4f4f5; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0; }
-        .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
-        .content { background: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px; }
-        .button { display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white !important; text-decoration: none; border-radius: 8px; margin: 24px 0; font-weight: 600; font-size: 16px; }
-        .invoice-box { background: #f9fafb; padding: 24px; border-radius: 8px; margin: 24px 0; }
-        .invoice-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #e5e7eb; }
-        .invoice-row:last-child { border-bottom: none; font-weight: bold; font-size: 18px; }
-        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
-        .link { color: #667eea; }
-      </style>
+      
     </head>
-    <body>
-      <div class="container">
-        <div class="header">
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333333; margin: 0; padding: 0; background-color: #f4f4f5;">
+      <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
           <h1>Aylık Aşım Faturanız</h1>
         </div>
-        <div class="content">
+        <div style="background-color: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px;">
           <p>Merhaba,</p>
           <p>${billingPeriod || 'Bu ay'} dönemi için aşım faturanız oluşturuldu.</p>
 
-          <div class="invoice-box">
-            <div class="invoice-row">
+          <div style="background-color: #f9fafb; padding: 24px; border-radius: 8px; margin: 24px 0;">
+            <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
               <span>Aşım Dakikası:</span>
               <span>${overageMinutes} dk</span>
             </div>
-            <div class="invoice-row">
+            <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
               <span>Birim Fiyat:</span>
               <span>23 TL/dk</span>
             </div>
-            <div class="invoice-row">
+            <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
               <span>Toplam Tutar:</span>
               <span>${amount} TL</span>
             </div>
@@ -330,12 +284,12 @@ export const sendOverageInvoice = async (email, overageMinutes, amount, billingP
           </p>
 
           <p style="text-align: center;">
-            <a href="${FRONTEND_URL}/dashboard/billing" class="button">Fatura Detayları</a>
+            <a href="${FRONTEND_URL}/dashboard/billing" style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Fatura Detayları</a>
           </p>
         </div>
-        <div class="footer">
+        <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 14px;">
           <p>Telyx.AI Ekibi<br>
-          <a href="https://telyx.ai" class="link">https://telyx.ai</a></p>
+          <a href="https://telyx.ai" style="color: #667eea; word-break: break-all;">https://telyx.ai</a></p>
         </div>
       </div>
     </body>
@@ -356,32 +310,22 @@ export const sendEmailChangeVerification = async (newEmail, verificationUrl) => 
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f4f4f5; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0; }
-        .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
-        .content { background: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px; }
-        .button { display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white !important; text-decoration: none; border-radius: 8px; margin: 24px 0; font-weight: 600; font-size: 16px; }
-        .warning { background: #fef3c7; padding: 16px; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 24px 0; }
-        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
-        .link { color: #667eea; word-break: break-all; }
-      </style>
+      
     </head>
-    <body>
-      <div class="container">
-        <div class="header">
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333333; margin: 0; padding: 0; background-color: #f4f4f5;">
+      <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
           <h1>Yeni Email Doğrulama</h1>
         </div>
-        <div class="content">
+        <div style="background-color: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px;">
           <p>Merhaba,</p>
           <p>Email adresinizi <strong>${newEmail}</strong> olarak değiştirmek istediğinizi gördük. Bu değişikliği tamamlamak için lütfen yeni email adresinizi doğrulayın.</p>
 
           <p style="text-align: center;">
-            <a href="${verificationUrl}" class="button">Yeni Email Adresimi Doğrula</a>
+            <a href="${verificationUrl}" style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Yeni Email Adresimi Doğrula</a>
           </p>
 
-          <div class="warning">
+          <div style="background-color: #fef3c7; padding: 16px; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 24px 0;">
             <p style="margin: 0;"><strong>⏰ Önemli:</strong> Bu link 24 saat geçerlidir.</p>
           </div>
 
@@ -389,9 +333,9 @@ export const sendEmailChangeVerification = async (newEmail, verificationUrl) => 
             Bu işlemi siz başlatmadıysanız, lütfen bu emaili dikkate almayın ve hesap güvenliğinizi kontrol edin.
           </p>
         </div>
-        <div class="footer">
+        <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 14px;">
           <p>Telyx.AI Ekibi<br>
-          <a href="https://telyx.ai" class="link">https://telyx.ai</a></p>
+          <a href="https://telyx.ai" style="color: #667eea; word-break: break-all;">https://telyx.ai</a></p>
         </div>
       </div>
     </body>
@@ -412,42 +356,32 @@ export const sendAssistantCreatedEmail = async (email, businessName) => {
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f4f4f5; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0; }
-        .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
-        .content { background: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px; }
-        .button { display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white !important; text-decoration: none; border-radius: 8px; margin: 24px 0; font-weight: 600; font-size: 16px; }
-        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
-        .link { color: #667eea; }
-        .tip { background: #eff6ff; padding: 16px; border-radius: 8px; border-left: 4px solid #3b82f6; margin: 24px 0; }
-      </style>
+      
     </head>
-    <body>
-      <div class="container">
-        <div class="header">
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333333; margin: 0; padding: 0; background-color: #f4f4f5;">
+      <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
           <h1>🎤 AI Asistanınız Hazır!</h1>
         </div>
-        <div class="content">
+        <div style="background-color: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px;">
           <p>Merhaba${businessName ? ` ${businessName}` : ''},</p>
           <p>Harika haber! AI asistanınız oluşturuldu ve test etmeye hazır.</p>
 
-          <div class="tip">
+          <div style="background-color: #eff6ff; padding: 16px; border-radius: 8px; border-left: 4px solid #3b82f6; margin: 24px 0;">
             <p style="margin: 0;"><strong>🎯 Şimdi deneyin:</strong><br>
             Dashboard'daki "Asistanı Test Et" butonuna tıklayarak AI'nızla konuşabilirsiniz.</p>
           </div>
 
           <p style="text-align: center;">
-            <a href="${FRONTEND_URL}/dashboard/assistant" class="button">Asistanı Test Et</a>
+            <a href="${FRONTEND_URL}/dashboard/assistant" style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Asistanı Test Et</a>
           </p>
 
           <p><strong>Gerçek aramalar için hazır mısınız?</strong><br>
           STARTER planına geçerek telefon numaranızı alın ve 7/24 arama almaya başlayın!</p>
         </div>
-        <div class="footer">
+        <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 14px;">
           <p>Telyx.AI Ekibi<br>
-          <a href="https://telyx.ai" class="link">https://telyx.ai</a></p>
+          <a href="https://telyx.ai" style="color: #667eea; word-break: break-all;">https://telyx.ai</a></p>
         </div>
       </div>
     </body>
@@ -468,31 +402,20 @@ export const sendPhoneActivatedEmail = async (email, businessName, phoneNumber) 
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f4f4f5; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0; }
-        .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
-        .content { background: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px; }
-        .button { display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white !important; text-decoration: none; border-radius: 8px; margin: 24px 0; font-weight: 600; font-size: 16px; }
-        .phone-box { background: #ecfdf5; padding: 24px; border-radius: 8px; text-align: center; margin: 24px 0; border: 2px solid #10b981; }
-        .phone { font-size: 32px; font-weight: bold; color: #059669; }
-        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
-        .link { color: #667eea; }
-      </style>
+      
     </head>
-    <body>
-      <div class="container">
-        <div class="header">
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333333; margin: 0; padding: 0; background-color: #f4f4f5;">
+      <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
           <h1>📞 Telefon Numaranız Aktif!</h1>
         </div>
-        <div class="content">
+        <div style="background-color: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px;">
           <p>Merhaba${businessName ? ` ${businessName}` : ''},</p>
           <p>Tebrikler! AI asistanınız artık canlı ve aramaları yanıtlıyor.</p>
 
-          <div class="phone-box">
+          <div style="background-color: #ecfdf5; padding: 24px; border-radius: 8px; text-align: center; margin: 24px 0; border: 2px solid: #10b981;">
             <p style="margin: 0 0 8px 0; color: #6b7280;">Telefon Numaranız:</p>
-            <p class="phone">${phoneNumber}</p>
+            <p style="font-size: 32px; font-weight: bold; color: #059669;">${phoneNumber}</p>
             <p style="margin: 8px 0 0 0; color: #6b7280; font-size: 14px;">Bu numarayı müşterilerinizle paylaşın!</p>
           </div>
 
@@ -505,16 +428,16 @@ export const sendPhoneActivatedEmail = async (email, businessName, phoneNumber) 
           </ul>
 
           <p style="text-align: center;">
-            <a href="${FRONTEND_URL}/dashboard" class="button">Dashboard'a Git</a>
+            <a href="${FRONTEND_URL}/dashboard" style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Dashboard'a Git</a>
           </p>
 
           <p style="background: #eff6ff; padding: 16px; border-radius: 8px; border-left: 4px solid #3b82f6;">
             <strong>💡 Pro İpucu:</strong> Bu numarayı kendiniz arayarak asistanınızı test edin!
           </p>
         </div>
-        <div class="footer">
+        <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 14px;">
           <p>Telyx.AI Ekibi<br>
-          <a href="https://telyx.ai" class="link">https://telyx.ai</a></p>
+          <a href="https://telyx.ai" style="color: #667eea; word-break: break-all;">https://telyx.ai</a></p>
         </div>
       </div>
     </body>
@@ -535,33 +458,21 @@ export const sendLimitWarningEmail = async (email, businessName, limitType, usag
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f4f4f5; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0; }
-        .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
-        .content { background: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px; }
-        .button { display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white !important; text-decoration: none; border-radius: 8px; margin: 24px 0; font-weight: 600; font-size: 16px; }
-        .usage-box { background: #fef3c7; padding: 24px; border-radius: 8px; margin: 24px 0; }
-        .progress-bar { background: #e5e7eb; border-radius: 10px; height: 24px; position: relative; overflow: hidden; margin: 16px 0; }
-        .progress-fill { background: linear-gradient(90deg, #f59e0b, #ef4444); height: 100%; border-radius: 10px; }
-        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
-        .link { color: #667eea; }
-      </style>
+      
     </head>
-    <body>
-      <div class="container">
-        <div class="header">
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333333; margin: 0; padding: 0; background-color: #f4f4f5;">
+      <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
           <h1>⚠️ Kullanım Uyarısı</h1>
         </div>
-        <div class="content">
+        <div style="background-color: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px;">
           <p>Merhaba${businessName ? ` ${businessName}` : ''},</p>
           <p>Aylık ${limitType === 'minutes' ? 'dakika' : 'arama'} limitinizin <strong>${usage.percentage}%</strong>'ini kullandınız.</p>
 
-          <div class="usage-box">
+          <div style="background-color: #fef3c7; padding: 24px; border-radius: 8px; margin: 24px 0;">
             <h3 style="margin-top: 0;">Mevcut Kullanım:</h3>
-            <div class="progress-bar">
-              <div class="progress-fill" style="width: ${usage.percentage}%;"></div>
+            <div style="background-color: #e5e7eb; height: 24px; border-radius: 12px; overflow: hidden; margin: 16px 0;">
+              <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); height: 100%; transition: width 0.3s ease; width: ${usage.percentage}%;"></div>
             </div>
             <p style="text-align: center; margin: 0;"><strong>${usage.used} / ${usage.limit}</strong> ${limitType === 'minutes' ? 'dakika' : 'arama'}</p>
           </div>
@@ -569,12 +480,12 @@ export const sendLimitWarningEmail = async (email, businessName, limitType, usag
           <p>Hizmet kesintisini önlemek için planınızı yükseltmeyi veya bakiye yüklemeyi düşünebilirsiniz.</p>
 
           <p style="text-align: center;">
-            <a href="${FRONTEND_URL}/dashboard/settings?tab=billing" class="button">Şimdi Yükselt</a>
+            <a href="${FRONTEND_URL}/dashboard/settings?tab=billing" style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Şimdi Yükselt</a>
           </p>
         </div>
-        <div class="footer">
+        <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 14px;">
           <p>Telyx.AI Ekibi<br>
-          <a href="https://telyx.ai" class="link">https://telyx.ai</a></p>
+          <a href="https://telyx.ai" style="color: #667eea; word-break: break-all;">https://telyx.ai</a></p>
         </div>
       </div>
     </body>
@@ -596,28 +507,18 @@ export const sendLimitReachedEmail = async (email, businessName, limitType, usag
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f4f4f5; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0; }
-        .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
-        .content { background: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px; }
-        .button { display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white !important; text-decoration: none; border-radius: 8px; margin: 24px 0; font-weight: 600; font-size: 16px; }
-        .warning-box { background: #fef2f2; padding: 20px; border-radius: 8px; border-left: 4px solid #ef4444; margin: 24px 0; }
-        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
-        .link { color: #667eea; }
-      </style>
+      
     </head>
-    <body>
-      <div class="container">
-        <div class="header">
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333333; margin: 0; padding: 0; background-color: #f4f4f5;">
+      <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
           <h1>🚫 Limite Ulaşıldı</h1>
         </div>
-        <div class="content">
+        <div style="background-color: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px;">
           <p>Merhaba${businessName ? ` ${businessName}` : ''},</p>
           <p>${currentPlan} planınızdaki aylık <strong>${usage.limit} ${limitType === 'minutes' ? 'dakika' : 'arama'}</strong> limitine ulaştınız.</p>
 
-          <div class="warning-box">
+          <div style="background-color: #fef2f2; padding: 20px; border-radius: 8px; border-left: 4px solid #ef4444; margin: 24px 0;">
             <p style="margin: 0;"><strong>⚠️ Bu ne anlama geliyor:</strong><br>
             ${limitType === 'minutes' ? 'Gelecek aya kadar veya yükseltme yapana kadar yeni aramalar yanıtlanmayacak.' : 'Bu ay daha fazla arama alamazsınız.'}</p>
           </div>
@@ -630,16 +531,16 @@ export const sendLimitReachedEmail = async (email, businessName, limitType, usag
           </ul>
 
           <p style="text-align: center;">
-            <a href="${FRONTEND_URL}/dashboard/settings?tab=billing" class="button">${nextPlan}'ya Yükselt</a>
+            <a href="${FRONTEND_URL}/dashboard/settings?tab=billing" style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">${nextPlan}'ya Yükselt</a>
           </p>
 
           <p style="font-size: 14px; color: #6b7280;">
             Kullanımınız ayın 1'inde sıfırlanacak.
           </p>
         </div>
-        <div class="footer">
+        <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 14px;">
           <p>Telyx.AI Ekibi<br>
-          <a href="https://telyx.ai" class="link">https://telyx.ai</a></p>
+          <a href="https://telyx.ai" style="color: #667eea; word-break: break-all;">https://telyx.ai</a></p>
         </div>
       </div>
     </body>
@@ -660,39 +561,27 @@ export const sendPaymentSuccessEmail = async (email, businessName, amount, plan)
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f4f4f5; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0; }
-        .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
-        .content { background: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px; }
-        .button { display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white !important; text-decoration: none; border-radius: 8px; margin: 24px 0; font-weight: 600; font-size: 16px; }
-        .invoice-box { background: #f9fafb; padding: 24px; border-radius: 8px; margin: 24px 0; border: 1px solid #e5e7eb; }
-        .invoice-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #e5e7eb; }
-        .invoice-row:last-child { border-bottom: none; }
-        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
-        .link { color: #667eea; }
-      </style>
+      
     </head>
-    <body>
-      <div class="container">
-        <div class="header">
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333333; margin: 0; padding: 0; background-color: #f4f4f5;">
+      <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
           <h1>✅ Ödeme Başarılı</h1>
         </div>
-        <div class="content">
+        <div style="background-color: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px;">
           <p>Merhaba${businessName ? ` ${businessName}` : ''},</p>
           <p>Teşekkürler! Ödemeniz başarıyla işlendi.</p>
 
-          <div class="invoice-box">
-            <div class="invoice-row">
+          <div style="background-color: #f9fafb; padding: 24px; border-radius: 8px; margin: 24px 0;">
+            <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
               <span><strong>Plan:</strong></span>
               <span>${plan}</span>
             </div>
-            <div class="invoice-row">
+            <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
               <span><strong>Tutar:</strong></span>
               <span>${amount} TL</span>
             </div>
-            <div class="invoice-row">
+            <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
               <span><strong>Durum:</strong></span>
               <span style="color: #10b981;"><strong>ÖDENDİ</strong></span>
             </div>
@@ -701,16 +590,16 @@ export const sendPaymentSuccessEmail = async (email, businessName, amount, plan)
           <p>Aboneliğiniz aktif ve asistanınız arama almaya hazır!</p>
 
           <p style="text-align: center;">
-            <a href="${FRONTEND_URL}/dashboard" class="button">Dashboard'a Git</a>
+            <a href="${FRONTEND_URL}/dashboard" style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Dashboard'a Git</a>
           </p>
 
           <p style="font-size: 14px; color: #6b7280;">
             Faturanıza ödeme ayarlarından ulaşabilirsiniz.
           </p>
         </div>
-        <div class="footer">
+        <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 14px;">
           <p>Telyx.AI Ekibi<br>
-          <a href="https://telyx.ai" class="link">https://telyx.ai</a></p>
+          <a href="https://telyx.ai" style="color: #667eea; word-break: break-all;">https://telyx.ai</a></p>
         </div>
       </div>
     </body>
@@ -731,28 +620,18 @@ export const sendPaymentFailedEmail = async (email, businessName) => {
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f4f4f5; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0; }
-        .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
-        .content { background: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px; }
-        .button { display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white !important; text-decoration: none; border-radius: 8px; margin: 24px 0; font-weight: 600; font-size: 16px; }
-        .warning-box { background: #fef2f2; padding: 20px; border-radius: 8px; border-left: 4px solid #ef4444; margin: 24px 0; }
-        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
-        .link { color: #667eea; }
-      </style>
+      
     </head>
-    <body>
-      <div class="container">
-        <div class="header">
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333333; margin: 0; padding: 0; background-color: #f4f4f5;">
+      <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
           <h1>❌ Ödeme Başarısız</h1>
         </div>
-        <div class="content">
+        <div style="background-color: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px;">
           <p>Merhaba${businessName ? ` ${businessName}` : ''},</p>
           <p>Son ödemenizi işleyemedik. Bu çözülmezse hizmetiniz kesintiye uğrayabilir.</p>
 
-          <div class="warning-box">
+          <div style="background-color: #fef2f2; padding: 20px; border-radius: 8px; border-left: 4px solid #ef4444; margin: 24px 0;">
             <p style="margin: 0;"><strong>⚠️ İşlem Gerekli:</strong><br>
             Telyx kullanmaya devam etmek için lütfen ödeme yönteminizi güncelleyin.</p>
           </div>
@@ -765,16 +644,16 @@ export const sendPaymentFailedEmail = async (email, businessName) => {
           </ul>
 
           <p style="text-align: center;">
-            <a href="${FRONTEND_URL}/dashboard/settings?tab=billing" class="button">Ödeme Yöntemini Güncelle</a>
+            <a href="${FRONTEND_URL}/dashboard/settings?tab=billing" style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Ödeme Yöntemini Güncelle</a>
           </p>
 
           <p style="font-size: 14px; color: #6b7280;">
             Yardıma ihtiyacınız varsa bu emaile cevap verebilirsiniz.
           </p>
         </div>
-        <div class="footer">
+        <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 14px;">
           <p>Telyx.AI Ekibi<br>
-          <a href="https://telyx.ai" class="link">https://telyx.ai</a></p>
+          <a href="https://telyx.ai" style="color: #667eea; word-break: break-all;">https://telyx.ai</a></p>
         </div>
       </div>
     </body>
@@ -795,28 +674,18 @@ export const sendMonthlyResetEmail = async (email, businessName, plan) => {
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f4f4f5; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0; }
-        .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
-        .content { background: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px; }
-        .button { display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white !important; text-decoration: none; border-radius: 8px; margin: 24px 0; font-weight: 600; font-size: 16px; }
-        .limits-box { background: #f9fafb; padding: 24px; border-radius: 8px; margin: 24px 0; border: 1px solid #e5e7eb; }
-        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
-        .link { color: #667eea; }
-      </style>
+      
     </head>
-    <body>
-      <div class="container">
-        <div class="header">
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333333; margin: 0; padding: 0; background-color: #f4f4f5;">
+      <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
           <h1>🔄 Yeni Ay Başladı!</h1>
         </div>
-        <div class="content">
+        <div style="background-color: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px;">
           <p>Merhaba${businessName ? ` ${businessName}` : ''},</p>
           <p>Harika haber! ${plan} planınız için aylık kullanım limitleri sıfırlandı.</p>
 
-          <div class="limits-box">
+          <div style="background-color: #f9fafb; padding: 24px; border-radius: 8px; margin: 24px 0; border: 1px solid #e5e7eb;">
             <p style="margin: 0;"><strong>✨ Yeni limitler:</strong></p>
             <ul style="margin: 15px 0;">
               ${plan === 'STARTER' ? '<li>150 dakika</li>' : ''}
@@ -828,12 +697,12 @@ export const sendMonthlyResetEmail = async (email, businessName, plan) => {
           <p>AI asistanınız harika bir ay daha için arama almaya hazır!</p>
 
           <p style="text-align: center;">
-            <a href="${FRONTEND_URL}/dashboard/analytics" class="button">Analizleri Görüntüle</a>
+            <a href="${FRONTEND_URL}/dashboard/analytics" style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Analizleri Görüntüle</a>
           </p>
         </div>
-        <div class="footer">
+        <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 14px;">
           <p>Telyx.AI Ekibi<br>
-          <a href="https://telyx.ai" class="link">https://telyx.ai</a></p>
+          <a href="https://telyx.ai" style="color: #667eea; word-break: break-all;">https://telyx.ai</a></p>
         </div>
       </div>
     </body>
@@ -854,68 +723,54 @@ export const sendWeeklySummaryEmail = async (email, businessName, stats) => {
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f4f4f5; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0; }
-        .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
-        .content { background: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px; }
-        .button { display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white !important; text-decoration: none; border-radius: 8px; margin: 24px 0; font-weight: 600; font-size: 16px; }
-        .stats-box { background: #f9fafb; padding: 24px; border-radius: 8px; margin: 24px 0; }
-        .stat-row { display: flex; justify-content: space-between; padding: 16px 0; border-bottom: 1px solid #e5e7eb; }
-        .stat-row:last-child { border-bottom: none; }
-        .stat-value { font-size: 24px; font-weight: bold; color: #10b981; }
-        .insight-box { background: #ecfdf5; padding: 16px; border-radius: 8px; border-left: 4px solid #10b981; margin: 24px 0; }
-        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
-        .link { color: #667eea; }
-      </style>
+      
     </head>
-    <body>
-      <div class="container">
-        <div class="header">
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333333; margin: 0; padding: 0; background-color: #f4f4f5;">
+      <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
           <h1>📊 Haftalık Özet</h1>
           <p style="margin: 8px 0 0 0; opacity: 0.9;">AI Asistan Performansınız</p>
         </div>
-        <div class="content">
+        <div style="background-color: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px;">
           <p>Merhaba${businessName ? ` ${businessName}` : ''},</p>
           <p>AI asistanınızın bu haftaki performansı:</p>
 
-          <div class="stats-box">
+          <div style="background-color: #f9fafb; padding: 24px; border-radius: 8px; margin: 24px 0;">
             <h3 style="margin-top: 0; border-bottom: 2px solid #10b981; padding-bottom: 12px;">Temel Metrikler</h3>
-            <div class="stat-row">
+            <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
               <span><strong>Toplam Arama:</strong></span>
-              <span class="stat-value">${stats.totalCalls}</span>
+              <span style="font-weight: bold; color: #10b981;">${stats.totalCalls}</span>
             </div>
-            <div class="stat-row">
+            <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
               <span><strong>Ortalama Süre:</strong></span>
               <span>${stats.avgDuration}</span>
             </div>
-            <div class="stat-row">
+            <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
               <span><strong>Müşteri Memnuniyeti:</strong></span>
               <span>${stats.satisfaction}% Olumlu</span>
             </div>
-            <div class="stat-row">
+            <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
               <span><strong>En Yoğun Gün:</strong></span>
               <span>${stats.busiestDay}</span>
             </div>
           </div>
 
           ${stats.topIntent ? `
-          <div class="insight-box">
+          <div style="background-color: #ecfdf5; padding: 16px; border-radius: 8px; border-left: 4px solid #10b981; margin: 24px 0;">
             <p style="margin: 0;"><strong>💡 En Sık Arama Nedeni:</strong><br>
             ${stats.topIntent}</p>
           </div>
           ` : ''}
 
           <p style="text-align: center;">
-            <a href="${FRONTEND_URL}/dashboard/analytics" class="button">Tam Raporu Görüntüle</a>
+            <a href="${FRONTEND_URL}/dashboard/analytics" style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Tam Raporu Görüntüle</a>
           </p>
 
           <p>Harika iş çıkarıyorsunuz!</p>
         </div>
-        <div class="footer">
+        <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 14px;">
           <p>Telyx.AI Ekibi<br>
-          <a href="https://telyx.ai" class="link">https://telyx.ai</a></p>
+          <a href="https://telyx.ai" style="color: #667eea; word-break: break-all;">https://telyx.ai</a></p>
         </div>
       </div>
     </body>
@@ -943,23 +798,14 @@ export const sendTrialExpiredNotification = async ({ email, businessName }) => {
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f4f4f5; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0; }
-        .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
-        .content { background: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px; }
-        .button { display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white !important; text-decoration: none; border-radius: 8px; margin: 24px 0; font-weight: 600; font-size: 16px; }
-        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
-        .link { color: #667eea; }
-      </style>
+      
     </head>
-    <body>
-      <div class="container">
-        <div class="header">
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333333; margin: 0; padding: 0; background-color: #f4f4f5;">
+      <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
           <h1>Deneme Süreniz Doldu</h1>
         </div>
-        <div class="content">
+        <div style="background-color: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px;">
           <p>Merhaba${businessName ? ` ${businessName}` : ''},</p>
           <p>7 günlük deneme süreniz sona erdi. Telyx.AI'ı kullanmaya devam etmek için bir plan seçmeniz gerekiyor.</p>
 
@@ -971,12 +817,12 @@ export const sendTrialExpiredNotification = async ({ email, businessName }) => {
           </ul>
 
           <p style="text-align: center;">
-            <a href="${FRONTEND_URL}/dashboard/subscription" class="button">Plan Seç</a>
+            <a href="${FRONTEND_URL}/dashboard/subscription" style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Plan Seç</a>
           </p>
         </div>
-        <div class="footer">
+        <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 14px;">
           <p>Telyx.AI Ekibi<br>
-          <a href="https://telyx.ai" class="link">https://telyx.ai</a></p>
+          <a href="https://telyx.ai" style="color: #667eea; word-break: break-all;">https://telyx.ai</a></p>
         </div>
       </div>
     </body>
@@ -1004,39 +850,29 @@ export const sendOverageLimitReachedEmail = async (email, businessName, overageM
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f4f4f5; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0; }
-        .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
-        .content { background: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px; }
-        .button { display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white !important; text-decoration: none; border-radius: 8px; margin: 24px 0; font-weight: 600; font-size: 16px; }
-        .warning-box { background: #fef2f2; padding: 20px; border-radius: 8px; border-left: 4px solid #ef4444; margin: 24px 0; }
-        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
-        .link { color: #667eea; }
-      </style>
+      
     </head>
-    <body>
-      <div class="container">
-        <div class="header">
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333333; margin: 0; padding: 0; background-color: #f4f4f5;">
+      <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
           <h1>Aşım Limitine Ulaşıldı</h1>
         </div>
-        <div class="content">
+        <div style="background-color: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px;">
           <p>Merhaba${businessName ? ` ${businessName}` : ''},</p>
           <p>Bu ay için belirlenen maksimum aşım limitinize (${maxOverageLimit} dakika) ulaştınız.</p>
 
-          <div class="warning-box">
+          <div style="background-color: #fef2f2; padding: 20px; border-radius: 8px; border-left: 4px solid #ef4444; margin: 24px 0;">
             <p style="margin: 0;"><strong>⚠️ Önemli:</strong><br>
             Hizmet kesintisini önlemek için bakiye yükleyin veya planınızı yükseltin.</p>
           </div>
 
           <p style="text-align: center;">
-            <a href="${FRONTEND_URL}/dashboard/billing" class="button">Bakiye Yükle</a>
+            <a href="${FRONTEND_URL}/dashboard/billing" style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Bakiye Yükle</a>
           </p>
         </div>
-        <div class="footer">
+        <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 14px;">
           <p>Telyx.AI Ekibi<br>
-          <a href="https://telyx.ai" class="link">https://telyx.ai</a></p>
+          <a href="https://telyx.ai" style="color: #667eea; word-break: break-all;">https://telyx.ai</a></p>
         </div>
       </div>
     </body>
@@ -1057,28 +893,18 @@ export const sendAutoReloadFailedEmail = async (email, businessName, amount) => 
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f4f4f5; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0; }
-        .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
-        .content { background: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px; }
-        .button { display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white !important; text-decoration: none; border-radius: 8px; margin: 24px 0; font-weight: 600; font-size: 16px; }
-        .warning-box { background: #fef2f2; padding: 20px; border-radius: 8px; border-left: 4px solid #ef4444; margin: 24px 0; }
-        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
-        .link { color: #667eea; }
-      </style>
+      
     </head>
-    <body>
-      <div class="container">
-        <div class="header">
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333333; margin: 0; padding: 0; background-color: #f4f4f5;">
+      <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
           <h1>Otomatik Yükleme Başarısız</h1>
         </div>
-        <div class="content">
+        <div style="background-color: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px;">
           <p>Merhaba${businessName ? ` ${businessName}` : ''},</p>
           <p>Otomatik bakiye yükleme işleminiz (${amount} TL) başarısız oldu.</p>
 
-          <div class="warning-box">
+          <div style="background-color: #fef2f2; padding: 20px; border-radius: 8px; border-left: 4px solid #ef4444; margin: 24px 0;">
             <p style="margin: 0;"><strong>⚠️ Olası Nedenler:</strong></p>
             <ul style="margin: 8px 0 0 0; padding-left: 20px;">
               <li>Yetersiz bakiye</li>
@@ -1090,12 +916,12 @@ export const sendAutoReloadFailedEmail = async (email, businessName, amount) => 
           <p>Hizmet kesintisini önlemek için lütfen ödeme yönteminizi kontrol edin veya manuel yükleme yapın.</p>
 
           <p style="text-align: center;">
-            <a href="${FRONTEND_URL}/dashboard/billing" class="button">Ödeme Yöntemini Güncelle</a>
+            <a href="${FRONTEND_URL}/dashboard/billing" style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Ödeme Yöntemini Güncelle</a>
           </p>
         </div>
-        <div class="footer">
+        <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 14px;">
           <p>Telyx.AI Ekibi<br>
-          <a href="https://telyx.ai" class="link">https://telyx.ai</a></p>
+          <a href="https://telyx.ai" style="color: #667eea; word-break: break-all;">https://telyx.ai</a></p>
         </div>
       </div>
     </body>
@@ -1132,32 +958,19 @@ export const sendTeamInvitationEmail = async ({ email, inviterName, businessName
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f4f4f5; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0; }
-        .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
-        .content { background: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px; }
-        .button { display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white !important; text-decoration: none; border-radius: 8px; margin: 24px 0; font-weight: 600; font-size: 16px; }
-        .invite-box { background: #f9fafb; padding: 24px; border-radius: 8px; margin: 24px 0; border: 1px solid #e5e7eb; }
-        .role-badge { display: inline-block; padding: 6px 12px; background: #eff6ff; color: #1e40af; border-radius: 6px; font-weight: 600; font-size: 14px; margin: 8px 0; }
-        .warning { background: #fef3c7; padding: 16px; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 24px 0; }
-        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
-        .link { color: #667eea; word-break: break-all; }
-      </style>
     </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h1>🎉 Takıma Davet Edildiniz!</h1>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333333; margin: 0; padding: 0; background-color: #f4f4f5;">
+      <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
+          <h1 style="margin: 0; font-size: 24px; font-weight: 600; color: #ffffff;">🎉 Takıma Davet Edildiniz!</h1>
         </div>
-        <div class="content">
-          <p>Merhaba,</p>
-          <p><strong>${inviterName}</strong> sizi <strong>${businessName}</strong> organizasyonuna davet etti.</p>
+        <div style="background-color: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px;">
+          <p style="margin: 0 0 16px 0; color: #333333;">Merhaba,</p>
+          <p style="margin: 0 0 16px 0; color: #333333;"><strong>${inviterName}</strong> sizi <strong>${businessName}</strong> organizasyonuna davet etti.</p>
 
-          <div class="invite-box">
+          <div style="background-color: #f9fafb; padding: 24px; border-radius: 8px; margin: 24px 0; border: 1px solid #e5e7eb;">
             <p style="margin: 0 0 8px 0; color: #6b7280;">Davet Edilen Rol:</p>
-            <div class="role-badge">${roleName}</div>
+            <div style="display: inline-block; padding: 6px 12px; background-color: #eff6ff; color: #1e40af; border-radius: 6px; font-weight: 600; font-size: 14px; margin: 8px 0;">${roleName}</div>
             <p style="margin: 16px 0 0 0; color: #6b7280; font-size: 14px;">
               ${role === 'OWNER' ? 'Tam yönetici erişimi - tüm ayarları yönetebilir, takım ekleyebilir/çıkarabilir.' : ''}
               ${role === 'MANAGER' ? 'Yönetici erişimi - asistanları yönetebilir, raporları görüntüleyebilir.' : ''}
@@ -1165,28 +978,28 @@ export const sendTeamInvitationEmail = async ({ email, inviterName, businessName
             </p>
           </div>
 
-          <p>Daveti kabul etmek için aşağıdaki butona tıklayın. Telyx.AI hesabınız yoksa, kabul sırasında yeni bir hesap oluşturabilirsiniz.</p>
+          <p style="margin: 0 0 16px 0; color: #333333;">Daveti kabul etmek için aşağıdaki butona tıklayın. Telyx.AI hesabınız yoksa, kabul sırasında yeni bir hesap oluşturabilirsiniz.</p>
 
-          <p style="text-align: center;">
-            <a href="${invitationUrl}" class="button">Daveti Kabul Et</a>
+          <p style="text-align: center; margin: 24px 0;">
+            <a href="${invitationUrl}" style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Daveti Kabul Et</a>
           </p>
 
-          <div class="warning">
-            <p style="margin: 0;"><strong>⏰ Önemli:</strong> Bu davet linki 7 gün geçerlidir. Süre dolarsa yeni bir davet talep edebilirsiniz.</p>
+          <div style="background-color: #fef3c7; padding: 16px; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 24px 0;">
+            <p style="margin: 0; color: #333333;"><strong>⏰ Önemli:</strong> Bu davet linki 7 gün geçerlidir. Süre dolarsa yeni bir davet talep edebilirsiniz.</p>
           </div>
 
-          <p style="font-size: 14px; color: #6b7280;">
+          <p style="font-size: 14px; color: #6b7280; margin: 0 0 16px 0;">
             Eğer butona tıklayamıyorsanız, aşağıdaki linki tarayıcınıza kopyalayabilirsiniz:<br>
-            <a href="${invitationUrl}" class="link">${invitationUrl}</a>
+            <a href="${invitationUrl}" style="color: #667eea; word-break: break-all;">${invitationUrl}</a>
           </p>
 
-          <p style="font-size: 14px; color: #6b7280;">
+          <p style="font-size: 14px; color: #6b7280; margin: 0;">
             Bu daveti siz talep etmediyseniz, bu emaili görmezden gelebilirsiniz.
           </p>
         </div>
-        <div class="footer">
-          <p>Telyx.AI Ekibi<br>
-          <a href="https://telyx.ai" class="link">https://telyx.ai</a></p>
+        <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 14px;">
+          <p style="margin: 0;">Telyx.AI Ekibi<br>
+          <a href="https://telyx.ai" style="color: #667eea;">https://telyx.ai</a></p>
         </div>
       </div>
     </body>
