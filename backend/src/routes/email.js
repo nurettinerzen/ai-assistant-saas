@@ -6,6 +6,7 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticateToken } from '../middleware/auth.js';
+import { requireProOrAbove } from '../middleware/planGating.js';
 import gmailService from '../services/gmail.js';
 import outlookService from '../services/outlook.js';
 import emailAggregator from '../services/email-aggregator.js';
@@ -176,8 +177,9 @@ router.get('/status', authenticateToken, async (req, res) => {
 /**
  * Get Thread List
  * GET /api/email/threads
+ * P1: PRO+ gating for email usage
  */
-router.get('/threads', authenticateToken, async (req, res) => {
+router.get('/threads', authenticateToken, requireProOrAbove, async (req, res) => {
   try {
     const { status, limit = 20, offset = 0 } = req.query;
 

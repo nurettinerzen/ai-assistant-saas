@@ -278,9 +278,18 @@ export async function canMakeCallWithBalance(businessId) {
       return { canMakeCall: false, reason: 'SUBSCRIPTION_INACTIVE' };
     }
 
-    // Concurrent call limit
-    if (subscription.activeCalls >= subscription.concurrentLimit) {
-      return { canMakeCall: false, reason: 'CONCURRENT_LIMIT_REACHED' };
+    // Concurrent call limit (check enterprise override first)
+    const concurrentLimit = subscription.enterpriseConcurrent
+      || subscription.concurrentLimit
+      || 1;
+
+    if (subscription.activeCalls >= concurrentLimit) {
+      return {
+        canMakeCall: false,
+        reason: 'CONCURRENT_LIMIT_REACHED',
+        activeCalls: subscription.activeCalls,
+        limit: concurrentLimit
+      };
     }
 
     const plan = subscription.plan;

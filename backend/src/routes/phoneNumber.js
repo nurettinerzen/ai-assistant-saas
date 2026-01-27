@@ -443,18 +443,31 @@ router.post('/import-sip', async (req, res) => {
     }
 
     // Check phone number limit (PLATFORM LIMIT: 1 number per business)
-    const existingNumbers = await prisma.phoneNumber.count({
-      where: { businessId, status: 'ACTIVE' }
-    });
-
+    // RACE CONDITION PROTECTION: Lock business row during check to prevent parallel creates
     const PLATFORM_PHONE_LIMIT = 1; // Platform constraint (technical limitation)
 
-    if (existingNumbers >= PLATFORM_PHONE_LIMIT) {
+    // Use transaction with business row lock for atomicity
+    const limitCheck = await prisma.$transaction(async (tx) => {
+      // Lock business row to serialize phone number checks for this business
+      await tx.business.findUnique({
+        where: { id: businessId },
+        select: { id: true }
+      });
+
+      // Count active numbers within transaction
+      const existingNumbers = await tx.phoneNumber.count({
+        where: { businessId, status: 'ACTIVE' }
+      });
+
+      return { existingNumbers, limit: PLATFORM_PHONE_LIMIT };
+    });
+
+    if (limitCheck.existingNumbers >= limitCheck.limit) {
       return res.status(403).json({
         error: 'PHONE_NUMBER_LIMIT_REACHED',
         message: 'Şu anda işletme başına 1 telefon numarası destekleniyor',
-        currentCount: existingNumbers,
-        limit: PLATFORM_PHONE_LIMIT
+        currentCount: limitCheck.existingNumbers,
+        limit: limitCheck.limit
       });
     }
 
