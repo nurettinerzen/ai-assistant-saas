@@ -11,9 +11,9 @@ let content = fs.readFileSync(filePath, 'utf8');
 // Define style mappings from class to inline style
 const styleMap = {
   'class="container"': 'style="max-width: 600px; margin: 0 auto; padding: 20px;"',
-  'class="header"': 'style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;"',
+  'class="header"': 'style="background-color: #667eea; color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;"',
   'class="content"': 'style="background-color: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px;"',
-  'class="button"': 'style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;"',
+  'class="button"': 'style="display: inline-block; padding: 16px 48px; background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;"',
   'class="footer"': 'style="text-align: center; padding: 20px; color: #6b7280; font-size: 14px;"',
   'class="link"': 'style="color: #667eea; word-break: break-all;"',
   'class="warning"': 'style="background-color: #fef3c7; padding: 16px; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 24px 0;"',
@@ -32,7 +32,7 @@ const styleMap = {
   'class="step"': 'style="padding: 8px 0; color: #333333;"',
   'class="invoice-row"': 'style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #e5e7eb;"',
   'class="progress-bar"': 'style="background-color: #e5e7eb; height: 24px; border-radius: 12px; overflow: hidden; margin: 16px 0;"',
-  'class="progress-fill"': 'style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); height: 100%; transition: width 0.3s ease;"',
+  'class="progress-fill"': 'style="background-color: #667eea; height: 100%; transition: width 0.3s ease;"',
   'class="stat-row"': 'style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #e5e7eb;"',
   'class="stat-value"': 'style="font-weight: bold; color: #10b981;"'
 };

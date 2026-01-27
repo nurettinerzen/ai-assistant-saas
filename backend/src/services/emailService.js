@@ -156,7 +156,7 @@ export const sendWelcomeEmail = async (email, userName) => {
     </head>
     <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333333; margin: 0; padding: 0; background-color: #f4f4f5;">
       <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
+        <div style="background-color: #667eea; color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
           <h1>Telyx.AI'a Hoş Geldiniz!</h1>
         </div>
         <div style="background-color: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px;">
@@ -176,7 +176,7 @@ export const sendWelcomeEmail = async (email, userName) => {
           </p>
 
           <p style="text-align: center;">
-            <a href="${FRONTEND_URL}/dashboard" style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Dashboard'a Git</a>
+            <a href="${FRONTEND_URL}/dashboard" style="display: inline-block; padding: 16px 48px; background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Dashboard'a Git</a>
           </p>
 
           <p style="font-size: 14px; color: #6b7280;">
@@ -210,7 +210,7 @@ export const sendLowBalanceAlert = async (email, currentBalance) => {
     </head>
     <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333333; margin: 0; padding: 0; background-color: #f4f4f5;">
       <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
+        <div style="background-color: #667eea; color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
           <h1>⚠️ Bakiyeniz Azalıyor</h1>
         </div>
         <div style="background-color: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px;">
@@ -223,7 +223,7 @@ export const sendLowBalanceAlert = async (email, currentBalance) => {
           </div>
 
           <p style="text-align: center;">
-            <a href="${FRONTEND_URL}/dashboard/billing" style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Bakiye Yükle</a>
+            <a href="${FRONTEND_URL}/dashboard/billing" style="display: inline-block; padding: 16px 48px; background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Bakiye Yükle</a>
           </p>
 
           <div style="background-color: #eff6ff; padding: 16px; border-radius: 8px; border-left: 4px solid #3b82f6; margin: 24px 0;">
@@ -257,7 +257,7 @@ export const sendOverageInvoice = async (email, overageMinutes, amount, billingP
     </head>
     <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333333; margin: 0; padding: 0; background-color: #f4f4f5;">
       <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
+        <div style="background-color: #667eea; color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
           <h1>Aylık Aşım Faturanız</h1>
         </div>
         <div style="background-color: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px;">
@@ -284,7 +284,7 @@ export const sendOverageInvoice = async (email, overageMinutes, amount, billingP
           </p>
 
           <p style="text-align: center;">
-            <a href="${FRONTEND_URL}/dashboard/billing" style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Fatura Detayları</a>
+            <a href="${FRONTEND_URL}/dashboard/billing" style="display: inline-block; padding: 16px 48px; background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Fatura Detayları</a>
           </p>
         </div>
         <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 14px;">
@@ -314,7 +314,7 @@ export const sendEmailChangeVerification = async (newEmail, verificationUrl) => 
     </head>
     <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333333; margin: 0; padding: 0; background-color: #f4f4f5;">
       <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
+        <div style="background-color: #667eea; color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
           <h1>Yeni Email Doğrulama</h1>
         </div>
         <div style="background-color: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px;">
@@ -322,7 +322,7 @@ export const sendEmailChangeVerification = async (newEmail, verificationUrl) => 
           <p>Email adresinizi <strong>${newEmail}</strong> olarak değiştirmek istediğinizi gördük. Bu değişikliği tamamlamak için lütfen yeni email adresinizi doğrulayın.</p>
 
           <p style="text-align: center;">
-            <a href="${verificationUrl}" style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Yeni Email Adresimi Doğrula</a>
+            <a href="${verificationUrl}" style="display: inline-block; padding: 16px 48px; background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Yeni Email Adresimi Doğrula</a>
           </p>
 
           <div style="background-color: #fef3c7; padding: 16px; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 24px 0;">
@@ -360,7 +360,7 @@ export const sendAssistantCreatedEmail = async (email, businessName) => {
     </head>
     <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333333; margin: 0; padding: 0; background-color: #f4f4f5;">
       <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
+        <div style="background-color: #667eea; color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
           <h1>🎤 AI Asistanınız Hazır!</h1>
         </div>
         <div style="background-color: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px;">
@@ -373,7 +373,7 @@ export const sendAssistantCreatedEmail = async (email, businessName) => {
           </div>
 
           <p style="text-align: center;">
-            <a href="${FRONTEND_URL}/dashboard/assistant" style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Asistanı Test Et</a>
+            <a href="${FRONTEND_URL}/dashboard/assistant" style="display: inline-block; padding: 16px 48px; background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Asistanı Test Et</a>
           </p>
 
           <p><strong>Gerçek aramalar için hazır mısınız?</strong><br>
@@ -406,7 +406,7 @@ export const sendPhoneActivatedEmail = async (email, businessName, phoneNumber) 
     </head>
     <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333333; margin: 0; padding: 0; background-color: #f4f4f5;">
       <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
+        <div style="background-color: #667eea; color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
           <h1>📞 Telefon Numaranız Aktif!</h1>
         </div>
         <div style="background-color: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px;">
@@ -428,7 +428,7 @@ export const sendPhoneActivatedEmail = async (email, businessName, phoneNumber) 
           </ul>
 
           <p style="text-align: center;">
-            <a href="${FRONTEND_URL}/dashboard" style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Dashboard'a Git</a>
+            <a href="${FRONTEND_URL}/dashboard" style="display: inline-block; padding: 16px 48px; background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Dashboard'a Git</a>
           </p>
 
           <p style="background: #eff6ff; padding: 16px; border-radius: 8px; border-left: 4px solid #3b82f6;">
@@ -462,7 +462,7 @@ export const sendLimitWarningEmail = async (email, businessName, limitType, usag
     </head>
     <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333333; margin: 0; padding: 0; background-color: #f4f4f5;">
       <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
+        <div style="background-color: #667eea; color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
           <h1>⚠️ Kullanım Uyarısı</h1>
         </div>
         <div style="background-color: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px;">
@@ -472,7 +472,7 @@ export const sendLimitWarningEmail = async (email, businessName, limitType, usag
           <div style="background-color: #fef3c7; padding: 24px; border-radius: 8px; margin: 24px 0;">
             <h3 style="margin-top: 0;">Mevcut Kullanım:</h3>
             <div style="background-color: #e5e7eb; height: 24px; border-radius: 12px; overflow: hidden; margin: 16px 0;">
-              <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); height: 100%; transition: width 0.3s ease; width: ${usage.percentage}%;"></div>
+              <div style="background-color: #667eea; height: 100%; transition: width 0.3s ease; width: ${usage.percentage}%;"></div>
             </div>
             <p style="text-align: center; margin: 0;"><strong>${usage.used} / ${usage.limit}</strong> ${limitType === 'minutes' ? 'dakika' : 'arama'}</p>
           </div>
@@ -480,7 +480,7 @@ export const sendLimitWarningEmail = async (email, businessName, limitType, usag
           <p>Hizmet kesintisini önlemek için planınızı yükseltmeyi veya bakiye yüklemeyi düşünebilirsiniz.</p>
 
           <p style="text-align: center;">
-            <a href="${FRONTEND_URL}/dashboard/settings?tab=billing" style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Şimdi Yükselt</a>
+            <a href="${FRONTEND_URL}/dashboard/settings?tab=billing" style="display: inline-block; padding: 16px 48px; background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Şimdi Yükselt</a>
           </p>
         </div>
         <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 14px;">
@@ -511,7 +511,7 @@ export const sendLimitReachedEmail = async (email, businessName, limitType, usag
     </head>
     <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333333; margin: 0; padding: 0; background-color: #f4f4f5;">
       <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
+        <div style="background-color: #667eea; color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
           <h1>🚫 Limite Ulaşıldı</h1>
         </div>
         <div style="background-color: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px;">
@@ -531,7 +531,7 @@ export const sendLimitReachedEmail = async (email, businessName, limitType, usag
           </ul>
 
           <p style="text-align: center;">
-            <a href="${FRONTEND_URL}/dashboard/settings?tab=billing" style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">${nextPlan}'ya Yükselt</a>
+            <a href="${FRONTEND_URL}/dashboard/settings?tab=billing" style="display: inline-block; padding: 16px 48px; background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">${nextPlan}'ya Yükselt</a>
           </p>
 
           <p style="font-size: 14px; color: #6b7280;">
@@ -565,7 +565,7 @@ export const sendPaymentSuccessEmail = async (email, businessName, amount, plan)
     </head>
     <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333333; margin: 0; padding: 0; background-color: #f4f4f5;">
       <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
+        <div style="background-color: #667eea; color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
           <h1>✅ Ödeme Başarılı</h1>
         </div>
         <div style="background-color: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px;">
@@ -590,7 +590,7 @@ export const sendPaymentSuccessEmail = async (email, businessName, amount, plan)
           <p>Aboneliğiniz aktif ve asistanınız arama almaya hazır!</p>
 
           <p style="text-align: center;">
-            <a href="${FRONTEND_URL}/dashboard" style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Dashboard'a Git</a>
+            <a href="${FRONTEND_URL}/dashboard" style="display: inline-block; padding: 16px 48px; background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Dashboard'a Git</a>
           </p>
 
           <p style="font-size: 14px; color: #6b7280;">
@@ -624,7 +624,7 @@ export const sendPaymentFailedEmail = async (email, businessName) => {
     </head>
     <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333333; margin: 0; padding: 0; background-color: #f4f4f5;">
       <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
+        <div style="background-color: #667eea; color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
           <h1>❌ Ödeme Başarısız</h1>
         </div>
         <div style="background-color: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px;">
@@ -644,7 +644,7 @@ export const sendPaymentFailedEmail = async (email, businessName) => {
           </ul>
 
           <p style="text-align: center;">
-            <a href="${FRONTEND_URL}/dashboard/settings?tab=billing" style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Ödeme Yöntemini Güncelle</a>
+            <a href="${FRONTEND_URL}/dashboard/settings?tab=billing" style="display: inline-block; padding: 16px 48px; background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Ödeme Yöntemini Güncelle</a>
           </p>
 
           <p style="font-size: 14px; color: #6b7280;">
@@ -678,7 +678,7 @@ export const sendMonthlyResetEmail = async (email, businessName, plan) => {
     </head>
     <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333333; margin: 0; padding: 0; background-color: #f4f4f5;">
       <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
+        <div style="background-color: #667eea; color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
           <h1>🔄 Yeni Ay Başladı!</h1>
         </div>
         <div style="background-color: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px;">
@@ -697,7 +697,7 @@ export const sendMonthlyResetEmail = async (email, businessName, plan) => {
           <p>AI asistanınız harika bir ay daha için arama almaya hazır!</p>
 
           <p style="text-align: center;">
-            <a href="${FRONTEND_URL}/dashboard/analytics" style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Analizleri Görüntüle</a>
+            <a href="${FRONTEND_URL}/dashboard/analytics" style="display: inline-block; padding: 16px 48px; background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Analizleri Görüntüle</a>
           </p>
         </div>
         <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 14px;">
@@ -727,7 +727,7 @@ export const sendWeeklySummaryEmail = async (email, businessName, stats) => {
     </head>
     <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333333; margin: 0; padding: 0; background-color: #f4f4f5;">
       <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
+        <div style="background-color: #667eea; color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
           <h1>📊 Haftalık Özet</h1>
           <p style="margin: 8px 0 0 0; opacity: 0.9;">AI Asistan Performansınız</p>
         </div>
@@ -763,7 +763,7 @@ export const sendWeeklySummaryEmail = async (email, businessName, stats) => {
           ` : ''}
 
           <p style="text-align: center;">
-            <a href="${FRONTEND_URL}/dashboard/analytics" style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Tam Raporu Görüntüle</a>
+            <a href="${FRONTEND_URL}/dashboard/analytics" style="display: inline-block; padding: 16px 48px; background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Tam Raporu Görüntüle</a>
           </p>
 
           <p>Harika iş çıkarıyorsunuz!</p>
@@ -802,7 +802,7 @@ export const sendTrialExpiredNotification = async ({ email, businessName }) => {
     </head>
     <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333333; margin: 0; padding: 0; background-color: #f4f4f5;">
       <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
+        <div style="background-color: #667eea; color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
           <h1>Deneme Süreniz Doldu</h1>
         </div>
         <div style="background-color: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px;">
@@ -817,7 +817,7 @@ export const sendTrialExpiredNotification = async ({ email, businessName }) => {
           </ul>
 
           <p style="text-align: center;">
-            <a href="${FRONTEND_URL}/dashboard/subscription" style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Plan Seç</a>
+            <a href="${FRONTEND_URL}/dashboard/subscription" style="display: inline-block; padding: 16px 48px; background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Plan Seç</a>
           </p>
         </div>
         <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 14px;">
@@ -854,7 +854,7 @@ export const sendOverageLimitReachedEmail = async (email, businessName, overageM
     </head>
     <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333333; margin: 0; padding: 0; background-color: #f4f4f5;">
       <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
+        <div style="background-color: #667eea; color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
           <h1>Aşım Limitine Ulaşıldı</h1>
         </div>
         <div style="background-color: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px;">
@@ -867,7 +867,7 @@ export const sendOverageLimitReachedEmail = async (email, businessName, overageM
           </div>
 
           <p style="text-align: center;">
-            <a href="${FRONTEND_URL}/dashboard/billing" style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Bakiye Yükle</a>
+            <a href="${FRONTEND_URL}/dashboard/billing" style="display: inline-block; padding: 16px 48px; background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Bakiye Yükle</a>
           </p>
         </div>
         <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 14px;">
@@ -897,7 +897,7 @@ export const sendAutoReloadFailedEmail = async (email, businessName, amount) => 
     </head>
     <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333333; margin: 0; padding: 0; background-color: #f4f4f5;">
       <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
+        <div style="background-color: #667eea; color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
           <h1>Otomatik Yükleme Başarısız</h1>
         </div>
         <div style="background-color: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px;">
@@ -916,7 +916,7 @@ export const sendAutoReloadFailedEmail = async (email, businessName, amount) => 
           <p>Hizmet kesintisini önlemek için lütfen ödeme yönteminizi kontrol edin veya manuel yükleme yapın.</p>
 
           <p style="text-align: center;">
-            <a href="${FRONTEND_URL}/dashboard/billing" style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Ödeme Yöntemini Güncelle</a>
+            <a href="${FRONTEND_URL}/dashboard/billing" style="display: inline-block; padding: 16px 48px; background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Ödeme Yöntemini Güncelle</a>
           </p>
         </div>
         <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 14px;">
@@ -961,7 +961,7 @@ export const sendTeamInvitationEmail = async ({ email, inviterName, businessName
     </head>
     <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333333; margin: 0; padding: 0; background-color: #f4f4f5;">
       <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
+        <div style="background-color: #667eea; color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
           <h1 style="margin: 0; font-size: 24px; font-weight: 600; color: #ffffff;">🎉 Takıma Davet Edildiniz!</h1>
         </div>
         <div style="background-color: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px;">
@@ -981,7 +981,7 @@ export const sendTeamInvitationEmail = async ({ email, inviterName, businessName
           <p style="margin: 0 0 16px 0; color: #333333;">Daveti kabul etmek için aşağıdaki butona tıklayın. Telyx.AI hesabınız yoksa, kabul sırasında yeni bir hesap oluşturabilirsiniz.</p>
 
           <p style="text-align: center; margin: 24px 0;">
-            <a href="${invitationUrl}" style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Daveti Kabul Et</a>
+            <a href="${invitationUrl}" style="display: inline-block; padding: 16px 48px; background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Daveti Kabul Et</a>
           </p>
 
           <div style="background-color: #fef3c7; padding: 16px; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 24px 0;">
