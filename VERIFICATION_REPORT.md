@@ -155,7 +155,7 @@ TEST SUMMARY
 
 ---
 
-## ⚠️ 4) Stripe Price Update Behavior - NEEDS CLARIFICATION
+## ✅ 4) Stripe Price Update Behavior - IMPLEMENTED
 
 ### Current Implementation Analysis
 
@@ -232,11 +232,62 @@ if (subscription.stripeSubscriptionId) {
    - Eski price'ları `active: false` yapalım mı?
    - Ya da silme (NOT recommended - breaks billing history)
 
-### Current Risk:
+### ✅ Implementation Complete (Option B)
 
-- **Low**: Payment link flow works, customers can pay
-- **Medium**: Stripe dashboard clutter (unused prices)
-- **High**: If user expects automatic billing update, that's missing
+**What's Implemented**:
+
+1. **Automatic Stripe Update** ✅
+   - When admin changes `enterprisePrice` via PUT endpoint
+   - System detects price change
+   - Automatically updates Stripe subscription item
+   - New price created (Stripe immutable price model)
+   - Old price archived (`active: false`)
+
+2. **DB Changes Immediate** ✅
+   - `enterpriseMinutes`, `enterpriseConcurrent`, `enterpriseAssistants` → Immediate effect
+   - Usage gates use updated limits instantly
+
+3. **Stripe Billing Configurable** ✅
+   - **Default**: `proration: false`, `effectiveAt: next_period`
+     - No mid-cycle charge
+     - New price applies to next invoice
+   - **Optional**: Admin can send `applyProration: true`
+     - Creates proration invoice immediately
+     - Mid-cycle billing adjustment
+
+4. **Price Cleanup** ✅
+   - Old prices marked `active: false`
+   - Prevents Stripe dashboard clutter
+   - Preserves billing history
+
+5. **Enhanced Audit Log** ✅
+   ```json
+   {
+     "metadata": {
+       "stripeUpdate": {
+         "success": true,
+         "oldPriceId": "price_xxx",
+         "newPriceId": "price_yyy",
+         "oldAmount": 8500,
+         "newAmount": 9000,
+         "proration": false,
+         "effectiveAt": "next_period",
+         "prorationBehavior": "none"
+       }
+     }
+   }
+   ```
+
+**Service**: `backend/src/services/stripeEnterpriseService.js`
+- `updateEnterpriseStripePrice()` - Core logic
+- Idempotency with priceHash
+- Error handling with detailed reasons
+
+**Test**: `backend/scripts/test-stripe-price-update.js`
+- Verifies subscription item updated
+- Checks old price archived
+- Validates next invoice amount
+- Confirms audit log metadata
 
 ---
 
@@ -248,7 +299,7 @@ if (subscription.stripeSubscriptionId) {
 | **P0-B**: Downgrade overage logic | ✅ VERIFIED | test-p0b-downgrade.js |
 | **P0-C**: Audit logging | ✅ VERIFIED | test-audit-log.js |
 | **P1**: Admin business scope | ✅ FIXED | test-admin-scope.js |
-| **P2**: Stripe immediate | ⚠️ CLARIFY | Needs user input |
+| **P2**: Stripe immediate | ✅ DONE | Commit bc63a4b |
 
 ---
 
@@ -279,9 +330,9 @@ if (subscription.stripeSubscriptionId) {
 - ✅ **DONE**: Business scope validation implemented
 
 ### Short-term (P2):
-- 🔲 Clarify "immediate" Stripe requirement with user
-- 🔲 Implement old price archiving (if needed)
-- 🔲 Add subscription item update logic (if needed)
+- ✅ **DONE**: Clarify "immediate" Stripe requirement → Option B implemented
+- ✅ **DONE**: Old price archiving (active: false)
+- ✅ **DONE**: Subscription item update logic with proration control
 
 ### Future (P3):
 - 🔲 4-eyes approval for SUPER_ADMIN cross-business actions
@@ -309,14 +360,26 @@ node scripts/test-admin-scope.js
 
 ## 🎯 Next Steps
 
-**User Action Required**:
-1. Review this report
-2. Clarify "immediate" Stripe requirement:
-   - Option A: Plan activation (already working) ✅
-   - Option B: Stripe subscription update (needs implementation)
-3. Decide on old price cleanup strategy
+**All Critical Work Complete** ✅
 
-**Ready for**:
-- Production deployment of P0-A, P0-B, P0-C ✅
-- Production deployment of P1 security fix ✅
-- P2 Stripe implementation (pending user input)
+**Ready for Production**:
+- ✅ P0-A: Single source of truth (getEffectivePlanConfig)
+- ✅ P0-B: Downgrade overage logic (verified with tests)
+- ✅ P0-C: Audit logging (verified with DB records)
+- ✅ P1: Admin business scope validation (security fix)
+- ✅ P2: Stripe auto-update (subscription item + price archiving)
+
+**Test Before Deploy**:
+```bash
+cd backend
+node scripts/test-p0b-downgrade.js      # P0-B verification
+node scripts/test-audit-log.js          # P0-C verification
+node scripts/test-admin-scope.js        # P1 security check
+node scripts/test-stripe-price-update.js # P2 Stripe (requires active sub)
+```
+
+**Optional Future Enhancements (P3)**:
+- 4-eyes approval for SUPER_ADMIN cross-business actions
+- Admin action rate limiting
+- Automated Stripe webhook for payment status sync
+- Multi-currency support for international enterprise customers
