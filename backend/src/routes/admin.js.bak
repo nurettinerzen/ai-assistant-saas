@@ -624,7 +624,7 @@ router.post('/enterprise-customers', async (req, res) => {
     );
 
     await createAdminAuditLog(
-      req.admin, // Admin user from isAdmin middleware
+      req.user, // Admin user from authenticateToken
       existingSubscription ? 'enterprise_config_updated' : 'enterprise_config_created',
       {
         entityType: 'Subscription',
@@ -716,7 +716,7 @@ router.put('/enterprise-customers/:id', async (req, res) => {
       : 'enterprise_config_updated';
 
     await createAdminAuditLog(
-      req.admin,
+      req.user,
       event,
       {
         entityType: 'Subscription',
@@ -772,31 +772,17 @@ router.post('/enterprise-customers/:id/payment-link', async (req, res) => {
       });
     }
 
-    // P0-C: Idempotency - check if price already exists for this exact config
+    // P0-C: Idempotency - check if price already exists for this config
     const priceHash = `ent-${subscription.id}-${subscription.enterprisePrice}-TRY-month`;
 
     if (subscription.stripePriceId) {
-      // Get existing price metadata to compare config
-      try {
-        const existingPrice = await stripe.prices.retrieve(subscription.stripePriceId);
-        const currentConfigHash = existingPrice.metadata?.priceHash || null;
-
-        if (currentConfigHash === priceHash) {
-          console.log(`⚠️ Admin: Stripe price already exists with same config for subscription ${id}: ${subscription.stripePriceId}`);
-          return res.json({
-            url: `${process.env.FRONTEND_URL || 'https://app.telyx.ai'}/dashboard/subscription`,
-            message: 'Price already created with same configuration',
-            priceId: subscription.stripePriceId,
-            idempotent: true
-          });
-        } else {
-          console.log(`💡 Admin: Config changed for subscription ${id}, creating new price (old: ${currentConfigHash}, new: ${priceHash})`);
-          // Continue to create new price
-        }
-      } catch (error) {
-        console.error('Failed to retrieve existing Stripe price:', error);
-        // Continue to create new price on error
-      }
+      console.log(`⚠️ Admin: Stripe price already exists for subscription ${id}: ${subscription.stripePriceId}`);
+      return res.json({
+        url: `${process.env.FRONTEND_URL || 'https://app.telyx.ai'}/dashboard/subscription`,
+        message: 'Price already created',
+        priceId: subscription.stripePriceId,
+        idempotent: true
+      });
     }
 
     // First, create a Stripe product for this enterprise customer
@@ -857,7 +843,7 @@ router.post('/enterprise-customers/:id/payment-link', async (req, res) => {
 
     // P0-C: Audit log for Stripe price creation
     await createAdminAuditLog(
-      req.admin,
+      req.user,
       'enterprise_stripe_price_created',
       {
         entityType: 'Subscription',
