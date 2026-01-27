@@ -14,6 +14,7 @@ import {
   buildChangesObject,
   ADMIN_EMAILS
 } from '../middleware/adminAuth.js';
+import { createAdminAuditLog, calculateChanges, auditContext } from '../middleware/auditLog.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -615,6 +616,32 @@ router.post('/enterprise-customers', async (req, res) => {
       }
     });
 
+    // P0-C: Audit log for enterprise config
+    const changes = calculateChanges(
+      existingSubscription,
+      subscription,
+      ['enterpriseMinutes', 'enterprisePrice', 'enterpriseConcurrent', 'enterpriseAssistants', 'enterprisePaymentStatus', 'pendingPlanId']
+    );
+
+    await createAdminAuditLog(
+      req.user, // Admin user from authenticateToken
+      existingSubscription ? 'enterprise_config_updated' : 'enterprise_config_created',
+      {
+        entityType: 'Subscription',
+        entityId: subscription.id,
+        changes,
+        metadata: {
+          businessId: parseInt(businessId),
+          operation: 'enterprise_config',
+          notes,
+          oldPlan: existingSubscription?.plan,
+          newPendingPlan: 'ENTERPRISE'
+        },
+        ipAddress: req.ip || req.connection.remoteAddress,
+        userAgent: req.get('user-agent')
+      }
+    );
+
     console.log(`✅ Admin: Business ${businessId} - Enterprise teklifi oluşturuldu (pendingPlan). Mevcut plan: ${subscription.plan}`);
     res.json(subscription);
   } catch (error) {
@@ -677,6 +704,35 @@ router.put('/enterprise-customers/:id', async (req, res) => {
       data: updateData
     });
 
+    // P0-C: Audit log for enterprise update/activation
+    const changes = calculateChanges(
+      currentSub,
+      subscription,
+      ['plan', 'status', 'pendingPlanId', 'enterpriseMinutes', 'enterprisePrice', 'enterpriseConcurrent', 'enterpriseAssistants', 'enterprisePaymentStatus']
+    );
+
+    const event = (paymentStatus === 'paid' && currentSub?.plan !== 'ENTERPRISE')
+      ? 'enterprise_approved'
+      : 'enterprise_config_updated';
+
+    await createAdminAuditLog(
+      req.user,
+      event,
+      {
+        entityType: 'Subscription',
+        entityId: subscription.id,
+        changes,
+        metadata: {
+          businessId: subscription.businessId,
+          operation: event === 'enterprise_approved' ? 'enterprise_activation' : 'enterprise_update',
+          notes,
+          planActivated: event === 'enterprise_approved'
+        },
+        ipAddress: req.ip || req.connection.remoteAddress,
+        userAgent: req.get('user-agent')
+      }
+    );
+
     console.log(`✅ Admin: Enterprise subscription ${id} updated`);
     res.json(subscription);
   } catch (error) {
@@ -716,6 +772,19 @@ router.post('/enterprise-customers/:id/payment-link', async (req, res) => {
       });
     }
 
+    // P0-C: Idempotency - check if price already exists for this config
+    const priceHash = `ent-${subscription.id}-${subscription.enterprisePrice}-TRY-month`;
+
+    if (subscription.stripePriceId) {
+      console.log(`⚠️ Admin: Stripe price already exists for subscription ${id}: ${subscription.stripePriceId}`);
+      return res.json({
+        url: `${process.env.FRONTEND_URL || 'https://app.telyx.ai'}/dashboard/subscription`,
+        message: 'Price already created',
+        priceId: subscription.stripePriceId,
+        idempotent: true
+      });
+    }
+
     // First, create a Stripe product for this enterprise customer
     const product = await stripe.products.create({
       name: `Telyx.AI Kurumsal Plan - ${subscription.business?.name}`,
@@ -726,7 +795,7 @@ router.post('/enterprise-customers/:id/payment-link', async (req, res) => {
       }
     });
 
-    // Create a recurring price for this product
+    // Create a recurring price for this product with idempotency key
     const price = await stripe.prices.create({
       product: product.id,
       unit_amount: Math.round(subscription.enterprisePrice * 100), // Kuruş
@@ -737,8 +806,11 @@ router.post('/enterprise-customers/:id/payment-link', async (req, res) => {
       metadata: {
         subscriptionId: subscription.id.toString(),
         businessId: subscription.businessId.toString(),
-        type: 'enterprise'
+        type: 'enterprise',
+        priceHash
       }
+    }, {
+      idempotencyKey: priceHash // Prevent duplicate price creation
     });
 
     // Create Stripe Payment Link with recurring subscription
@@ -762,12 +834,37 @@ router.post('/enterprise-customers/:id/payment-link', async (req, res) => {
     });
 
     // Store the Stripe price ID for future reference
-    await prisma.subscription.update({
+    const updatedSubscription = await prisma.subscription.update({
       where: { id: parseInt(id) },
       data: {
         stripePriceId: price.id
       }
     });
+
+    // P0-C: Audit log for Stripe price creation
+    await createAdminAuditLog(
+      req.user,
+      'enterprise_stripe_price_created',
+      {
+        entityType: 'Subscription',
+        entityId: subscription.id,
+        changes: {
+          stripePriceId: { old: subscription.stripePriceId, new: price.id },
+          stripeProductId: { old: null, new: product.id }
+        },
+        metadata: {
+          businessId: subscription.businessId,
+          operation: 'stripe_price_creation',
+          stripeProductId: product.id,
+          stripePriceId: price.id,
+          priceAmount: subscription.enterprisePrice,
+          currency: 'TRY',
+          paymentLinkUrl: paymentLink.url
+        },
+        ipAddress: req.ip || req.connection.remoteAddress,
+        userAgent: req.get('user-agent')
+      }
+    );
 
     console.log(`✅ Admin: Payment link created for subscription ${id} (recurring)`);
     res.json({ url: paymentLink.url });
