@@ -127,7 +127,15 @@ router.post('/demo/request-call', async (req, res) => {
     if (error instanceof CapacityError) {
       return res.status(503).json({
         success: false,
-      error: 'Demo araması başlatılamadı. Lütfen tekrar deneyin.'
+        error: 'Demo araması başlatılamadı. Lütfen tekrar deneyin.',
+        retryAfter: error.retryAfter
+      });
+    }
+
+    // Generic error
+    res.status(500).json({
+      success: false,
+      error: 'Demo araması başlatılırken bir hata oluştu. Lütfen tekrar deneyin.'
     });
   }
 });
