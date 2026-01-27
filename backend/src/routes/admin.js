@@ -12,6 +12,8 @@ import {
   logAuditAction,
   sanitizeResponse,
   buildChangesObject,
+  validateBusinessAccess,
+  canAccessBusiness,
   ADMIN_EMAILS
 } from '../middleware/adminAuth.js';
 import { createAdminAuditLog, calculateChanges, auditContext } from '../middleware/auditLog.js';
@@ -576,6 +578,30 @@ router.post('/enterprise-customers', async (req, res) => {
       return res.status(400).json({ error: 'businessId is required' });
     }
 
+    // P1 Security: Validate admin can access this business
+    if (!canAccessBusiness(req, businessId)) {
+      await createAdminAuditLog(
+        req.admin,
+        'enterprise_config_access_denied',
+        {
+          entityType: 'Subscription',
+          entityId: 'N/A',
+          changes: null,
+          metadata: {
+            businessId: parseInt(businessId),
+            operation: 'access_denied',
+            reason: 'Insufficient permissions - SUPER_ADMIN required for cross-business access'
+          },
+          ipAddress: req.ip || req.connection.remoteAddress,
+          userAgent: req.get('user-agent')
+        }
+      );
+      return res.status(403).json({
+        error: 'Bu business\'a erişim yetkiniz yok',
+        requiredRole: 'SUPER_ADMIN'
+      });
+    }
+
     // Mevcut subscription'ı kontrol et
     const existingSubscription = await prisma.subscription.findUnique({
       where: { businessId: parseInt(businessId) }
@@ -674,6 +700,34 @@ router.put('/enterprise-customers/:id', async (req, res) => {
       where: { id: parseInt(id) }
     });
 
+    if (!currentSub) {
+      return res.status(404).json({ error: 'Subscription not found' });
+    }
+
+    // P1 Security: Validate admin can access this business
+    if (!canAccessBusiness(req, currentSub.businessId)) {
+      await createAdminAuditLog(
+        req.admin,
+        'enterprise_config_access_denied',
+        {
+          entityType: 'Subscription',
+          entityId: currentSub.id,
+          changes: null,
+          metadata: {
+            businessId: currentSub.businessId,
+            operation: 'access_denied',
+            reason: 'Insufficient permissions - SUPER_ADMIN required for cross-business access'
+          },
+          ipAddress: req.ip || req.connection.remoteAddress,
+          userAgent: req.get('user-agent')
+        }
+      );
+      return res.status(403).json({
+        error: 'Bu business\'a erişim yetkiniz yok',
+        requiredRole: 'SUPER_ADMIN'
+      });
+    }
+
     // Build update data
     const updateData = {
       enterpriseMinutes: minutes,
@@ -758,6 +812,34 @@ router.post('/enterprise-customers/:id/payment-link', async (req, res) => {
       where: { id: parseInt(id) },
       include: { business: true }
     });
+
+    if (!subscription) {
+      return res.status(404).json({ error: 'Subscription not found' });
+    }
+
+    // P1 Security: Validate admin can access this business
+    if (!canAccessBusiness(req, subscription.businessId)) {
+      await createAdminAuditLog(
+        req.admin,
+        'enterprise_stripe_access_denied',
+        {
+          entityType: 'Subscription',
+          entityId: subscription.id,
+          changes: null,
+          metadata: {
+            businessId: subscription.businessId,
+            operation: 'stripe_price_access_denied',
+            reason: 'Insufficient permissions - SUPER_ADMIN required for cross-business access'
+          },
+          ipAddress: req.ip || req.connection.remoteAddress,
+          userAgent: req.get('user-agent')
+        }
+      );
+      return res.status(403).json({
+        error: 'Bu business\'a erişim yetkiniz yok',
+        requiredRole: 'SUPER_ADMIN'
+      });
+    }
 
     if (!subscription || !subscription.enterprisePrice) {
       return res.status(400).json({ error: 'Kurumsal fiyat belirlenmemiş' });

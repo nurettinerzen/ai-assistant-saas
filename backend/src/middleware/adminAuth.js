@@ -196,4 +196,52 @@ export function buildChangesObject(oldData, newData, fields) {
   return Object.keys(changes).length > 0 ? changes : null;
 }
 
+/**
+ * Validate admin can access target business
+ * SUPER_ADMIN: Can access any business
+ * ADMIN: Can only access their own business
+ *
+ * @param {Object} req - Express request with req.admin and req.user
+ * @param {number} targetBusinessId - Business ID being accessed
+ * @returns {boolean} - True if allowed
+ */
+export function canAccessBusiness(req, targetBusinessId) {
+  const admin = req.admin;
+  const userBusinessId = req.user?.businessId;
+
+  // SUPER_ADMIN can access any business
+  if (admin.role === 'SUPER_ADMIN') {
+    return true;
+  }
+
+  // Regular ADMIN can only access their own business
+  if (admin.role === 'ADMIN') {
+    return userBusinessId && parseInt(targetBusinessId) === parseInt(userBusinessId);
+  }
+
+  return false;
+}
+
+/**
+ * Middleware to validate business access
+ * Checks req.body.businessId, req.params.businessId, or req.query.businessId
+ */
+export function validateBusinessAccess(req, res, next) {
+  const targetBusinessId = req.body.businessId || req.params.businessId || req.query.businessId;
+
+  if (!targetBusinessId) {
+    // No business ID in request - allow (for list endpoints)
+    return next();
+  }
+
+  if (!canAccessBusiness(req, targetBusinessId)) {
+    return res.status(403).json({
+      error: 'Bu business\'a erişim yetkiniz yok',
+      requiredRole: 'SUPER_ADMIN'
+    });
+  }
+
+  next();
+}
+
 export { ADMIN_EMAILS };

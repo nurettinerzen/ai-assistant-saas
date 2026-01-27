@@ -38,7 +38,9 @@ export async function createAdminAuditLog(adminUser, event, data) {
       enterprise_approved: 'PLAN_CHANGE',
       enterprise_stripe_price_created: 'CREATE',
       enterprise_plan_changed: 'PLAN_CHANGE',
-      enterprise_downgrade: 'PLAN_CHANGE'
+      enterprise_downgrade: 'PLAN_CHANGE',
+      enterprise_config_access_denied: 'ACCESS_DENIED',
+      enterprise_stripe_access_denied: 'ACCESS_DENIED'
     };
 
     const action = actionMap[event] || 'UPDATE';
