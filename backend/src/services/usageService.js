@@ -30,6 +30,7 @@ import {
   getTokenPricePerK
 } from '../config/plans.js';
 import balanceService from './balanceService.js';
+import chargeCalculator from './chargeCalculator.js';
 
 const prisma = new PrismaClient();
 
@@ -82,11 +83,16 @@ export async function recordUsage(params) {
       throw new Error('Subscription not found');
     }
 
-    // Convert seconds to minutes (rounded up for billing)
-    const durationMinutes = Math.ceil(durationSeconds / 60);
+    // Convert seconds to minutes (PRECISE - not rounded, for fair billing)
+    const durationMinutes = durationSeconds / 60;
+    const country = subscription.business?.country || 'TR';
 
-    // Calculate charge based on plan
-    const chargeResult = await calculateCharge(subscription, durationMinutes);
+    // Calculate charge with PAYG balance priority (P0-3)
+    const chargeResult = await chargeCalculator.calculateChargeWithBalance(
+      subscription,
+      durationMinutes,
+      country
+    );
 
     // Create usage record
     const usageRecord = await prisma.usageRecord.create({
@@ -110,8 +116,12 @@ export async function recordUsage(params) {
       }
     });
 
-    // Apply charge
-    await applyCharge(subscription, chargeResult, usageRecord.id);
+    // Apply charge with balance priority (P0-3)
+    await chargeCalculator.applyChargeWithBalance(
+      subscription.id,
+      chargeResult,
+      usageRecord.id
+    );
 
     console.log(`✅ Usage recorded: ${durationMinutes} dk, ChargeType: ${chargeResult.chargeType}, Total: ${chargeResult.totalCharge} TL`);
 

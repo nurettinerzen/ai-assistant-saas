@@ -190,11 +190,21 @@ export async function upgradePlan(businessId, newPlan, countryCode = 'TR') {
 }
 
 /**
- * Arama yapılabilir mi kontrol et
+ * Arama yapılabilir mi kontrol et (P0-3: Balance as Wallet)
  * @param {number} businessId - Business ID
  * @returns {object} { canMakeCall, reason, details }
  */
 export async function canMakeCall(businessId) {
+  // Use new balance-aware authorization (P0-3)
+  const chargeCalculator = (await import('./chargeCalculator.js')).default;
+  return await chargeCalculator.canMakeCallWithBalance(businessId);
+}
+
+/**
+ * DEPRECATED: Old canMakeCall logic (kept for reference)
+ * @deprecated Use chargeCalculator.canMakeCallWithBalance instead
+ */
+export async function canMakeCall_OLD(businessId) {
   try {
     const subscription = await prisma.subscription.findUnique({
       where: { businessId },

@@ -1307,7 +1307,7 @@ model UsageRecord {
   conversationId  String? // Diğer kanallar için
   durationSeconds Int // Saniye cinsinden süre
   durationMinutes Float // Dakika cinsinden süre
-  chargeType      String // TRIAL, INCLUDED, BALANCE, OVERAGE
+  chargeType      String // TRIAL, INCLUDED, BALANCE, OVERAGE, BALANCE_INCLUDED, etc.
   pricePerMinute  Float? // Uygulanan dakika fiyatı
   totalCharge     Float? // Toplam ücret TL
   assistantId     String?
@@ -1317,6 +1317,7 @@ model UsageRecord {
   subscription       Subscription        @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
   balanceTransaction BalanceTransaction?
 
+  @@unique([callId], name: "unique_callId") // P0-3: Idempotency - prevent double charge
   @@index([subscriptionId])
   @@index([channel])
   @@index([chargeType])
