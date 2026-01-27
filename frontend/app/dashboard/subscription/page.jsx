@@ -45,7 +45,7 @@ const BASE_PLANS = [
     id: 'PAYG',
     name: { TR: 'Kullandıkça Öde', EN: 'Pay As You Go' },
     description: { TR: 'Taahhütsüz, bakiye yükle kullan', EN: 'No commitment, top up and use' },
-    includedFeatures: ['payPerMinute', 'concurrent', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'ecommerce', 'calendar', 'googleSheets', 'analytics', 'email'],
+    includedFeatures: ['payPerMinute', 'concurrent', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'analytics', 'email'],
     isPayg: true,
     paymentModel: 'PREPAID',
   },
@@ -53,7 +53,7 @@ const BASE_PLANS = [
     id: 'STARTER',
     name: { TR: 'Başlangıç', EN: 'Starter' },
     description: { TR: '150 dakika dahil, aşım ay sonu faturalanır', EN: '150 minutes included, overage billed monthly' },
-    includedFeatures: ['minutes', 'concurrent', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'ecommerce', 'calendar', 'googleSheets', 'analytics', 'email'],
+    includedFeatures: ['minutes', 'concurrent', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'analytics', 'email'],
     paymentModel: 'POSTPAID',
   },
   {
@@ -537,15 +537,9 @@ export default function SubscriptionPage() {
                   whatsapp: 'WhatsApp',
                   chatWidget: 'Chat widget',
                   email: 'E-posta AI',
-                  ecommerce: (isPayg || isStarter)
-                    ? 'E-ticaret (bağlanabilir, kullanım PRO+)'
-                    : 'E-ticaret entegrasyonu',
-                  calendar: (isPayg || isStarter)
-                    ? 'Google Takvim (bağlanabilir, kullanım PRO+)'
-                    : 'Google Takvim',
-                  googleSheets: (isPayg || isStarter)
-                    ? 'Google Sheets (bağlanabilir, kullanım PRO+)'
-                    : 'Google Sheets',
+                  ecommerce: 'E-ticaret entegrasyonu',
+                  calendar: 'Google Takvim',
+                  googleSheets: 'Google Sheets',
                   batchCalls: 'Toplu arama',
                   analytics: 'Analitik',
                   prioritySupport: 'Öncelikli destek',
@@ -570,15 +564,9 @@ export default function SubscriptionPage() {
                   whatsapp: 'WhatsApp',
                   chatWidget: 'Chat widget',
                   email: 'Email AI',
-                  ecommerce: (isPayg || isStarter)
-                    ? 'E-commerce (can connect, usage PRO+)'
-                    : 'E-commerce integration',
-                  calendar: (isPayg || isStarter)
-                    ? 'Google Calendar (can connect, usage PRO+)'
-                    : 'Google Calendar',
-                  googleSheets: (isPayg || isStarter)
-                    ? 'Google Sheets (can connect, usage PRO+)'
-                    : 'Google Sheets',
+                  ecommerce: 'E-commerce integration',
+                  calendar: 'Google Calendar',
+                  googleSheets: 'Google Sheets',
                   batchCalls: 'Batch calls',
                   analytics: 'Analytics',
                   prioritySupport: 'Priority support',
