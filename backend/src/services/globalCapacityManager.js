@@ -21,6 +21,7 @@ class GlobalCapacityManager {
   constructor() {
     this.client = null;
     this.isConnected = false;
+    this.errorLogged = false; // Prevent error log spam
   }
 
   /**
@@ -31,37 +32,50 @@ class GlobalCapacityManager {
 
     const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
 
-    this.client = createClient({
-      url: redisUrl,
-      socket: {
-        reconnectStrategy: (retries) => {
-          if (retries > 10) {
-            console.error('❌ Redis reconnection failed after 10 attempts');
-            return new Error('Redis connection failed');
+    try {
+      this.client = createClient({
+        url: redisUrl,
+        socket: {
+          reconnectStrategy: (retries) => {
+            // Don't retry if Redis is not available
+            if (retries > 3) {
+              console.error('❌ Redis not available - running in fail-open mode');
+              return false; // Stop trying to reconnect
+            }
+            return Math.min(retries * 100, 1000);
           }
-          return Math.min(retries * 100, 3000);
         }
-      }
-    });
+      });
 
-    this.client.on('error', (err) => {
-      console.error('❌ Redis error:', err);
-    });
+      this.client.on('error', (err) => {
+        // Only log first error to avoid spam
+        if (!this.errorLogged) {
+          console.error('❌ Redis connection error:', err.message);
+          this.errorLogged = true;
+        }
+      });
 
-    this.client.on('connect', () => {
-      console.log('✅ Redis connected');
-      this.isConnected = true;
-    });
+      this.client.on('connect', () => {
+        console.log('✅ Redis connected');
+        this.isConnected = true;
+      });
 
-    this.client.on('disconnect', () => {
-      console.log('⚠️  Redis disconnected');
+      this.client.on('disconnect', () => {
+        console.log('⚠️  Redis disconnected');
+        this.isConnected = false;
+      });
+
+      await this.client.connect();
+
+      // Crash-safe: On restart, reconcile with DB
+      await this.reconcileOnStartup();
+    } catch (error) {
+      console.error('❌ Redis connection failed:', error.message);
+      console.log('⚠️  Running in FAIL-OPEN mode (global capacity NOT enforced)');
+      console.log('⚠️  Calls will rely on business-level limits only');
       this.isConnected = false;
-    });
-
-    await this.client.connect();
-
-    // Crash-safe: On restart, reconcile with DB
-    await this.reconcileOnStartup();
+      this.client = null;
+    }
   }
 
   /**
@@ -99,6 +113,11 @@ class GlobalCapacityManager {
       await this.connect();
     }
 
+    // Fail open if Redis not available
+    if (!this.isConnected || !this.client) {
+      return { available: true, current: 0, limit: GLOBAL_CAP, remaining: GLOBAL_CAP };
+    }
+
     try {
       const current = parseInt(await this.client.get(REDIS_KEY_GLOBAL) || '0');
       const available = current < GLOBAL_CAP;
@@ -126,6 +145,12 @@ class GlobalCapacityManager {
   async acquireGlobalSlot(callId, plan, businessId) {
     if (!this.isConnected) {
       await this.connect();
+    }
+
+    // Fail open if Redis not available
+    if (!this.isConnected || !this.client) {
+      console.log('⚠️  Redis unavailable - allowing call (fail-open mode)');
+      return { success: true, current: 0, failOpen: true };
     }
 
     try {
@@ -209,6 +234,12 @@ class GlobalCapacityManager {
       await this.connect();
     }
 
+    // Fail open if Redis not available
+    if (!this.isConnected || !this.client) {
+      console.log('⚠️  Redis unavailable - ignoring release (fail-open mode)');
+      return { success: true, current: 0, failOpen: true };
+    }
+
     try {
       // Get metadata
       const metadataStr = await this.client.hGet(REDIS_KEY_ACTIVE_CALLS, callId);
@@ -267,6 +298,18 @@ class GlobalCapacityManager {
   async getGlobalStatus() {
     if (!this.isConnected) {
       await this.connect();
+    }
+
+    // Fail open if Redis not available
+    if (!this.isConnected || !this.client) {
+      return {
+        active: 0,
+        limit: GLOBAL_CAP,
+        available: GLOBAL_CAP,
+        utilizationPercent: 0,
+        byPlan: {},
+        activeCalls: []
+      };
     }
 
     try {
