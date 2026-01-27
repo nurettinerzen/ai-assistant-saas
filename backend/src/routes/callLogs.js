@@ -214,13 +214,14 @@ router.get('/export', async (req, res) => {
   }
 });
 
-// Get all call logs for the user's business (including chat and WhatsApp)
+// Get all call logs for the user's business (PHONE CALLS ONLY)
+// Note: This endpoint is for phone calls only. Chat/WhatsApp logs are handled separately.
 router.get('/', async (req, res) => {
   try {
     const { businessId } = req;
     const { status, search, limit = 100 } = req.query;
 
-    // Build where clause for CallLog (phone calls)
+    // Build where clause for CallLog (phone calls only)
     const callWhere = { businessId };
 
     if (status && status !== 'all') {
@@ -251,47 +252,10 @@ router.get('/', async (req, res) => {
       ];
     }
 
-    // Build where clause for ChatLog (chat and WhatsApp)
-    const chatWhere = { businessId };
-
-    if (status && status !== 'all') {
-      // Map status to chat status
-      if (status === 'completed' || status === 'answered') {
-        chatWhere.status = 'completed';
-      } else if (status === 'in_progress' || status === 'in-progress') {
-        chatWhere.status = 'active';
-      } else {
-        chatWhere.status = status;
-      }
-    }
-
-    if (search) {
-      // Search in sessionId or customerPhone
-      chatWhere.OR = [
-        {
-          sessionId: {
-            contains: search,
-            mode: 'insensitive'
-          }
-        },
-        {
-          customerPhone: {
-            contains: search,
-            mode: 'insensitive'
-          }
-        }
-      ];
-    }
-
-    // Fetch both call logs and chat logs in parallel
-    const [callLogs, chatLogs, business] = await Promise.all([
+    // Fetch call logs and business info in parallel
+    const [callLogs, business] = await Promise.all([
       prisma.callLog.findMany({
         where: callWhere,
-        orderBy: { createdAt: 'desc' },
-        take: parseInt(limit)
-      }),
-      prisma.chatLog.findMany({
-        where: chatWhere,
         orderBy: { createdAt: 'desc' },
         take: parseInt(limit)
       }),
@@ -352,30 +316,7 @@ router.get('/', async (req, res) => {
       callCost: call.callCost,
     }));
 
-    // Format chat/WhatsApp logs
-    const formattedChats = chatLogs.map(chat => ({
-      id: `chat-${chat.id}`,
-      callId: chat.sessionId,
-      phoneNumber: chat.customerPhone || null,
-      duration: null, // Chats don't have duration
-      status: chat.status === 'active' ? 'in_progress' : 'completed',
-      direction: 'inbound',
-      channel: chat.channel?.toLowerCase() || 'chat',
-      type: chat.channel?.toLowerCase() || 'chat',
-      createdAt: chat.createdAt,
-      sentiment: null,
-      summary: chat.summary,
-      hasRecording: false,
-      hasTranscript: chat.messages && Array.isArray(chat.messages) && chat.messages.length > 0,
-      messageCount: chat.messageCount || 0,
-    }));
-
-    // Merge and sort by createdAt descending
-    const allLogs = [...formattedCalls, ...formattedChats]
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-      .slice(0, parseInt(limit));
-
-    res.json({ calls: allLogs });
+    res.json({ calls: formattedCalls });
   } catch (error) {
     console.error('Get call logs error:', error);
     res.status(500).json({ error: 'Failed to fetch call logs' });
