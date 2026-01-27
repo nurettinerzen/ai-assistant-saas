@@ -1303,7 +1303,7 @@ model UsageRecord {
   id              String   @id @default(cuid())
   subscriptionId  Int
   channel         String // PHONE, WHATSAPP, CHAT, EMAIL
-  callId          String? // 11Labs conversation ID (telefon için)
+  callId          String?  @unique // 11Labs conversation ID (telefon için) - P0-3: Idempotency constraint
   conversationId  String? // Diğer kanallar için
   durationSeconds Int // Saniye cinsinden süre
   durationMinutes Float // Dakika cinsinden süre
@@ -1317,7 +1317,6 @@ model UsageRecord {
   subscription       Subscription        @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
   balanceTransaction BalanceTransaction?
 
-  @@unique([callId], name: "unique_callId") // P0-3: Idempotency - prevent double charge (single UsageRecord per call)
   @@index([subscriptionId])
   @@index([channel])
   @@index([chargeType])

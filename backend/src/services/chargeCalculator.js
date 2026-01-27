@@ -172,15 +172,8 @@ export async function applyChargeWithBalance(subscriptionId, chargeResult, usage
   const { chargeType, totalCharge, breakdown } = chargeResult;
 
   try {
-    // Idempotency check: If usageRecordId exists, skip (already processed)
-    const existingRecord = await prisma.usageRecord.findUnique({
-      where: { id: usageRecordId }
-    });
-
-    if (existingRecord) {
-      console.log(`⚠️ Usage record ${usageRecordId} already processed (idempotency)`);
-      return; // Already applied, skip
-    }
+    // NOTE: Idempotency is handled at usageService layer (callId unique constraint)
+    // This function assumes it's only called for new UsageRecords
 
     // Use transaction for atomic updates
     await prisma.$transaction(async (tx) => {
