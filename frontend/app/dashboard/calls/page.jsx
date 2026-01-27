@@ -153,10 +153,23 @@ export default function CallsPage() {
       let callsData = response.data.calls || [];
 
       // Filter out chat and whatsapp - only show phone calls
-      callsData = callsData.filter(call =>
-        call.channel === 'phone' || call.type === 'phone' ||
-        (!call.channel && !call.type)
-      );
+      // Chat logs have IDs starting with "chat-" or have channel/type set to chat/whatsapp
+      callsData = callsData.filter(call => {
+        // Exclude chat logs (ID starts with "chat-")
+        if (call.id && typeof call.id === 'string' && call.id.startsWith('chat-')) {
+          return false;
+        }
+
+        // Exclude if channel or type is chat/whatsapp
+        const channel = call.channel?.toLowerCase();
+        const type = call.type?.toLowerCase();
+        if (channel === 'chat' || channel === 'whatsapp' || type === 'chat' || type === 'whatsapp') {
+          return false;
+        }
+
+        // Include everything else (phone calls)
+        return true;
+      });
 
       // Client-side filtering for direction (if backend doesn't filter)
       if (directionFilter !== 'all') {
@@ -193,10 +206,22 @@ export default function CallsPage() {
       let callsData = response.data.calls || [];
 
       // Filter out chat and whatsapp - only show phone calls
-      callsData = callsData.filter(call =>
-        call.channel === 'phone' || call.type === 'phone' ||
-        (!call.channel && !call.type)
-      );
+      callsData = callsData.filter(call => {
+        // Exclude chat logs (ID starts with "chat-")
+        if (call.id && typeof call.id === 'string' && call.id.startsWith('chat-')) {
+          return false;
+        }
+
+        // Exclude if channel or type is chat/whatsapp
+        const channel = call.channel?.toLowerCase();
+        const type = call.type?.toLowerCase();
+        if (channel === 'chat' || channel === 'whatsapp' || type === 'chat' || type === 'whatsapp') {
+          return false;
+        }
+
+        // Include everything else (phone calls)
+        return true;
+      });
 
       setCalls(callsData);
       callsCache.set(callsData);

@@ -297,6 +297,15 @@ model Subscription {
   activeCalls     Int @default(0) // Şu anki aktif çağrı sayısı
 
   // ============================================================================
+  // CHAT/WHATSAPP KULLANIM TAKIBI (Anti-abuse)
+  // ============================================================================
+  chatTokensUsed       Int       @default(0) // Bu dönem kullanılan toplam token
+  chatTokensResetAt    DateTime? // Token sayacı sıfırlama tarihi
+  chatTokensLimit      Int       @default(0) // Aylık token limiti (0 = sınırsız ama ücretli)
+  chatDailyMessageDate DateTime? // Son mesaj tarih (rate limit için)
+  chatDailyMessageCount Int      @default(0) // Bugün gönderilen mesaj sayısı
+
+  // ============================================================================
   // KURUMSAL PLAN ALANLARI
   // ============================================================================
   enterpriseMinutes       Int? // Özel dakika limiti

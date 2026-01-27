@@ -24,24 +24,33 @@ try {
 }
 
 /**
- * Reset included minutes for STARTER/PRO plans at the start of each billing period
- * Should be triggered by Stripe/iyzico webhook on subscription renewal
- * Or called manually via cron at month start
+ * RECONCILE missed resets and sync periods from payment provider
+ *
+ * IMPORTANT: This function does NOT create or calculate period dates.
+ * Period dates are ONLY set by payment provider webhooks (Stripe/iyzico).
+ *
+ * This function:
+ * 1. Finds subscriptions whose period has ended (according to provider)
+ * 2. Fetches REAL period dates from Stripe API
+ * 3. Resets usage counters
+ * 4. Updates DB with provider's period dates
+ *
+ * Run daily as a safety net for missed webhooks.
  */
 export async function resetIncludedMinutes() {
-  console.log('🔄 Starting monthly included minutes reset...');
+  console.log('🔄 Starting included minutes reconciliation...');
 
   try {
     const now = new Date();
 
-    // Find all active subscriptions that need reset
-    // Check if currentPeriodEnd has passed and needs reset
-    const subscriptionsToReset = await prisma.subscription.findMany({
+    // Find subscriptions that may need reconciliation
+    // These have period_end in the past but still have usage
+    const subscriptionsToCheck = await prisma.subscription.findMany({
       where: {
         status: 'active',
         plan: { in: ['STARTER', 'PRO', 'ENTERPRISE', 'BASIC'] },
-        currentPeriodEnd: { lte: now },
-        includedMinutesUsed: { gt: 0 }
+        stripeSubscriptionId: { not: null },  // Only Stripe subs (iyzico handled separately)
+        currentPeriodEnd: { lte: now }
       },
       include: {
         business: {
@@ -50,34 +59,66 @@ export async function resetIncludedMinutes() {
       }
     });
 
-    console.log(`📊 Found ${subscriptionsToReset.length} subscriptions to reset`);
+    console.log(`📊 Found ${subscriptionsToCheck.length} subscriptions to reconcile`);
 
-    let resetCount = 0;
-    for (const subscription of subscriptionsToReset) {
+    let reconciledCount = 0;
+    let errorCount = 0;
+
+    // Import Stripe dynamically
+    let stripe = null;
+    try {
+      const stripeModule = await import('./stripe.js');
+      stripe = stripeModule.default.getStripeClient();
+    } catch (e) {
+      console.error('⚠️ Stripe not available, skipping reconciliation');
+      return { success: false, error: 'Stripe not configured' };
+    }
+
+    for (const subscription of subscriptionsToCheck) {
       try {
-        // Reset included minutes
+        // Fetch REAL period dates from Stripe
+        const stripeSubscription = await stripe.subscriptions.retrieve(
+          subscription.stripeSubscriptionId
+        );
+
+        // Get provider's current period dates (source of truth)
+        const providerPeriodStart = new Date(stripeSubscription.current_period_start * 1000);
+        const providerPeriodEnd = new Date(stripeSubscription.current_period_end * 1000);
+
+        console.log(`🔄 Reconciling ${subscription.business?.name}:`);
+        console.log(`   DB period: ${subscription.currentPeriodStart?.toISOString()} → ${subscription.currentPeriodEnd?.toISOString()}`);
+        console.log(`   Stripe period: ${providerPeriodStart.toISOString()} → ${providerPeriodEnd.toISOString()}`);
+
+        // Update DB with provider's dates + reset usage
         await prisma.subscription.update({
           where: { id: subscription.id },
           data: {
             includedMinutesUsed: 0,
-            // Update period dates (this should normally be done by payment webhook)
-            currentPeriodStart: now,
-            currentPeriodEnd: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000), // +30 days
+            packageWarningAt80: false,
+            // CRITICAL: Use provider's dates, never calculate ourselves
+            currentPeriodStart: providerPeriodStart,
+            currentPeriodEnd: providerPeriodEnd,
             updatedAt: now
           }
         });
 
-        resetCount++;
-        console.log(`✅ Reset minutes for business: ${subscription.business?.name}`);
+        reconciledCount++;
+        console.log(`✅ Reconciled ${subscription.business?.name}`);
       } catch (err) {
-        console.error(`❌ Failed to reset for subscription ${subscription.id}:`, err.message);
+        errorCount++;
+        console.error(`❌ Failed to reconcile subscription ${subscription.id}:`, err.message);
       }
     }
 
-    console.log(`🔄 Monthly reset complete: ${resetCount}/${subscriptionsToReset.length} subscriptions reset`);
-    return { success: true, resetCount, total: subscriptionsToReset.length };
+    console.log(`🔄 Reconciliation complete: ${reconciledCount} success, ${errorCount} errors`);
+    return {
+      success: true,
+      reconciledCount,
+      errorCount,
+      total: subscriptionsToCheck.length
+    };
   } catch (error) {
-    console.error('❌ Monthly reset error:', error);
+    console.error('❌ Reconciliation error:', error);
     return { success: false, error: error.message };
   }
 }

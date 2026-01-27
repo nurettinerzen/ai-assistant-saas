@@ -561,30 +561,45 @@ export async function canUseTrialChat(businessId) {
       return { canUseChat: false, reason: 'NO_SUBSCRIPTION' };
     }
 
-    // Only TRIAL plan has chat expiry
-    if (subscription.plan !== 'TRIAL') {
-      // Other plans have unlimited chat
-      return { canUseChat: true, reason: 'PAID_PLAN' };
+    // Use chat rate limiter service for all limit checks
+    const chatRateLimiter = (await import('./chatRateLimiter.js')).default;
+    const result = await chatRateLimiter.canSendChatMessage(businessId);
+
+    if (!result.canSend) {
+      return {
+        canUseChat: false,
+        reason: result.reason,
+        limit: result.limit,
+        used: result.used
+      };
     }
 
-    if (!subscription.trialChatExpiry) {
-      return { canUseChat: false, reason: 'NO_TRIAL_CHAT' };
+    // For TRIAL, also check expiry (backward compatibility)
+    if (subscription.plan === 'TRIAL' && subscription.trialChatExpiry) {
+      const now = new Date();
+      const expiry = new Date(subscription.trialChatExpiry);
+
+      if (now > expiry) {
+        return { canUseChat: false, reason: 'TRIAL_CHAT_EXPIRED' };
+      }
+
+      const diffTime = expiry - now;
+      const daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      return {
+        canUseChat: true,
+        reason: 'TRIAL_CHAT_ACTIVE',
+        daysRemaining,
+        dailyRemaining: result.dailyRemaining,
+        tokenRemaining: result.tokenRemaining
+      };
     }
-
-    const now = new Date();
-    const expiry = new Date(subscription.trialChatExpiry);
-
-    if (now > expiry) {
-      return { canUseChat: false, reason: 'TRIAL_CHAT_EXPIRED' };
-    }
-
-    const diffTime = expiry - now;
-    const daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
     return {
       canUseChat: true,
-      reason: 'TRIAL_CHAT_ACTIVE',
-      daysRemaining
+      reason: 'PAID_PLAN',
+      dailyRemaining: result.dailyRemaining,
+      tokenRemaining: result.tokenRemaining
     };
   } catch (error) {
     console.error('❌ Can use trial chat check error:', error);

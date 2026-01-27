@@ -36,11 +36,13 @@ const invitationSendLimiter = rateLimit({
   legacyHeaders: false
 });
 
-// Invitation accept rate limiter (5 attempts/15min per IP + token combo)
+// Invitation accept rate limiter (5 attempts/15min per token)
+// Note: We limit by token only (not IP) to avoid IPv6 complexity
+// since invitation tokens are single-use anyway
 const invitationAcceptLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 5,
-  keyGenerator: (req) => `invite_accept:${req.ip}:${req.params.token}`,
+  keyGenerator: (req) => `invite_accept:${req.params.token || 'unknown'}`,
   message: { error: 'Çok fazla deneme yaptınız. Lütfen 15 dakika sonra tekrar deneyin.' },
   standardHeaders: true,
   legacyHeaders: false,

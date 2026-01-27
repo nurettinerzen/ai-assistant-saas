@@ -205,7 +205,10 @@ export default function CallDetailsModal({ call, isOpen, onClose }) {
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    const blob = new Blob([call.transcript], { type: 'text/plain' });
+                    const transcriptText = Array.isArray(call.transcript)
+                      ? call.transcript.map(msg => `${msg.speaker}: ${msg.text}`).join('\n')
+                      : call.transcript;
+                    const blob = new Blob([transcriptText], { type: 'text/plain' });
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
@@ -217,10 +220,40 @@ export default function CallDetailsModal({ call, isOpen, onClose }) {
                   Download
                 </Button>
               </div>
-              <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg max-h-64 overflow-y-auto">
-                <pre className="whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-300 font-sans">
-                  {call.transcript}
-                </pre>
+              <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg max-h-96 overflow-y-auto space-y-3">
+                {Array.isArray(call.transcript) ? (
+                  call.transcript.map((msg, idx) => {
+                    // Calculate time from call start
+                    const callStartTime = new Date(call.createdAt);
+                    const messageTime = new Date(callStartTime.getTime() + (msg.timestamp || 0) * 1000);
+
+                    return (
+                      <div key={idx} className={`flex gap-3 ${msg.speaker === 'assistant' ? 'flex-row-reverse' : ''}`}>
+                        <div className={`flex-1 ${msg.speaker === 'assistant' ? 'text-right' : ''}`}>
+                          <div className="flex items-center gap-2 mb-1" style={{ justifyContent: msg.speaker === 'assistant' ? 'flex-end' : 'flex-start' }}>
+                            <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">
+                              {msg.speaker === 'assistant' ? 'Asistan' : 'Müşteri'}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              {messageTime.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                            </span>
+                          </div>
+                          <div className={`inline-block px-3 py-2 rounded-lg ${
+                            msg.speaker === 'assistant'
+                              ? 'bg-primary-100 dark:bg-primary-900/30 text-gray-900 dark:text-gray-100'
+                              : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100'
+                          }`}>
+                            <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <pre className="whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-300 font-sans">
+                    {call.transcript}
+                  </pre>
+                )}
               </div>
             </div>
           </>
