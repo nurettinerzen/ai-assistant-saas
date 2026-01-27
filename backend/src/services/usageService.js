@@ -87,20 +87,22 @@ export async function recordUsage(params) {
     const durationMinutes = durationSeconds / 60;
     const country = subscription.business?.country || 'TR';
 
-    // Calculate charge with PAYG balance priority (P0-3)
-    const chargeResult = await chargeCalculator.calculateChargeWithBalance(
-      subscription,
-      durationMinutes,
-      country
-    );
-
-    // IDEMPOTENCY: Check if callId already exists
+    // IDEMPOTENCY: Check if callId already exists BEFORE any calculation
     let usageRecord = await prisma.usageRecord.findUnique({
       where: { callId }
     });
 
     if (usageRecord) {
       console.log(`⚠️ Usage record already exists for callId ${callId} (idempotent - no double charge)`);
+
+      // Reconstruct chargeResult from stored metadata
+      const chargeResult = {
+        chargeType: usageRecord.chargeType,
+        pricePerMinute: usageRecord.pricePerMinute,
+        totalCharge: usageRecord.totalCharge,
+        breakdown: usageRecord.metadata?.chargeBreakdown || {}
+      };
+
       return {
         success: true,
         usageRecord,
@@ -108,6 +110,14 @@ export async function recordUsage(params) {
         idempotent: true // Indicate this was a duplicate request
       };
     }
+
+    // Calculate charge with PAYG balance priority (P0-3)
+    // Only run calculation for NEW requests
+    const chargeResult = await chargeCalculator.calculateChargeWithBalance(
+      subscription,
+      durationMinutes,
+      country
+    );
 
     // Create usage record (will throw unique violation if duplicate arrives between check and create)
     try {
@@ -141,10 +151,18 @@ export async function recordUsage(params) {
           where: { callId }
         });
 
+        // Reconstruct chargeResult from stored metadata (do NOT use fresh calculation)
+        const storedChargeResult = {
+          chargeType: usageRecord.chargeType,
+          pricePerMinute: usageRecord.pricePerMinute,
+          totalCharge: usageRecord.totalCharge,
+          breakdown: usageRecord.metadata?.chargeBreakdown || {}
+        };
+
         return {
           success: true,
           usageRecord,
-          chargeResult,
+          chargeResult: storedChargeResult,
           idempotent: true
         };
       }
