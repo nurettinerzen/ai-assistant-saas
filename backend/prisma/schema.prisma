@@ -1309,15 +1309,15 @@ model UsageRecord {
   durationMinutes Float // Dakika cinsinden süre
   chargeType      String // TRIAL, INCLUDED, BALANCE, OVERAGE, BALANCE_INCLUDED, etc.
   pricePerMinute  Float? // Uygulanan dakika fiyatı
-  totalCharge     Float? // Toplam ücret TL
+  totalCharge     Float? // IMMEDIATE charge only (balance deduction). For split billing, full breakdown in metadata.chargeBreakdown (fromBalance, fromIncluded, overageMinutes)
   assistantId     String?
-  metadata        Json?
+  metadata        Json? // Contains chargeBreakdown: { fromBalance, balanceCharge, fromIncluded, overageMinutes, overageRate }
   createdAt       DateTime @default(now())
 
   subscription       Subscription        @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
   balanceTransaction BalanceTransaction?
 
-  @@unique([callId], name: "unique_callId") // P0-3: Idempotency - prevent double charge
+  @@unique([callId], name: "unique_callId") // P0-3: Idempotency - prevent double charge (single UsageRecord per call)
   @@index([subscriptionId])
   @@index([channel])
   @@index([chargeType])

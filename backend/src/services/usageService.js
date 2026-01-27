@@ -94,27 +94,64 @@ export async function recordUsage(params) {
       country
     );
 
-    // Create usage record
-    const usageRecord = await prisma.usageRecord.create({
-      data: {
-        subscriptionId,
-        channel,
-        callId,
-        conversationId,
-        durationSeconds,
-        durationMinutes,
-        chargeType: chargeResult.chargeType,
-        pricePerMinute: chargeResult.pricePerMinute,
-        totalCharge: chargeResult.totalCharge,
-        assistantId,
-        metadata: {
-          ...metadata,
-          businessId: subscription.business.id,
-          plan: subscription.plan,
-          chargeBreakdown: chargeResult.breakdown
-        }
-      }
+    // IDEMPOTENCY: Check if callId already exists
+    let usageRecord = await prisma.usageRecord.findUnique({
+      where: { callId }
     });
+
+    if (usageRecord) {
+      console.log(`⚠️ Usage record already exists for callId ${callId} (idempotent - no double charge)`);
+      return {
+        success: true,
+        usageRecord,
+        chargeResult,
+        idempotent: true // Indicate this was a duplicate request
+      };
+    }
+
+    // Create usage record (will throw unique violation if duplicate arrives between check and create)
+    try {
+      usageRecord = await prisma.usageRecord.create({
+        data: {
+          subscriptionId,
+          channel,
+          callId,
+          conversationId,
+          durationSeconds,
+          durationMinutes,
+          chargeType: chargeResult.chargeType,
+          pricePerMinute: chargeResult.pricePerMinute,
+          totalCharge: chargeResult.totalCharge,
+          assistantId,
+          metadata: {
+            ...metadata,
+            businessId: subscription.business.id,
+            plan: subscription.plan,
+            chargeBreakdown: chargeResult.breakdown
+          }
+        }
+      });
+    } catch (createError) {
+      // Handle race condition: unique constraint violation
+      if (createError.code === 'P2002' && createError.meta?.target?.includes('callId')) {
+        console.log(`⚠️ Race condition: callId ${callId} already created by another request`);
+
+        // Fetch the existing record
+        usageRecord = await prisma.usageRecord.findUnique({
+          where: { callId }
+        });
+
+        return {
+          success: true,
+          usageRecord,
+          chargeResult,
+          idempotent: true
+        };
+      }
+
+      // Other errors: re-throw
+      throw createError;
+    }
 
     // Apply charge with balance priority (P0-3)
     await chargeCalculator.applyChargeWithBalance(

@@ -147,12 +147,12 @@ export async function calculateChargeWithBalance(subscription, durationMinutes, 
   return {
     chargeType,
     pricePerMinute, // For balance deduction
-    totalCharge: balanceCharge, // Immediate charge (balance only)
+    totalCharge: balanceCharge, // IMMEDIATE charge (balance only) - NOT full cost. Full breakdown in breakdown{}
     breakdown: {
       fromBalance,
-      balanceCharge,
+      balanceCharge, // Immediate charge (deducted now)
       fromIncluded,
-      overageMinutes,
+      overageMinutes, // Deferred charge (billed at period end)
       overageRate,
       includedRemaining: remainingIncluded - fromIncluded,
       paymentModel: 'HYBRID' // Balance (prepaid) + Included/Overage (postpaid)
