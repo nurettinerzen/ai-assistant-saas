@@ -509,7 +509,13 @@ export default function SubscriptionPage() {
             // Feature labels - YENİ FİYATLANDIRMA SİSTEMİ
             const getFeatureLabel = (key) => {
               const isEnterprise = plan.id === 'ENTERPRISE';
+              const isPro = plan.id === 'PRO';
+              const isStarter = plan.id === 'STARTER';
               const isPayg = plan.id === 'PAYG';
+
+              // Get assistant count from planPricing
+              const assistantCount = planPricing?.assistants ||
+                (isEnterprise ? 25 : isPro ? 10 : 5);
 
               // UI language-based label maps
               const labelMaps = {
@@ -518,16 +524,28 @@ export default function SubscriptionPage() {
                   trialChat: '7 gün chat/WhatsApp',
                   payPerMinute: `${formatPrice(planPricing?.pricePerMinute || 0)}/dk kullandıkça öde`,
                   minutes: isEnterprise ? '500+ dk (özel)' : `${planPricing?.minutes || 0} dk dahil`,
-                  concurrent: isEnterprise ? '5+ eşzamanlı çağrı' : `${planPricing?.concurrent || 1} eşzamanlı çağrı`,
-                  assistants: 'Sınırsız asistan',
-                  phoneNumbers: 'Sınırsız telefon numarası',
+                  concurrent: isEnterprise
+                    ? '5+ eşzamanlı çağrı (özel)'
+                    : `${planPricing?.concurrent || 1} eşzamanlı çağrı`,
+                  assistants: isEnterprise
+                    ? '25+ asistan (özel)'
+                    : isPro
+                      ? '10 asistan'
+                      : '5 asistan',
+                  phoneNumbers: '1 telefon numarası',
                   phone: 'Telefon AI',
                   whatsapp: 'WhatsApp',
                   chatWidget: 'Chat widget',
                   email: 'E-posta AI',
-                  ecommerce: 'E-ticaret entegrasyonu',
-                  calendar: 'Google Takvim',
-                  googleSheets: 'Google Sheets',
+                  ecommerce: (isPayg || isStarter)
+                    ? 'E-ticaret (bağlanabilir, kullanım PRO+)'
+                    : 'E-ticaret entegrasyonu',
+                  calendar: (isPayg || isStarter)
+                    ? 'Google Takvim (bağlanabilir, kullanım PRO+)'
+                    : 'Google Takvim',
+                  googleSheets: (isPayg || isStarter)
+                    ? 'Google Sheets (bağlanabilir, kullanım PRO+)'
+                    : 'Google Sheets',
                   batchCalls: 'Toplu arama',
                   analytics: 'Analitik',
                   prioritySupport: 'Öncelikli destek',
@@ -539,16 +557,28 @@ export default function SubscriptionPage() {
                   trialChat: '7 days chat/WhatsApp',
                   payPerMinute: `${formatPrice(planPricing?.pricePerMinute || 0)}/min pay as you go`,
                   minutes: isEnterprise ? '500+ min (custom)' : `${planPricing?.minutes || 0} min included`,
-                  concurrent: isEnterprise ? '5+ concurrent calls' : `${planPricing?.concurrent || 1} concurrent call${(planPricing?.concurrent || 1) > 1 ? 's' : ''}`,
-                  assistants: 'Unlimited assistants',
-                  phoneNumbers: 'Unlimited phone numbers',
+                  concurrent: isEnterprise
+                    ? '5+ concurrent calls (custom)'
+                    : `${planPricing?.concurrent || 1} concurrent call${(planPricing?.concurrent || 1) > 1 ? 's' : ''}`,
+                  assistants: isEnterprise
+                    ? '25+ assistants (custom)'
+                    : isPro
+                      ? '10 assistants'
+                      : '5 assistants',
+                  phoneNumbers: '1 phone number',
                   phone: 'Phone AI',
                   whatsapp: 'WhatsApp',
                   chatWidget: 'Chat widget',
                   email: 'Email AI',
-                  ecommerce: 'E-commerce integration',
-                  calendar: 'Google Calendar',
-                  googleSheets: 'Google Sheets',
+                  ecommerce: (isPayg || isStarter)
+                    ? 'E-commerce (can connect, usage PRO+)'
+                    : 'E-commerce integration',
+                  calendar: (isPayg || isStarter)
+                    ? 'Google Calendar (can connect, usage PRO+)'
+                    : 'Google Calendar',
+                  googleSheets: (isPayg || isStarter)
+                    ? 'Google Sheets (can connect, usage PRO+)'
+                    : 'Google Sheets',
                   batchCalls: 'Batch calls',
                   analytics: 'Analytics',
                   prioritySupport: 'Priority support',
