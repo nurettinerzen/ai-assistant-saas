@@ -75,6 +75,8 @@ import adminRoutes from './routes/admin.js';
 import callbackRoutes from './routes/callback.js';
 // Metrics (shadow mode, idempotency, health)
 import metricsRoutes from './routes/metrics.js';
+// Concurrent call metrics (P0.5)
+import concurrentMetricsRoutes from './routes/concurrent-metrics.js';
 // Media (signed URL access)
 import mediaRoutes from './routes/media.js';
 
@@ -191,6 +193,7 @@ app.use('/api/waitlist', waitlistRoutes);
 app.use('/api/onboarding', onboardingRoutes);
 app.use('/api/credits', creditsRoutes);
 app.use('/api/metrics', metricsRoutes); // Internal metrics (protected)
+app.use('/api/concurrent-metrics', concurrentMetricsRoutes); // P0.5: Concurrent call metrics
 app.use('/api/media', mediaRoutes); // Signed URL media access (secure)
 // Balance and Usage (new pricing system)
 app.use('/api/balance', balanceRoutes);
@@ -232,6 +235,11 @@ app.use((err, req, res, next) => {
 //   }
 // }
 
+// P0: Initialize concurrent call services
+import globalCapacityManager from './services/globalCapacityManager.js';
+import { startCleanupCron } from './services/callCleanupCron.js';
+import metricsService from './services/metricsService.js';
+
 // Initialize cron jobs
 if (process.env.NODE_ENV !== 'test') {
   console.log('\n🚀 Initializing background jobs...');
@@ -240,6 +248,22 @@ if (process.env.NODE_ENV !== 'test') {
   // Email sync is now MANUAL only - users trigger sync from panel
   // initEmailSyncJob();
   console.log('✅ Background jobs initialized\n');
+
+  // P0: Initialize concurrent call management
+  console.log('🚀 Initializing concurrent call management...');
+  try {
+    await globalCapacityManager.connect();
+    console.log('✅ Global capacity manager (Redis) connected');
+
+    startCleanupCron();
+    console.log('✅ Call cleanup cron started (every 10 minutes)');
+
+    console.log('✅ Metrics service initialized');
+    console.log('🎯 Concurrent call system ready\n');
+  } catch (error) {
+    console.error('❌ Error initializing concurrent call system:', error);
+    console.error('   Calls may fail if Redis is not available\n');
+  }
 }
 
 // Vercel export

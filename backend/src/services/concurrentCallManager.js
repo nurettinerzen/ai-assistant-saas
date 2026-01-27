@@ -5,10 +5,12 @@
 //
 // Manages concurrent call limits for subscriptions
 // Handles acquiring and releasing call slots
+// P0 UPDATE: Integrated with global capacity gate (Redis)
 // ============================================================================
 
 import { PrismaClient } from '@prisma/client';
 import { PLANS, getConcurrentLimit } from '../config/plans.js';
+import globalCapacityManager from './globalCapacityManager.js';
 
 const prisma = new PrismaClient();
 
@@ -20,11 +22,15 @@ class ConcurrentCallManager {
 
   /**
    * Acquire a call slot before starting a call
+   * P0 UPDATE: Checks global capacity + business limit + creates ActiveCallSession
    * Uses atomic updateMany for race condition safety
    * @param {number} businessId - Business ID
+   * @param {string} callId - Unique call ID from provider
+   * @param {string} direction - "inbound" or "outbound"
+   * @param {Object} metadata - Additional call metadata
    * @returns {Promise<{success: boolean, currentActive?: number, limit?: number, error?: string}>}
    */
-  async acquireSlot(businessId) {
+  async acquireSlot(businessId, callId = null, direction = 'outbound', metadata = {}) {
     try {
       const subscription = await prisma.subscription.findUnique({
         where: { businessId },
@@ -66,7 +72,23 @@ class ConcurrentCallManager {
         };
       }
 
-      // Atomic increment with check - prevents race conditions
+      // P0.1: Check global capacity FIRST
+      const globalCheck = await globalCapacityManager.checkGlobalCapacity();
+
+      if (!globalCheck.available) {
+        console.log(`⚠️ Global capacity exceeded: ${globalCheck.current}/${globalCheck.limit}`);
+        return {
+          success: false,
+          error: 'GLOBAL_CAPACITY_EXCEEDED',
+          message: 'Platform capacity limit reached. Please try again in a few moments.',
+          currentActive: subscription.activeCalls,
+          limit: limit,
+          globalCurrent: globalCheck.current,
+          globalLimit: globalCheck.limit
+        };
+      }
+
+      // Atomic increment with check - prevents race conditions (business-level)
       const result = await prisma.subscription.updateMany({
         where: {
           businessId,
@@ -78,24 +100,71 @@ class ConcurrentCallManager {
       });
 
       if (result.count === 0) {
-        // Limit exceeded
-        console.log(`⚠️ Concurrent limit exceeded for business ${businessId}: ${subscription.activeCalls}/${limit}`);
+        // Business limit exceeded
+        console.log(`⚠️ Business concurrent limit exceeded for business ${businessId}: ${subscription.activeCalls}/${limit}`);
         return {
           success: false,
-          error: 'CONCURRENT_LIMIT_EXCEEDED',
-          message: 'Maximum concurrent calls reached. Please try again later.',
+          error: 'BUSINESS_CONCURRENT_LIMIT_EXCEEDED',
+          message: 'Maximum concurrent calls reached for your account. Please try again later.',
           currentActive: subscription.activeCalls,
           limit: limit
         };
       }
 
-      console.log(`✅ Call slot acquired for business ${businessId}: ${subscription.activeCalls + 1}/${limit}`);
+      // Generate callId if not provided
+      const finalCallId = callId || `call_${Date.now()}_${businessId}`;
+
+      // P0.1: Acquire global slot (Redis)
+      const globalResult = await globalCapacityManager.acquireGlobalSlot(
+        finalCallId,
+        subscription.plan,
+        businessId
+      );
+
+      if (!globalResult.success) {
+        // Rollback business counter
+        await prisma.subscription.update({
+          where: { businessId },
+          data: { activeCalls: { decrement: 1 } }
+        });
+
+        console.log(`⚠️ Global slot acquisition failed for ${finalCallId}`);
+        return {
+          success: false,
+          error: globalResult.reason || 'GLOBAL_SLOT_FAILED',
+          message: 'Platform capacity limit reached. Please try again.',
+          currentActive: subscription.activeCalls,
+          limit: limit
+        };
+      }
+
+      // P0.3: Create ActiveCallSession record
+      try {
+        await prisma.activeCallSession.create({
+          data: {
+            callId: finalCallId,
+            businessId,
+            plan: subscription.plan,
+            direction,
+            status: 'active',
+            metadata: metadata || {}
+          }
+        });
+      } catch (sessionError) {
+        console.error(`⚠️ Failed to create ActiveCallSession for ${finalCallId}:`, sessionError);
+        // Continue anyway - session is not critical for call flow
+      }
+
+      console.log(`✅ Call slot acquired for business ${businessId}: ${subscription.activeCalls + 1}/${limit} (global: ${globalResult.current}/${globalResult.limit})`);
 
       return {
         success: true,
         currentActive: subscription.activeCalls + 1,
         limit: limit,
-        available: limit - subscription.activeCalls - 1
+        available: limit - subscription.activeCalls - 1,
+        globalCurrent: globalResult.current,
+        globalLimit: globalResult.limit,
+        callId: finalCallId
       };
 
     } catch (error) {
@@ -106,12 +175,14 @@ class ConcurrentCallManager {
 
   /**
    * Release a call slot when call ends
+   * P0 UPDATE: Releases global slot + updates ActiveCallSession
    * @param {number} businessId - Business ID
+   * @param {string} callId - Unique call ID
    * @returns {Promise<{success: boolean, currentActive?: number}>}
    */
-  async releaseSlot(businessId) {
+  async releaseSlot(businessId, callId = null) {
     try {
-      // Decrement active calls
+      // Decrement active calls (business-level)
       await prisma.subscription.update({
         where: { businessId },
         data: {
@@ -130,6 +201,28 @@ class ConcurrentCallManager {
         }
       });
 
+      // P0.1: Release global slot (Redis)
+      if (callId) {
+        await globalCapacityManager.releaseGlobalSlot(callId);
+
+        // P0.3: Update ActiveCallSession
+        try {
+          await prisma.activeCallSession.updateMany({
+            where: {
+              callId,
+              businessId,
+              status: 'active'
+            },
+            data: {
+              status: 'ended',
+              endedAt: new Date()
+            }
+          });
+        } catch (sessionError) {
+          console.error(`⚠️ Failed to update ActiveCallSession for ${callId}:`, sessionError);
+        }
+      }
+
       const updated = await prisma.subscription.findUnique({
         where: { businessId },
         select: { activeCalls: true, concurrentLimit: true }
@@ -139,7 +232,8 @@ class ConcurrentCallManager {
 
       return {
         success: true,
-        currentActive: updated?.activeCalls || 0
+        currentActive: updated?.activeCalls || 0,
+        callId
       };
 
     } catch (error) {

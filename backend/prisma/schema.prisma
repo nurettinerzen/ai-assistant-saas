@@ -132,6 +132,7 @@ model Business {
   bookingIntegration       BookingIntegration?
   businessHours            BusinessHours?
   callLogs                 CallLog[]
+  activeCallSessions       ActiveCallSession[]
   erpIntegration           ErpIntegration?
   integrations             Integration[]
   knowledgeBase            KnowledgeBase[]
@@ -423,6 +424,35 @@ model CallLog {
   @@index([callResult])
   @@index([callStatus])
   @@index([normalizedCategory])
+}
+
+// P0.3: Active call session tracking for concurrent call management
+// Real-time tracking of active calls for reconciliation and cleanup
+model ActiveCallSession {
+  id         Int      @id @default(autoincrement())
+  callId     String   @unique // 11Labs conversation ID or VAPI call ID
+  businessId Int
+  plan       String // PAYG, STARTER, PRO, ENTERPRISE
+  direction  String // "inbound" or "outbound"
+  status     String   @default("active") // active, ended, failed
+  provider   String   @default("elevenlabs") // elevenlabs, vapi
+
+  // Timing
+  startedAt  DateTime @default(now())
+  endedAt    DateTime?
+
+  // Metadata for debugging
+  metadata   Json?    // { assistantId, phoneNumber, etc. }
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  business   Business @relation(fields: [businessId], references: [id])
+
+  @@index([callId])
+  @@index([businessId])
+  @@index([status])
+  @@index([startedAt])
+  @@index([plan])
 }
 
 // Arama teknik sonucu
