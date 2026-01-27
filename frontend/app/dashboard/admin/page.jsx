@@ -105,14 +105,14 @@ export default function AdminDashboardPage() {
       label: 'Bugün Arama',
       value: stats?.calls?.today || 0,
       icon: Phone,
-      color: 'bg-purple-500',
+      color: 'bg-teal-500',
       href: '/dashboard/admin/calls',
     },
     {
       label: 'Toplam Arama',
       value: stats?.calls?.total || 0,
       icon: BarChart3,
-      color: 'bg-indigo-500',
+      color: 'bg-teal-500',
       href: '/dashboard/admin/calls',
     },
     {
@@ -175,7 +175,7 @@ export default function AdminDashboardPage() {
         </h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {[
-            { label: 'Enterprise', value: planStats.enterprise || 0, color: 'text-purple-600' },
+            { label: 'Enterprise', value: planStats.enterprise || 0, color: 'text-teal-600' },
             { label: 'Pro', value: planStats.pro || 0, color: 'text-blue-600' },
             { label: 'Starter', value: planStats.starter || 0, color: 'text-green-600' },
             { label: 'PAYG', value: planStats.payg || 0, color: 'text-orange-600' },

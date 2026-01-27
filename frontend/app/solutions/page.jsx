@@ -45,7 +45,7 @@ export default function SolutionsPage() {
       titleKey: 'solutions.salon.title',
       descKey: 'solutions.salon.desc',
       href: '/solutions/salon',
-      color: 'from-pink-500 to-purple-500',
+      color: 'from-pink-500 to-teal-500',
       features: [
         'solutions.salon.feature1',
         'solutions.salon.feature2',
@@ -68,7 +68,7 @@ export default function SolutionsPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-teal-50">
       <Navigation />
 
       {/* Hero Section */}
@@ -152,7 +152,7 @@ export default function SolutionsPage() {
               {t('solutions.cta.subtitle')}
             </p>
             <Link href="/contact">
-              <Button size="lg" className="bg-gradient-to-r from-indigo-600 to-blue-500 hover:from-indigo-700 hover:to-blue-600">
+              <Button size="lg" className="bg-gradient-to-r from-teal-600 to-blue-500 hover:from-teal-700 hover:to-blue-600">
                 {t('solutions.cta.contact')}
               </Button>
             </Link>

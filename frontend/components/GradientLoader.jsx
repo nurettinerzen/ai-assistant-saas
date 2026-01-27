@@ -24,7 +24,7 @@ export default function GradientLoader({
       <div className={cn('relative', sizeClasses[size])}>
         {/* Primary blob */}
         <div
-          className="absolute inset-0 rounded-full bg-gradient-to-r from-pink-300 via-purple-300 to-indigo-400 opacity-70 blur-xl animate-blob"
+          className="absolute inset-0 rounded-full bg-gradient-to-r from-teal-200 via-teal-300 to-teal-500 opacity-70 blur-xl animate-blob"
           style={{ animationDuration: '7s' }}
         />
 

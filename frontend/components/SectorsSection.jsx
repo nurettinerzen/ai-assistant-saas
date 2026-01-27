@@ -40,7 +40,7 @@ export const SectorsSection = () => {
         'landing.sectors.salon.feature1'
       ],
       href: '/solutions/salon',
-      color: 'from-pink-500 to-purple-500'
+      color: 'from-pink-500 to-teal-500'
     },
     {
       icon: HeadphonesIcon,

@@ -83,8 +83,8 @@ export default function CallDetailsModal({ call, isOpen, onClose }) {
           </div>
 
           <div className="flex items-start gap-3">
-            <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-              <Clock className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+            <div className="p-2 bg-teal-100 dark:bg-teal-900/30 rounded-lg">
+              <Clock className="h-5 w-5 text-teal-600 dark:text-teal-400" />
             </div>
             <div>
               <p className="text-xs text-gray-600 dark:text-gray-400">Duration</p>
@@ -172,8 +172,8 @@ export default function CallDetailsModal({ call, isOpen, onClose }) {
                 )}
               </div>
               {call.summary && (
-                <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                  <p className="text-xs text-purple-600 dark:text-purple-400 font-semibold mb-2">Summary</p>
+                <div className="p-4 bg-teal-50 dark:bg-teal-900/20 rounded-lg">
+                  <p className="text-xs text-teal-600 dark:text-teal-400 font-semibold mb-2">Summary</p>
                   <p className="text-sm text-gray-700 dark:text-gray-300">{call.summary}</p>
                 </div>
               )}

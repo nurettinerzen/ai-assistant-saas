@@ -36,20 +36,22 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { NAVIGATION_ITEMS } from '@/lib/navigationConfig';
 
 const STATUS_CONFIG = {
-  PENDING: { label: { tr: 'Bekliyor', en: 'Pending' }, color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400', icon: Clock },
-  IN_PROGRESS: { label: { tr: 'Aranıyor', en: 'In Progress' }, color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400', icon: Phone },
-  COMPLETED: { label: { tr: 'Tamamlandı', en: 'Completed' }, color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400', icon: CheckCircle },
-  NO_ANSWER: { label: { tr: 'Cevap Yok', en: 'No Answer' }, color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400', icon: PhoneMissed },
+  PENDING: { label: { tr: 'Bekliyor', en: 'Pending' }, color: 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400', icon: Clock },
+  IN_PROGRESS: { label: { tr: 'Aranıyor', en: 'In Progress' }, color: 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400', icon: Phone },
+  COMPLETED: { label: { tr: 'Tamamlandı', en: 'Completed' }, color: 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400', icon: CheckCircle },
+  NO_ANSWER: { label: { tr: 'Cevap Yok', en: 'No Answer' }, color: 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400', icon: PhoneMissed },
   CANCELLED: { label: { tr: 'İptal', en: 'Cancelled' }, color: 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400', icon: XCircle }
 };
 
 const PRIORITY_CONFIG = {
-  URGENT: { label: { tr: 'Acil', en: 'Urgent' }, color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
-  HIGH: { label: { tr: 'Yüksek', en: 'High' }, color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' },
-  NORMAL: { label: { tr: 'Normal', en: 'Normal' }, color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
-  LOW: { label: { tr: 'Düşük', en: 'Low' }, color: 'bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400' }
+  URGENT: { label: { tr: 'Acil', en: 'Urgent' }, color: 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400' },
+  HIGH: { label: { tr: 'Yüksek', en: 'High' }, color: 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400' },
+  NORMAL: { label: { tr: 'Normal', en: 'Normal' }, color: 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400' },
+  LOW: { label: { tr: 'Düşük', en: 'Low' }, color: 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400' }
 };
 
 const TRANSLATIONS = {
@@ -126,8 +128,7 @@ const TRANSLATIONS = {
 };
 
 export default function CallbacksPage() {
-  // TODO: Get locale from business.language in the future
-  const locale = 'tr';
+  const { locale } = useLanguage();
   const t = TRANSLATIONS[locale] || TRANSLATIONS.tr;
   const router = useRouter();
 
@@ -229,8 +230,12 @@ export default function CallbacksPage() {
       {/* Header */}
       <div className="flex justify-between items-start mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{t.title}</h1>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">{t.subtitle}</p>
+          <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">
+            {locale === 'tr' ? NAVIGATION_ITEMS.callbacks.labelTr : NAVIGATION_ITEMS.callbacks.labelEn}
+          </h1>
+          <p className="text-neutral-600 dark:text-neutral-400 mt-1">
+            {locale === 'tr' ? NAVIGATION_ITEMS.callbacks.descriptionTr : NAVIGATION_ITEMS.callbacks.descriptionEn}
+          </p>
         </div>
         <Button onClick={() => { fetchCallbacks(); fetchStats(); }} variant="outline" size="sm">
           <RefreshCw className="h-4 w-4 mr-2" />
@@ -238,37 +243,28 @@ export default function CallbacksPage() {
         </Button>
       </div>
 
-      {/* Info Box */}
-      <div className="mb-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-        <p className="text-sm text-yellow-800 dark:text-yellow-300">
-          {locale === 'tr'
-            ? 'AI asistanınız görüşme sırasında müşterinin geri aranmak istediğini tespit ettiğinde burada bir kayıt oluşturur. Müşteriyi aradığınızda "Arandı" işaretleyebilir, ulaşamadıysanız "Cevap Yok" seçip daha sonra tekrar deneyebilirsiniz. Notlar ekleyerek görüşme detaylarını kaydedebilirsiniz.'
-            : 'When your AI assistant detects that a customer wants to be called back during a conversation, it creates a record here. When you call the customer, you can mark "Called", or if you couldn\'t reach them, select "No Answer" and try again later. You can add notes to record conversation details.'
-          }
-        </p>
-      </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
-          <div className="text-2xl font-bold text-yellow-700 dark:text-yellow-400">{stats.pending}</div>
-          <div className="text-sm text-yellow-600 dark:text-yellow-500">{t.pending}</div>
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg p-4">
+          <div className="text-2xl font-bold text-neutral-900 dark:text-white">{stats.pending}</div>
+          <div className="text-sm text-neutral-600 dark:text-neutral-400">{t.pending}</div>
         </div>
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-          <div className="text-2xl font-bold text-blue-700 dark:text-blue-400">{stats.inProgress}</div>
-          <div className="text-sm text-blue-600 dark:text-blue-500">{t.inProgress}</div>
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg p-4">
+          <div className="text-2xl font-bold text-neutral-900 dark:text-white">{stats.inProgress}</div>
+          <div className="text-sm text-neutral-600 dark:text-neutral-400">{t.inProgress}</div>
         </div>
-        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
-          <div className="text-2xl font-bold text-green-700 dark:text-green-400">{stats.completed}</div>
-          <div className="text-sm text-green-600 dark:text-green-500">{t.completed}</div>
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg p-4">
+          <div className="text-2xl font-bold text-neutral-900 dark:text-white">{stats.completed}</div>
+          <div className="text-sm text-neutral-600 dark:text-neutral-400">{t.completed}</div>
         </div>
-        <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4">
-          <div className="text-2xl font-bold text-purple-700 dark:text-purple-400">{stats.today}</div>
-          <div className="text-sm text-purple-600 dark:text-purple-500">{t.today}</div>
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg p-4">
+          <div className="text-2xl font-bold text-neutral-900 dark:text-white">{stats.today}</div>
+          <div className="text-sm text-neutral-600 dark:text-neutral-400">{t.today}</div>
         </div>
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-          <div className="text-2xl font-bold text-red-700 dark:text-red-400">{stats.urgent}</div>
-          <div className="text-sm text-red-600 dark:text-red-500">{t.urgent}</div>
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg p-4">
+          <div className="text-2xl font-bold text-neutral-900 dark:text-white">{stats.urgent}</div>
+          <div className="text-sm text-neutral-600 dark:text-neutral-400">{t.urgent}</div>
         </div>
       </div>
 
@@ -385,7 +381,7 @@ export default function CallbacksPage() {
                             <Button
                               size="sm"
                               variant="outline"
-                              className="text-green-600 border-green-600 hover:bg-green-50 dark:hover:bg-green-900/20"
+                              className=""
                               onClick={() => updateStatus(callback.id, 'COMPLETED')}
                             >
                               <CheckCircle className="h-4 w-4 mr-1" />
@@ -394,7 +390,7 @@ export default function CallbacksPage() {
                             <Button
                               size="sm"
                               variant="outline"
-                              className="text-orange-600 border-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20"
+                              className=""
                               onClick={() => updateStatus(callback.id, 'NO_ANSWER')}
                             >
                               <PhoneMissed className="h-4 w-4 mr-1" />
@@ -406,7 +402,7 @@ export default function CallbacksPage() {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="text-yellow-600 border-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/20"
+                            className=""
                             onClick={() => retryCallback(callback.id)}
                           >
                             <RefreshCw className="h-4 w-4 mr-1" />

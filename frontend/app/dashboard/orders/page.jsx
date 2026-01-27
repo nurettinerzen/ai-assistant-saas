@@ -46,8 +46,8 @@ import { toast } from '@/lib/toast';
 const STATUS_COLORS = {
   Created: { bg: 'bg-blue-100', text: 'text-blue-800', icon: Clock },
   Picking: { bg: 'bg-yellow-100', text: 'text-yellow-800', icon: Package },
-  Invoiced: { bg: 'bg-purple-100', text: 'text-purple-800', icon: Package },
-  Shipped: { bg: 'bg-indigo-100', text: 'text-indigo-800', icon: Truck },
+  Invoiced: { bg: 'bg-teal-100', text: 'text-teal-800', icon: Package },
+  Shipped: { bg: 'bg-teal-100', text: 'text-teal-800', icon: Truck },
   Delivered: { bg: 'bg-green-100', text: 'text-green-800', icon: CheckCircle2 },
   Cancelled: { bg: 'bg-red-100', text: 'text-red-800', icon: XCircle },
   UnDelivered: { bg: 'bg-orange-100', text: 'text-orange-800', icon: AlertCircle },
@@ -453,17 +453,17 @@ export default function OrdersPage() {
 
               {/* Cargo Info */}
               {selectedOrder.cargoProviderName && (
-                <div className="bg-indigo-50 rounded-lg p-4">
-                  <h4 className="font-medium text-indigo-900 mb-2 flex items-center gap-2">
+                <div className="bg-teal-50 rounded-lg p-4">
+                  <h4 className="font-medium text-teal-900 mb-2 flex items-center gap-2">
                     <Truck className="h-4 w-4" />
                     Kargo Bilgileri
                   </h4>
                   <div className="space-y-2 text-sm">
-                    <p><span className="text-indigo-700">Kargo Firması:</span> {selectedOrder.cargoProviderName}</p>
+                    <p><span className="text-teal-700">Kargo Firması:</span> {selectedOrder.cargoProviderName}</p>
                     {selectedOrder.cargoTrackingNumber && (
                       <p>
-                        <span className="text-indigo-700">Takip No:</span>{' '}
-                        <span className="font-mono bg-indigo-100 px-2 py-0.5 rounded">
+                        <span className="text-teal-700">Takip No:</span>{' '}
+                        <span className="font-mono bg-teal-100 px-2 py-0.5 rounded">
                           {selectedOrder.cargoTrackingNumber}
                         </span>
                       </p>
@@ -473,7 +473,7 @@ export default function OrdersPage() {
                         href={selectedOrder.cargoTrackingUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800"
+                        className="inline-flex items-center gap-1 text-teal-600 hover:text-teal-800"
                       >
                         Kargo Takibi <ExternalLink className="h-3 w-3" />
                       </a>

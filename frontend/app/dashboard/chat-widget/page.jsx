@@ -24,6 +24,7 @@ import { toast } from 'sonner';
 import ChatWidget from '@/components/ChatWidget';
 import axios from 'axios';
 import { apiClient } from '@/lib/api';
+import { NAVIGATION_ITEMS } from '@/lib/navigationConfig';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -425,9 +426,11 @@ export default function ChatWidgetPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-neutral-900">{t('dashboard.chatWidgetPage.title')}</h1>
-        <p className="text-neutral-600 mt-1">
-          {t('dashboard.chatWidgetPage.description')}
+        <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">
+          {locale === 'tr' ? NAVIGATION_ITEMS.chatWidget.labelTr : NAVIGATION_ITEMS.chatWidget.labelEn}
+        </h1>
+        <p className="text-neutral-600 dark:text-neutral-400 mt-1">
+          {locale === 'tr' ? NAVIGATION_ITEMS.chatWidget.descriptionTr : NAVIGATION_ITEMS.chatWidget.descriptionEn}
         </p>
       </div>
 

@@ -37,19 +37,20 @@ import { apiClient } from '@/lib/api';
 import { toast } from '@/lib/toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { formatDistanceToNow } from 'date-fns';
+import { NAVIGATION_ITEMS } from '@/lib/navigationConfig';
 
 // Status badge colors and translation keys
 const STATUS_CONFIG = {
-  NEW: { bg: 'bg-gray-100', text: 'text-gray-800', key: 'new' },
-  PENDING_REPLY: { bg: 'bg-yellow-100', text: 'text-yellow-800', key: 'new' }, // Legacy - treat same as NEW
-  DRAFT_READY: { bg: 'bg-blue-100', text: 'text-blue-800', key: 'draftReady' },
-  REPLIED: { bg: 'bg-green-100', text: 'text-green-800', key: 'replied' },
-  CLOSED: { bg: 'bg-neutral-100', text: 'text-neutral-800', key: 'closed' },
-  NO_REPLY_NEEDED: { bg: 'bg-purple-100', text: 'text-purple-800', key: 'noReplyNeeded' }
+  NEW: { bg: 'bg-neutral-100 dark:bg-neutral-800', text: 'text-neutral-700 dark:text-neutral-400', key: 'new' },
+  PENDING_REPLY: { bg: 'bg-neutral-100 dark:bg-neutral-800', text: 'text-neutral-700 dark:text-neutral-400', key: 'new' }, // Legacy - treat same as NEW
+  DRAFT_READY: { bg: 'bg-neutral-100 dark:bg-neutral-800', text: 'text-neutral-700 dark:text-neutral-400', key: 'draftReady' },
+  REPLIED: { bg: 'bg-neutral-100 dark:bg-neutral-800', text: 'text-neutral-700 dark:text-neutral-400', key: 'replied' },
+  CLOSED: { bg: 'bg-neutral-100 dark:bg-neutral-800', text: 'text-neutral-700 dark:text-neutral-400', key: 'closed' },
+  NO_REPLY_NEEDED: { bg: 'bg-neutral-100 dark:bg-neutral-800', text: 'text-neutral-700 dark:text-neutral-400', key: 'noReplyNeeded' }
 };
 
 export default function EmailDashboardPage() {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
 
   // State
   const [emailStatus, setEmailStatus] = useState(null);
@@ -362,16 +363,16 @@ export default function EmailDashboardPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">{t('dashboard.emailPage.title')}</h1>
+          <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">
+          {locale === 'tr' ? NAVIGATION_ITEMS.email.labelTr : NAVIGATION_ITEMS.email.labelEn}
+        </h1>
           <p className="text-neutral-600 dark:text-neutral-400 mt-1">
             {t('dashboard.emailPage.description')}
           </p>
         </div>
 
         <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-12 text-center">
-          <div className="w-16 h-16 mx-auto bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mb-4">
-            <Mail className="h-8 w-8 text-blue-600 dark:text-blue-400" />
-          </div>
+          <Mail className="h-16 w-16 mx-auto text-neutral-600 dark:text-neutral-400 mb-4" />
           <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-2">
             {t('dashboard.emailPage.connectYourEmail')}
           </h2>
@@ -391,7 +392,9 @@ export default function EmailDashboardPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">{t('dashboard.emailPage.title')}</h1>
+          <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">
+          {locale === 'tr' ? NAVIGATION_ITEMS.email.labelTr : NAVIGATION_ITEMS.email.labelEn}
+        </h1>
           <p className="text-neutral-600 dark:text-neutral-400 mt-1">
             {emailStatus?.email && (
               <span className="text-sm">
@@ -417,13 +420,11 @@ export default function EmailDashboardPage() {
               loadThreads(statusFilter === 'DRAFT_READY' ? null : 'DRAFT_READY');
             }}
             className={`bg-white dark:bg-neutral-900 rounded-lg border p-4 text-left transition-all hover:shadow-md ${
-              statusFilter === 'DRAFT_READY' ? 'border-blue-500 ring-2 ring-blue-200 dark:ring-blue-800' : 'border-neutral-200 dark:border-neutral-700'
+              statusFilter === 'DRAFT_READY' ? 'border-neutral-400 ring-2 ring-neutral-200 dark:ring-neutral-700' : 'border-neutral-200 dark:border-neutral-700'
             }`}
           >
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                <Pencil className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-              </div>
+              <Pencil className="h-6 w-6 text-neutral-600 dark:text-neutral-400" />
               <div>
                 <p className="text-2xl font-bold text-neutral-900 dark:text-white">{stats.draftReadyCount || 0}</p>
                 <p className="text-sm text-neutral-600 dark:text-neutral-400">{t('dashboard.emailPage.aiDraft')}</p>
@@ -437,13 +438,11 @@ export default function EmailDashboardPage() {
               loadThreads(statusFilter === 'REPLIED' ? null : 'REPLIED');
             }}
             className={`bg-white dark:bg-neutral-900 rounded-lg border p-4 text-left transition-all hover:shadow-md ${
-              statusFilter === 'REPLIED' ? 'border-green-500 ring-2 ring-green-200 dark:ring-green-800' : 'border-neutral-200 dark:border-neutral-700'
+              statusFilter === 'REPLIED' ? 'border-neutral-400 ring-2 ring-neutral-200 dark:ring-neutral-700' : 'border-neutral-200 dark:border-neutral-700'
             }`}
           >
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
-                <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
-              </div>
+              <CheckCircle2 className="h-6 w-6 text-neutral-600 dark:text-neutral-400" />
               <div>
                 <p className="text-2xl font-bold text-neutral-900 dark:text-white">{stats.repliedCount || 0}</p>
                 <p className="text-sm text-neutral-600 dark:text-neutral-400">{t('dashboard.emailPage.replied')}</p>
@@ -457,13 +456,11 @@ export default function EmailDashboardPage() {
               loadThreads(statusFilter === 'NO_REPLY_NEEDED' ? null : 'NO_REPLY_NEEDED');
             }}
             className={`bg-white dark:bg-neutral-900 rounded-lg border p-4 text-left transition-all hover:shadow-md ${
-              statusFilter === 'NO_REPLY_NEEDED' ? 'border-purple-500 ring-2 ring-purple-200 dark:ring-purple-800' : 'border-neutral-200 dark:border-neutral-700'
+              statusFilter === 'NO_REPLY_NEEDED' ? 'border-neutral-400 ring-2 ring-neutral-200 dark:ring-neutral-700' : 'border-neutral-200 dark:border-neutral-700'
             }`}
           >
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
-                <Clock className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-              </div>
+              <Clock className="h-6 w-6 text-neutral-600 dark:text-neutral-400" />
               <div>
                 <p className="text-2xl font-bold text-neutral-900 dark:text-white">{stats.noReplyNeededCount || 0}</p>
                 <p className="text-sm text-neutral-600 dark:text-neutral-400">{t('dashboard.emailPage.noReplyNeeded')}</p>
@@ -524,7 +521,7 @@ export default function EmailDashboardPage() {
                     key={thread.id}
                     onClick={() => loadThreadDetails(thread.id)}
                     className={`w-full text-left p-4 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors ${
-                      isSelected ? 'bg-blue-50 dark:bg-blue-950 border-l-4 border-blue-600' : ''
+                      isSelected ? 'bg-neutral-50 dark:bg-neutral-800 border-l-4 border-neutral-400' : ''
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">
@@ -542,7 +539,7 @@ export default function EmailDashboardPage() {
                             </Badge>
                           )}
                           {hasDraft && !showStatusBadge && (
-                            <Badge className="bg-blue-100 text-blue-800 text-xs">
+                            <Badge className="bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400 text-xs">
                               {t('dashboard.emailPage.aiDraft')}
                             </Badge>
                           )}
@@ -602,7 +599,7 @@ export default function EmailDashboardPage() {
                       className={`p-4 rounded-lg ${
                         message.direction === 'INBOUND'
                           ? 'bg-neutral-100 dark:bg-neutral-800 mr-8'
-                          : 'bg-blue-50 dark:bg-blue-950 ml-8'
+                          : 'bg-neutral-50 dark:bg-neutral-900 ml-8'
                       }`}
                     >
                       <div className="flex items-center justify-between mb-2">
@@ -612,7 +609,7 @@ export default function EmailDashboardPage() {
                               {message.fromName || message.fromEmail}
                             </span>
                           ) : (
-                            <span className="text-blue-700 dark:text-blue-400">{t('dashboard.emailPage.you')}</span>
+                            <span className="text-neutral-700 dark:text-neutral-300">{t('dashboard.emailPage.you')}</span>
                           )}
                         </span>
                         <span className="text-xs text-neutral-500">
@@ -698,14 +695,14 @@ export default function EmailDashboardPage() {
 
               {/* PENDING_REPLY or NEW - No draft yet, show action buttons */}
               {!getActiveDraft() && (selectedThread.status === 'PENDING_REPLY' || selectedThread.status === 'NEW') && (
-                <div className="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-xl p-4">
+                <div className="bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4">
                   <div className="flex items-start gap-3">
-                    <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
+                    <AlertCircle className="h-5 w-5 text-neutral-600 dark:text-neutral-400 mt-0.5" />
                     <div className="flex-1">
-                      <h3 className="font-medium text-yellow-900 dark:text-yellow-100">
+                      <h3 className="font-medium text-neutral-900 dark:text-white">
                         {t('dashboard.emailPage.pendingReplyTitle')}
                       </h3>
-                      <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
+                      <p className="text-sm text-neutral-700 dark:text-neutral-300 mt-1">
                         {t('dashboard.emailPage.pendingReplyDesc')}
                       </p>
                       <div className="flex gap-2 mt-3">
@@ -735,14 +732,14 @@ export default function EmailDashboardPage() {
 
               {/* NO_REPLY_NEEDED - Show generate draft option */}
               {selectedThread.status === 'NO_REPLY_NEEDED' && !getActiveDraft() && (
-                <div className="bg-purple-50 dark:bg-purple-950 border border-purple-200 dark:border-purple-800 rounded-xl p-4">
+                <div className="bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4">
                   <div className="flex items-start gap-3">
-                    <AlertCircle className="h-5 w-5 text-purple-600 dark:text-purple-400 mt-0.5" />
+                    <AlertCircle className="h-5 w-5 text-neutral-600 dark:text-neutral-400 mt-0.5" />
                     <div className="flex-1">
-                      <h3 className="font-medium text-purple-900 dark:text-purple-100">
+                      <h3 className="font-medium text-neutral-900 dark:text-white">
                         {t('dashboard.emailPage.noReplyNeededTitle')}
                       </h3>
-                      <p className="text-sm text-purple-700 dark:text-purple-300 mt-1">
+                      <p className="text-sm text-neutral-700 dark:text-neutral-300 mt-1">
                         {t('dashboard.emailPage.noReplyNeededDesc')}
                       </p>
                       <Button

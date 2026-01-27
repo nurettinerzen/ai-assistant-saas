@@ -39,7 +39,7 @@ export default function IntegrationsPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 dark:from-neutral-900 dark:via-neutral-900 dark:to-neutral-800">
+    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-teal-50 dark:from-neutral-900 dark:via-neutral-900 dark:to-neutral-800">
       <Navigation />
 
       {/* Hero Section */}
@@ -50,7 +50,7 @@ export default function IntegrationsPage() {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.6 }}
-              className="w-20 h-20 bg-gradient-to-br from-indigo-500 to-blue-500 rounded-2xl flex items-center justify-center mx-auto mb-8"
+              className="w-20 h-20 bg-gradient-to-br from-teal-500 to-blue-500 rounded-2xl flex items-center justify-center mx-auto mb-8"
             >
               <Plug className="w-10 h-10 text-white" />
             </motion.div>
@@ -137,7 +137,7 @@ export default function IntegrationsPage() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/waitlist">
-                <Button size="lg" className="bg-gradient-to-r from-indigo-600 to-blue-500 hover:from-indigo-700 hover:to-blue-600">
+                <Button size="lg" className="bg-gradient-to-r from-teal-600 to-blue-500 hover:from-teal-700 hover:to-blue-600">
                   {t('integrationsPage.cta.button')}
                 </Button>
               </Link>

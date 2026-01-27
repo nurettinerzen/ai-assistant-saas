@@ -36,7 +36,7 @@ export default function SalonSolutionPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-teal-50">
       <Navigation />
 
       {/* Hero Section */}
@@ -49,7 +49,7 @@ export default function SalonSolutionPage() {
               transition={{ duration: 0.6 }}
               className="text-center"
             >
-              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-pink-500 to-purple-500 flex items-center justify-center mx-auto mb-8">
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-pink-500 to-teal-500 flex items-center justify-center mx-auto mb-8">
                 <Scissors className="w-10 h-10 text-white" />
               </div>
               <h1 className="text-5xl md:text-6xl font-bold mb-6">
@@ -59,7 +59,7 @@ export default function SalonSolutionPage() {
                 {t('solutions.salon.hero.subtitle')}
               </p>
               <Link href="/waitlist">
-                <Button size="lg" className="bg-gradient-to-r from-indigo-600 to-blue-500 hover:from-indigo-700 hover:to-blue-600">
+                <Button size="lg" className="bg-gradient-to-r from-teal-600 to-blue-500 hover:from-teal-700 hover:to-blue-600">
                   {t('solutions.startFree')}
                 </Button>
               </Link>
@@ -119,7 +119,7 @@ export default function SalonSolutionPage() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/waitlist">
-                <Button size="lg" className="bg-gradient-to-r from-indigo-600 to-blue-500 hover:from-indigo-700 hover:to-blue-600">
+                <Button size="lg" className="bg-gradient-to-r from-teal-600 to-blue-500 hover:from-teal-700 hover:to-blue-600">
                   {t('solutions.startFree')}
                 </Button>
               </Link>

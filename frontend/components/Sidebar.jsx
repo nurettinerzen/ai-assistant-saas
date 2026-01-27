@@ -16,8 +16,6 @@ import {
   CreditCard,
   Puzzle,
   BookOpen,
-  PhoneCall,
-  PhoneMissed,
   ChevronDown,
   ChevronRight,
   Menu,
@@ -26,8 +24,6 @@ import {
   Sun,
   Moon,
   Monitor,
-  MessageSquare,
-  Mail,
   Megaphone,
   Users,
   Lock,
@@ -35,6 +31,11 @@ import {
   Database,
   Sparkles,
   Shield,
+  MessageSquare,
+  Mail,
+  PhoneCall,
+  MessageCircle,
+  History,
 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -56,6 +57,7 @@ import UpgradeModal from './UpgradeModal';
 import { VISIBILITY, getFeatureVisibility } from '@/lib/features';
 import { getPlanDisplayName } from '@/lib/planConfig';
 import { TelyxLogoCompact } from './TelyxLogo';
+import { NAVIGATION_ITEMS } from '@/lib/navigationConfig';
 
 // Admin email whitelist - should match backend
 const ADMIN_EMAILS = [
@@ -113,46 +115,40 @@ export default function Sidebar({ user, credits, business }) {
     </div>
   );
 
-  // Navigation structure - Retell AI inspired
+  // Navigation structure - 4 groups using single source of truth
   const NAVIGATION = [
     {
-      label: t('dashboard.sidebar.build'),
+      label: locale === 'tr' ? 'Ürün' : 'Product',
       items: [
-        { icon: Bot, label: t('dashboard.sidebar.assistants'), href: '/dashboard/assistant', permission: 'assistants:view' },
-        { icon: BookOpen, label: t('dashboard.sidebar.knowledgeBase'), href: '/dashboard/knowledge', permission: 'knowledge:view' },
+        { icon: Bot, label: locale === 'tr' ? NAVIGATION_ITEMS.assistants.labelTr : NAVIGATION_ITEMS.assistants.labelEn, href: NAVIGATION_ITEMS.assistants.href, permission: 'assistants:view' },
+        { icon: BookOpen, label: locale === 'tr' ? NAVIGATION_ITEMS.knowledgeBase.labelTr : NAVIGATION_ITEMS.knowledgeBase.labelEn, href: NAVIGATION_ITEMS.knowledgeBase.href, permission: 'knowledge:view' },
+        { icon: MessageSquare, label: locale === 'tr' ? NAVIGATION_ITEMS.chatWidget.labelTr : NAVIGATION_ITEMS.chatWidget.labelEn, href: NAVIGATION_ITEMS.chatWidget.href, permission: 'assistants:view' },
       ],
     },
     {
-      label: t('dashboard.sidebar.deploy'),
+      label: locale === 'tr' ? 'Operasyon' : 'Operations',
       items: [
-        { icon: MessageSquare, label: t('dashboard.sidebar.chatWidget'), href: '/dashboard/chat-widget', permission: 'widget:view' },
-        { icon: PhoneCall, label: t('dashboard.sidebar.phoneNumbers'), href: '/dashboard/phone-numbers', permission: 'phone:view' },
-        { icon: Mail, label: t('dashboard.sidebar.emailInbox'), href: '/dashboard/email', permission: 'email:view', featureId: 'email' },
+        { icon: Database, label: locale === 'tr' ? NAVIGATION_ITEMS.inbox.labelTr : NAVIGATION_ITEMS.inbox.labelEn, href: NAVIGATION_ITEMS.inbox.href, permission: 'campaigns:view' },
+        { icon: Megaphone, label: locale === 'tr' ? NAVIGATION_ITEMS.campaigns.labelTr : NAVIGATION_ITEMS.campaigns.labelEn, href: NAVIGATION_ITEMS.campaigns.href, permission: 'campaigns:view', featureId: 'batch_calls' },
+        { icon: BarChart3, label: locale === 'tr' ? NAVIGATION_ITEMS.analytics.labelTr : NAVIGATION_ITEMS.analytics.labelEn, href: NAVIGATION_ITEMS.analytics.href, permission: 'analytics:view' },
+        { icon: PhoneCall, label: locale === 'tr' ? NAVIGATION_ITEMS.callbacks.labelTr : NAVIGATION_ITEMS.callbacks.labelEn, href: NAVIGATION_ITEMS.callbacks.href, permission: 'campaigns:view' },
+        { icon: Mail, label: locale === 'tr' ? NAVIGATION_ITEMS.email.labelTr : NAVIGATION_ITEMS.email.labelEn, href: NAVIGATION_ITEMS.email.href, permission: 'campaigns:view' },
       ],
     },
     {
-      label: t('dashboard.sidebar.calls'),
+      label: locale === 'tr' ? 'İzleme' : 'Monitoring',
       items: [
-        { icon: Megaphone, label: t('dashboard.sidebar.outboundCalls'), href: '/dashboard/batch-calls', permission: 'campaigns:view', featureId: 'batch_calls' },
-        { icon: Database, label: t('dashboard.sidebar.inboundCalls'), href: '/dashboard/customer-data', permission: 'campaigns:view' },
+        { icon: Phone, label: locale === 'tr' ? NAVIGATION_ITEMS.callHistory.labelTr : NAVIGATION_ITEMS.callHistory.labelEn, href: NAVIGATION_ITEMS.callHistory.href, permission: 'analytics:view' },
+        { icon: MessageCircle, label: locale === 'tr' ? NAVIGATION_ITEMS.chatHistory.labelTr : NAVIGATION_ITEMS.chatHistory.labelEn, href: NAVIGATION_ITEMS.chatHistory.href, permission: 'analytics:view' },
       ],
     },
     {
-      label: t('dashboard.sidebar.monitor'),
+      label: locale === 'tr' ? 'Yönetim' : 'Management',
       items: [
-        { icon: BarChart3, label: t('dashboard.sidebar.analytics'), href: '/dashboard/analytics', permission: 'analytics:view' },
-        { icon: Phone, label: t('dashboard.sidebar.callHistory'), href: '/dashboard/calls', permission: 'calls:view' },
-        { icon: MessageSquare, label: locale === 'tr' ? 'Sohbet Geçmişi' : 'Chat History', href: '/dashboard/chats', permission: 'calls:view' },
-        { icon: PhoneMissed, label: locale === 'tr' ? 'Geri Aramalar' : 'Callbacks', href: '/dashboard/callbacks', permission: 'calls:view' },
-      ],
-    },
-    {
-      label: t('dashboard.sidebar.system'),
-      items: [
-        { icon: Puzzle, label: t('dashboard.sidebar.integrations'), href: '/dashboard/integrations', permission: 'integrations:view' },
-        { icon: Users, label: t('dashboard.sidebar.team'), href: '/dashboard/team', permission: 'team:view' },
-        { icon: Settings, label: t('dashboard.sidebar.settings'), href: '/dashboard/settings', permission: 'settings:view' },
-        { icon: CreditCard, label: t('dashboard.sidebar.subscription'), href: '/dashboard/subscription', permission: 'billing:view' },
+        { icon: Puzzle, label: locale === 'tr' ? NAVIGATION_ITEMS.integrations.labelTr : NAVIGATION_ITEMS.integrations.labelEn, href: NAVIGATION_ITEMS.integrations.href, permission: 'integrations:view' },
+        { icon: Users, label: locale === 'tr' ? NAVIGATION_ITEMS.team.labelTr : NAVIGATION_ITEMS.team.labelEn, href: NAVIGATION_ITEMS.team.href, permission: 'team:view' },
+        { icon: CreditCard, label: locale === 'tr' ? NAVIGATION_ITEMS.subscription.labelTr : NAVIGATION_ITEMS.subscription.labelEn, href: NAVIGATION_ITEMS.subscription.href, permission: 'billing:view' },
+        { icon: Settings, label: locale === 'tr' ? NAVIGATION_ITEMS.account.labelTr : NAVIGATION_ITEMS.account.labelEn, href: NAVIGATION_ITEMS.account.href, permission: 'settings:view' },
       ],
     },
   ];
@@ -167,7 +163,6 @@ export default function Sidebar({ user, credits, business }) {
         { icon: Users, label: 'Kullanıcılar', href: '/dashboard/admin/users' },
         { icon: Bot, label: 'Asistanlar', href: '/dashboard/admin/assistants' },
         { icon: Phone, label: 'Aramalar', href: '/dashboard/admin/calls' },
-        { icon: PhoneMissed, label: 'Callbacks', href: '/dashboard/admin/callbacks' },
         { icon: CreditCard, label: 'Abonelikler', href: '/dashboard/admin/subscriptions' },
         { icon: Database, label: 'Kurumsal', href: '/dashboard/admin/enterprise' },
         { icon: BarChart3, label: 'Audit Log', href: '/dashboard/admin/audit-log' },

@@ -1,0 +1,157 @@
+/**
+ * Navigation Configuration
+ * Single source of truth for all navigation labels, descriptions, and routes
+ * Used in: Sidebar, Page Headers, Breadcrumbs
+ */
+
+export const NAVIGATION_ITEMS = {
+  // Product
+  assistants: {
+    labelTr: 'Asistanlar',
+    labelEn: 'Assistants',
+    descriptionTr: 'Gelen ve giden arama asistanlarınızı oluşturun ve yönetin.',
+    descriptionEn: 'Create and manage your inbound and outbound call assistants.',
+    href: '/dashboard/assistant',
+    group: 'product',
+  },
+  knowledgeBase: {
+    labelTr: 'Bilgi Bankası',
+    labelEn: 'Knowledge Base',
+    descriptionTr: 'Asistanın kullanacağı dokümanları ve SSS içeriklerini yönetin.',
+    descriptionEn: 'Manage documents and FAQ content for your assistant.',
+    href: '/dashboard/knowledge',
+    group: 'product',
+  },
+  chatWidget: {
+    labelTr: 'Sohbet Aracı',
+    labelEn: 'Chat Widget',
+    descriptionTr: 'Web sitenize yerleştirilebilir sohbet widget\'ını yapılandırın.',
+    descriptionEn: 'Configure embeddable chat widget for your website.',
+    href: '/dashboard/chat-widget',
+    group: 'product',
+  },
+
+  // Operations
+  inbox: {
+    labelTr: 'Gelen Talepler',
+    labelEn: 'Inbox',
+    descriptionTr: 'Telefon ve yazılı kanallardan gelen talepleri tek yerden yönetin.',
+    descriptionEn: 'Manage incoming requests from phone and messaging channels.',
+    href: '/dashboard/customer-data',
+    group: 'operations',
+  },
+  campaigns: {
+    labelTr: 'Kampanyalar',
+    labelEn: 'Campaigns',
+    descriptionTr: 'Excel/CSV yükleyerek toplu arama kampanyaları oluşturun.',
+    descriptionEn: 'Create batch calling campaigns by uploading Excel/CSV.',
+    href: '/dashboard/batch-calls',
+    group: 'operations',
+  },
+  analytics: {
+    labelTr: 'Analitik',
+    labelEn: 'Analytics',
+    descriptionTr: 'Performans metrikleri ve raporlar',
+    descriptionEn: 'Performance metrics and reports',
+    href: '/dashboard/analytics',
+    group: 'operations',
+  },
+  callbacks: {
+    labelTr: 'Geri Aramalar',
+    labelEn: 'Callbacks',
+    descriptionTr: 'Müşteri geri arama taleplerini görüntüleyin ve yönetin.',
+    descriptionEn: 'View and manage customer callback requests.',
+    href: '/dashboard/callbacks',
+    group: 'operations',
+  },
+  email: {
+    labelTr: 'E-posta',
+    labelEn: 'Email',
+    descriptionTr: 'Gelen e-postaları görüntüleyin ve AI destekli yanıtlar oluşturun.',
+    descriptionEn: 'View incoming emails and generate AI-powered responses.',
+    href: '/dashboard/email',
+    group: 'operations',
+  },
+
+  // Monitoring
+  callHistory: {
+    labelTr: 'Arama Geçmişi',
+    labelEn: 'Call History',
+    descriptionTr: 'Geçmiş telefon görüşmelerini ve transkriptleri görüntüleyin.',
+    descriptionEn: 'View past phone calls and transcripts.',
+    href: '/dashboard/calls',
+    group: 'monitoring',
+  },
+  chatHistory: {
+    labelTr: 'Sohbet Geçmişi',
+    labelEn: 'Chat History',
+    descriptionTr: 'Geçmiş sohbet oturumlarını ve mesajları görüntüleyin.',
+    descriptionEn: 'View past chat sessions and messages.',
+    href: '/dashboard/chat-history',
+    group: 'monitoring',
+  },
+
+  // Management
+  integrations: {
+    labelTr: 'Entegrasyonlar',
+    labelEn: 'Integrations',
+    descriptionTr: 'Üçüncü parti servisleri bağlayın ve yönetin.',
+    descriptionEn: 'Connect and manage third-party services.',
+    href: '/dashboard/integrations',
+    group: 'management',
+  },
+  team: {
+    labelTr: 'Ekip',
+    labelEn: 'Team',
+    descriptionTr: 'Ekip üyelerini ve izinleri yönetin.',
+    descriptionEn: 'Manage team members and permissions.',
+    href: '/dashboard/team',
+    group: 'management',
+  },
+  subscription: {
+    labelTr: 'Abonelik',
+    labelEn: 'Subscription',
+    descriptionTr: 'Plan ve fatura bilgileriniz.',
+    descriptionEn: 'Your plan and billing information.',
+    href: '/dashboard/subscription',
+    group: 'management',
+  },
+  account: {
+    labelTr: 'Hesap',
+    labelEn: 'Account',
+    descriptionTr: 'Profil, bildirimler ve hesap ayarları.',
+    descriptionEn: 'Profile, notifications, and account settings.',
+    href: '/dashboard/settings',
+    group: 'management',
+  },
+};
+
+/**
+ * Get navigation item by route
+ */
+export function getNavigationItem(route, locale = 'tr') {
+  const item = Object.values(NAVIGATION_ITEMS).find(nav => nav.href === route);
+  if (!item) return null;
+
+  return {
+    label: locale === 'tr' ? item.labelTr : item.labelEn,
+    description: locale === 'tr' ? item.descriptionTr : item.descriptionEn,
+    href: item.href,
+  };
+}
+
+/**
+ * Get label for a route
+ */
+export function getPageLabel(route, locale = 'tr') {
+  const item = getNavigationItem(route, locale);
+  return item?.label || '';
+}
+
+/**
+ * Get description for a route
+ */
+export function getPageDescription(route, locale = 'tr') {
+  const item = getNavigationItem(route, locale);
+  return item?.description || '';
+}

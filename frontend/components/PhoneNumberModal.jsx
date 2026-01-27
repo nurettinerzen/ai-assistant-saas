@@ -215,7 +215,7 @@ export default function PhoneNumberModal({ isOpen, onClose, onSuccess }) {
 
         <div className="space-y-6 py-4">
           {/* NetGSM Info Banner */}
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
+          <div className="bg-gradient-to-r from-blue-50 to-teal-50 dark:from-blue-950 dark:to-teal-950 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
             <div className="flex items-start gap-3">
               <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
                 <Phone className="h-5 w-5 text-blue-600 dark:text-blue-400" />
@@ -238,7 +238,7 @@ export default function PhoneNumberModal({ isOpen, onClose, onSuccess }) {
                   </a>
                   <Link
                     href="/dashboard/guides/netgsm-connection"
-                    className="inline-flex items-center gap-1 text-xs bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-2 py-1 rounded hover:bg-indigo-200 dark:hover:bg-indigo-800"
+                    className="inline-flex items-center gap-1 text-xs bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 px-2 py-1 rounded hover:bg-teal-200 dark:hover:bg-teal-800"
                   >
                     <BookOpen className="h-3 w-3" /> Bağlantı Rehberi
                   </Link>

@@ -210,7 +210,7 @@ export default function PricingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-teal-50">
       <Navigation />
 
       {/* Hero Section */}
@@ -306,7 +306,7 @@ export default function PricingPage() {
                     <Button
                       className={`w-full ${
                         plan.popular
-                          ? 'bg-gradient-to-r from-indigo-600 to-blue-500 hover:from-indigo-700 hover:to-blue-600'
+                          ? 'bg-gradient-to-r from-teal-600 to-blue-500 hover:from-teal-700 hover:to-blue-600'
                           : ''
                       }`}
                       variant={plan.popular ? 'default' : 'outline'}

@@ -33,6 +33,7 @@ import { formatDate } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePermissions } from '@/hooks/usePermissions';
+import { NAVIGATION_ITEMS } from '@/lib/navigationConfig';
 
 // Language code to accent name mapping
 const LANGUAGE_TO_ACCENT = {
@@ -448,8 +449,12 @@ export default function AssistantsPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">{t('dashboard.assistantsPage.title')}</h1>
-          <p className="text-neutral-600 dark:text-neutral-400 mt-1">{t('dashboard.assistantsPage.description')}</p>
+          <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">
+            {locale === 'tr' ? NAVIGATION_ITEMS.assistants.labelTr : NAVIGATION_ITEMS.assistants.labelEn}
+          </h1>
+          <p className="text-neutral-600 dark:text-neutral-400 mt-1">
+            {locale === 'tr' ? NAVIGATION_ITEMS.assistants.descriptionTr : NAVIGATION_ITEMS.assistants.descriptionEn}
+          </p>
         </div>
         {can('assistants:create') && (
           <Button onClick={handleNewAssistant}>
@@ -457,16 +462,6 @@ export default function AssistantsPage() {
             {t('dashboard.assistantsPage.create')}
           </Button>
         )}
-      </div>
-
-      {/* Info Box */}
-      <div className="p-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg">
-        <p className="text-sm text-purple-800 dark:text-purple-300">
-          {locale === 'tr'
-            ? 'İki tür asistan oluşturabilirsiniz: (1) Gelen Arama Asistanı - Müşterileriniz sizi aradığında cevap verir, randevu alır, sorularını yanıtlar. (2) Giden Arama Asistanı - Müşterilerinizi arayarak hatırlatma, tahsilat veya satış aramaları yapabilirsiniz. Her asistanın kendi ses tonu, dili ve davranış kuralları olabilir.'
-            : 'You can create two types of assistants: (1) Inbound Assistant - Answers when your customers call you, takes appointments, answers questions. (2) Outbound Assistant - You call your customers: reminders, collections, or sales calls. Each assistant can have its own voice tone, language, and behavior rules.'
-          }
-        </p>
       </div>
 
       {/* Search */}
@@ -507,13 +502,11 @@ export default function AssistantsPage() {
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-lg ${isOutbound ? 'bg-orange-100 dark:bg-orange-900/30' : 'bg-primary-100 dark:bg-primary-900/30'}`}>
-                      {isOutbound ? (
-                        <PhoneOutgoing className="h-5 w-5 text-orange-600 dark:text-orange-400" />
-                      ) : (
-                        <PhoneIncoming className="h-5 w-5 text-primary-600 dark:text-primary-400" />
-                      )}
-                    </div>
+                    {isOutbound ? (
+                      <PhoneOutgoing className="h-6 w-6 text-neutral-600 dark:text-neutral-400" />
+                    ) : (
+                      <PhoneIncoming className="h-6 w-6 text-neutral-600 dark:text-neutral-400" />
+                    )}
                     <div>
                       <h3 className="font-semibold text-neutral-900 dark:text-white">{assistant.name}</h3>
                       <p className="text-xs text-neutral-500 dark:text-neutral-400">
@@ -523,24 +516,16 @@ export default function AssistantsPage() {
                   </div>
                 </div>
 
-                <p className="text-sm text-neutral-600 dark:text-neutral-400 line-clamp-2 mb-4">
-                  {isOutbound
-                    ? (locale === 'tr' ? 'Giden Arama Asistanı' : 'Outbound Call Assistant')
-                    : (locale === 'tr' ? 'Gelen Arama Asistanı' : 'Inbound Call Assistant')
-                  }
-                  {assistant.callPurpose && (
-                    <span className="text-primary-600"> • {
-                      CALL_PURPOSES.definitions[assistant.callPurpose]?.[locale === 'tr' ? 'labelTr' : 'labelEn'] || assistant.callPurpose
-                    }</span>
-                  )}
-                </p>
+                {assistant.callPurpose && (
+                  <p className="text-sm text-neutral-600 dark:text-neutral-400 line-clamp-2 mb-4">
+                    {CALL_PURPOSES.definitions[assistant.callPurpose]?.[locale === 'tr' ? 'labelTr' : 'labelEn'] || assistant.callPurpose}
+                  </p>
+                )}
 
                 <div className="flex flex-wrap gap-2 mb-4">
                   {/* Call Direction Badge */}
-                  <Badge
-                    variant="secondary"
-                    className={isOutbound ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'}
-                  >
+                  <Badge variant="secondary">
+                    {isOutbound ? <PhoneOutgoing className="h-3 w-3 mr-1" /> : <PhoneIncoming className="h-3 w-3 mr-1" />}
                     {isOutbound
                       ? (locale === 'tr' ? 'Giden' : 'Outbound')
                       : (locale === 'tr' ? 'Gelen' : 'Inbound')

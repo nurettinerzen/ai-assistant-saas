@@ -22,7 +22,7 @@ export default function TermsPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-teal-50">
       <Navigation />
 
       {/* Hero Section */}
@@ -33,7 +33,7 @@ export default function TermsPage() {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.6 }}
-              className="w-20 h-20 bg-gradient-to-br from-indigo-500 to-blue-500 rounded-2xl flex items-center justify-center mx-auto mb-8"
+              className="w-20 h-20 bg-gradient-to-br from-teal-500 to-blue-500 rounded-2xl flex items-center justify-center mx-auto mb-8"
             >
               <FileText className="w-10 h-10 text-white" />
             </motion.div>

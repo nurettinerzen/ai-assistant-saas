@@ -12,7 +12,7 @@ export default function ApiDocsPage() {
   const { t } = useLanguage();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-teal-50">
       <Navigation />
 
       {/* Content Section */}
@@ -23,7 +23,7 @@ export default function ApiDocsPage() {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.6 }}
-              className="w-24 h-24 bg-gradient-to-br from-indigo-500 to-blue-500 rounded-3xl flex items-center justify-center mx-auto mb-8"
+              className="w-24 h-24 bg-gradient-to-br from-teal-500 to-blue-500 rounded-3xl flex items-center justify-center mx-auto mb-8"
             >
               <FileCode className="w-12 h-12 text-white" />
             </motion.div>
@@ -53,12 +53,12 @@ export default function ApiDocsPage() {
               className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 mb-8"
             >
               <div className="flex items-center justify-center gap-3 mb-4">
-                <Mail className="w-5 h-5 text-indigo-600" />
+                <Mail className="w-5 h-5 text-teal-600" />
                 <span className="text-gray-600">{t('apiDocs.contactText')}</span>
               </div>
               <a
                 href="mailto:info@telyx.ai"
-                className="text-indigo-600 hover:text-indigo-700 font-semibold text-lg"
+                className="text-teal-600 hover:text-teal-700 font-semibold text-lg"
               >
                 info@telyx.ai
               </a>

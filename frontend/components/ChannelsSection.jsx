@@ -14,7 +14,7 @@ export const ChannelsSection = () => {
       icon: Phone,
       titleKey: 'landing.channels.phone.title',
       descKey: 'landing.channels.phone.desc',
-      color: 'from-blue-500 to-indigo-500'
+      color: 'from-blue-500 to-teal-500'
     },
     {
       icon: MessageCircle,
@@ -26,7 +26,7 @@ export const ChannelsSection = () => {
       icon: MessagesSquare,
       titleKey: 'landing.channels.chat.title',
       descKey: 'landing.channels.chat.desc',
-      color: 'from-purple-500 to-pink-500'
+      color: 'from-teal-500 to-pink-500'
     },
     {
       icon: Mail,

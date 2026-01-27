@@ -32,7 +32,7 @@ export default function NetGSMConnectionGuidePage() {
       {/* Header */}
       <div className="border-b border-neutral-200 dark:border-neutral-700 pb-6">
         <div className="flex items-center gap-3 mb-4">
-          <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl">
+          <div className="p-3 bg-gradient-to-br from-blue-500 to-teal-600 rounded-xl">
             <Phone className="h-8 w-8 text-white" />
           </div>
           <div>
@@ -114,7 +114,7 @@ export default function NetGSMConnectionGuidePage() {
 
         {/* Step 2 */}
         <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden">
-          <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 px-6 py-4">
+          <div className="bg-gradient-to-r from-teal-500 to-teal-600 px-6 py-4">
             <div className="flex items-center gap-3">
               <span className="flex items-center justify-center w-8 h-8 bg-white/20 rounded-full text-white font-bold">
                 2
@@ -153,7 +153,7 @@ export default function NetGSMConnectionGuidePage() {
 
         {/* Step 3 */}
         <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden">
-          <div className="bg-gradient-to-r from-purple-500 to-purple-600 px-6 py-4">
+          <div className="bg-gradient-to-r from-teal-500 to-teal-600 px-6 py-4">
             <div className="flex items-center gap-3">
               <span className="flex items-center justify-center w-8 h-8 bg-white/20 rounded-full text-white font-bold">
                 3
@@ -168,8 +168,8 @@ export default function NetGSMConnectionGuidePage() {
               Aynı sayfada aşağı kaydırın ve <strong>SIP Trunk</strong> bölümünü bulun.
               SIP Trunk'ı <strong>açık</strong> konuma getirin ve aşağıdaki bilgileri girin:
             </p>
-            <div className="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-950 dark:to-indigo-950 rounded-lg p-4 border border-purple-200 dark:border-purple-800">
-              <h4 className="font-medium text-purple-900 dark:text-purple-100 mb-3">
+            <div className="bg-gradient-to-r from-teal-50 to-teal-100 dark:from-teal-950 dark:to-teal-900 rounded-lg p-4 border border-teal-200 dark:border-teal-800">
+              <h4 className="font-medium text-teal-900 dark:text-teal-100 mb-3">
                 SIP Trunk Bilgileri (NetGSM'e girilecek):
               </h4>
               <div className="space-y-3">
@@ -213,7 +213,7 @@ export default function NetGSMConnectionGuidePage() {
                   </Button>
                 </div>
               </div>
-              <p className="text-sm text-purple-700 dark:text-purple-300 mt-3">
+              <p className="text-sm text-teal-700 dark:text-teal-300 mt-3">
                 ⚠️ Transport mutlaka <strong>TCP</strong> olmalı (UDP desteklenmez)
               </p>
             </div>

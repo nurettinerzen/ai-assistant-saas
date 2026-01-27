@@ -36,7 +36,7 @@ export default function FeaturesPage() {
         'features.multichannel.item3',
         'features.multichannel.item4',
       ],
-      color: 'from-blue-500 to-indigo-500'
+      color: 'from-blue-500 to-teal-500'
     },
     {
       id: 'ai',
@@ -49,7 +49,7 @@ export default function FeaturesPage() {
         'features.ai.item3',
         'features.ai.item4',
       ],
-      color: 'from-purple-500 to-pink-500'
+      color: 'from-teal-500 to-pink-500'
     },
     {
       id: 'ecommerce',
@@ -98,12 +98,12 @@ export default function FeaturesPage() {
         'features.analytics.item2',
         'features.analytics.item3',
       ],
-      color: 'from-violet-500 to-purple-500'
+      color: 'from-violet-500 to-teal-500'
     },
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-teal-50">
       <Navigation />
 
       {/* Hero Section */}
@@ -182,7 +182,7 @@ export default function FeaturesPage() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/waitlist">
-                <Button size="lg" className="bg-gradient-to-r from-indigo-600 to-blue-500 hover:from-indigo-700 hover:to-blue-600">
+                <Button size="lg" className="bg-gradient-to-r from-teal-600 to-blue-500 hover:from-teal-700 hover:to-blue-600">
                   {t('features.cta.applyEarlyAccess')}
                 </Button>
               </Link>

@@ -159,7 +159,7 @@ export default function CustomCrmPage() {
           </Button>
         </div>
 
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-8 text-center">
+        <div className="bg-gradient-to-r from-blue-50 to-teal-50 border border-blue-200 rounded-xl p-8 text-center">
           <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <Lock className="w-8 h-8 text-blue-600" />
           </div>
@@ -218,8 +218,8 @@ export default function CustomCrmPage() {
       {/* Header */}
       <div>
         <div className="flex items-center gap-3 mb-2">
-          <div className="p-2 bg-purple-100 rounded-lg">
-            <Database className="h-6 w-6 text-purple-600" />
+          <div className="p-2 bg-teal-100 rounded-lg">
+            <Database className="h-6 w-6 text-teal-600" />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-neutral-900">Özel CRM Entegrasyonu</h1>

@@ -135,14 +135,14 @@ export default function SignupPage() {
   // Show loading while checking auth
   if (checkingAuth) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-indigo-600 dark:text-indigo-400" />
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-teal-50 to-teal-50 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-teal-600 dark:text-teal-400" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-teal-50 to-teal-50 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 flex items-center justify-center p-4">
       <Toaster position="top-right" />
 
       <div className="w-full max-w-md">
@@ -232,7 +232,7 @@ export default function SignupPage() {
               </div>
               <p className="text-xs text-gray-500 dark:text-neutral-500 mt-2">
                 {t('invite.noCode')}{' '}
-                <Link href="/waitlist" className="text-indigo-600 dark:text-indigo-400 hover:underline font-medium">
+                <Link href="/waitlist" className="text-teal-600 dark:text-teal-400 hover:underline font-medium">
                   {t('invite.applyEarlyAccess')}
                 </Link>
               </p>
@@ -244,15 +244,15 @@ export default function SignupPage() {
                 id="acceptTerms"
                 checked={acceptedTerms}
                 onChange={(e) => setAcceptedTerms(e.target.checked)}
-                className="mt-1 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-neutral-600 dark:bg-neutral-700"
+                className="mt-1 h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500 dark:border-neutral-600 dark:bg-neutral-700"
               />
               <label htmlFor="acceptTerms" className="text-sm text-gray-600 dark:text-neutral-400">
                 {t('auth.acceptTermsAndPrivacy')}{' '}
-                <Link href="/terms" className="text-indigo-600 dark:text-indigo-400 hover:underline font-medium">
+                <Link href="/terms" className="text-teal-600 dark:text-teal-400 hover:underline font-medium">
                   {t('auth.termsOfService')}
                 </Link>
                 {' '}{t('auth.and')}{' '}
-                <Link href="/privacy" className="text-indigo-600 dark:text-indigo-400 hover:underline font-medium">
+                <Link href="/privacy" className="text-teal-600 dark:text-teal-400 hover:underline font-medium">
                   {t('auth.privacyPolicy')}
                 </Link>
               </label>
@@ -272,7 +272,7 @@ export default function SignupPage() {
 
           <div className="mt-6 text-center text-sm text-gray-600 dark:text-neutral-400">
             {t('auth.alreadyHaveAccount')}{' '}
-            <Link href="/login" className="text-indigo-600 dark:text-indigo-400 hover:underline font-medium">
+            <Link href="/login" className="text-teal-600 dark:text-teal-400 hover:underline font-medium">
               {t('common.signIn')}
             </Link>
           </div>

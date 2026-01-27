@@ -20,15 +20,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { User, Bell, AlertTriangle, Globe, Mail, Loader2 } from 'lucide-react';
+import { User, Bell, AlertTriangle, Globe, Mail, Loader2, Phone, Plus } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { apiClient } from '@/lib/api';
 import { toast, toastHelpers } from '@/lib/toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePermissions } from '@/hooks/usePermissions';
+import { NAVIGATION_ITEMS } from '@/lib/navigationConfig';
 
 export default function SettingsPage() {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const { can } = usePermissions();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState({ name: '', email: '', company: '' });
@@ -52,6 +53,8 @@ export default function SettingsPage() {
   });
   const [signatureLoading, setSignatureLoading] = useState(false);
   const [pairStats, setPairStats] = useState(null);
+  const [phoneNumbers, setPhoneNumbers] = useState([]);
+  const [showPhoneModal, setShowPhoneModal] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -108,6 +111,14 @@ export default function SettingsPage() {
         }
       } catch (statsError) {
         console.log('Pair stats not found:', statsError.message);
+      }
+
+      // Load phone numbers
+      try {
+        const phoneRes = await apiClient.phoneNumbers.getAll();
+        setPhoneNumbers(phoneRes.data.phoneNumbers || []);
+      } catch (phoneError) {
+        console.log('Phone numbers not found:', phoneError.message);
       }
     } catch (error) {
       console.error('Load settings error:', error);
@@ -211,8 +222,12 @@ export default function SettingsPage() {
     <div className="space-y-8 max-w-4xl">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">{t('dashboard.settingsPage.title')}</h1>
-        <p className="text-neutral-600 dark:text-neutral-400 mt-1">{t('dashboard.settingsPage.manageAccountPreferences')}</p>
+        <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">
+          {locale === 'tr' ? NAVIGATION_ITEMS.account.labelTr : NAVIGATION_ITEMS.account.labelEn}
+        </h1>
+        <p className="text-neutral-600 dark:text-neutral-400 mt-1">
+          {locale === 'tr' ? NAVIGATION_ITEMS.account.descriptionTr : NAVIGATION_ITEMS.account.descriptionEn}
+        </p>
       </div>
 
       {/* Profile Section */}
@@ -422,6 +437,87 @@ export default function SettingsPage() {
             {t('dashboard.settingsPage.saveSignatureBtn')}
           </Button>
         </div>
+      </div>
+
+      {/* Channels Section */}
+      <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6 shadow-sm">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-lg">
+              <Phone className="h-5 w-5 text-primary-600 dark:text-primary-400" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">
+                {locale === 'tr' ? 'Kanallar' : 'Channels'}
+              </h2>
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                {locale === 'tr' ? 'Telefon numaranızı bağlayın ve asistana atayın' : 'Connect your phone number and assign to assistant'}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {phoneNumbers.length > 0 ? (
+          <div className="space-y-4">
+            {/* Phone Number Card */}
+            {phoneNumbers.map((number) => (
+              <div
+                key={number.id}
+                className="p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-700"
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <Phone className="h-5 w-5 text-primary-600 dark:text-primary-400" />
+                    <div>
+                      <p className="font-mono font-semibold text-lg text-neutral-900 dark:text-white">
+                        {number.phoneNumber}
+                      </p>
+                      <p className="text-sm text-neutral-500 mt-0.5">
+                        {number.assistantName ? (
+                          <span>{locale === 'tr' ? 'Atanmış:' : 'Assigned to:'} <span className="text-neutral-900 dark:text-white font-medium">{number.assistantName}</span></span>
+                        ) : (
+                          <span className="text-amber-600 dark:text-amber-400">{locale === 'tr' ? 'Henüz asistan atanmadı' : 'No assistant assigned'}</span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() => window.location.href = '/dashboard/phone-numbers'}
+                    className="flex-1"
+                  >
+                    {locale === 'tr' ? 'Yönet' : 'Manage'}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowPhoneModal(true)}
+                  >
+                    {locale === 'tr' ? 'Değiştir' : 'Change'}
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <Phone className="h-12 w-12 mx-auto mb-3 opacity-50 text-neutral-400" />
+            <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">
+              {locale === 'tr' ? 'Telefon numarası bağlanmamış' : 'No phone number connected'}
+            </p>
+            <Button
+              size="sm"
+              onClick={() => setShowPhoneModal(true)}
+              className="gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              {locale === 'tr' ? 'Telefon Numarası Bağla' : 'Connect Phone Number'}
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Notifications Section */}

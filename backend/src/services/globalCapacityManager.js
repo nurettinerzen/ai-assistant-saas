@@ -22,6 +22,7 @@ class GlobalCapacityManager {
     this.client = null;
     this.isConnected = false;
     this.errorLogged = false; // Prevent error log spam
+    this.disabledLogged = false; // Prevent disabled message spam
   }
 
   /**
@@ -29,6 +30,19 @@ class GlobalCapacityManager {
    */
   async connect() {
     if (this.isConnected) return;
+
+    // Check if Redis is disabled via environment variable
+    if (process.env.REDIS_ENABLED === 'false') {
+      // Only log once to avoid spam
+      if (!this.disabledLogged) {
+        console.log('ℹ️  Redis disabled via REDIS_ENABLED=false');
+        console.log('⚠️  Running in FAIL-OPEN mode (global capacity NOT enforced)');
+        this.disabledLogged = true;
+      }
+      this.isConnected = false;
+      this.client = null;
+      return;
+    }
 
     const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
 

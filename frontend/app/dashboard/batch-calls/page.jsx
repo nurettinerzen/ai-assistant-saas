@@ -44,26 +44,27 @@ import { toast } from 'sonner';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import Link from 'next/link';
+import { NAVIGATION_ITEMS } from '@/lib/navigationConfig';
 
 const STATUS_CONFIG = {
   PENDING: {
     label: { tr: 'Bekliyor', en: 'Pending' },
-    color: 'bg-yellow-100 text-yellow-800',
+    color: 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400',
     icon: Clock
   },
   IN_PROGRESS: {
     label: { tr: 'Devam Ediyor', en: 'In Progress' },
-    color: 'bg-blue-100 text-blue-800',
+    color: 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400',
     icon: Loader2
   },
   COMPLETED: {
     label: { tr: 'Tamamlandı', en: 'Completed' },
-    color: 'bg-green-100 text-green-800',
+    color: 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400',
     icon: CheckCircle2
   },
   FAILED: {
     label: { tr: 'Başarısız', en: 'Failed' },
-    color: 'bg-red-100 text-red-800',
+    color: 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400',
     icon: XCircle
   },
   CANCELLED: {
@@ -416,11 +417,11 @@ export default function BatchCallsPage() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">
-            {locale === 'tr' ? 'Giden Arama' : 'Outbound Calls'}
+            {locale === 'tr' ? NAVIGATION_ITEMS.campaigns.labelTr : NAVIGATION_ITEMS.campaigns.labelEn}
           </h1>
           <p className="text-neutral-600 dark:text-neutral-400 mt-1">
             {locale === 'tr'
-              ? 'Toplu giden arama kampanyalarınızı yönetin'
+              ? NAVIGATION_ITEMS.campaigns.descriptionTr
               : 'Manage your batch outbound call campaigns'
             }
           </p>
@@ -433,15 +434,6 @@ export default function BatchCallsPage() {
         )}
       </div>
 
-      {/* Info Box */}
-      <div className="p-4 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
-        <p className="text-sm text-orange-800 dark:text-orange-300">
-          {locale === 'tr'
-            ? 'Bu sayfa, müşterilerinizi toplu olarak aramanızı sağlar. Excel/CSV dosyası yükleyerek tek seferde yüzlerce kişiyi arayabilirsiniz. Kullanım örnekleri: Randevu hatırlatmaları, borç tahsilatı, anket aramaları, satış kampanyaları. Aramalar seçtiğiniz "Giden Arama Asistanı" tarafından yapılır.'
-            : 'This page allows you to call your customers in bulk. You can call hundreds of people at once by uploading an Excel/CSV file. Use cases: Appointment reminders, debt collection, survey calls, sales campaigns. Calls are made by your selected "Outbound Assistant".'
-          }
-        </p>
-      </div>
 
       {/* Call History Table */}
       {loading ? (
@@ -1001,10 +993,10 @@ export default function BatchCallsPage() {
                 </div>
 
                 {/* Warning */}
-                <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+                <div className="bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg p-4">
                   <div className="flex gap-2">
-                    <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
-                    <p className="text-sm text-amber-800 dark:text-amber-200">
+                    <AlertCircle className="h-5 w-5 text-neutral-600 dark:text-neutral-400 flex-shrink-0" />
+                    <p className="text-sm text-neutral-700 dark:text-neutral-300">
                       {locale === 'tr'
                         ? `${fileData.totalRows} kişiye otomatik arama yapılacaktır. Bu işlem geri alınamaz.`
                         : `${fileData.totalRows} recipients will be called automatically. This action cannot be undone.`

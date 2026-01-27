@@ -23,7 +23,7 @@ import {
   Puzzle, Check, ExternalLink, Star, Copy, CheckCircle2, CreditCard, Zap,
   MessageSquare, Target, Cloud, Calendar, CalendarDays, BarChart3, Smartphone,
   ShoppingCart, Utensils, Scissors, Stethoscope, Package, Mail, Hash,
-  Wallet, Eye, EyeOff, Inbox, RefreshCw, Lock
+  Wallet, Eye, EyeOff, Inbox, RefreshCw, Lock, Info
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast, toastHelpers } from '@/lib/toast';
@@ -44,26 +44,9 @@ const INTEGRATION_ICONS = {
   FRESHA: Scissors, SHIPSTATION: Package, KLAVIYO: Mail, MAILCHIMP: Mail,
   HUBSPOT: Target, SALESFORCE: Cloud, GOOGLE_SHEETS: BarChart3, ZAPIER: Zap,
   SLACK: MessageSquare, TWILIO_SMS: MessageSquare, SENDGRID_EMAIL: Mail,
-  IYZICO: Wallet, CUSTOM: Hash,
+  IYZICO: Wallet, CUSTOM: Hash, NETGSM_SMS: MessageSquare,
   IKAS: ShoppingCart, IDEASOFT: ShoppingCart, TICIMAX: ShoppingCart,
   CUSTOM_ERP_WEBHOOK: Zap
-};
-
-const CATEGORY_COLORS = {
-  scheduling: { icon: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-100 dark:bg-blue-900/30' },
-  communication: { icon: 'text-green-600 dark:text-green-400', bg: 'bg-green-100 dark:bg-green-900/30' },
-  payments: { icon: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-100 dark:bg-purple-900/30' },
-  ecommerce: { icon: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-100 dark:bg-orange-900/30' },
-  reservations: { icon: 'text-red-600 dark:text-red-400', bg: 'bg-red-100 dark:bg-red-900/30' },
-  pos: { icon: 'text-yellow-600 dark:text-yellow-400', bg: 'bg-yellow-100 dark:bg-yellow-900/30' },
-  healthcare: { icon: 'text-teal-600 dark:text-teal-400', bg: 'bg-teal-100 dark:bg-teal-900/30' },
-  booking: { icon: 'text-pink-600 dark:text-pink-400', bg: 'bg-pink-100 dark:bg-pink-900/30' },
-  shipping: { icon: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-100 dark:bg-indigo-900/30' },
-  marketing: { icon: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-100 dark:bg-rose-900/30' },
-  crm: { icon: 'text-cyan-600 dark:text-cyan-400', bg: 'bg-cyan-100 dark:bg-cyan-900/30' },
-  data: { icon: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-100 dark:bg-emerald-900/30' },
-  automation: { icon: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-100 dark:bg-amber-900/30' },
-  accounting: { icon: 'text-slate-600 dark:text-slate-400', bg: 'bg-slate-100 dark:bg-slate-900/30' }
 };
 
 const INTEGRATION_DOCS = {
@@ -398,37 +381,7 @@ const handleShopifyConnect = async () => {
     } catch (error) { toast.error('Failed to disconnect'); }
   };
 
-  const handleWooCommerceConnect = async () => {
-    if (!woocommerceForm.siteUrl || !woocommerceForm.consumerKey || !woocommerceForm.consumerSecret) {
-      toast.error('Please fill in all fields');
-      return;
-    }
-    setWoocommerceLoading(true);
-    try {
-      const response = await apiClient.post('/api/woocommerce/connect', woocommerceForm);
-      if (response.data.success) {
-        toast.success(`Connected to ${response.data.store?.name || 'WooCommerce'}!`);
-        setWoocommerceModalOpen(false);
-        setWoocommerceForm({ siteUrl: '', consumerKey: '', consumerSecret: '' });
-        await loadWooCommerceStatus();
-        await loadIntegrations();
-      }
-    } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to connect WooCommerce');
-    } finally {
-      setWoocommerceLoading(false);
-    }
-  };
-
-  const handleWooCommerceDisconnect = async () => {
-    if (!confirm('Disconnect WooCommerce?')) return;
-    try {
-      await apiClient.post('/api/woocommerce/disconnect');
-      toast.success('WooCommerce disconnected');
-      await loadWooCommerceStatus();
-      await loadIntegrations();
-    } catch (error) { toast.error('Failed to disconnect'); }
-  };
+  // WooCommerce handlers removed - platform no longer supported
 
   const handleWebhookSetup = async () => {
     setWebhookLoading(true);
@@ -513,60 +466,15 @@ const handleShopifyConnect = async () => {
     }
   };
 
-  // Ideasoft handlers
-const handleIdeasoftConnect = async () => {
-  if (!ideasoftForm.storeDomain || !ideasoftForm.clientId || !ideasoftForm.clientSecret) {
-    toast.error('Lütfen tüm alanları doldurun');
-    return;
-  }
-  
-  try {
-    setIdeasoftLoading(true);
-    
-    const response = await apiClient.post('/integrations/ideasoft/auth', {
-      storeUrl: ideasoftForm.storeDomain,  // storeDomain'i storeUrl olarak gönder
-      clientId: ideasoftForm.clientId,
-      clientSecret: ideasoftForm.clientSecret
-    });
-    
-    // Kullanıcıyı İdeasoft'a yönlendir
-    window.location.href = response.data.authUrl;
-    
-  } catch (error) {
-    toast.error('Bağlantı başlatılamadı: ' + (error.response?.data?.error || error.message));
-    setIdeasoftLoading(false);
-  }
-};
+  // Ideasoft handlers removed - platform no longer supported
 
-  // Ticimax handlers
-  const handleTicimaxConnect = async () => {
-    if (!ticimaxForm.siteUrl || !ticimaxForm.uyeKodu) {
-      toast.error('Lütfen tüm alanları doldurun');
-      return;
-    }
-    setTicimaxLoading(true);
-    try {
-      const response = await apiClient.post('/api/integrations/ticimax/connect', ticimaxForm);
-      if (response.data.success) {
-        toast.success('Ticimax bağlandı!');
-        setTicimaxModalOpen(false);
-        setTicimaxForm({ siteUrl: '', uyeKodu: '' });
-        await loadTicimaxStatus();
-        await loadIntegrations();
-      }
-    } catch (error) {
-      toast.error(error.response?.data?.error || 'Bağlantı başarısız');
-    } finally {
-      setTicimaxLoading(false);
-    }
-  };
+  // Ticimax handlers removed - platform no longer supported
 
   const handleConnect = async (integration) => {
     try {
       if (integration.type === 'WHATSAPP') { setWhatsappModalOpen(true); return; }
       if (integration.type === 'IYZICO') { setIyzicoModalOpen(true); return; }
       if (integration.type === 'SHOPIFY') { setShopifyModalOpen(true); return; }
-      if (integration.type === 'WOOCOMMERCE') { setWoocommerceModalOpen(true); return; }
       if (integration.type === 'ZAPIER') {
         if (!webhookStatus?.configured) await handleWebhookSetup();
         const configResponse = await apiClient.get('/api/webhook/config');
@@ -585,8 +493,6 @@ const handleIdeasoftConnect = async () => {
         return;
       }
       if (integration.type === 'IKAS') { setIkasModalOpen(true); return; }
-      if (integration.type === 'IDEASOFT') { setIdeasoftModalOpen(true); return; }
-      if (integration.type === 'TICIMAX') { setTicimaxModalOpen(true); return; }
       toast.info(`${integration.name} coming soon!`);
     } catch (error) {
       toast.error('Failed to connect');
@@ -599,9 +505,7 @@ const handleIdeasoftConnect = async () => {
     if (integration.type === 'WHATSAPP') await handleWhatsAppDisconnect();
     else if (integration.type === 'IYZICO') await handleIyzicoDisconnect();
     else if (integration.type === 'SHOPIFY') await handleShopifyDisconnect();
-    else if (integration.type === 'WOOCOMMERCE') await handleWooCommerceDisconnect();
     else if (integration.type === 'ZAPIER') await handleWebhookDisable();
-    // ↓↓↓ BU İKİSİNİ EKLE ↓↓↓
     else if (integration.type === 'GOOGLE_CALENDAR') {
       await apiClient.post('/api/integrations/google-calendar/disconnect');
       toast.success('Google Calendar disconnected');
@@ -618,19 +522,7 @@ const handleIdeasoftConnect = async () => {
       await loadIkasStatus();
       await loadIntegrations();
     }
-    else if (integration.type === 'IDEASOFT') {
-      await apiClient.post('/api/integrations/ideasoft/disconnect');
-      toast.success('Ideasoft bağlantısı kesildi');
-      await loadIdeasoftStatus();
-      await loadIntegrations();
-    }
-    else if (integration.type === 'TICIMAX') {
-      await apiClient.post('/api/integrations/ticimax/disconnect');
-      toast.success('Ticimax bağlantısı kesildi');
-      await loadTicimaxStatus();
-      await loadIntegrations();
-    }
-  } catch (error) { 
+  } catch (error) {
     toast.error('Failed to disconnect');
   }
 };
@@ -655,18 +547,6 @@ const handleIdeasoftConnect = async () => {
       else toast.error('Test failed');
       return;
     }
-    if (integration.type === 'IDEASOFT') {
-      const response = await apiClient.post('/api/integrations/ideasoft/test');
-      if (response.data.success) toast.success('Ideasoft bağlantısı aktif!');
-      else toast.error('Test failed');
-      return;
-    }
-    if (integration.type === 'TICIMAX') {
-      const response = await apiClient.post('/api/integrations/ticimax/test');
-      if (response.data.success) toast.success('Ticimax bağlantısı aktif!');
-      else toast.error('Test failed');
-      return;
-    }
     toast.info('Test not available for this integration');
   } catch (error) {
     toast.error('Test failed');
@@ -674,7 +554,7 @@ const handleIdeasoftConnect = async () => {
 };
 
   const getIntegrationIcon = (type) => INTEGRATION_ICONS[type] || Hash;
-  const getCategoryColors = (category) => CATEGORY_COLORS[category] || { icon: 'text-neutral-600', bg: 'bg-neutral-100' };
+  const getCategoryColors = () => ({ icon: 'text-neutral-600 dark:text-neutral-400', bg: 'bg-neutral-100 dark:bg-neutral-800' });
   const getDocsUrl = (type) => INTEGRATION_DOCS[type] || '#';
   const getBusinessTypeDisplay = (type) => {
     const typeMap = { RESTAURANT: 'Restaurant', SALON: 'Salon/Spa', ECOMMERCE: 'E-commerce', CLINIC: 'Clinic/Healthcare', SERVICE: 'Service Business', OTHER: 'General' };
@@ -690,7 +570,9 @@ const handleIdeasoftConnect = async () => {
   const getCategoryDescription = (type) => {
     const descriptions = {
       GOOGLE_CALENDAR: t('dashboard.integrationsPage.syncAppointments'),
+      GOOGLE_SHEETS: language === 'tr' ? 'Müşteri verilerini senkronize edin' : 'Sync customer data',
       WHATSAPP: t('dashboard.integrationsPage.whatsappConversations'),
+      NETGSM_SMS: language === 'tr' ? 'SMS ile müşterilerinize ulaşın' : 'Reach your customers via SMS',
       SHOPIFY: t('dashboard.integrationsPage.shopifyConnect'),
       WOOCOMMERCE: t('dashboard.integrationsPage.woocommerceConnect'),
       IYZICO: t('dashboard.integrationsPage.iyzicoConnect'),
@@ -730,7 +612,7 @@ const handleIdeasoftConnect = async () => {
   };
 
   // Integrations to hide (removed from platform)
-  const HIDDEN_INTEGRATIONS = ['IDEASOFT', 'TICIMAX', 'WOOCOMMERCE'];
+  const HIDDEN_INTEGRATIONS = ['IDEASOFT', 'TICIMAX', 'WOOCOMMERCE', 'NETGSM_SMS'];
 
   // Integration Categories - new structure without sector filter
   const INTEGRATION_CATEGORIES = [
@@ -799,38 +681,36 @@ const handleIdeasoftConnect = async () => {
       <div key={integration.type} className={`bg-white dark:bg-neutral-900 rounded-xl border p-6 transition-shadow ${disabled || isLocked ? 'opacity-70 bg-neutral-50 dark:bg-neutral-800' : 'hover:shadow-md'} border-neutral-200 dark:border-neutral-700`}>
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className={`p-3 rounded-lg ${isLocked ? 'bg-neutral-100 dark:bg-neutral-800' : colors.bg}`}>
-              <Icon className={`h-6 w-6 ${isLocked ? 'text-neutral-400 dark:text-neutral-500' : colors.icon}`} />
-            </div>
+            <Icon className={`h-6 w-6 ${isLocked ? 'text-neutral-400 dark:text-neutral-500' : 'text-neutral-600 dark:text-neutral-400'}`} />
             <div>
               <div className="flex items-center gap-2">
                 <h3 className={`font-semibold ${disabled || isLocked ? 'text-neutral-500 dark:text-neutral-400' : 'text-neutral-900 dark:text-white'}`}>{integration.name}</h3>
                 {isLocked && (
-                  <Badge variant="secondary" className="bg-amber-100 text-amber-700 text-xs">
+                  <Badge variant="secondary" className="bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400 text-xs">
                     <Lock className="h-3 w-3 mr-1" />
                     Pro
                   </Badge>
+                )}
+                {disabled && !isLocked && (
+                  <div className="group relative">
+                    <Info className="h-4 w-4 text-neutral-400 dark:text-neutral-500 cursor-help" />
+                    <div className="absolute left-0 top-6 hidden group-hover:block z-10 w-48 px-2 py-1 bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 text-xs rounded shadow-lg">
+                      {getEcommercePlatformName(connectedEcommerce)} {t('dashboard.integrationsPage.platformAlreadyConnected')}
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
           </div>
           {integration.connected && (
-            <div className="p-1 bg-green-100 rounded-full">
-              <Check className="h-4 w-4 text-green-600" />
-            </div>
+            <Check className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
           )}
         </div>
 
         {isLocked && (
-          <div className="mb-3 px-2 py-1 bg-amber-50 text-amber-700 text-xs rounded-md inline-flex items-center gap-1">
+          <div className="mb-3 px-2 py-1 bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400 text-xs rounded-md inline-flex items-center gap-1">
             <Lock className="h-3 w-3" />
             {language === 'tr' ? 'Bu entegrasyon Pro planında kullanılabilir' : 'This integration requires Pro plan'}
-          </div>
-        )}
-
-        {disabled && !isLocked && (
-          <div className="mb-3 px-2 py-1 bg-amber-100 text-amber-700 text-xs rounded-md">
-            {getEcommercePlatformName(connectedEcommerce)} {t('dashboard.integrationsPage.platformAlreadyConnected')}
           </div>
         )}
 
@@ -867,9 +747,6 @@ const handleIdeasoftConnect = async () => {
             </Button>
             )
           )}
-          <Button variant="ghost" size="sm" asChild>
-            <a href={docsUrl} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-4 w-4" /></a>
-          </Button>
         </div>
       </div>
     );
@@ -890,36 +767,100 @@ const handleIdeasoftConnect = async () => {
         )}
       </div>
 
-      {/* Email Channel Section */}
-      <div className="space-y-4">
-        <div>
-          <h2 className="text-xl font-semibold text-neutral-900 dark:text-white flex items-center gap-2">
-            <Inbox className="h-5 w-5 text-blue-600 dark:text-blue-400" />{t('dashboard.integrationsPage.emailChannel')}
-          </h2>
-          <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">{t('dashboard.integrationsPage.emailChannelDesc')}</p>
-        </div>
-
+      {/* All Integrations Grid */}
+      {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6 animate-pulse">
+              <div className="h-12 w-12 bg-neutral-200 dark:bg-neutral-700 rounded-lg mb-4"></div>
+              <div className="h-6 w-32 bg-neutral-200 dark:bg-neutral-700 rounded mb-2"></div>
+              <div className="h-4 w-full bg-neutral-200 dark:bg-neutral-700 rounded mb-4"></div>
+              <div className="h-10 w-full bg-neutral-200 dark:bg-neutral-700 rounded"></div>
+            </div>
+          ))}
+        </div>
+      ) : (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Custom CRM Integration - Only for ECOMMERCE - Moved to top */}
+          {businessType === 'ECOMMERCE' && (() => {
+            const crmFeatureInfo = getIntegrationFeatureInfo('CUSTOM', userPlan);
+            const isCRMLocked = crmFeatureInfo.isLocked;
+
+            return (
+            <div className={`bg-white dark:bg-neutral-900 rounded-xl border p-6 transition-shadow ${isCRMLocked ? 'opacity-70 bg-neutral-50 dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700' : 'border-neutral-200 dark:border-neutral-700 hover:shadow-md'}`}>
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <Hash className={`h-6 w-6 ${isCRMLocked ? 'text-neutral-400 dark:text-neutral-500' : 'text-neutral-600 dark:text-neutral-400'}`} />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className={`font-semibold ${isCRMLocked ? 'text-neutral-500 dark:text-neutral-400' : 'text-neutral-900 dark:text-white'}`}>
+                        {language === 'tr' ? 'Özel CRM/ERP Webhook' : 'Custom CRM/ERP Webhook'}
+                      </h3>
+                      {isCRMLocked && (
+                        <Badge variant="secondary" className="bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400 text-xs">
+                          <Lock className="h-3 w-3 mr-1" />
+                          Pro
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {isCRMLocked && (
+                <div className="mb-4 px-2 py-1 bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400 text-xs rounded-md inline-flex items-center gap-1">
+                  <Lock className="h-3 w-3" />
+                  {language === 'tr' ? 'Bu entegrasyon Pro planında kullanılabilir' : 'This integration requires Pro plan'}
+                </div>
+              )}
+
+              <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">
+                {language === 'tr' ? 'Kendi sisteminizden veri gönderin' : 'Send data from your own system'}
+              </p>
+
+              {isCRMLocked ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => {
+                    setSelectedFeature(crmFeatureInfo.feature);
+                    setUpgradeModalOpen(true);
+                  }}
+                >
+                  <Lock className="h-4 w-4 mr-2" />
+                  {language === 'tr' ? 'Kilidi Aç' : 'Unlock'}
+                </Button>
+              ) : (
+              <Button
+                size="sm"
+                className="w-full"
+                onClick={() => window.location.href = '/dashboard/integrations/custom-crm'}
+              >
+                {language === 'tr' ? 'Bağlan' : 'Connect'}
+              </Button>
+              )}
+            </div>
+            );
+          })()}
+
           {/* Gmail Card */}
-          <div className={`bg-white dark:bg-neutral-900 rounded-xl border p-6 hover:shadow-md transition-shadow ${emailStatus?.connected && emailStatus?.provider === 'GMAIL' ? 'border-green-300 dark:border-green-700 bg-green-50/30 dark:bg-green-900/20' : 'border-neutral-200 dark:border-neutral-700'}`}>
+          <div className={`bg-white dark:bg-neutral-900 rounded-xl border p-6 hover:shadow-md transition-shadow ${emailStatus?.connected && emailStatus?.provider === 'GMAIL' ? 'border-neutral-400 dark:border-neutral-600' : 'border-neutral-200 dark:border-neutral-700'}`}>
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className="p-3 rounded-lg bg-red-100 dark:bg-red-900/30">
-                  <Mail className="h-6 w-6 text-red-600 dark:text-red-400" />
-                </div>
+                <Mail className="h-6 w-6 text-neutral-600 dark:text-neutral-400" />
                 <div>
                   <h3 className="font-semibold text-neutral-900 dark:text-white">Gmail</h3>
-                  <Badge variant="secondary" className="text-xs mt-1">{t('dashboard.integrationsPage.emailChannel')}</Badge>
                 </div>
               </div>
               {emailStatus?.connected && emailStatus?.provider === 'GMAIL' && (
-                <div className="p-1 bg-green-100 rounded-full"><Check className="h-4 w-4 text-green-600" /></div>
+                <Check className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
               )}
             </div>
             <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">{t('dashboard.integrationsPage.gmailDesc')}</p>
             {emailStatus?.connected && emailStatus?.provider === 'GMAIL' ? (
               <div className="space-y-3">
-                <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 p-2 rounded-lg">
+                <div className="flex items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-800 p-2 rounded-lg">
                   <CheckCircle2 className="h-4 w-4" /><span>{t('dashboard.integrationsPage.connected')}: {emailStatus.email}</span>
                 </div>
                 <div className="flex gap-2">
@@ -934,32 +875,29 @@ const handleIdeasoftConnect = async () => {
             ) : (
               can('integrations:connect') && (
               <Button size="sm" className="w-full" onClick={handleGmailConnect} disabled={emailLoading || (emailStatus?.connected && emailStatus?.provider !== 'GMAIL')}>
-                {emailLoading ? <><RefreshCw className="h-4 w-4 mr-2 animate-spin" />{t('dashboard.integrationsPage.connectingText')}</> : t('dashboard.integrationsPage.connectGmail')}
+                {emailLoading ? <><RefreshCw className="h-4 w-4 mr-2 animate-spin" />{t('dashboard.integrationsPage.connectingText')}</> : t('dashboard.integrationsPage.connect')}
               </Button>
               )
             )}
           </div>
 
           {/* Outlook Card */}
-          <div className={`bg-white dark:bg-neutral-900 rounded-xl border p-6 hover:shadow-md transition-shadow ${emailStatus?.connected && emailStatus?.provider === 'OUTLOOK' ? 'border-green-300 dark:border-green-700 bg-green-50/30 dark:bg-green-900/20' : 'border-neutral-200 dark:border-neutral-700'}`}>
+          <div className={`bg-white dark:bg-neutral-900 rounded-xl border p-6 hover:shadow-md transition-shadow ${emailStatus?.connected && emailStatus?.provider === 'OUTLOOK' ? 'border-neutral-400 dark:border-neutral-600' : 'border-neutral-200 dark:border-neutral-700'}`}>
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className="p-3 rounded-lg bg-blue-100 dark:bg-blue-900/30">
-                  <Mail className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                </div>
+                <Mail className="h-6 w-6 text-neutral-600 dark:text-neutral-400" />
                 <div>
                   <h3 className="font-semibold text-neutral-900 dark:text-white">Microsoft 365</h3>
-                  <Badge variant="secondary" className="text-xs mt-1">{t('dashboard.integrationsPage.emailChannel')}</Badge>
                 </div>
               </div>
               {emailStatus?.connected && emailStatus?.provider === 'OUTLOOK' && (
-                <div className="p-1 bg-green-100 rounded-full"><Check className="h-4 w-4 text-green-600" /></div>
+                <Check className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
               )}
             </div>
             <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">{t('dashboard.integrationsPage.outlookDesc')}</p>
             {emailStatus?.connected && emailStatus?.provider === 'OUTLOOK' ? (
               <div className="space-y-3">
-                <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 p-2 rounded-lg">
+                <div className="flex items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-800 p-2 rounded-lg">
                   <CheckCircle2 className="h-4 w-4" /><span>{t('dashboard.integrationsPage.connected')}: {emailStatus.email}</span>
                 </div>
                 <div className="flex gap-2">
@@ -974,135 +912,15 @@ const handleIdeasoftConnect = async () => {
             ) : (
               can('integrations:connect') && (
               <Button size="sm" className="w-full" onClick={handleOutlookConnect} disabled={emailLoading || (emailStatus?.connected && emailStatus?.provider !== 'OUTLOOK')}>
-                {emailLoading ? <><RefreshCw className="h-4 w-4 mr-2 animate-spin" />{t('dashboard.integrationsPage.connectingText')}</> : t('dashboard.integrationsPage.connectOutlook')}
+                {emailLoading ? <><RefreshCw className="h-4 w-4 mr-2 animate-spin" />{t('dashboard.integrationsPage.connectingText')}</> : t('dashboard.integrationsPage.connect')}
               </Button>
               )
             )}
           </div>
-        </div>
+
+          {/* Other Integrations */}
+          {filteredIntegrations.map(renderIntegrationCard)}
       </div>
-
-      {/* Custom CRM Integration Section - Only for ECOMMERCE */}
-      {businessType === 'ECOMMERCE' && (() => {
-        const crmFeatureInfo = getIntegrationFeatureInfo('CUSTOM', userPlan);
-        const isCRMLocked = crmFeatureInfo.isLocked;
-
-        return (
-      <div className="space-y-4">
-        <div>
-          <h2 className="text-xl font-semibold text-neutral-900 dark:text-white flex items-center gap-2">
-            <Hash className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-            {language === 'tr' ? 'Özel CRM Entegrasyonu' : 'Custom CRM Integration'}
-          </h2>
-          <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
-            {language === 'tr' ? 'Kendi sisteminizden sipariş, stok ve servis bilgileri gönderin.' : 'Send order, stock and service information from your own system.'}
-          </p>
-        </div>
-
-        <div className={`bg-white dark:bg-neutral-900 rounded-xl border p-6 transition-shadow ${isCRMLocked ? 'opacity-70 bg-neutral-50 dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700' : 'border-neutral-200 dark:border-neutral-700 hover:shadow-md'}`}>
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className={`p-3 rounded-lg ${isCRMLocked ? 'bg-neutral-100 dark:bg-neutral-800' : 'bg-purple-100 dark:bg-purple-900/30'}`}>
-                <Hash className={`h-6 w-6 ${isCRMLocked ? 'text-neutral-400 dark:text-neutral-500' : 'text-purple-600 dark:text-purple-400'}`} />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className={`font-semibold ${isCRMLocked ? 'text-neutral-500 dark:text-neutral-400' : 'text-neutral-900 dark:text-white'}`}>
-                    {language === 'tr' ? 'Özel CRM/ERP Webhook' : 'Custom CRM/ERP Webhook'}
-                  </h3>
-                  {isCRMLocked ? (
-                    <Badge variant="secondary" className="bg-amber-100 text-amber-700 text-xs">
-                      <Lock className="h-3 w-3 mr-1" />
-                      Pro
-                    </Badge>
-                  ) : (
-                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">Pro</span>
-                  )}
-                </div>
-                <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-                  {language === 'tr' ? 'Kendi sisteminizi bağlayın' : 'Connect your own system'}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {isCRMLocked && (
-            <div className="mb-3 px-2 py-1 bg-amber-50 text-amber-700 text-xs rounded-md inline-flex items-center gap-1">
-              <Lock className="h-3 w-3" />
-              {language === 'tr' ? 'Bu entegrasyon Pro planında kullanılabilir' : 'This integration requires Pro plan'}
-            </div>
-          )}
-
-          <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">
-            {language === 'tr'
-              ? "Kendi CRM veya ERP sisteminizden sipariş, stok ve servis/arıza bilgilerini Telyx'e gönderin. AI asistanınız bu bilgilere erişerek müşterilerinize otomatik yanıt verebilir."
-              : "Send order, stock and service information from your own CRM or ERP system to Telyx. Your AI assistant can access this information to automatically respond to your customers."}
-          </p>
-
-          {isCRMLocked ? (
-            <Button
-              size="sm"
-              variant="outline"
-              className="w-full"
-              onClick={() => {
-                setSelectedFeature(crmFeatureInfo.feature);
-                setUpgradeModalOpen(true);
-              }}
-            >
-              <Lock className="h-4 w-4 mr-2" />
-              {language === 'tr' ? 'Kilidi Aç' : 'Unlock'}
-            </Button>
-          ) : (
-          <Button
-            size="sm"
-            className="w-full"
-            onClick={() => window.location.href = '/dashboard/integrations/custom-crm'}
-          >
-            {language === 'tr' ? 'Entegrasyonu Yönet' : 'Manage Integration'}
-          </Button>
-          )}
-        </div>
-      </div>
-        );
-      })()}
-
-      {/* Integration Lists */}
-      {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6 animate-pulse">
-              <div className="h-12 w-12 bg-neutral-200 dark:bg-neutral-700 rounded-lg mb-4"></div>
-              <div className="h-6 w-32 bg-neutral-200 dark:bg-neutral-700 rounded mb-2"></div>
-              <div className="h-4 w-full bg-neutral-200 dark:bg-neutral-700 rounded mb-4"></div>
-              <div className="h-10 w-full bg-neutral-200 dark:bg-neutral-700 rounded"></div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="space-y-8">
-          {/* Render integrations by category */}
-          {INTEGRATION_CATEGORIES.map((category) => {
-            const categoryIntegrations = getCategoryIntegrations(category.types);
-            if (categoryIntegrations.length === 0) return null;
-
-            const CategoryIcon = category.icon;
-            return (
-              <div key={category.id} className="space-y-4">
-                <h2 className="text-xl font-semibold text-neutral-900 dark:text-white flex items-center gap-2">
-                  <CategoryIcon className="h-5 w-5 text-primary-600 dark:text-primary-400" />
-                  {category.title}
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {categoryIntegrations.map(renderIntegrationCard)}
-                </div>
-              </div>
-            );
-          })}
-
-          {filteredIntegrations.length === 0 && (
-            <EmptyState icon={Puzzle} title={t('dashboard.integrationsPage.noIntegrationsAvailable')} description={t('dashboard.integrationsPage.contactSupportIntegrations')} />
-          )}
-        </div>
       )}
 
       {/* WhatsApp Modal */}
@@ -1209,15 +1027,15 @@ const handleIdeasoftConnect = async () => {
             </div>
 
             {shopifyStatus?.connected && (
-              <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-                <CheckCircle2 className="h-5 w-5 text-green-600" />
-                <p className="text-sm font-medium text-green-900">Connected: {shopifyStatus.shopName || shopifyStatus.shopDomain}</p>
+              <div className="flex items-center gap-2 p-3 bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg">
+                <CheckCircle2 className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
+                <p className="text-sm font-medium text-neutral-900 dark:text-white">Connected: {shopifyStatus.shopName || shopifyStatus.shopDomain}</p>
               </div>
             )}
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h4 className="text-sm font-medium text-blue-900 mb-2">How it works:</h4>
-              <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
+            <div className="bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg p-4">
+              <h4 className="text-sm font-medium text-neutral-900 dark:text-white mb-2">How it works:</h4>
+              <ol className="text-sm text-neutral-700 dark:text-neutral-300 space-y-1 list-decimal list-inside">
                 <li>Enter your store name and click Connect</li>
                 <li>You'll be redirected to Shopify to authorize</li>
                 <li>After approving, you'll return here automatically</li>
@@ -1322,14 +1140,14 @@ const handleIdeasoftConnect = async () => {
               />
             </div>
             {ikasStatus?.connected && (
-              <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-                <CheckCircle2 className="h-5 w-5 text-green-600" />
-                <p className="text-sm font-medium text-green-900">Bağlı: {ikasStatus.storeName}</p>
+              <div className="flex items-center gap-2 p-3 bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg">
+                <CheckCircle2 className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
+                <p className="text-sm font-medium text-neutral-900 dark:text-white">Bağlı: {ikasStatus.storeName}</p>
               </div>
             )}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h4 className="text-sm font-medium text-blue-900 mb-2">API bilgilerinizi nereden bulabilirsiniz:</h4>
-              <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
+            <div className="bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg p-4">
+              <h4 className="text-sm font-medium text-neutral-900 dark:text-white mb-2">API bilgilerinizi nereden bulabilirsiniz:</h4>
+              <ol className="text-sm text-neutral-700 dark:text-neutral-300 space-y-1 list-decimal list-inside">
                 <li>ikas mağaza panelinize giriş yapın</li>
                 <li>Sol menüden <strong>Uygulamalar → Uygulamalarım</strong> sayfasına gidin</li>
                 <li><strong>Daha Fazla</strong> butonuna tıklayın ve <strong>Özel Uygulamalarınızı Yönetin</strong> seçin</li>

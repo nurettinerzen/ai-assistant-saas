@@ -46,10 +46,10 @@ import {
 } from 'recharts';
 
 const CHANNEL_COLORS = {
-  phone: '#4f46e5',
-  chat: '#10b981',
-  whatsapp: '#25d366',
-  email: '#f59e0b'
+  phone: '#0d9488',
+  chat: '#6b7280',
+  whatsapp: '#6b7280',
+  email: '#6b7280'
 };
 
 // WhatsApp icon component
@@ -212,7 +212,7 @@ export default function AnalyticsPage() {
 
   const getChannelColor = (channel) => {
     switch(channel) {
-      case 'phone': return 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400';
+      case 'phone': return 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400';
       case 'chat': return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
       case 'whatsapp': return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400';
       case 'email': return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
@@ -269,9 +269,7 @@ export default function AnalyticsPage() {
         {/* Total Calls */}
         <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6">
           <div className="flex items-center justify-between mb-4">
-            <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
-              <Phone className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-            </div>
+            <Phone className="h-6 w-6 text-neutral-600 dark:text-neutral-400" />
           </div>
           <h3 className="text-2xl font-bold text-neutral-900 dark:text-white">
             {analytics?.totalCalls || 0}
@@ -282,9 +280,7 @@ export default function AnalyticsPage() {
         {/* Chat Sessions */}
         <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6">
           <div className="flex items-center justify-between mb-4">
-            <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-              <MessageCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
-            </div>
+            <MessageCircle className="h-6 w-6 text-neutral-600 dark:text-neutral-400" />
           </div>
           <h3 className="text-2xl font-bold text-neutral-900 dark:text-white">
             {analytics?.chatSessions || 0}
@@ -295,9 +291,7 @@ export default function AnalyticsPage() {
         {/* WhatsApp Messages */}
         <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6">
           <div className="flex items-center justify-between mb-4">
-            <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
-              <WhatsAppIcon className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-            </div>
+            <WhatsAppIcon className="h-6 w-6 text-neutral-600 dark:text-neutral-400" />
           </div>
           <h3 className="text-2xl font-bold text-neutral-900 dark:text-white">
             {analytics?.whatsappSessions || 0}
@@ -308,9 +302,7 @@ export default function AnalyticsPage() {
         {/* Emails Answered */}
         <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6">
           <div className="flex items-center justify-between mb-4">
-            <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
-              <Mail className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-            </div>
+            <Mail className="h-6 w-6 text-neutral-600 dark:text-neutral-400" />
           </div>
           <h3 className="text-2xl font-bold text-neutral-900 dark:text-white">
             {analytics?.emailsAnswered || 0}
@@ -321,9 +313,7 @@ export default function AnalyticsPage() {
         {/* Average Call Duration */}
         <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6">
           <div className="flex items-center justify-between mb-4">
-            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-              <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-            </div>
+            <Clock className="h-6 w-6 text-neutral-600 dark:text-neutral-400" />
           </div>
           <h3 className="text-2xl font-bold text-neutral-900 dark:text-white">
             {formatDuration(analytics?.avgDuration || 0)}
@@ -434,8 +424,8 @@ export default function AnalyticsPage() {
               onClick={() => setChannelFilter('phone')}
               className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors flex items-center gap-1 ${
                 channelFilter === 'phone'
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-400 dark:hover:bg-indigo-900/50'
+                  ? 'bg-teal-600 text-white'
+                  : 'bg-teal-100 text-teal-700 hover:bg-teal-200 dark:bg-teal-900/30 dark:text-teal-400 dark:hover:bg-teal-900/50'
               }`}
             >
               <Phone className="h-3 w-3" />
@@ -561,7 +551,7 @@ export default function AnalyticsPage() {
             <XAxis dataKey="hour" />
             <YAxis />
             <Tooltip />
-            <Bar dataKey="calls" fill="#4f46e5" />
+            <Bar dataKey="calls" fill="#0d9488" />
           </BarChart>
         </ResponsiveContainer>
       </div>

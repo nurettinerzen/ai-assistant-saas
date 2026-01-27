@@ -49,9 +49,9 @@ export const IntegrationsSection = () => {
               viewport={{ once: true }}
               transition={{ duration: 0.4, delay: index * 0.05 }}
               whileHover={{ scale: 1.05, y: -4 }}
-              className="bg-white dark:bg-neutral-800 rounded-xl p-5 shadow-sm border border-gray-100 dark:border-neutral-700 hover:shadow-lg hover:border-indigo-100 dark:hover:border-indigo-900 transition-all duration-300 w-full h-20 flex items-center justify-center group cursor-pointer"
+              className="bg-white dark:bg-neutral-800 rounded-xl p-5 shadow-sm border border-gray-100 dark:border-neutral-700 hover:shadow-lg hover:border-teal-100 dark:hover:border-teal-900 transition-all duration-300 w-full h-20 flex items-center justify-center group cursor-pointer"
             >
-              <span className="text-sm font-semibold text-gray-700 dark:text-neutral-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+              <span className="text-sm font-semibold text-gray-700 dark:text-neutral-200 group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">
                 {integration.name}
               </span>
             </motion.div>
@@ -67,7 +67,7 @@ export const IntegrationsSection = () => {
         >
           <Link
             href="/integrations"
-            className="inline-flex items-center gap-2 text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-semibold transition-colors group"
+            className="inline-flex items-center gap-2 text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 font-semibold transition-colors group"
           >
             {t('landing.integrations.viewAll')}
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />

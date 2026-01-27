@@ -12,7 +12,7 @@ export default function AboutPage() {
   const { t } = useLanguage();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-teal-50">
       <Navigation />
 
       {/* Hero Section */}
@@ -51,7 +51,7 @@ export default function AboutPage() {
               className="bg-white rounded-2xl p-8 md:p-12 shadow-sm border border-gray-100"
             >
               <div className="flex items-center gap-4 mb-6">
-                <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-blue-500 rounded-xl flex items-center justify-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-blue-500 rounded-xl flex items-center justify-center">
                   <Heart className="w-6 h-6 text-white" />
                 </div>
                 <h2 className="text-2xl font-bold text-gray-900">{t('about.story.title')}</h2>
@@ -73,7 +73,7 @@ export default function AboutPage() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6 }}
-              className="bg-gradient-to-br from-indigo-600 to-blue-500 rounded-2xl p-8 md:p-12 text-white"
+              className="bg-gradient-to-br from-teal-600 to-blue-500 rounded-2xl p-8 md:p-12 text-white"
             >
               <div className="flex items-center gap-4 mb-6">
                 <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
@@ -126,7 +126,7 @@ export default function AboutPage() {
               className="bg-white rounded-2xl p-8 md:p-12 shadow-sm border border-gray-100"
             >
               <div className="flex items-center gap-4 mb-6">
-                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-pink-500 rounded-xl flex items-center justify-center">
                   <Users className="w-6 h-6 text-white" />
                 </div>
                 <h2 className="text-2xl font-bold text-gray-900">{t('about.team.title')}</h2>
@@ -154,7 +154,7 @@ export default function AboutPage() {
               {t('about.cta.subtitle')}
             </p>
             <Link href="/waitlist">
-              <Button size="lg" className="bg-gradient-to-r from-indigo-600 to-blue-500 hover:from-indigo-700 hover:to-blue-600">
+              <Button size="lg" className="bg-gradient-to-r from-teal-600 to-blue-500 hover:from-teal-700 hover:to-blue-600">
                 {t('about.cta.button')}
               </Button>
             </Link>

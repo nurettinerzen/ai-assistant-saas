@@ -87,7 +87,7 @@ export default function UpgradeModal({
           </Button>
           <Button
             onClick={handleUpgrade}
-            className="w-full sm:w-auto order-1 sm:order-2 bg-gradient-to-r from-indigo-600 to-blue-500 hover:from-indigo-700 hover:to-blue-600"
+            className="w-full sm:w-auto order-1 sm:order-2 bg-gradient-to-r from-teal-600 to-blue-500 hover:from-teal-700 hover:to-blue-600"
           >
             {locale === 'tr' ? 'Planları İncele' : 'View Plans'}
             <ArrowRight className="ml-2 h-4 w-4" />

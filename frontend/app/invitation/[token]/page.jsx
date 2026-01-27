@@ -37,7 +37,7 @@ function getRoleDisplayName(role) {
 
 function getRoleBadgeColor(role) {
   const colors = {
-    OWNER: 'bg-purple-100 text-purple-800',
+    OWNER: 'bg-teal-100 text-teal-800',
     MANAGER: 'bg-blue-100 text-blue-800',
     STAFF: 'bg-gray-100 text-gray-800'
   };

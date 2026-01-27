@@ -195,7 +195,7 @@ export default function PhoneNumbersPage() {
             Telefon AI özelliğini kullanmaya devam etmek için bakiye yükleyin veya bir plan seçin.
           </p>
           <Link href="/dashboard/subscription">
-            <Button size="lg" className="bg-gradient-to-r from-indigo-600 to-blue-500">
+            <Button size="lg" className="bg-gradient-to-r from-teal-600 to-blue-500">
               Plan Seç veya Bakiye Yükle →
             </Button>
           </Link>

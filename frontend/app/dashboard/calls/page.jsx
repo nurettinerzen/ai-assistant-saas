@@ -34,6 +34,7 @@ import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
 import { formatDate, formatDuration, formatPhone } from '@/lib/utils';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { NAVIGATION_ITEMS } from '@/lib/navigationConfig';
 
 // Simple cache for calls data
 const callsCache = {
@@ -278,7 +279,7 @@ export default function CallsPage() {
 
     const reasonConfig = {
       client_ended: { label: locale === 'tr' ? 'Müşteri kapattı' : 'Customer ended', color: 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400' },
-      agent_ended: { label: locale === 'tr' ? 'Asistan kapattı' : 'Agent ended', color: 'bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400' },
+      agent_ended: { label: locale === 'tr' ? 'Asistan kapattı' : 'Agent ended', color: 'bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-400' },
       system_timeout: { label: locale === 'tr' ? 'Zaman aşımı' : 'Timeout', color: 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400' },
       error: { label: locale === 'tr' ? 'Hata' : 'Error', color: 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400' },
       completed: { label: locale === 'tr' ? 'Tamamlandı' : 'Completed', color: 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400' },
@@ -332,8 +333,8 @@ export default function CallsPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
-              {t('dashboard.callsPage.title')}
+            <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">
+              {locale === 'tr' ? NAVIGATION_ITEMS.callHistory.labelTr : NAVIGATION_ITEMS.callHistory.labelEn}
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
               {t('dashboard.callsPage.description')}

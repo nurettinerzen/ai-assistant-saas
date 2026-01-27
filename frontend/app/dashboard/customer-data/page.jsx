@@ -46,6 +46,7 @@ import { apiClient } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { NAVIGATION_ITEMS } from '@/lib/navigationConfig';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -60,35 +61,35 @@ const DATA_TYPE_OPTIONS = {
     en: 'Accounting',
     description: { tr: 'SGK borcu, vergi borcu, beyanname bilgileri', en: 'SSI debt, tax debt, declaration info' },
     icon: Calculator,
-    color: 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-400'
+    color: 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400'
   },
   support: {
     tr: 'Arıza Takip',
     en: 'Support Tracking',
     description: { tr: 'Müşteri destek talepleri, arıza kayıtları', en: 'Customer support requests, fault records' },
     icon: Wrench,
-    color: 'bg-orange-100 text-orange-600 dark:bg-orange-900 dark:text-orange-400'
+    color: 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400'
   },
   appointment: {
     tr: 'Randevu',
     en: 'Appointment',
     description: { tr: 'Randevu bilgileri, hatırlatmalar', en: 'Appointment info, reminders' },
     icon: Calendar,
-    color: 'bg-green-100 text-green-600 dark:bg-green-900 dark:text-green-400'
+    color: 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400'
   },
   order: {
     tr: 'Sipariş',
     en: 'Order',
     description: { tr: 'Sipariş durumu, kargo bilgileri', en: 'Order status, shipping info' },
     icon: Package,
-    color: 'bg-purple-100 text-purple-600 dark:bg-purple-900 dark:text-purple-400'
+    color: 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400'
   },
   custom: {
     tr: 'Diğer',
     en: 'Other',
     description: { tr: 'Özel müşteri verileri', en: 'Custom customer data' },
     icon: HelpCircle,
-    color: 'bg-neutral-100 text-neutral-600 dark:bg-neutral-900 dark:text-neutral-400'
+    color: 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400'
   }
 };
 
@@ -373,12 +374,10 @@ export default function CustomerDataPage() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">
-              {locale === 'tr' ? 'Gelen Arama' : 'Inbound Calls'}
+              {locale === 'tr' ? NAVIGATION_ITEMS.inbox.labelTr : NAVIGATION_ITEMS.inbox.labelEn}
             </h1>
             <p className="text-neutral-600 dark:text-neutral-400 mt-1">
-              {locale === 'tr'
-                ? 'Gelen aramalarda müşteri telefon numarasına göre eşleşen veriler'
-                : 'Data matched by customer phone number for inbound calls'}
+              {locale === 'tr' ? NAVIGATION_ITEMS.inbox.descriptionTr : NAVIGATION_ITEMS.inbox.descriptionEn}
             </p>
           </div>
 
@@ -632,9 +631,9 @@ export default function CustomerDataPage() {
             {/* Step 3: Preview */}
             {uploadStep === 3 && uploadPreview && (
               <div className="space-y-4 py-4">
-                <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg flex items-center gap-2">
-                  <CheckCircle2 className="w-5 h-5 text-green-600" />
-                  <span className="text-green-700 dark:text-green-300">
+                <div className="p-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg flex items-center gap-2">
+                  <CheckCircle2 className="w-5 h-5 text-neutral-600 dark:text-neutral-400" />
+                  <span className="text-neutral-700 dark:text-neutral-300">
                     {locale === 'tr'
                       ? `${uploadPreview.totalRows} satır bulundu`
                       : `${uploadPreview.totalRows} rows found`}
@@ -675,10 +674,10 @@ export default function CustomerDataPage() {
                 </div>
 
                 {/* Phone Matching Info */}
-                <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+                <div className="bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg p-4">
                   <div className="flex gap-2">
-                    <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
-                    <p className="text-sm text-amber-800 dark:text-amber-200">
+                    <AlertCircle className="h-5 w-5 text-neutral-600 dark:text-neutral-400 flex-shrink-0" />
+                    <p className="text-sm text-neutral-700 dark:text-neutral-300">
                       {locale === 'tr'
                         ? 'Telefon numarası kolonu otomatik olarak algılanacaktır. Gelen aramalarda bu numara ile eşleştirme yapılacak.'
                         : 'Phone number column will be auto-detected. Inbound calls will be matched against these numbers.'}
@@ -692,31 +691,31 @@ export default function CustomerDataPage() {
             {uploadStep === 4 && importResult && (
               <div className="space-y-4 py-4">
                 {importResult.success > 0 && (
-                  <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg flex items-center gap-2">
-                    <CheckCircle2 className="w-5 h-5 text-green-600" />
-                    <span className="text-green-700 dark:text-green-300">
+                  <div className="p-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg flex items-center gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-neutral-600 dark:text-neutral-400" />
+                    <span className="text-neutral-700 dark:text-neutral-300">
                       {importResult.success} {locale === 'tr' ? 'yeni kayıt oluşturuldu' : 'new records created'}
                     </span>
                   </div>
                 )}
                 {importResult.updated > 0 && (
-                  <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-center gap-2">
-                    <CheckCircle2 className="w-5 h-5 text-blue-600" />
-                    <span className="text-blue-700 dark:text-blue-300">
+                  <div className="p-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg flex items-center gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-neutral-600 dark:text-neutral-400" />
+                    <span className="text-neutral-700 dark:text-neutral-300">
                       {importResult.updated} {locale === 'tr' ? 'kayıt güncellendi' : 'records updated'}
                     </span>
                   </div>
                 )}
                 {importResult.failed > 0 && (
-                  <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                  <div className="p-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg">
                     <div className="flex items-center gap-2">
-                      <XCircle className="w-5 h-5 text-red-600" />
-                      <span className="text-red-700 dark:text-red-300">
+                      <XCircle className="w-5 h-5 text-neutral-600 dark:text-neutral-400" />
+                      <span className="text-neutral-700 dark:text-neutral-300">
                         {importResult.failed} {locale === 'tr' ? 'kayıt başarısız' : 'records failed'}
                       </span>
                     </div>
                     {importResult.errors && importResult.errors.length > 0 && (
-                      <ul className="mt-2 text-sm text-red-600 dark:text-red-400 list-disc list-inside max-h-32 overflow-auto">
+                      <ul className="mt-2 text-sm text-neutral-600 dark:text-neutral-400 list-disc list-inside max-h-32 overflow-auto">
                         {importResult.errors.slice(0, 10).map((err, i) => (
                           <li key={i}>
                             {locale === 'tr' ? `Satır ${err.row}: ${err.error}` : `Row ${err.row}: ${err.error}`}
@@ -1119,7 +1118,7 @@ export default function CustomerDataPage() {
                         variant="ghost"
                         size="sm"
                         onClick={() => handleDeleteRecord(record.id)}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        className=""
                         title={locale === 'tr' ? 'Sil' : 'Delete'}
                       >
                         <Trash2 className="w-4 h-4" />

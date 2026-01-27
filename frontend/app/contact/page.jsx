@@ -61,7 +61,7 @@ export default function ContactPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-teal-50">
       <Navigation />
 
       {/* Hero Section */}
@@ -192,7 +192,7 @@ export default function ContactPage() {
                   <Button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-gradient-to-r from-indigo-600 to-blue-500 hover:from-indigo-700 hover:to-blue-600"
+                    className="w-full bg-gradient-to-r from-teal-600 to-blue-500 hover:from-teal-700 hover:to-blue-600"
                     size="lg"
                   >
                     {loading ? (
@@ -219,7 +219,7 @@ export default function ContactPage() {
                 <h3 className="text-xl font-bold mb-6">{t('contact.info.title')}</h3>
                 <div className="space-y-6">
                   <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-blue-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-blue-500 rounded-xl flex items-center justify-center flex-shrink-0">
                       <Mail className="w-6 h-6 text-white" />
                     </div>
                     <div>

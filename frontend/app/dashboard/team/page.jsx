@@ -240,9 +240,7 @@ export default function TeamPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-primary-100 rounded-lg">
-                <Users className="h-6 w-6 text-primary-600" />
-              </div>
+              <Users className="h-7 w-7 text-neutral-600 dark:text-neutral-400" />
               <div>
                 <p className="text-sm text-neutral-600">{t('dashboard.teamPage.stats.totalMembers')}</p>
                 <p className="text-2xl font-bold">{members.length}</p>
@@ -254,9 +252,7 @@ export default function TeamPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <Mail className="h-6 w-6 text-blue-600" />
-              </div>
+              <Mail className="h-7 w-7 text-neutral-600 dark:text-neutral-400" />
               <div>
                 <p className="text-sm text-neutral-600">{t('dashboard.teamPage.stats.pendingInvites')}</p>
                 <p className="text-2xl font-bold">{invitations.length}</p>
@@ -268,9 +264,7 @@ export default function TeamPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-purple-100 rounded-lg">
-                <Shield className="h-6 w-6 text-purple-600" />
-              </div>
+              <Shield className="h-7 w-7 text-neutral-600 dark:text-neutral-400" />
               <div>
                 <p className="text-sm text-neutral-600">{t('dashboard.teamPage.stats.yourRole')}</p>
                 <p className="text-2xl font-bold">{getRoleDisplayName(user?.role)}</p>

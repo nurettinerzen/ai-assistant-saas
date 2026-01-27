@@ -28,6 +28,7 @@ import { toast, Toaster } from 'sonner';
 import { formatDate, formatFileSize } from '@/lib/utils';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePermissions } from '@/hooks/usePermissions';
+import { NAVIGATION_ITEMS } from '@/lib/navigationConfig';
 
 function KnowledgeBaseContent() {
   const { t, locale } = useLanguage();
@@ -266,18 +267,12 @@ function KnowledgeBaseContent() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">{t('dashboard.knowledgeBasePage.title')}</h1>
-        <p className="text-neutral-600 dark:text-neutral-400 mt-1">{t('dashboard.knowledgeBasePage.description')}</p>
-
-        {/* Info Box */}
-        <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-          <p className="text-sm text-blue-800 dark:text-blue-300">
-            {locale === 'tr'
-              ? 'Bilgi Bankası, AI asistanınızın konuşmalar sırasında referans aldığı içerik deposudur. Buraya eklediğiniz belgeler ve SSS\'ler, asistanınızın müşterilerinize doğru ve güncel bilgiler vermesini sağlar. Bu bir veri merkezi veya dosya depolama alanı değildir - asistanınızın "bilgi kaynağı"dır.'
-              : 'The Knowledge Base is the content repository your AI assistant references during conversations. Documents and FAQs you add here enable your assistant to provide accurate and up-to-date information to your customers. This is not a data center or file storage - it\'s your assistant\'s "knowledge source".'
-            }
-          </p>
-        </div>
+        <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">
+          {locale === 'tr' ? NAVIGATION_ITEMS.knowledgeBase.labelTr : NAVIGATION_ITEMS.knowledgeBase.labelEn}
+        </h1>
+        <p className="text-neutral-600 dark:text-neutral-400 mt-1">
+          {locale === 'tr' ? NAVIGATION_ITEMS.knowledgeBase.descriptionTr : NAVIGATION_ITEMS.knowledgeBase.descriptionEn}
+        </p>
       </div>
 
       {/* Tabs */}

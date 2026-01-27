@@ -110,7 +110,7 @@ export function OnboardingModal({ open, onClose }) {
     { id: 'RESTAURANT', icon: UtensilsCrossed, name: t('onboarding.industries.restaurant'), color: 'text-orange-600', bgColor: 'bg-orange-100' },
     { id: 'SALON', icon: Scissors, name: t('onboarding.industries.salonSpa'), color: 'text-pink-600', bgColor: 'bg-pink-100' },
     { id: 'ECOMMERCE', icon: ShoppingCart, name: t('onboarding.industries.ecommerce'), color: 'text-blue-600', bgColor: 'bg-blue-100' },
-    { id: 'SERVICE', icon: Briefcase, name: t('onboarding.industries.professionalServices'), color: 'text-purple-600', bgColor: 'bg-purple-100' },
+    { id: 'SERVICE', icon: Briefcase, name: t('onboarding.industries.professionalServices'), color: 'text-teal-600', bgColor: 'bg-teal-100' },
     { id: 'OTHER', icon: Package, name: t('onboarding.industries.other'), color: 'text-gray-600', bgColor: 'bg-gray-100' }
   ];
 
@@ -251,7 +251,7 @@ export function OnboardingModal({ open, onClose }) {
             <div key={s.id} className="flex items-center">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
                 s.id < step ? 'bg-green-500 text-white' :
-                s.id === step ? 'bg-purple-600 text-white' :
+                s.id === step ? 'bg-teal-600 text-white' :
                 'bg-gray-200 dark:bg-neutral-700 text-gray-600 dark:text-gray-300'
               }`}>
                 {s.id < step ? <Check className="w-4 h-4" /> : s.id}
@@ -278,7 +278,7 @@ export function OnboardingModal({ open, onClose }) {
               type="button"
               onClick={() => setData({ ...data, language: lang.id })}
               className={`p-3 border dark:border-neutral-700 rounded-lg text-center transition-all ${
-                data.language === lang.id ? 'ring-2 ring-purple-600 bg-purple-50 dark:bg-purple-900/30 border-purple-600' : 'hover:bg-gray-50 dark:hover:bg-neutral-800'
+                data.language === lang.id ? 'ring-2 ring-teal-600 bg-teal-50 dark:bg-teal-900/30 border-teal-600' : 'hover:bg-gray-50 dark:hover:bg-neutral-800'
               }`}
             >
               <span className="font-medium dark:text-white">{lang.name}</span>
@@ -305,7 +305,7 @@ export function OnboardingModal({ open, onClose }) {
                 });
               }}
               className={`p-3 border dark:border-neutral-700 rounded-lg text-center transition-all ${
-                data.country === country.id ? 'ring-2 ring-purple-600 bg-purple-50 dark:bg-purple-900/30 border-purple-600' : 'hover:bg-gray-50 dark:hover:bg-neutral-800'
+                data.country === country.id ? 'ring-2 ring-teal-600 bg-teal-50 dark:bg-teal-900/30 border-teal-600' : 'hover:bg-gray-50 dark:hover:bg-neutral-800'
               }`}
             >
               <span className="text-2xl block mb-1">{country.flag}</span>
@@ -326,7 +326,7 @@ export function OnboardingModal({ open, onClose }) {
               <Card
                 key={industry.id}
                 className={`p-6 cursor-pointer hover:shadow-lg transition-all ${
-                  data.industry === industry.id ? 'ring-2 ring-purple-600 bg-purple-50 dark:bg-purple-900/30' : ''
+                  data.industry === industry.id ? 'ring-2 ring-teal-600 bg-teal-50 dark:bg-teal-900/30' : ''
                 }`}
                 onClick={() => handleIndustrySelect(industry.id)}
               >
@@ -347,7 +347,7 @@ export function OnboardingModal({ open, onClose }) {
         <select
           value={data.timezone}
           onChange={(e) => setData({ ...data, timezone: e.target.value })}
-          className="w-full p-3 border dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 dark:text-white focus:ring-2 focus:ring-purple-500 focus:outline-none"
+          className="w-full p-3 border dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
         >
           {TIMEZONES.map((tz) => (
             <option key={tz.id} value={tz.id}>{tz.name}</option>
@@ -361,7 +361,7 @@ export function OnboardingModal({ open, onClose }) {
             <div>
               {voicesLoading ? (
                 <div className="text-center py-12">
-                  <Loader2 className="h-8 w-8 mx-auto text-purple-600 animate-spin mb-4" />
+                  <Loader2 className="h-8 w-8 mx-auto text-teal-600 animate-spin mb-4" />
                   <p className="text-gray-600 dark:text-gray-400">{t('onboarding.voice.loading') || 'Loading voices...'}</p>
                 </div>
               ) : availableVoices.length === 0 ? (
@@ -374,7 +374,7 @@ export function OnboardingModal({ open, onClose }) {
                     <Card
                       key={voice.id}
                       className={`p-6 cursor-pointer hover:shadow-lg transition-all ${
-                        data.voice?.id === voice.id ? 'ring-2 ring-purple-600 bg-purple-50 dark:bg-purple-900/30' : ''
+                        data.voice?.id === voice.id ? 'ring-2 ring-teal-600 bg-teal-50 dark:bg-teal-900/30' : ''
                       }`}
                       onClick={() => handleVoiceSelect(voice)}
                     >
@@ -416,7 +416,7 @@ export function OnboardingModal({ open, onClose }) {
                 <textarea
                   value={data.firstMessage}
                   onChange={(e) => setData({ ...data, firstMessage: e.target.value })}
-                  className="w-full min-h-[80px] p-3 border dark:border-neutral-700 rounded-lg resize-none bg-white dark:bg-neutral-800 dark:text-white focus:ring-2 focus:ring-purple-500"
+                  className="w-full min-h-[80px] p-3 border dark:border-neutral-700 rounded-lg resize-none bg-white dark:bg-neutral-800 dark:text-white focus:ring-2 focus:ring-teal-500"
                 />
               </div>
               <div>
@@ -428,7 +428,7 @@ export function OnboardingModal({ open, onClose }) {
                 <textarea
                   value={data.systemPrompt}
                   onChange={(e) => setData({ ...data, systemPrompt: e.target.value })}
-                  className="w-full min-h-[120px] p-3 border dark:border-neutral-700 rounded-lg resize-none bg-white dark:bg-neutral-800 dark:text-white focus:ring-2 focus:ring-purple-500"
+                  className="w-full min-h-[120px] p-3 border dark:border-neutral-700 rounded-lg resize-none bg-white dark:bg-neutral-800 dark:text-white focus:ring-2 focus:ring-teal-500"
                 />
               </div>
             </div>
@@ -440,7 +440,7 @@ export function OnboardingModal({ open, onClose }) {
                 <VoiceDemo assistantId={createdAssistantId} />
               ) : (
                 <div className="text-center py-8">
-                  <Loader2 className="h-12 w-12 mx-auto text-purple-600 animate-spin mb-4" />
+                  <Loader2 className="h-12 w-12 mx-auto text-teal-600 animate-spin mb-4" />
                   <p className="text-gray-600 dark:text-gray-400">{t('onboarding.messages.creatingAssistant')}</p>
                 </div>
               )}
