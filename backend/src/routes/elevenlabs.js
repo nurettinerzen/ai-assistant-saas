@@ -18,6 +18,9 @@ import callAnalysis from '../services/callAnalysis.js';
 import { executeTool } from '../tools/index.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { hasProFeatures, isProTier } from '../config/plans.js';
+import concurrentCallManager from '../services/concurrentCallManager.js';
+import elevenLabsService from '../services/elevenlabs.js';
+import metricsService from '../services/metricsService.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -640,37 +643,80 @@ async function handleConversationStarted(event) {
 
     const businessId = assistant.business.id;
 
-    // Check if can make call (balance, trial limits, concurrent limits)
+    // P0.1: CRITICAL - Acquire concurrent call slot (business + global capacity)
+    let slotAcquired = false;
     try {
-      const canCallResult = await subscriptionService.canMakeCall(businessId);
+      console.log(`📞 [INBOUND] Acquiring slot for business ${businessId}, call ${conversationId}`);
 
-      if (!canCallResult.canMakeCall) {
-        console.warn(`⚠️ Call blocked for business ${businessId}: ${canCallResult.reason}`);
-        // Note: We can't reject the call from webhook, but we log it
-        // In production, the call check should happen BEFORE initiating the call
+      const slotResult = await concurrentCallManager.acquireSlot(
+        businessId,
+        conversationId,
+        direction,
+        { agentId, callerPhone, inbound: true }
+      );
 
-        // Still log the call but mark it as blocked
+      if (!slotResult.success) {
+        // NO SLOT AVAILABLE - TERMINATE CALL IMMEDIATELY
+        console.warn(`⚠️ [INBOUND] NO CAPACITY - Terminating call ${conversationId}: ${slotResult.error}`);
+
+        // P0.5: Increment rejection metric
+        metricsService.incrementCounter('concurrent_rejected_total', {
+          reason: slotResult.error,
+          plan: 'inbound'
+        });
+
+        // Log terminated call
         await prisma.callLog.create({
           data: {
             businessId,
             callId: conversationId,
             callerId: callerPhone,
             direction: direction,
-            status: 'blocked',
-            summary: `Blocked: ${canCallResult.reason}`,
+            status: 'terminated_capacity',
+            summary: `Terminated due to capacity: ${slotResult.message}`,
+            endReason: slotResult.error,
             createdAt: new Date()
           }
         });
-        return;
+
+        // TERMINATE THE CALL VIA 11LABS API
+        try {
+          await elevenLabsService.terminateConversation(conversationId);
+          console.log(`✅ [INBOUND] Call ${conversationId} terminated successfully`);
+        } catch (terminateError) {
+          console.error(`❌ [INBOUND] Failed to terminate call ${conversationId}:`, terminateError.message);
+          // Even if termination fails, we've logged it and denied the slot
+        }
+
+        return; // Stop processing this webhook
       }
 
-      // Increment active calls counter
-      const incrementResult = await subscriptionService.incrementActiveCalls(businessId);
-      if (!incrementResult.success) {
-        console.warn(`⚠️ Concurrent limit reached for business ${businessId}`);
+      slotAcquired = true;
+      console.log(`✅ [INBOUND] Slot acquired for call ${conversationId}`);
+
+    } catch (capacityError) {
+      console.error('❌ [INBOUND] Critical error in capacity check:', capacityError);
+
+      // Log error and terminate call (fail-safe)
+      await prisma.callLog.create({
+        data: {
+          businessId,
+          callId: conversationId,
+          callerId: callerPhone,
+          direction: direction,
+          status: 'failed',
+          summary: `Capacity check failed: ${capacityError.message}`,
+          createdAt: new Date()
+        }
+      });
+
+      try {
+        await elevenLabsService.terminateConversation(conversationId);
+      } catch (terminateError) {
+        console.error(`❌ Failed to terminate after error:`, terminateError.message);
       }
-    } catch (checkError) {
-      console.error('⚠️ Call check failed (continuing anyway):', checkError.message);
+
+      return;
     }
 
     // Create initial call log
@@ -991,12 +1037,38 @@ async function handleConversationEnded(event) {
         });
       }
 
-      // Decrement active calls
-      await subscriptionService.decrementActiveCalls(business.id);
+      // P0.1: Release concurrent call slot (business + global capacity)
+      try {
+        console.log(`📞 [ENDED] Releasing slot for business ${business.id}, call ${conversationId}`);
+        await concurrentCallManager.releaseSlot(business.id, conversationId);
+        console.log(`✅ [ENDED] Slot released for call ${conversationId}`);
+      } catch (releaseError) {
+        console.error(`❌ [ENDED] Failed to release slot for ${conversationId}:`, releaseError);
+        // Continue anyway - cleanup cron will handle it
+      }
     }
 
   } catch (error) {
     console.error('❌ Error handling conversation ended:', error);
+
+    // P0.1: Fail-safe - try to release slot even on error
+    try {
+      const conversationId = event.conversation_id;
+      if (conversationId) {
+        // Try to find business ID from CallLog
+        const callLog = await prisma.callLog.findFirst({
+          where: { callId: conversationId },
+          select: { businessId: true }
+        });
+
+        if (callLog) {
+          await concurrentCallManager.releaseSlot(callLog.businessId, conversationId);
+          console.log(`✅ [ENDED-ERROR] Fail-safe slot release successful for ${conversationId}`);
+        }
+      }
+    } catch (failsafeError) {
+      console.error(`❌ [ENDED-ERROR] Fail-safe slot release failed:`, failsafeError);
+    }
   }
 }
 

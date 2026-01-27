@@ -52,8 +52,45 @@ router.post('/demo/request-call', async (req, res) => {
       name
     });
 
-    // Initiate outbound call via 11Labs
-    const result = await elevenLabsService.initiateOutboundCall({
+    // P0.2: Demo calls bypass capacity management (special business ID = 0)
+    // But we still use safeCallInitiator for 429 handling
+    // NOTE: Create a demo subscription if doesn't exist
+    const { PrismaClient } = await import('@prisma/client');
+    const prisma = new PrismaClient();
+
+    const DEMO_BUSINESS_ID = 999999; // Reserved for demo calls
+
+    // Ensure demo business exists
+    await prisma.business.upsert({
+      where: { id: DEMO_BUSINESS_ID },
+      update: {},
+      create: {
+        id: DEMO_BUSINESS_ID,
+        name: 'DEMO_CALLS',
+        language: 'TR',
+        country: 'TR'
+      }
+    });
+
+    // Ensure demo subscription exists (unlimited concurrency for demo)
+    await prisma.subscription.upsert({
+      where: { businessId: DEMO_BUSINESS_ID },
+      update: {},
+      create: {
+        businessId: DEMO_BUSINESS_ID,
+        plan: 'ENTERPRISE',
+        status: 'ACTIVE',
+        concurrentLimit: 999 // High limit for demos
+      }
+    });
+
+    await prisma.$disconnect();
+
+    // P0.2: Use safeCallInitiator
+    const { initiateOutboundCallSafe } = await import('../services/safeCallInitiator.js');
+
+    const result = await initiateOutboundCallSafe({
+      businessId: DEMO_BUSINESS_ID,
       agentId: DEMO_CONFIG.agentId,
       phoneNumberId: DEMO_CONFIG.phoneNumberId,
       toNumber: cleanPhone,
@@ -64,19 +101,32 @@ router.post('/demo/request-call', async (req, res) => {
       }
     });
 
-    console.log('✅ Demo call initiated:', result);
+    if (!result.success) {
+      // Demo hit capacity limit (very rare)
+      return res.status(503).json({
+        success: false,
+        error: 'System capacity reached. Please try again in a moment.',
+        retryAfter: result.retryAfter
+      });
+    }
+
+    console.log('✅ Demo call initiated:', result.call);
 
     res.json({
       success: true,
       message: 'Demo araması başlatıldı! Telefonunuz birazdan çalacak.',
-      callId: result.call_sid || result.conversation_id,
+      callId: result.call.call_sid || result.call.conversation_id,
       callType: 'outbound'
     });
 
   } catch (error) {
     console.error('Demo call error:', error.response?.data || error.message);
-    res.status(500).json({
-      success: false,
+
+    // P0.2: Handle capacity errors
+    const { CapacityError } = await import('../services/safeCallInitiator.js');
+    if (error instanceof CapacityError) {
+      return res.status(503).json({
+        success: false,
       error: 'Demo araması başlatılamadı. Lütfen tekrar deneyin.'
     });
   }

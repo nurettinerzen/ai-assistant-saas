@@ -890,32 +890,56 @@ router.post('/:id/test-call', async (req, res) => {
       });
     }
 
-    let result;
-
-    // Use 11Labs for outbound call
-    if (phoneNumber.elevenLabsPhoneId && assistant?.elevenLabsAgentId) {
-      result = await elevenLabsService.initiateOutboundCall({
-        agentId: assistant.elevenLabsAgentId,
-        phoneNumberId: phoneNumber.elevenLabsPhoneId,
-        toNumber: testPhoneNumber
-      });
-    } else {
+    // P0.2: Use safeCallInitiator for capacity management
+    if (!phoneNumber.elevenLabsPhoneId || !assistant?.elevenLabsAgentId) {
       return res.status(400).json({
         error: 'Phone number not connected to 11Labs',
         hint: 'Make sure the number is assigned to an assistant'
       });
     }
 
+    const { initiateOutboundCallSafe } = await import('../services/safeCallInitiator.js');
+
+    const result = await initiateOutboundCallSafe({
+      businessId,
+      agentId: assistant.elevenLabsAgentId,
+      phoneNumberId: phoneNumber.elevenLabsPhoneId,
+      toNumber: testPhoneNumber,
+      clientData: { test: true, phoneNumberId: phoneNumber.id }
+    });
+
+    if (!result.success) {
+      return res.status(503).json({
+        error: result.error,
+        message: result.message,
+        retryAfter: result.retryAfter,
+        ...result.details
+      });
+    }
+
     res.json({
       success: true,
       message: 'Test call initiated',
-      callId: result.call_sid || result.callId,
+      callId: result.call.call_sid || result.call.conversation_id,
       from: phoneNumber.phoneNumber,
-      to: testPhoneNumber
+      to: testPhoneNumber,
+      slotInfo: result.slotInfo
     });
 
   } catch (error) {
     console.error('❌ Test call error:', error);
+
+    // P0.2: Handle capacity errors
+    const { CapacityError } = await import('../services/safeCallInitiator.js');
+    if (error instanceof CapacityError) {
+      return res.status(503).json({
+        error: error.code,
+        message: error.message,
+        retryAfter: error.retryAfter,
+        ...error.details
+      });
+    }
+
     res.status(500).json({
       error: 'Failed to initiate test call',
       details: error.message

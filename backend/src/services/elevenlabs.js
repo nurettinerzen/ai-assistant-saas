@@ -683,6 +683,28 @@ const elevenLabsService = {
   },
 
   /**
+   * Terminate an active conversation
+   * P0.1: Used to terminate inbound calls when no capacity available
+   * @param {string} conversationId - Conversation ID to terminate
+   */
+  async terminateConversation(conversationId) {
+    try {
+      // 11Labs API: DELETE /v1/convai/conversations/{conversation_id}
+      const response = await elevenLabsClient.delete(`/convai/conversations/${conversationId}`);
+      console.log(`✅ 11Labs conversation terminated: ${conversationId}`);
+      return response.data;
+    } catch (error) {
+      // If already ended, that's okay
+      if (error.response?.status === 404) {
+        console.log(`ℹ️  Conversation ${conversationId} already ended or not found`);
+        return { success: true, alreadyEnded: true };
+      }
+      console.error('❌ 11Labs terminateConversation error:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  /**
    * List conversations
    * @param {number|string} pageSizeOrAgentId - Page size (number) or Agent ID (string for backward compat)
    * @param {Object} params - Query parameters (page_size, cursor, agent_id)

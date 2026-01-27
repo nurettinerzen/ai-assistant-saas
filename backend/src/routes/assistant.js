@@ -618,19 +618,47 @@ router.post('/test-call', async (req, res) => {
       return res.status(400).json({ error: 'No phone number configured' });
     }
 
-    const call = await elevenLabsService.initiateOutboundCall({
+    // P0.2: Use safeCallInitiator instead of direct 11Labs call
+    const { initiateOutboundCallSafe, capacityErrorHandler } = await import('../services/safeCallInitiator.js');
+
+    const result = await initiateOutboundCallSafe({
+      businessId,
       agentId: assistant.elevenLabsAgentId,
       phoneNumberId: fromPhoneNumber.elevenLabsPhoneId,
-      toNumber: phoneNumber
+      toNumber: phoneNumber,
+      clientData: { test: true, assistantId: assistant.id }
     });
+
+    if (!result.success) {
+      return res.status(503).json({
+        error: result.error,
+        message: result.message,
+        retryAfter: result.retryAfter,
+        ...result.details
+      });
+    }
 
     res.json({
       success: true,
-      call
+      call: result.call,
+      slotInfo: result.slotInfo
     });
 
   } catch (error) {
     console.error('Test call error:', error);
+
+    // P0.2: Handle capacity errors with proper HTTP response
+    const { CapacityError } = await import('../services/safeCallInitiator.js');
+    if (error instanceof CapacityError) {
+      const statusCode = error.code === 'ELEVENLABS_429_RATE_LIMIT' ? 429 : 503;
+      return res.status(statusCode).json({
+        error: error.code,
+        message: error.message,
+        retryAfter: error.retryAfter,
+        ...error.details
+      });
+    }
+
     res.status(500).json({ error: 'Failed to initiate test call' });
   }
 });
