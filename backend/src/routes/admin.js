@@ -17,6 +17,7 @@ import {
   ADMIN_EMAILS
 } from '../middleware/adminAuth.js';
 import { createAdminAuditLog, calculateChanges, auditContext } from '../middleware/auditLog.js';
+import { updateEnterpriseStripePrice, hasActiveStripeSubscription } from '../services/stripeEnterpriseService.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -755,8 +756,33 @@ router.put('/enterprise-customers/:id', async (req, res) => {
 
     const subscription = await prisma.subscription.update({
       where: { id: parseInt(id) },
-      data: updateData
+      data: updateData,
+      include: { business: true }
     });
+
+    // P2: Stripe subscription price update (if price changed and has active Stripe sub)
+    let stripeUpdateResult = null;
+    const priceChanged = price && price !== currentSub.enterprisePrice;
+
+    if (priceChanged && hasActiveStripeSubscription(currentSub)) {
+      console.log(`💳 Admin: Price changed from ${currentSub.enterprisePrice} to ${price}, updating Stripe subscription...`);
+
+      // Get proration preference from request (optional)
+      const applyProration = req.body.applyProration === true;
+      const effectiveAt = req.body.effectiveAt || 'next_period'; // 'immediate' or 'next_period'
+
+      stripeUpdateResult = await updateEnterpriseStripePrice(
+        { ...currentSub, business: subscription.business },
+        price,
+        { applyProration, effectiveAt }
+      );
+
+      if (stripeUpdateResult.success) {
+        console.log(`✅ Admin: Stripe subscription updated - Price ${stripeUpdateResult.oldPriceId} → ${stripeUpdateResult.newPriceId}`);
+      } else {
+        console.warn(`⚠️ Admin: Stripe update failed: ${stripeUpdateResult.reason} - ${stripeUpdateResult.message}`);
+      }
+    }
 
     // P0-C: Audit log for enterprise update/activation
     const changes = calculateChanges(
@@ -780,7 +806,21 @@ router.put('/enterprise-customers/:id', async (req, res) => {
           businessId: subscription.businessId,
           operation: event === 'enterprise_approved' ? 'enterprise_activation' : 'enterprise_update',
           notes,
-          planActivated: event === 'enterprise_approved'
+          planActivated: event === 'enterprise_approved',
+          // P2: Stripe price update metadata
+          ...(stripeUpdateResult && {
+            stripeUpdate: {
+              success: stripeUpdateResult.success,
+              oldPriceId: stripeUpdateResult.oldPriceId,
+              newPriceId: stripeUpdateResult.newPriceId,
+              oldAmount: stripeUpdateResult.oldAmount,
+              newAmount: stripeUpdateResult.newAmount,
+              proration: stripeUpdateResult.proration,
+              effectiveAt: stripeUpdateResult.effectiveAt,
+              prorationBehavior: stripeUpdateResult.prorationBehavior,
+              reason: stripeUpdateResult.reason
+            }
+          })
         },
         ipAddress: req.ip || req.connection.remoteAddress,
         userAgent: req.get('user-agent')
@@ -788,7 +828,10 @@ router.put('/enterprise-customers/:id', async (req, res) => {
     );
 
     console.log(`✅ Admin: Enterprise subscription ${id} updated`);
-    res.json(subscription);
+    res.json({
+      subscription,
+      stripeUpdate: stripeUpdateResult || { applied: false, reason: 'No price change or no active Stripe subscription' }
+    });
   } catch (error) {
     console.error('Admin: Failed to update enterprise customer:', error);
     res.status(500).json({ error: 'Failed to update enterprise customer' });
