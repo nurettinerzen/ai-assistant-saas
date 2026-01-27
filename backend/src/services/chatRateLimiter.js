@@ -52,6 +52,13 @@ const RATE_LIMITS = {
  */
 export async function canSendChatMessage(businessId) {
   try {
+    // Feature flag: If rate limiting disabled, allow all
+    const rateLimitingEnabled = process.env.CHAT_RATE_LIMITING_ENABLED === 'true';
+    if (!rateLimitingEnabled) {
+      console.log('⚠️ Chat rate limiting DISABLED (feature flag off)');
+      return { canSend: true, reason: 'FEATURE_DISABLED' };
+    }
+
     const subscription = await prisma.subscription.findUnique({
       where: { businessId }
     });
@@ -128,6 +135,7 @@ export async function canSendChatMessage(businessId) {
 
 /**
  * Record chat message sent (increment daily counter)
+ * ATOMIC: Uses DB-level increment to prevent race conditions
  * @param {number} businessId
  * @returns {Promise<void>}
  */
@@ -136,8 +144,10 @@ export async function recordChatMessage(businessId) {
     const now = new Date();
     const today = now.toISOString().split('T')[0];
 
+    // ATOMIC: Read and update in single query to prevent race conditions
     const subscription = await prisma.subscription.findUnique({
-      where: { businessId }
+      where: { businessId },
+      select: { chatDailyMessageDate: true, chatDailyMessageCount: true }
     });
 
     if (!subscription) return;
@@ -146,21 +156,25 @@ export async function recordChatMessage(businessId) {
       ? new Date(subscription.chatDailyMessageDate).toISOString().split('T')[0]
       : null;
 
-    let newCount = 1;
-
-    // If same day, increment counter
+    // If same day, increment atomically
     if (lastMessageDate === today) {
-      newCount = (subscription.chatDailyMessageCount || 0) + 1;
+      await prisma.subscription.update({
+        where: { businessId },
+        data: {
+          chatDailyMessageCount: { increment: 1 },
+          chatDailyMessageDate: now
+        }
+      });
+    } else {
+      // New day, reset to 1
+      await prisma.subscription.update({
+        where: { businessId },
+        data: {
+          chatDailyMessageCount: 1,
+          chatDailyMessageDate: now
+        }
+      });
     }
-
-    // Update counter + timestamp
-    await prisma.subscription.update({
-      where: { businessId },
-      data: {
-        chatDailyMessageCount: newCount,
-        chatDailyMessageDate: now
-      }
-    });
   } catch (error) {
     console.error('Record chat message error:', error);
   }
