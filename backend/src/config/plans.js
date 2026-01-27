@@ -117,15 +117,16 @@ export const REGIONAL_PRICING = {
       TRIAL: { price: 0, minutes: 15, overageRate: 0, concurrentLimit: 1, pricePerMinute: 0, assistantsLimit: 1, phoneNumbersLimit: 1, chatDays: 7, paymentModel: null },
 
       // PAYG: Kullandıkça öde - PREPAID (bakiye yükle, kullan)
-      PAYG: { price: 0, minutes: 0, overageRate: 0, concurrentLimit: 1, pricePerMinute: 23, assistantsLimit: 1, phoneNumbersLimit: 1, minTopup: 4, paymentModel: 'PREPAID' },
+      PAYG: { price: 0, minutes: 0, overageRate: 0, concurrentLimit: 1, pricePerMinute: 23, assistantsLimit: 5, minTopup: 4, paymentModel: 'PREPAID' },
 
       // YENİ FİYATLANDIRMA - Ocak 2026 - SABİT 23 TL AŞIM (POSTPAID)
-      STARTER: { price: 2499, minutes: 150, overageRate: 23, concurrentLimit: 1, pricePerMinute: 17, assistantsLimit: 3, phoneNumbersLimit: -1, paymentModel: 'POSTPAID' },
-      PRO: { price: 7499, minutes: 500, overageRate: 23, concurrentLimit: 5, pricePerMinute: 15, assistantsLimit: 10, phoneNumbersLimit: -1, paymentModel: 'POSTPAID' },
-      ENTERPRISE: { price: null, minutes: null, overageRate: 23, concurrentLimit: 5, pricePerMinute: 12, assistantsLimit: -1, phoneNumbersLimit: -1, paymentModel: 'POSTPAID' },
+      // Note: phoneNumbersLimit removed - platform limit is 1 (hard-coded in route)
+      STARTER: { price: 2499, minutes: 150, overageRate: 23, concurrentLimit: 1, pricePerMinute: 17, assistantsLimit: 5, paymentModel: 'POSTPAID' },
+      PRO: { price: 7499, minutes: 500, overageRate: 23, concurrentLimit: 5, pricePerMinute: 15, assistantsLimit: 10, paymentModel: 'POSTPAID' },
+      ENTERPRISE: { price: null, minutes: null, overageRate: 23, concurrentLimit: 5, pricePerMinute: 12, assistantsLimit: 25, paymentModel: 'POSTPAID' }, // Configurable per enterprise client
 
       // Legacy plan aliases - SABİT 23 TL AŞIM
-      BASIC: { price: 2499, minutes: 150, overageRate: 23, concurrentLimit: 1, pricePerMinute: 17, assistantsLimit: 3, paymentModel: 'POSTPAID' }
+      BASIC: { price: 2499, minutes: 150, overageRate: 23, concurrentLimit: 1, pricePerMinute: 17, assistantsLimit: 5, paymentModel: 'POSTPAID' }
     },
     // PAYG dakika fiyatı: 23 TL/dk (PREPAID)
     creditTiers: [
@@ -141,12 +142,12 @@ export const REGIONAL_PRICING = {
     plans: {
       FREE: { price: 0, minutes: 0, overageRate: 0, concurrentLimit: 0, paymentModel: null },
       TRIAL: { price: 0, minutes: 15, overageRate: 0, concurrentLimit: 1, chatDays: 7, paymentModel: null },
-      PAYG: { price: 0, minutes: 0, overageRate: 0, concurrentLimit: 1, pricePerMinute: 4.60, minTopup: 4, paymentModel: 'PREPAID' },
+      PAYG: { price: 0, minutes: 0, overageRate: 0, concurrentLimit: 1, pricePerMinute: 4.60, assistantsLimit: 5, minTopup: 4, paymentModel: 'PREPAID' },
       // SABİT 4.60 R$ AŞIM (POSTPAID)
-      STARTER: { price: 500, minutes: 150, overageRate: 4.60, concurrentLimit: 1, pricePerMinute: 3.40, assistantsLimit: 3, paymentModel: 'POSTPAID' },
+      STARTER: { price: 500, minutes: 150, overageRate: 4.60, concurrentLimit: 1, pricePerMinute: 3.40, assistantsLimit: 5, paymentModel: 'POSTPAID' },
       PRO: { price: 1500, minutes: 500, overageRate: 4.60, concurrentLimit: 5, pricePerMinute: 3.00, assistantsLimit: 10, paymentModel: 'POSTPAID' },
-      ENTERPRISE: { price: null, minutes: null, overageRate: 4.60, concurrentLimit: 5, pricePerMinute: 2.40, assistantsLimit: -1, paymentModel: 'POSTPAID' },
-      BASIC: { price: 500, minutes: 150, overageRate: 4.60, concurrentLimit: 1, paymentModel: 'POSTPAID' }
+      ENTERPRISE: { price: null, minutes: null, overageRate: 4.60, concurrentLimit: 5, pricePerMinute: 2.40, assistantsLimit: 25, paymentModel: 'POSTPAID' },
+      BASIC: { price: 500, minutes: 150, overageRate: 4.60, concurrentLimit: 1, assistantsLimit: 5, paymentModel: 'POSTPAID' }
     },
     creditTiers: [
       { minMinutes: 1, unitPrice: 4.60 }
@@ -159,11 +160,11 @@ export const REGIONAL_PRICING = {
     plans: {
       FREE: { price: 0, minutes: 0, overageRate: 0, concurrentLimit: 0, paymentModel: null },
       TRIAL: { price: 0, minutes: 15, overageRate: 0, concurrentLimit: 1, chatDays: 7, paymentModel: null },
-      PAYG: { price: 0, minutes: 0, overageRate: 0, concurrentLimit: 1, pricePerMinute: 0.51, minTopup: 4, paymentModel: 'PREPAID' },
+      PAYG: { price: 0, minutes: 0, overageRate: 0, concurrentLimit: 1, pricePerMinute: 0.51, assistantsLimit: 5, minTopup: 4, paymentModel: 'PREPAID' },
       // SABİT $0.51 AŞIM (POSTPAID)
-      STARTER: { price: 55, minutes: 150, overageRate: 0.51, concurrentLimit: 1, pricePerMinute: 0.38, assistantsLimit: 3, paymentModel: 'POSTPAID' },
+      STARTER: { price: 55, minutes: 150, overageRate: 0.51, concurrentLimit: 1, pricePerMinute: 0.38, assistantsLimit: 5, paymentModel: 'POSTPAID' },
       PRO: { price: 167, minutes: 500, overageRate: 0.51, concurrentLimit: 5, pricePerMinute: 0.33, assistantsLimit: 10, paymentModel: 'POSTPAID' },
-      ENTERPRISE: { price: null, minutes: null, overageRate: 0.51, concurrentLimit: 5, pricePerMinute: 0.27, assistantsLimit: -1, paymentModel: 'POSTPAID' },
+      ENTERPRISE: { price: null, minutes: null, overageRate: 0.51, concurrentLimit: 5, pricePerMinute: 0.27, assistantsLimit: 25, paymentModel: 'POSTPAID' },
       BASIC: { price: 55, minutes: 150, overageRate: 0.51, concurrentLimit: 1, paymentModel: 'POSTPAID' }
     },
     creditTiers: [

@@ -9,6 +9,8 @@ import { buildAssistantPrompt, getActiveTools as getPromptBuilderTools } from '.
 import { getActiveToolsForElevenLabs, getActiveTools } from '../tools/index.js';
 // ✅ Central voice mapping
 import { getElevenLabsVoiceId } from '../constants/voices.js';
+// ✅ Plan configuration
+import { getRegionalPricing } from '../config/plans.js';
 
 const router = express.Router();
 
@@ -156,20 +158,45 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
     // Check subscription limits
     const subscription = await prisma.subscription.findUnique({
       where: { businessId },
+      include: { business: { select: { country: true } } }
     });
+
+    if (!subscription) {
+      return res.status(403).json({
+        error: 'No active subscription found',
+        errorTR: 'Aktif abonelik bulunamadı'
+      });
+    }
 
     const assistantCount = await prisma.assistant.count({
       where: { businessId, isActive: true },
     });
 
-    // Plan limits removed - unlimited assistants for all plans
-    // const limits = { FREE: 1, BASIC: 3, PROFESSIONAL: 10, ENTERPRISE: 999 };
-    // const limit = limits[subscription?.plan] || 1;
-    // if (assistantCount >= limit) {
-    //   return res.status(403).json({
-    //     error: `You've reached your plan limit of ${limit} assistant${limit > 1 ? 's' : ''}. Upgrade to add more.`
-    //   });
-    // }
+    // P0-2: Enforce assistant limits (PAYG:5, STARTER:5, PRO:10, ENTERPRISE:25)
+    const country = subscription.business?.country || 'TR';
+    const regional = getRegionalPricing(country);
+    const planConfig = regional.plans[subscription.plan];
+    const assistantsLimit = planConfig?.assistantsLimit || 1;
+
+    // FREE plan: No assistants allowed
+    if (subscription.plan === 'FREE') {
+      return res.status(403).json({
+        error: 'Assistants are not available on the FREE plan. Please upgrade to create assistants.',
+        errorTR: 'Asistanlar ÜCRETSİZ planda mevcut değildir. Asistan oluşturmak için planınızı yükseltin.'
+      });
+    }
+
+    // Check limit (-1 means unlimited, but we no longer use this)
+    if (assistantsLimit !== -1 && assistantCount >= assistantsLimit) {
+      return res.status(403).json({
+        error: `ASSISTANT_LIMIT_REACHED`,
+        message: `You've reached your plan limit of ${assistantsLimit} assistant${assistantsLimit > 1 ? 's' : ''}. Upgrade to create more.`,
+        messageTR: `${assistantsLimit} asistan limitine ulaştınız. Daha fazla oluşturmak için planınızı yükseltin.`,
+        currentCount: assistantCount,
+        limit: assistantsLimit,
+        plan: subscription.plan
+      });
+    }
 
     // Get 11Labs voice ID from central mapping
     const elevenLabsVoiceId = getElevenLabsVoiceId(voiceId, language);

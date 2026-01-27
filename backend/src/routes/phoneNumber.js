@@ -442,15 +442,19 @@ router.post('/import-sip', async (req, res) => {
       });
     }
 
-    // Check phone number limit
+    // Check phone number limit (PLATFORM LIMIT: 1 number per business)
     const existingNumbers = await prisma.phoneNumber.count({
-      where: { businessId }
+      where: { businessId, status: 'ACTIVE' }
     });
 
-    if (subscription.phoneNumbersLimit > 0 && existingNumbers >= subscription.phoneNumbersLimit) {
+    const PLATFORM_PHONE_LIMIT = 1; // Platform constraint (technical limitation)
+
+    if (existingNumbers >= PLATFORM_PHONE_LIMIT) {
       return res.status(403).json({
-        error: `Telefon numarası limitine ulaşıldı (${subscription.phoneNumbersLimit})`,
-        upgrade: 'Planınızı yükseltin'
+        error: 'PHONE_NUMBER_LIMIT_REACHED',
+        message: 'Şu anda işletme başına 1 telefon numarası destekleniyor',
+        currentCount: existingNumbers,
+        limit: PLATFORM_PHONE_LIMIT
       });
     }
 
