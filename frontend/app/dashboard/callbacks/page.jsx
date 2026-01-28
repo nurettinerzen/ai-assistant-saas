@@ -40,11 +40,11 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { NAVIGATION_ITEMS } from '@/lib/navigationConfig';
 
 const STATUS_CONFIG = {
-  PENDING: { label: { tr: 'Bekliyor', en: 'Pending' }, color: 'text-neutral-700 dark:text-neutral-400', icon: Clock },
-  IN_PROGRESS: { label: { tr: 'Aranıyor', en: 'In Progress' }, color: 'text-neutral-700 dark:text-neutral-400', icon: Phone },
-  COMPLETED: { label: { tr: 'Tamamlandı', en: 'Completed' }, color: 'text-neutral-700 dark:text-neutral-400', icon: CheckCircle },
-  NO_ANSWER: { label: { tr: 'Cevap Yok', en: 'No Answer' }, color: 'text-neutral-700 dark:text-neutral-400', icon: PhoneMissed },
-  CANCELLED: { label: { tr: 'İptal', en: 'Cancelled' }, color: 'text-neutral-700 dark:text-neutral-400', icon: XCircle }
+  PENDING: { label: { tr: 'Bekliyor', en: 'Pending' }, color: 'text-yellow-600 dark:text-yellow-500', icon: Clock },
+  IN_PROGRESS: { label: { tr: 'Aranıyor', en: 'In Progress' }, color: 'text-yellow-600 dark:text-yellow-500', icon: Phone },
+  COMPLETED: { label: { tr: 'Tamamlandı', en: 'Completed' }, color: 'text-green-600 dark:text-green-500', icon: CheckCircle },
+  NO_ANSWER: { label: { tr: 'Cevap Yok', en: 'No Answer' }, color: 'text-red-600 dark:text-red-500', icon: PhoneMissed },
+  CANCELLED: { label: { tr: 'İptal', en: 'Cancelled' }, color: 'text-neutral-500 dark:text-neutral-400', icon: XCircle }
 };
 
 const PRIORITY_CONFIG = {
@@ -66,6 +66,7 @@ const TRANSLATIONS = {
     all: 'Tümü',
     pendingFilter: 'Bekleyenler',
     completedFilter: 'Tamamlananlar',
+    noAnswerFilter: 'Cevap Yok',
     customer: 'Müşteri',
     topic: 'Konu',
     priority: 'Öncelik',
@@ -101,6 +102,7 @@ const TRANSLATIONS = {
     all: 'All',
     pendingFilter: 'Pending',
     completedFilter: 'Completed',
+    noAnswerFilter: 'No Answer',
     customer: 'Customer',
     topic: 'Topic',
     priority: 'Priority',
@@ -209,8 +211,9 @@ export default function CallbacksPage() {
 
   const filteredCallbacks = callbacks.filter(cb => {
     // Status filter
-    if (filter === 'pending' && cb.status !== 'PENDING') return false;
+    if (filter === 'pending' && cb.status !== 'PENDING' && cb.status !== 'IN_PROGRESS') return false;
     if (filter === 'completed' && cb.status !== 'COMPLETED') return false;
+    if (filter === 'no_answer' && cb.status !== 'NO_ANSWER') return false;
 
     // Search filter
     if (searchQuery) {
@@ -226,14 +229,14 @@ export default function CallbacksPage() {
   });
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-start mb-6">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">
+          <h1 className="text-2xl font-semibold text-neutral-900 dark:text-white">
             {locale === 'tr' ? NAVIGATION_ITEMS.callbacks.labelTr : NAVIGATION_ITEMS.callbacks.labelEn}
           </h1>
-          <p className="text-neutral-600 dark:text-neutral-400 mt-1">
+          <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
             {locale === 'tr' ? NAVIGATION_ITEMS.callbacks.descriptionTr : NAVIGATION_ITEMS.callbacks.descriptionEn}
           </p>
         </div>
@@ -301,6 +304,13 @@ export default function CallbacksPage() {
           >
             {t.completedFilter}
           </Button>
+          <Button
+            variant={filter === 'no_answer' ? 'default' : 'outline'}
+            onClick={() => setFilter('no_answer')}
+            size="sm"
+          >
+            {t.noAnswerFilter}
+          </Button>
         </div>
       </div>
 
@@ -315,12 +325,12 @@ export default function CallbacksPage() {
             <table className="w-full">
               <thead className="bg-neutral-50 dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700">
                 <tr>
-                  <th className="text-left p-4 font-medium text-neutral-600 dark:text-neutral-300">{t.customer}</th>
-                  <th className="text-left p-4 font-medium text-neutral-600 dark:text-neutral-300">{t.topic}</th>
-                  <th className="text-left p-4 font-medium text-neutral-600 dark:text-neutral-300">{t.priority}</th>
-                  <th className="text-left p-4 font-medium text-neutral-600 dark:text-neutral-300">{t.date}</th>
-                  <th className="text-left p-4 font-medium text-neutral-600 dark:text-neutral-300">{t.status}</th>
-                  <th className="text-left p-4 font-medium text-neutral-600 dark:text-neutral-300">{t.actions}</th>
+                  <th className="text-left p-4 text-sm font-medium text-neutral-600 dark:text-neutral-300">{t.customer}</th>
+                  <th className="text-left p-4 text-sm font-medium text-neutral-600 dark:text-neutral-300">{t.topic}</th>
+                  <th className="text-left p-4 text-sm font-medium text-neutral-600 dark:text-neutral-300">{t.priority}</th>
+                  <th className="text-left p-4 text-sm font-medium text-neutral-600 dark:text-neutral-300">{t.date}</th>
+                  <th className="text-left p-4 text-sm font-medium text-neutral-600 dark:text-neutral-300">{t.status}</th>
+                  <th className="text-left p-4 text-sm font-medium text-neutral-600 dark:text-neutral-300">{t.actions}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-200 dark:divide-neutral-700">
@@ -338,14 +348,14 @@ export default function CallbacksPage() {
                       <td className="p-4">
                         <div className="flex items-center gap-3">
                           <div>
-                            <div className="font-medium text-neutral-900 dark:text-white">{callback.customerName}</div>
-                            <div className="text-sm text-neutral-500">{callback.customerPhone}</div>
+                            <div className="text-sm font-medium text-neutral-900 dark:text-white">{callback.customerName}</div>
+                            <div className="text-xs text-neutral-500">{callback.customerPhone}</div>
                           </div>
                         </div>
                       </td>
                       <td className="p-4">
                         <div className="max-w-xs">
-                          <div className="truncate text-neutral-900 dark:text-white">{callback.topic}</div>
+                          <div className="text-sm truncate text-neutral-900 dark:text-white">{callback.topic}</div>
                           {callback.assistant && (
                             <div className="text-xs text-neutral-400 mt-1">
                               {callback.assistant.name}
@@ -370,10 +380,9 @@ export default function CallbacksPage() {
                         })}
                       </td>
                       <td className="p-4">
-                        <Badge variant="ghost" className={`flex items-center gap-1.5 ${statusConfig?.color}`}>
-                          <StatusIcon className="h-4 w-4" />
+                        <span className={`text-xs font-medium ${statusConfig?.color}`}>
                           {statusConfig?.label[locale] || callback.status}
-                        </Badge>
+                        </span>
                       </td>
                       <td className="p-4" onClick={(e) => e.stopPropagation()}>
                         {callback.status === 'PENDING' && (
