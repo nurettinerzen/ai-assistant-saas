@@ -260,9 +260,9 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
                 />
 
                 {audioError ? (
-                  <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-                    <p className="text-sm text-amber-700 dark:text-amber-400">
-                      Ses kaydı bulunamadı. 11Labs tarafında ses kaydı etkinleştirilmemiş olabilir veya kayıt henüz hazır değil.
+                  <div className="p-4 border border-neutral-200 dark:border-neutral-700 rounded-lg">
+                    <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                      Ses kaydı bulunamadı veya henüz hazır değil.
                     </p>
                   </div>
                 ) : (
@@ -328,23 +328,25 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
                 <h4 className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Görüşme Sonlanma</h4>
               </div>
               <Badge variant="outline" className="text-xs">
-                {call.endReason === 'client_ended' ? 'Müşteri kapattı' :
-                 call.endReason === 'agent_ended' ? 'Asistan kapattı' :
+                {call.endReason === 'client_ended' || call.endReason === 'client ended' ? 'Müşteri kapattı' :
+                 call.endReason === 'agent_ended' || call.endReason === 'agent ended' ? 'Asistan kapattı' :
                  call.endReason === 'system_timeout' ? 'Zaman aşımı' :
                  call.endReason === 'no_answer' ? 'Cevap verilmedi' :
-                 call.endReason === 'call_ended' ? 'Görüşme tamamlandı' :
+                 call.endReason === 'call_ended' || call.endReason === 'call ended' ? 'Görüşme tamamlandı' :
+                 call.endReason === 'completed' ? 'Tamamlandı' :
+                 call.endReason === 'error' ? 'Hata' :
                  call.endReason || 'Bilinmiyor'}
               </Badge>
             </div>
 
             {/* Call Summary */}
             {call.summary && (
-              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+              <div className="border border-neutral-200 dark:border-neutral-700 rounded-lg p-4">
                 <div className="flex items-start gap-3">
-                  <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+                  <FileText className="h-5 w-5 text-neutral-600 dark:text-neutral-400 mt-0.5" />
                   <div className="flex-1">
-                    <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-1">Arama Özeti</h4>
-                    <p className="text-sm text-blue-800 dark:text-blue-300">{call.summary}</p>
+                    <h4 className="text-sm font-semibold text-neutral-900 dark:text-white mb-1">Arama Özeti</h4>
+                    <p className="text-sm text-neutral-600 dark:text-neutral-400">{call.summary}</p>
                   </div>
                 </div>
               </div>
