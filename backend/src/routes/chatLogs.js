@@ -132,6 +132,22 @@ router.get('/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Chat log not found' });
     }
 
+    // If no assistant attached, get business's default assistant
+    if (!chatLog.assistant) {
+      const business = await prisma.business.findUnique({
+        where: { id: req.businessId },
+        include: {
+          assistant: {
+            select: { name: true }
+          }
+        }
+      });
+
+      if (business?.assistant) {
+        chatLog.assistant = business.assistant;
+      }
+    }
+
     res.json(chatLog);
   } catch (error) {
     console.error('Get chat log error:', error);

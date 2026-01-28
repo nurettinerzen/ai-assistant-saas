@@ -495,7 +495,7 @@ export default function ChatsPage() {
                 </div>
                 <div>
                   <span className="text-gray-500">{locale === 'tr' ? 'Asistan' : 'Assistant'}</span>
-                  <p className="font-medium">{selectedChat.assistant?.name || (locale === 'tr' ? 'Varsayılan Asistan' : 'Default Assistant')}</p>
+                  <p className="font-medium">{selectedChat.assistant?.name || '-'}</p>
                 </div>
               </div>
 
