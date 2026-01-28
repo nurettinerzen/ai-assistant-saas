@@ -23,13 +23,27 @@ class GlobalCapacityManager {
     this.isConnected = false;
     this.errorLogged = false; // Prevent error log spam
     this.disabledLogged = false; // Prevent disabled message spam
+    this.connecting = false; // Guard against concurrent connect() calls
   }
 
   /**
-   * Initialize Redis connection
+   * Initialize Redis connection (Singleton)
+   * Only connects once, subsequent calls return immediately
    */
   async connect() {
-    if (this.isConnected) return;
+    // Guard: Already connected
+    if (this.isConnected) {
+      console.log('⚠️  [Redis] Already connected, skipping duplicate connect()');
+      return;
+    }
+
+    // Guard: Connection in progress
+    if (this.connecting) {
+      console.log('⚠️  [Redis] Connection already in progress, skipping duplicate connect()');
+      return;
+    }
+
+    this.connecting = true;
 
     // Check if Redis is disabled via environment variable
     if (process.env.REDIS_ENABLED === 'false') {
@@ -45,15 +59,21 @@ class GlobalCapacityManager {
       }
       this.isConnected = false;
       this.client = null;
+      this.connecting = false;
       return;
     }
 
     const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
 
+    // Log Redis configuration (masked for security)
+    const maskedUrl = redisUrl.replace(/:([^:@]+)@/, ':***@');
+    console.log(`🔗 Redis URL: ${maskedUrl}`);
+
     try {
       this.client = createClient({
         url: redisUrl,
         socket: {
+          connectTimeout: 5000, // 5s timeout
           reconnectStrategy: (retries) => {
             // Don't retry if Redis is not available
             if (retries > 3) {
@@ -68,14 +88,23 @@ class GlobalCapacityManager {
       this.client.on('error', (err) => {
         // Only log first error to avoid spam
         if (!this.errorLogged) {
-          console.error('❌ Redis connection error:', err?.message || err || 'Unknown error');
+          console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          console.error('❌ Redis connection error:');
+          console.error('   Message:', err?.message || 'Unknown error');
+          console.error('   Code:', err?.code || 'N/A');
+          console.error('   Address:', err?.address || 'N/A');
+          console.error('   Port:', err?.port || 'N/A');
+          if (err?.errors) {
+            console.error('   Errors:', err.errors.map(e => `${e.code} ${e.address}:${e.port}`).join(', '));
+          }
+          console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
           this.errorLogged = true;
         }
       });
 
       this.client.on('connect', () => {
-        console.log('✅ Redis connected');
-        this.isConnected = true;
+        // Don't set isConnected here - will be set after successful PING
+        console.log('🔌 Redis socket connected');
       });
 
       this.client.on('disconnect', () => {
@@ -85,18 +114,37 @@ class GlobalCapacityManager {
 
       await this.client.connect();
 
+      // Verify connection with PING
+      const pingResult = await this.client.ping();
+      if (pingResult !== 'PONG') {
+        throw new Error('Redis PING failed');
+      }
+
+      console.log('✅ Redis PING successful');
+      this.isConnected = true; // Only set after successful PING
+
       // Crash-safe: On restart, reconcile with DB
       await this.reconcileOnStartup();
+
+      this.connecting = false; // Connection successful
     } catch (error) {
       // Only log once to avoid spam
       if (!this.errorLogged) {
+        console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         console.error('❌ Redis connection failed:', error.message);
-        console.log('⚠️  Running in FAIL-OPEN mode (global capacity NOT enforced)');
-        console.log('⚠️  Calls will rely on business-level limits only');
+        console.error('⚠️  Running in FAIL-OPEN mode (global capacity NOT enforced)');
+        console.error('⚠️  Calls will rely on business-level limits only');
+        console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         this.errorLogged = true;
       }
       this.isConnected = false;
       this.client = null;
+      this.connecting = false; // Connection failed
+    } finally {
+      // Ensure connecting flag is always reset
+      if (this.connecting) {
+        this.connecting = false;
+      }
     }
   }
 

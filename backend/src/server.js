@@ -289,10 +289,9 @@ if (process.env.NODE_ENV !== 'test') {
   console.log('🚀 Initializing concurrent call management...');
   try {
     await globalCapacityManager.connect();
-    // Only log success if Redis is actually enabled
-    if (process.env.REDIS_ENABLED !== 'false') {
-      console.log('✅ Global capacity manager (Redis) connected');
-    }
+
+    // Only log success if Redis is actually connected
+    // (globalCapacityManager logs internally with details)
 
     startCleanupCron();
     // Log removed - cron service logs internally
