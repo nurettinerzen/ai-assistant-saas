@@ -266,13 +266,15 @@ function KnowledgeBaseContent() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">
-          {locale === 'tr' ? NAVIGATION_ITEMS.knowledgeBase.labelTr : NAVIGATION_ITEMS.knowledgeBase.labelEn}
-        </h1>
-        <p className="text-neutral-600 dark:text-neutral-400 mt-1">
-          {locale === 'tr' ? NAVIGATION_ITEMS.knowledgeBase.descriptionTr : NAVIGATION_ITEMS.knowledgeBase.descriptionEn}
-        </p>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-neutral-900 dark:text-white">
+            {locale === 'tr' ? NAVIGATION_ITEMS.knowledgeBase.labelTr : NAVIGATION_ITEMS.knowledgeBase.labelEn}
+          </h1>
+          <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
+            {locale === 'tr' ? NAVIGATION_ITEMS.knowledgeBase.descriptionTr : NAVIGATION_ITEMS.knowledgeBase.descriptionEn}
+          </p>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -284,21 +286,29 @@ function KnowledgeBaseContent() {
         }}
         className="space-y-6"
       >
-        <TabsList>
-          <TabsTrigger value="documents">{t('dashboard.knowledgeBasePage.documentsTab')} ({documents.length})</TabsTrigger>
-          <TabsTrigger value="faqs">{t('dashboard.knowledgeBasePage.faqsTab')} ({faqs.length})</TabsTrigger>
-        </TabsList>
+        <div className="flex items-center justify-between">
+          <TabsList>
+            <TabsTrigger value="documents">{t('dashboard.knowledgeBasePage.documentsTab')} ({documents.length})</TabsTrigger>
+            <TabsTrigger value="faqs">{t('dashboard.knowledgeBasePage.faqsTab')} ({faqs.length})</TabsTrigger>
+          </TabsList>
 
-        {/* Documents Tab */}
-        <TabsContent value="documents" className="space-y-4">
-          {can('knowledge:edit') && (
-          <div className="flex justify-end items-center">
+          {activeTab === 'documents' && can('knowledge:edit') && (
             <Button onClick={() => setShowDocModal(true)}>
               <Plus className="h-4 w-4 mr-2" />
               {t('dashboard.knowledgeBasePage.addDocument')}
             </Button>
-          </div>
           )}
+
+          {activeTab === 'faqs' && can('knowledge:edit') && (
+            <Button onClick={() => setShowFaqModal(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              {t('dashboard.knowledgeBasePage.addFaqButton')}
+            </Button>
+          )}
+        </div>
+
+        {/* Documents Tab */}
+        <TabsContent value="documents" className="space-y-4">
 
           {documents.length > 0 ? (
             <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden">
@@ -379,15 +389,6 @@ function KnowledgeBaseContent() {
 
         {/* FAQs Tab */}
         <TabsContent value="faqs" className="space-y-4">
-          {can('knowledge:edit') && (
-          <div className="flex justify-end">
-            <Button onClick={() => setShowFaqModal(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              {t('dashboard.knowledgeBasePage.addFaqBtn')}
-            </Button>
-          </div>
-          )}
-
           {faqs.length > 0 ? (
             <div className="space-y-3">
               {faqs.map((faq) => (

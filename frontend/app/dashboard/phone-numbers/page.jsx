@@ -91,7 +91,7 @@ export default function PhoneNumbersPage() {
         setAssistants(allAssistants.filter(a => a.isActive && !a.callDirection?.startsWith('outbound')));
       } catch (error) {
         console.error('Failed to load data:', error);
-        toast.error('Failed to load phone numbers');
+        toast.error(t('dashboard.phoneNumbersPage.failedToLoad') || 'Telefon numaraları yüklenemedi');
       } finally {
         setLoading(false);
       }
@@ -130,7 +130,7 @@ export default function PhoneNumbersPage() {
       }));
     } catch (error) {
       console.error('Failed to update assistant:', error);
-      toast.error(error.response?.data?.error || 'Failed to update assistant');
+      toast.error(error.response?.data?.error || t('dashboard.phoneNumbersPage.failedToUpdateAssistant') || 'Asistan güncellenemedi');
     } finally {
       setUpdatingPhoneId(null);
     }
