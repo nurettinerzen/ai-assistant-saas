@@ -35,8 +35,12 @@ class GlobalCapacityManager {
     if (process.env.REDIS_ENABLED === 'false') {
       // Only log once to avoid spam
       if (!this.disabledLogged) {
-        console.log('ℹ️  Redis disabled via REDIS_ENABLED=false');
-        console.log('⚠️  Running in FAIL-OPEN mode (global capacity NOT enforced)');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('⚠️  GLOBAL_CAP_DISABLED: Redis disabled');
+        console.log('ℹ️  REDIS_ENABLED=false in environment');
+        console.log('⚠️  Running in FAIL-OPEN mode (no global capacity enforcement)');
+        console.log('⚠️  All calls will rely on business-level limits only');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         this.disabledLogged = true;
       }
       this.isConnected = false;
