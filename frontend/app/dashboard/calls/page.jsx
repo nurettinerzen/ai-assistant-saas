@@ -259,14 +259,14 @@ export default function CallsPage() {
     const isOutbound = call.direction === 'outbound';
     if (isOutbound) {
       return (
-        <Badge className="bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 text-xs">
+        <Badge variant="ghost" className="text-orange-700 dark:text-orange-400 text-xs">
           <PhoneOutgoing className="h-3 w-3 mr-1" />
           {locale === 'tr' ? 'Giden' : 'Outbound'}
         </Badge>
       );
     }
     return (
-      <Badge className="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 text-xs">
+      <Badge variant="ghost" className="text-emerald-700 dark:text-emerald-400 text-xs">
         <PhoneIncoming className="h-3 w-3 mr-1" />
         {locale === 'tr' ? 'Gelen' : 'Inbound'}
       </Badge>
@@ -278,17 +278,17 @@ export default function CallsPage() {
     if (!endReason) return <span className="text-sm text-gray-400">-</span>;
 
     const reasonConfig = {
-      client_ended: { label: locale === 'tr' ? 'Müşteri kapattı' : 'Customer ended', color: 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400' },
-      agent_ended: { label: locale === 'tr' ? 'Asistan kapattı' : 'Agent ended', color: 'bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-400' },
-      system_timeout: { label: locale === 'tr' ? 'Zaman aşımı' : 'Timeout', color: 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400' },
-      error: { label: locale === 'tr' ? 'Hata' : 'Error', color: 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400' },
-      completed: { label: locale === 'tr' ? 'Tamamlandı' : 'Completed', color: 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400' },
+      client_ended: { label: locale === 'tr' ? 'Müşteri kapattı' : 'Customer ended', color: 'text-blue-700 dark:text-blue-400' },
+      agent_ended: { label: locale === 'tr' ? 'Asistan kapattı' : 'Agent ended', color: 'text-teal-700 dark:text-teal-400' },
+      system_timeout: { label: locale === 'tr' ? 'Zaman aşımı' : 'Timeout', color: 'text-yellow-700 dark:text-yellow-400' },
+      error: { label: locale === 'tr' ? 'Hata' : 'Error', color: 'text-red-700 dark:text-red-400' },
+      completed: { label: locale === 'tr' ? 'Tamamlandı' : 'Completed', color: 'text-green-700 dark:text-green-400' },
     };
 
-    const config = reasonConfig[endReason] || { label: endReason, color: 'bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-400' };
+    const config = reasonConfig[endReason] || { label: endReason, color: 'text-gray-700 dark:text-gray-400' };
 
     return (
-      <Badge className={`${config.color} text-xs`}>
+      <Badge variant="ghost" className={`${config.color} text-xs`}>
         {config.label}
       </Badge>
     );
@@ -364,15 +364,6 @@ export default function CallsPage() {
         </Button>
       </div>
 
-      {/* Info Box */}
-      <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-        <p className="text-sm text-green-800 dark:text-green-300">
-          {locale === 'tr'
-            ? 'Bu sayfa tüm arama geçmişinizi gösterir. Gelen aramalar (müşteriler sizi aradığında) ve giden aramalar (toplu arama kampanyaları) burada listelenir. Her aramanın transkriptini görüntüleyebilir, durumunu ve sonuç nedenini inceleyebilirsiniz. Filtreleri kullanarak gelen/giden aramaları ayırabilirsiniz.'
-            : 'This page shows all your call history. Inbound calls (when customers call you) and outbound calls (batch call campaigns) are listed here. You can view the transcript of each call, check its status and end reason. Use filters to separate inbound/outbound calls.'
-          }
-        </p>
-      </div>
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3 flex-wrap">

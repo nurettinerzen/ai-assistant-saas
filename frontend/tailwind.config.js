@@ -28,18 +28,18 @@ module.exports = {
       colors: {
         // Primary Color (Teal - Brand color)
         primary: {
-          50: '#f0fdfa',
-          100: '#ccfbf1',
-          200: '#99f6e4',
-          300: '#5eead4',
-          400: '#2dd4bf',
-          500: '#14b8a6',
-          600: '#0d9488', // Main brand color
-          700: '#0f766e', // Hover state
-          800: '#115e59',
-          900: '#134e4a',
-          950: '#042f2e',
-          DEFAULT: '#0d9488',
+          50: '#e6f7f9',
+          100: '#b3e6ec',
+          200: '#80d5df',
+          300: '#4dc4d2',
+          400: '#1ab3c5',
+          500: '#00A2B3', // Main brand color
+          600: '#008ea0', // Hover state
+          700: '#00798d',
+          800: '#00657a',
+          900: '#005167',
+          950: '#003d54',
+          DEFAULT: '#00A2B3',
           foreground: '#ffffff',
         },
         // Accent Color (Teal for links/active states)

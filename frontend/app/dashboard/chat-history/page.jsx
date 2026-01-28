@@ -253,14 +253,14 @@ export default function ChatsPage() {
   const getChannelBadge = (channel) => {
     if (channel === 'WHATSAPP') {
       return (
-        <Badge className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-xs">
+        <Badge variant="ghost" className="text-green-700 dark:text-green-400 text-xs">
           <MessageSquare className="h-3 w-3 mr-1" />
           WhatsApp
         </Badge>
       );
     }
     return (
-      <Badge className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 text-xs">
+      <Badge variant="ghost" className="text-blue-700 dark:text-blue-400 text-xs">
         <MessageCircle className="h-3 w-3 mr-1" />
         {locale === 'tr' ? 'Sohbet' : 'Chat'}
       </Badge>

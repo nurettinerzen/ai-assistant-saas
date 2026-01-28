@@ -40,18 +40,18 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { NAVIGATION_ITEMS } from '@/lib/navigationConfig';
 
 const STATUS_CONFIG = {
-  PENDING: { label: { tr: 'Bekliyor', en: 'Pending' }, color: 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400', icon: Clock },
-  IN_PROGRESS: { label: { tr: 'Aranıyor', en: 'In Progress' }, color: 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400', icon: Phone },
-  COMPLETED: { label: { tr: 'Tamamlandı', en: 'Completed' }, color: 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400', icon: CheckCircle },
-  NO_ANSWER: { label: { tr: 'Cevap Yok', en: 'No Answer' }, color: 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400', icon: PhoneMissed },
-  CANCELLED: { label: { tr: 'İptal', en: 'Cancelled' }, color: 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400', icon: XCircle }
+  PENDING: { label: { tr: 'Bekliyor', en: 'Pending' }, color: 'text-neutral-700 dark:text-neutral-400', icon: Clock },
+  IN_PROGRESS: { label: { tr: 'Aranıyor', en: 'In Progress' }, color: 'text-neutral-700 dark:text-neutral-400', icon: Phone },
+  COMPLETED: { label: { tr: 'Tamamlandı', en: 'Completed' }, color: 'text-neutral-700 dark:text-neutral-400', icon: CheckCircle },
+  NO_ANSWER: { label: { tr: 'Cevap Yok', en: 'No Answer' }, color: 'text-neutral-700 dark:text-neutral-400', icon: PhoneMissed },
+  CANCELLED: { label: { tr: 'İptal', en: 'Cancelled' }, color: 'text-neutral-700 dark:text-neutral-400', icon: XCircle }
 };
 
 const PRIORITY_CONFIG = {
-  URGENT: { label: { tr: 'Acil', en: 'Urgent' }, color: 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400' },
-  HIGH: { label: { tr: 'Yüksek', en: 'High' }, color: 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400' },
-  NORMAL: { label: { tr: 'Normal', en: 'Normal' }, color: 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400' },
-  LOW: { label: { tr: 'Düşük', en: 'Low' }, color: 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400' }
+  URGENT: { label: { tr: 'Acil', en: 'Urgent' }, color: 'text-neutral-700 dark:text-neutral-400', dot: 'bg-red-500' },
+  HIGH: { label: { tr: 'Yüksek', en: 'High' }, color: 'text-neutral-700 dark:text-neutral-400', dot: 'bg-orange-500' },
+  NORMAL: { label: { tr: 'Normal', en: 'Normal' }, color: 'text-neutral-700 dark:text-neutral-400', dot: 'bg-yellow-500' },
+  LOW: { label: { tr: 'Düşük', en: 'Low' }, color: 'text-neutral-700 dark:text-neutral-400', dot: 'bg-green-500' }
 };
 
 const TRANSLATIONS = {
@@ -337,9 +337,6 @@ export default function CallbacksPage() {
                     >
                       <td className="p-4">
                         <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center">
-                            <User className="h-5 w-5 text-neutral-500" />
-                          </div>
                           <div>
                             <div className="font-medium text-neutral-900 dark:text-white">{callback.customerName}</div>
                             <div className="text-sm text-neutral-500">{callback.customerPhone}</div>
@@ -357,9 +354,12 @@ export default function CallbacksPage() {
                         </div>
                       </td>
                       <td className="p-4">
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${priorityConfig?.color}`}>
-                          {priorityConfig?.label[locale] || callback.priority}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <div className={`h-2 w-2 rounded-full ${priorityConfig?.dot}`} />
+                          <span className={`text-xs font-medium ${priorityConfig?.color}`}>
+                            {priorityConfig?.label[locale] || callback.priority}
+                          </span>
+                        </div>
                       </td>
                       <td className="p-4 text-sm text-neutral-500 dark:text-neutral-400">
                         {new Date(callback.requestedAt).toLocaleString(locale === 'tr' ? 'tr-TR' : 'en-US', {
@@ -370,10 +370,10 @@ export default function CallbacksPage() {
                         })}
                       </td>
                       <td className="p-4">
-                        <span className={`flex items-center gap-1.5 text-sm font-medium ${statusConfig?.color} px-2 py-1 rounded`}>
+                        <Badge variant="ghost" className={`flex items-center gap-1.5 ${statusConfig?.color}`}>
                           <StatusIcon className="h-4 w-4" />
                           {statusConfig?.label[locale] || callback.status}
-                        </span>
+                        </Badge>
                       </td>
                       <td className="p-4" onClick={(e) => e.stopPropagation()}>
                         {callback.status === 'PENDING' && (

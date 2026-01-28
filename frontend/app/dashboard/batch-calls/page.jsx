@@ -49,27 +49,27 @@ import { NAVIGATION_ITEMS } from '@/lib/navigationConfig';
 const STATUS_CONFIG = {
   PENDING: {
     label: { tr: 'Bekliyor', en: 'Pending' },
-    color: 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400',
+    color: 'text-neutral-700 dark:text-neutral-400',
     icon: Clock
   },
   IN_PROGRESS: {
     label: { tr: 'Devam Ediyor', en: 'In Progress' },
-    color: 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400',
+    color: 'text-neutral-700 dark:text-neutral-400',
     icon: Loader2
   },
   COMPLETED: {
     label: { tr: 'Tamamlandı', en: 'Completed' },
-    color: 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400',
+    color: 'text-neutral-700 dark:text-neutral-400',
     icon: CheckCircle2
   },
   FAILED: {
     label: { tr: 'Başarısız', en: 'Failed' },
-    color: 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400',
+    color: 'text-neutral-700 dark:text-neutral-400',
     icon: XCircle
   },
   CANCELLED: {
     label: { tr: 'İptal Edildi', en: 'Cancelled' },
-    color: 'bg-neutral-100 text-neutral-800',
+    color: 'text-neutral-700 dark:text-neutral-400',
     icon: Pause
   }
 };
@@ -494,9 +494,6 @@ export default function BatchCallsPage() {
                   <tr key={batch.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-800">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <div className="p-2 bg-primary-100 dark:bg-primary-900 rounded-lg mr-3">
-                          <Megaphone className="h-5 w-5 text-primary-600 dark:text-primary-400" />
-                        </div>
                         <div>
                           <div className="text-sm font-medium text-neutral-900 dark:text-white">{batch.name}</div>
                           <div className="text-xs text-neutral-500">
@@ -509,7 +506,7 @@ export default function BatchCallsPage() {
                       <span className="text-sm text-neutral-900 dark:text-white">{batch.assistant?.name || '-'}</span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <Badge className={`${statusConfig.color} flex items-center gap-1 w-fit`}>
+                      <Badge variant="ghost" className={`${statusConfig.color} flex items-center gap-1 w-fit`}>
                         <StatusIcon className={`h-3 w-3 ${batch.status === 'IN_PROGRESS' ? 'animate-spin' : ''}`} />
                         {statusConfig.label[locale]}
                       </Badge>

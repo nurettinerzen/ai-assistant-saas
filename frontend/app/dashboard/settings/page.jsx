@@ -233,7 +233,7 @@ export default function SettingsPage() {
       {/* Profile Section */}
       <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6 shadow-sm">
         <div className="flex items-center gap-3 mb-6">
-          <div className="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-lg">
+          <div className="p-2 rounded-lg">
             <User className="h-5 w-5 text-primary-600 dark:text-primary-400" />
           </div>
           <div>
@@ -283,7 +283,7 @@ export default function SettingsPage() {
       {can('settings:edit') && (
       <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6 shadow-sm">
         <div className="flex items-center gap-3 mb-6">
-          <div className="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-lg">
+          <div className="p-2 rounded-lg">
             <Globe className="h-5 w-5 text-primary-600 dark:text-primary-400" />
           </div>
           <div>
@@ -355,7 +355,7 @@ export default function SettingsPage() {
       {/* Email Signature Section */}
       <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6 shadow-sm">
         <div className="flex items-center gap-3 mb-6">
-          <div className="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-lg">
+          <div className="p-2 rounded-lg">
             <Mail className="h-5 w-5 text-primary-600 dark:text-primary-400" />
           </div>
           <div>
@@ -443,7 +443,7 @@ export default function SettingsPage() {
       <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6 shadow-sm">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-lg">
+            <div className="p-2 rounded-lg">
               <Phone className="h-5 w-5 text-primary-600 dark:text-primary-400" />
             </div>
             <div>
@@ -523,7 +523,7 @@ export default function SettingsPage() {
       {/* Notifications Section */}
       <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6 shadow-sm">
         <div className="flex items-center gap-3 mb-6">
-          <div className="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-lg">
+          <div className="p-2 rounded-lg">
             <Bell className="h-5 w-5 text-primary-600 dark:text-primary-400" />
           </div>
           <div>
@@ -600,7 +600,7 @@ export default function SettingsPage() {
       {/* Security Section */}
       <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6 shadow-sm">
         <div className="flex items-center gap-3 mb-6">
-          <div className="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-lg">
+          <div className="p-2 rounded-lg">
             <AlertTriangle className="h-5 w-5 text-primary-600 dark:text-primary-400" />
           </div>
           <div>
