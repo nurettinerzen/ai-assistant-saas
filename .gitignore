@@ -43,3 +43,6 @@ prisma/migrations/
 .temp/
 backend/config/google-credentials.json
 .vercel
+
+# Test/Debug scripts
+backend/check-*.js
