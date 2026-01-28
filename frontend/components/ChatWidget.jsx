@@ -125,6 +125,12 @@ useEffect(() => {
         body: JSON.stringify(requestBody)
       });
 
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Chat API error:', response.status, errorData);
+        throw new Error(errorData.error || `HTTP ${response.status}`);
+      }
+
       const data = await response.json();
 
       if (data.reply) {
@@ -132,6 +138,7 @@ useEffect(() => {
         setMessages(prev => [...prev, botMessage]);
         setConversationHistory(prev => [...prev, { role: 'assistant', content: data.reply }]);
       } else {
+        console.warn('No reply in response:', data);
         setMessages(prev => [...prev, {
           role: 'system',
           content: 'Sorry, something went wrong. Please try again.',
@@ -140,9 +147,24 @@ useEffect(() => {
       }
     } catch (error) {
       console.error('Chat error:', error);
+      console.error('Error details:', {
+        message: error.message,
+        name: error.name,
+        stack: error.stack
+      });
+
+      let errorMessage = 'Connection error. Please try again.';
+      if (error.message.includes('HTTP 500')) {
+        errorMessage = 'Server error. Please try again in a moment.';
+      } else if (error.message.includes('HTTP 403')) {
+        errorMessage = 'Service unavailable. Please contact support.';
+      } else if (error.message.includes('HTTP 404')) {
+        errorMessage = 'Chat service not configured. Please contact support.';
+      }
+
       setMessages(prev => [...prev, {
         role: 'system',
-        content: 'Connection error. Please try again.',
+        content: errorMessage,
         timestamp: new Date()
       }]);
     } finally {

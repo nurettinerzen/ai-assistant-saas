@@ -1096,7 +1096,16 @@ router.post('/widget', async (req, res) => {
 
   } catch (error) {
     console.error('❌ Chat error:', error);
-    res.status(500).json({ error: 'Failed to process message' });
+    console.error('Error stack:', error.stack);
+    console.error('Error details:', {
+      message: error.message,
+      name: error.name,
+      code: error.code
+    });
+    res.status(500).json({
+      error: 'Failed to process message',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 

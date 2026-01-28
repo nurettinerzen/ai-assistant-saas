@@ -161,9 +161,8 @@ class GlobalCapacityManager {
       await this.connect();
     }
 
-    // Fail open if Redis not available
+    // Fail open if Redis not available (silent mode)
     if (!this.isConnected || !this.client) {
-      console.log('⚠️  Redis unavailable - allowing call (fail-open mode)');
       return { success: true, current: 0, failOpen: true };
     }
 
@@ -248,9 +247,8 @@ class GlobalCapacityManager {
       await this.connect();
     }
 
-    // Fail open if Redis not available
+    // Fail open if Redis not available (silent mode)
     if (!this.isConnected || !this.client) {
-      console.log('⚠️  Redis unavailable - ignoring release (fail-open mode)');
       return { success: true, current: 0, failOpen: true };
     }
 
