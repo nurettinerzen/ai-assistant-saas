@@ -103,7 +103,7 @@ if (allowedOrigins.length === 0) {
 }
 
 // Routes that should allow ANY origin (for embeddable widgets and auth)
-const publicCorsRoutes = ['/api/chat', '/api/widget', '/api/auth'];
+const publicCorsRoutes = ['/api/chat', '/api/chat-v2', '/api/widget', '/api/auth'];
 
 app.use(cors({
   origin: function (origin, callback) {
