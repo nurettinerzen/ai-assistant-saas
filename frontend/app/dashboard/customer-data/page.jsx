@@ -419,9 +419,7 @@ export default function CustomerDataPage() {
                   onClick={() => openFile(file)}
                 >
                   <div className="flex items-start justify-between">
-                    <div className={`p-2 rounded-lg ${typeInfo.color}`}>
-                      <TypeIcon className="h-5 w-5" />
-                    </div>
+                    <TypeIcon className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                         <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity">
@@ -542,9 +540,7 @@ export default function CustomerDataPage() {
                         }`}
                       >
                         <div className="flex items-center gap-3">
-                          <div className={`p-2 rounded-lg ${option.color}`}>
-                            <Icon className="h-5 w-5" />
-                          </div>
+                          <Icon className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
                           <div>
                             <p className="font-medium text-neutral-900 dark:text-white">
                               {option[locale]}
@@ -993,9 +989,7 @@ export default function CustomerDataPage() {
         <div className="flex-1">
           <div className="flex items-center gap-2">
             {typeInfo && (
-              <div className={`p-1.5 rounded-lg ${typeInfo.color}`}>
-                <typeInfo.icon className="h-4 w-4" />
-              </div>
+              <typeInfo.icon className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
             )}
             <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">
               {selectedFile?.fileName}

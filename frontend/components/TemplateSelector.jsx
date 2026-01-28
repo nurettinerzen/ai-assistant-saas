@@ -171,9 +171,7 @@ export default function TemplateSelector({ isOpen, onClose, onSelectTemplate, se
                         onClick={() => handleSelectTemplate(template)}
                       >
                         <div className="flex items-start gap-4">
-                          <div className="p-3 bg-primary-100 rounded-lg group-hover:bg-primary-200 transition-colors">
-                            <Icon className="h-6 w-6 text-primary-600" />
-                          </div>
+                          <Icon className="h-6 w-6 text-neutral-600 dark:text-neutral-400" />
 
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
@@ -216,9 +214,7 @@ export default function TemplateSelector({ isOpen, onClose, onSelectTemplate, se
                 }}
               >
                 <div className="flex items-start gap-4">
-                  <div className="p-3 bg-neutral-100 rounded-lg group-hover:bg-neutral-200 transition-colors">
-                    <Plus className="h-6 w-6 text-neutral-600" />
-                  </div>
+                  <Plus className="h-6 w-6 text-neutral-600 dark:text-neutral-400" />
 
                   <div className="flex-1">
                     <h3 className="font-semibold text-neutral-900">

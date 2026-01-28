@@ -602,9 +602,7 @@ export default function AssistantsPage() {
               onClick={() => handleTypeSelect('inbound')}
               className="flex flex-col items-center p-6 border-2 border-neutral-200 dark:border-neutral-700 rounded-xl hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all group"
             >
-              <div className="p-4 bg-blue-100 dark:bg-blue-900/30 rounded-full mb-4 group-hover:bg-blue-200 dark:group-hover:bg-blue-900/50 transition-colors">
-                <PhoneIncoming className="h-8 w-8 text-blue-600 dark:text-blue-400" />
-              </div>
+              <PhoneIncoming className="h-8 w-8 text-neutral-600 dark:text-neutral-400 mb-4" />
               <h3 className="font-semibold text-neutral-900 dark:text-white mb-1">
                 {locale === 'tr' ? 'Gelen Arama' : 'Inbound Call'}
               </h3>
@@ -619,11 +617,9 @@ export default function AssistantsPage() {
             {/* Outbound Option */}
             <button
               onClick={() => handleTypeSelect('outbound')}
-              className="flex flex-col items-center p-6 border-2 border-neutral-200 dark:border-neutral-700 rounded-xl hover:border-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all group"
+              className="flex flex-col items-center p-6 border-2 border-neutral-200 dark:border-neutral-700 rounded-xl hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all group"
             >
-              <div className="p-4 bg-orange-100 dark:bg-orange-900/30 rounded-full mb-4 group-hover:bg-orange-200 dark:group-hover:bg-orange-900/50 transition-colors">
-                <PhoneOutgoing className="h-8 w-8 text-orange-600 dark:text-orange-400" />
-              </div>
+              <PhoneOutgoing className="h-8 w-8 text-neutral-600 dark:text-neutral-400 mb-4" />
               <h3 className="font-semibold text-neutral-900 dark:text-white mb-1">
                 {locale === 'tr' ? 'Giden Arama' : 'Outbound Call'}
               </h3>

@@ -824,6 +824,10 @@ router.get('/:id', checkPermission('campaigns:view'), async (req, res) => {
     const enrichedRecipients = await Promise.all(recipients.map(async (recipient, index) => {
       const callDetail = callDetails.find(c => c.phone_number === recipient.phone_number) || {};
 
+      // Variables to store conversation data (define at function scope)
+      let convDuration = null;
+      let terminationReason = null;
+
       // Use DB status if it was updated by webhook, otherwise use 11Labs status
       let finalStatus = recipient.status;
 
@@ -846,6 +850,45 @@ router.get('/:id', checkPermission('campaigns:view'), async (req, res) => {
       // Try to find callLogId from our database using conversationId
       let callLogId = recipient.callLogId || null;
 
+      // If we have a callLogId, fetch duration and endReason from CallLog
+      if (callLogId) {
+        try {
+          const callLog = await prisma.callLog.findUnique({
+            where: { id: callLogId },
+            select: { duration: true, endReason: true }
+          });
+          if (callLog) {
+            convDuration = callLog.duration || null;
+            terminationReason = callLog.endReason || null;
+          }
+        } catch (err) {
+          console.error(`Failed to fetch CallLog ${callLogId}:`, err.message);
+        }
+      }
+
+      // Fallback: Get duration and termination reason from callDetail (11Labs batch API)
+      if (!convDuration) convDuration = callDetail.duration || null;
+      if (!terminationReason) terminationReason = callDetail.termination_reason || null;
+
+      // If not available in callDetail, try fetching from conversation API
+      if (conversationId && (finalStatus === 'completed' || finalStatus === 'failed') && (!convDuration || !terminationReason)) {
+        try {
+          const apiKey = process.env.ELEVENLABS_API_KEY;
+          const convResponse = await axios.get(
+            `https://api.elevenlabs.io/v1/convai/conversations/${conversationId}`,
+            { headers: { 'xi-api-key': apiKey } }
+          );
+          const convData = convResponse.data;
+          if (!convDuration) convDuration = convData.metadata?.call_duration_secs || null;
+          if (!terminationReason) terminationReason = convData.metadata?.termination_reason || null;
+        } catch (err) {
+          // Ignore 404s - conversation might not be available yet or was deleted
+          if (err.response?.status !== 404) {
+            console.error(`Failed to fetch conversation ${conversationId}:`, err.message);
+          }
+        }
+      }
+
       if (!callLogId && conversationId) {
         // First check if CallLog exists
         let callLog = await prisma.callLog.findFirst({
@@ -854,10 +897,6 @@ router.get('/:id', checkPermission('campaigns:view'), async (req, res) => {
         });
 
         // If no CallLog exists and call is completed, create one from 11Labs data
-        // Variables to store conversation data
-        let convDuration = null;
-        let terminationReason = null;
-
         if (!callLog && (finalStatus === 'completed' || finalStatus === 'failed')) {
           try {
             // Fetch conversation details from 11Labs
@@ -908,20 +947,6 @@ router.get('/:id', checkPermission('campaigns:view'), async (req, res) => {
           } catch (err) {
             console.error(`Failed to create CallLog for ${conversationId}:`, err.message);
           }
-        } else if (conversationId && (finalStatus === 'completed' || finalStatus === 'failed')) {
-          // CallLog exists, still fetch termination_reason from 11Labs for display
-          try {
-            const apiKey = process.env.ELEVENLABS_API_KEY;
-            const convResponse = await axios.get(
-              `https://api.elevenlabs.io/v1/convai/conversations/${conversationId}`,
-              { headers: { 'xi-api-key': apiKey } }
-            );
-            const convData = convResponse.data;
-            convDuration = convData.metadata?.call_duration_secs || callDetail.duration || null;
-            terminationReason = convData.metadata?.termination_reason || null;
-          } catch (err) {
-            // Ignore - just won't have termination reason
-          }
         }
 
         if (callLog) {
@@ -932,8 +957,8 @@ router.get('/:id', checkPermission('campaigns:view'), async (req, res) => {
       return {
         ...recipient,
         status: finalStatus,
-        duration: recipient.duration || callDetail.duration || null,
-        terminationReason: terminationReason || callDetail.termination_reason || null,
+        duration: convDuration || recipient.duration || callDetail.duration || null,
+        terminationReason: terminationReason || recipient.terminationReason || callDetail.termination_reason || null,
         conversationId,
         callLogId
       };

@@ -172,9 +172,7 @@ export default function BatchCallDetailPage() {
 
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="p-3 bg-primary-100 rounded-xl">
-            <Megaphone className="h-8 w-8 text-primary-600" />
-          </div>
+          <Megaphone className="h-8 w-8 text-neutral-600 dark:text-neutral-400" />
           <div>
             <h1 className="text-2xl font-bold text-neutral-900">{batchCall.name}</h1>
             <div className="flex items-center gap-2 mt-1">
@@ -201,9 +199,7 @@ export default function BatchCallDetailPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-xl border border-neutral-200 p-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary-100 rounded-lg">
-              <Users className="h-5 w-5 text-primary-600" />
-            </div>
+            <Users className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
             <div>
               <p className="text-sm text-neutral-500">{locale === 'tr' ? 'Toplam' : 'Total'}</p>
               <p className="text-2xl font-bold text-neutral-900">{batchCall.totalRecipients}</p>
@@ -213,9 +209,7 @@ export default function BatchCallDetailPage() {
 
         <div className="bg-white rounded-xl border border-neutral-200 p-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <CheckCircle2 className="h-5 w-5 text-green-600" />
-            </div>
+            <CheckCircle2 className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
             <div>
               <p className="text-sm text-neutral-500">{locale === 'tr' ? 'Başarılı' : 'Successful'}</p>
               <p className="text-2xl font-bold text-green-600">{batchCall.successfulCalls || 0}</p>
@@ -225,9 +219,7 @@ export default function BatchCallDetailPage() {
 
         <div className="bg-white rounded-xl border border-neutral-200 p-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-red-100 rounded-lg">
-              <XCircle className="h-5 w-5 text-red-600" />
-            </div>
+            <XCircle className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
             <div>
               <p className="text-sm text-neutral-500">{locale === 'tr' ? 'Başarısız' : 'Failed'}</p>
               <p className="text-2xl font-bold text-red-600">{batchCall.failedCalls || 0}</p>
@@ -237,9 +229,7 @@ export default function BatchCallDetailPage() {
 
         <div className="bg-white rounded-xl border border-neutral-200 p-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-yellow-100 rounded-lg">
-              <Clock className="h-5 w-5 text-yellow-600" />
-            </div>
+            <Clock className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
             <div>
               <p className="text-sm text-neutral-500">{locale === 'tr' ? 'Bekleyen' : 'Pending'}</p>
               <p className="text-2xl font-bold text-yellow-600">
@@ -325,10 +315,17 @@ export default function BatchCallDetailPage() {
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <Badge className={`${callStatus.color} flex items-center gap-1 w-fit`}>
-                          <CallStatusIcon className="h-3 w-3" />
-                          {callStatus.label[locale]}
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                          <div className={`w-2 h-2 rounded-full ${
+                            recipient.status === 'completed' ? 'bg-green-500' :
+                            recipient.status === 'failed' || recipient.status === 'no_answer' ? 'bg-red-500' :
+                            recipient.status === 'in_progress' ? 'bg-blue-500' :
+                            'bg-yellow-500'
+                          }`} />
+                          <span className="text-sm text-gray-700 dark:text-gray-300">
+                            {callStatus.label[locale]}
+                          </span>
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm text-neutral-600">

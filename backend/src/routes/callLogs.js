@@ -43,9 +43,10 @@ async function fetchAndProcessConversation(conversationId, business) {
     // Get summary and translate if needed
     let summary = data.analysis?.transcript_summary || data.analysis?.summary || null;
     if (summary && openai) {
-      // Check if needs translation (no Turkish chars)
+      // Check if needs translation: No Turkish chars AND has English indicators
       const hasTurkishChars = /[ğüşıöçĞÜŞİÖÇ]/.test(summary);
-      if (!hasTurkishChars) {
+      const hasEnglishWords = /\b(called|inquired|stated|expressed|ended|offered|requested|discussed|mentioned|asked)\b/i.test(summary);
+      if (!hasTurkishChars || hasEnglishWords) {
         try {
           const translated = await openai.chat.completions.create({
             model: 'gpt-4o-mini',
@@ -416,7 +417,8 @@ router.get('/:id', async (req, res) => {
     }
 
     // Lazy load: If missing endReason/callCost/summary, or summary needs translation
-    const summaryNeedsTranslation = callLog.summary && !/[ğüşıöçĞÜŞİÖÇ]/.test(callLog.summary) && /^[A-Za-z]/.test(callLog.summary);
+    const hasEnglishWords = callLog.summary && /\b(called|inquired|stated|expressed|ended|offered|requested|discussed|mentioned|asked)\b/i.test(callLog.summary);
+    const summaryNeedsTranslation = callLog.summary && (!/[ğüşıöçĞÜŞİÖÇ]/.test(callLog.summary) || hasEnglishWords) && /^[A-Za-z]/.test(callLog.summary);
     const needsUpdate = callLog.callId && (!callLog.endReason || !callLog.callCost || !callLog.summary || summaryNeedsTranslation);
 
     if (needsUpdate) {
