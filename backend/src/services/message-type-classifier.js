@@ -51,7 +51,7 @@ export async function classifyMessageType(state, lastAssistantMessage, userMessa
     });
 
     // CRITICAL: Add timeout (fail-closed policy)
-    const CLASSIFIER_TIMEOUT_MS = 3000; // 3 seconds max
+    const CLASSIFIER_TIMEOUT_MS = 8000; // 8 seconds max (increased from 3s to handle API delays)
     const classificationPromise = model.generateContent(prompt);
 
     const timeoutPromise = new Promise((_, reject) =>

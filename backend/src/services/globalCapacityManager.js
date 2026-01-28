@@ -64,7 +64,7 @@ class GlobalCapacityManager {
       this.client.on('error', (err) => {
         // Only log first error to avoid spam
         if (!this.errorLogged) {
-          console.error('❌ Redis connection error:', err.message);
+          console.error('❌ Redis connection error:', err?.message || err || 'Unknown error');
           this.errorLogged = true;
         }
       });
