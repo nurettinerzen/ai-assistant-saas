@@ -36,16 +36,87 @@ import {
   FEATURES
 } from '@/lib/features';
 
+// App Logo Components
+const GmailLogo = ({ className }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none">
+    <path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L12 9.366l8.073-5.873C21.69 2.28 24 3.434 24 5.457z" fill="#EA4335"/>
+  </svg>
+);
+
+const OutlookLogo = ({ className }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none">
+    <path d="M7 14.72V9.28L12 6.5l5 2.78v5.44L12 17.5l-5-2.78z" fill="#0078D4"/>
+    <path d="M12 2L3 7v10l9 5 9-5V7l-9-5zm5 12.72L12 17.5l-5-2.78V9.28L12 6.5l5 2.78v5.44z" fill="#0078D4"/>
+  </svg>
+);
+
+const ShopifyLogo = ({ className }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none">
+    <path d="M15.337 2.127c-.141-.019-.29-.019-.413.019-.123.038-2.045.57-2.045.57s-1.319 1.282-1.804 1.767c-.123.122-.256.293-.389.484-.807-.236-1.538-.35-2.119-.35-.913 0-1.196.247-1.423.494-.759.76-1.348 2.35-1.652 3.736-.76.236-1.29.398-1.348.417-.807.227-1.538.455-1.745.683-.228.228-.228.512-.228.76l-.076 12.88c0 .228 0 .493.228.72l1.917 1.918c.228.228.494.228.722.228h13.793c.228 0 .493 0 .722-.228l1.918-1.918c.227-.227.227-.492.227-.72V4.42c0-.228 0-.493-.227-.72l-1.918-1.918c-.114-.114-.304-.228-.493-.228-.095.057-.19.095-.304.133z" fill="#95BF47"/>
+  </svg>
+);
+
+const GoogleCalendarLogo = ({ className }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none">
+    <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z" fill="#4285F4"/>
+  </svg>
+);
+
+const GoogleSheetsLogo = ({ className }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none">
+    <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-2h2v2zm0-4H7v-2h2v2zm0-4H7V7h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2z" fill="#0F9D58"/>
+  </svg>
+);
+
+const WhatsAppLogo = ({ className }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none">
+    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" fill="#25D366"/>
+  </svg>
+);
+
+const IkasLogo = ({ className }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none">
+    <path d="M12 2L2 7v10l10 5 10-5V7L12 2zm0 2.18L19.82 8 12 11.82 4.18 8 12 4.18zM4 9.33l7 3.5v7.84l-7-3.5V9.33zm16 0v7.84l-7 3.5v-7.84l7-3.5z" fill="#FF6B35"/>
+  </svg>
+);
+
+const ZapierLogo = ({ className }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none">
+    <path d="M12 2L2 12l10 10 10-10L12 2zm0 3.83L18.17 12 12 18.17 5.83 12 12 5.83z" fill="#FF4A00"/>
+  </svg>
+);
+
 const INTEGRATION_ICONS = {
-  GOOGLE_CALENDAR: CalendarDays, WHATSAPP: Smartphone, CALENDLY: Calendar,
-  SHOPIFY: ShoppingCart, WOOCOMMERCE: ShoppingCart, STRIPE_PAYMENTS: CreditCard,
-  SQUARE: CreditCard, OPENTABLE: Utensils, TOAST_POS: Utensils,
-  SIMPLEPRACTICE: Stethoscope, ZOCDOC: Stethoscope, BOOKSY: Scissors,
-  FRESHA: Scissors, SHIPSTATION: Package, KLAVIYO: Mail, MAILCHIMP: Mail,
-  HUBSPOT: Target, SALESFORCE: Cloud, GOOGLE_SHEETS: BarChart3, ZAPIER: Zap,
-  SLACK: MessageSquare, TWILIO_SMS: MessageSquare, SENDGRID_EMAIL: Mail,
-  IYZICO: Wallet, CUSTOM: Hash, NETGSM_SMS: MessageSquare,
-  IKAS: ShoppingCart, IDEASOFT: ShoppingCart, TICIMAX: ShoppingCart,
+  GOOGLE_CALENDAR: GoogleCalendarLogo,
+  GOOGLE_SHEETS: GoogleSheetsLogo,
+  WHATSAPP: WhatsAppLogo,
+  SHOPIFY: ShopifyLogo,
+  IKAS: IkasLogo,
+  ZAPIER: ZapierLogo,
+  CUSTOM: Hash,
+  // Fallbacks for other integrations
+  CALENDLY: Calendar,
+  WOOCOMMERCE: ShoppingCart,
+  STRIPE_PAYMENTS: CreditCard,
+  SQUARE: CreditCard,
+  OPENTABLE: Utensils,
+  TOAST_POS: Utensils,
+  SIMPLEPRACTICE: Stethoscope,
+  ZOCDOC: Stethoscope,
+  BOOKSY: Scissors,
+  FRESHA: Scissors,
+  SHIPSTATION: Package,
+  KLAVIYO: Mail,
+  MAILCHIMP: Mail,
+  HUBSPOT: Target,
+  SALESFORCE: Cloud,
+  SLACK: MessageSquare,
+  TWILIO_SMS: MessageSquare,
+  SENDGRID_EMAIL: Mail,
+  IYZICO: Wallet,
+  NETGSM_SMS: MessageSquare,
+  IDEASOFT: ShoppingCart,
+  TICIMAX: ShoppingCart,
   CUSTOM_ERP_WEBHOOK: Zap
 };
 
@@ -758,13 +829,6 @@ const handleShopifyConnect = async () => {
       <div>
         <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">{t('dashboard.integrationsPage.title')}</h1>
         <p className="text-neutral-600 dark:text-neutral-400 mt-1">{t('dashboard.integrationsPage.description')}</p>
-        {businessType && (
-          <div className="mt-3 flex items-center gap-2">
-            <Badge variant="outline" className="text-sm">
-              <Target className="h-4 w-4 mr-1" />{getBusinessTypeDisplay(businessType)}
-            </Badge>
-          </div>
-        )}
       </div>
 
       {/* All Integrations Grid */}
@@ -848,7 +912,7 @@ const handleShopifyConnect = async () => {
           <div className={`bg-white dark:bg-neutral-900 rounded-xl border p-6 hover:shadow-md transition-shadow ${emailStatus?.connected && emailStatus?.provider === 'GMAIL' ? 'border-neutral-400 dark:border-neutral-600' : 'border-neutral-200 dark:border-neutral-700'}`}>
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">
-                <Mail className="h-6 w-6 text-neutral-600 dark:text-neutral-400" />
+                <GmailLogo className="h-6 w-6" />
                 <div>
                   <h3 className="font-semibold text-neutral-900 dark:text-white">Gmail</h3>
                 </div>
@@ -885,7 +949,7 @@ const handleShopifyConnect = async () => {
           <div className={`bg-white dark:bg-neutral-900 rounded-xl border p-6 hover:shadow-md transition-shadow ${emailStatus?.connected && emailStatus?.provider === 'OUTLOOK' ? 'border-neutral-400 dark:border-neutral-600' : 'border-neutral-200 dark:border-neutral-700'}`}>
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">
-                <Mail className="h-6 w-6 text-neutral-600 dark:text-neutral-400" />
+                <OutlookLogo className="h-6 w-6" />
                 <div>
                   <h3 className="font-semibold text-neutral-900 dark:text-white">Microsoft 365</h3>
                 </div>
