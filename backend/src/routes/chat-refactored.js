@@ -970,7 +970,10 @@ router.post('/widget', async (req, res) => {
     const conversationHistory = chatLog?.messages || [];
 
     // Handle message with state machine (using core orchestrator)
-    const result = await handleMessage(
+    // Widget SLA: < 2.5s target, so apply aggressive timeout
+    const WIDGET_TOTAL_TIMEOUT_MS = 4000; // 4s max total (includes classifier + LLM)
+
+    const handleMessagePromise = handleMessage(
       sessionId,
       business.id,
       message,
@@ -982,6 +985,38 @@ router.post('/widget', async (req, res) => {
       timezone,
       clientSessionId
     );
+
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Widget request timeout')), WIDGET_TOTAL_TIMEOUT_MS)
+    );
+
+    let result;
+    try {
+      result = await Promise.race([handleMessagePromise, timeoutPromise]);
+    } catch (timeoutError) {
+      if (timeoutError.message === 'Widget request timeout') {
+        console.error('⏱️  [Widget] Request timeout - returning fast ACK');
+
+        // Fast ACK response
+        result = {
+          reply: language === 'TR'
+            ? 'Mesajınız alındı, yanıt hazırlanıyor... Lütfen birkaç saniye bekleyin.'
+            : 'Message received, preparing response... Please wait a moment.',
+          inputTokens: 0,
+          outputTokens: 0
+        };
+
+        // Return 503 Service Unavailable with Retry-After
+        return res.status(503).set('Retry-After', '2').json({
+          success: false,
+          code: 'REQUEST_TIMEOUT',
+          message: result.reply,
+          requestId: `req_${Date.now()}`,
+          retryAfterMs: 2000
+        });
+      }
+      throw timeoutError; // Re-throw if not timeout
+    }
 
     // Calculate costs
     const planName = subscription?.plan || 'FREE';
@@ -1102,8 +1137,14 @@ router.post('/widget', async (req, res) => {
       name: error.name,
       code: error.code
     });
+
+    // Standardized error format (P0)
     res.status(500).json({
-      error: 'Failed to process message',
+      success: false,
+      code: 'INTERNAL_ERROR',
+      message: 'Failed to process message',
+      requestId: req.requestId || `req_${Date.now()}`,
+      retryAfterMs: null, // No retry for internal errors
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }

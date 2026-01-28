@@ -188,19 +188,31 @@ async function cleanupStuckCall(callId, businessId, reason) {
   }
 }
 
+// Singleton guard
+let cronTask = null;
+let isStarted = false;
+
 /**
  * Start cleanup cron job
  * Runs every 10 minutes
+ * Singleton: only starts once
  */
 export function startCleanupCron() {
+  // Guard: prevent multiple cron starts
+  if (isStarted) {
+    console.log('⚠️  [Cron] Call cleanup already started, skipping duplicate init');
+    return cronTask;
+  }
+
   // Run every 10 minutes: '*/10 * * * *'
-  const task = cron.schedule('*/10 * * * *', async () => {
+  cronTask = cron.schedule('*/10 * * * *', async () => {
     await reconcileStuckCalls();
   }, {
     scheduled: true,
     timezone: 'Europe/Istanbul'
   });
 
+  isStarted = true;
   console.log('✅ Call cleanup cron started (every 10 minutes)');
 
   // Run once on startup (after 30 seconds delay)
@@ -209,7 +221,7 @@ export function startCleanupCron() {
     await reconcileStuckCalls();
   }, 30000);
 
-  return task;
+  return cronTask;
 }
 
 /**

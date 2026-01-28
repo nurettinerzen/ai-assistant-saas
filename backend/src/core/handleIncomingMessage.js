@@ -146,7 +146,8 @@ export async function handleIncomingMessage({
         state,
         conversationHistory,
         userMessage,
-        language
+        language,
+        channel
       });
 
       console.log(`📨 Classification: ${classification.type} (${(classification.confidence * 100).toFixed(0)}%)`);

@@ -137,6 +137,42 @@ app.use('/api/webhook/crm', express.json()); // CRM webhook (NO AUTH - secured b
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// ============================================================================
+// ACCESS LOGGING MIDDLEWARE (P0)
+// ============================================================================
+app.use((req, res, next) => {
+  const requestId = `req_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+  const startTime = Date.now();
+
+  // Attach requestId to request for use in handlers
+  req.requestId = requestId;
+
+  // Log request start
+  const clientIP = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
+
+  // Override res.json to capture status code and response size
+  const originalJson = res.json.bind(res);
+  res.json = function (body) {
+    const durationMs = Date.now() - startTime;
+    const statusCode = res.statusCode;
+    const responseBytes = JSON.stringify(body).length;
+
+    // Log access
+    console.log(
+      `[${req.method}] ${req.path} ` +
+      `statusCode=${statusCode} ` +
+      `durationMs=${durationMs} ` +
+      `responseBytes=${responseBytes} ` +
+      `requestId="${requestId}" ` +
+      `clientIP="${clientIP}"`
+    );
+
+    return originalJson(body);
+  };
+
+  next();
+});
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ 
@@ -259,7 +295,7 @@ if (process.env.NODE_ENV !== 'test') {
     }
 
     startCleanupCron();
-    console.log('✅ Call cleanup cron started (every 10 minutes)');
+    // Log removed - cron service logs internally
 
     console.log('✅ Metrics service initialized');
     console.log('🎯 Concurrent call system ready\n');

@@ -17,15 +17,16 @@ import { logClassification, logViolation } from '../services/routing-metrics.js'
  * @returns {Promise<Object>} Classification result
  */
 export async function applyClassifierPolicy(params) {
-  const { state, lastAssistantMessage, userMessage, language, metrics } = params;
+  const { state, lastAssistantMessage, userMessage, language, metrics, channel } = params;
 
   try {
-    // Call classifier (with built-in 3s timeout)
+    // Call classifier (with channel-aware timeout: 2s for CHAT widget, 5s for others)
     const classification = await classifyMessageType(
       state,
       lastAssistantMessage,
       userMessage,
-      language
+      language,
+      { channel: channel || state.channel }
     );
 
     // Log classification

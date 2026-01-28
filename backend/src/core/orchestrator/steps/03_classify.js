@@ -10,7 +10,7 @@ import { applyClassifierPolicy } from '../../../policies/classifierPolicy.js';
 import { normalizeIntent } from '../../../policies/intentNormalizer.js';
 
 export async function classifyMessage(params) {
-  const { state, conversationHistory, userMessage, language } = params;
+  const { state, conversationHistory, userMessage, language, channel } = params;
 
   // Get last assistant message
   const lastAssistantMessage = conversationHistory
@@ -23,6 +23,7 @@ export async function classifyMessage(params) {
     lastAssistantMessage,
     userMessage,
     language,
+    channel: channel || state.channel,
     metrics: {} // Will be populated
   });
 

@@ -22,9 +22,10 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
  * @param {string} lastAssistantMessage - Last message from assistant
  * @param {string} userMessage - Current user message
  * @param {string} language - Language code
+ * @param {Object} options - Optional config (channel, timeoutMs)
  * @returns {Promise<Object>} { type, confidence, reason, suggestedFlow?, extractedSlots? }
  */
-export async function classifyMessageType(state, lastAssistantMessage, userMessage, language = 'TR') {
+export async function classifyMessageType(state, lastAssistantMessage, userMessage, language = 'TR', options = {}) {
   // Build context for classifier
   const context = {
     flowStatus: state.flowStatus, // idle | in_progress | resolved | post_result
@@ -51,12 +52,22 @@ export async function classifyMessageType(state, lastAssistantMessage, userMessa
     });
 
     // CRITICAL: Add timeout (fail-closed policy)
-    const CLASSIFIER_TIMEOUT_MS = 8000; // 8 seconds max (increased from 3s to handle API delays)
+    // Widget needs fast response (<2.5s total), so aggressive timeout
+    // Dashboard/internal can be more patient
+    const CLASSIFIER_TIMEOUT_MS_WIDGET = 2000; // 2s max for CHAT widget (strict SLA)
+    const CLASSIFIER_TIMEOUT_MS_DEFAULT = 5000; // 5s max for other channels
+
+    const channel = options.channel || state.channel || 'CHAT';
+    const isWidget = channel === 'CHAT';
+    const timeoutMs = options.timeoutMs || (isWidget ? CLASSIFIER_TIMEOUT_MS_WIDGET : CLASSIFIER_TIMEOUT_MS_DEFAULT);
+
     const classificationPromise = model.generateContent(prompt);
 
     const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Classifier timeout')), CLASSIFIER_TIMEOUT_MS)
+      setTimeout(() => reject(new Error('Classifier timeout')), timeoutMs)
     );
+
+    console.log(`⏱️  [Classifier] Timeout: ${timeoutMs}ms (channel: ${channel})`);
 
     const result = await Promise.race([classificationPromise, timeoutPromise]);
     const responseText = result.response.text();

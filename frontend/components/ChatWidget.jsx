@@ -128,7 +128,30 @@ useEffect(() => {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         console.error('Chat API error:', response.status, errorData);
-        throw new Error(errorData.error || `HTTP ${response.status}`);
+
+        // Handle 503 Service Unavailable with Retry-After (P0)
+        if (response.status === 503 && errorData.code === 'REQUEST_TIMEOUT') {
+          const retryAfterMs = errorData.retryAfterMs || 2000;
+          const retryAfterSec = Math.ceil(retryAfterMs / 1000);
+
+          console.log(`⏱️ Service busy, retry after ${retryAfterSec}s (requestId: ${errorData.requestId})`);
+
+          // Show user-friendly retry message
+          const retryMessage = isTurkish
+            ? `Sistem yoğun, ${retryAfterSec} saniye sonra tekrar deneyin...`
+            : `System busy, please retry in ${retryAfterSec} seconds...`;
+
+          setMessages(prev => [...prev, {
+            role: 'system',
+            content: retryMessage,
+            timestamp: new Date()
+          }]);
+
+          setIsLoading(false);
+          return; // Don't throw, just return
+        }
+
+        throw new Error(errorData.message || errorData.error || `HTTP ${response.status}`);
       }
 
       const data = await response.json();
