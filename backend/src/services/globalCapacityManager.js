@@ -24,6 +24,7 @@ class GlobalCapacityManager {
     this.errorLogged = false; // Prevent error log spam
     this.disabledLogged = false; // Prevent disabled message spam
     this.connecting = false; // Guard against concurrent connect() calls
+    this.connectionFailed = false; // Permanent failure flag (don't retry)
   }
 
   /**
@@ -33,13 +34,22 @@ class GlobalCapacityManager {
   async connect() {
     // Guard: Already connected
     if (this.isConnected) {
-      console.log('⚠️  [Redis] Already connected, skipping duplicate connect()');
       return;
     }
 
-    // Guard: Connection in progress
+    // Guard: Connection permanently failed (don't retry)
+    if (this.connectionFailed) {
+      return;
+    }
+
+    // Guard: Connection in progress (wait for it)
     if (this.connecting) {
-      console.log('⚠️  [Redis] Connection already in progress, skipping duplicate connect()');
+      // Wait up to 10s for connection to finish
+      let waited = 0;
+      while (this.connecting && waited < 10000) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        waited += 100;
+      }
       return;
     }
 
@@ -60,14 +70,17 @@ class GlobalCapacityManager {
       this.isConnected = false;
       this.client = null;
       this.connecting = false;
+      this.connectionFailed = true; // Mark as permanently disabled
       return;
     }
 
     const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
 
-    // Log Redis configuration (masked for security)
-    const maskedUrl = redisUrl.replace(/:([^:@]+)@/, ':***@');
-    console.log(`🔗 Redis URL: ${maskedUrl}`);
+    // Log Redis configuration (masked for security) - only once
+    if (!this.errorLogged) {
+      const maskedUrl = redisUrl.replace(/:([^:@]+)@/, ':***@');
+      console.log(`🔗 Redis URL: ${maskedUrl}`);
+    }
 
     try {
       this.client = createClient({
@@ -140,6 +153,7 @@ class GlobalCapacityManager {
       this.isConnected = false;
       this.client = null;
       this.connecting = false; // Connection failed
+      this.connectionFailed = true; // Mark as permanently failed (don't retry)
     } finally {
       // Ensure connecting flag is always reset
       if (this.connecting) {
