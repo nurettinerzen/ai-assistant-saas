@@ -970,9 +970,8 @@ router.post('/widget', async (req, res) => {
     const conversationHistory = chatLog?.messages || [];
 
     // Handle message with state machine (using core orchestrator)
-    // Widget SLA: < 2.5s target, so apply aggressive timeout
-    const WIDGET_TOTAL_TIMEOUT_MS = 2500; // 2.5s max total (includes classifier + LLM)
-    // Rationale: Prevent connection timeouts, force fast ACK on slow responses
+    // Widget timeout: Generous to avoid premature timeouts
+    const WIDGET_TOTAL_TIMEOUT_MS = 15000; // 15s max total (includes classifier + LLM)
 
     const handleMessagePromise = handleMessage(
       sessionId,

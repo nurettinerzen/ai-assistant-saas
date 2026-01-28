@@ -51,14 +51,11 @@ export async function classifyMessageType(state, lastAssistantMessage, userMessa
       }
     });
 
-    // CRITICAL: Add timeout (fail-closed policy)
-    // All channels get reasonable timeout to avoid false timeout failures
-    const CLASSIFIER_TIMEOUT_MS_WIDGET = 5000; // 5s max for CHAT widget
-    const CLASSIFIER_TIMEOUT_MS_DEFAULT = 8000; // 8s max for other channels
+    // Add timeout to prevent hanging (generous to avoid false failures)
+    const CLASSIFIER_TIMEOUT_MS = 15000; // 15s timeout for all channels
 
     const channel = options.channel || state.channel || 'CHAT';
-    const isWidget = channel === 'CHAT';
-    const timeoutMs = options.timeoutMs || (isWidget ? CLASSIFIER_TIMEOUT_MS_WIDGET : CLASSIFIER_TIMEOUT_MS_DEFAULT);
+    const timeoutMs = options.timeoutMs || CLASSIFIER_TIMEOUT_MS;
 
     const classificationPromise = model.generateContent(prompt);
 
