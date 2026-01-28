@@ -971,7 +971,8 @@ router.post('/widget', async (req, res) => {
 
     // Handle message with state machine (using core orchestrator)
     // Widget SLA: < 2.5s target, so apply aggressive timeout
-    const WIDGET_TOTAL_TIMEOUT_MS = 4000; // 4s max total (includes classifier + LLM)
+    const WIDGET_TOTAL_TIMEOUT_MS = 2500; // 2.5s max total (includes classifier + LLM)
+    // Rationale: Prevent connection timeouts, force fast ACK on slow responses
 
     const handleMessagePromise = handleMessage(
       sessionId,
