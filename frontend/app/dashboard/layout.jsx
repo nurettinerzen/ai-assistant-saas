@@ -212,7 +212,7 @@ export default function DashboardLayout({ children }) {
       </div>
 
       {/* Toast notifications */}
-      <Toaster position="top-right" richColors />
+      <Toaster position="bottom-right" richColors />
 
       {/* Onboarding Modal */}
       {showOnboarding && (

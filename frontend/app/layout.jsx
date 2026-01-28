@@ -1,9 +1,12 @@
-import { Inter } from 'next/font/google';
+import { Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
 import { LanguageProvider } from '@/contexts/LanguageContext';
 import { ThemeProvider } from 'next-themes';
 
-const inter = Inter({ subsets: ['latin', 'latin-ext'] });
+const plusJakartaSans = Plus_Jakarta_Sans({
+  subsets: ['latin', 'latin-ext'],
+  weight: ['400', '500', '600', '700', '800']
+});
 
 export const metadata = {
   title: 'Telyx AI - AI Phone & Chat Assistant for Business',
@@ -18,7 +21,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
+      <body className={plusJakartaSans.className}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <LanguageProvider>
             {children}

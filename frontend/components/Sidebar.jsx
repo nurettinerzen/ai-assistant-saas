@@ -130,14 +130,14 @@ export default function Sidebar({ user, credits, business }) {
       items: [
         { icon: Database, label: locale === 'tr' ? NAVIGATION_ITEMS.inbox.labelTr : NAVIGATION_ITEMS.inbox.labelEn, href: NAVIGATION_ITEMS.inbox.href, permission: 'campaigns:view' },
         { icon: Megaphone, label: locale === 'tr' ? NAVIGATION_ITEMS.campaigns.labelTr : NAVIGATION_ITEMS.campaigns.labelEn, href: NAVIGATION_ITEMS.campaigns.href, permission: 'campaigns:view', featureId: 'batch_calls' },
-        { icon: BarChart3, label: locale === 'tr' ? NAVIGATION_ITEMS.analytics.labelTr : NAVIGATION_ITEMS.analytics.labelEn, href: NAVIGATION_ITEMS.analytics.href, permission: 'analytics:view' },
-        { icon: PhoneCall, label: locale === 'tr' ? NAVIGATION_ITEMS.callbacks.labelTr : NAVIGATION_ITEMS.callbacks.labelEn, href: NAVIGATION_ITEMS.callbacks.href, permission: 'campaigns:view' },
         { icon: Mail, label: locale === 'tr' ? NAVIGATION_ITEMS.email.labelTr : NAVIGATION_ITEMS.email.labelEn, href: NAVIGATION_ITEMS.email.href, permission: 'campaigns:view' },
       ],
     },
     {
       label: locale === 'tr' ? 'İzleme' : 'Monitoring',
       items: [
+        { icon: BarChart3, label: locale === 'tr' ? NAVIGATION_ITEMS.analytics.labelTr : NAVIGATION_ITEMS.analytics.labelEn, href: NAVIGATION_ITEMS.analytics.href, permission: 'analytics:view' },
+        { icon: PhoneCall, label: locale === 'tr' ? NAVIGATION_ITEMS.callbacks.labelTr : NAVIGATION_ITEMS.callbacks.labelEn, href: NAVIGATION_ITEMS.callbacks.href, permission: 'campaigns:view' },
         { icon: Phone, label: locale === 'tr' ? NAVIGATION_ITEMS.callHistory.labelTr : NAVIGATION_ITEMS.callHistory.labelEn, href: NAVIGATION_ITEMS.callHistory.href, permission: 'analytics:view' },
         { icon: MessageCircle, label: locale === 'tr' ? NAVIGATION_ITEMS.chatHistory.labelTr : NAVIGATION_ITEMS.chatHistory.labelEn, href: NAVIGATION_ITEMS.chatHistory.href, permission: 'analytics:view' },
       ],
@@ -228,17 +228,17 @@ export default function Sidebar({ user, credits, business }) {
           if (visibleItems.length === 0) return null;
 
           return (
-            <div key={section.label} className="mb-6">
+            <div key={section.label} className="mb-4">
               {/* Section header */}
               <button
                 onClick={() => toggleSection(sectionLabel)}
-                className="flex items-center justify-between w-full px-3 py-1.5 text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                className="flex items-center justify-between w-full px-3 py-1 text-[10px] font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
               >
                 <span>{sectionLabel}</span>
                 {isCollapsed ? (
-                  <ChevronRight className="h-3 w-3" />
+                  <ChevronRight className="h-2.5 w-2.5" />
                 ) : (
-                  <ChevronDown className="h-3 w-3" />
+                  <ChevronDown className="h-2.5 w-2.5" />
                 )}
               </button>
 
@@ -259,13 +259,13 @@ export default function Sidebar({ user, credits, business }) {
                             setIsMobileOpen(false);
                             handleLockedFeatureClick(item.featureId);
                           }}
-                          className="flex items-center justify-between w-full px-3 py-2 rounded-md text-sm text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                          className="flex items-center justify-between w-full px-3 py-1.5 rounded-md text-[13px] text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                         >
-                          <div className="flex items-center gap-3">
-                            <Icon className="h-4.5 w-4.5 flex-shrink-0" />
+                          <div className="flex items-center gap-2.5">
+                            <Icon className="h-4 w-4 flex-shrink-0" />
                             <span>{item.label}</span>
                           </div>
-                          <Lock className="h-3.5 w-3.5" />
+                          <Lock className="h-3 w-3" />
                         </button>
                       );
                     }
@@ -276,13 +276,13 @@ export default function Sidebar({ user, credits, business }) {
                         href={item.href}
                         onClick={() => setIsMobileOpen(false)}
                         className={cn(
-                          'flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-all',
+                          'flex items-center gap-2.5 px-3 py-1.5 rounded-md text-[13px] font-medium transition-all',
                           isActive
                             ? 'bg-white dark:bg-gray-800 text-primary-600 dark:text-primary-400 shadow-sm'
                             : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
                         )}
                       >
-                        <Icon className="h-4.5 w-4.5 flex-shrink-0" />
+                        <Icon className="h-4 w-4 flex-shrink-0" />
                         <span>{item.label}</span>
                       </Link>
                     );

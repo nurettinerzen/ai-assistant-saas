@@ -33,10 +33,10 @@ export const NAVIGATION_ITEMS = {
 
   // Operations
   inbox: {
-    labelTr: 'Gelen Talepler',
-    labelEn: 'Inbox',
-    descriptionTr: 'Telefon ve yazılı kanallardan gelen talepleri tek yerden yönetin.',
-    descriptionEn: 'Manage incoming requests from phone and messaging channels.',
+    labelTr: 'Özel Veriler',
+    labelEn: 'Custom Data',
+    descriptionTr: 'Özel veri dosyalarınızı yükleyin ve yönetin. Telefon ve yazılı kanallardan gelen sorularda bu veriler kullanılır.',
+    descriptionEn: 'Upload and manage your custom data files. These are used to answer questions from phone and messaging channels.',
     href: '/dashboard/customer-data',
     group: 'operations',
   },
@@ -46,22 +46,6 @@ export const NAVIGATION_ITEMS = {
     descriptionTr: 'Excel/CSV yükleyerek toplu arama kampanyaları oluşturun.',
     descriptionEn: 'Create batch calling campaigns by uploading Excel/CSV.',
     href: '/dashboard/batch-calls',
-    group: 'operations',
-  },
-  analytics: {
-    labelTr: 'Analitik',
-    labelEn: 'Analytics',
-    descriptionTr: 'Performans metrikleri ve raporlar',
-    descriptionEn: 'Performance metrics and reports',
-    href: '/dashboard/analytics',
-    group: 'operations',
-  },
-  callbacks: {
-    labelTr: 'Geri Aramalar',
-    labelEn: 'Callbacks',
-    descriptionTr: 'Müşteri geri arama taleplerini görüntüleyin ve yönetin.',
-    descriptionEn: 'View and manage customer callback requests.',
-    href: '/dashboard/callbacks',
     group: 'operations',
   },
   email: {
@@ -74,6 +58,22 @@ export const NAVIGATION_ITEMS = {
   },
 
   // Monitoring
+  analytics: {
+    labelTr: 'Analitik',
+    labelEn: 'Analytics',
+    descriptionTr: 'Performans metrikleri ve raporlar',
+    descriptionEn: 'Performance metrics and reports',
+    href: '/dashboard/analytics',
+    group: 'monitoring',
+  },
+  callbacks: {
+    labelTr: 'Geri Arama Talepleri',
+    labelEn: 'Callback Requests',
+    descriptionTr: 'Müşteri geri arama taleplerini görüntüleyin ve yönetin.',
+    descriptionEn: 'View and manage customer callback requests.',
+    href: '/dashboard/callbacks',
+    group: 'monitoring',
+  },
   callHistory: {
     labelTr: 'Arama Geçmişi',
     labelEn: 'Call History',
