@@ -53,7 +53,7 @@ class GlobalCapacityManager {
           reconnectStrategy: (retries) => {
             // Don't retry if Redis is not available
             if (retries > 3) {
-              console.error('❌ Redis not available - running in fail-open mode');
+              // Silent failure - already logged in catch block
               return false; // Stop trying to reconnect
             }
             return Math.min(retries * 100, 1000);
@@ -84,9 +84,13 @@ class GlobalCapacityManager {
       // Crash-safe: On restart, reconcile with DB
       await this.reconcileOnStartup();
     } catch (error) {
-      console.error('❌ Redis connection failed:', error.message);
-      console.log('⚠️  Running in FAIL-OPEN mode (global capacity NOT enforced)');
-      console.log('⚠️  Calls will rely on business-level limits only');
+      // Only log once to avoid spam
+      if (!this.errorLogged) {
+        console.error('❌ Redis connection failed:', error.message);
+        console.log('⚠️  Running in FAIL-OPEN mode (global capacity NOT enforced)');
+        console.log('⚠️  Calls will rely on business-level limits only');
+        this.errorLogged = true;
+      }
       this.isConnected = false;
       this.client = null;
     }
