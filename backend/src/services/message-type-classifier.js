@@ -52,10 +52,9 @@ export async function classifyMessageType(state, lastAssistantMessage, userMessa
     });
 
     // CRITICAL: Add timeout (fail-closed policy)
-    // Widget needs fast response (<2.5s total), so aggressive timeout
-    // Dashboard/internal can be more patient
-    const CLASSIFIER_TIMEOUT_MS_WIDGET = 2000; // 2s max for CHAT widget (strict SLA)
-    const CLASSIFIER_TIMEOUT_MS_DEFAULT = 5000; // 5s max for other channels
+    // All channels get reasonable timeout to avoid false timeout failures
+    const CLASSIFIER_TIMEOUT_MS_WIDGET = 5000; // 5s max for CHAT widget
+    const CLASSIFIER_TIMEOUT_MS_DEFAULT = 8000; // 8s max for other channels
 
     const channel = options.channel || state.channel || 'CHAT';
     const isWidget = channel === 'CHAT';
