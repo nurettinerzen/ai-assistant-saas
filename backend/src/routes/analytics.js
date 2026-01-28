@@ -350,26 +350,89 @@ router.get('/trends', authenticateToken, async (req, res) => {
   }
 });
 
-// GET /api/analytics/peak-hours - Peak calling hours
+// GET /api/analytics/peak-hours - Peak activity hours (all channels)
 router.get('/peak-hours', authenticateToken, async (req, res) => {
   try {
     const { businessId } = req;
-    
+    const { range = '30d' } = req.query;
+
+    // Parse time range
+    const days = parseInt(range.replace(/[^0-9]/g, ''));
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+
+    // Get all calls in range
     const calls = await prisma.callLog.findMany({
-      where: { businessId },
+      where: {
+        businessId,
+        createdAt: { gte: startDate }
+      },
       select: { createdAt: true }
     });
 
-    // Group by hour
-    const hourCounts = Array(24).fill(0);
-    calls.forEach(call => {
-      const hour = new Date(call.createdAt).getHours();
-      hourCounts[hour]++;
+    // Get all chat sessions in range
+    const chatLogs = await prisma.chatLog.findMany({
+      where: {
+        businessId,
+        channel: 'CHAT',
+        createdAt: { gte: startDate }
+      },
+      select: { createdAt: true }
     });
 
-    const peakHours = hourCounts.map((count, hour) => ({
+    // Get all WhatsApp sessions in range
+    const whatsappLogs = await prisma.chatLog.findMany({
+      where: {
+        businessId,
+        channel: 'WHATSAPP',
+        createdAt: { gte: startDate }
+      },
+      select: { createdAt: true }
+    });
+
+    // Get all email threads in range
+    const emailThreads = await prisma.emailThread.findMany({
+      where: {
+        businessId,
+        createdAt: { gte: startDate }
+      },
+      select: { createdAt: true }
+    });
+
+    // Group by hour - separate channels
+    const hourData = Array(24).fill(null).map(() => ({
+      phone: 0,
+      chat: 0,
+      whatsapp: 0,
+      email: 0
+    }));
+
+    calls.forEach(call => {
+      const hour = new Date(call.createdAt).getHours();
+      hourData[hour].phone++;
+    });
+
+    chatLogs.forEach(chat => {
+      const hour = new Date(chat.createdAt).getHours();
+      hourData[hour].chat++;
+    });
+
+    whatsappLogs.forEach(wa => {
+      const hour = new Date(wa.createdAt).getHours();
+      hourData[hour].whatsapp++;
+    });
+
+    emailThreads.forEach(email => {
+      const hour = new Date(email.createdAt).getHours();
+      hourData[hour].email++;
+    });
+
+    const peakHours = hourData.map((data, hour) => ({
       hour: `${hour.toString().padStart(2, '0')}:00`,
-      calls: count
+      phone: data.phone,
+      chat: data.chat,
+      whatsapp: data.whatsapp,
+      email: data.email
     }));
 
     res.json({ peakHours });

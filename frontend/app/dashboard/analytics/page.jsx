@@ -46,10 +46,10 @@ import {
 } from 'recharts';
 
 const CHANNEL_COLORS = {
-  phone: '#0d9488',
-  chat: '#6b7280',
-  whatsapp: '#6b7280',
-  email: '#6b7280'
+  phone: '#00A2B3',      // Brand color - Teal
+  chat: '#3B82F6',       // Blue - Chat
+  whatsapp: '#10B981',   // Green - WhatsApp
+  email: '#F59E0B'       // Amber - Email
 };
 
 // WhatsApp icon component
@@ -100,7 +100,7 @@ export default function AnalyticsPage() {
       const channelParam = channelFilter !== 'all' ? `&channel=${channelFilter}` : '';
       const [overviewRes, peakRes, questionsRes] = await Promise.all([
         apiClient.get(`/api/analytics/overview?range=${timeRange}`),
-        apiClient.get('/api/analytics/peak-hours'),
+        apiClient.get(`/api/analytics/peak-hours?range=${timeRange}`),
         apiClient.get(`/api/analytics/top-questions?range=${timeRange}&limit=10${channelParam}`)
       ]);
 
@@ -212,11 +212,21 @@ export default function AnalyticsPage() {
 
   const getChannelColor = (channel) => {
     switch(channel) {
-      case 'phone': return 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400';
-      case 'chat': return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
-      case 'whatsapp': return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400';
+      case 'phone': return 'bg-[#00A2B3]/10 text-[#00A2B3] dark:bg-[#00A2B3]/20 dark:text-[#00A2B3]';
+      case 'chat': return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
+      case 'whatsapp': return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
       case 'email': return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
       default: return 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400';
+    }
+  };
+
+  const getChannelIconColor = (channel) => {
+    switch(channel) {
+      case 'phone': return 'text-[#00A2B3]';
+      case 'chat': return 'text-[#3B82F6]';
+      case 'whatsapp': return 'text-[#10B981]';
+      case 'email': return 'text-[#F59E0B]';
+      default: return 'text-gray-500';
     }
   };
 
@@ -238,14 +248,14 @@ export default function AnalyticsPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">{t('dashboard.analyticsPage.title')}</h1>
-          <p className="text-neutral-600 dark:text-neutral-400 mt-1">
+          <h1 className="text-2xl font-semibold text-neutral-900 dark:text-white">{t('dashboard.analyticsPage.title')}</h1>
+          <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
             {t('dashboard.analyticsPage.description')}
           </p>
         </div>
         <div className="flex gap-3">
           <Select value={timeRange} onValueChange={setTimeRange}>
-            <SelectTrigger className="w-48">
+            <SelectTrigger className="w-48 h-9">
               <Calendar className="h-4 w-4 mr-2" />
               <SelectValue />
             </SelectTrigger>
@@ -257,7 +267,7 @@ export default function AnalyticsPage() {
               ))}
             </SelectContent>
           </Select>
-          <Button variant="outline" size="sm" onClick={handleExport} disabled={!analytics}>
+          <Button variant="outline" size="sm" className="h-9" onClick={handleExport} disabled={!analytics}>
             <Download className="h-4 w-4 mr-2" />
             {t('dashboard.analyticsPage.export')}
           </Button>
@@ -269,7 +279,7 @@ export default function AnalyticsPage() {
         {/* Total Calls */}
         <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6">
           <div className="flex items-center justify-between mb-4">
-            <Phone className="h-6 w-6 text-neutral-600 dark:text-neutral-400" />
+            <Phone className="h-6 w-6 text-[#00A2B3]" />
           </div>
           <h3 className="text-2xl font-bold text-neutral-900 dark:text-white">
             {analytics?.totalCalls || 0}
@@ -280,7 +290,7 @@ export default function AnalyticsPage() {
         {/* Chat Sessions */}
         <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6">
           <div className="flex items-center justify-between mb-4">
-            <MessageCircle className="h-6 w-6 text-neutral-600 dark:text-neutral-400" />
+            <MessageCircle className="h-6 w-6 text-[#3B82F6]" />
           </div>
           <h3 className="text-2xl font-bold text-neutral-900 dark:text-white">
             {analytics?.chatSessions || 0}
@@ -291,7 +301,7 @@ export default function AnalyticsPage() {
         {/* WhatsApp Messages */}
         <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6">
           <div className="flex items-center justify-between mb-4">
-            <WhatsAppIcon className="h-6 w-6 text-neutral-600 dark:text-neutral-400" />
+            <WhatsAppIcon className="h-6 w-6 text-[#10B981]" />
           </div>
           <h3 className="text-2xl font-bold text-neutral-900 dark:text-white">
             {analytics?.whatsappSessions || 0}
@@ -302,7 +312,7 @@ export default function AnalyticsPage() {
         {/* Emails Answered */}
         <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6">
           <div className="flex items-center justify-between mb-4">
-            <Mail className="h-6 w-6 text-neutral-600 dark:text-neutral-400" />
+            <Mail className="h-6 w-6 text-[#F59E0B]" />
           </div>
           <h3 className="text-2xl font-bold text-neutral-900 dark:text-white">
             {analytics?.emailsAnswered || 0}
@@ -424,8 +434,8 @@ export default function AnalyticsPage() {
               onClick={() => setChannelFilter('phone')}
               className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors flex items-center gap-1 ${
                 channelFilter === 'phone'
-                  ? 'bg-teal-600 text-white'
-                  : 'bg-teal-100 text-teal-700 hover:bg-teal-200 dark:bg-teal-900/30 dark:text-teal-400 dark:hover:bg-teal-900/50'
+                  ? 'bg-[#00A2B3] text-white'
+                  : 'bg-[#00A2B3]/10 text-[#00A2B3] hover:bg-[#00A2B3]/20 dark:bg-[#00A2B3]/20 dark:hover:bg-[#00A2B3]/30'
               }`}
             >
               <Phone className="h-3 w-3" />
@@ -435,8 +445,8 @@ export default function AnalyticsPage() {
               onClick={() => setChannelFilter('chat')}
               className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors flex items-center gap-1 ${
                 channelFilter === 'chat'
-                  ? 'bg-green-600 text-white'
-                  : 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50'
               }`}
             >
               <MessageCircle className="h-3 w-3" />
@@ -446,8 +456,8 @@ export default function AnalyticsPage() {
               onClick={() => setChannelFilter('whatsapp')}
               className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors flex items-center gap-1 ${
                 channelFilter === 'whatsapp'
-                  ? 'bg-emerald-600 text-white'
-                  : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50'
+                  ? 'bg-green-600 text-white'
+                  : 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50'
               }`}
             >
               <WhatsAppIcon className="h-3 w-3" />
@@ -494,15 +504,11 @@ export default function AnalyticsPage() {
                       {topic.count}
                     </Badge>
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5">
                     {topic.channels.map((channel) => (
-                      <Badge
-                        key={channel}
-                        variant="secondary"
-                        className={`text-xs ${getChannelColor(channel)}`}
-                      >
+                      <span key={channel} className={getChannelIconColor(channel)}>
                         {getChannelIcon(channel)}
-                      </Badge>
+                      </span>
                     ))}
                   </div>
                 </div>
@@ -550,8 +556,19 @@ export default function AnalyticsPage() {
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="hour" />
             <YAxis />
-            <Tooltip />
-            <Bar dataKey="calls" fill="#0d9488" />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px'
+              }}
+              labelStyle={{ color: '#000' }}
+            />
+            <Legend />
+            <Bar dataKey="phone" stackId="a" fill={CHANNEL_COLORS.phone} name={t('dashboard.analyticsPage.phoneCalls')} />
+            <Bar dataKey="chat" stackId="a" fill={CHANNEL_COLORS.chat} name={t('dashboard.analyticsPage.chatSessions')} />
+            <Bar dataKey="whatsapp" stackId="a" fill={CHANNEL_COLORS.whatsapp} name="WhatsApp" />
+            <Bar dataKey="email" stackId="a" fill={CHANNEL_COLORS.email} name={t('dashboard.analyticsPage.emailsAnswered')} />
           </BarChart>
         </ResponsiveContainer>
       </div>
