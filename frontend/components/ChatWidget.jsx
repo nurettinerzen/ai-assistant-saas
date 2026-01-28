@@ -29,7 +29,8 @@ export default function ChatWidget({
   const [conversationHistory, setConversationHistory] = useState([]);
   const [sessionId, setSessionId] = useState(null);
   const [isWidgetEnabled, setIsWidgetEnabled] = useState(null); // null = loading, true/false = result
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
+  const isTurkish = locale === 'tr';
 
   // Check widget status on mount
   useEffect(() => {
