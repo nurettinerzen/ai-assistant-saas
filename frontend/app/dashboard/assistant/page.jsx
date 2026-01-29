@@ -6,6 +6,15 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import {
+  useAssistants,
+  useVoices,
+  useBusiness,
+  useCreateAssistant,
+  useUpdateAssistant,
+  useDeleteAssistant,
+  useSyncAssistant
+} from '@/hooks/useAssistants';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -28,7 +37,6 @@ import { Badge } from '@/components/ui/badge';
 import EmptyState from '@/components/EmptyState';
 import TemplateSelector from '@/components/TemplateSelector';
 import { Bot, Plus, Edit, Trash2, Search, Phone, PhoneOutgoing, PhoneIncoming, Loader2, RefreshCw } from 'lucide-react';
-import { apiClient } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -122,10 +130,38 @@ const DEFAULT_SYSTEM_PROMPTS = {
 export default function AssistantsPage() {
   const { t, locale } = useLanguage();
   const { can } = usePermissions();
-  const [assistants, setAssistants] = useState([]);
-  const [voices, setVoices] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Get user from localStorage
+  const user = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || '{}') : {};
+
+  // React Query hooks
+  const { data: assistantsData, isLoading: assistantsLoading } = useAssistants();
+  const { data: voicesData, isLoading: voicesLoading } = useVoices();
+  const { data: businessData } = useBusiness(user.businessId);
+  const createAssistant = useCreateAssistant();
+  const updateAssistant = useUpdateAssistant();
+  const deleteAssistant = useDeleteAssistant();
+  const syncAssistant = useSyncAssistant();
+
+  // Extract data from queries
+  const assistants = assistantsData?.data?.assistants || [];
+  const loading = assistantsLoading || voicesLoading;
+
+  // Process voices data
+  const voiceData = voicesData?.data?.voices || {};
+  const allVoices = [];
+  Object.keys(voiceData).forEach(lang => {
+    if (Array.isArray(voiceData[lang])) {
+      allVoices.push(...voiceData[lang].map(v => ({ ...v, language: lang })));
+    }
+  });
+  const voices = allVoices;
+
+  // Business info
+  const businessLanguage = businessData?.data?.language?.toLowerCase() || locale || 'tr';
+  const businessName = businessData?.data?.name || '';
+  const businessType = businessData?.data?.businessType || 'OTHER';
 
   // Modal states
   const [showTypeSelector, setShowTypeSelector] = useState(false);
@@ -134,15 +170,12 @@ export default function AssistantsPage() {
   const [editingAssistant, setEditingAssistant] = useState(null);
   const [selectedCallDirection, setSelectedCallDirection] = useState('inbound');
 
-  const [businessLanguage, setBusinessLanguage] = useState('tr');
-  const [businessName, setBusinessName] = useState('');
-  const [businessType, setBusinessType] = useState('OTHER');
   const [formData, setFormData] = useState({
     name: '',
     voiceId: '',
     systemPrompt: '',
     firstMessage: '',
-    language: locale || 'tr',
+    language: businessLanguage || locale || 'tr',
     tone: 'formal',
     customNotes: '',
     callDirection: 'inbound',
@@ -151,10 +184,6 @@ export default function AssistantsPage() {
   const [creating, setCreating] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [syncing, setSyncing] = useState(null);
-
-  useEffect(() => {
-    loadData();
-  }, []);
 
   // Update first message when assistant name changes
   useEffect(() => {
@@ -178,45 +207,6 @@ export default function AssistantsPage() {
       }));
     }
   }, [formData.name, formData.callDirection, editingAssistant, businessName, businessLanguage]);
-
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
-      if (user.businessId) {
-        try {
-          const businessRes = await apiClient.business.get(user.businessId);
-          const business = businessRes.data;
-          const language = business?.language?.toLowerCase() || 'tr';
-          setBusinessLanguage(language);
-          setBusinessName(business?.name || '');
-          setBusinessType(business?.businessType || 'OTHER');
-          setFormData(prev => ({ ...prev, language }));
-        } catch (error) {
-          console.error('Failed to load business info:', error);
-        }
-      }
-
-      const [assistantsRes, voicesRes] = await Promise.all([
-        apiClient.assistants.getAll(),
-        apiClient.voices.getAll(),
-      ]);
-      setAssistants(assistantsRes.data.assistants || []);
-
-      const voiceData = voicesRes.data.voices || {};
-      const allVoices = [];
-      Object.keys(voiceData).forEach(lang => {
-        if (Array.isArray(voiceData[lang])) {
-          allVoices.push(...voiceData[lang].map(v => ({ ...v, language: lang })));
-        }
-      });
-      setVoices(allVoices);
-    } catch (error) {
-      toast.error(t('errors.generic'));
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Handle "Yeni Asistan" button click - show type selector first
   const handleNewAssistant = () => {
@@ -329,11 +319,10 @@ export default function AssistantsPage() {
 
     setCreating(true);
     try {
-      await apiClient.assistants.create(formData);
+      await createAssistant.mutateAsync(formData);
       toast.success(t('dashboard.assistantsPage.createdSuccess'));
       setShowCreateModal(false);
       resetForm();
-      loadData();
     } catch (error) {
       toast.error(error.response?.data?.error || t('errors.generic'));
     } finally {
@@ -379,11 +368,10 @@ export default function AssistantsPage() {
 
     setUpdating(true);
     try {
-      await apiClient.assistants.update(editingAssistant.id, formData);
+      await updateAssistant.mutateAsync({ id: editingAssistant.id, formData });
       toast.success(t('dashboard.assistantsPage.updatedSuccess'));
       setShowCreateModal(false);
       resetForm();
-      loadData();
     } catch (error) {
       toast.error(error.response?.data?.error || t('errors.generic'));
     } finally {
@@ -396,9 +384,8 @@ export default function AssistantsPage() {
       return;
     }
     try {
-      await apiClient.assistants.delete(assistant.id);
+      await deleteAssistant.mutateAsync(assistant.id);
       toast.success(t('dashboard.assistantsPage.deletedSuccess'));
-      loadData();
     } catch (error) {
       toast.error(error.response?.data?.error || t('errors.generic'));
     }
@@ -407,7 +394,7 @@ export default function AssistantsPage() {
   const handleSync = async (assistant) => {
     setSyncing(assistant.id);
     try {
-      const response = await apiClient.assistants.sync(assistant.id);
+      const response = await syncAssistant.mutateAsync(assistant.id);
       toast.success(locale === 'tr'
         ? `11Labs senkronize edildi: ${response.data.tools?.join(', ') || 'tools updated'}`
         : `11Labs synced: ${response.data.tools?.join(', ') || 'tools updated'}`
