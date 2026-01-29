@@ -24,6 +24,12 @@ import {
   LEGACY_PLAN_MAP,
   getPlanDisplayName,
 } from '@/lib/planConfig';
+import {
+  useSubscription,
+  useBillingHistory,
+  useUpgradeSubscription,
+} from '@/hooks/useSubscription';
+import { useProfile } from '@/hooks/useSettings';
 
 // Note: Region is determined by business.country, NOT by UI language
 // Language (locale) only affects UI text, not pricing
@@ -76,10 +82,15 @@ const BASE_PLANS = [
 export default function SubscriptionPage() {
   const { t, locale } = useLanguage();
   const { can, loading: permissionsLoading } = usePermissions();
-  const [loading, setLoading] = useState(true);
+
+  // React Query hooks
+  const { data: subscription, isLoading: subscriptionLoading, refetch: refetchSubscription } = useSubscription();
+  const { data: billingHistory = [], isLoading: billingLoading } = useBillingHistory();
+  const { data: profileData } = useProfile();
+  const upgradeSubscription = useUpgradeSubscription();
+
+  const loading = subscriptionLoading || billingLoading;
   const [upgrading, setUpgrading] = useState(false);
-  const [subscription, setSubscription] = useState(null);
-  const [billingHistory, setBillingHistory] = useState([]);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [checkoutFormHtml, setCheckoutFormHtml] = useState('');
   const checkoutContainerRef = useRef(null);
@@ -99,6 +110,14 @@ export default function SubscriptionPage() {
     }
     return 'US';
   });
+
+  // Update user country from profile data
+  useEffect(() => {
+    if (profileData?.business?.country || profileData?.country) {
+      const country = profileData.business?.country || profileData.country;
+      setUserCountry(country);
+    }
+  }, [profileData]);
 
   // Determine region from business country (NOT from UI language)
   const getRegion = () => {
@@ -164,7 +183,7 @@ export default function SubscriptionPage() {
         .then(() => {
           toast.success(t('dashboard.subscriptionPage.upgradeSuccess') || 'Plan başarıyla yükseltildi!');
           // Reload subscription data
-          loadData();
+          refetchSubscription();
           // Clean URL
           window.history.replaceState({}, '', window.location.pathname);
         })
@@ -180,58 +199,13 @@ export default function SubscriptionPage() {
       // Clean URL
       window.history.replaceState({}, '', window.location.pathname);
       // Reload subscription data
-      loadData();
+      refetchSubscription();
     } else if (status === 'error' || params.get('error')) {
       const errorMsg = params.get('message') || t('dashboard.subscriptionPage.upgradeFailed') || 'Odeme basarisiz oldu';
       toast.error(decodeURIComponent(errorMsg));
       window.history.replaceState({}, '', window.location.pathname);
     }
-  }, []);
-
-  // Load data when permissions are ready and user has billing:view permission
-  useEffect(() => {
-    // Wait for permissions to be loaded from localStorage
-    if (permissionsLoading) {
-      return;
-    }
-
-    if (can('billing:view')) {
-      loadData();
-    } else {
-      setLoading(false);
-    }
-  }, [can, permissionsLoading]);
-
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      const [subRes, billingRes, profileRes] = await Promise.all([
-        apiClient.subscription.getCurrent(),
-        apiClient.subscription.getBillingHistory(),
-        apiClient.settings.getProfile(),
-      ]);
-      console.log('Subscription API response:', subRes.data);
-      setSubscription(subRes.data);
-      setBillingHistory(billingRes.data.history || []);
-
-      // Get user's country from business settings or profile
-      const businessCountry = profileRes.data?.business?.country;
-      const userProfileCountry = profileRes.data?.country;
-      const country = businessCountry || userProfileCountry;
-
-      // Only update if we got a valid country from API
-      if (country) {
-        setUserCountry(country);
-      }
-
-      // Debug log
-      console.log('Subscription page - userCountry:', country, 'isTurkish:', country === 'TR' || country === 'Turkey');
-    } catch (error) {
-      toast.error(t('errors.generic'));
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [refetchSubscription]);
 
   const handleUpgrade = async (planId) => {
     // Get plan name from BASE_PLANS
