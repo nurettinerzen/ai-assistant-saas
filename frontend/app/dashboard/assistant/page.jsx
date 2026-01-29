@@ -464,99 +464,132 @@ export default function AssistantsPage() {
         </div>
       )}
 
-      {/* Assistants grid */}
+      {/* Assistants Table */}
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6 animate-pulse">
-              <div className="h-6 w-32 bg-neutral-200 dark:bg-neutral-700 rounded mb-3"></div>
-              <div className="h-4 w-full bg-neutral-200 dark:bg-neutral-700 rounded mb-2"></div>
-              <div className="h-4 w-2/3 bg-neutral-200 dark:bg-neutral-700 rounded"></div>
-            </div>
-          ))}
+        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-12 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
         </div>
       ) : filteredAssistants.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredAssistants.map((assistant) => {
-            const voice = voices.find((v) => v.id === assistant.voiceId);
-            // Check for all outbound variants: 'outbound', 'outbound_sales', 'outbound_collection'
-            const isOutbound = assistant.callDirection?.startsWith('outbound');
+        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden">
+          <table className="w-full">
+            <thead className="bg-neutral-50 dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700">
+              <tr>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                  {locale === 'tr' ? 'Asistan Adı' : 'Assistant Name'}
+                </th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                  {locale === 'tr' ? 'Yön' : 'Direction'}
+                </th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                  {locale === 'tr' ? 'Amaç' : 'Purpose'}
+                </th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                  {locale === 'tr' ? 'Ses' : 'Voice'}
+                </th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                  {locale === 'tr' ? 'Dil' : 'Language'}
+                </th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                  {locale === 'tr' ? 'Oluşturulma' : 'Created'}
+                </th>
+                <th className="px-4 py-2.5 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                  {locale === 'tr' ? 'İşlemler' : 'Actions'}
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-neutral-200 dark:divide-neutral-700">
+              {filteredAssistants.map((assistant) => {
+                const voice = voices.find((v) => v.id === assistant.voiceId);
+                const isOutbound = assistant.callDirection?.startsWith('outbound');
+                const languageCode = assistant.language || 'tr';
+                const accentName = LANGUAGE_TO_ACCENT[languageCode] || languageCode.toUpperCase();
 
-            return (
-              <div
-                key={assistant.id}
-                className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6 hover:shadow-md transition-shadow"
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    {isOutbound ? (
-                      <PhoneOutgoing className="h-6 w-6 text-neutral-600 dark:text-neutral-400" />
-                    ) : (
-                      <PhoneIncoming className="h-6 w-6 text-neutral-600 dark:text-neutral-400" />
-                    )}
-                    <div>
-                      <h3 className="font-semibold text-neutral-900 dark:text-white">{assistant.name}</h3>
-                      <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                return (
+                  <tr key={assistant.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-800">
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        {isOutbound ? (
+                          <PhoneOutgoing className="h-4 w-4 text-neutral-400" />
+                        ) : (
+                          <PhoneIncoming className="h-4 w-4 text-neutral-400" />
+                        )}
+                        <span className="text-sm font-medium text-neutral-900 dark:text-white">
+                          {assistant.name}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <Badge variant="secondary" className="text-xs">
+                        {isOutbound
+                          ? (locale === 'tr' ? 'Giden' : 'Outbound')
+                          : (locale === 'tr' ? 'Gelen' : 'Inbound')
+                        }
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className="text-sm text-neutral-600 dark:text-neutral-400">
+                        {assistant.callPurpose
+                          ? CALL_PURPOSES.definitions[assistant.callPurpose]?.[locale === 'tr' ? 'labelTr' : 'labelEn'] || assistant.callPurpose
+                          : '-'
+                        }
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className="text-sm text-neutral-600 dark:text-neutral-400">
+                        {voice?.name || '-'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className="text-sm text-neutral-600 dark:text-neutral-400">
+                        {accentName}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className="text-sm text-neutral-600 dark:text-neutral-400">
                         {formatDate(assistant.createdAt, 'short')}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {assistant.callPurpose && (
-                  <p className="text-sm text-neutral-600 dark:text-neutral-400 line-clamp-2 mb-4">
-                    {CALL_PURPOSES.definitions[assistant.callPurpose]?.[locale === 'tr' ? 'labelTr' : 'labelEn'] || assistant.callPurpose}
-                  </p>
-                )}
-
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {/* Call Direction Badge */}
-                  <Badge variant="secondary">
-                    {isOutbound ? <PhoneOutgoing className="h-3 w-3 mr-1" /> : <PhoneIncoming className="h-3 w-3 mr-1" />}
-                    {isOutbound
-                      ? (locale === 'tr' ? 'Giden' : 'Outbound')
-                      : (locale === 'tr' ? 'Gelen' : 'Inbound')
-                    }
-                  </Badge>
-                  <Badge variant="secondary">{voice?.name || t('dashboard.voicesPage.noVoicesFound')}</Badge>
-                </div>
-
-                <div className="flex gap-2">
-                  {can('assistants:edit') && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => handleEdit(assistant)}
-                    >
-                      <Edit className="h-3 w-3 mr-2" />
-                      {t('dashboard.assistantsPage.edit')}
-                    </Button>
-                  )}
-                  {can('assistants:edit') && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleSync(assistant)}
-                      disabled={syncing === assistant.id}
-                      title={locale === 'tr' ? '11Labs ile senkronize et' : 'Sync with 11Labs'}
-                    >
-                      <RefreshCw className={`h-3 w-3 ${syncing === assistant.id ? 'animate-spin' : ''}`} />
-                    </Button>
-                  )}
-                  {can('assistants:delete') && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDelete(assistant)}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        {can('assistants:edit') && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEdit(assistant)}
+                            className="h-8 px-2"
+                          >
+                            <Edit className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                        {can('assistants:edit') && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleSync(assistant)}
+                            disabled={syncing === assistant.id}
+                            title={locale === 'tr' ? '11Labs ile senkronize et' : 'Sync with 11Labs'}
+                            className="h-8 px-2"
+                          >
+                            <RefreshCw className={`h-3.5 w-3.5 ${syncing === assistant.id ? 'animate-spin' : ''}`} />
+                          </Button>
+                        )}
+                        {can('assistants:delete') && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDelete(assistant)}
+                            className="h-8 px-2 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       ) : (
         <EmptyState

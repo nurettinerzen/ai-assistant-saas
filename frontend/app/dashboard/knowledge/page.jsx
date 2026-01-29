@@ -289,19 +289,19 @@ function KnowledgeBaseContent() {
               <table className="w-full">
                 <thead className="bg-neutral-50 dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">{t('dashboard.knowledgeBasePage.nameTableHeader')}</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">{t('dashboard.knowledgeBasePage.typeTableHeader')}</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">{t('dashboard.knowledgeBasePage.sizeTableHeader')}</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">{t('dashboard.knowledgeBasePage.statusTableHeader')}</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">{t('dashboard.knowledgeBasePage.errorReasonHeader') || 'Hata Nedeni'}</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">{t('dashboard.knowledgeBasePage.uploadedTableHeader')}</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">{t('dashboard.knowledgeBasePage.actionsTableHeader')}</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">{t('dashboard.knowledgeBasePage.nameTableHeader')}</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">{t('dashboard.knowledgeBasePage.typeTableHeader')}</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">{t('dashboard.knowledgeBasePage.sizeTableHeader')}</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">{t('dashboard.knowledgeBasePage.statusTableHeader')}</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">{t('dashboard.knowledgeBasePage.errorReasonHeader') || 'Hata Nedeni'}</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">{t('dashboard.knowledgeBasePage.uploadedTableHeader')}</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">{t('dashboard.knowledgeBasePage.actionsTableHeader')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-200 dark:divide-neutral-700">
                   {documents.map((doc) => (
                     <tr key={doc.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50">
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-3">
                         <button
                           onClick={() => handleViewDocument(doc)}
                           className="flex items-center gap-2 text-left hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
@@ -311,9 +311,9 @@ function KnowledgeBaseContent() {
                           <Eye className="h-3 w-3 text-neutral-400 dark:text-neutral-500 opacity-0 group-hover:opacity-100" />
                         </button>
                       </td>
-                      <td className="px-6 py-4 text-sm text-neutral-600 dark:text-neutral-400">{doc.type}</td>
-                      <td className="px-6 py-4 text-sm text-neutral-600 dark:text-neutral-400">{formatFileSize(doc.size)}</td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-400">{doc.type}</td>
+                      <td className="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-400">{formatFileSize(doc.size)}</td>
+                      <td className="px-4 py-3">
                         <Badge
                           className={
                             doc.status === 'ACTIVE' || doc.status === 'ready'
@@ -326,15 +326,15 @@ function KnowledgeBaseContent() {
                           {t((doc.status === 'ACTIVE' || doc.status === 'ready') ? 'dashboard.knowledgeBasePage.ready' : (doc.status === 'PROCESSING' || doc.status === 'processing') ? 'dashboard.knowledgeBasePage.processing' : 'dashboard.knowledgeBasePage.failed')}
                         </Badge>
                       </td>
-                      <td className="px-6 py-4 text-sm text-neutral-600 dark:text-neutral-400">
+                      <td className="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-400">
                         {doc.status === 'FAILED' && doc.content?.startsWith('Error:') ? (
                           <span className="text-red-600 dark:text-red-400 text-xs">{doc.content.replace('Error: ', '')}</span>
                         ) : '-'}
                       </td>
-                      <td className="px-6 py-4 text-sm text-neutral-600 dark:text-neutral-400">
+                      <td className="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-400">
                         {formatDate(doc.uploadedAt, 'short')}
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-3">
                         {can('knowledge:delete') && (
                         <Button
                           variant="ghost"
