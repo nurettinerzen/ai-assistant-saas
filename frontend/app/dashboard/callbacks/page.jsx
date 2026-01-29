@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { apiClient } from '@/lib/api';
+import { useCallbacks, useCallbackStats, useUpdateCallback, useRetryCallback } from '@/hooks/useCallbacks';
 import {
   Phone,
   Clock,
@@ -134,57 +134,35 @@ export default function CallbacksPage() {
   const t = TRANSLATIONS[locale] || TRANSLATIONS.tr;
   const router = useRouter();
 
-  const [callbacks, setCallbacks] = useState([]);
-  const [stats, setStats] = useState({ pending: 0, inProgress: 0, completed: 0, today: 0, urgent: 0 });
+  // React Query hooks
+  const { data: callbacksData, isLoading: callbacksLoading } = useCallbacks();
+  const { data: statsData } = useCallbackStats();
+  const updateCallback = useUpdateCallback();
+  const retryCallback = useRetryCallback();
+
+  // Extract data from queries
+  const callbacks = callbacksData || [];
+  const stats = statsData || { pending: 0, inProgress: 0, completed: 0, today: 0, urgent: 0 };
+  const loading = callbacksLoading;
+
   const [filter, setFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [loading, setLoading] = useState(true);
   const [selectedCallback, setSelectedCallback] = useState(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [notes, setNotes] = useState('');
   const [callbackNotes, setCallbackNotes] = useState('');
 
-  useEffect(() => {
-    fetchCallbacks();
-    fetchStats();
-  }, []);
-
-  const fetchCallbacks = async () => {
-    try {
-      setLoading(true);
-      const res = await apiClient.callbacks.getAll();
-      setCallbacks(res.data);
-    } catch (error) {
-      console.error('Error fetching callbacks:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchStats = async () => {
-    try {
-      const res = await apiClient.callbacks.getStats();
-      setStats(res.data);
-    } catch (error) {
-      console.error('Error fetching stats:', error);
-    }
-  };
-
   const updateStatus = async (id, status) => {
     try {
-      await apiClient.callbacks.update(id, { status });
-      fetchCallbacks();
-      fetchStats();
+      await updateCallback.mutateAsync({ id, updates: { status } });
     } catch (error) {
       console.error('Error updating status:', error);
     }
   };
 
-  const retryCallback = async (id) => {
+  const handleRetry = async (id) => {
     try {
-      await apiClient.callbacks.retry(id);
-      fetchCallbacks();
-      fetchStats();
+      await retryCallback.mutateAsync(id);
     } catch (error) {
       console.error('Error retrying callback:', error);
     }
@@ -194,9 +172,8 @@ export default function CallbacksPage() {
     if (!selectedCallback) return;
 
     try {
-      await apiClient.callbacks.update(selectedCallback.id, { notes, callbackNotes });
+      await updateCallback.mutateAsync({ id: selectedCallback.id, updates: { notes, callbackNotes } });
       setIsDetailsOpen(false);
-      fetchCallbacks();
     } catch (error) {
       console.error('Error saving notes:', error);
     }
@@ -412,7 +389,7 @@ export default function CallbacksPage() {
                             size="sm"
                             variant="outline"
                             className=""
-                            onClick={() => retryCallback(callback.id)}
+                            onClick={() => handleRetry(callback.id)}
                           >
                             <RefreshCw className="h-4 w-4 mr-1" />
                             {t.retry}
