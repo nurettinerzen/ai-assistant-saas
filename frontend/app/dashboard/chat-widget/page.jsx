@@ -25,11 +25,28 @@ import ChatWidget from '@/components/ChatWidget';
 import axios from 'axios';
 import { apiClient } from '@/lib/api';
 import { NAVIGATION_ITEMS } from '@/lib/navigationConfig';
+import { useChatWidgetSettings, useChatStats, useUpdateChatWidget } from '@/hooks/useChatWidget';
+import { useAssistants } from '@/hooks/useAssistants';
+import { useSubscription } from '@/hooks/useSubscription';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export default function ChatWidgetPage() {
   const { t, locale } = useLanguage();
+
+  // React Query hooks
+  const { data: widgetSettings, isLoading: widgetLoading } = useChatWidgetSettings();
+  const { data: chatStats = { totalChats: 0, totalMessages: 0, avgMessagesPerChat: 0, activeChats: 0 } } = useChatStats();
+  const { data: assistantsData, isLoading: assistantsLoading } = useAssistants();
+  const { data: subscription } = useSubscription();
+  const { mutateAsync: updateWidget } = useUpdateChatWidget();
+
+  const loading = widgetLoading || assistantsLoading;
+  const embedKey = widgetSettings?.embedKey || '';
+  const assistants = assistantsData?.data?.assistants || [];
+  const isPro = ['PRO', 'ENTERPRISE'].includes(subscription?.plan?.toUpperCase() || '');
+
+  // Local UI state
   const [isEnabled, setIsEnabled] = useState(false);
   const [position, setPosition] = useState('bottom-right');
   const [primaryColor, setPrimaryColor] = useState('#6366f1');
@@ -39,11 +56,13 @@ export default function ChatWidgetPage() {
   const [placeholderText, setPlaceholderText] = useState('');
   const [showPreview, setShowPreview] = useState(false);
   const [assistantId, setAssistantId] = useState('');
-  const [assistants, setAssistants] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [isPro, setIsPro] = useState(false);
-  const [embedKey, setEmbedKey] = useState('');
-  const [chatStats, setChatStats] = useState({ totalChats: 0, totalMessages: 0, avgMessagesPerChat: 0 });
+
+  // Update isEnabled when widgetSettings loads
+  useEffect(() => {
+    if (widgetSettings) {
+      setIsEnabled(widgetSettings.enabled);
+    }
+  }, [widgetSettings]);
 
   // Set default texts based on current locale
   useEffect(() => {
@@ -58,109 +77,39 @@ export default function ChatWidgetPage() {
     }
   }, [locale]);
 
+  // Load assistant from localStorage or set default when assistants data loads
   useEffect(() => {
-    loadAssistants();
-    loadSettings();
-    loadSubscription();
-    loadEmbedKey();
-    loadChatStats();
-  }, []);
-
-  const loadChatStats = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_URL}/api/chat-logs/stats`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setChatStats(response.data);
-    } catch (error) {
-      console.error('Failed to load chat stats:', error);
-    }
-  };
-
-  const loadSubscription = async () => {
-    try {
-      const res = await apiClient.subscription.getCurrent();
-      const plan = res.data?.plan || '';
-      // Pro or higher plans can remove branding (check uppercase plan names)
-      setIsPro(['PRO', 'ENTERPRISE'].includes(plan.toUpperCase()));
-    } catch (error) {
-      console.error('Failed to load subscription:', error);
-    }
-  };
-
-  const loadChatWidgetSettings = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_URL}/api/business/chat-widget`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setEmbedKey(response.data.embedKey || '');
-      setIsEnabled(response.data.enabled || false);
-    } catch (error) {
-      console.error('Failed to load chat widget settings:', error);
-    }
-  };
-
-  // Legacy function for backward compatibility
-  const loadEmbedKey = async () => {
-    await loadChatWidgetSettings();
-  };
-
-  const loadAssistants = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_URL}/api/assistants`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const allAssistants = response.data.assistants || [];
-      setAssistants(allAssistants);
-
-      // Check if we have a saved assistantId in localStorage
+    if (assistants.length > 0) {
       const saved = localStorage.getItem('chatWidgetSettings');
       const savedSettings = saved ? JSON.parse(saved) : {};
 
-      if (savedSettings.assistantId && allAssistants.find(a => a.id === savedSettings.assistantId)) {
-        // Use saved assistant if it still exists
+      if (savedSettings.assistantId && assistants.find(a => a.id === savedSettings.assistantId)) {
         setAssistantId(savedSettings.assistantId);
-      } else if (allAssistants.length > 0) {
-        // Find first inbound assistant (not outbound*), or fallback to first assistant
-        const inboundAssistant = allAssistants.find(a => !a.callDirection?.startsWith('outbound'));
-        setAssistantId(inboundAssistant?.id || allAssistants[0].id);
+      } else {
+        const inboundAssistant = assistants.find(a => !a.callDirection?.startsWith('outbound'));
+        setAssistantId(inboundAssistant?.id || assistants[0].id);
       }
-    } catch (error) {
-      console.error('Failed to load assistants:', error);
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [assistants]);
 
-  const loadSettings = () => {
-    // Load from localStorage (in production, this would come from backend)
+  // Load settings from localStorage
+  useEffect(() => {
     const saved = localStorage.getItem('chatWidgetSettings');
     if (saved) {
       const settings = JSON.parse(saved);
-      setIsEnabled(settings.isEnabled || false);
       setPosition(settings.position || 'bottom-right');
       setPrimaryColor(settings.primaryColor || '#6366f1');
       setShowBranding(settings.showBranding !== undefined ? settings.showBranding : true);
       if (settings.buttonText) setButtonText(settings.buttonText);
       if (settings.welcomeMessage) setWelcomeMessage(settings.welcomeMessage);
       if (settings.placeholderText) setPlaceholderText(settings.placeholderText);
-      setAssistantId(settings.assistantId || '');
     }
-  };
+  }, []);
 
   const saveSettings = async () => {
     try {
-      const token = localStorage.getItem('token');
-
-      // Save enabled state to backend
-      await axios.put(`${API_URL}/api/business/chat-widget`, {
-        enabled: isEnabled
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      // Save enabled state to backend using mutation
+      await updateWidget({ enabled: isEnabled });
 
       // Save other settings to localStorage (these are UI preferences)
       const settings = {
@@ -184,12 +133,7 @@ export default function ChatWidgetPage() {
   const handleEnableChange = async (enabled) => {
     setIsEnabled(enabled);
     try {
-      const token = localStorage.getItem('token');
-      await axios.put(`${API_URL}/api/business/chat-widget`, {
-        enabled: enabled
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await updateWidget({ enabled });
       toast.success(enabled
         ? t('dashboard.chatWidgetPage.widgetEnabled')
         : t('dashboard.chatWidgetPage.widgetDisabled')

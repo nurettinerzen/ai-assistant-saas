@@ -38,6 +38,8 @@ import { toast } from '@/lib/toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { formatDistanceToNow } from 'date-fns';
 import { NAVIGATION_ITEMS } from '@/lib/navigationConfig';
+import { useEmailStatus, useEmailThreads, useEmailThread, useEmailStats } from '@/hooks/useEmail';
+import { useQueryClient } from '@tanstack/react-query';
 
 // Status badge colors and translation keys
 const STATUS_CONFIG = {
@@ -51,16 +53,21 @@ const STATUS_CONFIG = {
 
 export default function EmailDashboardPage() {
   const { t, locale } = useLanguage();
+  const queryClient = useQueryClient();
 
-  // State
-  const [emailStatus, setEmailStatus] = useState(null);
-  const [threads, setThreads] = useState([]);
-  const [selectedThread, setSelectedThread] = useState(null);
-  const [stats, setStats] = useState(null);
-  const [loading, setLoading] = useState(true);
+  // React Query hooks
+  const { data: emailStatus, isLoading: statusLoading } = useEmailStatus();
+  const [statusFilter, setStatusFilter] = useState(null);
+  const { data: threads = [], isLoading: threadsLoading, refetch: refetchThreads } = useEmailThreads(statusFilter);
+  const { data: stats } = useEmailStats();
+  const [selectedThreadId, setSelectedThreadId] = useState(null);
+  const { data: selectedThread } = useEmailThread(selectedThreadId, !!selectedThreadId);
+
+  const loading = statusLoading || threadsLoading;
+
+  // UI State
   const [syncing, setSyncing] = useState(false);
   const [sending, setSending] = useState(false);
-  const [statusFilter, setStatusFilter] = useState(null); // null = all, or specific status
 
   // Draft editor state
   const [editedContent, setEditedContent] = useState('');
@@ -68,73 +75,15 @@ export default function EmailDashboardPage() {
   const [regenerating, setRegenerating] = useState(false);
   const [generatingDraft, setGeneratingDraft] = useState(false);
 
-  // Load email status
-  const loadEmailStatus = useCallback(async () => {
-    try {
-      const response = await apiClient.get('/api/email/status');
-      setEmailStatus(response.data);
-      return response.data;
-    } catch (error) {
-      console.error('Failed to load email status:', error);
-      return null;
-    }
-  }, []);
-
-  // Load threads
-  const loadThreads = useCallback(async (status = null) => {
-    try {
-      const params = { limit: 500 }; // Fetch all threads
-      if (status) {
-        params.status = status;
-      }
-      const response = await apiClient.get('/api/email/threads', { params });
-      setThreads(response.data.threads || []);
-    } catch (error) {
-      console.error('Failed to load threads:', error);
-    }
-  }, []);
-
-  // Load stats
-  const loadStats = useCallback(async () => {
-    try {
-      const response = await apiClient.get('/api/email/stats');
-      setStats(response.data);
-    } catch (error) {
-      console.error('Failed to load stats:', error);
-    }
-  }, []);
-
-  // Load thread details
-  const loadThreadDetails = useCallback(async (threadId) => {
-    try {
-      const response = await apiClient.get(`/api/email/threads/${threadId}`);
-      setSelectedThread(response.data);
-
-      // Set draft content if available
-      if (response.data.drafts && response.data.drafts.length > 0) {
-        const activeDraft = response.data.drafts.find(d => d.status === 'PENDING_REVIEW');
-        if (activeDraft) {
-          setEditedContent(activeDraft.editedContent || activeDraft.generatedContent);
-        }
-      }
-    } catch (error) {
-      console.error('Failed to load thread:', error);
-      toast.error(t('dashboard.emailPage.failedToLoadThread'));
-    }
-  }, []);
-
-  // Initial load
+  // Update draft content when selected thread changes
   useEffect(() => {
-    async function init() {
-      setLoading(true);
-      const status = await loadEmailStatus();
-      if (status?.connected) {
-        await Promise.all([loadThreads(), loadStats()]);
+    if (selectedThread?.drafts && selectedThread.drafts.length > 0) {
+      const activeDraft = selectedThread.drafts.find(d => d.status === 'PENDING_REVIEW');
+      if (activeDraft) {
+        setEditedContent(activeDraft.editedContent || activeDraft.generatedContent);
       }
-      setLoading(false);
     }
-    init();
-  }, [loadEmailStatus, loadThreads, loadStats]);
+  }, [selectedThread]);
 
   // Sync emails with real-time updates via SSE
   const handleSync = async () => {
@@ -201,22 +150,9 @@ export default function EmailDashboardPage() {
               case 'thread':
                 console.log('New thread:', data.thread);
 
-                // Add or update thread in list
-                setThreads(prevThreads => {
-                  const existingIndex = prevThreads.findIndex(t => t.id === data.thread.id);
-                  if (existingIndex >= 0) {
-                    // Update existing
-                    const updated = [...prevThreads];
-                    updated[existingIndex] = data.thread;
-                    return updated;
-                  } else {
-                    // Add new at the beginning
-                    return [data.thread, ...prevThreads];
-                  }
-                });
-
-                // Update stats incrementally
-                loadStats();
+                // Invalidate and refetch threads and stats
+                queryClient.invalidateQueries({ queryKey: ['email', 'threads'] });
+                queryClient.invalidateQueries({ queryKey: ['email', 'stats'] });
                 break;
 
               case 'completed':
@@ -224,10 +160,7 @@ export default function EmailDashboardPage() {
                 toast.success(data.message || t('dashboard.emailPage.emailsSyncedSuccess'));
 
                 // Final refresh
-                loadStats();
-                if (selectedThread) {
-                  loadThreadDetails(selectedThread.id);
-                }
+                queryClient.invalidateQueries({ queryKey: ['email'] });
                 setSyncing(false);
                 break;
 
@@ -265,8 +198,7 @@ export default function EmailDashboardPage() {
     try {
       await apiClient.post(`/api/email/drafts/${activeDraft.id}/send`);
       toast.success(t('dashboard.emailPage.emailSentSuccess'));
-      await Promise.all([loadThreads(), loadStats()]);
-      await loadThreadDetails(selectedThread.id);
+      queryClient.invalidateQueries({ queryKey: ['email'] });
       setIsEditing(false);
     } catch (error) {
       toast.error(t('dashboard.emailPage.failedToSendEmail'));
@@ -286,7 +218,7 @@ export default function EmailDashboardPage() {
     try {
       await apiClient.post(`/api/email/drafts/${activeDraft.id}/regenerate`, { feedback });
       toast.success(t('dashboard.emailPage.draftRegenerated'));
-      await loadThreadDetails(selectedThread.id);
+      queryClient.invalidateQueries({ queryKey: ['email', 'threads', selectedThreadId] });
     } catch (error) {
       toast.error(t('dashboard.emailPage.failedToRegenerateDraft'));
     } finally {
@@ -301,9 +233,8 @@ export default function EmailDashboardPage() {
     try {
       await apiClient.post(`/api/email/threads/${selectedThread.id}/close`);
       toast.success(t('dashboard.emailPage.threadClosed'));
-      await loadThreads(statusFilter);
-      await loadStats();
-      setSelectedThread(null);
+      queryClient.invalidateQueries({ queryKey: ['email'] });
+      setSelectedThreadId(null);
     } catch (error) {
       toast.error(t('dashboard.emailPage.failedToCloseThread'));
     }
@@ -316,9 +247,7 @@ export default function EmailDashboardPage() {
     try {
       await apiClient.email.updateThread(selectedThread.id, { status: 'NO_REPLY_NEEDED' });
       toast.success(t('dashboard.emailPage.markedNoReplyNeeded'));
-      await loadThreads(statusFilter);
-      await loadStats();
-      await loadThreadDetails(selectedThread.id);
+      queryClient.invalidateQueries({ queryKey: ['email'] });
     } catch (error) {
       toast.error(t('dashboard.emailPage.failedToMarkNoReplyNeeded'));
     }
@@ -332,8 +261,7 @@ export default function EmailDashboardPage() {
     try {
       await apiClient.email.generateDraft(selectedThread.id);
       toast.success(t('dashboard.emailPage.draftGenerated'));
-      await Promise.all([loadThreads(statusFilter), loadStats()]);
-      await loadThreadDetails(selectedThread.id);
+      queryClient.invalidateQueries({ queryKey: ['email'] });
     } catch (error) {
       const errorMessage = error.response?.data?.error || t('dashboard.emailPage.failedToGenerateDraft');
       toast.error(errorMessage);
@@ -417,7 +345,6 @@ export default function EmailDashboardPage() {
           <button
             onClick={() => {
               setStatusFilter(statusFilter === 'DRAFT_READY' ? null : 'DRAFT_READY');
-              loadThreads(statusFilter === 'DRAFT_READY' ? null : 'DRAFT_READY');
             }}
             className={`bg-white dark:bg-neutral-900 rounded-lg border p-4 text-left transition-all hover:shadow-md ${
               statusFilter === 'DRAFT_READY' ? 'border-neutral-400 ring-2 ring-neutral-200 dark:ring-neutral-700' : 'border-neutral-200 dark:border-neutral-700'
@@ -435,7 +362,6 @@ export default function EmailDashboardPage() {
           <button
             onClick={() => {
               setStatusFilter(statusFilter === 'REPLIED' ? null : 'REPLIED');
-              loadThreads(statusFilter === 'REPLIED' ? null : 'REPLIED');
             }}
             className={`bg-white dark:bg-neutral-900 rounded-lg border p-4 text-left transition-all hover:shadow-md ${
               statusFilter === 'REPLIED' ? 'border-neutral-400 ring-2 ring-neutral-200 dark:ring-neutral-700' : 'border-neutral-200 dark:border-neutral-700'
@@ -453,7 +379,6 @@ export default function EmailDashboardPage() {
           <button
             onClick={() => {
               setStatusFilter(statusFilter === 'NO_REPLY_NEEDED' ? null : 'NO_REPLY_NEEDED');
-              loadThreads(statusFilter === 'NO_REPLY_NEEDED' ? null : 'NO_REPLY_NEEDED');
             }}
             className={`bg-white dark:bg-neutral-900 rounded-lg border p-4 text-left transition-all hover:shadow-md ${
               statusFilter === 'NO_REPLY_NEEDED' ? 'border-neutral-400 ring-2 ring-neutral-200 dark:ring-neutral-700' : 'border-neutral-200 dark:border-neutral-700'
@@ -471,7 +396,6 @@ export default function EmailDashboardPage() {
           <button
             onClick={() => {
               setStatusFilter(null);
-              loadThreads(null);
             }}
             className={`bg-white dark:bg-neutral-900 rounded-lg border p-4 text-left transition-all hover:shadow-md ${
               statusFilter === null ? 'border-neutral-500 ring-2 ring-neutral-200 dark:ring-neutral-700' : 'border-neutral-200 dark:border-neutral-700'
@@ -519,7 +443,7 @@ export default function EmailDashboardPage() {
                 return (
                   <button
                     key={thread.id}
-                    onClick={() => loadThreadDetails(thread.id)}
+                    onClick={() => setSelectedThreadId(thread.id)}
                     className={`w-full text-left p-4 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors ${
                       isSelected ? 'bg-neutral-50 dark:bg-neutral-800 border-l-4 border-neutral-400' : ''
                     }`}

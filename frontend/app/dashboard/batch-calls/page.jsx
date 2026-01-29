@@ -45,6 +45,9 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import Link from 'next/link';
 import { NAVIGATION_ITEMS } from '@/lib/navigationConfig';
+import { useBatchCalls, useBatchCallsAccess } from '@/hooks/useBatchCalls';
+import { useAssistants } from '@/hooks/useAssistants';
+import { usePhoneNumbers } from '@/hooks/usePhoneNumbers';
 
 const STATUS_CONFIG = {
   PENDING: {
@@ -102,9 +105,18 @@ const TEMPLATE_VARIABLES = {
 export default function BatchCallsPage() {
   const { t, locale } = useLanguage();
   const { can } = usePermissions();
-  const [batchCalls, setBatchCalls] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [hasAccess, setHasAccess] = useState(true);
+
+  // React Query hooks
+  const { data: batchCalls = [], isLoading: batchCallsLoading, refetch: refetchBatchCalls } = useBatchCalls();
+  const { data: accessData, isLoading: accessLoading } = useBatchCallsAccess();
+  const { data: assistantsData, isLoading: assistantsLoading } = useAssistants();
+  const { data: phoneNumbers = [], isLoading: phoneNumbersLoading } = usePhoneNumbers();
+
+  const loading = batchCallsLoading || accessLoading || assistantsLoading || phoneNumbersLoading;
+  const hasAccess = accessData?.hasAccess ?? true;
+  const assistants = (assistantsData?.data?.assistants || []).filter(
+    a => a.callDirection?.startsWith('outbound')
+  );
 
   // Modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -127,78 +139,18 @@ export default function BatchCallsPage() {
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  // Options
-  const [assistants, setAssistants] = useState([]);
-  const [phoneNumbers, setPhoneNumbers] = useState([]);
-
   const fileInputRef = useRef(null);
-
-  useEffect(() => {
-    loadData();
-  }, []);
 
   // Auto-refresh when there are in-progress campaigns
   useEffect(() => {
     const hasInProgress = batchCalls.some(b => b.status === 'IN_PROGRESS' || b.status === 'PENDING');
     if (hasInProgress) {
       const interval = setInterval(() => {
-        refreshBatchCalls();
+        refetchBatchCalls();
       }, 5000);
       return () => clearInterval(interval);
     }
-  }, [batchCalls, hasAccess]);
-
-  const refreshBatchCalls = async () => {
-    try {
-      const batchRes = await apiClient.get('/api/batch-calls');
-      setBatchCalls(batchRes.data.batchCalls || []);
-    } catch (err) {
-      console.error('Polling error:', err);
-    }
-  };
-
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      // Check access first
-      try {
-        const accessRes = await apiClient.get('/api/batch-calls/check-access');
-        setHasAccess(accessRes.data.hasAccess);
-      } catch (err) {
-        if (err.response?.data?.upgrade) {
-          setHasAccess(false);
-        }
-      }
-
-      // Load batch calls
-      try {
-        const batchRes = await apiClient.get('/api/batch-calls');
-        setBatchCalls(batchRes.data.batchCalls || []);
-      } catch (err) {
-        if (err.response?.data?.upgrade) {
-          setHasAccess(false);
-        } else {
-          console.error('Failed to load batch calls:', err);
-        }
-      }
-
-      // Load assistants (only outbound - includes outbound, outbound_sales, outbound_collection)
-      const assistantsRes = await apiClient.assistants.getAll();
-      const outboundAssistants = (assistantsRes.data.assistants || []).filter(
-        a => a.callDirection?.startsWith('outbound')
-      );
-      setAssistants(outboundAssistants);
-
-      // Load phone numbers
-      const phonesRes = await apiClient.phoneNumbers.getAll();
-      setPhoneNumbers(phonesRes.data.phoneNumbers || []);
-    } catch (error) {
-      console.error('Error loading data:', error);
-      toast.error(t('errors.generic'));
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [batchCalls, refetchBatchCalls]);
 
   const handleFileSelect = async (e) => {
     const file = e.target.files?.[0];
@@ -317,7 +269,7 @@ export default function BatchCallsPage() {
 
       setShowCreateModal(false);
       resetForm();
-      loadData();
+      refetchBatchCalls();
     } catch (error) {
       console.error('Submit error:', error);
       toast.error(error.response?.data?.error || error.response?.data?.errorTR || t('errors.generic'));
@@ -334,7 +286,7 @@ export default function BatchCallsPage() {
     try {
       await apiClient.post(`/api/batch-calls/${batchCallId}/cancel`);
       toast.success(locale === 'tr' ? 'Arama iptal edildi' : 'Call cancelled');
-      loadData();
+      refetchBatchCalls();
     } catch (error) {
       toast.error(error.response?.data?.error || t('errors.generic'));
     }
