@@ -5,10 +5,11 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAnalyticsOverview, usePeakHours, useTopQuestions } from '@/hooks/useAnalytics';
 import {
   Select,
   SelectContent,
@@ -26,7 +27,6 @@ import {
   HelpCircle,
   Tag
 } from 'lucide-react';
-import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
 import { formatDuration } from '@/lib/utils';
 import {
@@ -61,59 +61,22 @@ const WhatsAppIcon = ({ className }) => (
 
 export default function AnalyticsPage() {
   const { t, locale } = useLanguage();
-  const [loading, setLoading] = useState(true);
-  const [topicsLoading, setTopicsLoading] = useState(false);
   const [timeRange, setTimeRange] = useState('30d');
-  const [analytics, setAnalytics] = useState(null);
-  const [peakHours, setPeakHours] = useState([]);
-  const [topTopics, setTopTopics] = useState([]);
   const [channelFilter, setChannelFilter] = useState('all');
 
-  // Load all analytics on initial load and time range change
-  useEffect(() => {
-    loadAnalytics();
-  }, [timeRange]);
+  // React Query hooks - automatic caching and revalidation
+  const { data: analytics, isLoading: overviewLoading } = useAnalyticsOverview(timeRange);
+  const { data: peakHoursData, isLoading: peakHoursLoading } = usePeakHours(timeRange);
+  const { data: topQuestionsData, isLoading: topicsLoading } = useTopQuestions(
+    timeRange,
+    channelFilter === 'all' ? null : channelFilter,
+    10
+  );
 
-  // Load only top questions when channel filter changes
-  useEffect(() => {
-    if (!loading) {
-      loadTopQuestions();
-    }
-  }, [channelFilter]);
-
-  const loadTopQuestions = async () => {
-    setTopicsLoading(true);
-    try {
-      const channelParam = channelFilter !== 'all' ? `&channel=${channelFilter}` : '';
-      const questionsRes = await apiClient.get(`/api/analytics/top-questions?range=${timeRange}&limit=10${channelParam}`);
-      setTopTopics(questionsRes.data.topTopics || []);
-    } catch (error) {
-      console.error('Failed to load top questions:', error);
-    } finally {
-      setTopicsLoading(false);
-    }
-  };
-
-  const loadAnalytics = async () => {
-    setLoading(true);
-    try {
-      const channelParam = channelFilter !== 'all' ? `&channel=${channelFilter}` : '';
-      const [overviewRes, peakRes, questionsRes] = await Promise.all([
-        apiClient.get(`/api/analytics/overview?range=${timeRange}`),
-        apiClient.get(`/api/analytics/peak-hours?range=${timeRange}`),
-        apiClient.get(`/api/analytics/top-questions?range=${timeRange}&limit=10${channelParam}`)
-      ]);
-
-      setAnalytics(overviewRes.data);
-      setPeakHours(peakRes.data.peakHours || []);
-      setTopTopics(questionsRes.data.topTopics || []);
-    } catch (error) {
-      console.error('Failed to load analytics:', error);
-      toast.error(t('dashboard.analyticsPage.failedToLoad'));
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Extract data from query results
+  const peakHours = peakHoursData?.peakHours || [];
+  const topTopics = topQuestionsData?.topTopics || [];
+  const loading = overviewLoading || peakHoursLoading;
 
   const handleExport = () => {
     if (!analytics) return;
