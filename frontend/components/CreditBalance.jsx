@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { apiClient } from '@/lib/api';
 import { getPlanDisplayName } from '@/lib/planConfig';
+import { useBalance } from '@/hooks/useBalance';
+import { useQueryClient } from '@tanstack/react-query';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -132,34 +133,18 @@ export default function CreditBalance({ onBuyCredit, refreshTrigger }) {
   const { t, locale } = useLanguage();
   const lang = LOCALE_TO_LANG[locale] || 'TR';
   const txt = TRANSLATIONS[lang] || TRANSLATIONS.TR;
-  const [balance, setBalance] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const queryClient = useQueryClient();
 
+  // React Query hook
+  const { data: balance, isLoading: loading, error: queryError, refetch } = useBalance();
+  const error = queryError?.response?.data?.error || (queryError ? 'load_error' : null);
+
+  // Refetch when refreshTrigger changes
   useEffect(() => {
-    fetchBalance();
-  }, [refreshTrigger]);
-
-  const fetchBalance = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      // Try new balance API first, fall back to credits API
-      try {
-        const response = await apiClient.get('/api/balance');
-        setBalance({ ...response.data, isNewSystem: true });
-      } catch (err) {
-        // Fallback to old credits API
-        const response = await apiClient.get('/api/credits/balance');
-        setBalance({ ...response.data, isNewSystem: false });
-      }
-    } catch (err) {
-      console.error('Balance fetch error:', err);
-      setError(err.response?.data?.error || 'load_error');
-    } finally {
-      setLoading(false);
+    if (refreshTrigger > 0) {
+      queryClient.invalidateQueries({ queryKey: ['balance'] });
     }
-  };
+  }, [refreshTrigger, queryClient]);
 
   if (loading) {
     return (
@@ -183,7 +168,7 @@ export default function CreditBalance({ onBuyCredit, refreshTrigger }) {
           <Button
             variant="outline"
             size="sm"
-            onClick={fetchBalance}
+            onClick={() => refetch()}
             className="mt-2"
           >
             {txt.retry}
