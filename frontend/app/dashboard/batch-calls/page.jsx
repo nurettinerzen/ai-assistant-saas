@@ -424,10 +424,10 @@ export default function BatchCallsPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">
+          <h1 className="text-2xl font-semibold text-neutral-900 dark:text-white">
             {locale === 'tr' ? NAVIGATION_ITEMS.campaigns.labelTr : NAVIGATION_ITEMS.campaigns.labelEn}
           </h1>
-          <p className="text-neutral-600 dark:text-neutral-400 mt-1">
+          <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
             {locale === 'tr'
               ? NAVIGATION_ITEMS.campaigns.descriptionTr
               : 'Manage your batch outbound call campaigns'
@@ -529,22 +529,22 @@ export default function BatchCallsPage() {
           <table className="w-full">
             <thead className="bg-neutral-50 dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700">
               <tr>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                <th className="px-4 py-2.5 text-left text-sm font-medium text-neutral-600 dark:text-neutral-300">
                   {locale === 'tr' ? 'Arama' : 'Call'}
                 </th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                <th className="px-4 py-2.5 text-left text-sm font-medium text-neutral-600 dark:text-neutral-300">
                   {locale === 'tr' ? 'Asistan' : 'Assistant'}
                 </th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                <th className="px-4 py-2.5 text-left text-sm font-medium text-neutral-600 dark:text-neutral-300">
                   {locale === 'tr' ? 'Durum' : 'Status'}
                 </th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                <th className="px-4 py-2.5 text-left text-sm font-medium text-neutral-600 dark:text-neutral-300">
                   {locale === 'tr' ? 'İlerleme' : 'Progress'}
                 </th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                <th className="px-4 py-2.5 text-left text-sm font-medium text-neutral-600 dark:text-neutral-300">
                   {locale === 'tr' ? 'Tarih' : 'Date'}
                 </th>
-                <th className="px-4 py-2.5 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                <th className="px-4 py-2.5 text-center text-sm font-medium text-neutral-600 dark:text-neutral-300">
                   {locale === 'tr' ? 'İşlemler' : 'Actions'}
                 </th>
               </tr>
@@ -596,8 +596,8 @@ export default function BatchCallsPage() {
                         {formatDate(batch.createdAt, 'short')}
                       </span>
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-right">
-                      <div className="flex items-center justify-end gap-2">
+                    <td className="px-4 py-3 whitespace-nowrap text-center">
+                      <div className="flex items-center justify-center gap-2">
                         <Link href={`/dashboard/batch-calls/${batch.id}`}>
                           <Button variant="outline" size="sm">
                             <Eye className="h-3 w-3 mr-1" />

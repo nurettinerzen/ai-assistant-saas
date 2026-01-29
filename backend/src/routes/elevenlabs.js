@@ -9,8 +9,8 @@
 
 import express from 'express';
 import crypto from 'crypto';
-import { PrismaClient } from '@prisma/client';
 import OpenAI from 'openai';
+import prisma from '../prismaClient.js';
 import usageTracking from '../services/usageTracking.js';
 import usageService from '../services/usageService.js';
 import subscriptionService from '../services/subscriptionService.js';
@@ -23,7 +23,6 @@ import elevenLabsService from '../services/elevenlabs.js';
 import metricsService from '../services/metricsService.js';
 
 const router = express.Router();
-const prisma = new PrismaClient();
 const openai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
 
 /**

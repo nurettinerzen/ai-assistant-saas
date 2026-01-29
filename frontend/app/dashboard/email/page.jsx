@@ -291,10 +291,10 @@ export default function EmailDashboardPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">
+          <h1 className="text-2xl font-semibold text-neutral-900 dark:text-white">
           {locale === 'tr' ? NAVIGATION_ITEMS.email.labelTr : NAVIGATION_ITEMS.email.labelEn}
         </h1>
-          <p className="text-neutral-600 dark:text-neutral-400 mt-1">
+          <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
             {t('dashboard.emailPage.description')}
           </p>
         </div>
@@ -320,10 +320,10 @@ export default function EmailDashboardPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">
+          <h1 className="text-2xl font-semibold text-neutral-900 dark:text-white">
           {locale === 'tr' ? NAVIGATION_ITEMS.email.labelTr : NAVIGATION_ITEMS.email.labelEn}
         </h1>
-          <p className="text-neutral-600 dark:text-neutral-400 mt-1">
+          <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
             {emailStatus?.email && (
               <span className="text-sm">
                 {t('dashboard.emailPage.connected')}: <span className="font-medium">{emailStatus.email}</span>

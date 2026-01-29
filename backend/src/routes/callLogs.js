@@ -1,12 +1,11 @@
 import express from 'express';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../prismaClient.js';
 import { authenticateToken } from '../middleware/auth.js';
 import axios from 'axios';
 import OpenAI from 'openai';
 import { getPricePerMinute } from '../config/plans.js';
 
 const router = express.Router();
-const prisma = new PrismaClient();
 const openai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
 
 /**

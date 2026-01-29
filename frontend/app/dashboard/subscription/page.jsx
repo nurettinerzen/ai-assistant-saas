@@ -317,8 +317,8 @@ export default function SubscriptionPage() {
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">{t('dashboard.subscriptionPage.title')}</h1>
-        <p className="text-neutral-600 dark:text-neutral-400 mt-1">{t('dashboard.subscriptionPage.description')}</p>
+        <h1 className="text-2xl font-semibold text-neutral-900 dark:text-white">{t('dashboard.subscriptionPage.title')}</h1>
+        <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">{t('dashboard.subscriptionPage.description')}</p>
       </div>
 
       {/* Current plan & usage */}

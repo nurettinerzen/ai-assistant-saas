@@ -289,13 +289,13 @@ function KnowledgeBaseContent() {
               <table className="w-full">
                 <thead className="bg-neutral-50 dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700">
                   <tr>
-                    <th className="px-4 py-2.5 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">{t('dashboard.knowledgeBasePage.nameTableHeader')}</th>
-                    <th className="px-4 py-2.5 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">{t('dashboard.knowledgeBasePage.typeTableHeader')}</th>
-                    <th className="px-4 py-2.5 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">{t('dashboard.knowledgeBasePage.sizeTableHeader')}</th>
-                    <th className="px-4 py-2.5 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">{t('dashboard.knowledgeBasePage.statusTableHeader')}</th>
-                    <th className="px-4 py-2.5 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">{t('dashboard.knowledgeBasePage.errorReasonHeader') || 'Hata Nedeni'}</th>
-                    <th className="px-4 py-2.5 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">{t('dashboard.knowledgeBasePage.uploadedTableHeader')}</th>
-                    <th className="px-4 py-2.5 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">{t('dashboard.knowledgeBasePage.actionsTableHeader')}</th>
+                    <th className="text-left p-4 text-sm font-medium text-neutral-600 dark:text-neutral-300">{t('dashboard.knowledgeBasePage.nameTableHeader')}</th>
+                    <th className="text-left p-4 text-sm font-medium text-neutral-600 dark:text-neutral-300">{t('dashboard.knowledgeBasePage.typeTableHeader')}</th>
+                    <th className="text-left p-4 text-sm font-medium text-neutral-600 dark:text-neutral-300">{t('dashboard.knowledgeBasePage.sizeTableHeader')}</th>
+                    <th className="text-left p-4 text-sm font-medium text-neutral-600 dark:text-neutral-300">{t('dashboard.knowledgeBasePage.statusTableHeader')}</th>
+                    <th className="text-left p-4 text-sm font-medium text-neutral-600 dark:text-neutral-300">{t('dashboard.knowledgeBasePage.errorReasonHeader') || 'Hata Nedeni'}</th>
+                    <th className="text-left p-4 text-sm font-medium text-neutral-600 dark:text-neutral-300">{t('dashboard.knowledgeBasePage.uploadedTableHeader')}</th>
+                    <th className="text-left p-4 text-sm font-medium text-neutral-600 dark:text-neutral-300">{t('dashboard.knowledgeBasePage.actionsTableHeader')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-200 dark:divide-neutral-700">

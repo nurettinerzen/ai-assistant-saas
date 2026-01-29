@@ -174,8 +174,8 @@ export default function PhoneNumbersPage() {
       <div className="space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">{t('dashboard.phoneNumbersPage.title')}</h1>
-          <p className="text-neutral-600 dark:text-neutral-400 mt-1">{t('dashboard.phoneNumbersPage.description')}</p>
+          <h1 className="text-2xl font-semibold text-neutral-900 dark:text-white">{t('dashboard.phoneNumbersPage.title')}</h1>
+          <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">{t('dashboard.phoneNumbersPage.description')}</p>
         </div>
 
         {/* Trial Expired State */}
@@ -238,8 +238,8 @@ export default function PhoneNumbersPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">{t('dashboard.phoneNumbersPage.title')}</h1>
-          <p className="text-neutral-600 dark:text-neutral-400 mt-1">{t('dashboard.phoneNumbersPage.description')}</p>
+          <h1 className="text-2xl font-semibold text-neutral-900 dark:text-white">{t('dashboard.phoneNumbersPage.title')}</h1>
+          <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">{t('dashboard.phoneNumbersPage.description')}</p>
           {/* 🔧 Plan limit indicator */}
           {subscription && (
             <p className="text-sm text-primary-600 dark:text-primary-400 mt-2">

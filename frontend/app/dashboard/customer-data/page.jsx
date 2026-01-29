@@ -351,10 +351,10 @@ export default function CustomerDataPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">
+            <h1 className="text-2xl font-semibold text-neutral-900 dark:text-white">
               {locale === 'tr' ? NAVIGATION_ITEMS.inbox.labelTr : NAVIGATION_ITEMS.inbox.labelEn}
             </h1>
-            <p className="text-neutral-600 dark:text-neutral-400 mt-1">
+            <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
               {locale === 'tr' ? NAVIGATION_ITEMS.inbox.descriptionTr : NAVIGATION_ITEMS.inbox.descriptionEn}
             </p>
           </div>

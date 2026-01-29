@@ -199,27 +199,27 @@ export default function SettingsPage() {
     <div className="space-y-8 max-w-4xl">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">
+        <h1 className="text-2xl font-semibold text-neutral-900 dark:text-white">
           {locale === 'tr' ? NAVIGATION_ITEMS.account.labelTr : NAVIGATION_ITEMS.account.labelEn}
         </h1>
-        <p className="text-neutral-600 dark:text-neutral-400 mt-1">
+        <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
           {locale === 'tr' ? NAVIGATION_ITEMS.account.descriptionTr : NAVIGATION_ITEMS.account.descriptionEn}
         </p>
       </div>
 
       {/* Profile Section */}
-      <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-4 shadow-sm">
-        <div className="flex items-center gap-2 mb-4">
+      <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-3 shadow-sm">
+        <div className="flex items-center gap-2 mb-3">
           <div className="p-2 rounded-lg">
             <User className="h-5 w-5 text-primary-600 dark:text-primary-400" />
           </div>
           <div>
-            <h2 className="text-base font-semibold text-neutral-900 dark:text-white">{t('dashboard.settingsPage.profileInformation')}</h2>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400">{t('dashboard.settingsPage.updatePersonalDetails')}</p>
+            <h2 className="text-sm font-semibold text-neutral-900 dark:text-white">{t('dashboard.settingsPage.profileInformation')}</h2>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">{t('dashboard.settingsPage.updatePersonalDetails')}</p>
           </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           <div>
             <Label htmlFor="name">{t('dashboard.settingsPage.fullNameLabel')}</Label>
             <Input
@@ -258,14 +258,14 @@ export default function SettingsPage() {
 
       {/* Region & Language Section */}
       {can('settings:edit') && (
-      <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-4 shadow-sm">
-        <div className="flex items-center gap-2 mb-4">
+      <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-3 shadow-sm">
+        <div className="flex items-center gap-2 mb-3">
           <div className="p-2 rounded-lg">
             <Globe className="h-5 w-5 text-primary-600 dark:text-primary-400" />
           </div>
           <div>
-            <h2 className="text-base font-semibold text-neutral-900 dark:text-white">{t('dashboard.settingsPage.regionSettings')}</h2>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400">{t('dashboard.settingsPage.regionDescription')}</p>
+            <h2 className="text-sm font-semibold text-neutral-900 dark:text-white">{t('dashboard.settingsPage.regionSettings')}</h2>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">{t('dashboard.settingsPage.regionDescription')}</p>
           </div>
         </div>
 
@@ -330,22 +330,22 @@ export default function SettingsPage() {
       )}
 
       {/* Email Signature Section */}
-      <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-4 shadow-sm">
-        <div className="flex items-center gap-2 mb-4">
+      <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-3 shadow-sm">
+        <div className="flex items-center gap-2 mb-3">
           <div className="p-2 rounded-lg">
             <Mail className="h-5 w-5 text-primary-600 dark:text-primary-400" />
           </div>
           <div>
-            <h2 className="text-base font-semibold text-neutral-900 dark:text-white">
+            <h2 className="text-sm font-semibold text-neutral-900 dark:text-white">
               {t('dashboard.settingsPage.emailSignatureTitle')}
             </h2>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400">
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">
               {t('dashboard.settingsPage.emailSignatureDescription')}
             </p>
           </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           <div>
             <Label htmlFor="signatureType">
               {t('dashboard.settingsPage.signatureTypeLabel')}
@@ -424,10 +424,10 @@ export default function SettingsPage() {
               <Phone className="h-5 w-5 text-primary-600 dark:text-primary-400" />
             </div>
             <div>
-              <h2 className="text-base font-semibold text-neutral-900 dark:text-white">
+              <h2 className="text-sm font-semibold text-neutral-900 dark:text-white">
                 {locale === 'tr' ? 'Kanallar' : 'Channels'}
               </h2>
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">
                 {locale === 'tr' ? 'Telefon numaranızı bağlayın ve asistana atayın' : 'Connect your phone number and assign to assistant'}
               </p>
             </div>
@@ -435,7 +435,7 @@ export default function SettingsPage() {
         </div>
 
         {phoneNumbers.length > 0 ? (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {/* Phone Number Card */}
             {phoneNumbers.map((number) => (
               <div
@@ -498,14 +498,14 @@ export default function SettingsPage() {
       </div>
 
       {/* Notifications Section */}
-      <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-4 shadow-sm">
-        <div className="flex items-center gap-2 mb-4">
+      <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-3 shadow-sm">
+        <div className="flex items-center gap-2 mb-3">
           <div className="p-2 rounded-lg">
             <Bell className="h-5 w-5 text-primary-600 dark:text-primary-400" />
           </div>
           <div>
-            <h2 className="text-base font-semibold text-neutral-900 dark:text-white">{t('dashboard.settingsPage.notificationsTitle')}</h2>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400">{t('dashboard.settingsPage.configureUpdates')}</p>
+            <h2 className="text-sm font-semibold text-neutral-900 dark:text-white">{t('dashboard.settingsPage.notificationsTitle')}</h2>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">{t('dashboard.settingsPage.configureUpdates')}</p>
           </div>
         </div>
 
@@ -513,7 +513,7 @@ export default function SettingsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium text-neutral-900 dark:text-white">{t('dashboard.settingsPage.emailOnNewCall')}</p>
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">{t('dashboard.settingsPage.notifyOnCall')}</p>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">{t('dashboard.settingsPage.notifyOnCall')}</p>
             </div>
             <Switch
               checked={notifications.emailOnCall}
@@ -528,7 +528,7 @@ export default function SettingsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium text-neutral-900 dark:text-white">{t('dashboard.settingsPage.usageLimitAlerts')}</p>
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">{t('dashboard.settingsPage.alertApproachingLimit')}</p>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">{t('dashboard.settingsPage.alertApproachingLimit')}</p>
             </div>
             <Switch
               checked={notifications.emailOnLimit}
@@ -543,7 +543,7 @@ export default function SettingsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium text-neutral-900 dark:text-white">{t('dashboard.settingsPage.weeklySummaryLabel')}</p>
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">{t('dashboard.settingsPage.receiveWeeklyReports')}</p>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">{t('dashboard.settingsPage.receiveWeeklyReports')}</p>
             </div>
             <Switch
               checked={notifications.weeklySummary}
@@ -558,7 +558,7 @@ export default function SettingsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium text-neutral-900 dark:text-white">{t('dashboard.settingsPage.smsNotificationsLabel')}</p>
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">{t('dashboard.settingsPage.criticalAlertsViaSms')}</p>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">{t('dashboard.settingsPage.criticalAlertsViaSms')}</p>
             </div>
             <Switch
               checked={notifications.smsNotifications}
@@ -575,18 +575,18 @@ export default function SettingsPage() {
       </div>
 
       {/* Security Section */}
-      <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-4 shadow-sm">
-        <div className="flex items-center gap-2 mb-4">
+      <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-3 shadow-sm">
+        <div className="flex items-center gap-2 mb-3">
           <div className="p-2 rounded-lg">
             <AlertTriangle className="h-5 w-5 text-primary-600 dark:text-primary-400" />
           </div>
           <div>
-            <h2 className="text-base font-semibold text-neutral-900 dark:text-white">{t('dashboard.settingsPage.securityTitle')}</h2>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400">{t('dashboard.settingsPage.managePasswordLabel')}</p>
+            <h2 className="text-sm font-semibold text-neutral-900 dark:text-white">{t('dashboard.settingsPage.securityTitle')}</h2>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">{t('dashboard.settingsPage.managePasswordLabel')}</p>
           </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           <div>
             <Label htmlFor="currentPassword">{t('dashboard.settingsPage.currentPasswordLabel')}</Label>
             <SecurePasswordInput
