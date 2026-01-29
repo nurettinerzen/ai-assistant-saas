@@ -27,11 +27,37 @@ import { toast, toastHelpers } from '@/lib/toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import { NAVIGATION_ITEMS } from '@/lib/navigationConfig';
+import {
+  useProfile,
+  useNotifications,
+  useEmailSignature,
+  useEmailPairStats,
+  usePhoneNumbers,
+  useUpdateProfile,
+  useUpdateNotifications,
+  useUpdateEmailSignature,
+  useChangePassword,
+} from '@/hooks/useSettings';
 
 export default function SettingsPage() {
   const { t, locale } = useLanguage();
   const { can } = usePermissions();
-  const [loading, setLoading] = useState(true);
+
+  // React Query hooks
+  const { data: profileData, isLoading: profileLoading } = useProfile();
+  const { data: notificationsData, isLoading: notificationsLoading } = useNotifications();
+  const { data: signatureData, isLoading: signatureLoading } = useEmailSignature();
+  const { data: pairStats } = useEmailPairStats();
+  const { data: phoneNumbers = [] } = usePhoneNumbers();
+
+  const updateProfile = useUpdateProfile();
+  const updateNotifications = useUpdateNotifications();
+  const updateEmailSignature = useUpdateEmailSignature();
+  const changePassword = useChangePassword();
+
+  const loading = profileLoading || notificationsLoading || signatureLoading;
+
+  // Local state for form inputs
   const [profile, setProfile] = useState({ name: '', email: '', company: '' });
   const [region, setRegion] = useState({ language: 'TR', country: 'TR', timezone: 'Europe/Istanbul' });
   const [notifications, setNotifications] = useState({
@@ -40,98 +66,52 @@ export default function SettingsPage() {
     weeklySummary: true,
     smsNotifications: false,
   });
+  const [emailSignature, setEmailSignature] = useState({
+    signature: '',
+    signatureType: 'PLAIN',
+  });
+  const [showPhoneModal, setShowPhoneModal] = useState(false);
+
   // Password values stored in refs to avoid React DevTools exposure
-  // SecurePasswordInput handles type tampering protection internally
   const passwordValues = useRef({
     currentPassword: '',
     newPassword: '',
     confirmPassword: ''
   });
-  const [emailSignature, setEmailSignature] = useState({
-    signature: '',
-    signatureType: 'PLAIN',
-  });
-  const [signatureLoading, setSignatureLoading] = useState(false);
-  const [pairStats, setPairStats] = useState(null);
-  const [phoneNumbers, setPhoneNumbers] = useState([]);
-  const [showPhoneModal, setShowPhoneModal] = useState(false);
 
+  // Update local state when data is loaded
   useEffect(() => {
-    loadSettings();
-  }, []);
-
-  const loadSettings = async () => {
-    setLoading(true);
-    try {
-      const [profileRes, notificationsRes] = await Promise.all([
-        apiClient.settings.getProfile(),
-        apiClient.settings.getNotifications(),
-      ]);
-
+    if (profileData) {
       setProfile({
-        name: profileRes.data?.name || '',
-        email: profileRes.data?.email || '',
-        company: profileRes.data?.company || ''
+        name: profileData.name,
+        email: profileData.email,
+        company: profileData.company,
       });
-
-      setNotifications({
-        emailOnCall: notificationsRes.data?.emailOnCall ?? true,
-        emailOnLimit: notificationsRes.data?.emailOnLimit ?? true,
-        weeklySummary: notificationsRes.data?.weeklySummary ?? true,
-        smsNotifications: notificationsRes.data?.smsNotifications ?? false
-      });
-
-      // Business bilgisini profileRes'ten al
-      const bizData = profileRes.data?.business || {};
+      const bizData = profileData.business || {};
       setRegion({
         language: bizData.language || 'TR',
         country: bizData.country || 'TR',
-        timezone: bizData.timezone || 'Europe/Istanbul'
+        timezone: bizData.timezone || 'Europe/Istanbul',
       });
-
-      // Load email signature
-      try {
-        const signatureRes = await apiClient.email.getSignature();
-        if (signatureRes.data) {
-          setEmailSignature({
-            signature: signatureRes.data.emailSignature || '',
-            signatureType: signatureRes.data.signatureType || 'PLAIN',
-          });
-        }
-      } catch (sigError) {
-        // Email integration might not exist yet, ignore
-        console.log('Email signature not found:', sigError.message);
-      }
-
-      // Load email pair stats
-      try {
-        const statsRes = await apiClient.email.getPairStats();
-        if (statsRes.data) {
-          setPairStats(statsRes.data);
-        }
-      } catch (statsError) {
-        console.log('Pair stats not found:', statsError.message);
-      }
-
-      // Load phone numbers
-      try {
-        const phoneRes = await apiClient.phoneNumbers.getAll();
-        setPhoneNumbers(phoneRes.data.phoneNumbers || []);
-      } catch (phoneError) {
-        console.log('Phone numbers not found:', phoneError.message);
-      }
-    } catch (error) {
-      console.error('Load settings error:', error);
-      toast.error(t('errors.generic'));
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [profileData]);
+
+  useEffect(() => {
+    if (notificationsData) {
+      setNotifications(notificationsData);
+    }
+  }, [notificationsData]);
+
+  useEffect(() => {
+    if (signatureData) {
+      setEmailSignature(signatureData);
+    }
+  }, [signatureData]);
 
   const handleSaveProfile = async () => {
     try {
       await toastHelpers.async(
-        apiClient.settings.updateProfile(profile),
+        updateProfile.mutateAsync(profile),
         t('dashboard.settingsPage.savingProfile'),
         t('dashboard.settingsPage.profileUpdatedSuccess')
       );
@@ -143,7 +123,7 @@ export default function SettingsPage() {
   const handleSaveNotifications = async () => {
     try {
       await toastHelpers.async(
-        apiClient.settings.updateNotifications(notifications),
+        updateNotifications.mutateAsync(notifications),
         t('dashboard.settingsPage.savingPreferences'),
         t('dashboard.settingsPage.notificationPreferencesUpdated')
       );
@@ -155,7 +135,7 @@ export default function SettingsPage() {
   const handleSaveRegion = async () => {
   try {
     await toastHelpers.async(
-      apiClient.settings.updateProfile(region),
+      updateProfile.mutateAsync(region),
       t('dashboard.settingsPage.savingRegion'),
       t('dashboard.settingsPage.regionUpdated')
     );
@@ -166,17 +146,14 @@ export default function SettingsPage() {
 };
 
   const handleSaveSignature = async () => {
-    setSignatureLoading(true);
     try {
-      await apiClient.email.updateSignature({
+      await updateEmailSignature.mutateAsync({
         emailSignature: emailSignature.signature,
         signatureType: emailSignature.signatureType,
       });
       toast.success(t('dashboard.settingsPage.signatureSaved'));
     } catch (error) {
       toast.error(t('dashboard.settingsPage.signatureFailed'));
-    } finally {
-      setSignatureLoading(false);
     }
   };
 
@@ -194,7 +171,7 @@ export default function SettingsPage() {
 
     try {
       await toastHelpers.async(
-        apiClient.settings.changePassword({
+        changePassword.mutateAsync({
           currentPassword,
           newPassword,
         }),
@@ -432,8 +409,8 @@ export default function SettingsPage() {
         </div>
 
         <div className="flex justify-end mt-6">
-          <Button onClick={handleSaveSignature} disabled={signatureLoading}>
-            {signatureLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+          <Button onClick={handleSaveSignature} disabled={updateEmailSignature.isPending}>
+            {updateEmailSignature.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             {t('dashboard.settingsPage.saveSignatureBtn')}
           </Button>
         </div>

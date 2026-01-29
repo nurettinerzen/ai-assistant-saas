@@ -35,6 +35,32 @@ import {
   LOCKED_INTEGRATIONS_FOR_BASIC,
   FEATURES
 } from '@/lib/features';
+import {
+  useIntegrations,
+  useUserPlan,
+  useWhatsAppStatus,
+  useIyzicoStatus,
+  useEmailStatus,
+  useShopifyStatus,
+  useWebhookStatus,
+  useIkasStatus,
+  useConnectWhatsApp,
+  useDisconnectWhatsApp,
+  useConnectIyzico,
+  useDisconnectIyzico,
+  useDisconnectEmail,
+  useDisconnectShopify,
+  useConnectIkas,
+  useDisconnectIkas,
+  useSetupWebhook,
+  useDisableWebhook,
+  useRegenerateWebhook,
+  useDisconnectGoogleCalendar,
+  useDisconnectGoogleSheets,
+  useTestGoogleCalendar,
+  useTestGoogleSheets,
+  useTestIkas,
+} from '@/hooks/useIntegrations';
 
 // App Logo Components (Official brand logos from Simple Icons)
 const GmailLogo = ({ className }) => (
@@ -100,12 +126,37 @@ export default function IntegrationsPage() {
   const { t, locale } = useLanguage();
   const language = locale; // alias for backward compatibility
   const { can, user } = usePermissions();
-  const [integrations, setIntegrations] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [businessType, setBusinessType] = useState('OTHER');
 
-  // User plan for feature visibility
-  const [userPlan, setUserPlan] = useState('STARTER');
+  // React Query hooks
+  const { data: integrationsData, isLoading: loading } = useIntegrations();
+  const { data: userPlan } = useUserPlan();
+  const { data: whatsappStatus } = useWhatsAppStatus();
+  const { data: iyzicoStatus } = useIyzicoStatus();
+  const { data: emailStatus } = useEmailStatus();
+  const { data: shopifyStatus } = useShopifyStatus();
+  const { data: webhookStatus } = useWebhookStatus();
+  const { data: ikasStatus } = useIkasStatus();
+
+  const integrations = integrationsData?.integrations || [];
+  const businessType = integrationsData?.businessType || 'OTHER';
+
+  // Mutations
+  const connectWhatsApp = useConnectWhatsApp();
+  const disconnectWhatsApp = useDisconnectWhatsApp();
+  const connectIyzico = useConnectIyzico();
+  const disconnectIyzico = useDisconnectIyzico();
+  const disconnectEmail = useDisconnectEmail();
+  const disconnectShopify = useDisconnectShopify();
+  const connectIkas = useConnectIkas();
+  const disconnectIkas = useDisconnectIkas();
+  const setupWebhook = useSetupWebhook();
+  const disableWebhook = useDisableWebhook();
+  const regenerateWebhook = useRegenerateWebhook();
+  const disconnectGoogleCalendar = useDisconnectGoogleCalendar();
+  const disconnectGoogleSheets = useDisconnectGoogleSheets();
+  const testGoogleCalendar = useTestGoogleCalendar();
+  const testGoogleSheets = useTestGoogleSheets();
+  const testIkas = useTestIkas();
 
   // Upgrade modal state
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
@@ -113,68 +164,34 @@ export default function IntegrationsPage() {
 
   // WhatsApp state
   const [whatsappModalOpen, setWhatsappModalOpen] = useState(false);
-  const [whatsappStatus, setWhatsappStatus] = useState(null);
   const [whatsappLoading, setWhatsappLoading] = useState(false);
   const [whatsappForm, setWhatsappForm] = useState({ accessToken: '', phoneNumberId: '', verifyToken: '' });
 
-
   // iyzico state
   const [iyzicoModalOpen, setIyzicoModalOpen] = useState(false);
-  const [iyzicoStatus, setIyzicoStatus] = useState(null);
   const [iyzicoLoading, setIyzicoLoading] = useState(false);
   const [iyzicoForm, setIyzicoForm] = useState({ apiKey: '', secretKey: '', environment: 'sandbox' });
   const [showIyzicoSecret, setShowIyzicoSecret] = useState(false);
 
   // Email state
-  const [emailStatus, setEmailStatus] = useState(null);
   const [emailLoading, setEmailLoading] = useState(false);
 
   // Shopify state
   const [shopifyModalOpen, setShopifyModalOpen] = useState(false);
-  const [shopifyStatus, setShopifyStatus] = useState(null);
   const [shopifyLoading, setShopifyLoading] = useState(false);
   const [shopifyForm, setShopifyForm] = useState({ shopUrl: '' });
 
-  // WooCommerce state - REMOVED (platform no longer supported)
-
   // Webhook state
   const [webhookModalOpen, setWebhookModalOpen] = useState(false);
-  const [webhookStatus, setWebhookStatus] = useState(null);
   const [webhookLoading, setWebhookLoading] = useState(false);
   const [copiedField, setCopiedField] = useState(null);
 
   // ikas state
   const [ikasModalOpen, setIkasModalOpen] = useState(false);
-  const [ikasStatus, setIkasStatus] = useState(null);
   const [ikasLoading, setIkasLoading] = useState(false);
   const [ikasForm, setIkasForm] = useState({ storeName: '', clientId: '', clientSecret: '' });
 
-  // Ideasoft state - REMOVED (platform no longer supported)
-  // Ticimax state - REMOVED (platform no longer supported)
-
-  // Load user plan
   useEffect(() => {
-    const loadUserPlan = async () => {
-      try {
-        const response = await apiClient.get('/api/auth/me');
-        const plan = response.data?.business?.subscription?.plan || response.data?.subscription?.plan || response.data?.plan || 'STARTER';
-        setUserPlan(plan);
-      } catch (error) {
-        console.error('Failed to load user plan:', error);
-      }
-    };
-    loadUserPlan();
-  }, []);
-
-  useEffect(() => {
-    loadIntegrations();
-    loadWhatsAppStatus();
-    loadIyzicoStatus();
-    loadEmailStatus();
-    loadShopifyStatus();
-    loadWebhookStatus();
-    loadIkasStatus();
-
     // Handle OAuth callback results
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
@@ -212,67 +229,6 @@ export default function IntegrationsPage() {
     }
   }, []);
 
-  // Load functions
-  const loadIntegrations = async () => {
-    setLoading(true);
-    try {
-      const response = await apiClient.get('/api/integrations/available');
-      setIntegrations(response.data.integrations || []);
-      setBusinessType(response.data.businessType || 'OTHER');
-    } catch (error) {
-      console.error('Failed to load integrations:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadWhatsAppStatus = async () => {
-    try {
-      const response = await apiClient.get('/api/integrations/whatsapp/status');
-      setWhatsappStatus(response.data);
-    } catch (error) { console.error('Failed to load WhatsApp status:', error); }
-  };
-
-
-  const loadIyzicoStatus = async () => {
-    try {
-      const response = await apiClient.get('/api/iyzico/status');
-      setIyzicoStatus(response.data);
-    } catch (error) { console.error('Failed to load iyzico status:', error); }
-  };
-
-  const loadEmailStatus = async () => {
-    try {
-      const response = await apiClient.get('/api/email/status');
-      setEmailStatus(response.data);
-    } catch (error) { console.error('Failed to load email status:', error); }
-  };
-
-  const loadShopifyStatus = async () => {
-    try {
-      const response = await apiClient.get('/api/shopify/status');
-      setShopifyStatus(response.data);
-    } catch (error) { console.error('Failed to load Shopify status:', error); }
-  };
-
-  // WooCommerce load removed - platform no longer supported
-
-  const loadWebhookStatus = async () => {
-    try {
-      const response = await apiClient.get('/api/webhook/status');
-      setWebhookStatus(response.data);
-    } catch (error) { console.error('Failed to load Webhook status:', error); }
-  };
-
-  const loadIkasStatus = async () => {
-    try {
-      const response = await apiClient.get('/api/integrations/ikas/status');
-      setIkasStatus(response.data);
-    } catch (error) { console.error('Failed to load ikas status:', error); }
-  };
-
-  // Ideasoft and Ticimax load removed - platforms no longer supported
-
   // Handler functions
   const handleGmailConnect = async () => {
     try {
@@ -300,9 +256,8 @@ export default function IntegrationsPage() {
     if (!confirm('Are you sure you want to disconnect your email?')) return;
     try {
       setEmailLoading(true);
-      await apiClient.post('/api/email/disconnect');
+      await disconnectEmail.mutateAsync();
       toast.success('Email disconnected successfully');
-      await loadEmailStatus();
     } catch (error) {
       toast.error('Failed to disconnect email');
     } finally {
@@ -317,13 +272,11 @@ export default function IntegrationsPage() {
     }
     setWhatsappLoading(true);
     try {
-      const response = await apiClient.post('/api/integrations/whatsapp/connect', whatsappForm);
+      const response = await connectWhatsApp.mutateAsync(whatsappForm);
       if (response.data.success) {
         toast.success('WhatsApp connected successfully!');
         setWhatsappModalOpen(false);
         setWhatsappForm({ accessToken: '', phoneNumberId: '', verifyToken: '' });
-        await loadWhatsAppStatus();
-        await loadIntegrations();
       }
     } catch (error) {
       toast.error(error.response?.data?.error || 'Failed to connect WhatsApp');
@@ -335,10 +288,8 @@ export default function IntegrationsPage() {
   const handleWhatsAppDisconnect = async () => {
     if (!confirm('Are you sure you want to disconnect WhatsApp?')) return;
     try {
-      await apiClient.post('/api/integrations/whatsapp/disconnect');
+      await disconnectWhatsApp.mutateAsync();
       toast.success('WhatsApp disconnected');
-      await loadWhatsAppStatus();
-      await loadIntegrations();
     } catch (error) { toast.error('Failed to disconnect'); }
   };
 
@@ -350,13 +301,11 @@ export default function IntegrationsPage() {
     }
     setIyzicoLoading(true);
     try {
-      const response = await apiClient.post('/api/iyzico/connect', iyzicoForm);
+      const response = await connectIyzico.mutateAsync(iyzicoForm);
       if (response.data.success) {
         toast.success('iyzico connected!');
         setIyzicoModalOpen(false);
         setIyzicoForm({ apiKey: '', secretKey: '', environment: 'sandbox' });
-        await loadIyzicoStatus();
-        await loadIntegrations();
       }
     } catch (error) {
       toast.error(error.response?.data?.error || 'Failed to connect iyzico');
@@ -368,10 +317,8 @@ export default function IntegrationsPage() {
   const handleIyzicoDisconnect = async () => {
     if (!confirm('Disconnect iyzico?')) return;
     try {
-      await apiClient.post('/api/iyzico/disconnect');
+      await disconnectIyzico.mutateAsync();
       toast.success('iyzico disconnected');
-      await loadIyzicoStatus();
-      await loadIntegrations();
     } catch (error) { toast.error('Failed to disconnect'); }
   };
 
@@ -409,10 +356,8 @@ const handleShopifyConnect = async () => {
   const handleShopifyDisconnect = async () => {
     if (!confirm('Disconnect Shopify?')) return;
     try {
-      await apiClient.post('/api/shopify/disconnect');
+      await disconnectShopify.mutateAsync();
       toast.success('Shopify disconnected');
-      await loadShopifyStatus();
-      await loadIntegrations();
     } catch (error) { toast.error('Failed to disconnect'); }
   };
 
@@ -421,13 +366,9 @@ const handleShopifyConnect = async () => {
   const handleWebhookSetup = async () => {
     setWebhookLoading(true);
     try {
-      const response = await apiClient.post('/api/webhook/setup');
+      const response = await setupWebhook.mutateAsync();
       if (response.data.success) {
         toast.success('Webhook activated!');
-        await loadWebhookStatus();
-        await loadIntegrations();
-        const configResponse = await apiClient.get('/api/webhook/config');
-        setWebhookStatus({ ...webhookStatus, ...configResponse.data });
       }
     } catch (error) {
       toast.error(error.response?.data?.error || 'Failed to setup webhook');
@@ -439,10 +380,8 @@ const handleShopifyConnect = async () => {
   const handleWebhookDisable = async () => {
     if (!confirm('Disable webhook?')) return;
     try {
-      await apiClient.post('/api/webhook/disable');
+      await disableWebhook.mutateAsync();
       toast.success('Webhook disabled');
-      await loadWebhookStatus();
-      await loadIntegrations();
     } catch (error) { toast.error('Failed to disable'); }
   };
 
@@ -450,11 +389,9 @@ const handleShopifyConnect = async () => {
     if (!confirm('Regenerate webhook URL? Current URL will be invalidated.')) return;
     setWebhookLoading(true);
     try {
-      const response = await apiClient.post('/api/webhook/regenerate');
+      const response = await regenerateWebhook.mutateAsync();
       if (response.data.success) {
         toast.success('Webhook URL regenerated!');
-        const configResponse = await apiClient.get('/api/webhook/config');
-        setWebhookStatus({ ...webhookStatus, ...configResponse.data });
       }
     } catch (error) {
       toast.error('Failed to regenerate');
@@ -486,13 +423,11 @@ const handleShopifyConnect = async () => {
     }
     setIkasLoading(true);
     try {
-      const response = await apiClient.post('/api/integrations/ikas/connect', ikasForm);
+      const response = await connectIkas.mutateAsync(ikasForm);
       if (response.data.success) {
         toast.success('ikas bağlandı!');
         setIkasModalOpen(false);
         setIkasForm({ storeName: '', clientId: '', clientSecret: '' });
-        await loadIkasStatus();
-        await loadIntegrations();
       }
     } catch (error) {
       toast.error(error.response?.data?.error || 'Bağlantı başarısız');
@@ -512,8 +447,6 @@ const handleShopifyConnect = async () => {
       if (integration.type === 'SHOPIFY') { setShopifyModalOpen(true); return; }
       if (integration.type === 'ZAPIER') {
         if (!webhookStatus?.configured) await handleWebhookSetup();
-        const configResponse = await apiClient.get('/api/webhook/config');
-        setWebhookStatus({ ...webhookStatus, ...configResponse.data });
         setWebhookModalOpen(true);
         return;
       }
@@ -542,20 +475,16 @@ const handleShopifyConnect = async () => {
     else if (integration.type === 'SHOPIFY') await handleShopifyDisconnect();
     else if (integration.type === 'ZAPIER') await handleWebhookDisable();
     else if (integration.type === 'GOOGLE_CALENDAR') {
-      await apiClient.post('/api/integrations/google-calendar/disconnect');
+      await disconnectGoogleCalendar.mutateAsync();
       toast.success('Google Calendar disconnected');
-      await loadIntegrations();
     }
     else if (integration.type === 'GOOGLE_SHEETS') {
-      await apiClient.post('/api/integrations/google-sheets/disconnect');
+      await disconnectGoogleSheets.mutateAsync();
       toast.success('Google Sheets disconnected');
-      await loadIntegrations();
     }
     else if (integration.type === 'IKAS') {
-      await apiClient.post('/api/integrations/ikas/disconnect');
+      await disconnectIkas.mutateAsync();
       toast.success('ikas bağlantısı kesildi');
-      await loadIkasStatus();
-      await loadIntegrations();
     }
   } catch (error) {
     toast.error('Failed to disconnect');
@@ -565,19 +494,19 @@ const handleShopifyConnect = async () => {
   const handleTest = async (integration) => {
   try {
     if (integration.type === 'GOOGLE_CALENDAR') {
-      const response = await apiClient.post('/api/integrations/google-calendar/test');
+      const response = await testGoogleCalendar.mutateAsync();
       if (response.data.success) toast.success('Google Calendar bağlantısı aktif!');
       else toast.error('Test failed');
       return;
     }
     if (integration.type === 'GOOGLE_SHEETS') {
-      const response = await apiClient.post('/api/integrations/google-sheets/test');
+      const response = await testGoogleSheets.mutateAsync();
       if (response.data.success) toast.success('Google Sheets bağlantısı aktif!');
       else toast.error('Test failed');
       return;
     }
     if (integration.type === 'IKAS') {
-      const response = await apiClient.post('/api/integrations/ikas/test');
+      const response = await testIkas.mutateAsync();
       if (response.data.success) toast.success('ikas bağlantısı aktif!');
       else toast.error('Test failed');
       return;

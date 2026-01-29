@@ -5,6 +5,15 @@ import { apiClient } from '@/lib/api';
 import { usePermissions, getRoleDisplayName, getRoleBadgeColor } from '@/hooks/usePermissions';
 import { toast } from 'sonner';
 import {
+  useTeamMembers,
+  useTeamInvitations,
+  useSendInvite,
+  useUpdateRole,
+  useRemoveMember,
+  useCancelInvite,
+  useResendInvite,
+} from '@/hooks/useTeam';
+import {
   Users,
   UserPlus,
   Mail,
@@ -69,36 +78,21 @@ import { useLanguage } from '@/contexts/LanguageContext';
 export default function TeamPage() {
   const { t } = useLanguage();
   const { can, isOwner, user } = usePermissions();
-  const [members, setMembers] = useState([]);
-  const [invitations, setInvitations] = useState([]);
-  const [loading, setLoading] = useState(true);
+
+  // React Query hooks
+  const { data: members = [], isLoading: membersLoading } = useTeamMembers();
+  const { data: invitations = [], isLoading: invitationsLoading } = useTeamInvitations();
+  const sendInvite = useSendInvite();
+  const updateRole = useUpdateRole();
+  const removeMember = useRemoveMember();
+  const cancelInvite = useCancelInvite();
+  const resendInvite = useResendInvite();
+
+  const loading = membersLoading || invitationsLoading;
+
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [inviteForm, setInviteForm] = useState({ email: '', role: 'STAFF' });
   const [inviting, setInviting] = useState(false);
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      // Always try to load both members and invitations
-      // Backend will handle permission checks
-      const [membersRes, invitationsRes] = await Promise.all([
-        apiClient.team.getMembers(),
-        apiClient.team.getInvitations().catch(() => ({ data: { invitations: [] } })),
-      ]);
-
-      setMembers(membersRes.data.members || []);
-      setInvitations(invitationsRes.data.invitations || []);
-    } catch (error) {
-      console.error('Failed to load team data:', error);
-      toast.error(t('dashboard.teamPage.errors.loadFailed'));
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleInvite = async (e) => {
     e.preventDefault();
@@ -109,7 +103,7 @@ export default function TeamPage() {
 
     setInviting(true);
     try {
-      const response = await apiClient.team.sendInvite(inviteForm);
+      const response = await sendInvite.mutateAsync(inviteForm);
       const inviteLink = response.data.inviteLink;
 
       // Show success with link
@@ -144,7 +138,6 @@ export default function TeamPage() {
 
       setInviteModalOpen(false);
       setInviteForm({ email: '', role: 'STAFF' });
-      loadData();
     } catch (error) {
       const message = error.response?.data?.error || t('dashboard.teamPage.errors.inviteFailed');
       toast.error(message);
@@ -155,9 +148,8 @@ export default function TeamPage() {
 
   const handleRoleChange = async (userId, newRole) => {
     try {
-      await apiClient.team.updateRole(userId, newRole);
+      await updateRole.mutateAsync({ userId, role: newRole });
       toast.success(t('dashboard.teamPage.members.roleUpdated'));
-      loadData();
     } catch (error) {
       const message = error.response?.data?.error || t('dashboard.teamPage.errors.roleUpdateFailed');
       toast.error(message);
@@ -171,9 +163,8 @@ export default function TeamPage() {
     }
 
     try {
-      await apiClient.team.removeMember(userId);
+      await removeMember.mutateAsync(userId);
       toast.success(t('dashboard.teamPage.members.removed'));
-      loadData();
     } catch (error) {
       const message = error.response?.data?.error || t('dashboard.teamPage.errors.removeFailed');
       toast.error(message);
@@ -182,9 +173,8 @@ export default function TeamPage() {
 
   const handleCancelInvite = async (inviteId) => {
     try {
-      await apiClient.team.cancelInvite(inviteId);
+      await cancelInvite.mutateAsync(inviteId);
       toast.success(t('dashboard.teamPage.invitations.cancelled'));
-      loadData();
     } catch (error) {
       toast.error(t('dashboard.teamPage.errors.cancelFailed'));
     }
@@ -192,9 +182,8 @@ export default function TeamPage() {
 
   const handleResendInvite = async (inviteId) => {
     try {
-      await apiClient.team.resendInvite(inviteId);
+      await resendInvite.mutateAsync(inviteId);
       toast.success(t('dashboard.teamPage.invitations.resent'));
-      loadData();
     } catch (error) {
       toast.error(t('dashboard.teamPage.errors.resendFailed'));
     }

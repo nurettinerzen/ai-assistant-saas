@@ -53,6 +53,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  useCustomerDataFiles,
+  useCustomerDataRecords,
+  useDeleteCustomerDataFile,
+} from '@/hooks/useCustomerData';
 
 // Data type options for inbound calls
 const DATA_TYPE_OPTIONS = {
@@ -116,13 +121,7 @@ export default function CustomerDataPage() {
   const [viewMode, setViewMode] = useState('files');
   const [selectedFile, setSelectedFile] = useState(null);
 
-  // Files state
-  const [files, setFiles] = useState([]);
-  const [loadingFiles, setLoadingFiles] = useState(true);
-
-  // Records state (when viewing a file)
-  const [records, setRecords] = useState([]);
-  const [loadingRecords, setLoadingRecords] = useState(false);
+  // Records pagination state
   const [recordsPagination, setRecordsPagination] = useState({
     page: 1,
     limit: 50,
@@ -160,6 +159,34 @@ export default function CustomerDataPage() {
 
   // Inline editing removed - was causing data sync issues
 
+  // React Query hooks
+  const { data: files = [], isLoading: loadingFiles } = useCustomerDataFiles();
+  const {
+    data: recordsData,
+    isLoading: loadingRecords
+  } = useCustomerDataRecords(
+    selectedFile?.id,
+    {
+      page: recordsPagination.page,
+      limit: recordsPagination.limit,
+      search: debouncedSearch || undefined
+    }
+  );
+
+  const deleteFile = useDeleteCustomerDataFile();
+
+  const records = recordsData?.records || [];
+
+  // Update pagination when records data changes
+  useEffect(() => {
+    if (recordsData?.pagination) {
+      setRecordsPagination(prev => ({
+        ...prev,
+        ...recordsData.pagination
+      }));
+    }
+  }, [recordsData]);
+
   // Debounce search
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -167,54 +194,6 @@ export default function CustomerDataPage() {
     }, 300);
     return () => clearTimeout(timer);
   }, [searchQuery]);
-
-  // Load files on mount
-  useEffect(() => {
-    loadFiles();
-  }, []);
-
-  // Load records when file is selected or search changes
-  useEffect(() => {
-    if (viewMode === 'records' && selectedFile) {
-      loadRecords();
-    }
-  }, [selectedFile, debouncedSearch, recordsPagination.page]);
-
-  const loadFiles = async () => {
-    setLoadingFiles(true);
-    try {
-      const res = await apiClient.customerData.getFiles();
-      setFiles(res.data.files || []);
-    } catch (error) {
-      console.error('Error loading files:', error);
-      toast.error(locale === 'tr' ? 'Dosyalar yüklenirken hata oluştu' : 'Failed to load files');
-    } finally {
-      setLoadingFiles(false);
-    }
-  };
-
-  const loadRecords = async () => {
-    if (!selectedFile) return;
-
-    setLoadingRecords(true);
-    try {
-      const res = await apiClient.customerData.getFile(selectedFile.id, {
-        page: recordsPagination.page,
-        limit: recordsPagination.limit,
-        search: debouncedSearch || undefined
-      });
-      setRecords(res.data.records || []);
-      setRecordsPagination(prev => ({
-        ...prev,
-        ...res.data.pagination
-      }));
-    } catch (error) {
-      console.error('Error loading records:', error);
-      toast.error(locale === 'tr' ? 'Kayıtlar yüklenirken hata oluştu' : 'Failed to load records');
-    } finally {
-      setLoadingRecords(false);
-    }
-  };
 
   // Open file to view records
   const openFile = (file) => {
@@ -239,11 +218,10 @@ export default function CustomerDataPage() {
     if (!fileToDelete) return;
 
     try {
-      await apiClient.customerData.deleteFile(fileToDelete.id);
+      await deleteFile.mutateAsync(fileToDelete.id);
       toast.success(locale === 'tr' ? 'Dosya silindi' : 'File deleted');
       setShowDeleteFileModal(false);
       setFileToDelete(null);
-      loadFiles();
     } catch (error) {
       console.error('Error deleting file:', error);
       toast.error(locale === 'tr' ? 'Silme başarısız' : 'Delete failed');
