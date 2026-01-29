@@ -208,13 +208,13 @@ export default function SettingsPage() {
       </div>
 
       {/* Profile Section */}
-      <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6 shadow-sm">
-        <div className="flex items-center gap-3 mb-6">
+      <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-4 shadow-sm">
+        <div className="flex items-center gap-2 mb-4">
           <div className="p-2 rounded-lg">
             <User className="h-5 w-5 text-primary-600 dark:text-primary-400" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">{t('dashboard.settingsPage.profileInformation')}</h2>
+            <h2 className="text-base font-semibold text-neutral-900 dark:text-white">{t('dashboard.settingsPage.profileInformation')}</h2>
             <p className="text-sm text-neutral-500 dark:text-neutral-400">{t('dashboard.settingsPage.updatePersonalDetails')}</p>
           </div>
         </div>
@@ -258,13 +258,13 @@ export default function SettingsPage() {
 
       {/* Region & Language Section */}
       {can('settings:edit') && (
-      <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6 shadow-sm">
-        <div className="flex items-center gap-3 mb-6">
+      <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-4 shadow-sm">
+        <div className="flex items-center gap-2 mb-4">
           <div className="p-2 rounded-lg">
             <Globe className="h-5 w-5 text-primary-600 dark:text-primary-400" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">{t('dashboard.settingsPage.regionSettings')}</h2>
+            <h2 className="text-base font-semibold text-neutral-900 dark:text-white">{t('dashboard.settingsPage.regionSettings')}</h2>
             <p className="text-sm text-neutral-500 dark:text-neutral-400">{t('dashboard.settingsPage.regionDescription')}</p>
           </div>
         </div>
@@ -330,13 +330,13 @@ export default function SettingsPage() {
       )}
 
       {/* Email Signature Section */}
-      <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6 shadow-sm">
-        <div className="flex items-center gap-3 mb-6">
+      <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-4 shadow-sm">
+        <div className="flex items-center gap-2 mb-4">
           <div className="p-2 rounded-lg">
             <Mail className="h-5 w-5 text-primary-600 dark:text-primary-400" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">
+            <h2 className="text-base font-semibold text-neutral-900 dark:text-white">
               {t('dashboard.settingsPage.emailSignatureTitle')}
             </h2>
             <p className="text-sm text-neutral-500 dark:text-neutral-400">
@@ -417,14 +417,14 @@ export default function SettingsPage() {
       </div>
 
       {/* Channels Section */}
-      <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6 shadow-sm">
-        <div className="flex items-center justify-between mb-6">
+      <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-4 shadow-sm">
+        <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg">
               <Phone className="h-5 w-5 text-primary-600 dark:text-primary-400" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">
+              <h2 className="text-base font-semibold text-neutral-900 dark:text-white">
                 {locale === 'tr' ? 'Kanallar' : 'Channels'}
               </h2>
               <p className="text-sm text-neutral-500 dark:text-neutral-400">
@@ -498,13 +498,13 @@ export default function SettingsPage() {
       </div>
 
       {/* Notifications Section */}
-      <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6 shadow-sm">
-        <div className="flex items-center gap-3 mb-6">
+      <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-4 shadow-sm">
+        <div className="flex items-center gap-2 mb-4">
           <div className="p-2 rounded-lg">
             <Bell className="h-5 w-5 text-primary-600 dark:text-primary-400" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">{t('dashboard.settingsPage.notificationsTitle')}</h2>
+            <h2 className="text-base font-semibold text-neutral-900 dark:text-white">{t('dashboard.settingsPage.notificationsTitle')}</h2>
             <p className="text-sm text-neutral-500 dark:text-neutral-400">{t('dashboard.settingsPage.configureUpdates')}</p>
           </div>
         </div>
@@ -575,13 +575,13 @@ export default function SettingsPage() {
       </div>
 
       {/* Security Section */}
-      <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6 shadow-sm">
-        <div className="flex items-center gap-3 mb-6">
+      <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-4 shadow-sm">
+        <div className="flex items-center gap-2 mb-4">
           <div className="p-2 rounded-lg">
             <AlertTriangle className="h-5 w-5 text-primary-600 dark:text-primary-400" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">{t('dashboard.settingsPage.securityTitle')}</h2>
+            <h2 className="text-base font-semibold text-neutral-900 dark:text-white">{t('dashboard.settingsPage.securityTitle')}</h2>
             <p className="text-sm text-neutral-500 dark:text-neutral-400">{t('dashboard.settingsPage.managePasswordLabel')}</p>
           </div>
         </div>
@@ -620,10 +620,10 @@ export default function SettingsPage() {
       </div>
 
       {/* Danger Zone */}
-      <div className="bg-red-50 dark:bg-red-950/30 border-2 border-red-200 dark:border-red-900 rounded-xl p-6">
+      <div className="bg-red-50 dark:bg-red-950/30 border-2 border-red-200 dark:border-red-900 rounded-xl p-4">
         <div className="flex items-center gap-3 mb-4">
           <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
-          <h2 className="text-lg font-semibold text-red-900 dark:text-red-300">{t('dashboard.settingsPage.dangerZoneTitle')}</h2>
+          <h2 className="text-base font-semibold text-red-900 dark:text-red-300">{t('dashboard.settingsPage.dangerZoneTitle')}</h2>
         </div>
         <p className="text-sm text-red-700 dark:text-red-400 mb-4">
           {t('dashboard.settingsPage.deleteAccountWarning')}
