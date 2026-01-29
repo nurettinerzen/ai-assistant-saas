@@ -238,60 +238,60 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Overview Cards - 5 columns */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Total Calls */}
-        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <Phone className="h-6 w-6 text-[#00A2B3]" />
+        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <Phone className="h-5 w-5 text-[#00A2B3]" />
           </div>
-          <h3 className="text-2xl font-bold text-neutral-900 dark:text-white">
+          <h3 className="text-xl font-bold text-neutral-900 dark:text-white">
             {analytics?.totalCalls || 0}
           </h3>
-          <p className="text-sm text-neutral-600 dark:text-neutral-400">{t('dashboard.analyticsPage.totalCalls')}</p>
+          <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-0.5">{t('dashboard.analyticsPage.totalCalls')}</p>
         </div>
 
         {/* Chat Sessions */}
-        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <MessageCircle className="h-6 w-6 text-[#3B82F6]" />
+        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <MessageCircle className="h-5 w-5 text-[#3B82F6]" />
           </div>
-          <h3 className="text-2xl font-bold text-neutral-900 dark:text-white">
+          <h3 className="text-xl font-bold text-neutral-900 dark:text-white">
             {analytics?.chatSessions || 0}
           </h3>
-          <p className="text-sm text-neutral-600 dark:text-neutral-400">{t('dashboard.analyticsPage.chatSessions')}</p>
+          <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-0.5">{t('dashboard.analyticsPage.chatSessions')}</p>
         </div>
 
         {/* WhatsApp Messages */}
-        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <WhatsAppIcon className="h-6 w-6 text-[#10B981]" />
+        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <WhatsAppIcon className="h-5 w-5 text-[#10B981]" />
           </div>
-          <h3 className="text-2xl font-bold text-neutral-900 dark:text-white">
+          <h3 className="text-xl font-bold text-neutral-900 dark:text-white">
             {analytics?.whatsappSessions || 0}
           </h3>
-          <p className="text-sm text-neutral-600 dark:text-neutral-400">{t('dashboard.analyticsPage.whatsappMessages')}</p>
+          <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-0.5">{t('dashboard.analyticsPage.whatsappMessages')}</p>
         </div>
 
         {/* Emails Answered */}
-        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <Mail className="h-6 w-6 text-[#F59E0B]" />
+        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <Mail className="h-5 w-5 text-[#F59E0B]" />
           </div>
-          <h3 className="text-2xl font-bold text-neutral-900 dark:text-white">
+          <h3 className="text-xl font-bold text-neutral-900 dark:text-white">
             {analytics?.emailsAnswered || 0}
           </h3>
-          <p className="text-sm text-neutral-600 dark:text-neutral-400">{t('dashboard.analyticsPage.emailsAnswered')}</p>
+          <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-0.5">{t('dashboard.analyticsPage.emailsAnswered')}</p>
         </div>
 
         {/* Average Call Duration */}
-        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <Clock className="h-6 w-6 text-neutral-600 dark:text-neutral-400" />
+        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <Clock className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
           </div>
-          <h3 className="text-2xl font-bold text-neutral-900 dark:text-white">
+          <h3 className="text-xl font-bold text-neutral-900 dark:text-white">
             {formatDuration(analytics?.avgDuration || 0)}
           </h3>
-          <p className="text-sm text-neutral-600 dark:text-neutral-400">{t('dashboard.analyticsPage.avgCallDuration')}</p>
+          <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-0.5">{t('dashboard.analyticsPage.avgCallDuration')}</p>
         </div>
       </div>
 
@@ -452,18 +452,18 @@ export default function AnalyticsPage() {
             ))}
           </div>
         ) : topTopics.length > 0 ? (
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {topTopics.map((topic, index) => (
               <div
                 key={index}
-                className="p-4 bg-neutral-50 dark:bg-neutral-800 rounded-lg"
+                className="p-3 bg-neutral-50 dark:bg-neutral-800 rounded-lg"
               >
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-lg font-semibold text-neutral-900 dark:text-white">
+                    <span className="text-base font-semibold text-neutral-900 dark:text-white">
                       {topic.category}
                     </span>
-                    <Badge variant="outline" className="font-semibold">
+                    <Badge variant="outline" className="font-semibold text-xs">
                       {topic.count}
                     </Badge>
                   </div>
@@ -477,11 +477,11 @@ export default function AnalyticsPage() {
                 </div>
                 {/* Subtopics with counts */}
                 {topic.subtopics && topic.subtopics.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-2">
+                  <div className="mt-2 flex flex-wrap gap-1.5">
                     {topic.subtopics.map((subtopic, i) => (
                       <span
                         key={i}
-                        className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-white dark:bg-neutral-700 rounded-full border border-neutral-200 dark:border-neutral-600 text-neutral-700 dark:text-neutral-300"
+                        className="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-white dark:bg-neutral-700 rounded-full border border-neutral-200 dark:border-neutral-600 text-neutral-700 dark:text-neutral-300"
                       >
                         {subtopic.text}
                         <span className="font-semibold text-primary-600 dark:text-primary-400">
