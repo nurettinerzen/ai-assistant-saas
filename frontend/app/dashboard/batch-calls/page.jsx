@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -36,7 +36,9 @@ import {
   Pause,
   ArrowUpCircle,
   AlertCircle,
-  X
+  X,
+  Search,
+  Filter
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
@@ -122,6 +124,12 @@ export default function BatchCallsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createStep, setCreateStep] = useState(1);
 
+  // Filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [assistantFilter, setAssistantFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState('all');
+
   // Form data
   const [formData, setFormData] = useState({
     name: '',
@@ -140,6 +148,54 @@ export default function BatchCallsPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const fileInputRef = useRef(null);
+
+  // Filter batch calls based on search and filters
+  const filteredBatchCalls = useMemo(() => {
+    let filtered = [...batchCalls];
+
+    // Search filter
+    if (searchQuery) {
+      filtered = filtered.filter(call =>
+        call.name?.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    // Status filter
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(call => call.status === statusFilter);
+    }
+
+    // Assistant filter
+    if (assistantFilter !== 'all') {
+      filtered = filtered.filter(call => call.assistantId === assistantFilter);
+    }
+
+    // Date filter
+    if (dateFilter !== 'all') {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+      filtered = filtered.filter(call => {
+        const callDate = new Date(call.createdAt);
+        const daysDiff = Math.floor((now - callDate) / (1000 * 60 * 60 * 24));
+
+        switch (dateFilter) {
+          case 'today':
+            return callDate >= today;
+          case 'week':
+            return daysDiff <= 7;
+          case 'month':
+            return daysDiff <= 30;
+          case 'quarter':
+            return daysDiff <= 90;
+          default:
+            return true;
+        }
+      });
+    }
+
+    return filtered;
+  }, [batchCalls, searchQuery, statusFilter, assistantFilter, dateFilter]);
 
   // Auto-refresh when there are in-progress campaigns
   useEffect(() => {
@@ -386,13 +442,72 @@ export default function BatchCallsPage() {
         )}
       </div>
 
+      {/* Filters */}
+      <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-4">
+        <div className="flex flex-wrap gap-3">
+          {/* Search */}
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
+            <Input
+              placeholder={locale === 'tr' ? 'Kampanya adı ara...' : 'Search campaign name...'}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+
+          {/* Status Filter */}
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder={locale === 'tr' ? 'Durum' : 'Status'} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{locale === 'tr' ? 'Tüm Durumlar' : 'All Statuses'}</SelectItem>
+              <SelectItem value="PENDING">{STATUS_CONFIG.PENDING.label[locale]}</SelectItem>
+              <SelectItem value="IN_PROGRESS">{STATUS_CONFIG.IN_PROGRESS.label[locale]}</SelectItem>
+              <SelectItem value="COMPLETED">{STATUS_CONFIG.COMPLETED.label[locale]}</SelectItem>
+              <SelectItem value="FAILED">{STATUS_CONFIG.FAILED.label[locale]}</SelectItem>
+              <SelectItem value="CANCELLED">{STATUS_CONFIG.CANCELLED.label[locale]}</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Assistant Filter */}
+          <Select value={assistantFilter} onValueChange={setAssistantFilter}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder={locale === 'tr' ? 'Asistan' : 'Assistant'} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{locale === 'tr' ? 'Tüm Asistanlar' : 'All Assistants'}</SelectItem>
+              {assistants.map((assistant) => (
+                <SelectItem key={assistant.id} value={assistant.id}>
+                  {assistant.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Date Filter */}
+          <Select value={dateFilter} onValueChange={setDateFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder={locale === 'tr' ? 'Tarih' : 'Date'} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{locale === 'tr' ? 'Tüm Zamanlar' : 'All Time'}</SelectItem>
+              <SelectItem value="today">{locale === 'tr' ? 'Bugün' : 'Today'}</SelectItem>
+              <SelectItem value="week">{locale === 'tr' ? 'Son 7 Gün' : 'Last 7 Days'}</SelectItem>
+              <SelectItem value="month">{locale === 'tr' ? 'Son 30 Gün' : 'Last 30 Days'}</SelectItem>
+              <SelectItem value="quarter">{locale === 'tr' ? 'Son 90 Gün' : 'Last 90 Days'}</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
 
       {/* Call History Table */}
       {loading ? (
         <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-12 flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
         </div>
-      ) : batchCalls.length === 0 ? (
+      ) : filteredBatchCalls.length === 0 ? (
         <EmptyState
           icon={Megaphone}
           title={locale === 'tr' ? 'Henüz arama yok' : 'No calls yet'}
@@ -435,7 +550,7 @@ export default function BatchCallsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-200 dark:divide-neutral-700">
-              {batchCalls.map((batch) => {
+              {filteredBatchCalls.map((batch) => {
                 const statusConfig = STATUS_CONFIG[batch.status] || STATUS_CONFIG.PENDING;
                 const StatusIcon = statusConfig.icon;
                 const progress = batch.totalRecipients > 0
