@@ -23,7 +23,15 @@ import { Badge } from '@/components/ui/badge';
 import EmptyState from '@/components/EmptyState';
 import { Upload, FileText, MessageSquare, Plus, Trash2, Eye, Loader2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { apiClient } from '@/lib/api';
+import {
+  useDocuments,
+  useFaqs,
+  useDocument,
+  useUploadDocument,
+  useDeleteDocument,
+  useCreateFaq,
+  useDeleteFaq
+} from '@/hooks/useKnowledge';
 import { toast, Toaster } from 'sonner';
 import { formatDate, formatFileSize } from '@/lib/utils';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -52,9 +60,24 @@ function KnowledgeBaseContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
-  const [documents, setDocuments] = useState([]);
-  const [faqs, setFaqs] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // React Query hooks
+  const { data: documentsData, isLoading: docsLoading } = useDocuments();
+  const { data: faqsData, isLoading: faqsLoading } = useFaqs();
+  const uploadDocument = useUploadDocument();
+  const deleteDocument = useDeleteDocument();
+  const createFaq = useCreateFaq();
+  const deleteFaq = useDeleteFaq();
+
+  // Map backend fields to frontend expected fields
+  const documents = (documentsData?.documents || []).map(doc => ({
+    ...doc,
+    name: doc.title || doc.name || '',
+    size: doc.fileSize || doc.size || 0,
+    uploadedAt: doc.createdAt || doc.uploadedAt
+  }));
+  const faqs = faqsData?.faqs || [];
+  const loading = docsLoading || faqsLoading;
+
   const [uploadingFile, setUploadingFile] = useState(false);
 
   // Modal states
@@ -70,33 +93,6 @@ function KnowledgeBaseContent() {
   const [showContentModal, setShowContentModal] = useState(false);
   const [contentModalData, setContentModalData] = useState(null);
   const [loadingContent, setLoadingContent] = useState(false);
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      const [docsRes, faqsRes] = await Promise.all([
-        apiClient.knowledge.getDocuments(),
-        apiClient.knowledge.getFaqs(),
-      ]);
-      // Map backend fields to frontend expected fields
-      const mappedDocs = (docsRes.data.documents || []).map(doc => ({
-        ...doc,
-        name: doc.title || doc.name || '',
-        size: doc.fileSize || doc.size || 0,
-        uploadedAt: doc.createdAt || doc.uploadedAt
-      }));
-      setDocuments(mappedDocs);
-      setFaqs(faqsRes.data.faqs || []);
-    } catch (error) {
-      toast.error(t('dashboard.knowledgeBasePage.saveError'));
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleFileSelect = (e) => {
     const file = e.target.files?.[0];
@@ -127,19 +123,7 @@ function KnowledgeBaseContent() {
     const uploadToast = toast.loading(t('dashboard.knowledgeBasePage.uploadingText'));
 
     try {
-      const response = await apiClient.knowledge.uploadDocument(formData);
-
-      const newDoc = {
-        id: response.data.document?.id || Date.now(),
-        name: docName,
-        type: selectedFile.name.split('.').pop().toUpperCase(),
-        size: selectedFile.size,
-        status: 'ready',
-        uploadedAt: new Date().toISOString()
-      };
-
-      setDocuments([newDoc, ...documents]);
-
+      await uploadDocument.mutateAsync(formData);
       toast.success(t('dashboard.knowledgeBasePage.documentUploadedSuccess'), { id: uploadToast });
       setShowDocModal(false);
       setDocName('');
@@ -154,8 +138,7 @@ function KnowledgeBaseContent() {
   const handleDeleteDocument = async (id) => {
     try {
       const deleteToast = toast.loading(t('dashboard.knowledgeBasePage.deletingText'));
-      await apiClient.knowledge.deleteDocument(id);
-      setDocuments(documents.filter(doc => doc.id !== id));
+      await deleteDocument.mutateAsync(id);
       toast.success(t('dashboard.knowledgeBasePage.documentDeleted'), { id: deleteToast });
     } catch (error) {
       toast.error(t('dashboard.knowledgeBasePage.failedToDeleteDocument'));
@@ -170,15 +153,7 @@ function KnowledgeBaseContent() {
 
     try {
       const createToast = toast.loading(t('dashboard.knowledgeBasePage.creatingFaq'));
-      const response = await apiClient.knowledge.createFaq(faqForm);
-
-      const newFaq = {
-        id: response.data.faq?.id || Date.now(),
-        ...faqForm,
-        createdAt: new Date().toISOString()
-      };
-
-      setFaqs([newFaq, ...faqs]);
+      await createFaq.mutateAsync(faqForm);
       toast.success(t('dashboard.knowledgeBasePage.faqCreated'), { id: createToast });
       setShowFaqModal(false);
       setFaqForm({ question: '', answer: '', category: '' });
@@ -190,8 +165,7 @@ function KnowledgeBaseContent() {
   const handleDeleteFaq = async (id) => {
     try {
       const deleteToast = toast.loading(t('dashboard.knowledgeBasePage.deletingText'));
-      await apiClient.knowledge.deleteFaq(id);
-      setFaqs(faqs.filter(faq => faq.id !== id));
+      await deleteFaq.mutateAsync(id);
       toast.success(t('dashboard.knowledgeBasePage.faqDeleted'), { id: deleteToast });
     } catch (error) {
       toast.error(t('dashboard.knowledgeBasePage.failedToDeleteFaq'));
