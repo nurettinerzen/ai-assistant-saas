@@ -17,6 +17,24 @@ export async function makeRoutingDecision(params) {
     .slice().reverse()
     .find(msg => msg.role === 'assistant')?.content || '';
 
+  // Route message first (needed for routing info)
+  const messageRouting = await routeMessage(
+    userMessage,
+    state,
+    lastAssistantMessage,
+    language,
+    business
+  );
+
+  const { routing } = messageRouting;
+  const action = routing.action;
+
+  console.log('🧭 [RouterDecision]:', {
+    action,
+    suggestedFlow: routing.suggestedFlow,
+    triggerRule: classification.triggerRule
+  });
+
   // ========================================
   // SPECIAL HANDLER: CALLBACK_REQUEST
   // Backend-controlled slot collection + force tool call
@@ -39,6 +57,7 @@ export async function makeRoutingDecision(params) {
         directResponse: true,
         reply: question,
         forceEnd: false,
+        routing: messageRouting,
         metadata: {
           type: 'CALLBACK_SLOT_COLLECTION',
           missingSlot,
@@ -55,23 +74,6 @@ export async function makeRoutingDecision(params) {
       // Continue to LLM with forced tool call instruction
     }
   }
-
-  // Route message
-  const messageRouting = await routeMessage(
-    userMessage,
-    state,
-    lastAssistantMessage,
-    language,
-    business
-  );
-
-  const { action, routing } = messageRouting;
-
-  console.log('🧭 [RouterDecision]:', {
-    action,
-    suggestedFlow: routing.suggestedFlow,
-    triggerRule: classification.triggerRule
-  });
 
   // Handle different actions
   switch (action) {
@@ -105,6 +107,7 @@ export async function makeRoutingDecision(params) {
             ? 'Bilgilerinizi almakta sorun yaşıyorum. Sizi müşteri temsilcimize bağlayayım mı?'
             : 'I\'m having trouble collecting your information. Should I connect you to a representative?'),
           forceEnd: false,
+          routing: messageRouting,
           metadata: {
             type: 'SLOT_ESCALATION',
             slotName: state.expectedSlot,
@@ -134,6 +137,7 @@ export async function makeRoutingDecision(params) {
           directResponse: true,
           reply: disputeResult.response,
           forceEnd: false,
+          routing: messageRouting,
           metadata: {
             type: 'DISPUTE_HANDLED',
             resolutionType: disputeResult.resolutionType

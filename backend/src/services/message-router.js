@@ -73,6 +73,8 @@ function decideRouting(messageType, state, business) {
       action: 'ACKNOWLEDGE_CHATTER',
       reason: `Low confidence (${confidence.toFixed(2)}) - letting Gemini handle naturally`,
       nextAction: 'gemini-freeform',
+      suggestedFlow: 'GENERAL',
+      allowToollessResponse: true,
       skipRouter: true,
       skipSlotProcessing: true,
       confidence
@@ -122,6 +124,8 @@ function decideRouting(messageType, state, business) {
       action: 'ACKNOWLEDGE_CHATTER',
       reason: 'Message is emotional response without actionable intent',
       nextAction: 'gemini-freeform', // Let Gemini respond naturally
+      suggestedFlow: 'GENERAL',
+      allowToollessResponse: true,
       skipRouter: true,
       skipSlotProcessing: true,
       confidence

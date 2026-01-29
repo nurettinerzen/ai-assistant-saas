@@ -234,6 +234,7 @@ export async function handleIncomingMessage({
       conversationHistory,
       userMessage,
       classification,
+      routingResult, // Pass routing result for allowToollessResponse handling
       state,
       toolsAll,
       metrics

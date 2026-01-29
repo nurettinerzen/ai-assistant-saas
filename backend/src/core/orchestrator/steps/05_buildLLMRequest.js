@@ -18,6 +18,7 @@ export async function buildLLMRequest(params) {
     conversationHistory,
     userMessage,
     classification,
+    routingResult,
     state,
     toolsAll,
     metrics
@@ -44,6 +45,28 @@ export async function buildLLMRequest(params) {
       enhancedSystemPrompt += `\n\nKnown Customer Info: ${knownInfo.join(', ')}`;
       console.log('📝 [BuildLLMRequest] Added Known Info to prompt:', knownInfo.join(', '));
     }
+  }
+
+  // STEP 0.5: Add toolless response guidance for CHATTER messages
+  if (routingResult?.routing?.allowToollessResponse) {
+    const toollessGuidance = state.language === 'TR'
+      ? `\n\n⚠️ ÖNEMLİ: Bu bir sohbet/selamlama mesajı olabilir.
+Basit mesajlara (selam, merhaba, teşekkürler, nasılsın, naber vs.)
+tool çağırmadan doğal ve samimi şekilde cevap verebilirsin.
+Tool çağırmak ZORUNLU DEĞİL - mesajın doğasına göre karar ver.
+
+Ancak kullanıcı gerçek bir soru sorarsa (ürün sorgusu, sipariş takibi vb.)
+ilgili tool'ları kullanmalısın.`
+      : `\n\n⚠️ IMPORTANT: This may be a casual chat/greeting message.
+For simple messages (hi, hello, thanks, how are you, etc.)
+you can respond naturally and warmly WITHOUT calling any tools.
+Tool calls are NOT MANDATORY - decide based on the message nature.
+
+However, if the user asks a real question (product inquiry, order tracking, etc.)
+you should use the relevant tools.`;
+
+    enhancedSystemPrompt += toollessGuidance;
+    console.log('💬 [BuildLLMRequest] Added toolless response guidance for CHATTER');
   }
 
   // STEP 1: Apply tool gating policy
