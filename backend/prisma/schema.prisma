@@ -152,6 +152,7 @@ model Business {
   creditPurchases          CreditPurchase[]
   usageLogs                UsageLog[]
   crmWebhook               CrmWebhook?
+  crmWebhookEvents         CrmWebhookEvent[] @relation("CrmWebhookEvents")
   crmOrders                CrmOrder[]
   crmStocks                CrmStock[]
   crmTickets               CrmTicket[]
@@ -1394,6 +1395,22 @@ model CrmWebhook {
   updatedAt     DateTime  @updatedAt
 
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+}
+
+// CRM Webhook Event (Idempotency tracking)
+model CrmWebhookEvent {
+  id              String   @id @default(cuid())
+  idempotencyKey  String   @unique  // Format: businessId-type-eventId
+  businessId      Int
+  eventType       String   // order, stock, ticket
+  eventId         String   // External event ID from CRM system
+  recordId        String   // ID of created CrmOrder/CrmStock/CrmTicket
+  processedAt     DateTime @default(now())
+
+  business Business @relation("CrmWebhookEvents", fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, eventType])
+  @@index([processedAt])
 }
 
 // CRM Sipariş Verileri

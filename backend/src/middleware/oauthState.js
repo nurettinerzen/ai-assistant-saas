@@ -13,20 +13,43 @@ import crypto from 'crypto';
 import prisma from '../prismaClient.js';
 
 /**
+ * Generate PKCE code verifier and challenge
+ * @returns {Promise<{verifier: string, challenge: string}>}
+ */
+export async function generatePKCE() {
+  // Generate 64-byte random verifier (base64url encoded = 86 chars)
+  const verifier = crypto.randomBytes(64).toString('base64url');
+
+  // Create SHA256 hash and base64url encode (challenge)
+  const hash = crypto.createHash('sha256').update(verifier).digest();
+  const challenge = hash.toString('base64url');
+
+  return { verifier, challenge };
+}
+
+/**
  * Generate OAuth state token and store in database
  * @param {number} businessId - Business ID
  * @param {string} provider - OAuth provider (google, microsoft, hubspot, etc.)
  * @param {object} metadata - Additional metadata to store with state
- * @returns {Promise<string>} - State token
+ * @param {boolean} usePKCE - Whether to generate PKCE parameters (default: true)
+ * @returns {Promise<{state: string, pkce?: {verifier: string, challenge: string}}>}
  */
-export async function generateOAuthState(businessId, provider, metadata = {}) {
+export async function generateOAuthState(businessId, provider, metadata = {}, usePKCE = true) {
   const state = crypto.randomBytes(32).toString('hex');
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-  // Store businessId in metadata for callback retrieval
+  // Generate PKCE parameters if requested
+  let pkce = null;
+  if (usePKCE) {
+    pkce = await generatePKCE();
+  }
+
+  // Store businessId and PKCE verifier in metadata
   const fullMetadata = {
     ...metadata,
-    businessId
+    businessId,
+    ...(pkce && { codeVerifier: pkce.verifier })
   };
 
   await prisma.oAuthState.create({
@@ -39,8 +62,12 @@ export async function generateOAuthState(businessId, provider, metadata = {}) {
     }
   });
 
-  console.log(`✅ OAuth state generated for ${provider}, businessId: ${businessId}`);
-  return state;
+  console.log(`✅ OAuth state generated for ${provider}, businessId: ${businessId}${usePKCE ? ' (PKCE enabled)' : ''}`);
+
+  if (usePKCE) {
+    return { state, pkce };
+  }
+  return { state };
 }
 
 /**

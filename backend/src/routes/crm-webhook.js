@@ -73,6 +73,8 @@ function verifyCRMSignature(req, webhookSecret) {
  * SECURITY: Requires HMAC-SHA256 signature in X-CRM-Signature header
  * Format: timestamp=<unix_timestamp>,signature=<hmac_hex>
  * Signature payload: `${timestamp}.${JSON.stringify(body)}`
+ *
+ * IDEMPOTENCY: Optional event_id field ensures duplicate events are ignored
  */
 router.post('/:businessId/:webhookSecret', async (req, res) => {
   try {
@@ -99,7 +101,7 @@ router.post('/:businessId/:webhookSecret', async (req, res) => {
     }
 
     // Data tipi kontrolü
-    const { type } = data;
+    const { type, event_id } = data;
     if (!type || !['order', 'stock', 'ticket'].includes(type)) {
       return res.status(400).json({
         error: 'Invalid data type. Must be: order, stock, or ticket'
@@ -107,6 +109,29 @@ router.post('/:businessId/:webhookSecret', async (req, res) => {
     }
 
     const bizId = parseInt(businessId);
+
+    // Step 3: IDEMPOTENCY - Check if event already processed
+    if (event_id) {
+      // Generate unique idempotency key: businessId-type-eventId
+      const idempotencyKey = `${bizId}-${type}-${event_id}`;
+
+      // Check if this event was already processed
+      const existingEvent = await prisma.crmWebhookEvent.findUnique({
+        where: { idempotencyKey }
+      });
+
+      if (existingEvent) {
+        console.log(`✅ CRM webhook idempotent: already processed event ${event_id} for business ${bizId}`);
+        return res.status(200).json({
+          success: true,
+          type,
+          id: existingEvent.recordId,
+          idempotent: true,
+          message: 'Event already processed'
+        });
+      }
+    }
+
     let result;
 
     // Data tipine göre işle
@@ -120,6 +145,32 @@ router.post('/:businessId/:webhookSecret', async (req, res) => {
       case 'ticket':
         result = await handleTicket(bizId, data);
         break;
+    }
+
+    // Step 4: Save event for idempotency (if event_id provided)
+    if (event_id) {
+      const idempotencyKey = `${bizId}-${type}-${event_id}`;
+      try {
+        await prisma.crmWebhookEvent.create({
+          data: {
+            idempotencyKey,
+            businessId: bizId,
+            eventType: type,
+            eventId: event_id,
+            recordId: result.id,
+            processedAt: new Date()
+          }
+        });
+      } catch (error) {
+        // If unique constraint fails, event was processed concurrently
+        // This is fine - the first one won
+        if (error.code === 'P2002') {
+          console.log(`⚠️ CRM webhook race condition detected for event ${event_id}, but data was already saved`);
+        } else {
+          console.error('Failed to save webhook event:', error);
+          // Don't fail the request - data was already processed successfully
+        }
+      }
     }
 
     // Son data zamanını güncelle

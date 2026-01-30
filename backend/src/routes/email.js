@@ -39,9 +39,9 @@ router.get('/gmail/auth', authenticateToken, async (req, res) => {
       });
     }
 
-    // SECURITY: Generate cryptographically secure state token (CSRF protection)
-    const state = await generateOAuthState(req.businessId, 'gmail');
-    const authUrl = gmailService.getAuthUrl(state);
+    // SECURITY: Generate cryptographically secure state token with PKCE (CSRF + code injection protection)
+    const { state, pkce } = await generateOAuthState(req.businessId, 'gmail', {}, true);
+    const authUrl = gmailService.getAuthUrl(state, pkce.challenge);
 
     res.json({ authUrl });
   } catch (error) {
@@ -77,8 +77,10 @@ router.get('/gmail/callback', async (req, res) => {
     }
 
     const businessId = validation.businessId;
+    const codeVerifier = validation.metadata?.codeVerifier;
 
-    await gmailService.handleCallback(code, businessId);
+    // SECURITY: Use PKCE verifier to exchange code for tokens
+    await gmailService.handleCallback(code, businessId, codeVerifier);
 
     console.log(`✅ Gmail connected for business ${businessId}`);
 
@@ -113,9 +115,9 @@ router.get('/outlook/auth', authenticateToken, async (req, res) => {
       });
     }
 
-    // SECURITY: Generate cryptographically secure state token (CSRF protection)
-    const state = await generateOAuthState(req.businessId, 'outlook');
-    const authUrl = outlookService.getAuthUrl(state);
+    // SECURITY: Generate cryptographically secure state token with PKCE (CSRF + code injection protection)
+    const { state, pkce } = await generateOAuthState(req.businessId, 'outlook', {}, true);
+    const authUrl = outlookService.getAuthUrl(state, pkce.challenge);
 
     res.json({ authUrl });
   } catch (error) {
@@ -151,8 +153,10 @@ router.get('/outlook/callback', async (req, res) => {
     }
 
     const businessId = validation.businessId;
+    const codeVerifier = validation.metadata?.codeVerifier;
 
-    await outlookService.handleCallback(code, businessId);
+    // SECURITY: Use PKCE verifier to exchange code for tokens
+    await outlookService.handleCallback(code, businessId, codeVerifier);
 
     console.log(`✅ Outlook connected for business ${businessId}`);
 

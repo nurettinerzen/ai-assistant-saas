@@ -11,30 +11,46 @@ const HUBSPOT_TOKEN_URL = 'https://api.hubapi.com/oauth/v1/token';
 
 class HubSpotService {
   /**
-   * Get OAuth authorization URL
+   * Get OAuth authorization URL with PKCE support
+   * @param {string} codeChallenge - PKCE code challenge (optional)
    */
-  getAuthUrl(clientId, redirectUri, scopes, state) {
+  getAuthUrl(clientId, redirectUri, scopes, state, codeChallenge = null) {
     const params = new URLSearchParams({
       client_id: clientId,
       redirect_uri: redirectUri,
       scope: scopes.join(' '),
       state: state
     });
+
+    // Add PKCE parameters if provided
+    if (codeChallenge) {
+      params.append('code_challenge', codeChallenge);
+      params.append('code_challenge_method', 'S256');
+    }
+
     return `${HUBSPOT_AUTH_URL}?${params.toString()}`;
   }
 
   /**
-   * Exchange authorization code for access token
+   * Exchange authorization code for access token with PKCE support
+   * @param {string} codeVerifier - PKCE code verifier (optional)
    */
-  async getAccessToken(code, clientId, clientSecret, redirectUri) {
+  async getAccessToken(code, clientId, clientSecret, redirectUri, codeVerifier = null) {
     try {
-      const response = await axios.post(HUBSPOT_TOKEN_URL, {
+      const tokenPayload = {
         grant_type: 'authorization_code',
         client_id: clientId,
         client_secret: clientSecret,
         redirect_uri: redirectUri,
         code
-      });
+      };
+
+      // Add PKCE verifier if provided
+      if (codeVerifier) {
+        tokenPayload.code_verifier = codeVerifier;
+      }
+
+      const response = await axios.post(HUBSPOT_TOKEN_URL, tokenPayload);
 
       return {
         accessToken: response.data.access_token,

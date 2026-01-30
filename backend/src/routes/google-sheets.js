@@ -73,11 +73,11 @@ router.get('/auth-url', authenticateToken, async (req, res) => {
   try {
     const { clientId, clientSecret, redirectUri } = getGoogleCredentials();
 
-    // SECURITY: Generate cryptographically secure state token (CSRF protection)
-    const state = await generateOAuthState(req.businessId, 'google-sheets');
+    // SECURITY: Generate cryptographically secure state token with PKCE (CSRF + code injection protection)
+    const { state, pkce } = await generateOAuthState(req.businessId, 'google-sheets', {}, true);
 
     const oauth2Client = googleSheetsService.createOAuth2Client(clientId, clientSecret, redirectUri);
-    const authUrl = googleSheetsService.getAuthUrl(oauth2Client, state);
+    const authUrl = googleSheetsService.getAuthUrl(oauth2Client, state, pkce.challenge);
 
     res.json({
       authUrl,
@@ -108,12 +108,13 @@ router.get('/callback', async (req, res) => {
     }
 
     const businessId = validation.businessId;
+    const codeVerifier = validation.metadata?.codeVerifier;
 
     const { clientId, clientSecret, redirectUri } = getGoogleCredentials();
     const oauth2Client = googleSheetsService.createOAuth2Client(clientId, clientSecret, redirectUri);
 
-    // Exchange code for tokens
-    const tokens = await googleSheetsService.getTokens(oauth2Client, code);
+    // SECURITY: Use PKCE verifier to exchange code for tokens
+    const tokens = await googleSheetsService.getTokens(oauth2Client, code, codeVerifier);
 
     // Save tokens to business
     await prisma.business.update({

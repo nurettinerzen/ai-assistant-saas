@@ -14,25 +14,39 @@ class GoogleCalendarService {
   }
 
   /**
-   * Get OAuth authorization URL
+   * Get OAuth authorization URL with PKCE support
+   * @param {string} codeChallenge - PKCE code challenge (optional)
    */
-  getAuthUrl(oauth2Client) {
-    return oauth2Client.generateAuthUrl({
+  getAuthUrl(oauth2Client, codeChallenge = null) {
+    const authParams = {
       access_type: 'offline',
       scope: [
         'https://www.googleapis.com/auth/calendar',
         'https://www.googleapis.com/auth/calendar.events'
       ],
       prompt: 'consent'
-    });
+    };
+
+    // Add PKCE parameters if provided
+    if (codeChallenge) {
+      authParams.code_challenge = codeChallenge;
+      authParams.code_challenge_method = 'S256';
+    }
+
+    return oauth2Client.generateAuthUrl(authParams);
   }
 
   /**
-   * Exchange authorization code for tokens
+   * Exchange authorization code for tokens with PKCE support
+   * @param {string} codeVerifier - PKCE code verifier (optional)
    */
-  async getTokens(oauth2Client, code) {
+  async getTokens(oauth2Client, code, codeVerifier = null) {
     try {
-      const { tokens } = await oauth2Client.getToken(code);
+      const tokenParams = { code };
+      if (codeVerifier) {
+        tokenParams.codeVerifier = codeVerifier;
+      }
+      const { tokens } = await oauth2Client.getToken(tokenParams);
       return tokens;
     } catch (error) {
       console.error('Google Calendar token error:', error);

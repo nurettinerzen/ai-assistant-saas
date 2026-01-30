@@ -1,8 +1,33 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
+import rateLimit from 'express-rate-limit';
 
 const router = express.Router();
 const prisma = new PrismaClient();
+
+// SECURITY: Rate limiter for email enumeration prevention
+// Limits email checks to 5 requests per minute per IP
+const emailCheckRateLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 5, // 5 requests per minute
+  message: {
+    error: 'Too many email checks. Please try again later.',
+    code: 'RATE_LIMIT_EXCEEDED'
+  },
+  standardHeaders: true, // Return rate limit info in headers
+  legacyHeaders: false,
+  // Use IP address for rate limiting
+  keyGenerator: (req) => {
+    return req.ip || req.connection.remoteAddress;
+  },
+  // Consistent timing to prevent timing attacks
+  handler: (req, res) => {
+    res.status(429).json({
+      error: 'Too many email checks. Please try again later.',
+      code: 'RATE_LIMIT_EXCEEDED'
+    });
+  }
+});
 
 // POST /api/waitlist - Submit waitlist application
 router.post('/', async (req, res) => {
@@ -70,13 +95,23 @@ router.post('/', async (req, res) => {
 });
 
 // GET /api/waitlist/check/:email - Check if email is already on waitlist
-router.get('/check/:email', async (req, res) => {
+// SECURITY: Rate limited to prevent email enumeration attacks
+router.get('/check/:email', emailCheckRateLimiter, async (req, res) => {
   try {
     const { email } = req.params;
+
+    // Add consistent timing delay to prevent timing attacks
+    const startTime = Date.now();
 
     const entry = await prisma.waitlistEntry.findUnique({
       where: { email: email.toLowerCase() }
     });
+
+    // Ensure response takes at least 200ms to prevent timing-based enumeration
+    const elapsed = Date.now() - startTime;
+    if (elapsed < 200) {
+      await new Promise(resolve => setTimeout(resolve, 200 - elapsed));
+    }
 
     res.json({
       exists: !!entry,

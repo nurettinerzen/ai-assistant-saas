@@ -75,11 +75,12 @@ class OutlookService {
   }
 
   /**
-   * Get OAuth authorization URL
+   * Get OAuth authorization URL with PKCE support
    * @param {string} state - Cryptographically secure state token (CSRF protection)
+   * @param {string} codeChallenge - PKCE code challenge (optional)
    * @returns {string} Authorization URL
    */
-  getAuthUrl(state) {
+  getAuthUrl(state, codeChallenge = null) {
     const config = this.getOAuthConfig();
 
     const params = new URLSearchParams({
@@ -88,30 +89,47 @@ class OutlookService {
       redirect_uri: config.redirectUri,
       scope: MICROSOFT_SCOPES.join(' '),
       response_mode: 'query',
-      state, // Now using secure state token instead of businessId
+      state,
       prompt: 'consent'
     });
+
+    // Add PKCE parameters if provided
+    if (codeChallenge) {
+      params.append('code_challenge', codeChallenge);
+      params.append('code_challenge_method', 'S256');
+    }
 
     return `${MICROSOFT_AUTH_URL}/authorize?${params.toString()}`;
   }
 
   /**
    * Exchange authorization code for tokens
+   * @param {string} code - Authorization code
+   * @param {number} businessId - Business ID
+   * @param {string} codeVerifier - PKCE code verifier (optional)
    */
-  async handleCallback(code, businessId) {
+  async handleCallback(code, businessId, codeVerifier = null) {
     try {
       const config = this.getOAuthConfig();
+
+      // Build token request parameters
+      const tokenParams = {
+        client_id: config.clientId,
+        client_secret: config.clientSecret,
+        code,
+        redirect_uri: config.redirectUri,
+        grant_type: 'authorization_code'
+      };
+
+      // Add PKCE verifier if provided
+      if (codeVerifier) {
+        tokenParams.code_verifier = codeVerifier;
+      }
 
       // Exchange code for tokens
       const tokenResponse = await axios.post(
         `${MICROSOFT_AUTH_URL}/token`,
-        new URLSearchParams({
-          client_id: config.clientId,
-          client_secret: config.clientSecret,
-          code,
-          redirect_uri: config.redirectUri,
-          grant_type: 'authorization_code'
-        }),
+        new URLSearchParams(tokenParams),
         {
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
         }

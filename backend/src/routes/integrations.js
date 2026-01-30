@@ -252,11 +252,11 @@ router.get('/google-calendar/auth', async (req, res) => {
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
     const redirectUri = `${process.env.BACKEND_URL}/api/integrations/google-calendar/callback`;
 
-    // SECURITY: Generate cryptographically secure state token (CSRF protection)
-    const state = await generateOAuthState(req.businessId, 'google-calendar');
+    // SECURITY: Generate cryptographically secure state token with PKCE (CSRF + code injection protection)
+    const { state, pkce } = await generateOAuthState(req.businessId, 'google-calendar', {}, true);
 
     const oauth2Client = googleCalendarService.createOAuth2Client(clientId, clientSecret, redirectUri);
-    const authUrl = googleCalendarService.getAuthUrl(oauth2Client);
+    const authUrl = googleCalendarService.getAuthUrl(oauth2Client, pkce.challenge);
 
     res.json({ authUrl: authUrl + `&state=${state}` });
   } catch (error) {
@@ -283,13 +283,15 @@ router.get('/google-calendar/callback', async (req, res) => {
     }
 
     const businessId = validation.businessId;
+    const codeVerifier = validation.metadata?.codeVerifier;
 
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
     const redirectUri = `${process.env.BACKEND_URL}/api/integrations/google-calendar/callback`;
 
     const oauth2Client = googleCalendarService.createOAuth2Client(clientId, clientSecret, redirectUri);
-    const tokens = await googleCalendarService.getTokens(oauth2Client, code);
+    // SECURITY: Use PKCE verifier to exchange code for tokens
+    const tokens = await googleCalendarService.getTokens(oauth2Client, code, codeVerifier);
 
     await prisma.integration.upsert({
       where: {
@@ -440,10 +442,10 @@ router.get('/hubspot/auth', async (req, res) => {
     const redirectUri = `${process.env.BACKEND_URL}/api/integrations/hubspot/callback`;
     const scopes = ['crm.objects.contacts.write', 'crm.objects.deals.write'];
 
-    // SECURITY: Generate cryptographically secure state token (CSRF protection)
-    const state = await generateOAuthState(req.businessId, 'hubspot');
+    // SECURITY: Generate cryptographically secure state token with PKCE (CSRF + code injection protection)
+    const { state, pkce } = await generateOAuthState(req.businessId, 'hubspot', {}, true);
 
-    const authUrl = hubspotService.getAuthUrl(clientId, redirectUri, scopes, state);
+    const authUrl = hubspotService.getAuthUrl(clientId, redirectUri, scopes, state, pkce.challenge);
     res.json({ authUrl });
   } catch (error) {
     console.error('HubSpot auth error:', error);
@@ -469,12 +471,14 @@ router.get('/hubspot/callback', async (req, res) => {
     }
 
     const businessId = validation.businessId;
+    const codeVerifier = validation.metadata?.codeVerifier;
 
     const clientId = process.env.HUBSPOT_CLIENT_ID;
     const clientSecret = process.env.HUBSPOT_CLIENT_SECRET;
     const redirectUri = `${process.env.BACKEND_URL}/api/integrations/hubspot/callback`;
 
-    const tokens = await hubspotService.getAccessToken(code, clientId, clientSecret, redirectUri);
+    // SECURITY: Use PKCE verifier to exchange code for tokens
+    const tokens = await hubspotService.getAccessToken(code, clientId, clientSecret, redirectUri, codeVerifier);
 
     await prisma.integration.upsert({
       where: {

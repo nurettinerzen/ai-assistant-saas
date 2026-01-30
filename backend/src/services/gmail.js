@@ -69,28 +69,47 @@ class GmailService {
   }
 
   /**
-   * Get OAuth authorization URL
+   * Get OAuth authorization URL with PKCE support
    * @param {string} state - Cryptographically secure state token (CSRF protection)
+   * @param {string} codeChallenge - PKCE code challenge (optional)
    * @returns {string} Authorization URL
    */
-  getAuthUrl(state) {
+  getAuthUrl(state, codeChallenge = null) {
     const oauth2Client = this.createOAuth2Client();
 
-    return oauth2Client.generateAuthUrl({
+    const authUrlParams = {
       access_type: 'offline',
       scope: GMAIL_SCOPES,
       prompt: 'consent',
-      state // Now using secure state token instead of businessId
-    });
+      state
+    };
+
+    // Add PKCE parameters if provided
+    if (codeChallenge) {
+      authUrlParams.code_challenge = codeChallenge;
+      authUrlParams.code_challenge_method = 'S256';
+    }
+
+    return oauth2Client.generateAuthUrl(authUrlParams);
   }
 
   /**
    * Exchange authorization code for tokens
+   * @param {string} code - Authorization code
+   * @param {number} businessId - Business ID
+   * @param {string} codeVerifier - PKCE code verifier (optional)
    */
-  async handleCallback(code, businessId) {
+  async handleCallback(code, businessId, codeVerifier = null) {
     try {
       const oauth2Client = this.createOAuth2Client();
-      const { tokens } = await oauth2Client.getToken(code);
+
+      // Include PKCE verifier if provided
+      const tokenParams = { code };
+      if (codeVerifier) {
+        tokenParams.codeVerifier = codeVerifier;
+      }
+
+      const { tokens } = await oauth2Client.getToken(tokenParams);
 
       // Get user email
       oauth2Client.setCredentials(tokens);
