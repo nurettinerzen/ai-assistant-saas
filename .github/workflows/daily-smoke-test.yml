@@ -49,7 +49,7 @@ jobs:
           retention-days: 30
 
       - name: Send failure notification (Email)
-        if: failure()
+        if: failure() && secrets.NOTIFICATION_EMAIL_PASSWORD != ''
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: smtp.gmail.com

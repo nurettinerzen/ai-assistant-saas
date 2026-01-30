@@ -367,7 +367,7 @@ async function section6_ChannelHealth() {
   // Basic endpoint health checks
   try {
     // Check if API is responding
-    const response = await axios.get(`${CONFIG.API_URL}/api/health`).catch(() => null);
+    const response = await axios.get(`${CONFIG.API_URL}/health`).catch(() => null);
 
     if (!response) {
       logTest('API health endpoint', false, 'Endpoint not responding');
