@@ -5,6 +5,8 @@ import crypto from 'crypto';
 import { PrismaClient } from '@prisma/client';
 import { authenticateToken } from '../middleware/auth.js';
 import { sendVerificationEmail, sendEmailChangeVerification, sendPasswordResetEmail } from '../services/emailService.js';
+import { generateOAuthState, validateOAuthState } from '../middleware/oauthState.js';
+import { safeRedirect } from '../middleware/redirectWhitelist.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -639,18 +641,27 @@ router.get('/microsoft/callback', async (req, res) => {
 
     if (oauthError) {
       console.error('Microsoft OAuth error:', oauthError);
-      return res.redirect(`${FRONTEND_URL}/dashboard/integrations?error=outlook-denied`);
+      return safeRedirect(res, '/dashboard/integrations?error=outlook-denied');
     }
 
     if (!code || !state) {
-      return res.redirect(`${FRONTEND_URL}/dashboard/integrations?error=outlook-invalid`);
+      console.error('Microsoft callback: missing code or state');
+      return safeRedirect(res, '/dashboard/integrations?error=outlook-invalid');
     }
 
-    const businessId = parseInt(state);
+    // SECURITY: Validate state token (CSRF protection)
+    const validation = await validateOAuthState(state, null, 'outlook');
+
+    if (!validation.valid) {
+      console.error('❌ Microsoft callback: Invalid state:', validation.error);
+      return safeRedirect(res, '/dashboard/integrations?error=outlook-csrf');
+    }
+
+    const businessId = validation.businessId;
 
     await outlookService.handleCallback(code, businessId);
 
-    console.log(`Outlook connected for business ${businessId}`);
+    console.log(`✅ Outlook connected for business ${businessId}`);
 
     // Trigger style analysis in background
     import('../services/email-style-analyzer.js').then((module) => {
@@ -659,10 +670,10 @@ router.get('/microsoft/callback', async (req, res) => {
       });
     });
 
-    res.redirect(`${FRONTEND_URL}/dashboard/integrations?success=outlook`);
+    safeRedirect(res, '/dashboard/integrations?success=outlook');
   } catch (error) {
-    console.error('Microsoft callback error:', error);
-    res.redirect(`${FRONTEND_URL}/dashboard/integrations?error=outlook-failed`);
+    console.error('❌ Microsoft callback error:', error);
+    safeRedirect(res, '/dashboard/integrations?error=outlook-failed');
   }
 });
 

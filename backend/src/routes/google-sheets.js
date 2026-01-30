@@ -7,6 +7,8 @@ import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticateToken, requireRole } from '../middleware/auth.js';
 import googleSheetsService from '../services/google-sheets.js';
+import { generateOAuthState, validateOAuthState } from '../middleware/oauthState.js';
+import { safeRedirect } from '../middleware/redirectWhitelist.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -71,8 +73,11 @@ router.get('/auth-url', authenticateToken, async (req, res) => {
   try {
     const { clientId, clientSecret, redirectUri } = getGoogleCredentials();
 
+    // SECURITY: Generate cryptographically secure state token (CSRF protection)
+    const state = await generateOAuthState(req.businessId, 'google-sheets');
+
     const oauth2Client = googleSheetsService.createOAuth2Client(clientId, clientSecret, redirectUri);
-    const authUrl = googleSheetsService.getAuthUrl(oauth2Client, req.businessId.toString());
+    const authUrl = googleSheetsService.getAuthUrl(oauth2Client, state);
 
     res.json({
       authUrl,
@@ -89,14 +94,20 @@ router.get('/callback', async (req, res) => {
   try {
     const { code, state } = req.query;
 
-    if (!code) {
-      return res.redirect(`${process.env.FRONTEND_URL}/dashboard/integrations?error=google-sheets-no-code`);
+    if (!code || !state) {
+      console.error('Google Sheets callback: missing code or state');
+      return safeRedirect(res, '/dashboard/integrations?error=google-sheets-invalid');
     }
 
-    const businessId = parseInt(state);
-    if (!businessId) {
-      return res.redirect(`${process.env.FRONTEND_URL}/dashboard/integrations?error=google-sheets-invalid-state`);
+    // SECURITY: Validate state token (CSRF protection)
+    const validation = await validateOAuthState(state, null, 'google-sheets');
+
+    if (!validation.valid) {
+      console.error('❌ Google Sheets callback: Invalid state:', validation.error);
+      return safeRedirect(res, '/dashboard/integrations?error=google-sheets-csrf');
     }
+
+    const businessId = validation.businessId;
 
     const { clientId, clientSecret, redirectUri } = getGoogleCredentials();
     const oauth2Client = googleSheetsService.createOAuth2Client(clientId, clientSecret, redirectUri);
@@ -138,9 +149,9 @@ router.get('/callback', async (req, res) => {
     });
 
     console.log(`✅ Google Sheets connected for business ${businessId}`);
-    res.redirect(`${process.env.FRONTEND_URL}/dashboard/integrations?success=google-sheets`);
+    safeRedirect(res, '/dashboard/integrations?success=google-sheets');
   } catch (error) {
-    console.error('Google Sheets callback error:', error);
+    console.error('❌ Google Sheets callback error:', error);
     res.redirect(`${process.env.FRONTEND_URL}/dashboard/integrations?error=google-sheets`);
   }
 });

@@ -76,8 +76,10 @@ class OutlookService {
 
   /**
    * Get OAuth authorization URL
+   * @param {string} state - Cryptographically secure state token (CSRF protection)
+   * @returns {string} Authorization URL
    */
-  getAuthUrl(businessId) {
+  getAuthUrl(state) {
     const config = this.getOAuthConfig();
 
     const params = new URLSearchParams({
@@ -86,7 +88,7 @@ class OutlookService {
       redirect_uri: config.redirectUri,
       scope: MICROSOFT_SCOPES.join(' '),
       response_mode: 'query',
-      state: businessId.toString(),
+      state, // Now using secure state token instead of businessId
       prompt: 'consent'
     });
 

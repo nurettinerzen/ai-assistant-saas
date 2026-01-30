@@ -2,6 +2,8 @@ import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticateToken, requireRole } from '../middleware/auth.js';
 import googleCalendarService from '../services/google-calendar.js';
+import { generateOAuthState, validateOAuthState } from '../middleware/oauthState.js';
+import { safeRedirect } from '../middleware/redirectWhitelist.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -448,11 +450,13 @@ router.get('/google/auth', authenticateToken, async (req, res) => {
       });
     }
 
+    // SECURITY: Generate cryptographically secure state token (CSRF protection)
+    const state = await generateOAuthState(req.businessId, 'google-calendar');
+
     const oauth2Client = googleCalendarService.createOAuth2Client(clientId, clientSecret, redirectUri);
     const authUrl = googleCalendarService.getAuthUrl(oauth2Client);
 
-    // Include businessId in state parameter for callback
-    const authUrlWithState = authUrl + `&state=${req.businessId}`;
+    const authUrlWithState = authUrl + `&state=${state}`;
 
     res.json({
       authUrl: authUrlWithState,
@@ -469,15 +473,20 @@ router.get('/google/callback', async (req, res) => {
   try {
     const { code, state } = req.query;
 
-    if (!code) {
-      return res.redirect(`${process.env.FRONTEND_URL}/dashboard/integrations?error=no-code`);
+    if (!code || !state) {
+      console.error('Google Calendar callback: missing code or state');
+      return safeRedirect(res, '/dashboard/integrations?error=calendar-invalid');
     }
 
-    const businessId = parseInt(state);
+    // SECURITY: Validate state token (CSRF protection)
+    const validation = await validateOAuthState(state, null, 'google-calendar');
 
-    if (!businessId) {
-      return res.redirect(`${process.env.FRONTEND_URL}/dashboard/integrations?error=no-business-id`);
+    if (!validation.valid) {
+      console.error('❌ Google Calendar callback: Invalid state:', validation.error);
+      return safeRedirect(res, '/dashboard/integrations?error=calendar-csrf');
     }
+
+    const businessId = validation.businessId;
 
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
@@ -510,9 +519,9 @@ router.get('/google/callback', async (req, res) => {
     });
 
     console.log(`✅ Google Calendar connected for business ${businessId}`);
-    res.redirect(`${process.env.FRONTEND_URL}/dashboard/integrations?success=google-calendar`);
+    safeRedirect(res, '/dashboard/integrations?success=google-calendar');
   } catch (error) {
-    console.error('Google Calendar callback error:', error);
+    console.error('❌ Google Calendar callback error:', error);
     res.redirect(`${process.env.FRONTEND_URL}/dashboard/integrations?error=google-calendar`);
   }
 });

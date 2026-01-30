@@ -113,7 +113,10 @@ router.get('/outlook/auth', authenticateToken, async (req, res) => {
       });
     }
 
-    const authUrl = outlookService.getAuthUrl(req.businessId);
+    // SECURITY: Generate cryptographically secure state token (CSRF protection)
+    const state = await generateOAuthState(req.businessId, 'outlook');
+    const authUrl = outlookService.getAuthUrl(state);
+
     res.json({ authUrl });
   } catch (error) {
     console.error('Outlook auth error:', error);
@@ -131,18 +134,27 @@ router.get('/outlook/callback', async (req, res) => {
 
     if (oauthError) {
       console.error('Outlook OAuth error:', oauthError);
-      return res.redirect(`${process.env.FRONTEND_URL}/dashboard/integrations?error=outlook-denied`);
+      return safeRedirect(res, `/dashboard/integrations?error=outlook-denied`);
     }
 
     if (!code || !state) {
-      return res.redirect(`${process.env.FRONTEND_URL}/dashboard/integrations?error=outlook-invalid`);
+      console.error('Outlook callback: missing code or state');
+      return safeRedirect(res, `/dashboard/integrations?error=outlook-invalid`);
     }
 
-    const businessId = parseInt(state);
+    // SECURITY: Validate state token (CSRF protection)
+    const validation = await validateOAuthState(state, null, 'outlook');
+
+    if (!validation.valid) {
+      console.error('❌ Outlook callback: Invalid state token:', validation.error);
+      return safeRedirect(res, `/dashboard/integrations?error=outlook-csrf`);
+    }
+
+    const businessId = validation.businessId;
 
     await outlookService.handleCallback(code, businessId);
 
-    console.log(`Outlook connected for business ${businessId}`);
+    console.log(`✅ Outlook connected for business ${businessId}`);
 
     // Trigger style analysis in background
     import('../services/email-style-analyzer.js').then((module) => {
@@ -151,10 +163,10 @@ router.get('/outlook/callback', async (req, res) => {
       });
     });
 
-    res.redirect(`${process.env.FRONTEND_URL}/dashboard/integrations?success=outlook`);
+    safeRedirect(res, `/dashboard/integrations?success=outlook`);
   } catch (error) {
-    console.error('Outlook callback error:', error);
-    res.redirect(`${process.env.FRONTEND_URL}/dashboard/integrations?error=outlook-failed`);
+    console.error('❌ Outlook callback error:', error);
+    safeRedirect(res, `/dashboard/integrations?error=outlook-failed`);
   }
 });
 

@@ -7,6 +7,8 @@ import hubspotService from '../services/hubspot.js';
 import googleSheetsService from '../services/google-sheets.js';
 import whatsappService from '../services/whatsapp.js';
 import { getFilteredIntegrations, getIntegrationPriority } from '../config/integrationMetadata.js';
+import { generateOAuthState, validateOAuthState } from '../middleware/oauthState.js';
+import { safeRedirect } from '../middleware/redirectWhitelist.js';
 import axios from 'axios';
 
 const router = express.Router();
@@ -250,11 +252,13 @@ router.get('/google-calendar/auth', async (req, res) => {
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
     const redirectUri = `${process.env.BACKEND_URL}/api/integrations/google-calendar/callback`;
 
+    // SECURITY: Generate cryptographically secure state token (CSRF protection)
+    const state = await generateOAuthState(req.businessId, 'google-calendar');
+
     const oauth2Client = googleCalendarService.createOAuth2Client(clientId, clientSecret, redirectUri);
     const authUrl = googleCalendarService.getAuthUrl(oauth2Client);
 
-    // Store businessId in session or state parameter
-    res.json({ authUrl: authUrl + `&state=${req.businessId}` });
+    res.json({ authUrl: authUrl + `&state=${state}` });
   } catch (error) {
     console.error('Google Calendar auth error:', error);
     res.status(500).json({ error: 'Failed to start Google Calendar OAuth' });
@@ -264,7 +268,21 @@ router.get('/google-calendar/auth', async (req, res) => {
 router.get('/google-calendar/callback', async (req, res) => {
   try {
     const { code, state } = req.query;
-    const businessId = parseInt(state);
+
+    if (!code || !state) {
+      console.error('Google Calendar callback: missing code or state');
+      return safeRedirect(res, '/dashboard/integrations?error=google-calendar-invalid');
+    }
+
+    // SECURITY: Validate state token (CSRF protection)
+    const validation = await validateOAuthState(state, null, 'google-calendar');
+
+    if (!validation.valid) {
+      console.error('❌ Google Calendar callback: Invalid state:', validation.error);
+      return safeRedirect(res, '/dashboard/integrations?error=google-calendar-csrf');
+    }
+
+    const businessId = validation.businessId;
 
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
@@ -292,10 +310,11 @@ router.get('/google-calendar/callback', async (req, res) => {
       }
     });
 
-    res.redirect('/dashboard/integrations?success=google-calendar');
+    console.log(`✅ Google Calendar connected for business ${businessId}`);
+    safeRedirect(res, '/dashboard/integrations?success=google-calendar');
   } catch (error) {
-    console.error('Google Calendar callback error:', error);
-    res.redirect('/dashboard/integrations?error=google-calendar');
+    console.error('❌ Google Calendar callback error:', error);
+    safeRedirect(res, '/dashboard/integrations?error=google-calendar');
   }
 });
 
@@ -420,7 +439,9 @@ router.get('/hubspot/auth', async (req, res) => {
     const clientId = process.env.HUBSPOT_CLIENT_ID;
     const redirectUri = `${process.env.BACKEND_URL}/api/integrations/hubspot/callback`;
     const scopes = ['crm.objects.contacts.write', 'crm.objects.deals.write'];
-    const state = req.businessId;
+
+    // SECURITY: Generate cryptographically secure state token (CSRF protection)
+    const state = await generateOAuthState(req.businessId, 'hubspot');
 
     const authUrl = hubspotService.getAuthUrl(clientId, redirectUri, scopes, state);
     res.json({ authUrl });
@@ -433,7 +454,21 @@ router.get('/hubspot/auth', async (req, res) => {
 router.get('/hubspot/callback', async (req, res) => {
   try {
     const { code, state } = req.query;
-    const businessId = parseInt(state);
+
+    if (!code || !state) {
+      console.error('HubSpot callback: missing code or state');
+      return safeRedirect(res, '/dashboard/integrations?error=hubspot-invalid');
+    }
+
+    // SECURITY: Validate state token (CSRF protection)
+    const validation = await validateOAuthState(state, null, 'hubspot');
+
+    if (!validation.valid) {
+      console.error('❌ HubSpot callback: Invalid state:', validation.error);
+      return safeRedirect(res, '/dashboard/integrations?error=hubspot-csrf');
+    }
+
+    const businessId = validation.businessId;
 
     const clientId = process.env.HUBSPOT_CLIENT_ID;
     const clientSecret = process.env.HUBSPOT_CLIENT_SECRET;
@@ -460,10 +495,11 @@ router.get('/hubspot/callback', async (req, res) => {
       }
     });
 
-    res.redirect('/dashboard/integrations?success=hubspot');
+    console.log(`✅ HubSpot connected for business ${businessId}`);
+    safeRedirect(res, '/dashboard/integrations?success=hubspot');
   } catch (error) {
-    console.error('HubSpot callback error:', error);
-    res.redirect('/dashboard/integrations?error=hubspot');
+    console.error('❌ HubSpot callback error:', error);
+    safeRedirect(res, '/dashboard/integrations?error=hubspot');
   }
 });
 
@@ -477,10 +513,13 @@ router.get('/google-sheets/auth', async (req, res) => {
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
     const redirectUri = `${process.env.BACKEND_URL}/api/integrations/google-sheets/callback`;
 
+    // SECURITY: Generate cryptographically secure state token (CSRF protection)
+    const state = await generateOAuthState(req.businessId, 'google-sheets');
+
     const oauth2Client = googleSheetsService.createOAuth2Client(clientId, clientSecret, redirectUri);
     const authUrl = googleSheetsService.getAuthUrl(oauth2Client);
 
-    res.json({ authUrl: authUrl + `&state=${req.businessId}` });
+    res.json({ authUrl: authUrl + `&state=${state}` });
   } catch (error) {
     console.error('Google Sheets auth error:', error);
     res.status(500).json({ error: 'Failed to start Google Sheets OAuth' });
@@ -490,7 +529,21 @@ router.get('/google-sheets/auth', async (req, res) => {
 router.get('/google-sheets/callback', async (req, res) => {
   try {
     const { code, state } = req.query;
-    const businessId = parseInt(state);
+
+    if (!code || !state) {
+      console.error('Google Sheets callback: missing code or state');
+      return safeRedirect(res, '/dashboard/integrations?error=google-sheets-invalid');
+    }
+
+    // SECURITY: Validate state token (CSRF protection)
+    const validation = await validateOAuthState(state, null, 'google-sheets');
+
+    if (!validation.valid) {
+      console.error('❌ Google Sheets callback: Invalid state:', validation.error);
+      return safeRedirect(res, '/dashboard/integrations?error=google-sheets-csrf');
+    }
+
+    const businessId = validation.businessId;
 
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
@@ -518,10 +571,11 @@ router.get('/google-sheets/callback', async (req, res) => {
       }
     });
 
-    res.redirect('/dashboard/integrations?success=google-sheets');
+    console.log(`✅ Google Sheets connected for business ${businessId}`);
+    safeRedirect(res, '/dashboard/integrations?success=google-sheets');
   } catch (error) {
-    console.error('Google Sheets callback error:', error);
-    res.redirect('/dashboard/integrations?error=google-sheets');
+    console.error('❌ Google Sheets callback error:', error);
+    safeRedirect(res, '/dashboard/integrations?error=google-sheets');
   }
 });
 
