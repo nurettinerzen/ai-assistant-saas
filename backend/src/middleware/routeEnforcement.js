@@ -29,6 +29,7 @@ const PUBLIC_PATHS = [
   '/api/elevenlabs/call-ended',
   '/api/webhook/incoming',
   '/api/webhook/crm',
+  '/api/webhooks/send',
   '/api/webhooks/*',
   '/api/webhook/*',
   '/api/iyzico-webhook',
@@ -37,32 +38,40 @@ const PUBLIC_PATHS = [
   '/api/iyzico-callback',
   '/api/stripe',
   '/api/whatsapp/webhook',
+  '/api/whatsapp/conversations',
+  '/api/whatsapp/conversations/:businessId/:phoneNumber',
 
   // Public widget/embed endpoints (no JWT, uses embedKey)
   '/api/chat', // Public chat widget
   '/api/chat-legacy',
   '/api/widget',
   '/api/widget/*',
+  '/api/embed/:embedKey',
 
   // Demo endpoints (public)
   '/api/demo/*',
   '/api/demo-request',
 
   // Public integrations callbacks (OAuth, no JWT)
-  '/api/google-calendar/callback',
+  '/api/google/callback',
+  '/api/integrations/google-calendar/callback',
+  '/api/integrations/hubspot/callback',
   '/api/google-sheets/callback',
-  '/api/gmail/callback',
-  '/api/outlook/callback',
-  '/api/hubspot/callback',
-  '/api/shopify/callback',
-  '/api/ideasoft/callback',
+  '/api/email/gmail/callback',
+  '/api/email/outlook/callback',
+  '/api/auth/microsoft/callback',
+  '/api/integrations/shopify/callback',
+  '/api/integrations/ideasoft/callback',
 
   // Public invitation endpoints
   '/api/team/invitation/:token',
+  '/api/team/invitation/:token/accept',
   '/api/invitation/:token',
+  '/api/invitation/:token/accept',
 
   // Waitlist (public)
   '/api/waitlist',
+  '/api/waitlist/check/:email',
 
   // Cron jobs (secured by cron-secret header, not JWT)
   '/api/cron/*',
@@ -95,10 +104,10 @@ const PUBLIC_PATHS = [
   '/api/media/signed-url/:assistantId',
 
   // Dashboard public metrics (no sensitive data)
-  '/api/dashboard/dashboard',
-  '/api/dashboard/shadow-mode',
-  '/api/dashboard/idempotency',
-  '/api/dashboard/prometheus',
+  '/api/concurrent-metrics/dashboard',
+  '/api/concurrent-metrics/shadow-mode',
+  '/api/concurrent-metrics/idempotency',
+  '/api/concurrent-metrics/prometheus',
 
   // Cron endpoints (secured by cron-secret header)
   '/api/cron/reset-minutes',
@@ -110,7 +119,17 @@ const PUBLIC_PATHS = [
   '/api/cron/email-lock-cleanup',
   '/api/cron/email-embedding-cleanup',
   '/api/cron/status',
-  '/api/cron/reset-state'
+  '/api/cron/reset-state',
+
+  // VoiceID public endpoints (demo/preview)
+  '/api/voiceid',
+  '/api/voiceid/:id',
+  '/api/voiceid/template',
+  '/api/voiceid/callback',
+
+  // API root (health check)
+  '/api/',
+  '/api/status'
 ];
 
 const PROTECTED_MIDDLEWARE_NAMES = [

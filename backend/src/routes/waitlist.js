@@ -16,10 +16,6 @@ const emailCheckRateLimiter = rateLimit({
   },
   standardHeaders: true, // Return rate limit info in headers
   legacyHeaders: false,
-  // Use IP address for rate limiting
-  keyGenerator: (req) => {
-    return req.ip || req.connection.remoteAddress;
-  },
   // Consistent timing to prevent timing attacks
   handler: (req, res) => {
     res.status(429).json({
