@@ -69,7 +69,6 @@ const PUBLIC_PATHS = [
 
   // Public pricing/plans info
   '/api/subscription/plans',
-  '/api/subscription/payment-provider',
   '/api/cost-calculator/pricing',
 
   // Media access (secured by signed token, not JWT)
@@ -77,11 +76,46 @@ const PUBLIC_PATHS = [
 
   // CRM webhook (secured by webhookSecret, not JWT)
   '/api/webhook/crm/:businessId/:webhookSecret',
-  '/api/crm/:businessId/:webhookSecret'
+  '/api/crm/:businessId/:webhookSecret',
+
+  // Voice samples (public for demos/previews)
+  '/api/voices',
+  '/api/voices/:id',
+  '/api/voices/language/:code',
+  '/api/voices/preview/:voiceId',
+  '/api/voices/sample/:voiceId',
+  '/api/voices/elevenlabs/all',
+
+  // Cost calculator (public pricing tool)
+  '/api/cost-calculator/calculate',
+  '/api/cost-calculator/pricing',
+  '/api/cost-calculator/assistant/:assistantId',
+
+  // Media signed URLs (secured by JWT token in URL, not session)
+  '/api/media/signed-url/:assistantId',
+
+  // Dashboard public metrics (no sensitive data)
+  '/api/dashboard/dashboard',
+  '/api/dashboard/shadow-mode',
+  '/api/dashboard/idempotency',
+  '/api/dashboard/prometheus',
+
+  // Cron endpoints (secured by cron-secret header)
+  '/api/cron/reset-minutes',
+  '/api/cron/low-balance',
+  '/api/cron/auto-reload',
+  '/api/cron/trial-expired',
+  '/api/cron/cleanup',
+  '/api/cron/email-rag-backfill',
+  '/api/cron/email-lock-cleanup',
+  '/api/cron/email-embedding-cleanup',
+  '/api/cron/status',
+  '/api/cron/reset-state'
 ];
 
 const PROTECTED_MIDDLEWARE_NAMES = [
   'authenticateToken',
+  'verifyBusinessAccess',
   'isAdmin',
   'checkPermission',
   'requireOwner',
@@ -125,7 +159,20 @@ function hasProtectionMiddleware(route) {
 function extractRoutes(app) {
   const routes = [];
 
-  function processStack(stack, basePath = '') {
+  function processStack(stack, basePath = '', inheritedProtection = false) {
+    // Check if this stack has router-level auth middleware (router.use(authenticateToken))
+    let hasRouterLevelAuth = inheritedProtection;
+
+    stack.forEach(layer => {
+      // Check for router-level middleware (router.use)
+      if (!layer.route && layer.handle && layer.handle.name) {
+        const middlewareName = layer.handle.name;
+        if (PROTECTED_MIDDLEWARE_NAMES.includes(middlewareName)) {
+          hasRouterLevelAuth = true;
+        }
+      }
+    });
+
     stack.forEach(middleware => {
       if (middleware.route) {
         // Regular route
@@ -135,12 +182,12 @@ function extractRoutes(app) {
         routes.push({
           path,
           methods,
-          protected: hasProtectionMiddleware(middleware.route)
+          protected: hasRouterLevelAuth || hasProtectionMiddleware(middleware.route)
         });
       } else if (middleware.name === 'router' && middleware.handle?.stack) {
         // Router middleware
         const routerPath = middleware.regexp?.toString().match(/\^\\\/([^?\\]+)/)?.[1] || '';
-        processStack(middleware.handle.stack, basePath + '/' + routerPath);
+        processStack(middleware.handle.stack, basePath + '/' + routerPath, hasRouterLevelAuth);
       }
     });
   }

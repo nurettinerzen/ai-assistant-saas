@@ -88,26 +88,6 @@ const PLAN_CONFIG = {
   }
 };
 
-// GET /api/subscription - Get current subscription
-router.get('/', authenticateToken, async (req, res) => {
-  try {
-    const businessId = req.businessId;
-
-    const subscription = await prisma.subscription.findUnique({
-      where: { businessId },
-    });
-
-    if (!subscription) {
-      return res.status(404).json({ error: 'Subscription not found' });
-    }
-
-    res.json(subscription);
-  } catch (error) {
-    console.error('Error fetching subscription:', error);
-    res.status(500).json({ error: 'Failed to fetch subscription' });
-  }
-});
-
 // ============================================================================
 // WEBHOOK - MUST BE FIRST (before express.json middleware)
 // ============================================================================
@@ -719,79 +699,10 @@ router.get('/iyzico-callback', async (req, res) => {
 });
 
 // ============================================================================
-// AUTHENTICATED ROUTES
+// PUBLIC ROUTES (no auth required)
 // ============================================================================
 
-router.use(authenticateToken);
-
-// Get current subscription
-router.get('/current', verifyBusinessAccess, async (req, res) => {
-  try {
-    const { businessId } = req.user;
-
-    const subscription = await prisma.subscription.findUnique({
-      where: { businessId },
-      include: {
-        business: {
-          select: {
-            phoneNumbers: true
-          }
-        }
-      }
-    });
-
-    if (!subscription) {
-      return res.json({
-        plan: 'FREE',
-        status: 'TRIAL',
-        usage: {
-          minutes: { used: 0, limit: 0 },
-          calls: { used: 0, limit: 0 },
-          assistants: { used: 0, limit: 0 },
-          phoneNumbers: { used: 0, limit: 0 }
-        }
-      });
-    }
-
-    // Calculate usage percentages
-    const response = {
-      ...subscription,
-      usage: {
-        minutes: {
-          used: subscription.minutesUsed,
-          limit: subscription.minutesLimit,
-          percentage: subscription.minutesLimit > 0
-            ? Math.round((subscription.minutesUsed / subscription.minutesLimit) * 100)
-            : 0,
-          unlimited: subscription.minutesLimit === -1
-        },
-        calls: {
-          used: subscription.callsThisMonth,
-          limit: subscription.callsLimit,
-          percentage: subscription.callsLimit > 0
-            ? Math.round((subscription.callsThisMonth / subscription.callsLimit) * 100)
-            : 0,
-          unlimited: subscription.callsLimit === -1
-        },
-        assistants: {
-          used: subscription.assistantsCreated,
-          limit: subscription.assistantsLimit
-        },
-        phoneNumbers: {
-          used: subscription.business.phoneNumbers?.length || 0,
-          limit: subscription.phoneNumbersLimit
-        }
-      }
-    };
-
-    res.json(response);
-  } catch (error) {
-    console.error('Get subscription error:', error);
-    res.status(500).json({ error: 'Failed to get subscription' });
-  }
-});
-
-// Get available plans - includes both Stripe and iyzico pricing
+// Get available plans - PUBLIC (used by pricing page before login)
 // Updated: January 2026 - synced with pricing.js
 router.get('/plans', async (req, res) => {
   try {
@@ -913,6 +824,79 @@ router.get('/plans', async (req, res) => {
   } catch (error) {
     console.error('Get plans error:', error);
     res.status(500).json({ error: 'Failed to get plans' });
+  }
+});
+
+// ============================================================================
+// AUTHENTICATED ROUTES
+// ============================================================================
+
+router.use(authenticateToken);
+
+// Get current subscription
+router.get('/current', verifyBusinessAccess, async (req, res) => {
+  try {
+    const { businessId } = req.user;
+
+    const subscription = await prisma.subscription.findUnique({
+      where: { businessId },
+      include: {
+        business: {
+          select: {
+            phoneNumbers: true
+          }
+        }
+      }
+    });
+
+    if (!subscription) {
+      return res.json({
+        plan: 'FREE',
+        status: 'TRIAL',
+        usage: {
+          minutes: { used: 0, limit: 0 },
+          calls: { used: 0, limit: 0 },
+          assistants: { used: 0, limit: 0 },
+          phoneNumbers: { used: 0, limit: 0 }
+        }
+      });
+    }
+
+    // Calculate usage percentages
+    const response = {
+      ...subscription,
+      usage: {
+        minutes: {
+          used: subscription.minutesUsed,
+          limit: subscription.minutesLimit,
+          percentage: subscription.minutesLimit > 0
+            ? Math.round((subscription.minutesUsed / subscription.minutesLimit) * 100)
+            : 0,
+          unlimited: subscription.minutesLimit === -1
+        },
+        calls: {
+          used: subscription.callsThisMonth,
+          limit: subscription.callsLimit,
+          percentage: subscription.callsLimit > 0
+            ? Math.round((subscription.callsThisMonth / subscription.callsLimit) * 100)
+            : 0,
+          unlimited: subscription.callsLimit === -1
+        },
+        assistants: {
+          used: subscription.assistantsCreated,
+          limit: subscription.assistantsLimit
+        },
+        phoneNumbers: {
+          used: subscription.business.phoneNumbers?.length || 0,
+          limit: subscription.phoneNumbersLimit
+        }
+      }
+    };
+
+    res.json(response);
+  } catch (error) {
+    console.error('Get subscription error:', error);
+    res.status(500).json({ error: 'Failed to get subscription' });
   }
 });
 

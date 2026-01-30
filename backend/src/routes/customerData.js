@@ -266,13 +266,7 @@ function parseDateValue(value) {
 }
 
 // ============================================================
-// ROUTES
-// ============================================================
-
-router.use(authenticateToken);
-
-// ============================================================
-// TEMPLATE DEFINITIONS
+// TEMPLATE DEFINITIONS (moved before routes for reference)
 // ============================================================
 
 /**
@@ -532,6 +526,12 @@ const CUSTOM_TEMPLATE = {
   sheetName: 'Müşteri Verileri',
   fileName: 'musteri-verileri-sablon.xlsx'
 };
+
+// ============================================================
+// AUTHENTICATED ROUTES - ALL ROUTES BELOW REQUIRE AUTH
+// ============================================================
+
+router.use(authenticateToken);
 
 /**
  * GET /api/customer-data/template/:type?
