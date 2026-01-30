@@ -1,0 +1,67 @@
+name: Security Smoke Test
+
+on:
+  schedule:
+    # 06:00 UTC = 09:00 Turkey (sabah)
+    - cron: '0 6 * * *'
+    # 15:00 UTC = 18:00 Turkey (akşam)
+    - cron: '0 15 * * *'
+  workflow_dispatch:  # Manuel çalıştırma için
+
+jobs:
+  security-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          npm install --production
+
+      - name: Run security smoke test
+        env:
+          TEST_ACCOUNT_A_EMAIL: ${{ secrets.TEST_ACCOUNT_A_EMAIL }}
+          TEST_ACCOUNT_A_PASSWORD: ${{ secrets.TEST_ACCOUNT_A_PASSWORD }}
+          TEST_ACCOUNT_B_EMAIL: ${{ secrets.TEST_ACCOUNT_B_EMAIL }}
+          TEST_ACCOUNT_B_PASSWORD: ${{ secrets.TEST_ACCOUNT_B_PASSWORD }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+          API_URL: https://api.telyx.ai
+        run: |
+          cd backend
+          npm run security-test
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-test-report-${{ github.run_number }}
+          path: backend/tests/pilot/reports/*security*.txt
+          retention-days: 30
+
+      - name: Send failure notification (Email)
+        if: failure()
+        continue-on-error: true
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.NOTIFICATION_EMAIL }}
+          password: ${{ secrets.NOTIFICATION_EMAIL_PASSWORD }}
+          subject: '🚨 Telyx Security Smoke Test FAILED'
+          to: nurettinerzen@gmail.com
+          from: Telyx Automated Tests
+          body: |
+            Security smoke test failed at ${{ github.event.repository.updated_at }}
+
+            Check the full report in GitHub Actions:
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

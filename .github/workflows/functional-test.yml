@@ -1,0 +1,71 @@
+name: Functional Test
+
+on:
+  schedule:
+    # 06:30 UTC = 09:30 Turkey (sabah - stagger from security test)
+    - cron: '30 6 * * *'
+    # 15:30 UTC = 18:30 Turkey (akşam - stagger from security test)
+    - cron: '30 15 * * *'
+  workflow_dispatch:  # Manuel çalıştırma için
+
+jobs:
+  functional-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          npm install --production
+
+      - name: Run functional test
+        env:
+          TEST_ACCOUNT_A_EMAIL: ${{ secrets.TEST_ACCOUNT_A_EMAIL }}
+          TEST_ACCOUNT_A_PASSWORD: ${{ secrets.TEST_ACCOUNT_A_PASSWORD }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+          API_URL: https://api.telyx.ai
+        run: |
+          cd backend
+          npm run functional-test
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: functional-test-report-${{ github.run_number }}
+          path: backend/tests/pilot/reports/*functional*.txt
+          retention-days: 30
+
+      - name: Send failure notification (Email)
+        if: failure()
+        continue-on-error: true
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.NOTIFICATION_EMAIL }}
+          password: ${{ secrets.NOTIFICATION_EMAIL_PASSWORD }}
+          subject: '⚠️ Telyx Functional Test FAILED'
+          to: nurettinerzen@gmail.com
+          from: Telyx Automated Tests
+          body: |
+            Functional test failed at ${{ github.event.repository.updated_at }}
+
+            This means core CRUD operations are not working:
+            - Knowledge Base upload/delete
+            - Customer Data import/delete
+            - Assistant management
+            - Business settings
+
+            Check the full report in GitHub Actions:
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

@@ -1,0 +1,73 @@
+name: Assistant & Conversation Test
+
+on:
+  schedule:
+    # 07:00 UTC = 10:00 Turkey (sabah - after functional test)
+    - cron: '0 7 * * *'
+    # 16:00 UTC = 19:00 Turkey (akşam - after functional test)
+    - cron: '0 16 * * *'
+  workflow_dispatch:  # Manuel çalıştırma için
+
+jobs:
+  assistant-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20  # Longer timeout for AI conversations
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          npm install --production
+
+      - name: Run assistant test
+        env:
+          TEST_ACCOUNT_A_EMAIL: ${{ secrets.TEST_ACCOUNT_A_EMAIL }}
+          TEST_ACCOUNT_A_PASSWORD: ${{ secrets.TEST_ACCOUNT_A_PASSWORD }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+          API_URL: https://api.telyx.ai
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          cd backend
+          npm run assistant-test
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: assistant-test-report-${{ github.run_number }}
+          path: backend/tests/pilot/reports/*assistant*.txt
+          retention-days: 30
+
+      - name: Send failure notification (Email)
+        if: failure()
+        continue-on-error: true
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.NOTIFICATION_EMAIL }}
+          password: ${{ secrets.NOTIFICATION_EMAIL_PASSWORD }}
+          subject: '🤖 Telyx Assistant Test FAILED'
+          to: nurettinerzen@gmail.com
+          from: Telyx Automated Tests
+          body: |
+            Assistant & Conversation test failed at ${{ github.event.repository.updated_at }}
+
+            This means AI assistant functionality is broken:
+            - Basic conversations
+            - Customer data lookup & verification
+            - Multi-turn conversations
+            - Tool calling
+            - Context retention
+
+            Check the full report in GitHub Actions:
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
