@@ -39,7 +39,6 @@ jobs:
         run: |
           cd backend
           node scripts/daily-smoke-test.js
-        continue-on-error: true
 
       - name: Upload test report
         if: always()

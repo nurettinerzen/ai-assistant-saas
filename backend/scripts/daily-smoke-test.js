@@ -579,8 +579,8 @@ async function main() {
 
     // Save report to file
     const fs = await import('fs/promises');
-    const reportPath = `backend/tests/pilot/reports/smoke-${new Date().toISOString().split('T')[0]}-${new Date().getHours()}.txt`;
-    await fs.mkdir('backend/tests/pilot/reports', { recursive: true });
+    const reportPath = `tests/pilot/reports/smoke-${new Date().toISOString().split('T')[0]}-${new Date().getHours()}.txt`;
+    await fs.mkdir('tests/pilot/reports', { recursive: true });
     await fs.writeFile(reportPath, reportText);
     console.log(`\n📄 Report saved: ${reportPath}`);
 
