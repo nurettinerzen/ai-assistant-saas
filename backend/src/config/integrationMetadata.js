@@ -93,45 +93,8 @@ export const INTEGRATION_METADATA = {
     authType: 'oauth'
   },
 
-  // ============================================================================
-  // EMAIL
-  // ============================================================================
-
-  EMAIL: {
-    relevantFor: ['RESTAURANT', 'ECOMMERCE', 'CLINIC', 'SALON', 'SERVICE', 'OTHER'],
-    priority: {
-      RESTAURANT: 'RECOMMENDED',
-      ECOMMERCE: 'ESSENTIAL',
-      CLINIC: 'RECOMMENDED',
-      SALON: 'RECOMMENDED',
-      SERVICE: 'RECOMMENDED',
-      OTHER: 'RECOMMENDED'
-    },
-    name: 'Email (Gmail/Outlook)',
-    description: 'Email müşteri desteği (Gmail veya Outlook)',
-    category: 'email',
-    authType: 'oauth'
-  },
-
-  // ============================================================================
-  // CRM
-  // ============================================================================
-
-  CUSTOM: {
-    relevantFor: ['RESTAURANT', 'ECOMMERCE', 'CLINIC', 'SALON', 'SERVICE', 'OTHER'],
-    priority: {
-      RESTAURANT: 'RECOMMENDED',
-      ECOMMERCE: 'ESSENTIAL',
-      CLINIC: 'RECOMMENDED',
-      SALON: 'RECOMMENDED',
-      SERVICE: 'RECOMMENDED',
-      OTHER: 'RECOMMENDED'
-    },
-    name: 'Custom CRM',
-    description: 'Kendi CRM sisteminizi bağlayın (Webhook)',
-    category: 'crm',
-    authType: 'webhook'
-  }
+  // Note: Gmail and Outlook are handled separately in frontend (not in this metadata)
+  // Note: Custom CRM/ERP is also handled separately in frontend integration cards
 };
 
 /**
