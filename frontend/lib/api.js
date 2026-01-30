@@ -129,7 +129,7 @@ export const apiClient = {
 
   // Subscription - supports both Stripe and iyzico
   subscription: {
-    getCurrent: () => api.get('/api/subscription'),
+    getCurrent: () => api.get('/api/subscription/current'),
     getPlans: () => api.get('/api/subscription/plans'),
     getPaymentProvider: () => api.get('/api/subscription/payment-provider'),
     createCheckout: (data) => api.post('/api/subscription/create-checkout', data),
