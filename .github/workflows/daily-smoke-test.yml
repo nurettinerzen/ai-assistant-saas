@@ -43,7 +43,7 @@ jobs:
 
       - name: Upload test report
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: smoke-test-report-${{ github.run_number }}
           path: backend/tests/pilot/reports/*.txt
