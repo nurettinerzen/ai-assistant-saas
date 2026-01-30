@@ -1,16 +1,13 @@
 /**
- * Integration Metadata Configuration
- * Defines which integrations are relevant for each business type
- * and their priority level (ESSENTIAL, RECOMMENDED, OPTIONAL)
- *
- * Updated: Multi-region support with Brazil (BR) and Turkey (TR) specific integrations
+ * Integration Metadata Configuration - MINIMAL (Pilot Version)
+ * Only active/working integrations
  */
 
 export const INTEGRATION_METADATA = {
   // ============================================================================
-  // SCHEDULING & CALENDAR
+  // CALENDAR
   // ============================================================================
-  
+
   GOOGLE_CALENDAR: {
     relevantFor: ['RESTAURANT', 'CLINIC', 'SALON', 'SERVICE', 'ECOMMERCE', 'OTHER'],
     priority: {
@@ -47,38 +44,15 @@ export const INTEGRATION_METADATA = {
     authType: 'api_key'
   },
 
-  // Note: Gmail and Outlook are handled in a separate "Email Channel" section in frontend
-  // They are not included here to avoid duplicate cards
-
-  NETGSM_SMS: {
-    relevantFor: ['RESTAURANT', 'ECOMMERCE', 'CLINIC', 'SALON', 'SERVICE', 'OTHER'],
-    priority: {
-      RESTAURANT: 'RECOMMENDED',
-      ECOMMERCE: 'RECOMMENDED',
-      CLINIC: 'ESSENTIAL',
-      SALON: 'RECOMMENDED',
-      SERVICE: 'RECOMMENDED',
-      OTHER: 'OPTIONAL'
-    },
-    name: 'NetGSM SMS',
-    description: 'Türkiye SMS bildirimleri',
-    category: 'communication',
-    authType: 'api_key',
-    region: 'TR'
-  },
-
   // ============================================================================
   // E-COMMERCE
   // ============================================================================
 
   SHOPIFY: {
-    relevantFor: ['ECOMMERCE'], // NOT for OTHER
+    relevantFor: ['ECOMMERCE', 'OTHER'],
     priority: {
       ECOMMERCE: 'ESSENTIAL',
-      RESTAURANT: 'OPTIONAL',
-      CLINIC: 'OPTIONAL',
-      SALON: 'OPTIONAL',
-      SERVICE: 'OPTIONAL'
+      OTHER: 'OPTIONAL'
     },
     name: 'Shopify',
     description: 'Shopify mağaza entegrasyonu',
@@ -87,188 +61,81 @@ export const INTEGRATION_METADATA = {
   },
 
   IKAS: {
-    relevantFor: ['ECOMMERCE'], // NOT for OTHER
+    relevantFor: ['ECOMMERCE', 'OTHER'],
     priority: {
       ECOMMERCE: 'ESSENTIAL',
-      RESTAURANT: 'OPTIONAL',
-      CLINIC: 'OPTIONAL',
-      SALON: 'OPTIONAL',
-      SERVICE: 'OPTIONAL'
+      OTHER: 'OPTIONAL'
     },
     name: 'ikas',
     description: 'ikas e-ticaret platformu entegrasyonu',
     category: 'ecommerce',
-    authType: 'oauth',
+    authType: 'api_key',
     region: 'TR'
   },
 
   // ============================================================================
-  // DATA
+  // DATA & ANALYTICS
   // ============================================================================
 
   GOOGLE_SHEETS: {
-    relevantFor: ['RESTAURANT', 'SALON', 'SERVICE', 'CLINIC', 'ECOMMERCE', 'OTHER'],
+    relevantFor: ['RESTAURANT', 'ECOMMERCE', 'CLINIC', 'SALON', 'SERVICE', 'OTHER'],
     priority: {
       RESTAURANT: 'RECOMMENDED',
+      ECOMMERCE: 'RECOMMENDED',
+      CLINIC: 'RECOMMENDED',
       SALON: 'RECOMMENDED',
       SERVICE: 'RECOMMENDED',
-      CLINIC: 'RECOMMENDED',
-      ECOMMERCE: 'RECOMMENDED',
       OTHER: 'RECOMMENDED'
     },
     name: 'Google Sheets',
-    description: 'Basit veri yönetimi ve CRM',
+    description: 'Müşteri verilerini Google Sheets ile senkronize et',
     category: 'data',
     authType: 'oauth'
   },
 
   // ============================================================================
-  // BRAZIL SPECIFIC - E-COMMERCE
+  // EMAIL
   // ============================================================================
 
-  NUVEMSHOP: {
-    relevantFor: ['ECOMMERCE'],
-    priority: {
-      ECOMMERCE: 'ESSENTIAL',
-      RESTAURANT: 'OPTIONAL',
-      CLINIC: 'OPTIONAL',
-      SALON: 'OPTIONAL',
-      SERVICE: 'OPTIONAL',
-      OTHER: 'OPTIONAL'
-    },
-    name: 'Nuvemshop',
-    namePR: 'Nuvemshop',
-    description: 'Latin Amerika\'nın lider e-ticaret platformu',
-    descriptionPR: 'A principal plataforma de e-commerce da América Latina',
-    category: 'ecommerce',
-    authType: 'oauth',
-    region: 'BR',
-    priority_order: 1 // Show first for Brazil
-  },
-
-  TRAY: {
-    relevantFor: ['ECOMMERCE'],
-    priority: {
-      ECOMMERCE: 'ESSENTIAL',
-      RESTAURANT: 'OPTIONAL',
-      CLINIC: 'OPTIONAL',
-      SALON: 'OPTIONAL',
-      SERVICE: 'OPTIONAL',
-      OTHER: 'OPTIONAL'
-    },
-    name: 'Tray',
-    namePR: 'Tray',
-    description: 'Brezilya e-ticaret platformu',
-    descriptionPR: 'Plataforma de e-commerce brasileira',
-    category: 'ecommerce',
-    authType: 'api_key',
-    region: 'BR'
-  },
-
-  LOJA_INTEGRADA: {
-    relevantFor: ['ECOMMERCE'],
-    priority: {
-      ECOMMERCE: 'RECOMMENDED',
-      RESTAURANT: 'OPTIONAL',
-      CLINIC: 'OPTIONAL',
-      SALON: 'OPTIONAL',
-      SERVICE: 'OPTIONAL',
-      OTHER: 'OPTIONAL'
-    },
-    name: 'Loja Integrada',
-    namePR: 'Loja Integrada',
-    description: 'Brezilya ücretsiz e-ticaret platformu',
-    descriptionPR: 'Plataforma de e-commerce grátis do Brasil',
-    category: 'ecommerce',
-    authType: 'api_key',
-    region: 'BR'
-  },
-
-  MERCADO_LIVRE: {
-    relevantFor: ['ECOMMERCE'],
-    priority: {
-      ECOMMERCE: 'ESSENTIAL',
-      RESTAURANT: 'OPTIONAL',
-      CLINIC: 'OPTIONAL',
-      SALON: 'OPTIONAL',
-      SERVICE: 'OPTIONAL',
-      OTHER: 'OPTIONAL'
-    },
-    name: 'Mercado Livre',
-    namePR: 'Mercado Livre',
-    description: 'Latin Amerika pazaryeri',
-    descriptionPR: 'Marketplace da América Latina',
-    category: 'ecommerce',
-    authType: 'oauth',
-    region: 'BR'
-  },
-
-  // ============================================================================
-  // BRAZIL SPECIFIC - COMMUNICATION
-  // ============================================================================
-
-  ZENVIA_SMS: {
+  EMAIL: {
     relevantFor: ['RESTAURANT', 'ECOMMERCE', 'CLINIC', 'SALON', 'SERVICE', 'OTHER'],
     priority: {
       RESTAURANT: 'RECOMMENDED',
-      ECOMMERCE: 'RECOMMENDED',
-      CLINIC: 'ESSENTIAL',
+      ECOMMERCE: 'ESSENTIAL',
+      CLINIC: 'RECOMMENDED',
       SALON: 'RECOMMENDED',
       SERVICE: 'RECOMMENDED',
-      OTHER: 'OPTIONAL'
+      OTHER: 'RECOMMENDED'
     },
-    name: 'Zenvia SMS',
-    namePR: 'Zenvia SMS',
-    description: 'Brezilya SMS bildirimleri',
-    descriptionPR: 'Notificações SMS do Brasil',
-    category: 'communication',
-    authType: 'api_key',
-    region: 'BR'
+    name: 'Email (Gmail/Outlook)',
+    description: 'Email müşteri desteği (Gmail veya Outlook)',
+    category: 'email',
+    authType: 'oauth'
   },
 
-};
+  // ============================================================================
+  // CRM
+  // ============================================================================
 
-// ============================================================================
-// REGION CONFIGURATION
-// ============================================================================
-
-/**
- * Region-specific integration availability
- * Defines which integrations are available or priority in each region
- */
-export const REGION_INTEGRATIONS = {
-  TR: {
-    // Turkey-specific platforms
-    exclusive: ['IKAS', 'NETGSM_SMS'],
-    // Global platforms also available
-    available: ['SHOPIFY', 'GOOGLE_CALENDAR', 'GOOGLE_SHEETS', 'WHATSAPP']
-  },
-  BR: {
-    // Brazil-specific platforms
-    exclusive: ['NUVEMSHOP', 'TRAY', 'LOJA_INTEGRADA', 'MERCADO_LIVRE', 'ZENVIA_SMS'],
-    // Global platforms also available
-    available: ['SHOPIFY', 'GOOGLE_CALENDAR', 'GOOGLE_SHEETS', 'WHATSAPP']
-  },
-  US: {
-    // US uses global platforms
-    exclusive: [],
-    available: ['SHOPIFY', 'GOOGLE_CALENDAR', 'GOOGLE_SHEETS', 'WHATSAPP']
-  },
-  GLOBAL: {
-    // Available everywhere
-    platforms: ['SHOPIFY', 'GOOGLE_CALENDAR', 'GOOGLE_SHEETS', 'WHATSAPP', 'ZAPIER']
+  CUSTOM: {
+    relevantFor: ['RESTAURANT', 'ECOMMERCE', 'CLINIC', 'SALON', 'SERVICE', 'OTHER'],
+    priority: {
+      RESTAURANT: 'RECOMMENDED',
+      ECOMMERCE: 'ESSENTIAL',
+      CLINIC: 'RECOMMENDED',
+      SALON: 'RECOMMENDED',
+      SERVICE: 'RECOMMENDED',
+      OTHER: 'RECOMMENDED'
+    },
+    name: 'Custom CRM',
+    description: 'Kendi CRM sisteminizi bağlayın (Webhook)',
+    category: 'crm',
+    authType: 'webhook'
   }
 };
 
-// ============================================================================
-// HELPER FUNCTIONS
-// ============================================================================
-
 /**
- * Get integrations filtered by business type
- * @param {string} businessType - Business type (RESTAURANT, ECOMMERCE, etc.)
- * @param {string} region - Optional region filter ('TR', 'US', or null for all)
- * @returns {Array} Filtered and sorted integrations
+ * Get filtered integrations for business type and region
  */
 export function getFilteredIntegrations(businessType = 'OTHER', region = null) {
   const integrations = [];
@@ -306,9 +173,6 @@ export function getFilteredIntegrations(businessType = 'OTHER', region = null) {
 
 /**
  * Get integrations by category
- * @param {string} businessType - Business type
- * @param {string} category - Category (scheduling, communication, ecommerce, etc.)
- * @returns {Array} Filtered integrations
  */
 export function getIntegrationsByCategory(businessType, category) {
   return getFilteredIntegrations(businessType).filter(i => i.category === category);
@@ -316,9 +180,6 @@ export function getIntegrationsByCategory(businessType, category) {
 
 /**
  * Get priority for a specific integration and business type
- * @param {string} integrationType - Integration type
- * @param {string} businessType - Business type
- * @returns {string} Priority level
  */
 export function getIntegrationPriority(integrationType, businessType) {
   const metadata = INTEGRATION_METADATA[integrationType];
@@ -328,9 +189,6 @@ export function getIntegrationPriority(integrationType, businessType) {
 
 /**
  * Check if integration is relevant for business type
- * @param {string} integrationType - Integration type
- * @param {string} businessType - Business type
- * @returns {boolean} Is relevant
  */
 export function isIntegrationRelevant(integrationType, businessType) {
   if (businessType === 'OTHER') return true;
@@ -341,8 +199,6 @@ export function isIntegrationRelevant(integrationType, businessType) {
 
 /**
  * Get essential integrations for a business type
- * @param {string} businessType - Business type
- * @returns {Array} Essential integrations
  */
 export function getEssentialIntegrations(businessType) {
   return getFilteredIntegrations(businessType).filter(i => i.priority === 'ESSENTIAL');
@@ -350,13 +206,11 @@ export function getEssentialIntegrations(businessType) {
 
 /**
  * Get integration categories with counts
- * @param {string} businessType - Business type
- * @returns {Object} Categories with integration counts
  */
 export function getIntegrationCategories(businessType) {
   const integrations = getFilteredIntegrations(businessType);
   const categories = {};
-  
+
   for (const integration of integrations) {
     if (!categories[integration.category]) {
       categories[integration.category] = {
@@ -370,6 +224,6 @@ export function getIntegrationCategories(businessType) {
     if (integration.priority === 'ESSENTIAL') categories[integration.category].essential++;
     if (integration.priority === 'RECOMMENDED') categories[integration.category].recommended++;
   }
-  
+
   return categories;
 }
