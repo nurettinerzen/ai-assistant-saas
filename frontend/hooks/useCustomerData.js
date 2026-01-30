@@ -72,6 +72,23 @@ export function useUploadCustomerDataFile() {
 }
 
 /**
+ * Hook to import customer data file
+ * @returns {object} Mutation object
+ */
+export function useImportCustomerDataFile() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (formData) => {
+      return await apiClient.customerData.importFile(formData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customerData', 'files'] });
+    },
+  });
+}
+
+/**
  * Hook to add a record to a file
  * @returns {object} Mutation object
  */

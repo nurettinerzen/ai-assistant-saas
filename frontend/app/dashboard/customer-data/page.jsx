@@ -57,6 +57,7 @@ import {
   useCustomerDataFiles,
   useCustomerDataRecords,
   useDeleteCustomerDataFile,
+  useImportCustomerDataFile,
 } from '@/hooks/useCustomerData';
 
 // Data type options for inbound calls
@@ -174,6 +175,7 @@ export default function CustomerDataPage() {
   );
 
   const deleteFile = useDeleteCustomerDataFile();
+  const importFile = useImportCustomerDataFile();
 
   const records = recordsData?.records || [];
 
@@ -307,10 +309,10 @@ export default function CustomerDataPage() {
       formData.append('file', uploadFile);
       formData.append('dataType', selectedDataType);
 
-      const res = await apiClient.customerData.importFile(formData);
+      const res = await importFile.mutateAsync(formData);
       setImportResult(res.data.results);
       setUploadStep(4);
-      loadFiles();
+      // importFile.mutateAsync already invalidates the query, so no need to call loadFiles()
     } catch (error) {
       console.error('Error importing file:', error);
       toast.error(error.response?.data?.error || (locale === 'tr' ? 'İçe aktarma başarısız' : 'Import failed'));
