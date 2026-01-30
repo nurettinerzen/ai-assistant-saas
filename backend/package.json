@@ -17,7 +17,9 @@
     "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
     "test:unit": "NODE_OPTIONS='--experimental-vm-modules' jest tests/unit",
     "test:e2e": "NODE_OPTIONS='--experimental-vm-modules' jest tests/e2e",
-    "test:pilot-regression": "node tests/pilot/run-regression.js"
+    "test:pilot-regression": "node tests/pilot/run-regression.js",
+    "smoke-test": "node scripts/daily-smoke-test.js",
+    "test:security": "node tests/security/test-child-safety.js && node tests/security/test-ssrf-protection.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
