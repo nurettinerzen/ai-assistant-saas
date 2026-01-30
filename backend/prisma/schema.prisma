@@ -126,6 +126,7 @@ model Business {
   emailRagMaxExamples      Int                     @default(3)
   emailRagMaxSnippets      Int                     @default(2)
   emailRagMinConfidence    Float                   @default(0.7) // Min classification confidence for RAG (0.0-1.0)
+  crmVersion               Int                     @default(0) // Cache invalidation for CRM data changes (P0.3b)
   aiTrainings              AiTraining[]
   appointments             Appointment[]
   assistants               Assistant[]
@@ -1644,8 +1645,9 @@ model CustomerData {
   email       String? // Email
 
   // Kimlik bilgileri
-  vkn  String? // Vergi Kimlik No
-  tcNo String? // TC Kimlik No (şahıs firması ise)
+  vkn     String? // Vergi Kimlik No
+  tcNo    String? // TC Kimlik No (şahıs firması ise)
+  orderNo String? // Sipariş numarası (P0.2b: normalized uppercase)
 
   // Özel alanlar - JSON formatında esnek veri
   // Mali veriler, borç bilgileri, beyanname durumları vb. burada tutulur

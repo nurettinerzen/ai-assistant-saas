@@ -52,10 +52,10 @@
     "soap": "^1.6.1",
     "stripe": "^19.3.1",
     "tailwindcss-animate": "^1.0.7",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "prisma": "^5.22.0"
   },
   "devDependencies": {
-    "nodemon": "^3.0.3",
-    "prisma": "^5.22.0"
+    "nodemon": "^3.0.3"
   }
 }
