@@ -79,6 +79,8 @@ import metricsRoutes from './routes/metrics.js';
 import concurrentMetricsRoutes from './routes/concurrent-metrics.js';
 // Media (signed URL access)
 import mediaRoutes from './routes/media.js';
+// Embed security (key rotation/revocation)
+import embedSecurityRoutes from './routes/embed-security.js';
 
 
 // Import jobs
@@ -89,6 +91,8 @@ import { initializeStateCleanup } from './jobs/cleanup-expired-states.js';
 
 // Route protection enforcement
 import { assertAllRoutesProtected } from './middleware/routeEnforcement.js';
+// Log redaction for sensitive data
+import { logRedactionMiddleware } from './middleware/logRedaction.js';
 
 dotenv.config();
 
@@ -136,6 +140,12 @@ app.use('/api/webhook/crm', express.json()); // CRM webhook (NO AUTH - secured b
 // ✅ OTHER ROUTES - JSON PARSE
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// ============================================================================
+// LOG REDACTION MIDDLEWARE (Security - P1)
+// Automatically redacts sensitive data from logs
+// ============================================================================
+app.use(logRedactionMiddleware);
 
 // ============================================================================
 // ACCESS LOGGING MIDDLEWARE (P0)
@@ -231,6 +241,7 @@ app.use('/api/credits', creditsRoutes);
 app.use('/api/metrics', metricsRoutes); // Internal metrics (protected)
 app.use('/api/concurrent-metrics', concurrentMetricsRoutes); // P0.5: Concurrent call metrics
 app.use('/api/media', mediaRoutes); // Signed URL media access (secure)
+app.use('/api/embed-security', embedSecurityRoutes); // Embed key management (authenticated)
 // Balance and Usage (new pricing system)
 app.use('/api/balance', balanceRoutes);
 app.use('/api/usage', usageRoutes);
