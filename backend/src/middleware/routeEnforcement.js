@@ -11,15 +11,17 @@ const PUBLIC_PATHS = [
   '/api/health',
 
   // Auth endpoints (public by design)
-  '/api/register',
-  '/api/signup',
-  '/api/login',
-  '/api/verify-email',
-  '/api/google',
-  '/api/google/code',
-  '/api/microsoft/callback',
-  '/api/forgot-password',
-  '/api/reset-password',
+  '/api/auth/register',
+  '/api/auth/signup',
+  '/api/auth/login',
+  '/api/auth/verify-email',
+  '/api/auth/google',
+  '/api/auth/google/code',
+  '/api/auth/google/callback',
+  '/api/auth/microsoft/callback',
+  '/api/auth/forgot-password',
+  '/api/auth/reset-password',
+  '/api/auth/resend-verification',
 
   // Webhooks (secured by signature verification, not JWT)
   '/api/subscription/webhook',
