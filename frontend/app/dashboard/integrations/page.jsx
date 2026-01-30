@@ -576,14 +576,8 @@ const handleShopifyConnect = async () => {
   };
 
   // Integrations to hide (removed from platform)
-  const HIDDEN_INTEGRATIONS = [
-    'IDEASOFT', 'TICIMAX', 'WOOCOMMERCE', 'NETGSM_SMS',
-    'KLAVIYO', 'CALENDLY', 'ZAPIER', 'HUBSPOT',
-    'YURTICI_KARGO', 'ARAS_KARGO', 'MNG_KARGO',
-    'MAILCHIMP', 'SALESFORCE', 'SLACK', 'STRIPE_PAYMENTS',
-    'SQUARE', 'OPENTABLE', 'TOAST_POS', 'SIMPLEPRACTICE',
-    'ZOCDOC', 'BOOKSY', 'FRESHA', 'SHIPSTATION', 'TWILIO_SMS', 'SENDGRID_EMAIL'
-  ];
+  // PILOT: Show all integrations (removed hidden list)
+  const HIDDEN_INTEGRATIONS = [];
 
   // Integration Categories - new structure without sector filter
   const INTEGRATION_CATEGORIES = [
