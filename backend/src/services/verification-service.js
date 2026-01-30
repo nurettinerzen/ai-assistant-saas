@@ -9,16 +9,30 @@
  * 4. User provides verification input
  * 5. Service verifies against anchor
  * 6. Returns full or minimal data based on verification status
+ *
+ * SECURITY (P0 Fix): All PII is redacted before returning to LLM
  */
 
 import { compareTurkishNames, comparePhones } from '../utils/text.js';
+import { redactPII } from '../utils/pii-redaction.js';
 
 /**
  * Check if a query type requires verification
+ *
+ * SECURITY (P0 Fix): ALL queries require verification.
+ * We NEVER return PII without name verification, regardless of query type.
+ *
+ * Previous logic allowed "general info" queries to skip verification,
+ * which could leak PII. This is now hardened.
  */
 export function requiresVerification(queryType) {
-  const sensitiveTypes = ['siparis', 'order', 'borc', 'debt', 'muhasebe', 'accounting', 'odeme', 'payment', 'fatura', 'invoice'];
-  return sensitiveTypes.includes(queryType?.toLowerCase());
+  // P0 SECURITY: ALWAYS require verification for ANY customer data query
+  // Even "harmless" queries like "genel bilgi" could expose PII
+  return true;
+
+  // OLD LOGIC (INSECURE):
+  // const sensitiveTypes = ['siparis', 'order', 'borc', 'debt', 'muhasebe', 'accounting', 'odeme', 'payment', 'fatura', 'invoice'];
+  // return sensitiveTypes.includes(queryType?.toLowerCase());
 }
 
 /**
@@ -168,27 +182,40 @@ export function getMinimalResult(record, queryType, language = 'TR') {
 
 /**
  * Get full result (for verified users)
- * Returns all data including sensitive information
+ * Returns data with PII REDACTED
+ *
+ * SECURITY (P0 Fix): Even after verification, we NEVER return raw PII to LLM.
+ * - Phone numbers are masked: +90******1234
+ * - Emails are masked: a***@example.com
+ * - TC/VKN completely hidden
+ * - Addresses show only city/district
+ *
  * @param {Object} record - Database record
  * @param {string} queryType - Type of query
  * @param {string} language - User's language
- * @returns {Object} Full data with detailed message
+ * @returns {Object} Full data with PII redacted
  */
 export function getFullResult(record, queryType, language = 'TR') {
   const customFields = record.customFields || {};
+
+  // CRITICAL P0 FIX: Redact PII before returning to LLM
+  const redactedRecord = redactPII(record);
+  const redactedCustomFields = redactPII(customFields);
 
   const result = {
     success: true,
     verified: true,
     data: {
-      customerName: record.customerName || record.companyName,
-      phone: record.customerPhone || record.phone,
-      email: record.customerEmail || record.email,
-      ...customFields
+      customerName: record.customerName || record.companyName, // Name is OK (used for verification)
+      phone: redactedRecord.customerPhone || redactedRecord.phone, // MASKED
+      email: redactedRecord.customerEmail || redactedRecord.email, // MASKED
+      ...redactedCustomFields // All PII fields masked
     }
   };
 
   // Generate detailed message based on query type AND add structured data
+  // NOTE: Use original (non-redacted) data for messages, as they are shown to user
+  // But use redacted data in result.data that goes to LLM
   if (queryType === 'siparis' || queryType === 'order') {
     const orderNo = customFields['Sipariş No'] || record.orderNumber;
     const status = customFields['Durum'] || record.status;
@@ -198,7 +225,8 @@ export function getFullResult(record, queryType, language = 'TR') {
     const items = record.items;
     const totalAmount = record.totalAmount;
 
-    // CRITICAL: Add order fields to data so LLM has structured access
+    // Add order fields to data so LLM has structured access
+    // Non-PII fields can be included as-is
     result.data.order = {
       orderNumber: orderNo,
       status: status,

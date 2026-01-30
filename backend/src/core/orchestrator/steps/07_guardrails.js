@@ -2,14 +2,16 @@
  * Step 7: Guardrails
  *
  * - Applies all guardrail policies in sequence
- * - Action claim validation (CRITICAL + SOFT)
+ * - Response firewall (JSON/HTML/Prompt disclosure) (P0 SECURITY)
  * - PII leak prevention (CRITICAL)
+ * - Action claim validation (CRITICAL + SOFT)
  * - Returns final validated response text
  */
 
 import { applyActionClaimPolicy } from '../../../policies/actionClaimPolicy.js';
 import { scanForPII } from '../../email/policies/piiPreventionPolicy.js';
 import { lockSession, getLockMessage } from '../../../services/session-lock.js';
+import { sanitizeResponse, logFirewallViolation } from '../../../utils/response-firewall.js';
 
 export async function applyGuardrails(params) {
   const {
@@ -24,7 +26,37 @@ export async function applyGuardrails(params) {
 
   console.log('🛡️ [Guardrails] Applying policies...');
 
-  // POLICY 1: PII Leak Prevention (CRITICAL - must run first!)
+  // POLICY 0: Response Firewall (P0 SECURITY - must run FIRST!)
+  // Blocks: JSON dumps, HTML, system prompt disclosure, internal metadata
+  const firewallResult = sanitizeResponse(responseText, language);
+
+  if (!firewallResult.safe) {
+    console.error('🚨 [FIREWALL] Response blocked!', firewallResult.violations);
+
+    // Log violation for monitoring
+    logFirewallViolation({
+      violations: firewallResult.violations,
+      original: firewallResult.original,
+      sessionId,
+      timestamp: new Date().toISOString()
+    });
+
+    // Lock session temporarily (10 minutes) to prevent abuse
+    await lockSession(sessionId, 'FIREWALL_VIOLATION', 10 * 60 * 1000);
+
+    // Return sanitized fallback response
+    return {
+      finalResponse: firewallResult.sanitized,
+      guardrailsApplied: ['RESPONSE_FIREWALL'],
+      blocked: true,
+      lockReason: 'FIREWALL_VIOLATION',
+      violations: firewallResult.violations
+    };
+  }
+
+  console.log('✅ [Firewall] Response passed security checks');
+
+  // POLICY 1: PII Leak Prevention (CRITICAL)
   const piiScan = scanForPII(responseText);
   if (piiScan.hasCritical) {
     console.error('🚨 [Guardrails] CRITICAL PII DETECTED in assistant output!', piiScan.findings);
@@ -66,11 +98,14 @@ export async function applyGuardrails(params) {
 
   console.log('✅ [Guardrails] All policies applied');
 
+  const appliedPolicies = ['RESPONSE_FIREWALL', 'PII_PREVENTION', 'ACTION_CLAIM'];
+  if (piiScan.hasHigh) {
+    appliedPolicies[1] = 'PII_PREVENTION (WARN)';
+  }
+
   return {
     finalResponse: finalText,
-    guardrailsApplied: piiScan.hasHigh
-      ? ['PII_PREVENTION (WARN)', 'ACTION_CLAIM']
-      : ['PII_PREVENTION', 'ACTION_CLAIM']
+    guardrailsApplied: appliedPolicies
   };
 }
 

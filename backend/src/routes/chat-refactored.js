@@ -42,6 +42,9 @@ import {
 import { getToolFailResponse, validateResponseAfterToolFail, executeToolWithRetry } from '../services/tool-fail-handler.js';
 import { getGatedTools, canExecuteTool } from '../services/tool-gating.js';
 
+// SECURITY (P0): Response firewall
+import { sanitizeResponse, logFirewallViolation } from '../utils/response-firewall.js';
+
 // CORE: Channel-agnostic orchestrator (step-by-step)
 import { handleIncomingMessage } from '../core/handleIncomingMessage.js';
 
@@ -1135,11 +1138,24 @@ router.post('/widget', async (req, res) => {
       });
     }
 
+    // SECURITY (P0): Apply response firewall BEFORE sending to user
+    const firewallResult = sanitizeResponse(result.reply, language);
+
+    if (!firewallResult.safe) {
+      // Log violation for monitoring
+      logFirewallViolation({
+        violations: firewallResult.violations,
+        original: firewallResult.original,
+        businessId: business.id,
+        sessionId
+      });
+    }
+
     // If PII warnings exist, prepend them to response
-    let finalReply = result.reply;
+    let finalReply = firewallResult.sanitized;
     if (hasPIIWarnings) {
       const warningText = piiWarnings.join('\n');
-      finalReply = `${warningText}\n\n${result.reply}`;
+      finalReply = `${warningText}\n\n${firewallResult.sanitized}`;
     }
 
     // Return response

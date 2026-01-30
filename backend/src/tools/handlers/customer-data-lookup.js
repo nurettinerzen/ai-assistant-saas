@@ -6,9 +6,54 @@
  * 1. Find record (anchor)
  * 2. Check verification status
  * 3. Return minimal or full data based on verification
+ *
+ * SECURITY (P0 Fix): Order number normalization to prevent lookup failures
  */
 
 import prisma from '../../prismaClient.js';
+
+/**
+ * Normalize order number for consistent lookups
+ * Fixes P0 issue: "var ama yok" (exists but returns not found)
+ *
+ * Normalization rules:
+ * - Remove common prefixes: ORD-, ORDER-, SIP-, SIPARIS-
+ * - Remove all spaces and dashes
+ * - Uppercase
+ * - Trim
+ *
+ * Examples:
+ * "ORD-12345" → "12345"
+ * "SIP 12345" → "12345"
+ * "order-12345" → "12345"
+ */
+function normalizeOrderNumber(orderNumber) {
+  if (!orderNumber) return orderNumber;
+
+  let normalized = String(orderNumber).trim().toUpperCase();
+
+  // Remove common order number prefixes
+  // IMPORTANT: Check longer prefixes FIRST to avoid partial matches
+  // (e.g., "SIPARIS-" before "SIP", "ORDER-" before "ORD")
+  const prefixes = [
+    'SIPARIS-', 'SIPARIS_', 'SIPARIS',
+    'ORDER-', 'ORDER_', 'ORDER',
+    'ORD-', 'ORD_', 'ORD',
+    'SIP-', 'SIP_', 'SIP'
+  ];
+
+  for (const prefix of prefixes) {
+    if (normalized.startsWith(prefix)) {
+      normalized = normalized.substring(prefix.length);
+      break; // Only remove one prefix
+    }
+  }
+
+  // Remove all spaces, dashes, underscores
+  normalized = normalized.replace(/[\s\-_]/g, '');
+
+  return normalized;
+}
 import {
   requiresVerification,
   createAnchor,
@@ -55,13 +100,20 @@ export async function execute(args, business, context = {}) {
 
     // Strategy 1: Order number
     if (order_number) {
-      console.log('🔍 [Lookup] Searching by order_number:', order_number);
+      // SECURITY FIX (P0): Normalize order number to prevent "var ama yok" issues
+      // Remove common prefixes, spaces, dashes that cause mismatches
+      const normalizedOrderNumber = normalizeOrderNumber(order_number);
+
+      console.log('🔍 [Lookup] Searching by order_number:', {
+        original: order_number,
+        normalized: normalizedOrderNumber
+      });
 
       // Try CrmOrder first
       const crmOrder = await prisma.crmOrder.findFirst({
         where: {
           businessId: business.id,
-          orderNumber: order_number.toUpperCase()
+          orderNumber: normalizedOrderNumber
         }
       });
 
@@ -87,12 +139,16 @@ export async function execute(args, business, context = {}) {
           if (customer.customFields) {
             for (const fieldName of orderFieldNames) {
               const fieldValue = customer.customFields[fieldName];
-              if (fieldValue && String(fieldValue).toUpperCase() === order_number.toUpperCase()) {
-                console.log('✅ [Lookup] Found in CustomerData');
-                record = customer;
-                anchorType = 'order';
-                anchorValue = order_number;
-                break;
+              if (fieldValue) {
+                // SECURITY FIX: Normalize both sides for comparison
+                const normalizedFieldValue = normalizeOrderNumber(String(fieldValue));
+                if (normalizedFieldValue === normalizedOrderNumber) {
+                  console.log('✅ [Lookup] Found in CustomerData');
+                  record = customer;
+                  anchorType = 'order';
+                  anchorValue = normalizedOrderNumber;
+                  break;
+                }
               }
             }
             if (record) break;
@@ -130,9 +186,11 @@ export async function execute(args, business, context = {}) {
       }
     }
 
-    // Strategy 3: Phone (only for non-sensitive queries)
-    else if (phone && !requiresVerification(query_type)) {
-      console.log('🔍 [Lookup] Searching by phone (non-sensitive)');
+    // Strategy 3: Phone
+    // SECURITY NOTE: Phone lookup is allowed, but will ALWAYS require name verification
+    // before returning any PII (enforced by checkVerification below)
+    else if (phone) {
+      console.log('🔍 [Lookup] Searching by phone (will require name verification)');
 
       record = await prisma.customerData.findFirst({
         where: {
