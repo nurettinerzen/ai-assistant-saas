@@ -288,6 +288,61 @@ async function section2_AuthProtection() {
     });
     logTest('Valid token returns 200', response.status === 200, response.status !== 200 ? `Got ${response.status}` : '');
 
+    // Test 4: Malformed token -> 401
+    try {
+      await axios.get(`${CONFIG.API_URL}/api/customer-data`, {
+        headers: { Authorization: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.MALFORMED' }
+      });
+      logTest('Malformed token returns 401', false, 'Request succeeded with malformed token');
+    } catch (error) {
+      const passed = error.response?.status === 401 || error.response?.status === 403;
+      logTest('Malformed token returns 401/403', passed, passed ? '' : `Got ${error.response?.status}`);
+    }
+
+    // Test 5: Expired token (simulate with old timestamp in JWT if possible)
+    // Note: This requires creating an expired token, skipping for now
+    // TODO: Add expired token test when token generation utility is available
+
+    // Test 6: Token with wrong signature
+    const jwt = require('jsonwebtoken');
+    const fakeToken = jwt.sign(
+      { userId: 1, businessId: 1 },
+      'wrong_secret_key_12345',
+      { expiresIn: '1h' }
+    );
+    try {
+      await axios.get(`${CONFIG.API_URL}/api/customer-data`, {
+        headers: { Authorization: `Bearer ${fakeToken}` }
+      });
+      logTest('Wrong signature token returns 401', false, 'Request succeeded with wrong signature');
+    } catch (error) {
+      const passed = error.response?.status === 401 || error.response?.status === 403;
+      logTest('Wrong signature token returns 401/403', passed, passed ? '' : `Got ${error.response?.status}`);
+    }
+
+    // Test 7: Missing Bearer prefix
+    try {
+      await axios.get(`${CONFIG.API_URL}/api/customer-data`, {
+        headers: { Authorization: tokenA } // Missing "Bearer "
+      });
+      logTest('Missing Bearer prefix returns 401', false, 'Request succeeded without Bearer prefix');
+    } catch (error) {
+      const passed = error.response?.status === 401 || error.response?.status === 403;
+      logTest('Missing Bearer prefix returns 401/403', passed, passed ? '' : `Got ${error.response?.status}`);
+    }
+
+    // Test 8: IDOR - Token A trying to access business B's resource
+    const tokenB = await loginUser(CONFIG.ACCOUNT_B.email, CONFIG.ACCOUNT_B.password);
+    try {
+      await axios.get(`${CONFIG.API_URL}/api/business/${CONFIG.ACCOUNT_B.businessId}`, {
+        headers: { Authorization: `Bearer ${tokenA}` } // A trying to access B
+      });
+      logTest('IDOR: Token A cannot access Business B', false, 'IDOR vulnerability! Token A accessed Business B');
+    } catch (error) {
+      const passed = error.response?.status === 403;
+      logTest('IDOR: Token A cannot access Business B', passed, passed ? '' : `Got ${error.response?.status}`);
+    }
+
     logSection('Auth & Route Protection', 'PASS');
     return { success: true, tokenA };
   } catch (error) {
@@ -428,6 +483,50 @@ async function section4_PIIVerification() {
         const hasPII = testCustomer.phone && !testCustomer.phone.includes('*') && reply.includes(testCustomer.phone);
 
         logTest('PII not leaked without verification', !hasPII, hasPII ? 'Full PII found in response!' : '');
+
+        // Test 4: Regex-based PII pattern detection in assistant reply
+        const piiPatterns = {
+          phone: /0\d{3}\s?\d{3}\s?\d{2}\s?\d{2}|0\d{10}|\+90\s?\d{3}\s?\d{3}\s?\d{2}\s?\d{2}/g, // Turkish phone
+          email: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g,
+          tc: /\b[1-9]\d{10}\b/g, // TC Kimlik No (11 digits, not starting with 0)
+          vkn: /\b\d{10}\b/g, // VKN (10 digits)
+          iban: /TR\d{2}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{2}|TR\d{24}/gi
+        };
+
+        const piiLeaks = [];
+        for (const [type, pattern] of Object.entries(piiPatterns)) {
+          const matches = reply.match(pattern);
+          if (matches && matches.length > 0) {
+            // Filter out masked patterns (containing *)
+            const unmaskedMatches = matches.filter(m => !m.includes('*'));
+            if (unmaskedMatches.length > 0) {
+              piiLeaks.push(`${type}: ${unmaskedMatches.join(', ')}`);
+            }
+          }
+        }
+
+        logTest(
+          'Regex PII leak detection',
+          piiLeaks.length === 0,
+          piiLeaks.length > 0 ? `LEAKED: ${piiLeaks.join(' | ')}` : ''
+        );
+
+        // Test 5: JSON/HTML dump detection
+        const hasJsonDump = reply.includes('{') && reply.includes('[') && reply.length > 500;
+        const hasHtmlDump = reply.includes('<html') || reply.includes('<script') || reply.includes('<!DOCTYPE');
+
+        logTest(
+          'No JSON dump in reply',
+          !hasJsonDump,
+          hasJsonDump ? 'Large JSON structure detected' : ''
+        );
+
+        logTest(
+          'No HTML dump in reply',
+          !hasHtmlDump,
+          hasHtmlDump ? 'HTML content detected' : ''
+        );
+
       } catch (error) {
         // Chat endpoint might require different auth, skip for now
         logWarning('Chat endpoint test skipped - endpoint may need public access');
@@ -683,6 +782,37 @@ async function section7_Limits() {
     } catch (error) {
       const passed = error.response?.status === 400;
       logTest('SSRF protection blocks AWS metadata', passed, passed ? '' : `Got ${error.response?.status}`);
+    }
+
+    // Test 3: WhatsApp Webhook Signature Validation
+    // Test invalid signature
+    try {
+      const response = await axios.post(`${CONFIG.API_URL}/api/whatsapp/webhook`, {
+        object: 'whatsapp_business_account',
+        entry: []
+      }, {
+        headers: {
+          'X-Hub-Signature-256': 'sha256=invalidsignature12345'
+        }
+      });
+      logTest('WhatsApp webhook rejects invalid signature', false, 'Invalid signature was accepted!');
+    } catch (error) {
+      const passed = error.response?.status === 401;
+      logTest('WhatsApp webhook rejects invalid signature', passed, passed ? '' : `Got ${error.response?.status}`);
+    }
+
+    // Test missing signature
+    try {
+      const response = await axios.post(`${CONFIG.API_URL}/api/whatsapp/webhook`, {
+        object: 'whatsapp_business_account',
+        entry: []
+      }, {
+        headers: {}
+      });
+      logTest('WhatsApp webhook rejects missing signature', false, 'Missing signature was accepted!');
+    } catch (error) {
+      const passed = error.response?.status === 401;
+      logTest('WhatsApp webhook rejects missing signature', passed, passed ? '' : `Got ${error.response?.status}`);
     }
 
     logSection('Limits & Abuse', 'PASS');
