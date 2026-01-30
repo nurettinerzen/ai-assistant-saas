@@ -1,8 +1,14 @@
 import { createClient } from 'redis';
 
-const url = process.env.REDIS_URL || 'rediss://default:Aap9AAIncDJmYWE1OTFhOTIwNDM0MGEwOTU1NWIwNDYwNGRkZWI1OHAyNDM2NDU@vital-jennet-43645.upstash.io:6379';
+// SECURITY: Never hardcode credentials! Use environment variables.
+const url = process.env.REDIS_URL;
 
-console.log('Testing:', url);
+if (!url) {
+  console.error('❌ REDIS_URL not set in environment');
+  process.exit(1);
+}
+
+console.log('Testing:', url.replace(/:[^:@]+@/, ':***@')); // Redact password in logs
 
 const client = createClient({ url });
 
