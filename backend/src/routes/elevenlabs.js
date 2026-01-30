@@ -21,6 +21,10 @@ import { hasProFeatures, isProTier } from '../config/plans.js';
 import concurrentCallManager from '../services/concurrentCallManager.js';
 import elevenLabsService from '../services/elevenlabs.js';
 import metricsService from '../services/metricsService.js';
+import {
+  containsChildSafetyViolation,
+  logContentSafetyViolation
+} from '../utils/content-safety.js';
 
 const router = express.Router();
 const openai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
@@ -467,6 +471,25 @@ async function handleToolCall(event, agentIdFromQuery = null) {
 
   // SECURITY: Don't log full parameters (may contain PII) or caller phone
   console.log('[11Labs Tool Call]', toolName, 'paramCount:', Object.keys(parameters || {}).length, 'hasCaller:', !!callerPhone);
+
+  // P0 SECURITY: Content safety check on user input parameters
+  const parametersText = Object.values(parameters || {}).filter(v => typeof v === 'string').join(' ');
+  if (containsChildSafetyViolation(parametersText)) {
+    console.error('🚨 [CONTENT_SAFETY] Child safety violation in phone tool call - BLOCKED');
+
+    logContentSafetyViolation({
+      sessionId: conversation_id || 'unknown',
+      channel: 'PHONE',
+      businessId: 'unknown', // We don't have businessId yet at this point
+      timestamp: new Date().toISOString()
+    });
+
+    return {
+      success: false,
+      error: 'Your request contains inappropriate content and cannot be processed.',
+      message: 'Üzgünüm, talebiniz uygunsuz içerik içerdiği için işlenemiyor.' // Turkish fallback
+    };
+  }
 
   try {
     // Find business from agent ID

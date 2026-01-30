@@ -46,6 +46,11 @@ import {
 } from './policies/recipientOwnershipPolicy.js';
 import { enforceToolRequiredPolicy } from './policies/toolRequiredPolicy.js';
 import { preventPIILeak, scanForPII } from './policies/piiPreventionPolicy.js';
+import {
+  containsChildSafetyViolation,
+  getBlockedContentMessage,
+  logContentSafetyViolation
+} from '../../utils/content-safety.js';
 
 /**
  * Handle email draft generation turn
@@ -197,6 +202,44 @@ export async function handleEmailTurn(params) {
 
     metrics.steps.fetchThread = Date.now() - step2Start;
     console.log(`✅ [EmailTurn] Thread fetched: ${ctx.threadMessages.length} messages (${metrics.steps.fetchThread}ms)`);
+
+    // ============================================
+    // STEP 2.4: Content Safety (PRE-LLM FILTER)
+    // ============================================
+    console.log('\n[STEP 2.4] Content safety check (pre-LLM)...');
+
+    // Check inbound message for child safety violations
+    const inboundText = ctx.inboundMessage?.textPlain || ctx.inboundMessage?.snippet || '';
+    const inboundSubject = ctx.thread?.subject || '';
+    const combinedText = `${inboundSubject} ${inboundText}`;
+
+    if (containsChildSafetyViolation(combinedText)) {
+      console.error('🚨 [CONTENT_SAFETY] Child safety violation detected in email - BLOCKED');
+
+      // Log violation (WITHOUT logging the actual content)
+      logContentSafetyViolation({
+        sessionId: `email_${threadId}`,
+        channel: 'EMAIL',
+        businessId,
+        timestamp: new Date().toISOString()
+      });
+
+      // Fail the draft lock and return error
+      await failDraftLock(ctx.lockId, 'CONTENT_SAFETY_VIOLATION');
+
+      return {
+        success: false,
+        error: 'This email contains inappropriate content and cannot be processed.',
+        errorCode: 'CONTENT_SAFETY_VIOLATION',
+        metrics: {
+          ...metrics,
+          llmCalled: false,
+          contentSafetyBlock: true
+        }
+      };
+    }
+
+    console.log('✅ [CONTENT_SAFETY] Email passed safety check');
 
     // ============================================
     // STEP 2.5: Input PII Scrubbing (CRITICAL)

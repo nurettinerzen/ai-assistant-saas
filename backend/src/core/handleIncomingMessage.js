@@ -26,6 +26,11 @@ import { applyGuardrails } from './orchestrator/steps/07_guardrails.js';
 import { persistAndEmitMetrics } from './orchestrator/steps/08_persistAndMetrics.js';
 import { isFeatureEnabled } from '../config/feature-flags.js';
 import prisma from '../config/database.js';
+import {
+  containsChildSafetyViolation,
+  getBlockedContentMessage,
+  logContentSafetyViolation
+} from '../utils/content-safety.js';
 
 /**
  * Handle incoming message (channel-agnostic)
@@ -76,6 +81,45 @@ export async function handleIncomingMessage({
   console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
 
   try {
+    // ========================================
+    // STEP 0: Content Safety (PRE-LLM FILTER)
+    // ========================================
+    console.log('\n[STEP 0] Content safety check (pre-LLM)...');
+
+    if (containsChildSafetyViolation(userMessage)) {
+      console.error('🚨 [CONTENT_SAFETY] Child safety violation detected - BLOCKED');
+
+      // Log violation (WITHOUT logging the actual message content)
+      logContentSafetyViolation({
+        sessionId: sessionId || 'unknown',
+        channel,
+        businessId: business.id,
+        timestamp: new Date().toISOString()
+      });
+
+      // Return safe response WITHOUT calling LLM
+      return {
+        reply: getBlockedContentMessage(language),
+        shouldEndSession: false,
+        forceEnd: false,
+        locked: false,
+        state: null,
+        metrics: {
+          ...metrics,
+          llmCalled: false,
+          contentSafetyBlock: true
+        },
+        inputTokens: 0,
+        outputTokens: 0,
+        debug: {
+          blocked: true,
+          reason: 'CHILD_SAFETY_VIOLATION'
+        }
+      };
+    }
+
+    console.log('✅ [CONTENT_SAFETY] Message passed safety check');
+
     // ========================================
     // STEP 1: Load Context
     // ========================================

@@ -12,6 +12,8 @@ import elevenLabsService from '../services/elevenlabs.js';
 import { PDFParse } from 'pdf-parse';
 // V1 MVP: Global limit enforcement
 import { checkKBItemLimit, checkKBStorageLimit, getURLCrawlLimit } from '../services/globalLimits.js';
+// P0 SECURITY: SSRF protection
+import { validateUrlForSSRF, logSSRFAttempt } from '../utils/ssrf-protection.js';
 
 const require = createRequire(import.meta.url);
 const mammoth = require('mammoth');
@@ -573,6 +575,22 @@ router.delete('/faqs/:id', authenticateToken, async (req, res) => {
 // Helper function to scrape URL content and extract links
 async function scrapeURL(url, extractLinks = false) {
   try {
+    // P0 SECURITY: SSRF protection - validate URL before making request
+    const ssrfCheck = await validateUrlForSSRF(url);
+    if (!ssrfCheck.safe) {
+      console.error('🚨 [SSRF] Blocked URL crawl attempt:', {
+        url,
+        reason: ssrfCheck.reason
+      });
+      return {
+        title: url,
+        content: '',
+        links: [],
+        success: false,
+        error: `Security: ${ssrfCheck.reason}`
+      };
+    }
+
     const response = await axios.get(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -670,6 +688,30 @@ router.post('/urls', authenticateToken, async (req, res) => {
       new URL(url);
     } catch {
       return res.status(400).json({ error: 'Invalid URL format' });
+    }
+
+    // P0 SECURITY: SSRF protection - validate URL before crawling
+    const ssrfCheck = await validateUrlForSSRF(url);
+    if (!ssrfCheck.safe) {
+      console.error('🚨 [SSRF] Blocked URL submission:', {
+        url,
+        reason: ssrfCheck.reason,
+        businessId,
+        userId: req.userId
+      });
+
+      logSSRFAttempt({
+        url,
+        reason: ssrfCheck.reason,
+        businessId,
+        userId: req.userId,
+        timestamp: new Date().toISOString()
+      });
+
+      return res.status(400).json({
+        error: 'URL not allowed',
+        reason: ssrfCheck.reason
+      });
     }
 
     // V1 MVP: Check KB item count limit BEFORE crawling
