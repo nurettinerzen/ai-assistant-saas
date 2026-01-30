@@ -140,32 +140,107 @@ async function section1_RedAlertCheck() {
   try {
     const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-    // Check for critical security events in logs
-    // This would ideally query your logging system (Datadog, Sentry, etc.)
-    // For now, we'll check database for error patterns
+    // Query real security events from database
+    const [
+      crossTenantAttempts,
+      firewallBlocks,
+      contentSafetyBlocks,
+      ssrfBlocks,
+      authFailures,
+      rateLimitHits
+    ] = await Promise.all([
+      prisma.securityEvent.count({
+        where: {
+          type: 'cross_tenant_attempt',
+          createdAt: { gte: last24h }
+        }
+      }),
+      prisma.securityEvent.count({
+        where: {
+          type: 'firewall_block',
+          createdAt: { gte: last24h }
+        }
+      }),
+      prisma.securityEvent.count({
+        where: {
+          type: 'content_safety_block',
+          createdAt: { gte: last24h }
+        }
+      }),
+      prisma.securityEvent.count({
+        where: {
+          type: 'ssrf_block',
+          createdAt: { gte: last24h }
+        }
+      }),
+      prisma.securityEvent.count({
+        where: {
+          type: 'auth_failure',
+          createdAt: { gte: last24h }
+        }
+      }),
+      prisma.securityEvent.count({
+        where: {
+          type: 'rate_limit_hit',
+          createdAt: { gte: last24h }
+        }
+      })
+    ]);
 
     const securityEvents = {
-      crossTenantAttempts: 0,
-      contentSafetyBlocks: 0,
-      ssrfBlocks: 0,
-      firewallBlocks: 0
+      crossTenantAttempts,
+      firewallBlocks,
+      contentSafetyBlocks,
+      ssrfBlocks,
+      authFailures,
+      rateLimitHits,
+      total: crossTenantAttempts + firewallBlocks + contentSafetyBlocks + ssrfBlocks + authFailures + rateLimitHits
     };
 
-    // TODO: Query actual logs when monitoring is set up
-    // For now, this is a placeholder that passes
+    // Define thresholds (adjust based on your traffic)
+    const THRESHOLDS = {
+      crossTenant: 10,      // More than 10 cross-tenant attempts = RED ALERT
+      firewall: 50,         // More than 50 firewall blocks = suspicious
+      contentSafety: 20,    // More than 20 content blocks = attack
+      ssrf: 5,              // Any SSRF attempt is serious
+      authFailure: 100,     // More than 100 auth failures = brute force
+      rateLimit: 200        // More than 200 rate limits = abuse
+    };
 
-    const hasSpike = false; // Would detect anomalies in real implementation
+    const criticalEvents = [];
+
+    if (crossTenantAttempts > THRESHOLDS.crossTenant) {
+      criticalEvents.push(`Cross-tenant: ${crossTenantAttempts} (threshold: ${THRESHOLDS.crossTenant})`);
+    }
+    if (firewallBlocks > THRESHOLDS.firewall) {
+      criticalEvents.push(`Firewall: ${firewallBlocks} (threshold: ${THRESHOLDS.firewall})`);
+    }
+    if (contentSafetyBlocks > THRESHOLDS.contentSafety) {
+      criticalEvents.push(`Content safety: ${contentSafetyBlocks} (threshold: ${THRESHOLDS.contentSafety})`);
+    }
+    if (ssrfBlocks > THRESHOLDS.ssrf) {
+      criticalEvents.push(`SSRF: ${ssrfBlocks} (threshold: ${THRESHOLDS.ssrf})`);
+    }
+    if (authFailures > THRESHOLDS.authFailure) {
+      criticalEvents.push(`Auth failures: ${authFailures} (threshold: ${THRESHOLDS.authFailure})`);
+    }
+    if (rateLimitHits > THRESHOLDS.rateLimit) {
+      criticalEvents.push(`Rate limits: ${rateLimitHits} (threshold: ${THRESHOLDS.rateLimit})`);
+    }
+
+    const hasSpike = criticalEvents.length > 0;
 
     if (hasSpike) {
       logSection('Red Alert Check', 'FAIL', {
-        message: 'SECURITY EVENT SPIKE DETECTED',
-        events: securityEvents
+        message: `🚨 SECURITY EVENT SPIKE DETECTED: ${criticalEvents.join(', ')}`,
+        events: securityEvents,
+        thresholds: THRESHOLDS
       });
       return { success: false, critical: true };
     }
 
     logSection('Red Alert Check', 'PASS', {
-      message: 'No critical security events in last 24h',
+      message: `No critical security events in last 24h (Total: ${securityEvents.total})`,
       events: securityEvents
     });
 

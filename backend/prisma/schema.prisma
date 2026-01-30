@@ -1946,3 +1946,26 @@ model OAuthState {
   @@index([businessId, provider])
   @@index([expiresAt]) // For cleanup cron
 }
+
+// ============================================================================
+// SECURITY EVENT TRACKING (For Red Alert & Monitoring)
+// ============================================================================
+model SecurityEvent {
+  id          Int      @id @default(autoincrement())
+  type        String   // cross_tenant_attempt, firewall_block, content_safety_block, ssrf_block, auth_failure, rate_limit_hit
+  severity    String   // low, medium, high, critical
+  businessId  Int?     // null if request before auth
+  userId      Int?     // null if request before auth
+  ipAddress   String?
+  userAgent   String?
+  endpoint    String?
+  method      String?  // GET, POST, etc.
+  statusCode  Int?     // Response status
+  details     Json?    // Additional context (blocked reason, attempted action, etc.)
+  createdAt   DateTime @default(now())
+
+  @@index([type, createdAt])
+  @@index([severity, createdAt])
+  @@index([businessId, createdAt])
+  @@index([createdAt]) // For time-range queries
+}
