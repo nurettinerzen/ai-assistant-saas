@@ -406,6 +406,95 @@ async function test4_BusinessSettings() {
 }
 
 // ============================================================================
+// TEST 5: HEALTH CHECKS
+// ============================================================================
+
+async function test5_HealthChecks() {
+  console.log('\n========================================');
+  console.log('TEST 5: HEALTH CHECKS');
+  console.log('========================================');
+
+  try {
+    // Test 5.1: API Status endpoint
+    const startTime = Date.now();
+    try {
+      const statusResponse = await axios.get(`${CONFIG.API_URL}/health`, {
+        timeout: 5000
+      });
+      const responseTime = Date.now() - startTime;
+
+      logTest('Health endpoint responds', statusResponse.status === 200, `${responseTime}ms`);
+      logTest('Health endpoint response time < 2s', responseTime < 2000, `${responseTime}ms`);
+    } catch (error) {
+      logTest('Health endpoint responds', false, `Error: ${error.message}`);
+      logTest('Health endpoint response time < 2s', false, 'Endpoint failed');
+    }
+
+    // Test 5.2: Database connectivity
+    const dbStartTime = Date.now();
+    try {
+      await prisma.$queryRaw`SELECT 1 as ping`;
+      const dbResponseTime = Date.now() - dbStartTime;
+
+      logTest('Database connectivity', true, `${dbResponseTime}ms`);
+      logTest('Database response time < 1s', dbResponseTime < 1000, `${dbResponseTime}ms`);
+    } catch (error) {
+      logTest('Database connectivity', false, `Error: ${error.message}`);
+      logTest('Database response time < 1s', false, 'Database failed');
+    }
+
+    // Test 5.3: Auth endpoint availability
+    const authStartTime = Date.now();
+    try {
+      const authResponse = await axios.post(
+        `${CONFIG.API_URL}/api/auth/login`,
+        {
+          email: 'nonexistent@test.com',
+          password: 'wrongpassword'
+        },
+        { timeout: 5000, validateStatus: () => true }
+      );
+      const authResponseTime = Date.now() - authStartTime;
+
+      // We expect 401, but endpoint should be available
+      logTest('Auth endpoint available', authResponse.status === 401, `Status: ${authResponse.status}`);
+      logTest('Auth endpoint response time < 2s', authResponseTime < 2000, `${authResponseTime}ms`);
+    } catch (error) {
+      logTest('Auth endpoint available', false, `Error: ${error.message}`);
+      logTest('Auth endpoint response time < 2s', false, 'Endpoint failed');
+    }
+
+    // Test 5.4: API routes accessible
+    const token = await loginUser(CONFIG.ACCOUNT_A.email, CONFIG.ACCOUNT_A.password);
+
+    const criticalEndpoints = [
+      { name: 'Business endpoint', url: `/api/business/${CONFIG.ACCOUNT_A.businessId}` },
+      { name: 'Customer data endpoint', url: '/api/customer-data' },
+      { name: 'Chat logs endpoint', url: '/api/chat-logs?limit=1' }
+    ];
+
+    for (const endpoint of criticalEndpoints) {
+      try {
+        const response = await axios.get(`${CONFIG.API_URL}${endpoint.url}`, {
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 5000
+        });
+        logTest(`${endpoint.name} accessible`, response.status === 200, '');
+      } catch (error) {
+        const passed = error.response?.status < 500; // 4xx is ok, 5xx is not
+        logTest(`${endpoint.name} accessible`, passed, passed ? `Status: ${error.response?.status}` : `Error: ${error.message}`);
+      }
+    }
+
+    logSection('Health Checks', 'PASS');
+    return { success: true };
+  } catch (error) {
+    logSection('Health Checks', 'FAIL', { message: error.message });
+    return { success: false };
+  }
+}
+
+// ============================================================================
 // MAIN TEST RUNNER
 // ============================================================================
 
@@ -423,6 +512,7 @@ async function main() {
     }
 
     // Run all tests
+    await test5_HealthChecks(); // Run health checks FIRST
     await test1_KnowledgeBase();
     await test2_CustomerData();
     await test3_AssistantManagement();
