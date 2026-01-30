@@ -163,6 +163,7 @@ model Business {
   chatLogs                 ChatLog[]
   pilotBusinesses          PilotBusiness[]         @relation("PilotBusinesses")
   emailPairs               EmailPair[]             @relation("EmailPairs")
+  oauthStates              OAuthState[]            @relation("OAuthStates")
 
   @@index([name])
   @@index([suspended])
@@ -1906,4 +1907,23 @@ model EmailPair {
   @@index([businessId, intent, language])
   @@index([threadId])
   @@index([sentAt])
+}
+
+// ============================================================================
+// OAUTH STATE MANAGEMENT (CSRF Protection)
+// ============================================================================
+model OAuthState {
+  id         Int      @id @default(autoincrement())
+  state      String   @unique // Cryptographically random token
+  businessId Int
+  provider   String   // google, microsoft, hubspot, etc.
+  metadata   Json?    // Additional data (redirectUrl, integrationId, etc.)
+  expiresAt  DateTime // 10-minute expiry
+  createdAt  DateTime @default(now())
+
+  business Business @relation("OAuthStates", fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([state])
+  @@index([businessId, provider])
+  @@index([expiresAt]) // For cleanup cron
 }

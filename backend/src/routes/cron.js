@@ -16,6 +16,7 @@ import cronJobs from '../services/cronJobs.js';
 import { backfillAllBusinesses, backfillEmailEmbeddings } from '../core/email/rag/indexingHooks.js';
 import { cleanupExpiredLocks } from '../core/email/policies/idempotencyPolicy.js';
 import { cleanupOldEmbeddings } from '../core/email/rag/embeddingService.js';
+import { requireCronSecret } from '../middleware/cronAuth.js';
 
 const router = express.Router();
 
@@ -143,38 +144,16 @@ function markJobCompleted(jobName, success, error = null) {
 // ============================================================================
 
 /**
- * Verify cron secret middleware
- * CRITICAL: No fallback in production mode
+ * DEPRECATED: Old cron secret verification (kept for reference)
+ * NOW USING: requireCronSecret from ../middleware/cronAuth.js
+ * - Uses crypto.timingSafeEqual for constant-time comparison
+ * - Rejects query param secrets (security: secrets in headers only)
+ * - Better error messages
  */
-function verifyCronSecret(req, res, next) {
-  const secret = req.headers['x-cron-secret'] || req.query.secret;
-  const expectedSecret = process.env.CRON_SECRET;
-  const isProduction = process.env.NODE_ENV === 'production';
+// function verifyCronSecret(req, res, next) { ... }
 
-  // SECURITY: In production, CRON_SECRET is REQUIRED
-  if (!expectedSecret) {
-    if (isProduction) {
-      console.error('🚫 [Cron] CRON_SECRET not configured in production!');
-      return res.status(500).json({ error: 'Server misconfiguration' });
-    }
-    console.warn('⚠️ [Cron] CRON_SECRET not configured (dev mode), allowing request');
-    return next();
-  }
-
-  // Timing-safe comparison to prevent timing attacks
-  if (!secret || secret.length !== expectedSecret.length) {
-    console.warn('❌ [Cron] Invalid cron secret (length mismatch)');
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-
-  // Simple comparison (for more security, use crypto.timingSafeEqual)
-  if (secret !== expectedSecret) {
-    console.warn('❌ [Cron] Invalid cron secret');
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-
-  next();
-}
+// Alias for backward compatibility (uses new secure middleware)
+const verifyCronSecret = requireCronSecret;
 
 /**
  * Job state check middleware

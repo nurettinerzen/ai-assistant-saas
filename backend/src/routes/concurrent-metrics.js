@@ -11,6 +11,7 @@
 
 import express from 'express';
 import { authenticateToken } from '../middleware/auth.js';
+import { requireCronSecret } from '../middleware/cronAuth.js';
 import metricsService from '../services/metricsService.js';
 import globalCapacityManager from '../services/globalCapacityManager.js';
 
@@ -44,9 +45,9 @@ router.get('/', authenticateToken, async (req, res) => {
 /**
  * GET /api/concurrent-metrics/prometheus
  * Get metrics in Prometheus format
- * Internal only - should be protected by network rules in production
+ * SECURITY: Requires X-Cron-Secret header (prevents public access to metrics)
  */
-router.get('/prometheus', async (req, res) => {
+router.get('/prometheus', requireCronSecret, async (req, res) => {
   try {
     // Simple IP whitelist check (optional)
     const clientIp = req.ip || req.connection.remoteAddress;

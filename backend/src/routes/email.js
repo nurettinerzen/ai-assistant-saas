@@ -14,6 +14,8 @@ import emailAI from '../services/email-ai.js';
 import { handleEmailTurn } from '../core/email/index.js';
 import { onEmailSent } from '../core/email/rag/indexingHooks.js';
 import { buildEmailPairs, getPairStatistics } from '../services/email-pair-builder.js';
+import { generateOAuthState, validateOAuthState } from '../middleware/oauthState.js';
+import { safeRedirect } from '../middleware/redirectWhitelist.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -37,7 +39,10 @@ router.get('/gmail/auth', authenticateToken, async (req, res) => {
       });
     }
 
-    const authUrl = gmailService.getAuthUrl(req.businessId);
+    // SECURITY: Generate cryptographically secure state token (CSRF protection)
+    const state = await generateOAuthState(req.businessId, 'gmail');
+    const authUrl = gmailService.getAuthUrl(state);
+
     res.json({ authUrl });
   } catch (error) {
     console.error('Gmail auth error:', error);
@@ -55,18 +60,27 @@ router.get('/gmail/callback', async (req, res) => {
 
     if (oauthError) {
       console.error('Gmail OAuth error:', oauthError);
-      return res.redirect(`${process.env.FRONTEND_URL}/dashboard/integrations?error=gmail-denied`);
+      return safeRedirect(res, `/dashboard/integrations?error=gmail-denied`);
     }
 
     if (!code || !state) {
-      return res.redirect(`${process.env.FRONTEND_URL}/dashboard/integrations?error=gmail-invalid`);
+      console.error('Gmail callback: missing code or state');
+      return safeRedirect(res, `/dashboard/integrations?error=gmail-invalid`);
     }
 
-    const businessId = parseInt(state);
+    // SECURITY: Validate state token (CSRF protection)
+    const validation = await validateOAuthState(state, null, 'gmail');
+
+    if (!validation.valid) {
+      console.error('❌ Gmail callback: Invalid state token:', validation.error);
+      return safeRedirect(res, `/dashboard/integrations?error=gmail-csrf`);
+    }
+
+    const businessId = validation.businessId;
 
     await gmailService.handleCallback(code, businessId);
 
-    console.log(`Gmail connected for business ${businessId}`);
+    console.log(`✅ Gmail connected for business ${businessId}`);
 
     // Trigger style analysis in background
     import('../services/email-style-analyzer.js').then((module) => {
@@ -75,10 +89,10 @@ router.get('/gmail/callback', async (req, res) => {
       });
     });
 
-    res.redirect(`${process.env.FRONTEND_URL}/dashboard/integrations?success=gmail`);
+    safeRedirect(res, `/dashboard/integrations?success=gmail`);
   } catch (error) {
-    console.error('Gmail callback error:', error);
-    res.redirect(`${process.env.FRONTEND_URL}/dashboard/integrations?error=gmail-failed`);
+    console.error('❌ Gmail callback error:', error);
+    safeRedirect(res, `/dashboard/integrations?error=gmail-failed`);
   }
 });
 

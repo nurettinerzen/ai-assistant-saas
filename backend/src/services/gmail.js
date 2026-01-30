@@ -70,15 +70,17 @@ class GmailService {
 
   /**
    * Get OAuth authorization URL
+   * @param {string} state - Cryptographically secure state token (CSRF protection)
+   * @returns {string} Authorization URL
    */
-  getAuthUrl(businessId) {
+  getAuthUrl(state) {
     const oauth2Client = this.createOAuth2Client();
 
     return oauth2Client.generateAuthUrl({
       access_type: 'offline',
       scope: GMAIL_SCOPES,
       prompt: 'consent',
-      state: businessId.toString()
+      state // Now using secure state token instead of businessId
     });
   }
 
