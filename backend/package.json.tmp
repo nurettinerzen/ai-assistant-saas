@@ -1,0 +1,5 @@
+{
+  "scripts": {
+    "create-test-user": "node create-test-user.js"
+  }
+}

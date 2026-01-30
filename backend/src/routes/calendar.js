@@ -543,7 +543,10 @@ router.post('/google/disconnect', authenticateToken, async (req, res) => {
 
     // Mark as inactive
     await prisma.integration.update({
-      where: { id: integration.id },
+      where: {
+        id: integration.id,
+        businessId: req.businessId // Tenant isolation - defense in depth
+      },
       data: {
         isActive: false,
         connected: false

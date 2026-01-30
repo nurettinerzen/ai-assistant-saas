@@ -658,8 +658,9 @@ router.get('/microsoft/callback', async (req, res) => {
     }
 
     const businessId = validation.businessId;
+    const codeVerifier = validation.metadata?.codeVerifier;
 
-    await outlookService.handleCallback(code, businessId);
+    await outlookService.handleCallback(code, businessId, codeVerifier);
 
     console.log(`✅ Outlook connected for business ${businessId}`);
 

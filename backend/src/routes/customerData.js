@@ -1272,7 +1272,10 @@ router.put('/:id', async (req, res) => {
     }
 
     const customer = await prisma.customerData.update({
-      where: { id },
+      where: {
+        id,
+        businessId // Tenant isolation - defense in depth
+      },
       data: {
         companyName: companyName || existing.companyName,
         phone: normalizedPhone,
@@ -1345,7 +1348,10 @@ router.delete('/:id', async (req, res) => {
     }
 
     await prisma.customerData.delete({
-      where: { id }
+      where: {
+        id,
+        businessId // Tenant isolation - defense in depth
+      }
     });
 
     res.json({ success: true, message: 'Customer deleted' });

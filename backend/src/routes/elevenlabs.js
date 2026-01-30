@@ -188,10 +188,11 @@ router.post('/webhook', async (req, res) => {
     }
 
     // Verify signature in production ONLY for lifecycle events (not tool calls)
-    if (process.env.NODE_ENV === 'production') {
+    // SECURITY: If webhook secret is configured, reject invalid signatures
+    if (process.env.NODE_ENV === 'production' && process.env.ELEVENLABS_WEBHOOK_SECRET) {
       if (!verifyWebhookSignature(req, process.env.ELEVENLABS_WEBHOOK_SECRET)) {
-        console.warn('⚠️ Invalid webhook signature for lifecycle event (non-critical)');
-        // Don't reject - 11Labs lifecycle webhooks may not always have signatures
+        console.error('❌ 11Labs webhook signature verification failed');
+        return res.status(401).json({ error: 'Invalid webhook signature' });
       }
     }
 
@@ -464,7 +465,8 @@ async function handleToolCall(event, agentIdFromQuery = null) {
                       event.from ||
                       null;
 
-  console.log('[11Labs Tool Call]', toolName, JSON.stringify(parameters), 'Caller:', callerPhone);
+  // SECURITY: Don't log full parameters (may contain PII) or caller phone
+  console.log('[11Labs Tool Call]', toolName, 'paramCount:', Object.keys(parameters || {}).length, 'hasCaller:', !!callerPhone);
 
   try {
     // Find business from agent ID
@@ -575,7 +577,8 @@ async function handleToolCall(event, agentIdFromQuery = null) {
       from: resolvedCallerPhone
     });
 
-    console.log(`🔧 Tool result for ${toolName}:`, result.success ? 'SUCCESS' : 'FAILED', JSON.stringify(result).substring(0, 500));
+    // SECURITY: Don't log full result (may contain customer PII)
+    console.log(`🔧 Tool result for ${toolName}:`, result.success ? 'SUCCESS' : 'FAILED', `(${result.message?.length || 0} chars)`);
 
     // 11Labs expects a simple response that the AI can use to continue conversation
     // Return the message directly for the AI to read and respond to

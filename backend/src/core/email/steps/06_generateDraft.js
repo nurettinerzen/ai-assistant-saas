@@ -585,6 +585,8 @@ function buildToolResultsContext(toolResults, customerData, language) {
     }
 
     // Show data if available
+    // TODO: SECURITY - Filter PII from result.data before sending to LLM
+    // For now, we send full data but should implement selective field exposure
     if (result.outcome === 'OK' && result.data) {
       context += `Data:\n${JSON.stringify(result.data, null, 2)}\n`;
     }

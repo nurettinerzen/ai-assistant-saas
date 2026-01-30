@@ -808,6 +808,9 @@ const handleShopifyConnect = async () => {
             );
           })()}
 
+          {/* PILOT: Email integrations temporarily disabled (PKCE OAuth issue - fixing post-pilot) */}
+          {false && (
+          <>
           {/* Gmail Card */}
           <div className={`bg-white dark:bg-neutral-900 rounded-xl border p-6 hover:shadow-md transition-shadow ${emailStatus?.connected && emailStatus?.provider === 'GMAIL' ? 'border-neutral-400 dark:border-neutral-600' : 'border-neutral-200 dark:border-neutral-700'}`}>
             <div className="flex items-start justify-between mb-4">
@@ -881,6 +884,9 @@ const handleShopifyConnect = async () => {
               )
             )}
           </div>
+          </>
+          )}
+          {/* END PILOT: Email disabled */}
 
           {/* Other Integrations */}
           {filteredIntegrations.map(renderIntegrationCard)}

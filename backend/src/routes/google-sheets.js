@@ -524,7 +524,10 @@ router.post('/sync', authenticateToken, requireRole(['OWNER', 'ADMIN']), async (
 
             if (existing) {
               await prisma.crmOrder.update({
-                where: { id: existing.id },
+                where: {
+                  id: existing.id,
+                  businessId: req.businessId // Tenant isolation - defense in depth
+                },
                 data: {
                   customerPhone: orderData.customerPhone,
                   customerName: orderData.customerName,

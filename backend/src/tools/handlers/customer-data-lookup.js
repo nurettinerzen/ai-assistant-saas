@@ -33,9 +33,16 @@ export async function execute(args, business, context = {}) {
     const sessionId = context.sessionId || context.conversationId;
     const language = business.language || 'TR';
 
-    console.log('🔍 [CustomerDataLookup-V2] Args:', {
-      query_type, phone, order_number, customer_name, vkn, tc,
-      businessId: business.id, sessionId
+    // SECURITY: Don't log PII (phone, vkn, tc, names)
+    console.log('🔍 [CustomerDataLookup-V2] Query:', {
+      query_type,
+      has_phone: !!phone,
+      has_order: !!order_number,
+      has_name: !!customer_name,
+      has_vkn: !!vkn,
+      has_tc: !!tc,
+      businessId: business.id,
+      sessionId
     });
 
     // ============================================================================

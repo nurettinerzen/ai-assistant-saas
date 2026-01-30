@@ -402,7 +402,8 @@ async function handleMessageLEGACY(sessionId, businessId, userMessage, systemPro
     }
 
     const functionCall = functionCalls[0];
-    console.log('🔧 [Gemini] Function call:', functionCall.name, functionCall.args);
+    // SECURITY: Don't log full args (may contain PII)
+    console.log('🔧 [Gemini] Function call:', functionCall.name, 'argCount:', Object.keys(functionCall.args || {}).length);
 
     // SECURITY GATE 1: Tool must be in allowedTools
     if (!state.allowedTools.includes(functionCall.name)) {
@@ -948,8 +949,30 @@ router.post('/widget', async (req, res) => {
       }
     }
 
-    // Get active tools for prompt
+    // SECURITY: KB Empty Hard Fallback
+    // If KB is empty AND no CRM tools available, return fallback (prevent hallucination)
     const activeToolsList = getPromptBuilderTools(business, business.integrations || []);
+    const hasCRMTools = activeToolsList.some(t =>
+      t === 'customer_data_lookup' || t === 'check_order_status'
+    );
+
+    const isKBEmpty = !knowledgeContext || knowledgeContext.trim().length === 0;
+
+    // Check if message looks like KB query (not CRM lookup)
+    const looksLikeCRMQuery = /sipariş|order|müşteri|customer|takip|tracking|\d{5,}/i.test(message);
+
+    if (isKBEmpty && !hasCRMTools && !looksLikeCRMQuery) {
+      console.log('⚠️ KB_EMPTY_FALLBACK: No KB content, no CRM tools, returning hard fallback');
+
+      const fallbackMessage = language === 'TR'
+        ? `Üzgünüm, şu anda bilgi bankamızda bu konuda bilgi bulunmuyor. Size daha iyi yardımcı olabilmemiz için lütfen ${business.contactEmail || business.phone || 'müşteri hizmetleri'} üzerinden bizimle iletişime geçin.`
+        : `Sorry, we don't have information about this in our knowledge base yet. For better assistance, please contact us at ${business.contactEmail || business.phone || 'customer service'}.`;
+
+      return res.json({
+        reply: fallbackMessage,
+        kbEmptyFallback: true
+      });
+    }
 
     // Build system prompt
     const systemPromptBase = buildAssistantPrompt(assistant, business, activeToolsList);

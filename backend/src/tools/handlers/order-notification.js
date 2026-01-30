@@ -47,7 +47,12 @@ export async function execute(args, business, context = {}) {
     const { customer_name, customer_phone, order_items } = args;
     const language = business.language || 'TR';
 
-    console.log('📦 Sending order notification:', { customer_name, customer_phone, order_items });
+    // SECURITY: Don't log customer PII
+    console.log('📦 Sending order notification:', {
+      has_name: !!customer_name,
+      has_phone: !!customer_phone,
+      item_count: order_items?.length || 0
+    });
 
     // Validate required parameters
     if (!customer_name || !customer_phone || !order_items) {

@@ -25,25 +25,27 @@ export async function buildLLMRequest(params) {
   } = params;
 
   // STEP 0: Enhance system prompt with known customer info
+  // SECURITY: Only send non-PII identifiers to LLM, not actual customer data
   let enhancedSystemPrompt = systemPrompt;
   if (state.extractedSlots && Object.keys(state.extractedSlots).length > 0) {
     const knownInfo = [];
+    // Only include identifiers, not actual PII values
     if (state.extractedSlots.customer_name) {
-      knownInfo.push(`Name: ${state.extractedSlots.customer_name}`);
+      knownInfo.push(`Customer name mentioned`);
     }
     if (state.extractedSlots.phone) {
-      knownInfo.push(`Phone: ${state.extractedSlots.phone}`);
+      knownInfo.push(`Phone number provided`);
     }
     if (state.extractedSlots.order_number) {
-      knownInfo.push(`Order: ${state.extractedSlots.order_number}`);
+      knownInfo.push(`Order #${state.extractedSlots.order_number}`); // Order number is OK
     }
     if (state.extractedSlots.email) {
-      knownInfo.push(`Email: ${state.extractedSlots.email}`);
+      knownInfo.push(`Email mentioned`);
     }
 
     if (knownInfo.length > 0) {
-      enhancedSystemPrompt += `\n\nKnown Customer Info: ${knownInfo.join(', ')}`;
-      console.log('📝 [BuildLLMRequest] Added Known Info to prompt:', knownInfo.join(', '));
+      enhancedSystemPrompt += `\n\nCustomer Context: ${knownInfo.join(', ')} - Use tools to retrieve actual data`;
+      console.log('📝 [BuildLLMRequest] Added context flags (no PII):', knownInfo.length, 'indicators');
     }
   }
 

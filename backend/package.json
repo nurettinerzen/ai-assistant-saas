@@ -9,11 +9,15 @@
     "build": "prisma generate",
     "postinstall": "prisma generate",
     "migrate": "npx prisma migrate dev",
+    "migrate:deploy": "npx prisma migrate deploy",
+    "migrate:status": "npx prisma migrate status",
     "generate": "npx prisma generate",
     "studio": "npx prisma studio",
+    "test-user": "node create-test-user.js",
     "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
     "test:unit": "NODE_OPTIONS='--experimental-vm-modules' jest tests/unit",
-    "test:e2e": "NODE_OPTIONS='--experimental-vm-modules' jest tests/e2e"
+    "test:e2e": "NODE_OPTIONS='--experimental-vm-modules' jest tests/e2e",
+    "test:pilot-regression": "node tests/pilot/run-regression.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
