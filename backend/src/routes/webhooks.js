@@ -55,6 +55,14 @@ function verifyElevenLabsSignature(req) {
     const timestamp = timestampPart.split('=')[1];
     const receivedHash = hashPart.split('=')[1];
 
+    // Verify timestamp (5 minute tolerance window)
+    const now = Math.floor(Date.now() / 1000);
+    const timestampAge = now - parseInt(timestamp);
+    if (timestampAge > 300 || timestampAge < -300) {
+      console.error('❌ 11Labs webhook timestamp too old or in future:', timestampAge, 'seconds');
+      return false;
+    }
+
     // Create signed payload
     const payload = `${timestamp}.${JSON.stringify(req.body)}`;
     const expectedHash = crypto
@@ -62,7 +70,16 @@ function verifyElevenLabsSignature(req) {
       .update(payload)
       .digest('hex');
 
-    return receivedHash === expectedHash;
+    // Constant-time comparison to prevent timing attacks
+    try {
+      return crypto.timingSafeEqual(
+        Buffer.from(receivedHash, 'hex'),
+        Buffer.from(expectedHash, 'hex')
+      );
+    } catch (e) {
+      console.error('❌ 11Labs signature comparison failed:', e.message);
+      return false;
+    }
   } catch (error) {
     console.error('❌ Signature verification error:', error);
     return false;
@@ -73,8 +90,15 @@ function verifyElevenLabsSignature(req) {
 // 11LABS CALL-STARTED WEBHOOK (Conversation Initiation)
 // This webhook is called when a call starts - for inbound calls, we need to
 // verify that an inbound assistant is configured for this phone number
+// SECURITY: Requires HMAC-SHA256 signature verification
 // ============================================================================
 router.post('/elevenlabs/call-started', async (req, res) => {
+  // SECURITY: Verify signature first
+  if (!verifyElevenLabsSignature(req)) {
+    console.error('❌ 11Labs call-started signature verification failed');
+    return res.status(401).json({ error: 'Invalid signature' });
+  }
+
   try {
     // Log raw payload for debugging
     console.log('📥 11Labs call-started RAW payload:', JSON.stringify(req.body, null, 2));
@@ -230,15 +254,15 @@ router.post('/elevenlabs/call-started', async (req, res) => {
 // 11LABS CALL-ENDED / POST-CALL WEBHOOK
 // ============================================================================
 router.post('/elevenlabs/call-ended', async (req, res) => {
+  // SECURITY: Verify signature - ALWAYS required
+  if (!verifyElevenLabsSignature(req)) {
+    console.error('❌ 11Labs call-ended signature verification failed');
+    return res.status(401).json({ error: 'Invalid signature' });
+  }
+
   try {
     // Log raw payload for debugging
     console.log('📥 11Labs call-ended RAW payload:', JSON.stringify(req.body, null, 2));
-
-    // Verify signature (optional if secret configured)
-    if (process.env.ELEVENLABS_WEBHOOK_SECRET && !verifyElevenLabsSignature(req)) {
-      console.warn('⚠️ Invalid webhook signature');
-      return res.status(401).json({ error: 'Invalid signature' });
-    }
 
     // 11Labs post-call webhook structure:
     // { type: "post_call_transcription", data: { conversation_id, agent_id, status, metadata: { call_duration_secs, ... } } }
@@ -425,8 +449,15 @@ router.post('/elevenlabs/call-ended', async (req, res) => {
 
 // ============================================================================
 // 11LABS POST-CALL WEBHOOK (Alternative endpoint)
+// SECURITY: Requires HMAC-SHA256 signature verification
 // ============================================================================
 router.post('/elevenlabs/post-call', async (req, res) => {
+  // SECURITY: Verify signature first
+  if (!verifyElevenLabsSignature(req)) {
+    console.error('❌ 11Labs post-call signature verification failed');
+    return res.status(401).json({ error: 'Invalid signature' });
+  }
+
   // Forward to call-ended handler
   console.log('📥 11Labs post-call webhook - forwarding to call-ended handler');
   req.url = '/elevenlabs/call-ended';

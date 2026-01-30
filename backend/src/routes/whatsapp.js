@@ -5,6 +5,7 @@
  */
 
 import express from 'express';
+import crypto from 'crypto';
 import axios from 'axios';
 import { PrismaClient } from '@prisma/client';
 import { decrypt } from '../utils/encryption.js';
@@ -103,9 +104,57 @@ router.get('/webhook', webhookRateLimiter.middleware(), async (req, res) => {
   }
 });
 
+/**
+ * Verify WhatsApp webhook signature (Meta/Facebook)
+ * Uses X-Hub-Signature-256 header with HMAC-SHA256
+ */
+function verifyWhatsAppSignature(req, appSecret) {
+  if (!appSecret) {
+    console.warn('⚠️ WHATSAPP_APP_SECRET not configured - signature verification disabled');
+    return true; // Allow in development, but log warning
+  }
+
+  const signature = req.headers['x-hub-signature-256'];
+  if (!signature) {
+    console.error('❌ Missing X-Hub-Signature-256 header');
+    return false;
+  }
+
+  // Meta sends signature as "sha256=<hash>"
+  const signatureHash = signature.split('=')[1];
+  if (!signatureHash) {
+    console.error('❌ Invalid signature format');
+    return false;
+  }
+
+  // Calculate expected signature
+  const expectedHash = crypto
+    .createHmac('sha256', appSecret)
+    .update(JSON.stringify(req.body))
+    .digest('hex');
+
+  // Constant-time comparison to prevent timing attacks
+  try {
+    return crypto.timingSafeEqual(
+      Buffer.from(signatureHash, 'hex'),
+      Buffer.from(expectedHash, 'hex')
+    );
+  } catch (e) {
+    console.error('❌ Signature verification failed:', e.message);
+    return false;
+  }
+}
+
 // Webhook - Incoming messages (Multi-tenant)
 router.post('/webhook', webhookRateLimiter.middleware(), async (req, res) => {
   console.log('🔔 WhatsApp WEBHOOK RECEIVED:', JSON.stringify(req.body, null, 2));
+
+  // SECURITY: Verify webhook signature
+  const appSecret = process.env.WHATSAPP_APP_SECRET || process.env.META_APP_SECRET;
+  if (!verifyWhatsAppSignature(req, appSecret)) {
+    console.error('❌ WhatsApp webhook signature verification failed');
+    return res.sendStatus(401);
+  }
 
   try {
     const body = req.body;

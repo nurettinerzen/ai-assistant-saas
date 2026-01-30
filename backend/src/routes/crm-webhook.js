@@ -9,20 +9,77 @@
  */
 
 import express from 'express';
+import crypto from 'crypto';
 import prisma from '../prismaClient.js';
 
 const router = express.Router();
 
 /**
+ * Verify CRM webhook signature
+ * Uses X-CRM-Signature header with HMAC-SHA256
+ * Format: timestamp=<unix_timestamp>,signature=<hmac_hex>
+ */
+function verifyCRMSignature(req, webhookSecret) {
+  const signatureHeader = req.headers['x-crm-signature'];
+  if (!signatureHeader) {
+    console.error('❌ Missing X-CRM-Signature header');
+    return false;
+  }
+
+  try {
+    // Parse signature header
+    const parts = {};
+    signatureHeader.split(',').forEach(part => {
+      const [key, value] = part.split('=');
+      parts[key] = value;
+    });
+
+    const { timestamp, signature } = parts;
+    if (!timestamp || !signature) {
+      console.error('❌ Invalid signature format');
+      return false;
+    }
+
+    // Verify timestamp (5 minute tolerance)
+    const now = Math.floor(Date.now() / 1000);
+    const timestampAge = now - parseInt(timestamp);
+    if (timestampAge > 300 || timestampAge < -300) {
+      console.error('❌ Signature timestamp too old or in future:', timestampAge, 'seconds');
+      return false;
+    }
+
+    // Calculate expected signature: HMAC(timestamp.body, secret)
+    const payload = `${timestamp}.${JSON.stringify(req.body)}`;
+    const expectedSignature = crypto
+      .createHmac('sha256', webhookSecret)
+      .update(payload)
+      .digest('hex');
+
+    // Constant-time comparison
+    return crypto.timingSafeEqual(
+      Buffer.from(signature, 'hex'),
+      Buffer.from(expectedSignature, 'hex')
+    );
+  } catch (error) {
+    console.error('❌ CRM signature verification error:', error.message);
+    return false;
+  }
+}
+
+/**
  * CRM Webhook Endpoint
  * POST /api/webhook/crm/:businessId/:webhookSecret
+ *
+ * SECURITY: Requires HMAC-SHA256 signature in X-CRM-Signature header
+ * Format: timestamp=<unix_timestamp>,signature=<hmac_hex>
+ * Signature payload: `${timestamp}.${JSON.stringify(body)}`
  */
 router.post('/:businessId/:webhookSecret', async (req, res) => {
   try {
     const { businessId, webhookSecret } = req.params;
     const data = req.body;
 
-    // Webhook doğrulama
+    // Step 1: Verify webhook exists and is active
     const webhook = await prisma.crmWebhook.findFirst({
       where: {
         businessId: parseInt(businessId),
@@ -33,6 +90,12 @@ router.post('/:businessId/:webhookSecret', async (req, res) => {
 
     if (!webhook) {
       return res.status(401).json({ error: 'Invalid webhook credentials' });
+    }
+
+    // Step 2: SECURITY - Verify HMAC signature
+    if (!verifyCRMSignature(req, webhookSecret)) {
+      console.error('❌ CRM webhook signature verification failed for business:', businessId);
+      return res.status(401).json({ error: 'Invalid signature' });
     }
 
     // Data tipi kontrolü
