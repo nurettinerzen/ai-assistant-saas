@@ -11,32 +11,73 @@ const PUBLIC_PATHS = [
   '/api/health',
 
   // Auth endpoints (public by design)
-  '/api/auth/login',
-  '/api/auth/register',
-  '/api/auth/signup',
-  '/api/auth/forgot-password',
-  '/api/auth/reset-password',
-  '/api/auth/verify-email',
-  '/api/auth/google',
-  '/api/auth/google/code',
-  '/api/auth/microsoft/callback',
+  '/api/register',
+  '/api/signup',
+  '/api/login',
+  '/api/verify-email',
+  '/api/google',
+  '/api/google/code',
+  '/api/microsoft/callback',
+  '/api/forgot-password',
+  '/api/reset-password',
 
   // Webhooks (secured by signature verification, not JWT)
   '/api/subscription/webhook',
   '/api/elevenlabs/webhook',
   '/api/elevenlabs/post-call',
+  '/api/elevenlabs/call-started',
+  '/api/elevenlabs/call-ended',
   '/api/webhook/incoming',
   '/api/webhook/crm',
   '/api/webhooks/*',
+  '/api/webhook/*',
+  '/api/iyzico-webhook',
+  '/api/iyzico-payment-callback',
+  '/api/iyzico-subscription-callback',
+  '/api/iyzico-callback',
+  '/api/stripe',
+  '/api/whatsapp/webhook',
+
+  // Public widget/embed endpoints (no JWT, uses embedKey)
+  '/api/chat', // Public chat widget
+  '/api/chat-legacy',
+  '/api/widget',
+  '/api/widget/*',
+
+  // Demo endpoints (public)
+  '/api/demo/*',
+  '/api/demo-request',
+
+  // Public integrations callbacks (OAuth, no JWT)
+  '/api/google-calendar/callback',
+  '/api/google-sheets/callback',
+  '/api/gmail/callback',
+  '/api/outlook/callback',
+  '/api/hubspot/callback',
+  '/api/shopify/callback',
+  '/api/ideasoft/callback',
 
   // Public invitation endpoints
   '/api/team/invitation/:token',
+  '/api/invitation/:token',
 
   // Waitlist (public)
   '/api/waitlist',
 
   // Cron jobs (secured by cron-secret header, not JWT)
-  '/api/cron/*'
+  '/api/cron/*',
+
+  // Public pricing/plans info
+  '/api/subscription/plans',
+  '/api/subscription/payment-provider',
+  '/api/cost-calculator/pricing',
+
+  // Media access (secured by signed token, not JWT)
+  '/api/media/signed/:token',
+
+  // CRM webhook (secured by webhookSecret, not JWT)
+  '/api/webhook/crm/:businessId/:webhookSecret',
+  '/api/crm/:businessId/:webhookSecret'
 ];
 
 const PROTECTED_MIDDLEWARE_NAMES = [
