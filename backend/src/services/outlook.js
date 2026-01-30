@@ -89,8 +89,9 @@ class OutlookService {
       redirect_uri: config.redirectUri,
       scope: MICROSOFT_SCOPES.join(' '),
       response_mode: 'query',
-      state,
-      prompt: 'consent'
+      state
+      // NOTE: Removed 'prompt: consent' to respect tenant-wide admin consent
+      // If admin consent is granted, users won't see consent screen again
     });
 
     // Add PKCE parameters if provided
