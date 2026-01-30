@@ -7,6 +7,8 @@ import XLSX from 'xlsx';
 import elevenLabsService from '../services/elevenlabs.js';
 import { getActiveToolsForElevenLabs } from '../tools/index.js';
 import { buildAssistantPrompt, getActiveTools as getPromptBuilderTools } from '../services/promptBuilder.js';
+// V1 MVP: Global limit enforcement
+import { checkCRMLimit } from '../services/globalLimits.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -619,8 +621,9 @@ router.post('/parse', upload.single('file'), async (req, res) => {
 
 /**
  * POST /api/customer-data/import
- * Import customer data from Excel/CSV file
- * Creates a CustomerDataFile record and links all imported records to it
+ * V1 MVP: Atomic import with global limit check
+ * - Checks limit BEFORE creating any records
+ * - Import is rejected entirely if would exceed limit (no partial import)
  */
 router.post('/import', upload.single('file'), async (req, res) => {
   try {
@@ -634,6 +637,20 @@ router.post('/import', upload.single('file'), async (req, res) => {
 
     // Parse file
     const { data, columns } = parseFile(req.file.buffer, req.file.originalname);
+
+    // V1 MVP: Check CRM limit BEFORE processing
+    // All records will be attempted to create, so check total count
+    const limitCheck = await checkCRMLimit(businessId, data.length);
+    if (!limitCheck.allowed) {
+      return res.status(403).json({
+        error: limitCheck.error.code,
+        message: limitCheck.error.message,
+        currentRecords: limitCheck.current,
+        requestedRecords: data.length,
+        limit: limitCheck.limit,
+        allowedToAdd: Math.max(0, limitCheck.limit - limitCheck.current)
+      });
+    }
 
     // Create CustomerDataFile record
     const customerDataFile = await prisma.customerDataFile.create({
@@ -663,6 +680,8 @@ router.post('/import', upload.single('file'), async (req, res) => {
       email: ['Email', 'E-mail', 'E-posta', 'email', 'Eposta', 'Mail', 'E-Mail'],
       vkn: ['VKN', 'Vergi Kimlik No', 'vkn', 'Vergi No', 'Vergi Numarası'],
       tcNo: ['TC No', 'TC Kimlik No', 'TC', 'tcNo', 'TCKN', 'TC Kimlik', 'Kimlik No'],
+      // P0.2b: Order number normalization
+      orderNo: ['Sipariş No', 'Sipariş Numarası', 'Siparis No', 'SİPARİŞ NO', 'Order No', 'Order Number', 'orderNumber', 'orderNo', 'Order ID', 'Sipariş', 'Sipariş ID'],
       sgkDebt: ['SGK Borcu', 'SGK', 'sgkDebt', 'SGK Borç'],
       sgkDueDate: ['SGK Vadesi', 'SGK Vade', 'sgkDueDate', 'SGK Son Ödeme'],
       taxDebt: ['Vergi Borcu', 'Vergi', 'taxDebt', 'Vergi Borç'],
@@ -781,6 +800,10 @@ router.post('/import', upload.single('file'), async (req, res) => {
           tags = String(tagsRaw).split(/[,;]/).map(t => t.trim()).filter(t => t);
         }
 
+        // Extract and normalize orderNo (P0.2b)
+        const orderNoRaw = findValue(row, 'orderNo');
+        const orderNo = orderNoRaw ? String(orderNoRaw).toUpperCase().trim() : null;
+
         // Build customer data object
         const customerDataObj = {
           companyName: String(companyName).trim(),
@@ -789,6 +812,7 @@ router.post('/import', upload.single('file'), async (req, res) => {
           email: findValue(row, 'email') || null,
           vkn: findValue(row, 'vkn') || null,
           tcNo: findValue(row, 'tcNo') || null,
+          orderNo, // P0.2b: Normalized order number
           notes: findValue(row, 'notes') || null,
           tags,
           customFields: Object.keys(customFields).length > 0 ? customFields : null
@@ -821,6 +845,12 @@ router.post('/import', upload.single('file'), async (req, res) => {
         status: fileStatus,
         recordCount: actualRecordCount
       }
+    });
+
+    // P0.3b: Increment CRM version for cache invalidation
+    await prisma.business.update({
+      where: { id: businessId },
+      data: { crmVersion: { increment: 1 } }
     });
 
     // Sync 11Labs agents with new tools (async, don't wait)

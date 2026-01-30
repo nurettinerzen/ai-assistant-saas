@@ -255,26 +255,30 @@ app.use((err, req, res, next) => {
 });
 
 // ============================================================================
-// SECURITY: Route Protection Enforcement
+// SECURITY: Route Protection Enforcement (V1 MVP)
 // ============================================================================
 // Check all routes are protected (except public ones)
 // FAILS in staging/dev/CI, WARNS in production
-// TEMPORARILY DISABLED for development - TODO: Re-enable after fixing route protection
-// if (process.env.NODE_ENV !== 'test') {
-//   try {
-//     assertAllRoutesProtected(app);
-//   } catch (error) {
-//     console.error(error.message);
-//     if (process.env.NODE_ENV !== 'production') {
-//       process.exit(1); // Fail deployment in staging/dev
-//     }
-//   }
-// }
+if (process.env.NODE_ENV !== 'test') {
+  try {
+    assertAllRoutesProtected(app);
+    console.log('✅ Route protection check passed');
+  } catch (error) {
+    console.error('❌ Route protection check failed:', error.message);
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('🚨 BLOCKING DEPLOYMENT - Fix unprotected routes!');
+      process.exit(1); // Fail deployment in staging/dev
+    } else {
+      console.warn('⚠️  WARNING: Unprotected routes detected in production!');
+    }
+  }
+}
 
 // P0: Initialize concurrent call services
 import globalCapacityManager from './services/globalCapacityManager.js';
 import { startCleanupCron } from './services/callCleanupCron.js';
 import metricsService from './services/metricsService.js';
+// V1 MVP: Redis disabled - import cacheService from './services/cache-service.js';
 
 // Initialize cron jobs
 if (process.env.NODE_ENV !== 'test') {
@@ -285,19 +289,16 @@ if (process.env.NODE_ENV !== 'test') {
   // initEmailSyncJob();
   console.log('✅ Background jobs initialized\n');
 
-  // P0: Initialize concurrent call management
+  // P0: Initialize concurrent call management (V1: Redis disabled)
   console.log('🚀 Initializing concurrent call management...');
   try {
     await globalCapacityManager.connect();
-
-    // Only log success if Redis is actually connected
-    // (globalCapacityManager logs internally with details)
+    // V1 MVP: Redis disabled - await cacheService.connect();
 
     startCleanupCron();
-    // Log removed - cron service logs internally
 
     console.log('✅ Metrics service initialized');
-    console.log('🎯 Concurrent call system ready\n');
+    console.log('🎯 Concurrent call system ready (V1: No Redis cache)\n');
   } catch (error) {
     console.error('❌ Error initializing concurrent call system:', error);
     console.error('   Calls may fail if Redis is not available\n');

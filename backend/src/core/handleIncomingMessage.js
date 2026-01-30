@@ -129,7 +129,8 @@ export async function handleIncomingMessage({
       language,
       timezone,
       prisma,
-      sessionId: resolvedSessionId
+      sessionId: resolvedSessionId,
+      userMessage // V1 MVP: For intelligent KB retrieval
     });
 
     console.log(`📚 History: ${conversationHistory.length} messages`);

@@ -10,6 +10,8 @@ import * as cheerio from 'cheerio';
 import { createRequire } from 'module';
 import elevenLabsService from '../services/elevenlabs.js';
 import { PDFParse } from 'pdf-parse';
+// V1 MVP: Global limit enforcement
+import { checkKBItemLimit, checkKBStorageLimit, getURLCrawlLimit } from '../services/globalLimits.js';
 
 const require = createRequire(import.meta.url);
 const mammoth = require('mammoth');
@@ -212,13 +214,50 @@ async function extractTextFromTXT(filePath) {
 router.post('/documents', authenticateToken, upload.single('file'), async (req, res) => {
   try {
     const businessId = req.businessId;
-    
+
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
+    // V1 MVP: Check KB item count limit BEFORE upload
+    const itemCheck = await checkKBItemLimit(businessId, 1);
+    if (!itemCheck.allowed) {
+      // Delete uploaded file (cleanup)
+      try {
+        await fs.unlink(req.file.path);
+      } catch (e) {
+        console.error('Failed to delete file after limit check:', e);
+      }
+
+      return res.status(403).json({
+        error: itemCheck.error.code,
+        message: itemCheck.error.message,
+        current: itemCheck.current,
+        limit: itemCheck.limit
+      });
+    }
+
+    // V1 MVP: Check KB storage limit BEFORE upload
+    const storageCheck = await checkKBStorageLimit(businessId, req.file.size);
+    if (!storageCheck.allowed) {
+      // Delete uploaded file (cleanup)
+      try {
+        await fs.unlink(req.file.path);
+      } catch (e) {
+        console.error('Failed to delete file after storage check:', e);
+      }
+
+      return res.status(403).json({
+        error: storageCheck.error.code,
+        message: storageCheck.error.message,
+        currentMB: storageCheck.currentMB,
+        fileSizeMB: storageCheck.fileSizeMB,
+        limitMB: storageCheck.limitMB
+      });
+    }
+
     const ext = path.extname(req.file.originalname).toLowerCase();
-    
+
     // Create initial database entry
     const document = await prisma.knowledgeBase.create({
       data: {
@@ -421,9 +460,20 @@ router.post('/faqs', authenticateToken, async (req, res) => {
   try {
     const businessId = req.businessId;
     const { question, answer, category } = req.body;
-    
+
     if (!question || !answer) {
       return res.status(400).json({ error: 'Question and answer are required' });
+    }
+
+    // V1 MVP: Check KB item count limit BEFORE creating FAQ
+    const itemCheck = await checkKBItemLimit(businessId, 1);
+    if (!itemCheck.allowed) {
+      return res.status(403).json({
+        error: itemCheck.error.code,
+        message: itemCheck.error.message,
+        current: itemCheck.current,
+        limit: itemCheck.limit
+      });
     }
 
     // Get ALL active assistants with 11Labs agent ID
@@ -622,6 +672,21 @@ router.post('/urls', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Invalid URL format' });
     }
 
+    // V1 MVP: Check KB item count limit BEFORE crawling
+    const itemCheck = await checkKBItemLimit(businessId, 1);
+    if (!itemCheck.allowed) {
+      return res.status(403).json({
+        error: itemCheck.error.code,
+        message: itemCheck.error.message,
+        current: itemCheck.current,
+        limit: itemCheck.limit
+      });
+    }
+
+    // V1 MVP: Use global crawl depth limit
+    const maxCrawlPages = getURLCrawlLimit();
+    const effectiveCrawlDepth = Math.min(crawlDepth || 1, maxCrawlPages);
+
     // Create database entry
     const urlEntry = await prisma.knowledgeBase.create({
       data: {
@@ -629,7 +694,7 @@ router.post('/urls', authenticateToken, async (req, res) => {
         type: 'URL',
         title: url,
         url,
-        crawlDepth: crawlDepth || 1,
+        crawlDepth: effectiveCrawlDepth, // V1 MVP: Limited by global limit
         pageCount: 0,
         status: 'PROCESSING',
         autoScan: autoScan || false,
