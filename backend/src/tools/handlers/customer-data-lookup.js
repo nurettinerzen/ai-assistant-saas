@@ -123,35 +123,53 @@ export async function execute(args, business, context = {}) {
         anchorType = 'order';
         anchorValue = crmOrder.orderNumber;
       } else {
-        // Try CustomerData (search in customFields)
+        // Try CustomerData (first check orderNo field, then customFields)
         console.log('🔍 [Lookup] Not in CrmOrder, searching CustomerData...');
+
+        // FIRST: Check top-level orderNo field
         const allCustomers = await prisma.customerData.findMany({
           where: { businessId: business.id }
         });
 
-        // Search in customFields for order number
-        const orderFieldNames = [
-          'Sipariş No', 'Siparis No', 'SİPARİŞ NO', 'Sipariş Numarası',
-          'order_number', 'orderNumber', 'Order Number', 'Order No'
-        ];
-
         for (const customer of allCustomers) {
-          if (customer.customFields) {
-            for (const fieldName of orderFieldNames) {
-              const fieldValue = customer.customFields[fieldName];
-              if (fieldValue) {
-                // SECURITY FIX: Normalize both sides for comparison
-                const normalizedFieldValue = normalizeOrderNumber(String(fieldValue));
-                if (normalizedFieldValue === normalizedOrderNumber) {
-                  console.log('✅ [Lookup] Found in CustomerData');
-                  record = customer;
-                  anchorType = 'order';
-                  anchorValue = normalizedOrderNumber;
-                  break;
+          // Check top-level orderNo field first
+          if (customer.orderNo) {
+            const normalizedDbOrderNo = normalizeOrderNumber(customer.orderNo);
+            if (normalizedDbOrderNo === normalizedOrderNumber) {
+              console.log('✅ [Lookup] Found in CustomerData.orderNo');
+              record = customer;
+              anchorType = 'order';
+              anchorValue = normalizedOrderNumber;
+              break;
+            }
+          }
+        }
+
+        // SECOND: If not found, search in customFields for order number
+        if (!record) {
+          const orderFieldNames = [
+            'Sipariş No', 'Siparis No', 'SİPARİŞ NO', 'Sipariş Numarası',
+            'order_number', 'orderNumber', 'Order Number', 'Order No'
+          ];
+
+          for (const customer of allCustomers) {
+            if (customer.customFields) {
+              for (const fieldName of orderFieldNames) {
+                const fieldValue = customer.customFields[fieldName];
+                if (fieldValue) {
+                  // SECURITY FIX: Normalize both sides for comparison
+                  const normalizedFieldValue = normalizeOrderNumber(String(fieldValue));
+                  if (normalizedFieldValue === normalizedOrderNumber) {
+                    console.log('✅ [Lookup] Found in CustomerData.customFields');
+                    record = customer;
+                    anchorType = 'order';
+                    anchorValue = normalizedOrderNumber;
+                    break;
+                  }
                 }
               }
+              if (record) break;
             }
-            if (record) break;
           }
         }
 

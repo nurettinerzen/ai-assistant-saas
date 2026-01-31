@@ -43,9 +43,11 @@ export function requiresVerification(queryType) {
  * @returns {Object} Anchor object with verification data
  */
 export function createAnchor(record, anchorType, anchorValue) {
+  // P0 FIX: Prioritize contactName (person name) over companyName for verification
+  // contactName is used for identity verification, companyName is business name
   return {
     id: record.id,
-    name: record.customerName || record.companyName || record.contactName,
+    name: record.customerName || record.contactName || record.companyName,
     phone: record.customerPhone || record.phone,
     email: record.customerEmail || record.email,
     anchorType,

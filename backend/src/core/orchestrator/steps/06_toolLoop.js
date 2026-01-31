@@ -86,7 +86,18 @@ export async function executeToolLoop(params) {
     // Clear force flag
     delete state.forceToolCall;
 
-    if (toolResult.outcome === 'OK') {
+    // P0: Handle verification required outcome
+    if (toolResult.outcome === 'VERIFICATION_REQUIRED') {
+      console.log('🔐 [ToolLoop-Force] Verification required, updating state');
+      state.verification = state.verification || { status: 'none', attempts: 0 };
+      state.verification.status = 'pending';
+      state.verification.pendingField = toolResult.data?.askFor || 'name';
+      state.verification.anchor = toolResult.data?.anchor;
+      state.verification.attempts = 0;
+      hadToolSuccess = true;
+      responseText = toolResult.message;
+      console.log('🔐 [ToolLoop-Force] Verification state updated');
+    } else if (toolResult.outcome === 'OK') {
       hadToolSuccess = true;
       responseText = toolResult.message || (language === 'TR'
         ? 'Talebiniz alındı, en kısa sürede size dönüş yapacağız.'
@@ -250,6 +261,20 @@ export async function executeToolLoop(params) {
         if (toolName === 'create_callback' && toolResult.data.callbackId) {
           state.lastCallbackId = toolResult.data.callbackId;
         }
+      }
+
+      // P0: Handle verification required outcome
+      if (toolResult.outcome === 'VERIFICATION_REQUIRED') {
+        console.log('🔐 [ToolLoop] Verification required, updating state');
+        state.verification = state.verification || { status: 'none', attempts: 0 };
+        state.verification.status = 'pending';
+        state.verification.pendingField = toolResult.data?.askFor || 'name';
+        state.verification.anchor = toolResult.data?.anchor;
+        state.verification.attempts = 0;
+        console.log('🔐 [ToolLoop] Verification state updated:', {
+          status: state.verification.status,
+          pendingField: state.verification.pendingField
+        });
       }
 
       // Build function response for LLM (Gemini format)

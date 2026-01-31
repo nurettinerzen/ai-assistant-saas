@@ -31,6 +31,7 @@ import { logClassification, logRoutingDecision, logViolation, logToolExecution }
 import { getFlow, getAllowedTools as getFlowAllowedTools } from '../config/flow-definitions.js';
 import { toolRegistry } from '../services/tool-registry.js';
 import { executeTool } from '../tools/index.js';
+import { ToolOutcome } from '../tools/toolResult.js';
 import {
   needsVerification,
   isVerified,
@@ -524,17 +525,18 @@ async function handleMessageLEGACY(sessionId, businessId, userMessage, systemPro
       };
     }
 
-    // HANDLE VERIFICATION_REQUIRED ACTION FROM TOOL
-    if (toolResult.action === 'VERIFICATION_REQUIRED') {
+    // HANDLE VERIFICATION_REQUIRED OUTCOME FROM TOOL
+    if (toolResult.outcome === ToolOutcome.VERIFICATION_REQUIRED) {
       console.log('🔐 [Tool] Verification required, starting verification flow');
-      console.log('🔐 [Tool] AskFor:', toolResult.askFor);
+      console.log('🔐 [Tool] AskFor:', toolResult.data?.askFor);
 
       // Update state to start verification
       state.verification.status = 'pending';
-      state.verification.pendingField = toolResult.askFor;
+      state.verification.pendingField = toolResult.data?.askFor || 'name';
       state.verification.attempts = 0;
+      state.verification.anchor = toolResult.data?.anchor;
 
-      console.log('🔐 [Verification] State updated to pending, field:', toolResult.askFor);
+      console.log('🔐 [Verification] State updated to pending, field:', toolResult.data?.askFor);
 
       // Generate verification request message
       const verificationMessages = {
@@ -549,7 +551,7 @@ async function handleMessageLEGACY(sessionId, businessId, userMessage, systemPro
           : 'For verification, may I have your email?'
       };
 
-      const verificationMessage = verificationMessages[toolResult.askFor] || toolResult.message;
+      const verificationMessage = verificationMessages[toolResult.data?.askFor] || toolResult.message;
 
       // Update state and return verification request
       await updateState(sessionId, state);
