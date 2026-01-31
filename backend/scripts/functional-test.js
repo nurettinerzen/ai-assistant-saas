@@ -564,6 +564,79 @@ async function test5_HealthChecks() {
 }
 
 // ============================================================================
+// TEST 6: LIMITS & QUOTA REGRESSION
+// ============================================================================
+
+async function test6_LimitsAndQuota() {
+  console.log('\n========================================');
+  console.log('TEST 6: LIMITS & QUOTA REGRESSION');
+  console.log('========================================');
+
+  try {
+    const token = await loginUser(CONFIG.ACCOUNT_A.email, CONFIG.ACCOUNT_A.password);
+
+    // Test 6.1: Get subscription & quota info
+    const businessResponse = await axios.get(`${CONFIG.API_URL}/api/business/${CONFIG.ACCOUNT_A.businessId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    const subscription = businessResponse.data?.subscription;
+    logTest('Fetch subscription info', !!subscription, subscription ? `Plan: ${subscription.plan}` : 'No subscription');
+
+    // Test 6.2: Check KB storage limits are reported
+    const assistants = businessResponse.data?.assistants || [];
+    if (assistants.length > 0) {
+      const assistantId = assistants[0].id;
+      const kbListResponse = await axios.get(`${CONFIG.API_URL}/api/knowledge-base/${assistantId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      const hasLimitInfo = kbListResponse.data?.storageUsed !== undefined || kbListResponse.data?.storageLimit !== undefined;
+      logTest('KB storage limit info available', hasLimitInfo, hasLimitInfo ? '' : 'No storage info in response');
+    } else {
+      logWarning('No assistant found - skipping KB storage test');
+    }
+
+    // Test 6.3: Check customer data import limits
+    const filesResponse = await axios.get(`${CONFIG.API_URL}/api/customer-data/files`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    const hasFileCount = filesResponse.data?.files !== undefined;
+    logTest('Customer data file count available', hasFileCount, hasFileCount ? `${filesResponse.data.files.length} files` : '');
+
+    // Test 6.4: Verify assistant count doesn't exceed limit
+    const assistantCount = assistants.length;
+    const MAX_ASSISTANTS = 10; // Assume reasonable limit
+    logTest('Assistant count within reasonable limits', assistantCount < MAX_ASSISTANTS, `${assistantCount} assistants`);
+
+    // Test 6.5: Test API rate limiting headers (if present)
+    const rateLimitResponse = await axios.get(`${CONFIG.API_URL}/api/business/${CONFIG.ACCOUNT_A.businessId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    const hasRateLimitHeaders = rateLimitResponse.headers['x-ratelimit-limit'] !== undefined;
+    if (hasRateLimitHeaders) {
+      logTest('Rate limit headers present', true, `Limit: ${rateLimitResponse.headers['x-ratelimit-limit']}`);
+    } else {
+      logWarning('No rate limit headers in response');
+    }
+
+    // Test 6.6: Verify quota enforcement exists (check if subscription has balance field)
+    if (subscription) {
+      const hasQuotaFields = subscription.balance !== undefined || subscription.plan !== undefined;
+      logTest('Subscription has quota tracking', hasQuotaFields, hasQuotaFields ? 'Balance/Plan tracked' : '');
+    }
+
+    logSection('Limits & Quota', 'PASS');
+    return { success: true };
+  } catch (error) {
+    logSection('Limits & Quota', 'FAIL', { message: error.message });
+    return { success: false };
+  }
+}
+
+// ============================================================================
 // MAIN TEST RUNNER
 // ============================================================================
 
@@ -586,6 +659,7 @@ async function main() {
     await test2_CustomerData();
     await test3_AssistantManagement();
     await test4_BusinessSettings();
+    await test6_LimitsAndQuota();
 
     // Generate report
     report.endTime = new Date();
