@@ -89,8 +89,12 @@ async function test1_KnowledgeBase() {
   console.log('TEST 1: KNOWLEDGE BASE OPERATIONS');
   console.log('========================================');
 
+  let uploadedDocId = null;
+  let assistantId = null;
+  let token = null;
+
   try {
-    const token = await loginUser(CONFIG.ACCOUNT_A.email, CONFIG.ACCOUNT_A.password);
+    token = await loginUser(CONFIG.ACCOUNT_A.email, CONFIG.ACCOUNT_A.password);
 
     // Get business info
     const businessResponse = await axios.get(`${CONFIG.API_URL}/api/business/${CONFIG.ACCOUNT_A.businessId}`, {
@@ -104,7 +108,7 @@ async function test1_KnowledgeBase() {
       return { success: true };
     }
 
-    const assistantId = assistants[0].id;
+    assistantId = assistants[0].id;
 
     // Test 1.1: Get existing KB documents
     const kbListResponse = await axios.get(`${CONFIG.API_URL}/api/knowledge-base/${assistantId}`, {
@@ -136,20 +140,21 @@ Created: ${new Date().toISOString()}
     );
 
     const uploadedDoc = kbUploadResponse.data.document;
-    logTest('Upload KB document', kbUploadResponse.status === 200 && uploadedDoc?.id, uploadedDoc?.id || 'No ID');
+    uploadedDocId = uploadedDoc?.id;
+    logTest('Upload KB document', kbUploadResponse.status === 200 && uploadedDocId, uploadedDocId || 'No ID');
 
     // Test 1.3: Verify document appears in list
     const kbListAfterUpload = await axios.get(`${CONFIG.API_URL}/api/knowledge-base/${assistantId}`, {
       headers: { Authorization: `Bearer ${token}` }
     });
 
-    const foundDoc = kbListAfterUpload.data.documents.find(d => d.id === uploadedDoc?.id);
+    const foundDoc = kbListAfterUpload.data.documents.find(d => d.id === uploadedDocId);
     logTest('Verify uploaded document in list', !!foundDoc, foundDoc ? '' : 'Document not found');
 
     // Test 1.4: Delete the test document
-    if (uploadedDoc?.id) {
+    if (uploadedDocId) {
       const deleteResponse = await axios.delete(
-        `${CONFIG.API_URL}/api/knowledge-base/${assistantId}/${uploadedDoc.id}`,
+        `${CONFIG.API_URL}/api/knowledge-base/${assistantId}/${uploadedDocId}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -160,8 +165,12 @@ Created: ${new Date().toISOString()}
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      const docStillExists = kbListAfterDelete.data.documents.find(d => d.id === uploadedDoc.id);
+      const docStillExists = kbListAfterDelete.data.documents.find(d => d.id === uploadedDocId);
       logTest('Verify document deleted', !docStillExists, docStillExists ? 'Document still exists!' : '');
+
+      if (!docStillExists) {
+        uploadedDocId = null; // Successfully cleaned up
+      }
     }
 
     logSection('Knowledge Base', 'PASS');
@@ -169,6 +178,19 @@ Created: ${new Date().toISOString()}
   } catch (error) {
     logSection('Knowledge Base', 'FAIL', { message: error.message });
     return { success: false };
+  } finally {
+    // CLEANUP GUARANTEE: Ensure test document is deleted even if tests failed
+    if (uploadedDocId && assistantId && token) {
+      try {
+        await axios.delete(
+          `${CONFIG.API_URL}/api/knowledge-base/${assistantId}/${uploadedDocId}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        console.log(`  🧹 Cleanup: Deleted test KB document ${uploadedDocId}`);
+      } catch (cleanupError) {
+        console.log(`  ⚠️  Cleanup failed: Could not delete KB document ${uploadedDocId}`);
+      }
+    }
   }
 }
 
@@ -181,8 +203,12 @@ async function test2_CustomerData() {
   console.log('TEST 2: CUSTOMER DATA OPERATIONS');
   console.log('========================================');
 
+  let testFilePath = null;
+  let fileId = null;
+  let token = null;
+
   try {
-    const token = await loginUser(CONFIG.ACCOUNT_A.email, CONFIG.ACCOUNT_A.password);
+    token = await loginUser(CONFIG.ACCOUNT_A.email, CONFIG.ACCOUNT_A.password);
 
     // Test 2.1: Get existing customer data files
     const filesResponse = await axios.get(`${CONFIG.API_URL}/api/customer-data/files`, {
@@ -197,7 +223,7 @@ async function test2_CustomerData() {
 Test,User,05551234567,test@example.com,TEST-${Date.now()}
 `;
 
-    const testFilePath = path.join(__dirname, `test-customer-data-${Date.now()}.csv`);
+    testFilePath = path.join(__dirname, `test-customer-data-${Date.now()}.csv`);
     await fs.writeFile(testFilePath, testCsvContent);
 
     // Test 2.3: Upload CSV file
@@ -218,11 +244,8 @@ Test,User,05551234567,test@example.com,TEST-${Date.now()}
     );
 
     const uploadSuccess = uploadResponse.data.success;
-    const fileId = uploadResponse.data.fileId;
+    fileId = uploadResponse.data.fileId;
     logTest('Import customer data file', uploadSuccess && fileId, fileId || 'No file ID');
-
-    // Clean up test file
-    await fs.unlink(testFilePath);
 
     // Test 2.4: Verify file appears in list
     const filesAfterUpload = await axios.get(`${CONFIG.API_URL}/api/customer-data/files`, {
@@ -255,6 +278,10 @@ Test,User,05551234567,test@example.com,TEST-${Date.now()}
 
       const fileStillExists = filesAfterDelete.data.files.find(f => f.id === fileId);
       logTest('Verify file deleted', !fileStillExists, fileStillExists ? 'File still exists!' : '');
+
+      if (!fileStillExists) {
+        fileId = null; // Successfully cleaned up
+      }
     }
 
     logSection('Customer Data', 'PASS');
@@ -262,6 +289,28 @@ Test,User,05551234567,test@example.com,TEST-${Date.now()}
   } catch (error) {
     logSection('Customer Data', 'FAIL', { message: error.message });
     return { success: false };
+  } finally {
+    // CLEANUP GUARANTEE: Delete local test file
+    if (testFilePath) {
+      try {
+        await fs.unlink(testFilePath);
+        console.log(`  🧹 Cleanup: Deleted local test file ${testFilePath}`);
+      } catch (cleanupError) {
+        // File might not exist, ignore
+      }
+    }
+
+    // CLEANUP GUARANTEE: Delete uploaded file from server
+    if (fileId && token) {
+      try {
+        await axios.delete(`${CONFIG.API_URL}/api/customer-data/files/${fileId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        console.log(`  🧹 Cleanup: Deleted uploaded file ${fileId}`);
+      } catch (cleanupError) {
+        console.log(`  ⚠️  Cleanup failed: Could not delete file ${fileId}`);
+      }
+    }
   }
 }
 
@@ -274,8 +323,11 @@ async function test3_AssistantManagement() {
   console.log('TEST 3: ASSISTANT MANAGEMENT');
   console.log('========================================');
 
+  let assistantId = null;
+  let token = null;
+
   try {
-    const token = await loginUser(CONFIG.ACCOUNT_A.email, CONFIG.ACCOUNT_A.password);
+    token = await loginUser(CONFIG.ACCOUNT_A.email, CONFIG.ACCOUNT_A.password);
 
     // Test 3.1: Get existing assistants
     const businessResponse = await axios.get(`${CONFIG.API_URL}/api/business/${CONFIG.ACCOUNT_A.businessId}`, {
@@ -298,12 +350,13 @@ async function test3_AssistantManagement() {
     );
 
     const newAssistant = createResponse.data.assistant;
-    logTest('Create assistant', createResponse.status === 200 && newAssistant?.id, newAssistant?.id || 'No ID');
+    assistantId = newAssistant?.id;
+    logTest('Create assistant', createResponse.status === 200 && assistantId, assistantId || 'No ID');
 
     // Test 3.3: Update assistant
-    if (newAssistant?.id) {
+    if (assistantId) {
       const updateResponse = await axios.put(
-        `${CONFIG.API_URL}/api/assistants/${newAssistant.id}`,
+        `${CONFIG.API_URL}/api/assistants/${assistantId}`,
         {
           name: `${newAssistant.name} - Updated`,
           description: 'Updated description'
@@ -318,11 +371,11 @@ async function test3_AssistantManagement() {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      const updatedAssistant = updatedBusinessResponse.data.assistants.find(a => a.id === newAssistant.id);
+      const updatedAssistant = updatedBusinessResponse.data.assistants.find(a => a.id === assistantId);
       logTest('Verify assistant update', updatedAssistant?.name.includes('Updated'));
 
       // Test 3.5: Delete assistant
-      const deleteResponse = await axios.delete(`${CONFIG.API_URL}/api/assistants/${newAssistant.id}`, {
+      const deleteResponse = await axios.delete(`${CONFIG.API_URL}/api/assistants/${assistantId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -333,8 +386,12 @@ async function test3_AssistantManagement() {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      const deletedAssistant = finalBusinessResponse.data.assistants.find(a => a.id === newAssistant.id);
+      const deletedAssistant = finalBusinessResponse.data.assistants.find(a => a.id === assistantId);
       logTest('Verify assistant deleted', !deletedAssistant, deletedAssistant ? 'Assistant still exists!' : '');
+
+      if (!deletedAssistant) {
+        assistantId = null; // Successfully cleaned up
+      }
     }
 
     logSection('Assistant Management', 'PASS');
@@ -342,6 +399,18 @@ async function test3_AssistantManagement() {
   } catch (error) {
     logSection('Assistant Management', 'FAIL', { message: error.message });
     return { success: false };
+  } finally {
+    // CLEANUP GUARANTEE: Delete test assistant even if tests failed
+    if (assistantId && token) {
+      try {
+        await axios.delete(`${CONFIG.API_URL}/api/assistants/${assistantId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        console.log(`  🧹 Cleanup: Deleted test assistant ${assistantId}`);
+      } catch (cleanupError) {
+        console.log(`  ⚠️  Cleanup failed: Could not delete assistant ${assistantId}`);
+      }
+    }
   }
 }
 
