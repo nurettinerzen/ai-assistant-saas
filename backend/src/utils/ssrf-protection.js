@@ -163,8 +163,9 @@ export async function validateUrlForSSRF(url) {
 /**
  * Log SSRF attempt (for security monitoring)
  * @param {Object} params - Attack details
+ * @param {Object} req - Express request object (optional, for logging)
  */
-export function logSSRFAttempt(params) {
+export async function logSSRFAttempt(params, req = null) {
   const {
     url,
     reason,
@@ -182,8 +183,11 @@ export function logSSRFAttempt(params) {
     severity: 'HIGH'
   });
 
-  // TODO: Send to monitoring system (Sentry, Datadog)
-  // TODO: Consider rate limiting or blocking user if repeated attempts
+  // P0: Write SecurityEvent to database for Red Alert monitoring
+  if (req) {
+    const { logSSRFBlock } = await import('../middleware/securityEventLogger.js');
+    await logSSRFBlock(req, url, businessId);
+  }
 }
 
 export default {

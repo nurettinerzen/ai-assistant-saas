@@ -4,6 +4,8 @@
  * For production, consider using Redis for distributed rate limiting
  */
 
+import { logRateLimitHit } from './securityEventLogger.js';
+
 class RateLimiter {
   constructor(options = {}) {
     this.windowMs = options.windowMs || 60000; // Default: 1 minute
@@ -43,6 +45,11 @@ class RateLimiter {
 
       // Check if limit exceeded
       if (requestData.count > this.maxRequests) {
+        // P0: Log rate limit hit to SecurityEvent for Red Alert monitoring
+        logRateLimitHit(req, this.maxRequests, this.windowMs).catch(err => {
+          console.error('Failed to log rate limit event:', err);
+        });
+
         return res.status(429).json({
           error: 'Too many requests',
           message: `Rate limit exceeded. Please try again after ${new Date(requestData.resetTime).toISOString()}`,

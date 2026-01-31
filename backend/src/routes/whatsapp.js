@@ -11,6 +11,7 @@ import { PrismaClient } from '@prisma/client';
 import { decrypt } from '../utils/encryption.js';
 import { webhookRateLimiter } from '../middleware/rateLimiter.js';
 import { getDateTimeContext } from '../utils/dateTime.js';
+import { logWebhookSignatureFailure } from '../middleware/securityEventLogger.js';
 import { buildAssistantPrompt, getActiveTools as getPromptBuilderTools } from '../services/promptBuilder.js';
 import { isFreePlanExpired } from '../middleware/checkPlanExpiry.js';
 import { calculateTokenCost, hasFreeChat } from '../config/plans.js';
@@ -153,6 +154,10 @@ router.post('/webhook', webhookRateLimiter.middleware(), async (req, res) => {
   const appSecret = process.env.WHATSAPP_APP_SECRET || process.env.META_APP_SECRET;
   if (!verifyWhatsAppSignature(req, appSecret)) {
     console.error('❌ WhatsApp webhook signature verification failed');
+
+    // Log security event
+    await logWebhookSignatureFailure(req, 'whatsapp', 401);
+
     return res.sendStatus(401);
   }
 

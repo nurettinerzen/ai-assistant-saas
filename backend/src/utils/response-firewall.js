@@ -206,17 +206,36 @@ export function sanitizeResponse(text, language = 'TR') {
 /**
  * Log firewall violation for monitoring
  * @param {Object} violation - Violation details
+ * @param {Object} req - Express request object (optional)
+ * @param {number} businessId - Business ID (optional)
  */
-export function logFirewallViolation(violation) {
+export async function logFirewallViolation(violation, req = null, businessId = null) {
   console.error('🚨 [FIREWALL] SECURITY VIOLATION:', {
     violations: violation.violations,
     timestamp: new Date().toISOString(),
     preview: violation.original?.substring(0, 200) // First 200 chars for debugging
   });
 
-  // TODO: Send to monitoring service (Sentry, LogRocket, etc.)
-  // TODO: Increment violation counter in database
-  // TODO: Alert if violation rate exceeds threshold
+  // P0: Write SecurityEvent to database for Red Alert monitoring
+  try {
+    const { logFirewallBlock } = await import('../middleware/securityEventLogger.js');
+
+    // Create a mock req object if not provided (for non-HTTP contexts)
+    const reqObj = req || {
+      ip: 'system',
+      headers: { 'user-agent': 'internal' },
+      path: '/chat',
+      method: 'POST'
+    };
+
+    await logFirewallBlock(
+      reqObj,
+      violation.violations.join(', '),
+      businessId
+    );
+  } catch (error) {
+    console.error('Failed to log firewall violation to SecurityEvent:', error);
+  }
 }
 
 export default {

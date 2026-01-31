@@ -196,6 +196,11 @@ router.post('/webhook', async (req, res) => {
     if (process.env.NODE_ENV === 'production' && process.env.ELEVENLABS_WEBHOOK_SECRET) {
       if (!verifyWebhookSignature(req, process.env.ELEVENLABS_WEBHOOK_SECRET)) {
         console.error('❌ 11Labs webhook signature verification failed');
+
+        // P0: Log webhook signature failure to SecurityEvent
+        const { logWebhookSignatureFailure } = await import('../middleware/securityEventLogger.js');
+        await logWebhookSignatureFailure(req, '11labs', 401);
+
         return res.status(401).json({ error: 'Invalid webhook signature' });
       }
     }

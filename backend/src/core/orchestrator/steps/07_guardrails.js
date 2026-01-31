@@ -34,12 +34,12 @@ export async function applyGuardrails(params) {
     console.error('🚨 [FIREWALL] Response blocked!', firewallResult.violations);
 
     // Log violation for monitoring
-    logFirewallViolation({
+    await logFirewallViolation({
       violations: firewallResult.violations,
       original: firewallResult.original,
       sessionId,
       timestamp: new Date().toISOString()
-    });
+    }, null, chat?.businessId);
 
     // Lock session temporarily (10 minutes) to prevent abuse
     await lockSession(sessionId, 'FIREWALL_VIOLATION', 10 * 60 * 1000);
@@ -60,6 +60,23 @@ export async function applyGuardrails(params) {
   const piiScan = scanForPII(responseText);
   if (piiScan.hasCritical) {
     console.error('🚨 [Guardrails] CRITICAL PII DETECTED in assistant output!', piiScan.findings);
+
+    // P0: Log PII leak attempt to SecurityEvent
+    try {
+      const { logPIILeakBlock } = await import('../../../middleware/securityEventLogger.js');
+      const piiTypes = piiScan.findings.map(f => f.type);
+
+      const mockReq = {
+        ip: 'system',
+        headers: { 'user-agent': 'internal' },
+        path: '/chat',
+        method: 'POST'
+      };
+
+      await logPIILeakBlock(mockReq, piiTypes, chat?.businessId);
+    } catch (error) {
+      console.error('Failed to log PII leak to SecurityEvent:', error);
+    }
 
     // Lock session immediately (1 hour)
     await lockSession(sessionId, 'PII_RISK', 60 * 60 * 1000); // 1 hour

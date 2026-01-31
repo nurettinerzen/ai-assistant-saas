@@ -700,13 +700,13 @@ router.post('/urls', authenticateToken, async (req, res) => {
         userId: req.userId
       });
 
-      logSSRFAttempt({
+      await logSSRFAttempt({
         url,
         reason: ssrfCheck.reason,
         businessId,
         userId: req.userId,
         timestamp: new Date().toISOString()
-      });
+      }, req);
 
       return res.status(400).json({
         error: 'URL not allowed',
