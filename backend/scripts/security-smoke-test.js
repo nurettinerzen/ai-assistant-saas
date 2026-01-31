@@ -10,6 +10,7 @@
 
 import axios from 'axios';
 import { PrismaClient } from '@prisma/client';
+import jwt from 'jsonwebtoken';
 
 const prisma = new PrismaClient();
 
@@ -140,7 +141,7 @@ async function section1_RedAlertCheck() {
   try {
     const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-    // Query real security events from database
+    // Query real security events from database (exclude test events)
     const [
       crossTenantAttempts,
       firewallBlocks,
@@ -152,37 +153,43 @@ async function section1_RedAlertCheck() {
       prisma.securityEvent.count({
         where: {
           type: 'cross_tenant_attempt',
-          createdAt: { gte: last24h }
+          createdAt: { gte: last24h },
+          NOT: { details: { path: ['test'], equals: true } }
         }
       }),
       prisma.securityEvent.count({
         where: {
           type: 'firewall_block',
-          createdAt: { gte: last24h }
+          createdAt: { gte: last24h },
+          NOT: { details: { path: ['test'], equals: true } }
         }
       }),
       prisma.securityEvent.count({
         where: {
           type: 'content_safety_block',
-          createdAt: { gte: last24h }
+          createdAt: { gte: last24h },
+          NOT: { details: { path: ['test'], equals: true } }
         }
       }),
       prisma.securityEvent.count({
         where: {
           type: 'ssrf_block',
-          createdAt: { gte: last24h }
+          createdAt: { gte: last24h },
+          NOT: { details: { path: ['test'], equals: true } }
         }
       }),
       prisma.securityEvent.count({
         where: {
           type: 'auth_failure',
-          createdAt: { gte: last24h }
+          createdAt: { gte: last24h },
+          NOT: { details: { path: ['test'], equals: true } }
         }
       }),
       prisma.securityEvent.count({
         where: {
           type: 'rate_limit_hit',
-          createdAt: { gte: last24h }
+          createdAt: { gte: last24h },
+          NOT: { details: { path: ['test'], equals: true } }
         }
       })
     ]);
@@ -304,7 +311,6 @@ async function section2_AuthProtection() {
     // TODO: Add expired token test when token generation utility is available
 
     // Test 6: Token with wrong signature
-    const jwt = require('jsonwebtoken');
     const fakeToken = jwt.sign(
       { userId: 1, businessId: 1 },
       'wrong_secret_key_12345',
