@@ -77,6 +77,7 @@ export async function execute(args, business, context = {}) {
     const { query_type, phone, order_number, customer_name, vkn, tc } = args;
     const sessionId = context.sessionId || context.conversationId;
     const language = business.language || 'TR';
+    const state = context.state || {};
 
     // SECURITY: Don't log PII (phone, vkn, tc, names)
     console.log('🔍 [CustomerDataLookup-V2] Query:', {
@@ -87,8 +88,66 @@ export async function execute(args, business, context = {}) {
       has_vkn: !!vkn,
       has_tc: !!tc,
       businessId: business.id,
-      sessionId
+      sessionId,
+      verificationStatus: state.verification?.status || 'none'
     });
+
+    // ============================================================================
+    // P0: VERIFICATION HANDLER - Process pending verification
+    // ============================================================================
+
+    console.log('🔐 [Debug] Verification check:', {
+      hasState: !!state,
+      hasVerification: !!state.verification,
+      status: state.verification?.status,
+      hasAnchor: !!state.verification?.anchor,
+      hasCustomerName: !!customer_name
+    });
+
+    if (state.verification?.status === 'pending' && state.verification?.anchor && customer_name) {
+      console.log('🔐 [Verification] Processing pending verification with provided name');
+      console.log('🔐 [Verification] Anchor:', {
+        id: state.verification.anchor.id,
+        name: state.verification.anchor.name,
+        providedName: customer_name
+      });
+
+      const anchor = state.verification.anchor;
+      const verifyResult = checkVerification(anchor, customer_name, query_type, language);
+
+      if (verifyResult.action === 'PROCEED') {
+        // Verification successful - mark as verified and return full data
+        console.log('✅ [Verification] Name verified successfully');
+        state.verification.status = 'verified';
+
+        // Fetch the full record using anchor ID
+        const verifiedRecord = await prisma.customerData.findUnique({
+          where: { id: anchor.id }
+        });
+
+        if (verifiedRecord) {
+          return getFullResult(verifiedRecord, language);
+        } else {
+          return systemError(
+            language === 'TR'
+              ? 'Kayıt bulunamadı.'
+              : 'Record not found.'
+          );
+        }
+      } else {
+        // Verification failed - mark as failed and withhold data
+        console.log('❌ [Verification] Name verification failed');
+        state.verification.status = 'failed';
+        state.verification.attempts = (state.verification.attempts || 0) + 1;
+
+        return {
+          outcome: ToolOutcome.VALIDATION_ERROR,
+          success: true,
+          validationError: true,
+          message: verifyResult.message
+        };
+      }
+    }
 
     // ============================================================================
     // STEP 1: FIND RECORD (ANCHOR)

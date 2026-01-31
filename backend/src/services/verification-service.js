@@ -86,7 +86,10 @@ export function checkVerification(anchor, verificationInput, queryType, language
       anchor: {
         id: anchor.id,
         type: anchor.anchorType,
-        value: anchor.anchorValue
+        value: anchor.anchorValue,
+        name: anchor.name, // P0 FIX: Include name for verification matching
+        phone: anchor.phone,
+        email: anchor.email
       }
     };
   }
