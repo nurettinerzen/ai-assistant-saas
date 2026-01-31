@@ -13,7 +13,17 @@ import axios from 'axios';
 import { PrismaClient } from '@prisma/client';
 import assert from 'assert';
 
-const prisma = new PrismaClient();
+// P0 FIX: Environment guard - NEVER run against production DB
+if (process.env.NODE_ENV === 'production') {
+  console.error('🚨 CRITICAL: P0 validation tests MUST NOT run against production database!');
+  console.error('   Set NODE_ENV=staging or NODE_ENV=test');
+  process.exit(1);
+}
+
+// P0 FIX: Use explicit staging DB connection if available
+const prisma = new PrismaClient({
+  datasourceUrl: process.env.STAGING_DATABASE_URL || process.env.DATABASE_URL
+});
 
 const CONFIG = {
   API_URL: process.env.API_URL || 'http://localhost:3001',
@@ -58,6 +68,25 @@ function wait(ms = 1000) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+/**
+ * P0 FIX: Wait for event count with retry logic (prevents flaky tests)
+ * Async event writes may take time - retry up to 5 times with 500ms intervals
+ */
+async function waitForEventCount(type, minCount, maxRetries = 5) {
+  for (let i = 0; i < maxRetries; i++) {
+    const count = await getEventCount(type);
+    if (count >= minCount) {
+      return count;
+    }
+    if (i < maxRetries - 1) { // Don't wait after last attempt
+      await wait(500); // 500ms between retries
+    }
+  }
+
+  // Final attempt
+  return await getEventCount(type);
+}
+
 // ============================================================================
 // TEST 1: AUTH_FAILURE Event (Invalid Token)
 // ============================================================================
@@ -80,9 +109,8 @@ async function test1_AuthFailureEvent() {
     console.log(`✅ Got expected ${error.response?.status} response`);
   }
 
-  await wait();
-
-  const afterCount = await getEventCount('auth_failure');
+  // P0 FIX: Use retry logic instead of fixed wait
+  const afterCount = await waitForEventCount('auth_failure', beforeCount + 1);
   console.log(`📊 After: ${afterCount} auth_failure events`);
 
   const passed = afterCount > beforeCount;
@@ -115,9 +143,9 @@ async function test2_CrossTenantEvent() {
     console.log(`✅ Got expected ${error.response?.status} response`);
   }
 
-  await wait();
 
-  const afterCount = await getEventCount('cross_tenant_attempt');
+  // P0 FIX: Use retry logic instead of fixed wait
+  const afterCount = await waitForEventCount('cross_tenant_attempt', beforeCount + 1);
   console.log(`📊 After: ${afterCount} cross_tenant_attempt events`);
 
   const passed = afterCount > beforeCount;
@@ -153,9 +181,9 @@ async function test3_WebhookSignatureEvent() {
     console.log(`✅ Got expected ${error.response?.status} response`);
   }
 
-  await wait();
 
-  const afterCount = await getEventCount('firewall_block');
+  // P0 FIX: Use retry logic instead of fixed wait
+  const afterCount = await waitForEventCount('firewall_block', beforeCount + 1);
   console.log(`📊 After: ${afterCount} firewall_block events`);
 
   const passed = afterCount > beforeCount;
@@ -200,9 +228,9 @@ async function test4_FirewallBlockEvent() {
     }, null, 1); // businessId = 1
   }
 
-  await wait();
 
-  const afterCount = await getEventCount('firewall_block');
+  // P0 FIX: Use retry logic instead of fixed wait
+  const afterCount = await waitForEventCount('firewall_block', beforeCount + 1);
   console.log(`📊 After: ${afterCount} firewall_block events`);
 
   const passed = afterCount > beforeCount;
@@ -247,9 +275,9 @@ async function test5_PIILeakBlockEvent() {
     await logPIILeakBlock(mockReq, scan.findings.map(f => f.type), 1);
   }
 
-  await wait();
 
-  const afterCount = await getEventCount('pii_leak_block');
+  // P0 FIX: Use retry logic instead of fixed wait
+  const afterCount = await waitForEventCount('pii_leak_block', beforeCount + 1);
   console.log(`📊 After: ${afterCount} pii_leak_block events`);
 
   const passed = afterCount > beforeCount;
@@ -285,9 +313,9 @@ async function test6_SSRFBlockEvent() {
     console.log(`✅ Got expected ${error.response?.status} response`);
   }
 
-  await wait();
 
-  const afterCount = await getEventCount('ssrf_block');
+  // P0 FIX: Use retry logic instead of fixed wait
+  const afterCount = await waitForEventCount('ssrf_block', beforeCount + 1);
   console.log(`📊 After: ${afterCount} ssrf_block events`);
 
   const passed = afterCount > beforeCount;
@@ -323,9 +351,9 @@ async function test7_RateLimitEvent() {
 
   console.log(`✅ Triggered ${rateLimited.length} rate limit responses`);
 
-  await wait();
 
-  const afterCount = await getEventCount('rate_limit_hit');
+  // P0 FIX: Use retry logic instead of fixed wait
+  const afterCount = await waitForEventCount('rate_limit_hit', beforeCount + 1);
   console.log(`📊 After: ${afterCount} rate_limit_hit events`);
 
   const passed = afterCount > beforeCount;

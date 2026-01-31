@@ -9,6 +9,61 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+// ============================================================================
+// FLOOD PROTECTION: Dedupe Window
+// ============================================================================
+// Prevents DB flood from bot attacks (e.g., 10,000 auth failures in 1 minute)
+// Same event type + IP + endpoint within 60 seconds → deduplicated
+
+const eventCache = new Map();
+const DEDUPE_WINDOW_MS = 60 * 1000; // 60 seconds
+
+/**
+ * Generate dedupe key for event
+ */
+function getDedupeKey({ type, ipAddress, endpoint, businessId }) {
+  return `${type}:${ipAddress || 'null'}:${endpoint || 'null'}:${businessId || 'null'}`;
+}
+
+/**
+ * Check if event should be deduped
+ */
+function shouldDedupe({ type, ipAddress, endpoint, businessId }) {
+  const key = getDedupeKey({ type, ipAddress, endpoint, businessId });
+  const lastLogged = eventCache.get(key);
+
+  if (lastLogged && Date.now() - lastLogged < DEDUPE_WINDOW_MS) {
+    return true; // Skip duplicate
+  }
+
+  eventCache.set(key, Date.now());
+  return false;
+}
+
+// Cleanup old entries every minute
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, timestamp] of eventCache.entries()) {
+    if (now - timestamp > DEDUPE_WINDOW_MS * 2) {
+      eventCache.delete(key);
+    }
+  }
+}, 60000);
+
+/**
+ * Sanitize URL for logging (remove query params with potential PII)
+ * Example: http://example.com/path?token=secret → http://example.com/path
+ */
+function sanitizeUrlForLogging(url) {
+  try {
+    const parsed = new URL(url);
+    // Remove query params and hash to avoid logging sensitive data
+    return `${parsed.protocol}//${parsed.host}${parsed.pathname}`;
+  } catch {
+    return '[invalid-url]';
+  }
+}
+
 /**
  * Security event severity levels
  */
@@ -60,6 +115,12 @@ export async function logSecurityEvent({
   statusCode = null,
   details = {}
 }) {
+  // P0 FIX: Dedupe check to prevent DB flood from bot attacks
+  if (shouldDedupe({ type, ipAddress, endpoint, businessId })) {
+    console.log(`⏭️  SecurityEvent deduped: ${type} (${ipAddress}) - within 60s window`);
+    return; // Skip duplicate event
+  }
+
   try {
     await prisma.securityEvent.create({
       data: {
@@ -189,7 +250,7 @@ export async function logSSRFBlock(req, blockedUrl, businessId = null) {
     method: req.method,
     statusCode: 400,
     details: {
-      blockedUrl,
+      blockedUrl: sanitizeUrlForLogging(blockedUrl), // P0 FIX: Remove query params (PII risk)
       reason: 'ssrf_attempt_detected'
     }
   });
