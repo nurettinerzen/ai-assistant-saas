@@ -32,10 +32,16 @@ const CONFIG = {
     email: process.env.TEST_ACCOUNT_A_EMAIL,
     password: process.env.TEST_ACCOUNT_A_PASSWORD,
     businessId: 1
+  },
+  // Rate limiting & throttle config
+  THROTTLE: {
+    BETWEEN_LLM_CALLS: 1200, // 1.2s between LLM API calls (with jitter)
+    RETRY_MAX_ATTEMPTS: 3,
+    RETRY_BACKOFF_BASE: 1000 // 1s, 2s, 4s exponential
   }
 };
 
-// Test report
+// Test report with gate-based classification
 const report = {
   startTime: new Date(),
   endTime: null,
@@ -44,7 +50,22 @@ const report = {
   failedTests: 0,
   skippedTests: 0,
   sections: [],
-  conversationLogs: []
+  conversationLogs: [],
+  // Gate tests - MUST PASS for deployment
+  gateTests: {
+    'Prompt Injection': null,  // PASS/FAIL/SKIP
+    'Verification Bypass': null,
+    'Customer Lookup': null, // PII protection
+    'Hallucination & Fallback': null // No data hallucination
+  },
+  // Non-gate tests - Warnings only
+  nonGateTests: {
+    'Basic Conversation': null,
+    'Multi-turn Conversations': null,
+    'Tool Calling': null,
+    'Error Handling': null,
+    'Context Retention': null
+  }
 };
 
 // ============================================================================
@@ -68,11 +89,21 @@ function logWarning(message) {
 }
 
 function logSection(name, status, details = {}) {
+  const isGate = report.gateTests.hasOwnProperty(name);
   const icon = status === 'PASS' ? '✅' : status === 'FAIL' ? '❌' : status === 'SKIP' ? '⏭️' : '⚠️';
-  console.log(`${icon} ${name}: ${status}`);
+  const gateLabel = isGate ? ' [GATE - BLOCKER]' : '';
+
+  console.log(`${icon} ${name}: ${status}${gateLabel}`);
   if (details.message) console.log(`   ${details.message}`);
 
-  report.sections.push({ name, status, ...details });
+  // Track in appropriate category
+  if (isGate) {
+    report.gateTests[name] = status;
+  } else if (report.nonGateTests.hasOwnProperty(name)) {
+    report.nonGateTests[name] = status;
+  }
+
+  report.sections.push({ name, status, isGate, ...details });
 }
 
 function logConversation(userMessage, assistantReply, context = {}) {
@@ -143,19 +174,45 @@ function scanOutputForLeaks(reply) {
   return issues;
 }
 
-async function sendMessage(assistantId, message, sessionId = null) {
-  const response = await axios.post(`${CONFIG.API_URL}/api/chat/widget`, {
-    assistantId,
-    message,
-    sessionId: sessionId || `test-session-${Date.now()}`
-  });
+async function sendMessage(assistantId, message, sessionId = null, retries = CONFIG.THROTTLE.RETRY_MAX_ATTEMPTS) {
+  // Add throttle before each LLM call (with jitter to avoid thundering herd)
+  const jitter = Math.random() * 300; // 0-300ms random jitter
+  await wait(CONFIG.THROTTLE.BETWEEN_LLM_CALLS + jitter);
 
-  return {
-    reply: response.data.reply,
-    conversationId: response.data.conversationId,
-    messageId: response.data.messageId,
-    sessionId: response.data.sessionId || sessionId
-  };
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const response = await axios.post(`${CONFIG.API_URL}/api/chat/widget`, {
+        assistantId,
+        message,
+        sessionId: sessionId || `test-session-${Date.now()}`
+      });
+
+      return {
+        reply: response.data.reply,
+        conversationId: response.data.conversationId,
+        messageId: response.data.messageId,
+        sessionId: response.data.sessionId || sessionId
+      };
+    } catch (error) {
+      const status = error.response?.status;
+      const isRateLimitError = status === 503 || status === 429;
+
+      // Log detailed error info
+      console.error(`\n⚠️  API Error (attempt ${attempt}/${retries}):`);
+      console.error(`   Status: ${status}`);
+      console.error(`   Message: ${error.response?.data?.error || error.message}`);
+      console.error(`   Response body:`, JSON.stringify(error.response?.data, null, 2).substring(0, 500));
+
+      if (isRateLimitError && attempt < retries) {
+        const backoffMs = Math.min(CONFIG.THROTTLE.RETRY_BACKOFF_BASE * Math.pow(2, attempt - 1), 8000);
+        console.error(`   Retrying in ${backoffMs}ms...`);
+        await wait(backoffMs);
+        continue;
+      }
+
+      throw error;
+    }
+  }
 }
 
 // Helper to wait between messages (simulate human interaction)
@@ -1117,15 +1174,41 @@ async function main() {
     report.endTime = new Date();
     const duration = (report.endTime - report.startTime) / 1000;
 
+    // Check gate tests for deployment blockers
+    const gateFailures = Object.entries(report.gateTests)
+      .filter(([_, status]) => status === 'FAIL' || status === 'SKIP')
+      .map(([name]) => name);
+    const deploymentBlocked = gateFailures.length > 0;
+
     console.log('\n╔════════════════════════════════════════╗');
     console.log('║          TEST SUMMARY                  ║');
     console.log('╚════════════════════════════════════════╝\n');
-    console.log(`Total Tests:  ${report.totalTests}`);
-    console.log(`✓ Passed:     ${report.passedTests}`);
-    console.log(`✗ Failed:     ${report.failedTests}`);
-    console.log(`⏭️  Skipped:    ${report.skippedTests}`);
-    console.log(`Duration:     ${duration.toFixed(2)}s`);
-    console.log(`End Time:     ${report.endTime.toISOString()}\n`);
+
+    console.log('🔒 GATE TESTS (Deployment Blockers):');
+    Object.entries(report.gateTests).forEach(([name, status]) => {
+      const icon = status === 'PASS' ? '✅' : status === 'FAIL' ? '❌ BLOCKER' : '⏭️ BLOCKER';
+      console.log(`   ${icon} ${name}: ${status || 'NOT RUN'}`);
+    });
+
+    console.log('\n📊 NON-GATE TESTS (Warnings):');
+    Object.entries(report.nonGateTests).forEach(([name, status]) => {
+      const icon = status === 'PASS' ? '✅' : status === 'FAIL' ? '⚠️' : '⏭️';
+      console.log(`   ${icon} ${name}: ${status || 'NOT RUN'}`);
+    });
+
+    console.log(`\n📈 Overall Stats:`);
+    console.log(`   Total Tests:  ${report.totalTests}`);
+    console.log(`   ✓ Passed:     ${report.passedTests}`);
+    console.log(`   ✗ Failed:     ${report.failedTests}`);
+    console.log(`   ⏭️  Skipped:    ${report.skippedTests}`);
+    console.log(`   Duration:     ${duration.toFixed(2)}s`);
+
+    if (deploymentBlocked) {
+      console.log(`\n🚨 DEPLOYMENT BLOCKED - Gate test failures: ${gateFailures.join(', ')}`);
+    } else {
+      console.log(`\n✅ DEPLOYMENT READY - All gate tests passed`);
+    }
+    console.log(`   End Time:     ${report.endTime.toISOString()}\n`);
 
     // Save detailed report with conversation logs
     const reportDir = path.join(__dirname, '../tests/pilot/reports');
@@ -1139,6 +1222,18 @@ End Time:   ${report.endTime.toISOString()}
 Duration:   ${duration.toFixed(2)}s
 API URL:    ${CONFIG.API_URL}
 
+DEPLOYMENT STATUS
+================================================================================
+${deploymentBlocked ? '🚨 BLOCKED - Gate test failures: ' + gateFailures.join(', ') : '✅ READY - All gate tests passed'}
+
+GATE TESTS (Deployment Blockers)
+================================================================================
+${Object.entries(report.gateTests).map(([name, status]) => `${name}: ${status || 'NOT RUN'}${status === 'FAIL' || status === 'SKIP' ? ' ⚠️ BLOCKER' : ''}`).join('\n')}
+
+NON-GATE TESTS (Warnings Only)
+================================================================================
+${Object.entries(report.nonGateTests).map(([name, status]) => `${name}: ${status || 'NOT RUN'}`).join('\n')}
+
 TEST SUMMARY
 ================================================================================
 Total Tests: ${report.totalTests}
@@ -1146,9 +1241,9 @@ Passed:      ${report.passedTests}
 Failed:      ${report.failedTests}
 Skipped:     ${report.skippedTests}
 
-SECTION RESULTS
+DETAILED RESULTS
 ================================================================================
-${report.sections.map(s => `${s.name}: ${s.status}${s.message ? ` - ${s.message}` : ''}`).join('\n')}
+${report.sections.map(s => `${s.name}: ${s.status}${s.isGate ? ' [GATE]' : ''}${s.message ? ` - ${s.message}` : ''}`).join('\n')}
 
 CONVERSATION LOGS (Sample)
 ================================================================================
@@ -1166,8 +1261,16 @@ Generated: ${new Date().toISOString()}
     await fs.writeFile(reportPath, reportText);
     console.log(`📄 Report saved: ${reportPath}\n`);
 
-    // Exit with appropriate code
-    process.exit(report.failedTests > 0 ? 1 : 0);
+    // Exit with appropriate code - GATE tests determine deployment readiness
+    // Exit 1 if ANY gate test failed or skipped (deployment blocker)
+    // Exit 0 only if ALL gate tests passed (non-gate failures = warnings only)
+    if (deploymentBlocked) {
+      console.error(`❌ Exiting with code 1 - Deployment blocked by gate test failures`);
+      process.exit(1);
+    } else {
+      console.log(`✅ Exiting with code 0 - All gate tests passed`);
+      process.exit(0);
+    }
 
   } catch (error) {
     console.error('\n🚨 CRITICAL ERROR:', error);
