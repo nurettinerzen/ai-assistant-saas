@@ -1,0 +1,72 @@
+name: Security Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+
+    env:
+      NODE_ENV: test
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      JWT_SECRET: test-secret-key
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+
+    - name: Install dependencies
+      working-directory: ./backend
+      run: npm ci
+
+    - name: Run P0 Quick Validation
+      working-directory: ./backend
+      run: node tests/validation/p0-quick-validation.test.js
+
+    - name: Run P1 IDOR Tests
+      working-directory: ./backend
+      run: node tests/validation/p1-idor-quick.test.js
+
+    - name: Run P1.2 Webhook Signature Tests
+      working-directory: ./backend
+      run: node tests/validation/p1.2-webhook-signatures.test.js
+
+    - name: Run P1.3 Quota Enforcement Tests
+      working-directory: ./backend
+      run: node tests/validation/p1.3-quota-enforcement.test.js
+
+    - name: Run Red Alert API Tests
+      working-directory: ./backend
+      run: node tests/validation/red-alert-api.test.js
+
+    - name: Run Red Alert Dashboard Tests
+      working-directory: ./backend
+      run: node tests/validation/red-alert-dashboard.test.js
+
+    - name: Send Notification Email
+      if: failure()
+      uses: dawidd6/action-send-mail@v3
+      with:
+        server_address: smtp.gmail.com
+        server_port: 465
+        username: ${{ secrets.MAIL_USERNAME }}
+        password: ${{ secrets.MAIL_PASSWORD }}
+        subject: '🚨 Security Tests Failed on ${{ github.repository }}'
+        to: nurettinerzen@gmail.com
+        from: GitHub Actions
+        body: |
+          Test run failed for commit: ${{ github.sha }}
+
+          Workflow: ${{ github.workflow }}
+          Branch: ${{ github.ref }}
+          Author: ${{ github.actor }}
+
+          View details: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

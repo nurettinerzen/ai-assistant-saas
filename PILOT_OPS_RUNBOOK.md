@@ -2,12 +2,17 @@
 
 **Version**: 1.0
 **Last Updated**: 2026-01-30
-**Owner**: Nurettin Erzen (nurettin@telyx.ai)
+**Owner**: Nurettin Erzen (nurettinerzen@gmail.com)
 **Scope**: Security monitoring for pilot launch (first 30 days)
 
 ---
 
-## 1. CRON SCHEDULE (Los Angeles Time)
+## 1. CRON SCHEDULE (OPTIONAL - Not Required for Pilot)
+
+**Status**: OPSIYONEL - Pilot için gerekli değil
+**Alternative**: Manual dashboard check 2x daily yeterli
+
+Eğer otomatik health check istersen (cron-job.org ile):
 
 ### Daily Health Checks
 ```bash
@@ -33,6 +38,8 @@
 1 0 1 * * curl -X POST https://api.telyx.ai/api/cron/monthly-reset \
   -H "X-Cron-Secret: $CRON_SECRET"
 ```
+
+**NOT**: Pilot için cron job kurulumu ZORUNLU DEĞİL - skip edebilirsin
 
 ---
 
@@ -414,7 +421,7 @@ SAFE_TEST_MODE=true  # Enable during first week, then disable
 ## 6. CONTACTS & ESCALATION
 
 ### On-Call Rotation (Pilot Phase)
-- **Primary**: Nurettin Erzen (nurettin@telyx.ai)
+- **Primary**: Nurettin Erzen (nurettinerzen@gmail.com)
 - **Backup**: TBD
 - **Response Time**: P0 within 15 min, P1 within 1 hour
 
@@ -425,7 +432,7 @@ SAFE_TEST_MODE=true  # Enable during first week, then disable
 - **11Labs Support**: help.elevenlabs.io (voice call issues)
 
 ### Alert Channels (Pilot Phase)
-- **Email**: nurettin@telyx.ai (all alerts - critical, warning, daily digest)
+- **Email**: nurettinerzen@gmail.com (all alerts - critical, warning, daily digest)
 - **Dashboard**: https://telyx.ai/dashboard/admin/red-alert (manual check 2x daily)
 - **Future** (post-pilot): Slack integration, SMS for critical, PagerDuty
 
@@ -479,7 +486,7 @@ curl 'https://api.telyx.ai/api/red-alert/events?hours=24' \
 - [ ] SAFE_TEST_MODE=true in production (auto: deploy triggers)
 - [ ] Run prod proof pack (auto: verify 3 events work)
 - [ ] Email alerts configured (auto: Render notifications)
-- [ ] Cron jobs scheduled (manual: cron-job.org setup - optional)
+- [ ] Cron jobs scheduled (OPSIYONEL - pilot için gerekli değil, skip edilebilir)
 
 **Status**: READY FOR PILOT 🚀
 **Next Step**: Deploy to production (automatic) + run proof pack (automatic)

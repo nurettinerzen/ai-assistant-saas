@@ -14,7 +14,7 @@
    CRON_SECRET=your-secret-here
    ```
 
-2. **Production URL**: `https://ai-assistant-saas.onrender.com`
+2. **Production URL**: `https://api.telyx.ai`
 
 ---
 
@@ -27,7 +27,7 @@
 
 ### Step 2: Add Red Alert Health Check Job
 
-**URL**: `https://ai-assistant-saas.onrender.com/api/cron/red-alert-health`
+**URL**: `https://api.telyx.ai/api/cron/red-alert-health`
 
 **Method**: `POST`
 
@@ -69,7 +69,7 @@ Content-Type: application/json
 **Email on Failure**:
 - cron-job.org → Job Settings → Notifications
 - Enable: "Send email on failure"
-- Email: nurettin@telyx.ai
+- Email: nurettinerzen@gmail.com
 
 **Failure Detection**:
 - HTTP status != 200
@@ -87,7 +87,7 @@ Content-Type: application/json
 2. **Job Configuration**:
    ```
    Title: Red Alert Health Check
-   URL: https://ai-assistant-saas.onrender.com/api/cron/red-alert-health
+   URL: https://api.telyx.ai/api/cron/red-alert-health
    Request method: POST
    Request timeout: 30 seconds
    ```
@@ -109,7 +109,7 @@ Content-Type: application/json
 5. **Notifications**:
    ```
    ✅ Send notification on failure
-   Email: nurettin@telyx.ai
+   Email: nurettinerzen@gmail.com
    ```
 
 6. **Save** → Job will start running automatically
@@ -125,7 +125,7 @@ Content-Type: application/json
 export CRON_SECRET="your-secret-here"
 
 # Test health check endpoint
-curl -X POST https://ai-assistant-saas.onrender.com/api/cron/red-alert-health \
+curl -X POST https://api.telyx.ai/api/cron/red-alert-health \
   -H "X-Cron-Secret: $CRON_SECRET" \
   -H "Content-Type: application/json"
 
@@ -158,7 +158,7 @@ If frontend is on Vercel, you can use Vercel Cron (Hobby plan: free):
 **File**: `frontend/pages/api/trigger-health-check.js`
 ```javascript
 export default async function handler(req, res) {
-  const response = await fetch('https://ai-assistant-saas.onrender.com/api/cron/red-alert-health', {
+  const response = await fetch('https://api.telyx.ai/api/cron/red-alert-health', {
     method: 'POST',
     headers: {
       'X-Cron-Secret': process.env.CRON_SECRET,
@@ -201,7 +201,7 @@ export default async function handler(req, res) {
 **Body**:
 ```
 Job: Red Alert Health Check
-URL: https://ai-assistant-saas.onrender.com/api/cron/red-alert-health
+URL: https://api.telyx.ai/api/cron/red-alert-health
 Time: 2026-01-30 18:00:00 PST
 Status: 200 OK
 Response: {"success":true,"status":"critical","healthScore":40,"events":{"critical":6,"high":0,"total":6}}
@@ -269,7 +269,7 @@ Action Required: Check Red Alert dashboard immediately
 
 ```
 Title: Red Alert Health Check
-URL: https://ai-assistant-saas.onrender.com/api/cron/red-alert-health
+URL: https://api.telyx.ai/api/cron/red-alert-health
 Method: POST
 Schedule: 0 0,6,12,18 * * *
 Timezone: America/Los_Angeles
@@ -280,7 +280,7 @@ X-Cron-Secret: YOUR_SECRET_HERE
 Content-Type: application/json
 
 Notifications:
-✅ Email on failure: nurettin@telyx.ai
+✅ Email on failure: nurettinerzen@gmail.com
 ```
 
 Done! 🚀
