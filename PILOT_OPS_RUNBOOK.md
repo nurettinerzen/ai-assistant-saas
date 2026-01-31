@@ -42,28 +42,28 @@
 
 | Metric | Threshold | Alert Channel | Action |
 |--------|-----------|---------------|--------|
-| `CROSS_TENANT_ATTEMPT` | **> 0 events** | Slack + SMS | **STOP PILOT** - Kill all requests, investigate |
-| Health Score | **< 50** | Slack + SMS | Investigate within 15 min |
-| `FIREWALL_BLOCK` spike | **> 10 in 1 hour** | Slack + Email | Block IP range, investigate |
-| 5xx errors | **> 5% of requests** | PagerDuty | Check logs, consider rollback |
-| Response time p99 | **> 5 seconds** | PagerDuty | Scale up or rollback |
+| `CROSS_TENANT_ATTEMPT` | **> 0 events** | **Email** (instant) | **STOP PILOT** - Kill all requests, investigate |
+| Health Score | **< 50** | **Email** (instant) | Investigate within 15 min |
+| `FIREWALL_BLOCK` spike | **> 10 in 1 hour** | **Email** | Block IP range, investigate |
+| 5xx errors | **> 5% of requests** | **Email** | Check logs, consider rollback |
+| Response time p99 | **> 5 seconds** | **Email** | Scale up or rollback |
 
 ### 🟠 WARNING (Investigate Within 1 Hour)
 
 | Metric | Threshold | Alert Channel | Action |
 |--------|-----------|---------------|--------|
-| `PII_LEAK_BLOCK` | **> 5 in 1 hour** | Slack | Review patterns, adjust regex |
-| `WEBHOOK_INVALID_SIGNATURE` | **> 10 in 1 hour** | Slack | Rotate secrets, block IPs |
-| `AUTH_FAILURE` | **> 50 in 1 hour** | Email | Possible credential stuffing |
-| Health Score | **< 70** | Slack | Review recent events |
-| Rate limit hits | **> 100 in 1 hour** | Email | Check for abuse |
+| `PII_LEAK_BLOCK` | **> 5 in 1 hour** | **Email** | Review patterns, adjust regex |
+| `WEBHOOK_INVALID_SIGNATURE` | **> 10 in 1 hour** | **Email** | Rotate secrets, block IPs |
+| `AUTH_FAILURE` | **> 50 in 1 hour** | **Email** | Possible credential stuffing |
+| Health Score | **< 70** | **Email** | Review recent events |
+| Rate limit hits | **> 100 in 1 hour** | **Email** | Check for abuse |
 
 ### 🟡 INFO (Review Daily)
 
 | Metric | Threshold | Alert Channel | Action |
 |--------|-----------|---------------|--------|
-| Total SecurityEvents | **> 500 in 24h** | Email | Daily summary review |
-| `SSRF_BLOCK` | **> 1 event** | Slack | Log for investigation |
+| Total SecurityEvents | **> 500 in 24h** | **Email** (daily digest) | Daily summary review |
+| `SSRF_BLOCK` | **> 1 event** | **Email** | Log for investigation |
 | Health Score | **< 85** | Dashboard only | Monitor trends |
 
 ---
@@ -424,11 +424,10 @@ SAFE_TEST_MODE=true  # Enable during first week, then disable
 - **OpenAI Support**: platform.openai.com/docs (API issues)
 - **11Labs Support**: help.elevenlabs.io (voice call issues)
 
-### Alert Channels
-- **Slack**: `#red-alert-pilot` (all alerts)
-- **Email**: nurettin@telyx.ai (warnings)
-- **SMS**: +90-XXX-XXX-XXXX (critical only)
-- **PagerDuty**: TBD (post-pilot)
+### Alert Channels (Pilot Phase)
+- **Email**: nurettin@telyx.ai (all alerts - critical, warning, daily digest)
+- **Dashboard**: https://telyx.ai/dashboard/admin/red-alert (manual check 2x daily)
+- **Future** (post-pilot): Slack integration, SMS for critical, PagerDuty
 
 ---
 
@@ -477,11 +476,10 @@ curl 'https://api.telyx.ai/api/red-alert/events?hours=24' \
 - [x] VALIDATION_MATRIX.md complete (15 test matrix)
 - [x] PILOT_OPS_RUNBOOK.md complete (this document)
 - [x] Red Alert dashboard deployed
-- [ ] SAFE_TEST_MODE=true in production
-- [ ] Run prod proof pack (verify 3 events work)
-- [ ] Slack `#red-alert-pilot` channel created
-- [ ] Cron jobs scheduled (health checks)
-- [ ] On-call rotation defined
+- [ ] SAFE_TEST_MODE=true in production (auto: deploy triggers)
+- [ ] Run prod proof pack (auto: verify 3 events work)
+- [ ] Email alerts configured (auto: Render notifications)
+- [ ] Cron jobs scheduled (manual: cron-job.org setup - optional)
 
 **Status**: READY FOR PILOT 🚀
-**Next Step**: Deploy to production + run proof pack
+**Next Step**: Deploy to production (automatic) + run proof pack (automatic)
