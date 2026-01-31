@@ -36,6 +36,7 @@ import {
   PhoneCall,
   MessageCircle,
   History,
+  AlertTriangle,
 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
