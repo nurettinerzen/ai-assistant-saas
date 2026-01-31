@@ -68,6 +68,10 @@ const JOB_CONFIG = {
     hardLimits: {
       maxDeletePerRun: 5000
     }
+  },
+  'red-alert-health': {
+    maxDuration: 1 * 60 * 1000, // 1 minute
+    cooldown: 5 * 60 * 1000     // 5 minutes (prevent spam)
   }
 };
 
@@ -364,6 +368,97 @@ router.post('/email-embedding-cleanup',
       message: 'Email embedding cleanup completed',
       result
     });
+  })
+);
+
+/**
+ * POST /api/cron/red-alert-health
+ * Check Red Alert health score and send email if critical
+ * Should run: Every 6 hours (12AM, 6AM, 12PM, 6PM LA time)
+ */
+router.post('/red-alert-health',
+  verifyCronSecret,
+  checkJobState('red-alert-health'),
+  wrapJobHandler(async (req, res) => {
+    console.log('🚨 Cron: Red Alert health check triggered');
+
+    const { PrismaClient } = await import('@prisma/client');
+    const prisma = new PrismaClient();
+
+    try {
+      const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+      // Get event counts
+      const [criticalCount, highCount, totalCount] = await Promise.all([
+        prisma.securityEvent.count({
+          where: { severity: 'critical', createdAt: { gte: last24h } },
+        }),
+        prisma.securityEvent.count({
+          where: { severity: 'high', createdAt: { gte: last24h } },
+        }),
+        prisma.securityEvent.count({
+          where: { createdAt: { gte: last24h } },
+        }),
+      ]);
+
+      // Calculate health score
+      let healthScore = 100;
+      healthScore -= criticalCount * 10;
+      healthScore -= highCount * 3;
+      healthScore = Math.max(0, healthScore);
+
+      let status = 'healthy';
+      if (criticalCount > 0) status = 'critical';
+      else if (highCount > 5) status = 'warning';
+      else if (highCount > 0) status = 'caution';
+
+      // Get critical events for email
+      let criticalEvents = [];
+      if (status === 'critical') {
+        criticalEvents = await prisma.securityEvent.findMany({
+          where: {
+            severity: 'critical',
+            createdAt: { gte: last24h },
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 10,
+          select: {
+            type: true,
+            endpoint: true,
+            ipAddress: true,
+            createdAt: true,
+          },
+        });
+      }
+
+      const result = {
+        healthScore,
+        status,
+        events: { critical: criticalCount, high: highCount, total: totalCount },
+        criticalEvents,
+        timestamp: new Date().toISOString(),
+      };
+
+      // Log result
+      console.log(`🚨 Health Check Result: Score=${healthScore}, Status=${status}, Critical=${criticalCount}, High=${highCount}`);
+
+      // TODO: Send email if critical (integrate with email service)
+      // if (status === 'critical') {
+      //   await sendEmail({
+      //     to: 'nurettin@telyx.ai',
+      //     subject: `🚨 RED ALERT: Health Score ${healthScore} (${criticalCount} critical events)`,
+      //     body: JSON.stringify(criticalEvents, null, 2)
+      //   });
+      // }
+
+      res.json({
+        success: true,
+        message: `Health check completed: ${status}`,
+        ...result,
+      });
+    } finally {
+      await prisma.$disconnect();
+    }
   })
 );
 
