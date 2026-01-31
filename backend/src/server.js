@@ -81,6 +81,8 @@ import concurrentMetricsRoutes from './routes/concurrent-metrics.js';
 import mediaRoutes from './routes/media.js';
 // Embed security (key rotation/revocation)
 import embedSecurityRoutes from './routes/embed-security.js';
+// Red Alert (security event monitoring dashboard)
+import redAlertRoutes from './routes/red-alert.js';
 
 
 // Import jobs
@@ -242,6 +244,8 @@ app.use('/api/metrics', metricsRoutes); // Internal metrics (protected)
 app.use('/api/concurrent-metrics', concurrentMetricsRoutes); // P0.5: Concurrent call metrics
 app.use('/api/media', mediaRoutes); // Signed URL media access (secure)
 app.use('/api/embed-security', embedSecurityRoutes); // Embed key management (authenticated)
+// Red Alert (security event monitoring dashboard - authenticated)
+app.use('/api/red-alert', redAlertRoutes);
 // Balance and Usage (new pricing system)
 app.use('/api/balance', balanceRoutes);
 app.use('/api/usage', usageRoutes);
