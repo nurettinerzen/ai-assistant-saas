@@ -46,13 +46,11 @@ class RateLimiter {
       // Check if limit exceeded
       if (requestData.count > this.maxRequests) {
         // P0: Log rate limit hit to SecurityEvent for Red Alert monitoring
-        // P0 FIX: Use await with try-catch (non-blocking) instead of fire-and-forget
-        try {
-          await logRateLimitHit(req, this.maxRequests, this.windowMs);
-        } catch (err) {
+        // Fire-and-forget: Don't block response, log async in background
+        logRateLimitHit(req, this.maxRequests, this.windowMs).catch(err => {
           console.error('Failed to log rate limit event:', err);
           // Don't block request even if logging fails
-        }
+        });
 
         return res.status(429).json({
           error: 'Too many requests',
