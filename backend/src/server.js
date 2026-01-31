@@ -83,6 +83,8 @@ import mediaRoutes from './routes/media.js';
 import embedSecurityRoutes from './routes/embed-security.js';
 // Red Alert (security event monitoring dashboard)
 import redAlertRoutes from './routes/red-alert.js';
+// Safe Test (prod validation endpoints - admin only)
+import safeTestRoutes from './routes/safe-test.js';
 
 
 // Import jobs
@@ -246,6 +248,8 @@ app.use('/api/media', mediaRoutes); // Signed URL media access (secure)
 app.use('/api/embed-security', embedSecurityRoutes); // Embed key management (authenticated)
 // Red Alert (security event monitoring dashboard - authenticated)
 app.use('/api/red-alert', redAlertRoutes);
+// Safe Test (prod validation endpoints - admin only, requires SAFE_TEST_MODE=true)
+app.use('/api/safe-test', safeTestRoutes);
 // Balance and Usage (new pricing system)
 app.use('/api/balance', balanceRoutes);
 app.use('/api/usage', usageRoutes);
