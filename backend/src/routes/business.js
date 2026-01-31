@@ -94,6 +94,13 @@ router.get('/:businessId', authenticateToken, verifyBusinessAccess, async (req, 
             createdAt: true,
           },
         },
+        assistants: {
+          select: {
+            id: true,
+            name: true,
+            createdAt: true,
+          },
+        },
       },
     });
 
