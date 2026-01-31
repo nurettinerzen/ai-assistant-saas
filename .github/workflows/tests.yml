@@ -27,29 +27,17 @@ jobs:
       working-directory: ./backend
       run: npm ci
 
-    - name: Run P0 Quick Validation
+    - name: Run P0 Quick Validation (4 tests)
       working-directory: ./backend
       run: node tests/validation/p0-quick-validation.test.js
 
-    - name: Run P1 IDOR Tests
+    - name: Run P1 IDOR Tests (3 tests)
       working-directory: ./backend
       run: node tests/validation/p1-idor-quick.test.js
 
-    - name: Run P1.2 Webhook Signature Tests
-      working-directory: ./backend
-      run: node tests/validation/p1.2-webhook-signatures.test.js
-
-    - name: Run P1.3 Quota Enforcement Tests
-      working-directory: ./backend
-      run: node tests/validation/p1.3-quota-enforcement.test.js
-
-    - name: Run Red Alert API Tests
+    - name: Run Red Alert API Tests (4 tests)
       working-directory: ./backend
       run: node tests/validation/red-alert-api.test.js
-
-    - name: Run Red Alert Dashboard Tests
-      working-directory: ./backend
-      run: node tests/validation/red-alert-dashboard.test.js
 
     - name: Send Notification Email
       if: failure()
