@@ -452,6 +452,15 @@ async function section4_PIIVerification() {
 
     const testCustomer = customerData[0];
 
+    // Guard: If no customer data, log warning and skip
+    if (!testCustomer) {
+      logWarning('Account A has no customer data for cross-tenant test');
+      logSection('PII & Verification', 'SKIP', {
+        message: 'No customer data - add test data to Account A'
+      });
+      return { success: true };
+    }
+
     // Test 1: Check that customer data endpoint returns masked PII
     const phoneHasMask = testCustomer.phone?.includes('*');
     logTest('Phone is masked in API response', phoneHasMask, phoneHasMask ? '' : 'Phone not masked');
@@ -763,11 +772,11 @@ async function section7_Limits() {
       logTest('SSRF protection blocks localhost', false, 'Localhost URL was accepted!');
     } catch (error) {
       const passed = error.response?.status === 400;
-      const reason = error.response?.data?.reason || '';
+      const reason = error.response?.data?.error || error.response?.data?.reason || '';
       logTest('SSRF protection blocks localhost', passed, passed ? '' : `Got ${error.response?.status}`);
 
-      if (passed && !reason.includes('localhost')) {
-        logWarning('SSRF blocked but reason unclear');
+      if (passed && !reason.toLowerCase().includes('localhost') && !reason.toLowerCase().includes('ssrf')) {
+        logWarning(`SSRF blocked but reason unclear (got: "${reason}")`);
       }
     }
 
@@ -789,7 +798,15 @@ async function section7_Limits() {
     try {
       const response = await axios.post(`${CONFIG.API_URL}/api/whatsapp/webhook`, {
         object: 'whatsapp_business_account',
-        entry: []
+        entry: [{
+          id: 'test-entry-id',
+          changes: [{
+            value: {
+              metadata: { phone_number_id: 'test-phone-id' },
+              messages: []
+            }
+          }]
+        }]
       }, {
         headers: {
           'X-Hub-Signature-256': 'sha256=invalidsignature12345'
@@ -805,7 +822,15 @@ async function section7_Limits() {
     try {
       const response = await axios.post(`${CONFIG.API_URL}/api/whatsapp/webhook`, {
         object: 'whatsapp_business_account',
-        entry: []
+        entry: [{
+          id: 'test-entry-id',
+          changes: [{
+            value: {
+              metadata: { phone_number_id: 'test-phone-id' },
+              messages: []
+            }
+          }]
+        }]
       }, {
         headers: {}
       });
