@@ -372,14 +372,14 @@ export default function RedAlertPage() {
               </CardDescription>
               <div className="flex gap-4 mt-4">
                 <Select
-                  value={filters.severity}
-                  onValueChange={(value) => setFilters(prev => ({ ...prev, severity: value, page: 1 }))}
+                  value={filters.severity || 'all'}
+                  onValueChange={(value) => setFilters(prev => ({ ...prev, severity: value === 'all' ? '' : value, page: 1 }))}
                 >
                   <SelectTrigger className="w-48">
                     <SelectValue placeholder="All Severities" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Severities</SelectItem>
+                    <SelectItem value="all">All Severities</SelectItem>
                     <SelectItem value="low">Low</SelectItem>
                     <SelectItem value="medium">Medium</SelectItem>
                     <SelectItem value="high">High</SelectItem>
@@ -388,14 +388,14 @@ export default function RedAlertPage() {
                 </Select>
 
                 <Select
-                  value={filters.type}
-                  onValueChange={(value) => setFilters(prev => ({ ...prev, type: value, page: 1 }))}
+                  value={filters.type || 'all'}
+                  onValueChange={(value) => setFilters(prev => ({ ...prev, type: value === 'all' ? '' : value, page: 1 }))}
                 >
                   <SelectTrigger className="w-64">
                     <SelectValue placeholder="All Event Types" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Event Types</SelectItem>
+                    <SelectItem value="all">All Event Types</SelectItem>
                     {Object.entries(EVENT_TYPE_LABELS).map(([key, label]) => (
                       <SelectItem key={key} value={key}>{label}</SelectItem>
                     ))}
