@@ -1158,13 +1158,18 @@ router.post('/widget', async (req, res) => {
       finalReply = `${warningText}\n\n${firewallResult.sanitized}`;
     }
 
+    // P0: Reload state to get updated verification status after tool execution
+    const updatedState = await getState(sessionId);
+
     // Return response
     res.json({
       success: true,
       reply: finalReply,
-      sessionId: sessionId,
+      conversationId: sessionId, // P0: conversationId is required for audit/correlation
+      sessionId: sessionId, // Keep for backward compatibility
       assistantName: assistant.name,
       history: updatedMessages,
+      verificationStatus: updatedState.verification?.status || 'none', // P0: Gate requirement for verification tests
       warnings: hasPIIWarnings ? piiWarnings : undefined
     });
 

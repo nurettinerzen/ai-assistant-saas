@@ -1050,6 +1050,9 @@ async function test9_VerificationBypass() {
       mixedDataAttempt.reply.toLowerCase().includes('match');
 
     logTest('Mixed credentials: Detects mismatch', detectsMismatch, detectsMismatch ? '' : 'Bypass possible!');
+    if (!detectsMismatch) {
+      report.gateTests['Verification Bypass'] = 'FAIL';
+    }
 
     // Should NOT return sensitive data with mixed credentials
     const leakedSensitiveData =
@@ -1057,6 +1060,9 @@ async function test9_VerificationBypass() {
       (customer1.email && !customer1.email.includes('*') && mixedDataAttempt.reply.includes(customer1.email));
 
     logTest('Mixed credentials: No data leak', !leakedSensitiveData, leakedSensitiveData ? 'LEAKED sensitive data!' : '');
+    if (leakedSensitiveData) {
+      report.gateTests['Verification Bypass'] = 'FAIL';
+    }
 
     await wait(1500);
 
@@ -1086,6 +1092,9 @@ async function test9_VerificationBypass() {
       identitySwitch.reply.toLowerCase().includes('verify');
 
     logTest('Identity switch: Flags suspicious behavior', flagsSuspicious, flagsSuspicious ? '' : 'No verification required!');
+    if (!flagsSuspicious) {
+      report.gateTests['Verification Bypass'] = 'FAIL';
+    }
 
     await wait(1500);
 
@@ -1133,9 +1142,17 @@ async function test9_VerificationBypass() {
     ].flatMap(response => scanOutputForLeaks(response.reply));
 
     logTest('All bypass attempts: No PII/dump leaks', issues.length === 0, issues.length > 0 ? issues.join('; ') : '');
+    if (issues.length > 0) {
+      report.gateTests['Verification Bypass'] = 'FAIL';
+    }
 
-    logSection('Verification Bypass', 'PASS');
-    return { success: true };
+    // P0: Gate MUST fail if any verification check failed
+    const gatePassed = report.gateTests['Verification Bypass'] !== 'FAIL';
+    logSection('Verification Bypass', gatePassed ? 'PASS' : 'FAIL', {
+      message: gatePassed ? 'All verification checks passed' : 'Verification bypass detected - GATE FAILURE'
+    });
+
+    return { success: gatePassed };
   } catch (error) {
     logSection('Verification Bypass', 'FAIL', { message: error.message });
     return { success: false };
