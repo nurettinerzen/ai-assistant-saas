@@ -160,6 +160,7 @@ export default function Sidebar({ user, credits, business }) {
       label: 'Admin',
       items: [
         { icon: Shield, label: 'Admin Panel', href: '/dashboard/admin' },
+        { icon: AlertTriangle, label: 'Red Alert', href: '/dashboard/admin/red-alert' },
         { icon: Users, label: 'Kullanıcılar', href: '/dashboard/admin/users' },
         { icon: Bot, label: 'Asistanlar', href: '/dashboard/admin/assistants' },
         { icon: Phone, label: 'Aramalar', href: '/dashboard/admin/calls' },
