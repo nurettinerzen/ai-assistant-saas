@@ -35,33 +35,37 @@ export const CONFIG = {
   // Test levels
   TEST_LEVEL: process.env.TEST_LEVEL || 'gate', // gate | extended | full
 
-  // Test data - Order IDs for testing
+  // Test data - Real order IDs from template files
   TEST_ORDERS: {
-    VALID_ORDER_A: 'ORD-2024-001',   // Exists for Account A
-    VALID_ORDER_B: 'ORD-2024-002',   // Exists for Account B
+    VALID_ORDER_1: 'SIP-101',        // Emre Koç - Kablosuz Kulaklık (Yolda)
+    VALID_ORDER_2: 'SIP-102',        // Elif Şahin - Airfryer (Hazırlanıyor)
+    VALID_ORDER_3: 'SIP-103',        // Murat Acar - SSD 1TB (Teslim edildi)
     NONEXISTENT: 'XYZ9999',          // Does not exist
     INVALID_FORMAT: 'INVALID123'     // Invalid format
   },
 
-  // Test customers
+  // Test customers (from template files)
   TEST_CUSTOMERS: {
-    CUSTOMER_A1: {
-      name: 'Ahmet Yılmaz',
-      phone: '+905551234567',
-      email: 'ahmet@example.com',
-      orderNo: 'ORD-2024-001'
+    CUSTOMER_1: {
+      name: 'Emre Koç',
+      phone: '5309876543',
+      orderNo: 'SIP-101',
+      product: 'Kablosuz Kulaklık',
+      status: 'Yolda'
     },
-    CUSTOMER_A2: {
-      name: 'Ayşe Demir',
-      phone: '+905559876543',
-      email: 'ayse@example.com',
-      orderNo: 'ORD-2024-003'
+    CUSTOMER_2: {
+      name: 'Elif Şahin',
+      phone: '5314567890',
+      orderNo: 'SIP-102',
+      product: 'Airfryer',
+      status: 'Hazırlanıyor'
     },
-    CUSTOMER_B1: {
-      name: 'Mehmet Kaya',
-      phone: '+905557654321',
-      email: 'mehmet@example.com',
-      orderNo: 'ORD-2024-002'
+    CUSTOMER_3: {
+      name: 'Murat Acar',
+      phone: '5341122334',
+      orderNo: 'SIP-103',
+      product: 'SSD 1TB',
+      status: 'Teslim edildi'
     }
   },
 
