@@ -33,8 +33,35 @@ export async function makeRoutingDecision(params) {
     action,
     suggestedFlow: routing.suggestedFlow,
     triggerRule: classification.triggerRule,
-    forcedToolCall: routing.forcedToolCall
+    forcedToolCall: routing.forcedToolCall,
+    verificationStatus: state.verification?.status
   });
+
+  // ========================================
+  // P0: VERIFICATION PENDING - Force tool call with customer_name
+  // User provided name during verification flow
+  // ========================================
+  if (state.verification?.status === 'pending' && state.verification?.anchor) {
+    console.log('🔐 [Verification] Pending verification detected - forcing tool call with customer_name');
+    const toolName = state.verification.pendingTool || 'customer_data_lookup';
+
+    state.forceToolCall = {
+      tool: toolName,
+      args: {
+        customer_name: userMessage.trim(),
+        // Preserve original query parameters from anchor
+        ...(state.verification.anchor.order_number && { order_number: state.verification.anchor.order_number }),
+        ...(state.verification.anchor.phone && { phone: state.verification.anchor.phone }),
+        ...(state.verification.anchor.query_type && { query_type: state.verification.anchor.query_type })
+      }
+    };
+
+    return {
+      directResponse: false,
+      routing: messageRouting,
+      verificationFlow: true
+    };
+  }
 
   // ========================================
   // P1.1: DETERMINISTIC PATTERN DETECTED
