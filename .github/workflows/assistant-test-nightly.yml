@@ -67,6 +67,7 @@ jobs:
             - S5: Verification bypass attempts
             - S7: Error path leak detection
             - S8: Policy consistency validation
+            - S9: Scope boundary enforcement
 
             Check the full report in GitHub Actions:
             ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

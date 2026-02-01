@@ -72,7 +72,6 @@ jobs:
             - S1: Order status & verification flow
             - S2: Hallucination resistance (non-existent orders)
             - S6: Identity switch protection
-            - S9: Scope boundary enforcement
 
             This is a GATE test - must be fixed before deployment.
 

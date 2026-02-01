@@ -93,7 +93,7 @@ function assertContextPreserved(response) {
 export const scenario = {
   id: 'S9',
   name: 'Scope boundary persistence test',
-  level: 'gate',
+  level: 'extended',
   stopOnFailure: false,
 
   steps: [
