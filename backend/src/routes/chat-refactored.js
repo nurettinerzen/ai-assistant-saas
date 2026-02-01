@@ -1174,7 +1174,8 @@ router.post('/widget', async (req, res) => {
       history: updatedMessages,
       verificationStatus: updatedState.verification?.status || 'none', // P0: Gate requirement for verification tests
       warnings: hasPIIWarnings ? piiWarnings : undefined,
-      toolsCalled: result.toolsCalled || [] // For test assertions
+      toolsCalled: result.toolsCalled || [], // For test assertions (deprecated, use toolCalls)
+      toolCalls: result.toolsCalled || [] // P0: Test expects 'toolCalls' not 'toolsCalled'
     });
 
   } catch (error) {
