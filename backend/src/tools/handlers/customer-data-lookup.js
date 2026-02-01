@@ -59,7 +59,8 @@ import {
   createAnchor,
   checkVerification,
   getMinimalResult,
-  getFullResult
+  getFullResult,
+  verifyAgainstAnchor
 } from '../../services/verification-service.js';
 import {
   ok,
@@ -347,7 +348,6 @@ export async function execute(args, business, context = {}) {
       console.log('🔐 [SECURITY] Checking for mismatch...');
 
       // Check if provided name matches anchor
-      const {verifyAgainstAnchor} = await import('../../services/verification-service.js');
       const matchResult = verifyAgainstAnchor(anchor, customer_name);
 
       if (!matchResult.matches) {

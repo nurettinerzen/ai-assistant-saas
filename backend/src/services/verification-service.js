@@ -120,7 +120,7 @@ export function checkVerification(anchor, verificationInput, queryType, language
  * @param {string} input - User's verification input
  * @returns {Object} Match result
  */
-function verifyAgainstAnchor(anchor, input) {
+export function verifyAgainstAnchor(anchor, input) {
   if (!input || !anchor) {
     return { matches: false, reason: 'missing_data' };
   }
