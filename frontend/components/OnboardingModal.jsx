@@ -21,8 +21,7 @@ import {
   Briefcase,
   Package,
   Mic2,
-  FileText,
-  Sparkles
+  FileText
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
@@ -236,123 +235,60 @@ export function OnboardingModal({ open, onClose }) {
   return (
     <Dialog open={open} onOpenChange={() => {}}>
       <DialogContent
-        className="max-w-3xl max-h-[90vh] overflow-y-auto [&>button]:hidden"
+        className="max-w-2xl max-h-[85vh] overflow-hidden [&>button]:hidden"
         onPointerDownOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle className="text-2xl">{STEPS[step - 1]?.title}</DialogTitle>
-          <p className="text-gray-600 dark:text-gray-400">{STEPS[step - 1]?.description}</p>
+          <DialogTitle className="text-xl font-semibold">{STEPS[step - 1]?.title}</DialogTitle>
+          <p className="text-sm text-gray-500 dark:text-gray-400">{STEPS[step - 1]?.description}</p>
         </DialogHeader>
 
-        <div className="flex items-center justify-between my-6">
+        <div className="flex items-center justify-between my-4">
           {STEPS.map((s, index) => (
             <div key={s.id} className="flex items-center">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
+              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium ${
                 s.id < step ? 'bg-green-500 text-white' :
                 s.id === step ? 'bg-teal-600 text-white' :
                 'bg-gray-200 dark:bg-neutral-700 text-gray-600 dark:text-gray-300'
               }`}>
-                {s.id < step ? <Check className="w-4 h-4" /> : s.id}
+                {s.id < step ? <Check className="w-3 h-3" /> : s.id}
               </div>
               {index < STEPS.length - 1 && (
-                <div className={`w-12 h-1 mx-2 ${s.id < step ? 'bg-green-500' : 'bg-gray-200 dark:bg-neutral-700'}`}></div>
+                <div className={`w-10 h-0.5 mx-1.5 ${s.id < step ? 'bg-green-500' : 'bg-gray-200 dark:bg-neutral-700'}`}></div>
               )}
             </div>
       ))}
     </div>
 
-    <div className="min-h-[300px]">
+    <div className="min-h-[280px]">
 
         {step === 1 && (
-    <div className="space-y-6">
-      {/* Language Selection */}
-      <div>
-        <Label className="text-base font-semibold">{t('onboarding.labels.language')}</Label>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">{t('onboarding.labels.selectAssistantLanguage')}</p>
-        <div className="grid grid-cols-5 gap-2">
-          {LANGUAGES.map((lang) => (
-            <button
-              key={lang.id}
-              type="button"
-              onClick={() => setData({ ...data, language: lang.id })}
-              className={`p-3 border dark:border-neutral-700 rounded-lg text-center transition-all ${
-                data.language === lang.id ? 'ring-2 ring-teal-600 bg-teal-50 dark:bg-teal-900/30 border-teal-600' : 'hover:bg-gray-50 dark:hover:bg-neutral-800'
-              }`}
-            >
-              <span className="font-medium dark:text-white">{lang.name}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Country Selection */}
-      <div>
-        <Label className="text-base font-semibold">{t('onboarding.labels.country')}</Label>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">{t('onboarding.labels.selectBusinessLocation')}</p>
-        <div className="grid grid-cols-3 gap-3">
-          {COUNTRIES.map((country) => (
-            <button
-              key={country.id}
-              type="button"
-              onClick={() => {
-                // Only set country and timezone, language is selected separately
-                setData({
-                  ...data,
-                  country: country.id,
-                  timezone: country.timezone
-                });
-              }}
-              className={`p-3 border dark:border-neutral-700 rounded-lg text-center transition-all ${
-                data.country === country.id ? 'ring-2 ring-teal-600 bg-teal-50 dark:bg-teal-900/30 border-teal-600' : 'hover:bg-gray-50 dark:hover:bg-neutral-800'
-              }`}
-            >
-              <span className="text-2xl block mb-1">{country.flag}</span>
-              <span className="font-medium text-sm dark:text-white">{country.nameLocal}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
+    <div className="space-y-4">
       {/* Industry Selection */}
       <div>
-        <Label className="text-base font-semibold">{t('onboarding.labels.businessType')}</Label>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">{t('onboarding.descriptions.tellUsAboutBusiness')}</p>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <Label className="text-sm font-medium">{t('onboarding.labels.businessType')}</Label>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">{t('onboarding.descriptions.tellUsAboutBusiness')}</p>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {INDUSTRIES.map((industry) => {
             const Icon = industry.icon;
             return (
               <Card
                 key={industry.id}
-                className={`p-6 cursor-pointer hover:shadow-lg transition-all ${
+                className={`p-4 cursor-pointer hover:shadow transition-all ${
                   data.industry === industry.id ? 'ring-2 ring-teal-600 bg-teal-50 dark:bg-teal-900/30' : ''
                 }`}
                 onClick={() => handleIndustrySelect(industry.id)}
               >
-                <div className={`p-4 rounded-lg ${industry.bgColor} mb-3 w-fit mx-auto`}>
-                  <Icon className={`h-8 w-8 ${industry.color}`} />
+                <div className={`p-3 rounded-lg ${industry.bgColor} mb-2 w-fit mx-auto`}>
+                  <Icon className={`h-6 w-6 ${industry.color}`} />
                 </div>
-                <h3 className="text-lg font-semibold text-center dark:text-white">{industry.name}</h3>
+                <h3 className="text-sm font-medium text-center dark:text-white">{industry.name}</h3>
               </Card>
             );
           })}
         </div>
-      </div>
-
-      {/* Timezone Selection */}
-      <div>
-        <Label className="text-base font-semibold">{t('onboarding.labels.businessTimezone')}</Label>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">{t('onboarding.labels.selectBusinessTimezone')}</p>
-        <select
-          value={data.timezone}
-          onChange={(e) => setData({ ...data, timezone: e.target.value })}
-          className="w-full p-3 border dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
-        >
-          {TIMEZONES.map((tz) => (
-            <option key={tz.id} value={tz.id}>{tz.name}</option>
-          ))}
-        </select>
       </div>
     </div>
 )}
@@ -360,43 +296,41 @@ export function OnboardingModal({ open, onClose }) {
           {step === 2 && (
             <div>
               {voicesLoading ? (
-                <div className="text-center py-12">
-                  <Loader2 className="h-8 w-8 mx-auto text-teal-600 animate-spin mb-4" />
-                  <p className="text-gray-600 dark:text-gray-400">{t('onboarding.voice.loading') || 'Loading voices...'}</p>
+                <div className="text-center py-8">
+                  <Loader2 className="h-6 w-6 mx-auto text-teal-600 animate-spin mb-3" />
+                  <p className="text-sm text-gray-600 dark:text-gray-400">{t('onboarding.voice.loading') || 'Loading voices...'}</p>
                 </div>
               ) : availableVoices.length === 0 ? (
-                <div className="text-center py-12">
-                  <p className="text-gray-600 dark:text-gray-400">{t('onboarding.voice.noVoices') || 'No voices available for this language. Please try another language.'}</p>
+                <div className="text-center py-8">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">{t('onboarding.voice.noVoices') || 'No voices available for this language. Please try another language.'}</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3">
                   {availableVoices.map((voice) => (
                     <Card
                       key={voice.id}
-                      className={`p-6 cursor-pointer hover:shadow-lg transition-all ${
+                      className={`p-3 cursor-pointer hover:shadow transition-all ${
                         data.voice?.id === voice.id ? 'ring-2 ring-teal-600 bg-teal-50 dark:bg-teal-900/30' : ''
                       }`}
                       onClick={() => handleVoiceSelect(voice)}
                     >
-                      <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center justify-between mb-2">
                         <div>
-                          <h3 className="font-semibold dark:text-white">{voice.name}</h3>
+                          <h3 className="text-sm font-medium dark:text-white">{voice.name}</h3>
                           <p className="text-xs text-gray-500 dark:text-gray-400">{voice.accent}</p>
                         </div>
                         {voice.sampleUrl && (
-                          <Button variant="ghost" size="sm" onClick={(e) => {
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={(e) => {
                             e.stopPropagation();
-                            // Play voice sample
                             const audio = new Audio(voice.sampleUrl);
                             audio.play().catch(() => toast.error('Could not play sample'));
                           }}>
-                            <Play className="w-4 h-4" />
+                            <Play className="w-3 h-3" />
                           </Button>
                         )}
                       </div>
-                      <div className="flex gap-2">
-                        <Badge variant="secondary">{voice.gender === 'male' ? t('onboarding.voice.male') : t('onboarding.voice.female')}</Badge>
-                        {voice.description && <Badge variant="outline">{voice.description}</Badge>}
+                      <div className="flex gap-1">
+                        <Badge variant="secondary" className="text-xs">{voice.gender === 'male' ? t('onboarding.voice.male') : t('onboarding.voice.female')}</Badge>
                       </div>
                     </Card>
                   ))}
@@ -406,29 +340,29 @@ export function OnboardingModal({ open, onClose }) {
           )}
 
           {step === 3 && (
-            <div className="space-y-6">
+            <div className="space-y-4">
               <div>
-                <Label className="text-base font-semibold flex items-center gap-2">
-                  <Mic2 className="h-4 w-4" />
+                <Label className="text-sm font-medium flex items-center gap-1.5">
+                  <Mic2 className="h-3.5 w-3.5" />
                   {t('onboarding.labels.greetingMessage')}
                 </Label>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">{t('onboarding.labels.greetingMessageDesc')}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">{t('onboarding.labels.greetingMessageDesc')}</p>
                 <textarea
                   value={data.firstMessage}
                   onChange={(e) => setData({ ...data, firstMessage: e.target.value })}
-                  className="w-full min-h-[80px] p-3 border dark:border-neutral-700 rounded-lg resize-none bg-white dark:bg-neutral-800 dark:text-white focus:ring-2 focus:ring-teal-500"
+                  className="w-full min-h-[70px] p-2.5 text-sm border dark:border-neutral-700 rounded-lg resize-none bg-white dark:bg-neutral-800 dark:text-white focus:ring-2 focus:ring-teal-500"
                 />
               </div>
               <div>
-                <Label className="text-base font-semibold flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
+                <Label className="text-sm font-medium flex items-center gap-1.5">
+                  <FileText className="h-3.5 w-3.5" />
                   {t('onboarding.labels.assistantInstructions')}
                 </Label>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">{t('onboarding.labels.assistantInstructionsDesc')}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">{t('onboarding.labels.assistantInstructionsDesc')}</p>
                 <textarea
                   value={data.systemPrompt}
                   onChange={(e) => setData({ ...data, systemPrompt: e.target.value })}
-                  className="w-full min-h-[120px] p-3 border dark:border-neutral-700 rounded-lg resize-none bg-white dark:bg-neutral-800 dark:text-white focus:ring-2 focus:ring-teal-500"
+                  className="w-full min-h-[100px] p-2.5 text-sm border dark:border-neutral-700 rounded-lg resize-none bg-white dark:bg-neutral-800 dark:text-white focus:ring-2 focus:ring-teal-500"
                 />
               </div>
             </div>
@@ -448,25 +382,25 @@ export function OnboardingModal({ open, onClose }) {
           )}
 
           {step === 5 && (
-            <div className="text-center py-8">
-              <div className="w-24 h-24 mx-auto mb-6 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
-                <Sparkles className="w-12 h-12 text-green-600 dark:text-green-400" />
+            <div className="text-center py-6">
+              <div className="w-16 h-16 mx-auto mb-4 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
+                <Check className="w-8 h-8 text-green-600 dark:text-green-400" />
               </div>
-              <h3 className="text-2xl font-bold mb-3 dark:text-white">{t('onboarding.final.allSet')}</h3>
-              <p className="text-gray-600 dark:text-gray-400 mb-6">{t('onboarding.final.assistantReady')}</p>
+              <h3 className="text-xl font-semibold mb-2 dark:text-white">{t('onboarding.final.allSet')}</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">{t('onboarding.final.assistantReady')}</p>
             </div>
           )}
         </div>
 
-        <div className="flex items-center justify-between mt-6 pt-6 border-t dark:border-neutral-700">
-          <Button variant="outline" onClick={prevStep} disabled={step === 1 || loading}>
-            <ChevronLeft className="w-4 h-4 mr-1" />
+        <div className="flex items-center justify-between mt-4 pt-4 border-t dark:border-neutral-700">
+          <Button variant="outline" size="sm" onClick={prevStep} disabled={step === 1 || loading}>
+            <ChevronLeft className="w-3 h-3 mr-1" />
             {t('onboarding.buttons.back')}
           </Button>
-          <div className="text-sm text-gray-500 dark:text-gray-400">{step} / {STEPS.length}</div>
-          <Button onClick={nextStep} disabled={!canProceed() || loading}>
+          <div className="text-xs text-gray-500 dark:text-gray-400">{step} / {STEPS.length}</div>
+          <Button size="sm" onClick={nextStep} disabled={!canProceed() || loading}>
             {loading ? t('onboarding.buttons.loading') : step === 5 ? t('onboarding.buttons.complete') : t('onboarding.buttons.next')}
-            {step < 5 && <ChevronRight className="w-4 h-4 ml-1" />}
+            {step < 5 && <ChevronRight className="w-3 h-3 ml-1" />}
           </Button>
         </div>
       </DialogContent>

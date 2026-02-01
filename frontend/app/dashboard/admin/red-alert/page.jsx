@@ -214,15 +214,15 @@ export default function RedAlertPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Shield className="h-8 w-8 text-red-600" />
+          <h1 className="text-2xl font-semibold flex items-center gap-2">
+            <Shield className="h-6 w-6 text-red-600" />
             Red Alert - Security Dashboard
           </h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Real-time security event monitoring and threat analysis
           </p>
         </div>
-        <Button onClick={loadDashboardData} variant="outline">
+        <Button onClick={loadDashboardData} variant="outline" size="sm">
           <Activity className="h-4 w-4 mr-2" />
           Refresh
         </Button>
@@ -248,45 +248,48 @@ export default function RedAlertPage() {
 
       {/* Health Score Card */}
       {health && (
-        <Card className="mb-6 border-2 border-red-200 dark:border-red-900">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Shield className={`h-5 w-5 ${HEALTH_STATUS_COLORS[health.status]}`} />
+        <Card className="mb-4 border-2 border-red-200 dark:border-red-900">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Shield className={`h-4 w-4 ${HEALTH_STATUS_COLORS[health.status]}`} />
               Security Health Score
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-8">
+            <div className="flex items-center gap-6">
               <div className="text-center">
-                <div className={`text-6xl font-bold ${HEALTH_STATUS_COLORS[health.status]}`}>
+                <div className={`text-4xl font-bold ${HEALTH_STATUS_COLORS[health.status]}`}>
                   {health.healthScore}
                 </div>
-                <div className="text-sm text-muted-foreground mt-2">Score / 100</div>
+                <div className="text-xs text-muted-foreground mt-1">/ 100</div>
               </div>
-              <div className="flex-1 grid grid-cols-3 gap-4">
+              <div className="flex-1 grid grid-cols-3 gap-3">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-red-600 dark:text-red-400">
+                  <div className="text-xl font-bold text-red-600 dark:text-red-400">
                     {health.events.critical}
                   </div>
-                  <div className="text-sm text-muted-foreground">Critical Events</div>
+                  <div className="text-xs text-muted-foreground">Critical</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                  <div className="text-xl font-bold text-orange-600 dark:text-orange-400">
                     {health.events.high}
                   </div>
-                  <div className="text-sm text-muted-foreground">High Events</div>
+                  <div className="text-xs text-muted-foreground">High</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold">
+                  <div className="text-xl font-bold">
                     {health.events.total}
                   </div>
-                  <div className="text-sm text-muted-foreground">Total Events</div>
+                  <div className="text-xs text-muted-foreground">Total</div>
                 </div>
               </div>
               <div className="text-center">
-                <Badge className={SEVERITY_COLORS[health.status] + ' text-lg px-4 py-2'}>
+                <Badge className={SEVERITY_COLORS[health.status] + ' text-sm px-3 py-1'}>
                   {health.status.toUpperCase()}
                 </Badge>
+                {health.events.total === 0 && (
+                  <div className="text-xs text-muted-foreground mt-1">No threats detected</div>
+                )}
               </div>
             </div>
           </CardContent>
@@ -295,14 +298,14 @@ export default function RedAlertPage() {
 
       {/* Summary Stats */}
       {summary && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium">Total Events (24h)</CardTitle>
               <Activity className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{summary.summary.total24h}</div>
+              <div className="text-xl font-bold">{summary.summary.total24h}</div>
               <p className="text-xs text-muted-foreground">
                 {summary.summary.total7d} in last 7 days
               </p>
@@ -315,7 +318,7 @@ export default function RedAlertPage() {
               <AlertTriangle className="h-4 w-4 text-red-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-red-600 dark:text-red-400">
+              <div className="text-xl font-bold text-red-600 dark:text-red-400">
                 {summary.summary.critical}
               </div>
               <p className="text-xs text-muted-foreground">
@@ -330,7 +333,7 @@ export default function RedAlertPage() {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
+              <div className="text-xl font-bold">
                 {Object.keys(summary.byType).length}
               </div>
               <p className="text-xs text-muted-foreground">

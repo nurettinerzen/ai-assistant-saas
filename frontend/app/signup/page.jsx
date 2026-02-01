@@ -7,7 +7,7 @@ import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Mail, Lock, User, Loader2, Ticket } from 'lucide-react';
+import { Mail, Lock, User, Loader2, Ticket, Building2 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast, Toaster } from 'sonner';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
@@ -36,6 +36,7 @@ export default function SignupPage() {
     email: '',
     password: '',
     fullName: '',
+    businessName: '',
     inviteCode: '',
   });
   const [acceptedTerms, setAcceptedTerms] = useState(false);
@@ -68,7 +69,7 @@ export default function SignupPage() {
     setLoading(true);
 
     try {
-      if (!formData.email || !formData.password || !formData.fullName) {
+      if (!formData.email || !formData.password || !formData.fullName || !formData.businessName) {
         toast.error(t('auth.pleaseFillAllFields'));
         setLoading(false);
         return;
@@ -173,6 +174,22 @@ export default function SignupPage() {
                   className="pl-10"
                   value={formData.fullName}
                   onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="businessName">{t('auth.businessName')}</Label>
+              <div className="relative">
+                <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <Input
+                  id="businessName"
+                  type="text"
+                  placeholder={t('auth.businessName')}
+                  className="pl-10"
+                  value={formData.businessName}
+                  onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
                   required
                 />
               </div>

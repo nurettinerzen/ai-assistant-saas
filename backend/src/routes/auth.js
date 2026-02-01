@@ -161,10 +161,10 @@ router.post('/register', async (req, res) => {
 // Signup (alias for register) - Requires invite code
 router.post("/signup", async (req, res) => {
   try {
-    const { email, password, fullName, inviteCode } = req.body;
+    const { email, password, fullName, businessName, inviteCode } = req.body;
 
     // Validation
-    if (!email || !password) {
+    if (!email || !password || !fullName || !businessName) {
       return res.status(400).json({ error: "All fields are required" });
     }
 
@@ -194,9 +194,6 @@ router.post("/signup", async (req, res) => {
     if (invite.email && invite.email.toLowerCase() !== email.toLowerCase()) {
       return res.status(403).json({ error: "This invite code is not valid for this email", code: "EMAIL_MISMATCH" });
     }
-
-    // Use fullName for both user name and initial business name
-    const businessName = fullName || "My Business";
 
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
