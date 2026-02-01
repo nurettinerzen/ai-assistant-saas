@@ -33,10 +33,10 @@ export async function sendConversationTurn(
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       const response = await axios.post(
-        `${CONFIG.API_URL}/api/conversation/voice`,
+        `${CONFIG.API_URL}/api/chat/widget`,
         {
           assistantId,
-          userMessage: message,
+          message,  // Widget uses 'message' not 'userMessage'
           conversationId,
           sessionId: options.sessionId || `test-session-${Date.now()}`
         },
@@ -77,12 +77,19 @@ export async function sendConversationTurn(
   }
 
   // All retries failed
-  return {
+  const errorDetails = {
     success: false,
     error: lastError.message,
     statusCode: lastError.response?.status,
     response: lastError.response?.data
   };
+
+  // Log error for debugging
+  if (CONFIG.REPORT.VERBOSE) {
+    console.error('❌ API Error:', JSON.stringify(errorDetails, null, 2));
+  }
+
+  return errorDetails;
 }
 
 /**

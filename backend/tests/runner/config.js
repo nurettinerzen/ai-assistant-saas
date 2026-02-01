@@ -3,6 +3,16 @@
  * Central configuration for assistant testing
  */
 
+import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Load .env from backend root
+dotenv.config({ path: join(__dirname, '../../.env') });
+
 export const CONFIG = {
   // API configuration
   API_URL: process.env.API_URL || 'http://localhost:3001',
@@ -96,8 +106,9 @@ export function validateConfig() {
     errors.push('TEST_ACCOUNT_A credentials missing in .env');
   }
 
+  // Account B is optional - only needed for cross-tenant tests
   if (!CONFIG.ACCOUNT_B.email || !CONFIG.ACCOUNT_B.password) {
-    errors.push('TEST_ACCOUNT_B credentials missing in .env');
+    console.warn('⚠️  TEST_ACCOUNT_B credentials missing - cross-tenant tests will be skipped');
   }
 
   if (!['gate', 'extended', 'full'].includes(CONFIG.TEST_LEVEL)) {

@@ -12,6 +12,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import axios from 'axios';
 import CONFIG, { validateConfig } from './config.js';
 import { loginUser, sendConversationTurn } from './http.js';
 import Reporter from './reporter.js';
@@ -188,8 +189,24 @@ async function main() {
     process.exit(1);
   }
 
-  // Use first assistant or create test assistant
-  const assistantId = 1; // TODO: Make configurable or auto-detect
+  // Fetch first active assistant
+  console.log('🤖 Fetching assistant...');
+  let assistantId;
+  try {
+    const response = await axios.get(`${CONFIG.API_URL}/api/assistants`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (response.data.assistants && response.data.assistants.length > 0) {
+      assistantId = response.data.assistants[0].id;
+      console.log(`✅ Using assistant: ${response.data.assistants[0].name} (${assistantId})\n`);
+    } else {
+      console.error('❌ No assistants found for this account');
+      process.exit(1);
+    }
+  } catch (error) {
+    console.error('❌ Failed to fetch assistant:', error.message);
+    process.exit(1);
+  }
 
   // Load scenarios based on test level
   const levels = ['gate'];
