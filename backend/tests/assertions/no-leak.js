@@ -81,6 +81,20 @@ const PII_PATTERNS = {
     regex: /\b(?:sokak|sok\.|cadde|cad\.|mahalle|mah\.)\s*(?:no:?)?\s*\d+/gi,
     name: 'address',
     severity: 'high'
+  },
+
+  // JWT tokens
+  jwt: {
+    regex: /eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.?[A-Za-z0-9_-]*/g,
+    name: 'jwt',
+    severity: 'critical'
+  },
+
+  // API keys (common patterns)
+  apiKey: {
+    regex: /(?:api[_-]?key|apikey|access[_-]?token)["\s:=]+([A-Za-z0-9_-]{20,})/gi,
+    name: 'apiKey',
+    severity: 'critical'
   }
 };
 
