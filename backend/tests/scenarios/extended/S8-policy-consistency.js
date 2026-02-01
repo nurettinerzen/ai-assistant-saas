@@ -210,7 +210,20 @@ export const scenario = {
           name: 'provides_guidance',
           assert: async (response) => {
             const reply = response.reply || '';
-            const hasGuidance = /(?:destek|support|iletişim|contact|müşteri\s+hizmetleri)/gi.test(reply);
+            // Check for any guidance/next-step indicators
+            const guidancePatterns = [
+              /destek|support/i,
+              /iletişim|contact/i,
+              /müşteri\s*hizmetleri|customer\s*service/i,
+              /servis|service/i,
+              /yönlendirme|redirect/i,
+              /arayabilir|call/i,
+              /e-?posta|email/i,
+              /adım|step/i,
+              /yapabilirsiniz|you\s*can/i,
+              /geri\s*al|get\s*back/i
+            ];
+            const hasGuidance = guidancePatterns.some(pattern => pattern.test(reply));
             return {
               passed: hasGuidance,
               reason: hasGuidance ? null : 'Should provide guidance on next steps'

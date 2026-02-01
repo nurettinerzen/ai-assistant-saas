@@ -65,18 +65,36 @@ export async function sendConversationTurn(
       };
     } catch (error) {
       lastError = error;
+      const status = error.response?.status;
+      const requestId = error.response?.data?.requestId || 'unknown';
 
       // Don't retry on 4xx errors (except 429)
-      if (error.response?.status >= 400 && error.response?.status < 500) {
-        if (error.response?.status !== 429) {
-          break;
-        }
+      if (status >= 400 && status < 500 && status !== 429) {
+        break;
       }
 
-      // Exponential backoff
-      if (attempt < maxAttempts) {
+      // 503 with retryAfterMs: server says "processing, wait and retry"
+      if (status === 503 && attempt < maxAttempts) {
+        const retryAfterMs = error.response?.data?.retryAfterMs || CONFIG.RETRY.BACKOFF_MS;
+        console.log(`    [retry] 503 received (requestId=${requestId}), attempt ${attempt}/${maxAttempts}, waiting ${retryAfterMs}ms`);
+        await new Promise(resolve => setTimeout(resolve, retryAfterMs));
+        continue;
+      }
+
+      // 429 rate limit: use retryAfter or exponential backoff
+      if (status === 429 && attempt < maxAttempts) {
+        const retryAfterMs = error.response?.data?.retryAfterMs || CONFIG.RETRY.BACKOFF_MS * Math.pow(CONFIG.RETRY.BACKOFF_MULTIPLIER, attempt - 1);
+        console.log(`    [retry] 429 rate limit (requestId=${requestId}), attempt ${attempt}/${maxAttempts}, waiting ${retryAfterMs}ms`);
+        await new Promise(resolve => setTimeout(resolve, retryAfterMs));
+        continue;
+      }
+
+      // Other 5xx errors: exponential backoff
+      if (status >= 500 && attempt < maxAttempts) {
         const delayMs = CONFIG.RETRY.BACKOFF_MS * Math.pow(CONFIG.RETRY.BACKOFF_MULTIPLIER, attempt - 1);
+        console.log(`    [retry] ${status} error (requestId=${requestId}), attempt ${attempt}/${maxAttempts}, waiting ${delayMs}ms`);
         await new Promise(resolve => setTimeout(resolve, delayMs));
+        continue;
       }
     }
   }
