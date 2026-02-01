@@ -1075,7 +1075,8 @@ router.post('/widget', async (req, res) => {
       {
         role: 'assistant',
         content: result.reply,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        ...(result.toolsCalled?.length > 0 && { toolCalls: result.toolsCalled })
       }
     ];
 

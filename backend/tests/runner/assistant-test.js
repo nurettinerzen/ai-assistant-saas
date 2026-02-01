@@ -61,6 +61,9 @@ async function runScenario(scenario, token, assistantId, businessId) {
   const startTime = Date.now();
   let conversationId = null;
 
+  // Generate sessionId ONCE per scenario (not per step)
+  const scenarioSessionId = `test-${scenario.id}-${startTime}`;
+
   try {
     for (const step of scenario.steps) {
       console.log(`  ⏸  Step ${step.id}: ${step.description}`);
@@ -72,14 +75,19 @@ async function runScenario(scenario, token, assistantId, businessId) {
         assertions: []
       };
 
-      // Send conversation turn
+      // Send conversation turn with consistent sessionId
       const response = await sendConversationTurn(
         assistantId,
         step.userMessage,
         token,
         conversationId,
-        { sessionId: `test-${scenario.id}-${Date.now()}` }
+        { sessionId: scenarioSessionId }
       );
+
+      // Debug log for session continuity verification
+      if (process.env.VERBOSE === 'true') {
+        console.log(`    [debug] scenario=${scenario.id} step=${step.id} sessionId=${scenarioSessionId} conversationId=${response.conversationId} verificationStatus=${response.verificationStatus}`);
+      }
 
       if (!response.success) {
         stepResult.status = 'failed';

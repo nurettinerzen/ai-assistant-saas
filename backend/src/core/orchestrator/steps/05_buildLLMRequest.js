@@ -76,6 +76,8 @@ you should use the relevant tools.`;
 
   // If no flow-specific tools, use ALL available tools (extract names from toolsAll)
   const allToolNames = toolsAll.map(t => t.function?.name).filter(Boolean);
+  console.log('🔧 [BuildLLMRequest] toolsAll:', { count: toolsAll.length, names: allToolNames });
+
   const flowTools = (state.allowedTools && state.allowedTools.length > 0)
     ? state.allowedTools
     : allToolNames;

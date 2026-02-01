@@ -49,6 +49,11 @@ export async function sendConversationTurn(
         }
       );
 
+      // DEBUG: Log response data
+      if (CONFIG.REPORT?.VERBOSE) {
+        console.log('📦 API Response:', JSON.stringify(response.data, null, 2));
+      }
+
       return {
         success: true,
         reply: response.data.reply,

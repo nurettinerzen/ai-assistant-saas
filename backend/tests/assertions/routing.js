@@ -4,15 +4,35 @@
  */
 
 /**
+ * Normalize tool call to extract name
+ * Supports both string[] and object[] formats
+ */
+function getToolName(tc) {
+  return typeof tc === 'string' ? tc : tc?.name;
+}
+
+/**
+ * Normalize tool call to extract full object
+ * Returns { name, parameters } regardless of input format
+ */
+function normalizeToolCall(tc) {
+  if (typeof tc === 'string') {
+    return { name: tc, parameters: {} };
+  }
+  return { name: tc?.name, parameters: tc?.parameters || tc?.args || {} };
+}
+
+/**
  * Assert tool was called
  */
 export function assertToolCalled(toolCalls, expectedToolName) {
-  const called = toolCalls.some(tc => tc.name === expectedToolName);
+  const called = toolCalls.some(tc => getToolName(tc) === expectedToolName);
 
   if (!called) {
+    const names = toolCalls.map(tc => getToolName(tc)).filter(Boolean);
     return {
       passed: false,
-      reason: `Expected tool '${expectedToolName}' to be called, but got: ${toolCalls.map(tc => tc.name).join(', ') || 'none'}`
+      reason: `Expected tool '${expectedToolName}' to be called, but got: ${names.join(', ') || 'none'}`
     };
   }
 
@@ -23,7 +43,7 @@ export function assertToolCalled(toolCalls, expectedToolName) {
  * Assert tool was NOT called
  */
 export function assertToolNotCalled(toolCalls, toolName) {
-  const called = toolCalls.some(tc => tc.name === toolName);
+  const called = toolCalls.some(tc => getToolName(tc) === toolName);
 
   if (called) {
     return {
@@ -39,7 +59,7 @@ export function assertToolNotCalled(toolCalls, toolName) {
  * Assert tool parameters match expected
  */
 export function assertToolParameters(toolCalls, toolName, expectedParams) {
-  const toolCall = toolCalls.find(tc => tc.name === toolName);
+  const toolCall = toolCalls.map(normalizeToolCall).find(tc => tc.name === toolName);
 
   if (!toolCall) {
     return {
@@ -73,7 +93,7 @@ export function assertToolParameters(toolCalls, toolName, expectedParams) {
 export function assertCorrectBusinessId(toolCalls, expectedBusinessId) {
   const violations = [];
 
-  toolCalls.forEach(tc => {
+  toolCalls.map(normalizeToolCall).forEach(tc => {
     const businessId = tc.parameters?.businessId;
 
     if (businessId && businessId !== expectedBusinessId) {
@@ -100,9 +120,10 @@ export function assertCorrectBusinessId(toolCalls, expectedBusinessId) {
  */
 export function assertNoToolCalls(toolCalls) {
   if (toolCalls && toolCalls.length > 0) {
+    const names = toolCalls.map(tc => getToolName(tc)).filter(Boolean);
     return {
       passed: false,
-      reason: `Expected no tool calls, but got: ${toolCalls.map(tc => tc.name).join(', ')}`
+      reason: `Expected no tool calls, but got: ${names.join(', ')}`
     };
   }
 
@@ -113,8 +134,8 @@ export function assertNoToolCalls(toolCalls) {
  * Assert deterministic routing (same input -> same tool)
  */
 export function assertDeterministicRouting(toolCallsRun1, toolCallsRun2) {
-  const tools1 = toolCallsRun1.map(tc => tc.name).sort();
-  const tools2 = toolCallsRun2.map(tc => tc.name).sort();
+  const tools1 = toolCallsRun1.map(tc => getToolName(tc)).filter(Boolean).sort();
+  const tools2 = toolCallsRun2.map(tc => getToolName(tc)).filter(Boolean).sort();
 
   if (JSON.stringify(tools1) !== JSON.stringify(tools2)) {
     return {

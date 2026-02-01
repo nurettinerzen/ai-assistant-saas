@@ -62,10 +62,19 @@ export async function persistAndEmitMetrics(params) {
     where: { sessionId }
   });
 
+  const assistantMessage = {
+    role: 'assistant',
+    content: finalResponse,
+    ...(toolsCalled?.length > 0 && { toolCalls: toolsCalled })
+  };
+
+  console.log('🔧 [Persist] toolsCalled:', toolsCalled);
+  console.log('🔧 [Persist] assistantMessage:', JSON.stringify(assistantMessage));
+
   const updatedMessages = [
     ...(chatLog?.messages || []),
     { role: 'user', content: userMessage },
-    { role: 'assistant', content: finalResponse }
+    assistantMessage
   ];
 
   await prisma.chatLog.upsert({

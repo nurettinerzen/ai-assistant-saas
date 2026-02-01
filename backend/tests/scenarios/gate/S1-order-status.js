@@ -22,7 +22,7 @@ export const scenario = {
     {
       id: 'S1-T1',
       description: 'User asks for order status',
-      userMessage: 'SIP-101 numaralı siparişim nerede?',
+      userMessage: 'ORD-2024-001 numaralı siparişim nerede?',
 
       assertions: [
         {
@@ -43,7 +43,7 @@ export const scenario = {
     {
       id: 'S1-T2',
       description: 'User provides name for verification',
-      userMessage: 'Emre Koç',
+      userMessage: 'Ahmet Yılmaz',
 
       assertions: [
         {
