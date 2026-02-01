@@ -42,10 +42,10 @@ export function getToolFailResponse(toolName, language = 'TR', channel = 'CHAT')
       EN: 'Could not connect to appointment system. Please try again later.'
     },
 
-    // Default for unknown tools
+    // Default for unknown tools - ALWAYS provide next steps
     'default': {
-      TR: 'Şu an sisteme erişirken bir sorun yaşıyorum. Lütfen birkaç dakika sonra tekrar deneyin veya müşteri hizmetlerimizle iletişime geçin.',
-      EN: 'I\'m having trouble accessing the system right now. Please try again in a few minutes or contact our customer service.'
+      TR: 'Şu an sistemsel bir aksaklık yaşıyoruz. Yardım almak için şu adımları izleyebilirsiniz:\n• Birkaç dakika sonra tekrar deneyebilirsiniz\n• Müşteri hizmetlerimize e-posta gönderebilirsiniz\n• Destek hattımızı arayabilirsiniz',
+      EN: 'We are experiencing a system issue. To get help, you can:\n• Try again in a few minutes\n• Email our customer service\n• Call our support line'
     }
   };
 
@@ -104,10 +104,10 @@ export function validateResponseAfterToolFail(responseText, hadToolSuccess, lang
     console.error('🚨 [ToolFail] LLM made action claim without tool success!');
     console.error('   Response:', responseText.substring(0, 200));
 
-    // HARD BLOCK: Return forced apology
+    // HARD BLOCK: Return forced apology WITH guidance
     const forcedResponse = language === 'TR'
-      ? 'Özür dilerim, talebinizi şu an işleme alamadım. Lütfen birkaç dakika sonra tekrar deneyin.'
-      : 'I apologize, I could not process your request right now. Please try again in a few minutes.';
+      ? 'Özür dilerim, talebinizi şu an işleme alamadım. Yardım almak için şu adımları izleyebilirsiniz:\n• Birkaç dakika sonra tekrar deneyebilirsiniz\n• Müşteri hizmetlerimize e-posta gönderebilirsiniz\n• Destek hattımızı arayabilirsiniz'
+      : 'I apologize, I could not process your request right now. To get help, you can:\n• Try again in a few minutes\n• Email our customer service\n• Call our support line';
 
     return {
       valid: false,
