@@ -32,8 +32,29 @@ export async function makeRoutingDecision(params) {
   console.log('🧭 [RouterDecision]:', {
     action,
     suggestedFlow: routing.suggestedFlow,
-    triggerRule: classification.triggerRule
+    triggerRule: classification.triggerRule,
+    forcedToolCall: routing.forcedToolCall
   });
+
+  // ========================================
+  // P1.1: DETERMINISTIC PATTERN DETECTED
+  // Force tool call with extracted pattern data
+  // ========================================
+  if (routing.forcedToolCall && routing.patternData) {
+    console.log('🎯 [DETERMINISTIC] Forcing tool call with pattern data:', routing.patternData);
+    const toolName = routing.tools?.[0] || 'customer_data_lookup';
+
+    state.forceToolCall = {
+      tool: toolName,
+      args: routing.patternData
+    };
+
+    return {
+      directResponse: false,
+      routing: messageRouting,
+      deterministicRoute: true
+    };
+  }
 
   // ========================================
   // SPECIAL HANDLER: CALLBACK_REQUEST

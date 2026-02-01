@@ -157,6 +157,78 @@ Reply with ONLY the intent name.`;
 }
 
 /**
+ * Detect deterministic patterns in user message
+ * Forces tool call without LLM routing to eliminate variability
+ * @param {string} message - User message
+ * @returns {Object|null} - Pattern match result or null
+ */
+function detectDeterministicPattern(message) {
+  const normalized = message.toLowerCase().trim();
+
+  // Pattern 1: Order number (sipariş + number)
+  const orderPattern = /sipari[şs].{0,20}?(\d{3,})/i;
+  const orderMatch = normalized.match(orderPattern);
+  if (orderMatch) {
+    return {
+      type: 'ORDER_NUMBER',
+      intent: 'order_status',
+      tools: ['customer_data_lookup'],
+      data: { order_number: orderMatch[1] }
+    };
+  }
+
+  // Pattern 2: TC Kimlik (11 digits)
+  const tcPattern = /\b(\d{11})\b/;
+  const tcMatch = normalized.match(tcPattern);
+  if (tcMatch) {
+    return {
+      type: 'TC_KIMLIK',
+      intent: 'debt_inquiry',
+      tools: ['customer_data_lookup'],
+      data: { tc: tcMatch[1] }
+    };
+  }
+
+  // Pattern 3: VKN (10 digits)
+  const vknPattern = /\b(\d{10})\b/;
+  const vknMatch = normalized.match(vknPattern);
+  if (vknMatch) {
+    return {
+      type: 'VKN',
+      intent: 'debt_inquiry',
+      tools: ['customer_data_lookup'],
+      data: { vkn: vknMatch[1] }
+    };
+  }
+
+  // Pattern 4: Phone number (Turkish mobile format)
+  const phonePattern = /\b(0?5\d{9})\b/;
+  const phoneMatch = normalized.match(phonePattern);
+  if (phoneMatch) {
+    return {
+      type: 'PHONE',
+      intent: 'order_status',
+      tools: ['customer_data_lookup'],
+      data: { phone: phoneMatch[1] }
+    };
+  }
+
+  // Pattern 5: Tracking number (kargo takip + number)
+  const trackingPattern = /(kargo|takip|gönderi).{0,20}?(\d{10,})/i;
+  const trackingMatch = normalized.match(trackingPattern);
+  if (trackingMatch) {
+    return {
+      type: 'TRACKING_NUMBER',
+      intent: 'tracking_info',
+      tools: ['customer_data_lookup'],
+      data: { tracking_number: trackingMatch[2] }
+    };
+  }
+
+  return null; // No deterministic pattern found
+}
+
+/**
  * Get or create session counter
  * @param {string} sessionId - Session ID (phone number or chat session)
  * @returns {Object} - Session counter object
@@ -283,6 +355,21 @@ export function getVerificationFields(intent) {
  */
 export async function routeIntent(userMessage, sessionId, language = 'TR', businessInfo = {}) {
   try {
+    // DETERMINISTIC PATTERN CHECK (P1.1): Force tool call for specific patterns
+    // This prevents LLM routing variability for security-critical queries
+    const detectedPattern = detectDeterministicPattern(userMessage);
+    if (detectedPattern) {
+      console.log('🎯 [DETERMINISTIC] Pattern detected:', detectedPattern.type, detectedPattern.data);
+      return {
+        intent: detectedPattern.intent,
+        tools: detectedPattern.tools,
+        shouldTerminate: false,
+        forcedToolCall: true, // Flag to indicate this is a deterministic route
+        patternData: detectedPattern.data,
+        action: 'RUN_INTENT_ROUTER' // Ensure it goes through router decision
+      };
+    }
+
     // PRIORITY CHECK: Is user responding to a verification request?
     const pendingVerification = verificationCache.get(sessionId);
 
