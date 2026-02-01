@@ -297,7 +297,78 @@ export async function execute(args, business, context = {}) {
     const anchor = createAnchor(record, anchorType, anchorValue);
     console.log('🔐 [Anchor] Created:', { type: anchor.anchorType, value: anchor.anchorValue, name: anchor.name });
 
-    const verificationCheck = checkVerification(anchor, customer_name, query_type, language);
+    // P0 SECURITY: Detect identity switch (anchor change within session)
+    // If user switches to a different customer mid-conversation, require new verification
+    console.log('🔐 [Debug] Identity switch check:', {
+      hasStateAnchor: !!state.verification?.anchor,
+      stateAnchorId: state.verification?.anchor?.id,
+      newAnchorId: anchor.id,
+      isDifferent: state.verification?.anchor?.id !== anchor.id
+    });
+    const identitySwitch = state.verification?.anchor?.id && state.verification.anchor.id !== anchor.id;
+
+    if (identitySwitch) {
+      console.log('🚨 [SECURITY] Identity switch detected!', {
+        previousAnchor: state.verification.anchor.id,
+        newAnchor: anchor.id
+      });
+
+      // Force new verification by treating as if no verification data provided
+      // ToolLoop will handle state reset when VERIFICATION_REQUIRED is returned
+      console.log('🔐 [SECURITY] Forcing new verification for identity switch');
+
+      // Return VERIFICATION_REQUIRED immediately - ignore any provided customer_name
+      return verificationRequired(
+        language === 'TR'
+          ? 'Farklı bir müşteri kaydı tespit edildi. Güvenlik doğrulaması için isminizi ve soyadınızı söyler misiniz?'
+          : 'Different customer record detected. For security verification, could you please provide your full name?',
+        {
+          askFor: 'name',
+          anchor: {
+            id: anchor.id,
+            type: anchor.anchorType,
+            value: anchor.anchorValue,
+            name: anchor.name,
+            phone: anchor.phone,
+            email: anchor.email
+          }
+        }
+      );
+    }
+
+    // P0 SECURITY: Enforce two-step verification AND detect mismatches
+    // Strategy:
+    // 1. If customer_name provided AND not in pending state → check for mismatch
+    // 2. If mismatch detected → return explicit error
+    // 3. If match detected → still require verification (prevent single-shot bypass)
+    let verificationInput = customer_name;
+    if (customer_name && state.verification?.status !== 'pending') {
+      console.log('🔐 [SECURITY] customer_name provided but not in pending verification flow');
+      console.log('🔐 [SECURITY] Checking for mismatch...');
+
+      // Check if provided name matches anchor
+      const {verifyAgainstAnchor} = await import('../../services/verification-service.js');
+      const matchResult = verifyAgainstAnchor(anchor, customer_name);
+
+      if (!matchResult.matches) {
+        // MISMATCH DETECTED: Wrong name for this record
+        console.log('🔐 [SECURITY] Mismatch detected - provided name does not match record');
+        return {
+          outcome: ToolOutcome.VALIDATION_ERROR,
+          success: true,
+          validationError: true,
+          message: language === 'TR'
+            ? 'Verdiğiniz isim bu sipariş kaydıyla eşleşmiyor. Lütfen bilgilerinizi kontrol edin.'
+            : 'The name you provided does not match this order record. Please check your information.'
+        };
+      }
+
+      // Name matches BUT still require two-step verification (prevent single-shot bypass)
+      console.log('🔐 [SECURITY] Name matches but enforcing two-step verification');
+      verificationInput = null; // Force verification request
+    }
+
+    const verificationCheck = checkVerification(anchor, verificationInput, query_type, language);
     console.log('🔐 [Verification] Check result:', verificationCheck.action);
 
     // Handle verification result
@@ -323,6 +394,21 @@ export async function execute(args, business, context = {}) {
 
     if (verificationCheck.verified) {
       console.log('✅ [Result] Returning full data');
+
+      // P0 SECURITY: Save anchor to state for identity switch detection
+      // This must happen regardless of verification path (pending→verified or single-shot)
+      state.verification = state.verification || { status: 'none', attempts: 0 };
+      state.verification.status = 'verified';
+      state.verification.anchor = {
+        id: anchor.id,
+        type: anchor.anchorType,
+        value: anchor.anchorValue,
+        name: anchor.name,
+        phone: anchor.phone,
+        email: anchor.email
+      };
+      console.log('🔐 [Security] Anchor saved to state:', { id: anchor.id, name: anchor.name });
+
       const result = getFullResult(record, query_type, language);
       return ok(result.data, result.message);
     } else {
