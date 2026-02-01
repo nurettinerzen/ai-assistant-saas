@@ -409,6 +409,7 @@ export async function handleIncomingMessage({
       metrics,
       inputTokens,
       outputTokens,
+      toolsCalled, // Expose toolsCalled for test assertions
       debug: {
         classification: classification.type,
         confidence: classification.confidence,

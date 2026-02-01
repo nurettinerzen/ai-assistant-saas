@@ -93,7 +93,8 @@ async function handleMessage(sessionId, businessId, userMessage, systemPrompt, c
     lockReason: result.lockReason,
     lockUntil: result.lockUntil,
     inputTokens: result.inputTokens || 0,
-    outputTokens: result.outputTokens || 0
+    outputTokens: result.outputTokens || 0,
+    toolsCalled: result.toolsCalled || []
   };
 }
 
@@ -1172,7 +1173,8 @@ router.post('/widget', async (req, res) => {
       assistantName: assistant.name,
       history: updatedMessages,
       verificationStatus: updatedState.verification?.status || 'none', // P0: Gate requirement for verification tests
-      warnings: hasPIIWarnings ? piiWarnings : undefined
+      warnings: hasPIIWarnings ? piiWarnings : undefined,
+      toolsCalled: result.toolsCalled || [] // For test assertions
     });
 
   } catch (error) {
