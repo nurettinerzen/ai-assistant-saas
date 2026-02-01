@@ -21,7 +21,9 @@
     "seed-test-data": "node scripts/seed-test-data.js",
     "security-test": "node scripts/security-smoke-test.js",
     "functional-test": "node scripts/functional-test.js",
-    "assistant-test": "npm run seed-test-data && node scripts/assistant-test.js",
+    "assistant-test": "npm run seed-test-data && TEST_LEVEL=gate node tests/runner/assistant-test.js",
+    "assistant-test:extended": "npm run seed-test-data && TEST_LEVEL=extended node tests/runner/assistant-test.js",
+    "assistant-test:full": "npm run seed-test-data && TEST_LEVEL=full node tests/runner/assistant-test.js",
     "test:all-smoke": "npm run security-test && npm run functional-test && npm run assistant-test",
     "test:security": "node tests/security/test-child-safety.js && node tests/security/test-ssrf-protection.js"
   },

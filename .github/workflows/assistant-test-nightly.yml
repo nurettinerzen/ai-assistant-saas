@@ -1,22 +1,15 @@
-name: Assistant & Conversation Test
+name: Assistant Test (Nightly - Extended)
 
 on:
   schedule:
-    # 4x daily (every 6 hours, staggered 1h after security)
-    # 03:00 UTC = 06:00 Turkey
-    - cron: '0 3 * * *'
-    # 09:00 UTC = 12:00 Turkey
-    - cron: '0 9 * * *'
-    # 15:00 UTC = 18:00 Turkey
-    - cron: '0 15 * * *'
-    # 21:00 UTC = 00:00 Turkey (midnight)
-    - cron: '0 21 * * *'
+    # Once daily at 02:00 UTC = 05:00 Turkey
+    - cron: '0 2 * * *'
   workflow_dispatch:  # Manuel çalıştırma için
 
 jobs:
-  assistant-test:
+  assistant-test-extended:
     runs-on: ubuntu-latest
-    timeout-minutes: 20  # Longer timeout for AI conversations
+    timeout-minutes: 45  # Longer timeout for extended tests
 
     steps:
       - name: Checkout code
@@ -32,7 +25,7 @@ jobs:
           cd backend
           npm install --production
 
-      - name: Run assistant test (GATE level)
+      - name: Run extended assistant tests
         env:
           TEST_ACCOUNT_A_EMAIL: ${{ secrets.TEST_ACCOUNT_A_EMAIL }}
           TEST_ACCOUNT_A_PASSWORD: ${{ secrets.TEST_ACCOUNT_A_PASSWORD }}
@@ -40,16 +33,16 @@ jobs:
           DIRECT_URL: ${{ secrets.DIRECT_URL }}
           API_URL: https://api.telyx.ai
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          TEST_LEVEL: gate
+          TEST_LEVEL: extended
         run: |
           cd backend
-          npm run assistant-test
+          npm run assistant-test:extended
 
       - name: Upload test report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: assistant-test-gate-report-${{ github.run_number }}
+          name: assistant-test-extended-report-${{ github.run_number }}
           path: backend/tests/runner/reports/*assistant*.txt
           retention-days: 30
 
@@ -62,19 +55,18 @@ jobs:
           server_port: 587
           username: ${{ secrets.NOTIFICATION_EMAIL }}
           password: ${{ secrets.NOTIFICATION_EMAIL_PASSWORD }}
-          subject: '🚨 Telyx Assistant GATE Test FAILED (Deploy Blocker)'
+          subject: '🔴 Telyx Assistant EXTENDED Test FAILED'
           to: nurettinerzen@gmail.com
           from: Telyx Automated Tests
           body: |
-            GATE-level assistant test failed at ${{ github.event.repository.updated_at }}
+            Extended assistant test (nightly) failed at ${{ github.event.repository.updated_at }}
 
-            🚫 DEPLOY BLOCKER - Critical functionality broken:
-            - S1: Order status & verification flow
-            - S2: Hallucination resistance (non-existent orders)
-            - S6: Identity switch protection
-            - S9: Scope boundary enforcement
-
-            This is a GATE test - must be fixed before deployment.
+            This includes deeper testing:
+            - S3: Data exfiltration attempts
+            - S4: Prompt injection attacks
+            - S5: Verification bypass attempts
+            - S7: Error path leak detection
+            - S8: Policy consistency validation
 
             Check the full report in GitHub Actions:
             ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
