@@ -1,0 +1,249 @@
+#!/usr/bin/env node
+/**
+ * Telyx Assistant Test Runner
+ * Multi-turn scenario-based testing engine
+ *
+ * Usage:
+ *   node assistant-test.js                    # Run gate tests
+ *   TEST_LEVEL=extended node assistant-test.js # Run extended tests
+ *   TEST_LEVEL=full node assistant-test.js     # Run all tests
+ */
+
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import CONFIG, { validateConfig } from './config.js';
+import { loginUser, sendConversationTurn } from './http.js';
+import Reporter from './reporter.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+/**
+ * Load scenarios from directory
+ */
+async function loadScenarios(level) {
+  const scenariosDir = path.join(__dirname, '..', 'scenarios', level);
+
+  if (!fs.existsSync(scenariosDir)) {
+    return [];
+  }
+
+  const files = fs.readdirSync(scenariosDir).filter(f => f.endsWith('.js'));
+  const scenarios = [];
+
+  for (const file of files) {
+    const modulePath = path.join(scenariosDir, file);
+    const module = await import(`file://${modulePath}`);
+    if (module.scenario) {
+      scenarios.push(module.scenario);
+    }
+  }
+
+  return scenarios;
+}
+
+/**
+ * Run a single scenario
+ */
+async function runScenario(scenario, token, assistantId, businessId) {
+  console.log(`\n▶️  Running ${scenario.id}: ${scenario.name}`);
+
+  const result = {
+    status: 'passed',
+    duration: 0,
+    steps: [],
+    failures: [],
+    securityEvents: []
+  };
+
+  const startTime = Date.now();
+  let conversationId = null;
+
+  try {
+    for (const step of scenario.steps) {
+      console.log(`  ⏸  Step ${step.id}: ${step.description}`);
+
+      const stepResult = {
+        id: step.id,
+        description: step.description,
+        status: 'passed',
+        assertions: []
+      };
+
+      // Send conversation turn
+      const response = await sendConversationTurn(
+        assistantId,
+        step.userMessage,
+        token,
+        conversationId,
+        { sessionId: `test-${scenario.id}-${Date.now()}` }
+      );
+
+      if (!response.success) {
+        stepResult.status = 'failed';
+        stepResult.error = response.error;
+        result.failures.push({
+          step: step.id,
+          assertion: 'api_call',
+          reason: `API call failed: ${response.error}`
+        });
+        result.status = 'failed';
+        continue;
+      }
+
+      // Update conversationId for multi-turn
+      if (response.conversationId) {
+        conversationId = response.conversationId;
+      }
+
+      // Run assertions
+      for (const assertionConfig of step.assertions) {
+        try {
+          const assertionResult = await assertionConfig.assert(response);
+
+          stepResult.assertions.push({
+            name: assertionConfig.name,
+            passed: assertionResult.passed,
+            reason: assertionResult.reason
+          });
+
+          if (!assertionResult.passed) {
+            stepResult.status = 'failed';
+            result.failures.push({
+              step: step.id,
+              assertion: assertionConfig.name,
+              reason: assertionResult.reason || 'Assertion failed'
+            });
+            result.status = 'failed';
+
+            console.log(`    ❌ ${assertionConfig.name}: ${assertionResult.reason}`);
+          } else {
+            console.log(`    ✅ ${assertionConfig.name}`);
+          }
+        } catch (error) {
+          stepResult.status = 'failed';
+          result.failures.push({
+            step: step.id,
+            assertion: assertionConfig.name,
+            reason: `Exception: ${error.message}`
+          });
+          result.status = 'failed';
+
+          console.log(`    ❌ ${assertionConfig.name}: Exception - ${error.message}`);
+        }
+      }
+
+      result.steps.push(stepResult);
+
+      // Stop scenario on step failure (optional - configurable per scenario)
+      if (stepResult.status === 'failed' && scenario.stopOnFailure !== false) {
+        console.log(`  ⏹  Stopping scenario due to step failure`);
+        break;
+      }
+    }
+  } catch (error) {
+    result.status = 'failed';
+    result.failures.push({
+      step: 'scenario',
+      assertion: 'execution',
+      reason: `Scenario exception: ${error.message}`
+    });
+
+    console.log(`  ❌ Scenario failed: ${error.message}`);
+  }
+
+  result.duration = Date.now() - startTime;
+
+  const statusIcon = result.status === 'passed' ? '✅' : '❌';
+  console.log(`${statusIcon} ${scenario.id} completed in ${result.duration}ms`);
+
+  return result;
+}
+
+/**
+ * Main test execution
+ */
+async function main() {
+  console.log('🧪 Telyx Assistant Test Runner\n');
+
+  // Validate configuration
+  try {
+    validateConfig();
+  } catch (error) {
+    console.error('❌ Configuration error:', error.message);
+    process.exit(1);
+  }
+
+  const reporter = new Reporter(`Telyx Assistant Test - ${CONFIG.TEST_LEVEL.toUpperCase()}`);
+
+  // Login as Account A
+  console.log(`🔐 Logging in as ${CONFIG.ACCOUNT_A.email}...`);
+  let token;
+  try {
+    token = await loginUser(CONFIG.ACCOUNT_A.email, CONFIG.ACCOUNT_A.password);
+    console.log('✅ Login successful\n');
+  } catch (error) {
+    console.error('❌ Login failed:', error.message);
+    process.exit(1);
+  }
+
+  // Use first assistant or create test assistant
+  const assistantId = 1; // TODO: Make configurable or auto-detect
+
+  // Load scenarios based on test level
+  const levels = ['gate'];
+  if (CONFIG.TEST_LEVEL === 'extended' || CONFIG.TEST_LEVEL === 'full') {
+    levels.push('extended');
+  }
+  if (CONFIG.TEST_LEVEL === 'full') {
+    levels.push('adversarial');
+  }
+
+  let allScenarios = [];
+  for (const level of levels) {
+    const scenarios = await loadScenarios(level);
+    allScenarios = allScenarios.concat(scenarios);
+    console.log(`📂 Loaded ${scenarios.length} ${level} scenarios`);
+  }
+
+  if (allScenarios.length === 0) {
+    console.log('⚠️  No scenarios found');
+    process.exit(0);
+  }
+
+  console.log(`\n🚀 Running ${allScenarios.length} scenarios...\n`);
+  console.log('='.repeat(80));
+
+  // Run scenarios
+  for (const scenario of allScenarios) {
+    const result = await runScenario(
+      scenario,
+      token,
+      assistantId,
+      CONFIG.ACCOUNT_A.businessId
+    );
+
+    reporter.recordScenario(scenario, result);
+
+    // Gate failure blocks deployment
+    if (result.status === 'failed' && scenario.level === 'gate') {
+      console.log('\n🚨 GATE TEST FAILED - DEPLOYMENT BLOCKED');
+    }
+  }
+
+  // Generate report
+  console.log('\n' + '='.repeat(80));
+  const report = reporter.printSummary();
+  await reporter.saveReport();
+
+  // Exit with appropriate code
+  const exitCode = report.stats.failed > 0 ? 1 : 0;
+  process.exit(exitCode);
+}
+
+// Run tests
+main().catch(error => {
+  console.error('❌ Fatal error:', error);
+  process.exit(1);
+});
