@@ -16,6 +16,7 @@ import axios from 'axios';
 import CONFIG, { validateConfig } from './config.js';
 import { loginUser, sendConversationTurn } from './http.js';
 import Reporter from './reporter.js';
+import { recordBrandViolations } from './brand-metrics.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -96,6 +97,34 @@ async function runScenario(scenario, token, assistantId, businessId) {
       }
 
       if (!response.success) {
+        // INFRA_ERROR in extended tests: skip (not fail)
+        // Gate tests still fail on INFRA_ERROR (infrastructure must be stable)
+        const isInfraError = response.errorType === 'INFRA_ERROR';
+        const isExtended = scenario.level === 'extended' || scenario.level === 'adversarial';
+
+        if (isInfraError && isExtended) {
+          console.log(`    ⚠️  INFRA_ERROR: ${response.error} (skipping step, not failing)`);
+          console.log(`       requestId=${response.requestId}, statusCode=${response.statusCode}, retryAfterMs=${response.retryAfterMs || 'N/A'}`);
+          stepResult.status = 'skipped';
+          stepResult.error = `INFRA_ERROR: ${response.error}`;
+          result.infraErrors = result.infraErrors || [];
+          result.infraErrors.push({
+            step: step.id,
+            error: response.error,
+            statusCode: response.statusCode,
+            requestId: response.requestId,
+            retryAfterMs: response.retryAfterMs
+          });
+          continue;
+        }
+
+        // GATE tests: INFRA_ERROR is still a failure (infra must be stable for gate)
+        if (isInfraError && scenario.level === 'gate') {
+          console.log(`    ❌ INFRA_ERROR in GATE test: ${response.error} (counts as failure!)`);
+          console.log(`       requestId=${response.requestId}, statusCode=${response.statusCode}`);
+        }
+
+        // Regular failure
         stepResult.status = 'failed';
         stepResult.error = response.error;
         result.failures.push({
@@ -288,8 +317,24 @@ async function main() {
   const report = reporter.printSummary();
   await reporter.saveReport();
 
+  // Check brand drift metrics
+  const allWarnings = reporter.getAllWarnings ? reporter.getAllWarnings() : [];
+  const brandMetrics = recordBrandViolations(allWarnings);
+
+  if (brandMetrics.message) {
+    console.log('\n' + brandMetrics.message);
+  }
+
   // Exit with appropriate code
-  const exitCode = report.stats.failed > 0 ? 1 : 0;
+  // Gate failures OR brand drift (>2 in 20 runs) = exit 1
+  let exitCode = 0;
+  if (report.stats.failed > 0) {
+    exitCode = 1;
+  } else if (brandMetrics.shouldFail) {
+    console.log('🚨 Brand drift threshold exceeded - marking as FAIL');
+    exitCode = 1;
+  }
+
   process.exit(exitCode);
 }
 

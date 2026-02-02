@@ -371,7 +371,8 @@ export async function handleIncomingMessage({
       chat: toolLoopResult.chat,
       language,
       sessionId: resolvedSessionId,
-      metrics
+      metrics,
+      userMessage
     });
 
     // ========================================

@@ -12,6 +12,7 @@ import { applyActionClaimPolicy } from '../../../policies/actionClaimPolicy.js';
 import { scanForPII } from '../../email/policies/piiPreventionPolicy.js';
 import { lockSession, getLockMessage } from '../../../services/session-lock.js';
 import { sanitizeResponse, logFirewallViolation } from '../../../utils/response-firewall.js';
+import { ensurePolicyGuidance } from '../../../services/tool-fail-handler.js';
 
 export async function applyGuardrails(params) {
   const {
@@ -21,7 +22,8 @@ export async function applyGuardrails(params) {
     chat,
     language,
     sessionId,
-    metrics
+    metrics,
+    userMessage
   } = params;
 
   console.log('🛡️ [Guardrails] Applying policies...');
@@ -100,7 +102,7 @@ export async function applyGuardrails(params) {
   }
 
   // POLICY 2: Action Claim Validation (CRITICAL + SOFT)
-  const finalText = await applyActionClaimPolicy({
+  const actionClaimText = await applyActionClaimPolicy({
     responseText,
     hadToolSuccess,
     hadToolCalls: toolsCalled.length > 0,
@@ -110,14 +112,37 @@ export async function applyGuardrails(params) {
     metrics
   });
 
-  // POLICY 3: Content Safety (future)
+  // POLICY 3: Policy Guidance Guard (S8 - deterministic)
+  // Ensures policy responses (refund/return/cancel) always have actionable guidance
+  const guidanceResult = ensurePolicyGuidance(actionClaimText, userMessage || '', language);
+  const finalText = guidanceResult.response;
+
+  // VERBOSE logging for guidance guard debugging
+  if (process.env.VERBOSE === 'true') {
+    console.log(`📋 [GuidanceGuard] userMessage: "${(userMessage || '').substring(0, 50)}..."`);
+    console.log(`📋 [GuidanceGuard] isPolicyTopic: ${guidanceResult.guidanceAdded || guidanceResult.addedComponents?.length > 0 ? 'YES' : 'checking...'}`);
+    console.log(`📋 [GuidanceGuard] guidanceAdded: ${guidanceResult.guidanceAdded}`);
+    if (guidanceResult.addedComponents?.length > 0) {
+      console.log(`📋 [GuidanceGuard] addedComponents: ${guidanceResult.addedComponents.join(', ')}`);
+    }
+  }
+
+  if (guidanceResult.guidanceAdded) {
+    console.log(`✅ [Guardrails] Policy guidance added: ${guidanceResult.addedComponents.join(', ')}`);
+    metrics.guidanceAdded = guidanceResult.addedComponents;
+  }
+
+  // POLICY 4: Content Safety (future)
   // const safeText = await applyContentSafetyPolicy({ text: finalText, language });
 
   console.log('✅ [Guardrails] All policies applied');
 
-  const appliedPolicies = ['RESPONSE_FIREWALL', 'PII_PREVENTION', 'ACTION_CLAIM'];
+  const appliedPolicies = ['RESPONSE_FIREWALL', 'PII_PREVENTION', 'ACTION_CLAIM', 'POLICY_GUIDANCE'];
   if (piiScan.hasHigh) {
     appliedPolicies[1] = 'PII_PREVENTION (WARN)';
+  }
+  if (guidanceResult.guidanceAdded) {
+    appliedPolicies[3] = `POLICY_GUIDANCE (+${guidanceResult.addedComponents.length})`;
   }
 
   return {

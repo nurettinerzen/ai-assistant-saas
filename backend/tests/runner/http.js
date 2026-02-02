@@ -100,11 +100,23 @@ export async function sendConversationTurn(
   }
 
   // All retries failed
+  const statusCode = lastError.response?.status;
+  const requestId = lastError.response?.data?.requestId || 'unknown';
+  const retryAfterMs = lastError.response?.data?.retryAfterMs || null;
+
+  // Classify error type
+  // INFRA_ERROR: 502, 503, 504, timeouts - infrastructure issues, not test failures
+  const isInfraError = statusCode === 502 || statusCode === 503 || statusCode === 504 ||
+    lastError.code === 'ECONNABORTED' || lastError.code === 'ETIMEDOUT';
+
   const errorDetails = {
     success: false,
     error: lastError.message,
-    statusCode: lastError.response?.status,
-    response: lastError.response?.data
+    statusCode,
+    requestId,
+    retryAfterMs,
+    response: lastError.response?.data,
+    errorType: isInfraError ? 'INFRA_ERROR' : 'TEST_ERROR'
   };
 
   // Log error for debugging

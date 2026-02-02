@@ -17,10 +17,12 @@ export class Reporter {
         total: 0,
         passed: 0,
         failed: 0,
-        skipped: 0
+        skipped: 0,
+        infraErrors: 0
       },
       gateBlocked: false,
-      failures: []
+      failures: [],
+      infraErrors: []
     };
   }
 
@@ -36,6 +38,8 @@ export class Reporter {
       duration: result.duration,
       steps: result.steps,
       failures: result.failures || [],
+      warnings: result.warnings || [],
+      infraErrors: result.infraErrors || [],
       securityEvents: result.securityEvents || []
     });
 
@@ -57,6 +61,16 @@ export class Reporter {
     } else if (result.status === 'skipped') {
       this.results.stats.skipped++;
     }
+
+    // Track INFRA_ERRORs separately
+    if (result.infraErrors && result.infraErrors.length > 0) {
+      this.results.stats.infraErrors += result.infraErrors.length;
+      this.results.infraErrors.push({
+        scenario: scenario.id,
+        name: scenario.name,
+        errors: result.infraErrors
+      });
+    }
   }
 
   /**
@@ -77,7 +91,8 @@ export class Reporter {
       blockReason: this.results.gateBlocked ? `Gate test failures: ${this.results.failures.filter(f => this.results.scenarios.find(s => s.id === f.scenario && s.level === 'gate')).map(f => f.name).join(', ')}` : null,
       stats: this.results.stats,
       scenarios: this.results.scenarios,
-      failures: this.results.failures
+      failures: this.results.failures,
+      infraErrors: this.results.infraErrors
     };
 
     return report;
@@ -113,6 +128,9 @@ export class Reporter {
     console.log(`✅ Pass:   ${report.stats.passed}`);
     console.log(`❌ Fail:   ${report.stats.failed}`);
     console.log(`⏭️  Skip:   ${report.stats.skipped}`);
+    if (report.stats.infraErrors > 0) {
+      console.log(`🔧 Infra:  ${report.stats.infraErrors} (not counted as failures)`);
+    }
     console.log('');
 
     if (report.failures.length > 0) {
@@ -122,6 +140,21 @@ export class Reporter {
         console.log(`${idx + 1}. ${failure.name} (${failure.scenario})`);
         failure.failures.forEach(f => {
           console.log(`   - Step ${f.step}: ${f.assertion} - ${f.reason}`);
+        });
+      });
+      console.log('');
+    }
+
+    if (report.infraErrors && report.infraErrors.length > 0) {
+      console.log('INFRASTRUCTURE ERRORS (not failures)');
+      console.log('='.repeat(80));
+      console.log('⚠️  These are infrastructure issues, not test failures.');
+      console.log('    If >5% of steps hit INFRA_ERROR, investigate infra health.\n');
+      report.infraErrors.forEach((item, idx) => {
+        console.log(`${idx + 1}. ${item.name} (${item.scenario})`);
+        item.errors.forEach(e => {
+          console.log(`   🔧 Step ${e.step}: ${e.statusCode || 'timeout'} - ${e.error}`);
+          console.log(`      requestId: ${e.requestId || 'N/A'}, retryAfterMs: ${e.retryAfterMs || 'N/A'}`);
         });
       });
       console.log('');
@@ -220,6 +253,28 @@ export class Reporter {
     console.log(`\n📊 Report saved to: ${filepath}`);
 
     return filepath;
+  }
+
+  /**
+   * Get all warnings (brand violations) from all scenarios
+   * Used for brand drift tracking
+   */
+  getAllWarnings() {
+    const allWarnings = [];
+    for (const scenario of this.results.scenarios) {
+      if (scenario.warnings && scenario.warnings.length > 0) {
+        for (const warning of scenario.warnings) {
+          allWarnings.push({
+            scenario: scenario.id,
+            step: warning.step,
+            assertion: warning.assertion,
+            reason: warning.reason,
+            brandViolation: warning.brandViolation || false
+          });
+        }
+      }
+    }
+    return allWarnings;
   }
 }
 
