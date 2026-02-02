@@ -107,8 +107,9 @@ export function filterToolsByIntegrations(toolNames, integrations = [], crmWebho
     .filter(i => i.isActive && i.connected)
     .map(i => i.type);
 
-  // Add CRM_WEBHOOK if CRM webhook is active and has data
-  if (crmWebhook?.isActive && crmDataCounts) {
+  // Add CRM_WEBHOOK if CRM webhook is active
+  // Note: Data existence is checked by handlers at runtime (return notFound if no data)
+  if (crmWebhook?.isActive) {
     activeIntegrationTypes.push('CRM_WEBHOOK');
   }
 
@@ -118,15 +119,11 @@ export function filterToolsByIntegrations(toolNames, integrations = [], crmWebho
       return true;
     }
 
-    // Special handling for CRM tools - only enable if there's data
-    if (toolName === 'check_order_status_crm' && (!crmDataCounts || crmDataCounts.orders === 0)) {
-      return false;
-    }
-    if (toolName === 'check_stock_crm' && (!crmDataCounts || crmDataCounts.stock === 0)) {
-      return false;
-    }
-    if (toolName === 'check_ticket_status_crm' && (!crmDataCounts || crmDataCounts.tickets === 0)) {
-      return false;
+    // CRM tools: Enable if CRM_WEBHOOK integration is active
+    // Handlers check data existence at runtime and return appropriate notFound messages
+    const crmTools = ['check_order_status_crm', 'check_stock_crm', 'check_ticket_status_crm'];
+    if (crmTools.includes(toolName)) {
+      return activeIntegrationTypes.includes('CRM_WEBHOOK');
     }
 
     // Check if any required integration is active

@@ -818,7 +818,8 @@ router.post('/widget', async (req, res) => {
             orderBy: { createdAt: 'desc' },
             take: 1
           },
-          integrations: { where: { isActive: true } }
+          integrations: { where: { isActive: true } },
+          crmWebhook: true  // Required for CRM tool gating
         }
       });
 
@@ -841,7 +842,8 @@ router.post('/widget', async (req, res) => {
         include: {
           business: {
             include: {
-              integrations: { where: { isActive: true } }
+              integrations: { where: { isActive: true } },
+              crmWebhook: true  // Required for CRM tool gating
             }
           }
         }
