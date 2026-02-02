@@ -64,6 +64,12 @@ async function runScenario(scenario, token, assistantId, businessId) {
   // Generate sessionId ONCE per scenario (not per step)
   const scenarioSessionId = `test-${scenario.id}-${startTime}`;
 
+  // Context object for cross-step assertions (e.g., consistency checks)
+  const scenarioContext = {
+    previousReplies: {},
+    meta: {}
+  };
+
   try {
     for (const step of scenario.steps) {
       console.log(`  ⏸  Step ${step.id}: ${step.description}`);
@@ -106,10 +112,13 @@ async function runScenario(scenario, token, assistantId, businessId) {
         conversationId = response.conversationId;
       }
 
+      // Store reply for cross-step consistency checks
+      scenarioContext.previousReplies[step.id] = response.reply;
+
       // Run assertions
       for (const assertionConfig of step.assertions) {
         try {
-          const assertionResult = await assertionConfig.assert(response);
+          const assertionResult = await assertionConfig.assert(response, scenarioContext);
 
           stepResult.assertions.push({
             name: assertionConfig.name,

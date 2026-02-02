@@ -7,7 +7,7 @@
  */
 
 import { routeMessage, handleDispute } from '../../../services/message-router.js';
-import { processSlotInput } from '../../../services/slot-processor.js';
+import { processSlotInput, looksLikeSlotInput } from '../../../services/slot-processor.js';
 
 export async function makeRoutingDecision(params) {
   const { classification, state, userMessage, conversationHistory, language, business } = params;
@@ -38,28 +38,108 @@ export async function makeRoutingDecision(params) {
   });
 
   // ========================================
-  // P0: VERIFICATION PENDING - Force tool call with customer_name
-  // User provided name during verification flow
+  // P0: VERIFICATION PENDING - Check if input looks like name/phone
+  // If not, check for OOD or topic change before forcing tool call
   // ========================================
   if (state.verification?.status === 'pending' && state.verification?.anchor) {
-    console.log('🔐 [Verification] Pending verification detected - forcing tool call with customer_name');
-    const toolName = state.verification.pendingTool || 'customer_data_lookup';
+    const pendingField = state.verification.pendingField || 'name';
+    const looksLikeVerificationInput = looksLikeSlotInput(userMessage, pendingField);
 
-    state.forceToolCall = {
-      tool: toolName,
-      args: {
-        customer_name: userMessage.trim(),
-        // Preserve original query parameters from anchor
-        ...(state.verification.anchor.order_number && { order_number: state.verification.anchor.order_number }),
-        ...(state.verification.anchor.phone && { phone: state.verification.anchor.phone }),
-        ...(state.verification.anchor.query_type && { query_type: state.verification.anchor.query_type })
-      }
-    };
+    // Check if this is an OOD question (has question mark, long sentence, etc.)
+    const looksLikeQuestion = userMessage.includes('?') || userMessage.length > 50;
+    const isLikelyOOD = !looksLikeVerificationInput && looksLikeQuestion;
+
+    // Check if this is an in-domain topic change (iade, kargo, etc.)
+    const inDomainTopicPatterns = [
+      /iade|return/i,
+      /kargo|cargo|shipping/i,
+      /sipariş|order/i,
+      /ürün|product/i,
+      /fiyat|price/i,
+      /kampanya|campaign/i,
+      /destek|support/i
+    ];
+    const isInDomainTopicChange = !looksLikeVerificationInput &&
+      inDomainTopicPatterns.some(p => p.test(userMessage));
+
+    // IMPORTANT: Check in-domain topic FIRST (before OOD)
+    // Because in-domain questions may also have "?" but should be answered
+    if (isInDomainTopicChange) {
+      // In-domain topic change during pending verification
+      // Answer the new topic but remind about verification
+      console.log('🔐 [Verification] Topic change detected during pending - will answer + remind');
+
+      // Store reminder flag for LLM to append
+      state.pendingVerificationReminder = true;
+
+      // Continue to normal routing - don't force tool call
+      return {
+        directResponse: false,
+        routing: messageRouting,
+        topicChangeDuringVerification: true
+      };
+    }
+
+    // OOD question during pending verification (NOT in-domain)
+    if (isLikelyOOD) {
+      console.log('🔐 [Verification] OOD detected during pending - NOT treating as name input');
+
+      const oodReminderMessage = language === 'TR'
+        ? 'Bu konu işletmemizin kapsamı dışında. Siparişinizle ilgili devam etmek için ad-soyadınızı paylaşabilirsiniz.'
+        : 'This topic is outside our scope. To continue with your order, you can share your full name.';
+
+      return {
+        directResponse: true,
+        reply: oodReminderMessage,
+        forceEnd: false,
+        routing: messageRouting,
+        metadata: {
+          type: 'OOD_DURING_VERIFICATION',
+          pendingField,
+          verificationStatus: 'pending' // Keep pending, don't fail
+        }
+      };
+    }
+
+    if (looksLikeVerificationInput) {
+      // Looks like actual name/phone input - proceed with verification
+      console.log('🔐 [Verification] Input looks like name - forcing tool call with customer_name');
+      const toolName = state.verification.pendingTool || 'customer_data_lookup';
+
+      state.forceToolCall = {
+        tool: toolName,
+        args: {
+          customer_name: userMessage.trim(),
+          // Preserve original query parameters from anchor
+          ...(state.verification.anchor.order_number && { order_number: state.verification.anchor.order_number }),
+          ...(state.verification.anchor.phone && { phone: state.verification.anchor.phone }),
+          ...(state.verification.anchor.query_type && { query_type: state.verification.anchor.query_type })
+        }
+      };
+
+      return {
+        directResponse: false,
+        routing: messageRouting,
+        verificationFlow: true
+      };
+    }
+
+    // Fallback: not clearly name, not clearly OOD/topic - ask again
+    console.log('🔐 [Verification] Unclear input during pending - asking for name again');
+
+    const retryMessage = language === 'TR'
+      ? 'Lütfen ad-soyadınızı yazınız. Örneğin: Ayşe Demir'
+      : 'Please enter your full name. For example: John Smith';
 
     return {
-      directResponse: false,
+      directResponse: true,
+      reply: retryMessage,
+      forceEnd: false,
       routing: messageRouting,
-      verificationFlow: true
+      metadata: {
+        type: 'VERIFICATION_INPUT_UNCLEAR',
+        pendingField
+      }
     };
   }
 
