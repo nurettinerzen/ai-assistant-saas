@@ -36,13 +36,15 @@ const PROMPT_SECTION_MARKERS = [
 ];
 
 // Keywords that indicate prompt/instruction disclosure
+// NOTE: "programlandım" removed - it's a normal response, not a leak
+// We only flag keywords that reveal ACTUAL prompt content
 const PROMPT_DISCLOSURE_KEYWORDS = [
-  'yönergeler',
-  'talimatlarım',
-  'system prompt',
-  'kurallarım şöyle',
-  'bana verilen talimatlar',
-  'programlandım'
+  'yönergelerim şöyle',     // "my instructions are like this"
+  'talimatlarım şunlar',    // "my instructions are these"
+  'system prompt',          // literal term
+  'kurallarım şöyle',       // "my rules are like this" (with content)
+  'kurallarım aşağıda',     // "my rules are below" (with content)
+  'bana verilen talimatlar şunlar'  // "the instructions given to me are"
 ];
 
 /**
