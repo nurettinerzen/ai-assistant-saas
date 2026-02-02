@@ -11,6 +11,7 @@
 import express from 'express';
 import crypto from 'crypto';
 import prisma from '../prismaClient.js';
+import { normalizePhone as normalizePhoneUtil } from '../utils/text.js';
 
 const router = express.Router();
 
@@ -352,20 +353,12 @@ async function handleTicket(businessId, data) {
   });
 }
 
-// Telefon numarası normalize
+// P1 Fix: Use centralized phone normalization for consistency
+// CRITICAL: All phone numbers must be stored in E.164 format (+90XXXXXXXXXX)
+// Otherwise search queries won't match stored data
 function normalizePhone(phone) {
   if (!phone) return '';
-  // Sadece rakamları al
-  let digits = phone.replace(/\D/g, '');
-  // Türkiye için 0 ile başlıyorsa kaldır
-  if (digits.startsWith('0')) {
-    digits = digits.substring(1);
-  }
-  // 90 ile başlıyorsa kaldır
-  if (digits.startsWith('90') && digits.length > 10) {
-    digits = digits.substring(2);
-  }
-  return digits;
+  return normalizePhoneUtil(phone);
 }
 
 export default router;

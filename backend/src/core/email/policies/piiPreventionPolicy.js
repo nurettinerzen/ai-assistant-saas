@@ -88,7 +88,8 @@ export const PIIPatterns = {
     replacement: '[Email gizlendi]'
   },
 
-  // Turkish phone with full format repeated
+  // Turkish phone with full format repeated (P0-B fix)
+  // Patterns: +905551234567, 05551234567, 5551234567
   REPEATED_PHONE: {
     pattern: /(\+90\s?\d{3}\s?\d{3}\s?\d{2}\s?\d{2})/g,
     name: 'Phone Number',
@@ -96,6 +97,16 @@ export const PIIPatterns = {
     action: 'LIMIT', // Allow first occurrence, mask rest
     replacement: '[Telefon]',
     maxOccurrences: 1
+  },
+
+  // P0-B CRITICAL: Any full phone number (10-11 digits starting with 0 or 5)
+  // This catches: 05551234567, 5551234567, etc.
+  FULL_PHONE: {
+    pattern: /\b0?5[0-9]{2}[0-9]{3}[0-9]{4}\b/g,
+    name: 'Telefon Numarası',
+    severity: 'CRITICAL',
+    action: 'BLOCK',
+    replacement: '[Telefon gizlendi - son 4 hane: ****]'
   }
 };
 

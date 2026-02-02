@@ -53,6 +53,68 @@ const PII_SENSITIVE_FIELDS = [
   'routingNumber'
 ];
 
+// P0-C CRITICAL: Fields that may contain HTML (must be stripped)
+// Product descriptions, email bodies etc often contain HTML that can be exfiltrated
+const HTML_PRONE_FIELDS = [
+  'description',
+  'shortDescription',
+  'longDescription',
+  'productDescription',
+  'content',
+  'html',
+  'htmlContent',
+  'body',
+  'emailBody',
+  'text',
+  'summary',
+  'note',
+  'notes',
+  'comment',
+  'details'
+];
+
+/**
+ * P0-C FIX: Strip HTML tags from string
+ * Prevents HTML/iframe/script exfiltration through tool results
+ * @param {string} str - String potentially containing HTML
+ * @returns {string} Clean text without HTML tags
+ */
+function stripHTML(str) {
+  if (!str || typeof str !== 'string') {
+    return str;
+  }
+
+  // Remove script and style tags with content
+  let clean = str.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+  clean = clean.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
+
+  // Remove dangerous tags completely (iframe, object, embed, form)
+  clean = clean.replace(/<(iframe|object|embed|form|input|button)\b[^>]*>.*?<\/\1>/gis, '');
+  clean = clean.replace(/<(iframe|object|embed|form|input|button|img|link)\b[^>]*\/?>/gi, '');
+
+  // Remove all remaining HTML tags but keep content
+  clean = clean.replace(/<[^>]+>/g, ' ');
+
+  // Decode common HTML entities
+  clean = clean.replace(/&nbsp;/g, ' ');
+  clean = clean.replace(/&amp;/g, '&');
+  clean = clean.replace(/&lt;/g, '<');
+  clean = clean.replace(/&gt;/g, '>');
+  clean = clean.replace(/&quot;/g, '"');
+  clean = clean.replace(/&#39;/g, "'");
+
+  // Normalize whitespace
+  clean = clean.replace(/\s+/g, ' ').trim();
+
+  // Truncate if too long (descriptions shouldn't be novels)
+  const MAX_DESCRIPTION_LENGTH = 500;
+  if (clean.length > MAX_DESCRIPTION_LENGTH) {
+    clean = clean.substring(0, MAX_DESCRIPTION_LENGTH) + '...';
+  }
+
+  return clean;
+}
+
 /**
  * Sanitize tool results for LLM context
  *
@@ -143,7 +205,7 @@ export function sanitizeToolResults(toolResults, options = {}) {
 }
 
 /**
- * Remove excluded/verbose fields
+ * Remove excluded/verbose fields and strip HTML from prone fields
  */
 function slimFields(data) {
   if (!data || typeof data !== 'object') {
@@ -165,6 +227,17 @@ function slimFields(data) {
     // Recursively slim nested objects
     if (value && typeof value === 'object') {
       slimmed[key] = slimFields(value);
+    } else if (typeof value === 'string') {
+      // P0-C FIX: Strip HTML from fields that commonly contain it
+      if (HTML_PRONE_FIELDS.includes(key) || HTML_PRONE_FIELDS.includes(key.toLowerCase())) {
+        const stripped = stripHTML(value);
+        if (stripped !== value) {
+          console.log(`🧹 [ToolSanitizer] HTML stripped from field: ${key}`);
+        }
+        slimmed[key] = stripped;
+      } else {
+        slimmed[key] = value;
+      }
     } else {
       slimmed[key] = value;
     }

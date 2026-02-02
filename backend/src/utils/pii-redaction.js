@@ -157,6 +157,7 @@ export function redactPII(data) {
 
 /**
  * Check if a string contains unredacted PII
+ * P0-B CRITICAL: This is the last line of defense for PII leakage
  * @param {string} text - Text to check
  * @returns {boolean} True if potential PII found
  */
@@ -164,19 +165,39 @@ export function containsUnredactedPII(text) {
   if (!text) return false;
 
   const str = String(text);
+  const strNoSpace = str.replace(/\s/g, '');
 
-  // Check for phone patterns (10+ digits)
-  if (/\d{10,}/.test(str.replace(/\s/g, ''))) {
+  // P0-B: Turkish phone number patterns (CRITICAL)
+  // Catches: 05551234567, 5551234567, +905551234567
+  // Must have 10-11 digits with typical Turkish mobile prefix
+  const turkishPhonePatterns = [
+    /\b0?5[0-9]{2}[0-9]{3}[0-9]{4}\b/,           // 05xx or 5xx format
+    /\+90\s?5[0-9]{2}\s?[0-9]{3}\s?[0-9]{4}/,    // +90 format with spaces
+    /0[0-9]{3}[0-9]{3}[0-9]{4}/                   // Other Turkish landline
+  ];
+
+  for (const pattern of turkishPhonePatterns) {
+    if (pattern.test(str)) {
+      console.warn('🚨 [PII-Redaction] Unmasked phone number detected!');
+      return true;
+    }
+  }
+
+  // Check for 10+ consecutive digits (catch-all)
+  if (/\d{10,}/.test(strNoSpace)) {
+    console.warn('🚨 [PII-Redaction] Potential phone/ID number detected (10+ digits)');
     return true;
   }
 
   // Check for email patterns
   if (/[a-zA-Z0-9._%+-]{3,}@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/.test(str)) {
+    console.warn('🚨 [PII-Redaction] Email address detected');
     return true;
   }
 
   // Check for Turkish ID pattern (11 consecutive digits)
   if (/\b\d{11}\b/.test(str)) {
+    console.warn('🚨 [PII-Redaction] Potential TC Kimlik detected');
     return true;
   }
 

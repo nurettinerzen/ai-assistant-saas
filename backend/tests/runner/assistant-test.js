@@ -272,7 +272,8 @@ async function main() {
   }
 
   // Load scenarios based on test level
-  const levels = ['gate'];
+  // 'customer-regression' is ALWAYS loaded (P0/P1 fixes must never regress)
+  const levels = ['gate', 'customer-regression'];
   if (CONFIG.TEST_LEVEL === 'extended' || CONFIG.TEST_LEVEL === 'full') {
     levels.push('extended');
   }

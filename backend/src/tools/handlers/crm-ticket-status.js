@@ -5,6 +5,7 @@
 
 import prisma from '../../prismaClient.js';
 import { ok, notFound, validationError, systemError } from '../toolResult.js';
+import { normalizePhone as normalizePhoneUtil } from '../../utils/text.js';
 
 /**
  * Execute CRM ticket status check
@@ -86,13 +87,12 @@ export async function execute(args, business, context = {}) {
   }
 }
 
-// Normalize phone number
+// P1 Fix: Use centralized phone normalization for consistency
+// This ensures CRM search uses same format as stored data
 function normalizePhone(phone) {
   if (!phone) return '';
-  let digits = phone.replace(/\D/g, '');
-  if (digits.startsWith('0')) digits = digits.substring(1);
-  if (digits.startsWith('90') && digits.length > 10) digits = digits.substring(2);
-  return digits;
+  // Use central utility that normalizes to E.164 format
+  return normalizePhoneUtil(phone);
 }
 
 // Translate ticket status
