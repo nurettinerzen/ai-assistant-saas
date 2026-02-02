@@ -23,29 +23,30 @@ export function getToolFailResponse(toolName, language = 'TR', channel = 'CHAT')
   const isPhone = channel === 'PHONE';
 
   // Different templates based on tool type
+  // ALL templates MUST include actionable next steps (guidance)
   const templates = {
     // High-impact tools (callback, integrations)
     'create_callback': {
-      TR: 'Şu an talebinizi sistemimize kaydedemedim. Lütfen birkaç dakika sonra tekrar deneyin veya 0850 XXX XXXX numaralı hattımızdan bize ulaşın.',
-      EN: 'I could not record your request in our system right now. Please try again in a few minutes or call us at 0850 XXX XXXX.'
+      TR: 'Şu an talebinizi sistemimize kaydedemedim. Yardım almak için:\n• Birkaç dakika sonra tekrar deneyebilirsiniz\n• Müşteri hizmetlerimizi arayabilirsiniz\n• Web sitemizden destek talebi oluşturabilirsiniz',
+      EN: 'I could not record your request right now. To get help:\n• Try again in a few minutes\n• Call our customer service\n• Submit a support request on our website'
     },
 
     // Data lookup tools
     'customer_data_lookup': {
-      TR: 'Bilgilerinizi sorgularken bir sorun oluştu. Lütfen birkaç dakika sonra tekrar deneyin.',
-      EN: 'There was an issue looking up your information. Please try again in a few minutes.'
+      TR: 'Bilgilerinizi sorgularken bir sorun oluştu. Yardım almak için:\n• Birkaç dakika sonra tekrar deneyebilirsiniz\n• Sipariş numaranızı kontrol edebilirsiniz\n• Müşteri hizmetlerimize ulaşabilirsiniz',
+      EN: 'There was an issue looking up your information. To get help:\n• Try again in a few minutes\n• Check your order number\n• Contact our customer service'
     },
 
     // Integration tools (Calendly, OpenTable, etc.)
     'calendly': {
-      TR: 'Randevu sistemine bağlanırken bir sorun oluştu. Lütfen daha sonra tekrar deneyin.',
-      EN: 'Could not connect to appointment system. Please try again later.'
+      TR: 'Randevu sistemine bağlanırken bir sorun oluştu. Yardım almak için:\n• Birkaç dakika sonra tekrar deneyebilirsiniz\n• Web sitemizden randevu alabilirsiniz\n• Bizi arayarak randevu oluşturabilirsiniz',
+      EN: 'Could not connect to appointment system. To get help:\n• Try again in a few minutes\n• Book an appointment on our website\n• Call us to schedule an appointment'
     },
 
     // Default for unknown tools - ALWAYS provide next steps
     'default': {
-      TR: 'Şu an sistemsel bir aksaklık yaşıyoruz. Yardım almak için şu adımları izleyebilirsiniz:\n• Birkaç dakika sonra tekrar deneyebilirsiniz\n• Müşteri hizmetlerimize e-posta gönderebilirsiniz\n• Destek hattımızı arayabilirsiniz',
-      EN: 'We are experiencing a system issue. To get help, you can:\n• Try again in a few minutes\n• Email our customer service\n• Call our support line'
+      TR: 'Şu an sistemsel bir aksaklık yaşıyoruz. Yardım almak için:\n• Birkaç dakika sonra tekrar deneyebilirsiniz\n• Müşteri hizmetlerimize e-posta gönderebilirsiniz\n• Destek hattımızı arayabilirsiniz',
+      EN: 'We are experiencing a system issue. To get help:\n• Try again in a few minutes\n• Email our customer service\n• Call our support line'
     }
   };
 

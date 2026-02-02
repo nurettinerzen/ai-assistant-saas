@@ -119,23 +119,39 @@ async function runScenario(scenario, token, assistantId, businessId) {
       for (const assertionConfig of step.assertions) {
         try {
           const assertionResult = await assertionConfig.assert(response, scenarioContext);
+          const isCritical = assertionConfig.critical !== false; // Default to critical
 
           stepResult.assertions.push({
             name: assertionConfig.name,
             passed: assertionResult.passed,
-            reason: assertionResult.reason
+            reason: assertionResult.reason,
+            critical: isCritical,
+            brandViolation: assertionResult.brandViolation || false
           });
 
           if (!assertionResult.passed) {
-            stepResult.status = 'failed';
-            result.failures.push({
-              step: step.id,
-              assertion: assertionConfig.name,
-              reason: assertionResult.reason || 'Assertion failed'
-            });
-            result.status = 'failed';
-
-            console.log(`    ❌ ${assertionConfig.name}: ${assertionResult.reason}`);
+            if (isCritical) {
+              // Critical failure - blocks deployment
+              stepResult.status = 'failed';
+              result.failures.push({
+                step: step.id,
+                assertion: assertionConfig.name,
+                reason: assertionResult.reason || 'Assertion failed',
+                critical: true
+              });
+              result.status = 'failed';
+              console.log(`    ❌ ${assertionConfig.name}: ${assertionResult.reason}`);
+            } else {
+              // Non-critical (brand warning) - log but don't fail
+              result.warnings = result.warnings || [];
+              result.warnings.push({
+                step: step.id,
+                assertion: assertionConfig.name,
+                reason: assertionResult.reason || 'Brand violation',
+                brandViolation: true
+              });
+              console.log(`    ⚠️  ${assertionConfig.name}: ${assertionResult.reason} (warning)`);
+            }
           } else {
             console.log(`    ✅ ${assertionConfig.name}`);
           }
@@ -144,7 +160,8 @@ async function runScenario(scenario, token, assistantId, businessId) {
           result.failures.push({
             step: step.id,
             assertion: assertionConfig.name,
-            reason: `Exception: ${error.message}`
+            reason: `Exception: ${error.message}`,
+            critical: true
           });
           result.status = 'failed';
 
