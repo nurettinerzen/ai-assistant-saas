@@ -11,6 +11,7 @@
  */
 
 import prisma from '../../prismaClient.js';
+import { normalizePhone, comparePhones } from '../../utils/text.js';
 
 /**
  * Normalize order number for consistent lookups
@@ -160,25 +161,47 @@ export async function execute(args, business, context = {}) {
 
     // Strategy 1: Order number
     if (order_number) {
-      // SECURITY FIX (P0): Normalize order number to prevent "var ama yok" issues
-      // Remove common prefixes, spaces, dashes that cause mismatches
+      // Normalize for flexible matching but also keep original
       const normalizedOrderNumber = normalizeOrderNumber(order_number);
+      const originalUpperCase = String(order_number).trim().toUpperCase();
 
       console.log('🔍 [Lookup] Searching by order_number:', {
         original: order_number,
+        originalUpperCase,
         normalized: normalizedOrderNumber
       });
 
-      // Try CrmOrder first
-      const crmOrder = await prisma.crmOrder.findFirst({
+      // Try CrmOrder first - search with BOTH original and normalized values
+      // DB may store "ORD-12345" or just "12345" depending on source
+      let crmOrder = await prisma.crmOrder.findFirst({
         where: {
           businessId: business.id,
-          orderNumber: normalizedOrderNumber
+          orderNumber: originalUpperCase  // Try exact match first
         }
       });
 
+      // If not found, try with normalized (no prefix)
+      if (!crmOrder) {
+        crmOrder = await prisma.crmOrder.findFirst({
+          where: {
+            businessId: business.id,
+            orderNumber: normalizedOrderNumber
+          }
+        });
+      }
+
+      // If still not found, try contains search for partial match
+      if (!crmOrder) {
+        crmOrder = await prisma.crmOrder.findFirst({
+          where: {
+            businessId: business.id,
+            orderNumber: { contains: normalizedOrderNumber, mode: 'insensitive' }
+          }
+        });
+      }
+
       if (crmOrder) {
-        console.log('✅ [Lookup] Found CRM order');
+        console.log('✅ [Lookup] Found CRM order:', crmOrder.orderNumber);
         record = crmOrder;
         anchorType = 'order';
         anchorValue = crmOrder.orderNumber;
@@ -268,18 +291,53 @@ export async function execute(args, business, context = {}) {
     // SECURITY NOTE: Phone lookup is allowed, but will ALWAYS require name verification
     // before returning any PII (enforced by checkVerification below)
     else if (phone) {
-      console.log('🔍 [Lookup] Searching by phone (will require name verification)');
+      // Normalize phone for consistent matching
+      // DB stores as "5328274926" (10 digits), user may say "05328274926" or "+905328274926"
+      const normalizedPhone = normalizePhone(phone);
+      // Also try without country code (just 10 digits) for DB compatibility
+      const phoneWithoutCountry = normalizedPhone.replace(/^\+90/, '');
 
+      console.log('🔍 [Lookup] Searching by phone:', {
+        original: phone,
+        normalized: normalizedPhone,
+        withoutCountry: phoneWithoutCountry
+      });
+
+      // First try CustomerData table
       record = await prisma.customerData.findFirst({
         where: {
           businessId: business.id,
-          phone: phone
+          OR: [
+            { phone: normalizedPhone },
+            { phone: phoneWithoutCountry },
+            { phone: phone } // Original as fallback
+          ]
         }
       });
 
+      // If not found in CustomerData, try CrmOrder table
+      if (!record) {
+        console.log('🔍 [Lookup] Not in CustomerData, searching CrmOrder by phone...');
+        const crmOrder = await prisma.crmOrder.findFirst({
+          where: {
+            businessId: business.id,
+            OR: [
+              { customerPhone: normalizedPhone },
+              { customerPhone: phoneWithoutCountry },
+              { customerPhone: phone }
+            ]
+          }
+        });
+
+        if (crmOrder) {
+          console.log('✅ [Lookup] Found CRM order by phone:', crmOrder.orderNumber);
+          record = crmOrder;
+        }
+      }
+
       if (record) {
         anchorType = 'phone';
-        anchorValue = phone;
+        anchorValue = phoneWithoutCountry;
       }
     }
 

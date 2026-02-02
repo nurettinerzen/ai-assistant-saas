@@ -139,12 +139,13 @@ function extractKeywords(message) {
  */
 function formatKBItem(item) {
   let formatted = '';
+  const type = item.type?.toUpperCase(); // Normalize to uppercase for comparison
 
-  if (item.type === 'document') {
+  if (type === 'DOCUMENT') {
     formatted = `### ${item.title || 'Belge'}\n${truncate(item.content || '', MAX_CHARS_PER_ITEM)}`;
-  } else if (item.type === 'faq') {
+  } else if (type === 'FAQ') {
     formatted = `### S: ${item.question || 'Soru'}\nC: ${truncate(item.answer || '', MAX_CHARS_PER_ITEM)}`;
-  } else if (item.type === 'url') {
+  } else if (type === 'URL') {
     formatted = `### ${item.title || 'Web Sayfası'}\n${truncate(item.content || '', MAX_CHARS_PER_ITEM)}\nKaynak: ${item.url}`;
   }
 
