@@ -1172,6 +1172,7 @@ router.post('/widget', async (req, res) => {
       success: true,
       reply: finalReply,
       conversationId: sessionId, // P0: conversationId is required for audit/correlation
+      messageId: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`, // P0: messageId for audit trail
       sessionId: sessionId, // Keep for backward compatibility
       assistantName: assistant.name,
       history: updatedMessages,

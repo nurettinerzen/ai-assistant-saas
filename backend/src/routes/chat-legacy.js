@@ -695,6 +695,8 @@ ${knowledgeContext}`;
     res.json({
       success: true,
       reply: result.reply,
+      conversationId: chatSessionId, // P0: Required for audit/correlation
+      messageId: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`, // P0: Required for audit trail
       sessionId: chatSessionId,
       newSession: shouldStartNewSession, // true if a new session was started (timeout or first message)
       assistantName: assistant.name,
