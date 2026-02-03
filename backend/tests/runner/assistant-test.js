@@ -171,13 +171,15 @@ async function runScenario(scenario, token, assistantId, businessId) {
               result.status = 'failed';
               console.log(`    ❌ ${assertionConfig.name}: ${assertionResult.reason}`);
             } else {
-              // Non-critical (brand warning) - log but don't fail
+              // Non-critical warning - log but don't fail
+              // Only mark as brandViolation if explicitly set in assertion config
+              const isBrandViolation = assertionConfig.brandViolation === true;
               result.warnings = result.warnings || [];
               result.warnings.push({
                 step: step.id,
                 assertion: assertionConfig.name,
-                reason: assertionResult.reason || 'Brand violation',
-                brandViolation: true
+                reason: assertionResult.reason || 'Warning',
+                brandViolation: isBrandViolation
               });
               console.log(`    ⚠️  ${assertionConfig.name}: ${assertionResult.reason} (warning)`);
             }
