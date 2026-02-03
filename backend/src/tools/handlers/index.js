@@ -7,7 +7,6 @@
  * - send_order_notification: Order notifications to business owners
  * - get_product_stock: E-commerce product stock (Shopify/WooCommerce)
  * - customer_data_lookup: Universal customer data lookup (Orders, Accounting, Support, etc.)
- * - check_order_status_crm: CRM order lookup
  * - check_stock_crm: CRM stock lookup
  * - check_ticket_status_crm: CRM ticket/service lookup
  * - create_callback: Callback scheduling
@@ -15,16 +14,16 @@
  * REMOVED (replaced by customer_data_lookup):
  * - check_order_status: REMOVED - use customer_data_lookup instead
  * - get_tracking_info: REMOVED - use customer_data_lookup instead
+ * - check_order_status_crm: REMOVED - duplicate of customer_data_lookup CRM order query
  */
 
 import appointmentHandler from './appointment.js';
 import orderNotificationHandler from './order-notification.js';
 import productStockHandler from './product-stock.js';
 // CRM Handlers
-import crmOrderStatusHandler from './crm-order-status.js';
 import crmStockHandler from './crm-stock.js';
 import crmTicketStatusHandler from './crm-ticket-status.js';
-// Customer Data Handler - State-based verification (replaces check_order_status and get_tracking_info)
+// Customer Data Handler - State-based verification (replaces check_order_status, get_tracking_info, check_order_status_crm)
 import customerDataLookupHandler from './customer-data-lookup.js';
 // Callback Handler
 import createCallbackHandler from './create-callback.js';
@@ -35,7 +34,6 @@ const handlers = {
   'send_order_notification': orderNotificationHandler,
   'get_product_stock': productStockHandler,
   // CRM Handlers
-  'check_order_status_crm': crmOrderStatusHandler,
   'check_stock_crm': crmStockHandler,
   'check_ticket_status_crm': crmTicketStatusHandler,
   // Customer Data Handler (state-based verification)
@@ -52,7 +50,6 @@ export {
   orderNotificationHandler,
   productStockHandler,
   // CRM Handlers
-  crmOrderStatusHandler,
   crmStockHandler,
   crmTicketStatusHandler,
   // Customer Data Handler

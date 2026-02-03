@@ -8,11 +8,13 @@
  * - check_order_status: E-commerce order lookup (Shopify/WooCommerce via aggregator)
  * - get_product_stock: E-commerce product stock check (Shopify/WooCommerce via aggregator)
  * - get_tracking_info: E-commerce shipping tracking (Shopify/WooCommerce via aggregator)
- * - check_order_status_crm: CRM order lookup (custom webhook)
  * - check_stock_crm: CRM stock lookup (custom webhook)
  * - check_ticket_status_crm: CRM ticket/service lookup (custom webhook)
- * - customer_data_lookup: Customer data lookup (from Excel/CSV import)
+ * - customer_data_lookup: Customer data lookup (from Excel/CSV import) + CRM order lookup
  * - create_callback: Create callback request (geri arama talebi)
+ *
+ * REMOVED:
+ * - check_order_status_crm: REMOVED - duplicate of customer_data_lookup CRM order query
  *
  * NOTE: Paraşüt is NOT an AI tool - it's a dashboard feature for business owners.
  * Payment tools (iyzico) are disabled until explicitly needed.
@@ -38,28 +40,25 @@ export const BUSINESS_TYPE_TOOLS = {
   ],
   SERVICE: [
     'create_appointment',      // Service appointments - ✅ WORKING
-    'check_order_status_crm',  // ✅ CRM orders
     'check_stock_crm',         // ✅ CRM stock
     'check_ticket_status_crm', // ✅ CRM tickets
-    'customer_data_lookup',    // ✅ Customer data lookup
+    'customer_data_lookup',    // ✅ Customer data lookup + CRM orders
     'create_callback'          // ✅ Geri arama talebi
   ],
   ECOMMERCE: [
     'check_order_status',      // ✅ Shopify/WooCommerce via aggregator
     'get_product_stock',       // ✅ Shopify/WooCommerce via aggregator
     'get_tracking_info',       // ✅ Shopify/WooCommerce via aggregator
-    'check_order_status_crm',  // ✅ CRM orders
     'check_stock_crm',         // ✅ CRM stock
     'check_ticket_status_crm', // ✅ CRM tickets
-    'customer_data_lookup',    // ✅ Customer data lookup
+    'customer_data_lookup',    // ✅ Customer data lookup + CRM orders
     'create_callback'          // ✅ Geri arama talebi
   ],
   OTHER: [
     'create_appointment',      // Generic appointments - ✅ WORKING
-    'check_order_status_crm',  // ✅ CRM orders
     'check_stock_crm',         // ✅ CRM stock
     'check_ticket_status_crm', // ✅ CRM tickets
-    'customer_data_lookup',    // ✅ Customer data lookup
+    'customer_data_lookup',    // ✅ Customer data lookup + CRM orders
     'create_callback'          // ✅ Geri arama talebi
   ]
 };
@@ -73,7 +72,7 @@ export const INTEGRATION_REQUIRED_TOOLS = {
   'IKAS': ['check_order_status', 'get_product_stock', 'get_tracking_info'],
   'IDEASOFT': ['check_order_status', 'get_product_stock', 'get_tracking_info'],
   'TICIMAX': ['check_order_status', 'get_product_stock', 'get_tracking_info'],
-  'CRM_WEBHOOK': ['check_order_status_crm', 'check_stock_crm', 'check_ticket_status_crm']
+  'CRM_WEBHOOK': ['check_stock_crm', 'check_ticket_status_crm']
 };
 
 // Tools that work without any specific integration
@@ -121,7 +120,7 @@ export function filterToolsByIntegrations(toolNames, integrations = [], crmWebho
 
     // CRM tools: Enable if CRM_WEBHOOK integration is active
     // Handlers check data existence at runtime and return appropriate notFound messages
-    const crmTools = ['check_order_status_crm', 'check_stock_crm', 'check_ticket_status_crm'];
+    const crmTools = ['check_stock_crm', 'check_ticket_status_crm'];
     if (crmTools.includes(toolName)) {
       return activeIntegrationTypes.includes('CRM_WEBHOOK');
     }

@@ -1,0 +1,27 @@
+{
+  "timestamp": "2026-02-02T22:43:17.330Z",
+  "duration": 11439,
+  "summary": {
+    "total": 1,
+    "passed": 0,
+    "failed": 1,
+    "warnings": 0
+  },
+  "scenarios": [
+    {
+      "id": "CRM4",
+      "name": "Stok Sorgulama - Temel Akışlar",
+      "status": "failed",
+      "duration": 10438,
+      "failures": [
+        {
+          "step": "CRM4-T1",
+          "assertion": "stock_info_present",
+          "reason": "Stok bilgisi döndürülmedi",
+          "critical": true
+        }
+      ],
+      "warnings": []
+    }
+  ]
+}
