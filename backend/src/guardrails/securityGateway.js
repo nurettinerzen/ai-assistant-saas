@@ -326,6 +326,9 @@ const SENSITIVE_PATTERNS = {
 /**
  * Leak Filter - LLM output'unda hassas veri kontrolü
  *
+ * IMPORTANT: Only triggers for ACCOUNT_VERIFIED class data (personal/order info)
+ * Does NOT trigger for PUBLIC/policy questions like "iade süresi kaç gün?"
+ *
  * @param {string} response - LLM response
  * @param {string} verificationState - Mevcut doğrulama durumu
  * @param {string} language - TR | EN
@@ -336,15 +339,18 @@ export function applyLeakFilter(response, verificationState = 'none', language =
   if (!response) return { safe: true, leaks: [], sanitized: response, telemetry: null };
 
   const leaks = [];
+  const triggeredPatterns = []; // Debug: hangi pattern match etti
 
-  // Internal pattern'ler her zaman kontrol edilir
+  // Internal pattern'ler her zaman kontrol edilir (NEVER_EXPOSE class)
   for (const pattern of SENSITIVE_PATTERNS.internal) {
     if (pattern.test(response)) {
       leaks.push({ type: 'internal', pattern: pattern.toString() });
+      triggeredPatterns.push({ type: 'internal', pattern: pattern.toString(), dataClass: 'NEVER_EXPOSE' });
     }
   }
 
-  // Verified değilse diğer hassas pattern'leri de kontrol et
+  // Verified değilse ACCOUNT_VERIFIED class pattern'leri kontrol et
+  // Bu pattern'ler kişisel veri içerir: adres, tracking, telefon, teslim bilgisi
   if (verificationState !== 'verified') {
     for (const [type, patterns] of Object.entries(SENSITIVE_PATTERNS)) {
       if (type === 'internal') continue; // Zaten kontrol edildi
@@ -352,6 +358,7 @@ export function applyLeakFilter(response, verificationState = 'none', language =
       for (const pattern of patterns) {
         if (pattern.test(response)) {
           leaks.push({ type, pattern: pattern.toString() });
+          triggeredPatterns.push({ type, pattern: pattern.toString(), dataClass: 'ACCOUNT_VERIFIED' });
           break; // Her tip için bir leak yeterli
         }
       }
@@ -360,6 +367,30 @@ export function applyLeakFilter(response, verificationState = 'none', language =
 
   if (leaks.length === 0) {
     return { safe: true, leaks: [], sanitized: response, telemetry: null };
+  }
+
+  // ============================================
+  // CHECK: Is this a PUBLIC/policy response?
+  // ============================================
+  // If response is about policy (iade, garanti, süre) and no personal data,
+  // DON'T block it - let it through
+  const onlyInternalLeak = leaks.every(l => l.type === 'internal');
+  const isPolicyResponse = /\b(gün|hafta|ay|süre|süreç|politika|şart|koşul|garanti|iade|değişim|kargo ücreti|ücretsiz)\b/i.test(response);
+
+  // If it's a policy response with only minor internal pattern match, let it pass
+  // But if there's address/tracking/phone leak, still block
+  const hasPersonalDataLeak = leaks.some(l =>
+    ['address', 'tracking', 'phone', 'timeWindow', 'delivery'].includes(l.type)
+  );
+
+  if (isPolicyResponse && !hasPersonalDataLeak && onlyInternalLeak) {
+    console.log('✅ [LeakFilter] Policy response detected, allowing through');
+    return {
+      safe: true,
+      leaks: [],
+      sanitized: response,
+      telemetry: { reason: 'policy_response_allowed', triggeredPatterns }
+    };
   }
 
   // ============================================
@@ -399,7 +430,7 @@ export function applyLeakFilter(response, verificationState = 'none', language =
     missingFields = [];
   }
 
-  // Telemetry objesi (debug için)
+  // Telemetry objesi (debug için - hangi pattern neden trigger etti)
   const telemetry = {
     verificationState,
     reason: 'leak_filter_triggered',
@@ -407,7 +438,9 @@ export function applyLeakFilter(response, verificationState = 'none', language =
     hasPhone,
     hasName,
     missingFields,
-    leakTypes: leaks.map(l => l.type)
+    leakTypes: leaks.map(l => l.type),
+    triggeredPatterns, // NEW: Exactly which patterns matched
+    hasPersonalDataLeak
   };
 
   return {

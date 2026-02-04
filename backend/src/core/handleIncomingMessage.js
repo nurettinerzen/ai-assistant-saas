@@ -34,38 +34,67 @@ import {
 
 /**
  * Extract order number from user message
- * Patterns: ORD-123456, SIP-123456, #123456, sipariş 123456, order 123456
- * Returns the full order number with prefix if present
+ * CONSERVATIVE: Only matches clear order number patterns to avoid false positives
+ *
+ * Safe patterns:
+ * - Prefix formats: ORD-123456, SIP-123456, ORDER-123456
+ * - Anchored: "sipariş no 123456", "order number 123456"
+ *
+ * AVOIDED (false positive risk):
+ * - Bare numbers like "123456" (could be year, phone, etc.)
+ * - Numbers without anchor words
  */
 function extractOrderNumberFromMessage(message) {
   if (!message) return null;
 
-  // Pattern 1: Prefix formats like ORD-123456, SIP-123456789
-  const prefixMatch = message.match(/\b(ORD|SIP|ORDER)[-_]?(\d{6,12})\b/i);
+  // Pattern 1: Prefix formats - HIGH CONFIDENCE
+  // ORD-123456, SIP-123456789, ORDER-123456 (dash/underscore REQUIRED)
+  const prefixMatch = message.match(/\b(ORD|SIP|ORDER)[-_](\d{6,12})\b/i);
   if (prefixMatch) {
-    // Return with prefix: ORD-123456
-    return `${prefixMatch[1].toUpperCase()}-${prefixMatch[2]}`;
+    return normalizeOrderNo(prefixMatch[1].toUpperCase() + '-' + prefixMatch[2]);
   }
 
-  // Pattern 2: Turkish "sipariş no: 123456" format
-  const turkishMatch = message.match(/sipariş\s*(no|numarası?|num)?[:\s]*#?(\d{6,12})/i);
+  // Pattern 2: Turkish anchor words - MEDIUM CONFIDENCE
+  // "sipariş no: 123456", "sipariş numarası 123456", "sipariş numaram 123456"
+  // Anchor word REQUIRED before number
+  const turkishMatch = message.match(/sipariş\s*(no|numarası|numaram|num)[:\s]+#?(\d{6,12})\b/i);
   if (turkishMatch && turkishMatch[2]) {
-    return turkishMatch[2];
+    return normalizeOrderNo(turkishMatch[2]);
   }
 
-  // Pattern 3: English "order 123456" format
-  const englishMatch = message.match(/order\s*(no|number)?[:\s]*#?(\d{6,12})/i);
+  // Pattern 3: English anchor words - MEDIUM CONFIDENCE
+  // "order no 123456", "order number 123456"
+  // Anchor word REQUIRED
+  const englishMatch = message.match(/order\s*(no|number|num)[:\s]+#?(\d{6,12})\b/i);
   if (englishMatch && englishMatch[2]) {
-    return englishMatch[2];
+    return normalizeOrderNo(englishMatch[2]);
   }
 
-  // Pattern 4: Bare numbers 9-12 digits (likely order numbers)
-  const bareMatch = message.match(/\b(\d{9,12})\b/);
-  if (bareMatch) {
-    return bareMatch[1];
+  // Pattern 4: Hash prefix - MEDIUM CONFIDENCE
+  // "#123456789" (common in e-commerce, 8+ digits)
+  const hashMatch = message.match(/#(\d{8,12})\b/);
+  if (hashMatch) {
+    return normalizeOrderNo(hashMatch[1]);
   }
+
+  // NO BARE NUMBER MATCHING - too risky for false positives
+  // Examples that would cause false positives:
+  // - "2026'da aldığım sipariş" → 2026 is a YEAR, not order number
+  // - "5551234567 numaralı telefondan" → PHONE number
+  // - "12345 TL ödedim" → PRICE
 
   return null;
+}
+
+/**
+ * Normalize order number to consistent format
+ * - Trim whitespace
+ * - Uppercase
+ * - Remove extra spaces
+ */
+function normalizeOrderNo(orderNo) {
+  if (!orderNo) return null;
+  return orderNo.toString().trim().toUpperCase().replace(/\s+/g, '');
 }
 
 /**
