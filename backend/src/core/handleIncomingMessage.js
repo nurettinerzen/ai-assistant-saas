@@ -364,16 +364,47 @@ export async function handleIncomingMessage({
     // STEP 7: Guardrails
     // ========================================
     console.log('\n[STEP 7] Applying guardrails...');
-    const { finalResponse } = await applyGuardrails({
+
+    // Security Gateway için verification bilgilerini hazırla
+    const verificationState = state.verification?.status || 'none';
+    const verifiedIdentity = verificationState === 'verified' ? {
+      customerId: state.verification?.customerId,
+      phone: state.verification?.collected?.phone,
+      email: state.verification?.collected?.email,
+      orderId: state.anchor?.order_number
+    } : null;
+
+    // Tool output'larını topla (identity match için)
+    const toolOutputs = toolLoopResult.toolResults?.filter(r => r.success)?.map(r => r.output) || [];
+
+    // Intent bilgisini al (tool enforcement için)
+    const detectedIntent = routingResult.routing?.routing?.intent || null;
+
+    const guardrailResult = await applyGuardrails({
       responseText,
       hadToolSuccess,
       toolsCalled,
+      toolOutputs, // Identity match için
       chat: toolLoopResult.chat,
       language,
       sessionId: resolvedSessionId,
       metrics,
-      userMessage
+      userMessage,
+      verificationState, // Security Gateway için
+      verifiedIdentity, // Identity mismatch kontrolü için
+      intent: detectedIntent // Tool enforcement için (HP-07 fix)
     });
+
+    const { finalResponse } = guardrailResult;
+
+    // Security Gateway tarafından block edildiyse logla
+    if (guardrailResult.blocked) {
+      console.warn(`🚨 [SecurityGateway] Response blocked: ${guardrailResult.blockReason}`);
+      metrics.securityGatewayBlock = {
+        reason: guardrailResult.blockReason,
+        details: guardrailResult.leaks || guardrailResult.mismatchDetails
+      };
+    }
 
     // ========================================
     // STEP 8: Persist and Metrics

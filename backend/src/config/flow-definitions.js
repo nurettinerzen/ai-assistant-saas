@@ -233,6 +233,7 @@ export function mapIntentToFlow(intentName) {
     // Multiple intents can map to same flow
     'tracking_info': 'ORDER_STATUS',     // Tracking is part of order status
     'stock_check': 'PRODUCT_INFO',       // Stock queries → product info
+    'product_spec': 'PRODUCT_INFO',      // Product spec queries → product info (REQUIRES TOOL)
     'company_info': 'GENERAL',           // Company info → general conversation
     'greeting': 'GENERAL',               // Greetings → general
     'general_question': 'GENERAL',       // General questions → general

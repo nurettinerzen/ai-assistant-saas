@@ -48,6 +48,13 @@ export const INTENT_CONFIG = {
     description: 'User asks about product availability, stock, "is X available?"'
   },
 
+  product_spec: {
+    tools: ['get_product_stock'],
+    requiresVerification: false,
+    requiresToolCall: true, // ZORUNLU: Tool çağrılmadan yanıt verilemez
+    description: 'User asks for product SPECIFICATIONS, FEATURES, DETAILS: özellik, spec, Bluetooth, pil ömrü, IP rating, renk seçeneği, boyut, ağırlık. ALWAYS needs tool lookup - NEVER answer from memory.'
+  },
+
   company_info: {
     tools: [],
     requiresVerification: false,
