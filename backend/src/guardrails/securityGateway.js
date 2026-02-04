@@ -269,6 +269,20 @@ function determineAllowedActions(verificationState, riskLevel) {
  * Bu pattern'ler LLM output'unda aranır
  */
 const SENSITIVE_PATTERNS = {
+  // ============================================
+  // CUSTOMER NAME / IDENTITY (P0 - Never expose before verification!)
+  // ============================================
+  customerName: [
+    // "İbrahim Yıldız adına kayıtlı", "Ahmet Kaya'ya ait"
+    /\b[A-ZÇĞİÖŞÜ][a-zçğıöşü]+\s+[A-ZÇĞİÖŞÜ][a-zçğıöşü]+\s*(adına|'?(n?[ıiuü]n)?\s*(ad|isim|kayıt|sipariş))/i,
+    // "kayıtlı isim: Mehmet Demir"
+    /(kayıtlı|sipariş sahibi|müşteri)\s*(isim|ad|adı?)\s*[:=]?\s*[A-ZÇĞİÖŞÜ][a-zçğıöşü]+\s+[A-ZÇĞİÖŞÜ][a-zçğıöşü]+/i,
+    // "Sayın Ahmet Bey/Hanım"
+    /sayın\s+[A-ZÇĞİÖŞÜ][a-zçğıöşü]+\s+(bey|hanım)/i,
+    // English: "registered to John Smith", "belongs to Jane Doe"
+    /(registered|belongs)\s+to\s+[A-Z][a-z]+\s+[A-Z][a-z]+/i,
+  ],
+
   // Takip numarası (tam veya kısmi)
   tracking: [
     /\b[A-Z]{2}\d{9,12}[A-Z]{0,2}\b/i, // Standart tracking format
@@ -378,9 +392,9 @@ export function applyLeakFilter(response, verificationState = 'none', language =
   const isPolicyResponse = /\b(gün|hafta|ay|süre|süreç|politika|şart|koşul|garanti|iade|değişim|kargo ücreti|ücretsiz)\b/i.test(response);
 
   // If it's a policy response with only minor internal pattern match, let it pass
-  // But if there's address/tracking/phone leak, still block
+  // But if there's address/tracking/phone/customerName leak, still block
   const hasPersonalDataLeak = leaks.some(l =>
-    ['address', 'tracking', 'phone', 'timeWindow', 'delivery'].includes(l.type)
+    ['address', 'tracking', 'phone', 'timeWindow', 'delivery', 'customerName'].includes(l.type)
   );
 
   if (isPolicyResponse && !hasPersonalDataLeak && onlyInternalLeak) {
@@ -440,11 +454,15 @@ export function applyLeakFilter(response, verificationState = 'none', language =
  * Tool output'tan hangi field'ların döndüğünü çıkar
  * Bu, Security Gateway'e requestedDataFields olarak geçilir
  */
-export function extractFieldsFromToolOutput(toolOutput) {
-  if (!toolOutput) return [];
+export function extractFieldsFromToolOutput(toolResult) {
+  if (!toolResult) return [];
 
   const fields = [];
-  const data = toolOutput.truth || toolOutput.data || toolOutput;
+  // Support both new format (toolResult.output) and legacy format
+  const rawOutput = toolResult.output || toolResult;
+  const data = rawOutput?.truth || rawOutput?.data || rawOutput;
+
+  if (!data) return fields;
 
   // Sipariş bilgileri
   if (data.status || data.orderStatus) fields.push('order_status');
@@ -476,10 +494,14 @@ export function extractFieldsFromToolOutput(toolOutput) {
  * Tool output'tan record owner bilgisini çıkar
  * Identity match için kullanılır
  */
-export function extractRecordOwner(toolOutput) {
-  if (!toolOutput) return null;
+export function extractRecordOwner(toolResult) {
+  if (!toolResult) return null;
 
-  const data = toolOutput.truth || toolOutput.data || toolOutput;
+  // Support both new format (toolResult.output) and legacy format
+  const rawOutput = toolResult.output || toolResult;
+  const data = rawOutput?.truth || rawOutput?.data || rawOutput;
+
+  if (!data) return null;
 
   return {
     phone: data.phone || data.phoneNumber || data.customerPhone,
@@ -504,13 +526,28 @@ export function extractRecordOwner(toolOutput) {
  */
 export function checkProductNotFound(response, toolOutputs = [], language = 'TR') {
   // Tool output'larında product search olup NOT_FOUND dönmüş mü?
-  const productSearchResult = toolOutputs.find(output => {
-    const data = output?.truth || output?.data || output;
+  // toolOutputs artık full result objeleri içeriyor: { name, success, output, outcome, message }
+  const productSearchResult = toolOutputs.find(result => {
+    if (!result) return false;
+
+    // Direct outcome check (from toolResult.js - PRIMARY check)
+    if (result.outcome === 'NOT_FOUND') return true;
+
+    // Check nested data in output
+    const data = result.output?.truth || result.output?.data || result.output;
+
     return (
-      data?.type === 'PRODUCT_NOT_FOUND' ||
+      data?.outcome === 'NOT_FOUND' ||
+      // Legacy flags
+      result.output?.notFound === true ||
+      data?.notFound === true ||
       data?.found === false ||
       data?.products?.length === 0 ||
-      data?.error === 'PRODUCT_NOT_FOUND'
+      // Type/error indicators
+      data?.type === 'PRODUCT_NOT_FOUND' ||
+      data?.error === 'PRODUCT_NOT_FOUND' ||
+      // Message content check
+      /ürün.*bulunamadı|product.*not.*found|kayıt.*bulunamadı/i.test(result.message || data?.message || '')
     );
   });
 
@@ -563,7 +600,9 @@ export function checkProductNotFound(response, toolOutputs = [], language = 'TR'
 // ============================================================================
 
 /**
- * Sipariş bulunamadı durumunda ürün listesi uydurma kontrolü
+ * Sipariş bulunamadı durumunda:
+ * 1. LLM "bulunamadı" demiş mi kontrol et (ürün gibi)
+ * 2. LLM ürün listesi uyduruyor mu kontrol et
  *
  * @param {string} response - LLM response
  * @param {Array} toolOutputs - Tool çıktıları
@@ -572,12 +611,29 @@ export function checkProductNotFound(response, toolOutputs = [], language = 'TR'
  */
 export function checkOrderNotFoundPressure(response, toolOutputs = [], language = 'TR') {
   // Tool output'larında order search olup NOT_FOUND dönmüş mü?
-  const orderNotFound = toolOutputs.find(output => {
-    const data = output?.truth || output?.data || output;
+  // toolOutputs artık full result objeleri içeriyor: { name, success, output, outcome, message }
+  const orderNotFound = toolOutputs.find(result => {
+    if (!result) return false;
+
+    // Direct outcome check (from toolResult.js - PRIMARY check)
+    if (result.outcome === 'NOT_FOUND') return true;
+
+    // Check nested data in output
+    const data = result.output?.truth || result.output?.data || result.output;
+
     return (
-      data?.type === 'ORDER_NOT_FOUND' ||
+      data?.outcome === 'NOT_FOUND' ||
+      // Legacy flags
+      result.output?.notFound === true ||
+      data?.notFound === true ||
       data?.orderFound === false ||
-      data?.error === 'ORDER_NOT_FOUND'
+      data?.found === false ||
+      // Type/error indicators
+      data?.type === 'ORDER_NOT_FOUND' ||
+      data?.error === 'ORDER_NOT_FOUND' ||
+      data?.error === 'NOT_FOUND' ||
+      // Message content check
+      /sipariş.*bulunamadı|order.*not.*found|kayıt.*bulunamadı|no.*matching.*record|eşleşen.*bulunamadı/i.test(result.message || data?.message || '')
     );
   });
 
@@ -585,40 +641,100 @@ export function checkOrderNotFoundPressure(response, toolOutputs = [], language 
     return { needsOverride: false };
   }
 
-  // Sipariş bulunamadı ama LLM ürün listesi mi uyduruyor?
+  const lang = language.toUpperCase() === 'EN' ? 'EN' : 'TR';
+
+  // ============================================
+  // STEP 1: LLM "bulunamadı" demiş mi kontrol et
+  // ============================================
+  const notFoundPatterns = {
+    TR: [
+      /bulunamadı/i,
+      /bulunmuyor/i,
+      /bulamadım/i,
+      /bulamıyorum/i,
+      /kayıt\s*(yok|bulunamadı)/i,
+      /sipariş\s*(yok|bulunamadı)/i,
+      /sistemimizde\s*(yok|bulunamadı)/i,
+      /eşleşen\s*(kayıt|sipariş)\s*(yok|bulunamadı)/i,
+      /mevcut\s*değil/i,
+    ],
+    EN: [
+      /not\s*found/i,
+      /couldn't\s*find/i,
+      /could\s*not\s*find/i,
+      /unable\s*to\s*(find|locate)/i,
+      /no\s*(record|order|match)/i,
+      /doesn't\s*exist/i,
+      /does\s*not\s*exist/i,
+      /not\s*in\s*(our|the)\s*system/i,
+    ]
+  };
+
+  const notFoundPatternsForLang = notFoundPatterns[lang] || notFoundPatterns.TR;
+  const hasNotFoundStatement = notFoundPatternsForLang.some(p => p.test(response));
+
+  // ============================================
+  // STEP 2: LLM ürün listesi uyduruyor mu?
+  // ============================================
   const fabricationPatterns = {
     TR: [
       /sipariş(iniz)?de\s*(şu|bu)?\s*(ürünler|ürün)/i,
       /\d+\s*(adet|tane)\s+[A-ZÇĞİÖŞÜa-zçğıöşü]{3,}/i, // "2 adet iPhone"
       /içerisinde\s*.+\s*bulunuyor/i,
       /sipariş\s*içeriği/i,
+      /kargoya\s*(verildi|veriliyor|verilecek)/i,
+      /teslim\s*(edilecek|edildi|ediliyor)/i,
     ],
     EN: [
       /your\s*order\s*(contains|includes)/i,
       /\d+\s*x\s+[A-Za-z]{3,}/i,
       /order\s*items/i,
+      /shipped|delivered|in\s*transit/i,
     ]
   };
 
-  const lang = language.toUpperCase() === 'EN' ? 'EN' : 'TR';
-  const patterns = fabricationPatterns[lang] || fabricationPatterns.TR;
+  const fabricationPatternsForLang = fabricationPatterns[lang] || fabricationPatterns.TR;
+  const hasFabrication = fabricationPatternsForLang.some(p => p.test(response));
 
-  const hasFabrication = patterns.some(p => p.test(response));
+  // ============================================
+  // DECISION LOGIC
+  // ============================================
 
-  if (!hasFabrication) {
+  // Case 1: LLM "bulunamadı" demiş ve fabrication yok → OK
+  if (hasNotFoundStatement && !hasFabrication) {
     return { needsOverride: false };
   }
 
-  // Ürün listesi uyduruyor - override et
-  const overrideResponse = language === 'TR'
-    ? 'Bu sipariş numarasıyla eşleşen bir kayıt bulamadım. Sipariş numaranızı kontrol edip tekrar paylaşır mısınız? Alternatif olarak, siparişi verirken kullandığınız telefon numarası veya e-posta adresiyle de arama yapabilirim.'
-    : 'I couldn\'t find a record matching this order number. Could you double-check and share it again? Alternatively, I can search using the phone number or email address you used when placing the order.';
+  // Case 2: LLM fabrication yapıyor → Override
+  if (hasFabrication) {
+    const overrideResponse = lang === 'TR'
+      ? 'Bu sipariş numarasıyla eşleşen bir kayıt bulamadım. Sipariş numaranızı kontrol edip tekrar paylaşır mısınız? Alternatif olarak, siparişi verirken kullandığınız telefon numarası veya e-posta adresiyle de arama yapabilirim.'
+      : 'I couldn\'t find a record matching this order number. Could you double-check and share it again? Alternatively, I can search using the phone number or email address you used when placing the order.';
 
-  return {
-    needsOverride: true,
-    overrideResponse,
-    reason: 'ORDER_NOT_FOUND_FABRICATION_DETECTED'
-  };
+    return {
+      needsOverride: true,
+      overrideResponse,
+      reason: 'ORDER_NOT_FOUND_FABRICATION_DETECTED'
+    };
+  }
+
+  // Case 3: LLM "bulunamadı" DEMEMİŞ (spesifik cevap vermiş) → Override
+  // Bu kritik: tool NOT_FOUND döndü ama LLM bunu acknowledge etmedi
+  if (!hasNotFoundStatement) {
+    console.warn('⚠️ [SecurityGateway] ORDER_NOT_FOUND but LLM did not acknowledge - enforcing fallback');
+
+    const overrideResponse = lang === 'TR'
+      ? 'Bu sipariş numarasıyla eşleşen bir kayıt bulamadım. Sipariş numaranızı kontrol edip tekrar paylaşır mısınız?'
+      : 'I couldn\'t find a record matching this order number. Could you please verify and share it again?';
+
+    return {
+      needsOverride: true,
+      overrideResponse,
+      reason: 'ORDER_NOT_FOUND_NOT_ACKNOWLEDGED'
+    };
+  }
+
+  return { needsOverride: false };
 }
 
 // ============================================================================

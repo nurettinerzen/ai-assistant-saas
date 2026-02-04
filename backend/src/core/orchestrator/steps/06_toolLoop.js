@@ -56,6 +56,7 @@ export async function executeToolLoop(params) {
   let hadToolFailure = false;
   let failedTool = null;
   const toolsCalled = [];
+  const toolResults = []; // Collect all tool results for guardrails
 
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
@@ -247,6 +248,15 @@ export async function executeToolLoop(params) {
       // Tool succeeded
       hadToolSuccess = true;
 
+      // Collect tool result for guardrails (for NOT_FOUND detection etc.)
+      toolResults.push({
+        name: toolName,
+        success: toolResult.success,
+        output: toolResult.data || toolResult,
+        outcome: toolResult.outcome,
+        message: toolResult.message
+      });
+
       // Store tool result for state updates
       if (toolResult.data) {
         // Update anchor with tool truth
@@ -331,6 +341,7 @@ export async function executeToolLoop(params) {
     hadToolFailure,
     failedTool,
     toolsCalled,
+    toolResults, // For guardrails (NOT_FOUND detection etc.)
     iterations,
     chat // Return chat session for potential correction
   };

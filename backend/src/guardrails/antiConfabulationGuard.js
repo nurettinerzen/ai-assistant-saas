@@ -38,6 +38,11 @@ const EVENT_CLAIM_PATTERNS = {
       /ürün(ünüz)?\s*(gönderildi|yola çıktı|hazırlandı)/i,
       /işlem(iniz)?\s*(tamamlandı|onaylandı|gerçekleşti)/i,
       /ödeme(niz)?\s*(alındı|onaylandı|başarılı)/i,
+      // P0: "bulundu" claims without tool - hallucination
+      /sipariş(iniz)?\s*(bulundu|buldum|bulduk|görüyorum)/i,
+      /kayıt(ınız)?\s*(bulundu|buldum|bulduk|görüyorum)/i,
+      /(kaydınızı|siparişinizi)\s*(buldum|gördüm|görüyorum)/i,
+      /sistem(d?e|imizde)\s*(görüyorum|buldum|kayıtlı)/i,
     ],
 
     // Stok/mağaza durumu

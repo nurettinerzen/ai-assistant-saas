@@ -9,9 +9,72 @@
  * 2. THREAT: Violent threats
  * 3. PII_INPUT: User sharing sensitive data (warn first, lock on repeat)
  * 4. SPAM: Flooding, repetitive text
+ * 5. ENCODED_INJECTION: Base64/URL encoded injection attempts
  */
 
 import { getLockMessage } from './session-lock.js';
+
+/**
+ * Decode potential Base64/URL encoded content
+ * Returns decoded text if encoding detected, otherwise null
+ */
+function tryDecodeContent(text) {
+  if (!text || typeof text !== 'string') return null;
+
+  const decoded = [];
+
+  // 1. URL Encoding Detection (%XX patterns)
+  // Look for %20, %3D, %3C, etc.
+  const urlEncodedPattern = /%[0-9A-Fa-f]{2}/g;
+  const urlEncodedMatches = text.match(urlEncodedPattern) || [];
+
+  if (urlEncodedMatches.length >= 3) {
+    try {
+      const urlDecoded = decodeURIComponent(text);
+      if (urlDecoded !== text) {
+        decoded.push({ type: 'URL', content: urlDecoded });
+      }
+    } catch (e) {
+      // Ignore decode errors
+    }
+  }
+
+  // 2. Base64 Detection
+  // Look for Base64 strings (at least 20 chars, valid charset, properly padded)
+  const base64Pattern = /[A-Za-z0-9+/]{20,}={0,2}/g;
+  const base64Matches = text.match(base64Pattern) || [];
+
+  for (const match of base64Matches) {
+    try {
+      const base64Decoded = Buffer.from(match, 'base64').toString('utf-8');
+      // Verify it's actually readable text (not random bytes)
+      if (/^[\x20-\x7E\u00A0-\u024F\s]+$/.test(base64Decoded) && base64Decoded.length > 5) {
+        decoded.push({ type: 'BASE64', content: base64Decoded });
+      }
+    } catch (e) {
+      // Ignore decode errors
+    }
+  }
+
+  // 3. Hex Encoding Detection (\xHH patterns)
+  const hexPattern = /\\x[0-9A-Fa-f]{2}/g;
+  const hexMatches = text.match(hexPattern) || [];
+
+  if (hexMatches.length >= 3) {
+    try {
+      const hexDecoded = text.replace(/\\x([0-9A-Fa-f]{2})/g, (_, hex) =>
+        String.fromCharCode(parseInt(hex, 16))
+      );
+      if (hexDecoded !== text) {
+        decoded.push({ type: 'HEX', content: hexDecoded });
+      }
+    } catch (e) {
+      // Ignore decode errors
+    }
+  }
+
+  return decoded.length > 0 ? decoded : null;
+}
 
 /**
  * Abuse/profanity patterns (Turkish focus)
@@ -90,6 +153,59 @@ export function detectUserRisks(message, language = 'TR', state = {}) {
   }
 
   const warnings = [];
+
+  // === 0. ENCODED CONTENT DETECTION ===
+  // Decode Base64/URL/Hex and check for hidden injection attempts
+  const decodedContent = tryDecodeContent(message);
+
+  if (decodedContent && decodedContent.length > 0) {
+    console.warn('🔍 [Risk Detector] Encoded content detected:', decodedContent.map(d => d.type));
+
+    // Check decoded content for injection patterns
+    for (const decoded of decodedContent) {
+      const injectionPatterns = [
+        /ignore\s*(previous|all|your)\s*(instructions|prompt)/i,
+        /system\s*prompt/i,
+        /reveal\s*(your|the)\s*(instructions|prompt|rules)/i,
+        /you\s*are\s*now/i,
+        /forget\s*(all|your)\s*(rules|instructions)/i,
+        /(admin|root|system)\s*override/i,
+        /jailbreak/i,
+        /DAN\s*mode/i,
+        /bypass\s*(security|filter|rules)/i,
+        // Turkish injection patterns
+        /önceki\s*(komutları|talimatları)\s*unut/i,
+        /sistem\s*(promptu|talimatları)/i,
+        /kuralları\s*(göster|sıfırla)/i
+      ];
+
+      for (const pattern of injectionPatterns) {
+        if (pattern.test(decoded.content)) {
+          console.warn(`🚨 [Risk Detector] Encoded injection detected (${decoded.type}): ${decoded.content.substring(0, 50)}...`);
+
+          // SOFT REFUSAL: Don't lock, just warn and neutralize
+          warnings.push({
+            type: 'ENCODED_INJECTION',
+            severity: 'HIGH',
+            encoding: decoded.type,
+            action: 'WARN',
+            userMessage: language === 'TR'
+              ? '⚠️ Bu mesaj işlenemedi. Lütfen düz metin kullanın.'
+              : '⚠️ This message could not be processed. Please use plain text.'
+          });
+
+          // Don't process further - message should be rejected but session stays open
+          return {
+            shouldLock: false,
+            reason: null,
+            softRefusal: true,
+            refusalMessage: warnings[0].userMessage,
+            warnings
+          };
+        }
+      }
+    }
+  }
 
   // === 1. THREAT DETECTION (highest priority - immediate permanent lock) ===
   const violenceMatches = message.match(THREAT_PATTERNS.violence);

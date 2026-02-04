@@ -31,6 +31,11 @@ import {
   getBlockedContentMessage,
   logContentSafetyViolation
 } from '../utils/content-safety.js';
+import {
+  checkEnumerationAttempt,
+  resetEnumerationCounter,
+  getLockMessage
+} from '../services/session-lock.js';
 
 /**
  * Extract order number from user message
@@ -84,6 +89,69 @@ function extractOrderNumberFromMessage(message) {
   // - "12345 TL ödedim" → PRICE
 
   return null;
+}
+
+/**
+ * Regenerate LLM response with guidance
+ * Used when guardrails detect issues (verification needed, confabulation, etc.)
+ *
+ * @param {string} guidanceType - 'VERIFICATION' | 'CONFABULATION'
+ * @param {any} guidanceData - Type-specific data (missingFields or correctionConstraint)
+ * @param {string} userMessage - Original user message
+ * @param {string} language - 'TR' | 'EN'
+ * @returns {Promise<string>} Regenerated response
+ */
+async function regenerateWithGuidance(guidanceType, guidanceData, userMessage, language) {
+  try {
+    const { getGeminiModel } = await import('../services/gemini-utils.js');
+
+    const model = getGeminiModel({
+      model: 'gemini-2.5-flash',
+      temperature: 0.7,
+      maxOutputTokens: 400
+    });
+
+    let guidance;
+
+    if (guidanceType === 'VERIFICATION') {
+      const missingFieldsText = guidanceData.map(f => {
+        if (f === 'order_number') return language === 'TR' ? 'sipariş numarası' : 'order number';
+        if (f === 'phone_last4') return language === 'TR' ? 'telefon numarasının son 4 hanesi' : 'last 4 digits of phone number';
+        return f;
+      }).join(language === 'TR' ? ' ve ' : ' and ');
+
+      guidance = language === 'TR'
+        ? `Kullanıcının sipariş bilgilerine erişmek için kimlik doğrulaması gerekiyor. Kullanıcıdan ${missingFieldsText} bilgisini iste. Doğal ve kibar bir şekilde sor. Şablon cümle KULLANMA.`
+        : `Identity verification is required to access order information. Ask the user for their ${missingFieldsText}. Ask naturally and politely. Do NOT use template sentences.`;
+
+    } else if (guidanceType === 'CONFABULATION') {
+      guidance = language === 'TR'
+        ? `Sen bir müşteri hizmetleri asistanısın. Kullanıcının sorusuna yanıt ver ama KESİN BİLGİ VERME. Sistemi sorgulamadan "bulundu", "hazır", "kargoda" gibi şeyler SÖYLEME. Bilmediğini kabul et ve sipariş numarası ile doğrulama iste.`
+        : `You are a customer service assistant. Answer the user's question but DO NOT make definitive claims. Do NOT say "found", "ready", "shipped" without querying the system. Admit uncertainty and ask for order number and verification.`;
+    }
+
+    const prompt = `${guidance}\n\nKullanıcı mesajı: "${userMessage}"\n\nYanıtın:`;
+
+    const result = await model.generateContent(prompt);
+    const response = result.response.text();
+
+    console.log(`✅ [Orchestrator] LLM regenerated (${guidanceType}):`, response.substring(0, 100));
+    return response;
+
+  } catch (error) {
+    console.error('❌ [Orchestrator] LLM regeneration failed:', error.message);
+
+    // Minimal fallback - only for error cases
+    if (guidanceType === 'VERIFICATION') {
+      return language === 'TR'
+        ? 'Sipariş bilgilerinize erişmek için doğrulama gerekiyor. Sipariş numaranızı ve telefon numaranızın son 4 hanesini paylaşır mısınız?'
+        : 'Verification is needed to access your order. Please share your order number and the last 4 digits of your phone.';
+    } else {
+      return language === 'TR'
+        ? 'Bu bilgiyi kontrol etmem gerekiyor. Sipariş numaranızı paylaşır mısınız?'
+        : 'I need to check this information. Could you share your order number?';
+    }
+  }
 }
 
 /**
@@ -385,6 +453,66 @@ export async function handleIncomingMessage({
 
     console.log(`🔄 Tool loop completed: ${iterations} iterations, ${toolsCalled.length} tools called`);
 
+    // ========================================
+    // ENUMERATION DEFENSE: Track failed verifications
+    // ========================================
+    // Detect verification failure from tool outputs
+    const verificationAttempted = toolsCalled.some(t =>
+      ['verify_customer', 'get_order_status', 'get_order_details'].includes(t)
+    );
+
+    if (verificationAttempted && toolLoopResult.toolResults) {
+      const verificationFailed = toolLoopResult.toolResults.some(r => {
+        if (!r.output) return false;
+        const output = typeof r.output === 'string' ? r.output : JSON.stringify(r.output);
+        // Detect verification failure patterns
+        return /not_found|not found|mismatch|doğrulama.*başarısız|verification.*failed|eşleşmiyor/i.test(output);
+      });
+
+      const verificationSucceeded = toolLoopResult.toolResults.some(r => {
+        if (!r.output) return false;
+        const output = typeof r.output === 'string' ? r.output : JSON.stringify(r.output);
+        // Detect verification success patterns
+        return /verified|doğrulandı|success|başarılı/i.test(output) && r.success;
+      });
+
+      if (verificationFailed && !verificationSucceeded) {
+        console.log('🔐 [Enumeration] Verification failed, checking attempt count...');
+        const enumResult = await checkEnumerationAttempt(resolvedSessionId);
+
+        if (enumResult.shouldBlock) {
+          console.warn(`🚨 [Enumeration] Session blocked after ${enumResult.attempts} attempts`);
+
+          return {
+            reply: getLockMessage('ENUMERATION', language),
+            shouldEndSession: false,
+            forceEnd: false,
+            locked: true,
+            lockReason: 'ENUMERATION',
+            state,
+            metrics: {
+              ...metrics,
+              enumerationBlock: true,
+              failedAttempts: enumResult.attempts
+            },
+            inputTokens,
+            outputTokens,
+            debug: {
+              blocked: true,
+              reason: 'ENUMERATION_THRESHOLD_EXCEEDED',
+              attempts: enumResult.attempts
+            }
+          };
+        } else {
+          console.log(`⚠️ [Enumeration] Failed attempt ${enumResult.attempts}/${5}`);
+        }
+      } else if (verificationSucceeded) {
+        // Reset counter on successful verification
+        console.log('✅ [Enumeration] Verification succeeded, resetting counter');
+        await resetEnumerationCounter(resolvedSessionId);
+      }
+    }
+
     // If tool failed, response is already forced template - return immediately
     if (hadToolFailure) {
       console.log('❌ [Orchestrator] Tool failure - returning forced template');
@@ -439,8 +567,10 @@ export async function handleIncomingMessage({
       orderId: state.anchor?.order_number
     } : null;
 
-    // Tool output'larını topla (identity match için)
-    const toolOutputs = toolLoopResult.toolResults?.filter(r => r.success)?.map(r => r.output) || [];
+    // Tool output'larını topla (identity match + NOT_FOUND detection için)
+    // NOT: Tüm tool sonuçlarını al - NOT_FOUND aslında başarılı bir tool call
+    // Full result objesi geç (outcome, message, output dahil)
+    const toolOutputs = toolLoopResult.toolResults || [];
 
     // Intent bilgisini al (tool enforcement için)
     const detectedIntent = routingResult.routing?.routing?.intent || null;
@@ -494,46 +624,28 @@ export async function handleIncomingMessage({
       // ============================================
       // VERIFICATION REQUIRED: Re-prompt LLM
       // ============================================
-      // LLM'e doğrulama gerektiğini söyle, O doğal şekilde cevap üretsin
       if (guardrailResult.needsVerification && guardrailResult.missingFields?.length > 0) {
         console.log('🔐 [Orchestrator] Verification required, re-prompting LLM...');
-        console.log('📋 Missing fields:', guardrailResult.missingFields);
+        finalResponse = await regenerateWithGuidance(
+          'VERIFICATION',
+          guardrailResult.missingFields,
+          userMessage,
+          language
+        );
+      }
 
-        // Build verification guidance for LLM
-        const missingFieldsText = guardrailResult.missingFields.map(f => {
-          if (f === 'order_number') return language === 'TR' ? 'sipariş numarası' : 'order number';
-          if (f === 'phone_last4') return language === 'TR' ? 'telefon numarasının son 4 hanesi' : 'last 4 digits of phone number';
-          return f;
-        }).join(language === 'TR' ? ' ve ' : ' and ');
-
-        const verificationGuidance = language === 'TR'
-          ? `[SİSTEM: Kullanıcının sipariş bilgilerine erişmek için kimlik doğrulaması gerekiyor. Kullanıcıdan ${missingFieldsText} bilgisini iste. Doğal ve kibar bir şekilde sor.]`
-          : `[SYSTEM: Identity verification is required to access order information. Ask the user for their ${missingFieldsText}. Ask naturally and politely.]`;
-
-        // Re-call LLM with verification guidance
-        try {
-          const { getGeminiModel, buildGeminiChatHistory, extractTokenUsage } = await import('../services/gemini-utils.js');
-
-          const verificationModel = getGeminiModel({
-            model: 'gemini-2.5-flash',
-            temperature: 0.7,
-            maxOutputTokens: 300
-          });
-
-          // Simple prompt for verification request
-          const verificationPrompt = `${verificationGuidance}\n\nKullanıcı mesajı: "${userMessage}"`;
-
-          const result = await verificationModel.generateContent(verificationPrompt);
-          finalResponse = result.response.text();
-
-          console.log('✅ [Orchestrator] LLM generated verification request:', finalResponse.substring(0, 100));
-        } catch (llmError) {
-          console.error('❌ [Orchestrator] LLM re-prompt failed:', llmError.message);
-          // Fallback - ama bu hardcoded değil, sadece hata durumu için
-          finalResponse = language === 'TR'
-            ? 'Sipariş bilgilerinize erişmek için doğrulama gerekiyor. Lütfen sipariş numaranızı ve telefon numaranızın son 4 hanesini paylaşır mısınız?'
-            : 'Verification is needed to access your order. Please share your order number and the last 4 digits of your phone.';
-        }
+      // ============================================
+      // CONFABULATION DETECTED: Re-prompt LLM
+      // ============================================
+      if (guardrailResult.needsCorrection && guardrailResult.correctionType === 'CONFABULATION') {
+        console.log('🚨 [Orchestrator] Confabulation detected, re-prompting LLM...');
+        console.log('📋 Violation:', guardrailResult.violation);
+        finalResponse = await regenerateWithGuidance(
+          'CONFABULATION',
+          guardrailResult.correctionConstraint,
+          userMessage,
+          language
+        );
       }
     }
 

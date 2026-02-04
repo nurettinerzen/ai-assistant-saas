@@ -71,15 +71,17 @@ export async function applyGuardrails(params) {
       timestamp: new Date().toISOString()
     }, null, chat?.businessId);
 
-    // Lock session temporarily (10 minutes) to prevent abuse
-    await lockSession(sessionId, 'FIREWALL_VIOLATION', 10 * 60 * 1000);
+    // SOFT REFUSAL: Don't lock session for first/occasional firewall violations
+    // Track violation count in metrics - orchestrator can decide to lock on repeated abuse
+    // This allows user to continue conversation without hard termination
+    console.log('🛡️ [Firewall] Soft refusal - response sanitized, session remains open');
 
-    // Return sanitized fallback response
+    // Return sanitized fallback response WITHOUT locking
     return {
       finalResponse: firewallResult.sanitized,
       guardrailsApplied: ['RESPONSE_FIREWALL'],
       blocked: true,
-      lockReason: 'FIREWALL_VIOLATION',
+      softRefusal: true, // Flag for soft refusal (no session lock)
       violations: firewallResult.violations
     };
   }
@@ -294,7 +296,7 @@ export async function applyGuardrails(params) {
     }
   }
 
-  // POLICY 4: Anti-Confabulation Guard (P1-A)
+  // POLICY 4: Anti-Confabulation Guard (P1-A) - NOW WITH ENFORCEMENT
   // Prevents event/fact claims without tool backup
   const confabulationResult = validateConfabulation(
     responseText,
@@ -307,15 +309,17 @@ export async function applyGuardrails(params) {
     console.error('🚨 [Guardrails] CONFABULATION detected!', confabulationResult.violation);
     metrics.confabulationViolation = confabulationResult.violation;
 
-    // Flag for correction
-    if (chat) {
-      try {
-        console.log('🔧 [Guardrails] Requesting LLM correction for confabulation...');
-        // Correction constraint available in confabulationResult.correctionConstraint
-      } catch (e) {
-        console.error('Failed to apply confabulation correction:', e);
-      }
-    }
+    // P0 FIX: Return needsCorrection flag - orchestrator will re-prompt LLM
+    return {
+      finalResponse: null,
+      needsCorrection: true,
+      correctionType: 'CONFABULATION',
+      correctionConstraint: confabulationResult.correctionConstraint,
+      violation: confabulationResult.violation,
+      guardrailsApplied: ['RESPONSE_FIREWALL', 'PII_PREVENTION', 'ANTI_CONFABULATION'],
+      blocked: true,
+      blockReason: 'CONFABULATION_DETECTED'
+    };
   }
 
   // POLICY 5: Action Claim Validation (CRITICAL + SOFT)

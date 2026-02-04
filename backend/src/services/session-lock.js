@@ -22,8 +22,16 @@ const LOCK_DURATIONS = {
   THREAT: null,                  // Permanent
   PII_RISK: 60 * 60 * 1000,     // 1 hour
   LOOP: 10 * 60 * 1000,         // 10 minutes
-  SPAM: 5 * 60 * 1000  // 5 minutes
-  // TOOL_FAIL removed - too aggressive for transient errors          // 5 minutes
+  SPAM: 5 * 60 * 1000,          // 5 minutes
+  ENUMERATION: 2 * 60 * 1000,   // 2 minutes cooldown for enumeration attempts
+  // TOOL_FAIL removed - too aggressive for transient errors
+};
+
+// Enumeration protection thresholds
+export const ENUMERATION_LIMITS = {
+  MAX_FAILED_VERIFICATIONS: 5,  // Max failed verification attempts
+  WINDOW_MS: 5 * 60 * 1000,     // 5 minute sliding window
+  COOLDOWN_MS: 2 * 60 * 1000    // 2 minute cooldown after threshold
 };
 
 /**
@@ -49,6 +57,10 @@ const LOCK_MESSAGES = {
   SPAM: {
     TR: 'Spam tespit edildi. Lütfen 5 dakika sonra tekrar deneyin.',
     EN: 'Spam detected. Please try again in 5 minutes.'
+  },
+  ENUMERATION: {
+    TR: 'Çok fazla başarısız doğrulama denemesi. Lütfen 2 dakika sonra tekrar deneyin.',
+    EN: 'Too many failed verification attempts. Please try again in 2 minutes.'
   },
 };
 
@@ -269,6 +281,55 @@ export async function getRemainingLockTime(sessionId, language = 'TR') {
   }
 }
 
+/**
+ * Check and record failed verification attempt for enumeration protection
+ *
+ * @param {string} sessionId - Universal session ID
+ * @returns {Promise<{shouldBlock: boolean, attempts: number}>}
+ */
+export async function checkEnumerationAttempt(sessionId) {
+  const state = await getState(sessionId);
+  const now = Date.now();
+
+  // Initialize enumeration tracking if not exists
+  if (!state.enumerationAttempts) {
+    state.enumerationAttempts = [];
+  }
+
+  // Clean up old attempts outside window
+  state.enumerationAttempts = state.enumerationAttempts.filter(
+    ts => (now - ts) < ENUMERATION_LIMITS.WINDOW_MS
+  );
+
+  // Add this attempt
+  state.enumerationAttempts.push(now);
+
+  // Check if threshold exceeded
+  const attemptCount = state.enumerationAttempts.length;
+
+  await updateState(sessionId, state);
+
+  if (attemptCount >= ENUMERATION_LIMITS.MAX_FAILED_VERIFICATIONS) {
+    console.warn(`🚨 [Enumeration] Session ${sessionId} exceeded threshold (${attemptCount} attempts)`);
+    await lockSession(sessionId, 'ENUMERATION');
+    return { shouldBlock: true, attempts: attemptCount };
+  }
+
+  return { shouldBlock: false, attempts: attemptCount };
+}
+
+/**
+ * Reset enumeration counter (call on successful verification)
+ *
+ * @param {string} sessionId - Universal session ID
+ */
+export async function resetEnumerationCounter(sessionId) {
+  const state = await getState(sessionId);
+  state.enumerationAttempts = [];
+  await updateState(sessionId, state);
+  console.log(`[Enumeration] Reset counter for session ${sessionId}`);
+}
+
 export default {
   lockSession,
   isSessionLocked,
@@ -277,5 +338,8 @@ export default {
   shouldSendLockMessage,
   markLockMessageSent,
   getRemainingLockTime,
-  LOCK_DURATIONS
+  checkEnumerationAttempt,
+  resetEnumerationCounter,
+  LOCK_DURATIONS,
+  ENUMERATION_LIMITS
 };

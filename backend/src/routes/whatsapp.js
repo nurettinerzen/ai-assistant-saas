@@ -366,6 +366,14 @@ async function processWhatsAppMessage(business, from, messageBody, messageId) {
       return; // EXIT - Do not process message
     }
 
+    // SOFT REFUSAL: Encoded injection or other soft-block cases
+    // Session stays open but this specific message is rejected
+    if (riskDetection.softRefusal) {
+      console.log(`🛡️ [WhatsApp Guard] SOFT REFUSAL - message rejected, session stays open`);
+      await sendWhatsAppMessage(business, from, riskDetection.refusalMessage, { inboundMessageId: messageId });
+      return; // EXIT - Don't process but don't lock
+    }
+
     // If PII warnings (but not locked yet), prepend warning to response
     const piiWarnings = getPIIWarningMessages(riskDetection.warnings);
     const hasPIIWarnings = piiWarnings.length > 0;

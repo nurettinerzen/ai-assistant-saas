@@ -920,6 +920,17 @@ router.post('/widget', async (req, res) => {
       });
     }
 
+    // SOFT REFUSAL: Encoded injection or other soft-block cases
+    // Session stays open but this specific message is rejected
+    if (riskDetection.softRefusal) {
+      console.log(`🛡️ [Chat Guard] SOFT REFUSAL - message rejected, session stays open`);
+      return res.json({
+        reply: riskDetection.refusalMessage,
+        softRefusal: true,
+        warnings: riskDetection.warnings.map(w => w.type)
+      });
+    }
+
     // If PII warnings (but not locked yet), we'll prepend warnings to response later
     const piiWarnings = getPIIWarningMessages(riskDetection.warnings);
     const hasPIIWarnings = piiWarnings.length > 0;
