@@ -734,8 +734,8 @@ export function checkOrderNotFoundPressure(response, toolOutputs = [], language 
   // Case 2: LLM fabrication yapıyor → Override
   if (hasFabrication) {
     const overrideResponse = lang === 'TR'
-      ? 'Bu sipariş numarasıyla eşleşen bir kayıt bulamadım. Sipariş numaranızı kontrol edip tekrar paylaşır mısınız? Alternatif olarak, siparişi verirken kullandığınız telefon numarası veya e-posta adresiyle de arama yapabilirim.'
-      : 'I couldn\'t find a record matching this order number. Could you double-check and share it again? Alternatively, I can search using the phone number or email address you used when placing the order.';
+      ? 'Bu sipariş numarasıyla eşleşen bir kayıt bulunamadı. Sipariş numaranızı kontrol edip tekrar paylaşır mısınız? Alternatif olarak, siparişi verirken kullandığınız telefon numarası veya e-posta adresiyle de arama yapabilirim.'
+      : 'No record was found matching this order number. Could you double-check and share it again? Alternatively, I can search using the phone number or email address you used when placing the order.';
 
     return {
       needsOverride: true,
@@ -750,8 +750,8 @@ export function checkOrderNotFoundPressure(response, toolOutputs = [], language 
     console.warn('⚠️ [SecurityGateway] ORDER_NOT_FOUND but LLM did not acknowledge - enforcing fallback');
 
     const overrideResponse = lang === 'TR'
-      ? 'Bu sipariş numarasıyla eşleşen bir kayıt bulamadım. Sipariş numaranızı kontrol edip tekrar paylaşır mısınız?'
-      : 'I couldn\'t find a record matching this order number. Could you please verify and share it again?';
+      ? 'Bu sipariş numarasıyla eşleşen bir kayıt bulunamadı. Sipariş numaranızı kontrol edip tekrar paylaşır mısınız?'
+      : 'No record was found matching this order number. Could you please verify and share it again?';
 
     return {
       needsOverride: true,
