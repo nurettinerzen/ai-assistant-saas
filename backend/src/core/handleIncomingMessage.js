@@ -33,6 +33,42 @@ import {
 } from '../utils/content-safety.js';
 
 /**
+ * Extract order number from user message
+ * Patterns: ORD-123456, SIP-123456, #123456, sipariş 123456, order 123456
+ * Returns the full order number with prefix if present
+ */
+function extractOrderNumberFromMessage(message) {
+  if (!message) return null;
+
+  // Pattern 1: Prefix formats like ORD-123456, SIP-123456789
+  const prefixMatch = message.match(/\b(ORD|SIP|ORDER)[-_]?(\d{6,12})\b/i);
+  if (prefixMatch) {
+    // Return with prefix: ORD-123456
+    return `${prefixMatch[1].toUpperCase()}-${prefixMatch[2]}`;
+  }
+
+  // Pattern 2: Turkish "sipariş no: 123456" format
+  const turkishMatch = message.match(/sipariş\s*(no|numarası?|num)?[:\s]*#?(\d{6,12})/i);
+  if (turkishMatch && turkishMatch[2]) {
+    return turkishMatch[2];
+  }
+
+  // Pattern 3: English "order 123456" format
+  const englishMatch = message.match(/order\s*(no|number)?[:\s]*#?(\d{6,12})/i);
+  if (englishMatch && englishMatch[2]) {
+    return englishMatch[2];
+  }
+
+  // Pattern 4: Bare numbers 9-12 digits (likely order numbers)
+  const bareMatch = message.match(/\b(\d{9,12})\b/);
+  if (bareMatch) {
+    return bareMatch[1];
+  }
+
+  return null;
+}
+
+/**
  * Handle incoming message (channel-agnostic)
  *
  * @param {Object} params
@@ -380,6 +416,26 @@ export async function handleIncomingMessage({
     // Intent bilgisini al (tool enforcement için)
     const detectedIntent = routingResult.routing?.routing?.intent || null;
 
+    // ============================================
+    // COLLECTED DATA: Zaten bilinen veriler
+    // ============================================
+    // Leak filter için: Zaten sipariş no veya telefon verildiyse tekrar sorma
+    const extractedOrderNo = extractOrderNumberFromMessage(userMessage);
+    const collectedData = {
+      orderNumber: state.anchor?.order_number || state.collectedSlots?.order_number || extractedOrderNo,
+      phone: state.verification?.collected?.phone || state.collectedSlots?.phone,
+      last4: state.verification?.collected?.last4,
+      name: state.verification?.collected?.name || state.collectedSlots?.name,
+      customerName: state.verification?.collected?.customerName
+    };
+
+    console.log('📊 [Guardrails] Collected data for leak filter:', {
+      hasOrderNumber: !!collectedData.orderNumber,
+      hasPhone: !!collectedData.phone,
+      hasLast4: !!collectedData.last4,
+      hasName: !!collectedData.name
+    });
+
     const guardrailResult = await applyGuardrails({
       responseText,
       hadToolSuccess,
@@ -392,7 +448,8 @@ export async function handleIncomingMessage({
       userMessage,
       verificationState, // Security Gateway için
       verifiedIdentity, // Identity mismatch kontrolü için
-      intent: detectedIntent // Tool enforcement için (HP-07 fix)
+      intent: detectedIntent, // Tool enforcement için (HP-07 fix)
+      collectedData // Leak filter için - zaten bilinen veriler
     });
 
     const { finalResponse } = guardrailResult;

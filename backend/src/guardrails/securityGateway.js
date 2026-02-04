@@ -329,10 +329,11 @@ const SENSITIVE_PATTERNS = {
  * @param {string} response - LLM response
  * @param {string} verificationState - Mevcut doğrulama durumu
  * @param {string} language - TR | EN
- * @returns {Object} { safe, leaks, sanitized }
+ * @param {Object} collectedData - Zaten toplanmış veriler (orderNumber, phone, name vb.)
+ * @returns {Object} { safe, leaks, sanitized, telemetry }
  */
-export function applyLeakFilter(response, verificationState = 'none', language = 'TR') {
-  if (!response) return { safe: true, leaks: [], sanitized: response };
+export function applyLeakFilter(response, verificationState = 'none', language = 'TR', collectedData = {}) {
+  if (!response) return { safe: true, leaks: [], sanitized: response, telemetry: null };
 
   const leaks = [];
 
@@ -358,19 +359,63 @@ export function applyLeakFilter(response, verificationState = 'none', language =
   }
 
   if (leaks.length === 0) {
-    return { safe: true, leaks: [], sanitized: response };
+    return { safe: true, leaks: [], sanitized: response, telemetry: null };
   }
 
-  // Leak varsa response'u override et
-  const safeResponse = language === 'TR'
-    ? 'Bu bilgiyi paylaşabilmem için önce kimliğinizi doğrulamam gerekiyor. Sipariş numaranızı ve kayıtlı telefon numaranızın son 4 hanesini paylaşır mısınız?'
-    : 'I need to verify your identity before sharing this information. Could you provide your order number and the last 4 digits of your registered phone number?';
+  // ============================================
+  // SMART VERIFICATION REQUEST
+  // ============================================
+  // Zaten bilinen verilere göre akıllı mesaj üret
+  const hasOrderNumber = !!(collectedData.orderNumber || collectedData.order_number);
+  const hasPhone = !!(collectedData.phone || collectedData.last4);
+  const hasName = !!(collectedData.name || collectedData.customerName);
+
+  let safeResponse;
+  let missingFields = [];
+
+  if (hasOrderNumber && !hasPhone) {
+    // Sipariş no var, telefon yok - sadece telefon sor
+    safeResponse = language === 'TR'
+      ? 'Teşekkürler. Şimdi kimlik doğrulaması için kayıtlı telefon numaranızın son 4 hanesini yazar mısınız?'
+      : 'Thank you. For verification, could you please provide the last 4 digits of your registered phone number?';
+    missingFields = ['phone_last4'];
+  } else if (!hasOrderNumber && hasPhone) {
+    // Telefon var, sipariş no yok - sadece sipariş sor
+    safeResponse = language === 'TR'
+      ? 'Teşekkürler. Sipariş numaranızı paylaşır mısınız?'
+      : 'Thank you. Could you please provide your order number?';
+    missingFields = ['order_number'];
+  } else if (!hasOrderNumber && !hasPhone) {
+    // İkisi de yok - ikisini birden sor
+    safeResponse = language === 'TR'
+      ? 'Bu bilgiyi paylaşabilmem için önce kimliğinizi doğrulamam gerekiyor. Sipariş numaranızı ve kayıtlı telefon numaranızın son 4 hanesini paylaşır mısınız?'
+      : 'I need to verify your identity before sharing this information. Could you provide your order number and the last 4 digits of your registered phone number?';
+    missingFields = ['order_number', 'phone_last4'];
+  } else {
+    // İkisi de var ama hala verified değil - sistem sorunu veya mismatch olabilir
+    safeResponse = language === 'TR'
+      ? 'Doğrulama işlemi tamamlanamadı. Lütfen bilgilerinizi tekrar kontrol edin veya müşteri hizmetlerimizi arayın.'
+      : 'Verification could not be completed. Please check your information or contact customer service.';
+    missingFields = [];
+  }
+
+  // Telemetry objesi (debug için)
+  const telemetry = {
+    verificationState,
+    reason: 'leak_filter_triggered',
+    extractedOrderNo: collectedData.orderNumber || collectedData.order_number || null,
+    hasPhone,
+    hasName,
+    missingFields,
+    leakTypes: leaks.map(l => l.type)
+  };
 
   return {
     safe: false,
     leaks,
     sanitized: safeResponse,
-    originalBlocked: true
+    originalBlocked: true,
+    telemetry
   };
 }
 

@@ -47,7 +47,8 @@ export async function applyGuardrails(params) {
     userMessage,
     verificationState = 'none', // Doğrulama durumu
     verifiedIdentity = null, // Doğrulanmış kimlik
-    intent = null // Tespit edilen intent (requiresToolCall kontrolü için)
+    intent = null, // Tespit edilen intent (requiresToolCall kontrolü için)
+    collectedData = {} // Zaten bilinen veriler (orderNumber, phone, name) - Leak filter için
   } = params;
 
   // Mutable response text (Product/Order not found override için)
@@ -130,18 +131,23 @@ export async function applyGuardrails(params) {
 
   // POLICY 1.5: Security Gateway Leak Filter (P0 - Verification-based)
   // Bu en kritik kontrol: verified olmadan hassas veri ASLA çıkamaz
-  const leakFilterResult = applyLeakFilter(responseText, verificationState, language);
+  // collectedData: Zaten bilinen veriler - tekrar sorma (duplicate ask fix)
+  const leakFilterResult = applyLeakFilter(responseText, verificationState, language, collectedData);
 
   if (!leakFilterResult.safe) {
+    // Telemetry logging (task 2: verification telemetry)
     console.error('🚨 [SecurityGateway] LEAK DETECTED!', {
       leaks: leakFilterResult.leaks,
       verificationState,
-      blocked: true
+      blocked: true,
+      telemetry: leakFilterResult.telemetry // Debug: hangi katman, neden, ne eksik
     });
 
+    // Metrics'e telemetry ekle (debug için)
     metrics.leakFilterViolation = {
       leaks: leakFilterResult.leaks,
-      verificationState
+      verificationState,
+      telemetry: leakFilterResult.telemetry
     };
 
     // Leak varsa response'u override et (deterministik)
@@ -151,7 +157,8 @@ export async function applyGuardrails(params) {
       guardrailsApplied: ['RESPONSE_FIREWALL', 'PII_PREVENTION', 'SECURITY_GATEWAY_LEAK_FILTER'],
       blocked: true,
       blockReason: 'SENSITIVE_DATA_LEAK',
-      leaks: leakFilterResult.leaks
+      leaks: leakFilterResult.leaks,
+      telemetry: leakFilterResult.telemetry // Debug için döndür
     };
   }
 
