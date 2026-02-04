@@ -135,12 +135,11 @@ export async function applyGuardrails(params) {
   const leakFilterResult = applyLeakFilter(responseText, verificationState, language, collectedData);
 
   if (!leakFilterResult.safe) {
-    // Telemetry logging (task 2: verification telemetry)
-    console.error('🚨 [SecurityGateway] LEAK DETECTED!', {
-      leaks: leakFilterResult.leaks,
-      verificationState,
-      blocked: true,
-      telemetry: leakFilterResult.telemetry // Debug: hangi katman, neden, ne eksik
+    // Telemetry logging
+    console.warn('🔐 [SecurityGateway] Verification required', {
+      needsVerification: leakFilterResult.needsVerification,
+      missingFields: leakFilterResult.missingFields,
+      telemetry: leakFilterResult.telemetry
     });
 
     // Metrics'e telemetry ekle (debug için)
@@ -150,15 +149,17 @@ export async function applyGuardrails(params) {
       telemetry: leakFilterResult.telemetry
     };
 
-    // Leak varsa response'u override et (deterministik)
-    // Bu, HP-12, HP-22, HP-29, HP-39, HP-21 gibi fail'leri kökten kapatır
+    // Return verification requirement - orchestrator will handle LLM re-prompt
+    // NO hardcoded response - LLM will generate natural verification request
     return {
-      finalResponse: leakFilterResult.sanitized,
+      finalResponse: null, // Signal that LLM needs to regenerate
+      needsVerification: true,
+      missingFields: leakFilterResult.missingFields || [],
       guardrailsApplied: ['RESPONSE_FIREWALL', 'PII_PREVENTION', 'SECURITY_GATEWAY_LEAK_FILTER'],
       blocked: true,
-      blockReason: 'SENSITIVE_DATA_LEAK',
+      blockReason: 'VERIFICATION_REQUIRED',
       leaks: leakFilterResult.leaks,
-      telemetry: leakFilterResult.telemetry // Debug için döndür
+      telemetry: leakFilterResult.telemetry
     };
   }
 

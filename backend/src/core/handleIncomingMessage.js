@@ -481,15 +481,60 @@ export async function handleIncomingMessage({
       collectedData // Leak filter için - zaten bilinen veriler
     });
 
-    const { finalResponse } = guardrailResult;
+    let { finalResponse } = guardrailResult;
 
-    // Security Gateway tarafından block edildiyse logla
+    // Security Gateway tarafından block edildiyse
     if (guardrailResult.blocked) {
       console.warn(`🚨 [SecurityGateway] Response blocked: ${guardrailResult.blockReason}`);
       metrics.securityGatewayBlock = {
         reason: guardrailResult.blockReason,
         details: guardrailResult.leaks || guardrailResult.mismatchDetails
       };
+
+      // ============================================
+      // VERIFICATION REQUIRED: Re-prompt LLM
+      // ============================================
+      // LLM'e doğrulama gerektiğini söyle, O doğal şekilde cevap üretsin
+      if (guardrailResult.needsVerification && guardrailResult.missingFields?.length > 0) {
+        console.log('🔐 [Orchestrator] Verification required, re-prompting LLM...');
+        console.log('📋 Missing fields:', guardrailResult.missingFields);
+
+        // Build verification guidance for LLM
+        const missingFieldsText = guardrailResult.missingFields.map(f => {
+          if (f === 'order_number') return language === 'TR' ? 'sipariş numarası' : 'order number';
+          if (f === 'phone_last4') return language === 'TR' ? 'telefon numarasının son 4 hanesi' : 'last 4 digits of phone number';
+          return f;
+        }).join(language === 'TR' ? ' ve ' : ' and ');
+
+        const verificationGuidance = language === 'TR'
+          ? `[SİSTEM: Kullanıcının sipariş bilgilerine erişmek için kimlik doğrulaması gerekiyor. Kullanıcıdan ${missingFieldsText} bilgisini iste. Doğal ve kibar bir şekilde sor.]`
+          : `[SYSTEM: Identity verification is required to access order information. Ask the user for their ${missingFieldsText}. Ask naturally and politely.]`;
+
+        // Re-call LLM with verification guidance
+        try {
+          const { getGeminiModel, buildGeminiChatHistory, extractTokenUsage } = await import('../services/gemini-utils.js');
+
+          const verificationModel = getGeminiModel({
+            model: 'gemini-2.5-flash',
+            temperature: 0.7,
+            maxOutputTokens: 300
+          });
+
+          // Simple prompt for verification request
+          const verificationPrompt = `${verificationGuidance}\n\nKullanıcı mesajı: "${userMessage}"`;
+
+          const result = await verificationModel.generateContent(verificationPrompt);
+          finalResponse = result.response.text();
+
+          console.log('✅ [Orchestrator] LLM generated verification request:', finalResponse.substring(0, 100));
+        } catch (llmError) {
+          console.error('❌ [Orchestrator] LLM re-prompt failed:', llmError.message);
+          // Fallback - ama bu hardcoded değil, sadece hata durumu için
+          finalResponse = language === 'TR'
+            ? 'Sipariş bilgilerinize erişmek için doğrulama gerekiyor. Lütfen sipariş numaranızı ve telefon numaranızın son 4 hanesini paylaşır mısınız?'
+            : 'Verification is needed to access your order. Please share your order number and the last 4 digits of your phone.';
+        }
+      }
     }
 
     // ========================================

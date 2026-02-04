@@ -394,60 +394,40 @@ export function applyLeakFilter(response, verificationState = 'none', language =
   }
 
   // ============================================
-  // SMART VERIFICATION REQUEST
+  // VERIFICATION REQUIREMENT DETECTION
   // ============================================
-  // Zaten bilinen verilere göre akıllı mesaj üret
+  // Determine what's missing for verification - NO HARDCODED RESPONSES!
+  // LLM will generate natural response based on this guidance
   const hasOrderNumber = !!(collectedData.orderNumber || collectedData.order_number);
   const hasPhone = !!(collectedData.phone || collectedData.last4);
   const hasName = !!(collectedData.name || collectedData.customerName);
 
-  let safeResponse;
   let missingFields = [];
-
-  if (hasOrderNumber && !hasPhone) {
-    // Sipariş no var, telefon yok - sadece telefon sor
-    safeResponse = language === 'TR'
-      ? 'Teşekkürler. Şimdi kimlik doğrulaması için kayıtlı telefon numaranızın son 4 hanesini yazar mısınız?'
-      : 'Thank you. For verification, could you please provide the last 4 digits of your registered phone number?';
-    missingFields = ['phone_last4'];
-  } else if (!hasOrderNumber && hasPhone) {
-    // Telefon var, sipariş no yok - sadece sipariş sor
-    safeResponse = language === 'TR'
-      ? 'Teşekkürler. Sipariş numaranızı paylaşır mısınız?'
-      : 'Thank you. Could you please provide your order number?';
-    missingFields = ['order_number'];
-  } else if (!hasOrderNumber && !hasPhone) {
-    // İkisi de yok - ikisini birden sor
-    safeResponse = language === 'TR'
-      ? 'Bu bilgiyi paylaşabilmem için önce kimliğinizi doğrulamam gerekiyor. Sipariş numaranızı ve kayıtlı telefon numaranızın son 4 hanesini paylaşır mısınız?'
-      : 'I need to verify your identity before sharing this information. Could you provide your order number and the last 4 digits of your registered phone number?';
-    missingFields = ['order_number', 'phone_last4'];
-  } else {
-    // İkisi de var ama hala verified değil - sistem sorunu veya mismatch olabilir
-    safeResponse = language === 'TR'
-      ? 'Doğrulama işlemi tamamlanamadı. Lütfen bilgilerinizi tekrar kontrol edin veya müşteri hizmetlerimizi arayın.'
-      : 'Verification could not be completed. Please check your information or contact customer service.';
-    missingFields = [];
-  }
+  if (!hasOrderNumber) missingFields.push('order_number');
+  if (!hasPhone) missingFields.push('phone_last4');
 
   // Telemetry objesi (debug için - hangi pattern neden trigger etti)
   const telemetry = {
     verificationState,
     reason: 'leak_filter_triggered',
     extractedOrderNo: collectedData.orderNumber || collectedData.order_number || null,
+    hasOrderNumber,
     hasPhone,
     hasName,
     missingFields,
     leakTypes: leaks.map(l => l.type),
-    triggeredPatterns, // NEW: Exactly which patterns matched
+    triggeredPatterns,
     hasPersonalDataLeak
   };
 
+  // Return verification requirement - NOT a hardcoded response
+  // The orchestrator will inject this into LLM context
   return {
     safe: false,
     leaks,
-    sanitized: safeResponse,
-    originalBlocked: true,
+    needsVerification: true,
+    missingFields,
+    // NO sanitized response - LLM will generate natural response
     telemetry
   };
 }
