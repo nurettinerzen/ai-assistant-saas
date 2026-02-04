@@ -131,10 +131,50 @@ export async function applyGuardrails(params) {
     metrics.piiWarnings = piiScan.findings.filter(f => f.severity === 'HIGH').map(f => f.type);
   }
 
+  // ============================================
+  // POLICY 1.45: NOT_FOUND Early Check (P0 - S2 Fix)
+  // Bu kontrol Leak Filter'dan ÖNCE yapılmalı!
+  // Çünkü NOT_FOUND durumunda hassas veri yok, verification gereksiz
+  // ============================================
+  let notFoundOverrideApplied = false;
+  if (toolOutputs.length > 0) {
+    console.log('🔍 [Guardrails] Early NOT_FOUND check (before Leak Filter):', {
+      toolOutputsCount: toolOutputs.length,
+      outcomes: toolOutputs.map(o => o?.outcome)
+    });
+
+    // Sipariş bulunamadı kontrolü - Leak Filter'dan ÖNCE
+    const earlyOrderNotFoundCheck = checkOrderNotFoundPressure(responseText, toolOutputs, language);
+    if (earlyOrderNotFoundCheck.needsOverride) {
+      console.warn(`🔧 [SecurityGateway] Early NOT_FOUND override APPLIED:`, {
+        reason: earlyOrderNotFoundCheck.reason,
+        originalResponse: responseText?.substring(0, 100)
+      });
+      metrics.orderNotFoundOverride = earlyOrderNotFoundCheck.reason;
+      responseText = earlyOrderNotFoundCheck.overrideResponse;
+      notFoundOverrideApplied = true;
+    }
+
+    // Ürün bulunamadı kontrolü de erken yap
+    const earlyProductNotFoundCheck = checkProductNotFound(responseText, toolOutputs, language);
+    if (earlyProductNotFoundCheck.needsOverride) {
+      console.warn(`🔧 [SecurityGateway] Early Product NOT_FOUND override: ${earlyProductNotFoundCheck.reason}`);
+      metrics.productNotFoundOverride = earlyProductNotFoundCheck.reason;
+      responseText = earlyProductNotFoundCheck.overrideResponse;
+      notFoundOverrideApplied = true;
+    }
+  }
+
   // POLICY 1.5: Security Gateway Leak Filter (P0 - Verification-based)
   // Bu en kritik kontrol: verified olmadan hassas veri ASLA çıkamaz
   // collectedData: Zaten bilinen veriler - tekrar sorma (duplicate ask fix)
-  const leakFilterResult = applyLeakFilter(responseText, verificationState, language, collectedData);
+  // NOT_FOUND override yapıldıysa Leak Filter'ı ATLA - hassas veri içermiyor
+  if (notFoundOverrideApplied) {
+    console.log('✅ [SecurityGateway] Skipping Leak Filter - NOT_FOUND override already applied');
+  }
+  const leakFilterResult = notFoundOverrideApplied
+    ? { safe: true } // NOT_FOUND response'u güvenli, Leak Filter'ı atla
+    : applyLeakFilter(responseText, verificationState, language, collectedData);
 
   if (!leakFilterResult.safe) {
     // Telemetry logging
@@ -227,38 +267,21 @@ export async function applyGuardrails(params) {
     }
   }
 
-  // POLICY 1.7: Product/Order Not Found Handler (Kova C - HP-07, HP-18, HP-01)
-  // Ürün/sipariş bulunamadı durumunda deterministik kontrol
-  if (toolOutputs.length > 0) {
-    // DEBUG: Log tool outputs for NOT_FOUND detection
-    console.log('🔍 [Guardrails] Checking tool outputs for NOT_FOUND:', {
-      count: toolOutputs.length,
-      outputs: toolOutputs.map(o => ({
-        name: o?.name,
-        outcome: o?.outcome,
-        hasOutput: !!o?.output,
-        message: o?.message?.substring(0, 50)
-      }))
+  // POLICY 1.7: Product/Order Not Found Handler - MOVED TO POLICY 1.45 (before Leak Filter)
+  // NOT_FOUND kontrolü artık Leak Filter'dan ÖNCE yapılıyor (line 135-165)
+  // Bu blok kaldırıldı çünkü erken kontrol zaten yapıldı
+  // Eski kontrol burada kalırsa duplicate çalışır - gereksiz
+  if (toolOutputs.length > 0 && !notFoundOverrideApplied) {
+    // Sadece erken kontrol yapılmadıysa burada yap (güvenlik için)
+    console.log('🔍 [Guardrails] Late NOT_FOUND check (fallback):', {
+      count: toolOutputs.length
     });
 
-    // Ürün bulunamadı kontrolü
-    const productNotFoundCheck = checkProductNotFound(responseText, toolOutputs, language);
-    if (productNotFoundCheck.needsOverride) {
-      console.warn(`🔧 [SecurityGateway] Product not found override: ${productNotFoundCheck.reason}`);
-      metrics.productNotFoundOverride = productNotFoundCheck.reason;
-      responseText = productNotFoundCheck.overrideResponse;
-    }
-
-    // Sipariş bulunamadı + fabrication kontrolü
-    const orderNotFoundCheck = checkOrderNotFoundPressure(responseText, toolOutputs, language);
-    console.log('🔍 [Guardrails] Order not found check result:', {
-      needsOverride: orderNotFoundCheck.needsOverride,
-      reason: orderNotFoundCheck.reason
-    });
-    if (orderNotFoundCheck.needsOverride) {
-      console.warn(`🔧 [SecurityGateway] Order not found override: ${orderNotFoundCheck.reason}`);
-      metrics.orderNotFoundOverride = orderNotFoundCheck.reason;
-      responseText = orderNotFoundCheck.overrideResponse;
+    const lateOrderNotFoundCheck = checkOrderNotFoundPressure(responseText, toolOutputs, language);
+    if (lateOrderNotFoundCheck.needsOverride) {
+      console.warn(`🔧 [SecurityGateway] Late NOT_FOUND override: ${lateOrderNotFoundCheck.reason}`);
+      metrics.orderNotFoundOverride = lateOrderNotFoundCheck.reason;
+      responseText = lateOrderNotFoundCheck.overrideResponse;
     }
   }
 

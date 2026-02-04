@@ -87,6 +87,23 @@ export async function executeToolLoop(params) {
     // Clear force flag
     delete state.forceToolCall;
 
+    // P0-FIX: ALWAYS collect tool result for guardrails (NOT_FOUND detection etc.)
+    // This was missing before - forceToolCall path never populated toolResults
+    toolResults.push({
+      name: toolName,
+      success: toolResult.success ?? false,
+      output: toolResult.data ?? null,
+      outcome: toolResult.outcome ?? null,
+      message: toolResult.message ?? null
+    });
+
+    console.log(`📊 [ToolLoop-Force] Tool result collected:`, {
+      name: toolName,
+      outcome: toolResult.outcome,
+      success: toolResult.success,
+      hasMessage: !!toolResult.message
+    });
+
     // P0: Handle verification required outcome
     if (toolResult.outcome === 'VERIFICATION_REQUIRED') {
       console.log('🔐 [ToolLoop-Force] Verification required, updating state');
@@ -103,6 +120,13 @@ export async function executeToolLoop(params) {
       responseText = toolResult.message || (language === 'TR'
         ? 'Talebiniz alındı, en kısa sürede size dönüş yapacağız.'
         : 'Your request has been received, we will get back to you shortly.');
+    } else if (toolResult.outcome === 'NOT_FOUND') {
+      // P0-FIX: Handle NOT_FOUND explicitly - this is a valid outcome, not a failure
+      hadToolSuccess = true; // Tool worked correctly, just didn't find data
+      responseText = toolResult.message || (language === 'TR'
+        ? 'Aradığınız kayıt bulunamadı.'
+        : 'The requested record was not found.');
+      console.log(`📭 [ToolLoop-Force] NOT_FOUND outcome for ${toolName}`);
     } else {
       hadToolFailure = true;
       failedTool = toolName;
@@ -119,6 +143,7 @@ export async function executeToolLoop(params) {
       hadToolFailure,
       failedTool,
       toolsCalled,
+      toolResults, // P0-FIX: Include toolResults for guardrails
       iterations: 1,
       chat: null
     };
@@ -249,12 +274,20 @@ export async function executeToolLoop(params) {
       hadToolSuccess = true;
 
       // Collect tool result for guardrails (for NOT_FOUND detection etc.)
+      // P1-FIX: Standardized format - always use explicit null instead of fallbacks
       toolResults.push({
         name: toolName,
-        success: toolResult.success,
-        output: toolResult.data || toolResult,
+        success: toolResult.success ?? false,
+        output: toolResult.data ?? null, // Don't fallback to full toolResult - keep clean
+        outcome: toolResult.outcome ?? null,
+        message: toolResult.message ?? null
+      });
+
+      console.log(`📊 [ToolLoop] Tool result collected:`, {
+        name: toolName,
         outcome: toolResult.outcome,
-        message: toolResult.message
+        success: toolResult.success,
+        hasData: !!toolResult.data
       });
 
       // Store tool result for state updates

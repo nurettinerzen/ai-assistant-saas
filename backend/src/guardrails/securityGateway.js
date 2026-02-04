@@ -610,18 +610,33 @@ export function checkProductNotFound(response, toolOutputs = [], language = 'TR'
  * @returns {Object} { needsOverride, overrideResponse }
  */
 export function checkOrderNotFoundPressure(response, toolOutputs = [], language = 'TR') {
+  // P0-DEBUG: Log input for debugging
+  console.log('🔍 [checkOrderNotFoundPressure] Input:', {
+    responseLength: response?.length || 0,
+    toolOutputsCount: toolOutputs?.length || 0,
+    toolOutputs: toolOutputs?.map(r => ({
+      name: r?.name,
+      outcome: r?.outcome,
+      success: r?.success,
+      hasMessage: !!r?.message
+    }))
+  });
+
   // Tool output'larında order search olup NOT_FOUND dönmüş mü?
   // toolOutputs artık full result objeleri içeriyor: { name, success, output, outcome, message }
   const orderNotFound = toolOutputs.find(result => {
     if (!result) return false;
 
     // Direct outcome check (from toolResult.js - PRIMARY check)
-    if (result.outcome === 'NOT_FOUND') return true;
+    if (result.outcome === 'NOT_FOUND') {
+      console.log('✅ [checkOrderNotFoundPressure] Found NOT_FOUND via direct outcome check');
+      return true;
+    }
 
     // Check nested data in output
     const data = result.output?.truth || result.output?.data || result.output;
 
-    return (
+    const isNotFound = (
       data?.outcome === 'NOT_FOUND' ||
       // Legacy flags
       result.output?.notFound === true ||
@@ -635,6 +650,17 @@ export function checkOrderNotFoundPressure(response, toolOutputs = [], language 
       // Message content check
       /sipariş.*bulunamadı|order.*not.*found|kayıt.*bulunamadı|no.*matching.*record|eşleşen.*bulunamadı/i.test(result.message || data?.message || '')
     );
+
+    if (isNotFound) {
+      console.log('✅ [checkOrderNotFoundPressure] Found NOT_FOUND via nested/legacy check');
+    }
+
+    return isNotFound;
+  });
+
+  console.log('🔍 [checkOrderNotFoundPressure] Detection result:', {
+    orderNotFound: !!orderNotFound,
+    foundInTool: orderNotFound?.name
   });
 
   if (!orderNotFound) {

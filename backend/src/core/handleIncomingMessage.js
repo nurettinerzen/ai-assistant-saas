@@ -453,6 +453,18 @@ export async function handleIncomingMessage({
 
     console.log(`🔄 Tool loop completed: ${iterations} iterations, ${toolsCalled.length} tools called`);
 
+    // P0-DEBUG: Log tool results for NOT_FOUND detection debugging
+    console.log('📊 [ToolLoop] Results summary:', {
+      toolResultsCount: toolLoopResult.toolResults?.length || 0,
+      toolsCalled: toolsCalled,
+      hasNotFoundOutcome: toolLoopResult.toolResults?.some(r => r?.outcome === 'NOT_FOUND') || false,
+      results: toolLoopResult.toolResults?.map(r => ({
+        name: r?.name,
+        outcome: r?.outcome,
+        success: r?.success
+      })) || []
+    });
+
     // ========================================
     // ENUMERATION DEFENSE: Track failed verifications
     // ========================================
