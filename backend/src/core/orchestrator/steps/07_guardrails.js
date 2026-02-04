@@ -230,6 +230,17 @@ export async function applyGuardrails(params) {
   // POLICY 1.7: Product/Order Not Found Handler (Kova C - HP-07, HP-18, HP-01)
   // Ürün/sipariş bulunamadı durumunda deterministik kontrol
   if (toolOutputs.length > 0) {
+    // DEBUG: Log tool outputs for NOT_FOUND detection
+    console.log('🔍 [Guardrails] Checking tool outputs for NOT_FOUND:', {
+      count: toolOutputs.length,
+      outputs: toolOutputs.map(o => ({
+        name: o?.name,
+        outcome: o?.outcome,
+        hasOutput: !!o?.output,
+        message: o?.message?.substring(0, 50)
+      }))
+    });
+
     // Ürün bulunamadı kontrolü
     const productNotFoundCheck = checkProductNotFound(responseText, toolOutputs, language);
     if (productNotFoundCheck.needsOverride) {
@@ -240,8 +251,12 @@ export async function applyGuardrails(params) {
 
     // Sipariş bulunamadı + fabrication kontrolü
     const orderNotFoundCheck = checkOrderNotFoundPressure(responseText, toolOutputs, language);
+    console.log('🔍 [Guardrails] Order not found check result:', {
+      needsOverride: orderNotFoundCheck.needsOverride,
+      reason: orderNotFoundCheck.reason
+    });
     if (orderNotFoundCheck.needsOverride) {
-      console.warn(`🔧 [SecurityGateway] Order not found fabrication override: ${orderNotFoundCheck.reason}`);
+      console.warn(`🔧 [SecurityGateway] Order not found override: ${orderNotFoundCheck.reason}`);
       metrics.orderNotFoundOverride = orderNotFoundCheck.reason;
       responseText = orderNotFoundCheck.overrideResponse;
     }
