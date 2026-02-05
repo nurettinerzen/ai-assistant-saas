@@ -11,6 +11,8 @@ import { applyToolFailPolicy } from '../../../policies/toolFailPolicy.js';
 import { executeToolWithRetry } from '../../../services/tool-fail-handler.js';
 import { executeTool } from '../../../tools/index.js';
 import { getToolExecutionResult, setToolExecutionResult } from '../../../services/tool-idempotency-db.js';
+import { recordNotFound, isSessionBlocked } from '../../../services/enumerationGuard.js';
+import { GENERIC_ERROR_MESSAGES } from '../../../tools/toolResult.js';
 
 const MAX_ITERATIONS = 3;
 
@@ -30,6 +32,25 @@ export async function executeToolLoop(params) {
     metrics,
     effectsEnabled = true // DRY-RUN flag (default: true for backward compat)
   } = params;
+
+  // P0-1 FIX: Check if session is blocked due to enumeration attack
+  const enumerationCheck = isSessionBlocked(sessionId);
+  if (enumerationCheck.blocked) {
+    console.log(`🚫 [ToolLoop] Session blocked due to enumeration attack: ${sessionId}`);
+    return {
+      reply: GENERIC_ERROR_MESSAGES[language] || GENERIC_ERROR_MESSAGES.TR,
+      inputTokens: 0,
+      outputTokens: 0,
+      hadToolSuccess: false,
+      hadToolFailure: true,
+      failedTool: null,
+      toolsCalled: [],
+      toolResults: [],
+      iterations: 0,
+      chat: null,
+      _blocked: 'ENUMERATION_ATTACK'
+    };
+  }
 
   // DRY-RUN MODE: Stub all tools (no side-effects)
   if (!effectsEnabled) {
@@ -320,16 +341,55 @@ export async function executeToolLoop(params) {
         });
       }
 
-      // Build function response for LLM (Gemini format)
-      // ALWAYS include message + outcome so AI has complete context
+      // P0-2 FIX: Handle NOT_FOUND as terminal state - DON'T send to LLM
+      // SECURITY: LLM seeing NOT_FOUND may hallucinate fake data
+      if (toolResult.outcome === 'NOT_FOUND') {
+        console.log(`📭 [ToolLoop] NOT_FOUND terminal state - stopping loop, NOT sending to LLM`);
+
+        // P0-1 FIX: Record NOT_FOUND for enumeration attack detection
+        const enumerationResult = recordNotFound(sessionId, business?.id, toolName);
+        if (enumerationResult.blocked) {
+          console.log(`🚨 [ToolLoop] Session blocked after this NOT_FOUND - enumeration threshold exceeded`);
+        }
+
+        responseText = toolResult.message;
+
+        // Return immediately - don't let LLM generate anything
+        return {
+          reply: responseText,
+          inputTokens: totalInputTokens,
+          outputTokens: totalOutputTokens,
+          hadToolSuccess: true, // Tool worked correctly
+          hadToolFailure: false,
+          failedTool: null,
+          toolsCalled,
+          toolResults,
+          iterations,
+          chat: null, // No chat continuation
+          _terminalState: 'NOT_FOUND', // Flag for debugging
+          _enumerationCount: enumerationResult.count // Track for monitoring
+        };
+      }
+
+      // P0-2 FIX: Strip internal flags from LLM response
+      // SECURITY: outcome, success, notFound flags are internal - LLM shouldn't see them
+      // Only send: message (for context) and data (if verified)
       const responseData = {
-        ...(toolResult.data || {}),
-        outcome: toolResult.outcome || 'OK',
         message: toolResult.message || null
       };
 
-      // Log payload for debugging
-      console.log(`📤 [ToolLoop] functionResponse for ${toolName}:`, JSON.stringify(responseData, null, 2));
+      // Only include data if outcome is OK (verified data)
+      // VERIFICATION_REQUIRED: Don't leak anchor data to LLM
+      if (toolResult.outcome === 'OK' && toolResult.data) {
+        responseData.data = toolResult.data;
+      }
+
+      // Log payload for debugging (show what's stripped)
+      console.log(`📤 [ToolLoop] functionResponse for ${toolName}:`, {
+        originalOutcome: toolResult.outcome,
+        strippedFields: ['outcome', 'success', 'notFound', 'verificationRequired'],
+        sentToLLM: JSON.stringify(responseData)
+      });
 
       functionResponses.push({
         functionResponse: {

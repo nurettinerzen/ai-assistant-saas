@@ -34,6 +34,24 @@ export const ToolOutcome = {
 };
 
 /**
+ * P0-1 FIX: Generic error messages to prevent enumeration attacks
+ *
+ * SECURITY: All NOT_FOUND and VERIFICATION_FAILED responses MUST use these
+ * generic messages. Different messages for different failure types allow
+ * attackers to enumerate valid customer records.
+ *
+ * Example attack:
+ * - "Sipariş bulunamadı" → Order doesn't exist
+ * - "İsim eşleşmiyor" → Order EXISTS but wrong name (customer info leaked!)
+ *
+ * Solution: Always return the same message regardless of failure reason.
+ */
+export const GENERIC_ERROR_MESSAGES = {
+  TR: 'Bu bilgilerle eşleşen bir kayıt bulunamadı. Lütfen bilgilerinizi kontrol edin.',
+  EN: 'No record found matching this information. Please check your details.'
+};
+
+/**
  * Validate a tool result has required fields
  * Logs warning if message is missing (should never happen)
  */

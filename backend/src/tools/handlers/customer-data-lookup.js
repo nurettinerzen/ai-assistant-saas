@@ -68,7 +68,8 @@ import {
   notFound,
   verificationRequired,
   systemError,
-  ToolOutcome
+  ToolOutcome,
+  GENERIC_ERROR_MESSAGES
 } from '../toolResult.js';
 
 /**
@@ -137,17 +138,13 @@ export async function execute(args, business, context = {}) {
           );
         }
       } else {
-        // Verification failed - mark as failed and withhold data
-        console.log('❌ [Verification] Name verification failed');
+        // P0-1 FIX: Use SAME generic message as NOT_FOUND to prevent enumeration
+        // SECURITY: Different error message for verification failure reveals record EXISTS
+        console.log('❌ [Verification] Name verification failed - returning generic error');
         state.verification.status = 'failed';
         state.verification.attempts = (state.verification.attempts || 0) + 1;
 
-        return {
-          outcome: ToolOutcome.VALIDATION_ERROR,
-          success: true,
-          validationError: true,
-          message: verifyResult.message
-        };
+        return notFound(GENERIC_ERROR_MESSAGES[language] || GENERIC_ERROR_MESSAGES.TR);
       }
     }
 
@@ -257,12 +254,10 @@ export async function execute(args, business, context = {}) {
         }
 
         if (!record) {
+          // P0-1 FIX: Use generic message to prevent enumeration attacks
+          // SECURITY: Do NOT reveal that this specific order number doesn't exist
           console.log('📭 [Lookup] Order not found in both CrmOrder and CustomerData');
-          return notFound(
-            language === 'TR'
-              ? `${order_number} numaralı sipariş bulunamadı. Lütfen sipariş numarasını kontrol edin.`
-              : `Order ${order_number} not found. Please check the order number.`
-          );
+          return notFound(GENERIC_ERROR_MESSAGES[language] || GENERIC_ERROR_MESSAGES.TR);
         }
       }
     }
@@ -281,9 +276,8 @@ export async function execute(args, business, context = {}) {
         anchorType = vkn ? 'vkn' : 'tc';
         anchorValue = vkn || tc;
       } else {
-        return notFound(
-          language === 'TR' ? 'Kayıt bulunamadı.' : 'Record not found.'
-        );
+        // P0-1 FIX: Use generic message to prevent enumeration attacks
+        return notFound(GENERIC_ERROR_MESSAGES[language] || GENERIC_ERROR_MESSAGES.TR);
       }
     }
 
@@ -343,10 +337,9 @@ export async function execute(args, business, context = {}) {
 
     // No record found
     if (!record) {
+      // P0-1 FIX: Use generic message to prevent enumeration attacks
       console.log('📭 [Lookup] No record found');
-      return notFound(
-        language === 'TR' ? 'Bilgi bulunamadı.' : 'Information not found.'
-      );
+      return notFound(GENERIC_ERROR_MESSAGES[language] || GENERIC_ERROR_MESSAGES.TR);
     }
 
     // ============================================================================
@@ -409,16 +402,10 @@ export async function execute(args, business, context = {}) {
       const matchResult = verifyAgainstAnchor(anchor, customer_name);
 
       if (!matchResult.matches) {
-        // MISMATCH DETECTED: Wrong name for this record
-        console.log('🔐 [SECURITY] Mismatch detected - provided name does not match record');
-        return {
-          outcome: ToolOutcome.VALIDATION_ERROR,
-          success: true,
-          validationError: true,
-          message: language === 'TR'
-            ? 'Verdiğiniz isim bu sipariş kaydıyla eşleşmiyor. Lütfen bilgilerinizi kontrol edin.'
-            : 'The name you provided does not match this order record. Please check your information.'
-        };
+        // P0-1 FIX: Use SAME generic message as NOT_FOUND to prevent enumeration
+        // SECURITY: "İsim eşleşmiyor" reveals that record EXISTS - information leak!
+        console.log('🔐 [SECURITY] Mismatch detected - returning generic error (same as NOT_FOUND)');
+        return notFound(GENERIC_ERROR_MESSAGES[language] || GENERIC_ERROR_MESSAGES.TR);
       }
 
       // Name matches BUT still require two-step verification (prevent single-shot bypass)
@@ -438,12 +425,10 @@ export async function execute(args, business, context = {}) {
     }
 
     if (verificationCheck.action === 'VERIFICATION_FAILED') {
-      return {
-        outcome: ToolOutcome.VALIDATION_ERROR,
-        success: true, // AI should explain - not a system failure
-        validationError: true,
-        message: verificationCheck.message
-      };
+      // P0-1 FIX: Use SAME generic message as NOT_FOUND to prevent enumeration
+      // SECURITY: Specific verification failure messages reveal record existence
+      console.log('🔐 [Verification] Check failed - returning generic error');
+      return notFound(GENERIC_ERROR_MESSAGES[language] || GENERIC_ERROR_MESSAGES.TR);
     }
 
     // ============================================================================
