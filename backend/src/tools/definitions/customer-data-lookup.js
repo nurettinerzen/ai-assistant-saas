@@ -35,12 +35,19 @@ export default {
 2. Doğrulama: İsim/soyisim sor
 
 GÜVENLİK:
-- Sistem doğrulama isterse müşteriden isim/soyisim veya firma ismi iste
-- TEKRAR bu aracı çağır ve doğrulama bilgisini ekle
+- Sistem doğrulama isterse müşteriden telefon son 4 hanesi VEYA isim iste
+- TEKRAR bu aracı çağır ve verification_input parametresine ekle
+
+DOĞRULAMA AKIŞI:
+1. İlk sorguda sistem "doğrulama gerekli" derse
+2. Müşteriden telefon son 4 hanesi iste (4 haneli sayı)
+3. Tool'u tekrar çağır: verification_input parametresine "8595" gibi 4 haneyi yaz
+4. Eğer telefon yoksa isim/soyisim iste ve verification_input'a yaz
 
 ÖNEMLİ:
 - Her sorgu için SADECE primary bilgiyi sor (önce sipariş no, sonra telefon)
-- Birden fazla seçenek sunma, tek tek sor`,
+- Birden fazla seçenek sunma, tek tek sor
+- 4 haneli sayı = telefon son 4 hanesi (verification_input'a yaz)`,
   parameters: {
     type: 'object',
     properties: {
@@ -71,7 +78,11 @@ GÜVENLİK:
       },
       customer_name: {
         type: 'string',
-        description: 'Müşteri isim/soyisim veya firma ismi - DOĞRULAMA için kullanılır'
+        description: 'Müşteri isim/soyisim veya firma ismi - SADECE isim ile doğrulama gerektiğinde'
+      },
+      verification_input: {
+        type: 'string',
+        description: 'DOĞRULAMA BİLGİSİ: Telefon son 4 hanesi (örn: "8595") VEYA tam isim. 4 haneli sayı = telefon son 4 hane'
       }
     },
     required: ['query_type']

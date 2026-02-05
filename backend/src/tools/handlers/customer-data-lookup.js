@@ -77,10 +77,14 @@ import {
  */
 export async function execute(args, business, context = {}) {
   try {
-    const { query_type, phone, order_number, customer_name, vkn, tc } = args;
+    const { query_type, phone, order_number, customer_name, vkn, tc, verification_input } = args;
     const sessionId = context.sessionId || context.conversationId;
     const language = business.language || 'TR';
     const state = context.state || {};
+
+    // P0-UX FIX: Combine verification inputs - verification_input takes priority
+    // This allows LLM to pass phone last 4 digits OR name for verification
+    const effectiveVerificationInput = verification_input || customer_name;
 
     // SECURITY: Don't log PII (phone, vkn, tc, names)
     console.log('🔍 [CustomerDataLookup-V2] Query:', {
@@ -104,19 +108,17 @@ export async function execute(args, business, context = {}) {
       hasVerification: !!state.verification,
       status: state.verification?.status,
       hasAnchor: !!state.verification?.anchor,
-      hasCustomerName: !!customer_name
+      hasVerificationInput: !!effectiveVerificationInput,
+      verificationInput: effectiveVerificationInput
     });
 
-    if (state.verification?.status === 'pending' && state.verification?.anchor && customer_name) {
-      console.log('🔐 [Verification] Processing pending verification with provided name');
-      console.log('🔐 [Verification] Anchor:', {
-        id: state.verification.anchor.id,
-        name: state.verification.anchor.name,
-        providedName: customer_name
-      });
+    // P0-UX FIX: Process pending verification with ANY verification input (name OR phone_last4)
+    if (state.verification?.status === 'pending' && state.verification?.anchor && effectiveVerificationInput) {
+      console.log('🔐 [Verification] Processing pending verification');
+      console.log('🔐 [Verification] Input:', effectiveVerificationInput, '| Anchor phone:', state.verification.anchor.phone);
 
       const anchor = state.verification.anchor;
-      const verifyResult = checkVerification(anchor, customer_name, query_type, language);
+      const verifyResult = checkVerification(anchor, effectiveVerificationInput, query_type, language);
 
       if (verifyResult.action === 'PROCEED') {
         // Verification successful - mark as verified and return full data
@@ -138,12 +140,27 @@ export async function execute(args, business, context = {}) {
           );
         }
       } else {
-        // P0-1 FIX: Use SAME generic message as NOT_FOUND to prevent enumeration
-        // SECURITY: Different error message for verification failure reveals record EXISTS
-        console.log('❌ [Verification] Name verification failed - returning generic error');
-        state.verification.status = 'failed';
+        // P0-UX FIX: Track attempts and break loop after 2 failures
         state.verification.attempts = (state.verification.attempts || 0) + 1;
+        console.log(`❌ [Verification] Failed - attempt ${state.verification.attempts}`);
 
+        // Loop breaker: After 2 failed attempts, offer alternative
+        if (state.verification.attempts >= 2) {
+          console.log('🔄 [Verification] Max attempts reached - offering alternative');
+          state.verification.status = 'failed';
+
+          // P0-UX: Clear, helpful message after multiple failures
+          return {
+            outcome: ToolOutcome.VALIDATION_ERROR,
+            success: true,
+            message: language === 'TR'
+              ? 'Bilgiler doğrulanamadı. Sipariş numaranızı kontrol edebilir misiniz? Farklı bir sipariş sorgulamak isterseniz sipariş numarasını söyleyin.'
+              : 'Could not verify the information. Can you check your order number? If you want to query a different order, please provide the order number.'
+          };
+        }
+
+        // First failure: Generic message (security) but keep pending
+        // P0-1 FIX: Generic message to prevent enumeration
         return notFound(GENERIC_ERROR_MESSAGES[language] || GENERIC_ERROR_MESSAGES.TR);
       }
     }

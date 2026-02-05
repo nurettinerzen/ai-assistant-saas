@@ -76,13 +76,22 @@ export function checkVerification(anchor, verificationInput, queryType, language
 
   // No verification input provided yet
   if (!verificationInput) {
+    // P0-UX FIX: Ask for phone last 4 digits (simpler for user)
+    // Name verification is a fallback if phone is not available
+    const askFor = anchor.phone ? 'phone_last4' : 'name';
+    const message = anchor.phone
+      ? (language === 'TR'
+        ? 'Kaydınızı buldum. Güvenlik doğrulaması için telefon numaranızın son 4 hanesini söyler misiniz?'
+        : 'I found your record. For security verification, could you please provide the last 4 digits of your phone number?')
+      : (language === 'TR'
+        ? 'Kaydınızı buldum. Güvenlik doğrulaması için isminizi ve soyadınızı söyler misiniz?'
+        : 'I found your record. For security verification, could you please provide your full name?');
+
     return {
       verified: false,
       action: 'REQUEST_VERIFICATION',
-      askFor: 'name',
-      message: language === 'TR'
-        ? 'Kaydınızı buldum. Güvenlik doğrulaması için isminizi ve soyadınızı söyler misiniz?'
-        : 'I found your record. For security verification, could you please provide your full name?',
+      askFor,
+      message,
       anchor: {
         id: anchor.id,
         type: anchor.anchorType,
@@ -125,17 +134,40 @@ export function verifyAgainstAnchor(anchor, input) {
     return { matches: false, reason: 'missing_data' };
   }
 
+  // Normalize input
+  const cleanInput = input.toString().trim();
+  const digitsOnly = cleanInput.replace(/[^\d]/g, '');
+
+  // P0-UX FIX: Check for phone last 4 digits FIRST
+  // If input is exactly 4 digits, check against phone last 4
+  if (digitsOnly.length === 4 && anchor.phone) {
+    const anchorPhoneDigits = anchor.phone.replace(/[^\d]/g, '');
+    const anchorLast4 = anchorPhoneDigits.slice(-4);
+
+    console.log('🔐 [Verification] Checking phone last 4 digits:', {
+      input: digitsOnly,
+      anchorLast4: anchorLast4,
+      matches: digitsOnly === anchorLast4
+    });
+
+    if (digitsOnly === anchorLast4) {
+      return { matches: true, field: 'phone_last4' };
+    }
+    // 4 digits that don't match = verification failed
+    return { matches: false, reason: 'phone_last4_mismatch' };
+  }
+
   // Try name match
   if (anchor.name) {
-    const nameMatches = compareTurkishNames(input, anchor.name);
+    const nameMatches = compareTurkishNames(cleanInput, anchor.name);
     if (nameMatches) {
       return { matches: true, field: 'name' };
     }
   }
 
-  // Try phone match (if input looks like a phone number)
-  if (anchor.phone && /^\d{10,}$/.test(input.replace(/[^\d]/g, ''))) {
-    const phoneMatches = comparePhones(input, anchor.phone);
+  // Try full phone match (if input looks like a full phone number - 10+ digits)
+  if (anchor.phone && digitsOnly.length >= 10) {
+    const phoneMatches = comparePhones(cleanInput, anchor.phone);
     if (phoneMatches) {
       return { matches: true, field: 'phone' };
     }
