@@ -49,7 +49,7 @@ export default function ChatWidgetPage() {
   // Local UI state
   const [isEnabled, setIsEnabled] = useState(false);
   const [position, setPosition] = useState('bottom-right');
-  const [primaryColor, setPrimaryColor] = useState('#6366f1');
+  const [primaryColor, setPrimaryColor] = useState('#00A2B3');
   const [showBranding, setShowBranding] = useState(true);
   const [buttonText, setButtonText] = useState('');
   const [welcomeMessage, setWelcomeMessage] = useState('');
@@ -98,7 +98,7 @@ export default function ChatWidgetPage() {
     if (saved) {
       const settings = JSON.parse(saved);
       setPosition(settings.position || 'bottom-right');
-      setPrimaryColor(settings.primaryColor || '#6366f1');
+      setPrimaryColor(settings.primaryColor || '#00A2B3');
       setShowBranding(settings.showBranding !== undefined ? settings.showBranding : true);
       if (settings.buttonText) setButtonText(settings.buttonText);
       if (settings.welcomeMessage) setWelcomeMessage(settings.welcomeMessage);

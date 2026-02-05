@@ -77,7 +77,7 @@ export default function Home() {
       <ChatWidget
         embedKey={TELYX_EMBED_KEY}
         position="bottom-right"
-        primaryColor="#6366f1"
+        primaryColor="#00A2B3"
         showBranding={false}
         buttonText="Bize Yazın"
       />
