@@ -137,11 +137,16 @@ export async function applyGuardrails(params) {
   // Çünkü NOT_FOUND durumunda hassas veri yok, verification gereksiz
   // ============================================
   let notFoundOverrideApplied = false;
+  let hasNotFoundOutcome = false; // Track if any tool returned NOT_FOUND
+
   if (toolOutputs.length > 0) {
     console.log('🔍 [Guardrails] Early NOT_FOUND check (before Leak Filter):', {
       toolOutputsCount: toolOutputs.length,
       outcomes: toolOutputs.map(o => o?.outcome)
     });
+
+    // Check if any tool returned NOT_FOUND outcome
+    hasNotFoundOutcome = toolOutputs.some(o => o?.outcome === 'NOT_FOUND');
 
     // Sipariş bulunamadı kontrolü - Leak Filter'dan ÖNCE
     const earlyOrderNotFoundCheck = checkOrderNotFoundPressure(responseText, toolOutputs, language);
@@ -168,11 +173,15 @@ export async function applyGuardrails(params) {
   // POLICY 1.5: Security Gateway Leak Filter (P0 - Verification-based)
   // Bu en kritik kontrol: verified olmadan hassas veri ASLA çıkamaz
   // collectedData: Zaten bilinen veriler - tekrar sorma (duplicate ask fix)
-  // NOT_FOUND override yapıldıysa Leak Filter'ı ATLA - hassas veri içermiyor
-  if (notFoundOverrideApplied) {
-    console.log('✅ [SecurityGateway] Skipping Leak Filter - NOT_FOUND override already applied');
+  // NOT_FOUND durumunda Leak Filter'ı ATLA - hassas veri yok, verification gereksiz
+  const shouldSkipLeakFilter = notFoundOverrideApplied || hasNotFoundOutcome;
+  if (shouldSkipLeakFilter) {
+    console.log('✅ [SecurityGateway] Skipping Leak Filter - NOT_FOUND detected:', {
+      notFoundOverrideApplied,
+      hasNotFoundOutcome
+    });
   }
-  const leakFilterResult = notFoundOverrideApplied
+  const leakFilterResult = shouldSkipLeakFilter
     ? { safe: true } // NOT_FOUND response'u güvenli, Leak Filter'ı atla
     : applyLeakFilter(responseText, verificationState, language, collectedData);
 
