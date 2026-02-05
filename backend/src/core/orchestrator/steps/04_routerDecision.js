@@ -103,17 +103,20 @@ export async function makeRoutingDecision(params) {
 
     if (looksLikeVerificationInput) {
       // Looks like actual name/phone input - proceed with verification
-      console.log('🔐 [Verification] Input looks like name - forcing tool call with customer_name');
+      // P0-UX FIX: Use verification_input parameter (supports phone_last4 OR name)
+      console.log('🔐 [Verification] Forcing tool call with verification_input:', {
+        pendingField,
+        input: userMessage.trim()
+      });
       const toolName = state.verification.pendingTool || 'customer_data_lookup';
 
       state.forceToolCall = {
         tool: toolName,
         args: {
-          customer_name: userMessage.trim(),
-          // Preserve original query parameters from anchor
-          ...(state.verification.anchor.order_number && { order_number: state.verification.anchor.order_number }),
-          ...(state.verification.anchor.phone && { phone: state.verification.anchor.phone }),
-          ...(state.verification.anchor.query_type && { query_type: state.verification.anchor.query_type })
+          // P0-UX FIX: Use verification_input for ANY verification data (phone_last4 OR name)
+          verification_input: userMessage.trim(),
+          // Also include query_type from anchor for proper routing
+          query_type: state.verification.anchor.query_type || 'siparis'
         }
       };
 

@@ -363,6 +363,11 @@ export function looksLikeSlotInput(message, expectedSlot) {
       // Looks like phone number
       return /[\d\s\-\(\)]{10,}/.test(trimmed);
 
+    case 'phone_last4':
+      // P0-UX FIX: Exactly 4 digits for phone last 4 verification
+      const digitsOnly = trimmed.replace(/\D/g, '');
+      return digitsOnly.length === 4;
+
     case 'email':
       // Looks like email
       return /@/.test(trimmed);
