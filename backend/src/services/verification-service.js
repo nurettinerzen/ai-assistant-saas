@@ -208,6 +208,7 @@ export function getFullResult(record, queryType, language = 'TR') {
   const redactedCustomFields = redactPII(customFields);
 
   const result = {
+    outcome: 'OK', // S6-FIX: Add outcome for Tool Result Contract compliance
     success: true,
     verified: true,
     data: {
