@@ -510,35 +510,36 @@ export default function ChatWidgetPage() {
 
         {/* Right Column: Embed Code + Instructions + Stats */}
         <div className="space-y-6">
-          {/* Embed Code — collapsible */}
+          {/* Embed Code — preview with expand */}
           <Card className="p-6">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Code className="h-5 w-5 text-primary-600" />
                 <h3 className="text-lg font-semibold">{t('dashboard.chatWidgetPage.embedCode')}</h3>
               </div>
-              <div className="flex items-center gap-2">
-                <Button onClick={copyEmbedCode} variant="outline" size="sm">
-                  <Copy className="h-4 w-4 mr-2" />
-                  {t('dashboard.chatWidgetPage.copy')}
-                </Button>
-                <Button
-                  onClick={() => setShowEmbedCode(!showEmbedCode)}
-                  variant="ghost"
-                  size="sm"
-                >
-                  {showEmbedCode ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                </Button>
-              </div>
+              <Button onClick={copyEmbedCode} variant="outline" size="sm">
+                <Copy className="h-4 w-4 mr-2" />
+                {t('dashboard.chatWidgetPage.copy')}
+              </Button>
             </div>
-            {showEmbedCode && (
-              <div className="mt-4">
-                <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg text-xs overflow-x-auto max-h-64 overflow-y-auto">
-                  <code>{generateEmbedCode()}</code>
-                </pre>
-              </div>
-            )}
-            <p className="text-xs text-gray-500 mt-3">
+            <div className="relative">
+              <pre className={`bg-gray-900 text-gray-100 p-4 rounded-lg text-xs overflow-x-auto transition-all duration-200 ${showEmbedCode ? 'max-h-96 overflow-y-auto' : 'max-h-32 overflow-hidden'}`}>
+                <code>{generateEmbedCode()}</code>
+              </pre>
+              {!showEmbedCode && (
+                <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-gray-900 to-transparent rounded-b-lg" />
+              )}
+            </div>
+            <button
+              onClick={() => setShowEmbedCode(!showEmbedCode)}
+              className="flex items-center gap-1 text-xs text-primary-600 hover:text-primary-700 mt-2 font-medium"
+            >
+              {showEmbedCode ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+              {showEmbedCode
+                ? (locale === 'tr' ? 'Daralt' : 'Collapse')
+                : (locale === 'tr' ? 'Tümünü Göster' : 'Show All')}
+            </button>
+            <p className="text-xs text-gray-500 mt-2">
               {t('dashboard.chatWidgetPage.embedCodeInstructions')}
             </p>
           </Card>
