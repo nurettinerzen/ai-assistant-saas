@@ -38,8 +38,8 @@ export const scenario = {
 
     {
       id: 'S6-T2',
-      description: 'User verifies as Ahmet Yılmaz',
-      userMessage: 'Ahmet Yılmaz',
+      description: 'User verifies with phone last 4 digits',
+      userMessage: '4567',
 
       assertions: [
         {
@@ -73,8 +73,8 @@ export const scenario = {
 
     {
       id: 'S6-T4',
-      description: 'User tries to verify with wrong name (Ahmet instead of Ayşe)',
-      userMessage: 'Ahmet Yılmaz',
+      description: 'User tries to verify with wrong phone last 4 (4567 instead of 4321)',
+      userMessage: '4567',
 
       assertions: [
         {

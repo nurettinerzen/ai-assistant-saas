@@ -42,8 +42,8 @@ export const scenario = {
 
     {
       id: 'S1-T2',
-      description: 'User provides name for verification',
-      userMessage: 'Ahmet Yılmaz',
+      description: 'User provides phone last 4 digits for verification',
+      userMessage: '4567',
 
       assertions: [
         {
