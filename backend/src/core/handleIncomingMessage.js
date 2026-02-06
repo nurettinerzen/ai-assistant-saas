@@ -319,7 +319,14 @@ export async function handleIncomingMessage({
     console.log('\n[STEP 3] Classifying message...');
     let classification = null;
 
-    if (isFeatureEnabled('USE_MESSAGE_TYPE_ROUTING')) {
+    // OPTIMIZATION: Skip classifier when no active flow.
+    // Classifier is only needed to distinguish SLOT_ANSWER vs FOLLOWUP_DISPUTE
+    // during active flows. In idle state, LLM handles everything directly.
+    const needsClassifier = isFeatureEnabled('USE_MESSAGE_TYPE_ROUTING') &&
+      (state.flowStatus === 'in_progress' || state.flowStatus === 'resolved' || state.flowStatus === 'post_result' ||
+       state.verification?.status === 'pending');
+
+    if (needsClassifier) {
       classification = await classifyMessage({
         state,
         conversationHistory,
@@ -333,20 +340,32 @@ export async function handleIncomingMessage({
         console.warn(`⚠️ Classifier ${classification.failureType} - Safe mode activated`);
       }
 
-      // CRITICAL: Update state with extractedSlots for argument normalization
-      if (classification.extractedSlots) {
-        state.extractedSlots = {
-          ...state.extractedSlots,
-          ...classification.extractedSlots
-        };
-        console.log('📝 [Classification] Updated extractedSlots:', state.extractedSlots);
+      // Update state with extractedSlots for argument normalization
+      // GUARD: During verification flow, classifier doesn't understand conversation context
+      // (e.g., "8271" gets classified as order_number when it's actually phone_last4)
+      // LLM handles context correctly via tool calls — don't let classifier corrupt state
+      if (classification.extractedSlots && Object.keys(classification.extractedSlots).length > 0) {
+        const isVerificationPending = state.verificationContext ||
+          state.verification?.status === 'pending' ||
+          state.flowStatus === 'in_progress';
+
+        if (isVerificationPending) {
+          console.log('⚠️ [Classification] Verification in progress — skipping extractedSlots merge to prevent state corruption:', classification.extractedSlots);
+        } else {
+          state.extractedSlots = {
+            ...state.extractedSlots,
+            ...classification.extractedSlots
+          };
+          console.log('📝 [Classification] Updated extractedSlots:', state.extractedSlots);
+        }
       }
     } else {
-      // Fallback: assume high confidence if feature disabled
+      // Idle state: skip classifier, let LLM handle directly
+      console.log('⚡ [Classify] Skipping classifier — no active flow, LLM handles directly');
       classification = {
-        type: 'UNKNOWN',
+        type: 'NEW_INTENT',
         confidence: 0.9,
-        reason: 'Feature disabled'
+        reason: 'Classifier skipped — idle state'
       };
     }
 
@@ -415,7 +434,9 @@ export async function handleIncomingMessage({
       routingResult, // Pass routing result for allowToollessResponse handling
       state,
       toolsAll,
-      metrics
+      metrics,
+      assistant, // CHATTER minimal prompt için
+      business   // CHATTER minimal prompt için
     });
 
     console.log(`🔧 Gated tools: ${gatedTools.length}`);
@@ -572,11 +593,13 @@ export async function handleIncomingMessage({
 
     // Security Gateway için verification bilgilerini hazırla
     const verificationState = state.verification?.status || 'none';
-    const verifiedIdentity = verificationState === 'verified' ? {
-      customerId: state.verification?.customerId,
-      phone: state.verification?.collected?.phone,
-      email: state.verification?.collected?.email,
-      orderId: state.anchor?.order_number
+    const anchor = state.verification?.anchor;
+    const verifiedIdentity = verificationState === 'verified' && anchor ? {
+      customerId: anchor.id,
+      phone: anchor.phone,
+      email: anchor.email,
+      orderId: anchor.value,
+      name: anchor.name
     } : null;
 
     // Tool output'larını topla (identity match + NOT_FOUND detection için)

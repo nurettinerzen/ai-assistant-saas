@@ -1,22 +1,28 @@
 /**
- * Slot Processor
+ * Slot Processor — FORMAT VALIDATOR ONLY
  *
- * Processes user input to fill conversation slots.
- * Each slot type has specific validation and normalization rules.
+ * ARCHITECTURE CHANGE (LLM Authority Refactor):
+ * - This module is now a PURE FORMAT VALIDATOR
+ * - It does NOT decide "what is the user's input" (that's LLM's job)
+ * - It only validates format when explicitly asked
+ * - Normalizers are kept as pure utility functions
  *
- * Returns:
- * - filled: boolean - Whether the slot was successfully filled
- * - slot: string - Slot key to store (camelCase)
- * - value: any - Processed and normalized value
- * - error: string - Error type if not filled
- * - hint: string - User-friendly hint message
+ * What this does:
+ * ✅ Normalize phone numbers (0555... → 90555...)
+ * ✅ Normalize names (Turkish char handling)
+ * ✅ Validate email format
+ * ✅ Normalize order numbers
+ *
+ * What this does NOT do:
+ * ❌ Decide if input is "name" vs "phone" vs "order number"
+ * ❌ Return user-facing hint messages
+ * ❌ Track slot attempts or lock sessions
+ * ❌ Classify input type (looksLikeSlotInput removed)
  */
 
-import { lockSession } from './session-lock.js';
-
 /**
- * Field-specific normalizers
- * CRITICAL: Different fields need different normalization!
+ * Field-specific normalizers — PURE UTILITY
+ * These just normalize format, they don't classify.
  */
 const normalizers = {
   name: (value) => {
@@ -46,7 +52,7 @@ const normalizers = {
       return '90' + digits; // 5551234567 → 905551234567
     }
 
-    return digits; // Return as-is, will fail validation
+    return digits; // Return as-is
   },
 
   email: (value) => {
@@ -63,322 +69,112 @@ const normalizers = {
 };
 
 /**
- * Normalize value for a specific field
+ * Normalize value for a specific field type
+ * Pure utility — call this when you know what the field is.
  */
-function normalize(field, value) {
+export function normalize(field, value) {
+  if (!value) return value;
   const normalizer = normalizers[field];
-  return normalizer ? normalizer(value) : value.trim();
+  return normalizer ? normalizer(String(value)) : String(value).trim();
 }
 
 /**
- * Process slot input based on expected slot type
+ * Validate format of a known field value
  *
- * @param {string} expectedSlot - The slot type being filled
- * @param {string} message - User's input message
- * @returns {Object} Processing result
- */
-/**
- * Process slot input with loop guard
+ * ARCHITECTURE CHANGE: This is called AFTER LLM has already identified
+ * what the value is (e.g., LLM extracted order_number from user message).
+ * Backend only validates the format is correct before using it.
  *
- * @param {string} expectedSlot - Slot to fill
- * @param {string} message - User message
- * @param {Object} state - Current conversation state (for loop guard)
- * @returns {Object} Result
+ * @param {string} fieldType - The field type to validate against
+ * @param {string} value - The value to validate
+ * @returns {Object} { valid: boolean, normalized: string|null, reason: string|null }
  */
-export async function processSlotInput(expectedSlot, message, state = null) {
-  const trimmed = message.trim();
-
-  // ============================================
-  // LOOP GUARD: Check failed attempts
-  // ============================================
-  if (state && state.slotAttempts) {
-    const attempts = state.slotAttempts[expectedSlot] || 0;
-
-    // After 2 failed attempts: more explicit example
-    if (attempts === 2) {
-      console.warn(`⚠️ [Loop Guard] Slot "${expectedSlot}" failed 2 times - giving explicit example`);
-      // Return will include more explicit hint below
-    }
-
-    // After 3 failed attempts: lock session temporarily (10 min)
-    if (attempts >= 3) {
-      console.error(`🚫 [Loop Guard] Slot "${expectedSlot}" failed 3 times - LOCKING SESSION`);
-
-      // Lock session for 10 minutes to prevent infinite loop
-      if (state.sessionId) {
-        await lockSession(state.sessionId, 'LOOP', 10 * 60 * 1000); // 10 minutes
-      }
-
-      return {
-        filled: false,
-        error: 'loop_detected',
-        escalate: true, // Signal to escalate to human/callback
-        locked: true,
-        hint: 'Anlaşılmadı gibi görünüyor. Farklı bir yöntemle doğrulayalım - size geri dönüş yapabilir miyiz?'
-      };
-    }
+export function validateFormat(fieldType, value) {
+  if (!value || !value.trim()) {
+    return { valid: false, normalized: null, reason: 'empty' };
   }
 
-  switch (expectedSlot) {
+  const trimmed = String(value).trim();
+
+  switch (fieldType) {
     case 'order_number': {
-      // Pattern: SP001, ORD-12345, 123456, etc.
-      const orderMatch = trimmed.match(/[A-Z]{0,5}[-]?\d{3,}/i);
-
-      if (orderMatch) {
-        const normalized = normalize('order_number', orderMatch[0]);
-        return {
-          filled: true,
-          slot: 'orderNumber',
-          value: normalized,
-        };
+      // Accept any alphanumeric combo with 3+ digits
+      const hasDigits = /\d{3,}/.test(trimmed);
+      if (hasDigits) {
+        return { valid: true, normalized: normalize('order_number', trimmed) };
       }
-
-      return {
-        filled: false,
-        error: 'invalid_format',
-        hint: 'Sipariş numarası genellikle SP001 veya ORD-12345 gibi görünür. Lütfen tekrar kontrol edin.',
-      };
+      return { valid: false, normalized: null, reason: 'no_digits' };
     }
 
-    case 'ticket_number': {
-      // Pattern: TK001, TICKET-12345, etc.
-      const ticketMatch = trimmed.match(/[A-Z]{0,6}[-]?\d{3,}/i);
-
-      if (ticketMatch) {
-        const normalized = normalize('ticket_number', ticketMatch[0]);
-        return {
-          filled: true,
-          slot: 'ticketNumber',
-          value: normalized,
-        };
+    case 'phone': {
+      const normalized = normalize('phone', trimmed);
+      // Turkish phone: 10-12 digits
+      if (normalized.length >= 10 && normalized.length <= 12) {
+        return { valid: true, normalized };
       }
-
-      return {
-        filled: false,
-        error: 'invalid_format',
-        hint: 'Arıza/servis numaranızı kontrol edip tekrar yazabilir misiniz?',
-      };
+      return { valid: false, normalized: null, reason: 'invalid_length' };
     }
 
     case 'name': {
       const words = trimmed.split(/\s+/).filter(w => w.length > 0);
-
-      // Require at least 2 words (first name + last name)
       if (words.length >= 2) {
-        // Check if words are alphabetic (not numbers)
         const allAlphabetic = words.every(word =>
           /^[a-zA-ZğüşıöçĞÜŞİÖÇ]+$/.test(word)
         );
-
         if (allAlphabetic) {
-          return {
-            filled: true,
-            slot: 'customerName',
-            value: trimmed, // Keep original casing for display
-          };
+          return { valid: true, normalized: trimmed };
         }
-
-        return {
-          filled: false,
-          error: 'invalid_characters',
-          hint: 'İsminiz sadece harflerden oluşmalıdır.',
-        };
+        return { valid: false, normalized: null, reason: 'invalid_characters' };
       }
-
-      return {
-        filled: false,
-        error: 'incomplete',
-        hint: 'İsim ve soyisminizi birlikte yazmanız gerekiyor. Örneğin: Ahmet Yılmaz',
-      };
-    }
-
-    case 'phone': {
-      const phoneMatch = trimmed.match(/[\d\s\-\(\)]{10,}/);
-
-      if (phoneMatch) {
-        const normalized = normalize('phone', phoneMatch[0]);
-
-        // Validate length (should be 12 digits for Turkey: 905xxxxxxxxx)
-        if (normalized.length >= 10 && normalized.length <= 12) {
-          return {
-            filled: true,
-            slot: 'phone',
-            value: normalized,
-          };
-        }
-
-        return {
-          filled: false,
-          error: 'invalid_length',
-          hint: 'Telefon numarası 10-11 haneli olmalıdır. Örneğin: 0555 123 4567',
-        };
-      }
-
-      return {
-        filled: false,
-        error: 'invalid_format',
-        hint: 'Geçerli bir telefon numarası giriniz. Örneğin: 0555 123 4567',
-      };
+      return { valid: false, normalized: null, reason: 'need_full_name' };
     }
 
     case 'email': {
       const emailMatch = trimmed.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
-
       if (emailMatch) {
-        const normalized = normalize('email', emailMatch[0]);
-        return {
-          filled: true,
-          slot: 'email',
-          value: normalized,
-        };
+        return { valid: true, normalized: normalize('email', emailMatch[0]) };
       }
-
-      return {
-        filled: false,
-        error: 'invalid_format',
-        hint: 'Geçerli bir e-posta adresi giriniz. Örneğin: ornek@sirket.com',
-      };
+      return { valid: false, normalized: null, reason: 'invalid_format' };
     }
 
-    case 'complaint_details': {
-      // Require at least 10 characters for complaint
-      if (trimmed.length >= 10) {
-        return {
-          filled: true,
-          slot: 'complaintDetails',
-          value: trimmed,
-        };
+    case 'phone_last4': {
+      const digitsOnly = trimmed.replace(/\D/g, '');
+      if (digitsOnly.length === 4) {
+        return { valid: true, normalized: digitsOnly };
       }
-
-      return {
-        filled: false,
-        error: 'too_short',
-        hint: 'Şikayetinizi biraz daha detaylı anlatır mısınız? Bu şekilde size daha iyi yardımcı olabilirim.',
-      };
-    }
-
-    case 'preferred_date': {
-      // TODO: Implement date parsing
-      // For now, accept any input
-      return {
-        filled: true,
-        slot: 'preferredDate',
-        value: trimmed,
-      };
-    }
-
-    case 'service_type': {
-      // Accept any input
-      return {
-        filled: true,
-        slot: 'serviceType',
-        value: trimmed,
-      };
-    }
-
-    case 'product_name': {
-      if (trimmed.length >= 2) {
-        return {
-          filled: true,
-          slot: 'productName',
-          value: trimmed,
-        };
-      }
-
-      return {
-        filled: false,
-        error: 'too_short',
-        hint: 'Ürün adını biraz daha detaylı yazabilir misiniz?',
-      };
-    }
-
-    case 'sku': {
-      // Product SKU - accept alphanumeric
-      if (trimmed.length >= 2) {
-        return {
-          filled: true,
-          slot: 'sku',
-          value: trimmed.toUpperCase(),
-        };
-      }
-
-      return {
-        filled: false,
-        error: 'too_short',
-        hint: 'Ürün kodunu kontrol edip tekrar yazabilir misiniz?',
-      };
+      return { valid: false, normalized: null, reason: 'need_4_digits' };
     }
 
     default: {
-      // Generic slot - accept any non-empty input
-      if (trimmed.length > 0) {
-        return {
-          filled: true,
-          slot: expectedSlot,
-          value: trimmed,
-        };
-      }
-
-      return {
-        filled: false,
-        error: 'empty',
-        hint: 'Lütfen bir değer girin.',
-      };
+      // Accept any non-empty input for unknown field types
+      return { valid: trimmed.length > 0, normalized: trimmed };
     }
   }
 }
 
 /**
- * Check if a message looks like slot input (not a new topic)
- * Used by topic switch detector to avoid false positives
+ * @deprecated REMOVED — Backend no longer classifies user input.
+ * LLM determines what the user's message represents.
  *
- * @param {string} message - User message
- * @param {string} expectedSlot - Current expected slot
- * @returns {boolean} True if message looks like slot input
+ * Kept as stub for backward compatibility during migration.
  */
 export function looksLikeSlotInput(message, expectedSlot) {
-  const trimmed = message.trim();
-
-  // Short messages are likely slot inputs
-  if (trimmed.length < 20) {
-    return true;
-  }
-
-  // Check for slot-specific patterns
-  switch (expectedSlot) {
-    case 'order_number':
-    case 'ticket_number':
-      // Matches order/ticket number pattern
-      return /[A-Z]{0,6}[-]?\d{3,}/i.test(trimmed);
-
-    case 'name':
-      // 2-4 words, all alphabetic
-      const words = trimmed.split(/\s+/);
-      if (words.length >= 2 && words.length <= 4) {
-        return words.every(w => /^[a-zA-ZğüşıöçĞÜŞİÖÇ]+$/.test(w));
-      }
-      return false;
-
-    case 'phone':
-      // Looks like phone number
-      return /[\d\s\-\(\)]{10,}/.test(trimmed);
-
-    case 'phone_last4':
-      // P0-UX FIX: Exactly 4 digits for phone last 4 verification
-      const digitsOnly = trimmed.replace(/\D/g, '');
-      return digitsOnly.length === 4;
-
-    case 'email':
-      // Looks like email
-      return /@/.test(trimmed);
-
-    default:
-      // For other slots, short message is likely slot input
-      return trimmed.length < 30;
-  }
+  console.warn('⚠️ [DEPRECATED] looksLikeSlotInput called — LLM handles input classification now');
+  return true; // Always return true to not block anything
 }
 
 /**
- * Export normalizers for use in verification
+ * @deprecated REMOVED — Slot processing is now done by LLM.
+ * Use validateFormat() for format validation after LLM extraction.
+ *
+ * Kept as stub for backward compatibility during migration.
  */
-export { normalize };
+export async function processSlotInput(expectedSlot, message, state = null) {
+  console.warn('⚠️ [DEPRECATED] processSlotInput called — use validateFormat() instead');
+  // Return as filled to not block the pipeline
+  return {
+    filled: true,
+    slot: expectedSlot,
+    value: message.trim(),
+  };
+}

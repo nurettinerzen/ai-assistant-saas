@@ -11,8 +11,8 @@
 
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
-import { getDateTimeContext } from '../utils/dateTime.js';
-import { buildAssistantPrompt, getActiveTools as getPromptBuilderTools } from '../services/promptBuilder.js';
+// getDateTimeContext, buildAssistantPrompt: handled by orchestrator Step 2 (02_prepareContext.js)
+import { getActiveTools as getPromptBuilderTools } from '../services/promptBuilder.js';
 import { isFreePlanExpired } from '../middleware/checkPlanExpiry.js';
 import { calculateTokenCost, hasFreeChat } from '../config/plans.js';
 import callAnalysis from '../services/callAnalysis.js';
@@ -21,6 +21,8 @@ import callAnalysis from '../services/callAnalysis.js';
 import { getOrCreateSession } from '../services/session-mapper.js';
 import { getState, updateState } from '../services/state-manager.js';
 import { shouldRunIntentRouter } from '../services/router-decision.js';
+// DEPRECATED: processSlotInput — LLM handles slot processing now (LLM Authority Refactor)
+// Only used in handleMessageLEGACY below
 import { processSlotInput } from '../services/slot-processor.js';
 import { routeIntent } from '../services/intent-router.js';
 import { routeMessage, handleDispute } from '../services/message-router.js';
@@ -32,11 +34,11 @@ import { getFlow, getAllowedTools as getFlowAllowedTools } from '../config/flow-
 import { toolRegistry } from '../services/tool-registry.js';
 import { executeTool } from '../tools/index.js';
 import { ToolOutcome } from '../tools/toolResult.js';
+// DEPRECATED: Verification handler functions — LLM handles verification now (LLM Authority Refactor)
+// needsVerification, isVerified only used in handleMessageLEGACY
 import {
   needsVerification,
   isVerified,
-  startVerification,
-  processVerificationInput
 } from '../services/verification-handler.js';
 
 // NEW: Production guardrails
@@ -67,7 +69,7 @@ const prisma = new PrismaClient();
  * Main message handler with state machine
  * NOW USES CORE ORCHESTRATOR (step-by-step pipeline)
  */
-async function handleMessage(sessionId, businessId, userMessage, systemPrompt, conversationHistory, language, business, assistant, timezone, clientSessionId) {
+async function handleMessage(sessionId, businessId, userMessage, language, business, assistant, timezone, clientSessionId) {
   console.log(`\n📨 [Chat Adapter] Delegating to core orchestrator with sessionId: ${sessionId}`);
 
   // Call core orchestrator (step-by-step pipeline)
@@ -792,6 +794,7 @@ async function handleMessageLEGACY(sessionId, businessId, userMessage, systemPro
  * POST /api/chat/widget - Main chat endpoint
  */
 router.post('/widget', async (req, res) => {
+  const _widgetStart = Date.now();
   console.log('\n\n🆕 ========== NEW CHAT REQUEST ==========');
   console.log('📨 Request body:', req.body);
 
@@ -807,6 +810,7 @@ router.post('/widget', async (req, res) => {
     }
 
     // Get assistant and business
+    let _t = Date.now();
     let assistant;
 
     if (embedKey) {
@@ -857,12 +861,15 @@ router.post('/widget', async (req, res) => {
     const business = assistant.business;
     const language = business?.language || 'TR';
     const timezone = business?.timezone || 'Europe/Istanbul';
+    console.log(`⏱️ [Widget] DB assistant+business: ${Date.now() - _t}ms`); _t = Date.now();
 
     // Check subscription
     const subscription = await prisma.subscription.findUnique({
       where: { businessId: business.id },
       include: { business: true }
     });
+
+    console.log(`⏱️ [Widget] DB subscription: ${Date.now() - _t}ms`); _t = Date.now();
 
     if (subscription && isFreePlanExpired(subscription)) {
       console.log('🚫 Trial expired');
@@ -877,6 +884,7 @@ router.post('/widget', async (req, res) => {
     // NEW: Get or create universal session ID
     const sessionId = await getOrCreateSession(business.id, 'CHAT', clientSessionId || `temp_${Date.now()}`);
     console.log(`🔑 [Session] Universal ID: ${sessionId}, Client ID: ${clientSessionId}`);
+    console.log(`⏱️ [Widget] Session create: ${Date.now() - _t}ms`); _t = Date.now();
 
     // ===== ROUTE-LEVEL GUARD: CHECK SESSION LOCK =====
 
@@ -934,53 +942,31 @@ router.post('/widget', async (req, res) => {
     // If PII warnings (but not locked yet), we'll prepend warnings to response later
     const piiWarnings = getPIIWarningMessages(riskDetection.warnings);
     const hasPIIWarnings = piiWarnings.length > 0;
+    console.log(`⏱️ [Widget] Security guards: ${Date.now() - _t}ms`); _t = Date.now();
 
     // ===== SESSION OK - CONTINUE NORMAL PROCESSING =====
 
-    // Get date/time context
-    const dateTimeContext = getDateTimeContext(timezone, language);
-
-    // Get knowledge base
-    const knowledgeItems = await prisma.knowledgeBase.findMany({
-      where: { businessId: business.id, status: 'ACTIVE' }
-    });
-
-    let knowledgeContext = '';
-    if (knowledgeItems && knowledgeItems.length > 0) {
-      const kbByType = { URL: [], DOCUMENT: [], FAQ: [] };
-
-      for (const item of knowledgeItems) {
-        if (item.type === 'FAQ' && item.question && item.answer) {
-          kbByType.FAQ.push(`S: ${item.question}\nC: ${item.answer}`);
-        } else if (item.content) {
-          kbByType[item.type]?.push(`[${item.title}]: ${item.content.substring(0, 100000)}`);
-        }
-      }
-
-      if (kbByType.FAQ.length > 0) {
-        knowledgeContext += '\n\n## SIK SORULAN SORULAR\n' + kbByType.FAQ.join('\n\n');
-      }
-      if (kbByType.URL.length > 0) {
-        knowledgeContext += '\n\n## WEB SAYFASI İÇERİĞİ\n' + kbByType.URL.join('\n\n');
-      }
-      if (kbByType.DOCUMENT.length > 0) {
-        knowledgeContext += '\n\n## DÖKÜMANLAR\n' + kbByType.DOCUMENT.join('\n\n');
-      }
-    }
-
-    // SECURITY: KB Empty Hard Fallback
+    // SECURITY: KB Empty Hard Fallback (lightweight — COUNT only, no full KB fetch)
     // If KB is empty AND no CRM tools available, return fallback (prevent hallucination)
     const activeToolsList = getPromptBuilderTools(business, business.integrations || []);
     const hasCRMTools = activeToolsList.some(t =>
       t === 'customer_data_lookup' || t === 'check_order_status'
     );
 
-    const isKBEmpty = !knowledgeContext || knowledgeContext.trim().length === 0;
+    const kbCount = await prisma.knowledgeBase.count({
+      where: { businessId: business.id, status: 'ACTIVE' }
+    });
+    const isKBEmpty = kbCount === 0;
 
     // Check if message looks like KB query (not CRM lookup)
     const looksLikeCRMQuery = /sipariş|order|müşteri|customer|takip|tracking|\d{5,}/i.test(message);
 
-    if (isKBEmpty && !hasCRMTools && !looksLikeCRMQuery) {
+    // Greeting/chatter messages should always reach the LLM pipeline
+    const isGreetingOrChatter = /^(merhaba|selam|selamlar|hey|hi|hello|günaydın|iyi\s*(günler|akşamlar)|good\s*(morning|evening)|teşekkür|sağol|tamam|ok)\b/i.test(message.trim());
+
+    console.log(`⏱️ [Widget] KB empty check: ${Date.now() - _t}ms`); _t = Date.now();
+
+    if (isKBEmpty && !hasCRMTools && !looksLikeCRMQuery && !isGreetingOrChatter) {
       console.log('⚠️ KB_EMPTY_FALLBACK: No KB content, no CRM tools, returning hard fallback');
 
       const fallbackMessage = language === 'TR'
@@ -993,34 +979,19 @@ router.post('/widget', async (req, res) => {
       });
     }
 
-    // Build system prompt
-    const systemPromptBase = buildAssistantPrompt(assistant, business, activeToolsList);
-
-    const kbInstruction = knowledgeContext ? (language === 'TR'
-      ? '\n\n## BİLGİ BANKASI: Aşağıdaki bilgileri aktif kullan.'
-      : '\n\n## KNOWLEDGE BASE: Use the information below actively.')
-      : '';
-
-    const fullSystemPrompt = `${dateTimeContext}\n\n${systemPromptBase}${kbInstruction}${knowledgeContext}`;
-
-    // Get conversation history (simplified for now - using ChatLog)
-    const chatLog = await prisma.chatLog.findUnique({
-      where: { sessionId },
-      select: { messages: true }
-    });
-
-    const conversationHistory = chatLog?.messages || [];
+    // NOTE: System prompt, KB retrieval, chatLog, dateTimeContext are all handled
+    // by orchestrator Steps 1-2. No need to duplicate here.
 
     // Handle message with state machine (using core orchestrator)
     // Widget timeout: Generous to avoid premature timeouts
-    const WIDGET_TOTAL_TIMEOUT_MS = 15000; // 15s max total (includes classifier + LLM)
+    const WIDGET_TOTAL_TIMEOUT_MS = 30000; // 30s max total (LLM + tools)
+
+    console.log(`⏱️ [Widget] Pre-orchestrator: ${Date.now() - _widgetStart}ms`);
 
     const handleMessagePromise = handleMessage(
       sessionId,
       business.id,
       message,
-      fullSystemPrompt,
-      conversationHistory,
       language,
       business,
       assistant,
@@ -1077,25 +1048,11 @@ router.post('/widget', async (req, res) => {
 
     console.log(`💰 Cost: ${tokenCost.totalCost.toFixed(6)} TL`);
 
-    // Update chat log
-    const updatedMessages = [
-      ...conversationHistory,
-      {
-        role: 'user',
-        content: message,
-        timestamp: new Date().toISOString()
-      },
-      {
-        role: 'assistant',
-        content: result.reply,
-        timestamp: new Date().toISOString(),
-        ...(result.toolsCalled?.length > 0 && { toolCalls: result.toolsCalled })
-      }
-    ];
-
+    // NOTE: Chat messages are already persisted by orchestrator Step 8 (08_persistAndMetrics.js)
+    // Here we only update token/cost tracking fields
     const existingLog = await prisma.chatLog.findUnique({
       where: { sessionId },
-      select: { inputTokens: true, outputTokens: true, totalCost: true }
+      select: { inputTokens: true, outputTokens: true, totalCost: true, messages: true }
     });
 
     const accumulatedInputTokens = (existingLog?.inputTokens || 0) + result.inputTokens;
@@ -1109,16 +1066,14 @@ router.post('/widget', async (req, res) => {
         businessId: business.id,
         assistantId: assistant.id,
         channel: 'CHAT',
-        messageCount: updatedMessages.length,
-        messages: updatedMessages,
+        messageCount: existingLog?.messages?.length || 0,
+        messages: existingLog?.messages || [],
         status: 'active',
         inputTokens: result.inputTokens,
         outputTokens: result.outputTokens,
         totalCost: tokenCost.totalCost
       },
       update: {
-        messageCount: updatedMessages.length,
-        messages: updatedMessages,
         inputTokens: accumulatedInputTokens,
         outputTokens: accumulatedOutputTokens,
         totalCost: accumulatedCost,
@@ -1186,7 +1141,7 @@ router.post('/widget', async (req, res) => {
       messageId: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`, // P0: messageId for audit trail
       sessionId: sessionId, // Keep for backward compatibility
       assistantName: assistant.name,
-      history: updatedMessages,
+      history: existingLog?.messages || [],
       verificationStatus: updatedState.verification?.status || 'none', // P0: Gate requirement for verification tests
       warnings: hasPIIWarnings ? piiWarnings : undefined,
       toolsCalled: result.toolsCalled || [], // For test assertions (deprecated, use toolCalls)

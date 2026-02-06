@@ -86,88 +86,17 @@ export async function executeToolLoop(params) {
   let responseText = '';
 
   // ========================================
-  // FORCE TOOL CALL: Skip LLM, call tool directly
+  // ARCHITECTURE CHANGE: forceToolCall REMOVED
   // ========================================
+  // Previously, backend would skip LLM and call tools directly (forceToolCall).
+  // This meant LLM never saw the conversation and couldn't produce natural responses.
+  // Now ALL tool calls go through LLM's function calling mechanism.
+  // LLM sees context → decides to call tool → gets result → writes natural response.
+  //
+  // If state.forceToolCall exists from old code paths, log warning and ignore.
   if (state.forceToolCall) {
-    const { tool: toolName, args: forcedArgs } = state.forceToolCall;
-    console.log(`🔧 [ToolLoop] FORCE TOOL CALL: ${toolName}`);
-
-    toolsCalled.push(toolName);
-
-    // Execute tool
-    const toolResult = await executeTool(toolName, forcedArgs, business, {
-      state,
-      language,
-      sessionId,
-      messageId,
-      channel,
-      conversationHistory,
-      extractedSlots: state.extractedSlots || {}
-    });
-
-    // Clear force flag
+    console.warn('⚠️ [ToolLoop] DEPRECATED: state.forceToolCall detected but IGNORED. LLM handles tool calls now.');
     delete state.forceToolCall;
-
-    // P0-FIX: ALWAYS collect tool result for guardrails (NOT_FOUND detection etc.)
-    // This was missing before - forceToolCall path never populated toolResults
-    toolResults.push({
-      name: toolName,
-      success: toolResult.success ?? false,
-      output: toolResult.data ?? null,
-      outcome: toolResult.outcome ?? null,
-      message: toolResult.message ?? null
-    });
-
-    console.log(`📊 [ToolLoop-Force] Tool result collected:`, {
-      name: toolName,
-      outcome: toolResult.outcome,
-      success: toolResult.success,
-      hasMessage: !!toolResult.message
-    });
-
-    // P0: Handle verification required outcome
-    if (toolResult.outcome === 'VERIFICATION_REQUIRED') {
-      console.log('🔐 [ToolLoop-Force] Verification required, updating state');
-      state.verification = state.verification || { status: 'none', attempts: 0 };
-      state.verification.status = 'pending';
-      state.verification.pendingField = toolResult.data?.askFor || 'name';
-      state.verification.anchor = toolResult.data?.anchor;
-      state.verification.attempts = 0;
-      hadToolSuccess = true;
-      responseText = toolResult.message;
-      console.log('🔐 [ToolLoop-Force] Verification state updated');
-    } else if (toolResult.outcome === 'OK') {
-      hadToolSuccess = true;
-      responseText = toolResult.message || (language === 'TR'
-        ? 'Talebiniz alındı, en kısa sürede size dönüş yapacağız.'
-        : 'Your request has been received, we will get back to you shortly.');
-    } else if (toolResult.outcome === 'NOT_FOUND') {
-      // P0-FIX: Handle NOT_FOUND explicitly - this is a valid outcome, not a failure
-      hadToolSuccess = true; // Tool worked correctly, just didn't find data
-      responseText = toolResult.message || (language === 'TR'
-        ? 'Aradığınız kayıt bulunamadı.'
-        : 'The requested record was not found.');
-      console.log(`📭 [ToolLoop-Force] NOT_FOUND outcome for ${toolName}`);
-    } else {
-      hadToolFailure = true;
-      failedTool = toolName;
-      responseText = toolResult.message || (language === 'TR'
-        ? 'İşlem sırasında bir sorun oluştu.'
-        : 'An error occurred during processing.');
-    }
-
-    return {
-      reply: responseText,
-      inputTokens: 0, // No LLM call
-      outputTokens: 0,
-      hadToolSuccess,
-      hadToolFailure,
-      failedTool,
-      toolsCalled,
-      toolResults, // P0-FIX: Include toolResults for guardrails
-      iterations: 1,
-      chat: null
-    };
   }
 
   // Send initial message to LLM
@@ -352,7 +281,7 @@ export async function executeToolLoop(params) {
           console.log(`🚨 [ToolLoop] Session blocked after this NOT_FOUND - enumeration threshold exceeded`);
         }
 
-        responseText = toolResult.message;
+        responseText = toolResult.message || GENERIC_ERROR_MESSAGES[language] || GENERIC_ERROR_MESSAGES.TR;
 
         // Return immediately - don't let LLM generate anything
         return {
@@ -368,6 +297,28 @@ export async function executeToolLoop(params) {
           chat: null, // No chat continuation
           _terminalState: 'NOT_FOUND', // Flag for debugging
           _enumerationCount: enumerationResult.count // Track for monitoring
+        };
+      }
+
+      // Handle VALIDATION_ERROR as terminal state (e.g., verification failed after max attempts)
+      // Don't send to LLM — use the tool's message directly
+      if (toolResult.outcome === 'VALIDATION_ERROR') {
+        console.log(`⚠️ [ToolLoop] VALIDATION_ERROR terminal state - stopping loop`);
+
+        responseText = toolResult.message || GENERIC_ERROR_MESSAGES[language] || GENERIC_ERROR_MESSAGES.TR;
+
+        return {
+          reply: responseText,
+          inputTokens: totalInputTokens,
+          outputTokens: totalOutputTokens,
+          hadToolSuccess: true,
+          hadToolFailure: false,
+          failedTool: null,
+          toolsCalled,
+          toolResults,
+          iterations,
+          chat: null,
+          _terminalState: 'VALIDATION_ERROR'
         };
       }
 
@@ -418,12 +369,13 @@ export async function executeToolLoop(params) {
     console.warn(`⚠️ [ToolLoop] Empty response after tool loop, extracted: "${responseText.substring(0, 50)}..."`);
   }
 
-  // FINAL FALLBACK: If still empty, return a safe message
+  // FINAL FALLBACK: If still empty, return a user-friendly message
+  // NOTE: This should never happen — if it does, it's a bug to investigate
   if (!responseText) {
     console.error('❌ [ToolLoop] CRITICAL: No response text after all attempts');
     responseText = language === 'TR'
-      ? 'Talebinizi işledim ama bir cevap oluşturamadım. Lütfen tekrar deneyin.'
-      : 'I processed your request but could not generate a response. Please try again.';
+      ? 'Bir sorun oluştu. Lütfen tekrar deneyin veya farklı bir şekilde sorunuzu iletin.'
+      : 'Something went wrong. Please try again or rephrase your question.';
   }
 
   return {

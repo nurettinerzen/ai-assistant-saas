@@ -174,11 +174,21 @@ export async function applyGuardrails(params) {
   // Bu en kritik kontrol: verified olmadan hassas veri ASLA çıkamaz
   // collectedData: Zaten bilinen veriler - tekrar sorma (duplicate ask fix)
   // NOT_FOUND durumunda Leak Filter'ı ATLA - hassas veri yok, verification gereksiz
-  const shouldSkipLeakFilter = notFoundOverrideApplied || hasNotFoundOutcome;
+  // ARCHITECTURE CHANGE: Leak Filter sadece tool başarılı olup gerçek veri döndüğünde çalışsın
+  // - Tool çağrılmadıysa: ortada veri yok, LLM kendi bilgisiyle konuşuyor
+  // - Tool çağrıldı ama başarısız olduysa (NOT_FOUND, VALIDATION_ERROR): ortada veri yok
+  // - Tool çağrıldı ve başarılıysa: gerçek müşteri verisi var, filter gerekli
+  const noToolsCalled = !toolsCalled || toolsCalled.length === 0;
+  const hasSuccessfulDataTool = toolOutputs.some(o =>
+    o?.outcome === 'OK' && o?.success === true
+  );
+  const shouldSkipLeakFilter = notFoundOverrideApplied || hasNotFoundOutcome || noToolsCalled || !hasSuccessfulDataTool;
   if (shouldSkipLeakFilter) {
-    console.log('✅ [SecurityGateway] Skipping Leak Filter - NOT_FOUND detected:', {
+    console.log('✅ [SecurityGateway] Skipping Leak Filter:', {
       notFoundOverrideApplied,
-      hasNotFoundOutcome
+      hasNotFoundOutcome,
+      noToolsCalled,
+      hasSuccessfulDataTool
     });
   }
   const leakFilterResult = shouldSkipLeakFilter
@@ -233,8 +243,27 @@ export async function applyGuardrails(params) {
 
   // POLICY 1.6: Security Gateway Identity Match (eğer tool output varsa)
   // verifiedIdentity vs requestedRecord owner karşılaştırması
+  //
+  // IMPORTANT: Tool handler already performs anchor-based verification.
+  // When tool returns outcome=OK + success=true, the data is already verified.
+  // PII-redacted tool output (masked phone/email) cannot be compared to plain
+  // anchor data — this causes false IDENTITY_MISMATCH. Skip for verified tools.
   if (toolOutputs.length > 0 && verifiedIdentity) {
     for (const output of toolOutputs) {
+      // SKIP: Tool already verified this data (anchor-based verification passed)
+      // Tool output contains PII-redacted data (e.g. 559******8271) which can't
+      // be compared to plain identity from anchor (e.g. 5592348271)
+      if (output.outcome === 'OK' && output.success === true) {
+        console.log('✅ [SecurityGateway] Skipping identity match - tool already verified (outcome=OK)');
+        continue;
+      }
+
+      // SKIP: NOT_FOUND means no record was returned — nothing to compare
+      if (output.outcome === 'NOT_FOUND') {
+        console.log('✅ [SecurityGateway] Skipping identity match - NOT_FOUND (no record to compare)');
+        continue;
+      }
+
       const requestedRecord = extractRecordOwner(output);
       const requestedFields = extractFieldsFromToolOutput(output);
 

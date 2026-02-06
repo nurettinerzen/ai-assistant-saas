@@ -112,26 +112,41 @@ export async function execute(args, business, context = {}) {
       verificationInput: effectiveVerificationInput
     });
 
-    // P0-UX FIX: Process pending verification with ANY verification input (name OR phone_last4)
-    if (state.verification?.status === 'pending' && state.verification?.anchor && effectiveVerificationInput) {
-      console.log('🔐 [Verification] Processing pending verification');
+    // P0-UX FIX: Process verification with ANY verification input (name OR phone_last4)
+    // RECOVERY: Also handle 'failed' status — if user provides correct input, forgive past mistakes
+    const isVerificationActive = state.verification?.status === 'pending' || state.verification?.status === 'failed';
+    if (isVerificationActive && state.verification?.anchor && effectiveVerificationInput) {
+      console.log('🔐 [Verification] Processing verification (status:', state.verification.status, ')');
       console.log('🔐 [Verification] Input:', effectiveVerificationInput, '| Anchor phone:', state.verification.anchor.phone);
+
+      // RECOVERY: If status was 'failed', reset to 'pending' to allow retry
+      if (state.verification.status === 'failed') {
+        console.log('🔄 [Verification] Recovery: resetting failed → pending for retry');
+        state.verification.status = 'pending';
+      }
 
       const anchor = state.verification.anchor;
       const verifyResult = checkVerification(anchor, effectiveVerificationInput, query_type, language);
 
       if (verifyResult.action === 'PROCEED') {
         // Verification successful - mark as verified and return full data
-        console.log('✅ [Verification] Name verified successfully');
+        console.log('✅ [Verification] Verified successfully');
         state.verification.status = 'verified';
+        state.verification.attempts = 0;
 
-        // Fetch the full record using anchor ID
-        const verifiedRecord = await prisma.customerData.findUnique({
-          where: { id: anchor.id }
-        });
+        // Fetch the full record using anchor ID from the CORRECT table
+        const table = anchor.sourceTable || 'CustomerData';
+        console.log('🔍 [Verification] Fetching verified record from:', table, 'id:', anchor.id);
+
+        let verifiedRecord;
+        if (table === 'CrmOrder') {
+          verifiedRecord = await prisma.crmOrder.findUnique({ where: { id: anchor.id } });
+        } else {
+          verifiedRecord = await prisma.customerData.findUnique({ where: { id: anchor.id } });
+        }
 
         if (verifiedRecord) {
-          return getFullResult(verifiedRecord, language);
+          return getFullResult(verifiedRecord, query_type, language);
         } else {
           return systemError(
             language === 'TR'
@@ -144,10 +159,10 @@ export async function execute(args, business, context = {}) {
         state.verification.attempts = (state.verification.attempts || 0) + 1;
         console.log(`❌ [Verification] Failed - attempt ${state.verification.attempts}`);
 
-        // Loop breaker: After 2 failed attempts, offer alternative
+        // Loop breaker: After 2 CONSECUTIVE failed attempts, offer alternative
+        // NOTE: Status stays 'pending' — next correct input will still be accepted
         if (state.verification.attempts >= 2) {
-          console.log('🔄 [Verification] Max attempts reached - offering alternative');
-          state.verification.status = 'failed';
+          console.log('🔄 [Verification] Max attempts reached - offering alternative but keeping recoverable');
 
           // P0-UX: Clear, helpful message after multiple failures
           return {
@@ -172,6 +187,7 @@ export async function execute(args, business, context = {}) {
     let record = null;
     let anchorType = null;
     let anchorValue = null;
+    let sourceTable = 'CustomerData'; // Track which DB table the record came from
 
     // Strategy 1: Order number
     if (order_number) {
@@ -219,6 +235,7 @@ export async function execute(args, business, context = {}) {
         record = crmOrder;
         anchorType = 'order';
         anchorValue = crmOrder.orderNumber;
+        sourceTable = 'CrmOrder';
       } else {
         // Try CustomerData (first check orderNo field, then customFields)
         console.log('🔍 [Lookup] Not in CrmOrder, searching CustomerData...');
@@ -343,6 +360,7 @@ export async function execute(args, business, context = {}) {
         if (crmOrder) {
           console.log('✅ [Lookup] Found CRM order by phone:', crmOrder.orderNumber);
           record = crmOrder;
+          sourceTable = 'CrmOrder';
         }
       }
 
@@ -363,8 +381,8 @@ export async function execute(args, business, context = {}) {
     // STEP 2: CHECK VERIFICATION
     // ============================================================================
 
-    const anchor = createAnchor(record, anchorType, anchorValue);
-    console.log('🔐 [Anchor] Created:', { type: anchor.anchorType, value: anchor.anchorValue, name: anchor.name });
+    const anchor = createAnchor(record, anchorType, anchorValue, sourceTable);
+    console.log('🔐 [Anchor] Created:', { type: anchor.anchorType, value: anchor.anchorValue, name: anchor.name, sourceTable: anchor.sourceTable });
 
     // P0 SECURITY: Detect identity switch (anchor change within session)
     // If user switches to a different customer mid-conversation, require new verification
@@ -399,7 +417,8 @@ export async function execute(args, business, context = {}) {
             value: anchor.anchorValue,
             name: anchor.name,
             phone: anchor.phone,
-            email: anchor.email
+            email: anchor.email,
+            sourceTable: anchor.sourceTable
           }
         }
       );
@@ -465,9 +484,10 @@ export async function execute(args, business, context = {}) {
         value: anchor.anchorValue,
         name: anchor.name,
         phone: anchor.phone,
-        email: anchor.email
+        email: anchor.email,
+        sourceTable: anchor.sourceTable
       };
-      console.log('🔐 [Security] Anchor saved to state:', { id: anchor.id, name: anchor.name });
+      console.log('🔐 [Security] Anchor saved to state:', { id: anchor.id, name: anchor.name, sourceTable: anchor.sourceTable });
 
       const result = getFullResult(record, query_type, language);
       return ok(result.data, result.message);

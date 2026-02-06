@@ -13,7 +13,7 @@
 
 import { classifyMessageType } from './message-type-classifier.js';
 import { routeIntent } from './intent-router.js';
-import { processSlotInput } from './slot-processor.js';
+// REMOVED: processSlotInput — LLM handles slot processing now (LLM Authority Refactor)
 import { getFlow } from '../config/flow-definitions.js';
 
 /**
@@ -26,15 +26,22 @@ import { getFlow } from '../config/flow-definitions.js';
  * @param {Object} business - Business object
  * @returns {Promise<Object>} Routing decision
  */
-export async function routeMessage(userMessage, state, lastAssistantMessage, language, business) {
-  // Step 1: Classify message type
-  const messageType = await classifyMessageType(state, lastAssistantMessage, userMessage, language);
+export async function routeMessage(userMessage, state, lastAssistantMessage, language, business, existingClassification = null) {
+  // Step 1: Use existing classification from Step 3 if available (avoid double Gemini call)
+  const messageType = existingClassification || await classifyMessageType(state, lastAssistantMessage, userMessage, language);
 
-  console.log('📨 Message classification:', {
-    type: messageType.type,
-    confidence: messageType.confidence,
-    reason: messageType.reason
-  });
+  if (existingClassification) {
+    console.log('📨 Message classification (REUSED from Step 3):', {
+      type: messageType.type,
+      confidence: messageType.confidence
+    });
+  } else {
+    console.log('📨 Message classification:', {
+      type: messageType.type,
+      confidence: messageType.confidence,
+      reason: messageType.reason
+    });
+  }
 
   // Step 2: Route based on message type + state
   const routing = decideRouting(messageType, state, business);
@@ -173,12 +180,11 @@ function decideRouting(messageType, state, business) {
 }
 
 /**
- * Handle FOLLOWUP_DISPUTE routing with evidence check
+ * Handle FOLLOWUP_DISPUTE routing
  *
- * SMART ROUTING:
- * 1. If tracking info available → share tracking + offer callback
- * 2. If no tracking but can lookup → try lookup first
- * 3. Otherwise → complaint/callback
+ * ARCHITECTURE CHANGE: No more directResponse templates.
+ * LLM sees the anchor/truth data in conversation context and responds naturally.
+ * Backend only provides routing metadata.
  *
  * @param {string} userMessage
  * @param {Object} state
@@ -193,18 +199,14 @@ export async function handleDispute(userMessage, state, language, business) {
   const hasTrackingInfo = truth?.order?.trackingNumber && truth?.order?.carrier;
   const hasOrderNumber = truth?.order?.orderNumber || state.anchor?.order_number;
 
-  // CASE 1: Order dispute with tracking info
+  // CASE 1: Order dispute with tracking info — LLM will use anchor data
   if (truth?.dataType === 'order' && hasTrackingInfo) {
-    console.log('📦 [Dispute] Has tracking info - offering tracking + callback option');
+    console.log('📦 [Dispute] Has tracking info — LLM will present naturally');
 
     return {
       intent: 'tracking_info',
-      shouldStartFlow: false, // Don't start new flow
-      directResponse: true,
-      response: language === 'TR'
-        ? `Kargo takip bilgileriniz:\nTakip No: ${truth.order.trackingNumber}\nKargo Şirketi: ${truth.order.carrier}\n\nDetaylı bilgi için kargo firmasını arayabilir veya isterseniz sizin için bir geri arama talebi oluşturabilirim.`
-        : `Tracking information:\nTracking #: ${truth.order.trackingNumber}\nCarrier: ${truth.order.carrier}\n\nYou can contact the carrier or I can create a callback request for you.`,
-      // Offer callback as option
+      shouldStartFlow: false,
+      directResponse: false, // CHANGED: LLM responds with anchor context
       suggestCallback: true,
       preserveAnchor: true
     };
@@ -212,7 +214,7 @@ export async function handleDispute(userMessage, state, language, business) {
 
   // CASE 2: Order dispute but can lookup tracking
   if (truth?.dataType === 'order' && hasOrderNumber && !hasTrackingInfo) {
-    console.log('🔍 [Dispute] No tracking - suggesting lookup');
+    console.log('🔍 [Dispute] No tracking — LLM will suggest lookup');
 
     return {
       intent: 'order_status',
@@ -223,22 +225,22 @@ export async function handleDispute(userMessage, state, language, business) {
         isDispute: true
       },
       tools: ['customer_data_lookup'],
-      requiresVerification: false, // Already verified from previous flow
+      requiresVerification: false,
       preserveAnchor: true
     };
   }
 
-  // CASE 3: Default - Complaint/Callback
-  console.log('📞 [Dispute] No tracking info - routing to complaint/callback');
+  // CASE 3: Default — Complaint/Callback, LLM handles conversation
+  console.log('📞 [Dispute] No tracking info — LLM routes to complaint/callback');
 
   return {
     intent: 'complaint',
     shouldStartFlow: true,
     flowName: 'COMPLAINT',
     context: {
-      originalFlow: state.anchor.lastFlowType,
+      originalFlow: state.anchor?.lastFlowType,
       orderNumber: hasOrderNumber,
-      customerId: state.anchor.customer_id,
+      customerId: state.anchor?.customer_id,
       disputeReason: userMessage
     },
     tools: ['create_callback', 'customer_data_lookup'],

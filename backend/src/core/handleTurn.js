@@ -19,6 +19,8 @@ import { getState, updateState } from '../services/state-manager.js';
 import { classifyMessageType } from '../services/message-type-classifier.js';
 import { routeMessage, handleDispute } from '../services/message-router.js';
 import { routeIntent } from '../services/intent-router.js';
+// DEPRECATED: processSlotInput is now a stub (LLM Authority Refactor)
+// This legacy handler still calls it but the new orchestrator pipeline doesn't
 import { processSlotInput } from '../services/slot-processor.js';
 import { getFlow } from '../config/flow-definitions.js';
 import { isFeatureEnabled } from '../config/feature-flags.js';

@@ -40,18 +40,18 @@ export function requiresVerification(queryType) {
  * @param {Object} record - The found database record (order, customer, ticket, etc.)
  * @param {string} anchorType - Type of anchor: 'order', 'ticket', 'vkn', 'tc'
  * @param {string} anchorValue - The identifying value (order number, ticket number, etc.)
+ * @param {string} sourceTable - DB table the record came from: 'CrmOrder' | 'CustomerData'
  * @returns {Object} Anchor object with verification data
  */
-export function createAnchor(record, anchorType, anchorValue) {
-  // P0 FIX: Prioritize contactName (person name) over companyName for verification
-  // contactName is used for identity verification, companyName is business name
+export function createAnchor(record, anchorType, anchorValue, sourceTable = 'CustomerData') {
   return {
     id: record.id,
     name: record.customerName || record.contactName || record.companyName,
     phone: record.customerPhone || record.phone,
     email: record.customerEmail || record.email,
     anchorType,
-    anchorValue
+    anchorValue,
+    sourceTable
   };
 }
 
@@ -96,9 +96,10 @@ export function checkVerification(anchor, verificationInput, queryType, language
         id: anchor.id,
         type: anchor.anchorType,
         value: anchor.anchorValue,
-        name: anchor.name, // P0 FIX: Include name for verification matching
+        name: anchor.name,
         phone: anchor.phone,
-        email: anchor.email
+        email: anchor.email,
+        sourceTable: anchor.sourceTable
       }
     };
   }

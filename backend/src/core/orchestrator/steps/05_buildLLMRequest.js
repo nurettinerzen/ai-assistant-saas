@@ -21,7 +21,9 @@ export async function buildLLMRequest(params) {
     routingResult,
     state,
     toolsAll,
-    metrics
+    metrics,
+    assistant,
+    business
   } = params;
 
   // STEP 0: Enhance system prompt with known customer info
@@ -49,53 +51,119 @@ export async function buildLLMRequest(params) {
     }
   }
 
-  // STEP 0.5: Add toolless response guidance for CHATTER messages
-  if (routingResult?.routing?.allowToollessResponse) {
-    const toollessGuidance = state.language === 'TR'
-      ? `\n\n⚠️ ÖNEMLİ: Bu bir sohbet/selamlama mesajı olabilir.
-Basit mesajlara (selam, merhaba, teşekkürler, nasılsın, naber vs.)
-tool çağırmadan doğal ve samimi şekilde cevap verebilirsin.
-Tool çağırmak ZORUNLU DEĞİL - mesajın doğasına göre karar ver.
+  // ========================================
+  // ARCHITECTURE CHANGE: Inject verification & dispute context for LLM
+  // ========================================
+  // LLM now handles verification conversation naturally.
+  // We inject context so it knows what's pending.
+  if (state.verificationContext) {
+    const vc = state.verificationContext;
+    const verificationGuidance = `
 
-Ancak kullanıcı gerçek bir soru sorarsa (ürün sorgusu, sipariş takibi vb.)
-ilgili tool'ları kullanmalısın.`
-      : `\n\n⚠️ IMPORTANT: This may be a casual chat/greeting message.
-For simple messages (hi, hello, thanks, how are you, etc.)
-you can respond naturally and warmly WITHOUT calling any tools.
-Tool calls are NOT MANDATORY - decide based on the message nature.
+## DOĞRULAMA DURUMU (Verification Context)
+- Durum: ${vc.status}
+- Beklenen bilgi: ${vc.pendingField === 'name' ? 'Ad-soyad' : vc.pendingField === 'phone' ? 'Telefon numarası' : vc.pendingField}
+- Deneme sayısı: ${vc.attempts}/3
 
-However, if the user asks a real question (product inquiry, order tracking, etc.)
-you should use the relevant tools.`;
+KURALLAR:
+- Kullanıcının son mesajını bağlam içinde yorumla
+- Eğer kullanıcı doğrulama bilgisi verdiyse, customer_data_lookup tool'unu verification_input parametresiyle çağır
+- Eğer kullanıcı farklı bir soru sorduysa, soruyu cevapla ama doğrulama ihtiyacını da hatırlat
+- Aynı cümleyi tekrar etme — her seferinde farklı ve doğal konuş
+- Yanlış anladığını fark edersen "Sanırım bir karışıklık oldu..." diyebilirsin
+- "Lütfen ad-soyadınızı yazınız" gibi form cümleleri KULLANMA`;
 
-    enhancedSystemPrompt += toollessGuidance;
-    console.log('💬 [BuildLLMRequest] Added toolless response guidance for CHATTER');
+    enhancedSystemPrompt += verificationGuidance;
+    console.log('🔐 [BuildLLMRequest] Added verification context for LLM');
+
+    // Clean up - don't persist this context
+    delete state.verificationContext;
+  }
+
+  // Dispute context — LLM has anchor/truth data to reference
+  if (state.disputeContext) {
+    const dc = state.disputeContext;
+    const disputeGuidance = `
+
+## İTİRAZ BAĞLAMI (Dispute Context)
+Kullanıcı önceki sonucu reddediyor/itiraz ediyor.
+- Önceki akış: ${dc.originalFlow || 'bilinmiyor'}
+- Kargo takip bilgisi var mı: ${dc.hasTrackingInfo ? 'EVET' : 'HAYIR'}
+
+KURALLAR:
+- Kullanıcının itirazını ciddiye al
+- Elindeki bilgileri (varsa kargo takip no) doğal dille paylaş
+- Geri arama teklif et
+- Empati kur, "ama sistem şunu söylüyor" gibi savunmacı olma`;
+
+    enhancedSystemPrompt += disputeGuidance;
+    console.log('⚠️ [BuildLLMRequest] Added dispute context for LLM');
+
+    // Clean up
+    delete state.disputeContext;
+  }
+
+  // Profanity strike context — LLM handles warning naturally
+  if (routingResult?.routing?.routing?.profanityStrike) {
+    const strike = routingResult.routing.routing.profanityStrike;
+    const profanityGuidance = `
+
+## KÜFÜR UYARISI
+Kullanıcı saygısız dil kullandı (${strike}. uyarı / 3 üzerinden).
+- Kibarca uyar ama suçlama
+- Yardım etmeye devam et
+- Doğal ve empatik ol`;
+
+    enhancedSystemPrompt += profanityGuidance;
+    console.log(`⚠️ [BuildLLMRequest] Added profanity context (strike ${strike}/3)`);
+  }
+
+  // STEP 0.5: CHATTER messages — MINIMAL PROMPT (izole test)
+  // Tüm system prompt'u override et, sadece tek paragraf ver
+  const isChatterRoute = routingResult?.isChatter || routingResult?.routing?.routing?.action === 'ACKNOWLEDGE_CHATTER';
+  if (isChatterRoute) {
+    const assistantName = assistant?.name || 'Asistan';
+    const businessName = business?.name || '';
+    enhancedSystemPrompt = `Sen ${businessName ? businessName + ' şirketinin' : 'bir şirketin'} müşteri asistanı ${assistantName}'sın.
+Kullanıcı selamlaştığında veya teşekkür ettiğinde kısa ve doğal yanıt ver.`;
+    console.log('💬 [BuildLLMRequest] CHATTER — minimal system prompt aktif (izole test)');
   }
 
   // STEP 1: Apply tool gating policy
   const classifierConfidence = classification?.confidence || 0.9;
 
-  // If no flow-specific tools, use ALL available tools (extract names from toolsAll)
-  const allToolNames = toolsAll.map(t => t.function?.name).filter(Boolean);
-  console.log('🔧 [BuildLLMRequest] toolsAll:', { count: toolsAll.length, names: allToolNames });
+  // OPTIMIZATION: Skip tools entirely for CHATTER messages (greetings, acknowledgments)
+  // This saves ~5000 tokens per CHATTER turn and reduces latency
+  const isChatter = routingResult?.isChatter || routingResult?.routing?.routing?.action === 'ACKNOWLEDGE_CHATTER';
 
-  const flowTools = (state.allowedTools && state.allowedTools.length > 0)
-    ? state.allowedTools
-    : allToolNames;
+  let gatedTools;
+  if (isChatter) {
+    gatedTools = [];
+    console.log('💬 [BuildLLMRequest] CHATTER detected — skipping all tools (0 token overhead)');
+  } else {
+    // If no flow-specific tools, use ALL available tools (extract names from toolsAll)
+    const allToolNames = toolsAll.map(t => t.function?.name).filter(Boolean);
+    console.log('🔧 [BuildLLMRequest] toolsAll:', { count: toolsAll.length, names: allToolNames });
 
-  const gatedTools = applyToolGatingPolicy({
-    confidence: classifierConfidence,
-    activeFlow: state.activeFlow,
-    allowedTools: flowTools,
-    verificationStatus: state.verificationStatus,
-    metrics
-  });
+    const flowTools = (state.allowedTools && state.allowedTools.length > 0)
+      ? state.allowedTools
+      : allToolNames;
 
-  console.log('🔧 [BuildLLMRequest]:', {
-    originalTools: flowTools.length,
-    gatedTools: gatedTools.length,
-    confidence: classifierConfidence.toFixed(2),
-    removed: flowTools.filter(t => !gatedTools.includes(t))
-  });
+    gatedTools = applyToolGatingPolicy({
+      confidence: classifierConfidence,
+      activeFlow: state.activeFlow,
+      allowedTools: flowTools,
+      verificationStatus: state.verificationStatus,
+      metrics
+    });
+
+    console.log('🔧 [BuildLLMRequest]:', {
+      originalTools: flowTools.length,
+      gatedTools: gatedTools.length,
+      confidence: classifierConfidence.toFixed(2),
+      removed: flowTools.filter(t => !gatedTools.includes(t))
+    });
+  }
 
   // STEP 2: Filter tools based on gated list
   // toolsAll is in OpenAI format: {type: 'function', function: {name, description, parameters}}

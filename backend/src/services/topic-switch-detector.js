@@ -16,7 +16,8 @@
  * 5. Context-aware slot-like input filtering
  */
 
-import { looksLikeSlotInput } from './slot-processor.js';
+// REMOVED: looksLikeSlotInput — LLM handles input classification now (LLM Authority Refactor)
+// import { looksLikeSlotInput } from './slot-processor.js';
 
 /**
  * Detect if message indicates a topic switch
@@ -28,13 +29,8 @@ import { looksLikeSlotInput } from './slot-processor.js';
 export function detectTopicSwitch(message, state) {
   const lowerMsg = message.toLowerCase().trim();
 
-  // CRITICAL: If waiting for a slot and message looks like slot input, NOT a topic switch
-  if (state.expectedSlot) {
-    if (looksLikeSlotInput(message, state.expectedSlot)) {
-      console.log('[TopicSwitch] Message looks like slot input, NOT switching');
-      return false;
-    }
-  }
+  // NOTE: looksLikeSlotInput check removed — LLM determines what user input means.
+  // Backend no longer classifies input as "slot-like" vs "topic switch".
 
   // 1. Explicit topic switch keywords
   const switchKeywords = [

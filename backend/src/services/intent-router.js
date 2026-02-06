@@ -164,75 +164,56 @@ Reply with ONLY the intent name.`;
 }
 
 /**
- * Detect deterministic patterns in user message
- * Forces tool call without LLM routing to eliminate variability
+ * Validate input format (VALIDATOR ONLY - does NOT decide intent or routing)
+ *
+ * ARCHITECTURE CHANGE: This function NO LONGER determines intent, forces tool calls,
+ * or makes routing decisions. It ONLY validates format for backend use.
+ * LLM is responsible for understanding what the user means.
+ *
  * @param {string} message - User message
- * @returns {Object|null} - Pattern match result or null
+ * @returns {Object|null} - Format validation hints (NOT routing decisions)
+ */
+export function validateInputFormat(message) {
+  if (!message) return null;
+  const trimmed = message.trim();
+
+  // Order number format (prefix formats only - high confidence)
+  const prefixMatch = trimmed.match(/\b(ORD|SIP|ORDER)[-_](\d{6,12})\b/i);
+  if (prefixMatch) {
+    return { type: 'ORDER_NUMBER', value: prefixMatch[0], confidence: 'high' };
+  }
+
+  // Turkish mobile phone format
+  const phoneMatch = trimmed.match(/\b(0?5\d{9})\b/);
+  if (phoneMatch) {
+    return { type: 'PHONE', value: phoneMatch[1], confidence: 'medium' };
+  }
+
+  // TC Kimlik (11 digits)
+  const tcMatch = trimmed.match(/\b(\d{11})\b/);
+  if (tcMatch) {
+    return { type: 'TC_KIMLIK', value: tcMatch[1], confidence: 'medium' };
+  }
+
+  // VKN (10 digits)
+  const vknMatch = trimmed.match(/\b(\d{10})\b/);
+  if (vknMatch) {
+    return { type: 'VKN', value: vknMatch[1], confidence: 'medium' };
+  }
+
+  return null;
+}
+
+/**
+ * @deprecated - REMOVED: Was forcing tool calls and routing decisions from backend.
+ * Use validateInputFormat() for format validation only.
+ * LLM now handles intent detection and entity extraction.
  */
 function detectDeterministicPattern(message) {
-  const normalized = message.toLowerCase().trim();
-
-  // Pattern 1: Order number (sipariş + number)
-  const orderPattern = /sipari[şs].{0,20}?(\d{3,})/i;
-  const orderMatch = normalized.match(orderPattern);
-  if (orderMatch) {
-    return {
-      type: 'ORDER_NUMBER',
-      intent: 'order_status',
-      tools: ['customer_data_lookup'],
-      data: { order_number: orderMatch[1] }
-    };
-  }
-
-  // Pattern 2: TC Kimlik (11 digits)
-  const tcPattern = /\b(\d{11})\b/;
-  const tcMatch = normalized.match(tcPattern);
-  if (tcMatch) {
-    return {
-      type: 'TC_KIMLIK',
-      intent: 'debt_inquiry',
-      tools: ['customer_data_lookup'],
-      data: { tc: tcMatch[1] }
-    };
-  }
-
-  // Pattern 3: VKN (10 digits)
-  const vknPattern = /\b(\d{10})\b/;
-  const vknMatch = normalized.match(vknPattern);
-  if (vknMatch) {
-    return {
-      type: 'VKN',
-      intent: 'debt_inquiry',
-      tools: ['customer_data_lookup'],
-      data: { vkn: vknMatch[1] }
-    };
-  }
-
-  // Pattern 4: Phone number (Turkish mobile format)
-  const phonePattern = /\b(0?5\d{9})\b/;
-  const phoneMatch = normalized.match(phonePattern);
-  if (phoneMatch) {
-    return {
-      type: 'PHONE',
-      intent: 'order_status',
-      tools: ['customer_data_lookup'],
-      data: { phone: phoneMatch[1] }
-    };
-  }
-
-  // Pattern 5: Tracking number (kargo takip + number)
-  const trackingPattern = /(kargo|takip|gönderi).{0,20}?(\d{10,})/i;
-  const trackingMatch = normalized.match(trackingPattern);
-  if (trackingMatch) {
-    return {
-      type: 'TRACKING_NUMBER',
-      intent: 'tracking_info',
-      tools: ['customer_data_lookup'],
-      data: { tracking_number: trackingMatch[2] }
-    };
-  }
-
-  return null; // No deterministic pattern found
+  // DISABLED: No longer makes routing decisions.
+  // Kept as stub for backward compatibility - always returns null.
+  console.log('⚠️ [DEPRECATED] detectDeterministicPattern called but disabled - LLM handles intent now');
+  return null;
 }
 
 /**
@@ -362,20 +343,9 @@ export function getVerificationFields(intent) {
  */
 export async function routeIntent(userMessage, sessionId, language = 'TR', businessInfo = {}) {
   try {
-    // DETERMINISTIC PATTERN CHECK (P1.1): Force tool call for specific patterns
-    // This prevents LLM routing variability for security-critical queries
-    const detectedPattern = detectDeterministicPattern(userMessage);
-    if (detectedPattern) {
-      console.log('🎯 [DETERMINISTIC] Pattern detected:', detectedPattern.type, detectedPattern.data);
-      return {
-        intent: detectedPattern.intent,
-        tools: detectedPattern.tools,
-        shouldTerminate: false,
-        forcedToolCall: true, // Flag to indicate this is a deterministic route
-        patternData: detectedPattern.data,
-        action: 'RUN_INTENT_ROUTER' // Ensure it goes through router decision
-      };
-    }
+    // ARCHITECTURE CHANGE: detectDeterministicPattern() REMOVED from routing.
+    // LLM now handles intent detection. Backend only validates format.
+    // Format hints are available via validateInputFormat() if needed downstream.
 
     // PRIORITY CHECK: Is user responding to a verification request?
     const pendingVerification = verificationCache.get(sessionId);
@@ -430,7 +400,7 @@ export async function routeIntent(userMessage, sessionId, language = 'TR', busin
     // 1. Detect intent
     const intent = await detectIntent(userMessage, language);
 
-    // 2. Handle profanity (küfür) - 3 strikes
+    // 2. Handle profanity (küfür) - 3 strikes (security only)
     if (intent === 'profanity') {
       const counter = getSessionCounter(sessionId);
 
@@ -444,7 +414,7 @@ export async function routeIntent(userMessage, sessionId, language = 'TR', busin
       console.log(`🚫 Profanity count for ${sessionId}: ${profanityCount}/3`);
 
       if (profanityCount >= 3) {
-        // 3rd strike - terminate
+        // 3rd strike - terminate (SECURITY: hardcoded is OK here)
         return {
           intent,
           tools: [],
@@ -455,14 +425,14 @@ export async function routeIntent(userMessage, sessionId, language = 'TR', busin
         };
       }
 
-      // 1st and 2nd strike - polite warning
+      // 1st and 2nd strike - LET LLM respond naturally
+      // ARCHITECTURE CHANGE: No template. LLM will see profanity context and respond.
       return {
         intent,
         tools: [],
         shouldTerminate: false,
-        response: language === 'TR'
-          ? 'Lütfen saygılı bir dil kullanın. Size nasıl yardımcı olabilirim?'
-          : 'Please use respectful language. How can I help you?'
+        letLLMRespond: true, // Signal: don't use directResponse, let LLM handle
+        profanityStrike: profanityCount
       };
     }
 
@@ -548,8 +518,8 @@ Politely decline and say you can only help with order tracking and stock check f
           tools: [],
           shouldTerminate: false,
           response: language === 'TR'
-            ? `Üzgünüm, sadece ${businessName} ile ilgili sorularınızı yanıtlayabilirim. Size nasıl yardımcı olabilirim?`
-            : `Sorry, I can only answer questions about ${businessName}. How can I help you?`
+            ? `Üzgünüm, sadece ${businessName} ile ilgili sorularınızı yanıtlayabilirim.`
+            : `Sorry, I can only answer questions about ${businessName}.`
         };
       }
     }
@@ -608,6 +578,7 @@ export function handleVerificationFailure(sessionId, intent, language = 'TR') {
 export default {
   detectIntent,
   routeIntent,
+  validateInputFormat,
   getToolsForIntent,
   requiresVerification,
   getVerificationFields,
