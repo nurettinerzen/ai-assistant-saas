@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Copy, ExternalLink, Code, Eye, Lock } from 'lucide-react';
+import { Copy, ExternalLink, Code, Eye, Lock, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 import ChatWidget from '@/components/ChatWidget';
 import axios from 'axios';
@@ -55,6 +55,7 @@ export default function ChatWidgetPage() {
   const [welcomeMessage, setWelcomeMessage] = useState('');
   const [placeholderText, setPlaceholderText] = useState('');
   const [showPreview, setShowPreview] = useState(false);
+  const [showEmbedCode, setShowEmbedCode] = useState(false);
   const [assistantId, setAssistantId] = useState('');
 
   // Update isEnabled when widgetSettings loads
@@ -507,20 +508,37 @@ export default function ChatWidgetPage() {
           </div>
         </div>
 
-        {/* Embed Code */}
+        {/* Right Column: Embed Code + Instructions + Stats */}
         <div className="space-y-6">
+          {/* Embed Code — collapsible */}
           <Card className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">{t('dashboard.chatWidgetPage.embedCode')}</h3>
-              <Button onClick={copyEmbedCode} variant="outline" size="sm">
-                <Copy className="h-4 w-4 mr-2" />
-                {t('dashboard.chatWidgetPage.copy')}
-              </Button>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Code className="h-5 w-5 text-primary-600" />
+                <h3 className="text-lg font-semibold">{t('dashboard.chatWidgetPage.embedCode')}</h3>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button onClick={copyEmbedCode} variant="outline" size="sm">
+                  <Copy className="h-4 w-4 mr-2" />
+                  {t('dashboard.chatWidgetPage.copy')}
+                </Button>
+                <Button
+                  onClick={() => setShowEmbedCode(!showEmbedCode)}
+                  variant="ghost"
+                  size="sm"
+                >
+                  {showEmbedCode ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </Button>
+              </div>
             </div>
-            <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg text-xs overflow-x-auto">
-              <code>{generateEmbedCode()}</code>
-            </pre>
-            <p className="text-xs text-gray-500 mt-2">
+            {showEmbedCode && (
+              <div className="mt-4">
+                <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg text-xs overflow-x-auto max-h-64 overflow-y-auto">
+                  <code>{generateEmbedCode()}</code>
+                </pre>
+              </div>
+            )}
+            <p className="text-xs text-gray-500 mt-3">
               {t('dashboard.chatWidgetPage.embedCodeInstructions')}
             </p>
           </Card>
@@ -528,7 +546,7 @@ export default function ChatWidgetPage() {
           {/* Instructions */}
           <Card className="p-6">
             <h3 className="text-lg font-semibold mb-3">{t('dashboard.chatWidgetPage.howToInstall')}</h3>
-            <ol className="space-y-3 text-sm text-gray-700">
+            <ol className="space-y-3 text-sm text-gray-700 dark:text-gray-300">
               <li className="flex items-start gap-2">
                 <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary-600 text-white flex items-center justify-center text-xs font-bold">
                   1
@@ -556,19 +574,19 @@ export default function ChatWidgetPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-2xl font-bold text-primary-600">{chatStats.totalChats}</p>
-                <p className="text-xs text-gray-600">{t('dashboard.chatWidgetPage.conversations')}</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400">{t('dashboard.chatWidgetPage.conversations')}</p>
               </div>
               <div>
                 <p className="text-2xl font-bold text-primary-600">{chatStats.totalMessages}</p>
-                <p className="text-xs text-gray-600">{t('dashboard.chatWidgetPage.totalMessages') || 'Toplam Mesaj'}</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400">{t('dashboard.chatWidgetPage.totalMessages') || 'Toplam Mesaj'}</p>
               </div>
               <div>
                 <p className="text-2xl font-bold text-primary-600">{chatStats.avgMessagesPerChat}</p>
-                <p className="text-xs text-gray-600">{t('dashboard.chatWidgetPage.avgMessages') || 'Ort. Mesaj/Sohbet'}</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400">{t('dashboard.chatWidgetPage.avgMessages') || 'Ort. Mesaj/Sohbet'}</p>
               </div>
               <div>
                 <p className="text-2xl font-bold text-primary-600">{chatStats.activeChats || 0}</p>
-                <p className="text-xs text-gray-600">{t('dashboard.chatWidgetPage.activeChats') || 'Aktif Sohbet'}</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400">{t('dashboard.chatWidgetPage.activeChats') || 'Aktif Sohbet'}</p>
               </div>
             </div>
           </Card>
