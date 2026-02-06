@@ -381,7 +381,7 @@ export default function ChatWidgetPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Configuration */}
-        <div className="space-y-6">
+        <div className="flex flex-col gap-6">
           {/* Enable/Disable */}
           <Card className="p-6">
             <div className="flex items-center justify-between">
@@ -509,7 +509,7 @@ export default function ChatWidgetPage() {
         </div>
 
         {/* Right Column: Embed Code + Instructions + Stats */}
-        <div className="space-y-6">
+        <div className="flex flex-col gap-6">
           {/* Embed Code — preview with expand */}
           <Card className="p-6">
             <div className="flex items-center justify-between mb-4">
@@ -545,7 +545,7 @@ export default function ChatWidgetPage() {
           </Card>
 
           {/* Instructions */}
-          <Card className="p-6">
+          <Card className="p-6 flex-1">
             <h3 className="text-lg font-semibold mb-3">{t('dashboard.chatWidgetPage.howToInstall')}</h3>
             <ol className="space-y-3 text-sm text-gray-700 dark:text-gray-300">
               <li className="flex items-start gap-2">
