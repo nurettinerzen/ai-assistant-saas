@@ -16,7 +16,7 @@
  */
 
 import { routeMessage, handleDispute } from '../../../services/message-router.js';
-import { buildChatterResponse } from '../../../services/chatter-response.js';
+import { buildChatterResponse, isPureChatter } from '../../../services/chatter-response.js';
 
 export async function makeRoutingDecision(params) {
   const { classification, state, userMessage, conversationHistory, language, business, sessionId = '' } = params;
@@ -45,6 +45,62 @@ export async function makeRoutingDecision(params) {
     triggerRule: classification.triggerRule,
     verificationStatus: state.verification?.status
   });
+
+  // ========================================
+  // EARLY CHATTER DETECTION (classifier-independent)
+  // ========================================
+  // Pure chatter bypasses LLM only in idle state.
+  // During active tasks (flow/verification), user input can carry task data.
+  const hasActiveTask =
+    state.verification?.status === 'pending' ||
+    state.flowStatus === 'in_progress' ||
+    state.flowStatus === 'post_result' ||
+    Boolean(state.activeFlow);
+
+  if (!hasActiveTask && isPureChatter(userMessage)) {
+    console.log('💬 [RouterDecision] Pure chatter detected (regex) — returning direct response');
+
+    const chatterVariant = buildChatterResponse({
+      userMessage,
+      state,
+      language,
+      sessionId
+    });
+    const previousRecent = Array.isArray(state?.chatter?.recent) ? state.chatter.recent : [];
+    const nextRecent = [
+      ...previousRecent,
+      { messageKey: chatterVariant.messageKey, variantIndex: chatterVariant.variantIndex }
+    ].slice(-2);
+
+    state.chatter = {
+      lastMessageKey: chatterVariant.messageKey,
+      lastVariantIndex: chatterVariant.variantIndex,
+      lastAt: new Date().toISOString(),
+      recent: nextRecent
+    };
+
+    const chatterRouting = {
+      ...messageRouting,
+      routing: {
+        ...messageRouting.routing,
+        action: 'ACKNOWLEDGE_CHATTER',
+        reason: 'Pure chatter detected in idle state (regex early)',
+        nextAction: 'direct-response'
+      }
+    };
+
+    return {
+      directResponse: true,
+      reply: chatterVariant.text,
+      routing: chatterRouting,
+      isChatter: true,
+      metadata: {
+        messageKey: chatterVariant.messageKey,
+        variantIndex: chatterVariant.variantIndex,
+        detectedBy: 'regex_early'
+      }
+    };
+  }
 
   // ========================================
   // VERIFICATION PENDING: Pass context to LLM, don't classify input

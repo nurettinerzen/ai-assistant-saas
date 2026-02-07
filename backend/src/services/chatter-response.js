@@ -10,12 +10,41 @@ const THANKS_PATTERNS = [
   /\b(thanks|thank you|thx)\b/i
 ];
 
-function isGreeting(text) {
+export function isGreeting(text) {
   return GREETING_PATTERNS.some(pattern => pattern.test(text));
 }
 
-function isThanks(text) {
+export function isThanks(text) {
   return THANKS_PATTERNS.some(pattern => pattern.test(text));
+}
+
+/**
+ * Quick check: is this a pure chatter message (greeting, thanks, or very short filler)?
+ * Used by routerDecision for classifier-independent early detection.
+ *
+ * IMPORTANT: "merhaba siparişimi sorgulayabilir misiniz" is NOT pure chatter.
+ * Only short messages (≤3 words) that are entirely greeting/thanks qualify.
+ */
+export function isPureChatter(text) {
+  const trimmed = String(text || '').trim();
+  if (!trimmed) return false;
+
+  const words = trimmed.split(/\s+/);
+
+  // Only short messages qualify as pure chatter (max 3 words)
+  // "merhaba siparişimi sorgulayabilir misiniz" = 4 words → NOT chatter
+  if (words.length > 3) return false;
+
+  // Pure greeting or thanks (1-3 words)
+  if (isGreeting(trimmed) || isThanks(trimmed)) return true;
+
+  // Very short filler messages (1-2 words)
+  if (words.length <= 2) {
+    const fillerPatterns = /^(ok|tamam|tamamdır|anladım|evet|peki|olur|iyi|güzel|süper|harika|eyvallah|sağ ol|hay hay)$/i;
+    if (fillerPatterns.test(trimmed)) return true;
+  }
+
+  return false;
 }
 
 function hasActiveTask(state = {}) {
