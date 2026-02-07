@@ -902,6 +902,8 @@ router.post('/widget', async (req, res) => {
         locked: true,
         lockReason: lockStatus.reason,
         lockUntil: lockStatus.until,
+        conversationId: sessionId,
+        sessionId: clientSessionId || sessionId,
         metadata: {
           outcome: ToolOutcome.DENIED,
           lockReason: lockStatus.reason
@@ -933,6 +935,8 @@ router.post('/widget', async (req, res) => {
         outcome: ToolOutcome.DENIED,
         locked: true,
         lockReason: riskDetection.reason,
+        conversationId: sessionId,
+        sessionId: clientSessionId || sessionId,
         metadata: {
           outcome: ToolOutcome.DENIED,
           lockReason: riskDetection.reason
@@ -949,6 +953,8 @@ router.post('/widget', async (req, res) => {
         outcome: ToolOutcome.DENIED,
         softRefusal: true,
         warnings: riskDetection.warnings.map(w => w.type),
+        conversationId: sessionId,
+        sessionId: clientSessionId || sessionId,
         metadata: {
           outcome: ToolOutcome.DENIED,
           softRefusal: true
@@ -994,6 +1000,8 @@ router.post('/widget', async (req, res) => {
         reply: fallbackMessage,
         outcome: ToolOutcome.NOT_FOUND,
         kbEmptyFallback: true,
+        conversationId: sessionId,
+        sessionId: clientSessionId || sessionId,
         metadata: {
           outcome: ToolOutcome.NOT_FOUND,
           kbEmptyFallback: true
@@ -1171,7 +1179,9 @@ router.post('/widget', async (req, res) => {
       outcome: result.outcome || ToolOutcome.OK,
       conversationId: sessionId, // P0: conversationId is required for audit/correlation
       messageId: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`, // P0: messageId for audit trail
-      sessionId: sessionId, // Keep for backward compatibility
+      // Contract: echo the caller-provided sessionId when available.
+      // conversationId remains the canonical internal session key.
+      sessionId: clientSessionId || sessionId,
       assistantName: assistant.name,
       history: existingLog?.messages || [],
       verificationStatus: updatedState.verification?.status || 'none', // P0: Gate requirement for verification tests

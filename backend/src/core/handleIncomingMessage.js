@@ -168,6 +168,36 @@ function normalizeOrderNo(orderNo) {
   return orderNo.toString().trim().toUpperCase().replace(/\s+/g, '');
 }
 
+/**
+ * Conservative heuristic for verification attempts while flow is pending.
+ * We intentionally only count phone-like inputs to avoid false positives.
+ */
+function isLikelyVerificationAttempt(userMessage) {
+  if (!userMessage) return false;
+
+  const trimmed = String(userMessage).trim();
+  if (!trimmed) return false;
+
+  // Exact last-4 input (most common verification path)
+  if (/^\d{4}$/.test(trimmed)) {
+    return true;
+  }
+
+  // Full phone typed in one shot (+90555..., 0555..., 555...)
+  const compact = trimmed.replace(/[\s\-()]/g, '');
+  if (/^\+?\d{10,13}$/.test(compact)) {
+    return true;
+  }
+
+  // "son 4 1234" / "last 4: 1234" style responses
+  const digits = trimmed.replace(/[^\d]/g, '');
+  if (digits.length === 4 && /\b(son|last|hane|digit)\b/i.test(trimmed)) {
+    return true;
+  }
+
+  return false;
+}
+
 function determineTurnOutcome({
   toolLoopResult,
   guardrailResult,
@@ -501,6 +531,7 @@ export async function handleIncomingMessage({
     // STEP 6: Tool Loop
     // ========================================
     console.log('\n[STEP 6] Executing tool loop...');
+    const verificationStatusBeforeToolLoop = state.verification?.status || 'none';
     const toolLoopResult = await executeToolLoop({
       chat,
       userMessage,
@@ -546,52 +577,62 @@ export async function handleIncomingMessage({
     // ENUMERATION DEFENSE: Deterministic state-event tracking
     // ========================================
     const relevantToolResults = (toolLoopResult.toolResults || []).filter(r => r?.name === 'customer_data_lookup');
-    if (relevantToolResults.length > 0) {
-      const stateEvents = relevantToolResults.flatMap(r => Array.isArray(r.stateEvents) ? r.stateEvents : []);
-      const verificationFailed = stateEvents.some(e => e?.type === OutcomeEventType.VERIFICATION_FAILED);
-      const verificationSucceeded = stateEvents.some(e => e?.type === OutcomeEventType.VERIFICATION_PASSED);
+    const stateEvents = relevantToolResults.flatMap(r => Array.isArray(r.stateEvents) ? r.stateEvents : []);
+    const verificationFailed = stateEvents.some(e => e?.type === OutcomeEventType.VERIFICATION_FAILED);
+    const verificationSucceeded = stateEvents.some(e => e?.type === OutcomeEventType.VERIFICATION_PASSED);
 
-      if (verificationFailed && !verificationSucceeded) {
-        console.log('🔐 [Enumeration] Verification failed, checking attempt count...');
-        const enumResult = await checkEnumerationAttempt(resolvedSessionId);
+    // Fallback counting path:
+    // if verification was pending, user sent phone-like verification input,
+    // and we still did not verify this turn, count as failed attempt.
+    const syntheticVerificationFailure =
+      !verificationFailed &&
+      !verificationSucceeded &&
+      verificationStatusBeforeToolLoop === 'pending' &&
+      state.verification?.status === 'pending' &&
+      isLikelyVerificationAttempt(userMessage);
 
-        if (enumResult.shouldBlock) {
-          console.warn(`🚨 [Enumeration] Session blocked after ${enumResult.attempts} attempts`);
+    if ((verificationFailed || syntheticVerificationFailure) && !verificationSucceeded) {
+      const failureSource = verificationFailed ? 'state-event' : 'synthetic-fallback';
+      console.log(`🔐 [Enumeration] Verification failed (${failureSource}), checking attempt count...`);
 
-          return {
-            reply: getLockMessage('ENUMERATION', language),
+      const enumResult = await checkEnumerationAttempt(resolvedSessionId);
+
+      if (enumResult.shouldBlock) {
+        console.warn(`🚨 [Enumeration] Session blocked after ${enumResult.attempts} attempts`);
+
+        return {
+          reply: getLockMessage('ENUMERATION', language),
+          outcome: ToolOutcome.DENIED,
+          metadata: {
             outcome: ToolOutcome.DENIED,
-            metadata: {
-              outcome: ToolOutcome.DENIED,
-              lockReason: 'ENUMERATION',
-              failedAttempts: enumResult.attempts
-            },
-            shouldEndSession: false,
-            forceEnd: false,
-            locked: true,
             lockReason: 'ENUMERATION',
-            state,
-            metrics: {
-              ...metrics,
-              enumerationBlock: true,
-              failedAttempts: enumResult.attempts
-            },
-            inputTokens,
-            outputTokens,
-            debug: {
-              blocked: true,
-              reason: 'ENUMERATION_THRESHOLD_EXCEEDED',
-              attempts: enumResult.attempts
-            }
-          };
-        }
-
-        console.log(`⚠️ [Enumeration] Failed attempt ${enumResult.attempts}/${ENUMERATION_LIMITS.MAX_FAILED_VERIFICATIONS}`);
-      } else if (verificationSucceeded) {
-        // Reset counter on successful verification
-        console.log('✅ [Enumeration] Verification succeeded, resetting counter');
-        await resetEnumerationCounter(resolvedSessionId);
+            failedAttempts: enumResult.attempts
+          },
+          shouldEndSession: false,
+          forceEnd: false,
+          locked: true,
+          lockReason: 'ENUMERATION',
+          state,
+          metrics: {
+            ...metrics,
+            enumerationBlock: true,
+            failedAttempts: enumResult.attempts
+          },
+          inputTokens,
+          outputTokens,
+          debug: {
+            blocked: true,
+            reason: 'ENUMERATION_THRESHOLD_EXCEEDED',
+            attempts: enumResult.attempts
+          }
+        };
       }
+
+      console.log(`⚠️ [Enumeration] Failed attempt ${enumResult.attempts}/${ENUMERATION_LIMITS.MAX_FAILED_VERIFICATIONS}`);
+    } else if (verificationSucceeded) {
+      // Reset counter on successful verification
+      console.log('✅ [Enumeration] Verification succeeded, resetting counter');
+      await resetEnumerationCounter(resolvedSessionId);
     }
 
     // If tool failed, response is already forced template - return immediately
