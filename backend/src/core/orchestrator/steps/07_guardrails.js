@@ -33,6 +33,7 @@ import {
   checkOrderNotFoundPressure,
   enforceRequiredToolCall
 } from '../../../guardrails/securityGateway.js';
+import { shouldBypassLeakFilter } from '../../../security/outcomePolicy.js';
 
 export async function applyGuardrails(params) {
   const {
@@ -182,11 +183,12 @@ export async function applyGuardrails(params) {
   const hasSuccessfulDataTool = toolOutputs.some(o =>
     o?.outcome === 'OK' && o?.success === true
   );
-  const shouldSkipLeakFilter = notFoundOverrideApplied || hasNotFoundOutcome || noToolsCalled || !hasSuccessfulDataTool;
+  const hasBypassOutcome = toolOutputs.some(o => shouldBypassLeakFilter(o?.outcome));
+  const shouldSkipLeakFilter = notFoundOverrideApplied || hasBypassOutcome || noToolsCalled || !hasSuccessfulDataTool;
   if (shouldSkipLeakFilter) {
     console.log('✅ [SecurityGateway] Skipping Leak Filter:', {
       notFoundOverrideApplied,
-      hasNotFoundOutcome,
+      hasBypassOutcome,
       noToolsCalled,
       hasSuccessfulDataTool
     });

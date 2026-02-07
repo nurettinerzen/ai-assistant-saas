@@ -71,6 +71,20 @@ import {
   ToolOutcome,
   GENERIC_ERROR_MESSAGES
 } from '../toolResult.js';
+import { OutcomeEventType } from '../../security/outcomePolicy.js';
+
+function toStateAnchor(anchor) {
+  if (!anchor) return null;
+  return {
+    id: anchor.id,
+    type: anchor.anchorType,
+    value: anchor.anchorValue,
+    name: anchor.name,
+    phone: anchor.phone,
+    email: anchor.email,
+    sourceTable: anchor.sourceTable
+  };
+}
 
 /**
  * Execute customer data lookup
@@ -119,21 +133,10 @@ export async function execute(args, business, context = {}) {
       console.log('🔐 [Verification] Processing verification (status:', state.verification.status, ')');
       console.log('🔐 [Verification] Input:', effectiveVerificationInput, '| Anchor phone:', state.verification.anchor.phone);
 
-      // RECOVERY: If status was 'failed', reset to 'pending' to allow retry
-      if (state.verification.status === 'failed') {
-        console.log('🔄 [Verification] Recovery: resetting failed → pending for retry');
-        state.verification.status = 'pending';
-      }
-
       const anchor = state.verification.anchor;
       const verifyResult = checkVerification(anchor, effectiveVerificationInput, query_type, language);
 
       if (verifyResult.action === 'PROCEED') {
-        // Verification successful - mark as verified and return full data
-        console.log('✅ [Verification] Verified successfully');
-        state.verification.status = 'verified';
-        state.verification.attempts = 0;
-
         // Fetch the full record using anchor ID from the CORRECT table
         const table = anchor.sourceTable || 'CustomerData';
         console.log('🔍 [Verification] Fetching verified record from:', table, 'id:', anchor.id);
@@ -146,38 +149,58 @@ export async function execute(args, business, context = {}) {
         }
 
         if (verifiedRecord) {
-          return getFullResult(verifiedRecord, query_type, language);
-        } else {
-          return systemError(
-            language === 'TR'
-              ? 'Kayıt bulunamadı.'
-              : 'Record not found.'
-          );
-        }
-      } else {
-        // P0-UX FIX: Track attempts and break loop after 2 failures
-        state.verification.attempts = (state.verification.attempts || 0) + 1;
-        console.log(`❌ [Verification] Failed - attempt ${state.verification.attempts}`);
-
-        // Loop breaker: After 2 CONSECUTIVE failed attempts, offer alternative
-        // NOTE: Status stays 'pending' — next correct input will still be accepted
-        if (state.verification.attempts >= 2) {
-          console.log('🔄 [Verification] Max attempts reached - offering alternative but keeping recoverable');
-
-          // P0-UX: Clear, helpful message after multiple failures
+          const fullResult = getFullResult(verifiedRecord, query_type, language);
           return {
-            outcome: ToolOutcome.VALIDATION_ERROR,
-            success: true,
-            message: language === 'TR'
-              ? 'Bilgiler doğrulanamadı. Sipariş numaranızı kontrol edebilir misiniz? Farklı bir sipariş sorgulamak isterseniz sipariş numarasını söyleyin.'
-              : 'Could not verify the information. Can you check your order number? If you want to query a different order, please provide the order number.'
+            ...fullResult,
+            stateEvents: [
+              {
+                type: OutcomeEventType.VERIFICATION_PASSED,
+                anchor: toStateAnchor(anchor),
+                attempts: 0
+              }
+            ]
           };
         }
 
-        // First failure: Generic message (security) but keep pending
-        // P0-1 FIX: Generic message to prevent enumeration
-        return notFound(GENERIC_ERROR_MESSAGES[language] || GENERIC_ERROR_MESSAGES.TR);
+        return systemError(
+          language === 'TR'
+            ? 'Kayıt bulunamadı.'
+            : 'Record not found.'
+        );
       }
+
+      // Tool remains pure: compute attempt outcome, orchestrator mutates state.
+      const nextAttempts = (state.verification?.attempts || 0) + 1;
+      console.log(`❌ [Verification] Failed - attempt ${nextAttempts}`);
+
+      // Loop breaker: After 2 failed attempts, return validation outcome directly.
+      if (nextAttempts >= 2) {
+        console.log('🔄 [Verification] Max attempts reached - returning validation error');
+        return {
+          outcome: ToolOutcome.VALIDATION_ERROR,
+          success: true,
+          message: language === 'TR'
+            ? 'Bilgiler doğrulanamadı. Sipariş numaranızı kontrol edebilir misiniz? Farklı bir sipariş sorgulamak isterseniz sipariş numarasını söyleyin.'
+            : 'Could not verify the information. Can you check your order number? If you want to query a different order, please provide the order number.',
+          stateEvents: [
+            {
+              type: OutcomeEventType.VERIFICATION_FAILED,
+              attempts: nextAttempts
+            }
+          ]
+        };
+      }
+
+      // First failure: generic not_found response (security) + verification.failed event
+      return {
+        ...notFound(GENERIC_ERROR_MESSAGES[language] || GENERIC_ERROR_MESSAGES.TR),
+        stateEvents: [
+          {
+            type: OutcomeEventType.VERIFICATION_FAILED,
+            attempts: nextAttempts
+          }
+        ]
+      };
     }
 
     // ============================================================================
@@ -405,23 +428,24 @@ export async function execute(args, business, context = {}) {
       console.log('🔐 [SECURITY] Forcing new verification for identity switch');
 
       // Return VERIFICATION_REQUIRED immediately - ignore any provided customer_name
-      return verificationRequired(
-        language === 'TR'
-          ? 'Farklı bir müşteri kaydı tespit edildi. Güvenlik doğrulaması için isminizi ve soyadınızı söyler misiniz?'
-          : 'Different customer record detected. For security verification, could you please provide your full name?',
-        {
-          askFor: 'name',
-          anchor: {
-            id: anchor.id,
-            type: anchor.anchorType,
-            value: anchor.anchorValue,
-            name: anchor.name,
-            phone: anchor.phone,
-            email: anchor.email,
-            sourceTable: anchor.sourceTable
+      return {
+        ...verificationRequired(
+          language === 'TR'
+            ? 'Farklı bir müşteri kaydı tespit edildi. Güvenlik doğrulaması için isminizi ve soyadınızı söyler misiniz?'
+            : 'Different customer record detected. For security verification, could you please provide your full name?',
+          {
+            askFor: 'name',
+            anchor: toStateAnchor(anchor)
           }
-        }
-      );
+        ),
+        stateEvents: [
+          {
+            type: OutcomeEventType.VERIFICATION_REQUIRED,
+            askFor: 'name',
+            anchor: toStateAnchor(anchor)
+          }
+        ]
+      };
     }
 
     // P0 SECURITY: Enforce two-step verification AND detect mismatches
@@ -441,7 +465,15 @@ export async function execute(args, business, context = {}) {
         // P0-1 FIX: Use SAME generic message as NOT_FOUND to prevent enumeration
         // SECURITY: "İsim eşleşmiyor" reveals that record EXISTS - information leak!
         console.log('🔐 [SECURITY] Mismatch detected - returning generic error (same as NOT_FOUND)');
-        return notFound(GENERIC_ERROR_MESSAGES[language] || GENERIC_ERROR_MESSAGES.TR);
+        return {
+          ...notFound(GENERIC_ERROR_MESSAGES[language] || GENERIC_ERROR_MESSAGES.TR),
+          stateEvents: [
+            {
+              type: OutcomeEventType.VERIFICATION_FAILED,
+              attempts: (state.verification?.attempts || 0) + 1
+            }
+          ]
+        };
       }
 
       // Name matches BUT still require two-step verification (prevent single-shot bypass)
@@ -454,17 +486,34 @@ export async function execute(args, business, context = {}) {
 
     // Handle verification result
     if (verificationCheck.action === 'REQUEST_VERIFICATION') {
-      return verificationRequired(verificationCheck.message, {
-        askFor: verificationCheck.askFor,
-        anchor: verificationCheck.anchor
-      });
+      return {
+        ...verificationRequired(verificationCheck.message, {
+          askFor: verificationCheck.askFor,
+          anchor: verificationCheck.anchor
+        }),
+        stateEvents: [
+          {
+            type: OutcomeEventType.VERIFICATION_REQUIRED,
+            askFor: verificationCheck.askFor,
+            anchor: verificationCheck.anchor
+          }
+        ]
+      };
     }
 
     if (verificationCheck.action === 'VERIFICATION_FAILED') {
       // P0-1 FIX: Use SAME generic message as NOT_FOUND to prevent enumeration
       // SECURITY: Specific verification failure messages reveal record existence
       console.log('🔐 [Verification] Check failed - returning generic error');
-      return notFound(GENERIC_ERROR_MESSAGES[language] || GENERIC_ERROR_MESSAGES.TR);
+      return {
+        ...notFound(GENERIC_ERROR_MESSAGES[language] || GENERIC_ERROR_MESSAGES.TR),
+        stateEvents: [
+          {
+            type: OutcomeEventType.VERIFICATION_FAILED,
+            attempts: (state.verification?.attempts || 0) + 1
+          }
+        ]
+      };
     }
 
     // ============================================================================
@@ -473,24 +522,17 @@ export async function execute(args, business, context = {}) {
 
     if (verificationCheck.verified) {
       console.log('✅ [Result] Returning full data');
-
-      // P0 SECURITY: Save anchor to state for identity switch detection
-      // This must happen regardless of verification path (pending→verified or single-shot)
-      state.verification = state.verification || { status: 'none', attempts: 0 };
-      state.verification.status = 'verified';
-      state.verification.anchor = {
-        id: anchor.id,
-        type: anchor.anchorType,
-        value: anchor.anchorValue,
-        name: anchor.name,
-        phone: anchor.phone,
-        email: anchor.email,
-        sourceTable: anchor.sourceTable
-      };
-      console.log('🔐 [Security] Anchor saved to state:', { id: anchor.id, name: anchor.name, sourceTable: anchor.sourceTable });
-
       const result = getFullResult(record, query_type, language);
-      return ok(result.data, result.message);
+      return {
+        ...ok(result.data, result.message),
+        stateEvents: [
+          {
+            type: OutcomeEventType.VERIFICATION_PASSED,
+            anchor: toStateAnchor(anchor),
+            attempts: 0
+          }
+        ]
+      };
     } else {
       console.log('⚠️ [Result] Returning minimal data (unverified)');
       const result = getMinimalResult(record, query_type, language);

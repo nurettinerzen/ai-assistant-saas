@@ -12,6 +12,7 @@
 
 import { executeTool } from '../../../tools/index.js';
 import { ToolOutcome, ensureMessage } from '../../../tools/toolResult.js';
+import { normalizePhone } from '../../../utils/text.js';
 
 // Maximum tool calls per email turn
 const MAX_TOOL_CALLS = 3;
@@ -163,24 +164,6 @@ function determineToolsToRun(classification, availableTools, inboundMessage) {
   }
 
   return toolsToRun;
-}
-
-/**
- * Normalize phone number to standard format
- */
-function normalizePhone(phone) {
-  // Remove all non-digits
-  let digits = phone.replace(/\D/g, '');
-
-  // Handle Turkish numbers
-  if (digits.startsWith('90')) {
-    digits = digits.substring(2);
-  } else if (digits.startsWith('0')) {
-    digits = digits.substring(1);
-  }
-
-  // Return with country code
-  return `+90${digits}`;
 }
 
 /**

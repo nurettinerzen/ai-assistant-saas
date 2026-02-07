@@ -10,6 +10,7 @@
  */
 
 import { shouldTriggerFailPolicy, ToolOutcome } from '../tools/toolResult.js';
+import { hasActionClaim } from '../security/actionClaimLexicon.js';
 
 /**
  * Get forced error response when tool fails
@@ -80,26 +81,7 @@ export function validateResponseAfterToolFail(responseText, hadToolSuccess, lang
     return { valid: true };
   }
 
-  // Check for action claims (Turkish)
-  const actionClaimsTR = [
-    'oluşturdum', 'oluşturuyorum', 'oluşturacağım',
-    'kaydettim', 'kaydediyorum', 'kaydedeceğim',
-    'ilettim', 'iletiyorum', 'ileteceğim',
-    'aktardım', 'aktarıyorum', 'aktaracağım',
-    'yaptım', 'yapıyorum', 'yapacağım',
-    'hallettim', 'halledi rum', 'halledeceğim',
-    'gönderdim', 'gönderiyorum', 'göndereceğim'
-  ];
-
-  const actionClaimsEN = [
-    'created', 'recorded', 'sent', 'forwarded', 'submitted',
-    'i have', 'i\'ve done', 'i will'
-  ];
-
-  const claims = language === 'TR' ? actionClaimsTR : actionClaimsEN;
-  const textLower = responseText.toLowerCase();
-
-  const hasClaim = claims.some(claim => textLower.includes(claim));
+  const hasClaim = hasActionClaim(responseText, language);
 
   if (hasClaim) {
     console.error('🚨 [ToolFail] LLM made action claim without tool success!');

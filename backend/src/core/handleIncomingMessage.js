@@ -36,6 +36,7 @@ import {
   resetEnumerationCounter,
   getLockMessage
 } from '../services/session-lock.js';
+import { OutcomeEventType } from '../security/outcomePolicy.js';
 
 /**
  * Extract order number from user message
@@ -487,27 +488,13 @@ export async function handleIncomingMessage({
     });
 
     // ========================================
-    // ENUMERATION DEFENSE: Track failed verifications
+    // ENUMERATION DEFENSE: Deterministic state-event tracking
     // ========================================
-    // Detect verification failure from tool outputs
-    const verificationAttempted = toolsCalled.some(t =>
-      ['verify_customer', 'get_order_status', 'get_order_details'].includes(t)
-    );
-
-    if (verificationAttempted && toolLoopResult.toolResults) {
-      const verificationFailed = toolLoopResult.toolResults.some(r => {
-        if (!r.output) return false;
-        const output = typeof r.output === 'string' ? r.output : JSON.stringify(r.output);
-        // Detect verification failure patterns
-        return /not_found|not found|mismatch|doğrulama.*başarısız|verification.*failed|eşleşmiyor/i.test(output);
-      });
-
-      const verificationSucceeded = toolLoopResult.toolResults.some(r => {
-        if (!r.output) return false;
-        const output = typeof r.output === 'string' ? r.output : JSON.stringify(r.output);
-        // Detect verification success patterns
-        return /verified|doğrulandı|success|başarılı/i.test(output) && r.success;
-      });
+    const relevantToolResults = (toolLoopResult.toolResults || []).filter(r => r?.name === 'customer_data_lookup');
+    if (relevantToolResults.length > 0) {
+      const stateEvents = relevantToolResults.flatMap(r => Array.isArray(r.stateEvents) ? r.stateEvents : []);
+      const verificationFailed = stateEvents.some(e => e?.type === OutcomeEventType.VERIFICATION_FAILED);
+      const verificationSucceeded = stateEvents.some(e => e?.type === OutcomeEventType.VERIFICATION_PASSED);
 
       if (verificationFailed && !verificationSucceeded) {
         console.log('🔐 [Enumeration] Verification failed, checking attempt count...');
@@ -536,9 +523,9 @@ export async function handleIncomingMessage({
               attempts: enumResult.attempts
             }
           };
-        } else {
-          console.log(`⚠️ [Enumeration] Failed attempt ${enumResult.attempts}/${5}`);
         }
+
+        console.log(`⚠️ [Enumeration] Failed attempt ${enumResult.attempts}/${5}`);
       } else if (verificationSucceeded) {
         // Reset counter on successful verification
         console.log('✅ [Enumeration] Verification succeeded, resetting counter');

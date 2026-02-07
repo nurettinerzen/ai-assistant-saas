@@ -13,6 +13,12 @@ import { executeTool } from '../../../tools/index.js';
 import { getToolExecutionResult, setToolExecutionResult } from '../../../services/tool-idempotency-db.js';
 import { recordNotFound, isSessionBlocked } from '../../../services/enumerationGuard.js';
 import { GENERIC_ERROR_MESSAGES } from '../../../tools/toolResult.js';
+import {
+  deriveOutcomeEvents,
+  applyOutcomeEventsToState,
+  shouldAskVerification,
+  shouldTerminate
+} from '../../../security/outcomePolicy.js';
 
 const MAX_ITERATIONS = 3;
 
@@ -230,7 +236,8 @@ export async function executeToolLoop(params) {
         success: toolResult.success ?? false,
         output: toolResult.data ?? null, // Don't fallback to full toolResult - keep clean
         outcome: toolResult.outcome ?? null,
-        message: toolResult.message ?? null
+        message: toolResult.message ?? null,
+        stateEvents: toolResult.stateEvents ?? []
       });
 
       console.log(`📊 [ToolLoop] Tool result collected:`, {
@@ -256,55 +263,53 @@ export async function executeToolLoop(params) {
         }
       }
 
-      // P0: Handle verification required outcome
-      if (toolResult.outcome === 'VERIFICATION_REQUIRED') {
-        console.log('🔐 [ToolLoop] Verification required, updating state');
-        state.verification = state.verification || { status: 'none', attempts: 0 };
-        state.verification.status = 'pending';
-        state.verification.pendingField = toolResult.data?.askFor || 'name';
-        state.verification.anchor = toolResult.data?.anchor;
-        state.verification.attempts = 0;
-        console.log('🔐 [ToolLoop] Verification state updated:', {
-          status: state.verification.status,
-          pendingField: state.verification.pendingField
-        });
+      // Apply centralized outcome -> state events (single writer: orchestrator)
+      // Controlled by USE_STATE_EVENTS flag. Set FEATURE_USE_STATE_EVENTS=false to revert.
+      const useStateEvents = process.env.FEATURE_USE_STATE_EVENTS !== 'false';
+      if (useStateEvents) {
+        const outcomeEvents = deriveOutcomeEvents({ toolName, toolResult });
+        if (outcomeEvents.length > 0) {
+          applyOutcomeEventsToState(state, outcomeEvents);
+          console.log('🧭 [ToolLoop] Applied outcome events:', outcomeEvents.map(e => e.type));
+        }
+      } else {
+        console.log('🚩 [ToolLoop] USE_STATE_EVENTS=false, skipping centralized event pipeline');
       }
 
-      // P0-2 FIX: Handle NOT_FOUND as terminal state - DON'T send to LLM
-      // SECURITY: LLM seeing NOT_FOUND may hallucinate fake data
-      if (toolResult.outcome === 'NOT_FOUND') {
-        console.log(`📭 [ToolLoop] NOT_FOUND terminal state - stopping loop, NOT sending to LLM`);
+      if (shouldAskVerification(toolResult.outcome)) {
+        console.log('🔐 [ToolLoop] Verification required outcome received');
+      }
 
-        // P0-1 FIX: Record NOT_FOUND for enumeration attack detection
-        const enumerationResult = recordNotFound(sessionId, business?.id, toolName);
-        if (enumerationResult.blocked) {
-          console.log(`🚨 [ToolLoop] Session blocked after this NOT_FOUND - enumeration threshold exceeded`);
+      // Terminal outcomes are decided by centralized outcome policy.
+      if (shouldTerminate(toolResult.outcome)) {
+        if (toolResult.outcome === 'NOT_FOUND') {
+          console.log(`📭 [ToolLoop] NOT_FOUND terminal state - stopping loop, NOT sending to LLM`);
+
+          // P0-1 FIX: Record NOT_FOUND for enumeration attack detection
+          const enumerationResult = recordNotFound(sessionId, business?.id, toolName);
+          if (enumerationResult.blocked) {
+            console.log(`🚨 [ToolLoop] Session blocked after this NOT_FOUND - enumeration threshold exceeded`);
+          }
+
+          responseText = toolResult.message || GENERIC_ERROR_MESSAGES[language] || GENERIC_ERROR_MESSAGES.TR;
+
+          return {
+            reply: responseText,
+            inputTokens: totalInputTokens,
+            outputTokens: totalOutputTokens,
+            hadToolSuccess: true,
+            hadToolFailure: false,
+            failedTool: null,
+            toolsCalled,
+            toolResults,
+            iterations,
+            chat: null,
+            _terminalState: 'NOT_FOUND',
+            _enumerationCount: enumerationResult.count
+          };
         }
 
-        responseText = toolResult.message || GENERIC_ERROR_MESSAGES[language] || GENERIC_ERROR_MESSAGES.TR;
-
-        // Return immediately - don't let LLM generate anything
-        return {
-          reply: responseText,
-          inputTokens: totalInputTokens,
-          outputTokens: totalOutputTokens,
-          hadToolSuccess: true, // Tool worked correctly
-          hadToolFailure: false,
-          failedTool: null,
-          toolsCalled,
-          toolResults,
-          iterations,
-          chat: null, // No chat continuation
-          _terminalState: 'NOT_FOUND', // Flag for debugging
-          _enumerationCount: enumerationResult.count // Track for monitoring
-        };
-      }
-
-      // Handle VALIDATION_ERROR as terminal state (e.g., verification failed after max attempts)
-      // Don't send to LLM — use the tool's message directly
-      if (toolResult.outcome === 'VALIDATION_ERROR') {
-        console.log(`⚠️ [ToolLoop] VALIDATION_ERROR terminal state - stopping loop`);
-
+        console.log(`⚠️ [ToolLoop] ${toolResult.outcome} terminal state - stopping loop`);
         responseText = toolResult.message || GENERIC_ERROR_MESSAGES[language] || GENERIC_ERROR_MESSAGES.TR;
 
         return {
@@ -318,7 +323,7 @@ export async function executeToolLoop(params) {
           toolResults,
           iterations,
           chat: null,
-          _terminalState: 'VALIDATION_ERROR'
+          _terminalState: toolResult.outcome || 'TERMINAL'
         };
       }
 

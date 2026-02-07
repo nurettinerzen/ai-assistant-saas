@@ -26,7 +26,7 @@ import { shouldRunIntentRouter } from '../services/router-decision.js';
 import { processSlotInput } from '../services/slot-processor.js';
 import { routeIntent } from '../services/intent-router.js';
 import { routeMessage, handleDispute } from '../services/message-router.js';
-import { isFeatureEnabled } from '../config/feature-flags.js';
+import { isFeatureEnabled, FEATURE_FLAGS } from '../config/feature-flags.js';
 import { validateActionClaim } from '../services/action-claim-validator.js';
 import { validateComplaintResolution, forceCallbackCreation } from '../services/complaint-enforcer.js';
 import { logClassification, logRoutingDecision, logViolation, logToolExecution } from '../services/routing-metrics.js';
@@ -1110,24 +1110,35 @@ router.post('/widget', async (req, res) => {
       });
     }
 
-    // SECURITY (P0): Apply response firewall BEFORE sending to user
+    // Route-level firewall: mode controlled by feature flag.
+    // 'telemetry' (default): Step7 is the single enforcement point, route only logs.
+    // 'enforce': Route also blocks (double enforcement, for rollback safety).
+    const routeFirewallMode = isFeatureEnabled('ROUTE_FIREWALL_MODE')
+      ? 'enforce'
+      : (FEATURE_FLAGS.ROUTE_FIREWALL_MODE || 'telemetry');
+
     const firewallResult = sanitizeResponse(result.reply, language);
 
+    let finalReply = result.reply;
+
     if (!firewallResult.safe) {
-      // Log violation for monitoring
+      // Always log for monitoring
       logFirewallViolation({
         violations: firewallResult.violations,
         original: firewallResult.original,
         businessId: business.id,
         sessionId
       });
-    }
 
-    // If PII warnings exist, prepend them to response
-    let finalReply = firewallResult.sanitized;
+      // Only block at route level if mode is 'enforce'
+      if (routeFirewallMode === 'enforce') {
+        console.warn('🚨 [Route Firewall] ENFORCE mode - blocking response');
+        finalReply = firewallResult.sanitized;
+      }
+    }
     if (hasPIIWarnings) {
       const warningText = piiWarnings.join('\n');
-      finalReply = `${warningText}\n\n${firewallResult.sanitized}`;
+      finalReply = `${warningText}\n\n${result.reply}`;
     }
 
     // P0: Reload state to get updated verification status after tool execution

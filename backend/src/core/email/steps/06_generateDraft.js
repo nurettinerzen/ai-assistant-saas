@@ -42,6 +42,7 @@ import {
 } from '../../../services/email-pair-retrieval.js';
 import { classifyTone } from '../../../services/email-tone-classifier.js';
 import { cleanEmailText } from '../../../services/email-text-cleaner.js';
+import { ToolOutcome } from '../../../tools/toolResult.js';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
@@ -587,7 +588,7 @@ function buildToolResultsContext(toolResults, customerData, language) {
     // Show data if available
     // TODO: SECURITY - Filter PII from result.data before sending to LLM
     // For now, we send full data but should implement selective field exposure
-    if (result.outcome === 'OK' && result.data) {
+    if (result.outcome === ToolOutcome.OK && result.data) {
       context += `Data:\n${JSON.stringify(result.data, null, 2)}\n`;
     }
 
@@ -625,9 +626,9 @@ function getToolDataInstructions(toolResults, language) {
       : '- No customer data found. Ask for verification info if needed.';
   }
 
-  const hasSuccess = toolResults.some(r => r.outcome === 'OK');
-  const hasNotFound = toolResults.some(r => r.outcome === 'NOT_FOUND');
-  const hasError = toolResults.some(r => r.outcome === 'SYSTEM_ERROR');
+  const hasSuccess = toolResults.some(r => r.outcome === ToolOutcome.OK);
+  const hasNotFound = toolResults.some(r => r.outcome === ToolOutcome.NOT_FOUND);
+  const hasError = toolResults.some(r => r.outcome === ToolOutcome.SYSTEM_ERROR);
 
   let instructions = '';
 
