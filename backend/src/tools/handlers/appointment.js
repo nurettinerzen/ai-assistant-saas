@@ -8,6 +8,7 @@ import googleCalendarService from '../../services/google-calendar.js';
 import netgsmService from '../../services/netgsm.js';
 import axios from 'axios';
 import { ok, validationError, systemError } from '../toolResult.js';
+import { maskPhone } from '../../utils/pii-redaction.js';
 
 const prisma = new PrismaClient();
 
@@ -207,10 +208,11 @@ export async function execute(args, business, context = {}) {
       console.error('⚠️ SMS notification failed (non-critical):', smsError);
     }
 
-    // Return success message
+    // Return success message (SECURITY: mask phone to pass response firewall)
+    const maskedPhone = maskPhone(customer_phone);
     const successMessage = language === 'TR'
-      ? `Randevunuz ${date} tarihinde saat ${time} için başarıyla oluşturuldu. Randevu bilgileriniz ${customer_phone} numarasına SMS ile gönderilecek.`
-      : `Your appointment has been successfully created for ${date} at ${time}. Appointment details will be sent to ${customer_phone} via SMS.`;
+      ? `Randevunuz ${date} tarihinde saat ${time} için başarıyla oluşturuldu. Randevu bilgileriniz ${maskedPhone} numarasına SMS ile gönderilecek.`
+      : `Your appointment has been successfully created for ${date} at ${time}. Appointment details will be sent to ${maskedPhone} via SMS.`;
 
     return ok({
       appointmentId: appointment.id,
