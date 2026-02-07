@@ -472,7 +472,8 @@ export async function handleIncomingMessage({
       userMessage,
       conversationHistory,
       language,
-      business
+      business,
+      sessionId: resolvedSessionId
     });
 
     // Check for direct responses (slot escalation, dispute resolution)

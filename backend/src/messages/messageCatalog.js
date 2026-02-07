@@ -33,6 +33,78 @@ const MESSAGE_CATALOG = {
       "Hello, I'm {name}. Where would you like to start?"
     ]
   },
+  CHATTER_GREETING_IDLE: {
+    TR: [
+      'Selam, buradayım. Ne kontrol etmemi istersiniz?',
+      'Merhaba, hoş geldiniz. Kısa bir not bırakın, hemen ilgileneyim.',
+      'Selamlar, yardımcı olmaya hazırım.'
+    ],
+    EN: [
+      "Hi, I'm here. What would you like me to check?",
+      'Hello, welcome. Share a quick note and I will jump in.',
+      'Hey there, I am ready to help.'
+    ]
+  },
+  CHATTER_GREETING_ACTIVE: {
+    TR: [
+      'Selam, kaldığımız yerden devam edelim.',
+      'Merhaba tekrar, mevcut konuyu birlikte tamamlayalım.',
+      'Selam, süreç açık. Son adımı bitirelim.'
+    ],
+    EN: [
+      'Hi again, let us continue from where we left off.',
+      'Hello again, we can finish the current task together.',
+      'Hey, the process is still open. Let us complete the next step.'
+    ]
+  },
+  CHATTER_THANKS_IDLE: {
+    TR: [
+      'Rica ederim.',
+      'Ne demek, memnuniyetle.',
+      'Her zaman, buradayım.'
+    ],
+    EN: [
+      'You are welcome.',
+      'My pleasure.',
+      'Anytime, I am here.'
+    ]
+  },
+  CHATTER_THANKS_ACTIVE: {
+    TR: [
+      'Rica ederim. Hazırsanız mevcut işlemi tamamlayalım.',
+      'Memnun oldum. Devam etmek için bir sonraki adımı geçebiliriz.',
+      'Ne demek. İsterseniz aynı konudan devam edelim.'
+    ],
+    EN: [
+      'You are welcome. If you are ready, we can finish the current request.',
+      'Glad to help. We can move to the next step now.',
+      'Anytime. We can continue with the same topic.'
+    ]
+  },
+  CHATTER_GENERIC_IDLE: {
+    TR: [
+      'Sizi dinliyorum.',
+      'Buradayım, devam edebiliriz.',
+      'Tamam, hazırım.'
+    ],
+    EN: [
+      'I am listening.',
+      'I am here, we can continue.',
+      'Sure, I am ready.'
+    ]
+  },
+  CHATTER_GENERIC_ACTIVE: {
+    TR: [
+      'Mesajınızı aldım. Mevcut adımı tamamlayalım.',
+      'Anladım. Süreci sürdürmek için bir sonraki bilgiyle devam edebiliriz.',
+      'Tamamdır, aynı işlemdeyiz. Devam edelim.'
+    ],
+    EN: [
+      'Got your message. Let us complete the current step.',
+      'Understood. We can continue the process with the next detail.',
+      'All right, we are in the same flow. Let us proceed.'
+    ]
+  },
   VERIFICATION_REQUEST_PHONE_LAST4: {
     TR: [
       'Kaydınızı buldum. Güvenlik doğrulaması için telefon numaranızın son 4 hanesini paylaşır mısınız?',
@@ -398,6 +470,8 @@ export function getMessageVariant(key, options = {}) {
     channel = '',
     intent = '',
     seedHint = '',
+    avoidVariantIndex = null,
+    avoidVariantIndexes = [],
     variables = {}
   } = options;
 
@@ -428,12 +502,30 @@ export function getMessageVariant(key, options = {}) {
   const selected = isVariantModeEnabled()
     ? selectVariant(normalizedVariants, seed)
     : { value: normalizedVariants[0] || '', index: 0 };
+  const avoidSet = new Set(
+    [
+      ...(Array.isArray(avoidVariantIndexes) ? avoidVariantIndexes : []),
+      avoidVariantIndex
+    ].filter(index => Number.isInteger(index))
+  );
+
+  let finalIndex = selected.index;
+  if (normalizedVariants.length > 1 && avoidSet.has(finalIndex)) {
+    for (let offset = 1; offset < normalizedVariants.length; offset += 1) {
+      const candidate = (selected.index + offset) % normalizedVariants.length;
+      if (!avoidSet.has(candidate)) {
+        finalIndex = candidate;
+        break;
+      }
+    }
+  }
+  const finalValue = normalizedVariants[finalIndex] || '';
 
   return {
-    text: interpolate(selected.value || '', variables),
+    text: interpolate(finalValue, variables),
     messageKey: key,
     language: lang,
-    variantIndex: selected.index
+    variantIndex: finalIndex
   };
 }
 

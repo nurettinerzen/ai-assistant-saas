@@ -16,9 +16,10 @@
  */
 
 import { routeMessage, handleDispute } from '../../../services/message-router.js';
+import { buildChatterResponse } from '../../../services/chatter-response.js';
 
 export async function makeRoutingDecision(params) {
-  const { classification, state, userMessage, conversationHistory, language, business } = params;
+  const { classification, state, userMessage, conversationHistory, language, business, sessionId = '' } = params;
 
   // Get last assistant message
   const lastAssistantMessage = conversationHistory
@@ -151,11 +152,34 @@ export async function makeRoutingDecision(params) {
     }
 
     case 'ACKNOWLEDGE_CHATTER': {
-      // Friendly chatter — LLM responds naturally (no template)
+      const chatterVariant = buildChatterResponse({
+        userMessage,
+        state,
+        language,
+        sessionId
+      });
+      const previousRecent = Array.isArray(state?.chatter?.recent) ? state.chatter.recent : [];
+      const nextRecent = [
+        ...previousRecent,
+        { messageKey: chatterVariant.messageKey, variantIndex: chatterVariant.variantIndex }
+      ].slice(-2);
+
+      state.chatter = {
+        lastMessageKey: chatterVariant.messageKey,
+        lastVariantIndex: chatterVariant.variantIndex,
+        lastAt: new Date().toISOString(),
+        recent: nextRecent
+      };
+
       return {
-        directResponse: false,
+        directResponse: true,
+        reply: chatterVariant.text,
         routing: messageRouting,
-        isChatter: true
+        isChatter: true,
+        metadata: {
+          messageKey: chatterVariant.messageKey,
+          variantIndex: chatterVariant.variantIndex
+        }
       };
     }
 
