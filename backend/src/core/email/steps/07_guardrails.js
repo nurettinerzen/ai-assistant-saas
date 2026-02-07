@@ -18,6 +18,8 @@
  * D) PII SCRUB
  *    - Remove unnecessary repetition of sensitive data
  */
+import { findActionClaims, replaceActionClaims } from '../../../security/actionClaimLexicon.js';
+import { ToolOutcome } from '../../../tools/toolResult.js';
 
 /**
  * Apply all email guardrails
@@ -56,7 +58,7 @@ export async function applyEmailGuardrails(ctx) {
   // ============================================
   // B) ACTION-CLAIM GUARD
   // ============================================
-  const hadToolSuccess = toolResults?.some(r => r.outcome === 'OK');
+  const hadToolSuccess = toolResults?.some(r => r.outcome === ToolOutcome.OK);
   const hadToolCalls = toolResults?.length > 0;
 
   const actionClaimResult = checkActionClaimGuard(modifiedContent, hadToolSuccess, hadToolCalls, language);
@@ -75,7 +77,7 @@ export async function applyEmailGuardrails(ctx) {
   // ============================================
   // C) VERIFICATION POLICY
   // ============================================
-  const verificationRequired = toolResults?.some(r => r.outcome === 'VERIFICATION_REQUIRED');
+  const verificationRequired = toolResults?.some(r => r.outcome === ToolOutcome.VERIFICATION_REQUIRED);
 
   const verificationResult = checkVerificationPolicy(modifiedContent, verificationRequired, language);
   ctx.guardrailsApplied.push({
@@ -157,50 +159,18 @@ function checkRecipientGuard(content, allowedEmail) {
  * Prevents LLM from claiming completed actions without tool success
  */
 function checkActionClaimGuard(content, hadToolSuccess, hadToolCalls, language) {
-  // Action claim patterns in Turkish and English
-  const actionClaimPatterns = language === 'TR' ? [
-    // Turkish completed action patterns
-    /\b(gönderdim|gönderildi|gönderdik)\b/gi,
-    /\b(kaydettim|kaydedildi|kaydettik)\b/gi,
-    /\b(oluşturdum|oluşturuldu|oluşturduk)\b/gi,
-    /\b(işleme aldım|işleme alındı|işleme aldık)\b/gi,
-    /\b(iptal ettim|iptal edildi|iptal ettik)\b/gi,
-    /\b(değiştirdim|değiştirildi|değiştirdik)\b/gi,
-    /\b(güncelledim|güncellendi|güncelledik)\b/gi,
-    /\b(tamamladım|tamamlandı|tamamladık)\b/gi,
-    /\b(randevu aldım|randevunuz alındı)\b/gi,
-    /\b(siparişiniz alındı|sipariş oluşturuldu)\b/gi
-  ] : [
-    // English completed action patterns
-    /\b(i have sent|i've sent|has been sent|was sent)\b/gi,
-    /\b(i have saved|i've saved|has been saved|was saved)\b/gi,
-    /\b(i have created|i've created|has been created|was created)\b/gi,
-    /\b(i have processed|i've processed|has been processed|was processed)\b/gi,
-    /\b(i have cancelled|i've cancelled|has been cancelled|was cancelled)\b/gi,
-    /\b(i have updated|i've updated|has been updated|was updated)\b/gi,
-    /\b(i have completed|i've completed|has been completed|was completed)\b/gi,
-    /\b(i have scheduled|i've scheduled|has been scheduled|was scheduled)\b/gi,
-    /\b(your order has been placed|your appointment has been booked)\b/gi
-  ];
-
-  const claims = [];
+  const claims = findActionClaims(content, language);
   let modifiedContent = content;
 
-  for (const pattern of actionClaimPatterns) {
-    const matches = content.match(pattern);
-    if (matches) {
-      claims.push(...matches);
+  // Keep signature stable for callers while centralizing detection.
+  void hadToolCalls;
 
-      // If no tool success, these claims are invalid
-      if (!hadToolSuccess) {
-        // Replace with tentative language
-        const replacement = language === 'TR'
-          ? 'bu konuda size yardımcı olabilirim'
-          : 'I can help you with this';
+  if (claims.length > 0 && !hadToolSuccess) {
+    const replacement = language === 'TR'
+      ? 'bu konuda size yardımcı olabilirim'
+      : 'I can help you with this';
 
-        modifiedContent = modifiedContent.replace(pattern, replacement);
-      }
-    }
+    modifiedContent = replaceActionClaims(content, replacement, language);
   }
 
   return {

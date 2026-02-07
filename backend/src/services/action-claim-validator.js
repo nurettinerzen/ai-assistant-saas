@@ -10,73 +10,7 @@
  * - "Durumu hızlandırıyorum" (without action)
  */
 
-// Action verbs that indicate the AI is claiming to take an action
-const ACTION_VERBS_TR = [
-  // Create/Open
-  'oluşturdum', 'oluşturuyorum', 'oluşturacağım',
-  'açtım', 'açıyorum', 'açacağım',
-  'yarattım', 'yaratıyorum', 'yaratacağım',
-
-  // Start/Begin
-  'başlattım', 'başlatıyorum', 'başlatacağım',
-  'başladım', 'başlıyorum', 'başlayacağım',
-
-  // Communicate/Forward
-  'ilettim', 'iletiyorum', 'ileteceğim',
-  'aktardım', 'aktarıyorum', 'aktaracağım',
-  'bildirdim', 'bildiriyorum', 'bildireceğim',
-  'gönderdim', 'gönderiyorum', 'göndereceğim',
-
-  // Contact/Discuss
-  'görüştüm', 'görüşüyorum', 'görüşeceğim',
-  'konuştum', 'konuşuyorum', 'konuşacağım',
-  'aradım', 'arıyorum', 'arayacağım',
-
-  // Save/Record
-  'kaydettim', 'kaydediyorum', 'kaydedeceğim',
-  'not aldım', 'not alıyorum', 'not alacağım',
-
-  // Expedite/Accelerate
-  'hızlandırdım', 'hızlandırıyorum', 'hızlandıracağım',
-  'ivedi hale getirdim', 'ivedi yapıyorum',
-  'önceliklendirdim', 'önceliklendiriyorum',
-
-  // Complete/Finish
-  'tamamladım', 'tamamlıyorum', 'tamamlayacağım',
-  'bitirdim', 'bitiriyorum', 'bitireceğim',
-
-  // General action
-  'yaptım', 'yapıyorum', 'yapacağım',
-  'hallettim', 'hallediyo rum', 'halledeceğim'
-];
-
-const ACTION_VERBS_EN = [
-  'created', 'creating', 'will create',
-  'opened', 'opening', 'will open',
-  'started', 'starting', 'will start',
-  'sent', 'sending', 'will send',
-  'contacted', 'contacting', 'will contact',
-  'saved', 'saving', 'will save',
-  'scheduled', 'scheduling', 'will schedule',
-  'forwarded', 'forwarding', 'will forward',
-  'expedited', 'expediting', 'will expedite',
-  'completed', 'completing', 'will complete'
-];
-
-// Exception phrases that are OK even without tool calls
-const ALLOWED_FUTURE_CLAIMS_TR = [
-  'hemen bir talep oluşturup',  // "I will create a request" is OK if followed by actual promise
-  'ilgili birimle görüşeceğim',  // Promise for future action
-  'sizin için',                  // "for you" indicates future
-  'adınıza',                     // "on your behalf" indicates future
-];
-
-const ALLOWED_FUTURE_CLAIMS_EN = [
-  'will create a request',
-  'will contact',
-  'for you',
-  'on your behalf',
-];
+import { findActionClaims } from '../security/actionClaimLexicon.js';
 
 /**
  * Check if AI response claims to have taken an action
@@ -86,26 +20,11 @@ const ALLOWED_FUTURE_CLAIMS_EN = [
  */
 export function detectActionClaim(text, language = 'TR') {
   if (!text) return { hasClaim: false, claimedAction: null };
-
-  const lowerText = text.toLowerCase();
-  const actionVerbs = language === 'TR' ? ACTION_VERBS_TR : ACTION_VERBS_EN;
-  const allowedClaims = language === 'TR' ? ALLOWED_FUTURE_CLAIMS_TR : ALLOWED_FUTURE_CLAIMS_EN;
-
-  // Check if any allowed future claim is present (these are OK without tools)
-  for (const allowedPhrase of allowedClaims) {
-    if (lowerText.includes(allowedPhrase.toLowerCase())) {
-      return { hasClaim: false, claimedAction: null }; // It's a promise, not a claim
-    }
-  }
-
-  // Check for action verbs
-  for (const verb of actionVerbs) {
-    if (lowerText.includes(verb)) {
-      return { hasClaim: true, claimedAction: verb };
-    }
-  }
-
-  return { hasClaim: false, claimedAction: null };
+  const claims = findActionClaims(text, language);
+  return {
+    hasClaim: claims.length > 0,
+    claimedAction: claims[0] || null
+  };
 }
 
 /**
@@ -121,12 +40,12 @@ export function validateActionClaim(responseText, hadToolCalls, language = 'TR')
 
   if (!claim.hasClaim) {
     // No action claim detected - all good
-    return { valid: true, error: null, correctionPrompt: null };
+    return { valid: true, error: null, correctionPrompt: null, claimedAction: null };
   }
 
   if (hadToolCalls) {
     // Action claim is backed by tool call - all good
-    return { valid: true, error: null, correctionPrompt: null };
+    return { valid: true, error: null, correctionPrompt: null, claimedAction: claim.claimedAction };
   }
 
   // ❌ VIOLATION: AI claimed action but didn't call any tool
@@ -165,7 +84,8 @@ Now correct your response - either call a tool or remove the action claim.`;
   return {
     valid: false,
     error,
-    correctionPrompt
+    correctionPrompt,
+    claimedAction: claim.claimedAction
   };
 }
 
