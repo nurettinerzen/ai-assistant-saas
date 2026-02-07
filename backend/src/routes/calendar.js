@@ -450,11 +450,11 @@ router.get('/google/auth', authenticateToken, async (req, res) => {
       });
     }
 
-    // SECURITY: Generate cryptographically secure state token (CSRF protection)
-    const state = await generateOAuthState(req.businessId, 'google-calendar');
+    // SECURITY: Generate cryptographically secure state token with PKCE
+    const { state, pkce } = await generateOAuthState(req.businessId, 'google-calendar');
 
     const oauth2Client = googleCalendarService.createOAuth2Client(clientId, clientSecret, redirectUri);
-    const authUrl = googleCalendarService.getAuthUrl(oauth2Client);
+    const authUrl = googleCalendarService.getAuthUrl(oauth2Client, pkce.challenge);
 
     const authUrlWithState = authUrl + `&state=${state}`;
 
@@ -475,7 +475,7 @@ router.get('/google/callback', async (req, res) => {
 
     if (!code || !state) {
       console.error('Google Calendar callback: missing code or state');
-      return safeRedirect(res, '/dashboard/integrations?error=calendar-invalid');
+      return safeRedirect(res, '/dashboard/integrations?error=google-calendar');
     }
 
     // SECURITY: Validate state token (CSRF protection)
@@ -483,18 +483,19 @@ router.get('/google/callback', async (req, res) => {
 
     if (!validation.valid) {
       console.error('❌ Google Calendar callback: Invalid state:', validation.error);
-      return safeRedirect(res, '/dashboard/integrations?error=calendar-csrf');
+      return safeRedirect(res, '/dashboard/integrations?error=google-calendar');
     }
 
     const businessId = validation.businessId;
+    const codeVerifier = validation.metadata?.codeVerifier;
 
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
     const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${process.env.BACKEND_URL}/api/calendar/google/callback`;
 
-    // Exchange code for tokens
+    // Exchange code for tokens (PKCE verifier for security)
     const oauth2Client = googleCalendarService.createOAuth2Client(clientId, clientSecret, redirectUri);
-    const tokens = await googleCalendarService.getTokens(oauth2Client, code);
+    const tokens = await googleCalendarService.getTokens(oauth2Client, code, codeVerifier);
 
     // Save to Integration table
     await prisma.integration.upsert({
