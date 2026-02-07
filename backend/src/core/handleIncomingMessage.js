@@ -34,9 +34,11 @@ import {
 import {
   checkEnumerationAttempt,
   resetEnumerationCounter,
-  getLockMessage
+  getLockMessage,
+  ENUMERATION_LIMITS
 } from '../services/session-lock.js';
 import { OutcomeEventType } from '../security/outcomePolicy.js';
+import { ToolOutcome, normalizeOutcome } from '../tools/toolResult.js';
 
 /**
  * Extract order number from user message
@@ -166,6 +168,45 @@ function normalizeOrderNo(orderNo) {
   return orderNo.toString().trim().toUpperCase().replace(/\s+/g, '');
 }
 
+function determineTurnOutcome({
+  toolLoopResult,
+  guardrailResult,
+  hadToolFailure = false
+}) {
+  if (hadToolFailure) {
+    return ToolOutcome.INFRA_ERROR;
+  }
+
+  if (guardrailResult?.needsVerification || guardrailResult?.blockReason === 'VERIFICATION_REQUIRED') {
+    return ToolOutcome.VERIFICATION_REQUIRED;
+  }
+
+  if (guardrailResult?.blockReason === 'IDENTITY_MISMATCH' || guardrailResult?.blockReason === 'POLICY_DENIED') {
+    return ToolOutcome.DENIED;
+  }
+
+  const normalizedTerminal = normalizeOutcome(toolLoopResult?._terminalState);
+  if (normalizedTerminal) {
+    return normalizedTerminal;
+  }
+
+  const toolOutcomes = Array.isArray(toolLoopResult?.toolResults)
+    ? toolLoopResult.toolResults.map(r => normalizeOutcome(r?.outcome)).filter(Boolean)
+    : [];
+
+  if (toolOutcomes.includes(ToolOutcome.VERIFICATION_REQUIRED)) {
+    return ToolOutcome.VERIFICATION_REQUIRED;
+  }
+  if (toolOutcomes.includes(ToolOutcome.NOT_FOUND)) {
+    return ToolOutcome.NOT_FOUND;
+  }
+  if (toolOutcomes.includes(ToolOutcome.VALIDATION_ERROR)) {
+    return ToolOutcome.VALIDATION_ERROR;
+  }
+
+  return ToolOutcome.OK;
+}
+
 /**
  * Handle incoming message (channel-agnostic)
  *
@@ -234,6 +275,10 @@ export async function handleIncomingMessage({
       // Return safe response WITHOUT calling LLM
       return {
         reply: getBlockedContentMessage(language),
+        outcome: ToolOutcome.DENIED,
+        metadata: {
+          outcome: ToolOutcome.DENIED
+        },
         shouldEndSession: false,
         forceEnd: false,
         locked: false,
@@ -277,6 +322,11 @@ export async function handleIncomingMessage({
 
       return {
         reply: replyMessage,
+        outcome: ToolOutcome.DENIED,
+        metadata: {
+          outcome: ToolOutcome.DENIED,
+          lockReason: contextResult.terminationReason || null
+        },
         shouldEndSession: true,
         forceEnd: true,
         locked: contextResult.locked,
@@ -410,6 +460,11 @@ export async function handleIncomingMessage({
 
       return {
         reply: routingResult.reply,
+        outcome: ToolOutcome.OK,
+        metadata: {
+          outcome: ToolOutcome.OK,
+          ...(routingResult.metadata || {})
+        },
         shouldEndSession: false,
         forceEnd: routingResult.forceEnd || false,
         state,
@@ -479,7 +534,7 @@ export async function handleIncomingMessage({
     console.log('📊 [ToolLoop] Results summary:', {
       toolResultsCount: toolLoopResult.toolResults?.length || 0,
       toolsCalled: toolsCalled,
-      hasNotFoundOutcome: toolLoopResult.toolResults?.some(r => r?.outcome === 'NOT_FOUND') || false,
+      hasNotFoundOutcome: toolLoopResult.toolResults?.some(r => normalizeOutcome(r?.outcome) === ToolOutcome.NOT_FOUND) || false,
       results: toolLoopResult.toolResults?.map(r => ({
         name: r?.name,
         outcome: r?.outcome,
@@ -505,6 +560,12 @@ export async function handleIncomingMessage({
 
           return {
             reply: getLockMessage('ENUMERATION', language),
+            outcome: ToolOutcome.DENIED,
+            metadata: {
+              outcome: ToolOutcome.DENIED,
+              lockReason: 'ENUMERATION',
+              failedAttempts: enumResult.attempts
+            },
             shouldEndSession: false,
             forceEnd: false,
             locked: true,
@@ -525,7 +586,7 @@ export async function handleIncomingMessage({
           };
         }
 
-        console.log(`⚠️ [Enumeration] Failed attempt ${enumResult.attempts}/${5}`);
+        console.log(`⚠️ [Enumeration] Failed attempt ${enumResult.attempts}/${ENUMERATION_LIMITS.MAX_FAILED_VERIFICATIONS}`);
       } else if (verificationSucceeded) {
         // Reset counter on successful verification
         console.log('✅ [Enumeration] Verification succeeded, resetting counter');
@@ -559,6 +620,11 @@ export async function handleIncomingMessage({
 
       return {
         reply: responseText,
+        outcome: ToolOutcome.INFRA_ERROR,
+        metadata: {
+          outcome: ToolOutcome.INFRA_ERROR,
+          failedTool
+        },
         shouldEndSession: false,
         forceEnd: channel === 'PHONE', // Force end on phone if tool failed
         state,
@@ -698,8 +764,22 @@ export async function handleIncomingMessage({
     console.log(`\n✅ [Orchestrator] Turn completed successfully`);
     console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
 
+    const turnOutcome = determineTurnOutcome({
+      toolLoopResult,
+      guardrailResult,
+      hadToolFailure
+    });
+
     return {
       reply: finalResponse,
+      outcome: turnOutcome,
+      metadata: {
+        outcome: turnOutcome,
+        guardrailsApplied: guardrailResult.guardrailsApplied || [],
+        verificationState: state?.verification?.status || 'none',
+        guidanceAdded: metrics.guidanceAdded || [],
+        ...(persistMetadata || {})
+      },
       shouldEndSession,
       forceEnd,
       state,
@@ -734,6 +814,10 @@ export async function handleIncomingMessage({
       reply: language === 'TR'
         ? 'Özür dilerim, bir hata oluştu. Lütfen tekrar deneyin.'
         : 'I apologize, an error occurred. Please try again.',
+      outcome: ToolOutcome.INFRA_ERROR,
+      metadata: {
+        outcome: ToolOutcome.INFRA_ERROR
+      },
       shouldEndSession: false,
       forceEnd: false,
       state: null,

@@ -31,8 +31,40 @@ const LOCK_DURATIONS = {
 export const ENUMERATION_LIMITS = {
   MAX_FAILED_VERIFICATIONS: 5,  // Max failed verification attempts
   WINDOW_MS: 5 * 60 * 1000,     // 5 minute sliding window
-  COOLDOWN_MS: 2 * 60 * 1000    // 2 minute cooldown after threshold
+  COOLDOWN_MS: 2 * 60 * 1000,   // 2 minute cooldown after threshold
+  MAX_SUSPICIOUS_NOT_FOUND: 4,  // Max suspicious NOT_FOUND attempts
+  NOT_FOUND_WINDOW_MS: 3 * 60 * 1000,
+  RAPID_WINDOW_MS: 45 * 1000
 };
+
+function normalizeIdentifier(input) {
+  if (!input) return null;
+  const normalized = String(input).toUpperCase().replace(/[^A-Z0-9]/g, '');
+  return normalized.length >= 4 ? normalized : null;
+}
+
+function extractSignalIdentifier(signal = {}) {
+  if (signal.identifier) {
+    return normalizeIdentifier(signal.identifier);
+  }
+
+  if (signal.orderNumber) {
+    return normalizeIdentifier(signal.orderNumber);
+  }
+
+  if (!signal.userMessage) {
+    return null;
+  }
+
+  const match = String(signal.userMessage).match(/\b(?:[A-Z]{2,}[-_ ]?)?\d{4,}\b/i);
+  return normalizeIdentifier(match?.[0] || null);
+}
+
+function getNumericSuffix(identifier) {
+  if (!identifier) return null;
+  const suffix = identifier.match(/(\d{4,})$/)?.[1];
+  return suffix ? Number.parseInt(suffix, 10) : null;
+}
 
 /**
  * Lock messages (multilingual)
@@ -282,40 +314,111 @@ export async function getRemainingLockTime(sessionId, language = 'TR') {
 }
 
 /**
- * Check and record failed verification attempt for enumeration protection
+ * Check and record enumeration attempts.
+ *
+ * Modes:
+ * - verification_failed (default): every failed verification counts
+ * - not_found: only suspicious signals count (rapid/sequential probing)
  *
  * @param {string} sessionId - Universal session ID
- * @returns {Promise<{shouldBlock: boolean, attempts: number}>}
+ * @param {Object} options
+ * @param {'verification_failed'|'not_found'} options.mode
+ * @param {Object} options.signal - Optional signal payload for not_found mode
+ * @returns {Promise<{shouldBlock: boolean, attempts: number, counted: boolean, mode: string, signal?: Object}>}
  */
-export async function checkEnumerationAttempt(sessionId) {
+export async function checkEnumerationAttempt(sessionId, options = {}) {
   const state = await getState(sessionId);
   const now = Date.now();
+  const mode = options.mode || 'verification_failed';
 
-  // Initialize enumeration tracking if not exists
-  if (!state.enumerationAttempts) {
-    state.enumerationAttempts = [];
+  // Backward compat: migrate legacy flat array into structured object lazily.
+  const legacyAttempts = Array.isArray(state.enumerationAttempts)
+    ? state.enumerationAttempts
+    : [];
+
+  if (!state.enumeration || typeof state.enumeration !== 'object') {
+    state.enumeration = {
+      verificationAttempts: legacyAttempts,
+      notFoundAttempts: [],
+      lastProbeAt: null,
+      lastProbeIdentifier: null
+    };
   }
 
-  // Clean up old attempts outside window
-  state.enumerationAttempts = state.enumerationAttempts.filter(
+  state.enumeration.verificationAttempts = (state.enumeration.verificationAttempts || []).filter(
     ts => (now - ts) < ENUMERATION_LIMITS.WINDOW_MS
   );
+  state.enumeration.notFoundAttempts = (state.enumeration.notFoundAttempts || []).filter(
+    ts => (now - ts) < ENUMERATION_LIMITS.NOT_FOUND_WINDOW_MS
+  );
 
-  // Add this attempt
-  state.enumerationAttempts.push(now);
+  let attemptCount = 0;
+  let counted = false;
+  let signalMeta = null;
 
-  // Check if threshold exceeded
-  const attemptCount = state.enumerationAttempts.length;
+  if (mode === 'not_found') {
+    const identifier = extractSignalIdentifier(options.signal);
+    const previousIdentifier = state.enumeration.lastProbeIdentifier;
+    const previousAt = state.enumeration.lastProbeAt ? Number(state.enumeration.lastProbeAt) : null;
 
-  await updateState(sessionId, state);
+    const rapid = previousAt ? (now - previousAt) <= ENUMERATION_LIMITS.RAPID_WINDOW_MS : false;
+    const currentSuffix = getNumericSuffix(identifier);
+    const previousSuffix = getNumericSuffix(previousIdentifier);
+    const sequential = Number.isFinite(currentSuffix) &&
+      Number.isFinite(previousSuffix) &&
+      Math.abs(currentSuffix - previousSuffix) === 1;
+    const rotatingIdentifier = rapid && !!identifier && !!previousIdentifier && identifier !== previousIdentifier;
 
-  if (attemptCount >= ENUMERATION_LIMITS.MAX_FAILED_VERIFICATIONS) {
-    console.warn(`🚨 [Enumeration] Session ${sessionId} exceeded threshold (${attemptCount} attempts)`);
-    await lockSession(sessionId, 'ENUMERATION');
-    return { shouldBlock: true, attempts: attemptCount };
+    const suspicious = !!identifier && (sequential || rotatingIdentifier);
+    if (suspicious) {
+      state.enumeration.notFoundAttempts.push(now);
+      counted = true;
+    }
+
+    state.enumeration.lastProbeAt = now;
+    state.enumeration.lastProbeIdentifier = identifier || null;
+
+    attemptCount = state.enumeration.notFoundAttempts.length;
+    signalMeta = {
+      identifier,
+      rapid,
+      sequential,
+      rotatingIdentifier,
+      suspicious
+    };
+  } else {
+    state.enumeration.verificationAttempts.push(now);
+    attemptCount = state.enumeration.verificationAttempts.length;
+    counted = true;
   }
 
-  return { shouldBlock: false, attempts: attemptCount };
+  // Keep legacy field in sync for old readers (deprecated)
+  state.enumerationAttempts = state.enumeration.verificationAttempts;
+  await updateState(sessionId, state);
+
+  const threshold = mode === 'not_found'
+    ? ENUMERATION_LIMITS.MAX_SUSPICIOUS_NOT_FOUND
+    : ENUMERATION_LIMITS.MAX_FAILED_VERIFICATIONS;
+
+  if (counted && attemptCount >= threshold) {
+    console.warn(`🚨 [Enumeration] Session ${sessionId} exceeded threshold (${attemptCount} attempts, mode=${mode})`);
+    await lockSession(sessionId, 'ENUMERATION');
+    return {
+      shouldBlock: true,
+      attempts: attemptCount,
+      counted,
+      mode,
+      signal: signalMeta
+    };
+  }
+
+  return {
+    shouldBlock: false,
+    attempts: attemptCount,
+    counted,
+    mode,
+    signal: signalMeta
+  };
 }
 
 /**
@@ -326,6 +429,12 @@ export async function checkEnumerationAttempt(sessionId) {
 export async function resetEnumerationCounter(sessionId) {
   const state = await getState(sessionId);
   state.enumerationAttempts = [];
+  state.enumeration = {
+    verificationAttempts: [],
+    notFoundAttempts: [],
+    lastProbeAt: null,
+    lastProbeIdentifier: null
+  };
   await updateState(sessionId, state);
   console.log(`[Enumeration] Reset counter for session ${sessionId}`);
 }

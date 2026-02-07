@@ -91,12 +91,14 @@ async function handleMessage(sessionId, businessId, userMessage, language, busin
 
   return {
     reply: result.reply,
+    outcome: result.outcome || ToolOutcome.OK,
     locked: result.locked,
     lockReason: result.lockReason,
     lockUntil: result.lockUntil,
     inputTokens: result.inputTokens || 0,
     outputTokens: result.outputTokens || 0,
-    toolsCalled: result.toolsCalled || []
+    toolsCalled: result.toolsCalled || [],
+    metadata: result.metadata || {}
   };
 }
 
@@ -896,9 +898,14 @@ router.post('/widget', async (req, res) => {
       const lockMsg = getLockMessage(lockStatus.reason, language);
       return res.json({
         reply: lockMsg,
+        outcome: ToolOutcome.DENIED,
         locked: true,
         lockReason: lockStatus.reason,
-        lockUntil: lockStatus.until
+        lockUntil: lockStatus.until,
+        metadata: {
+          outcome: ToolOutcome.DENIED,
+          lockReason: lockStatus.reason
+        }
       });
     }
 
@@ -923,8 +930,13 @@ router.post('/widget', async (req, res) => {
       const lockMsg = getLockMessage(riskDetection.reason, language);
       return res.json({
         reply: lockMsg,
+        outcome: ToolOutcome.DENIED,
         locked: true,
-        lockReason: riskDetection.reason
+        lockReason: riskDetection.reason,
+        metadata: {
+          outcome: ToolOutcome.DENIED,
+          lockReason: riskDetection.reason
+        }
       });
     }
 
@@ -934,8 +946,13 @@ router.post('/widget', async (req, res) => {
       console.log(`🛡️ [Chat Guard] SOFT REFUSAL - message rejected, session stays open`);
       return res.json({
         reply: riskDetection.refusalMessage,
+        outcome: ToolOutcome.DENIED,
         softRefusal: true,
-        warnings: riskDetection.warnings.map(w => w.type)
+        warnings: riskDetection.warnings.map(w => w.type),
+        metadata: {
+          outcome: ToolOutcome.DENIED,
+          softRefusal: true
+        }
       });
     }
 
@@ -975,7 +992,12 @@ router.post('/widget', async (req, res) => {
 
       return res.json({
         reply: fallbackMessage,
-        kbEmptyFallback: true
+        outcome: ToolOutcome.NOT_FOUND,
+        kbEmptyFallback: true,
+        metadata: {
+          outcome: ToolOutcome.NOT_FOUND,
+          kbEmptyFallback: true
+        }
       });
     }
 
@@ -1110,12 +1132,10 @@ router.post('/widget', async (req, res) => {
       });
     }
 
-    // Route-level firewall: mode controlled by feature flag.
-    // 'telemetry' (default): Step7 is the single enforcement point, route only logs.
-    // 'enforce': Route also blocks (double enforcement, for rollback safety).
-    const routeFirewallMode = isFeatureEnabled('ROUTE_FIREWALL_MODE')
-      ? 'enforce'
-      : (FEATURE_FLAGS.ROUTE_FIREWALL_MODE || 'telemetry');
+    // Route-level firewall: Step7 is the single enforcement point by default.
+    // Use FEATURE_ROUTE_FIREWALL_MODE=enforce only as rollback switch.
+    const routeFirewallMode = String(FEATURE_FLAGS.ROUTE_FIREWALL_MODE || 'telemetry').toLowerCase();
+    const shouldEnforceRouteFirewall = routeFirewallMode === 'enforce';
 
     const firewallResult = sanitizeResponse(result.reply, language);
 
@@ -1130,15 +1150,15 @@ router.post('/widget', async (req, res) => {
         sessionId
       });
 
-      // Only block at route level if mode is 'enforce'
-      if (routeFirewallMode === 'enforce') {
+      // Only block at route level in explicit rollback mode.
+      if (shouldEnforceRouteFirewall) {
         console.warn('🚨 [Route Firewall] ENFORCE mode - blocking response');
         finalReply = firewallResult.sanitized;
       }
     }
     if (hasPIIWarnings) {
       const warningText = piiWarnings.join('\n');
-      finalReply = `${warningText}\n\n${result.reply}`;
+      finalReply = `${warningText}\n\n${finalReply}`;
     }
 
     // P0: Reload state to get updated verification status after tool execution
@@ -1148,6 +1168,7 @@ router.post('/widget', async (req, res) => {
     res.json({
       success: true,
       reply: finalReply,
+      outcome: result.outcome || ToolOutcome.OK,
       conversationId: sessionId, // P0: conversationId is required for audit/correlation
       messageId: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`, // P0: messageId for audit trail
       sessionId: sessionId, // Keep for backward compatibility
@@ -1156,7 +1177,12 @@ router.post('/widget', async (req, res) => {
       verificationStatus: updatedState.verification?.status || 'none', // P0: Gate requirement for verification tests
       warnings: hasPIIWarnings ? piiWarnings : undefined,
       toolsCalled: result.toolsCalled || [], // For test assertions (deprecated, use toolCalls)
-      toolCalls: result.toolsCalled || [] // P0: Test expects 'toolCalls' not 'toolsCalled'
+      toolCalls: result.toolsCalled || [], // P0: Test expects 'toolCalls' not 'toolsCalled'
+      metadata: {
+        ...(result.metadata || {}),
+        routeFirewallMode,
+        routeFirewallEnforced: shouldEnforceRouteFirewall
+      }
     });
 
   } catch (error) {

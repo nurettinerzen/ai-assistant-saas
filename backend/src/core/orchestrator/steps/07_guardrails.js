@@ -34,6 +34,7 @@ import {
   enforceRequiredToolCall
 } from '../../../guardrails/securityGateway.js';
 import { shouldBypassLeakFilter } from '../../../security/outcomePolicy.js';
+import { ToolOutcome, normalizeOutcome } from '../../../tools/toolResult.js';
 
 export async function applyGuardrails(params) {
   const {
@@ -138,16 +139,11 @@ export async function applyGuardrails(params) {
   // Çünkü NOT_FOUND durumunda hassas veri yok, verification gereksiz
   // ============================================
   let notFoundOverrideApplied = false;
-  let hasNotFoundOutcome = false; // Track if any tool returned NOT_FOUND
-
   if (toolOutputs.length > 0) {
     console.log('🔍 [Guardrails] Early NOT_FOUND check (before Leak Filter):', {
       toolOutputsCount: toolOutputs.length,
       outcomes: toolOutputs.map(o => o?.outcome)
     });
-
-    // Check if any tool returned NOT_FOUND outcome
-    hasNotFoundOutcome = toolOutputs.some(o => o?.outcome === 'NOT_FOUND');
 
     // Sipariş bulunamadı kontrolü - Leak Filter'dan ÖNCE
     const earlyOrderNotFoundCheck = checkOrderNotFoundPressure(responseText, toolOutputs, language);
@@ -181,7 +177,7 @@ export async function applyGuardrails(params) {
   // - Tool çağrıldı ve başarılıysa: gerçek müşteri verisi var, filter gerekli
   const noToolsCalled = !toolsCalled || toolsCalled.length === 0;
   const hasSuccessfulDataTool = toolOutputs.some(o =>
-    o?.outcome === 'OK' && o?.success === true
+    normalizeOutcome(o?.outcome) === ToolOutcome.OK && o?.success === true
   );
   const hasBypassOutcome = toolOutputs.some(o => shouldBypassLeakFilter(o?.outcome));
   const shouldSkipLeakFilter = notFoundOverrideApplied || hasBypassOutcome || noToolsCalled || !hasSuccessfulDataTool;
@@ -255,13 +251,13 @@ export async function applyGuardrails(params) {
       // SKIP: Tool already verified this data (anchor-based verification passed)
       // Tool output contains PII-redacted data (e.g. 559******8271) which can't
       // be compared to plain identity from anchor (e.g. 5592348271)
-      if (output.outcome === 'OK' && output.success === true) {
+      if (normalizeOutcome(output.outcome) === ToolOutcome.OK && output.success === true) {
         console.log('✅ [SecurityGateway] Skipping identity match - tool already verified (outcome=OK)');
         continue;
       }
 
       // SKIP: NOT_FOUND means no record was returned — nothing to compare
-      if (output.outcome === 'NOT_FOUND') {
+      if (normalizeOutcome(output.outcome) === ToolOutcome.NOT_FOUND) {
         console.log('✅ [SecurityGateway] Skipping identity match - NOT_FOUND (no record to compare)');
         continue;
       }

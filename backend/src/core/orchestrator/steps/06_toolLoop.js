@@ -11,8 +11,8 @@ import { applyToolFailPolicy } from '../../../policies/toolFailPolicy.js';
 import { executeToolWithRetry } from '../../../services/tool-fail-handler.js';
 import { executeTool } from '../../../tools/index.js';
 import { getToolExecutionResult, setToolExecutionResult } from '../../../services/tool-idempotency-db.js';
-import { recordNotFound, isSessionBlocked } from '../../../services/enumerationGuard.js';
-import { GENERIC_ERROR_MESSAGES } from '../../../tools/toolResult.js';
+import { isSessionLocked, getLockMessage, checkEnumerationAttempt } from '../../../services/session-lock.js';
+import { GENERIC_ERROR_MESSAGES, ToolOutcome, normalizeOutcome } from '../../../tools/toolResult.js';
 import {
   deriveOutcomeEvents,
   applyOutcomeEventsToState,
@@ -39,12 +39,12 @@ export async function executeToolLoop(params) {
     effectsEnabled = true // DRY-RUN flag (default: true for backward compat)
   } = params;
 
-  // P0-1 FIX: Check if session is blocked due to enumeration attack
-  const enumerationCheck = isSessionBlocked(sessionId);
-  if (enumerationCheck.blocked) {
-    console.log(`🚫 [ToolLoop] Session blocked due to enumeration attack: ${sessionId}`);
+  // Check lock state once more before tool execution (defensive).
+  const lockStatus = await isSessionLocked(sessionId);
+  if (lockStatus.locked && lockStatus.reason === 'ENUMERATION') {
+    console.log(`🚫 [ToolLoop] Session blocked due to enumeration policy: ${sessionId}`);
     return {
-      reply: GENERIC_ERROR_MESSAGES[language] || GENERIC_ERROR_MESSAGES.TR,
+      reply: getLockMessage('ENUMERATION', language),
       inputTokens: 0,
       outputTokens: 0,
       hadToolSuccess: false,
@@ -54,7 +54,7 @@ export async function executeToolLoop(params) {
       toolResults: [],
       iterations: 0,
       chat: null,
-      _blocked: 'ENUMERATION_ATTACK'
+      _blocked: 'ENUMERATION'
     };
   }
 
@@ -276,19 +276,27 @@ export async function executeToolLoop(params) {
         console.log('🚩 [ToolLoop] USE_STATE_EVENTS=false, skipping centralized event pipeline');
       }
 
-      if (shouldAskVerification(toolResult.outcome)) {
+      const outcome = normalizeOutcome(toolResult.outcome);
+
+      if (shouldAskVerification(outcome)) {
         console.log('🔐 [ToolLoop] Verification required outcome received');
       }
 
       // Terminal outcomes are decided by centralized outcome policy.
-      if (shouldTerminate(toolResult.outcome)) {
-        if (toolResult.outcome === 'NOT_FOUND') {
+      if (shouldTerminate(outcome)) {
+        if (outcome === ToolOutcome.NOT_FOUND) {
           console.log(`📭 [ToolLoop] NOT_FOUND terminal state - stopping loop, NOT sending to LLM`);
 
-          // P0-1 FIX: Record NOT_FOUND for enumeration attack detection
-          const enumerationResult = recordNotFound(sessionId, business?.id, toolName);
-          if (enumerationResult.blocked) {
-            console.log(`🚨 [ToolLoop] Session blocked after this NOT_FOUND - enumeration threshold exceeded`);
+          // Count NOT_FOUND only when probing signal is suspicious (rapid/sequential).
+          const enumerationResult = await checkEnumerationAttempt(sessionId, {
+            mode: 'not_found',
+            signal: {
+              userMessage,
+              toolName
+            }
+          });
+          if (enumerationResult.shouldBlock) {
+            console.log('🚨 [ToolLoop] Session blocked after suspicious NOT_FOUND pattern');
           }
 
           responseText = toolResult.message || GENERIC_ERROR_MESSAGES[language] || GENERIC_ERROR_MESSAGES.TR;
@@ -304,12 +312,13 @@ export async function executeToolLoop(params) {
             toolResults,
             iterations,
             chat: null,
-            _terminalState: 'NOT_FOUND',
-            _enumerationCount: enumerationResult.count
+            _terminalState: ToolOutcome.NOT_FOUND,
+            _enumerationCount: enumerationResult.attempts,
+            _enumerationCounted: enumerationResult.counted
           };
         }
 
-        console.log(`⚠️ [ToolLoop] ${toolResult.outcome} terminal state - stopping loop`);
+        console.log(`⚠️ [ToolLoop] ${outcome || toolResult.outcome} terminal state - stopping loop`);
         responseText = toolResult.message || GENERIC_ERROR_MESSAGES[language] || GENERIC_ERROR_MESSAGES.TR;
 
         return {
@@ -323,7 +332,7 @@ export async function executeToolLoop(params) {
           toolResults,
           iterations,
           chat: null,
-          _terminalState: toolResult.outcome || 'TERMINAL'
+          _terminalState: outcome || 'TERMINAL'
         };
       }
 
@@ -336,7 +345,7 @@ export async function executeToolLoop(params) {
 
       // Only include data if outcome is OK (verified data)
       // VERIFICATION_REQUIRED: Don't leak anchor data to LLM
-      if (toolResult.outcome === 'OK' && toolResult.data) {
+      if (outcome === ToolOutcome.OK && toolResult.data) {
         responseData.data = toolResult.data;
       }
 
