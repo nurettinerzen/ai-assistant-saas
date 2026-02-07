@@ -21,7 +21,7 @@ import {
 import EmptyState from '@/components/EmptyState';
 import {
   Puzzle, Check, ExternalLink, Star, Copy, CheckCircle2, CreditCard, Zap,
-  MessageSquare, Target, Cloud, Calendar, CalendarDays, BarChart3, Smartphone,
+  MessageSquare, Target, Cloud, Calendar, CalendarDays, Smartphone,
   ShoppingCart, Utensils, Scissors, Stethoscope, Package, Mail, Hash,
   Wallet, Eye, EyeOff, Inbox, RefreshCw, Lock, Info
 } from 'lucide-react';
@@ -56,9 +56,7 @@ import {
   useDisableWebhook,
   useRegenerateWebhook,
   useDisconnectGoogleCalendar,
-  useDisconnectGoogleSheets,
   useTestGoogleCalendar,
-  useTestGoogleSheets,
   useTestIkas,
 } from '@/hooks/useIntegrations';
 
@@ -87,12 +85,6 @@ const GoogleCalendarLogo = ({ className }) => (
   </svg>
 );
 
-const GoogleSheetsLogo = ({ className }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none">
-    <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-2h2v2zm0-4H7v-2h2v2zm0-4H7V7h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2z" fill="#0F9D58"/>
-  </svg>
-);
-
 const WhatsAppLogo = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none">
     <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" fill="#25D366"/>
@@ -108,7 +100,6 @@ const IkasLogo = ({ className }) => (
 
 const INTEGRATION_ICONS = {
   GOOGLE_CALENDAR: GoogleCalendarLogo,
-  GOOGLE_SHEETS: GoogleSheetsLogo,
   WHATSAPP: WhatsAppLogo,
   SHOPIFY: ShopifyLogo,
   IKAS: IkasLogo,
@@ -153,9 +144,7 @@ export default function IntegrationsPage() {
   const disableWebhook = useDisableWebhook();
   const regenerateWebhook = useRegenerateWebhook();
   const disconnectGoogleCalendar = useDisconnectGoogleCalendar();
-  const disconnectGoogleSheets = useDisconnectGoogleSheets();
   const testGoogleCalendar = useTestGoogleCalendar();
-  const testGoogleSheets = useTestGoogleSheets();
   const testIkas = useTestIkas();
 
   // Upgrade modal state
@@ -206,15 +195,6 @@ export default function IntegrationsPage() {
         window.history.replaceState({}, '', window.location.pathname);
       } else if (shopifyResult === 'error') {
         toast.error(`Failed to connect Shopify${errorMessage ? `: ${decodeURIComponent(errorMessage)}` : ''}`);
-        window.history.replaceState({}, '', window.location.pathname);
-      }
-
-      // Google Sheets callback
-      if (success === 'google-sheets') {
-        toast.success('Google Sheets bağlantısı başarılı!');
-        window.history.replaceState({}, '', window.location.pathname);
-      } else if (error === 'google-sheets' || error?.startsWith('google-sheets-')) {
-        toast.error('Google Sheets bağlantısı başarısız oldu');
         window.history.replaceState({}, '', window.location.pathname);
       }
 
@@ -455,11 +435,6 @@ const handleShopifyConnect = async () => {
         window.location.href = response.data.authUrl;
         return;
       }
-      if (integration.type === 'GOOGLE_SHEETS') {
-        const response = await apiClient.get('/api/google-sheets/auth-url');
-        window.location.href = response.data.authUrl;
-        return;
-      }
       if (integration.type === 'IKAS') { setIkasModalOpen(true); return; }
       toast.info(`${integration.name} coming soon!`);
     } catch (error) {
@@ -478,10 +453,6 @@ const handleShopifyConnect = async () => {
       await disconnectGoogleCalendar.mutateAsync();
       toast.success('Google Calendar disconnected');
     }
-    else if (integration.type === 'GOOGLE_SHEETS') {
-      await disconnectGoogleSheets.mutateAsync();
-      toast.success('Google Sheets disconnected');
-    }
     else if (integration.type === 'IKAS') {
       await disconnectIkas.mutateAsync();
       toast.success('ikas bağlantısı kesildi');
@@ -496,12 +467,6 @@ const handleShopifyConnect = async () => {
     if (integration.type === 'GOOGLE_CALENDAR') {
       const response = await testGoogleCalendar.mutateAsync();
       if (response.data.success) toast.success('Google Calendar bağlantısı aktif!');
-      else toast.error('Test failed');
-      return;
-    }
-    if (integration.type === 'GOOGLE_SHEETS') {
-      const response = await testGoogleSheets.mutateAsync();
-      if (response.data.success) toast.success('Google Sheets bağlantısı aktif!');
       else toast.error('Test failed');
       return;
     }
@@ -534,7 +499,6 @@ const handleShopifyConnect = async () => {
   const getCategoryDescription = (type) => {
     const descriptions = {
       GOOGLE_CALENDAR: t('dashboard.integrationsPage.syncAppointments'),
-      GOOGLE_SHEETS: language === 'tr' ? 'Müşteri verilerini senkronize edin' : 'Sync customer data',
       WHATSAPP: t('dashboard.integrationsPage.whatsappConversations'),
       NETGSM_SMS: language === 'tr' ? 'SMS ile müşterilerinize ulaşın' : 'Reach your customers via SMS',
       SHOPIFY: t('dashboard.integrationsPage.shopifyConnect'),
@@ -577,7 +541,7 @@ const handleShopifyConnect = async () => {
 
   // Integrations to hide (removed from platform)
   // PILOT: Show all integrations (removed hidden list)
-  const HIDDEN_INTEGRATIONS = [];
+  const HIDDEN_INTEGRATIONS = ['GOOGLE_SHEETS'];
 
   // Integration Categories - new structure without sector filter
   const INTEGRATION_CATEGORIES = [
@@ -592,12 +556,6 @@ const handleShopifyConnect = async () => {
       title: locale === 'tr' ? 'Takvim' : 'Calendar',
       icon: CalendarDays,
       types: ['GOOGLE_CALENDAR']
-    },
-    {
-      id: 'data',
-      title: locale === 'tr' ? 'Veri' : 'Data',
-      icon: BarChart3,
-      types: ['GOOGLE_SHEETS']
     },
     {
       id: 'messaging',
@@ -694,13 +652,7 @@ const handleShopifyConnect = async () => {
             </Button>
           ) : integration.connected ? (
             <>
-              {integration.type === 'GOOGLE_SHEETS' ? (
-                <Button variant="outline" size="sm" className="flex-1" onClick={() => window.location.href = '/dashboard/integrations/google-sheets'}>
-                  Yönet
-                </Button>
-              ) : (
-                <Button variant="outline" size="sm" className="flex-1" onClick={() => handleTest(integration)}>{t('dashboard.integrationsPage.testIntegration')}</Button>
-              )}
+              <Button variant="outline" size="sm" className="flex-1" onClick={() => handleTest(integration)}>{t('dashboard.integrationsPage.testIntegration')}</Button>
               {can('integrations:connect') && (
               <Button variant="outline" size="sm" onClick={() => handleDisconnect(integration)}>{t('dashboard.integrationsPage.disconnect')}</Button>
               )}
