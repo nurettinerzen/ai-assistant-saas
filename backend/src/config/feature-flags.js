@@ -43,6 +43,19 @@ export const FEATURE_FLAGS = {
   // When disabled: Use legacy chat.js with direct Gemini
   CHAT_USE_V2: process.env.FEATURE_CHAT_USE_V2 !== 'false', // Default: true (v2 is default)
   CHAT_V2_ROLLOUT_PERCENT: parseInt(process.env.FEATURE_CHAT_V2_ROLLOUT_PERCENT || '100', 10), // 0-100
+
+  // ─── Consolidation flags (new-branch-codex) ───
+
+  // Route-level firewall mode: 'enforce' | 'telemetry'
+  // 'enforce': Route also blocks (double enforcement with Step7)
+  // 'telemetry': Route only logs, Step7 is single enforcement point (default)
+  // Rollback: Set FEATURE_ROUTE_FIREWALL_MODE=enforce to restore double blocking
+  ROUTE_FIREWALL_MODE: process.env.FEATURE_ROUTE_FIREWALL_MODE || 'telemetry',
+
+  // stateEvents pipeline: true = tool returns events, orchestrator applies
+  // false = tool directly mutates state (legacy behavior)
+  // Rollback: Set FEATURE_USE_STATE_EVENTS=false
+  USE_STATE_EVENTS: process.env.FEATURE_USE_STATE_EVENTS !== 'false', // Default: true
 };
 
 /**

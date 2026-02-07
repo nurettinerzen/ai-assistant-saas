@@ -11,6 +11,8 @@
  * 3. Leak Filter: post-output filtreleme
  * 4. Identity Mismatch: verifiedIdentity vs requestedRecordOwner
  */
+import { INTERNAL_METADATA_TERMS } from '../security/patterns/index.js';
+import { comparePhones } from '../utils/text.js';
 
 // ============================================================================
 // DATA CLASS TANIMLARI
@@ -178,7 +180,7 @@ function checkIdentityMatch(verifiedIdentity, requestedRecord) {
 
   // Telefon kontrolü
   if (verifiedIdentity.phone && requestedRecord.phone) {
-    const phoneMatch = normalizePhone(verifiedIdentity.phone) === normalizePhone(requestedRecord.phone);
+    const phoneMatch = comparePhones(verifiedIdentity.phone, requestedRecord.phone);
     checks.push({ field: 'phone', matches: phoneMatch });
   }
 
@@ -216,22 +218,6 @@ function checkIdentityMatch(verifiedIdentity, requestedRecord) {
 }
 
 /**
- * Telefon numarası normalizasyonu
- */
-function normalizePhone(phone) {
-  if (!phone) return '';
-  // Sadece rakamları al, başındaki 0 veya +90'ı kaldır
-  const digits = phone.replace(/\D/g, '');
-  if (digits.startsWith('90') && digits.length === 12) {
-    return digits.slice(2); // +90 kaldır
-  }
-  if (digits.startsWith('0') && digits.length === 11) {
-    return digits.slice(1); // Başındaki 0'ı kaldır
-  }
-  return digits;
-}
-
-/**
  * İzin verilen aksiyonları belirle
  */
 function determineAllowedActions(verificationState, riskLevel) {
@@ -263,6 +249,14 @@ function determineAllowedActions(verificationState, riskLevel) {
 // ============================================================================
 // LEAK FILTER - Post-Output Filtreleme
 // ============================================================================
+
+function escapeRegExp(str) {
+  return String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+const INTERNAL_METADATA_PATTERNS = INTERNAL_METADATA_TERMS.map(term =>
+  new RegExp(escapeRegExp(term), 'i')
+);
 
 /**
  * Hassas veri pattern'leri
@@ -330,7 +324,7 @@ const SENSITIVE_PATTERNS = {
 
   // Internal/System
   internal: [
-    /check_order_status|customer_data_lookup|search_products|create_ticket/i,
+    ...INTERNAL_METADATA_PATTERNS,
     /verification\s*(state|flow|fsm)/i,
     /system\s*prompt/i,
     /güvenlik\s*protokol/i,
