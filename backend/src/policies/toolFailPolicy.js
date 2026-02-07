@@ -1,7 +1,7 @@
 /**
  * Tool Fail Policy
  *
- * CRITICAL: Only apply fail policy on SYSTEM_ERROR.
+ * CRITICAL: Only apply fail policy on INFRA_ERROR.
  *
  * Valid outcomes (NOT failures - AI handles naturally):
  * - OK: Tool succeeded
@@ -10,28 +10,28 @@
  * - VERIFICATION_REQUIRED: Need identity verification
  *
  * Failure (triggers forced template):
- * - SYSTEM_ERROR: DB down, API timeout, etc.
+ * - INFRA_ERROR: DB down, API timeout, etc.
  */
 
 import { getToolFailResponse, isRealToolFailure } from '../services/tool-fail-handler.js';
 import { logToolExecution, logViolation } from '../services/routing-metrics.js';
-import { ToolOutcome } from '../tools/toolResult.js';
+import { ToolOutcome, normalizeOutcome } from '../tools/toolResult.js';
 
 /**
  * Apply tool fail policy
  *
  * @param {Object} params
- * @returns {Object|null} Forced response if SYSTEM_ERROR, null otherwise
+ * @returns {Object|null} Forced response if INFRA_ERROR, null otherwise
  */
 export function applyToolFailPolicy(params) {
   const { toolResult, toolName, language, channel, sessionId, executionTime, metrics } = params;
 
   // Determine outcome type for logging
-  const outcomeType = toolResult.outcome ||
-    (toolResult.notFound ? 'NOT_FOUND' :
-     toolResult.verificationRequired ? 'VERIFICATION_REQUIRED' :
-     toolResult.validationError ? 'VALIDATION_ERROR' :
-     toolResult.success ? 'OK' : 'SYSTEM_ERROR');
+  const outcomeType = normalizeOutcome(toolResult.outcome) ||
+    (toolResult.notFound ? ToolOutcome.NOT_FOUND :
+     toolResult.verificationRequired ? ToolOutcome.VERIFICATION_REQUIRED :
+     toolResult.validationError ? ToolOutcome.VALIDATION_ERROR :
+     toolResult.success ? ToolOutcome.OK : ToolOutcome.INFRA_ERROR);
 
   // Log tool execution with outcome type
   logToolExecution({
@@ -44,15 +44,15 @@ export function applyToolFailPolicy(params) {
     executionTime
   });
 
-  // Check if this is a REAL failure (SYSTEM_ERROR only)
+  // Check if this is a REAL failure (INFRA_ERROR only)
   if (!isRealToolFailure(toolResult)) {
     // Valid outcome - let AI handle it naturally
     console.log(`✅ [ToolFailPolicy] Outcome ${outcomeType} - AI will handle`);
     return null;
   }
 
-  // SYSTEM_ERROR - apply forced template policy
-  console.error('❌ [ToolFailPolicy] SYSTEM_ERROR, returning forced template');
+  // INFRA_ERROR - apply forced template policy
+  console.error('❌ [ToolFailPolicy] INFRA_ERROR, returning forced template');
 
   // Log violation
   logViolation('TOOL_FAILURE', {

@@ -8,35 +8,46 @@
  * - state events derived from tool outcomes
  */
 import { ToolOutcome } from '../tools/toolResult.js';
+import { normalizeOutcome } from '../tools/toolResult.js';
 
 export const OutcomeEventType = Object.freeze({
   VERIFICATION_REQUIRED: 'verification.required',
   VERIFICATION_PASSED: 'verification.passed',
   VERIFICATION_FAILED: 'verification.failed',
-  RECORD_NOT_FOUND: 'record.not_found'
+  RECORD_NOT_FOUND: 'record.not_found',
+  POLICY_DENIED: 'policy.denied',
+  INFRA_ERROR: 'infra.error',
+  SESSION_LOCKED: 'session.locked',
+  SESSION_UNLOCKED: 'session.unlocked'
 });
 
 /**
  * Whether a given outcome requires asking for verification details.
  */
 export function shouldAskVerification(outcome, _intent = null) {
-  return outcome === ToolOutcome.VERIFICATION_REQUIRED;
+  return normalizeOutcome(outcome) === ToolOutcome.VERIFICATION_REQUIRED;
 }
 
 /**
  * Whether tool loop should terminate without sending result back to LLM.
  */
 export function shouldTerminate(outcome) {
-  return outcome === ToolOutcome.NOT_FOUND || outcome === ToolOutcome.VALIDATION_ERROR;
+  const normalizedOutcome = normalizeOutcome(outcome);
+  return normalizedOutcome === ToolOutcome.NOT_FOUND ||
+    normalizedOutcome === ToolOutcome.VALIDATION_ERROR ||
+    normalizedOutcome === ToolOutcome.DENIED;
 }
 
 /**
  * Whether leak filter should be bypassed for a given outcome.
  */
 export function shouldBypassLeakFilter(outcome) {
-  return outcome === ToolOutcome.NOT_FOUND ||
-    outcome === ToolOutcome.VALIDATION_ERROR ||
-    outcome === ToolOutcome.VERIFICATION_REQUIRED;
+  const normalizedOutcome = normalizeOutcome(outcome);
+  return normalizedOutcome === ToolOutcome.NOT_FOUND ||
+    normalizedOutcome === ToolOutcome.VALIDATION_ERROR ||
+    normalizedOutcome === ToolOutcome.VERIFICATION_REQUIRED ||
+    normalizedOutcome === ToolOutcome.DENIED ||
+    normalizedOutcome === ToolOutcome.INFRA_ERROR;
 }
 
 /**
@@ -44,12 +55,13 @@ export function shouldBypassLeakFilter(outcome) {
  */
 export function deriveOutcomeEvents({ toolName, toolResult }) {
   const events = [];
+  const normalizedOutcome = normalizeOutcome(toolResult?.outcome);
 
   if (Array.isArray(toolResult?.stateEvents)) {
     events.push(...toolResult.stateEvents);
   }
 
-  if (toolResult?.outcome === ToolOutcome.NOT_FOUND) {
+  if (normalizedOutcome === ToolOutcome.NOT_FOUND) {
     events.push({
       type: OutcomeEventType.RECORD_NOT_FOUND,
       toolName

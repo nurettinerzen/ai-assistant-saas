@@ -1,15 +1,15 @@
 /**
  * Tool Fail Handler - Production Guardrail
  *
- * CRITICAL: When tool fails with SYSTEM_ERROR, NEVER let LLM make up a response.
+ * CRITICAL: When tool fails with INFRA_ERROR, NEVER let LLM make up a response.
  * Use forced template to prevent action claims.
  *
  * NOTE: NOT_FOUND, VALIDATION_ERROR, VERIFICATION_REQUIRED are NOT failures.
  * These are valid outcomes that AI should handle naturally.
- * Only SYSTEM_ERROR triggers fail policy.
+ * Only INFRA_ERROR triggers fail policy.
  */
 
-import { shouldTriggerFailPolicy, ToolOutcome } from '../tools/toolResult.js';
+import { shouldTriggerFailPolicy, ToolOutcome, normalizeOutcome } from '../tools/toolResult.js';
 import { hasActionClaim } from '../security/actionClaimLexicon.js';
 
 /**
@@ -112,7 +112,7 @@ export function validateResponseAfterToolFail(responseText, hadToolSuccess, lang
  * @returns {Promise<Object>} Tool result
  */
 /**
- * Check if a tool result is a real failure (SYSTEM_ERROR) vs valid outcome
+ * Check if a tool result is a real failure (INFRA_ERROR) vs valid outcome
  *
  * Valid outcomes (NOT failures):
  * - NOT_FOUND: Query succeeded, just no matching record
@@ -120,12 +120,12 @@ export function validateResponseAfterToolFail(responseText, hadToolSuccess, lang
  * - VERIFICATION_REQUIRED: Need identity verification
  *
  * Real failure (triggers fail policy):
- * - SYSTEM_ERROR: DB down, API timeout, etc.
+ * - INFRA_ERROR: DB down, API timeout, etc.
  */
 export function isRealToolFailure(result) {
   // Use contract if available
   if (result.outcome) {
-    return result.outcome === ToolOutcome.SYSTEM_ERROR;
+    return normalizeOutcome(result.outcome) === ToolOutcome.INFRA_ERROR;
   }
 
   // Backward compat: notFound is NOT a failure
@@ -150,7 +150,7 @@ export function isRealToolFailure(result) {
 export async function executeToolWithRetry(toolExecutor, toolName, args, maxRetries = 1) {
   let lastError = null;
 
-  // Critical tools that need retry (only on SYSTEM_ERROR)
+  // Critical tools that need retry (only on INFRA_ERROR)
   const criticalTools = ['create_callback', 'customer_data_lookup'];
   const shouldRetry = criticalTools.includes(toolName);
 
@@ -176,7 +176,7 @@ export async function executeToolWithRetry(toolExecutor, toolName, args, maxRetr
         return result;
       }
 
-      lastError = result.error || 'Tool returned SYSTEM_ERROR';
+      lastError = result.error || 'Tool returned INFRA_ERROR';
 
       // Wait before retry (exponential backoff)
       if (attempt < attempts - 1) {
@@ -196,10 +196,10 @@ export async function executeToolWithRetry(toolExecutor, toolName, args, maxRetr
     }
   }
 
-  // All attempts failed - this is a SYSTEM_ERROR
+  // All attempts failed - this is an INFRA_ERROR
   console.error(`❌ [ToolRetry] All ${attempts} attempts failed for ${toolName}`);
   return {
-    outcome: ToolOutcome.SYSTEM_ERROR,
+    outcome: ToolOutcome.INFRA_ERROR,
     success: false,
     error: lastError || 'Tool execution failed after retries',
     attempts

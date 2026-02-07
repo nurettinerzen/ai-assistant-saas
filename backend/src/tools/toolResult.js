@@ -13,9 +13,10 @@
  *   - NOT_FOUND: Query executed but no matching record found (not an error)
  *   - VALIDATION_ERROR: Invalid input parameters
  *   - VERIFICATION_REQUIRED: User needs to verify identity first
- *   - SYSTEM_ERROR: External service failure, DB error, etc.
+ *   - DENIED: Request is blocked by policy/authz decision
+ *   - INFRA_ERROR: External service failure, DB error, etc.
  *
- * Only SYSTEM_ERROR triggers tool-fail policy.
+ * Only INFRA_ERROR triggers tool-fail policy.
  * All other outcomes are valid results that AI should handle.
  *
  * CRITICAL: The `message` field MUST always be provided because:
@@ -25,13 +26,43 @@
  * 4. It is shown prominently in LLM context even when data exists
  */
 
-export const ToolOutcome = {
+export const ToolOutcome = Object.freeze({
   OK: 'OK',
   NOT_FOUND: 'NOT_FOUND',
   VALIDATION_ERROR: 'VALIDATION_ERROR',
   VERIFICATION_REQUIRED: 'VERIFICATION_REQUIRED',
-  SYSTEM_ERROR: 'SYSTEM_ERROR'
-};
+  DENIED: 'DENIED',
+  INFRA_ERROR: 'INFRA_ERROR',
+  // Legacy alias: keep until all modules are migrated
+  SYSTEM_ERROR: 'INFRA_ERROR'
+});
+
+export const TOOL_OUTCOME_VALUES = Object.freeze([
+  ToolOutcome.OK,
+  ToolOutcome.NOT_FOUND,
+  ToolOutcome.VALIDATION_ERROR,
+  ToolOutcome.VERIFICATION_REQUIRED,
+  ToolOutcome.DENIED,
+  ToolOutcome.INFRA_ERROR
+]);
+
+export function normalizeOutcome(outcome) {
+  if (!outcome || typeof outcome !== 'string') {
+    return null;
+  }
+
+  const normalized = outcome.toUpperCase();
+  if (normalized === 'SYSTEM_ERROR') {
+    return ToolOutcome.INFRA_ERROR;
+  }
+
+  return TOOL_OUTCOME_VALUES.includes(normalized) ? normalized : normalized;
+}
+
+export function isValidOutcome(outcome) {
+  const normalized = normalizeOutcome(outcome);
+  return !!normalized && TOOL_OUTCOME_VALUES.includes(normalized);
+}
 
 /**
  * P0-1 FIX: Generic error messages to prevent enumeration attacks
@@ -151,7 +182,7 @@ export function systemError(message, error = null) {
     message = 'An unexpected error occurred';
   }
   return {
-    outcome: ToolOutcome.SYSTEM_ERROR,
+    outcome: ToolOutcome.INFRA_ERROR,
     success: false, // ONLY system errors are "failures"
     error: error?.message || message,
     message
@@ -162,8 +193,9 @@ export function systemError(message, error = null) {
  * Check if a tool result should trigger fail policy
  */
 export function shouldTriggerFailPolicy(result) {
-  return result.outcome === ToolOutcome.SYSTEM_ERROR ||
-         (result.success === false && result.outcome !== ToolOutcome.NOT_FOUND);
+  const normalizedOutcome = normalizeOutcome(result?.outcome);
+  return normalizedOutcome === ToolOutcome.INFRA_ERROR ||
+         (result.success === false && normalizedOutcome !== ToolOutcome.NOT_FOUND);
 }
 
 /**
@@ -183,6 +215,9 @@ export function ensureMessage(result, toolName, defaultMessage) {
 
 export default {
   ToolOutcome,
+  TOOL_OUTCOME_VALUES,
+  normalizeOutcome,
+  isValidOutcome,
   ok,
   notFound,
   validationError,
