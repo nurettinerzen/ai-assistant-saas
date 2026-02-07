@@ -6,6 +6,7 @@
 // ============================================================================
 
 import axios from 'axios';
+import { getMessageVariant } from '../messages/messageCatalog.js';
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
 const ELEVENLABS_BASE_URL = 'https://api.elevenlabs.io/v1';
@@ -1074,6 +1075,21 @@ export function buildAgentConfig(assistant, business, tools = [], integrations =
  * Get default first message based on language
  */
 function getDefaultFirstMessage(language, name) {
+  const normalizedLang = String(language || '').toLowerCase();
+  const canUseCatalog = normalizedLang === 'tr' || normalizedLang === 'en';
+  const catalogMessage = canUseCatalog
+    ? getMessageVariant('ASSISTANT_DEFAULT_FIRST_MESSAGE', {
+      language,
+      directiveType: 'GREETING',
+      severity: 'info',
+      seedHint: name,
+      variables: { name }
+    }).text
+    : '';
+  if (catalogMessage) {
+    return catalogMessage;
+  }
+
   const messages = {
     tr: `Merhaba, ben ${name}. Size nasıl yardımcı olabilirim?`,
     en: `Hello, I'm ${name}. How can I help you today?`,

@@ -39,6 +39,7 @@ import {
 } from '../services/session-lock.js';
 import { OutcomeEventType } from '../security/outcomePolicy.js';
 import { ToolOutcome, normalizeOutcome } from '../tools/toolResult.js';
+import { getMessageVariant } from '../messages/messageCatalog.js';
 
 /**
  * Extract order number from user message
@@ -146,13 +147,18 @@ async function regenerateWithGuidance(guidanceType, guidanceData, userMessage, l
 
     // Minimal fallback - only for error cases
     if (guidanceType === 'VERIFICATION') {
-      return language === 'TR'
-        ? 'Sipariş bilgilerinize erişmek için doğrulama gerekiyor. Sipariş numaranızı ve telefon numaranızın son 4 hanesini paylaşır mısınız?'
-        : 'Verification is needed to access your order. Please share your order number and the last 4 digits of your phone.';
+      return getMessageVariant('VERIFICATION_REGEN_ORDER_AND_PHONE', {
+        language,
+        directiveType: 'ASK_VERIFICATION',
+        severity: 'warning',
+        seedHint: Array.isArray(guidanceData) ? guidanceData.join(',') : ''
+      }).text;
     } else {
-      return language === 'TR'
-        ? 'Bu bilgiyi kontrol etmem gerekiyor. Sipariş numaranızı paylaşır mısınız?'
-        : 'I need to check this information. Could you share your order number?';
+      return getMessageVariant('VERIFICATION_REGEN_ORDER_ONLY', {
+        language,
+        directiveType: 'CLARIFY',
+        severity: 'info'
+      }).text;
     }
   }
 }
@@ -348,7 +354,13 @@ export async function handleIncomingMessage({
       // Return lock message if locked, generic message if terminated
       const replyMessage = contextResult.locked
         ? contextResult.lockMessage
-        : (language === 'TR' ? 'Bu görüşme sonlandırılmıştır.' : 'This conversation has ended.');
+        : getMessageVariant('TERMINATED_CONVERSATION', {
+          language,
+          sessionId: contextResult.sessionId || sessionId || '',
+          directiveType: 'TERMINATE',
+          severity: 'critical',
+          channel
+        }).text;
 
       return {
         reply: replyMessage,
@@ -601,7 +613,7 @@ export async function handleIncomingMessage({
         console.warn(`🚨 [Enumeration] Session blocked after ${enumResult.attempts} attempts`);
 
         return {
-          reply: getLockMessage('ENUMERATION', language),
+          reply: getLockMessage('ENUMERATION', language, resolvedSessionId),
           outcome: ToolOutcome.DENIED,
           metadata: {
             outcome: ToolOutcome.DENIED,
@@ -732,6 +744,7 @@ export async function handleIncomingMessage({
       chat: toolLoopResult.chat,
       language,
       sessionId: resolvedSessionId,
+      channel,
       metrics,
       userMessage,
       verificationState, // Security Gateway için
@@ -817,6 +830,8 @@ export async function handleIncomingMessage({
       metadata: {
         outcome: turnOutcome,
         guardrailsApplied: guardrailResult.guardrailsApplied || [],
+        guardrailMessageKey: guardrailResult.messageKey || null,
+        guardrailVariantIndex: Number.isInteger(guardrailResult.variantIndex) ? guardrailResult.variantIndex : null,
         verificationState: state?.verification?.status || 'none',
         guidanceAdded: metrics.guidanceAdded || [],
         ...(persistMetadata || {})
@@ -852,9 +867,13 @@ export async function handleIncomingMessage({
 
     // Return safe fallback response
     return {
-      reply: language === 'TR'
-        ? 'Özür dilerim, bir hata oluştu. Lütfen tekrar deneyin.'
-        : 'I apologize, an error occurred. Please try again.',
+      reply: getMessageVariant('FATAL_ERROR', {
+        language,
+        sessionId: metrics.sessionId || sessionId || '',
+        directiveType: 'FATAL',
+        severity: 'critical',
+        channel
+      }).text,
       outcome: ToolOutcome.INFRA_ERROR,
       metadata: {
         outcome: ToolOutcome.INFRA_ERROR

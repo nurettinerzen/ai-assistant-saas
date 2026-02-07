@@ -11,6 +11,7 @@ import { getActiveToolsForElevenLabs, getActiveTools } from '../tools/index.js';
 import { getElevenLabsVoiceId } from '../constants/voices.js';
 // ✅ Plan configuration - P0-A: Single source of truth
 import { getEffectivePlanConfig, checkLimit } from '../services/planConfig.js';
+import { getMessageVariant } from '../messages/messageCatalog.js';
 
 const router = express.Router();
 
@@ -263,8 +264,17 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
     // Use central prompt builder to create the full system prompt
     const fullSystemPrompt = buildAssistantPrompt(tempAssistant, business, activeToolsList);
 
-    // Default first message based on language (use defaults from ASSISTANT_DEFAULTS)
-    const defaultFirstMessage = defaults.firstMessage.replace('{name}', name);
+    // Default first message based on language (deterministic variant for TR/EN)
+    const localizedDefaultFirstMessage = ['TR', 'EN'].includes(lang)
+      ? getMessageVariant('ASSISTANT_DEFAULT_FIRST_MESSAGE', {
+        language: lang,
+        directiveType: 'GREETING',
+        severity: 'info',
+        seedHint: name,
+        variables: { name }
+      }).text
+      : '';
+    const defaultFirstMessage = localizedDefaultFirstMessage || defaults.firstMessage.replace('{name}', name);
     const finalFirstMessage = firstMessage || defaultFirstMessage;
 
     // Get active tools based on business integrations (using central tool system)

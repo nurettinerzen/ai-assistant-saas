@@ -44,7 +44,7 @@ export async function executeToolLoop(params) {
   if (lockStatus.locked && lockStatus.reason === 'ENUMERATION') {
     console.log(`🚫 [ToolLoop] Session blocked due to enumeration policy: ${sessionId}`);
     return {
-      reply: getLockMessage('ENUMERATION', language),
+      reply: getLockMessage('ENUMERATION', language, sessionId),
       inputTokens: 0,
       outputTokens: 0,
       hadToolSuccess: false,

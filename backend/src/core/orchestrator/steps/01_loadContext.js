@@ -32,7 +32,7 @@ export async function loadContext(params) {
   if (lockStatus.locked) {
     console.log(`🔒 [LoadContext] Session is LOCKED: ${lockStatus.reason}`);
 
-    const lockMsg = getLockMessage(lockStatus.reason, language);
+    const lockMsg = getLockMessage(lockStatus.reason, language, universalSessionId);
 
     return {
       terminated: true,

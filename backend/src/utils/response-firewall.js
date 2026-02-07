@@ -12,6 +12,7 @@
  */
 
 import { containsUnredactedPII } from './pii-redaction.js';
+import { getMessageVariant } from '../messages/messageCatalog.js';
 import {
   PROMPT_DISCLOSURE_KEYWORDS_EN,
   PROMPT_DISCLOSURE_KEYWORDS_TR,
@@ -147,7 +148,7 @@ function containsInternalMetadata(text) {
  * @param {string} language - User language
  * @returns {Object} { safe: boolean, sanitized: string, violations: string[] }
  */
-export function sanitizeResponse(text, language = 'TR') {
+export function sanitizeResponse(text, language = 'TR', options = {}) {
   const violations = [];
 
   // Check for violations
@@ -175,14 +176,22 @@ export function sanitizeResponse(text, language = 'TR') {
   if (violations.length > 0) {
     console.error('🚨 [FIREWALL] Response blocked:', violations);
 
-    const fallbackMessage = language === 'TR'
-      ? 'Üzgünüm, yanıtımda bir sorun oluştu. Size daha iyi yardımcı olabilmem için lütfen sorunuzu farklı bir şekilde sorar mısınız?'
-      : 'Sorry, there was an issue with my response. Could you please rephrase your question so I can help you better?';
+    const fallbackVariant = getMessageVariant('FIREWALL_FALLBACK', {
+      language,
+      sessionId: options.sessionId,
+      directiveType: 'FIREWALL',
+      severity: 'warning',
+      channel: options.channel,
+      intent: options.intent,
+      seedHint: violations.join(',')
+    });
 
     return {
       safe: false,
-      sanitized: fallbackMessage,
+      sanitized: fallbackVariant.text,
       violations,
+      messageKey: fallbackVariant.messageKey,
+      variantIndex: fallbackVariant.variantIndex,
       original: text // Keep for logging/debugging (not shown to user)
     };
   }

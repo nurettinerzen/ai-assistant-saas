@@ -19,6 +19,7 @@ import {
 } from '../security/patterns/index.js';
 import { comparePhones } from '../utils/text.js';
 import { ToolOutcome, normalizeOutcome } from '../tools/toolResult.js';
+import { getMessageVariant } from '../messages/messageCatalog.js';
 
 // ============================================================================
 // DATA CLASS TANIMLARI
@@ -565,13 +566,19 @@ export function checkProductNotFound(response, toolOutputs = [], language = 'TR'
   }
 
   // LLM "bulunamadı" dememiş - override et
-  const overrideResponse = language === 'TR'
-    ? 'Bu ürünü sistemimizde bulamadım. Ürün adını, model numarasını veya barkodunu paylaşır mısınız? Böylece daha doğru bir arama yapabilirim.'
-    : 'I couldn\'t find this product in our system. Could you share the product name, model number, or barcode? This will help me search more accurately.';
+  const overrideVariant = getMessageVariant('SECURITY_PRODUCT_NOT_FOUND', {
+    language,
+    directiveType: 'SECURITY_GATEWAY',
+    severity: 'info',
+    seedHint: `PRODUCT_NOT_FOUND|${response || ''}`
+  });
+  const overrideResponse = overrideVariant.text;
 
   return {
     needsOverride: true,
     overrideResponse,
+    messageKey: overrideVariant.messageKey,
+    variantIndex: overrideVariant.variantIndex,
     reason: 'PRODUCT_NOT_FOUND_NOT_ACKNOWLEDGED'
   };
 }
@@ -673,13 +680,19 @@ export function checkOrderNotFoundPressure(response, toolOutputs = [], language 
 
   // Case 2: LLM fabrication yapıyor → Override
   if (hasFabrication) {
-    const overrideResponse = lang === 'TR'
-      ? 'Bu sipariş numarasıyla eşleşen bir kayıt bulunamadı. Sipariş numaranızı kontrol edip tekrar paylaşır mısınız? Alternatif olarak, siparişi verirken kullandığınız telefon numarası veya e-posta adresiyle de arama yapabilirim.'
-      : 'No record was found matching this order number. Could you double-check and share it again? Alternatively, I can search using the phone number or email address you used when placing the order.';
+    const overrideVariant = getMessageVariant('SECURITY_ORDER_NOT_FOUND_FABRICATION', {
+      language: lang,
+      directiveType: 'SECURITY_GATEWAY',
+      severity: 'warning',
+      seedHint: `ORDER_NOT_FOUND_FABRICATION|${response || ''}`
+    });
+    const overrideResponse = overrideVariant.text;
 
     return {
       needsOverride: true,
       overrideResponse,
+      messageKey: overrideVariant.messageKey,
+      variantIndex: overrideVariant.variantIndex,
       reason: 'ORDER_NOT_FOUND_FABRICATION_DETECTED'
     };
   }
@@ -689,13 +702,19 @@ export function checkOrderNotFoundPressure(response, toolOutputs = [], language 
   if (!hasNotFoundStatement) {
     console.warn('⚠️ [SecurityGateway] ORDER_NOT_FOUND but LLM did not acknowledge - enforcing fallback');
 
-    const overrideResponse = lang === 'TR'
-      ? 'Bu sipariş numarasıyla eşleşen bir kayıt bulunamadı. Sipariş numaranızı kontrol edip tekrar paylaşır mısınız?'
-      : 'No record was found matching this order number. Could you please verify and share it again?';
+    const overrideVariant = getMessageVariant('SECURITY_ORDER_NOT_FOUND_NOT_ACK', {
+      language: lang,
+      directiveType: 'SECURITY_GATEWAY',
+      severity: 'info',
+      seedHint: `ORDER_NOT_FOUND_NO_ACK|${response || ''}`
+    });
+    const overrideResponse = overrideVariant.text;
 
     return {
       needsOverride: true,
       overrideResponse,
+      messageKey: overrideVariant.messageKey,
+      variantIndex: overrideVariant.variantIndex,
       reason: 'ORDER_NOT_FOUND_NOT_ACKNOWLEDGED'
     };
   }
@@ -721,17 +740,11 @@ export function enforceRequiredToolCall(intent, toolsCalled = [], language = 'TR
   const TOOL_REQUIRED_INTENTS = {
     product_spec: {
       requiredTools: ['get_product_stock', 'search_products'],
-      fallbackResponse: {
-        TR: 'Ürün özelliklerini kontrol etmem gerekiyor. Hangi ürün hakkında bilgi almak istediğinizi söyleyebilir misiniz?',
-        EN: 'I need to check the product specifications. Could you tell me which product you\'d like information about?'
-      }
+      messageKey: 'SECURITY_TOOL_REQUIRED_PRODUCT_SPEC'
     },
     stock_check: {
       requiredTools: ['get_product_stock', 'search_products'],
-      fallbackResponse: {
-        TR: 'Stok bilgisini kontrol etmem gerekiyor. Ürün adını veya kodunu paylaşır mısınız?',
-        EN: 'I need to check the stock information. Could you share the product name or code?'
-      }
+      messageKey: 'SECURITY_TOOL_REQUIRED_STOCK_CHECK'
     }
   };
 
@@ -752,13 +765,22 @@ export function enforceRequiredToolCall(intent, toolsCalled = [], language = 'TR
 
   // Tool çağrılmamış - deterministik response döndür
   const lang = language.toUpperCase() === 'EN' ? 'EN' : 'TR';
-  const overrideResponse = intentConfig.fallbackResponse[lang] || intentConfig.fallbackResponse.TR;
+  const overrideVariant = getMessageVariant(intentConfig.messageKey, {
+    language: lang,
+    directiveType: 'SECURITY_GATEWAY',
+    severity: 'info',
+    intent,
+    seedHint: `${intent}|REQUIRED_TOOL_NOT_CALLED`
+  });
+  const overrideResponse = overrideVariant.text;
 
   console.warn(`⚠️ [SecurityGateway] TOOL_REQUIRED intent "${intent}" but no tool called! Enforcing fallback.`);
 
   return {
     needsOverride: true,
     overrideResponse,
+    messageKey: overrideVariant.messageKey,
+    variantIndex: overrideVariant.variantIndex,
     reason: 'TOOL_REQUIRED_NOT_CALLED',
     intent
   };

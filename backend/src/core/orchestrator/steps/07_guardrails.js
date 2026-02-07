@@ -17,6 +17,7 @@ import { scanForPII } from '../../email/policies/piiPreventionPolicy.js';
 import { lockSession, getLockMessage } from '../../../services/session-lock.js';
 import { sanitizeResponse, logFirewallViolation } from '../../../utils/response-firewall.js';
 import { ensurePolicyGuidance } from '../../../services/tool-fail-handler.js';
+import { getMessageVariant } from '../../../messages/messageCatalog.js';
 
 // Enhanced guardrails (P0-A, P0-B, P1-A)
 import { validateToolOnlyData } from '../../../guardrails/toolOnlyDataGuard.js';
@@ -45,6 +46,7 @@ export async function applyGuardrails(params) {
     chat,
     language,
     sessionId,
+    channel = 'CHAT',
     metrics,
     userMessage,
     verificationState = 'none', // Doğrulama durumu
@@ -55,12 +57,18 @@ export async function applyGuardrails(params) {
 
   // Mutable response text (Product/Order not found override için)
   let responseText = initialResponseText;
+  let overrideMessageKey = null;
+  let overrideVariantIndex = null;
 
   console.log('🛡️ [Guardrails] Applying policies...');
 
   // POLICY 0: Response Firewall (P0 SECURITY - must run FIRST!)
   // Blocks: JSON dumps, HTML, system prompt disclosure, internal metadata
-  const firewallResult = sanitizeResponse(responseText, language);
+  const firewallResult = sanitizeResponse(responseText, language, {
+    sessionId,
+    channel,
+    intent
+  });
 
   if (!firewallResult.safe) {
     console.error('🚨 [FIREWALL] Response blocked!', firewallResult.violations);
@@ -84,7 +92,9 @@ export async function applyGuardrails(params) {
       guardrailsApplied: ['RESPONSE_FIREWALL'],
       blocked: true,
       softRefusal: true, // Flag for soft refusal (no session lock)
-      violations: firewallResult.violations
+      violations: firewallResult.violations,
+      messageKey: firewallResult.messageKey,
+      variantIndex: firewallResult.variantIndex
     };
   }
 
@@ -116,7 +126,7 @@ export async function applyGuardrails(params) {
     await lockSession(sessionId, 'PII_RISK', 60 * 60 * 1000); // 1 hour
 
     // Return safe error message instead of leaking PII
-    const safeMessage = getLockMessage('PII_RISK', language);
+    const safeMessage = getLockMessage('PII_RISK', language, sessionId);
 
     return {
       finalResponse: safeMessage,
@@ -153,6 +163,17 @@ export async function applyGuardrails(params) {
         originalResponse: responseText?.substring(0, 100)
       });
       metrics.orderNotFoundOverride = earlyOrderNotFoundCheck.reason;
+      overrideMessageKey = earlyOrderNotFoundCheck.messageKey || overrideMessageKey;
+      overrideVariantIndex = Number.isInteger(earlyOrderNotFoundCheck.variantIndex)
+        ? earlyOrderNotFoundCheck.variantIndex
+        : overrideVariantIndex;
+      metrics.guardrailOverrides = metrics.guardrailOverrides || [];
+      metrics.guardrailOverrides.push({
+        reason: earlyOrderNotFoundCheck.reason,
+        messageKey: earlyOrderNotFoundCheck.messageKey,
+        channel,
+        intent
+      });
       responseText = earlyOrderNotFoundCheck.overrideResponse;
       notFoundOverrideApplied = true;
     }
@@ -162,6 +183,17 @@ export async function applyGuardrails(params) {
     if (earlyProductNotFoundCheck.needsOverride) {
       console.warn(`🔧 [SecurityGateway] Early Product NOT_FOUND override: ${earlyProductNotFoundCheck.reason}`);
       metrics.productNotFoundOverride = earlyProductNotFoundCheck.reason;
+      overrideMessageKey = earlyProductNotFoundCheck.messageKey || overrideMessageKey;
+      overrideVariantIndex = Number.isInteger(earlyProductNotFoundCheck.variantIndex)
+        ? earlyProductNotFoundCheck.variantIndex
+        : overrideVariantIndex;
+      metrics.guardrailOverrides = metrics.guardrailOverrides || [];
+      metrics.guardrailOverrides.push({
+        reason: earlyProductNotFoundCheck.reason,
+        messageKey: earlyProductNotFoundCheck.messageKey,
+        channel,
+        intent
+      });
       responseText = earlyProductNotFoundCheck.overrideResponse;
       notFoundOverrideApplied = true;
     }
@@ -234,6 +266,17 @@ export async function applyGuardrails(params) {
         intent,
         reason: toolEnforcementResult.reason
       };
+      overrideMessageKey = toolEnforcementResult.messageKey || overrideMessageKey;
+      overrideVariantIndex = Number.isInteger(toolEnforcementResult.variantIndex)
+        ? toolEnforcementResult.variantIndex
+        : overrideVariantIndex;
+      metrics.guardrailOverrides = metrics.guardrailOverrides || [];
+      metrics.guardrailOverrides.push({
+        reason: toolEnforcementResult.reason,
+        messageKey: toolEnforcementResult.messageKey,
+        channel,
+        intent
+      });
       // Response'u override et - LLM tool çağırmadan yanıt vermiş
       responseText = toolEnforcementResult.overrideResponse;
     }
@@ -287,16 +330,27 @@ export async function applyGuardrails(params) {
           };
 
           // Identity mismatch = hard deny
-          const hardDenyResponse = language === 'TR'
-            ? 'Güvenliğiniz için, bu bilgileri sadece hesap sahibiyle paylaşabilirim. Lütfen hesabınıza kayıtlı bilgilerle doğrulama yapın.'
-            : 'For your security, I can only share this information with the account holder. Please verify with your registered account details.';
+          const hardDenyVariant = getMessageVariant('SECURITY_IDENTITY_MISMATCH_HARD_DENY', {
+            language,
+            sessionId,
+            channel,
+            intent,
+            directiveType: 'SECURITY_GATEWAY',
+            severity: 'critical',
+            seedHint: 'IDENTITY_MISMATCH'
+          });
+          const hardDenyResponse = hardDenyVariant.text;
 
           return {
             finalResponse: hardDenyResponse,
             guardrailsApplied: ['RESPONSE_FIREWALL', 'PII_PREVENTION', 'SECURITY_GATEWAY_IDENTITY_MISMATCH'],
             blocked: true,
             blockReason: 'IDENTITY_MISMATCH',
-            mismatchDetails: gatewayResult.deniedFields
+            mismatchDetails: gatewayResult.deniedFields,
+            messageKey: hardDenyVariant.messageKey,
+            variantIndex: hardDenyVariant.variantIndex,
+            channel,
+            intent
           };
         }
       }
@@ -317,6 +371,17 @@ export async function applyGuardrails(params) {
     if (lateOrderNotFoundCheck.needsOverride) {
       console.warn(`🔧 [SecurityGateway] Late NOT_FOUND override: ${lateOrderNotFoundCheck.reason}`);
       metrics.orderNotFoundOverride = lateOrderNotFoundCheck.reason;
+      overrideMessageKey = lateOrderNotFoundCheck.messageKey || overrideMessageKey;
+      overrideVariantIndex = Number.isInteger(lateOrderNotFoundCheck.variantIndex)
+        ? lateOrderNotFoundCheck.variantIndex
+        : overrideVariantIndex;
+      metrics.guardrailOverrides = metrics.guardrailOverrides || [];
+      metrics.guardrailOverrides.push({
+        reason: lateOrderNotFoundCheck.reason,
+        messageKey: lateOrderNotFoundCheck.messageKey,
+        channel,
+        intent
+      });
       responseText = lateOrderNotFoundCheck.overrideResponse;
     }
   }
@@ -451,7 +516,9 @@ export async function applyGuardrails(params) {
 
   return {
     finalResponse: finalText,
-    guardrailsApplied: appliedPolicies
+    guardrailsApplied: appliedPolicies,
+    messageKey: overrideMessageKey,
+    variantIndex: overrideVariantIndex
   };
 }
 

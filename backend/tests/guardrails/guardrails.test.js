@@ -419,8 +419,8 @@ describe('NO_INFO Constraints (P1-B)', () => {
       expect(result.hasTemplate).toBe(true);
     });
 
-    it('should catch "kayıt bulunamadı" template', () => {
-      const response = 'Sistemimizde kayıt bulunamadı.';
+    it('should catch rigid technical not-found template', () => {
+      const response = 'Veritabanı sorgusunda eşleşen kayıt bulunamadı.';
       const result = detectForbiddenTemplate(response, 'TR');
       expect(result.hasTemplate).toBe(true);
     });

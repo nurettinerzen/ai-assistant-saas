@@ -15,6 +15,7 @@
 
 import { compareTurkishNames, comparePhones } from '../utils/text.js';
 import { redactPII } from '../utils/pii-redaction.js';
+import { getMessageVariant } from '../messages/messageCatalog.js';
 
 /**
  * Check if a query type requires verification
@@ -79,13 +80,20 @@ export function checkVerification(anchor, verificationInput, queryType, language
     // P0-UX FIX: Ask for phone last 4 digits (simpler for user)
     // Name verification is a fallback if phone is not available
     const askFor = anchor.phone ? 'phone_last4' : 'name';
-    const message = anchor.phone
-      ? (language === 'TR'
-        ? 'Kaydınızı buldum. Güvenlik doğrulaması için telefon numaranızın son 4 hanesini söyler misiniz?'
-        : 'I found your record. For security verification, could you please provide the last 4 digits of your phone number?')
-      : (language === 'TR'
-        ? 'Kaydınızı buldum. Güvenlik doğrulaması için isminizi ve soyadınızı söyler misiniz?'
-        : 'I found your record. For security verification, could you please provide your full name?');
+    const messageVariant = anchor.phone
+      ? getMessageVariant('VERIFICATION_REQUEST_PHONE_LAST4', {
+        language,
+        directiveType: 'ASK_VERIFICATION',
+        severity: 'info',
+        seedHint: `${anchor.anchorType}|${anchor.anchorValue}|phone_last4`
+      })
+      : getMessageVariant('VERIFICATION_REQUEST_NAME', {
+        language,
+        directiveType: 'ASK_VERIFICATION',
+        severity: 'info',
+        seedHint: `${anchor.anchorType}|${anchor.anchorValue}|name`
+      });
+    const message = messageVariant.text;
 
     return {
       verified: false,
@@ -117,9 +125,12 @@ export function checkVerification(anchor, verificationInput, queryType, language
     return {
       verified: false,
       action: 'VERIFICATION_FAILED',
-      message: language === 'TR'
-        ? 'Verdiğiniz isim kayıtla eşleşmiyor. Güvenlik nedeniyle bilgileri paylaşamıyorum.'
-        : 'The name you provided does not match our records. For security reasons, I cannot share the information.'
+      message: getMessageVariant('VERIFICATION_FAILED', {
+        language,
+        directiveType: 'REFUSE',
+        severity: 'warning',
+        seedHint: `${anchor.anchorType}|${anchor.anchorValue}|verification_failed`
+      }).text
     };
   }
 }

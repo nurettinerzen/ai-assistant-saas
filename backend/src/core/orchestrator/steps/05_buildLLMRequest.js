@@ -118,15 +118,28 @@ Kullanıcı saygısız dil kullandı (${strike}. uyarı / 3 üzerinden).
     console.log(`⚠️ [BuildLLMRequest] Added profanity context (strike ${strike}/3)`);
   }
 
-  // STEP 0.5: CHATTER messages — MINIMAL PROMPT (izole test)
-  // Tüm system prompt'u override et, sadece tek paragraf ver
+  // STEP 0.5: CHATTER messages — CONTEXT-PRESERVING PROMPT
+  // Keep full system prompt and add short guidance instead of replacing everything.
   const isChatterRoute = routingResult?.isChatter || routingResult?.routing?.routing?.action === 'ACKNOWLEDGE_CHATTER';
   if (isChatterRoute) {
     const assistantName = assistant?.name || 'Asistan';
     const businessName = business?.name || '';
-    enhancedSystemPrompt = `Sen ${businessName ? businessName + ' şirketinin' : 'bir şirketin'} müşteri asistanı ${assistantName}'sın.
-Kullanıcı selamlaştığında veya teşekkür ettiğinde kısa ve doğal yanıt ver.`;
-    console.log('💬 [BuildLLMRequest] CHATTER — minimal system prompt aktif (izole test)');
+    const activeFlowSummary = state.activeFlow || state.flowStatus || 'none';
+    const hasPendingVerification = state.verification?.status === 'pending';
+
+    enhancedSystemPrompt += `
+
+## CHATTER KISA YANIT MODU
+- Rolün: ${businessName ? businessName + ' şirketinin' : 'şirketin'} müşteri asistanı ${assistantName}
+- Konuşma durumu: ${activeFlowSummary}
+- Doğrulama bekleniyor mu: ${hasPendingVerification ? 'EVET' : 'HAYIR'}
+
+KURALLAR:
+- Selam/teşekküre kısa ve doğal cevap ver, robotik kalıp kullanma.
+- Eğer konuşmada aktif bir görev varsa (ör: sipariş, doğrulama), kısa yanıt sonrası göreve nazikçe geri dön.
+- "Size nasıl yardımcı olabilirim?" cümlesini her selamda tekrarlama.
+- Kullanıcı net bir talep vermediyse tek cümlelik sıcak bir karşılık ver.`;
+    console.log('💬 [BuildLLMRequest] CHATTER — context-preserving guidance aktif');
   }
 
   // STEP 1: Apply tool gating policy

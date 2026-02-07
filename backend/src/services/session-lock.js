@@ -13,6 +13,7 @@
  */
 
 import { getState, updateState } from './state-manager.js';
+import { getMessage } from '../messages/messageCatalog.js';
 
 /**
  * Lock durations (in milliseconds)
@@ -66,34 +67,13 @@ function getNumericSuffix(identifier) {
   return suffix ? Number.parseInt(suffix, 10) : null;
 }
 
-/**
- * Lock messages (multilingual)
- */
-const LOCK_MESSAGES = {
-  ABUSE: {
-    TR: 'Bu dil nedeniyle sohbet kapatıldı. Lütfen daha sonra tekrar deneyin.',
-    EN: 'Conversation closed due to inappropriate language. Please try again later.'
-  },
-  THREAT: {
-    TR: 'Güvenlik nedeniyle sohbet kalıcı olarak kapatılmıştır.',
-    EN: 'Conversation permanently closed for security reasons.'
-  },
-  PII_RISK: {
-    TR: 'Güvenlik nedeniyle sohbet kapatıldı. Lütfen daha sonra tekrar deneyin.',
-    EN: 'Conversation closed for security reasons. Please try again later.'
-  },
-  LOOP: {
-    TR: 'Teknik sorun nedeniyle sohbet geçici olarak kapatıldı. 10 dakika sonra tekrar deneyin.',
-    EN: 'Technical issue detected. Please try again in 10 minutes.'
-  },
-  SPAM: {
-    TR: 'Spam tespit edildi. Lütfen 5 dakika sonra tekrar deneyin.',
-    EN: 'Spam detected. Please try again in 5 minutes.'
-  },
-  ENUMERATION: {
-    TR: 'Çok fazla başarısız doğrulama denemesi. Lütfen 2 dakika sonra tekrar deneyin.',
-    EN: 'Too many failed verification attempts. Please try again in 2 minutes.'
-  },
+const LOCK_REASON_TO_MESSAGE_KEY = {
+  ABUSE: 'LOCK_ABUSE',
+  THREAT: 'LOCK_THREAT',
+  PII_RISK: 'LOCK_PII_RISK',
+  LOOP: 'LOCK_LOOP',
+  SPAM: 'LOCK_SPAM',
+  ENUMERATION: 'LOCK_ENUMERATION'
 };
 
 /**
@@ -197,15 +177,14 @@ export async function unlockSession(sessionId) {
  * @param {string} language - TR | EN
  * @returns {string} Lock message
  */
-export function getLockMessage(reason, language = 'TR') {
-  const messages = LOCK_MESSAGES[reason];
-  if (!messages) {
-    return language === 'TR'
-      ? 'Sohbet kapatılmıştır.'
-      : 'Conversation has been closed.';
-  }
-
-  return messages[language] || messages.TR;
+export function getLockMessage(reason, language = 'TR', seedHint = '') {
+  const messageKey = LOCK_REASON_TO_MESSAGE_KEY[reason] || 'LOCK_UNKNOWN';
+  return getMessage(messageKey, {
+    language,
+    directiveType: 'LOCK',
+    severity: reason === 'THREAT' ? 'critical' : 'warning',
+    seedHint: `${reason || 'UNKNOWN'}|${seedHint || ''}`
+  });
 }
 
 /**

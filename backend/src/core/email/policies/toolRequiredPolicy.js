@@ -8,6 +8,7 @@
  * draft MUST ask for verification info instead of guessing.
  */
 import { ToolOutcome, normalizeOutcome } from '../../../tools/toolResult.js';
+import { getMessageVariant } from '../../../messages/messageCatalog.js';
 
 /**
  * Intents that REQUIRE tool data before responding
@@ -20,91 +21,61 @@ const TOOL_REQUIRED_INTENTS = {
     tools: ['customer_data_lookup', 'order_status'],
     fallbackBehavior: 'ASK_VERIFICATION',
     requiredFields: ['order_id', 'phone_number'],
-    message: {
-      TR: 'Sipariş bilgilerinize ulaşabilmem için sipariş numaranızı veya kayıtlı telefon numaranızı paylaşır mısınız?',
-      EN: 'Could you please provide your order number or registered phone number so I can look up your order details?'
-    }
+    messageKey: 'EMAIL_TOOL_REQUIRED_ORDER'
   },
   BILLING: {
     tools: ['customer_data_lookup'],
     fallbackBehavior: 'ASK_VERIFICATION',
     requiredFields: ['phone_number', 'invoice_number'],
-    message: {
-      TR: 'Fatura bilgilerinize erişebilmem için kayıtlı telefon numaranızı veya fatura numarasını paylaşır mısınız?',
-      EN: 'Could you please provide your registered phone number or invoice number so I can access your billing information?'
-    }
+    messageKey: 'EMAIL_TOOL_REQUIRED_BILLING'
   },
   APPOINTMENT: {
     tools: ['customer_data_lookup', 'appointment_lookup'],
     fallbackBehavior: 'ASK_VERIFICATION',
     requiredFields: ['phone_number'],
-    message: {
-      TR: 'Randevu bilgilerinize ulaşabilmem için kayıtlı telefon numaranızı paylaşır mısınız?',
-      EN: 'Could you please provide your registered phone number so I can look up your appointment details?'
-    }
+    messageKey: 'EMAIL_TOOL_REQUIRED_APPOINTMENT'
   },
   COMPLAINT: {
     tools: ['customer_data_lookup'],
     fallbackBehavior: 'ASK_VERIFICATION',
     requiredFields: ['phone_number', 'order_id'],
-    message: {
-      TR: 'Şikayetinizi inceleyebilmem için sipariş numaranızı veya kayıtlı telefon numaranızı paylaşır mısınız?',
-      EN: 'Could you please provide your order number or registered phone number so I can investigate your complaint?'
-    }
+    messageKey: 'EMAIL_TOOL_REQUIRED_COMPLAINT'
   },
   TRACKING: {
     tools: ['order_status', 'shipping_tracking'],
     fallbackBehavior: 'ASK_VERIFICATION',
     requiredFields: ['tracking_number', 'order_id'],
-    message: {
-      TR: 'Kargo durumunuzu kontrol edebilmem için takip numaranızı veya sipariş numaranızı paylaşır mısınız?',
-      EN: 'Could you please provide your tracking number or order number so I can check your shipment status?'
-    }
+    messageKey: 'EMAIL_TOOL_REQUIRED_TRACKING'
   },
   PRICING: {
     tools: ['product_lookup', 'price_check'],
     fallbackBehavior: 'ASK_VERIFICATION',
     requiredFields: ['product_id', 'product_name'],
-    message: {
-      TR: 'Güncel fiyat bilgisini verebilmem için ürün adını veya kodunu belirtir misiniz?',
-      EN: 'Could you please specify the product name or code so I can provide current pricing information?'
-    }
+    messageKey: 'EMAIL_TOOL_REQUIRED_PRICING'
   },
   STOCK: {
     tools: ['inventory_check'],
     fallbackBehavior: 'ASK_VERIFICATION',
     requiredFields: ['product_id', 'sku'],
-    message: {
-      TR: 'Stok durumunu kontrol edebilmem için ürün adını veya stok kodunu belirtir misiniz?',
-      EN: 'Could you please provide the product name or SKU so I can check stock availability?'
-    }
+    messageKey: 'EMAIL_TOOL_REQUIRED_STOCK'
   },
   RETURN: {
     tools: ['customer_data_lookup', 'order_status', 'return_status'],
     fallbackBehavior: 'ASK_VERIFICATION',
     requiredFields: ['order_id', 'return_number'],
-    message: {
-      TR: 'İade işleminizi takip edebilmem için sipariş numaranızı veya iade numaranızı paylaşır mısınız?',
-      EN: 'Could you please provide your order number or return number so I can track your return request?'
-    }
+    messageKey: 'EMAIL_TOOL_REQUIRED_RETURN'
   },
   REFUND: {
     tools: ['customer_data_lookup', 'payment_status'],
     fallbackBehavior: 'ASK_VERIFICATION',
     requiredFields: ['order_id', 'phone_number'],
-    message: {
-      TR: 'İade sürecini kontrol edebilmem için sipariş numaranızı veya kayıtlı telefon numaranızı paylaşır mısınız?',
-      EN: 'Could you please provide your order number or registered phone number so I can check your refund status?'
-    }
+    messageKey: 'EMAIL_TOOL_REQUIRED_REFUND'
   },
   ACCOUNT: {
     tools: ['customer_data_lookup', 'account_status'],
     fallbackBehavior: 'ASK_VERIFICATION',
     requiredFields: ['phone_number', 'email'],
-    message: {
-      TR: 'Hesap bilgilerinize erişebilmem için kayıtlı telefon numaranızı veya email adresinizi paylaşır mısınız?',
-      EN: 'Could you please provide your registered phone number or email address so I can access your account information?'
-    }
+    messageKey: 'EMAIL_TOOL_REQUIRED_ACCOUNT'
   }
 };
 
@@ -155,7 +126,12 @@ export function enforceToolRequiredPolicy({ classification, toolResults, languag
     return {
       enforced: true,
       action: policy.fallbackBehavior,
-      message: policy.message[language] || policy.message.EN,
+      message: getMessageVariant(policy.messageKey, {
+        language,
+        directiveType: 'ASK_VERIFICATION',
+        severity: 'info',
+        intent
+      }).text,
       requiredFields: policy.requiredFields,
       reason: 'NO_TOOLS_CALLED'
     };
@@ -182,9 +158,12 @@ export function enforceToolRequiredPolicy({ classification, toolResults, languag
       return {
         enforced: true,
         action: 'SYSTEM_ERROR_FALLBACK',
-        message: language === 'TR'
-          ? 'Sistemimizde geçici bir sorun yaşanıyor. Kısa süre içinde size dönüş yapacağız.'
-          : 'We are experiencing a temporary system issue. We will get back to you shortly.',
+        message: getMessageVariant('EMAIL_SYSTEM_ERROR_FALLBACK', {
+          language,
+          directiveType: 'SYSTEM_FALLBACK',
+          severity: 'warning',
+          intent
+        }).text,
         reason: 'SYSTEM_ERROR'
       };
     }
@@ -194,7 +173,12 @@ export function enforceToolRequiredPolicy({ classification, toolResults, languag
       return {
         enforced: true,
         action: 'ASK_VERIFICATION',
-        message: policy.message[language] || policy.message.EN,
+        message: getMessageVariant(policy.messageKey, {
+          language,
+          directiveType: 'ASK_VERIFICATION',
+          severity: 'info',
+          intent
+        }).text,
         requiredFields: policy.requiredFields,
         reason: 'VERIFICATION_REQUIRED'
       };
@@ -205,9 +189,17 @@ export function enforceToolRequiredPolicy({ classification, toolResults, languag
       return {
         enforced: true,
         action: 'ASK_VERIFICATION',
-        message: language === 'TR'
-          ? 'Kayıtlarımızda bu bilgiye ulaşamadım. Lütfen ' + policy.requiredFields.join(' veya ') + ' bilgisini kontrol edip tekrar paylaşır mısınız?'
-          : 'I could not find this information in our records. Could you please verify your ' + policy.requiredFields.join(' or ') + '?',
+        message: getMessageVariant('EMAIL_NOT_FOUND_GENERIC', {
+          language,
+          directiveType: 'ASK_VERIFICATION',
+          severity: 'info',
+          intent,
+          variables: {
+            fields: language === 'TR'
+              ? policy.requiredFields.join(' veya ')
+              : policy.requiredFields.join(' or ')
+          }
+        }).text,
         requiredFields: policy.requiredFields,
         reason: 'NOT_FOUND'
       };

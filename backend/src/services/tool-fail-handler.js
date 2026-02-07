@@ -11,6 +11,7 @@
 
 import { shouldTriggerFailPolicy, ToolOutcome, normalizeOutcome } from '../tools/toolResult.js';
 import { hasActionClaim } from '../security/actionClaimLexicon.js';
+import { getMessageVariant } from '../messages/messageCatalog.js';
 
 /**
  * Get forced error response when tool fails
@@ -23,44 +24,31 @@ import { hasActionClaim } from '../security/actionClaimLexicon.js';
 export function getToolFailResponse(toolName, language = 'TR', channel = 'CHAT') {
   const isPhone = channel === 'PHONE';
 
-  // Different templates based on tool type
-  // ALL templates MUST include actionable next steps (guidance)
-  const templates = {
-    // High-impact tools (callback, integrations)
-    'create_callback': {
-      TR: 'Şu an talebinizi sistemimize kaydedemedim. Yardım almak için:\n• Birkaç dakika sonra tekrar deneyebilirsiniz\n• Müşteri hizmetlerimizi arayabilirsiniz\n• Web sitemizden destek talebi oluşturabilirsiniz',
-      EN: 'I could not record your request right now. To get help:\n• Try again in a few minutes\n• Call our customer service\n• Submit a support request on our website'
-    },
-
-    // Data lookup tools
-    'customer_data_lookup': {
-      TR: 'Bilgilerinizi sorgularken bir sorun oluştu. Yardım almak için:\n• Birkaç dakika sonra tekrar deneyebilirsiniz\n• Sipariş numaranızı kontrol edebilirsiniz\n• Müşteri hizmetlerimize ulaşabilirsiniz',
-      EN: 'There was an issue looking up your information. To get help:\n• Try again in a few minutes\n• Check your order number\n• Contact our customer service'
-    },
-
-    // Integration tools (Calendly, OpenTable, etc.)
-    'calendly': {
-      TR: 'Randevu sistemine bağlanırken bir sorun oluştu. Yardım almak için:\n• Birkaç dakika sonra tekrar deneyebilirsiniz\n• Web sitemizden randevu alabilirsiniz\n• Bizi arayarak randevu oluşturabilirsiniz',
-      EN: 'Could not connect to appointment system. To get help:\n• Try again in a few minutes\n• Book an appointment on our website\n• Call us to schedule an appointment'
-    },
-
-    // Default for unknown tools - ALWAYS provide next steps
-    'default': {
-      TR: 'Şu an sistemsel bir aksaklık yaşıyoruz. Yardım almak için:\n• Birkaç dakika sonra tekrar deneyebilirsiniz\n• Müşteri hizmetlerimize e-posta gönderebilirsiniz\n• Destek hattımızı arayabilirsiniz',
-      EN: 'We are experiencing a system issue. To get help:\n• Try again in a few minutes\n• Email our customer service\n• Call our support line'
-    }
+  const messageKeys = {
+    create_callback: 'TOOL_FAIL_CREATE_CALLBACK',
+    customer_data_lookup: 'TOOL_FAIL_CUSTOMER_DATA_LOOKUP',
+    calendly: 'TOOL_FAIL_CALENDLY',
+    default: 'TOOL_FAIL_DEFAULT'
   };
-
-  const template = templates[toolName] || templates['default'];
+  const selectedKey = messageKeys[toolName] || messageKeys.default;
+  const messageVariant = getMessageVariant(selectedKey, {
+    language,
+    channel,
+    directiveType: 'TOOL_FAIL',
+    severity: 'warning',
+    seedHint: toolName || 'default'
+  });
 
   return {
-    reply: template[language],
+    reply: messageVariant.text,
     forceEnd: isPhone, // Only force end conversation on phone (to prevent long wait)
     hadToolFailure: true,
     failedTool: toolName,
     metadata: {
       type: 'TOOL_FAILURE',
       tool: toolName,
+      messageKey: messageVariant.messageKey,
+      variantIndex: messageVariant.variantIndex,
       timestamp: new Date().toISOString(),
       channel
     }
@@ -88,9 +76,12 @@ export function validateResponseAfterToolFail(responseText, hadToolSuccess, lang
     console.error('   Response:', responseText.substring(0, 200));
 
     // HARD BLOCK: Return forced apology WITH guidance
-    const forcedResponse = language === 'TR'
-      ? 'Özür dilerim, talebinizi şu an işleme alamadım. Yardım almak için şu adımları izleyebilirsiniz:\n• Birkaç dakika sonra tekrar deneyebilirsiniz\n• Müşteri hizmetlerimize e-posta gönderebilirsiniz\n• Destek hattımızı arayabilirsiniz'
-      : 'I apologize, I could not process your request right now. To get help, you can:\n• Try again in a few minutes\n• Email our customer service\n• Call our support line';
+    const forcedResponse = getMessageVariant('TOOL_FAIL_ACTION_CLAIM', {
+      language,
+      directiveType: 'TOOL_FAIL',
+      severity: 'critical',
+      seedHint: 'ACTION_CLAIM_WITHOUT_TOOL_SUCCESS'
+    }).text;
 
     return {
       valid: false,
