@@ -11,7 +11,7 @@
  */
 
 import { executeTool } from '../../../tools/index.js';
-import { ToolOutcome, ensureMessage } from '../../../tools/toolResult.js';
+import { ToolOutcome, ensureMessage, normalizeOutcome } from '../../../tools/toolResult.js';
 import { normalizePhone } from '../../../utils/text.js';
 
 // Maximum tool calls per email turn
@@ -76,7 +76,7 @@ export async function executeEmailToolLoop(ctx) {
       const toolResult = {
         toolName: name,
         args,
-        outcome: validatedResult.outcome || (validatedResult.success ? ToolOutcome.OK : ToolOutcome.SYSTEM_ERROR),
+        outcome: normalizeOutcome(validatedResult.outcome) || (validatedResult.success ? ToolOutcome.OK : ToolOutcome.INFRA_ERROR),
         success: validatedResult.success,
         data: validatedResult.data || null,
         message: validatedResult.message, // Now guaranteed to exist
@@ -105,7 +105,7 @@ export async function executeEmailToolLoop(ctx) {
     // Don't fail pipeline, just record error
     ctx.toolResults.push({
       toolName: 'LOOP_ERROR',
-      outcome: ToolOutcome.SYSTEM_ERROR,
+      outcome: ToolOutcome.INFRA_ERROR,
       success: false,
       message: error.message
     });
@@ -171,25 +171,25 @@ function determineToolsToRun(classification, availableTools, inboundMessage) {
  * This ensures the LLM always has context about what happened
  */
 function generateDefaultMessage(toolName, result) {
-  const outcome = result.outcome || (result.success ? 'OK' : 'ERROR');
+  const outcome = normalizeOutcome(result.outcome) || (result.success ? ToolOutcome.OK : ToolOutcome.INFRA_ERROR);
 
   switch (outcome) {
-    case 'OK':
+    case ToolOutcome.OK:
       if (result.data) {
         return `${toolName} lookup successful. Data retrieved.`;
       }
       return `${toolName} completed successfully.`;
 
-    case 'NOT_FOUND':
+    case ToolOutcome.NOT_FOUND:
       return `${toolName}: No matching record found. The customer may need to provide additional information for verification.`;
 
-    case 'VALIDATION_ERROR':
+    case ToolOutcome.VALIDATION_ERROR:
       return `${toolName}: Invalid input provided. Please check the format and try again.`;
 
-    case 'VERIFICATION_REQUIRED':
+    case ToolOutcome.VERIFICATION_REQUIRED:
       return `${toolName}: Customer identity verification is required before accessing this information.`;
 
-    case 'SYSTEM_ERROR':
+    case ToolOutcome.INFRA_ERROR:
       return `${toolName}: A technical issue occurred. The customer should be informed that we're looking into it.`;
 
     default:

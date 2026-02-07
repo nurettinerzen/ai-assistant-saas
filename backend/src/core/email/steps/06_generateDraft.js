@@ -42,7 +42,7 @@ import {
 } from '../../../services/email-pair-retrieval.js';
 import { classifyTone } from '../../../services/email-tone-classifier.js';
 import { cleanEmailText } from '../../../services/email-text-cleaner.js';
-import { ToolOutcome } from '../../../tools/toolResult.js';
+import { ToolOutcome, normalizeOutcome } from '../../../tools/toolResult.js';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
@@ -546,7 +546,7 @@ function buildStyleContext(styleProfile, language, emailSignature, signatureType
  * CRITICAL: Always include outcome + data + message
  *
  * CONTRACT:
- * - outcome: REQUIRED (OK, NOT_FOUND, SYSTEM_ERROR, VERIFICATION_NEEDED)
+ * - outcome: REQUIRED (OK, NOT_FOUND, INFRA_ERROR, VERIFICATION_REQUIRED)
  * - data: Optional (structured data from tool)
  * - message: REQUIRED (human-readable summary - ALWAYS show in response context)
  *
@@ -576,7 +576,9 @@ function buildToolResultsContext(toolResults, customerData, language) {
       context += `📌 Message: ${result.message}\n`;
 
       // Collect messages that require action
-      if (result.outcome !== 'OK' || result.message.includes('doğrulama') || result.message.includes('verification')) {
+      if (normalizeOutcome(result.outcome) !== ToolOutcome.OK ||
+          result.message.includes('doğrulama') ||
+          result.message.includes('verification')) {
         actionableMessages.push({
           tool: result.toolName,
           outcome: result.outcome,
@@ -588,7 +590,7 @@ function buildToolResultsContext(toolResults, customerData, language) {
     // Show data if available
     // TODO: SECURITY - Filter PII from result.data before sending to LLM
     // For now, we send full data but should implement selective field exposure
-    if (result.outcome === ToolOutcome.OK && result.data) {
+    if (normalizeOutcome(result.outcome) === ToolOutcome.OK && result.data) {
       context += `Data:\n${JSON.stringify(result.data, null, 2)}\n`;
     }
 
@@ -626,9 +628,9 @@ function getToolDataInstructions(toolResults, language) {
       : '- No customer data found. Ask for verification info if needed.';
   }
 
-  const hasSuccess = toolResults.some(r => r.outcome === ToolOutcome.OK);
-  const hasNotFound = toolResults.some(r => r.outcome === ToolOutcome.NOT_FOUND);
-  const hasError = toolResults.some(r => r.outcome === ToolOutcome.SYSTEM_ERROR);
+  const hasSuccess = toolResults.some(r => normalizeOutcome(r.outcome) === ToolOutcome.OK);
+  const hasNotFound = toolResults.some(r => normalizeOutcome(r.outcome) === ToolOutcome.NOT_FOUND);
+  const hasError = toolResults.some(r => normalizeOutcome(r.outcome) === ToolOutcome.INFRA_ERROR);
 
   let instructions = '';
 

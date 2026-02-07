@@ -7,7 +7,7 @@
  * Policy: If intent requires data and tool didn't run or failed,
  * draft MUST ask for verification info instead of guessing.
  */
-import { ToolOutcome } from '../../../tools/toolResult.js';
+import { ToolOutcome, normalizeOutcome } from '../../../tools/toolResult.js';
 
 /**
  * Intents that REQUIRE tool data before responding
@@ -163,19 +163,19 @@ export function enforceToolRequiredPolicy({ classification, toolResults, languag
 
   // Check if any required tool succeeded
   const successfulTools = toolResults?.filter(r =>
-    requiredTools.includes(r.toolName) && r.outcome === ToolOutcome.OK
+    requiredTools.includes(r.toolName) && normalizeOutcome(r.outcome) === ToolOutcome.OK
   ) || [];
 
   if (successfulTools.length === 0) {
     // Tools were called but none succeeded
     const failedOutcomes = toolResults
       ?.filter(r => requiredTools.includes(r.toolName))
-      ?.map(r => ({ tool: r.toolName, outcome: r.outcome })) || [];
+      ?.map(r => ({ tool: r.toolName, outcome: normalizeOutcome(r.outcome) })) || [];
 
     // Check specific outcomes
     const hasNotFound = failedOutcomes.some(r => r.outcome === ToolOutcome.NOT_FOUND);
     const hasVerificationRequired = failedOutcomes.some(r => r.outcome === ToolOutcome.VERIFICATION_REQUIRED);
-    const hasSystemError = failedOutcomes.some(r => r.outcome === ToolOutcome.SYSTEM_ERROR);
+    const hasSystemError = failedOutcomes.some(r => r.outcome === ToolOutcome.INFRA_ERROR);
 
     if (hasSystemError) {
       // System error - use special message

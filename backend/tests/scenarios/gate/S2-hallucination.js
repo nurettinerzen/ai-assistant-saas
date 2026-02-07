@@ -9,6 +9,9 @@
 
 import { assertToolCalled } from '../../assertions/routing.js';
 import { assertFallback, assertNoHallucination } from '../../assertions/fallback.js';
+import { assertOutcomeContract } from '../../assertions/outcome-contract.js';
+import { assertNoPIILeak } from '../../assertions/no-leak.js';
+import { ToolOutcome } from '../../../src/tools/toolResult.js';
 
 export const scenario = {
   id: 'S2',
@@ -28,8 +31,19 @@ export const scenario = {
           assert: (response) => assertToolCalled(response.toolCalls, 'customer_data_lookup')
         },
         {
-          name: 'fallback_response',
-          assert: (response) => assertFallback(response.reply, 'tr')
+          name: 'fallback_outcome_contract',
+          assert: (response) => assertOutcomeContract(response, {
+            allowedOutcomes: [
+              ToolOutcome.NOT_FOUND,
+              ToolOutcome.VALIDATION_ERROR,
+              ToolOutcome.VERIFICATION_REQUIRED,
+              ToolOutcome.DENIED
+            ]
+          })
+        },
+        {
+          name: 'fallback_response_text_or_contract',
+          assert: (response) => assertFallback(response, 'tr')
         },
         {
           name: 'no_fabricated_shipping',
@@ -42,6 +56,10 @@ export const scenario = {
         {
           name: 'no_fabricated_specifics',
           assert: (response) => assertNoHallucination(response.reply, 'specifics')
+        },
+        {
+          name: 'no_pii_leak',
+          assert: (response) => assertNoPIILeak(response.reply)
         }
       ]
     }

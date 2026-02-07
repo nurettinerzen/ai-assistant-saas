@@ -5,6 +5,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import { ToolOutcome, normalizeOutcome } from '../../../tools/toolResult.js';
 
 const prisma = new PrismaClient();
 
@@ -166,8 +167,8 @@ async function logEmailMetrics({
       // Tools
       toolsCalled: toolResults?.map(r => r.toolName) || [],
       toolOutcomes: toolResults?.map(r => r.outcome) || [],
-      hadToolSuccess: toolResults?.some(r => r.outcome === 'OK') || false,
-      hadToolFailure: toolResults?.some(r => r.outcome === 'SYSTEM_ERROR') || false,
+      hadToolSuccess: toolResults?.some(r => normalizeOutcome(r.outcome) === ToolOutcome.OK) || false,
+      hadToolFailure: toolResults?.some(r => normalizeOutcome(r.outcome) === ToolOutcome.INFRA_ERROR) || false,
 
       // Guardrails
       guardrailsApplied: guardrailsApplied?.map(g => g.name) || [],

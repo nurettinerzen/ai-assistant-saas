@@ -34,6 +34,62 @@ import {
   detectForbiddenTemplate,
   validateNoInfoResponse
 } from '../../src/guardrails/noInfoConstraints.js';
+import {
+  evaluateSecurityGateway,
+  applyLeakFilter
+} from '../../src/guardrails/securityGateway.js';
+import { shouldBypassLeakFilter } from '../../src/security/outcomePolicy.js';
+import { ToolOutcome } from '../../src/tools/toolResult.js';
+
+// ============================================
+// Contract-focused policy tests (SSOT)
+// ============================================
+describe('Guardrail Policy Contracts', () => {
+  it('should require verification for account-verified fields when state is none', () => {
+    const decision = evaluateSecurityGateway({
+      verificationState: 'none',
+      requestedDataFields: ['order_status', 'tracking_number']
+    });
+
+    expect(decision.requiresVerification).toBe(true);
+    expect(decision.allowedActions.ask_verification).toBe(true);
+    expect(decision.deniedFields.length).toBeGreaterThan(0);
+  });
+
+  it('should allow verified account fields after verification passes', () => {
+    const decision = evaluateSecurityGateway({
+      verificationState: 'verified',
+      verifiedIdentity: { phone: '05321234567' },
+      requestedRecord: { phone: '05321234567' },
+      requestedDataFields: ['order_status', 'tracking_number']
+    });
+
+    expect(decision.requiresVerification).toBe(false);
+    expect(decision.allowedFields).toContain('order_status');
+    expect(decision.hasIdentityMismatch).toBe(false);
+  });
+
+  it('should block unverified personal leaks with missing verification fields', () => {
+    const result = applyLeakFilter(
+      'Takip numaranız TR1234567890 ve teslimat adresiniz İstanbul Kadıköy.',
+      'none',
+      'TR',
+      {}
+    );
+
+    expect(result.safe).toBe(false);
+    expect(result.needsVerification).toBe(true);
+    expect(result.missingFields).toContain('order_number');
+    expect(result.missingFields).toContain('phone_last4');
+  });
+
+  it('should bypass leak filter for non-data terminal outcomes', () => {
+    expect(shouldBypassLeakFilter(ToolOutcome.NOT_FOUND)).toBe(true);
+    expect(shouldBypassLeakFilter(ToolOutcome.VALIDATION_ERROR)).toBe(true);
+    expect(shouldBypassLeakFilter(ToolOutcome.VERIFICATION_REQUIRED)).toBe(true);
+    expect(shouldBypassLeakFilter(ToolOutcome.OK)).toBe(false);
+  });
+});
 
 // ============================================
 // P0-A: Tool-Only Data Gate Tests

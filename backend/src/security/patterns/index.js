@@ -146,10 +146,86 @@ export const INTERNAL_TOOL_INVOCATION_PATTERNS = Object.freeze([
   /\btoolName:\s*["']?\w+/i
 ]);
 
+// NOT_FOUND acknowledgements used by security gateway + test assertions.
+export const NOT_FOUND_RESPONSE_PATTERNS = Object.freeze({
+  TR: Object.freeze([
+    /bulunamadı/i,
+    /bulunmuyor/i,
+    /bulamadım/i,
+    /bulamıyorum/i,
+    /kayıt\s*(yok|bulunamadı)/i,
+    /sipariş\s*(yok|bulunamadı)/i,
+    /sistemimizde\s*(yok|bulunamadı)/i,
+    /eşleşen\s*(kayıt|sipariş)\s*(yok|bulunamadı)/i,
+    /mevcut\s*değil/i
+  ]),
+  EN: Object.freeze([
+    /not\s*found/i,
+    /couldn't\s*find/i,
+    /could\s*not\s*find/i,
+    /unable\s*to\s*(find|locate)/i,
+    /no\s*(record|order|match)/i,
+    /doesn't\s*exist/i,
+    /does\s*not\s*exist/i,
+    /not\s*in\s*(our|the)\s*system/i
+  ])
+});
+
+// Fabrication cues after NOT_FOUND used by security gateway + tests.
+export const ORDER_FABRICATION_PATTERNS = Object.freeze({
+  TR: Object.freeze([
+    /sipariş(iniz)?de\s*(şu|bu)?\s*(ürünler|ürün)/i,
+    /\d+\s*(adet|tane)\s+[A-ZÇĞİÖŞÜa-zçğıöşü]{3,}/i,
+    /içerisinde\s*.+\s*bulunuyor/i,
+    /sipariş\s*içeriği/i,
+    /kargoya\s*(verildi|veriliyor|verilecek)/i,
+    /teslim\s*(edilecek|edildi|ediliyor)/i
+  ]),
+  EN: Object.freeze([
+    /your\s*order\s*(contains|includes)/i,
+    /\d+\s*x\s+[A-Za-z]{3,}/i,
+    /order\s*items/i,
+    /shipped|delivered|in\s*transit/i
+  ])
+});
+
+// Non-sensitive policy style hints (used to avoid false positive leak blocks).
+export const POLICY_RESPONSE_HINT_PATTERNS = Object.freeze([
+  /\b(gün|hafta|ay|süre|süreç|politika|şart|koşul|garanti|iade|değişim|kargo ücreti|ücretsiz)\b/i,
+  /\b(day|week|month|policy|condition|warranty|refund|return|shipping fee)\b/i
+]);
+
+// Shared hallucination indicators for fallback assertions.
+export const HALLUCINATION_INDICATORS = Object.freeze({
+  shippingDetails: Object.freeze([
+    /kargo\s+(?:firması|şirketi)/i,
+    /takip\s+(?:no|numarası)/i,
+    /cargo|shipping/i,
+    /tracking\s+number/i
+  ]),
+  dates: Object.freeze([
+    /\d{1,2}[./]\d{1,2}[./]\d{2,4}/,
+    /teslim\s+tarihi/i,
+    /delivery\s+date/i
+  ]),
+  specifics: Object.freeze([
+    /adet/i,
+    /tutar/i,
+    /amount/i,
+    /quantity/i,
+    /price/i,
+    /fiyat/i
+  ])
+});
+
 export default {
   PROMPT_DISCLOSURE_KEYWORDS_EN,
   PROMPT_DISCLOSURE_KEYWORDS_TR,
   PROMPT_DISCLOSURE_REGEX_PATTERNS,
   INTERNAL_METADATA_TERMS,
-  INTERNAL_TOOL_INVOCATION_PATTERNS
+  INTERNAL_TOOL_INVOCATION_PATTERNS,
+  NOT_FOUND_RESPONSE_PATTERNS,
+  ORDER_FABRICATION_PATTERNS,
+  POLICY_RESPONSE_HINT_PATTERNS,
+  HALLUCINATION_INDICATORS
 };

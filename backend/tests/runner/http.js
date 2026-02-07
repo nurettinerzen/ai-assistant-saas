@@ -57,6 +57,7 @@ export async function sendConversationTurn(
       return {
         success: true,
         reply: response.data.reply,
+        outcome: response.data.outcome || response.data.metadata?.outcome || null,
         conversationId: response.data.conversationId,
         toolCalls: response.data.toolCalls || [],
         verificationStatus: response.data.verificationStatus || 'none',

@@ -13,6 +13,7 @@
 
 import { preventPIILeak } from './policies/piiPreventionPolicy.js';
 import { applyWhitelist, validateToolResult } from './toolWhitelist.js';
+import { ToolOutcome, normalizeOutcome } from '../../tools/toolResult.js';
 
 // Max tokens per tool result (prevents single tool from dominating prompt)
 const MAX_TOKENS_PER_TOOL = 3000;
@@ -143,7 +144,7 @@ export function sanitizeToolResults(toolResults, options = {}) {
       };
 
       // Handle data field
-      if (result.data && result.outcome === 'OK') {
+      if (result.data && normalizeOutcome(result.outcome) === ToolOutcome.OK) {
         // CRITICAL: Apply tool-specific whitelist FIRST
         // This ensures required fields are preserved before generic slimming
         const whitelistedData = applyWhitelist(result.toolName, result.data, maxTokens);

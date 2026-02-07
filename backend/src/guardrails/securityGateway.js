@@ -11,8 +11,14 @@
  * 3. Leak Filter: post-output filtreleme
  * 4. Identity Mismatch: verifiedIdentity vs requestedRecordOwner
  */
-import { INTERNAL_METADATA_TERMS } from '../security/patterns/index.js';
+import {
+  INTERNAL_METADATA_TERMS,
+  NOT_FOUND_RESPONSE_PATTERNS,
+  ORDER_FABRICATION_PATTERNS,
+  POLICY_RESPONSE_HINT_PATTERNS
+} from '../security/patterns/index.js';
 import { comparePhones } from '../utils/text.js';
+import { ToolOutcome, normalizeOutcome } from '../tools/toolResult.js';
 
 // ============================================================================
 // DATA CLASS TANIMLARI
@@ -383,7 +389,7 @@ export function applyLeakFilter(response, verificationState = 'none', language =
   // If response is about policy (iade, garanti, süre) and no personal data,
   // DON'T block it - let it through
   const onlyInternalLeak = leaks.every(l => l.type === 'internal');
-  const isPolicyResponse = /\b(gün|hafta|ay|süre|süreç|politika|şart|koşul|garanti|iade|değişim|kargo ücreti|ücretsiz)\b/i.test(response);
+  const isPolicyResponse = POLICY_RESPONSE_HINT_PATTERNS.some(pattern => pattern.test(response));
 
   // If it's a policy response with only minor internal pattern match, let it pass
   // But if there's address/tracking/phone/customerName leak, still block
@@ -525,13 +531,13 @@ export function checkProductNotFound(response, toolOutputs = [], language = 'TR'
     if (!result) return false;
 
     // Direct outcome check (from toolResult.js - PRIMARY check)
-    if (result.outcome === 'NOT_FOUND') return true;
+    if (normalizeOutcome(result.outcome) === ToolOutcome.NOT_FOUND) return true;
 
     // Check nested data in output
     const data = result.output?.truth || result.output?.data || result.output;
 
     return (
-      data?.outcome === 'NOT_FOUND' ||
+      normalizeOutcome(data?.outcome) === ToolOutcome.NOT_FOUND ||
       // Legacy flags
       result.output?.notFound === true ||
       data?.notFound === true ||
@@ -549,27 +555,8 @@ export function checkProductNotFound(response, toolOutputs = [], language = 'TR'
     return { needsOverride: false };
   }
 
-  // LLM "bulunamadı" demiş mi kontrol et
-  const notFoundPatterns = {
-    TR: [
-      /bulunamadı/i,
-      /bulunmuyor/i,
-      /mevcut\s*değil/i,
-      /sistemimizde\s*yok/i,
-      /kayıtlı\s*değil/i,
-      /ürün(ü|ümüz)?\s*yok/i,
-    ],
-    EN: [
-      /not\s*found/i,
-      /couldn't\s*find/i,
-      /no\s*results?/i,
-      /doesn't\s*exist/i,
-      /not\s*available/i,
-    ]
-  };
-
   const lang = language.toUpperCase() === 'EN' ? 'EN' : 'TR';
-  const patterns = notFoundPatterns[lang] || notFoundPatterns.TR;
+  const patterns = NOT_FOUND_RESPONSE_PATTERNS[lang] || NOT_FOUND_RESPONSE_PATTERNS.TR;
 
   const hasNotFoundStatement = patterns.some(p => p.test(response));
 
@@ -622,7 +609,7 @@ export function checkOrderNotFoundPressure(response, toolOutputs = [], language 
     if (!result) return false;
 
     // Direct outcome check (from toolResult.js - PRIMARY check)
-    if (result.outcome === 'NOT_FOUND') {
+    if (normalizeOutcome(result.outcome) === ToolOutcome.NOT_FOUND) {
       console.log('✅ [checkOrderNotFoundPressure] Found NOT_FOUND via direct outcome check');
       return true;
     }
@@ -631,7 +618,7 @@ export function checkOrderNotFoundPressure(response, toolOutputs = [], language 
     const data = result.output?.truth || result.output?.data || result.output;
 
     const isNotFound = (
-      data?.outcome === 'NOT_FOUND' ||
+      normalizeOutcome(data?.outcome) === ToolOutcome.NOT_FOUND ||
       // Legacy flags
       result.output?.notFound === true ||
       data?.notFound === true ||
@@ -666,54 +653,13 @@ export function checkOrderNotFoundPressure(response, toolOutputs = [], language 
   // ============================================
   // STEP 1: LLM "bulunamadı" demiş mi kontrol et
   // ============================================
-  const notFoundPatterns = {
-    TR: [
-      /bulunamadı/i,
-      /bulunmuyor/i,
-      /bulamadım/i,
-      /bulamıyorum/i,
-      /kayıt\s*(yok|bulunamadı)/i,
-      /sipariş\s*(yok|bulunamadı)/i,
-      /sistemimizde\s*(yok|bulunamadı)/i,
-      /eşleşen\s*(kayıt|sipariş)\s*(yok|bulunamadı)/i,
-      /mevcut\s*değil/i,
-    ],
-    EN: [
-      /not\s*found/i,
-      /couldn't\s*find/i,
-      /could\s*not\s*find/i,
-      /unable\s*to\s*(find|locate)/i,
-      /no\s*(record|order|match)/i,
-      /doesn't\s*exist/i,
-      /does\s*not\s*exist/i,
-      /not\s*in\s*(our|the)\s*system/i,
-    ]
-  };
-
-  const notFoundPatternsForLang = notFoundPatterns[lang] || notFoundPatterns.TR;
+  const notFoundPatternsForLang = NOT_FOUND_RESPONSE_PATTERNS[lang] || NOT_FOUND_RESPONSE_PATTERNS.TR;
   const hasNotFoundStatement = notFoundPatternsForLang.some(p => p.test(response));
 
   // ============================================
   // STEP 2: LLM ürün listesi uyduruyor mu?
   // ============================================
-  const fabricationPatterns = {
-    TR: [
-      /sipariş(iniz)?de\s*(şu|bu)?\s*(ürünler|ürün)/i,
-      /\d+\s*(adet|tane)\s+[A-ZÇĞİÖŞÜa-zçğıöşü]{3,}/i, // "2 adet iPhone"
-      /içerisinde\s*.+\s*bulunuyor/i,
-      /sipariş\s*içeriği/i,
-      /kargoya\s*(verildi|veriliyor|verilecek)/i,
-      /teslim\s*(edilecek|edildi|ediliyor)/i,
-    ],
-    EN: [
-      /your\s*order\s*(contains|includes)/i,
-      /\d+\s*x\s+[A-Za-z]{3,}/i,
-      /order\s*items/i,
-      /shipped|delivered|in\s*transit/i,
-    ]
-  };
-
-  const fabricationPatternsForLang = fabricationPatterns[lang] || fabricationPatterns.TR;
+  const fabricationPatternsForLang = ORDER_FABRICATION_PATTERNS[lang] || ORDER_FABRICATION_PATTERNS.TR;
   const hasFabrication = fabricationPatternsForLang.some(p => p.test(response));
 
   // ============================================

@@ -51,6 +51,7 @@ import {
   getBlockedContentMessage,
   logContentSafetyViolation
 } from '../../utils/content-safety.js';
+import { ToolOutcome, normalizeOutcome } from '../../tools/toolResult.js';
 
 /**
  * Handle email draft generation turn
@@ -323,7 +324,7 @@ export async function handleEmailTurn(params) {
 
     metrics.steps.toolLoop = Date.now() - step5Start;
     metrics.toolsCalled = ctx.toolResults.map(r => r.toolName);
-    metrics.hadToolSuccess = ctx.toolResults.some(r => r.outcome === 'OK');
+    metrics.hadToolSuccess = ctx.toolResults.some(r => normalizeOutcome(r.outcome) === ToolOutcome.OK);
     console.log(`✅ [EmailTurn] Tool loop complete: ${ctx.toolResults.length} calls (${metrics.steps.toolLoop}ms)`);
 
     // ============================================

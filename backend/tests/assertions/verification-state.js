@@ -3,6 +3,8 @@
  * Check verification status in conversation
  */
 
+import { ToolOutcome, normalizeOutcome } from '../../src/tools/toolResult.js';
+
 /**
  * Assert verification status matches expected
  */
@@ -68,9 +70,37 @@ export function assertVerificationFailed(verificationStatus) {
   return { passed: true };
 }
 
+/**
+ * Assert verification status and outcome contract are compatible.
+ */
+export function assertVerificationContract(response) {
+  const status = response?.verificationStatus || 'none';
+  const outcome = normalizeOutcome(
+    response?.outcome ||
+    response?.metadata?.outcome ||
+    response?.rawResponse?.outcome ||
+    response?.rawResponse?.metadata?.outcome ||
+    null
+  );
+
+  if (status === 'verified' && outcome === ToolOutcome.VERIFICATION_REQUIRED) {
+    return {
+      passed: false,
+      reason: 'Outcome/state mismatch: verified status cannot return VERIFICATION_REQUIRED'
+    };
+  }
+
+  if (status === 'none' && outcome === ToolOutcome.VERIFICATION_REQUIRED) {
+    return { passed: true };
+  }
+
+  return { passed: true };
+}
+
 export default {
   assertVerificationStatus,
   assertNeedsVerification,
   assertVerified,
-  assertVerificationFailed
+  assertVerificationFailed,
+  assertVerificationContract
 };

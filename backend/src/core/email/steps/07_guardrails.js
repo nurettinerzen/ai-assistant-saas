@@ -19,7 +19,7 @@
  *    - Remove unnecessary repetition of sensitive data
  */
 import { findActionClaims, replaceActionClaims } from '../../../security/actionClaimLexicon.js';
-import { ToolOutcome } from '../../../tools/toolResult.js';
+import { ToolOutcome, normalizeOutcome } from '../../../tools/toolResult.js';
 
 /**
  * Apply all email guardrails
@@ -58,7 +58,7 @@ export async function applyEmailGuardrails(ctx) {
   // ============================================
   // B) ACTION-CLAIM GUARD
   // ============================================
-  const hadToolSuccess = toolResults?.some(r => r.outcome === ToolOutcome.OK);
+  const hadToolSuccess = toolResults?.some(r => normalizeOutcome(r.outcome) === ToolOutcome.OK);
   const hadToolCalls = toolResults?.length > 0;
 
   const actionClaimResult = checkActionClaimGuard(modifiedContent, hadToolSuccess, hadToolCalls, language);
@@ -77,7 +77,7 @@ export async function applyEmailGuardrails(ctx) {
   // ============================================
   // C) VERIFICATION POLICY
   // ============================================
-  const verificationRequired = toolResults?.some(r => r.outcome === ToolOutcome.VERIFICATION_REQUIRED);
+  const verificationRequired = toolResults?.some(r => normalizeOutcome(r.outcome) === ToolOutcome.VERIFICATION_REQUIRED);
 
   const verificationResult = checkVerificationPolicy(modifiedContent, verificationRequired, language);
   ctx.guardrailsApplied.push({
