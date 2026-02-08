@@ -14,7 +14,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import axios from 'axios';
 import CONFIG, { validateConfig } from './config.js';
-import { loginUser, sendConversationTurn } from './http.js';
+import { loginUser, sendConversationTurn, cleanupTestAssistants } from './http.js';
 import Reporter from './reporter.js';
 import { recordBrandViolations } from './brand-metrics.js';
 
@@ -334,6 +334,9 @@ async function main() {
   if (brandMetrics.message) {
     console.log('\n' + brandMetrics.message);
   }
+
+  // Cleanup any test assistants created during this run
+  await cleanupTestAssistants(token);
 
   // Exit with appropriate code
   // Gate failures OR brand drift (>2 in 20 runs) = exit 1

@@ -194,7 +194,12 @@ export async function getAssistant(assistantId, token) {
 }
 
 /**
- * Create test assistant
+ * Track created test assistants for cleanup
+ */
+const createdTestAssistants = [];
+
+/**
+ * Create test assistant (auto-tracked for cleanup)
  */
 export async function createTestAssistant(name, config, token) {
   try {
@@ -213,9 +218,12 @@ export async function createTestAssistant(name, config, token) {
       { headers: { Authorization: `Bearer ${token}` } }
     );
 
+    const assistantId = response.data.assistant.id;
+    createdTestAssistants.push(assistantId);
+
     return {
       success: true,
-      assistantId: response.data.assistant.id
+      assistantId
     };
   } catch (error) {
     return {
@@ -244,11 +252,32 @@ export async function deleteTestAssistant(assistantId, token) {
   }
 }
 
+/**
+ * Cleanup all test assistants created during this run
+ */
+export async function cleanupTestAssistants(token) {
+  if (createdTestAssistants.length === 0) return;
+
+  console.log(`\n🧹 Cleaning up ${createdTestAssistants.length} test assistant(s)...`);
+  let cleaned = 0;
+  for (const id of createdTestAssistants) {
+    const result = await deleteTestAssistant(id, token);
+    if (result.success) {
+      cleaned++;
+    } else {
+      console.warn(`  ⚠️  Failed to delete assistant ${id}: ${result.error}`);
+    }
+  }
+  console.log(`  ✅ Cleaned up ${cleaned}/${createdTestAssistants.length} test assistants`);
+  createdTestAssistants.length = 0; // Clear the tracking array
+}
+
 export default {
   loginUser,
   sendConversationTurn,
   querySecurityEvents,
   getAssistant,
   createTestAssistant,
-  deleteTestAssistant
+  deleteTestAssistant,
+  cleanupTestAssistants
 };

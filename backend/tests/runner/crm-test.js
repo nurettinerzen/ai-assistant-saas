@@ -16,7 +16,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import axios from 'axios';
 import CONFIG, { validateConfig } from './config.js';
-import { loginUser, sendConversationTurn } from './http.js';
+import { loginUser, sendConversationTurn, cleanupTestAssistants } from './http.js';
 import Reporter from './reporter.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -348,6 +348,9 @@ async function main() {
 
   console.log(`\n📄 Report saved to: ${reportFile}`);
   console.log('\n' + '='.repeat(80));
+
+  // Cleanup any test assistants created during this run
+  await cleanupTestAssistants(token);
 
   // Exit code
   process.exit(results.failed > 0 ? 1 : 0);

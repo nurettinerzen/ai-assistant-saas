@@ -27,7 +27,9 @@
     "crm-test": "node tests/runner/crm-test.js",
     "crm-test:verbose": "node tests/runner/crm-test.js --verbose",
     "test:all-smoke": "npm run security-test && npm run functional-test && npm run assistant-test",
-    "test:security": "node tests/security/test-child-safety.js && node tests/security/test-ssrf-protection.js"
+    "test:security": "node tests/security/test-child-safety.js && node tests/security/test-ssrf-protection.js",
+    "cleanup-assistants": "node scripts/cleanup-test-assistants.js",
+    "cleanup-assistants:delete": "node scripts/cleanup-test-assistants.js --delete"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
