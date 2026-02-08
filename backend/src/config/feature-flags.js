@@ -61,10 +61,10 @@ export const FEATURE_FLAGS = {
   // When enabled: Greeting/chatter messages go through LLM with directive (tools off)
   //   instead of returning hardcoded catalog templates via directResponse.
   // When disabled: Legacy behavior — direct catalog template response, no LLM call.
-  // Default: OFF — enable via FEATURE_LLM_CHATTER_GREETING=true
+  // Default: ON — disable via FEATURE_LLM_CHATTER_GREETING=false
   // Canary: Comma-separated embedKeys that get LLM chatter regardless of global flag
   //   e.g. FEATURE_LLM_CHATTER_CANARY_KEYS=embed_abc123,embed_xyz789
-  LLM_CHATTER_GREETING: process.env.FEATURE_LLM_CHATTER_GREETING === 'true', // Default: OFF
+  LLM_CHATTER_GREETING: process.env.FEATURE_LLM_CHATTER_GREETING !== 'false', // Default: ON
   LLM_CHATTER_CANARY_KEYS: (process.env.FEATURE_LLM_CHATTER_CANARY_KEYS || '').split(',').map(k => k.trim()).filter(Boolean),
 };
 
