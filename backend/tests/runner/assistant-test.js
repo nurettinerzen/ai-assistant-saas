@@ -97,43 +97,50 @@ async function runScenario(scenario, token, assistantId, businessId) {
       }
 
       if (!response.success) {
-        // INFRA_ERROR in extended tests: skip (not fail)
-        // Gate tests still fail on INFRA_ERROR (infrastructure must be stable)
-        const isInfraError = response.errorType === 'INFRA_ERROR';
-        const isExtended = scenario.level === 'extended' || scenario.level === 'adversarial';
+        // Steps with allowFailedResponse: true expect error responses
+        // (e.g., error-path leak tests). Run assertions on the error response.
+        if (step.allowFailedResponse) {
+          console.log(`    ⚡ Step allows failed response (error-path test) — running assertions on error`);
+          // Fall through to assertion loop below
+        } else {
+          // INFRA_ERROR in extended tests: skip (not fail)
+          // Gate tests still fail on INFRA_ERROR (infrastructure must be stable)
+          const isInfraError = response.errorType === 'INFRA_ERROR';
+          const isExtended = scenario.level === 'extended' || scenario.level === 'adversarial';
 
-        if (isInfraError && isExtended) {
-          console.log(`    ⚠️  INFRA_ERROR: ${response.error} (skipping step, not failing)`);
-          console.log(`       requestId=${response.requestId}, statusCode=${response.statusCode}, retryAfterMs=${response.retryAfterMs || 'N/A'}`);
-          stepResult.status = 'skipped';
-          stepResult.error = `INFRA_ERROR: ${response.error}`;
-          result.infraErrors = result.infraErrors || [];
-          result.infraErrors.push({
+          if (isInfraError && isExtended) {
+            console.log(`    ⚠️  INFRA_ERROR: ${response.error} (skipping step, not failing)`);
+            console.log(`       requestId=${response.requestId}, statusCode=${response.statusCode}, retryAfterMs=${response.retryAfterMs || 'N/A'}`);
+            stepResult.status = 'skipped';
+            stepResult.error = `INFRA_ERROR: ${response.error}`;
+            result.infraErrors = result.infraErrors || [];
+            result.infraErrors.push({
+              step: step.id,
+              error: response.error,
+              statusCode: response.statusCode,
+              requestId: response.requestId,
+              retryAfterMs: response.retryAfterMs
+            });
+            continue;
+          }
+
+          // GATE tests: INFRA_ERROR is still a failure (infra must be stable for gate)
+          if (isInfraError && scenario.level === 'gate') {
+            console.log(`    ❌ INFRA_ERROR in GATE test: ${response.error} (counts as failure!)`);
+            console.log(`       requestId=${response.requestId}, statusCode=${response.statusCode}`);
+          }
+
+          // Regular failure
+          stepResult.status = 'failed';
+          stepResult.error = response.error;
+          result.failures.push({
             step: step.id,
-            error: response.error,
-            statusCode: response.statusCode,
-            requestId: response.requestId,
-            retryAfterMs: response.retryAfterMs
+            assertion: 'api_call',
+            reason: `API call failed: ${response.error}`
           });
+          result.status = 'failed';
           continue;
         }
-
-        // GATE tests: INFRA_ERROR is still a failure (infra must be stable for gate)
-        if (isInfraError && scenario.level === 'gate') {
-          console.log(`    ❌ INFRA_ERROR in GATE test: ${response.error} (counts as failure!)`);
-          console.log(`       requestId=${response.requestId}, statusCode=${response.statusCode}`);
-        }
-
-        // Regular failure
-        stepResult.status = 'failed';
-        stepResult.error = response.error;
-        result.failures.push({
-          step: step.id,
-          assertion: 'api_call',
-          reason: `API call failed: ${response.error}`
-        });
-        result.status = 'failed';
-        continue;
       }
 
       // Update conversationId for multi-turn

@@ -92,4 +92,45 @@ export function buildChatterResponse({ userMessage = '', state = {}, language = 
   return variant;
 }
 
-export default { buildChatterResponse };
+/**
+ * Build a chatter directive for LLM-based greeting mode.
+ * Instead of returning final text, returns structured directive fields
+ * that get injected into the LLM prompt (Step 5).
+ * Catalog response is kept as fallback only.
+ */
+export function buildChatterDirective({ userMessage = '', state = {}, language = 'TR', sessionId = '' } = {}) {
+  const text = String(userMessage || '').trim();
+  const activeTask = hasActiveTask(state);
+
+  let kind = 'generic';
+  if (isGreeting(text)) kind = 'greeting';
+  else if (isThanks(text)) kind = 'thanks';
+
+  // Build the catalog fallback (used if LLM fails/times out)
+  const catalogFallback = buildChatterResponse({ userMessage, state, language, sessionId });
+
+  // Collect last assistant messages for anti-repetition context
+  const lastAssistantUtterances = [];
+  if (state?.chatter?.lastMessageKey) {
+    lastAssistantUtterances.push(catalogFallback.text); // approximate
+  }
+
+  return {
+    directive: {
+      kind,
+      activeTask,
+      flowStatus: state.flowStatus || 'idle',
+      verificationPending: state.verification?.status === 'pending',
+      activeFlow: state.activeFlow || null,
+      expectedSlot: state.expectedSlot || null,
+      avoidRepeatingHelpPhrase: true,
+      maxSentences: 2,
+      continueTaskIfAny: activeTask
+    },
+    catalogFallback,
+    messageKey: catalogFallback.messageKey,
+    variantIndex: catalogFallback.variantIndex
+  };
+}
+
+export default { buildChatterResponse, buildChatterDirective };

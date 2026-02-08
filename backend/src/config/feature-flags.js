@@ -56,6 +56,13 @@ export const FEATURE_FLAGS = {
   // false = tool directly mutates state (legacy behavior)
   // Rollback: Set FEATURE_USE_STATE_EVENTS=false
   USE_STATE_EVENTS: process.env.FEATURE_USE_STATE_EVENTS !== 'false', // Default: true
+
+  // LLM Chatter Greeting Mode
+  // When enabled: Greeting/chatter messages go through LLM with directive (tools off)
+  //   instead of returning hardcoded catalog templates via directResponse.
+  // When disabled: Legacy behavior — direct catalog template response, no LLM call.
+  // Rollback: Set FEATURE_LLM_CHATTER_GREETING=false
+  LLM_CHATTER_GREETING: process.env.FEATURE_LLM_CHATTER_GREETING === 'true' || false, // Default: OFF (canary)
 };
 
 /**

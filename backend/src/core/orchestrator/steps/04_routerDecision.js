@@ -16,7 +16,104 @@
  */
 
 import { routeMessage, handleDispute } from '../../../services/message-router.js';
-import { buildChatterResponse, isPureChatter } from '../../../services/chatter-response.js';
+import { buildChatterResponse, buildChatterDirective, isPureChatter } from '../../../services/chatter-response.js';
+import { isFeatureEnabled } from '../../../config/feature-flags.js';
+
+/**
+ * Unified chatter handler.
+ * Called from both the early regex path and the ACKNOWLEDGE_CHATTER action path.
+ * When LLM_CHATTER_GREETING flag is ON: returns directResponse=false with directive for LLM.
+ * When flag is OFF (default): returns directResponse=true with catalog template (legacy).
+ */
+function handleChatter({ userMessage, state, language, sessionId, messageRouting, detectedBy }) {
+  const useLLM = isFeatureEnabled('LLM_CHATTER_GREETING');
+
+  if (useLLM) {
+    // ── LLM directive mode ──
+    const chatterDirective = buildChatterDirective({ userMessage, state, language, sessionId });
+
+    // Update chatter state for anti-repeat tracking
+    const previousRecent = Array.isArray(state?.chatter?.recent) ? state.chatter.recent : [];
+    const nextRecent = [
+      ...previousRecent,
+      { messageKey: chatterDirective.messageKey, variantIndex: chatterDirective.variantIndex }
+    ].slice(-2);
+
+    state.chatter = {
+      lastMessageKey: chatterDirective.messageKey,
+      lastVariantIndex: chatterDirective.variantIndex,
+      lastAt: new Date().toISOString(),
+      recent: nextRecent
+    };
+
+    const chatterRouting = {
+      ...messageRouting,
+      routing: {
+        ...messageRouting.routing,
+        action: 'ACKNOWLEDGE_CHATTER',
+        reason: `Chatter detected (${detectedBy}) — LLM directive mode`,
+        nextAction: 'llm-directive'
+      }
+    };
+
+    console.log(`💬 [RouterDecision] Chatter (${detectedBy}) — LLM directive mode`);
+
+    return {
+      directResponse: false,
+      isChatter: true,
+      routing: chatterRouting,
+      chatterDirective: chatterDirective.directive,
+      catalogFallback: chatterDirective.catalogFallback,
+      metadata: {
+        messageKey: chatterDirective.messageKey,
+        variantIndex: chatterDirective.variantIndex,
+        detectedBy,
+        mode: 'llm_directive'
+      }
+    };
+  }
+
+  // ── Legacy catalog template mode (flag OFF) ──
+  const chatterVariant = buildChatterResponse({ userMessage, state, language, sessionId });
+
+  const previousRecent = Array.isArray(state?.chatter?.recent) ? state.chatter.recent : [];
+  const nextRecent = [
+    ...previousRecent,
+    { messageKey: chatterVariant.messageKey, variantIndex: chatterVariant.variantIndex }
+  ].slice(-2);
+
+  state.chatter = {
+    lastMessageKey: chatterVariant.messageKey,
+    lastVariantIndex: chatterVariant.variantIndex,
+    lastAt: new Date().toISOString(),
+    recent: nextRecent
+  };
+
+  const chatterRouting = {
+    ...messageRouting,
+    routing: {
+      ...messageRouting.routing,
+      action: 'ACKNOWLEDGE_CHATTER',
+      reason: `Chatter detected (${detectedBy}) — direct template`,
+      nextAction: 'direct-response'
+    }
+  };
+
+  console.log(`💬 [RouterDecision] Chatter (${detectedBy}) — direct template mode`);
+
+  return {
+    directResponse: true,
+    reply: chatterVariant.text,
+    routing: chatterRouting,
+    isChatter: true,
+    metadata: {
+      messageKey: chatterVariant.messageKey,
+      variantIndex: chatterVariant.variantIndex,
+      detectedBy,
+      mode: 'direct_template'
+    }
+  };
+}
 
 export async function makeRoutingDecision(params) {
   const { classification, state, userMessage, conversationHistory, language, business, sessionId = '' } = params;
@@ -49,7 +146,7 @@ export async function makeRoutingDecision(params) {
   // ========================================
   // EARLY CHATTER DETECTION (classifier-independent)
   // ========================================
-  // Pure chatter bypasses LLM only in idle state.
+  // Pure chatter bypasses LLM only in idle state (or goes to LLM with directive if flag ON).
   // During active tasks (flow/verification), user input can carry task data.
   const hasActiveTask =
     state.verification?.status === 'pending' ||
@@ -58,48 +155,7 @@ export async function makeRoutingDecision(params) {
     Boolean(state.activeFlow);
 
   if (!hasActiveTask && isPureChatter(userMessage)) {
-    console.log('💬 [RouterDecision] Pure chatter detected (regex) — returning direct response');
-
-    const chatterVariant = buildChatterResponse({
-      userMessage,
-      state,
-      language,
-      sessionId
-    });
-    const previousRecent = Array.isArray(state?.chatter?.recent) ? state.chatter.recent : [];
-    const nextRecent = [
-      ...previousRecent,
-      { messageKey: chatterVariant.messageKey, variantIndex: chatterVariant.variantIndex }
-    ].slice(-2);
-
-    state.chatter = {
-      lastMessageKey: chatterVariant.messageKey,
-      lastVariantIndex: chatterVariant.variantIndex,
-      lastAt: new Date().toISOString(),
-      recent: nextRecent
-    };
-
-    const chatterRouting = {
-      ...messageRouting,
-      routing: {
-        ...messageRouting.routing,
-        action: 'ACKNOWLEDGE_CHATTER',
-        reason: 'Pure chatter detected in idle state (regex early)',
-        nextAction: 'direct-response'
-      }
-    };
-
-    return {
-      directResponse: true,
-      reply: chatterVariant.text,
-      routing: chatterRouting,
-      isChatter: true,
-      metadata: {
-        messageKey: chatterVariant.messageKey,
-        variantIndex: chatterVariant.variantIndex,
-        detectedBy: 'regex_early'
-      }
-    };
+    return handleChatter({ userMessage, state, language, sessionId, messageRouting, detectedBy: 'regex_early' });
   }
 
   // ========================================
@@ -208,35 +264,7 @@ export async function makeRoutingDecision(params) {
     }
 
     case 'ACKNOWLEDGE_CHATTER': {
-      const chatterVariant = buildChatterResponse({
-        userMessage,
-        state,
-        language,
-        sessionId
-      });
-      const previousRecent = Array.isArray(state?.chatter?.recent) ? state.chatter.recent : [];
-      const nextRecent = [
-        ...previousRecent,
-        { messageKey: chatterVariant.messageKey, variantIndex: chatterVariant.variantIndex }
-      ].slice(-2);
-
-      state.chatter = {
-        lastMessageKey: chatterVariant.messageKey,
-        lastVariantIndex: chatterVariant.variantIndex,
-        lastAt: new Date().toISOString(),
-        recent: nextRecent
-      };
-
-      return {
-        directResponse: true,
-        reply: chatterVariant.text,
-        routing: messageRouting,
-        isChatter: true,
-        metadata: {
-          messageKey: chatterVariant.messageKey,
-          variantIndex: chatterVariant.variantIndex
-        }
-      };
+      return handleChatter({ userMessage, state, language, sessionId, messageRouting, detectedBy: 'action_route' });
     }
 
     default: {

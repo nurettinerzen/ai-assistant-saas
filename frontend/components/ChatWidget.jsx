@@ -58,12 +58,25 @@ export default function ChatWidget({
     checkWidgetStatus();
   }, [embedKey, assistantId]);
 
-  // Generate session ID on first open
+  // Generate or restore session ID on first open (stable across page reloads)
   useEffect(() => {
     if (isOpen && !sessionId) {
-      setSessionId(`chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+      const storageKey = `chatWidgetSessionId_${embedKey || assistantId || 'default'}`;
+      try {
+        const stored = localStorage.getItem(storageKey);
+        if (stored) {
+          setSessionId(stored);
+        } else {
+          const newId = `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          localStorage.setItem(storageKey, newId);
+          setSessionId(newId);
+        }
+      } catch {
+        // localStorage unavailable (incognito, storage full) — generate ephemeral
+        setSessionId(`chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+      }
     }
-  }, [isOpen, sessionId]);
+  }, [isOpen, sessionId, embedKey, assistantId]);
 
   // Use translated default if buttonText is not provided
   const displayButtonText = buttonText || t('dashboard.chatWidgetPage.defaultButtonText');

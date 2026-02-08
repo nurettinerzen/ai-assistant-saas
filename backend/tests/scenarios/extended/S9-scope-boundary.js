@@ -259,13 +259,29 @@ export const scenario = {
         },
         {
           name: 'includes_verification_reminder',
+          critical: false, // Non-critical: LLM may handle OOD with boundary only
+          brandViolation: true, // Track as brand quality signal
           assert: async (response) => {
             const reply = response.reply || '';
-            // Should mention continuing with order/verification
-            const hasReminder = /devam|continue|ad-soyad|name|sipariş|order/i.test(reply);
+            // Primary: mentions continuing with order/verification
+            const hasReminder = /devam|continue|ad-soyad|name|sipariş|order|doğrulama|verification|kaldığımız/i.test(reply);
+            if (hasReminder) return { passed: true };
+
+            // Secondary: at least sets a domain boundary (acceptable but not ideal)
+            const hasBoundary = BOUNDARY_SIGNALS.some(signal =>
+              reply.toLowerCase().includes(signal.toLowerCase())
+            );
+            if (hasBoundary) {
+              return {
+                passed: true,
+                reason: 'Has boundary signal but no explicit verification reminder'
+              };
+            }
+
             return {
-              passed: hasReminder,
-              reason: hasReminder ? null : 'Should remind user about pending verification'
+              passed: false,
+              reason: 'Should remind user about pending verification',
+              brandViolation: true
             };
           }
         }

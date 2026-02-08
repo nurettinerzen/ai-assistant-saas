@@ -119,9 +119,35 @@ Kullanıcı saygısız dil kullandı (${strike}. uyarı / 3 üzerinden).
   }
 
   // STEP 0.5: CHATTER messages — CONTEXT-PRESERVING PROMPT
-  // Keep full system prompt and add short guidance instead of replacing everything.
+  // When chatterDirective is present (LLM mode), use directive-driven prompt.
+  // Otherwise (legacy direct template mode that reached here), use generic chatter guidance.
   const isChatterRoute = routingResult?.isChatter || routingResult?.routing?.routing?.action === 'ACKNOWLEDGE_CHATTER';
-  if (isChatterRoute) {
+  const chatterDirective = routingResult?.chatterDirective;
+
+  if (chatterDirective) {
+    // ── LLM directive mode (flag ON) ──
+    const assistantName = assistant?.name || 'Asistan';
+    const businessName = business?.name || '';
+
+    enhancedSystemPrompt += `
+
+## CHATTER KISA YANIT MODU (LLM Directive)
+- Rolün: ${businessName ? businessName + ' şirketinin' : 'şirketin'} müşteri asistanı ${assistantName}
+- Mesaj türü: ${chatterDirective.kind} (greeting/thanks/generic)
+- Konuşma durumu: ${chatterDirective.flowStatus}
+- Aktif görev var mı: ${chatterDirective.activeTask ? 'EVET — ' + (chatterDirective.activeFlow || 'devam eden iş') : 'HAYIR'}
+- Doğrulama bekleniyor mu: ${chatterDirective.verificationPending ? 'EVET' : 'HAYIR'}
+
+KURALLAR:
+- Selam/teşekküre kısa ve doğal cevap ver, robotik kalıp kullanma.
+- Maksimum ${chatterDirective.maxSentences} cümle yaz.
+- "Size nasıl yardımcı olabilirim?" veya benzer klişe yardım cümlelerini TEKRARLAMA.
+- Eğer aktif görev varsa, kısa yanıt sonrası göreve nazikçe geri dön.
+- Kullanıcı net bir talep vermediyse tek cümlelik sıcak bir karşılık ver.
+- Her seferinde farklı ifade kullan, önceki selamlaşmayı tekrarlama.`;
+    console.log('💬 [BuildLLMRequest] CHATTER — LLM directive mode active');
+  } else if (isChatterRoute) {
+    // ── Legacy mode (flag OFF, but reached LLM for some reason) ──
     const assistantName = assistant?.name || 'Asistan';
     const businessName = business?.name || '';
     const activeFlowSummary = state.activeFlow || state.flowStatus || 'none';

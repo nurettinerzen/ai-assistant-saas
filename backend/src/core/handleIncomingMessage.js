@@ -521,6 +521,15 @@ export async function handleIncomingMessage({
       };
     }
 
+    // LLM chatter directive mode: chatterDirective is set, directResponse is false.
+    // LLM will be called with tools off; if LLM fails, catalogFallback is returned.
+    const isChatterLLMMode = !!routingResult.chatterDirective;
+    const chatterLLMStartTime = isChatterLLMMode ? Date.now() : null;
+    if (isChatterLLMMode) {
+      metrics.chatterLLMMode = true;
+      console.log('💬 [Telemetry] Chatter LLM mode — measuring latency/cost');
+    }
+
     // ========================================
     // STEP 5: Build LLM Request
     // ========================================
@@ -561,7 +570,7 @@ export async function handleIncomingMessage({
       effectsEnabled // DRY-RUN flag
     });
 
-    const {
+    let {
       reply: responseText,
       inputTokens,
       outputTokens,
@@ -573,6 +582,25 @@ export async function handleIncomingMessage({
     } = toolLoopResult;
 
     console.log(`🔄 Tool loop completed: ${iterations} iterations, ${toolsCalled.length} tools called`);
+
+    // ── LLM chatter telemetry & fallback ──
+    if (isChatterLLMMode) {
+      const chatterLLMLatency = Date.now() - chatterLLMStartTime;
+      metrics.chatterLLMLatency = chatterLLMLatency;
+      metrics.chatterLLMTokens = { input: inputTokens, output: outputTokens };
+
+      console.log(`📊 [Chatter-Telemetry] latency=${chatterLLMLatency}ms, tokens_in=${inputTokens}, tokens_out=${outputTokens}`);
+
+      // Fallback: if LLM returned empty/failed, use catalog
+      if (routingResult.catalogFallback) {
+        const trimmedResponse = (responseText || '').trim();
+        if (!trimmedResponse) {
+          console.warn('⚠️ [Orchestrator] LLM chatter response empty — falling back to catalog');
+          responseText = routingResult.catalogFallback.text;
+          metrics.chatterLLMFallback = true;
+        }
+      }
+    }
 
     // P0-DEBUG: Log tool results for NOT_FOUND detection debugging
     console.log('📊 [ToolLoop] Results summary:', {
@@ -790,6 +818,22 @@ export async function handleIncomingMessage({
           language
         );
       }
+    }
+
+    // ── Chatter LLM guardrail telemetry ──
+    if (isChatterLLMMode) {
+      metrics.chatterGuardrailResult = {
+        firewallRan: true,
+        blocked: guardrailResult.blocked || false,
+        blockReason: guardrailResult.blockReason || null,
+        guardrailsApplied: guardrailResult.guardrailsApplied || [],
+        violations: guardrailResult.violations || null
+      };
+      console.log('📊 [Chatter-Telemetry] Step7 guardrails:', {
+        blocked: guardrailResult.blocked || false,
+        blockReason: guardrailResult.blockReason || null,
+        policiesRan: guardrailResult.guardrailsApplied || []
+      });
     }
 
     // ========================================

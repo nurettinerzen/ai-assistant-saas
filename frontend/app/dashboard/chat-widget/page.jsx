@@ -280,7 +280,18 @@ export default function ChatWidgetPage() {
 
   var conversationHistory = [];
   var isOpen = false;
-  var sessionId = 'chat_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+  var sessionStorageKey = 'telyxChatSessionId_' + CONFIG.embedKey;
+  var sessionId = (function() {
+    try {
+      var stored = localStorage.getItem(sessionStorageKey);
+      if (stored) return stored;
+      var newId = 'chat_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      localStorage.setItem(sessionStorageKey, newId);
+      return newId;
+    } catch(e) {
+      return 'chat_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    }
+  })();
 
   // Toggle chat
   btn.onclick = function() {

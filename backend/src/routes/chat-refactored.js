@@ -884,8 +884,13 @@ router.post('/widget', async (req, res) => {
     }
 
     // NEW: Get or create universal session ID
+    // WARN: temp_ fallback creates a new session every request — avoid this by ensuring
+    // the widget always sends a stable clientSessionId (persisted in localStorage).
+    if (!clientSessionId) {
+      console.warn('⚠️ [Session] No clientSessionId from widget — using temp fallback. Anti-repeat may not work.');
+    }
     const sessionId = await getOrCreateSession(business.id, 'CHAT', clientSessionId || `temp_${Date.now()}`);
-    console.log(`🔑 [Session] Universal ID: ${sessionId}, Client ID: ${clientSessionId}`);
+    console.log(`🔑 [Session] Universal ID: ${sessionId}, Client ID: ${clientSessionId || '(temp)'}`);
     console.log(`⏱️ [Widget] Session create: ${Date.now() - _t}ms`); _t = Date.now();
 
     // ===== ROUTE-LEVEL GUARD: CHECK SESSION LOCK =====
