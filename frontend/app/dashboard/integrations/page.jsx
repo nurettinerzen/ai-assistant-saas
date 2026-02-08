@@ -193,19 +193,23 @@ export default function IntegrationsPage() {
       const error = params.get('error');
 
       if (shopifyResult === 'success') {
-        toast.success(`Shopify connected successfully${shopName ? `: ${shopName}` : ''}!`);
+        toast.success(language === 'tr'
+          ? `Shopify bağlandı${shopName ? `: ${shopName}` : ''}!`
+          : `Shopify connected successfully${shopName ? `: ${shopName}` : ''}!`);
         window.history.replaceState({}, '', window.location.pathname);
       } else if (shopifyResult === 'error') {
-        toast.error(`Failed to connect Shopify${errorMessage ? `: ${decodeURIComponent(errorMessage)}` : ''}`);
+        toast.error(language === 'tr'
+          ? `Shopify bağlantısı başarısız${errorMessage ? `: ${decodeURIComponent(errorMessage)}` : ''}`
+          : `Failed to connect Shopify${errorMessage ? `: ${decodeURIComponent(errorMessage)}` : ''}`);
         window.history.replaceState({}, '', window.location.pathname);
       }
 
       // Google Calendar callback
       if (success === 'google-calendar') {
-        toast.success('Google Calendar bağlantısı başarılı!');
+        toast.success(language === 'tr' ? 'Google Calendar bağlantısı başarılı!' : 'Google Calendar connected successfully!');
         window.history.replaceState({}, '', window.location.pathname);
       } else if (error === 'google-calendar') {
-        toast.error('Google Calendar bağlantısı başarısız oldu');
+        toast.error(language === 'tr' ? 'Google Calendar bağlantısı başarısız oldu' : 'Failed to connect Google Calendar');
         window.history.replaceState({}, '', window.location.pathname);
       }
     }
@@ -218,7 +222,7 @@ export default function IntegrationsPage() {
       const response = await apiClient.get('/api/email/gmail/auth');
       window.location.href = response.data.authUrl;
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to connect Gmail');
+      toast.error(error.response?.data?.error || (language === 'tr' ? 'Gmail bağlantısı başarısız' : 'Failed to connect Gmail'));
       setEmailLoading(false);
     }
   };
@@ -229,19 +233,19 @@ export default function IntegrationsPage() {
       const response = await apiClient.get('/api/email/outlook/auth');
       window.location.href = response.data.authUrl;
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to connect Outlook');
+      toast.error(error.response?.data?.error || (language === 'tr' ? 'Outlook bağlantısı başarısız' : 'Failed to connect Outlook'));
       setEmailLoading(false);
     }
   };
 
   const handleEmailDisconnect = async () => {
-    if (!confirm('Are you sure you want to disconnect your email?')) return;
+    if (!confirm(language === 'tr' ? 'E-posta bağlantısını kesmek istediğinize emin misiniz?' : 'Are you sure you want to disconnect your email?')) return;
     try {
       setEmailLoading(true);
       await disconnectEmail.mutateAsync();
-      toast.success('Email disconnected successfully');
+      toast.success(language === 'tr' ? 'E-posta bağlantısı kesildi' : 'Email disconnected successfully');
     } catch (error) {
-      toast.error('Failed to disconnect email');
+      toast.error(language === 'tr' ? 'E-posta bağlantısı kesilemedi' : 'Failed to disconnect email');
     } finally {
       setEmailLoading(false);
     }
@@ -249,64 +253,64 @@ export default function IntegrationsPage() {
 
   const handleWhatsAppConnect = async () => {
     if (!whatsappForm.accessToken || !whatsappForm.phoneNumberId || !whatsappForm.verifyToken) {
-      toast.error('Please fill in all fields');
+      toast.error(language === 'tr' ? 'Lütfen tüm alanları doldurun' : 'Please fill in all fields');
       return;
     }
     setWhatsappLoading(true);
     try {
       const response = await connectWhatsApp.mutateAsync(whatsappForm);
       if (response.data.success) {
-        toast.success('WhatsApp connected successfully!');
+        toast.success(language === 'tr' ? 'WhatsApp bağlandı!' : 'WhatsApp connected successfully!');
         setWhatsappModalOpen(false);
         setWhatsappForm({ accessToken: '', phoneNumberId: '', verifyToken: '' });
       }
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to connect WhatsApp');
+      toast.error(error.response?.data?.error || (language === 'tr' ? 'WhatsApp bağlantısı başarısız' : 'Failed to connect WhatsApp'));
     } finally {
       setWhatsappLoading(false);
     }
   };
 
   const handleWhatsAppDisconnect = async () => {
-    if (!confirm('Are you sure you want to disconnect WhatsApp?')) return;
+    if (!confirm(language === 'tr' ? 'WhatsApp bağlantısını kesmek istediğinize emin misiniz?' : 'Are you sure you want to disconnect WhatsApp?')) return;
     try {
       await disconnectWhatsApp.mutateAsync();
-      toast.success('WhatsApp disconnected');
-    } catch (error) { toast.error('Failed to disconnect'); }
+      toast.success(language === 'tr' ? 'WhatsApp bağlantısı kesildi' : 'WhatsApp disconnected');
+    } catch (error) { toast.error(language === 'tr' ? 'Bağlantı kesilemedi' : 'Failed to disconnect'); }
   };
 
 
   const handleIyzicoConnect = async () => {
     if (!iyzicoForm.apiKey || !iyzicoForm.secretKey) {
-      toast.error('Please fill in API Key and Secret Key');
+      toast.error(language === 'tr' ? 'API Key ve Secret Key alanlarını doldurun' : 'Please fill in API Key and Secret Key');
       return;
     }
     setIyzicoLoading(true);
     try {
       const response = await connectIyzico.mutateAsync(iyzicoForm);
       if (response.data.success) {
-        toast.success('iyzico connected!');
+        toast.success(language === 'tr' ? 'iyzico bağlandı!' : 'iyzico connected!');
         setIyzicoModalOpen(false);
         setIyzicoForm({ apiKey: '', secretKey: '', environment: 'sandbox' });
       }
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to connect iyzico');
+      toast.error(error.response?.data?.error || (language === 'tr' ? 'iyzico bağlantısı başarısız' : 'Failed to connect iyzico'));
     } finally {
       setIyzicoLoading(false);
     }
   };
 
   const handleIyzicoDisconnect = async () => {
-    if (!confirm('Disconnect iyzico?')) return;
+    if (!confirm(language === 'tr' ? 'iyzico bağlantısını kesmek istiyor musunuz?' : 'Disconnect iyzico?')) return;
     try {
       await disconnectIyzico.mutateAsync();
-      toast.success('iyzico disconnected');
-    } catch (error) { toast.error('Failed to disconnect'); }
+      toast.success(language === 'tr' ? 'iyzico bağlantısı kesildi' : 'iyzico disconnected');
+    } catch (error) { toast.error(language === 'tr' ? 'Bağlantı kesilemedi' : 'Failed to disconnect'); }
   };
 
 const handleShopifyConnect = async () => {
   if (!shopifyForm.shopUrl) {
-    toast.error('Please enter your shop URL');
+    toast.error(language === 'tr' ? 'Mağaza URL\'sini girin' : 'Please enter your shop URL');
     return;
   }
 
@@ -322,25 +326,25 @@ const handleShopifyConnect = async () => {
 
     // Get auth URL from backend (with token)
     const response = await apiClient.get(`/api/shopify/auth?shop=${encodeURIComponent(shopUrl)}`);
-    
+
     if (response.data.authUrl) {
       window.location.href = response.data.authUrl;
     } else {
-      toast.error(response.data.error || 'Failed to start OAuth');
+      toast.error(response.data.error || (language === 'tr' ? 'OAuth başlatılamadı' : 'Failed to start OAuth'));
     }
   } catch (error) {
-    toast.error(error.response?.data?.error || 'Failed to connect');
+    toast.error(error.response?.data?.error || (language === 'tr' ? 'Bağlantı başarısız' : 'Failed to connect'));
   } finally {
     setShopifyLoading(false);
   }
 };
 
   const handleShopifyDisconnect = async () => {
-    if (!confirm('Disconnect Shopify?')) return;
+    if (!confirm(language === 'tr' ? 'Shopify bağlantısını kesmek istiyor musunuz?' : 'Disconnect Shopify?')) return;
     try {
       await disconnectShopify.mutateAsync();
-      toast.success('Shopify disconnected');
-    } catch (error) { toast.error('Failed to disconnect'); }
+      toast.success(language === 'tr' ? 'Shopify bağlantısı kesildi' : 'Shopify disconnected');
+    } catch (error) { toast.error(language === 'tr' ? 'Bağlantı kesilemedi' : 'Failed to disconnect'); }
   };
 
   // WooCommerce handlers removed - platform no longer supported
@@ -350,33 +354,33 @@ const handleShopifyConnect = async () => {
     try {
       const response = await setupWebhook.mutateAsync();
       if (response.data.success) {
-        toast.success('Webhook activated!');
+        toast.success(language === 'tr' ? 'Webhook aktifleştirildi!' : 'Webhook activated!');
       }
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to setup webhook');
+      toast.error(error.response?.data?.error || (language === 'tr' ? 'Webhook kurulumu başarısız' : 'Failed to setup webhook'));
     } finally {
       setWebhookLoading(false);
     }
   };
 
   const handleWebhookDisable = async () => {
-    if (!confirm('Disable webhook?')) return;
+    if (!confirm(language === 'tr' ? 'Webhook\'u devre dışı bırakmak istiyor musunuz?' : 'Disable webhook?')) return;
     try {
       await disableWebhook.mutateAsync();
-      toast.success('Webhook disabled');
-    } catch (error) { toast.error('Failed to disable'); }
+      toast.success(language === 'tr' ? 'Webhook devre dışı bırakıldı' : 'Webhook disabled');
+    } catch (error) { toast.error(language === 'tr' ? 'Devre dışı bırakılamadı' : 'Failed to disable'); }
   };
 
   const handleWebhookRegenerate = async () => {
-    if (!confirm('Regenerate webhook URL? Current URL will be invalidated.')) return;
+    if (!confirm(language === 'tr' ? 'Webhook URL yenilensin mi? Mevcut URL geçersiz olacak.' : 'Regenerate webhook URL? Current URL will be invalidated.')) return;
     setWebhookLoading(true);
     try {
       const response = await regenerateWebhook.mutateAsync();
       if (response.data.success) {
-        toast.success('Webhook URL regenerated!');
+        toast.success(language === 'tr' ? 'Webhook URL yenilendi!' : 'Webhook URL regenerated!');
       }
     } catch (error) {
-      toast.error('Failed to regenerate');
+      toast.error(language === 'tr' ? 'Yenileme başarısız' : 'Failed to regenerate');
     } finally {
       setWebhookLoading(false);
     }
@@ -385,7 +389,7 @@ const handleShopifyConnect = async () => {
   const copyToClipboard = (text, field) => {
     navigator.clipboard.writeText(text);
     setCopiedField(field);
-    toast.success('Copied!');
+    toast.success(language === 'tr' ? 'Kopyalandı!' : 'Copied!');
     setTimeout(() => setCopiedField(null), 2000);
   };
 
@@ -400,19 +404,19 @@ const handleShopifyConnect = async () => {
   // ikas handlers
   const handleIkasConnect = async () => {
     if (!ikasForm.storeName || !ikasForm.clientId || !ikasForm.clientSecret) {
-      toast.error('Lütfen tüm alanları doldurun');
+      toast.error(language === 'tr' ? 'Lütfen tüm alanları doldurun' : 'Please fill in all fields');
       return;
     }
     setIkasLoading(true);
     try {
       const response = await connectIkas.mutateAsync(ikasForm);
       if (response.data.success) {
-        toast.success('ikas bağlandı!');
+        toast.success(language === 'tr' ? 'ikas bağlandı!' : 'ikas connected!');
         setIkasModalOpen(false);
         setIkasForm({ storeName: '', clientId: '', clientSecret: '' });
       }
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Bağlantı başarısız');
+      toast.error(error.response?.data?.error || (language === 'tr' ? 'Bağlantı başarısız' : 'Failed to connect'));
     } finally {
       setIkasLoading(false);
     }
@@ -438,14 +442,14 @@ const handleShopifyConnect = async () => {
         return;
       }
       if (integration.type === 'IKAS') { setIkasModalOpen(true); return; }
-      toast.info(`${integration.name} coming soon!`);
+      toast.info(language === 'tr' ? `${integration.name} yakında!` : `${integration.name} coming soon!`);
     } catch (error) {
-      toast.error('Failed to connect');
+      toast.error(language === 'tr' ? 'Bağlantı başarısız' : 'Failed to connect');
     }
   };
 
   const handleDisconnect = async (integration) => {
-  if (!confirm('Disconnect this integration?')) return;
+  if (!confirm(language === 'tr' ? 'Bu entegrasyonun bağlantısını kesmek istiyor musunuz?' : 'Disconnect this integration?')) return;
   try {
     if (integration.type === 'WHATSAPP') await handleWhatsAppDisconnect();
     else if (integration.type === 'IYZICO') await handleIyzicoDisconnect();
@@ -453,14 +457,14 @@ const handleShopifyConnect = async () => {
     else if (integration.type === 'ZAPIER') await handleWebhookDisable();
     else if (integration.type === 'GOOGLE_CALENDAR') {
       await disconnectGoogleCalendar.mutateAsync();
-      toast.success('Google Calendar disconnected');
+      toast.success(language === 'tr' ? 'Google Calendar bağlantısı kesildi' : 'Google Calendar disconnected');
     }
     else if (integration.type === 'IKAS') {
       await disconnectIkas.mutateAsync();
-      toast.success('ikas bağlantısı kesildi');
+      toast.success(language === 'tr' ? 'ikas bağlantısı kesildi' : 'ikas disconnected');
     }
   } catch (error) {
-    toast.error('Failed to disconnect');
+    toast.error(language === 'tr' ? 'Bağlantı kesilemedi' : 'Failed to disconnect');
   }
 };
 
@@ -468,19 +472,19 @@ const handleShopifyConnect = async () => {
   try {
     if (integration.type === 'GOOGLE_CALENDAR') {
       const response = await testGoogleCalendar.mutateAsync();
-      if (response.data.success) toast.success('Google Calendar bağlantısı aktif!');
-      else toast.error('Test failed');
+      if (response.data.success) toast.success(language === 'tr' ? 'Google Calendar bağlantısı aktif!' : 'Google Calendar connection is active!');
+      else toast.error(language === 'tr' ? 'Test başarısız' : 'Test failed');
       return;
     }
     if (integration.type === 'IKAS') {
       const response = await testIkas.mutateAsync();
-      if (response.data.success) toast.success('ikas bağlantısı aktif!');
-      else toast.error('Test failed');
+      if (response.data.success) toast.success(language === 'tr' ? 'ikas bağlantısı aktif!' : 'ikas connection is active!');
+      else toast.error(language === 'tr' ? 'Test başarısız' : 'Test failed');
       return;
     }
-    toast.info('Test not available for this integration');
+    toast.info(language === 'tr' ? 'Bu entegrasyon için test mevcut değil' : 'Test not available for this integration');
   } catch (error) {
-    toast.error('Test failed');
+    toast.error(language === 'tr' ? 'Test başarısız' : 'Test failed');
   }
 };
 
