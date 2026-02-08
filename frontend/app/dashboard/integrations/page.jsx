@@ -58,6 +58,7 @@ import {
   useDisconnectGoogleCalendar,
   useTestGoogleCalendar,
   useTestIkas,
+  useCrmWebhookStatus,
 } from '@/hooks/useIntegrations';
 
 // App Logo Components (Official brand logos from Simple Icons)
@@ -127,6 +128,7 @@ export default function IntegrationsPage() {
   const { data: shopifyStatus } = useShopifyStatus();
   const { data: webhookStatus } = useWebhookStatus();
   const { data: ikasStatus } = useIkasStatus();
+  const { data: crmStatus } = useCrmWebhookStatus();
 
   const integrations = integrationsData?.integrations || [];
   const businessType = integrationsData?.businessType || 'OTHER';
@@ -695,9 +697,10 @@ const handleShopifyConnect = async () => {
           {businessType === 'ECOMMERCE' && (() => {
             const crmFeatureInfo = getIntegrationFeatureInfo('CUSTOM', userPlan);
             const isCRMLocked = crmFeatureInfo.isLocked;
+            const isCrmConnected = crmStatus?.hasWebhook && crmStatus?.isActive;
 
             return (
-            <div className={`bg-white dark:bg-neutral-900 rounded-xl border p-6 transition-shadow ${isCRMLocked ? 'opacity-70 bg-neutral-50 dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700' : 'border-neutral-200 dark:border-neutral-700 hover:shadow-md'}`}>
+            <div className={`bg-white dark:bg-neutral-900 rounded-xl border p-6 transition-shadow ${isCRMLocked ? 'opacity-70 bg-neutral-50 dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700' : isCrmConnected ? 'border-neutral-400 dark:border-neutral-600 hover:shadow-md' : 'border-neutral-200 dark:border-neutral-700 hover:shadow-md'}`}>
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <Hash className={`h-6 w-6 ${isCRMLocked ? 'text-neutral-400 dark:text-neutral-500' : 'text-neutral-600 dark:text-neutral-400'}`} />
@@ -715,6 +718,9 @@ const handleShopifyConnect = async () => {
                     </div>
                   </div>
                 </div>
+                {isCrmConnected && (
+                  <Check className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
+                )}
               </div>
 
               {isCRMLocked && (
@@ -741,13 +747,28 @@ const handleShopifyConnect = async () => {
                   <Lock className="h-4 w-4 mr-2" />
                   {language === 'tr' ? 'Kilidi Aç' : 'Unlock'}
                 </Button>
+              ) : isCrmConnected ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-800 p-2 rounded-lg">
+                  <CheckCircle2 className="h-4 w-4" />
+                  <span>{language === 'tr' ? 'Bağlı' : 'Connected'}</span>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => window.location.href = '/dashboard/integrations/custom-crm'}
+                >
+                  {language === 'tr' ? 'Yönet' : 'Manage'}
+                </Button>
+              </div>
               ) : (
               <Button
                 size="sm"
                 className="w-full"
                 onClick={() => window.location.href = '/dashboard/integrations/custom-crm'}
               >
-                {language === 'tr' ? 'Bağlan' : 'Connect'}
+                {language === 'tr' ? 'Yönet' : 'Manage'}
               </Button>
               )}
             </div>

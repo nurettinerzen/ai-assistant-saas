@@ -108,6 +108,31 @@ export function useWebhookStatus() {
 }
 
 /**
+ * Hook to fetch CRM webhook status
+ * @returns {object} Query result with { isActive, lastDataAt, hasWebhook }
+ */
+export function useCrmWebhookStatus() {
+  return useQuery({
+    queryKey: ['integrations', 'crm', 'status'],
+    queryFn: async () => {
+      try {
+        const response = await apiClient.get('/api/crm/webhook');
+        return {
+          hasWebhook: true,
+          isActive: response.data?.webhook?.isActive ?? false,
+          lastDataAt: response.data?.webhook?.lastDataAt || null,
+          stats: response.data?.stats || null,
+        };
+      } catch (err) {
+        // 404 or 403 means no webhook configured or no access
+        return { hasWebhook: false, isActive: false, lastDataAt: null, stats: null };
+      }
+    },
+    staleTime: 60000,
+  });
+}
+
+/**
  * Hook to fetch ikas status
  * @returns {object} Query result with ikas status
  */
