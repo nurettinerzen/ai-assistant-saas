@@ -628,7 +628,9 @@ const handleShopifyConnect = async () => {
             </div>
           </div>
           {integration.connected && (
-            <Check className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
+            <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-xs">
+              {language === 'tr' ? 'Bağlı' : 'Connected'}
+            </Badge>
           )}
         </div>
 
@@ -719,7 +721,9 @@ const handleShopifyConnect = async () => {
                   </div>
                 </div>
                 {isCrmConnected && (
-                  <Check className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
+                  <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-xs">
+                    {language === 'tr' ? 'Bağlı' : 'Connected'}
+                  </Badge>
                 )}
               </div>
 
@@ -747,21 +751,6 @@ const handleShopifyConnect = async () => {
                   <Lock className="h-4 w-4 mr-2" />
                   {language === 'tr' ? 'Kilidi Aç' : 'Unlock'}
                 </Button>
-              ) : isCrmConnected ? (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-800 p-2 rounded-lg">
-                  <CheckCircle2 className="h-4 w-4" />
-                  <span>{language === 'tr' ? 'Bağlı' : 'Connected'}</span>
-                </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => window.location.href = '/dashboard/integrations/custom-crm'}
-                >
-                  {language === 'tr' ? 'Yönet' : 'Manage'}
-                </Button>
-              </div>
               ) : (
               <Button
                 size="sm"
@@ -785,23 +774,20 @@ const handleShopifyConnect = async () => {
                 </div>
               </div>
               {emailStatus?.connected && emailStatus?.provider === 'GMAIL' && (
-                <Check className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
+                <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-xs">
+                  {language === 'tr' ? 'Bağlı' : 'Connected'}
+                </Badge>
               )}
             </div>
             <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">{t('dashboard.integrationsPage.gmailDesc')}</p>
             {emailStatus?.connected && emailStatus?.provider === 'GMAIL' ? (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-800 p-2 rounded-lg">
-                  <CheckCircle2 className="h-4 w-4" /><span>{t('dashboard.integrationsPage.connected')}: {emailStatus.email}</span>
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="flex-1" onClick={() => window.location.href = '/dashboard/email'}>
-                    <Inbox className="h-4 w-4 mr-1" />{t('dashboard.integrationsPage.openInbox')}
-                  </Button>
-                  {can('integrations:connect') && (
-                  <Button variant="outline" size="sm" onClick={handleEmailDisconnect} disabled={emailLoading}>{t('dashboard.integrationsPage.disconnect')}</Button>
-                  )}
-                </div>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" className="flex-1" onClick={() => window.location.href = '/dashboard/email'}>
+                  <Inbox className="h-4 w-4 mr-1" />{t('dashboard.integrationsPage.openInbox')}
+                </Button>
+                {can('integrations:connect') && (
+                <Button variant="outline" size="sm" onClick={handleEmailDisconnect} disabled={emailLoading}>{t('dashboard.integrationsPage.disconnect')}</Button>
+                )}
               </div>
             ) : (
               can('integrations:connect') && (
@@ -822,23 +808,20 @@ const handleShopifyConnect = async () => {
                 </div>
               </div>
               {emailStatus?.connected && emailStatus?.provider === 'OUTLOOK' && (
-                <Check className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
+                <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-xs">
+                  {language === 'tr' ? 'Bağlı' : 'Connected'}
+                </Badge>
               )}
             </div>
             <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">{t('dashboard.integrationsPage.outlookDesc')}</p>
             {emailStatus?.connected && emailStatus?.provider === 'OUTLOOK' ? (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-800 p-2 rounded-lg">
-                  <CheckCircle2 className="h-4 w-4" /><span>{t('dashboard.integrationsPage.connected')}: {emailStatus.email}</span>
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="flex-1" onClick={() => window.location.href = '/dashboard/email'}>
-                    <Inbox className="h-4 w-4 mr-1" />{t('dashboard.integrationsPage.openInbox')}
-                  </Button>
-                  {can('integrations:connect') && (
-                  <Button variant="outline" size="sm" onClick={handleEmailDisconnect} disabled={emailLoading}>{t('dashboard.integrationsPage.disconnect')}</Button>
-                  )}
-                </div>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" className="flex-1" onClick={() => window.location.href = '/dashboard/email'}>
+                  <Inbox className="h-4 w-4 mr-1" />{t('dashboard.integrationsPage.openInbox')}
+                </Button>
+                {can('integrations:connect') && (
+                <Button variant="outline" size="sm" onClick={handleEmailDisconnect} disabled={emailLoading}>{t('dashboard.integrationsPage.disconnect')}</Button>
+                )}
               </div>
             ) : (
               can('integrations:connect') && (
