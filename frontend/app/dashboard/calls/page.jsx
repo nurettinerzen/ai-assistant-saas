@@ -35,6 +35,22 @@ import { toast } from 'sonner';
 import { formatDate, formatDuration, formatPhone } from '@/lib/utils';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { NAVIGATION_ITEMS } from '@/lib/navigationConfig';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
+
+// Generate page numbers with ellipsis for pagination
+function generatePageNumbers(currentPage, totalPages) {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, i) => i + 1);
+  }
+  const pages = [1];
+  if (currentPage > 3) pages.push('...');
+  for (let i = Math.max(2, currentPage - 1); i <= Math.min(totalPages - 1, currentPage + 1); i++) {
+    pages.push(i);
+  }
+  if (currentPage < totalPages - 2) pages.push('...');
+  pages.push(totalPages);
+  return pages;
+}
 
 // Simple cache for calls data
 const callsCache = {
@@ -71,6 +87,8 @@ export default function CallsPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [directionFilter, setDirectionFilter] = useState('all');
   const [endReasonFilter, setEndReasonFilter] = useState('all');
+  const [dateRange, setDateRange] = useState({ from: undefined, to: undefined });
+  const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 0 });
   const [selectedCallId, setSelectedCallId] = useState(null);
   const [showTranscriptModal, setShowTranscriptModal] = useState(false);
 
@@ -109,13 +127,14 @@ export default function CallsPage() {
     if (!isInitialLoad) {
       loadCalls();
     }
-  }, [statusFilter, directionFilter, endReasonFilter]);
+  }, [pagination.page, statusFilter, directionFilter, endReasonFilter, dateRange]);
 
   // Debounced search
   useEffect(() => {
     if (isInitialLoad) return;
 
     const timer = setTimeout(() => {
+      setPagination(prev => ({ ...prev, page: 1 }));
       loadCalls();
     }, 500);
 
@@ -128,13 +147,13 @@ export default function CallsPage() {
 
     const pollInterval = setInterval(() => {
       // Only poll if page is visible and no filters active
-      if (document.visibilityState === 'visible' && statusFilter === 'all' && !searchQuery) {
+      if (document.visibilityState === 'visible' && statusFilter === 'all' && directionFilter === 'all' && endReasonFilter === 'all' && !searchQuery && !dateRange.from) {
         refreshCalls(true); // Silent refresh
       }
     }, 10000); // 10 seconds - faster updates for new calls
 
     return () => clearInterval(pollInterval);
-  }, [isInitialLoad, statusFilter, searchQuery]);
+  }, [isInitialLoad, statusFilter, directionFilter, endReasonFilter, searchQuery, dateRange]);
 
   const loadCalls = async () => {
     setLoading(true);
@@ -144,53 +163,40 @@ export default function CallsPage() {
         console.warn('Sync failed:', err.message);
       });
 
-      const params = {};
+      const params = {
+        page: pagination.page,
+        limit: pagination.limit
+      };
+
+      // All filters sent to backend (server-side filtering)
       if (statusFilter !== 'all') params.status = statusFilter;
       if (searchQuery) params.search = searchQuery;
       if (directionFilter !== 'all') params.direction = directionFilter;
       if (endReasonFilter !== 'all') params.endReason = endReasonFilter;
+      if (dateRange.from) params.startDate = dateRange.from.toISOString();
+      if (dateRange.to) params.endDate = dateRange.to.toISOString();
 
       const response = await apiClient.calls.getAll(params);
       let callsData = response.data.calls || [];
 
-      // Filter out chat and whatsapp - only show phone calls
-      // Chat logs have IDs starting with "chat-" or have channel/type set to chat/whatsapp
+      // Filter out chat and whatsapp - only show phone calls (structural filter stays client-side)
       callsData = callsData.filter(call => {
-        // Exclude chat logs (ID starts with "chat-")
-        if (call.id && typeof call.id === 'string' && call.id.startsWith('chat-')) {
-          return false;
-        }
-
-        // Exclude if channel or type is chat/whatsapp
+        if (call.id && typeof call.id === 'string' && call.id.startsWith('chat-')) return false;
         const channel = call.channel?.toLowerCase();
         const type = call.type?.toLowerCase();
-        if (channel === 'chat' || channel === 'whatsapp' || type === 'chat' || type === 'whatsapp') {
-          return false;
-        }
-
-        // Include everything else (phone calls)
+        if (channel === 'chat' || channel === 'whatsapp' || type === 'chat' || type === 'whatsapp') return false;
         return true;
       });
 
-      // Client-side filtering for direction (if backend doesn't filter)
-      if (directionFilter !== 'all') {
-        callsData = callsData.filter(call => {
-          if (directionFilter === 'outbound') {
-            return call.direction?.startsWith('outbound');
-          }
-          return call.direction === directionFilter || (!call.direction && directionFilter === 'inbound');
-        });
-      }
-
-      // Client-side filtering for end reason (if backend doesn't filter)
-      if (endReasonFilter !== 'all') {
-        callsData = callsData.filter(call => call.endReason === endReasonFilter);
-      }
-
       setCalls(callsData);
+      setPagination(prev => ({
+        ...prev,
+        total: response.data.pagination?.total || 0,
+        totalPages: response.data.pagination?.totalPages || 0
+      }));
 
-      // Only cache if no filters
-      if (statusFilter === 'all' && !searchQuery && directionFilter === 'all' && endReasonFilter === 'all') {
+      // Only cache if no filters active
+      if (statusFilter === 'all' && !searchQuery && directionFilter === 'all' && endReasonFilter === 'all' && !dateRange.from) {
         callsCache.set(callsData);
       }
     } catch (error) {
@@ -203,28 +209,24 @@ export default function CallsPage() {
   const refreshCalls = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const response = await apiClient.calls.getAll({});
+      const response = await apiClient.calls.getAll({ page: 1, limit: 20 });
       let callsData = response.data.calls || [];
 
       // Filter out chat and whatsapp - only show phone calls
       callsData = callsData.filter(call => {
-        // Exclude chat logs (ID starts with "chat-")
-        if (call.id && typeof call.id === 'string' && call.id.startsWith('chat-')) {
-          return false;
-        }
-
-        // Exclude if channel or type is chat/whatsapp
+        if (call.id && typeof call.id === 'string' && call.id.startsWith('chat-')) return false;
         const channel = call.channel?.toLowerCase();
         const type = call.type?.toLowerCase();
-        if (channel === 'chat' || channel === 'whatsapp' || type === 'chat' || type === 'whatsapp') {
-          return false;
-        }
-
-        // Include everything else (phone calls)
+        if (channel === 'chat' || channel === 'whatsapp' || type === 'chat' || type === 'whatsapp') return false;
         return true;
       });
 
       setCalls(callsData);
+      setPagination(prev => ({
+        ...prev,
+        total: response.data.pagination?.total || 0,
+        totalPages: response.data.pagination?.totalPages || 0
+      }));
       callsCache.set(callsData);
     } catch (error) {
       if (!silent) toast.error(t('dashboard.callsPage.failedToLoadCalls'));
@@ -376,7 +378,7 @@ export default function CallsPage() {
             className="pl-9"
           />
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
+        <Select value={statusFilter} onValueChange={(val) => { setStatusFilter(val); setPagination(prev => ({ ...prev, page: 1 })); }}>
           <SelectTrigger className="w-full sm:w-40">
             <SelectValue />
           </SelectTrigger>
@@ -387,7 +389,7 @@ export default function CallsPage() {
             <SelectItem value="in_progress">{t('dashboard.callsPage.inProgress')}</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={directionFilter} onValueChange={setDirectionFilter}>
+        <Select value={directionFilter} onValueChange={(val) => { setDirectionFilter(val); setPagination(prev => ({ ...prev, page: 1 })); }}>
           <SelectTrigger className="w-full sm:w-40">
             <SelectValue />
           </SelectTrigger>
@@ -397,7 +399,7 @@ export default function CallsPage() {
             <SelectItem value="outbound">{t('dashboard.callsPage.outbound')}</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={endReasonFilter} onValueChange={setEndReasonFilter}>
+        <Select value={endReasonFilter} onValueChange={(val) => { setEndReasonFilter(val); setPagination(prev => ({ ...prev, page: 1 })); }}>
           <SelectTrigger className="w-full sm:w-44">
             <SelectValue />
           </SelectTrigger>
@@ -410,6 +412,15 @@ export default function CallsPage() {
             <SelectItem value="completed">{t('dashboard.callsPage.completed')}</SelectItem>
           </SelectContent>
         </Select>
+        <DateRangePicker
+          dateRange={dateRange}
+          onDateRangeChange={(range) => {
+            setDateRange(range || { from: undefined, to: undefined });
+            setPagination(prev => ({ ...prev, page: 1 }));
+          }}
+          locale={locale}
+          className="w-full sm:w-auto"
+        />
       </div>
 
       {/* Table */}
@@ -493,15 +504,60 @@ export default function CallsPage() {
               ))}
             </TableBody>
           </Table>
+
+          {/* Pagination */}
+          {pagination.totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-800">
+              <span className="text-sm text-gray-500">
+                {locale === 'tr'
+                  ? `${pagination.total} sonuçtan ${(pagination.page - 1) * pagination.limit + 1}-${Math.min(pagination.page * pagination.limit, pagination.total)} gösteriliyor`
+                  : `Showing ${(pagination.page - 1) * pagination.limit + 1}-${Math.min(pagination.page * pagination.limit, pagination.total)} of ${pagination.total} results`
+                }
+              </span>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={pagination.page <= 1}
+                  onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
+                >
+                  {locale === 'tr' ? 'Önceki' : 'Previous'}
+                </Button>
+                {generatePageNumbers(pagination.page, pagination.totalPages).map((pageNum, idx) => (
+                  pageNum === '...' ? (
+                    <span key={`dots-${idx}`} className="px-2 text-sm text-gray-400">...</span>
+                  ) : (
+                    <Button
+                      key={pageNum}
+                      variant={pageNum === pagination.page ? 'default' : 'outline'}
+                      size="sm"
+                      className="w-8 h-8 p-0"
+                      onClick={() => setPagination(prev => ({ ...prev, page: pageNum }))}
+                    >
+                      {pageNum}
+                    </Button>
+                  )
+                ))}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={pagination.page >= pagination.totalPages}
+                  onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
+                >
+                  {locale === 'tr' ? 'Sonraki' : 'Next'}
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <div className="bg-white dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-800 p-8">
           <EmptyState
             icon={Phone}
-            title={searchQuery || statusFilter !== 'all' || directionFilter !== 'all' || endReasonFilter !== 'all'
+            title={searchQuery || statusFilter !== 'all' || directionFilter !== 'all' || endReasonFilter !== 'all' || dateRange.from
               ? t('dashboard.callsPage.noCallsFound')
               : t('dashboard.callsPage.noCalls')}
-            description={searchQuery || statusFilter !== 'all' || directionFilter !== 'all' || endReasonFilter !== 'all'
+            description={searchQuery || statusFilter !== 'all' || directionFilter !== 'all' || endReasonFilter !== 'all' || dateRange.from
               ? t('dashboard.callsPage.tryAdjustingFilters')
               : t('dashboard.callsPage.callsWillAppear')}
           />

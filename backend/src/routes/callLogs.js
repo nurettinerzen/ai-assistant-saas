@@ -219,46 +219,69 @@ router.get('/export', async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     const { businessId } = req;
-    const { status, search, limit = 100 } = req.query;
+    const { status, search, direction, endReason, startDate, endDate, page = 1, limit = 20 } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
 
     // Build where clause for CallLog (phone calls only)
     const callWhere = { businessId };
+    const andConditions = [];
 
     if (status && status !== 'all') {
       callWhere.status = status;
     }
 
+    // Search filter (server-side)
     if (search) {
-      // Search in transcript text, caller ID, or call ID
-      callWhere.OR = [
-        {
-          transcriptText: {
-            contains: search,
-            mode: 'insensitive'
-          }
-        },
-        {
-          callerId: {
-            contains: search,
-            mode: 'insensitive'
-          }
-        },
-        {
-          callId: {
-            contains: search,
-            mode: 'insensitive'
-          }
-        }
-      ];
+      andConditions.push({
+        OR: [
+          { transcriptText: { contains: search, mode: 'insensitive' } },
+          { callerId: { contains: search, mode: 'insensitive' } },
+          { callId: { contains: search, mode: 'insensitive' } }
+        ]
+      });
     }
 
-    // Fetch call logs and business info in parallel
-    const [callLogs, business] = await Promise.all([
+    // Direction filter (server-side)
+    if (direction && direction !== 'all') {
+      if (direction === 'inbound') {
+        andConditions.push({
+          OR: [{ direction: 'inbound' }, { direction: null }]
+        });
+      } else {
+        callWhere.direction = { startsWith: direction };
+      }
+    }
+
+    // End reason filter (server-side)
+    if (endReason && endReason !== 'all') {
+      callWhere.endReason = endReason;
+    }
+
+    // Date range filter (server-side)
+    if (startDate || endDate) {
+      callWhere.createdAt = {};
+      if (startDate) callWhere.createdAt.gte = new Date(startDate);
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        callWhere.createdAt.lte = end;
+      }
+    }
+
+    // Combine AND conditions if any
+    if (andConditions.length > 0) {
+      callWhere.AND = andConditions;
+    }
+
+    // Fetch call logs, count, and business info in parallel
+    const [callLogs, total, business] = await Promise.all([
       prisma.callLog.findMany({
         where: callWhere,
         orderBy: { createdAt: 'desc' },
+        skip,
         take: parseInt(limit)
       }),
+      prisma.callLog.count({ where: callWhere }),
       prisma.business.findUnique({
         where: { id: businessId },
         include: { subscription: { select: { plan: true } } }
@@ -316,7 +339,15 @@ router.get('/', async (req, res) => {
       callCost: call.callCost,
     }));
 
-    res.json({ calls: formattedCalls });
+    res.json({
+      calls: formattedCalls,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        totalPages: Math.ceil(total / parseInt(limit))
+      }
+    });
   } catch (error) {
     console.error('Get call logs error:', error);
     res.status(500).json({ error: 'Failed to fetch call logs' });

@@ -41,7 +41,6 @@ import {
   Eye,
   User,
   Bot,
-  Calendar,
   Hash
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
@@ -49,6 +48,7 @@ import { toast } from 'sonner';
 import { formatDate } from '@/lib/utils';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { NAVIGATION_ITEMS } from '@/lib/navigationConfig';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
 
 // Simple cache for chats data
 const chatsCache = {
@@ -75,6 +75,21 @@ const chatsCache = {
   }
 };
 
+// Generate page numbers with ellipsis for pagination
+function generatePageNumbers(currentPage, totalPages) {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, i) => i + 1);
+  }
+  const pages = [1];
+  if (currentPage > 3) pages.push('...');
+  for (let i = Math.max(2, currentPage - 1); i <= Math.min(totalPages - 1, currentPage + 1); i++) {
+    pages.push(i);
+  }
+  if (currentPage < totalPages - 2) pages.push('...');
+  pages.push(totalPages);
+  return pages;
+}
+
 export default function ChatsPage() {
   const { t, locale } = useLanguage();
   const [chats, setChats] = useState([]);
@@ -83,6 +98,7 @@ export default function ChatsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [channelFilter, setChannelFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [dateRange, setDateRange] = useState({ from: undefined, to: undefined });
   const [selectedChat, setSelectedChat] = useState(null);
   const [showChatModal, setShowChatModal] = useState(false);
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 0 });
@@ -113,7 +129,7 @@ export default function ChatsPage() {
     if (!isInitialLoad) {
       loadChats();
     }
-  }, [pagination.page, channelFilter, statusFilter]);
+  }, [pagination.page, channelFilter, statusFilter, dateRange]);
 
   // Debounced search
   useEffect(() => {
@@ -133,13 +149,13 @@ export default function ChatsPage() {
 
     const pollInterval = setInterval(() => {
       // Only poll if page is visible and no filters active
-      if (document.visibilityState === 'visible' && statusFilter === 'all' && channelFilter === 'all' && !searchQuery) {
+      if (document.visibilityState === 'visible' && statusFilter === 'all' && channelFilter === 'all' && !searchQuery && !dateRange.from) {
         refreshChats(true); // Silent refresh
       }
     }, 30000); // 30 seconds
 
     return () => clearInterval(pollInterval);
-  }, [isInitialLoad, statusFilter, channelFilter, searchQuery]);
+  }, [isInitialLoad, statusFilter, channelFilter, searchQuery, dateRange]);
 
   const loadChats = async () => {
     setLoading(true);
@@ -148,37 +164,16 @@ export default function ChatsPage() {
         page: pagination.page,
         limit: pagination.limit
       };
-      // Don't send status filter to backend - we'll filter client-side to handle "ended" status
-      // if (statusFilter !== 'all') params.status = statusFilter;
+
+      // All filters sent to backend (server-side filtering)
+      if (statusFilter !== 'all') params.status = statusFilter;
+      if (channelFilter !== 'all') params.channel = channelFilter;
+      if (searchQuery) params.search = searchQuery;
+      if (dateRange.from) params.startDate = dateRange.from.toISOString();
+      if (dateRange.to) params.endDate = dateRange.to.toISOString();
 
       const response = await apiClient.get('/api/chat-logs', { params });
-      let chatLogs = response.data.chatLogs || [];
-
-      // Apply status filter (client-side to handle "ended" status from backend)
-      if (statusFilter !== 'all') {
-        if (statusFilter === 'completed') {
-          // "Tamamlandı" should show both "completed" and "ended" statuses
-          chatLogs = chatLogs.filter(chat => chat.status === 'completed' || chat.status === 'ended');
-        } else if (statusFilter === 'active') {
-          // "Aktif" should only show "active" status
-          chatLogs = chatLogs.filter(chat => chat.status === 'active');
-        }
-      }
-
-      // Apply channel filter (frontend for now)
-      if (channelFilter !== 'all') {
-        chatLogs = chatLogs.filter(chat => chat.channel === channelFilter);
-      }
-
-      // Apply search filter (frontend for now)
-      if (searchQuery) {
-        const query = searchQuery.toLowerCase();
-        chatLogs = chatLogs.filter(chat =>
-          chat.sessionId?.toLowerCase().includes(query) ||
-          chat.customerPhone?.toLowerCase().includes(query) ||
-          chat.customerIp?.toLowerCase().includes(query)
-        );
-      }
+      const chatLogs = response.data.chatLogs || [];
 
       setChats(chatLogs);
       setPagination(prev => ({
@@ -187,8 +182,8 @@ export default function ChatsPage() {
         totalPages: response.data.pagination?.totalPages || 0
       }));
 
-      // Only cache if no filters
-      if (statusFilter === 'all' && channelFilter === 'all' && !searchQuery) {
+      // Only cache if no filters active
+      if (statusFilter === 'all' && channelFilter === 'all' && !searchQuery && !dateRange.from) {
         chatsCache.set(chatLogs);
       }
     } catch (error) {
@@ -344,7 +339,7 @@ export default function ChatsPage() {
             className="pl-9"
           />
         </div>
-        <Select value={channelFilter} onValueChange={setChannelFilter}>
+        <Select value={channelFilter} onValueChange={(val) => { setChannelFilter(val); setPagination(prev => ({ ...prev, page: 1 })); }}>
           <SelectTrigger className="w-full sm:w-44">
             <Filter className="h-4 w-4 mr-2 text-gray-400" />
             <SelectValue />
@@ -355,7 +350,7 @@ export default function ChatsPage() {
             <SelectItem value="WHATSAPP">WhatsApp</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
+        <Select value={statusFilter} onValueChange={(val) => { setStatusFilter(val); setPagination(prev => ({ ...prev, page: 1 })); }}>
           <SelectTrigger className="w-full sm:w-44">
             <SelectValue />
           </SelectTrigger>
@@ -365,6 +360,15 @@ export default function ChatsPage() {
             <SelectItem value="completed">{locale === 'tr' ? 'Tamamlandı' : 'Completed'}</SelectItem>
           </SelectContent>
         </Select>
+        <DateRangePicker
+          dateRange={dateRange}
+          onDateRangeChange={(range) => {
+            setDateRange(range || { from: undefined, to: undefined });
+            setPagination(prev => ({ ...prev, page: 1 }));
+          }}
+          locale={locale}
+          className="w-full sm:w-auto"
+        />
       </div>
 
       {/* Table */}
@@ -432,7 +436,7 @@ export default function ChatsPage() {
                   : `Showing ${(pagination.page - 1) * pagination.limit + 1}-${Math.min(pagination.page * pagination.limit, pagination.total)} of ${pagination.total} results`
                 }
               </span>
-              <div className="flex gap-2">
+              <div className="flex items-center gap-1">
                 <Button
                   variant="outline"
                   size="sm"
@@ -441,6 +445,21 @@ export default function ChatsPage() {
                 >
                   {locale === 'tr' ? 'Önceki' : 'Previous'}
                 </Button>
+                {generatePageNumbers(pagination.page, pagination.totalPages).map((pageNum, idx) => (
+                  pageNum === '...' ? (
+                    <span key={`dots-${idx}`} className="px-2 text-sm text-gray-400">...</span>
+                  ) : (
+                    <Button
+                      key={pageNum}
+                      variant={pageNum === pagination.page ? 'default' : 'outline'}
+                      size="sm"
+                      className="w-8 h-8 p-0"
+                      onClick={() => setPagination(prev => ({ ...prev, page: pageNum }))}
+                    >
+                      {pageNum}
+                    </Button>
+                  )
+                ))}
                 <Button
                   variant="outline"
                   size="sm"
@@ -457,10 +476,10 @@ export default function ChatsPage() {
         <div className="bg-white dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-800 p-8">
           <EmptyState
             icon={MessageCircle}
-            title={searchQuery || channelFilter !== 'all' || statusFilter !== 'all'
+            title={searchQuery || channelFilter !== 'all' || statusFilter !== 'all' || dateRange.from
               ? (locale === 'tr' ? 'Sohbet bulunamadı' : 'No chats found')
               : (locale === 'tr' ? 'Henüz sohbet yok' : 'No chats yet')}
-            description={searchQuery || channelFilter !== 'all' || statusFilter !== 'all'
+            description={searchQuery || channelFilter !== 'all' || statusFilter !== 'all' || dateRange.from
               ? (locale === 'tr' ? 'Filtreleri değiştirmeyi deneyin' : 'Try adjusting your filters')
               : (locale === 'tr' ? 'Müşterileriniz chat veya WhatsApp ile iletişime geçtiğinde burada görünecek' : 'Chats will appear here when customers contact you via Chat or WhatsApp')}
           />

@@ -13,15 +13,45 @@ const prisma = new PrismaClient();
 // GET /api/chat-logs - Get all chat logs for business
 router.get('/', authenticateToken, async (req, res) => {
   try {
-    const { page = 1, limit = 20, status } = req.query;
+    const { page = 1, limit = 20, status, channel, search, startDate, endDate } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     const where = {
       businessId: req.businessId
     };
 
-    if (status) {
-      where.status = status;
+    // Status filter (server-side)
+    if (status && status !== 'all') {
+      if (status === 'completed') {
+        where.status = { in: ['completed', 'ended'] };
+      } else {
+        where.status = status;
+      }
+    }
+
+    // Channel filter (server-side)
+    if (channel && channel !== 'all') {
+      where.channel = channel;
+    }
+
+    // Search filter (server-side)
+    if (search) {
+      where.OR = [
+        { sessionId: { contains: search, mode: 'insensitive' } },
+        { customerPhone: { contains: search, mode: 'insensitive' } },
+        { customerIp: { contains: search, mode: 'insensitive' } }
+      ];
+    }
+
+    // Date range filter (server-side)
+    if (startDate || endDate) {
+      where.createdAt = {};
+      if (startDate) where.createdAt.gte = new Date(startDate);
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        where.createdAt.lte = end;
+      }
     }
 
     const [chatLogs, total] = await Promise.all([
