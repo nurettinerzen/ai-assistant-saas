@@ -62,7 +62,7 @@ export const FEATURE_FLAGS = {
   //   instead of returning hardcoded catalog templates via directResponse.
   // When disabled: Legacy behavior — direct catalog template response, no LLM call.
   // Rollback: Set FEATURE_LLM_CHATTER_GREETING=false
-  LLM_CHATTER_GREETING: process.env.FEATURE_LLM_CHATTER_GREETING === 'true' || false, // Default: OFF (canary)
+  LLM_CHATTER_GREETING: process.env.FEATURE_LLM_CHATTER_GREETING !== 'false', // Default: ON
 };
 
 /**

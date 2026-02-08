@@ -527,7 +527,8 @@ export async function handleIncomingMessage({
     const chatterLLMStartTime = isChatterLLMMode ? Date.now() : null;
     if (isChatterLLMMode) {
       metrics.chatterLLMMode = true;
-      console.log('💬 [Telemetry] Chatter LLM mode — measuring latency/cost');
+      console.log('💬 [Telemetry] Chatter LLM mode ACTIVE — directResponse=false, tools=off, LLM will generate greeting');
+      console.log('💬 [Telemetry] Chatter directive:', JSON.stringify(routingResult.chatterDirective));
     }
 
     // ========================================

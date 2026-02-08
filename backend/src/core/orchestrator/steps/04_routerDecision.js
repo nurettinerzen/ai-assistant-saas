@@ -27,6 +27,9 @@ import { isFeatureEnabled } from '../../../config/feature-flags.js';
  */
 function handleChatter({ userMessage, state, language, sessionId, messageRouting, detectedBy }) {
   const useLLM = isFeatureEnabled('LLM_CHATTER_GREETING');
+  const flagRawValue = process.env.FEATURE_LLM_CHATTER_GREETING;
+
+  console.log(`🔍 [ChatterFlag] LLM_CHATTER_GREETING: flagValue=${useLLM}, envRaw="${flagRawValue}", branch=${detectedBy}`);
 
   if (useLLM) {
     // ── LLM directive mode ──
@@ -56,7 +59,7 @@ function handleChatter({ userMessage, state, language, sessionId, messageRouting
       }
     };
 
-    console.log(`💬 [RouterDecision] Chatter (${detectedBy}) — LLM directive mode`);
+    console.log(`💬 [RouterDecision] Chatter (${detectedBy}) — LLM directive mode, directResponse=false`);
 
     return {
       directResponse: false,
@@ -99,7 +102,7 @@ function handleChatter({ userMessage, state, language, sessionId, messageRouting
     }
   };
 
-  console.log(`💬 [RouterDecision] Chatter (${detectedBy}) — direct template mode`);
+  console.log(`💬 [RouterDecision] Chatter (${detectedBy}) — direct template mode, directResponse=true`);
 
   return {
     directResponse: true,
