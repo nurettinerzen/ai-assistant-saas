@@ -71,6 +71,18 @@ export async function sendConversationTurn(
 
       // Don't retry on 4xx errors (except 429)
       if (status >= 400 && status < 500 && status !== 429) {
+        // 403 WAF block: return structured response so allowFailedResponse can work
+        if (status === 403) {
+          return {
+            success: false,
+            reply: null,
+            statusCode: 403,
+            error: `Request failed with status code 403`,
+            response: error.response?.data,
+            errorType: 'WAF_BLOCK',
+            requestId: error.response?.data?.requestId || 'unknown'
+          };
+        }
         break;
       }
 
