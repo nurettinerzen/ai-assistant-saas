@@ -61,8 +61,11 @@ export const FEATURE_FLAGS = {
   // When enabled: Greeting/chatter messages go through LLM with directive (tools off)
   //   instead of returning hardcoded catalog templates via directResponse.
   // When disabled: Legacy behavior — direct catalog template response, no LLM call.
-  // Rollback: Set FEATURE_LLM_CHATTER_GREETING=false
-  LLM_CHATTER_GREETING: process.env.FEATURE_LLM_CHATTER_GREETING !== 'false', // Default: ON
+  // Default: OFF — enable via FEATURE_LLM_CHATTER_GREETING=true
+  // Canary: Comma-separated embedKeys that get LLM chatter regardless of global flag
+  //   e.g. FEATURE_LLM_CHATTER_CANARY_KEYS=embed_abc123,embed_xyz789
+  LLM_CHATTER_GREETING: process.env.FEATURE_LLM_CHATTER_GREETING === 'true', // Default: OFF
+  LLM_CHATTER_CANARY_KEYS: (process.env.FEATURE_LLM_CHATTER_CANARY_KEYS || '').split(',').map(k => k.trim()).filter(Boolean),
 };
 
 /**
@@ -119,6 +122,30 @@ function simpleHash(str) {
 }
 
 /**
+ * Check if LLM chatter greeting is enabled for a given context.
+ * Priority: global flag ON → true for all | canary list match → true for that tenant
+ * @param {Object} context - { embedKey, businessId }
+ * @returns {boolean}
+ */
+export function isChatterLLMEnabled(context = {}) {
+  // Global flag ON → everyone gets LLM chatter
+  if (FEATURE_FLAGS.LLM_CHATTER_GREETING === true) return true;
+
+  // Canary gating: check embedKey against allow-list
+  const canaryKeys = FEATURE_FLAGS.LLM_CHATTER_CANARY_KEYS || [];
+  if (canaryKeys.length > 0 && context.embedKey) {
+    return canaryKeys.includes(context.embedKey);
+  }
+
+  // Also allow canary by businessId (useful for WhatsApp where embedKey doesn't exist)
+  if (canaryKeys.length > 0 && context.businessId) {
+    return canaryKeys.includes(String(context.businessId));
+  }
+
+  return false;
+}
+
+/**
  * Override feature flag (for testing)
  * @param {string} featureName
  * @param {boolean} value
@@ -132,5 +159,6 @@ export default {
   FEATURE_FLAGS,
   isFeatureEnabled,
   getFeatureFlag,
+  isChatterLLMEnabled,
   overrideFeatureFlag
 };

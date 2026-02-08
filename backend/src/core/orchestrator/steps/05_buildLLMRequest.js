@@ -144,7 +144,12 @@ KURALLAR:
 - "Size nasıl yardımcı olabilirim?" veya benzer klişe yardım cümlelerini TEKRARLAMA.
 - Eğer aktif görev varsa, kısa yanıt sonrası göreve nazikçe geri dön.
 - Kullanıcı net bir talep vermediyse tek cümlelik sıcak bir karşılık ver.
-- Her seferinde farklı ifade kullan, önceki selamlaşmayı tekrarlama.`;
+
+TON KISITLAMALARI:
+- Satış dili kullanma (no_salesy). "Harika fırsatlar", "kaçırma" gibi ifadeler YASAK.
+- Garip veya aşırı samimi selamlaşmalardan kaçın (no_weird_greetings). "Canım müşterim", "tatlım" gibi ifadeler YASAK.
+- Aşırı dostane/informal olma (no_overfriendly). Profesyonel ama sıcak bir ton koru.
+- Önceki selamlaşmayı birebir tekrarlama, ama tutarlı bir ton ve üslup koru.`;
     console.log('💬 [BuildLLMRequest] CHATTER — LLM directive mode active');
   } else if (isChatterRoute) {
     // ── Legacy mode (flag OFF, but reached LLM for some reason) ──
@@ -222,6 +227,28 @@ KURALLAR:
   }));
 
   // STEP 5: Create Gemini chat session
+  // Chatter-specific budget: lower tokens + temperature for cost/latency savings
+  const isChatterLLM = !!chatterDirective;
+  const generationConfig = isChatterLLM
+    ? {
+        temperature: 0.5,
+        topP: 0.95,
+        topK: 40,
+        maxOutputTokens: 200,
+        thinkingConfig: { thinkingBudget: 0 }
+      }
+    : {
+        temperature: 0.7,
+        topP: 0.95,
+        topK: 40,
+        maxOutputTokens: 1024,
+        thinkingConfig: { thinkingBudget: 0 }
+      };
+
+  if (isChatterLLM) {
+    console.log('💬 [BuildLLMRequest] CHATTER budget: maxOutputTokens=200, temperature=0.5');
+  }
+
   const model = genAI.getGenerativeModel({
     model: 'gemini-2.5-flash',
     systemInstruction: enhancedSystemPrompt,
@@ -231,16 +258,7 @@ KURALLAR:
         mode: 'AUTO'
       }
     } : undefined,
-    generationConfig: {
-      temperature: 0.7,
-      topP: 0.95,
-      topK: 40,
-      maxOutputTokens: 1024,
-      // CRITICAL: Disable thinking mode to prevent empty responses with tool-enabled requests
-      thinkingConfig: {
-        thinkingBudget: 0
-      }
-    }
+    generationConfig
   });
 
   const chat = model.startChat({

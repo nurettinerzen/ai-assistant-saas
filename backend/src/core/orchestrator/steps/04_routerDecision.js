@@ -17,7 +17,7 @@
 
 import { routeMessage, handleDispute } from '../../../services/message-router.js';
 import { buildChatterResponse, buildChatterDirective, isPureChatter } from '../../../services/chatter-response.js';
-import { isFeatureEnabled } from '../../../config/feature-flags.js';
+import { isFeatureEnabled, isChatterLLMEnabled } from '../../../config/feature-flags.js';
 
 /**
  * Unified chatter handler.
@@ -25,11 +25,12 @@ import { isFeatureEnabled } from '../../../config/feature-flags.js';
  * When LLM_CHATTER_GREETING flag is ON: returns directResponse=false with directive for LLM.
  * When flag is OFF (default): returns directResponse=true with catalog template (legacy).
  */
-function handleChatter({ userMessage, state, language, sessionId, messageRouting, detectedBy }) {
-  const useLLM = isFeatureEnabled('LLM_CHATTER_GREETING');
+function handleChatter({ userMessage, state, language, sessionId, messageRouting, detectedBy, embedKey, businessId }) {
+  const useLLM = isChatterLLMEnabled({ embedKey, businessId });
   const flagRawValue = process.env.FEATURE_LLM_CHATTER_GREETING;
+  const canaryKeys = process.env.FEATURE_LLM_CHATTER_CANARY_KEYS || '';
 
-  console.log(`🔍 [ChatterFlag] LLM_CHATTER_GREETING: flagValue=${useLLM}, envRaw="${flagRawValue}", branch=${detectedBy}`);
+  console.log(`🔍 [ChatterFlag] LLM_CHATTER_GREETING: flagValue=${useLLM}, envRaw="${flagRawValue}", canary="${canaryKeys}", embedKey="${embedKey || ''}", businessId="${businessId || ''}", branch=${detectedBy}`);
 
   if (useLLM) {
     // ── LLM directive mode ──
@@ -158,7 +159,7 @@ export async function makeRoutingDecision(params) {
     Boolean(state.activeFlow);
 
   if (!hasActiveTask && isPureChatter(userMessage)) {
-    return handleChatter({ userMessage, state, language, sessionId, messageRouting, detectedBy: 'regex_early' });
+    return handleChatter({ userMessage, state, language, sessionId, messageRouting, detectedBy: 'regex_early', embedKey: business?.embedKey, businessId: business?.id });
   }
 
   // ========================================
@@ -267,7 +268,7 @@ export async function makeRoutingDecision(params) {
     }
 
     case 'ACKNOWLEDGE_CHATTER': {
-      return handleChatter({ userMessage, state, language, sessionId, messageRouting, detectedBy: 'action_route' });
+      return handleChatter({ userMessage, state, language, sessionId, messageRouting, detectedBy: 'action_route', embedKey: business?.embedKey, businessId: business?.id });
     }
 
     default: {

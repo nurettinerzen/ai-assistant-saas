@@ -480,6 +480,12 @@ export async function handleIncomingMessage({
     if (routingResult.directResponse) {
       console.log('↩️ [Orchestrator] Returning direct response (no LLM call)');
 
+      // Track chatterSource for direct template responses (flag OFF)
+      if (routingResult.isChatter) {
+        metrics.chatterSource = 'catalogTemplate';
+        console.log('📊 [Chatter-Telemetry] source=catalogTemplate (direct, flag OFF)');
+      }
+
       // Save state and metrics (skip if dry-run)
       await persistAndEmitMetrics({
         sessionId: resolvedSessionId,
@@ -599,8 +605,15 @@ export async function handleIncomingMessage({
           console.warn('⚠️ [Orchestrator] LLM chatter response empty — falling back to catalog');
           responseText = routingResult.catalogFallback.text;
           metrics.chatterLLMFallback = true;
+          metrics.chatterSource = 'catalogFallback';
+        } else {
+          metrics.chatterSource = 'llm';
         }
+      } else {
+        metrics.chatterSource = 'llm';
       }
+
+      console.log(`📊 [Chatter-Telemetry] source=${metrics.chatterSource}`);
     }
 
     // P0-DEBUG: Log tool results for NOT_FOUND detection debugging
