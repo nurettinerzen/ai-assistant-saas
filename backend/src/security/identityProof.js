@@ -32,8 +32,8 @@
  *   4. Email order-level autoverify disabled in MVP (CrmOrder has no customerEmail).
  */
 
-import prisma from '../../config/database.js';
-import { normalizePhone } from '../../utils/text.js';
+import prisma from '../config/database.js';
+import { normalizePhone } from '../utils/text.js';
 
 // ─── Constants ───────────────────────────────────────────────────────
 
