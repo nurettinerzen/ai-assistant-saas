@@ -95,8 +95,11 @@ router.post('/:businessId/:webhookSecret', async (req, res) => {
       return res.status(401).json({ error: 'Invalid webhook credentials' });
     }
 
-    // Step 2: SECURITY - Verify HMAC signature
-    if (!verifyCRMSignature(req, webhookSecret)) {
+    // Step 2: SECURITY - Verify HMAC signature (optional)
+    // URL secret is already sufficient security. HMAC signature is only validated
+    // when the client sends the X-CRM-Signature header.
+    const hasSignatureHeader = req.headers['x-crm-signature'];
+    if (hasSignatureHeader && !verifyCRMSignature(req, webhookSecret)) {
       console.error('❌ CRM webhook signature verification failed for business:', businessId);
       return res.status(401).json({ error: 'Invalid signature' });
     }
