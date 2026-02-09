@@ -264,9 +264,9 @@ export default function ChatsPage() {
   // Status indicator
   const getStatusIndicator = (status) => {
     const statusConfig = {
-      active: { color: 'bg-green-500', label: locale === 'tr' ? 'Aktif' : 'Active' },
-      completed: { color: 'bg-gray-400', label: locale === 'tr' ? 'Tamamlandı' : 'Completed' },
-      ended: { color: 'bg-gray-400', label: locale === 'tr' ? 'Tamamlandı' : 'Ended' },
+      active: { color: 'bg-blue-500', label: locale === 'tr' ? 'Aktif' : 'Active' },
+      completed: { color: 'bg-green-500', label: locale === 'tr' ? 'Tamamlandı' : 'Completed' },
+      ended: { color: 'bg-green-500', label: locale === 'tr' ? 'Tamamlandı' : 'Ended' },
     };
 
     const config = statusConfig[status] || { color: 'bg-gray-400', label: locale === 'tr' ? 'Bilinmiyor' : status };

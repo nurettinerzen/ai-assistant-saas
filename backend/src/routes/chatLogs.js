@@ -21,9 +21,16 @@ router.get('/', authenticateToken, async (req, res) => {
     };
 
     // Status filter (server-side)
+    // Note: Most chats in DB are 'active' but get auto-marked as 'ended' if idle >30min (see processedLogs below).
+    // So 'completed' filter = DB completed/ended + stale active chats (handled post-query).
+    // 'active' filter = only truly active chats (updated within last 30 min).
     if (status && status !== 'all') {
       if (status === 'completed') {
-        where.status = { in: ['completed', 'ended'] };
+        // Include all — we'll filter out truly active ones post-query
+        // (most 'active' in DB are actually ended/stale)
+        where.status = { in: ['completed', 'ended', 'active'] };
+      } else if (status === 'active') {
+        where.status = 'active';
       } else {
         where.status = status;
       }
@@ -70,21 +77,38 @@ router.get('/', authenticateToken, async (req, res) => {
     ]);
 
     // Auto-mark old "active" chats as "ended" (older than 30 minutes - matches session timeout)
+    // Also compute messageCount from messages array if it's 0
     const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
-    const processedLogs = chatLogs.map(log => {
-      if (log.status === 'active' && new Date(log.updatedAt) < thirtyMinutesAgo) {
-        return { ...log, status: 'ended' };
+    let processedLogs = chatLogs.map(log => {
+      const processed = { ...log };
+
+      // Fix stale active → ended
+      if (processed.status === 'active' && new Date(processed.updatedAt) < thirtyMinutesAgo) {
+        processed.status = 'ended';
       }
-      return log;
+
+      // Fix messageCount: derive from messages array if stored count is 0
+      if ((!processed.messageCount || processed.messageCount === 0) && Array.isArray(processed.messages)) {
+        processed.messageCount = processed.messages.length;
+      }
+
+      return processed;
     });
+
+    // Post-filter for status='completed': exclude truly active chats
+    if (status === 'completed') {
+      processedLogs = processedLogs.filter(log => log.status !== 'active');
+    }
 
     res.json({
       chatLogs: processedLogs,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
-        total,
-        totalPages: Math.ceil(total / parseInt(limit))
+        total: status === 'completed' ? processedLogs.length : total,
+        totalPages: status === 'completed'
+          ? Math.ceil(processedLogs.length / parseInt(limit))
+          : Math.ceil(total / parseInt(limit))
       }
     });
   } catch (error) {
