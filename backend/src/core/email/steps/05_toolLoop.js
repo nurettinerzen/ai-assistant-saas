@@ -126,30 +126,90 @@ function determineToolsToRun(classification, availableTools, inboundMessage) {
   const toolsToRun = [];
   const body = inboundMessage.bodyText || '';
 
-  // Extract potential phone number for customer lookup
+  // Extract potential identifiers from email body
   const phoneMatch = body.match(/(?:\+90|0)?[5][0-9]{9}|(?:\+90|0)?[2-4][0-9]{9}/);
   const extractedPhone = phoneMatch ? normalizePhone(phoneMatch[0]) : null;
 
-  // Customer lookup for order/billing/appointment intents
+  // Extract order number (multiple patterns)
+  const orderMatch = body.match(/(?:sipariş|order|siparis)\s*(?:no|numarası|numarasi|number)?[:\s#-]*([A-Z0-9][\w-]{3,})/i)
+    || body.match(/#\s*([A-Z0-9][\w-]{3,})/i)
+    || body.match(/\b(ORD-[\w-]+)\b/i);
+  const extractedOrderNumber = orderMatch ? orderMatch[1].trim() : null;
+
+  // Extract customer name from "ismim X" or "adım X" or "ben X" patterns
+  const nameMatch = body.match(/(?:ismim|adım|adim|ben)\s+([A-ZÇĞİÖŞÜa-zçğıöşü]+(?:\s+[A-ZÇĞİÖŞÜa-zçğıöşü]+){0,2})/i);
+  const extractedName = nameMatch ? nameMatch[1].trim() : null;
+
+  // Extract VKN (10 digit) or TC (11 digit)
+  const vknMatch = body.match(/(?:vkn|vergi\s*(?:kimlik)?(?:\s*no)?)[:\s]*(\d{10})\b/i);
+  const tcMatch = body.match(/(?:tc|t\.?c\.?\s*(?:kimlik)?(?:\s*no)?)[:\s]*(\d{11})\b/i);
+  const extractedVkn = vknMatch ? vknMatch[1] : null;
+  const extractedTc = tcMatch ? tcMatch[1] : null;
+
+  // Extract ticket/service number
+  const ticketMatch = body.match(/(?:arıza|ariza|servis|ticket|bilet)\s*(?:no|numarası|numarasi|number)?[:\s#-]*([A-Z0-9][\w-]{3,})/i);
+  const extractedTicket = ticketMatch ? ticketMatch[1].trim() : null;
+
+  console.log('📧 [ToolLoop] Extracted identifiers:', {
+    phone: !!extractedPhone,
+    orderNumber: extractedOrderNumber,
+    name: extractedName,
+    vkn: !!extractedVkn,
+    tc: !!extractedTc,
+    ticket: extractedTicket
+  });
+
+  // Determine query_type based on classification intent
+  const intentToQueryType = {
+    'ORDER': 'siparis',
+    'BILLING': 'muhasebe',
+    'APPOINTMENT': 'randevu',
+    'SUPPORT': 'ariza',
+    'COMPLAINT': 'siparis',  // Complaints usually about orders
+    'INQUIRY': 'genel',
+    'FOLLOW_UP': 'siparis'   // Follow-ups usually about orders
+  };
+
+  // customer_data_lookup: The universal lookup tool
+  // Runs whenever we have ANY identifier (phone, order number, vkn, tc, ticket)
   if (availableTools.includes('customer_data_lookup')) {
-    if (['ORDER', 'BILLING', 'APPOINTMENT', 'SUPPORT', 'COMPLAINT'].includes(classification.intent)) {
-      if (extractedPhone) {
+    const actionableIntents = ['ORDER', 'BILLING', 'APPOINTMENT', 'SUPPORT', 'COMPLAINT', 'FOLLOW_UP', 'INQUIRY'];
+
+    if (actionableIntents.includes(classification.intent)) {
+      const hasAnyIdentifier = extractedPhone || extractedOrderNumber || extractedVkn || extractedTc || extractedTicket;
+
+      if (hasAnyIdentifier) {
+        const queryType = intentToQueryType[classification.intent] || 'genel';
+        const args = { query_type: queryType };
+
+        // Add all found identifiers
+        if (extractedPhone) args.phone = extractedPhone;
+        if (extractedOrderNumber) args.order_number = extractedOrderNumber;
+        if (extractedVkn) args.vkn = extractedVkn;
+        if (extractedTc) args.tc = extractedTc;
+        if (extractedTicket) args.ticket_number = extractedTicket;
+        if (extractedName) args.customer_name = extractedName;
+
         toolsToRun.push({
           name: 'customer_data_lookup',
-          args: { phone_number: extractedPhone }
+          args
         });
       }
     }
   }
 
-  // Order lookup if order number mentioned
-  if (availableTools.includes('order_status')) {
-    const orderMatch = body.match(/(?:sipariş|order|#)\s*(?:no|numarası|number)?:?\s*([A-Z0-9-]+)/i);
-    if (orderMatch) {
-      toolsToRun.push({
-        name: 'order_status',
-        args: { order_id: orderMatch[1] }
-      });
+  // Stock lookup if product/stock mentioned
+  if (availableTools.includes('check_stock_crm')) {
+    const stockMatch = body.match(/(?:stok|stock|ürün|urun|var\s*mı|mevcut)\s*/i);
+    if (stockMatch && classification.intent === 'INQUIRY') {
+      // Extract product name (rough heuristic)
+      const productMatch = body.match(/(?:stok|stock)\s*(?:durumu|bilgisi)?[:\s]*(.+?)(?:\?|$)/im);
+      if (productMatch) {
+        toolsToRun.push({
+          name: 'check_stock_crm',
+          args: { product_name: productMatch[1].trim() }
+        });
+      }
     }
   }
 

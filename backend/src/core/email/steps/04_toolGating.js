@@ -17,8 +17,10 @@ import { getActiveTools } from '../../../tools/index.js';
 // Tools that are READ-ONLY and safe for email draft generation
 const EMAIL_SAFE_TOOLS = [
   'customer_data_lookup',
-  'product_stock',
-  'order_status',
+  'get_product_stock',
+  'check_stock_crm',
+  'check_order_status_crm',
+  'check_ticket_status_crm',
   'appointment_lookup',
   'crm_contact_lookup',
   'crm_deal_lookup'
