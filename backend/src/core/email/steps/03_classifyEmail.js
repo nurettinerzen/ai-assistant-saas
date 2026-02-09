@@ -108,10 +108,17 @@ JSON response:`;
  * Get default classification for fallback
  */
 function getDefaultClassification() {
+  // CRITICAL: needs_tools MUST be true in default/fallback classification.
+  // When Gemini classification fails (API key error, timeout, etc.),
+  // we fall back to this default. If needs_tools is false, the email
+  // tool loop is skipped entirely → no CRM data fetched → LLM hallucinates.
+  // Tools have their own security controls (verification, gating), so
+  // letting them run on fallback is safe. Better to run tools unnecessarily
+  // than to skip them and produce hallucinated responses.
   return {
     intent: 'GENERAL',
     urgency: 'MEDIUM',
-    needs_tools: false,
+    needs_tools: true,
     topic: 'General inquiry',
     sentiment: 'NEUTRAL',
     actionable: true,

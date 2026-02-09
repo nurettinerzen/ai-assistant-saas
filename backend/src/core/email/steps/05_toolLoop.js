@@ -185,7 +185,7 @@ function determineToolsToRun(classification, availableTools, inboundMessage, thr
   // customer_data_lookup: The universal lookup tool
   // Runs whenever we have ANY identifier (phone, order number, vkn, tc, ticket)
   if (availableTools.includes('customer_data_lookup')) {
-    const actionableIntents = ['ORDER', 'BILLING', 'APPOINTMENT', 'SUPPORT', 'COMPLAINT', 'FOLLOW_UP', 'INQUIRY'];
+    const actionableIntents = ['ORDER', 'BILLING', 'APPOINTMENT', 'SUPPORT', 'COMPLAINT', 'FOLLOW_UP', 'INQUIRY', 'GENERAL'];
 
     if (actionableIntents.includes(classification.intent)) {
       const hasAnyIdentifier = extractedPhone || extractedOrderNumber || extractedVkn || extractedTc || extractedTicket;
