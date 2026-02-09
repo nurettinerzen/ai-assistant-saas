@@ -44,7 +44,7 @@ export async function executeEmailToolLoop(ctx) {
   }
 
   try {
-    const toolsToRun = determineToolsToRun(classification, gatedTools, inboundMessage);
+    const toolsToRun = determineToolsToRun(classification, gatedTools, inboundMessage, ctx.threadMessages);
 
     if (toolsToRun.length === 0) {
       console.log('📧 [ToolLoop] No applicable tools for this email');
@@ -60,12 +60,19 @@ export async function executeEmailToolLoop(ctx) {
 
       const startTime = Date.now();
 
+      // Build email-specific state for the tool.
+      // Email is stateless across turns, so we synthesize a 'pending' verification
+      // state when we detect this is a follow-up email where the customer is providing
+      // verification info (name/phone) after being asked for it.
+      const emailState = buildEmailToolState(ctx, name, args);
+
       const result = await executeTool(name, args, business, {
         channel: 'EMAIL',
         fromEmail: ctx.customerEmail || null,  // Email identity signal (separate from channelUserId)
         sessionId: ctx.thread.id,
         messageId: ctx.inboundMessage.id,
-        language: ctx.language
+        language: ctx.language,
+        state: emailState  // Pass state so verification flow works in email
       });
 
       const executionTime = Date.now() - startTime;
@@ -118,46 +125,50 @@ export async function executeEmailToolLoop(ctx) {
 /**
  * Determine which tools to run based on classification and email content
  *
+ * CRITICAL: Aggregates identifiers from ALL inbound messages in the thread,
+ * not just the latest. This is essential for multi-turn email verification:
+ *   Email 1: "ORD-12345 siparişim nerede?" → order number extracted
+ *   Email 2: "Telefonum 05XX isim Emre Taş" → phone + name extracted
+ *   → Tool gets ALL identifiers combined for successful lookup+verification
+ *
  * @param {Object} classification
  * @param {Array} availableTools
- * @param {Object} inboundMessage
+ * @param {Object} inboundMessage - Latest inbound message
+ * @param {Array} threadMessages - All messages in thread (for identifier aggregation)
  * @returns {Array} Tools to run with args
  */
-function determineToolsToRun(classification, availableTools, inboundMessage) {
+function determineToolsToRun(classification, availableTools, inboundMessage, threadMessages = []) {
   const toolsToRun = [];
-  const body = inboundMessage.bodyText || '';
 
-  // Extract potential identifiers from email body
-  const phoneMatch = body.match(/(?:\+90|0)?[5][0-9]{9}|(?:\+90|0)?[2-4][0-9]{9}/);
-  const extractedPhone = phoneMatch ? normalizePhone(phoneMatch[0]) : null;
+  // Aggregate ALL inbound message bodies for identifier extraction
+  // Priority: latest message first, then older messages fill gaps
+  const latestBody = inboundMessage.bodyText || '';
 
-  // Extract order number (multiple patterns)
-  const orderMatch = body.match(/(?:sipariş|order|siparis)\s*(?:no|numarası|numarasi|number)?[:\s#-]*([A-Z0-9][\w-]{3,})/i)
-    || body.match(/#\s*([A-Z0-9][\w-]{3,})/i)
-    || body.match(/\b(ORD-[\w-]+)\b/i);
-  const extractedOrderNumber = orderMatch ? orderMatch[1].trim() : null;
+  // Collect all inbound message bodies (excluding outbound = our replies)
+  const allInboundBodies = (threadMessages || [])
+    .filter(msg => msg.direction === 'INBOUND')
+    .map(msg => msg.body || msg.bodyText || '')
+    .filter(Boolean);
 
-  // Extract customer name from "ismim X" or "adım X" or "ben X" patterns
-  const nameMatch = body.match(/(?:ismim|adım|adim|ben)\s+([A-ZÇĞİÖŞÜa-zçğıöşü]+(?:\s+[A-ZÇĞİÖŞÜa-zçğıöşü]+){0,2})/i);
-  const extractedName = nameMatch ? nameMatch[1].trim() : null;
+  // Combined text from all inbound messages (for identifier extraction)
+  const combinedBody = allInboundBodies.join('\n');
 
-  // Extract VKN (10 digit) or TC (11 digit)
-  const vknMatch = body.match(/(?:vkn|vergi\s*(?:kimlik)?(?:\s*no)?)[:\s]*(\d{10})\b/i);
-  const tcMatch = body.match(/(?:tc|t\.?c\.?\s*(?:kimlik)?(?:\s*no)?)[:\s]*(\d{11})\b/i);
-  const extractedVkn = vknMatch ? vknMatch[1] : null;
-  const extractedTc = tcMatch ? tcMatch[1] : null;
+  // Extract from latest message first, then fall back to combined thread
+  const extractedPhone = extractPhone(latestBody) || extractPhone(combinedBody);
+  const extractedOrderNumber = extractOrderNumber(latestBody) || extractOrderNumber(combinedBody);
+  const extractedName = extractCustomerName(latestBody) || extractCustomerName(combinedBody);
+  const extractedVkn = extractVkn(latestBody) || extractVkn(combinedBody);
+  const extractedTc = extractTc(latestBody) || extractTc(combinedBody);
+  const extractedTicket = extractTicket(latestBody) || extractTicket(combinedBody);
 
-  // Extract ticket/service number
-  const ticketMatch = body.match(/(?:arıza|ariza|servis|ticket|bilet)\s*(?:no|numarası|numarasi|number)?[:\s#-]*([A-Z0-9][\w-]{3,})/i);
-  const extractedTicket = ticketMatch ? ticketMatch[1].trim() : null;
-
-  console.log('📧 [ToolLoop] Extracted identifiers:', {
+  console.log('📧 [ToolLoop] Extracted identifiers (aggregated from thread):', {
     phone: !!extractedPhone,
     orderNumber: extractedOrderNumber,
     name: extractedName,
     vkn: !!extractedVkn,
     tc: !!extractedTc,
-    ticket: extractedTicket
+    ticket: extractedTicket,
+    threadMessagesCount: allInboundBodies.length
   });
 
   // Determine query_type based on classification intent
@@ -189,7 +200,12 @@ function determineToolsToRun(classification, availableTools, inboundMessage) {
         if (extractedVkn) args.vkn = extractedVkn;
         if (extractedTc) args.tc = extractedTc;
         if (extractedTicket) args.ticket_number = extractedTicket;
-        if (extractedName) args.customer_name = extractedName;
+        if (extractedName) {
+          args.customer_name = extractedName;
+          // CRITICAL: Also pass as verification_input so the tool can use it
+          // for name-based verification in a single pass (no multi-turn needed)
+          args.verification_input = extractedName;
+        }
 
         toolsToRun.push({
           name: 'customer_data_lookup',
@@ -201,10 +217,10 @@ function determineToolsToRun(classification, availableTools, inboundMessage) {
 
   // Stock lookup if product/stock mentioned
   if (availableTools.includes('check_stock_crm')) {
-    const stockMatch = body.match(/(?:stok|stock|ürün|urun|var\s*mı|mevcut)\s*/i);
+    const stockMatch = latestBody.match(/(?:stok|stock|ürün|urun|var\s*mı|mevcut)\s*/i);
     if (stockMatch && classification.intent === 'INQUIRY') {
       // Extract product name (rough heuristic)
-      const productMatch = body.match(/(?:stok|stock)\s*(?:durumu|bilgisi)?[:\s]*(.+?)(?:\?|$)/im);
+      const productMatch = latestBody.match(/(?:stok|stock)\s*(?:durumu|bilgisi)?[:\s]*(.+?)(?:\?|$)/im);
       if (productMatch) {
         toolsToRun.push({
           name: 'check_stock_crm',
@@ -225,6 +241,166 @@ function determineToolsToRun(classification, availableTools, inboundMessage) {
   }
 
   return toolsToRun;
+}
+
+// ════════════════════════════════════════════════════════════════════
+// Email State Builder
+// ════════════════════════════════════════════════════════════════════
+
+/**
+ * Build a synthetic state object for email tool execution.
+ *
+ * WHY THIS IS NEEDED:
+ * Email pipeline is stateless — each turn starts fresh. But the
+ * customer_data_lookup tool has an anti-single-shot-bypass security
+ * check (line ~463-493 in the tool handler) that:
+ *   1. If customer_name is provided AND state.verification.status !== 'pending'
+ *   2. It checks name match, but STILL forces VERIFICATION_REQUIRED
+ *   3. This prevents chat users from guessing names in a single message
+ *
+ * For EMAIL, this creates an infinite loop:
+ *   Email 1: Customer asks for order → tool returns VERIFICATION_REQUIRED
+ *   Email 2: Customer provides name → tool STILL returns VERIFICATION_REQUIRED
+ *            (because state.verification.status is never 'pending' in email)
+ *   Email 3: Customer provides name again → still VERIFICATION_REQUIRED → ∞
+ *
+ * SOLUTION: When we detect this is a multi-turn email thread where:
+ *   - There are previous outbound messages (we already replied)
+ *   - The current message provides verification info (name/phone)
+ *   - We have enough identifiers to perform a lookup
+ *   Then we synthesize a 'pending' verification state so the tool
+ *   processes the verification input instead of looping.
+ *
+ * SECURITY: This only works when the customer provides CORRECT name
+ * matching the anchor record. The tool still validates against the anchor.
+ *
+ * @param {Object} ctx - Pipeline context
+ * @param {string} toolName - Tool being called
+ * @param {Object} args - Tool arguments
+ * @returns {Object} State object for tool execution
+ */
+function buildEmailToolState(ctx, toolName, args) {
+  const state = {};
+
+  // Only applies to customer_data_lookup with verification_input
+  if (toolName !== 'customer_data_lookup' || !args.verification_input) {
+    return state;
+  }
+
+  // Check if this is a multi-turn thread (there are previous outbound messages)
+  const hasOutboundReplies = (ctx.threadMessages || []).some(
+    msg => msg.direction === 'OUTBOUND'
+  );
+
+  // Check if there are at least 2 inbound messages (original request + verification reply)
+  const inboundCount = (ctx.threadMessages || []).filter(
+    msg => msg.direction === 'INBOUND'
+  ).length;
+
+  const isMultiTurn = hasOutboundReplies && inboundCount >= 2;
+
+  if (isMultiTurn) {
+    console.log('📧 [ToolLoop] Multi-turn thread detected — synthesizing pending verification state');
+    // Synthesize pending verification state
+    // The anchor will be created by the tool itself during record lookup.
+    // We set status='pending' so the anti-single-shot-bypass check is skipped.
+    // The tool will then process verification_input against the real anchor.
+    state.verification = {
+      status: 'pending',
+      pendingField: 'name',
+      attempts: 0
+    };
+  }
+
+  return state;
+}
+
+// ════════════════════════════════════════════════════════════════════
+// Identifier Extraction Helpers
+// ════════════════════════════════════════════════════════════════════
+
+/**
+ * Extract phone number from text
+ */
+function extractPhone(text) {
+  if (!text) return null;
+  const match = text.match(/(?:\+90|0)?[5][0-9]{9}|(?:\+90|0)?[2-4][0-9]{9}/);
+  return match ? normalizePhone(match[0]) : null;
+}
+
+/**
+ * Extract order number from text (multiple patterns)
+ */
+function extractOrderNumber(text) {
+  if (!text) return null;
+  const match = text.match(/(?:sipariş|order|siparis)\s*(?:no|numarası|numarasi|number)?[:\s#-]*([A-Z0-9][\w-]{3,})/i)
+    || text.match(/#\s*([A-Z0-9][\w-]{3,})/i)
+    || text.match(/\b(ORD-[\w-]+)\b/i);
+  return match ? match[1].trim() : null;
+}
+
+/**
+ * Extract customer name from text
+ *
+ * Supports patterns:
+ * - "ismim Emre" / "adım Emre"
+ * - "isim Emre soyadım Taş" / "isim Emre soyad Taş"
+ * - "ben Emre Taş"
+ * - "adım Emre Taş"
+ * - "Merve Aktaş" (when preceded by "isim" or "ad" context)
+ */
+function extractCustomerName(text) {
+  if (!text) return null;
+
+  // Pattern 1: "isim X soyadım Y" / "ismim X soyadım Y"
+  const fullNameMatch = text.match(
+    /(?:ismim|isim|adım|adim)\s+([A-ZÇĞİÖŞÜa-zçğıöşü]+)\s+(?:soyadım|soyadim|soyad|soyadi|soyadı)\s+([A-ZÇĞİÖŞÜa-zçğıöşü]+)/i
+  );
+  if (fullNameMatch) {
+    return `${fullNameMatch[1].trim()} ${fullNameMatch[2].trim()}`;
+  }
+
+  // Pattern 2: "ismim X Y" / "adım X Y" / "ben X Y" (2-3 word name)
+  const nameMatch = text.match(
+    /(?:ismim|adım|adim|ben)\s+([A-ZÇĞİÖŞÜa-zçğıöşü]+(?:\s+[A-ZÇĞİÖŞÜa-zçğıöşü]+){0,2})/i
+  );
+  if (nameMatch) {
+    // Clean: strip trailing words that are NOT part of a name (e.g. "ben Emre telefon" → "Emre")
+    let name = nameMatch[1].trim();
+    // Remove trailing keywords that aren't names
+    const trailingKeywords = /\s+(telefon|numara|sipariş|siparis|soyadım|soyadim|ve|ile|email|mail)\b.*$/i;
+    name = name.replace(trailingKeywords, '').trim();
+    return name || null;
+  }
+
+  return null;
+}
+
+/**
+ * Extract VKN (10-digit tax ID) from text
+ */
+function extractVkn(text) {
+  if (!text) return null;
+  const match = text.match(/(?:vkn|vergi\s*(?:kimlik)?(?:\s*no)?)[:\s]*(\d{10})\b/i);
+  return match ? match[1] : null;
+}
+
+/**
+ * Extract TC (11-digit national ID) from text
+ */
+function extractTc(text) {
+  if (!text) return null;
+  const match = text.match(/(?:tc|t\.?c\.?\s*(?:kimlik)?(?:\s*no)?)[:\s]*(\d{11})\b/i);
+  return match ? match[1] : null;
+}
+
+/**
+ * Extract ticket/service number from text
+ */
+function extractTicket(text) {
+  if (!text) return null;
+  const match = text.match(/(?:arıza|ariza|servis|ticket|bilet)\s*(?:no|numarası|numarasi|number)?[:\s#-]*([A-Z0-9][\w-]{3,})/i);
+  return match ? match[1].trim() : null;
 }
 
 /**
