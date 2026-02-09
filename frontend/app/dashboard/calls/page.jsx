@@ -258,7 +258,7 @@ export default function CallsPage() {
 
   // Direction badge (inbound/outbound)
   const getDirectionBadge = (call) => {
-    const isOutbound = call.direction === 'outbound';
+    const isOutbound = call.direction?.startsWith('outbound');
     if (isOutbound) {
       return (
         <Badge variant="ghost" className="text-orange-700 dark:text-orange-400 text-xs">

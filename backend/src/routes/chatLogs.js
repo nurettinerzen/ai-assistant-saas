@@ -21,16 +21,25 @@ router.get('/', authenticateToken, async (req, res) => {
     };
 
     // Status filter (server-side)
-    // Note: Most chats in DB are 'active' but get auto-marked as 'ended' if idle >30min (see processedLogs below).
-    // So 'completed' filter = DB completed/ended + stale active chats (handled post-query).
-    // 'active' filter = only truly active chats (updated within last 30 min).
+    // Most chats in DB have status='active' but are actually stale (idle >30min).
+    // We use updatedAt to distinguish truly active vs stale-active (=ended).
+    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+    // Use AND array to safely combine multiple OR conditions (status + search)
+    const andConditions = [];
+
     if (status && status !== 'all') {
       if (status === 'completed') {
-        // Include all — we'll filter out truly active ones post-query
-        // (most 'active' in DB are actually ended/stale)
-        where.status = { in: ['completed', 'ended', 'active'] };
+        // "Tamamlandı" = DB completed/ended + stale active (updatedAt < 30min ago)
+        andConditions.push({
+          OR: [
+            { status: { in: ['completed', 'ended'] } },
+            { status: 'active', updatedAt: { lt: thirtyMinutesAgo } }
+          ]
+        });
       } else if (status === 'active') {
+        // "Aktif" = only truly active chats (updated within last 30 min)
         where.status = 'active';
+        where.updatedAt = { gte: thirtyMinutesAgo };
       } else {
         where.status = status;
       }
@@ -43,11 +52,18 @@ router.get('/', authenticateToken, async (req, res) => {
 
     // Search filter (server-side)
     if (search) {
-      where.OR = [
-        { sessionId: { contains: search, mode: 'insensitive' } },
-        { customerPhone: { contains: search, mode: 'insensitive' } },
-        { customerIp: { contains: search, mode: 'insensitive' } }
-      ];
+      andConditions.push({
+        OR: [
+          { sessionId: { contains: search, mode: 'insensitive' } },
+          { customerPhone: { contains: search, mode: 'insensitive' } },
+          { customerIp: { contains: search, mode: 'insensitive' } }
+        ]
+      });
+    }
+
+    // Combine AND conditions if any exist
+    if (andConditions.length > 0) {
+      where.AND = andConditions;
     }
 
     // Date range filter (server-side)
@@ -76,13 +92,12 @@ router.get('/', authenticateToken, async (req, res) => {
       prisma.chatLog.count({ where })
     ]);
 
-    // Auto-mark old "active" chats as "ended" (older than 30 minutes - matches session timeout)
+    // Auto-mark old "active" chats as "ended" for display
     // Also compute messageCount from messages array if it's 0
-    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
-    let processedLogs = chatLogs.map(log => {
+    const processedLogs = chatLogs.map(log => {
       const processed = { ...log };
 
-      // Fix stale active → ended
+      // Fix stale active → ended (for display only)
       if (processed.status === 'active' && new Date(processed.updatedAt) < thirtyMinutesAgo) {
         processed.status = 'ended';
       }
@@ -95,20 +110,13 @@ router.get('/', authenticateToken, async (req, res) => {
       return processed;
     });
 
-    // Post-filter for status='completed': exclude truly active chats
-    if (status === 'completed') {
-      processedLogs = processedLogs.filter(log => log.status !== 'active');
-    }
-
     res.json({
       chatLogs: processedLogs,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
-        total: status === 'completed' ? processedLogs.length : total,
-        totalPages: status === 'completed'
-          ? Math.ceil(processedLogs.length / parseInt(limit))
-          : Math.ceil(total / parseInt(limit))
+        total,
+        totalPages: Math.ceil(total / parseInt(limit))
       }
     });
   } catch (error) {
