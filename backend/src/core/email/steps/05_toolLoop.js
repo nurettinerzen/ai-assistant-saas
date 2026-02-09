@@ -287,30 +287,26 @@ function buildEmailToolState(ctx, toolName, args) {
     return state;
   }
 
-  // Check if this is a multi-turn thread (there are previous outbound messages)
-  const hasOutboundReplies = (ctx.threadMessages || []).some(
-    msg => msg.direction === 'OUTBOUND'
-  );
-
-  // Check if there are at least 2 inbound messages (original request + verification reply)
-  const inboundCount = (ctx.threadMessages || []).filter(
-    msg => msg.direction === 'INBOUND'
-  ).length;
-
-  const isMultiTurn = hasOutboundReplies && inboundCount >= 2;
-
-  if (isMultiTurn) {
-    console.log('📧 [ToolLoop] Multi-turn thread detected — synthesizing pending verification state');
-    // Synthesize pending verification state
-    // The anchor will be created by the tool itself during record lookup.
-    // We set status='pending' so the anti-single-shot-bypass check is skipped.
-    // The tool will then process verification_input against the real anchor.
-    state.verification = {
-      status: 'pending',
-      pendingField: 'name',
-      attempts: 0
-    };
-  }
+  // EMAIL CHANNEL: Always allow single-pass verification when name is provided.
+  //
+  // WHY: The anti-single-shot-bypass check in customer_data_lookup (line ~469)
+  // was designed for chat/WhatsApp where brute-force is easy (instant messages).
+  // In email, single-shot bypass risk is negligible because:
+  //   1. Each email "attempt" takes minutes (not milliseconds)
+  //   2. Wrong name → NOT_FOUND (no data leak, same as non-existent record)
+  //   3. Customer naturally provides all info in one email body
+  //   4. Asking "now give me your phone last 4 digits" in a second email
+  //      creates terrible UX (days of back-and-forth)
+  //
+  // By setting status='pending', the tool skips the anti-single-shot block
+  // and directly validates the name against the anchor. If it matches → data
+  // returned. If not → NOT_FOUND (enumeration-safe).
+  console.log('📧 [ToolLoop] Email channel — synthesizing pending verification state for single-pass verify');
+  state.verification = {
+    status: 'pending',
+    pendingField: 'name',
+    attempts: 0
+  };
 
   return state;
 }
