@@ -470,17 +470,23 @@ export function isFeatureLocked(featureId, userPlan) {
 /**
  * Get the required plan name for a feature
  * @param {string} featureId - Feature ID
- * @param {string} locale - 'tr' or 'en'
+ * @param {Function} t - Translation function from useLanguage(). Falls back to English plan names.
  * @returns {string} Required plan name
  */
-export function getRequiredPlanName(featureId, locale = 'tr') {
+export function getRequiredPlanName(featureId, t) {
   const feature = getFeature(featureId);
   if (!feature) return '';
 
+  if (typeof t === 'function') {
+    const planKey = feature.requiredPlan?.toLowerCase();
+    return planKey ? t(`planNames.${planKey}`) : '';
+  }
+
+  // Fallback to English plan names when no t function is provided
   const planNames = {
-    [PLANS.BASIC]: locale === 'tr' ? 'Temel' : 'Basic',
-    [PLANS.PRO]: locale === 'tr' ? 'Pro' : 'Pro',
-    [PLANS.ENTERPRISE]: locale === 'tr' ? 'Kurumsal' : 'Enterprise'
+    [PLANS.BASIC]: 'Basic',
+    [PLANS.PRO]: 'Pro',
+    [PLANS.ENTERPRISE]: 'Enterprise'
   };
 
   return planNames[feature.requiredPlan] || '';
@@ -489,27 +495,37 @@ export function getRequiredPlanName(featureId, locale = 'tr') {
 /**
  * Get feature description
  * @param {string} featureId - Feature ID
- * @param {string} locale - 'tr' or 'en'
+ * @param {Function} t - Translation function from useLanguage(). Falls back to English description.
  * @returns {string} Feature description
  */
-export function getFeatureDescription(featureId, locale = 'tr') {
+export function getFeatureDescription(featureId, t) {
   const feature = getFeature(featureId);
   if (!feature) return '';
 
-  return locale === 'tr' ? feature.description : feature.descriptionEN;
+  if (typeof t === 'function') {
+    return t(`featureConfig.${featureId}.description`);
+  }
+
+  // Fallback to English description when no t function is provided
+  return feature.descriptionEN || feature.description;
 }
 
 /**
  * Get feature name
  * @param {string} featureId - Feature ID
- * @param {string} locale - 'tr' or 'en'
+ * @param {Function} t - Translation function from useLanguage(). Falls back to English name.
  * @returns {string} Feature name
  */
-export function getFeatureName(featureId, locale = 'tr') {
+export function getFeatureName(featureId, t) {
   const feature = getFeature(featureId);
   if (!feature) return '';
 
-  return locale === 'tr' ? feature.name : feature.nameEN;
+  if (typeof t === 'function') {
+    return t(`featureConfig.${featureId}.name`);
+  }
+
+  // Fallback to English name when no t function is provided
+  return feature.nameEN || feature.name;
 }
 
 /**

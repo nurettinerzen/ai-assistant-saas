@@ -34,7 +34,6 @@ import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
 import { formatDate, formatDuration, formatPhone } from '@/lib/utils';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { NAVIGATION_ITEMS } from '@/lib/navigationConfig';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 
 // Generate page numbers with ellipsis for pagination
@@ -263,14 +262,14 @@ export default function CallsPage() {
       return (
         <Badge variant="ghost" className="text-orange-700 dark:text-orange-400 text-xs">
           <PhoneOutgoing className="h-3 w-3 mr-1" />
-          {locale === 'tr' ? 'Giden' : 'Outbound'}
+          {t('dashboard.callsPage.outbound')}
         </Badge>
       );
     }
     return (
       <Badge variant="ghost" className="text-emerald-700 dark:text-emerald-400 text-xs">
         <PhoneIncoming className="h-3 w-3 mr-1" />
-        {locale === 'tr' ? 'Gelen' : 'Inbound'}
+        {t('dashboard.callsPage.inbound')}
       </Badge>
     );
   };
@@ -280,11 +279,11 @@ export default function CallsPage() {
     if (!endReason) return <span className="text-sm text-gray-400">-</span>;
 
     const reasonConfig = {
-      client_ended: { label: locale === 'tr' ? 'Müşteri kapattı' : 'Customer ended', color: 'text-blue-700 dark:text-blue-400' },
-      agent_ended: { label: locale === 'tr' ? 'Asistan kapattı' : 'Agent ended', color: 'text-teal-700 dark:text-teal-400' },
-      system_timeout: { label: locale === 'tr' ? 'Zaman aşımı' : 'Timeout', color: 'text-yellow-700 dark:text-yellow-400' },
-      error: { label: locale === 'tr' ? 'Hata' : 'Error', color: 'text-red-700 dark:text-red-400' },
-      completed: { label: locale === 'tr' ? 'Tamamlandı' : 'Completed', color: 'text-green-700 dark:text-green-400' },
+      client_ended: { label: t('dashboard.callsPage.clientEnded'), color: 'text-blue-700 dark:text-blue-400' },
+      agent_ended: { label: t('dashboard.callsPage.agentEnded'), color: 'text-teal-700 dark:text-teal-400' },
+      system_timeout: { label: t('dashboard.callsPage.systemTimeout'), color: 'text-yellow-700 dark:text-yellow-400' },
+      error: { label: t('dashboard.callsPage.error'), color: 'text-red-700 dark:text-red-400' },
+      completed: { label: t('dashboard.callsPage.completed'), color: 'text-green-700 dark:text-green-400' },
     };
 
     const config = reasonConfig[endReason] || { label: endReason, color: 'text-gray-700 dark:text-gray-400' };
@@ -299,12 +298,12 @@ export default function CallsPage() {
   // Status indicator
   const getStatusIndicator = (status) => {
     const statusConfig = {
-      completed: { color: 'bg-success-500', label: t('dashboard.callsPage.completed') || 'Tamamlandı' },
-      answered: { color: 'bg-success-500', label: t('dashboard.callsPage.answered') || 'Yanıtlandı' },
-      failed: { color: 'bg-error-500', label: t('dashboard.callsPage.failed') || 'Başarısız' },
-      'in-progress': { color: 'bg-info-500', label: t('dashboard.callsPage.inProgress') || 'Devam Ediyor' },
-      in_progress: { color: 'bg-info-500', label: t('dashboard.callsPage.inProgress') || 'Devam Ediyor' },
-      queued: { color: 'bg-warning-500', label: t('dashboard.callsPage.queued') || 'Sırada' },
+      completed: { color: 'bg-success-500', label: t('dashboard.callsPage.completed') },
+      answered: { color: 'bg-success-500', label: t('dashboard.callsPage.answered') },
+      failed: { color: 'bg-error-500', label: t('dashboard.callsPage.failed') },
+      'in-progress': { color: 'bg-info-500', label: t('dashboard.callsPage.inProgress') },
+      in_progress: { color: 'bg-info-500', label: t('dashboard.callsPage.inProgress') },
+      queued: { color: 'bg-warning-500', label: t('dashboard.callsPage.queued') },
     };
 
     const config = statusConfig[status] || { color: 'bg-gray-400', label: status };
@@ -336,14 +335,14 @@ export default function CallsPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-neutral-900 dark:text-white">
-              {locale === 'tr' ? NAVIGATION_ITEMS.callHistory.labelTr : NAVIGATION_ITEMS.callHistory.labelEn}
+              {t('dashboard.callsPage.title')}
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
               {t('dashboard.callsPage.description')}
             </p>
           </div>
         </div>
-        <GradientLoaderInline text={t('dashboard.callsPage.loadingCalls') || 'Arama geçmişi yükleniyor...'} />
+        <GradientLoaderInline text={t('dashboard.callsPage.loadingCalls')} />
       </div>
     );
   }
@@ -509,10 +508,11 @@ export default function CallsPage() {
           {pagination.totalPages > 1 && (
             <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-800">
               <span className="text-sm text-gray-500">
-                {locale === 'tr'
-                  ? `${pagination.total} sonuçtan ${(pagination.page - 1) * pagination.limit + 1}-${Math.min(pagination.page * pagination.limit, pagination.total)} gösteriliyor`
-                  : `Showing ${(pagination.page - 1) * pagination.limit + 1}-${Math.min(pagination.page * pagination.limit, pagination.total)} of ${pagination.total} results`
-                }
+                {t('dashboard.callsPage.showingResults', {
+                  from: (pagination.page - 1) * pagination.limit + 1,
+                  to: Math.min(pagination.page * pagination.limit, pagination.total),
+                  total: pagination.total
+                })}
               </span>
               <div className="flex items-center gap-1">
                 <Button
@@ -521,7 +521,7 @@ export default function CallsPage() {
                   disabled={pagination.page <= 1}
                   onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
                 >
-                  {locale === 'tr' ? 'Önceki' : 'Previous'}
+                  {t('dashboard.callsPage.previous')}
                 </Button>
                 {generatePageNumbers(pagination.page, pagination.totalPages).map((pageNum, idx) => (
                   pageNum === '...' ? (
@@ -544,7 +544,7 @@ export default function CallsPage() {
                   disabled={pagination.page >= pagination.totalPages}
                   onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
                 >
-                  {locale === 'tr' ? 'Sonraki' : 'Next'}
+                  {t('dashboard.callsPage.next')}
                 </Button>
               </div>
             </div>

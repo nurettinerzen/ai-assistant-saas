@@ -11,15 +11,21 @@ import {
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Globe } from 'lucide-react';
 
-// Only Turkish UI for now - other languages disabled until multi-region support is complete
-// See docs/MULTI_REGION_ARCHITECTURE.md for adding new languages
-const languages = [
-  { code: 'tr', name: 'Turkish', nativeName: 'Türkçe', flag: '🇹🇷' },
+// All available languages - only those in supportedUILocales will be shown
+const ALL_LANGUAGES = [
+  { code: 'tr', name: 'Turkish', nativeName: 'Türkçe', flag: '\u{1F1F9}\u{1F1F7}' },
+  { code: 'en', name: 'English', nativeName: 'English', flag: '\u{1F1FA}\u{1F1F8}' },
+  { code: 'de', name: 'German', nativeName: 'Deutsch', flag: '\u{1F1E9}\u{1F1EA}' },
+  { code: 'es', name: 'Spanish', nativeName: 'Español', flag: '\u{1F1EA}\u{1F1F8}' },
+  { code: 'fr', name: 'French', nativeName: 'Français', flag: '\u{1F1EB}\u{1F1F7}' },
 ];
 
 export default function LanguageSwitcher() {
-  const { locale, changeLocale } = useLanguage();
+  const { locale, changeLocale, supportedUILocales } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
+
+  // Filter to only show supported languages
+  const languages = ALL_LANGUAGES.filter(lang => supportedUILocales.includes(lang.code));
 
   const handleChangeLocale = (newLocale) => {
     changeLocale(newLocale);

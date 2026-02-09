@@ -34,18 +34,10 @@ export default function ForgotPasswordPage() {
     try {
       await apiClient.post('/api/auth/forgot-password', { email });
       setSubmitted(true);
-      toast.success(
-        locale === 'tr'
-          ? 'Eğer bu e-posta ile kayıtlı bir hesap varsa, şifre sıfırlama linki gönderildi.'
-          : 'If an account with that email exists, a password reset link has been sent.'
-      );
+      toast.success(t('auth.forgotPasswordSuccess'));
     } catch (error) {
       console.error('Forgot password error:', error);
-      toast.error(
-        locale === 'tr'
-          ? 'Bir hata oluştu. Lütfen tekrar deneyin.'
-          : 'An error occurred. Please try again.'
-      );
+      toast.error(t('auth.forgotPasswordError'));
     } finally {
       setLoading(false);
     }
@@ -69,7 +61,7 @@ export default function ForgotPasswordPage() {
             className="inline-flex items-center text-sm text-neutral-600 dark:text-neutral-400 hover:text-primary-600 dark:hover:text-primary-400 mb-6"
           >
             <ArrowLeft className="h-4 w-4 mr-1" />
-            {locale === 'tr' ? 'Giriş sayfasına dön' : 'Back to login'}
+            {t('auth.backToLogin')}
           </Link>
 
           {!submitted ? (
@@ -77,19 +69,17 @@ export default function ForgotPasswordPage() {
               {/* Header */}
               <div className="mb-8">
                 <h1 className="text-3xl font-bold text-neutral-900 dark:text-white mb-2">
-                  {locale === 'tr' ? 'Şifremi Unuttum' : 'Forgot Password'}
+                  {t('auth.forgotPasswordTitle')}
                 </h1>
                 <p className="text-neutral-600 dark:text-neutral-400">
-                  {locale === 'tr'
-                    ? 'E-posta adresinizi girin, size şifre sıfırlama linki gönderelim.'
-                    : 'Enter your email address and we\'ll send you a password reset link.'}
+                  {t('auth.forgotPasswordSubtitle')}
                 </p>
               </div>
 
               {/* Form */}
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
-                  <Label htmlFor="email">{locale === 'tr' ? 'E-posta' : 'Email'}</Label>
+                  <Label htmlFor="email">{t('auth.emailLabel')}</Label>
                   <Input
                     id="email"
                     name="email"
@@ -97,7 +87,7 @@ export default function ForgotPasswordPage() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder={locale === 'tr' ? 'ornek@email.com' : 'example@email.com'}
+                    placeholder={t('auth.emailPlaceholderExample')}
                     className="mt-1"
                   />
                 </div>
@@ -106,12 +96,12 @@ export default function ForgotPasswordPage() {
                   {loading ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      {locale === 'tr' ? 'Gönderiliyor...' : 'Sending...'}
+                      {t('auth.sending')}
                     </>
                   ) : (
                     <>
                       <Mail className="h-4 w-4 mr-2" />
-                      {locale === 'tr' ? 'Sıfırlama Linki Gönder' : 'Send Reset Link'}
+                      {t('auth.sendResetLink')}
                     </>
                   )}
                 </Button>
@@ -124,15 +114,13 @@ export default function ForgotPasswordPage() {
                 <Mail className="h-8 w-8 text-success-600 dark:text-success-400" />
               </div>
               <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
-                {locale === 'tr' ? 'E-postanızı Kontrol Edin' : 'Check Your Email'}
+                {t('auth.checkYourEmail')}
               </h2>
               <p className="text-neutral-600 dark:text-neutral-400 mb-6">
-                {locale === 'tr'
-                  ? `${email} adresine şifre sıfırlama linki gönderdik. Link 1 saat geçerlidir.`
-                  : `We've sent a password reset link to ${email}. The link is valid for 1 hour.`}
+                {t('auth.resetLinkSent').replace('{email}', email)}
               </p>
               <Button variant="outline" onClick={() => setSubmitted(false)}>
-                {locale === 'tr' ? 'Farklı E-posta Dene' : 'Try Different Email'}
+                {t('auth.tryDifferentEmail')}
               </Button>
             </div>
           )}

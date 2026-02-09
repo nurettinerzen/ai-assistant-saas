@@ -21,7 +21,7 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="tr" suppressHydrationWarning>
       <body className={plusJakartaSans.className}>
         <Providers>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>

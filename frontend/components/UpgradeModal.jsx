@@ -18,7 +18,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { getRequiredPlanName, getFeatureDescription, getFeatureName } from '@/lib/features';
+import { getFeature } from '@/lib/features';
 
 export default function UpgradeModal({
   isOpen,
@@ -29,13 +29,14 @@ export default function UpgradeModal({
   requiredPlan: customRequiredPlan
 }) {
   const router = useRouter();
-  const { language } = useLanguage();
-  const locale = language || 'tr';
+  const { t } = useLanguage();
 
-  // Get feature info from config or use custom props
-  const featureName = customFeatureName || getFeatureName(featureId, locale);
-  const description = customDescription || getFeatureDescription(featureId, locale);
-  const requiredPlan = customRequiredPlan || getRequiredPlanName(featureId, locale);
+  // Get feature info from translation keys or use custom props
+  const feature = getFeature(featureId);
+  const featureName = customFeatureName || (featureId ? t(`featureConfig.${featureId}.name`) : '');
+  const description = customDescription || (featureId ? t(`featureConfig.${featureId}.description`) : '');
+  const requiredPlanKey = feature?.requiredPlan?.toLowerCase() || '';
+  const requiredPlan = customRequiredPlan || (requiredPlanKey ? t(`planNames.${requiredPlanKey}`) : '');
 
   const handleUpgrade = () => {
     onClose();
@@ -50,9 +51,7 @@ export default function UpgradeModal({
             <Lock className="h-8 w-8 text-primary-600 dark:text-primary-400" />
           </div>
           <DialogTitle className="text-xl font-bold text-neutral-900 dark:text-white">
-            {locale === 'tr'
-              ? `Bu özellik ${requiredPlan} planında`
-              : `This feature requires ${requiredPlan} plan`}
+            {t('upgradeModal.featureRequiresPlan').replace('{plan}', requiredPlan)}
           </DialogTitle>
           <DialogDescription className="text-neutral-600 dark:text-neutral-400 mt-2">
             {description}
@@ -68,9 +67,7 @@ export default function UpgradeModal({
               <div>
                 <p className="font-medium text-neutral-900 dark:text-white">{featureName}</p>
                 <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                  {locale === 'tr'
-                    ? `${requiredPlan} ve üzeri planlarda kullanılabilir`
-                    : `Available in ${requiredPlan} and above plans`}
+                  {t('upgradeModal.availableInPlan').replace('{plan}', requiredPlan)}
                 </p>
               </div>
             </div>
@@ -83,13 +80,13 @@ export default function UpgradeModal({
             onClick={onClose}
             className="w-full sm:w-auto order-2 sm:order-1"
           >
-            {locale === 'tr' ? 'Kapat' : 'Close'}
+            {t('common.close')}
           </Button>
           <Button
             onClick={handleUpgrade}
             className="w-full sm:w-auto order-1 sm:order-2 bg-gradient-to-r from-teal-600 to-blue-500 hover:from-teal-700 hover:to-blue-600"
           >
-            {locale === 'tr' ? 'Planları İncele' : 'View Plans'}
+            {t('dashboard.subscriptionPage.viewPlans')}
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </DialogFooter>

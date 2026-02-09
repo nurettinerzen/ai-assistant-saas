@@ -17,7 +17,7 @@ import Link from 'next/link';
  * @param {string} customMessage - Optional custom message to show
  */
 export function LockedFeature({ feature, userPlan, children, customMessage }) {
-  const { locale } = useLanguage();
+  const { t, locale } = useLanguage();
 
   const isLocked = !canAccessFeature(userPlan, feature);
 
@@ -42,15 +42,11 @@ export function LockedFeature({ feature, userPlan, children, customMessage }) {
             <Lock className="w-6 h-6 text-neutral-500 dark:text-neutral-400" />
           </div>
           <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">
-            {customMessage || (
-              locale === 'tr'
-                ? `Bu özellik ${requiredPlanName} planında aktif.`
-                : `This feature is available in ${requiredPlanName} plan.`
-            )}
+            {customMessage || t('components.lockedFeature.featureAvailableIn', { plan: requiredPlanName })}
           </p>
           <Link href="/dashboard/subscription">
             <Button variant="default" size="sm">
-              {locale === 'tr' ? 'Planı Yükselt' : 'Upgrade Plan'}
+              {t('components.lockedFeature.upgradePlan')}
             </Button>
           </Link>
         </div>
@@ -64,7 +60,7 @@ export function LockedFeature({ feature, userPlan, children, customMessage }) {
  * Full page lock for restricted pages
  */
 export function LockedPage({ feature, userPlan, title, description }) {
-  const { locale } = useLanguage();
+  const { t, locale } = useLanguage();
 
   const isLocked = !canAccessFeature(userPlan, feature);
 
@@ -82,19 +78,15 @@ export function LockedPage({ feature, userPlan, title, description }) {
           <Lock className="h-10 w-10 text-amber-600 dark:text-amber-400" />
         </div>
         <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-3">
-          {title || (locale === 'tr' ? 'Planınızı Yükseltin' : 'Upgrade Your Plan')}
+          {title || t('components.lockedFeature.upgradeYourPlan')}
         </h2>
         <p className="text-neutral-600 dark:text-neutral-400 mb-6">
-          {description || (
-            locale === 'tr'
-              ? `Bu özellik ${requiredPlanName} ve üzeri planlarda kullanılabilir.`
-              : `This feature is available on ${requiredPlanName} and higher plans.`
-          )}
+          {description || t('components.lockedFeature.featureAvailableOnHigher', { plan: requiredPlanName })}
         </p>
         <Link href="/dashboard/subscription">
           <Button size="lg">
             <Lock className="h-4 w-4 mr-2" />
-            {locale === 'tr' ? 'Planı Yükselt' : 'Upgrade Plan'}
+            {t('components.lockedFeature.upgradePlan')}
           </Button>
         </Link>
       </div>

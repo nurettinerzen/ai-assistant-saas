@@ -25,27 +25,27 @@ import { useLanguage } from '@/contexts/LanguageContext';
 
 const STATUS_CONFIG = {
   PENDING: {
-    label: { tr: 'Bekliyor', en: 'Pending' },
+    labelKey: 'dashboard.batchCallDetailPage.status.pending',
     color: 'bg-yellow-100 text-yellow-800',
     icon: Clock
   },
   IN_PROGRESS: {
-    label: { tr: 'Devam Ediyor', en: 'In Progress' },
+    labelKey: 'dashboard.batchCallDetailPage.status.inProgress',
     color: 'bg-blue-100 text-blue-800',
     icon: Loader2
   },
   COMPLETED: {
-    label: { tr: 'Tamamlandı', en: 'Completed' },
+    labelKey: 'dashboard.batchCallDetailPage.status.completed',
     color: 'bg-green-100 text-green-800',
     icon: CheckCircle2
   },
   FAILED: {
-    label: { tr: 'Başarısız', en: 'Failed' },
+    labelKey: 'dashboard.batchCallDetailPage.status.failed',
     color: 'bg-red-100 text-red-800',
     icon: XCircle
   },
   CANCELLED: {
-    label: { tr: 'İptal Edildi', en: 'Cancelled' },
+    labelKey: 'dashboard.batchCallDetailPage.status.cancelled',
     color: 'bg-neutral-100 text-neutral-800',
     icon: Pause
   }
@@ -53,34 +53,41 @@ const STATUS_CONFIG = {
 
 const CALL_STATUS_CONFIG = {
   pending: {
-    label: { tr: 'Bekliyor', en: 'Pending' },
+    labelKey: 'dashboard.batchCallDetailPage.callStatus.pending',
     color: 'bg-yellow-100 text-yellow-800',
     icon: Clock
   },
   in_progress: {
-    label: { tr: 'Aranıyor', en: 'Calling' },
+    labelKey: 'dashboard.batchCallDetailPage.callStatus.inProgress',
     color: 'bg-blue-100 text-blue-800',
     icon: PhoneCall
   },
   completed: {
-    label: { tr: 'Tamamlandı', en: 'Completed' },
+    labelKey: 'dashboard.batchCallDetailPage.callStatus.completed',
     color: 'bg-green-100 text-green-800',
     icon: CheckCircle2
   },
   failed: {
-    label: { tr: 'Başarısız', en: 'Failed' },
+    labelKey: 'dashboard.batchCallDetailPage.callStatus.failed',
     color: 'bg-red-100 text-red-800',
     icon: PhoneOff
   },
   no_answer: {
-    label: { tr: 'Cevaplanmadı', en: 'No Answer' },
+    labelKey: 'dashboard.batchCallDetailPage.callStatus.noAnswer',
     color: 'bg-neutral-100 text-neutral-800',
     icon: PhoneOff
   }
 };
 
+const TERMINATION_KEYS = {
+  agent_goodbye: 'dashboard.batchCallDetailPage.termination.agentGoodbye',
+  user_goodbye: 'dashboard.batchCallDetailPage.termination.userGoodbye',
+  voicemail_detected: 'dashboard.batchCallDetailPage.termination.voicemailDetected',
+  no_input: 'dashboard.batchCallDetailPage.termination.noInput'
+};
+
 export default function BatchCallDetailPage() {
-  const { locale } = useLanguage();
+  const { t, locale } = useLanguage();
   const router = useRouter();
   const params = useParams();
   const { id } = params;
@@ -112,7 +119,7 @@ export default function BatchCallDetailPage() {
     } catch (error) {
       console.error('Error loading batch call:', error);
       if (!silent) {
-        toast.error(locale === 'tr' ? 'Kampanya bulunamadı' : 'Campaign not found');
+        toast.error(t('dashboard.batchCallDetailPage.campaignNotFound'));
         router.push('/dashboard/batch-calls');
       }
     } finally {
@@ -121,13 +128,13 @@ export default function BatchCallDetailPage() {
   };
 
   const handleCancel = async () => {
-    if (!confirm(locale === 'tr' ? 'Bu kampanyayı iptal etmek istediğinize emin misiniz?' : 'Are you sure you want to cancel this campaign?')) {
+    if (!confirm(t('dashboard.batchCallDetailPage.confirmCancelCampaign'))) {
       return;
     }
 
     try {
       const response = await apiClient.post(`/api/batch-calls/${id}/cancel`);
-      toast.success(response.data.message || (locale === 'tr' ? 'Kampanya iptal edildi' : 'Campaign cancelled'));
+      toast.success(response.data.message || t('dashboard.batchCallDetailPage.campaignCancelled'));
 
       // Show warning if there's one (e.g., active call will continue)
       if (response.data.warning) {
@@ -136,7 +143,7 @@ export default function BatchCallDetailPage() {
 
       loadBatchCall();
     } catch (error) {
-      toast.error(error.response?.data?.error || (locale === 'tr' ? 'Bir hata oluştu' : 'An error occurred'));
+      toast.error(error.response?.data?.error || t('dashboard.batchCallDetailPage.errorOccurred'));
     }
   };
 
@@ -166,7 +173,7 @@ export default function BatchCallDetailPage() {
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard/batch-calls')}>
           <ArrowLeft className="h-4 w-4 mr-1" />
-          {locale === 'tr' ? 'Geri' : 'Back'}
+          {t('common.back')}
         </Button>
       </div>
 
@@ -178,7 +185,7 @@ export default function BatchCallDetailPage() {
             <div className="flex items-center gap-2 mt-1">
               <Badge className={`${statusConfig.color} flex items-center gap-1`}>
                 <StatusIcon className={`h-3 w-3 ${batchCall.status === 'IN_PROGRESS' ? 'animate-spin' : ''}`} />
-                {statusConfig.label[locale]}
+                {t(statusConfig.labelKey)}
               </Badge>
               <span className="text-sm text-neutral-500">
                 {formatDate(batchCall.createdAt, 'long')}
@@ -190,7 +197,7 @@ export default function BatchCallDetailPage() {
         {(batchCall.status === 'PENDING' || batchCall.status === 'IN_PROGRESS') && (
           <Button variant="outline" onClick={handleCancel} className="text-red-600">
             <XCircle className="h-4 w-4 mr-2" />
-            {locale === 'tr' ? 'Kampanyayı İptal Et' : 'Cancel Campaign'}
+            {t('dashboard.batchCallDetailPage.cancelCampaign')}
           </Button>
         )}
       </div>
@@ -201,7 +208,7 @@ export default function BatchCallDetailPage() {
           <div className="flex items-center gap-3">
             <Users className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
             <div>
-              <p className="text-sm text-neutral-500">{locale === 'tr' ? 'Toplam' : 'Total'}</p>
+              <p className="text-sm text-neutral-500">{t('dashboard.batchCallDetailPage.total')}</p>
               <p className="text-2xl font-bold text-neutral-900">{batchCall.totalRecipients}</p>
             </div>
           </div>
@@ -211,7 +218,7 @@ export default function BatchCallDetailPage() {
           <div className="flex items-center gap-3">
             <CheckCircle2 className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
             <div>
-              <p className="text-sm text-neutral-500">{locale === 'tr' ? 'Başarılı' : 'Successful'}</p>
+              <p className="text-sm text-neutral-500">{t('dashboard.batchCallDetailPage.successful')}</p>
               <p className="text-2xl font-bold text-green-600">{batchCall.successfulCalls || 0}</p>
             </div>
           </div>
@@ -221,7 +228,7 @@ export default function BatchCallDetailPage() {
           <div className="flex items-center gap-3">
             <XCircle className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
             <div>
-              <p className="text-sm text-neutral-500">{locale === 'tr' ? 'Başarısız' : 'Failed'}</p>
+              <p className="text-sm text-neutral-500">{t('dashboard.batchCallDetailPage.failed')}</p>
               <p className="text-2xl font-bold text-red-600">{batchCall.failedCalls || 0}</p>
             </div>
           </div>
@@ -231,7 +238,7 @@ export default function BatchCallDetailPage() {
           <div className="flex items-center gap-3">
             <Clock className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
             <div>
-              <p className="text-sm text-neutral-500">{locale === 'tr' ? 'Bekleyen' : 'Pending'}</p>
+              <p className="text-sm text-neutral-500">{t('dashboard.batchCallDetailPage.pending')}</p>
               <p className="text-2xl font-bold text-yellow-600">
                 {batchCall.totalRecipients - batchCall.completedCalls}
               </p>
@@ -244,7 +251,7 @@ export default function BatchCallDetailPage() {
       <div className="bg-white rounded-xl border border-neutral-200 p-4">
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-medium text-neutral-700">
-            {locale === 'tr' ? 'İlerleme' : 'Progress'}
+            {t('dashboard.batchCallDetailPage.progress')}
           </span>
           <span className="text-sm text-neutral-600">
             {batchCall.completedCalls} / {batchCall.totalRecipients} ({progress}%)
@@ -262,7 +269,7 @@ export default function BatchCallDetailPage() {
       <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
         <div className="px-6 py-4 border-b border-neutral-200">
           <h2 className="text-lg font-semibold text-neutral-900">
-            {locale === 'tr' ? 'Alıcı Listesi' : 'Recipients List'}
+            {t('dashboard.batchCallDetailPage.recipientsList')}
           </h2>
         </div>
 
@@ -271,22 +278,22 @@ export default function BatchCallDetailPage() {
             <thead className="bg-neutral-50 border-b border-neutral-200">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  {locale === 'tr' ? 'Telefon' : 'Phone'}
+                  {t('dashboard.batchCallDetailPage.phoneHeader')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  {locale === 'tr' ? 'Müşteri' : 'Customer'}
+                  {t('dashboard.batchCallDetailPage.customerHeader')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  {locale === 'tr' ? 'Durum' : 'Status'}
+                  {t('dashboard.batchCallDetailPage.statusHeader')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  {locale === 'tr' ? 'Süre' : 'Duration'}
+                  {t('dashboard.batchCallDetailPage.durationHeader')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  {locale === 'tr' ? 'Sonlanma' : 'Termination'}
+                  {t('dashboard.batchCallDetailPage.terminationHeader')}
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  {locale === 'tr' ? 'İşlem' : 'Action'}
+                  {t('dashboard.batchCallDetailPage.actionHeader')}
                 </th>
               </tr>
             </thead>
@@ -323,7 +330,7 @@ export default function BatchCallDetailPage() {
                             'bg-yellow-500'
                           }`} />
                           <span className="text-sm text-gray-700 dark:text-gray-300">
-                            {callStatus.label[locale]}
+                            {t(callStatus.labelKey)}
                           </span>
                         </div>
                       </td>
@@ -342,11 +349,9 @@ export default function BatchCallDetailPage() {
                               recipient.terminationReason === 'no_input' ? 'bg-red-50 text-red-700 border-red-200' :
                               'bg-neutral-50 text-neutral-700 border-neutral-200'
                             }>
-                              {recipient.terminationReason === 'agent_goodbye' ? (locale === 'tr' ? 'Asistan Kapattı' : 'Agent Ended') :
-                               recipient.terminationReason === 'user_goodbye' ? (locale === 'tr' ? 'Müşteri Kapattı' : 'User Ended') :
-                               recipient.terminationReason === 'voicemail_detected' ? (locale === 'tr' ? 'Sesli Yanıt' : 'Voicemail') :
-                               recipient.terminationReason === 'no_input' ? (locale === 'tr' ? 'Yanıt Yok' : 'No Input') :
-                               recipient.terminationReason}
+                              {TERMINATION_KEYS[recipient.terminationReason]
+                                ? t(TERMINATION_KEYS[recipient.terminationReason])
+                                : recipient.terminationReason}
                             </Badge>
                           ) : '-'}
                         </span>
@@ -359,11 +364,11 @@ export default function BatchCallDetailPage() {
                             onClick={() => router.push(`/dashboard/calls?callId=${recipient.callLogId}`)}
                           >
                             <ExternalLink className="h-3 w-3 mr-1" />
-                            {locale === 'tr' ? 'Detay' : 'Details'}
+                            {t('dashboard.batchCallDetailPage.details')}
                           </Button>
                         ) : (recipient.status === 'completed' || recipient.status === 'failed') ? (
                           <span className="text-xs text-neutral-400">
-                            {locale === 'tr' ? 'Kayıt bekleniyor...' : 'Waiting for record...'}
+                            {t('dashboard.batchCallDetailPage.waitingForRecord')}
                           </span>
                         ) : null}
                       </td>
@@ -373,7 +378,7 @@ export default function BatchCallDetailPage() {
               ) : (
                 <tr>
                   <td colSpan={6} className="px-6 py-12 text-center text-neutral-500">
-                    {locale === 'tr' ? 'Alıcı bulunamadı' : 'No recipients found'}
+                    {t('dashboard.batchCallDetailPage.noRecipientsFound')}
                   </td>
                 </tr>
               )}

@@ -37,7 +37,6 @@ import { apiClient } from '@/lib/api';
 import { toast } from '@/lib/toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { formatDistanceToNow } from 'date-fns';
-import { NAVIGATION_ITEMS } from '@/lib/navigationConfig';
 import { useEmailStatus, useEmailThreads, useEmailThread, useEmailStats } from '@/hooks/useEmail';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -292,7 +291,7 @@ export default function EmailDashboardPage() {
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-semibold text-neutral-900 dark:text-white">
-          {locale === 'tr' ? NAVIGATION_ITEMS.email.labelTr : NAVIGATION_ITEMS.email.labelEn}
+          {t('dashboard.emailPage.title')}
         </h1>
           <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
             {t('dashboard.emailPage.description')}
@@ -321,7 +320,7 @@ export default function EmailDashboardPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-neutral-900 dark:text-white">
-          {locale === 'tr' ? NAVIGATION_ITEMS.email.labelTr : NAVIGATION_ITEMS.email.labelEn}
+          {t('dashboard.emailPage.title')}
         </h1>
           <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
             {emailStatus?.email && (

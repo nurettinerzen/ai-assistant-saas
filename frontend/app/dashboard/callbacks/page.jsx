@@ -37,101 +37,24 @@ import {
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { NAVIGATION_ITEMS } from '@/lib/navigationConfig';
 
 const STATUS_CONFIG = {
-  PENDING: { label: { tr: 'Bekliyor', en: 'Pending' }, color: 'text-yellow-600 dark:text-yellow-500', icon: Clock },
-  IN_PROGRESS: { label: { tr: 'Aranıyor', en: 'In Progress' }, color: 'text-yellow-600 dark:text-yellow-500', icon: Phone },
-  COMPLETED: { label: { tr: 'Tamamlandı', en: 'Completed' }, color: 'text-green-600 dark:text-green-500', icon: CheckCircle },
-  NO_ANSWER: { label: { tr: 'Cevap Yok', en: 'No Answer' }, color: 'text-red-600 dark:text-red-500', icon: PhoneMissed },
-  CANCELLED: { label: { tr: 'İptal', en: 'Cancelled' }, color: 'text-neutral-500 dark:text-neutral-400', icon: XCircle }
+  PENDING: { tKey: 'dashboard.callbacksPage.statusPending', color: 'text-yellow-600 dark:text-yellow-500', icon: Clock },
+  IN_PROGRESS: { tKey: 'dashboard.callbacksPage.statusInProgress', color: 'text-yellow-600 dark:text-yellow-500', icon: Phone },
+  COMPLETED: { tKey: 'dashboard.callbacksPage.statusCompleted', color: 'text-green-600 dark:text-green-500', icon: CheckCircle },
+  NO_ANSWER: { tKey: 'dashboard.callbacksPage.statusNoAnswer', color: 'text-red-600 dark:text-red-500', icon: PhoneMissed },
+  CANCELLED: { tKey: 'dashboard.callbacksPage.statusCancelled', color: 'text-neutral-500 dark:text-neutral-400', icon: XCircle }
 };
 
 const PRIORITY_CONFIG = {
-  URGENT: { label: { tr: 'Acil', en: 'Urgent' }, color: 'text-neutral-700 dark:text-neutral-400', dot: 'bg-red-500' },
-  HIGH: { label: { tr: 'Yüksek', en: 'High' }, color: 'text-neutral-700 dark:text-neutral-400', dot: 'bg-orange-500' },
-  NORMAL: { label: { tr: 'Normal', en: 'Normal' }, color: 'text-neutral-700 dark:text-neutral-400', dot: 'bg-yellow-500' },
-  LOW: { label: { tr: 'Düşük', en: 'Low' }, color: 'text-neutral-700 dark:text-neutral-400', dot: 'bg-green-500' }
-};
-
-const TRANSLATIONS = {
-  tr: {
-    title: 'Geri Arama Talepleri',
-    subtitle: 'Asistan tarafından oluşturulan geri arama kayıtları',
-    pending: 'Bekleyen',
-    inProgress: 'Devam Eden',
-    completed: 'Tamamlanan',
-    today: 'Bugün',
-    urgent: 'Acil',
-    all: 'Tümü',
-    pendingFilter: 'Bekleyenler',
-    completedFilter: 'Tamamlananlar',
-    noAnswerFilter: 'Cevap Yok',
-    customer: 'Müşteri',
-    topic: 'Konu',
-    priority: 'Öncelik',
-    date: 'Tarih',
-    status: 'Durum',
-    actions: 'İşlem',
-    markCalled: 'Arandı',
-    markNoAnswer: 'Cevap Yok',
-    retry: 'Tekrar Dene',
-    noCallbacks: 'Geri arama talebi bulunmuyor',
-    loading: 'Yükleniyor...',
-    search: 'Müşteri ara...',
-    assistant: 'Asistan',
-    notes: 'Notlar',
-    addNotes: 'Not ekle...',
-    callbackNotes: 'Geri Arama Notları',
-    addCallbackNotes: 'Görüşme notları...',
-    scheduledFor: 'Planlanan',
-    notScheduled: 'Planlanmadı',
-    save: 'Kaydet',
-    cancel: 'İptal',
-    details: 'Detaylar',
-    refresh: 'Yenile'
-  },
-  en: {
-    title: 'Callback Requests',
-    subtitle: 'Callback records created by assistant',
-    pending: 'Pending',
-    inProgress: 'In Progress',
-    completed: 'Completed',
-    today: 'Today',
-    urgent: 'Urgent',
-    all: 'All',
-    pendingFilter: 'Pending',
-    completedFilter: 'Completed',
-    noAnswerFilter: 'No Answer',
-    customer: 'Customer',
-    topic: 'Topic',
-    priority: 'Priority',
-    date: 'Date',
-    status: 'Status',
-    actions: 'Actions',
-    markCalled: 'Called',
-    markNoAnswer: 'No Answer',
-    retry: 'Retry',
-    noCallbacks: 'No callback requests found',
-    loading: 'Loading...',
-    search: 'Search customer...',
-    assistant: 'Assistant',
-    notes: 'Notes',
-    addNotes: 'Add notes...',
-    callbackNotes: 'Callback Notes',
-    addCallbackNotes: 'Call notes...',
-    scheduledFor: 'Scheduled',
-    notScheduled: 'Not scheduled',
-    save: 'Save',
-    cancel: 'Cancel',
-    details: 'Details',
-    refresh: 'Refresh'
-  }
+  URGENT: { tKey: 'dashboard.callbacksPage.priorityUrgent', color: 'text-neutral-700 dark:text-neutral-400', dot: 'bg-red-500' },
+  HIGH: { tKey: 'dashboard.callbacksPage.priorityHigh', color: 'text-neutral-700 dark:text-neutral-400', dot: 'bg-orange-500' },
+  NORMAL: { tKey: 'dashboard.callbacksPage.priorityNormal', color: 'text-neutral-700 dark:text-neutral-400', dot: 'bg-yellow-500' },
+  LOW: { tKey: 'dashboard.callbacksPage.priorityLow', color: 'text-neutral-700 dark:text-neutral-400', dot: 'bg-green-500' }
 };
 
 export default function CallbacksPage() {
-  const { locale } = useLanguage();
-  const t = TRANSLATIONS[locale] || TRANSLATIONS.tr;
+  const { t, locale } = useLanguage();
   const router = useRouter();
 
   // React Query hooks
@@ -211,15 +134,15 @@ export default function CallbacksPage() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-neutral-900 dark:text-white">
-            {locale === 'tr' ? NAVIGATION_ITEMS.callbacks.labelTr : NAVIGATION_ITEMS.callbacks.labelEn}
+            {t('dashboard.callbacksPage.title')}
           </h1>
           <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
-            {locale === 'tr' ? NAVIGATION_ITEMS.callbacks.descriptionTr : NAVIGATION_ITEMS.callbacks.descriptionEn}
+            {t('dashboard.callbacksPage.subtitle')}
           </p>
         </div>
         <Button onClick={() => { fetchCallbacks(); fetchStats(); }} variant="outline" size="sm">
           <RefreshCw className="h-4 w-4 mr-2" />
-          {t.refresh}
+          {t('dashboard.callbacksPage.refresh')}
         </Button>
       </div>
 
@@ -228,23 +151,23 @@ export default function CallbacksPage() {
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
         <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg p-4">
           <div className="text-2xl font-bold text-neutral-900 dark:text-white">{stats.pending}</div>
-          <div className="text-sm text-neutral-600 dark:text-neutral-400">{t.pending}</div>
+          <div className="text-sm text-neutral-600 dark:text-neutral-400">{t('dashboard.callbacksPage.pending')}</div>
         </div>
         <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg p-4">
           <div className="text-2xl font-bold text-neutral-900 dark:text-white">{stats.inProgress}</div>
-          <div className="text-sm text-neutral-600 dark:text-neutral-400">{t.inProgress}</div>
+          <div className="text-sm text-neutral-600 dark:text-neutral-400">{t('dashboard.callbacksPage.inProgress')}</div>
         </div>
         <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg p-4">
           <div className="text-2xl font-bold text-neutral-900 dark:text-white">{stats.completed}</div>
-          <div className="text-sm text-neutral-600 dark:text-neutral-400">{t.completed}</div>
+          <div className="text-sm text-neutral-600 dark:text-neutral-400">{t('dashboard.callbacksPage.completed')}</div>
         </div>
         <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg p-4">
           <div className="text-2xl font-bold text-neutral-900 dark:text-white">{stats.today}</div>
-          <div className="text-sm text-neutral-600 dark:text-neutral-400">{t.today}</div>
+          <div className="text-sm text-neutral-600 dark:text-neutral-400">{t('dashboard.callbacksPage.today')}</div>
         </div>
         <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg p-4">
           <div className="text-2xl font-bold text-neutral-900 dark:text-white">{stats.urgent}</div>
-          <div className="text-sm text-neutral-600 dark:text-neutral-400">{t.urgent}</div>
+          <div className="text-sm text-neutral-600 dark:text-neutral-400">{t('dashboard.callbacksPage.urgent')}</div>
         </div>
       </div>
 
@@ -253,7 +176,7 @@ export default function CallbacksPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
           <Input
-            placeholder={t.search}
+            placeholder={t('dashboard.callbacksPage.search')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
@@ -265,28 +188,28 @@ export default function CallbacksPage() {
             onClick={() => setFilter('all')}
             size="sm"
           >
-            {t.all}
+            {t('dashboard.callbacksPage.all')}
           </Button>
           <Button
             variant={filter === 'pending' ? 'default' : 'outline'}
             onClick={() => setFilter('pending')}
             size="sm"
           >
-            {t.pendingFilter}
+            {t('dashboard.callbacksPage.pendingFilter')}
           </Button>
           <Button
             variant={filter === 'completed' ? 'default' : 'outline'}
             onClick={() => setFilter('completed')}
             size="sm"
           >
-            {t.completedFilter}
+            {t('dashboard.callbacksPage.completedFilter')}
           </Button>
           <Button
             variant={filter === 'no_answer' ? 'default' : 'outline'}
             onClick={() => setFilter('no_answer')}
             size="sm"
           >
-            {t.noAnswerFilter}
+            {t('dashboard.callbacksPage.noAnswerFilter')}
           </Button>
         </div>
       </div>
@@ -294,20 +217,20 @@ export default function CallbacksPage() {
       {/* Callbacks List */}
       <div className="bg-white dark:bg-neutral-900 rounded-lg border border-neutral-200 dark:border-neutral-700 overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center text-neutral-500">{t.loading}</div>
+          <div className="p-8 text-center text-neutral-500">{t('common.loading')}</div>
         ) : filteredCallbacks.length === 0 ? (
-          <div className="p-8 text-center text-neutral-500">{t.noCallbacks}</div>
+          <div className="p-8 text-center text-neutral-500">{t('dashboard.callbacksPage.noCallbacks')}</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-neutral-50 dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700">
                 <tr>
-                  <th className="text-left p-4 text-sm font-medium text-neutral-600 dark:text-neutral-300">{t.customer}</th>
-                  <th className="text-left p-4 text-sm font-medium text-neutral-600 dark:text-neutral-300">{t.topic}</th>
-                  <th className="text-left p-4 text-sm font-medium text-neutral-600 dark:text-neutral-300">{t.priority}</th>
-                  <th className="text-left p-4 text-sm font-medium text-neutral-600 dark:text-neutral-300">{t.date}</th>
-                  <th className="text-left p-4 text-sm font-medium text-neutral-600 dark:text-neutral-300">{t.status}</th>
-                  <th className="text-left p-4 text-sm font-medium text-neutral-600 dark:text-neutral-300">{t.actions}</th>
+                  <th className="text-left p-4 text-sm font-medium text-neutral-600 dark:text-neutral-300">{t('dashboard.callbacksPage.customer')}</th>
+                  <th className="text-left p-4 text-sm font-medium text-neutral-600 dark:text-neutral-300">{t('dashboard.callbacksPage.topic')}</th>
+                  <th className="text-left p-4 text-sm font-medium text-neutral-600 dark:text-neutral-300">{t('dashboard.callbacksPage.priority')}</th>
+                  <th className="text-left p-4 text-sm font-medium text-neutral-600 dark:text-neutral-300">{t('dashboard.callbacksPage.date')}</th>
+                  <th className="text-left p-4 text-sm font-medium text-neutral-600 dark:text-neutral-300">{t('dashboard.callbacksPage.status')}</th>
+                  <th className="text-left p-4 text-sm font-medium text-neutral-600 dark:text-neutral-300">{t('dashboard.callbacksPage.actions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-200 dark:divide-neutral-700">
@@ -344,7 +267,7 @@ export default function CallbacksPage() {
                         <div className="flex items-center gap-2">
                           <div className={`h-2 w-2 rounded-full ${priorityConfig?.dot}`} />
                           <span className={`text-xs font-medium ${priorityConfig?.color}`}>
-                            {priorityConfig?.label[locale] || callback.priority}
+                            {priorityConfig?.tKey ? t(priorityConfig.tKey) : callback.priority}
                           </span>
                         </div>
                       </td>
@@ -358,7 +281,7 @@ export default function CallbacksPage() {
                       </td>
                       <td className="p-4">
                         <span className={`text-xs font-medium ${statusConfig?.color}`}>
-                          {statusConfig?.label[locale] || callback.status}
+                          {statusConfig?.tKey ? t(statusConfig.tKey) : callback.status}
                         </span>
                       </td>
                       <td className="p-4" onClick={(e) => e.stopPropagation()}>
@@ -371,7 +294,7 @@ export default function CallbacksPage() {
                               onClick={() => updateStatus(callback.id, 'COMPLETED')}
                             >
                               <CheckCircle className="h-4 w-4 mr-1" />
-                              {t.markCalled}
+                              {t('dashboard.callbacksPage.markCalled')}
                             </Button>
                             <Button
                               size="sm"
@@ -380,7 +303,7 @@ export default function CallbacksPage() {
                               onClick={() => updateStatus(callback.id, 'NO_ANSWER')}
                             >
                               <PhoneMissed className="h-4 w-4 mr-1" />
-                              {t.markNoAnswer}
+                              {t('dashboard.callbacksPage.markNoAnswer')}
                             </Button>
                           </div>
                         )}
@@ -392,7 +315,7 @@ export default function CallbacksPage() {
                             onClick={() => handleRetry(callback.id)}
                           >
                             <RefreshCw className="h-4 w-4 mr-1" />
-                            {t.retry}
+                            {t('common.retry')}
                           </Button>
                         )}
                         {callback.status === 'COMPLETED' && (
@@ -412,7 +335,7 @@ export default function CallbacksPage() {
       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{t.details}</DialogTitle>
+            <DialogTitle>{t('dashboard.callbacksPage.details')}</DialogTitle>
             <DialogDescription>
               {selectedCallback?.customerName} - {selectedCallback?.customerPhone}
             </DialogDescription>
@@ -421,25 +344,25 @@ export default function CallbacksPage() {
           <div className="space-y-4 py-4">
             {/* Topic */}
             <div>
-              <label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">{t.topic}</label>
+              <label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">{t('dashboard.callbacksPage.topic')}</label>
               <p className="mt-1 text-neutral-900 dark:text-white">{selectedCallback?.topic}</p>
             </div>
 
             {/* Status & Priority */}
             <div className="flex gap-4">
               <div>
-                <label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">{t.status}</label>
+                <label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">{t('dashboard.callbacksPage.status')}</label>
                 <div className="mt-1">
                   <span className={`px-2 py-1 rounded text-xs font-medium ${STATUS_CONFIG[selectedCallback?.status]?.color}`}>
-                    {STATUS_CONFIG[selectedCallback?.status]?.label[locale]}
+                    {STATUS_CONFIG[selectedCallback?.status]?.tKey ? t(STATUS_CONFIG[selectedCallback?.status].tKey) : selectedCallback?.status}
                   </span>
                 </div>
               </div>
               <div>
-                <label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">{t.priority}</label>
+                <label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">{t('dashboard.callbacksPage.priority')}</label>
                 <div className="mt-1">
                   <span className={`px-2 py-1 rounded text-xs font-medium ${PRIORITY_CONFIG[selectedCallback?.priority]?.color}`}>
-                    {PRIORITY_CONFIG[selectedCallback?.priority]?.label[locale]}
+                    {PRIORITY_CONFIG[selectedCallback?.priority]?.tKey ? t(PRIORITY_CONFIG[selectedCallback?.priority].tKey) : selectedCallback?.priority}
                   </span>
                 </div>
               </div>
@@ -448,18 +371,18 @@ export default function CallbacksPage() {
             {/* Assistant */}
             {selectedCallback?.assistant && (
               <div>
-                <label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">{t.assistant}</label>
+                <label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">{t('dashboard.callbacksPage.assistant')}</label>
                 <p className="mt-1 text-neutral-900 dark:text-white">{selectedCallback.assistant.name}</p>
               </div>
             )}
 
             {/* Notes */}
             <div>
-              <label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">{t.notes}</label>
+              <label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">{t('dashboard.callbacksPage.notes')}</label>
               <Textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder={t.addNotes}
+                placeholder={t('dashboard.callbacksPage.addNotes')}
                 className="mt-1"
                 rows={3}
               />
@@ -467,11 +390,11 @@ export default function CallbacksPage() {
 
             {/* Callback Notes */}
             <div>
-              <label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">{t.callbackNotes}</label>
+              <label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">{t('dashboard.callbacksPage.callbackNotes')}</label>
               <Textarea
                 value={callbackNotes}
                 onChange={(e) => setCallbackNotes(e.target.value)}
-                placeholder={t.addCallbackNotes}
+                placeholder={t('dashboard.callbacksPage.addCallbackNotes')}
                 className="mt-1"
                 rows={3}
               />
@@ -480,10 +403,10 @@ export default function CallbacksPage() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDetailsOpen(false)}>
-              {t.cancel}
+              {t('common.cancel')}
             </Button>
             <Button onClick={saveNotes}>
-              {t.save}
+              {t('common.save')}
             </Button>
           </DialogFooter>
         </DialogContent>

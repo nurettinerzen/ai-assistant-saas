@@ -20,7 +20,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 const LANGUAGE_TO_ACCENT = {
   'TR': 'Turkish',
   'EN': 'American',
-  'PR': 'Portuguese', // Brazilian Portuguese
+  'PT': 'Portuguese', // Portuguese
   'DE': 'German',
   'FR': 'French',
   'ES': 'Spanish',
@@ -145,7 +145,7 @@ export default function VoicesPage() {
           <p className="text-sm text-primary-600 dark:text-primary-400 mt-2">
             {t('dashboard.voicesPage.businessLanguage')}: {
               businessLanguage === 'TR' ? 'Türkçe' :
-              businessLanguage === 'PR' ? 'Português' :
+              businessLanguage === 'PT' ? 'Português' :
               businessLanguage === 'EN' ? 'English' :
               businessLanguage
             }

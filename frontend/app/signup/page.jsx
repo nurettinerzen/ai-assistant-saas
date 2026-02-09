@@ -29,7 +29,7 @@ export default function SignupPage() {
     router.push('/dashboard/assistant');
   }
 }, [router]);
-  const { t, locale } = useLanguage();
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [formData, setFormData] = useState({
@@ -90,22 +90,19 @@ export default function SignupPage() {
       // Validate password strength
       const passwordErrors = [];
       if (formData.password.length < 8) {
-        passwordErrors.push(locale === 'tr' ? 'en az 8 karakter' : 'at least 8 characters');
+        passwordErrors.push(t('auth.atLeast8Chars'));
       }
       if (!/[A-Z]/.test(formData.password)) {
-        passwordErrors.push(locale === 'tr' ? 'en az 1 büyük harf' : 'at least 1 uppercase letter');
+        passwordErrors.push(t('auth.atLeast1Uppercase'));
       }
       if (!/[a-z]/.test(formData.password)) {
-        passwordErrors.push(locale === 'tr' ? 'en az 1 küçük harf' : 'at least 1 lowercase letter');
+        passwordErrors.push(t('auth.atLeast1Lowercase'));
       }
       if (!/[!@#$%^&*(),.?":{}|<>]/.test(formData.password)) {
-        passwordErrors.push(locale === 'tr' ? 'en az 1 noktalama işareti' : 'at least 1 punctuation mark');
+        passwordErrors.push(t('auth.atLeast1Punctuation'));
       }
       if (passwordErrors.length > 0) {
-        const errorMsg = locale === 'tr'
-          ? `Şifre şunları içermeli: ${passwordErrors.join(', ')}`
-          : `Password must contain: ${passwordErrors.join(', ')}`;
-        toast.error(errorMsg);
+        toast.error(t('auth.passwordMustContain', { requirements: passwordErrors.join(', ') }));
         setLoading(false);
         return;
       }
@@ -113,7 +110,7 @@ export default function SignupPage() {
       const response = await apiClient.auth.signup(formData);
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
-      toast.success('Account created successfully!');
+      toast.success(t('auth.accountCreated'));
       // Redirect to email verification pending page
       router.push('/auth/email-pending');
     } catch (error) {
@@ -227,9 +224,7 @@ export default function SignupPage() {
                 />
               </div>
               <p className="text-xs text-gray-500 dark:text-neutral-500 mt-1">
-                {locale === 'tr'
-                  ? 'En az 8 karakter, büyük/küçük harf ve noktalama işareti içermeli'
-                  : 'Must be 8+ chars with uppercase, lowercase and punctuation'}
+                {t('auth.passwordRequirements')}
               </p>
             </div>
 

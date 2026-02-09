@@ -19,17 +19,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Copy, ExternalLink, Code, Eye, Lock, ChevronDown, ChevronUp } from 'lucide-react';
+import { Copy, Code, Eye, Lock, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 import ChatWidget from '@/components/ChatWidget';
-import axios from 'axios';
-import { apiClient } from '@/lib/api';
-import { NAVIGATION_ITEMS } from '@/lib/navigationConfig';
 import { useChatWidgetSettings, useChatStats, useUpdateChatWidget } from '@/hooks/useChatWidget';
 import { useAssistants } from '@/hooks/useAssistants';
 import { useSubscription } from '@/hooks/useSubscription';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export default function ChatWidgetPage() {
   const { t, locale } = useLanguage();
@@ -383,10 +379,10 @@ export default function ChatWidgetPage() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-semibold text-neutral-900 dark:text-white">
-          {locale === 'tr' ? NAVIGATION_ITEMS.chatWidget.labelTr : NAVIGATION_ITEMS.chatWidget.labelEn}
+          {t('dashboard.chatWidgetPage.title')}
         </h1>
         <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
-          {locale === 'tr' ? NAVIGATION_ITEMS.chatWidget.descriptionTr : NAVIGATION_ITEMS.chatWidget.descriptionEn}
+          {t('dashboard.chatWidgetPage.pageDescription')}
         </p>
       </div>
 
@@ -547,8 +543,8 @@ export default function ChatWidgetPage() {
             >
               {showEmbedCode ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
               {showEmbedCode
-                ? (locale === 'tr' ? 'Daralt' : 'Collapse')
-                : (locale === 'tr' ? 'Tümünü Göster' : 'Show All')}
+                ? t('dashboard.chatWidgetPage.collapse')
+                : t('dashboard.chatWidgetPage.showAll')}
             </button>
             <p className="text-xs text-gray-500 mt-2">
               {t('dashboard.chatWidgetPage.embedCodeInstructions')}
@@ -590,15 +586,15 @@ export default function ChatWidgetPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-primary-600">{chatStats.totalMessages}</p>
-                <p className="text-xs text-gray-600 dark:text-gray-400">{t('dashboard.chatWidgetPage.totalMessages') || 'Toplam Mesaj'}</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400">{t('dashboard.chatWidgetPage.totalMessages')}</p>
               </div>
               <div>
                 <p className="text-2xl font-bold text-primary-600">{chatStats.avgMessagesPerChat}</p>
-                <p className="text-xs text-gray-600 dark:text-gray-400">{t('dashboard.chatWidgetPage.avgMessages') || 'Ort. Mesaj/Sohbet'}</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400">{t('dashboard.chatWidgetPage.avgMessages')}</p>
               </div>
               <div>
                 <p className="text-2xl font-bold text-primary-600">{chatStats.activeChats || 0}</p>
-                <p className="text-xs text-gray-600 dark:text-gray-400">{t('dashboard.chatWidgetPage.activeChats') || 'Aktif Sohbet'}</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400">{t('dashboard.chatWidgetPage.activeChats')}</p>
               </div>
             </div>
           </Card>

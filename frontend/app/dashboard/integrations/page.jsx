@@ -116,7 +116,6 @@ const INTEGRATION_DOCS = {
 
 export default function IntegrationsPage() {
   const { t, locale } = useLanguage();
-  const language = locale; // alias for backward compatibility
   const { can, user } = usePermissions();
 
   // React Query hooks
@@ -193,23 +192,19 @@ export default function IntegrationsPage() {
       const error = params.get('error');
 
       if (shopifyResult === 'success') {
-        toast.success(language === 'tr'
-          ? `Shopify bağlandı${shopName ? `: ${shopName}` : ''}!`
-          : `Shopify connected successfully${shopName ? `: ${shopName}` : ''}!`);
+        toast.success(`${t('dashboard.integrationsPage.shopifyConnectedSuccess')}${shopName ? `: ${shopName}` : ''}!`);
         window.history.replaceState({}, '', window.location.pathname);
       } else if (shopifyResult === 'error') {
-        toast.error(language === 'tr'
-          ? `Shopify bağlantısı başarısız${errorMessage ? `: ${decodeURIComponent(errorMessage)}` : ''}`
-          : `Failed to connect Shopify${errorMessage ? `: ${decodeURIComponent(errorMessage)}` : ''}`);
+        toast.error(`${t('dashboard.integrationsPage.shopifyConnectFailed')}${errorMessage ? `: ${decodeURIComponent(errorMessage)}` : ''}`);
         window.history.replaceState({}, '', window.location.pathname);
       }
 
       // Google Calendar callback
       if (success === 'google-calendar') {
-        toast.success(language === 'tr' ? 'Google Calendar bağlantısı başarılı!' : 'Google Calendar connected successfully!');
+        toast.success(t('dashboard.integrationsPage.googleCalendarConnectedSuccess'));
         window.history.replaceState({}, '', window.location.pathname);
       } else if (error === 'google-calendar') {
-        toast.error(language === 'tr' ? 'Google Calendar bağlantısı başarısız oldu' : 'Failed to connect Google Calendar');
+        toast.error(t('dashboard.integrationsPage.googleCalendarConnectFailed'));
         window.history.replaceState({}, '', window.location.pathname);
       }
     }
@@ -222,7 +217,7 @@ export default function IntegrationsPage() {
       const response = await apiClient.get('/api/email/gmail/auth');
       window.location.href = response.data.authUrl;
     } catch (error) {
-      toast.error(error.response?.data?.error || (language === 'tr' ? 'Gmail bağlantısı başarısız' : 'Failed to connect Gmail'));
+      toast.error(error.response?.data?.error || t('dashboard.integrationsPage.gmailConnectFailed'));
       setEmailLoading(false);
     }
   };
@@ -233,19 +228,19 @@ export default function IntegrationsPage() {
       const response = await apiClient.get('/api/email/outlook/auth');
       window.location.href = response.data.authUrl;
     } catch (error) {
-      toast.error(error.response?.data?.error || (language === 'tr' ? 'Outlook bağlantısı başarısız' : 'Failed to connect Outlook'));
+      toast.error(error.response?.data?.error || t('dashboard.integrationsPage.outlookConnectFailed'));
       setEmailLoading(false);
     }
   };
 
   const handleEmailDisconnect = async () => {
-    if (!confirm(language === 'tr' ? 'E-posta bağlantısını kesmek istediğinize emin misiniz?' : 'Are you sure you want to disconnect your email?')) return;
+    if (!confirm(t('dashboard.integrationsPage.confirmDisconnectEmail'))) return;
     try {
       setEmailLoading(true);
       await disconnectEmail.mutateAsync();
-      toast.success(language === 'tr' ? 'E-posta bağlantısı kesildi' : 'Email disconnected successfully');
+      toast.success(t('dashboard.integrationsPage.emailDisconnected'));
     } catch (error) {
-      toast.error(language === 'tr' ? 'E-posta bağlantısı kesilemedi' : 'Failed to disconnect email');
+      toast.error(t('dashboard.integrationsPage.emailDisconnectFailed'));
     } finally {
       setEmailLoading(false);
     }
@@ -253,64 +248,64 @@ export default function IntegrationsPage() {
 
   const handleWhatsAppConnect = async () => {
     if (!whatsappForm.accessToken || !whatsappForm.phoneNumberId || !whatsappForm.verifyToken) {
-      toast.error(language === 'tr' ? 'Lütfen tüm alanları doldurun' : 'Please fill in all fields');
+      toast.error(t('dashboard.integrationsPage.fillAllFields'));
       return;
     }
     setWhatsappLoading(true);
     try {
       const response = await connectWhatsApp.mutateAsync(whatsappForm);
       if (response.data.success) {
-        toast.success(language === 'tr' ? 'WhatsApp bağlandı!' : 'WhatsApp connected successfully!');
+        toast.success(t('dashboard.integrationsPage.whatsappConnected'));
         setWhatsappModalOpen(false);
         setWhatsappForm({ accessToken: '', phoneNumberId: '', verifyToken: '' });
       }
     } catch (error) {
-      toast.error(error.response?.data?.error || (language === 'tr' ? 'WhatsApp bağlantısı başarısız' : 'Failed to connect WhatsApp'));
+      toast.error(error.response?.data?.error || t('dashboard.integrationsPage.whatsappConnectFailed'));
     } finally {
       setWhatsappLoading(false);
     }
   };
 
   const handleWhatsAppDisconnect = async () => {
-    if (!confirm(language === 'tr' ? 'WhatsApp bağlantısını kesmek istediğinize emin misiniz?' : 'Are you sure you want to disconnect WhatsApp?')) return;
+    if (!confirm(t('dashboard.integrationsPage.confirmDisconnectWhatsApp'))) return;
     try {
       await disconnectWhatsApp.mutateAsync();
-      toast.success(language === 'tr' ? 'WhatsApp bağlantısı kesildi' : 'WhatsApp disconnected');
-    } catch (error) { toast.error(language === 'tr' ? 'Bağlantı kesilemedi' : 'Failed to disconnect'); }
+      toast.success(t('dashboard.integrationsPage.whatsappDisconnected'));
+    } catch (error) { toast.error(t('dashboard.integrationsPage.disconnectFailed')); }
   };
 
 
   const handleIyzicoConnect = async () => {
     if (!iyzicoForm.apiKey || !iyzicoForm.secretKey) {
-      toast.error(language === 'tr' ? 'API Key ve Secret Key alanlarını doldurun' : 'Please fill in API Key and Secret Key');
+      toast.error(t('dashboard.integrationsPage.fillApiAndSecret'));
       return;
     }
     setIyzicoLoading(true);
     try {
       const response = await connectIyzico.mutateAsync(iyzicoForm);
       if (response.data.success) {
-        toast.success(language === 'tr' ? 'iyzico bağlandı!' : 'iyzico connected!');
+        toast.success(t('dashboard.integrationsPage.iyzicoConnected'));
         setIyzicoModalOpen(false);
         setIyzicoForm({ apiKey: '', secretKey: '', environment: 'sandbox' });
       }
     } catch (error) {
-      toast.error(error.response?.data?.error || (language === 'tr' ? 'iyzico bağlantısı başarısız' : 'Failed to connect iyzico'));
+      toast.error(error.response?.data?.error || t('dashboard.integrationsPage.iyzicoConnectFailed'));
     } finally {
       setIyzicoLoading(false);
     }
   };
 
   const handleIyzicoDisconnect = async () => {
-    if (!confirm(language === 'tr' ? 'iyzico bağlantısını kesmek istiyor musunuz?' : 'Disconnect iyzico?')) return;
+    if (!confirm(t('dashboard.integrationsPage.confirmDisconnectIyzico'))) return;
     try {
       await disconnectIyzico.mutateAsync();
-      toast.success(language === 'tr' ? 'iyzico bağlantısı kesildi' : 'iyzico disconnected');
-    } catch (error) { toast.error(language === 'tr' ? 'Bağlantı kesilemedi' : 'Failed to disconnect'); }
+      toast.success(t('dashboard.integrationsPage.iyzicoDisconnected'));
+    } catch (error) { toast.error(t('dashboard.integrationsPage.disconnectFailed')); }
   };
 
 const handleShopifyConnect = async () => {
   if (!shopifyForm.shopUrl) {
-    toast.error(language === 'tr' ? 'Mağaza URL\'sini girin' : 'Please enter your shop URL');
+    toast.error(t('dashboard.integrationsPage.enterShopUrl'));
     return;
   }
 
@@ -330,21 +325,21 @@ const handleShopifyConnect = async () => {
     if (response.data.authUrl) {
       window.location.href = response.data.authUrl;
     } else {
-      toast.error(response.data.error || (language === 'tr' ? 'OAuth başlatılamadı' : 'Failed to start OAuth'));
+      toast.error(response.data.error || t('dashboard.integrationsPage.oauthStartFailed'));
     }
   } catch (error) {
-    toast.error(error.response?.data?.error || (language === 'tr' ? 'Bağlantı başarısız' : 'Failed to connect'));
+    toast.error(error.response?.data?.error || t('dashboard.integrationsPage.connectFailed'));
   } finally {
     setShopifyLoading(false);
   }
 };
 
   const handleShopifyDisconnect = async () => {
-    if (!confirm(language === 'tr' ? 'Shopify bağlantısını kesmek istiyor musunuz?' : 'Disconnect Shopify?')) return;
+    if (!confirm(t('dashboard.integrationsPage.confirmDisconnectShopify'))) return;
     try {
       await disconnectShopify.mutateAsync();
-      toast.success(language === 'tr' ? 'Shopify bağlantısı kesildi' : 'Shopify disconnected');
-    } catch (error) { toast.error(language === 'tr' ? 'Bağlantı kesilemedi' : 'Failed to disconnect'); }
+      toast.success(t('dashboard.integrationsPage.shopifyDisconnected'));
+    } catch (error) { toast.error(t('dashboard.integrationsPage.disconnectFailed')); }
   };
 
   // WooCommerce handlers removed - platform no longer supported
@@ -354,33 +349,33 @@ const handleShopifyConnect = async () => {
     try {
       const response = await setupWebhook.mutateAsync();
       if (response.data.success) {
-        toast.success(language === 'tr' ? 'Webhook aktifleştirildi!' : 'Webhook activated!');
+        toast.success(t('dashboard.integrationsPage.webhookActivated'));
       }
     } catch (error) {
-      toast.error(error.response?.data?.error || (language === 'tr' ? 'Webhook kurulumu başarısız' : 'Failed to setup webhook'));
+      toast.error(error.response?.data?.error || t('dashboard.integrationsPage.webhookSetupFailed'));
     } finally {
       setWebhookLoading(false);
     }
   };
 
   const handleWebhookDisable = async () => {
-    if (!confirm(language === 'tr' ? 'Webhook\'u devre dışı bırakmak istiyor musunuz?' : 'Disable webhook?')) return;
+    if (!confirm(t('dashboard.integrationsPage.confirmDisableWebhook'))) return;
     try {
       await disableWebhook.mutateAsync();
-      toast.success(language === 'tr' ? 'Webhook devre dışı bırakıldı' : 'Webhook disabled');
-    } catch (error) { toast.error(language === 'tr' ? 'Devre dışı bırakılamadı' : 'Failed to disable'); }
+      toast.success(t('dashboard.integrationsPage.webhookDisabled'));
+    } catch (error) { toast.error(t('dashboard.integrationsPage.disableFailed')); }
   };
 
   const handleWebhookRegenerate = async () => {
-    if (!confirm(language === 'tr' ? 'Webhook URL yenilensin mi? Mevcut URL geçersiz olacak.' : 'Regenerate webhook URL? Current URL will be invalidated.')) return;
+    if (!confirm(t('dashboard.integrationsPage.confirmRegenerateWebhook'))) return;
     setWebhookLoading(true);
     try {
       const response = await regenerateWebhook.mutateAsync();
       if (response.data.success) {
-        toast.success(language === 'tr' ? 'Webhook URL yenilendi!' : 'Webhook URL regenerated!');
+        toast.success(t('dashboard.integrationsPage.webhookRegenerated'));
       }
     } catch (error) {
-      toast.error(language === 'tr' ? 'Yenileme başarısız' : 'Failed to regenerate');
+      toast.error(t('dashboard.integrationsPage.regenerateFailed'));
     } finally {
       setWebhookLoading(false);
     }
@@ -389,7 +384,7 @@ const handleShopifyConnect = async () => {
   const copyToClipboard = (text, field) => {
     navigator.clipboard.writeText(text);
     setCopiedField(field);
-    toast.success(language === 'tr' ? 'Kopyalandı!' : 'Copied!');
+    toast.success(t('dashboard.integrationsPage.copied'));
     setTimeout(() => setCopiedField(null), 2000);
   };
 
@@ -398,25 +393,25 @@ const handleShopifyConnect = async () => {
     // Always use production URL, ignore old database values
     const webhookUrl = `${backendUrl}/api/whatsapp/webhook`;
     navigator.clipboard.writeText(webhookUrl);
-    toast.success(language === 'tr' ? 'Webhook URL kopyalandı!' : 'Webhook URL copied!');
+    toast.success(t('dashboard.integrationsPage.webhookUrlCopied'));
   };
 
   // ikas handlers
   const handleIkasConnect = async () => {
     if (!ikasForm.storeName || !ikasForm.clientId || !ikasForm.clientSecret) {
-      toast.error(language === 'tr' ? 'Lütfen tüm alanları doldurun' : 'Please fill in all fields');
+      toast.error(t('dashboard.integrationsPage.fillAllFields'));
       return;
     }
     setIkasLoading(true);
     try {
       const response = await connectIkas.mutateAsync(ikasForm);
       if (response.data.success) {
-        toast.success(language === 'tr' ? 'ikas bağlandı!' : 'ikas connected!');
+        toast.success(t('dashboard.integrationsPage.ikasConnected'));
         setIkasModalOpen(false);
         setIkasForm({ storeName: '', clientId: '', clientSecret: '' });
       }
     } catch (error) {
-      toast.error(error.response?.data?.error || (language === 'tr' ? 'Bağlantı başarısız' : 'Failed to connect'));
+      toast.error(error.response?.data?.error || t('dashboard.integrationsPage.connectFailed'));
     } finally {
       setIkasLoading(false);
     }
@@ -442,14 +437,14 @@ const handleShopifyConnect = async () => {
         return;
       }
       if (integration.type === 'IKAS') { setIkasModalOpen(true); return; }
-      toast.info(language === 'tr' ? `${integration.name} yakında!` : `${integration.name} coming soon!`);
+      toast.info(`${integration.name} ${t('dashboard.integrationsPage.comingSoonIntegration')}`);
     } catch (error) {
-      toast.error(language === 'tr' ? 'Bağlantı başarısız' : 'Failed to connect');
+      toast.error(t('dashboard.integrationsPage.connectFailed'));
     }
   };
 
   const handleDisconnect = async (integration) => {
-  if (!confirm(language === 'tr' ? 'Bu entegrasyonun bağlantısını kesmek istiyor musunuz?' : 'Disconnect this integration?')) return;
+  if (!confirm(t('dashboard.integrationsPage.confirmDisconnectIntegration'))) return;
   try {
     if (integration.type === 'WHATSAPP') await handleWhatsAppDisconnect();
     else if (integration.type === 'IYZICO') await handleIyzicoDisconnect();
@@ -457,14 +452,14 @@ const handleShopifyConnect = async () => {
     else if (integration.type === 'ZAPIER') await handleWebhookDisable();
     else if (integration.type === 'GOOGLE_CALENDAR') {
       await disconnectGoogleCalendar.mutateAsync();
-      toast.success(language === 'tr' ? 'Google Calendar bağlantısı kesildi' : 'Google Calendar disconnected');
+      toast.success(t('dashboard.integrationsPage.googleCalendarDisconnected'));
     }
     else if (integration.type === 'IKAS') {
       await disconnectIkas.mutateAsync();
-      toast.success(language === 'tr' ? 'ikas bağlantısı kesildi' : 'ikas disconnected');
+      toast.success(t('dashboard.integrationsPage.ikasDisconnected'));
     }
   } catch (error) {
-    toast.error(language === 'tr' ? 'Bağlantı kesilemedi' : 'Failed to disconnect');
+    toast.error(t('dashboard.integrationsPage.disconnectFailed'));
   }
 };
 
@@ -472,19 +467,19 @@ const handleShopifyConnect = async () => {
   try {
     if (integration.type === 'GOOGLE_CALENDAR') {
       const response = await testGoogleCalendar.mutateAsync();
-      if (response.data.success) toast.success(language === 'tr' ? 'Google Calendar bağlantısı aktif!' : 'Google Calendar connection is active!');
-      else toast.error(language === 'tr' ? 'Test başarısız' : 'Test failed');
+      if (response.data.success) toast.success(t('dashboard.integrationsPage.googleCalendarActive'));
+      else toast.error(t('dashboard.integrationsPage.testFailed'));
       return;
     }
     if (integration.type === 'IKAS') {
       const response = await testIkas.mutateAsync();
-      if (response.data.success) toast.success(language === 'tr' ? 'ikas bağlantısı aktif!' : 'ikas connection is active!');
-      else toast.error(language === 'tr' ? 'Test başarısız' : 'Test failed');
+      if (response.data.success) toast.success(t('dashboard.integrationsPage.ikasActive'));
+      else toast.error(t('dashboard.integrationsPage.testFailed'));
       return;
     }
-    toast.info(language === 'tr' ? 'Bu entegrasyon için test mevcut değil' : 'Test not available for this integration');
+    toast.info(t('dashboard.integrationsPage.testNotAvailable'));
   } catch (error) {
-    toast.error(language === 'tr' ? 'Test başarısız' : 'Test failed');
+    toast.error(t('dashboard.integrationsPage.testFailed'));
   }
 };
 
@@ -506,7 +501,7 @@ const handleShopifyConnect = async () => {
     const descriptions = {
       GOOGLE_CALENDAR: t('dashboard.integrationsPage.syncAppointments'),
       WHATSAPP: t('dashboard.integrationsPage.whatsappConversations'),
-      NETGSM_SMS: language === 'tr' ? 'SMS ile müşterilerinize ulaşın' : 'Reach your customers via SMS',
+      NETGSM_SMS: t('dashboard.integrationsPage.netgsmDesc'),
       SHOPIFY: t('dashboard.integrationsPage.shopifyConnect'),
       WOOCOMMERCE: t('dashboard.integrationsPage.woocommerceConnect'),
       IYZICO: t('dashboard.integrationsPage.iyzicoConnect'),
@@ -553,19 +548,19 @@ const handleShopifyConnect = async () => {
   const INTEGRATION_CATEGORIES = [
     {
       id: 'ecommerce',
-      title: locale === 'tr' ? 'E-ticaret' : 'E-commerce',
+      title: t('dashboard.integrationsPage.categoryEcommerce'),
       icon: ShoppingCart,
       types: ['SHOPIFY', 'IKAS']
     },
     {
       id: 'calendar',
-      title: locale === 'tr' ? 'Takvim' : 'Calendar',
+      title: t('dashboard.integrationsPage.categoryCalendar'),
       icon: CalendarDays,
       types: ['GOOGLE_CALENDAR']
     },
     {
       id: 'messaging',
-      title: locale === 'tr' ? 'Mesajlaşma' : 'Messaging',
+      title: t('dashboard.integrationsPage.categoryMessaging'),
       icon: Smartphone,
       types: ['WHATSAPP']
     },
@@ -577,7 +572,7 @@ const handleShopifyConnect = async () => {
     },
     {
       id: 'email',
-      title: locale === 'tr' ? 'E-posta' : 'Email',
+      title: t('dashboard.integrationsPage.categoryEmail'),
       icon: Mail,
       types: ['EMAIL']
     }
@@ -633,7 +628,7 @@ const handleShopifyConnect = async () => {
           </div>
           {integration.connected && (
             <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-xs">
-              {language === 'tr' ? 'Bağlı' : 'Connected'}
+              {t('dashboard.integrationsPage.connected')}
             </Badge>
           )}
         </div>
@@ -641,7 +636,7 @@ const handleShopifyConnect = async () => {
         {isLocked && (
           <div className="mb-3 px-2 py-1 bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400 text-xs rounded-md inline-flex items-center gap-1">
             <Lock className="h-3 w-3" />
-            {language === 'tr' ? 'Bu entegrasyon Pro planında kullanılabilir' : 'This integration requires Pro plan'}
+            {t('dashboard.integrationsPage.requiresProPlan')}
           </div>
         )}
 
@@ -656,7 +651,7 @@ const handleShopifyConnect = async () => {
               onClick={() => handleLockedIntegrationClick(integration, featureInfo.feature)}
             >
               <Lock className="h-4 w-4 mr-2" />
-              {language === 'tr' ? 'Kilidi Aç' : 'Unlock'}
+              {t('dashboard.integrationsPage.unlock')}
             </Button>
           ) : integration.connected ? (
             <>
@@ -713,7 +708,7 @@ const handleShopifyConnect = async () => {
                   <div>
                     <div className="flex items-center gap-2">
                       <h3 className={`font-semibold ${isCRMLocked ? 'text-neutral-500 dark:text-neutral-400' : 'text-neutral-900 dark:text-white'}`}>
-                        {language === 'tr' ? 'Özel CRM/ERP Webhook' : 'Custom CRM/ERP Webhook'}
+                        {t('dashboard.integrationsPage.customCrmWebhook')}
                       </h3>
                       {isCRMLocked && (
                         <Badge variant="secondary" className="bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400 text-xs">
@@ -726,7 +721,7 @@ const handleShopifyConnect = async () => {
                 </div>
                 {isCrmConnected && (
                   <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-xs">
-                    {language === 'tr' ? 'Bağlı' : 'Connected'}
+                    {t('dashboard.integrationsPage.connected')}
                   </Badge>
                 )}
               </div>
@@ -734,12 +729,12 @@ const handleShopifyConnect = async () => {
               {isCRMLocked && (
                 <div className="mb-4 px-2 py-1 bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400 text-xs rounded-md inline-flex items-center gap-1">
                   <Lock className="h-3 w-3" />
-                  {language === 'tr' ? 'Bu entegrasyon Pro planında kullanılabilir' : 'This integration requires Pro plan'}
+                  {t('dashboard.integrationsPage.requiresProPlan')}
                 </div>
               )}
 
               <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">
-                {language === 'tr' ? 'Kendi sisteminizden veri gönderin' : 'Send data from your own system'}
+                {t('dashboard.integrationsPage.sendDataFromSystem')}
               </p>
 
               {isCRMLocked ? (
@@ -753,7 +748,7 @@ const handleShopifyConnect = async () => {
                   }}
                 >
                   <Lock className="h-4 w-4 mr-2" />
-                  {language === 'tr' ? 'Kilidi Aç' : 'Unlock'}
+                  {t('dashboard.integrationsPage.unlock')}
                 </Button>
               ) : (
               <Button
@@ -761,7 +756,7 @@ const handleShopifyConnect = async () => {
                 className="w-full"
                 onClick={() => window.location.href = '/dashboard/integrations/custom-crm'}
               >
-                {language === 'tr' ? 'Yönet' : 'Manage'}
+                {t('dashboard.integrationsPage.manage')}
               </Button>
               )}
             </div>
@@ -779,7 +774,7 @@ const handleShopifyConnect = async () => {
               </div>
               {emailStatus?.connected && emailStatus?.provider === 'GMAIL' && (
                 <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-xs">
-                  {language === 'tr' ? 'Bağlı' : 'Connected'}
+                  {t('dashboard.integrationsPage.connected')}
                 </Badge>
               )}
             </div>
@@ -813,7 +808,7 @@ const handleShopifyConnect = async () => {
               </div>
               {emailStatus?.connected && emailStatus?.provider === 'OUTLOOK' && (
                 <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-xs">
-                  {language === 'tr' ? 'Bağlı' : 'Connected'}
+                  {t('dashboard.integrationsPage.connected')}
                 </Badge>
               )}
             </div>
@@ -845,23 +840,23 @@ const handleShopifyConnect = async () => {
       <Dialog open={whatsappModalOpen} onOpenChange={setWhatsappModalOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>{language === 'tr' ? 'WhatsApp Business API Bağlantısı' : 'Connect WhatsApp Business API'}</DialogTitle>
-            <DialogDescription>{language === 'tr' ? 'WhatsApp Business API\'nizi bağlayarak AI destekli konuşmaları etkinleştirin.' : 'Connect your WhatsApp Business API to enable AI-powered conversations.'}</DialogDescription>
+            <DialogTitle>{t('dashboard.integrationsPage.whatsappModalTitle')}</DialogTitle>
+            <DialogDescription>{t('dashboard.integrationsPage.whatsappModalDesc')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>{language === 'tr' ? 'Erişim Tokeni *' : 'Access Token *'}</Label>
-              <Input type="password" placeholder={language === 'tr' ? 'WhatsApp erişim tokeninizi girin' : 'Enter your WhatsApp access token'} value={whatsappForm.accessToken} onChange={(e) => setWhatsappForm({ ...whatsappForm, accessToken: e.target.value })} />
+              <Label>{t('dashboard.integrationsPage.accessToken')}</Label>
+              <Input type="password" placeholder={t('dashboard.integrationsPage.accessTokenPlaceholder')} value={whatsappForm.accessToken} onChange={(e) => setWhatsappForm({ ...whatsappForm, accessToken: e.target.value })} />
             </div>
             <div className="space-y-2">
-              <Label>{language === 'tr' ? 'Telefon Numarası ID *' : 'Phone Number ID *'}</Label>
-              <Input type="text" placeholder={language === 'tr' ? 'Telefon numarası ID\'nizi girin' : 'Enter your phone number ID'} value={whatsappForm.phoneNumberId} onChange={(e) => setWhatsappForm({ ...whatsappForm, phoneNumberId: e.target.value })} />
+              <Label>{t('dashboard.integrationsPage.phoneNumberId')}</Label>
+              <Input type="text" placeholder={t('dashboard.integrationsPage.phoneNumberIdPlaceholder')} value={whatsappForm.phoneNumberId} onChange={(e) => setWhatsappForm({ ...whatsappForm, phoneNumberId: e.target.value })} />
             </div>
             <div className="space-y-2">
-              <Label>{language === 'tr' ? 'Doğrulama Tokeni *' : 'Verify Token *'}</Label>
-              <Input type="text" placeholder={language === 'tr' ? 'Örn: my-secret-token-123' : 'e.g. my-secret-token-123'} value={whatsappForm.verifyToken} onChange={(e) => setWhatsappForm({ ...whatsappForm, verifyToken: e.target.value })} />
+              <Label>{t('dashboard.integrationsPage.verifyToken')}</Label>
+              <Input type="text" placeholder={t('dashboard.integrationsPage.verifyTokenPlaceholder')} value={whatsappForm.verifyToken} onChange={(e) => setWhatsappForm({ ...whatsappForm, verifyToken: e.target.value })} />
               <p className="text-xs text-neutral-500">
-                {language === 'tr' ? 'Kendiniz güvenli bir token oluşturun ve aynısını Meta Developer Console\'da da kullanın' : 'Create a secure token and use the same in Meta Developer Console'}
+                {t('dashboard.integrationsPage.verifyTokenHint')}
               </p>
             </div>
             <div className="space-y-2">
@@ -871,13 +866,13 @@ const handleShopifyConnect = async () => {
                 <Button type="button" variant="outline" size="icon" onClick={copyWebhookUrl}><Copy className="h-4 w-4" /></Button>
               </div>
               <p className="text-xs text-neutral-500">
-                {language === 'tr' ? 'Bu URL\'i Meta Developer Console\'da Webhook ayarlarına yapıştırın' : 'Paste this URL in Meta Developer Console Webhook settings'}
+                {t('dashboard.integrationsPage.webhookUrlPasteHint')}
               </p>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setWhatsappModalOpen(false)} disabled={whatsappLoading}>{language === 'tr' ? 'İptal' : 'Cancel'}</Button>
-            <Button onClick={handleWhatsAppConnect} disabled={whatsappLoading}>{whatsappLoading ? (language === 'tr' ? 'Bağlanıyor...' : 'Connecting...') : (language === 'tr' ? 'WhatsApp\'ı Bağla' : 'Connect WhatsApp')}</Button>
+            <Button variant="outline" onClick={() => setWhatsappModalOpen(false)} disabled={whatsappLoading}>{t('common.cancel')}</Button>
+            <Button onClick={handleWhatsAppConnect} disabled={whatsappLoading}>{whatsappLoading ? t('dashboard.integrationsPage.connectingText') : t('dashboard.integrationsPage.connectWhatsApp')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -886,34 +881,34 @@ const handleShopifyConnect = async () => {
       <Dialog open={iyzicoModalOpen} onOpenChange={setIyzicoModalOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Connect iyzico Payment Gateway</DialogTitle>
-            <DialogDescription>Connect your iyzico account for payment and refund tracking.</DialogDescription>
+            <DialogTitle>{t('dashboard.integrationsPage.iyzicoModalTitle')}</DialogTitle>
+            <DialogDescription>{t('dashboard.integrationsPage.iyzicoModalDesc')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>API Key *</Label>
-              <Input type="text" placeholder="Enter your iyzico API Key" value={iyzicoForm.apiKey} onChange={(e) => setIyzicoForm({ ...iyzicoForm, apiKey: e.target.value })} />
+              <Label>{t('dashboard.integrationsPage.apiKeyLabel')}</Label>
+              <Input type="text" placeholder={t('dashboard.integrationsPage.apiKeyPlaceholder')} value={iyzicoForm.apiKey} onChange={(e) => setIyzicoForm({ ...iyzicoForm, apiKey: e.target.value })} />
             </div>
             <div className="space-y-2">
-              <Label>Secret Key *</Label>
+              <Label>{t('dashboard.integrationsPage.secretKeyLabel')}</Label>
               <div className="relative">
-                <Input type={showIyzicoSecret ? 'text' : 'password'} placeholder="Enter your iyzico Secret Key" value={iyzicoForm.secretKey} onChange={(e) => setIyzicoForm({ ...iyzicoForm, secretKey: e.target.value })} className="pr-10" />
+                <Input type={showIyzicoSecret ? 'text' : 'password'} placeholder={t('dashboard.integrationsPage.secretKeyPlaceholder')} value={iyzicoForm.secretKey} onChange={(e) => setIyzicoForm({ ...iyzicoForm, secretKey: e.target.value })} className="pr-10" />
                 <button type="button" onClick={() => setShowIyzicoSecret(!showIyzicoSecret)} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500">
                   {showIyzicoSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Environment *</Label>
+              <Label>{t('dashboard.integrationsPage.environmentLabel')}</Label>
               <select className="w-full px-3 py-2 border border-neutral-300 rounded-md text-sm" value={iyzicoForm.environment} onChange={(e) => setIyzicoForm({ ...iyzicoForm, environment: e.target.value })}>
-                <option value="sandbox">Sandbox (Testing)</option>
-                <option value="production">Production (Live)</option>
+                <option value="sandbox">{t('dashboard.integrationsPage.sandboxTesting')}</option>
+                <option value="production">{t('dashboard.integrationsPage.productionLive')}</option>
               </select>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIyzicoModalOpen(false)} disabled={iyzicoLoading}>Cancel</Button>
-            <Button onClick={handleIyzicoConnect} disabled={iyzicoLoading}>{iyzicoLoading ? 'Connecting...' : 'Connect iyzico'}</Button>
+            <Button variant="outline" onClick={() => setIyzicoModalOpen(false)} disabled={iyzicoLoading}>{t('common.cancel')}</Button>
+            <Button onClick={handleIyzicoConnect} disabled={iyzicoLoading}>{iyzicoLoading ? t('dashboard.integrationsPage.connectingText') : t('dashboard.integrationsPage.connectIyzico')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -924,49 +919,49 @@ const handleShopifyConnect = async () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ShoppingCart className="h-5 w-5 text-green-600" />
-              Connect Shopify Store
+              {t('dashboard.integrationsPage.shopifyModalTitle')}
             </DialogTitle>
-            <DialogDescription>Connect your Shopify store with one click using OAuth.</DialogDescription>
+            <DialogDescription>{t('dashboard.integrationsPage.shopifyModalDesc')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Shop URL *</Label>
+              <Label>{t('dashboard.integrationsPage.shopUrlLabel')}</Label>
               <div className="flex gap-2">
                 <Input
                   type="text"
-                  placeholder="mystore"
+                  placeholder={t('dashboard.integrationsPage.shopUrlPlaceholder')}
                   value={shopifyForm.shopUrl}
                   onChange={(e) => setShopifyForm({ ...shopifyForm, shopUrl: e.target.value })}
                   className="flex-1"
                 />
                 <span className="flex items-center text-sm text-neutral-500">.myshopify.com</span>
               </div>
-              <p className="text-xs text-neutral-500">Enter your Shopify store name (the part before .myshopify.com)</p>
+              <p className="text-xs text-neutral-500">{t('dashboard.integrationsPage.shopUrlHint')}</p>
             </div>
 
             {shopifyStatus?.connected && (
               <div className="flex items-center gap-2 p-3 bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg">
                 <CheckCircle2 className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
-                <p className="text-sm font-medium text-neutral-900 dark:text-white">Connected: {shopifyStatus.shopName || shopifyStatus.shopDomain}</p>
+                <p className="text-sm font-medium text-neutral-900 dark:text-white">{t('dashboard.integrationsPage.connectedLabel')}: {shopifyStatus.shopName || shopifyStatus.shopDomain}</p>
               </div>
             )}
 
             <div className="bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg p-4">
-              <h4 className="text-sm font-medium text-neutral-900 dark:text-white mb-2">How it works:</h4>
+              <h4 className="text-sm font-medium text-neutral-900 dark:text-white mb-2">{t('dashboard.integrationsPage.howItWorks')}</h4>
               <ol className="text-sm text-neutral-700 dark:text-neutral-300 space-y-1 list-decimal list-inside">
-                <li>Enter your store name and click Connect</li>
-                <li>You'll be redirected to Shopify to authorize</li>
-                <li>After approving, you'll return here automatically</li>
+                <li>{t('dashboard.integrationsPage.shopifyStep1')}</li>
+                <li>{t('dashboard.integrationsPage.shopifyStep2')}</li>
+                <li>{t('dashboard.integrationsPage.shopifyStep3')}</li>
               </ol>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShopifyModalOpen(false)} disabled={shopifyLoading}>Cancel</Button>
+            <Button variant="outline" onClick={() => setShopifyModalOpen(false)} disabled={shopifyLoading}>{t('common.cancel')}</Button>
             <Button onClick={handleShopifyConnect} disabled={shopifyLoading || !shopifyForm.shopUrl}>
               {shopifyLoading ? (
-                <><RefreshCw className="h-4 w-4 mr-2 animate-spin" />Connecting...</>
+                <><RefreshCw className="h-4 w-4 mr-2 animate-spin" />{t('dashboard.integrationsPage.connectingText')}</>
               ) : (
-                <><ExternalLink className="h-4 w-4 mr-2" />Connect with Shopify</>
+                <><ExternalLink className="h-4 w-4 mr-2" />{t('dashboard.integrationsPage.connectWithShopify')}</>
               )}
             </Button>
           </DialogFooter>
@@ -979,14 +974,14 @@ const handleShopifyConnect = async () => {
       <Dialog open={webhookModalOpen} onOpenChange={setWebhookModalOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Zapier / Webhook Integration</DialogTitle>
-            <DialogDescription>Connect any system via webhook. Use with Zapier, Make.com, or custom integrations.</DialogDescription>
+            <DialogTitle>{t('dashboard.integrationsPage.webhookModalTitle')}</DialogTitle>
+            <DialogDescription>{t('dashboard.integrationsPage.webhookModalDesc')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             {webhookStatus?.configured ? (
               <>
                 <div className="space-y-2">
-                  <Label>Your Webhook URL</Label>
+                  <Label>{t('dashboard.integrationsPage.yourWebhookUrl')}</Label>
                   <div className="flex gap-2">
                     <Input type="text" readOnly value={webhookStatus.webhookUrl || ''} className="bg-neutral-50 font-mono text-sm" />
                     <Button type="button" variant="outline" size="icon" onClick={() => copyToClipboard(webhookStatus.webhookUrl, 'url')}>
@@ -996,20 +991,20 @@ const handleShopifyConnect = async () => {
                 </div>
                 <div className="flex gap-2">
                   <Button variant="outline" onClick={handleWebhookRegenerate} disabled={webhookLoading} className="flex-1">
-                    {webhookLoading ? 'Regenerating...' : 'Regenerate URL'}
+                    {webhookLoading ? t('dashboard.integrationsPage.regeneratingUrl') : t('dashboard.integrationsPage.regenerateUrl')}
                   </Button>
-                  <Button variant="destructive" onClick={handleWebhookDisable} disabled={webhookLoading} className="flex-1">Disable Webhook</Button>
+                  <Button variant="destructive" onClick={handleWebhookDisable} disabled={webhookLoading} className="flex-1">{t('dashboard.integrationsPage.disableWebhook')}</Button>
                 </div>
               </>
             ) : (
               <div className="text-center py-8">
-                <p className="text-neutral-600 mb-4">Click to get your unique webhook URL</p>
-                <Button onClick={handleWebhookSetup} disabled={webhookLoading}>{webhookLoading ? 'Activating...' : 'Activate Webhook'}</Button>
+                <p className="text-neutral-600 mb-4">{t('dashboard.integrationsPage.clickToGetWebhookUrl')}</p>
+                <Button onClick={handleWebhookSetup} disabled={webhookLoading}>{webhookLoading ? t('dashboard.integrationsPage.activatingWebhook') : t('dashboard.integrationsPage.activateWebhook')}</Button>
               </div>
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setWebhookModalOpen(false)}>Close</Button>
+            <Button variant="outline" onClick={() => setWebhookModalOpen(false)}>{t('common.close')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1020,39 +1015,39 @@ const handleShopifyConnect = async () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ShoppingCart className="h-5 w-5 text-orange-600" />
-              ikas Mağaza Bağlantısı
+              {t('dashboard.integrationsPage.ikasModalTitle')}
             </DialogTitle>
-            <DialogDescription>ikas e-ticaret platformunuzu bağlayarak AI asistanınızın sipariş durumu ve stok bilgisi sorgulamasını sağlayın.</DialogDescription>
+            <DialogDescription>{t('dashboard.integrationsPage.ikasModalDesc')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Mağaza Adı *</Label>
+              <Label>{t('dashboard.integrationsPage.storeNameLabel')}</Label>
               <div className="flex gap-2">
                 <Input
                   type="text"
-                  placeholder="magazam"
+                  placeholder={t('dashboard.integrationsPage.storeNamePlaceholder')}
                   value={ikasForm.storeName}
                   onChange={(e) => setIkasForm({ ...ikasForm, storeName: e.target.value })}
                   className="flex-1"
                 />
                 <span className="flex items-center text-sm text-neutral-500">.myikas.com</span>
               </div>
-              <p className="text-xs text-neutral-500">Mağaza adınızı girin (magazam.myikas.com için &quot;magazam&quot;)</p>
+              <p className="text-xs text-neutral-500">{t('dashboard.integrationsPage.storeNameHint')}</p>
             </div>
             <div className="space-y-2">
-              <Label>Client ID *</Label>
+              <Label>{t('dashboard.integrationsPage.clientIdLabel')}</Label>
               <Input
                 type="text"
-                placeholder="Client ID'nizi girin"
+                placeholder={t('dashboard.integrationsPage.clientIdPlaceholder')}
                 value={ikasForm.clientId}
                 onChange={(e) => setIkasForm({ ...ikasForm, clientId: e.target.value })}
               />
             </div>
             <div className="space-y-2">
-              <Label>Client Secret *</Label>
+              <Label>{t('dashboard.integrationsPage.clientSecretLabel')}</Label>
               <Input
                 type="password"
-                placeholder="Client Secret'ınızı girin"
+                placeholder={t('dashboard.integrationsPage.clientSecretPlaceholder')}
                 value={ikasForm.clientSecret}
                 onChange={(e) => setIkasForm({ ...ikasForm, clientSecret: e.target.value })}
               />
@@ -1060,32 +1055,32 @@ const handleShopifyConnect = async () => {
             {ikasStatus?.connected && (
               <div className="flex items-center gap-2 p-3 bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg">
                 <CheckCircle2 className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
-                <p className="text-sm font-medium text-neutral-900 dark:text-white">Bağlı: {ikasStatus.storeName}</p>
+                <p className="text-sm font-medium text-neutral-900 dark:text-white">{t('dashboard.integrationsPage.connectedLabel')}: {ikasStatus.storeName}</p>
               </div>
             )}
             <div className="bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg p-4">
-              <h4 className="text-sm font-medium text-neutral-900 dark:text-white mb-2">API bilgilerinizi nereden bulabilirsiniz:</h4>
+              <h4 className="text-sm font-medium text-neutral-900 dark:text-white mb-2">{t('dashboard.integrationsPage.ikasApiInfoTitle')}</h4>
               <ol className="text-sm text-neutral-700 dark:text-neutral-300 space-y-1 list-decimal list-inside">
-                <li>ikas mağaza panelinize giriş yapın</li>
-                <li>Sol menüden <strong>Uygulamalar → Uygulamalarım</strong> sayfasına gidin</li>
-                <li><strong>Daha Fazla</strong> butonuna tıklayın ve <strong>Özel Uygulamalarınızı Yönetin</strong> seçin</li>
-                <li>Sağ üstten <strong>Özel Uygulama Oluştur</strong> butonuna tıklayın</li>
-                <li>Uygulama adını girin (örn: Telyx.ai) ve gerekli izinleri seçin:
+                <li>{t('dashboard.integrationsPage.ikasStep1')}</li>
+                <li>{t('dashboard.integrationsPage.ikasStep2')}</li>
+                <li>{t('dashboard.integrationsPage.ikasStep3')}</li>
+                <li>{t('dashboard.integrationsPage.ikasStep4')}</li>
+                <li>{t('dashboard.integrationsPage.ikasStep5')}
                   <ul>
-                    <li>Siparişleri Görüntüleme</li>
-                    <li>Müşterileri Görüntüleme</li>
-                    <li>Ürünleri Görüntüleme</li>
+                    <li>{t('dashboard.integrationsPage.ikasPermission1')}</li>
+                    <li>{t('dashboard.integrationsPage.ikasPermission2')}</li>
+                    <li>{t('dashboard.integrationsPage.ikasPermission3')}</li>
                   </ul>
                 </li>
-                <li>Kaydet'e tıklayın - <strong>Client ID</strong> ve <strong>Client Secret</strong> otomatik oluşturulacak</li>
-                <li>Bu bilgileri kopyalayıp ilgili alana yapıştırın</li>
+                <li>{t('dashboard.integrationsPage.ikasStep6')}</li>
+                <li>{t('dashboard.integrationsPage.ikasStep7')}</li>
               </ol>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIkasModalOpen(false)} disabled={ikasLoading}>İptal</Button>
+            <Button variant="outline" onClick={() => setIkasModalOpen(false)} disabled={ikasLoading}>{t('common.cancel')}</Button>
             <Button onClick={handleIkasConnect} disabled={ikasLoading}>
-              {ikasLoading ? <><RefreshCw className="h-4 w-4 mr-2 animate-spin" />Bağlanıyor...</> : "ikas'ı Bağla"}
+              {ikasLoading ? <><RefreshCw className="h-4 w-4 mr-2 animate-spin" />{t('dashboard.integrationsPage.connectingText')}</> : t('dashboard.integrationsPage.connectIkas')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1099,9 +1094,7 @@ const handleShopifyConnect = async () => {
         isOpen={upgradeModalOpen}
         onClose={() => setUpgradeModalOpen(false)}
         featureId={selectedFeature?.id}
-        featureName={selectedFeature?.name}
-        featureDescription={language === 'tr' ? selectedFeature?.description : selectedFeature?.descriptionEN}
-        requiredPlan={language === 'tr' ? 'Pro' : 'Pro'}
+        requiredPlan="Pro"
       />
     </div>
   );

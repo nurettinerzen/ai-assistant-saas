@@ -36,7 +36,6 @@ import { toast, Toaster } from 'sonner';
 import { formatDate, formatFileSize } from '@/lib/utils';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePermissions } from '@/hooks/usePermissions';
-import { NAVIGATION_ITEMS } from '@/lib/navigationConfig';
 
 function KnowledgeBaseContent() {
   const { t, locale } = useLanguage();
@@ -243,10 +242,10 @@ function KnowledgeBaseContent() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-neutral-900 dark:text-white">
-            {locale === 'tr' ? NAVIGATION_ITEMS.knowledgeBase.labelTr : NAVIGATION_ITEMS.knowledgeBase.labelEn}
+            {t('dashboard.knowledgeBasePage.title')}
           </h1>
           <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
-            {locale === 'tr' ? NAVIGATION_ITEMS.knowledgeBase.descriptionTr : NAVIGATION_ITEMS.knowledgeBase.descriptionEn}
+            {t('dashboard.knowledgeBasePage.description')}
           </p>
         </div>
       </div>
@@ -543,7 +542,7 @@ function KnowledgeBaseContent() {
                     const lines = content.split('\n');
                     const MAX_LINES = 50;
                     if (lines.length > MAX_LINES) {
-                      return lines.slice(0, MAX_LINES).join('\n') + '\n\n... ' + (lines.length - MAX_LINES) + ' satır daha (toplam ' + lines.length + ' satır)';
+                      return lines.slice(0, MAX_LINES).join('\n') + '\n\n... ' + (lines.length - MAX_LINES) + ' ' + t('dashboard.knowledgeBasePage.moreLines').replace('{{total}}', lines.length);
                     }
                     return content;
                   })()}

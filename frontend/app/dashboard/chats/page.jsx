@@ -186,7 +186,7 @@ export default function ChatsPage() {
         chatsCache.set(chatLogs);
       }
     } catch (error) {
-      toast.error(locale === 'tr' ? 'Sohbetler yüklenemedi' : 'Failed to load chats');
+      toast.error(t('dashboard.chatsPage.failedToLoadChats'));
     } finally {
       setLoading(false);
     }
@@ -200,7 +200,7 @@ export default function ChatsPage() {
       setChats(chatLogs);
       chatsCache.set(chatLogs);
     } catch (error) {
-      if (!silent) toast.error(locale === 'tr' ? 'Sohbetler yüklenemedi' : 'Failed to load chats');
+      if (!silent) toast.error(t('dashboard.chatsPage.failedToLoadChats'));
     } finally {
       if (!silent) setLoading(false);
     }
@@ -212,7 +212,7 @@ export default function ChatsPage() {
       setSelectedChat(response.data);
       setShowChatModal(true);
     } catch (error) {
-      toast.error(locale === 'tr' ? 'Sohbet yüklenemedi' : 'Failed to load chat');
+      toast.error(t('dashboard.chatsPage.failedToLoadChat'));
     }
   };
 
@@ -220,12 +220,12 @@ export default function ChatsPage() {
     try {
       // Simple CSV export
       const csvContent = [
-        ['Tarih', 'Kanal', 'Mesaj Sayısı', 'Durum'].join(','),
+        [t('dashboard.chatsPage.date'), t('dashboard.chatsPage.channel'), t('dashboard.chatsPage.messages'), t('dashboard.chatsPage.status')].join(','),
         ...chats.map(chat => [
           new Date(chat.createdAt).toLocaleString(locale === 'tr' ? 'tr-TR' : 'en-US'),
-          chat.channel === 'CHAT' ? 'Sohbet' : 'WhatsApp',
+          chat.channel === 'CHAT' ? t('dashboard.chatsPage.chat') : 'WhatsApp',
           chat.messageCount,
-          chat.status === 'active' ? 'Aktif' : (chat.status === 'completed' || chat.status === 'ended') ? 'Tamamlandı' : chat.status
+          chat.status === 'active' ? t('dashboard.chatsPage.active') : (chat.status === 'completed' || chat.status === 'ended') ? t('dashboard.chatsPage.completed') : chat.status
         ].join(','))
       ].join('\n');
 
@@ -237,9 +237,9 @@ export default function ChatsPage() {
       document.body.appendChild(link);
       link.click();
       link.remove();
-      toast.success(locale === 'tr' ? 'Sohbetler dışa aktarıldı' : 'Chats exported successfully');
+      toast.success(t('dashboard.chatsPage.chatsExportedSuccess'));
     } catch (error) {
-      toast.error(locale === 'tr' ? 'Dışa aktarma başarısız' : 'Failed to export chats');
+      toast.error(t('dashboard.chatsPage.failedToExportChats'));
     }
   };
 
@@ -256,7 +256,7 @@ export default function ChatsPage() {
     return (
       <Badge variant="ghost" className="text-blue-700 dark:text-blue-400 text-xs">
         <MessageCircle className="h-3 w-3 mr-1" />
-        {locale === 'tr' ? 'Sohbet' : 'Chat'}
+        {t('dashboard.chatsPage.chat')}
       </Badge>
     );
   };
@@ -264,12 +264,12 @@ export default function ChatsPage() {
   // Status indicator
   const getStatusIndicator = (status) => {
     const statusConfig = {
-      active: { color: 'bg-blue-500', label: locale === 'tr' ? 'Aktif' : 'Active' },
-      completed: { color: 'bg-green-500', label: locale === 'tr' ? 'Tamamlandı' : 'Completed' },
-      ended: { color: 'bg-green-500', label: locale === 'tr' ? 'Tamamlandı' : 'Ended' },
+      active: { color: 'bg-blue-500', label: t('dashboard.chatsPage.active') },
+      completed: { color: 'bg-green-500', label: t('dashboard.chatsPage.completed') },
+      ended: { color: 'bg-green-500', label: t('dashboard.chatsPage.ended') },
     };
 
-    const config = statusConfig[status] || { color: 'bg-gray-400', label: locale === 'tr' ? 'Bilinmiyor' : status };
+    const config = statusConfig[status] || { color: 'bg-gray-400', label: t('dashboard.chatsPage.unknown') };
 
     return (
       <div className="flex items-center gap-2">
@@ -297,14 +297,14 @@ export default function ChatsPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
-              {locale === 'tr' ? 'Sohbet Geçmişi' : 'Chat History'}
+              {t('dashboard.chatsPage.title')}
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              {locale === 'tr' ? 'Chat ve WhatsApp konuşmalarınızı görüntüleyin' : 'View your Chat and WhatsApp conversations'}
+              {t('dashboard.chatsPage.description')}
             </p>
           </div>
         </div>
-        <GradientLoaderInline text={locale === 'tr' ? 'Sohbetler yükleniyor...' : 'Loading chats...'} />
+        <GradientLoaderInline text={t('dashboard.chatsPage.loadingChats')} />
       </div>
     );
   }
@@ -315,15 +315,15 @@ export default function ChatsPage() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
-            {locale === 'tr' ? 'Sohbet Geçmişi' : 'Chat History'}
+            {t('dashboard.chatsPage.title')}
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            {locale === 'tr' ? 'Chat ve WhatsApp konuşmalarınızı görüntüleyin' : 'View your Chat and WhatsApp conversations'}
+            {t('dashboard.chatsPage.description')}
           </p>
         </div>
         <Button onClick={handleExport} variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          {locale === 'tr' ? 'CSV İndir' : 'Export CSV'}
+          {t('dashboard.chatsPage.exportCSV')}
         </Button>
       </div>
 
@@ -332,7 +332,7 @@ export default function ChatsPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
-            placeholder={locale === 'tr' ? 'Session ID veya telefon ile ara...' : 'Search by session ID or phone...'}
+            placeholder={t('dashboard.chatsPage.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9"
@@ -344,8 +344,8 @@ export default function ChatsPage() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">{locale === 'tr' ? 'Tüm Kanallar' : 'All Channels'}</SelectItem>
-            <SelectItem value="CHAT">Chat</SelectItem>
+            <SelectItem value="all">{t('dashboard.chatsPage.allChannels')}</SelectItem>
+            <SelectItem value="CHAT">{t('dashboard.chatsPage.chat')}</SelectItem>
             <SelectItem value="WHATSAPP">WhatsApp</SelectItem>
           </SelectContent>
         </Select>
@@ -354,9 +354,9 @@ export default function ChatsPage() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">{locale === 'tr' ? 'Tüm Durumlar' : 'All Status'}</SelectItem>
-            <SelectItem value="active">{locale === 'tr' ? 'Aktif' : 'Active'}</SelectItem>
-            <SelectItem value="completed">{locale === 'tr' ? 'Tamamlandı' : 'Completed'}</SelectItem>
+            <SelectItem value="all">{t('dashboard.chatsPage.allStatus')}</SelectItem>
+            <SelectItem value="active">{t('dashboard.chatsPage.active')}</SelectItem>
+            <SelectItem value="completed">{t('dashboard.chatsPage.completed')}</SelectItem>
           </SelectContent>
         </Select>
         <DateRangePicker
@@ -384,11 +384,11 @@ export default function ChatsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{locale === 'tr' ? 'Tarih' : 'Date'}</TableHead>
-                <TableHead>{locale === 'tr' ? 'Kanal' : 'Channel'}</TableHead>
-                <TableHead>{locale === 'tr' ? 'Mesaj' : 'Messages'}</TableHead>
-                <TableHead>{locale === 'tr' ? 'Durum' : 'Status'}</TableHead>
-                <TableHead className="text-right">{locale === 'tr' ? 'İşlem' : 'Actions'}</TableHead>
+                <TableHead>{t('dashboard.chatsPage.date')}</TableHead>
+                <TableHead>{t('dashboard.chatsPage.channel')}</TableHead>
+                <TableHead>{t('dashboard.chatsPage.messages')}</TableHead>
+                <TableHead>{t('dashboard.chatsPage.status')}</TableHead>
+                <TableHead className="text-right">{t('dashboard.chatsPage.actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -430,10 +430,11 @@ export default function ChatsPage() {
           {pagination.totalPages > 1 && (
             <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-800">
               <span className="text-sm text-gray-500">
-                {locale === 'tr'
-                  ? `${pagination.total} sonuçtan ${(pagination.page - 1) * pagination.limit + 1}-${Math.min(pagination.page * pagination.limit, pagination.total)} gösteriliyor`
-                  : `Showing ${(pagination.page - 1) * pagination.limit + 1}-${Math.min(pagination.page * pagination.limit, pagination.total)} of ${pagination.total} results`
-                }
+                {t('dashboard.chatsPage.showingResults', {
+                  from: (pagination.page - 1) * pagination.limit + 1,
+                  to: Math.min(pagination.page * pagination.limit, pagination.total),
+                  total: pagination.total
+                })}
               </span>
               <div className="flex items-center gap-1">
                 <Button
@@ -442,7 +443,7 @@ export default function ChatsPage() {
                   disabled={pagination.page <= 1}
                   onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
                 >
-                  {locale === 'tr' ? 'Önceki' : 'Previous'}
+                  {t('dashboard.chatsPage.previous')}
                 </Button>
                 {generatePageNumbers(pagination.page, pagination.totalPages).map((pageNum, idx) => (
                   pageNum === '...' ? (
@@ -465,7 +466,7 @@ export default function ChatsPage() {
                   disabled={pagination.page >= pagination.totalPages}
                   onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
                 >
-                  {locale === 'tr' ? 'Sonraki' : 'Next'}
+                  {t('dashboard.chatsPage.next')}
                 </Button>
               </div>
             </div>
@@ -476,11 +477,11 @@ export default function ChatsPage() {
           <EmptyState
             icon={MessageCircle}
             title={searchQuery || channelFilter !== 'all' || statusFilter !== 'all' || dateRange.from
-              ? (locale === 'tr' ? 'Sohbet bulunamadı' : 'No chats found')
-              : (locale === 'tr' ? 'Henüz sohbet yok' : 'No chats yet')}
+              ? t('dashboard.chatsPage.noChatsFound')
+              : t('dashboard.chatsPage.noChatsYet')}
             description={searchQuery || channelFilter !== 'all' || statusFilter !== 'all' || dateRange.from
-              ? (locale === 'tr' ? 'Filtreleri değiştirmeyi deneyin' : 'Try adjusting your filters')
-              : (locale === 'tr' ? 'Müşterileriniz chat veya WhatsApp ile iletişime geçtiğinde burada görünecek' : 'Chats will appear here when customers contact you via Chat or WhatsApp')}
+              ? t('dashboard.chatsPage.tryAdjustingFilters')
+              : t('dashboard.chatsPage.chatsWillAppear')}
           />
         </div>
       )}
@@ -495,7 +496,7 @@ export default function ChatsPage() {
               ) : (
                 <MessageCircle className="h-5 w-5 text-blue-600" />
               )}
-              {locale === 'tr' ? 'Sohbet Detayı' : 'Chat Details'}
+              {t('dashboard.chatsPage.chatDetails')}
             </DialogTitle>
           </DialogHeader>
 
@@ -504,15 +505,15 @@ export default function ChatsPage() {
               {/* Chat Info */}
               <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg text-sm">
                 <div>
-                  <span className="text-gray-500">{locale === 'tr' ? 'Kanal' : 'Channel'}</span>
-                  <p className="font-medium">{selectedChat.channel === 'CHAT' ? (locale === 'tr' ? 'Sohbet' : 'Chat') : 'WhatsApp'}</p>
+                  <span className="text-gray-500">{t('dashboard.chatsPage.channel')}</span>
+                  <p className="font-medium">{selectedChat.channel === 'CHAT' ? t('dashboard.chatsPage.chat') : 'WhatsApp'}</p>
                 </div>
                 <div>
-                  <span className="text-gray-500">{locale === 'tr' ? 'Tarih' : 'Date'}</span>
+                  <span className="text-gray-500">{t('dashboard.chatsPage.date')}</span>
                   <p className="font-medium">{formatChatDate(selectedChat.createdAt)}</p>
                 </div>
                 <div>
-                  <span className="text-gray-500">{locale === 'tr' ? 'Asistan' : 'Assistant'}</span>
+                  <span className="text-gray-500">{t('dashboard.chatsPage.assistant')}</span>
                   <p className="font-medium">{selectedChat.assistant?.name || '-'}</p>
                 </div>
               </div>
@@ -520,7 +521,7 @@ export default function ChatsPage() {
               {/* Messages */}
               <div className="space-y-3">
                 <h4 className="font-medium text-gray-900 dark:text-white">
-                  {locale === 'tr' ? 'Mesajlar' : 'Messages'} ({selectedChat.messageCount || 0})
+                  {t('dashboard.chatsPage.messages')} ({selectedChat.messageCount || 0})
                 </h4>
                 <div className="space-y-2 max-h-[400px] overflow-y-auto">
                   {selectedChat.messages && Array.isArray(selectedChat.messages) ? (
@@ -556,7 +557,7 @@ export default function ChatsPage() {
                     ))
                   ) : (
                     <p className="text-gray-500 text-sm">
-                      {locale === 'tr' ? 'Mesaj bulunamadı' : 'No messages found'}
+                      {t('dashboard.chatsPage.noMessagesFound')}
                     </p>
                   )}
                 </div>

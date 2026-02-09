@@ -29,8 +29,7 @@ export default function ChatWidget({
   const [conversationHistory, setConversationHistory] = useState([]);
   const [sessionId, setSessionId] = useState(null);
   const [isWidgetEnabled, setIsWidgetEnabled] = useState(null); // null = loading, true/false = result
-  const { t, locale } = useLanguage();
-  const isTurkish = locale === 'tr';
+  const { t } = useLanguage();
 
   // Check widget status on mount
   useEffect(() => {
@@ -151,9 +150,7 @@ useEffect(() => {
           console.log(`⏱️ Service busy, retry after ${retryAfterSec}s (requestId: ${errorData.requestId})`);
 
           // Show user-friendly retry message
-          const retryMessage = isTurkish
-            ? `Sistem yoğun, ${retryAfterSec} saniye sonra tekrar deneyin...`
-            : `System busy, please retry in ${retryAfterSec} seconds...`;
+          const retryMessage = t('components.chatWidget.systemBusy', { seconds: retryAfterSec });
 
           setMessages(prev => [...prev, {
             role: 'system',
@@ -178,7 +175,7 @@ useEffect(() => {
         console.warn('No reply in response:', data);
         setMessages(prev => [...prev, {
           role: 'system',
-          content: 'Sorry, something went wrong. Please try again.',
+          content: t('components.chatWidget.genericError'),
           timestamp: new Date()
         }]);
       }
@@ -190,13 +187,13 @@ useEffect(() => {
         stack: error.stack
       });
 
-      let errorMessage = 'Connection error. Please try again.';
+      let errorMessage = t('components.chatWidget.connectionError');
       if (error.message.includes('HTTP 500')) {
-        errorMessage = 'Server error. Please try again in a moment.';
+        errorMessage = t('components.chatWidget.serverError');
       } else if (error.message.includes('HTTP 403')) {
-        errorMessage = 'Service unavailable. Please contact support.';
+        errorMessage = t('components.chatWidget.serviceUnavailable');
       } else if (error.message.includes('HTTP 404')) {
-        errorMessage = 'Chat service not configured. Please contact support.';
+        errorMessage = t('components.chatWidget.chatNotConfigured');
       }
 
       setMessages(prev => [...prev, {

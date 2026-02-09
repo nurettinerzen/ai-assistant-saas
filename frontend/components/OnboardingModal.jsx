@@ -37,7 +37,7 @@ export function OnboardingModal({ open, onClose }) {
 
   // Map locale to our language codes
   const getLanguageFromLocale = (loc) => {
-    const mapping = { tr: 'TR', en: 'EN', pr: 'PR' };
+    const mapping = { tr: 'TR', en: 'EN' };
     return mapping[loc] || 'TR';
   };
 
@@ -66,7 +66,7 @@ export function OnboardingModal({ open, onClose }) {
       const langToVoiceKey = {
         'TR': 'tr',
         'EN': 'en',
-        'PR': 'pt' // Brazilian Portuguese uses 'pt' key in backend
+        'PT': 'pt' // Portuguese uses 'pt' key in backend
       };
       const voiceKey = langToVoiceKey[data.language] || 'tr';
 

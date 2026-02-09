@@ -6,6 +6,7 @@ import Sidebar from '@/components/Sidebar';
 import { apiClient } from '@/lib/api';
 import { Toaster } from 'sonner';
 import { OnboardingModal } from '@/components/OnboardingModal';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 // Cache for user data (5 minutes)
 const USER_CACHE_KEY = 'dashboard_user_cache';
@@ -42,6 +43,7 @@ const setCachedUserData = (data) => {
 export default function DashboardLayout({ children }) {
   const router = useRouter();
   const pathname = usePathname();
+  const { t } = useLanguage();
   const [user, setUser] = useState(null);
   const [credits, setCredits] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -175,7 +177,7 @@ export default function DashboardLayout({ children }) {
       <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-gray-950">
         <div className="text-center">
           <div className="animate-spin rounded-full h-10 w-10 border-2 border-gray-200 dark:border-gray-800 border-t-primary-600 mx-auto mb-4"></div>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Yükleniyor...</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">{t('common.loading')}</p>
         </div>
       </div>
     );
@@ -201,7 +203,7 @@ export default function DashboardLayout({ children }) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <p className="text-sm text-blue-800 dark:text-blue-200">
-                <span className="font-semibold">Kurumsal Plan Teklifi:</span> Kurumsal plana geçiş için ödeme bekleniyor. Ödeme yapıldığında planınız otomatik olarak güncellenecektir.
+                {t('dashboard.enterprisePendingBanner')}
               </p>
             </div>
           </div>

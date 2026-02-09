@@ -30,7 +30,7 @@ function VerifyEmailContent() {
   useEffect(() => {
     if (!token) {
       setStatus('error');
-      setErrorMessage('Doğrulama linki geçersiz. Token bulunamadı.');
+      setErrorMessage(t('auth.verificationLinkInvalid'));
       return;
     }
 
@@ -47,7 +47,7 @@ function VerifyEmailContent() {
 
       setStatus('success');
       setEmail(data.email);
-      toast.success('Email adresiniz başarıyla doğrulandı!');
+      toast.success(t('auth.emailVerified'));
 
       // Redirect to dashboard after 3 seconds
       setTimeout(() => {
@@ -59,10 +59,10 @@ function VerifyEmailContent() {
       const data = error.response?.data;
       if (data?.code === 'TOKEN_EXPIRED') {
         setStatus('expired');
-        setErrorMessage('Doğrulama linkinin süresi dolmuş. Yeni bir link talep edebilirsiniz.');
+        setErrorMessage(t('auth.verificationLinkExpired'));
       } else {
         setStatus('error');
-        setErrorMessage(data?.error || 'Doğrulama başarısız oldu.');
+        setErrorMessage(data?.error || t('auth.verificationFailed'));
       }
     }
   };
@@ -97,10 +97,10 @@ function VerifyEmailContent() {
                 <Loader2 className="h-8 w-8 text-primary-600 animate-spin" />
               </div>
               <h1 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
-                Email Doğrulanıyor
+                {t('auth.emailVerifying')}
               </h1>
               <p className="text-neutral-600 dark:text-neutral-400">
-                Lütfen bekleyin, email adresiniz doğrulanıyor...
+                {t('auth.pleaseWaitVerifying')}
               </p>
             </div>
           )}
@@ -112,14 +112,14 @@ function VerifyEmailContent() {
                 <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400" />
               </div>
               <h1 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
-                Email Doğrulandı!
+                {t('auth.emailVerified')}
               </h1>
               <p className="text-neutral-600 dark:text-neutral-400 mb-6">
-                {email && <span className="font-medium">{email}</span>} adresi başarıyla doğrulandı.
-                Dashboard&apos;a yönlendiriliyorsunuz...
+                {email && <span className="font-medium">{email}</span>}{' '}
+                {t('auth.redirectingToDashboard')}
               </p>
               <Button onClick={handleGoToDashboard} className="w-full">
-                Dashboard&apos;a Git
+                {t('auth.goToDashboard')}
               </Button>
             </div>
           )}
@@ -131,17 +131,17 @@ function VerifyEmailContent() {
                 <RefreshCw className="h-8 w-8 text-yellow-600 dark:text-yellow-400" />
               </div>
               <h1 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
-                Link Süresi Dolmuş
+                {t('auth.linkExpiredTitle')}
               </h1>
               <p className="text-neutral-600 dark:text-neutral-400 mb-6">
                 {errorMessage}
               </p>
               <div className="space-y-3">
                 <Button onClick={handleRequestNewLink} className="w-full">
-                  Yeni Link Talep Et
+                  {t('auth.requestNewLinkBtn')}
                 </Button>
                 <Button variant="outline" onClick={handleGoToLogin} className="w-full">
-                  Giriş Sayfasına Dön
+                  {t('auth.returnToLogin')}
                 </Button>
               </div>
             </div>
@@ -154,17 +154,17 @@ function VerifyEmailContent() {
                 <XCircle className="h-8 w-8 text-red-600 dark:text-red-400" />
               </div>
               <h1 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
-                Doğrulama Başarısız
+                {t('auth.verificationFailed2')}
               </h1>
               <p className="text-neutral-600 dark:text-neutral-400 mb-6">
                 {errorMessage}
               </p>
               <div className="space-y-3">
                 <Button onClick={handleRequestNewLink} className="w-full">
-                  Yeni Link Talep Et
+                  {t('auth.requestNewLinkBtn')}
                 </Button>
                 <Button variant="outline" onClick={handleGoToLogin} className="w-full">
-                  Giriş Sayfasına Dön
+                  {t('auth.returnToLogin')}
                 </Button>
               </div>
             </div>
@@ -172,9 +172,9 @@ function VerifyEmailContent() {
 
           {/* Help Link */}
           <p className="text-center text-sm text-neutral-500 dark:text-neutral-400 mt-6">
-            Sorun mu yaşıyorsunuz?{' '}
+            {t('auth.havingIssues')}{' '}
             <Link href="mailto:support@telyx.ai" className="text-primary-600 dark:text-primary-400 hover:underline">
-              Destek alın
+              {t('auth.getSupport')}
             </Link>
           </p>
         </div>
@@ -189,7 +189,7 @@ export default function VerifyEmailPage() {
       <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-50 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 flex items-center justify-center p-4">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary-600 mx-auto mb-4" />
-          <p className="text-neutral-600 dark:text-neutral-400">Yükleniyor...</p>
+          <p className="text-neutral-600 dark:text-neutral-400">...</p>
         </div>
       </div>
     }>

@@ -9,8 +9,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Check, CreditCard, TrendingUp, Loader2, AlertCircle, X } from 'lucide-react';
+import { Check, CreditCard, Loader2, AlertCircle, X } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast } from '@/lib/toast';
 import { formatDate } from '@/lib/utils';
@@ -34,46 +33,39 @@ import { useProfile } from '@/hooks/useSettings';
 // Note: Region is determined by business.country, NOT by UI language
 // Language (locale) only affects UI text, not pricing
 
-// Map locale to UI language key (for text translations)
-const LOCALE_TO_LANG = {
-  tr: 'TR',
-  en: 'EN',
-  pr: 'PR'
-};
-
-// Base plan configurations - YENİ FİYATLANDIRMA SİSTEMİ
-// Sıralama: PAYG → Başlangıç → Pro → Kurumsal
-// NOT: TRIAL plan burada gösterilmez, yeni kayıtlarda otomatik başlar
-// PAYG = PREPAID (bakiye), Paketler = POSTPAID (ay sonu fatura)
-// Calendar ve Sheets tüm planlarda açık
+// Base plan configurations
+// Order: PAYG -> Starter -> Pro -> Enterprise
+// NOTE: TRIAL plan not shown here, starts automatically for new signups
+// PAYG = PREPAID (balance), Packages = POSTPAID (end-of-month billing)
+// Calendar and Sheets are enabled for all plans
 const BASE_PLANS = [
   {
     id: 'PAYG',
-    name: { TR: 'Kullandıkça Öde', EN: 'Pay As You Go' },
-    description: { TR: 'Taahhütsüz, bakiye yükle kullan', EN: 'No commitment, top up and use' },
+    nameKey: 'dashboard.subscriptionPage.planNamePayg',
+    descriptionKey: 'dashboard.subscriptionPage.planDescPayg',
     includedFeatures: ['payPerMinute', 'concurrent', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'analytics', 'email'],
     isPayg: true,
     paymentModel: 'PREPAID',
   },
   {
     id: 'STARTER',
-    name: { TR: 'Başlangıç', EN: 'Starter' },
-    description: { TR: '150 dakika dahil, aşım ay sonu faturalanır', EN: '150 minutes included, overage billed monthly' },
+    nameKey: 'dashboard.subscriptionPage.planNameStarter',
+    descriptionKey: 'dashboard.subscriptionPage.planDescStarter',
     includedFeatures: ['minutes', 'concurrent', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'analytics', 'email'],
     paymentModel: 'POSTPAID',
   },
   {
     id: 'PRO',
-    name: { TR: 'Pro', EN: 'Pro' },
-    description: { TR: '500 dakika dahil, öncelikli destek', EN: '500 minutes included, priority support' },
+    nameKey: 'dashboard.subscriptionPage.planNamePro',
+    descriptionKey: 'dashboard.subscriptionPage.planDescPro',
     popular: true,
     includedFeatures: ['minutes', 'concurrent', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'ecommerce', 'calendar', 'googleSheets', 'analytics', 'email', 'batchCalls', 'prioritySupport', 'apiAccess'],
     paymentModel: 'POSTPAID',
   },
   {
     id: 'ENTERPRISE',
-    name: { TR: 'Kurumsal', EN: 'Enterprise' },
-    description: { TR: 'Özel fiyatlandırma, SLA garantisi', EN: 'Custom pricing, SLA guarantee' },
+    nameKey: 'dashboard.subscriptionPage.planNameEnterprise',
+    descriptionKey: 'dashboard.subscriptionPage.planDescEnterprise',
     includedFeatures: ['minutes', 'concurrent', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'ecommerce', 'calendar', 'googleSheets', 'analytics', 'email', 'batchCalls', 'prioritySupport', 'apiAccess', 'slaGuarantee'],
     paymentModel: 'POSTPAID',
   },
@@ -129,7 +121,6 @@ export default function SubscriptionPage() {
   };
 
   const region = getRegion(); // For pricing (based on country)
-  const uiLang = LOCALE_TO_LANG[locale] || 'EN'; // For UI text (based on language)
   const regionConfig = REGIONAL_PRICING[region] || REGIONAL_PRICING.US;
 
   // Format currency based on region
@@ -146,9 +137,9 @@ export default function SubscriptionPage() {
     return regionConfig.plans[planId] || null;
   };
 
-  // Get plan name based on UI language (not region)
+  // Get plan name from translation
   const getPlanName = (plan) => {
-    return plan.name[uiLang] || plan.name.EN;
+    return t(plan.nameKey);
   };
 
   // Handle iyzico checkout form rendering
@@ -181,7 +172,7 @@ export default function SubscriptionPage() {
     if (success === 'true' && session_id) {
       apiClient.get(`/api/subscription/verify-session?session_id=${session_id}`)
         .then(() => {
-          toast.success(t('dashboard.subscriptionPage.upgradeSuccess') || 'Plan başarıyla yükseltildi!');
+          toast.success(t('dashboard.subscriptionPage.upgradeSuccess'));
           // Reload subscription data
           refetchSubscription();
           // Clean URL
@@ -189,30 +180,30 @@ export default function SubscriptionPage() {
         })
         .catch((error) => {
           console.error('Session verification error:', error);
-          toast.error('Abonelik aktivasyonunda hata oluştu');
+          toast.error(t('dashboard.subscriptionPage.sessionVerificationError'));
         });
       return;
     }
 
     if (status === 'success' || success === 'true') {
-      toast.success(t('dashboard.subscriptionPage.upgradeSuccess') || 'Plan basariyla yukseltildi!');
+      toast.success(t('dashboard.subscriptionPage.upgradeSuccess'));
       // Clean URL
       window.history.replaceState({}, '', window.location.pathname);
       // Reload subscription data
       refetchSubscription();
     } else if (status === 'error' || params.get('error')) {
-      const errorMsg = params.get('message') || t('dashboard.subscriptionPage.upgradeFailed') || 'Odeme basarisiz oldu';
+      const errorMsg = params.get('message') || t('dashboard.subscriptionPage.upgradeFailed');
       toast.error(decodeURIComponent(errorMsg));
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, [refetchSubscription]);
 
   const handleUpgrade = async (planId) => {
-    // Get plan name from BASE_PLANS
+    // Get plan name from translation keys
     const planInfo = BASE_PLANS.find(p => p.id === planId);
-    const planName = planInfo ? planInfo.name[uiLang] : planId;
+    const planName = planInfo ? t(planInfo.nameKey) : planId;
 
-    if (!confirm(`${t('dashboard.subscriptionPage.upgradeConfirm') || 'Planı değiştirmek istediğinize emin misiniz?'} ${planName}`)) return;
+    if (!confirm(`${t('dashboard.subscriptionPage.upgradeConfirmMsg')} ${planName}`)) return;
 
     try {
       setUpgrading(true);
@@ -221,26 +212,26 @@ export default function SubscriptionPage() {
       // Handle different response types
       if (response.data?.type === 'payg_switch') {
         // Switched to PAYG (pay as you go)
-        toast.success(uiLang === 'TR' ? 'Kullandıkça öde planına geçildi. Bakiye yükleyerek kullanmaya başlayabilirsiniz.' : 'Switched to Pay As You Go. Top up your balance to start using.');
-        loadData();
+        toast.success(t('dashboard.subscriptionPage.paygSwitchSuccess'));
+        refetchSubscription();
       } else if (response.data?.type === 'upgrade') {
         // Immediate upgrade (with proration)
-        toast.success('Plan başarıyla yükseltildi! Fark tutarı hesaplanarak tahsil edildi.');
-        loadData();
+        toast.success(t('dashboard.subscriptionPage.upgradeWithProrationSuccess'));
+        refetchSubscription();
       } else if (response.data?.type === 'reactivate') {
         // Reactivated canceled subscription with new plan
         const effectiveDate = response.data.effectiveDate
-          ? new Date(response.data.effectiveDate).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' })
-          : 'bir sonraki dönem';
-        toast.success(`Abonelik yeniden başlatıldı! ${effectiveDate} tarihinden itibaren ${planName} planı aktif olacak.`);
-        loadData();
+          ? formatDate(response.data.effectiveDate, 'long')
+          : t('dashboard.subscriptionPage.nextPeriod');
+        toast.success(t('dashboard.subscriptionPage.reactivateSuccess').replace('{date}', effectiveDate).replace('{planName}', planName));
+        refetchSubscription();
       } else if (response.data?.type === 'downgrade') {
         // Scheduled downgrade (end of period)
         const effectiveDate = response.data.effectiveDate
-          ? new Date(response.data.effectiveDate).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' })
-          : 'dönem sonunda';
-        toast.success(`Plan değişikliği planlandı. ${effectiveDate} tarihinde ${planName} planına geçilecek.`);
-        loadData();
+          ? formatDate(response.data.effectiveDate, 'long')
+          : t('dashboard.subscriptionPage.endOfPeriod');
+        toast.success(t('dashboard.subscriptionPage.downgradeScheduled').replace('{date}', effectiveDate).replace('{planName}', planName));
+        refetchSubscription();
       } else if (response.data?.checkoutFormContent) {
         // iyzico checkout form
         setCheckoutFormHtml(response.data.checkoutFormContent);
@@ -249,19 +240,19 @@ export default function SubscriptionPage() {
         // Stripe checkout (new subscription)
         window.location.href = response.data.sessionUrl;
       } else {
-        toast.success(t('dashboard.subscriptionPage.upgradeSuccess') || 'Plan başarıyla güncellendi!');
-        loadData();
+        toast.success(t('dashboard.subscriptionPage.upgradeSuccess'));
+        refetchSubscription();
       }
     } catch (error) {
       console.error('Upgrade error:', error);
-      toast.error(error.response?.data?.error || t('dashboard.subscriptionPage.upgradeFailed') || 'İşlem başlatılamadı');
+      toast.error(error.response?.data?.error || t('dashboard.subscriptionPage.operationFailed'));
     } finally {
       setUpgrading(false);
     }
   };
 
   const handleCancelSubscription = async () => {
-    if (!confirm(t('dashboard.subscriptionPage.cancelConfirm') || 'Aboneliğinizi iptal etmek istediğinize emin misiniz? Mevcut dönem sonunda planınız sona erecektir.')) {
+    if (!confirm(t('dashboard.subscriptionPage.cancelConfirm'))) {
       return;
     }
 
@@ -271,14 +262,14 @@ export default function SubscriptionPage() {
 
       if (response.data?.success) {
         const cancelDate = response.data.cancelAt
-          ? new Date(response.data.cancelAt).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' })
-          : 'dönem sonunda';
-        toast.success(`Abonelik iptal edildi. ${cancelDate} tarihinde sona erecek.`);
-        loadData();
+          ? formatDate(response.data.cancelAt, 'long')
+          : t('dashboard.subscriptionPage.endOfPeriod');
+        toast.success(t('dashboard.subscriptionPage.cancelSuccess').replace('{date}', cancelDate));
+        refetchSubscription();
       }
     } catch (error) {
       console.error('Cancel subscription error:', error);
-      toast.error(error.response?.data?.error || 'İptal işlemi başarısız oldu');
+      toast.error(error.response?.data?.error || t('dashboard.subscriptionPage.cancelFailed'));
     } finally {
       setUpgrading(false);
     }
@@ -365,7 +356,7 @@ export default function SubscriptionPage() {
               )}
               {subscription.cancelAtPeriodEnd && subscription.currentPeriodEnd && (
               <div className="flex justify-between text-sm">
-                <span className="text-neutral-600 dark:text-neutral-400">Abonelik Bitiş Tarihi</span>
+                <span className="text-neutral-600 dark:text-neutral-400">{t('dashboard.subscriptionPage.subscriptionEndDate')}</span>
                 <span className="font-medium text-orange-600 dark:text-orange-400">
                   {formatDate(subscription.currentPeriodEnd, 'short')}
                 </span>
@@ -386,12 +377,12 @@ export default function SubscriptionPage() {
                   {upgrading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      {t('dashboard.subscriptionPage.processing') || 'İşleniyor...'}
+                      {t('dashboard.subscriptionPage.processing')}
                     </>
                   ) : (
                     <>
                       <X className="mr-2 h-4 w-4" />
-                      {t('dashboard.subscriptionPage.cancelSubscription') || 'Aboneliği İptal Et'}
+                      {t('dashboard.subscriptionPage.cancelSubscription')}
                     </>
                   )}
                 </Button>
@@ -402,12 +393,12 @@ export default function SubscriptionPage() {
             {subscription.cancelAtPeriodEnd && (
               <div className="mt-6 pt-4 border-t border-neutral-200 dark:border-neutral-700">
                 <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-3 text-sm text-orange-800 dark:text-orange-400">
-                  <strong>Abonelik iptal edildi.</strong>
+                  <strong>{t('dashboard.subscriptionPage.subscriptionCanceled')}</strong>
                   <br />
                   {subscription.currentPeriodEnd && (
-                    <>Planınız {formatDate(subscription.currentPeriodEnd, 'short')} tarihinde sona erecek.</>
+                    <>{t('dashboard.subscriptionPage.planEndsOnDate').replace('{date}', formatDate(subscription.currentPeriodEnd, 'short'))}</>
                   )}
-                  {!subscription.currentPeriodEnd && <>Planınız dönem sonunda sona erecek.</>}
+                  {!subscription.currentPeriodEnd && <>{t('dashboard.subscriptionPage.planEndsAtPeriodEnd')}</>}
                 </div>
               </div>
             )}
@@ -426,7 +417,7 @@ export default function SubscriptionPage() {
       {/* Pricing plans */}
       <div>
         <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-6">
-          {uiLang === 'TR' ? 'Planlar' : 'Plans'}
+          {t('dashboard.subscriptionPage.plans')}
         </h2>
         {/* 4 plan kartı: mobilde 1, tablette 2, büyük ekranda 4 yan yana */}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 items-stretch">
@@ -444,32 +435,13 @@ export default function SubscriptionPage() {
             const isUpgrade = thisPlanIndex > currentPlanIndex;
             const isDowngrade = thisPlanIndex < currentPlanIndex;
 
-            // Button text based on plan comparison and UI language
+            // Button text based on plan comparison
             const getButtonText = () => {
-              const texts = {
-                TR: {
-                  contact: 'Bize Ulaşın',
-                  current: 'Mevcut Plan',
-                  upgrade: 'Yükselt',
-                  downgrade: 'Düşür',
-                  select: 'Seç'
-                },
-                EN: {
-                  contact: 'Contact Us',
-                  current: 'Current Plan',
-                  upgrade: 'Upgrade',
-                  downgrade: 'Downgrade',
-                  select: 'Select'
-                }
-              };
-              const txt = texts[uiLang] || texts.EN;
-              // Önce mevcut plan kontrolü - ENTERPRISE dahil
-              if (isCurrentPlan) return txt.current;
-              // Enterprise için "Bize Ulaşın" (mevcut plan değilse)
-              if (plan.id === 'ENTERPRISE') return txt.contact;
-              if (isUpgrade) return txt.upgrade;
-              if (isDowngrade) return txt.downgrade;
-              return txt.select;
+              if (isCurrentPlan) return t('dashboard.subscriptionPage.currentPlan');
+              if (plan.id === 'ENTERPRISE') return t('dashboard.subscriptionPage.contactUs');
+              if (isUpgrade) return t('dashboard.subscriptionPage.upgrade');
+              if (isDowngrade) return t('dashboard.subscriptionPage.downgrade');
+              return t('dashboard.subscriptionPage.select');
             };
 
             // Feature order - YENİ FİYATLANDIRMA SİSTEMİ
@@ -480,76 +452,44 @@ export default function SubscriptionPage() {
               'prioritySupport', 'apiAccess', 'slaGuarantee'
             ];
 
-            // Feature labels - YENİ FİYATLANDIRMA SİSTEMİ
+            // Feature labels using translation keys
             const getFeatureLabel = (key) => {
               const isEnterprise = plan.id === 'ENTERPRISE';
               const isPro = plan.id === 'PRO';
-              const isStarter = plan.id === 'STARTER';
-              const isPayg = plan.id === 'PAYG';
 
-              // Get assistant count from planPricing
-              const assistantCount = planPricing?.assistants ||
-                (isEnterprise ? 25 : isPro ? 10 : 5);
-
-              // UI language-based label maps
-              const labelMaps = {
-                TR: {
-                  trialMinutes: '15 dakika telefon görüşmesi',
-                  trialChat: '7 gün chat/WhatsApp',
-                  payPerMinute: `${formatPrice(planPricing?.pricePerMinute || 0)}/dk kullandıkça öde`,
-                  minutes: isEnterprise ? '500+ dk (özel)' : `${planPricing?.minutes || 0} dk dahil`,
-                  concurrent: isEnterprise
-                    ? '5+ eşzamanlı çağrı (özel)'
-                    : `${planPricing?.concurrent || 1} eşzamanlı çağrı`,
-                  assistants: isEnterprise
-                    ? '25+ asistan (özel)'
-                    : isPro
-                      ? '10 asistan'
-                      : '5 asistan',
-                  phoneNumbers: '1 telefon numarası',
-                  phone: 'Telefon AI',
-                  whatsapp: 'WhatsApp',
-                  chatWidget: 'Chat widget',
-                  email: 'E-posta AI',
-                  ecommerce: 'E-ticaret entegrasyonu',
-                  calendar: 'Google Takvim',
-                  googleSheets: 'Google Sheets',
-                  batchCalls: 'Toplu arama',
-                  analytics: 'Analitik',
-                  prioritySupport: 'Öncelikli destek',
-                  apiAccess: 'API erişimi',
-                  slaGuarantee: 'SLA garantisi',
-                },
-                EN: {
-                  trialMinutes: '15 minutes phone calls',
-                  trialChat: '7 days chat/WhatsApp',
-                  payPerMinute: `${formatPrice(planPricing?.pricePerMinute || 0)}/min pay as you go`,
-                  minutes: isEnterprise ? '500+ min (custom)' : `${planPricing?.minutes || 0} min included`,
-                  concurrent: isEnterprise
-                    ? '5+ concurrent calls (custom)'
-                    : `${planPricing?.concurrent || 1} concurrent call${(planPricing?.concurrent || 1) > 1 ? 's' : ''}`,
-                  assistants: isEnterprise
-                    ? '25+ assistants (custom)'
-                    : isPro
-                      ? '10 assistants'
-                      : '5 assistants',
-                  phoneNumbers: '1 phone number',
-                  phone: 'Phone AI',
-                  whatsapp: 'WhatsApp',
-                  chatWidget: 'Chat widget',
-                  email: 'Email AI',
-                  ecommerce: 'E-commerce integration',
-                  calendar: 'Google Calendar',
-                  googleSheets: 'Google Sheets',
-                  batchCalls: 'Batch calls',
-                  analytics: 'Analytics',
-                  prioritySupport: 'Priority support',
-                  apiAccess: 'API access',
-                  slaGuarantee: 'SLA guarantee',
-                }
+              const featureMap = {
+                trialMinutes: t('dashboard.subscriptionPage.featureTrialMinutes'),
+                trialChat: t('dashboard.subscriptionPage.featureTrialChat'),
+                payPerMinute: t('dashboard.subscriptionPage.featurePayPerMinute').replace('{price}', formatPrice(planPricing?.pricePerMinute || 0)),
+                minutes: isEnterprise
+                  ? t('dashboard.subscriptionPage.featureMinutesEnterprise')
+                  : t('dashboard.subscriptionPage.featureMinutes').replace('{count}', String(planPricing?.minutes || 0)),
+                concurrent: isEnterprise
+                  ? t('dashboard.subscriptionPage.featureConcurrentEnterprise')
+                  : (planPricing?.concurrent || 1) > 1
+                    ? t('dashboard.subscriptionPage.featureConcurrentPlural').replace('{count}', String(planPricing?.concurrent || 1))
+                    : t('dashboard.subscriptionPage.featureConcurrent').replace('{count}', String(planPricing?.concurrent || 1)),
+                assistants: isEnterprise
+                  ? t('dashboard.subscriptionPage.featureAssistantsEnterprise')
+                  : isPro
+                    ? t('dashboard.subscriptionPage.featureAssistants10')
+                    : t('dashboard.subscriptionPage.featureAssistants5'),
+                phoneNumbers: t('dashboard.subscriptionPage.featurePhoneNumbers'),
+                phone: t('dashboard.subscriptionPage.featurePhone'),
+                whatsapp: t('dashboard.subscriptionPage.featureWhatsapp'),
+                chatWidget: t('dashboard.subscriptionPage.featureChatWidget'),
+                email: t('dashboard.subscriptionPage.featureEmail'),
+                ecommerce: t('dashboard.subscriptionPage.featureEcommerce'),
+                calendar: t('dashboard.subscriptionPage.featureCalendar'),
+                googleSheets: t('dashboard.subscriptionPage.featureGoogleSheets'),
+                batchCalls: t('dashboard.subscriptionPage.featureBatchCalls'),
+                analytics: t('dashboard.subscriptionPage.featureAnalytics'),
+                prioritySupport: t('dashboard.subscriptionPage.featurePrioritySupport'),
+                apiAccess: t('dashboard.subscriptionPage.featureApiAccess'),
+                slaGuarantee: t('dashboard.subscriptionPage.featureSlaGuarantee'),
               };
 
-              return labelMaps[uiLang]?.[key] || labelMaps.EN[key] || key;
+              return featureMap[key] || key;
             };
 
             // Get only included features (no gaps, maintains order)
@@ -597,7 +537,7 @@ export default function SubscriptionPage() {
                         <span className="text-3xl font-bold text-neutral-900 dark:text-white">
                           {formatPrice(planPricing?.pricePerMinute || 0)}
                         </span>
-                        <span className="text-neutral-500 dark:text-neutral-400">/{uiLang === 'TR' ? 'dk' : 'min'}</span>
+                        <span className="text-neutral-500 dark:text-neutral-400">/{t('dashboard.subscriptionPage.perMinuteUnit')}</span>
                       </>
                     ) : planPricing?.price !== null ? (
                       /* Normal planlar: Aylık fiyat */
@@ -610,26 +550,23 @@ export default function SubscriptionPage() {
                     ) : (
                       /* Enterprise: Özel */
                       <span className="text-2xl font-bold text-neutral-900 dark:text-white">
-                        {uiLang === 'TR' ? 'Özel' : uiLang === 'PR' ? 'Personalizado' : 'Custom'}
+                        {t('dashboard.subscriptionPage.custom')}
                       </span>
                     )}
                   </div>
                   <div className="h-[20px] mt-2">
                     {plan.id === 'PAYG' ? (
-                      /* PAYG: Prepaid - Taahhütsüz */
                       <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                        {uiLang === 'TR' ? 'Taahhütsüz, bakiye yükle kullan' : 'No commitment, top up and use'}
+                        {t('dashboard.subscriptionPage.noCommitmentDesc')}
                       </p>
                     ) : planPricing?.overageRate ? (
-                      /* Paket planları: POSTPAID aşım (ay sonu fatura) */
                       <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                        {uiLang === 'TR'
-                          ? `Aşım: ${formatPrice(planPricing.overageRate)}/dk (ay sonu fatura)`
-                          : `Overage: ${formatPrice(planPricing.overageRate)}/min (billed monthly)`}
+                        {t('dashboard.subscriptionPage.overageDesc')
+                          .replace('{price}', formatPrice(planPricing.overageRate))}
                       </p>
                     ) : plan.id === 'ENTERPRISE' ? (
                       <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                        {uiLang === 'TR' ? 'Özel fiyatlandırma' : uiLang === 'PR' ? 'Preço personalizado' : 'Custom pricing'}
+                        {t('dashboard.subscriptionPage.customPricing')}
                       </p>
                     ) : null}
                   </div>
@@ -685,7 +622,7 @@ export default function SubscriptionPage() {
                     {upgrading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        {uiLang === 'TR' ? 'İşleniyor...' : 'Processing...'}
+                        {t('dashboard.subscriptionPage.processing')}
                       </>
                     ) : (
                       getButtonText()
@@ -720,7 +657,7 @@ export default function SubscriptionPage() {
           <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-auto">
             <div className="flex justify-between items-center p-4 border-b border-neutral-200">
               <h3 className="text-lg font-semibold text-neutral-900">
-                {t('dashboard.subscriptionPage.payment') || 'Ödeme'}
+                {t('dashboard.subscriptionPage.payment')}
               </h3>
               <button
                 onClick={closePaymentModal}
@@ -744,7 +681,7 @@ export default function SubscriptionPage() {
           // Refresh credit balance
           setCreditRefreshTrigger(prev => prev + 1);
           // Also reload subscription data
-          loadData();
+          refetchSubscription();
         }}
       />
     </div>

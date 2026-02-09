@@ -116,40 +116,40 @@ export default function Sidebar({ user, credits, business }) {
     </div>
   );
 
-  // Navigation structure - 4 groups using single source of truth
+  // Navigation structure - 4 groups using translation keys
   const NAVIGATION = [
     {
-      label: locale === 'tr' ? 'Ürün' : 'Product',
+      label: t('dashboard.sidebar.product'),
       items: [
-        { icon: Bot, label: locale === 'tr' ? NAVIGATION_ITEMS.assistants.labelTr : NAVIGATION_ITEMS.assistants.labelEn, href: NAVIGATION_ITEMS.assistants.href, permission: 'assistants:view' },
-        { icon: BookOpen, label: locale === 'tr' ? NAVIGATION_ITEMS.knowledgeBase.labelTr : NAVIGATION_ITEMS.knowledgeBase.labelEn, href: NAVIGATION_ITEMS.knowledgeBase.href, permission: 'knowledge:view' },
-        { icon: MessageSquare, label: locale === 'tr' ? NAVIGATION_ITEMS.chatWidget.labelTr : NAVIGATION_ITEMS.chatWidget.labelEn, href: NAVIGATION_ITEMS.chatWidget.href, permission: 'assistants:view' },
+        { icon: Bot, label: t('dashboard.assistants'), href: NAVIGATION_ITEMS.assistants.href, permission: 'assistants:view' },
+        { icon: BookOpen, label: t('dashboard.knowledgeBase'), href: NAVIGATION_ITEMS.knowledgeBase.href, permission: 'knowledge:view' },
+        { icon: MessageSquare, label: t('dashboard.sidebar.chatWidget'), href: NAVIGATION_ITEMS.chatWidget.href, permission: 'assistants:view' },
       ],
     },
     {
-      label: locale === 'tr' ? 'Operasyon' : 'Operations',
+      label: t('dashboard.sidebar.operations'),
       items: [
-        { icon: Database, label: locale === 'tr' ? NAVIGATION_ITEMS.inbox.labelTr : NAVIGATION_ITEMS.inbox.labelEn, href: NAVIGATION_ITEMS.inbox.href, permission: 'campaigns:view' },
-        { icon: Megaphone, label: locale === 'tr' ? NAVIGATION_ITEMS.campaigns.labelTr : NAVIGATION_ITEMS.campaigns.labelEn, href: NAVIGATION_ITEMS.campaigns.href, permission: 'campaigns:view', featureId: 'batch_calls' },
-        { icon: Mail, label: locale === 'tr' ? NAVIGATION_ITEMS.email.labelTr : NAVIGATION_ITEMS.email.labelEn, href: NAVIGATION_ITEMS.email.href, permission: 'campaigns:view' },
+        { icon: Database, label: t('dashboard.sidebar.inbox'), href: NAVIGATION_ITEMS.inbox.href, permission: 'campaigns:view' },
+        { icon: Megaphone, label: t('dashboard.sidebar.campaigns'), href: NAVIGATION_ITEMS.campaigns.href, permission: 'campaigns:view', featureId: 'batch_calls' },
+        { icon: Mail, label: t('dashboard.sidebar.email'), href: NAVIGATION_ITEMS.email.href, permission: 'campaigns:view' },
       ],
     },
     {
-      label: locale === 'tr' ? 'İzleme' : 'Monitoring',
+      label: t('dashboard.sidebar.monitoring'),
       items: [
-        { icon: BarChart3, label: locale === 'tr' ? NAVIGATION_ITEMS.analytics.labelTr : NAVIGATION_ITEMS.analytics.labelEn, href: NAVIGATION_ITEMS.analytics.href, permission: 'analytics:view' },
-        { icon: PhoneCall, label: locale === 'tr' ? NAVIGATION_ITEMS.callbacks.labelTr : NAVIGATION_ITEMS.callbacks.labelEn, href: NAVIGATION_ITEMS.callbacks.href, permission: 'campaigns:view' },
-        { icon: Phone, label: locale === 'tr' ? NAVIGATION_ITEMS.callHistory.labelTr : NAVIGATION_ITEMS.callHistory.labelEn, href: NAVIGATION_ITEMS.callHistory.href, permission: 'analytics:view' },
-        { icon: MessageCircle, label: locale === 'tr' ? NAVIGATION_ITEMS.chatHistory.labelTr : NAVIGATION_ITEMS.chatHistory.labelEn, href: NAVIGATION_ITEMS.chatHistory.href, permission: 'analytics:view' },
+        { icon: BarChart3, label: t('dashboard.analytics'), href: NAVIGATION_ITEMS.analytics.href, permission: 'analytics:view' },
+        { icon: PhoneCall, label: t('dashboard.sidebar.callbacks'), href: NAVIGATION_ITEMS.callbacks.href, permission: 'campaigns:view' },
+        { icon: Phone, label: t('dashboard.sidebar.callHistory'), href: NAVIGATION_ITEMS.callHistory.href, permission: 'analytics:view' },
+        { icon: MessageCircle, label: t('dashboard.sidebar.chatHistory'), href: NAVIGATION_ITEMS.chatHistory.href, permission: 'analytics:view' },
       ],
     },
     {
-      label: locale === 'tr' ? 'Yönetim' : 'Management',
+      label: t('dashboard.sidebar.management'),
       items: [
-        { icon: Puzzle, label: locale === 'tr' ? NAVIGATION_ITEMS.integrations.labelTr : NAVIGATION_ITEMS.integrations.labelEn, href: NAVIGATION_ITEMS.integrations.href, permission: 'integrations:view' },
-        { icon: Users, label: locale === 'tr' ? NAVIGATION_ITEMS.team.labelTr : NAVIGATION_ITEMS.team.labelEn, href: NAVIGATION_ITEMS.team.href, permission: 'team:view' },
-        { icon: CreditCard, label: locale === 'tr' ? NAVIGATION_ITEMS.subscription.labelTr : NAVIGATION_ITEMS.subscription.labelEn, href: NAVIGATION_ITEMS.subscription.href, permission: 'billing:view' },
-        { icon: Settings, label: locale === 'tr' ? NAVIGATION_ITEMS.account.labelTr : NAVIGATION_ITEMS.account.labelEn, href: NAVIGATION_ITEMS.account.href, permission: 'settings:view' },
+        { icon: Puzzle, label: t('dashboard.sidebar.integrations'), href: NAVIGATION_ITEMS.integrations.href, permission: 'integrations:view' },
+        { icon: Users, label: t('dashboard.sidebar.team'), href: NAVIGATION_ITEMS.team.href, permission: 'team:view' },
+        { icon: CreditCard, label: t('dashboard.subscription'), href: NAVIGATION_ITEMS.subscription.href, permission: 'billing:view' },
+        { icon: Settings, label: t('dashboard.sidebar.account'), href: NAVIGATION_ITEMS.account.href, permission: 'settings:view' },
       ],
     },
   ];
@@ -333,23 +333,23 @@ export default function Sidebar({ user, credits, business }) {
                 ) : (
                   <Monitor className="h-4 w-4 mr-2" />
                 )}
-                {t('dashboard.theme') || 'Tema'}
+                {t('dashboard.theme')}
               </DropdownMenuSubTrigger>
               <DropdownMenuPortal>
                 <DropdownMenuSubContent>
                   <DropdownMenuItem onClick={() => setTheme('light')} className="cursor-pointer">
                     <Sun className="h-4 w-4 mr-2" />
-                    {t('dashboard.themeLight') || 'Light'}
+                    {t('dashboard.themeLight')}
                     {mounted && theme === 'light' && <Check className="h-4 w-4 ml-auto" />}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setTheme('dark')} className="cursor-pointer">
                     <Moon className="h-4 w-4 mr-2" />
-                    {t('dashboard.themeDark') || 'Dark'}
+                    {t('dashboard.themeDark')}
                     {mounted && theme === 'dark' && <Check className="h-4 w-4 ml-auto" />}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setTheme('system')} className="cursor-pointer">
                     <Monitor className="h-4 w-4 mr-2" />
-                    {t('dashboard.themeSystem') || 'System'}
+                    {t('dashboard.themeSystem')}
                     {mounted && theme === 'system' && <Check className="h-4 w-4 ml-auto" />}
                   </DropdownMenuItem>
                 </DropdownMenuSubContent>

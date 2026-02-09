@@ -46,7 +46,6 @@ import { apiClient } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { NAVIGATION_ITEMS } from '@/lib/navigationConfig';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -60,40 +59,35 @@ import {
   useImportCustomerDataFile,
 } from '@/hooks/useCustomerData';
 
-// Data type options for inbound calls
-const DATA_TYPE_OPTIONS = {
+// Data type options for inbound calls - labels resolved via t() at render time
+const DATA_TYPE_OPTIONS_CONFIG = {
   accounting: {
-    tr: 'Muhasebe',
-    en: 'Accounting',
-    description: { tr: 'SGK borcu, vergi borcu, beyanname bilgileri', en: 'SSI debt, tax debt, declaration info' },
+    labelKey: 'dashboard.customerDataPage.dataTypeAccounting',
+    descKey: 'dashboard.customerDataPage.dataTypeAccountingDesc',
     icon: Calculator,
     color: 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400'
   },
   support: {
-    tr: 'Arıza Takip',
-    en: 'Support Tracking',
-    description: { tr: 'Müşteri destek talepleri, arıza kayıtları', en: 'Customer support requests, fault records' },
+    labelKey: 'dashboard.customerDataPage.dataTypeSupport',
+    descKey: 'dashboard.customerDataPage.dataTypeSupportDesc',
     icon: Wrench,
     color: 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400'
   },
   appointment: {
-    tr: 'Randevu',
-    en: 'Appointment',
-    description: { tr: 'Randevu bilgileri, hatırlatmalar', en: 'Appointment info, reminders' },
+    labelKey: 'dashboard.customerDataPage.dataTypeAppointment',
+    descKey: 'dashboard.customerDataPage.dataTypeAppointmentDesc',
     icon: Calendar,
     color: 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400'
   },
   order: {
-    tr: 'Sipariş',
-    en: 'Order',
-    description: { tr: 'Sipariş durumu, kargo bilgileri', en: 'Order status, shipping info' },
+    labelKey: 'dashboard.customerDataPage.dataTypeOrder',
+    descKey: 'dashboard.customerDataPage.dataTypeOrderDesc',
     icon: Package,
     color: 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400'
   },
   custom: {
-    tr: 'Diğer',
-    en: 'Other',
-    description: { tr: 'Özel müşteri verileri', en: 'Custom customer data' },
+    labelKey: 'dashboard.customerDataPage.dataTypeOther',
+    descKey: 'dashboard.customerDataPage.dataTypeOtherDesc',
     icon: HelpCircle,
     color: 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400'
   }
@@ -221,12 +215,12 @@ export default function CustomerDataPage() {
 
     try {
       await deleteFile.mutateAsync(fileToDelete.id);
-      toast.success(locale === 'tr' ? 'Dosya silindi' : 'File deleted');
+      toast.success(t('dashboard.customerDataPage.fileDeleted'));
       setShowDeleteFileModal(false);
       setFileToDelete(null);
     } catch (error) {
       console.error('Error deleting file:', error);
-      toast.error(locale === 'tr' ? 'Silme başarısız' : 'Delete failed');
+      toast.error(t('dashboard.customerDataPage.deleteFailed'));
     }
   };
 
@@ -257,10 +251,10 @@ export default function CustomerDataPage() {
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
       }, 100);
-      toast.success(locale === 'tr' ? 'Şablon indirildi' : 'Template downloaded');
+      toast.success(t('dashboard.customerDataPage.templateDownloaded'));
     } catch (error) {
       console.error('Error downloading template:', error);
-      toast.error(locale === 'tr' ? 'Şablon indirilemedi' : 'Failed to download template');
+      toast.error(t('dashboard.customerDataPage.failedToDownloadTemplate'));
     }
   };
 
@@ -276,7 +270,7 @@ export default function CustomerDataPage() {
     ];
 
     if (!allowedTypes.includes(file.type) && !file.name.endsWith('.csv') && !file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
-      toast.error(locale === 'tr' ? 'Sadece CSV ve Excel dosyaları yüklenebilir' : 'Only CSV and Excel files are allowed');
+      toast.error(t('dashboard.customerDataPage.onlyCsvExcelAllowed'));
       return;
     }
 
@@ -292,7 +286,7 @@ export default function CustomerDataPage() {
       setUploadStep(3);
     } catch (error) {
       console.error('Error parsing file:', error);
-      toast.error(error.response?.data?.error || (locale === 'tr' ? 'Dosya okunamadı' : 'Failed to parse file'));
+      toast.error(error.response?.data?.error || t('dashboard.customerDataPage.failedToParseFile'));
       setUploadFile(null);
     } finally {
       setUploading(false);
@@ -315,7 +309,7 @@ export default function CustomerDataPage() {
       // importFile.mutateAsync already invalidates the query, so no need to call loadFiles()
     } catch (error) {
       console.error('Error importing file:', error);
-      toast.error(error.response?.data?.error || (locale === 'tr' ? 'İçe aktarma başarısız' : 'Import failed'));
+      toast.error(error.response?.data?.error || t('dashboard.customerDataPage.importFailed'));
     } finally {
       setUploading(false);
     }
@@ -336,7 +330,7 @@ export default function CustomerDataPage() {
 
   // Get data type info
   const getDataTypeInfo = (dataType) => {
-    return DATA_TYPE_OPTIONS[dataType] || DATA_TYPE_OPTIONS.custom;
+    return DATA_TYPE_OPTIONS_CONFIG[dataType] || DATA_TYPE_OPTIONS_CONFIG.custom;
   };
 
   // Pagination
@@ -354,16 +348,16 @@ export default function CustomerDataPage() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-semibold text-neutral-900 dark:text-white">
-              {locale === 'tr' ? NAVIGATION_ITEMS.inbox.labelTr : NAVIGATION_ITEMS.inbox.labelEn}
+              {t('dashboard.customerDataPage.title')}
             </h1>
             <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
-              {locale === 'tr' ? NAVIGATION_ITEMS.inbox.descriptionTr : NAVIGATION_ITEMS.inbox.descriptionEn}
+              {t('dashboard.customerDataPage.description')}
             </p>
           </div>
 
           <Button onClick={() => setShowUploadModal(true)}>
             <Plus className="w-4 h-4 mr-2" />
-            {locale === 'tr' ? 'Yeni Veri Yükle' : 'Upload New Data'}
+            {t('dashboard.customerDataPage.uploadNewData')}
           </Button>
         </div>
 
@@ -375,14 +369,12 @@ export default function CustomerDataPage() {
         ) : files.length === 0 ? (
           <EmptyState
             icon={FileSpreadsheet}
-            title={locale === 'tr' ? 'Henüz dosya yüklenmemiş' : 'No files uploaded yet'}
-            description={locale === 'tr'
-              ? 'Excel veya CSV dosyası yükleyerek müşteri verilerinizi ekleyin'
-              : 'Upload an Excel or CSV file to add your customer data'}
+            title={t('dashboard.customerDataPage.noFilesYet')}
+            description={t('dashboard.customerDataPage.noFilesDescription')}
             action={
               <Button onClick={() => setShowUploadModal(true)}>
                 <Plus className="w-4 h-4 mr-2" />
-                {locale === 'tr' ? 'Dosya Yükle' : 'Upload File'}
+                {t('dashboard.customerDataPage.uploadFile')}
               </Button>
             }
           />
@@ -416,7 +408,7 @@ export default function CustomerDataPage() {
                           }}
                         >
                           <Trash2 className="h-4 w-4 mr-2" />
-                          {locale === 'tr' ? 'Sil' : 'Delete'}
+                          {t('common.delete')}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -427,14 +419,14 @@ export default function CustomerDataPage() {
                       {file.fileName}
                     </h3>
                     <p className="text-sm text-neutral-500 mt-1">
-                      {typeInfo[locale]}
+                      {t(typeInfo.labelKey)}
                     </p>
                   </div>
 
                   <div className="flex items-center gap-4 mt-4 text-sm text-neutral-500">
                     <div className="flex items-center gap-1">
                       <Users className="h-4 w-4" />
-                      <span>{file.recordCount} {locale === 'tr' ? 'kayıt' : 'records'}</span>
+                      <span>{file.recordCount} {t('dashboard.customerDataPage.records')}</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <Clock className="h-4 w-4" />
@@ -445,13 +437,13 @@ export default function CustomerDataPage() {
                   {file.status === 'PROCESSING' && (
                     <Badge variant="secondary" className="mt-3">
                       <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                      {locale === 'tr' ? 'İşleniyor' : 'Processing'}
+                      {t('dashboard.customerDataPage.processing')}
                     </Badge>
                   )}
                   {file.status === 'FAILED' && (
                     <Badge variant="destructive" className="mt-3">
                       <XCircle className="h-3 w-3 mr-1" />
-                      {locale === 'tr' ? 'Başarısız' : 'Failed'}
+                      {t('dashboard.customerDataPage.failed')}
                     </Badge>
                   )}
                 </div>
@@ -466,13 +458,13 @@ export default function CustomerDataPage() {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <FileSpreadsheet className="h-5 w-5 text-primary-600" />
-                {locale === 'tr' ? 'Müşteri Verisi Yükle' : 'Upload Customer Data'}
+                {t('dashboard.customerDataPage.uploadCustomerData')}
               </DialogTitle>
               <DialogDescription>
-                {uploadStep === 1 && (locale === 'tr' ? 'Veri tipini seçin' : 'Select data type')}
-                {uploadStep === 2 && (locale === 'tr' ? 'Dosya yükleyin' : 'Upload file')}
-                {uploadStep === 3 && (locale === 'tr' ? 'Verileri önizleyin' : 'Preview data')}
-                {uploadStep === 4 && (locale === 'tr' ? 'İçe aktarma sonucu' : 'Import result')}
+                {uploadStep === 1 && t('dashboard.customerDataPage.selectDataType')}
+                {uploadStep === 2 && t('dashboard.customerDataPage.uploadFileStep')}
+                {uploadStep === 3 && t('dashboard.customerDataPage.previewData')}
+                {uploadStep === 4 && t('dashboard.customerDataPage.importResult')}
               </DialogDescription>
             </DialogHeader>
 
@@ -502,12 +494,10 @@ export default function CustomerDataPage() {
             {uploadStep === 1 && (
               <div className="space-y-4 py-4">
                 <p className="text-sm text-neutral-600 dark:text-neutral-400">
-                  {locale === 'tr'
-                    ? 'Hangi tür müşteri verisi yüklemek istiyorsunuz?'
-                    : 'What type of customer data do you want to upload?'}
+                  {t('dashboard.customerDataPage.whatTypeOfData')}
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {Object.entries(DATA_TYPE_OPTIONS).map(([key, option]) => {
+                  {Object.entries(DATA_TYPE_OPTIONS_CONFIG).map(([key, option]) => {
                     const Icon = option.icon;
                     return (
                       <button
@@ -523,10 +513,10 @@ export default function CustomerDataPage() {
                           <Icon className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
                           <div>
                             <p className="font-medium text-neutral-900 dark:text-white">
-                              {option[locale]}
+                              {t(option.labelKey)}
                             </p>
                             <p className="text-sm text-neutral-500">
-                              {option.description[locale]}
+                              {t(option.descKey)}
                             </p>
                           </div>
                         </div>
@@ -544,15 +534,15 @@ export default function CustomerDataPage() {
                 <div className="bg-neutral-50 dark:bg-neutral-800 rounded-lg p-4 flex items-center justify-between">
                   <div>
                     <p className="font-medium text-neutral-900 dark:text-white">
-                      {locale === 'tr' ? 'Örnek Şablon' : 'Sample Template'}
+                      {t('dashboard.customerDataPage.sampleTemplate')}
                     </p>
                     <p className="text-sm text-neutral-500">
-                      {locale === 'tr' ? 'Doğru format için şablonu indirin' : 'Download template for correct format'}
+                      {t('dashboard.customerDataPage.downloadTemplateDesc')}
                     </p>
                   </div>
                   <Button variant="outline" size="sm" onClick={handleDownloadTemplate}>
                     <Download className="h-4 w-4 mr-2" />
-                    {locale === 'tr' ? 'İndir' : 'Download'}
+                    {t('common.download')}
                   </Button>
                 </div>
 
@@ -574,7 +564,7 @@ export default function CustomerDataPage() {
                     <div className="flex flex-col items-center">
                       <Loader2 className="h-12 w-12 text-primary-600 animate-spin mb-3" />
                       <p className="text-neutral-600 dark:text-neutral-400">
-                        {locale === 'tr' ? 'Dosya okunuyor...' : 'Reading file...'}
+                        {t('dashboard.customerDataPage.readingFile')}
                       </p>
                     </div>
                   ) : uploadFile ? (
@@ -586,14 +576,14 @@ export default function CustomerDataPage() {
                       </p>
                       <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); setUploadFile(null); }}>
                         <X className="h-4 w-4 mr-1" />
-                        {locale === 'tr' ? 'Kaldır' : 'Remove'}
+                        {t('dashboard.customerDataPage.remove')}
                       </Button>
                     </div>
                   ) : (
                     <div className="flex flex-col items-center">
                       <Upload className="h-12 w-12 text-neutral-400 mb-3" />
                       <p className="font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-                        {locale === 'tr' ? 'Dosya yüklemek için tıklayın' : 'Click to upload file'}
+                        {t('dashboard.customerDataPage.clickToUpload')}
                       </p>
                       <p className="text-sm text-neutral-500">
                         CSV, XLS, XLSX (max 5MB)
@@ -610,9 +600,7 @@ export default function CustomerDataPage() {
                 <div className="p-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg flex items-center gap-2">
                   <CheckCircle2 className="w-5 h-5 text-neutral-600 dark:text-neutral-400" />
                   <span className="text-neutral-700 dark:text-neutral-300">
-                    {locale === 'tr'
-                      ? `${uploadPreview.totalRows} satır bulundu`
-                      : `${uploadPreview.totalRows} rows found`}
+                    {t('dashboard.customerDataPage.rowsFound', { count: uploadPreview.totalRows })}
                   </span>
                 </div>
 
@@ -654,9 +642,7 @@ export default function CustomerDataPage() {
                   <div className="flex gap-2">
                     <AlertCircle className="h-5 w-5 text-neutral-600 dark:text-neutral-400 flex-shrink-0" />
                     <p className="text-sm text-neutral-700 dark:text-neutral-300">
-                      {locale === 'tr'
-                        ? 'Telefon numarası kolonu otomatik olarak algılanacaktır. Gelen aramalarda bu numara ile eşleştirme yapılacak.'
-                        : 'Phone number column will be auto-detected. Inbound calls will be matched against these numbers.'}
+                      {t('dashboard.customerDataPage.phoneMatchingInfo')}
                     </p>
                   </div>
                 </div>
@@ -670,7 +656,7 @@ export default function CustomerDataPage() {
                   <div className="p-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg flex items-center gap-2">
                     <CheckCircle2 className="w-5 h-5 text-neutral-600 dark:text-neutral-400" />
                     <span className="text-neutral-700 dark:text-neutral-300">
-                      {importResult.success} {locale === 'tr' ? 'yeni kayıt oluşturuldu' : 'new records created'}
+                      {t('dashboard.customerDataPage.newRecordsCreated', { count: importResult.success })}
                     </span>
                   </div>
                 )}
@@ -678,7 +664,7 @@ export default function CustomerDataPage() {
                   <div className="p-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg flex items-center gap-2">
                     <CheckCircle2 className="w-5 h-5 text-neutral-600 dark:text-neutral-400" />
                     <span className="text-neutral-700 dark:text-neutral-300">
-                      {importResult.updated} {locale === 'tr' ? 'kayıt güncellendi' : 'records updated'}
+                      {t('dashboard.customerDataPage.recordsUpdated', { count: importResult.updated })}
                     </span>
                   </div>
                 )}
@@ -687,18 +673,18 @@ export default function CustomerDataPage() {
                     <div className="flex items-center gap-2">
                       <XCircle className="w-5 h-5 text-neutral-600 dark:text-neutral-400" />
                       <span className="text-neutral-700 dark:text-neutral-300">
-                        {importResult.failed} {locale === 'tr' ? 'kayıt başarısız' : 'records failed'}
+                        {t('dashboard.customerDataPage.recordsFailed', { count: importResult.failed })}
                       </span>
                     </div>
                     {importResult.errors && importResult.errors.length > 0 && (
                       <ul className="mt-2 text-sm text-neutral-600 dark:text-neutral-400 list-disc list-inside max-h-32 overflow-auto">
                         {importResult.errors.slice(0, 10).map((err, i) => (
                           <li key={i}>
-                            {locale === 'tr' ? `Satır ${err.row}: ${err.error}` : `Row ${err.row}: ${err.error}`}
+                            {t('dashboard.customerDataPage.rowError', { row: err.row, error: err.error })}
                           </li>
                         ))}
                         {importResult.errors.length > 10 && (
-                          <li>...{locale === 'tr' ? `ve ${importResult.errors.length - 10} hata daha` : `and ${importResult.errors.length - 10} more errors`}</li>
+                          <li>...{t('dashboard.customerDataPage.andMoreErrors', { count: importResult.errors.length - 10 })}</li>
                         )}
                       </ul>
                     )}
@@ -729,8 +715,8 @@ export default function CustomerDataPage() {
                 }}
               >
                 {uploadStep === 1
-                  ? (locale === 'tr' ? 'Kapat' : 'Close')
-                  : (locale === 'tr' ? 'Geri' : 'Back')
+                  ? t('common.close')
+                  : t('common.back')
                 }
               </Button>
 
@@ -739,26 +725,26 @@ export default function CustomerDataPage() {
                   onClick={() => setUploadStep(2)}
                   disabled={!selectedDataType}
                 >
-                  {locale === 'tr' ? 'Devam' : 'Continue'}
+                  {t('common.continue')}
                 </Button>
               )}
 
               {uploadStep === 2 && (
                 <Button disabled>
-                  {locale === 'tr' ? 'Dosya Yükleyin' : 'Upload File'}
+                  {t('dashboard.customerDataPage.uploadFile')}
                 </Button>
               )}
 
               {uploadStep === 3 && (
                 <Button onClick={handleImport} disabled={uploading}>
                   {uploading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                  {locale === 'tr' ? 'İçe Aktar' : 'Import'}
+                  {t('common.import')}
                 </Button>
               )}
 
               {uploadStep === 4 && (
                 <Button onClick={resetUploadModal}>
-                  {locale === 'tr' ? 'Tamam' : 'Done'}
+                  {t('dashboard.customerDataPage.done')}
                 </Button>
               )}
             </div>
@@ -770,21 +756,19 @@ export default function CustomerDataPage() {
           <DialogContent className="max-w-sm">
             <DialogHeader>
               <DialogTitle className="text-red-600">
-                {locale === 'tr' ? 'Dosya Sil' : 'Delete File'}
+                {t('dashboard.customerDataPage.deleteFile')}
               </DialogTitle>
               <DialogDescription>
-                {locale === 'tr'
-                  ? `"${fileToDelete?.fileName}" dosyası ve tüm kayıtları silinecek. Bu işlem geri alınamaz.`
-                  : `"${fileToDelete?.fileName}" and all its records will be deleted. This action cannot be undone.`}
+                {t('dashboard.customerDataPage.deleteFileConfirm', { fileName: fileToDelete?.fileName })}
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowDeleteFileModal(false)}>
-                {locale === 'tr' ? 'İptal' : 'Cancel'}
+                {t('common.cancel')}
               </Button>
               <Button variant="destructive" onClick={handleDeleteFile}>
                 <Trash2 className="w-4 h-4 mr-2" />
-                {locale === 'tr' ? 'Sil' : 'Delete'}
+                {t('common.delete')}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -822,11 +806,11 @@ export default function CustomerDataPage() {
   const handleDeleteRecord = async (recordId) => {
     try {
       await apiClient.customerData.delete(recordId);
-      toast.success(locale === 'tr' ? 'Kayıt silindi' : 'Record deleted');
+      toast.success(t('dashboard.customerDataPage.recordDeleted'));
       loadRecords();
     } catch (error) {
       console.error('Error deleting record:', error);
-      toast.error(locale === 'tr' ? 'Silme başarısız' : 'Delete failed');
+      toast.error(t('dashboard.customerDataPage.deleteFailed'));
     }
   };
 
@@ -836,13 +820,13 @@ export default function CustomerDataPage() {
 
     try {
       await apiClient.customerData.bulkDelete(selectedRecords);
-      toast.success(locale === 'tr' ? `${selectedRecords.length} kayıt silindi` : `${selectedRecords.length} records deleted`);
+      toast.success(t('dashboard.customerDataPage.recordsDeleted', { count: selectedRecords.length }));
       setSelectedRecords([]);
       setShowDeleteConfirmModal(false);
       loadRecords();
     } catch (error) {
       console.error('Error bulk deleting:', error);
-      toast.error(locale === 'tr' ? 'Silme başarısız' : 'Delete failed');
+      toast.error(t('dashboard.customerDataPage.deleteFailed'));
     }
   };
 
@@ -864,7 +848,7 @@ export default function CustomerDataPage() {
     const nameValue = nameCol ? addFormData[nameCol] : addFormData.companyName;
 
     if (!nameValue || !phoneValue) {
-      toast.error(locale === 'tr' ? 'Ad ve telefon zorunludur' : 'Name and phone are required');
+      toast.error(t('dashboard.customerDataPage.namePhoneRequired'));
       return;
     }
 
@@ -883,13 +867,13 @@ export default function CustomerDataPage() {
         customFields,
         fileId: selectedFile?.id
       });
-      toast.success(locale === 'tr' ? 'Kayıt eklendi' : 'Record added');
+      toast.success(t('dashboard.customerDataPage.recordAdded'));
       setShowAddModal(false);
       setAddFormData({});
       loadRecords();
     } catch (error) {
       console.error('Error adding record:', error);
-      const errorMsg = error.response?.data?.errorTR || error.response?.data?.error || (locale === 'tr' ? 'Ekleme başarısız' : 'Add failed');
+      const errorMsg = error.response?.data?.error || t('dashboard.customerDataPage.addFailed');
       toast.error(errorMsg);
     } finally {
       setIsSaving(false);
@@ -964,7 +948,7 @@ export default function CustomerDataPage() {
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="sm" onClick={goBackToFiles}>
           <ArrowLeft className="w-4 h-4 mr-2" />
-          {locale === 'tr' ? 'Geri' : 'Back'}
+          {t('common.back')}
         </Button>
         <div className="flex-1">
           <div className="flex items-center gap-2">
@@ -976,7 +960,7 @@ export default function CustomerDataPage() {
             </h1>
           </div>
           <p className="text-neutral-600 dark:text-neutral-400 mt-1">
-            {selectedFile?.recordCount} {locale === 'tr' ? 'kayıt' : 'records'} - {locale === 'tr' ? 'Yükleme' : 'Uploaded'}: {formatDateDisplay(selectedFile?.createdAt, locale)}
+            {selectedFile?.recordCount} {t('dashboard.customerDataPage.records')} - {t('dashboard.customerDataPage.uploaded')}: {formatDateDisplay(selectedFile?.createdAt, locale)}
           </p>
         </div>
       </div>
@@ -986,7 +970,7 @@ export default function CustomerDataPage() {
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
           <Input
-            placeholder={locale === 'tr' ? 'Kayıtlarda ara...' : 'Search records...'}
+            placeholder={t('dashboard.customerDataPage.searchRecords')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
@@ -1000,7 +984,7 @@ export default function CustomerDataPage() {
               onClick={() => setShowDeleteConfirmModal(true)}
             >
               <Trash2 className="w-4 h-4 mr-2" />
-              {locale === 'tr' ? `${selectedRecords.length} Sil` : `Delete ${selectedRecords.length}`}
+              {t('dashboard.customerDataPage.deleteCount', { count: selectedRecords.length })}
             </Button>
           )}
           <Button
@@ -1011,7 +995,7 @@ export default function CustomerDataPage() {
             }}
           >
             <Plus className="w-4 h-4 mr-2" />
-            {locale === 'tr' ? 'Manuel Ekle' : 'Add Manually'}
+            {t('dashboard.customerDataPage.addManually')}
           </Button>
         </div>
       </div>
@@ -1024,14 +1008,12 @@ export default function CustomerDataPage() {
       ) : records.length === 0 ? (
         <EmptyState
           icon={Users}
-          title={locale === 'tr' ? 'Kayıt bulunamadı' : 'No records found'}
-          description={locale === 'tr'
-            ? 'Bu dosyada arama kriterlerine uyan kayıt yok'
-            : 'No records match your search criteria in this file'}
+          title={t('dashboard.customerDataPage.noRecordsFound')}
+          description={t('dashboard.customerDataPage.noRecordsDescription')}
           action={
             <Button onClick={() => setShowAddModal(true)}>
               <Plus className="w-4 h-4 mr-2" />
-              {locale === 'tr' ? 'Manuel Kayıt Ekle' : 'Add Record Manually'}
+              {t('dashboard.customerDataPage.addRecordManually')}
             </Button>
           }
         />
@@ -1057,7 +1039,7 @@ export default function CustomerDataPage() {
                     </th>
                   ))}
                   <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider w-24">
-                    {locale === 'tr' ? 'İşlemler' : 'Actions'}
+                    {t('dashboard.customerDataPage.actions')}
                   </th>
                 </tr>
               </thead>
@@ -1093,7 +1075,7 @@ export default function CustomerDataPage() {
                         size="sm"
                         onClick={() => handleDeleteRecord(record.id)}
                         className=""
-                        title={locale === 'tr' ? 'Sil' : 'Delete'}
+                        title={t('common.delete')}
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
@@ -1110,12 +1092,10 @@ export default function CustomerDataPage() {
               <p className="text-sm text-neutral-500">
                 {selectedRecords.length > 0 ? (
                   <span className="font-medium text-primary-600">
-                    {selectedRecords.length} {locale === 'tr' ? 'seçili' : 'selected'} -
+                    {selectedRecords.length} {t('dashboard.customerDataPage.selected')} -
                   </span>
                 ) : null}
-                {' '}{locale === 'tr'
-                  ? `Toplam ${recordsPagination.total} kayıt`
-                  : `Total ${recordsPagination.total} records`}
+                {' '}{t('dashboard.customerDataPage.totalRecords', { total: recordsPagination.total })}
               </p>
               <div className="flex items-center gap-2">
                 <Button
@@ -1149,10 +1129,10 @@ export default function CustomerDataPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Plus className="h-5 w-5" />
-              {locale === 'tr' ? 'Manuel Kayıt Ekle' : 'Add Record Manually'}
+              {t('dashboard.customerDataPage.addRecordManually')}
             </DialogTitle>
             <DialogDescription>
-              {locale === 'tr' ? 'Yeni bir kayıt oluşturun' : 'Create a new record'}
+              {t('dashboard.customerDataPage.createNewRecord')}
             </DialogDescription>
           </DialogHeader>
 
@@ -1188,14 +1168,14 @@ export default function CustomerDataPage() {
             {fileColumns.length === 0 && (
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label>{locale === 'tr' ? 'Müşteri Adı' : 'Customer Name'} *</Label>
+                  <Label>{t('dashboard.customerDataPage.customerName')} *</Label>
                   <Input
                     value={addFormData.companyName || ''}
                     onChange={(e) => setAddFormData({ ...addFormData, companyName: e.target.value })}
                   />
                 </div>
                 <div>
-                  <Label>{locale === 'tr' ? 'Telefon' : 'Phone'} *</Label>
+                  <Label>{t('dashboard.customerDataPage.phone')} *</Label>
                   <Input
                     value={addFormData.phone || ''}
                     onChange={(e) => setAddFormData({ ...addFormData, phone: e.target.value })}
@@ -1208,11 +1188,11 @@ export default function CustomerDataPage() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAddModal(false)}>
-              {locale === 'tr' ? 'İptal' : 'Cancel'}
+              {t('common.cancel')}
             </Button>
             <Button onClick={handleAddRecord} disabled={isSaving}>
               {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              {locale === 'tr' ? 'Ekle' : 'Add'}
+              {t('common.add')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1223,21 +1203,19 @@ export default function CustomerDataPage() {
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="text-red-600">
-              {locale === 'tr' ? 'Kayıtları Sil' : 'Delete Records'}
+              {t('dashboard.customerDataPage.deleteRecords')}
             </DialogTitle>
             <DialogDescription>
-              {locale === 'tr'
-                ? `${selectedRecords.length} kayıt silinecek. Bu işlem geri alınamaz.`
-                : `${selectedRecords.length} records will be deleted. This action cannot be undone.`}
+              {t('dashboard.customerDataPage.deleteRecordsConfirm', { count: selectedRecords.length })}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowDeleteConfirmModal(false)}>
-              {locale === 'tr' ? 'İptal' : 'Cancel'}
+              {t('common.cancel')}
             </Button>
             <Button variant="destructive" onClick={handleBulkDelete}>
               <Trash2 className="w-4 h-4 mr-2" />
-              {locale === 'tr' ? 'Sil' : 'Delete'}
+              {t('common.delete')}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -5,24 +5,23 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 // Import locale JSON files
 import enLocale from '@/locales/en.json';
 import trLocale from '@/locales/tr.json';
-import prLocale from '@/locales/pr.json';
 import deLocale from '@/locales/de.json';
 import esLocale from '@/locales/es.json';
 import frLocale from '@/locales/fr.json';
-import ptLocale from '@/locales/pt.json';
 
 const LanguageContext = createContext();
 
-// Locale data map
+// Locale data map - add new languages here when ready
 const locales = {
   en: enLocale,
   tr: trLocale,
-  pr: prLocale,  // Brazilian Portuguese
   de: deLocale,
   es: esLocale,
   fr: frLocale,
-  pt: ptLocale
 };
+
+// Supported UI locales - add locale codes here to enable them in the UI
+const supportedUILocales = ['tr', 'en'];
 
 // Helper function to get nested value from object using dot notation
 const getNestedValue = (obj, path) => {
@@ -39,36 +38,35 @@ const getNestedValue = (obj, path) => {
   return current;
 };
 
-// Only Turkish UI for now - other languages disabled until multi-region support is complete
-// See docs/MULTI_REGION_ARCHITECTURE.md for adding new languages
-const supportedUILocales = ['tr'];
-
 export function LanguageProvider({ children }) {
-  // Default to Turkish
   const [locale, setLocale] = useState('tr');
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      // Default to Turkish if not set
       let saved = localStorage.getItem('locale') || 'tr';
-      // If any other language was selected, fallback to TR (only Turkish supported now)
+      // If saved locale is not in supported list, fallback to TR
       if (!supportedUILocales.includes(saved)) {
         saved = 'tr';
         localStorage.setItem('locale', saved);
       }
       setLocale(saved);
+      // Update HTML lang attribute
+      document.documentElement.lang = saved;
     }
   }, []);
 
-  const changeLocale = (newLocale) => {
+  const changeLocale = useCallback((newLocale) => {
+    if (!supportedUILocales.includes(newLocale)) return;
     setLocale(newLocale);
     if (typeof window !== 'undefined') {
       localStorage.setItem('locale', newLocale);
+      document.documentElement.lang = newLocale;
     }
-  };
+  }, []);
 
   // Translation function - looks up key in locale JSON files
-  const t = useCallback((key) => {
+  // Supports optional interpolation: t('key', { name: 'John' }) replaces {name} in the value
+  const t = useCallback((key, params) => {
     if (!key) return '';
 
     // Get the current locale data
@@ -93,6 +91,13 @@ export function LanguageProvider({ children }) {
       return lastPart.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).trim();
     }
 
+    // Apply interpolation if params provided
+    if (params && typeof value === 'string') {
+      return value.replace(/\{(\w+)\}/g, (_, paramKey) =>
+        params[paramKey] !== undefined ? String(params[paramKey]) : `{${paramKey}}`
+      );
+    }
+
     return value;
   }, [locale]);
 
@@ -103,7 +108,7 @@ export function LanguageProvider({ children }) {
   }, []);
 
   return (
-    <LanguageContext.Provider value={{ locale, changeLocale, tr, t }}>
+    <LanguageContext.Provider value={{ locale, changeLocale, tr, t, supportedUILocales }}>
       {children}
     </LanguageContext.Provider>
   );

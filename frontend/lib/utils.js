@@ -80,7 +80,7 @@ export function getIntlLocale(locale) {
     'pl': 'pl-PL',
     'sv': 'sv-SE',
   };
-  return localeMap[locale] || 'tr-TR';
+  return localeMap[locale] || 'en-US';
 }
 
 /**
@@ -88,8 +88,9 @@ export function getIntlLocale(locale) {
  * @param {string|Date} date - Date to format
  * @param {string} format - 'short', 'long', 'time', 'relative', 'chart'
  * @param {string} locale - Locale code (tr, en, etc.)
+ * @param {Function} [t] - Optional translation function from useLanguage() (used for 'relative' format)
  */
-export function formatDate(date, format = 'short', locale = 'tr') {
+export function formatDate(date, format = 'short', locale = 'tr', t) {
   if (!date) return '';
 
   const d = new Date(date);
@@ -118,7 +119,7 @@ export function formatDate(date, format = 'short', locale = 'tr') {
     return d.toLocaleDateString(intlLocale, { month: 'short', day: 'numeric' });
   } else if (format === 'relative') {
     // 2 hours ago, 3 days ago, etc.
-    return getRelativeTime(d, locale);
+    return getRelativeTime(d, locale, t);
   }
 
   return d.toLocaleDateString(intlLocale);
@@ -126,8 +127,11 @@ export function formatDate(date, format = 'short', locale = 'tr') {
 
 /**
  * Get relative time (e.g., "2 hours ago")
+ * @param {Date} date - The date to compare against now
+ * @param {string} locale - Locale code for fallback formatting
+ * @param {Function} [t] - Optional translation function from useLanguage()
  */
-function getRelativeTime(date, locale = 'tr') {
+function getRelativeTime(date, locale = 'en', t) {
   const now = new Date();
   const diffMs = now - date;
   const diffSecs = Math.floor(diffMs / 1000);
@@ -135,7 +139,25 @@ function getRelativeTime(date, locale = 'tr') {
   const diffHours = Math.floor(diffMins / 60);
   const diffDays = Math.floor(diffHours / 24);
 
-  // Locale-aware relative time labels
+  // If a translation function is provided, use it
+  if (typeof t === 'function') {
+    if (diffSecs < 60) {
+      return t('relativeTime.justNow');
+    } else if (diffMins < 60) {
+      const key = diffMins === 1 ? 'relativeTime.minuteAgo' : 'relativeTime.minutesAgo';
+      return t(key).replace('{count}', diffMins);
+    } else if (diffHours < 24) {
+      const key = diffHours === 1 ? 'relativeTime.hourAgo' : 'relativeTime.hoursAgo';
+      return t(key).replace('{count}', diffHours);
+    } else if (diffDays < 7) {
+      const key = diffDays === 1 ? 'relativeTime.dayAgo' : 'relativeTime.daysAgo';
+      return t(key).replace('{count}', diffDays);
+    } else {
+      return formatDate(date, 'short', locale);
+    }
+  }
+
+  // Fallback: locale-aware relative time labels (English default)
   const labels = {
     tr: {
       justNow: 'Az önce',
@@ -154,7 +176,7 @@ function getRelativeTime(date, locale = 'tr') {
     },
   };
 
-  const l = labels[locale] || labels['tr'];
+  const l = labels[locale] || labels['en'];
 
   if (diffSecs < 60) {
     return l.justNow;

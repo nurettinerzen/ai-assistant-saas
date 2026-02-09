@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Utensils, Scissors, ShoppingCart, Sparkles, Loader2 } from 'lucide-react';
-import { getCurrentLanguage, t } from '@/lib/translations';
+import { useLanguage } from '@/contexts/LanguageContext';
 import api from '@/lib/api';
 import { toast } from 'sonner';
 
@@ -16,21 +16,13 @@ const TEMPLATE_ICONS = {
 };
 
 export default function AssistantTemplates({ onTemplateUsed }) {
-  const [language, setLanguage] = useState('en');
+  const { t, locale } = useLanguage();
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [creatingTemplate, setCreatingTemplate] = useState(null);
 
   useEffect(() => {
-    setLanguage(getCurrentLanguage());
     fetchTemplates();
-
-    const handleLanguageChange = () => {
-      setLanguage(getCurrentLanguage());
-    };
-    
-    window.addEventListener('languageChange', handleLanguageChange);
-    return () => window.removeEventListener('languageChange', handleLanguageChange);
   }, []);
 
   const fetchTemplates = async () => {
@@ -89,31 +81,23 @@ export default function AssistantTemplates({ onTemplateUsed }) {
         templateId: template.id
       });
       
-      toast.success(
-        language === 'tr' 
-          ? `${template.name} şablonundan asistan oluşturuldu!`
-          : `Assistant created from ${template.name} template!`
-      );
+      toast.success(t('templates.createdFromTemplate', { name: template.name }));
       
       if (onTemplateUsed) {
         onTemplateUsed(response.data.assistant);
       }
     } catch (error) {
       console.error('Error creating from template:', error);
-      toast.error(
-        language === 'tr'
-          ? 'Şablondan asistan oluşturulamadı'
-          : 'Failed to create assistant from template'
-      );
+      toast.error(t('templates.createFailed'));
     } finally {
       setCreatingTemplate(null);
     }
   };
 
   // Filter templates by current language
-  const currentLanguageCode = language === 'tr' ? 'TR' : 'EN';
+  const currentLanguageCode = locale === 'tr' ? 'TR' : 'EN';
   const filteredTemplates = templates.filter(
-    t => t.language === currentLanguageCode
+    tmpl => tmpl.language === currentLanguageCode
   );
 
   if (loading) {
@@ -128,10 +112,10 @@ export default function AssistantTemplates({ onTemplateUsed }) {
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <Sparkles className="h-5 w-5 text-primary" />
-        <h3 className="text-lg font-semibold">{t('templatesTitle', language)}</h3>
+        <h3 className="text-lg font-semibold">{t('templates.title')}</h3>
       </div>
       <p className="text-sm text-muted-foreground">
-        {t('templatesDesc', language)}
+        {t('templates.description')}
       </p>
 
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -163,10 +147,10 @@ export default function AssistantTemplates({ onTemplateUsed }) {
                   {creatingTemplate === template.id ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      {language === 'tr' ? 'Oluşturuluyor...' : 'Creating...'}
+                      {t('templates.creating')}
                     </>
                   ) : (
-                    t('useTemplate', language)
+                    t('templates.useTemplate')
                   )}
                 </Button>
               </CardContent>

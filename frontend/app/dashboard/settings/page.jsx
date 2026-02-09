@@ -26,7 +26,7 @@ import { apiClient } from '@/lib/api';
 import { toast, toastHelpers } from '@/lib/toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePermissions } from '@/hooks/usePermissions';
-import { NAVIGATION_ITEMS } from '@/lib/navigationConfig';
+
 import {
   useProfile,
   useNotifications,
@@ -40,7 +40,7 @@ import {
 } from '@/hooks/useSettings';
 
 export default function SettingsPage() {
-  const { t, locale } = useLanguage();
+  const { t, locale, changeLocale } = useLanguage();
   const { can } = usePermissions();
 
   // React Query hooks
@@ -200,10 +200,10 @@ export default function SettingsPage() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-semibold text-neutral-900 dark:text-white">
-          {locale === 'tr' ? NAVIGATION_ITEMS.account.labelTr : NAVIGATION_ITEMS.account.labelEn}
+          {t('dashboard.settingsPage.title')}
         </h1>
         <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
-          {locale === 'tr' ? NAVIGATION_ITEMS.account.descriptionTr : NAVIGATION_ITEMS.account.descriptionEn}
+          {t('dashboard.settingsPage.manageAccountPreferences')}
         </p>
       </div>
 
@@ -272,7 +272,10 @@ export default function SettingsPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <Label htmlFor="language">{t('dashboard.settingsPage.language')}</Label>
-            <Select value={region.language} onValueChange={(val) => setRegion({...region, language: val})}>
+            <Select value={region.language} onValueChange={(val) => {
+              setRegion({...region, language: val});
+              changeLocale(val.toLowerCase());
+            }}>
               <SelectTrigger id="language" className="w-full">
                 <SelectValue placeholder={t('dashboard.settingsPage.selectLanguage')} />
               </SelectTrigger>
@@ -382,7 +385,7 @@ export default function SettingsPage() {
             {!emailSignature.signature && (
               <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 flex items-center gap-1">
                 <AlertTriangle className="h-3 w-3" />
-                Adding a signature is recommended to avoid AI-generated names in drafts.
+                {t('dashboard.settingsPage.signatureWarning')}
               </p>
             )}
             <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
@@ -397,7 +400,7 @@ export default function SettingsPage() {
           {pairStats && pairStats.total > 0 && (
             <div className="mt-4 p-3 bg-neutral-50 dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-700">
               <p className="text-xs text-neutral-600 dark:text-neutral-400">
-                <span className="font-semibold text-neutral-900 dark:text-white">{pairStats.total}</span> learned email patterns
+                <span className="font-semibold text-neutral-900 dark:text-white">{pairStats.total}</span> {t('dashboard.settingsPage.learnedEmailPatterns')}
                 {pairStats.byLanguage && pairStats.byLanguage.length > 0 && (
                   <span className="ml-2">
                     ({pairStats.byLanguage.map(l => `${l._count._all} ${l.language}`).join(', ')})
@@ -425,10 +428,10 @@ export default function SettingsPage() {
             </div>
             <div>
               <h2 className="text-sm font-semibold text-neutral-900 dark:text-white">
-                {locale === 'tr' ? 'Kanallar' : 'Channels'}
+                {t('dashboard.settingsPage.channelsTitle')}
               </h2>
               <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                {locale === 'tr' ? 'Telefon numaranızı bağlayın ve asistana atayın' : 'Connect your phone number and assign to assistant'}
+                {t('dashboard.settingsPage.channelsDescription')}
               </p>
             </div>
           </div>
@@ -451,9 +454,9 @@ export default function SettingsPage() {
                       </p>
                       <p className="text-sm text-neutral-500 mt-0.5">
                         {number.assistantName ? (
-                          <span>{locale === 'tr' ? 'Atanmış:' : 'Assigned to:'} <span className="text-neutral-900 dark:text-white font-medium">{number.assistantName}</span></span>
+                          <span>{t('dashboard.settingsPage.assignedTo')} <span className="text-neutral-900 dark:text-white font-medium">{number.assistantName}</span></span>
                         ) : (
-                          <span className="text-amber-600 dark:text-amber-400">{locale === 'tr' ? 'Henüz asistan atanmadı' : 'No assistant assigned'}</span>
+                          <span className="text-amber-600 dark:text-amber-400">{t('dashboard.settingsPage.noAssistantAssigned')}</span>
                         )}
                       </p>
                     </div>
@@ -466,14 +469,14 @@ export default function SettingsPage() {
                     onClick={() => window.location.href = '/dashboard/phone-numbers'}
                     className="flex-1"
                   >
-                    {locale === 'tr' ? 'Yönet' : 'Manage'}
+                    {t('dashboard.settingsPage.manage')}
                   </Button>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => setShowPhoneModal(true)}
                   >
-                    {locale === 'tr' ? 'Değiştir' : 'Change'}
+                    {t('dashboard.settingsPage.change')}
                   </Button>
                 </div>
               </div>
@@ -483,7 +486,7 @@ export default function SettingsPage() {
           <div className="text-center py-8">
             <Phone className="h-12 w-12 mx-auto mb-3 opacity-50 text-neutral-400" />
             <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">
-              {locale === 'tr' ? 'Telefon numarası bağlanmamış' : 'No phone number connected'}
+              {t('dashboard.settingsPage.noPhoneConnected')}
             </p>
             <Button
               size="sm"
@@ -491,7 +494,7 @@ export default function SettingsPage() {
               className="gap-2"
             >
               <Plus className="h-4 w-4" />
-              {locale === 'tr' ? 'Telefon Numarası Bağla' : 'Connect Phone Number'}
+              {t('dashboard.settingsPage.connectPhoneNumber')}
             </Button>
           </div>
         )}

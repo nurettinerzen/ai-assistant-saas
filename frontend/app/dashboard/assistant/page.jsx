@@ -41,7 +41,6 @@ import { formatDate } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePermissions } from '@/hooks/usePermissions';
-import { NAVIGATION_ITEMS } from '@/lib/navigationConfig';
 
 // Language code to accent name mapping
 const LANGUAGE_TO_ACCENT = {
@@ -217,8 +216,6 @@ export default function AssistantsPage() {
   const getAvailablePurposes = () => {
     return CALL_PURPOSES.common.map(p => ({
       value: p.value,
-      labelTr: p.labelTr,
-      labelEn: p.labelEn,
     }));
   };
 
@@ -313,7 +310,7 @@ export default function AssistantsPage() {
 
     // For outbound, firstMessage is auto-generated so just check if it exists
     if (formData.callDirection === 'outbound' && !formData.firstMessage) {
-      toast.error(locale === 'tr' ? 'Lütfen asistan adı girin' : 'Please enter assistant name');
+      toast.error(t('dashboard.assistantsPage.enterAssistantName'));
       return;
     }
 
@@ -380,7 +377,7 @@ export default function AssistantsPage() {
   };
 
   const handleDelete = async (assistant) => {
-    if (!confirm(locale === 'tr' ? 'Bu asistanı silmek istediğinize emin misiniz?' : 'Are you sure you want to delete this assistant?')) {
+    if (!confirm(t('dashboard.assistantsPage.confirmDelete'))) {
       return;
     }
     try {
@@ -395,10 +392,7 @@ export default function AssistantsPage() {
     setSyncing(assistant.id);
     try {
       const response = await syncAssistant.mutateAsync(assistant.id);
-      toast.success(locale === 'tr'
-        ? `11Labs senkronize edildi: ${response.data.tools?.join(', ') || 'tools updated'}`
-        : `11Labs synced: ${response.data.tools?.join(', ') || 'tools updated'}`
-      );
+      toast.success(t('dashboard.assistantsPage.syncSuccess').replace('{tools}', response.data.tools?.join(', ') || 'tools updated'));
     } catch (error) {
       toast.error(error.response?.data?.error || t('errors.generic'));
     } finally {
@@ -437,10 +431,10 @@ export default function AssistantsPage() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-neutral-900 dark:text-white">
-            {locale === 'tr' ? NAVIGATION_ITEMS.assistants.labelTr : NAVIGATION_ITEMS.assistants.labelEn}
+            {t('dashboard.assistantsPage.title')}
           </h1>
           <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
-            {locale === 'tr' ? NAVIGATION_ITEMS.assistants.descriptionTr : NAVIGATION_ITEMS.assistants.descriptionEn}
+            {t('dashboard.assistantsPage.description')}
           </p>
         </div>
         {can('assistants:create') && (
@@ -475,22 +469,22 @@ export default function AssistantsPage() {
             <thead className="bg-neutral-50 dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700">
               <tr>
                 <th className="text-left p-4 text-sm font-medium text-neutral-600 dark:text-neutral-300 w-auto">
-                  {locale === 'tr' ? 'Asistan Adı' : 'Assistant Name'}
+                  {t('dashboard.assistantsPage.assistantNameCol')}
                 </th>
                 <th className="text-left p-4 text-sm font-medium text-neutral-600 dark:text-neutral-300 w-40">
-                  {locale === 'tr' ? 'Yön' : 'Direction'}
+                  {t('dashboard.assistantsPage.directionCol')}
                 </th>
                 <th className="text-left p-4 text-sm font-medium text-neutral-600 dark:text-neutral-300 w-48">
-                  {locale === 'tr' ? 'Amaç' : 'Purpose'}
+                  {t('dashboard.assistantsPage.purposeCol')}
                 </th>
                 <th className="text-left p-4 text-sm font-medium text-neutral-600 dark:text-neutral-300 w-48">
-                  {locale === 'tr' ? 'Ses' : 'Voice'}
+                  {t('dashboard.assistantsPage.voiceCol')}
                 </th>
                 <th className="text-left p-4 text-sm font-medium text-neutral-600 dark:text-neutral-300 w-48">
-                  {locale === 'tr' ? 'Oluşturulma' : 'Created'}
+                  {t('dashboard.assistantsPage.createdCol')}
                 </th>
                 <th className="text-center p-4 text-sm font-medium text-neutral-600 dark:text-neutral-300 w-48">
-                  {locale === 'tr' ? 'İşlemler' : 'Actions'}
+                  {t('dashboard.assistantsPage.actionsCol')}
                 </th>
               </tr>
             </thead>
@@ -516,15 +510,15 @@ export default function AssistantsPage() {
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span className="text-sm text-neutral-600 dark:text-neutral-400">
                         {isOutbound
-                          ? (locale === 'tr' ? 'Giden' : 'Outbound')
-                          : (locale === 'tr' ? 'Gelen' : 'Inbound')
+                          ? t('dashboard.assistantsPage.outbound')
+                          : t('dashboard.assistantsPage.inbound')
                         }
                       </span>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span className="text-sm text-neutral-600 dark:text-neutral-400">
                         {assistant.callPurpose
-                          ? CALL_PURPOSES.definitions[assistant.callPurpose]?.[locale === 'tr' ? 'labelTr' : 'labelEn'] || assistant.callPurpose
+                          ? t(`dashboard.assistantsPage.purpose${assistant.callPurpose.charAt(0).toUpperCase() + assistant.callPurpose.slice(1)}`) || assistant.callPurpose
                           : '-'
                         }
                       </span>
@@ -557,7 +551,7 @@ export default function AssistantsPage() {
                             size="sm"
                             onClick={() => handleSync(assistant)}
                             disabled={syncing === assistant.id}
-                            title={locale === 'tr' ? '11Labs ile senkronize et' : 'Sync with 11Labs'}
+                            title={t('dashboard.assistantsPage.syncWith11Labs')}
                             className="h-8 px-2"
                           >
                             <RefreshCw className={`h-3.5 w-3.5 ${syncing === assistant.id ? 'animate-spin' : ''}`} />
@@ -596,13 +590,10 @@ export default function AssistantsPage() {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>
-              {locale === 'tr' ? 'Ne tür bir asistan oluşturmak istiyorsunuz?' : 'What type of assistant do you want to create?'}
+              {t('dashboard.assistantsPage.typeSelectorTitle')}
             </DialogTitle>
             <DialogDescription>
-              {locale === 'tr'
-                ? 'Asistanınızın kullanım amacını seçin'
-                : 'Select the purpose of your assistant'
-              }
+              {t('dashboard.assistantsPage.typeSelectorDesc')}
             </DialogDescription>
           </DialogHeader>
 
@@ -614,13 +605,10 @@ export default function AssistantsPage() {
             >
               <PhoneIncoming className="h-8 w-8 text-neutral-600 dark:text-neutral-400 mb-4" />
               <h3 className="font-semibold text-neutral-900 dark:text-white mb-1">
-                {locale === 'tr' ? 'Gelen Arama' : 'Inbound Call'}
+                {t('dashboard.assistantsPage.inboundCall')}
               </h3>
               <p className="text-xs text-neutral-500 dark:text-neutral-400 text-center">
-                {locale === 'tr'
-                  ? 'Müşterileriniz sizi aradığında yanıt verir'
-                  : 'Answers when customers call you'
-                }
+                {t('dashboard.assistantsPage.inboundCallDesc')}
               </p>
             </button>
 
@@ -631,13 +619,10 @@ export default function AssistantsPage() {
             >
               <PhoneOutgoing className="h-8 w-8 text-neutral-600 dark:text-neutral-400 mb-4" />
               <h3 className="font-semibold text-neutral-900 dark:text-white mb-1">
-                {locale === 'tr' ? 'Giden Arama' : 'Outbound Call'}
+                {t('dashboard.assistantsPage.outboundCall')}
               </h3>
               <p className="text-xs text-neutral-500 dark:text-neutral-400 text-center">
-                {locale === 'tr'
-                  ? 'Müşterilerinizi siz aradığında konuşur'
-                  : 'Speaks when you call customers'
-                }
+                {t('dashboard.assistantsPage.outboundCallDesc')}
               </p>
             </button>
           </div>
@@ -674,8 +659,8 @@ export default function AssistantsPage() {
                 className={formData.callDirection === 'outbound' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'}
               >
                 {formData.callDirection === 'outbound'
-                  ? (locale === 'tr' ? 'Giden Arama' : 'Outbound')
-                  : (locale === 'tr' ? 'Gelen Arama' : 'Inbound')
+                  ? t('dashboard.assistantsPage.outboundCall')
+                  : t('dashboard.assistantsPage.inboundCall')
                 }
               </Badge>
             </DialogTitle>
@@ -702,34 +687,31 @@ export default function AssistantsPage() {
                   }
                 }}
                 maxLength={25}
-                placeholder={locale === 'tr' ? 'örn: Müşteri Destek' : 'e.g., Customer Support'}
+                placeholder={t('dashboard.assistantsPage.namePlaceholder')}
               />
             </div>
 
             {/* Call Purpose (only for outbound) */}
             {formData.callDirection === 'outbound' && (
               <div>
-                <Label>{locale === 'tr' ? 'Arama Amacı' : 'Call Purpose'}</Label>
+                <Label>{t('dashboard.assistantsPage.callPurpose')}</Label>
                 <Select
                   value={formData.callPurpose}
                   onValueChange={handlePurposeChange}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder={locale === 'tr' ? 'Amaç seçin' : 'Select purpose'} />
+                    <SelectValue placeholder={t('dashboard.assistantsPage.selectPurpose')} />
                   </SelectTrigger>
                   <SelectContent>
                     {getAvailablePurposes().map((purpose) => (
                       <SelectItem key={purpose.value} value={purpose.value}>
-                        {locale === 'tr' ? purpose.labelTr : purpose.labelEn}
+                        {t(`dashboard.assistantsPage.purpose${purpose.value.charAt(0).toUpperCase() + purpose.value.slice(1)}`)}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-neutral-500 mt-1">
-                  {locale === 'tr'
-                    ? 'Amaç değiştiğinde örnek prompt otomatik güncellenir'
-                    : 'Sample prompt updates automatically when purpose changes'
-                  }
+                  {t('dashboard.assistantsPage.purposeAutoPromptHint')}
                 </p>
               </div>
             )}
@@ -745,22 +727,22 @@ export default function AssistantsPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="tr">{locale === 'tr' ? 'Türkçe' : 'Turkish'}</SelectItem>
-                  <SelectItem value="en">{locale === 'tr' ? 'İngilizce' : 'English'}</SelectItem>
-                  <SelectItem value="de">{locale === 'tr' ? 'Almanca' : 'German'}</SelectItem>
-                  <SelectItem value="fr">{locale === 'tr' ? 'Fransızca' : 'French'}</SelectItem>
-                  <SelectItem value="es">{locale === 'tr' ? 'İspanyolca' : 'Spanish'}</SelectItem>
-                  <SelectItem value="it">{locale === 'tr' ? 'İtalyanca' : 'Italian'}</SelectItem>
-                  <SelectItem value="pt">{locale === 'tr' ? 'Portekizce' : 'Portuguese'}</SelectItem>
-                  <SelectItem value="ru">{locale === 'tr' ? 'Rusça' : 'Russian'}</SelectItem>
-                  <SelectItem value="ar">{locale === 'tr' ? 'Arapça' : 'Arabic'}</SelectItem>
-                  <SelectItem value="ja">{locale === 'tr' ? 'Japonca' : 'Japanese'}</SelectItem>
-                  <SelectItem value="ko">{locale === 'tr' ? 'Korece' : 'Korean'}</SelectItem>
-                  <SelectItem value="zh">{locale === 'tr' ? 'Çince' : 'Chinese'}</SelectItem>
-                  <SelectItem value="hi">{locale === 'tr' ? 'Hintçe' : 'Hindi'}</SelectItem>
-                  <SelectItem value="nl">{locale === 'tr' ? 'Felemenkçe' : 'Dutch'}</SelectItem>
-                  <SelectItem value="pl">{locale === 'tr' ? 'Lehçe' : 'Polish'}</SelectItem>
-                  <SelectItem value="sv">{locale === 'tr' ? 'İsveççe' : 'Swedish'}</SelectItem>
+                  <SelectItem value="tr">{t('dashboard.assistantsPage.langTurkish')}</SelectItem>
+                  <SelectItem value="en">{t('dashboard.assistantsPage.langEnglish')}</SelectItem>
+                  <SelectItem value="de">{t('dashboard.assistantsPage.langGerman')}</SelectItem>
+                  <SelectItem value="fr">{t('dashboard.assistantsPage.langFrench')}</SelectItem>
+                  <SelectItem value="es">{t('dashboard.assistantsPage.langSpanish')}</SelectItem>
+                  <SelectItem value="it">{t('dashboard.assistantsPage.langItalian')}</SelectItem>
+                  <SelectItem value="pt">{t('dashboard.assistantsPage.langPortuguese')}</SelectItem>
+                  <SelectItem value="ru">{t('dashboard.assistantsPage.langRussian')}</SelectItem>
+                  <SelectItem value="ar">{t('dashboard.assistantsPage.langArabic')}</SelectItem>
+                  <SelectItem value="ja">{t('dashboard.assistantsPage.langJapanese')}</SelectItem>
+                  <SelectItem value="ko">{t('dashboard.assistantsPage.langKorean')}</SelectItem>
+                  <SelectItem value="zh">{t('dashboard.assistantsPage.langChinese')}</SelectItem>
+                  <SelectItem value="hi">{t('dashboard.assistantsPage.langHindi')}</SelectItem>
+                  <SelectItem value="nl">{t('dashboard.assistantsPage.langDutch')}</SelectItem>
+                  <SelectItem value="pl">{t('dashboard.assistantsPage.langPolish')}</SelectItem>
+                  <SelectItem value="sv">{t('dashboard.assistantsPage.langSwedish')}</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-xs text-neutral-500 mt-1">
@@ -818,19 +800,16 @@ export default function AssistantsPage() {
             {/* First Message - Greeting */}
             <div>
               <Label htmlFor="firstMessage">
-                {locale === 'tr' ? 'Karşılama Mesajı' : 'Greeting Message'}
+                {t('dashboard.assistantsPage.greetingMessage')}
               </Label>
               {formData.callDirection === 'outbound' ? (
                 // Outbound: Read-only, auto-generated
                 <>
                   <div className="p-3 bg-neutral-50 border border-neutral-200 rounded-md text-sm text-neutral-700 dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-300">
-                    {formData.firstMessage || (locale === 'tr' ? 'Asistan adı girilince otomatik oluşturulacak' : 'Will be auto-generated when assistant name is entered')}
+                    {formData.firstMessage || t('dashboard.assistantsPage.autoGeneratedWhenNamed')}
                   </div>
                   <p className="text-xs text-neutral-500 mt-1">
-                    {locale === 'tr'
-                      ? 'Bu mesaj asistan ve işletme adına göre otomatik oluşturulur.'
-                      : 'This message is auto-generated based on assistant and business name.'
-                    }
+                    {t('dashboard.assistantsPage.autoGeneratedHint')}
                   </p>
                 </>
               ) : (
@@ -841,16 +820,10 @@ export default function AssistantsPage() {
                     rows={2}
                     value={formData.firstMessage}
                     onChange={(e) => setFormData({ ...formData, firstMessage: e.target.value })}
-                    placeholder={locale === 'tr'
-                      ? 'örn: Merhaba, ben Asistan. Size nasıl yardımcı olabilirim?'
-                      : 'e.g., Hello, I\'m Assistant. How can I help you?'
-                    }
+                    placeholder={t('dashboard.assistantsPage.greetingPlaceholder')}
                   />
                   <p className="text-xs text-neutral-500 mt-1">
-                    {locale === 'tr'
-                      ? 'Asistanın aramayı açarken söyleyeceği ilk mesaj.'
-                      : 'The first message the assistant says when answering a call.'
-                    }
+                    {t('dashboard.assistantsPage.greetingHint')}
                   </p>
                 </>
               )}
@@ -860,21 +833,17 @@ export default function AssistantsPage() {
             {formData.callDirection === 'outbound' && (
               <div>
                 <Label htmlFor="prompt">
-                  {locale === 'tr' ? 'Talimatlar' : 'Instructions'}
+                  {t('dashboard.assistantsPage.instructions')}
                 </Label>
                 <Textarea
                   id="prompt"
                   rows={3}
                   value={formData.systemPrompt}
                   onChange={(e) => setFormData({ ...formData, systemPrompt: e.target.value })}
-                  placeholder={locale === 'tr'
-                    ? 'örn: Kibar ol, ödeme tarihini sor...'
-                    : 'e.g., Be polite, ask for payment date...'}
+                  placeholder={t('dashboard.assistantsPage.instructionsPlaceholder')}
                 />
                 <p className="text-xs text-neutral-500 mt-1">
-                  {locale === 'tr'
-                    ? 'Asistanın nasıl davranması gerektiğini kısa ve öz yazın.'
-                    : 'Write briefly how the assistant should behave.'}
+                  {t('dashboard.assistantsPage.instructionsHint')}
                 </p>
               </div>
             )}
@@ -883,7 +852,7 @@ export default function AssistantsPage() {
             <div>
               <Label htmlFor="customNotes">
                 {formData.callDirection === 'inbound'
-                  ? (locale === 'tr' ? 'Ek Talimatlar ve Bilgiler' : 'Additional Instructions & Info')
+                  ? t('dashboard.assistantsPage.additionalInstructions')
                   : t('dashboard.assistantsPage.customNotes')
                 }
               </Label>
@@ -893,20 +862,14 @@ export default function AssistantsPage() {
                 value={formData.customNotes}
                 onChange={(e) => setFormData({ ...formData, customNotes: e.target.value })}
                 placeholder={formData.callDirection === 'inbound'
-                  ? (locale === 'tr'
-                    ? 'örn: Çalışma saatleri 09:00-18:00, Cumartesi kapalı. Randevu için telefon numarası mutlaka alınmalı...'
-                    : 'e.g., Working hours 9AM-6PM, closed on Saturday. Phone number must be collected for appointments...')
+                  ? t('dashboard.assistantsPage.additionalInstructionsPlaceholder')
                   : t('dashboard.assistantsPage.customNotesPlaceholder')
                 }
               />
               <p className="text-xs text-neutral-500 mt-1">
                 {formData.callDirection === 'inbound'
-                  ? (locale === 'tr'
-                    ? 'Asistanın bilmesi gereken özel kurallar, çalışma saatleri, adres vb. bilgiler.'
-                    : 'Special rules, working hours, address, etc. that the assistant should know.')
-                  : (locale === 'tr'
-                    ? 'Çalışma saatleri, adres, özel kurallar vb. asistanın bilmesi gereken bilgiler.'
-                    : 'Working hours, address, special rules, etc. that the assistant should know.')
+                  ? t('dashboard.assistantsPage.additionalInstructionsHint')
+                  : t('dashboard.assistantsPage.customNotesHint')
                 }
               </p>
             </div>
@@ -919,9 +882,9 @@ export default function AssistantsPage() {
             <Button onClick={editingAssistant ? handleUpdate : handleCreate} disabled={creating || updating}>
               {(creating || updating) && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               {creating
-                ? (locale === 'tr' ? 'Oluşturuluyor...' : 'Creating...')
+                ? t('dashboard.assistantsPage.creating')
                 : updating
-                  ? (locale === 'tr' ? 'Güncelleniyor...' : 'Updating...')
+                  ? t('dashboard.assistantsPage.updating')
                   : editingAssistant ? t('dashboard.assistantsPage.updateBtn') : t('dashboard.assistantsPage.create')
               }
             </Button>

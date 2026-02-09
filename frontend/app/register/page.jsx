@@ -62,7 +62,7 @@ export default function RegisterPage() {
   // Handle Google One Tap callback (ID token flow)
   const handleGoogleCallback = async (response) => {
     if (!response.credential) {
-      toast.error('Google sign-in failed');
+      toast.error(t('auth.googleSignInFailed'));
       return;
     }
 
@@ -79,16 +79,16 @@ export default function RegisterPage() {
       localStorage.setItem('user', JSON.stringify(data.user));
 
       if (data.isNewUser) {
-        toast.success('Account created successfully!');
+        toast.success(t('auth.accountCreated'));
       } else {
-        toast.success('Login successful!');
+        toast.success(t('auth.loginSuccess'));
       }
 
       // Google users are already verified, redirect to dashboard
       router.push('/dashboard/assistant');
     } catch (err) {
       console.error('Google sign-in error:', err);
-      toast.error(err.response?.data?.error || err.message || 'Google sign-in failed');
+      toast.error(err.response?.data?.error || err.message || t('auth.googleSignInFailed'));
     } finally {
       setGoogleLoading(false);
     }
@@ -98,7 +98,7 @@ export default function RegisterPage() {
   const handleGoogleAuthCode = async (response) => {
     if (response.error) {
       console.error('Google OAuth error:', response.error);
-      toast.error('Google sign-in was cancelled');
+      toast.error(t('auth.googleSignInCancelled'));
       setGoogleLoading(false);
       return;
     }
@@ -116,16 +116,16 @@ export default function RegisterPage() {
       localStorage.setItem('user', JSON.stringify(data.user));
 
       if (data.isNewUser) {
-        toast.success('Account created successfully!');
+        toast.success(t('auth.accountCreated'));
       } else {
-        toast.success('Login successful!');
+        toast.success(t('auth.loginSuccess'));
       }
 
       // Google users are already verified, redirect to dashboard
       router.push('/dashboard/assistant');
     } catch (err) {
       console.error('Google sign-in error:', err);
-      toast.error(err.response?.data?.error || err.message || 'Google sign-in failed');
+      toast.error(err.response?.data?.error || err.message || t('auth.googleSignInFailed'));
     } finally {
       setGoogleLoading(false);
     }
@@ -133,7 +133,7 @@ export default function RegisterPage() {
 
   const handleGoogleSignup = () => {
     if (!GOOGLE_CLIENT_ID) {
-      toast.error('Google Sign-In is not configured');
+      toast.error(t('auth.googleSignInNotConfigured'));
       return;
     }
 
@@ -144,7 +144,7 @@ export default function RegisterPage() {
       // Fallback to One Tap prompt
       window.google.accounts.id.prompt();
     } else {
-      toast.error('Google Sign-In is not available');
+      toast.error(t('auth.googleSignInNotAvailable'));
     }
   };
 
@@ -162,7 +162,7 @@ export default function RegisterPage() {
       // Redirect to email verification pending page
       router.push('/auth/email-pending');
     } catch (err) {
-      setError(err.response?.data?.error || 'Registration failed');
+      setError(err.response?.data?.error || t('auth.registrationFailed'));
     } finally {
       setLoading(false);
     }
@@ -321,7 +321,7 @@ export default function RegisterPage() {
                   <div className="w-full border-t border-gray-200"></div>
                 </div>
                 <div className="relative flex justify-center text-sm">
-                  <span className="bg-white px-4 text-gray-500">{t('auth.continueWith') || 'veya'}</span>
+                  <span className="bg-white px-4 text-gray-500">{t('auth.continueWith')}</span>
                 </div>
               </div>
 
@@ -358,7 +358,7 @@ export default function RegisterPage() {
                         d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                       />
                     </svg>
-                    {t('common.google') || 'Google ile Devam Et'}
+                    {t('common.google')}
                   </>
                 )}
               </Button>

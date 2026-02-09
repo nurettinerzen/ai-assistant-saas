@@ -129,7 +129,7 @@ export const NAVIGATION_ITEMS = {
 /**
  * Get navigation item by route
  */
-export function getNavigationItem(route, locale = 'tr') {
+export function getNavigationItem(route, locale = 'en') {
   const item = Object.values(NAVIGATION_ITEMS).find(nav => nav.href === route);
   if (!item) return null;
 
@@ -143,7 +143,7 @@ export function getNavigationItem(route, locale = 'tr') {
 /**
  * Get label for a route
  */
-export function getPageLabel(route, locale = 'tr') {
+export function getPageLabel(route, locale = 'en') {
   const item = getNavigationItem(route, locale);
   return item?.label || '';
 }
@@ -151,7 +151,7 @@ export function getPageLabel(route, locale = 'tr') {
 /**
  * Get description for a route
  */
-export function getPageDescription(route, locale = 'tr') {
+export function getPageDescription(route, locale = 'en') {
   const item = getNavigationItem(route, locale);
   return item?.description || '';
 }

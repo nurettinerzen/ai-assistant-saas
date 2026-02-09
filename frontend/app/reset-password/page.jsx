@@ -17,7 +17,7 @@ import { TelyxLogoFull } from '@/components/TelyxLogo';
 function ResetPasswordContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { locale } = useLanguage();
+  const { locale, t } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState(null);
@@ -32,7 +32,7 @@ function ResetPasswordContent() {
 
   useEffect(() => {
     if (!token) {
-      setError(locale === 'tr' ? 'Geçersiz veya eksik token' : 'Invalid or missing token');
+      setError(t('auth.invalidOrMissingToken'));
     }
   }, [token, locale]);
 
@@ -40,28 +40,26 @@ function ResetPasswordContent() {
     e.preventDefault();
 
     if (formData.password !== formData.confirmPassword) {
-      toast.error(locale === 'tr' ? 'Şifreler eşleşmiyor' : 'Passwords do not match');
+      toast.error(t('auth.passwordsDoNotMatch'));
       return;
     }
 
     // Validate password strength
     const passwordErrors = [];
     if (formData.password.length < 8) {
-      passwordErrors.push(locale === 'tr' ? 'en az 8 karakter' : 'at least 8 characters');
+      passwordErrors.push(t('auth.atLeast8Chars'));
     }
     if (!/[A-Z]/.test(formData.password)) {
-      passwordErrors.push(locale === 'tr' ? 'en az 1 büyük harf' : 'at least 1 uppercase letter');
+      passwordErrors.push(t('auth.atLeast1Uppercase'));
     }
     if (!/[a-z]/.test(formData.password)) {
-      passwordErrors.push(locale === 'tr' ? 'en az 1 küçük harf' : 'at least 1 lowercase letter');
+      passwordErrors.push(t('auth.atLeast1Lowercase'));
     }
     if (!/[!@#$%^&*(),.?":{}|<>]/.test(formData.password)) {
-      passwordErrors.push(locale === 'tr' ? 'en az 1 noktalama işareti' : 'at least 1 punctuation mark');
+      passwordErrors.push(t('auth.atLeast1Punctuation'));
     }
     if (passwordErrors.length > 0) {
-      const errorMsg = locale === 'tr'
-        ? `Şifre şunları içermeli: ${passwordErrors.join(', ')}`
-        : `Password must contain: ${passwordErrors.join(', ')}`;
+      const errorMsg = t('auth.passwordMustContain').replace('{requirements}', passwordErrors.join(', '));
       toast.error(errorMsg);
       return;
     }
@@ -74,20 +72,16 @@ function ResetPasswordContent() {
         password: formData.password,
       });
       setSuccess(true);
-      toast.success(locale === 'tr' ? 'Şifreniz başarıyla sıfırlandı!' : 'Your password has been reset successfully!');
+      toast.success(t('auth.passwordResetSuccess'));
     } catch (err) {
       console.error('Reset password error:', err);
       const errorCode = err.response?.data?.code;
       if (errorCode === 'INVALID_TOKEN') {
-        setError(locale === 'tr' ? 'Bu link geçersiz veya kullanılmış.' : 'This link is invalid or has been used.');
+        setError(t('auth.invalidLinkUsed'));
       } else if (errorCode === 'TOKEN_EXPIRED') {
-        setError(locale === 'tr' ? 'Bu linkin süresi dolmuş. Lütfen yeni bir link isteyin.' : 'This link has expired. Please request a new one.');
+        setError(t('auth.expiredLink'));
       } else {
-        toast.error(
-          locale === 'tr'
-            ? 'Şifre sıfırlanamadı. Lütfen tekrar deneyin.'
-            : 'Failed to reset password. Please try again.'
-        );
+        toast.error(t('auth.resetFailedGeneric'));
       }
     } finally {
       setLoading(false);
@@ -109,14 +103,14 @@ function ResetPasswordContent() {
           <XCircle className="h-8 w-8 text-error-600 dark:text-error-400" />
         </div>
         <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
-          {locale === 'tr' ? 'Link Geçersiz' : 'Invalid Link'}
+          {t('auth.invalidLinkTitle')}
         </h2>
         <p className="text-neutral-600 dark:text-neutral-400 mb-6">
           {error}
         </p>
         <Link href="/forgot-password">
           <Button>
-            {locale === 'tr' ? 'Yeni Link İste' : 'Request New Link'}
+            {t('auth.requestNewLink')}
           </Button>
         </Link>
       </div>
@@ -131,16 +125,14 @@ function ResetPasswordContent() {
           <CheckCircle className="h-8 w-8 text-success-600 dark:text-success-400" />
         </div>
         <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
-          {locale === 'tr' ? 'Şifre Sıfırlandı!' : 'Password Reset!'}
+          {t('auth.passwordResetSuccessTitle')}
         </h2>
         <p className="text-neutral-600 dark:text-neutral-400 mb-6">
-          {locale === 'tr'
-            ? 'Şifreniz başarıyla değiştirildi. Artık yeni şifrenizle giriş yapabilirsiniz.'
-            : 'Your password has been changed successfully. You can now log in with your new password.'}
+          {t('auth.passwordResetSuccessMsg')}
         </p>
         <Link href="/login">
           <Button>
-            {locale === 'tr' ? 'Giriş Yap' : 'Log In'}
+            {t('auth.logIn')}
           </Button>
         </Link>
       </div>
@@ -153,19 +145,17 @@ function ResetPasswordContent() {
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-neutral-900 dark:text-white mb-2">
-          {locale === 'tr' ? 'Yeni Şifre Belirle' : 'Set New Password'}
+          {t('auth.resetPasswordTitle')}
         </h1>
         <p className="text-neutral-600 dark:text-neutral-400">
-          {locale === 'tr'
-            ? 'Yeni şifrenizi girin.'
-            : 'Enter your new password.'}
+          {t('auth.resetPasswordSubtitle')}
         </p>
       </div>
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
-          <Label htmlFor="password">{locale === 'tr' ? 'Yeni Şifre' : 'New Password'}</Label>
+          <Label htmlFor="password">{t('auth.newPassword')}</Label>
           <div className="relative mt-1">
             <Input
               id="password"
@@ -186,14 +176,12 @@ function ResetPasswordContent() {
             </button>
           </div>
           <p className="text-xs text-neutral-500 mt-1">
-            {locale === 'tr'
-              ? 'En az 8 karakter, büyük/küçük harf ve noktalama işareti içermeli'
-              : 'Must be 8+ chars with uppercase, lowercase and punctuation'}
+            {t('auth.passwordRequirements')}
           </p>
         </div>
 
         <div>
-          <Label htmlFor="confirmPassword">{locale === 'tr' ? 'Şifreyi Onayla' : 'Confirm Password'}</Label>
+          <Label htmlFor="confirmPassword">{t('auth.confirmPassword')}</Label>
           <div className="relative mt-1">
             <Input
               id="confirmPassword"
@@ -219,10 +207,10 @@ function ResetPasswordContent() {
           {loading ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              {locale === 'tr' ? 'Sıfırlanıyor...' : 'Resetting...'}
+              {t('auth.resetting')}
             </>
           ) : (
-            locale === 'tr' ? 'Şifreyi Sıfırla' : 'Reset Password'
+            t('auth.resetPassword')
           )}
         </Button>
       </form>
@@ -231,7 +219,7 @@ function ResetPasswordContent() {
 }
 
 export default function ResetPasswordPage() {
-  const { locale } = useLanguage();
+  const { locale, t } = useLanguage();
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
@@ -257,7 +245,7 @@ export default function ResetPasswordPage() {
             className="inline-flex items-center text-sm text-neutral-600 dark:text-neutral-400 hover:text-primary-600 dark:hover:text-primary-400 mb-6"
           >
             <ArrowLeft className="h-4 w-4 mr-1" />
-            {locale === 'tr' ? 'Giriş sayfasına dön' : 'Back to login'}
+            {t('auth.backToLogin')}
           </Link>
 
           <Suspense fallback={

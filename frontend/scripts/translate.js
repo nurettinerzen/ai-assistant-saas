@@ -21,8 +21,7 @@ const path = require('path');
 const LANGUAGES = {
   TR: { name: 'Turkish', nativeName: 'Türkçe' },
   EN: { name: 'English', nativeName: 'English' },
-  PR: { name: 'Brazilian Portuguese', nativeName: 'Português Brasileiro' },
-  PT: { name: 'Portuguese', nativeName: 'Português' },
+  PT: { name: 'Portuguese (Brazilian)', nativeName: 'Português Brasileiro' },
   DE: { name: 'German', nativeName: 'Deutsch' },
   ES: { name: 'Spanish', nativeName: 'Español' },
   FR: { name: 'French', nativeName: 'Français' },

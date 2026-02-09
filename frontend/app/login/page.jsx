@@ -57,7 +57,7 @@ export default function LoginPage() {
   // Handle Google One Tap callback (ID token flow)
   const handleGoogleCallback = async (response) => {
     if (!response.credential) {
-      toast.error('Google sign-in failed');
+      toast.error(t('auth.googleSignInFailed'));
       return;
     }
 
@@ -74,16 +74,16 @@ export default function LoginPage() {
       localStorage.setItem('user', JSON.stringify(data.user));
 
       if (data.isNewUser) {
-        toast.success('Account created successfully!');
+        toast.success(t('auth.accountCreated'));
       } else {
-        toast.success('Login successful!');
+        toast.success(t('auth.loginSuccess'));
       }
 
       // Google users are already verified, redirect to assistant page
       router.push('/dashboard/assistant');
     } catch (error) {
       console.error('Google sign-in error:', error);
-      toast.error(error.response?.data?.error || error.message || 'Google sign-in failed');
+      toast.error(error.response?.data?.error || error.message || t('auth.googleSignInFailed'));
     } finally {
       setGoogleLoading(false);
     }
@@ -93,7 +93,7 @@ export default function LoginPage() {
   const handleGoogleAuthCode = async (response) => {
     if (response.error) {
       console.error('Google OAuth error:', response.error);
-      toast.error('Google sign-in was cancelled');
+      toast.error(t('auth.googleSignInCancelled'));
       setGoogleLoading(false);
       return;
     }
@@ -111,16 +111,16 @@ export default function LoginPage() {
       localStorage.setItem('user', JSON.stringify(data.user));
 
       if (data.isNewUser) {
-        toast.success('Account created successfully!');
+        toast.success(t('auth.accountCreated'));
       } else {
-        toast.success('Login successful!');
+        toast.success(t('auth.loginSuccess'));
       }
 
       // Google users are already verified, redirect to assistant page
       router.push('/dashboard/assistant');
     } catch (error) {
       console.error('Google sign-in error:', error);
-      toast.error(error.response?.data?.error || error.message || 'Google sign-in failed');
+      toast.error(error.response?.data?.error || error.message || t('auth.googleSignInFailed'));
     } finally {
       setGoogleLoading(false);
     }
@@ -138,13 +138,13 @@ export default function LoginPage() {
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
 
-      toast.success('Login successful!');
+      toast.success(t('auth.loginSuccess'));
 
       // Skip email verification check - go directly to assistant page
       router.push('/dashboard/assistant');
     } catch (error) {
       console.error('Login error:', error);
-      const errorMsg = error.response?.data?.error || error.response?.data?.message || error.message || 'Invalid email or password';
+      const errorMsg = error.response?.data?.error || error.response?.data?.message || error.message || t('auth.invalidEmailOrPassword');
       toast.error(errorMsg);
     } finally {
       setLoading(false);
@@ -160,7 +160,7 @@ export default function LoginPage() {
 
   const handleGoogleLogin = () => {
     if (!GOOGLE_CLIENT_ID) {
-      toast.error('Google Sign-In is not configured');
+      toast.error(t('auth.googleSignInNotConfigured'));
       return;
     }
 
@@ -171,7 +171,7 @@ export default function LoginPage() {
       // Fallback to One Tap prompt
       window.google.accounts.id.prompt();
     } else {
-      toast.error('Google Sign-In is not available');
+      toast.error(t('auth.googleSignInNotAvailable'));
     }
   };
 

@@ -85,34 +85,34 @@ export default function AnalyticsPage() {
     const csvRows = [];
 
     // Header
-    csvRows.push(['Analitik Raporu', `Dönem: ${timeRange}`]);
+    csvRows.push([t('dashboard.analyticsPage.csvReportTitle'), `${t('dashboard.analyticsPage.csvPeriod')}: ${timeRange}`]);
     csvRows.push([]);
 
     // Overview stats
-    csvRows.push(['Genel İstatistikler']);
-    csvRows.push(['Toplam Arama', analytics.totalCalls || 0]);
-    csvRows.push(['Toplam Dakika', analytics.totalMinutes || 0]);
-    csvRows.push(['Ortalama Süre (sn)', analytics.avgDuration || 0]);
-    csvRows.push(['Chat Oturumları', analytics.chatSessions || 0]);
-    csvRows.push(['WhatsApp Oturumları', analytics.whatsappSessions || 0]);
-    csvRows.push(['Cevaplanan E-postalar', analytics.emailsAnswered || 0]);
+    csvRows.push([t('dashboard.analyticsPage.csvOverviewStats')]);
+    csvRows.push([t('dashboard.analyticsPage.totalCalls'), analytics.totalCalls || 0]);
+    csvRows.push([t('dashboard.analyticsPage.csvTotalMinutes'), analytics.totalMinutes || 0]);
+    csvRows.push([t('dashboard.analyticsPage.csvAvgDurationSec'), analytics.avgDuration || 0]);
+    csvRows.push([t('dashboard.analyticsPage.chatSessions'), analytics.chatSessions || 0]);
+    csvRows.push([t('dashboard.analyticsPage.csvWhatsappSessions'), analytics.whatsappSessions || 0]);
+    csvRows.push([t('dashboard.analyticsPage.emailsAnswered'), analytics.emailsAnswered || 0]);
     csvRows.push([]);
 
     // Channel distribution
-    csvRows.push(['Kanal Dağılımı']);
-    csvRows.push(['Kanal', 'Sayı', 'Yüzde']);
+    csvRows.push([t('dashboard.analyticsPage.channelDistribution')]);
+    csvRows.push([t('dashboard.analyticsPage.csvChannel'), t('dashboard.analyticsPage.csvCount'), t('dashboard.analyticsPage.csvPercentage')]);
     if (analytics.channelStats) {
-      csvRows.push(['Telefon', analytics.channelStats.phone.count, `${analytics.channelStats.phone.percentage}%`]);
+      csvRows.push([t('dashboard.analyticsPage.phoneCalls'), analytics.channelStats.phone.count, `${analytics.channelStats.phone.percentage}%`]);
       csvRows.push(['Chat', analytics.channelStats.chat.count, `${analytics.channelStats.chat.percentage}%`]);
       csvRows.push(['WhatsApp', analytics.channelStats.whatsapp?.count || 0, `${analytics.channelStats.whatsapp?.percentage || 0}%`]);
-      csvRows.push(['E-posta', analytics.channelStats.email.count, `${analytics.channelStats.email.percentage}%`]);
+      csvRows.push([t('dashboard.analyticsPage.email'), analytics.channelStats.email.count, `${analytics.channelStats.email.percentage}%`]);
     }
     csvRows.push([]);
 
     // Calls over time
     if (analytics.callsOverTime?.length > 0) {
-      csvRows.push(['Günlük Etkileşimler']);
-      csvRows.push(['Tarih', 'Aramalar', 'Chat', 'WhatsApp', 'E-posta']);
+      csvRows.push([t('dashboard.analyticsPage.csvDailyInteractions')]);
+      csvRows.push([t('dashboard.analyticsPage.csvDate'), t('dashboard.analyticsPage.phoneCalls'), 'Chat', 'WhatsApp', t('dashboard.analyticsPage.email')]);
       analytics.callsOverTime.forEach(day => {
         csvRows.push([day.date, day.calls, day.chats, day.whatsapp, day.emails]);
       });
@@ -121,8 +121,8 @@ export default function AnalyticsPage() {
 
     // Top topics
     if (topTopics?.length > 0) {
-      csvRows.push(['En Çok Sorulan Konular']);
-      csvRows.push(['Kategori', 'Sayı', 'Alt Konular']);
+      csvRows.push([t('dashboard.analyticsPage.topQuestions')]);
+      csvRows.push([t('dashboard.analyticsPage.csvCategory'), t('dashboard.analyticsPage.csvCount'), t('dashboard.analyticsPage.csvSubtopics')]);
       topTopics.forEach(topic => {
         const subtopics = topic.subtopics?.map(s => `${s.text} (${s.count})`).join('; ') || '';
         csvRows.push([topic.category, topic.count, subtopics]);
@@ -145,7 +145,7 @@ export default function AnalyticsPage() {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 
-    toast.success(locale === 'tr' ? 'Rapor indirildi' : 'Report downloaded');
+    toast.success(t('dashboard.analyticsPage.reportDownloaded'));
   };
 
   const TIME_RANGES = [
