@@ -26,13 +26,56 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
  * @returns {Promise<Object>} { type, confidence, reason, suggestedFlow?, extractedSlots? }
  */
 export async function classifyMessageType(state, lastAssistantMessage, userMessage, language = 'TR', options = {}) {
+  // ─── Deterministic stock follow-up detection ───────────────────
+  // If we just answered a stock query and user asks about quantity,
+  // skip LLM classification entirely — this is always a follow-up.
+  // Check both active anchor AND lastStockContext (preserved after post-result reset).
+  const hasStockAnchor = state.anchor?.type === 'STOCK' && state.activeFlow === 'STOCK_CHECK';
+  const hasStockContext = !!state.lastStockContext;
+
+  if (hasStockAnchor || hasStockContext) {
+    const anchorTimestamp = state.anchor?.timestamp || state.lastStockContext?.timestamp;
+    const timeSinceAnchor = Date.now() - new Date(anchorTimestamp).getTime();
+    const isRecent = timeSinceAnchor < 10 * 60 * 1000; // 10 minutes
+
+    if (isRecent) {
+      const userLower = userMessage.toLowerCase().replace(/[?!.,]/g, '');
+      const stockFollowupPatterns = [
+        /ka[çc]\s*(tane|adet)/,
+        /ka[çc]\s*(var|kald[ıi])/,
+        /stok(ta)?\s*(ne\s*kadar|ka[çc])/,
+        /ne\s*kadar\s*var/,
+        /\d+\s*(tane|adet)\s*(var|ister|istiyorum|alabilir)/,
+        /\d+\s*(tane|adet)\s*m[ıi]/,
+        /miktarı?\s*(ne|ka[çc])/
+      ];
+
+      if (stockFollowupPatterns.some(p => p.test(userLower))) {
+        console.log('📦 [Classifier] Deterministic STOCK follow-up detected:', userMessage, hasStockAnchor ? '(active anchor)' : '(lastStockContext)');
+        return {
+          type: 'SLOT_ANSWER',
+          confidence: 0.95,
+          reason: 'Stock follow-up: quantity question after stock query',
+          suggestedFlow: 'STOCK_CHECK',
+          extractedSlots: {},
+          triggerRule: null
+        };
+      }
+    }
+  }
+
   // Build context for classifier
   const context = {
     flowStatus: state.flowStatus, // idle | in_progress | resolved | post_result
-    activeFlow: state.activeFlow, // ORDER_STATUS | DEBT_INQUIRY | COMPLAINT | etc.
+    activeFlow: state.activeFlow, // ORDER_STATUS | DEBT_INQUIRY | COMPLAINT | STOCK_CHECK | etc.
     expectedSlot: state.expectedSlot, // order_number | phone | customer_name | etc.
     lastAssistantMessage: lastAssistantMessage?.substring(0, 200) || null,
-    anchor: state.anchor?.truth ? {
+    anchor: state.anchor?.type === 'STOCK' ? {
+      type: 'STOCK',
+      stockProductName: state.anchor.stock?.productName,
+      stockMatchType: state.anchor.stock?.matchType,
+      stockAvailability: state.anchor.stock?.availability
+    } : state.anchor?.truth ? {
       dataType: state.anchor.truth.dataType,
       // Include truth summary for contradiction detection
       orderStatus: state.anchor.truth.order?.status,
@@ -114,7 +157,7 @@ function buildClassifierPrompt(userMessage, context, language) {
 - Active Flow: ${context.activeFlow || 'none'}
 - Expected Slot: ${context.expectedSlot || 'none'}
 - Last Assistant Message: "${context.lastAssistantMessage || 'none'}"
-${context.anchor ? `- Truth Anchor: orderStatus="${context.anchor.orderStatus}", hasDebt=${context.anchor.hasDebt}` : ''}
+${context.anchor?.type === 'STOCK' ? `- Stock Context: product="${context.anchor.stockProductName}", match="${context.anchor.stockMatchType}", availability="${context.anchor.stockAvailability}"` : context.anchor ? `- Truth Anchor: orderStatus="${context.anchor.orderStatus}", hasDebt=${context.anchor.hasDebt}` : ''}
 
 **User Message:**
 "${userMessage}"
@@ -168,7 +211,8 @@ If message contains slot data, extract it:
 - Low confidence (<0.7) if very unclear
 - Always prioritize context over keywords
 - If expecting slot but message is emotional/angry → CHATTER, not SLOT_ANSWER
-- If flowStatus="post_result" and user contradicts → FOLLOWUP_DISPUTE`;
+- If flowStatus="post_result" and user contradicts → FOLLOWUP_DISPUTE
+- If activeFlow="STOCK_CHECK" and user asks about quantity/stock → SLOT_ANSWER (stock follow-up), NOT NEW_INTENT`;
 }
 
 /**

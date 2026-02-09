@@ -102,6 +102,19 @@ export async function persistAndEmitMetrics(params) {
     // Auto-reset after 3 turns in post_result
     if (state.postResultTurns >= 3) {
       console.log('🔄 [Persist] Auto-resetting after 3 post-result turns');
+
+      // Preserve stock context so the deterministic classifier can still detect
+      // stock follow-ups ("kaç tane var?") even after the grace period expires.
+      if (state.anchor?.type === 'STOCK') {
+        state.lastStockContext = {
+          productName: state.anchor.stock?.productName,
+          availability: state.anchor.stock?.availability,
+          matchType: state.anchor.stock?.matchType,
+          timestamp: state.anchor.timestamp
+        };
+        console.log('📦 [Persist] Preserved lastStockContext for follow-up detection');
+      }
+
       state.flowStatus = 'idle';
       state.activeFlow = null;
       state.postResultTurns = 0;

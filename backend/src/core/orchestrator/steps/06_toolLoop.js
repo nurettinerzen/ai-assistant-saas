@@ -257,6 +257,31 @@ export async function executeToolLoop(params) {
           };
         }
 
+        // Stock tool results → write to anchor so classifier knows context
+        if (toolName === 'check_stock_crm' || toolName === 'get_product_stock') {
+          const matchType = toolResult.data.match_type; // EXACT_SKU | MULTIPLE_CANDIDATES
+          state.anchor = {
+            type: 'STOCK',
+            stock: {
+              matchType,
+              productName: toolResult.data.product_name || toolResult.data.title || toolResult.data.search_term,
+              availability: toolResult.data.availability || null,
+              disambiguationRequired: !!toolResult.data.disambiguation_required
+            },
+            timestamp: new Date().toISOString()
+          };
+          state.activeFlow = 'STOCK_CHECK';
+          state.flowStatus = matchType === 'EXACT_SKU' ? 'post_result' : 'in_progress';
+
+          // Stock flows NEVER need PII verification — clear any stale verification state
+          if (state.verification?.status === 'pending') {
+            console.log('🧹 [ToolLoop] Clearing stale verification — stock flow does not require PII');
+            state.verification = { status: 'none' };
+          }
+
+          console.log(`📦 [ToolLoop] Stock anchor set: matchType=${matchType}, flow=STOCK_CHECK`);
+        }
+
         // Store callback ID for tracking
         if (toolName === 'create_callback' && toolResult.data.callbackId) {
           state.lastCallbackId = toolResult.data.callbackId;

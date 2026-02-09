@@ -56,7 +56,17 @@ export async function buildLLMRequest(params) {
   // ========================================
   // LLM now handles verification conversation naturally.
   // We inject context so it knows what's pending.
-  if (state.verificationContext) {
+  // SCOPE: Only inject for flows that actually require PII verification.
+  // Stock, product inquiry etc. should NEVER see verification guidance.
+  const VERIFICATION_FLOWS = ['ORDER_STATUS', 'DEBT_INQUIRY', 'TRACKING_INFO', 'ACCOUNT_LOOKUP'];
+  // Only inject verification guidance if we're actually in a verification-relevant flow.
+  // When activeFlow is null (e.g. after post-result reset), also check if there's a recent
+  // stock context — if so, this is NOT a verification scenario.
+  const hasRecentStockContext = !!state.lastStockContext || state.anchor?.type === 'STOCK';
+  const isVerificationRelevant = !hasRecentStockContext &&
+    (!state.activeFlow || VERIFICATION_FLOWS.includes(state.activeFlow));
+
+  if (state.verificationContext && isVerificationRelevant) {
     const vc = state.verificationContext;
     const verificationGuidance = `
 
@@ -77,6 +87,10 @@ KURALLAR:
     console.log('🔐 [BuildLLMRequest] Added verification context for LLM');
 
     // Clean up - don't persist this context
+    delete state.verificationContext;
+  } else if (state.verificationContext && !isVerificationRelevant) {
+    // Active flow is not verification-relevant (e.g., stock) — skip and clean up
+    console.log(`🚫 [BuildLLMRequest] Skipped verification context — activeFlow="${state.activeFlow}" not in VERIFICATION_FLOWS`);
     delete state.verificationContext;
   }
 
@@ -172,6 +186,21 @@ KURALLAR:
 - Kullanıcı net bir talep vermediyse tek cümlelik sıcak bir karşılık ver.`;
     console.log('💬 [BuildLLMRequest] CHATTER — context-preserving guidance aktif');
   }
+
+  // ========================================
+  // STOCK QUERY: Disambiguation & Disclosure Policy
+  // ========================================
+  // Inject instructions so LLM handles multi-match stock queries correctly
+  // and never reveals raw stock quantities.
+  enhancedSystemPrompt += `
+
+## STOK SORGUSU KURALLARI
+
+1. Tool "MULTIPLE_CANDIDATES" döndüğünde: stok durumu hakkında konuşma, önce ürünü netleştir. Tekrar tool çağırırken aday listesindeki tam ürün adını kullan.
+2. Stok adedi (kaç adet/tane) ASLA paylaşılmaz. Sadece "stokta mevcut / sınırlı stok / stokta yok" bilgisi verilir.
+3. Müşteri "kaç tane var?" diye sorarsa: kesin adet verilemeyeceğini söyle, ama belirli bir miktar ihtiyacı varsa kontrol edebileceğini belirt.
+4. requested_qty parametresi SADECE müşteri açık bir sayı söylediğinde doldurulur. "Kaç tane var?" gibi genel sorularda BOŞ bırakılır.
+5. Tool yanıtındaki quantity_check sonucunu kullan, kendi başına adet uydurma.`;
 
   // STEP 1: Apply tool gating policy
   const classifierConfidence = classification?.confidence || 0.9;

@@ -1,20 +1,33 @@
 /**
  * CRM Stock Handler
  * Checks stock from custom CRM webhook data
+ *
+ * ARCHITECTURE:
+ * - Phase A: Candidate listing (findMany, not findFirst)
+ * - Phase B: Disambiguation if multiple candidates
+ * - Stock Disclosure Policy: NEVER return raw quantities to LLM
+ *
+ * match_type: EXACT_SKU | MULTIPLE_CANDIDATES | NO_MATCH
  */
 
 import prisma from '../../prismaClient.js';
 import { ok, notFound, validationError, systemError } from '../toolResult.js';
+import {
+  applyDisclosurePolicy,
+  applyDisclosureToCandidates,
+  formatAvailabilityStatus,
+  formatQuantityCheck
+} from '../../policies/stockDisclosurePolicy.js';
 
 /**
  * Execute CRM stock check
  */
 export async function execute(args, business, context = {}) {
   try {
-    const { product_name, sku } = args;
+    const { product_name, sku, requested_qty } = args;
     const language = business.language || 'TR';
 
-    console.log('🔍 CRM: Checking stock:', { product_name, sku });
+    console.log('🔍 CRM: Checking stock:', { product_name, sku, requested_qty });
 
     // Validate - at least one parameter required
     if (!product_name && !sku) {
@@ -30,6 +43,7 @@ export async function execute(args, business, context = {}) {
     const whereClause = { businessId: business.id };
 
     if (sku) {
+      // Exact SKU match → single product expected
       whereClause.sku = { equals: sku, mode: 'insensitive' };
     } else if (product_name) {
       whereClause.OR = [
@@ -38,12 +52,13 @@ export async function execute(args, business, context = {}) {
       ];
     }
 
-    // Search for stock
-    const stock = await prisma.crmStock.findFirst({
-      where: whereClause
+    // ─── Phase A: Candidate listing (findMany) ─────────────────────
+    const candidates = await prisma.crmStock.findMany({
+      where: whereClause,
+      take: 20 // Safety limit
     });
 
-    if (!stock) {
+    if (candidates.length === 0) {
       return notFound(
         language === 'TR'
           ? `"${product_name || sku}" için stok bilgisi bulunamadı.`
@@ -51,19 +66,50 @@ export async function execute(args, business, context = {}) {
       );
     }
 
-    console.log(`✅ CRM Stock found: ${stock.productName}`);
+    console.log(`✅ CRM Stock: ${candidates.length} candidate(s) found`);
 
-    // Format response
-    const responseMessage = formatStockMessage(stock, language);
+    // Parse requested quantity if provided
+    const reqQty = requested_qty ? parseInt(requested_qty, 10) : null;
+
+    // ─── Phase B: Single match → apply disclosure and return ───────
+    if (candidates.length === 1) {
+      const stock = candidates[0];
+      const disclosed = applyDisclosurePolicy(stock, {
+        requestedQty: reqQty
+      });
+
+      const responseMessage = formatSingleStockMessage(stock, disclosed, language);
+
+      return ok({
+        match_type: 'EXACT_SKU',
+        sku: stock.sku,
+        product_name: stock.productName,
+        availability: disclosed.availability,
+        price: stock.price,
+        estimated_restock: disclosed.estimated_restock,
+        quantity_check: disclosed.quantity_check || null,
+        last_update: stock.externalUpdatedAt
+        // NOTE: raw quantity is NEVER included
+      }, responseMessage);
+    }
+
+    // ─── Phase B: Multiple candidates → disambiguation needed ──────
+    const disambiguationResult = applyDisclosureToCandidates(candidates, {
+      requestedQty: reqQty
+    });
+
+    const responseMessage = formatDisambiguationMessage(
+      product_name || sku,
+      disambiguationResult,
+      language
+    );
 
     return ok({
-      sku: stock.sku,
-      product_name: stock.productName,
-      in_stock: stock.inStock,
-      quantity: stock.quantity,
-      price: stock.price,
-      estimated_restock: stock.estimatedRestock,
-      last_update: stock.externalUpdatedAt
+      match_type: 'MULTIPLE_CANDIDATES',
+      search_term: product_name || sku,
+      candidates_summary: disambiguationResult.candidates_summary,
+      // LLM should ask clarifying questions before giving stock status
+      disambiguation_required: true
     }, responseMessage);
 
   } catch (error) {
@@ -77,23 +123,24 @@ export async function execute(args, business, context = {}) {
   }
 }
 
-// Format stock message
-function formatStockMessage(stock, language) {
-  if (language === 'TR') {
-    let message = `${stock.productName}`;
+// ─── Formatting helpers ──────────────────────────────────────────────
 
-    if (stock.inStock) {
-      message += ` stokta mevcut`;
-      if (stock.quantity !== null) {
-        message += ` (${stock.quantity} adet)`;
-      }
-      message += '.';
-    } else {
-      message += ` şu anda stokta yok.`;
-      if (stock.estimatedRestock) {
-        const date = new Date(stock.estimatedRestock);
-        message += ` Tahmini stok yenileme tarihi: ${date.toLocaleDateString('tr-TR')}.`;
-      }
+/**
+ * Format stock message for a single matched product (no raw quantity)
+ */
+function formatSingleStockMessage(stock, disclosed, language) {
+  const statusLabel = formatAvailabilityStatus(disclosed.availability, language);
+
+  if (language === 'TR') {
+    let message = `${stock.productName}: ${statusLabel}.`;
+
+    if (disclosed.quantity_check) {
+      message += ` ${formatQuantityCheck(disclosed.quantity_check, 'TR')}`;
+    }
+
+    if (disclosed.availability === 'OUT_OF_STOCK' && stock.estimatedRestock) {
+      const date = new Date(stock.estimatedRestock);
+      message += ` Tahmini stok yenileme tarihi: ${date.toLocaleDateString('tr-TR')}.`;
     }
 
     if (stock.price) {
@@ -103,25 +150,64 @@ function formatStockMessage(stock, language) {
     return message;
   }
 
-  let message = `${stock.productName}`;
+  // English
+  let message = `${stock.productName}: ${statusLabel}.`;
 
-  if (stock.inStock) {
-    message += ` is in stock`;
-    if (stock.quantity !== null) {
-      message += ` (${stock.quantity} available)`;
-    }
-    message += '.';
-  } else {
-    message += ` is currently out of stock.`;
-    if (stock.estimatedRestock) {
-      const date = new Date(stock.estimatedRestock);
-      message += ` Expected restock date: ${date.toLocaleDateString('en-US')}.`;
-    }
+  if (disclosed.quantity_check) {
+    message += ` ${formatQuantityCheck(disclosed.quantity_check, 'EN')}`;
+  }
+
+  if (disclosed.availability === 'OUT_OF_STOCK' && stock.estimatedRestock) {
+    const date = new Date(stock.estimatedRestock);
+    message += ` Expected restock date: ${date.toLocaleDateString('en-US')}.`;
   }
 
   if (stock.price) {
     message += ` Price: ${stock.price} TL.`;
   }
+
+  return message;
+}
+
+/**
+ * Format disambiguation message when multiple candidates found
+ */
+function formatDisambiguationMessage(searchTerm, result, language) {
+  const { candidates_summary } = result;
+  const count = candidates_summary.count;
+  const options = candidates_summary.top_options.map(o => o.label);
+  const dims = candidates_summary.dimensions;
+
+  if (language === 'TR') {
+    let message = `"${searchTerm}" araması için ${count} farklı ürün bulundu.`;
+
+    if (dims.length > 0) {
+      const dimLabels = {
+        model: 'model',
+        storage: 'depolama',
+        color: 'renk',
+        size: 'beden',
+        carrier: 'operatör'
+      };
+      const dimStr = dims.map(d => dimLabels[d] || d).join(', ');
+      message += ` Varyasyon boyutları: ${dimStr}.`;
+    }
+
+    message += ` Seçenekler: ${options.join(', ')}.`;
+    message += ` Stok durumu modele göre değişiyor. Hangi ürünü sorgulamak istediğini netleştirmek gerekiyor.`;
+
+    return message;
+  }
+
+  // English
+  let message = `Found ${count} products matching "${searchTerm}".`;
+
+  if (dims.length > 0) {
+    message += ` Variation dimensions: ${dims.join(', ')}.`;
+  }
+
+  message += ` Options: ${options.join(', ')}.`;
+  message += ` Stock status varies by product. Please specify which product you'd like to check.`;
 
   return message;
 }

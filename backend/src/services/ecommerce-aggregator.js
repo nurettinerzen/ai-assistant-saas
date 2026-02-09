@@ -494,18 +494,18 @@ export function formatOrderStatus(order, language = 'TR') {
  * @returns {string} Formatted message
  */
 export function formatProductStock(product, language = 'TR') {
+  // STOCK DISCLOSURE POLICY: Never reveal raw stock quantities.
+  // Only show availability status (in stock / limited / out of stock)
+  // and available variant options (without counts).
+
   if (language === 'TR') {
     if (product.available) {
-      let message = `${product.title} stokta mevcut. `;
-
-      if (product.totalStock) {
-        message += `Mevcut stok: ${product.totalStock} adet. `;
-      }
+      let message = `${product.title} stokta mevcut.`;
 
       if (product.variants?.length > 1) {
         const availableVariants = product.variants.filter(v => v.available);
         if (availableVariants.length > 0) {
-          message += `Mevcut seçenekler: ${availableVariants.map(v => v.title).join(', ')}.`;
+          message += ` Mevcut seçenekler: ${availableVariants.map(v => v.title).join(', ')}.`;
         }
       }
 
@@ -517,16 +517,12 @@ export function formatProductStock(product, language = 'TR') {
 
   // English
   if (product.available) {
-    let message = `${product.title} is in stock. `;
-
-    if (product.totalStock) {
-      message += `Available quantity: ${product.totalStock}. `;
-    }
+    let message = `${product.title} is in stock.`;
 
     if (product.variants?.length > 1) {
       const availableVariants = product.variants.filter(v => v.available);
       if (availableVariants.length > 0) {
-        message += `Available options: ${availableVariants.map(v => v.title).join(', ')}.`;
+        message += ` Available options: ${availableVariants.map(v => v.title).join(', ')}.`;
       }
     }
 

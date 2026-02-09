@@ -1,7 +1,9 @@
 /**
  * Cleanup Test Assistants
  *
- * Identifies and removes unused/test assistants to keep the database clean.
+ * Identifies and removes unused/test assistants from BOTH:
+ *   1. ElevenLabs API (hard delete via DELETE /convai/agents/:id)
+ *   2. Local database (hard delete of assistant + dependent records)
  *
  * Strategy per business:
  *   - KEEP: Active (isActive=true) assistants with real usage (chats > 0 or phones > 0)
@@ -14,6 +16,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import axios from 'axios';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -24,6 +27,15 @@ const __dirname = dirname(__filename);
 dotenv.config({ path: join(__dirname, '../.env') });
 
 const prisma = new PrismaClient();
+
+// ElevenLabs API client for deleting agents
+const elevenLabsClient = axios.create({
+  baseURL: 'https://api.elevenlabs.io/v1',
+  headers: {
+    'xi-api-key': process.env.ELEVENLABS_API_KEY,
+    'Content-Type': 'application/json'
+  }
+});
 
 const args = process.argv.slice(2);
 const shouldDelete = args.includes('--delete');
@@ -41,6 +53,7 @@ async function main() {
       isActive: true,
       createdAt: true,
       customNotes: true,
+      elevenLabsAgentId: true,
       _count: {
         select: {
           chatLogs: true,
@@ -134,16 +147,31 @@ async function main() {
 
   for (const a of toDelete) {
     try {
-      // Delete dependent records first (foreign key order)
+      // Step 1: Delete from ElevenLabs API (hard delete)
+      if (a.elevenLabsAgentId) {
+        try {
+          await elevenLabsClient.delete(`/convai/agents/${a.elevenLabsAgentId}`);
+          console.log(`  🔗 11Labs agent deleted: ${a.elevenLabsAgentId}`);
+        } catch (elError) {
+          // 404 = already deleted, that's fine
+          if (elError.response?.status === 404) {
+            console.log(`  ⚠️  11Labs agent already gone: ${a.elevenLabsAgentId}`);
+          } else {
+            console.error(`  ⚠️  11Labs delete failed (continuing): ${elError.response?.data?.detail || elError.message}`);
+          }
+        }
+      }
+
+      // Step 2: Delete dependent records from DB (foreign key order)
       const chatDeleted = await prisma.chatLog.deleteMany({ where: { assistantId: a.id } });
       const cbDeleted = await prisma.callbackRequest.deleteMany({ where: { assistantId: a.id } });
       const batchDeleted = await prisma.batchCall.deleteMany({ where: { assistantId: a.id } });
 
-      // Delete the assistant
+      // Step 3: Delete the assistant from DB
       await prisma.assistant.delete({ where: { id: a.id } });
 
       deleted++;
-      console.log(`  ✅ Deleted: ${a.name} (${a.id.slice(-8)}) [${chatDeleted.count} chats, ${cbDeleted.count} callbacks, ${batchDeleted.count} batches]`);
+      console.log(`  ✅ Deleted: ${a.name} (${a.id.slice(-8)}) [11Labs: ${a.elevenLabsAgentId || 'none'}, ${chatDeleted.count} chats, ${cbDeleted.count} callbacks, ${batchDeleted.count} batches]`);
     } catch (error) {
       failed++;
       console.error(`  ❌ Failed: ${a.name} (${a.id.slice(-8)}): ${error.message}`);

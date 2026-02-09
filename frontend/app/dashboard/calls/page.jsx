@@ -571,8 +571,8 @@ export default function CallsPage() {
         onClose={() => {
           setShowTranscriptModal(false);
           setSelectedCallId(null);
-          // Refresh table to show updated data (endReason, cost, etc.)
-          refreshCalls(true);
+          // Refresh table while respecting active filters
+          loadCalls();
         }}
       />
     </div>

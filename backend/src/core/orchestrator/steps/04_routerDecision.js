@@ -171,7 +171,17 @@ export async function makeRoutingDecision(params) {
   //   ❌ Return directResponse templates
   //   ❌ Force tool calls
   // LLM sees the conversation history and understands what the user is providing.
-  if (state.verification?.status === 'pending' && state.verification?.anchor) {
+  // Only apply verification flow for intents that actually need it.
+  // Stock follow-ups should never trigger verification.
+  const NON_VERIFICATION_FLOWS = ['STOCK_CHECK', 'PRODUCT_INQUIRY'];
+  // Also check lastStockContext — after post-result reset, activeFlow is null
+  // but we still shouldn't inject verification for stock follow-ups.
+  const hasRecentStockContext = !!state.lastStockContext || state.anchor?.type === 'STOCK';
+  const isNonVerificationFlow = hasRecentStockContext ||
+    NON_VERIFICATION_FLOWS.includes(state.activeFlow) ||
+    NON_VERIFICATION_FLOWS.includes(classification?.suggestedFlow);
+
+  if (state.verification?.status === 'pending' && state.verification?.anchor && !isNonVerificationFlow) {
     console.log('🔐 [Verification] Pending verification — LLM will handle input interpretation');
 
     // Add verification context for LLM's system prompt
@@ -249,6 +259,14 @@ export async function makeRoutingDecision(params) {
       if (routing.suggestedFlow) {
         state.activeFlow = routing.suggestedFlow;
         state.flowStatus = 'in_progress';
+
+        // Clear stale verification from previous flows when starting a new flow.
+        // Without this, verification.status='pending' from an old order/debt flow
+        // bleeds into unrelated flows (e.g. stock queries).
+        if (state.verification?.status === 'pending') {
+          console.log(`🧹 [RouterDecision] Clearing stale verification (was pending) — new flow: ${routing.suggestedFlow}`);
+          state.verification = { status: 'none' };
+        }
       }
 
       return {
