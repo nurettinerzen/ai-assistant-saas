@@ -200,11 +200,18 @@ function determineToolsToRun(classification, availableTools, inboundMessage, thr
         if (extractedVkn) args.vkn = extractedVkn;
         if (extractedTc) args.tc = extractedTc;
         if (extractedTicket) args.ticket_number = extractedTicket;
+        if (extractedName) args.customer_name = extractedName;
+
+        // Set verification_input for single-pass email verification.
+        // Priority: name > full phone (both accepted by verifyAgainstAnchor).
+        // Tool handler uses this ONLY when state.verification.status === 'pending'
+        // (which buildEmailToolState synthesizes for email channel).
         if (extractedName) {
-          args.customer_name = extractedName;
-          // CRITICAL: Also pass as verification_input so the tool can use it
-          // for name-based verification in a single pass (no multi-turn needed)
           args.verification_input = extractedName;
+        } else if (extractedPhone) {
+          // Phone serves double duty: lookup identifier AND verification input.
+          // verifyAgainstAnchor accepts full phone (10+ digits) as valid verification.
+          args.verification_input = extractedPhone;
         }
 
         toolsToRun.push({

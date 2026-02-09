@@ -465,8 +465,20 @@ export async function execute(args, business, context = {}) {
     // 1. If customer_name provided AND not in pending state → check for mismatch
     // 2. If mismatch detected → return explicit error
     // 3. If match detected → still require verification (prevent single-shot bypass)
+    //
+    // PENDING STATE EXCEPTION:
+    // When state.verification.status === 'pending', allow verification_input
+    // (which can be name OR full phone number) to pass through for verification.
+    // This enables email pipeline (stateless, synthesizes pending) to complete
+    // verification in a single pass without multi-turn back-and-forth.
+    // verifyAgainstAnchor() accepts: name, phone_last4, or full phone (10+ digits).
     let verificationInput = customer_name;
-    if (customer_name && state.verification?.status !== 'pending') {
+    const isPending = state.verification?.status === 'pending';
+    if (isPending) {
+      // Pending state: accept any verification input (name or phone)
+      verificationInput = customer_name || verification_input;
+    }
+    if (customer_name && !isPending) {
       console.log('🔐 [SECURITY] customer_name provided but not in pending verification flow');
       console.log('🔐 [SECURITY] Checking for mismatch...');
 

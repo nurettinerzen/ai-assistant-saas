@@ -183,14 +183,52 @@ function checkActionClaimGuard(content, hadToolSuccess, hadToolCalls, language) 
 
 /**
  * C) Verification Policy
- * Ensures draft asks for verification when required
+ * Ensures draft asks for verification when required.
+ * Also strips "false promise" patterns — when tool outcome is VERIFICATION_REQUIRED,
+ * the LLM must NOT claim it's working on the request or will get back to the customer.
+ * Only asking for the missing verification info is acceptable.
  */
 function checkVerificationPolicy(content, verificationRequired, language) {
   if (!verificationRequired) {
     return { passed: true, content };
   }
 
-  // Check if draft already asks for verification info
+  let modifiedContent = content;
+
+  // STEP 1: Strip false-promise / action-taking patterns.
+  // When tool returned VERIFICATION_REQUIRED, LLM should NOT say things like:
+  //   "Kontrol ediyorum", "en kısa sürede bilgi vereceğim", "telefon numaranızı aldım"
+  // These create false expectations — the system cannot proceed without verification.
+  const falsePromisePatterns = language === 'TR' ? [
+    /(?:en kısa sürede|hemen|şimdi)\s+(?:bilgi\s+)?(?:vereceğim|döneceğim|dönüş\s+yapacağım|ileteceğim|kontrol\s+edeceğim|bakacağım)[.!]?/gi,
+    /(?:siparişinizi|talebinizi|bilgilerinizi)\s+(?:kontrol\s+ediyorum|inceliyorum|takip\s+ediyorum)[.!]?/gi,
+    /(?:telefon\s+numaranızı|bilgilerinizi)\s+(?:aldım|kaydettim|not\s+ettim)[.,]?\s*(?:şimdi|hemen)?\s*(?:siparişinizi|bilgilerinizi)?\s*(?:kontrol\s+ediyorum|inceliyorum)?[.!]?/gi,
+    /size\s+(?:en\s+kısa\s+sürede\s+)?geri\s+dönüş\s+yapacağım[.!]?/gi,
+    /(?:inceleyip|kontrol\s+edip)\s+(?:geri\s+)?(?:dönüş\s+yapacağım|döneceğim|bilgi\s+vereceğim)[.!]?/gi
+  ] : [
+    /(?:i(?:'m|\s+am)\s+(?:checking|looking\s+into|processing|reviewing))\s+(?:your|the)\s+(?:order|request|information)[.!]?/gi,
+    /(?:i\s+will|i'll)\s+(?:get\s+back\s+to\s+you|follow\s+up|check|review)\s+(?:shortly|soon|right\s+away|immediately)?[.!]?/gi,
+    /(?:i(?:'ve|\s+have)\s+(?:noted|recorded|received))\s+your\s+(?:phone|information|details)[.!]?/gi
+  ];
+
+  let stripped = false;
+  for (const pattern of falsePromisePatterns) {
+    if (pattern.test(modifiedContent)) {
+      modifiedContent = modifiedContent.replace(pattern, '').trim();
+      stripped = true;
+    }
+  }
+
+  // Clean up orphaned whitespace/newlines after stripping
+  if (stripped) {
+    modifiedContent = modifiedContent
+      .replace(/\n{3,}/g, '\n\n')
+      .replace(/[ \t]{2,}/g, ' ')
+      .trim();
+    console.log('🛡️ [Guardrails] Stripped false-promise patterns from VERIFICATION_REQUIRED draft');
+  }
+
+  // STEP 2: Check if draft already asks for verification info
   const verificationRequestPatterns = language === 'TR' ? [
     /doğrulama/gi,
     /kimlik/gi,
@@ -205,10 +243,10 @@ function checkVerificationPolicy(content, verificationRequired, language) {
     /confirm your identity/gi
   ];
 
-  const hasVerificationRequest = verificationRequestPatterns.some(p => p.test(content));
+  const hasVerificationRequest = verificationRequestPatterns.some(p => p.test(modifiedContent));
 
   if (hasVerificationRequest) {
-    return { passed: true, content };
+    return { passed: !stripped, content: modifiedContent };
   }
 
   // Add verification request to content
@@ -218,7 +256,7 @@ function checkVerificationPolicy(content, verificationRequired, language) {
 
   return {
     passed: false,
-    content: content + verificationMessage
+    content: modifiedContent + verificationMessage
   };
 }
 
