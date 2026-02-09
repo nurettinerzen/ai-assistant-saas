@@ -407,6 +407,18 @@ export async function execute(args, business, context = {}) {
     const anchor = createAnchor(record, anchorType, anchorValue, sourceTable);
     console.log('🔐 [Anchor] Created:', { type: anchor.anchorType, value: anchor.anchorValue, name: anchor.name, sourceTable: anchor.sourceTable });
 
+    // Attach identity context for central autoverify decision in 06_toolLoop.
+    // Tool handler does NOT make the autoverify decision — it only provides context.
+    const _identityContext = {
+      channel: context.channel || null,
+      channelUserId: context.channelUserId || null,
+      fromEmail: context.fromEmail || null,
+      businessId: business.id,
+      anchorId: anchor.id,
+      anchorSourceTable: anchor.sourceTable,
+      queryType: query_type
+    };
+
     // P0 SECURITY: Detect identity switch (anchor change within session)
     // If user switches to a different customer mid-conversation, require new verification
     console.log('🔐 [Debug] Identity switch check:', {
@@ -491,6 +503,7 @@ export async function execute(args, business, context = {}) {
           askFor: verificationCheck.askFor,
           anchor: verificationCheck.anchor
         }),
+        _identityContext,  // For central autoverify decision in 06_toolLoop
         stateEvents: [
           {
             type: OutcomeEventType.VERIFICATION_REQUIRED,

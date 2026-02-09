@@ -1664,6 +1664,7 @@ model CustomerData {
   // Aynı müşterinin birden fazla kaydı olabilir (farklı siparişler, borçlar vb.)
   @@index([businessId])
   @@index([businessId, phone]) // Telefona göre hızlı arama
+  @@index([businessId, email]) // Email ile identity proof lookup
   @@index([vkn])
   @@index([fileId])
 }

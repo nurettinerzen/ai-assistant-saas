@@ -29,7 +29,8 @@ export function emitTurnMetrics(metrics) {
     failedTool = null,
     inputTokens = 0,
     outputTokens = 0,
-    error = null
+    error = null,
+    identityProof = null  // Channel identity proof telemetry
   } = metrics;
 
   // Console log (dev)
@@ -44,6 +45,18 @@ export function emitTurnMetrics(metrics) {
     hadToolFailure,
     tokens: { input: inputTokens, output: outputTokens }
   };
+
+  // Identity proof telemetry (when channel proof is evaluated)
+  if (identityProof) {
+    metricsLog.identityProof = {
+      strength: identityProof.strength,
+      channel: identityProof.channel,
+      autoverifyApplied: identityProof.autoverifyApplied || false,
+      secondFactorRequired: identityProof.secondFactorRequired,
+      reason: identityProof.reason,
+      durationMs: identityProof.durationMs
+    };
+  }
 
   // Only include error if it exists
   if (error) {

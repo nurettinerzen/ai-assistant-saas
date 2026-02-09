@@ -66,6 +66,19 @@ export const FEATURE_FLAGS = {
   //   e.g. FEATURE_LLM_CHATTER_CANARY_KEYS=embed_abc123,embed_xyz789
   LLM_CHATTER_GREETING: process.env.FEATURE_LLM_CHATTER_GREETING !== 'false', // Default: ON
   LLM_CHATTER_CANARY_KEYS: (process.env.FEATURE_LLM_CHATTER_CANARY_KEYS || '').split(',').map(k => k.trim()).filter(Boolean),
+
+  // ─── Channel Identity Proof Autoverification ───
+  // When enabled: WhatsApp/Email channel identity signals can skip second-factor
+  //   verification for non-financial queries (order/tracking/repair status).
+  //   Financial queries (debt/billing/payment) ALWAYS require second factor.
+  // When disabled: All channels require explicit verification (current behavior).
+  // Rollback: Set FEATURE_CHANNEL_PROOF_AUTOVERIFY=false
+  CHANNEL_PROOF_AUTOVERIFY: process.env.FEATURE_CHANNEL_PROOF_AUTOVERIFY === 'true' || false,
+
+  // Canary: Comma-separated businessIds to enable autoverify selectively
+  //   e.g. FEATURE_CHANNEL_PROOF_CANARY_KEYS=42,108
+  CHANNEL_PROOF_CANARY_KEYS: (process.env.FEATURE_CHANNEL_PROOF_CANARY_KEYS || '')
+    .split(',').map(k => k.trim()).filter(Boolean),
 };
 
 /**
@@ -155,10 +168,30 @@ export function overrideFeatureFlag(featureName, value) {
   console.log(`🚩 Feature flag overridden: ${featureName} = ${value}`);
 }
 
+/**
+ * Check if channel proof autoverify is enabled for a given context.
+ * Priority: global flag ON → true for all | canary list match → true for that business
+ * @param {Object} context - { businessId }
+ * @returns {boolean}
+ */
+export function isChannelProofEnabled(context = {}) {
+  // Global flag ON → everyone
+  if (FEATURE_FLAGS.CHANNEL_PROOF_AUTOVERIFY === true) return true;
+
+  // Canary gating by businessId
+  const canaryKeys = FEATURE_FLAGS.CHANNEL_PROOF_CANARY_KEYS || [];
+  if (canaryKeys.length > 0 && context.businessId) {
+    return canaryKeys.includes(String(context.businessId));
+  }
+
+  return false;
+}
+
 export default {
   FEATURE_FLAGS,
   isFeatureEnabled,
   getFeatureFlag,
   isChatterLLMEnabled,
+  isChannelProofEnabled,
   overrideFeatureFlag
 };

@@ -571,6 +571,7 @@ export async function handleIncomingMessage({
       business,
       language,
       channel,
+      channelUserId,       // Channel identity signal (phone for WA, null for chat)
       sessionId: resolvedSessionId,
       messageId,
       metrics,

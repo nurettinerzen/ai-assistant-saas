@@ -62,6 +62,7 @@ export async function executeEmailToolLoop(ctx) {
 
       const result = await executeTool(name, args, business, {
         channel: 'EMAIL',
+        fromEmail: ctx.customerEmail || null,  // Email identity signal (separate from channelUserId)
         sessionId: ctx.thread.id,
         messageId: ctx.inboundMessage.id,
         language: ctx.language

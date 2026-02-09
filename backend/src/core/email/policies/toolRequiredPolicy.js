@@ -16,65 +16,67 @@ import { getMessageVariant } from '../../../messages/messageCatalog.js';
  *
  * EXPANDED: Now covers all factual intents (tracking, pricing, stock, returns, etc.)
  */
+// NOTE: requiredFields use CANONICAL tool schema names (via fieldNormalizer.js).
+// order_number (not order_id), phone (not phone_number), etc.
 const TOOL_REQUIRED_INTENTS = {
   ORDER: {
-    tools: ['customer_data_lookup', 'order_status'],
+    tools: ['customer_data_lookup', 'check_order_status_crm'],
     fallbackBehavior: 'ASK_VERIFICATION',
-    requiredFields: ['order_id', 'phone_number'],
+    requiredFields: ['order_number', 'phone'],
     messageKey: 'EMAIL_TOOL_REQUIRED_ORDER'
   },
   BILLING: {
     tools: ['customer_data_lookup'],
     fallbackBehavior: 'ASK_VERIFICATION',
-    requiredFields: ['phone_number', 'invoice_number'],
+    requiredFields: ['phone', 'invoice_number'],
     messageKey: 'EMAIL_TOOL_REQUIRED_BILLING'
   },
   APPOINTMENT: {
     tools: ['customer_data_lookup', 'appointment_lookup'],
     fallbackBehavior: 'ASK_VERIFICATION',
-    requiredFields: ['phone_number'],
+    requiredFields: ['phone'],
     messageKey: 'EMAIL_TOOL_REQUIRED_APPOINTMENT'
   },
   COMPLAINT: {
     tools: ['customer_data_lookup'],
     fallbackBehavior: 'ASK_VERIFICATION',
-    requiredFields: ['phone_number', 'order_id'],
+    requiredFields: ['phone', 'order_number'],
     messageKey: 'EMAIL_TOOL_REQUIRED_COMPLAINT'
   },
   TRACKING: {
-    tools: ['order_status', 'shipping_tracking'],
+    tools: ['customer_data_lookup', 'check_order_status_crm'],
     fallbackBehavior: 'ASK_VERIFICATION',
-    requiredFields: ['tracking_number', 'order_id'],
+    requiredFields: ['tracking_number', 'order_number'],
     messageKey: 'EMAIL_TOOL_REQUIRED_TRACKING'
   },
   PRICING: {
-    tools: ['product_lookup', 'price_check'],
+    tools: ['get_product_stock', 'check_stock_crm'],
     fallbackBehavior: 'ASK_VERIFICATION',
     requiredFields: ['product_id', 'product_name'],
     messageKey: 'EMAIL_TOOL_REQUIRED_PRICING'
   },
   STOCK: {
-    tools: ['inventory_check'],
+    tools: ['get_product_stock', 'check_stock_crm'],
     fallbackBehavior: 'ASK_VERIFICATION',
     requiredFields: ['product_id', 'sku'],
     messageKey: 'EMAIL_TOOL_REQUIRED_STOCK'
   },
   RETURN: {
-    tools: ['customer_data_lookup', 'order_status', 'return_status'],
+    tools: ['customer_data_lookup', 'check_order_status_crm'],
     fallbackBehavior: 'ASK_VERIFICATION',
-    requiredFields: ['order_id', 'return_number'],
+    requiredFields: ['order_number', 'return_number'],
     messageKey: 'EMAIL_TOOL_REQUIRED_RETURN'
   },
   REFUND: {
-    tools: ['customer_data_lookup', 'payment_status'],
+    tools: ['customer_data_lookup'],
     fallbackBehavior: 'ASK_VERIFICATION',
-    requiredFields: ['order_id', 'phone_number'],
+    requiredFields: ['order_number', 'phone'],
     messageKey: 'EMAIL_TOOL_REQUIRED_REFUND'
   },
   ACCOUNT: {
-    tools: ['customer_data_lookup', 'account_status'],
+    tools: ['customer_data_lookup'],
     fallbackBehavior: 'ASK_VERIFICATION',
-    requiredFields: ['phone_number', 'email'],
+    requiredFields: ['phone', 'email'],
     messageKey: 'EMAIL_TOOL_REQUIRED_ACCOUNT'
   }
 };
