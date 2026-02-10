@@ -502,9 +502,9 @@ export function getActiveTools(business, integrations = []) {
     }
   }
 
-  // Restoran ise sipariş alma
+  // Restoran ise sipariş alma + rezervasyon
   if (business.businessType === 'RESTAURANT') {
-    tools.push('take_order', 'check_menu');
+    tools.push('take_order', 'check_menu', 'create_appointment');
   }
 
   // Randevu bazlı işletmeler

@@ -42,6 +42,12 @@ export const INTENT_CONFIG = {
   // ============================================
   // NON-VERIFICATION INTENTS
   // ============================================
+  appointment: {
+    tools: ['create_appointment'],
+    requiresVerification: false,
+    description: 'User wants to BOOK/SCHEDULE/RESERVE an appointment or reservation: randevu, rezervasyon, rez, masa ayırtma, appointment, booking, reservation, tarih/saat belirleyerek bir şey planlamak istiyor. NOT asking about existing order status.'
+  },
+
   stock_check: {
     tools: ['get_product_stock'],
     requiresVerification: false,
@@ -475,14 +481,26 @@ export async function routeIntent(userMessage, sessionId, language = 'TR', busin
           ]
         });
 
+        // Build capabilities text based on business type
+        const businessType = businessInfo.businessType || 'OTHER';
+        const capabilitiesMap = {
+          'RESTAURANT': 'rezervasyon, menü bilgisi ve sipariş alma',
+          'SALON': 'randevu oluşturma ve hizmet bilgisi',
+          'CLINIC': 'randevu oluşturma ve hizmet bilgisi',
+          'ECOMMERCE': 'sipariş takibi, stok kontrolü ve kargo bilgisi',
+          'SERVICE': 'randevu oluşturma, sipariş takibi ve destek',
+          'OTHER': 'sipariş takibi, randevu ve genel bilgi'
+        };
+        const capabilities = capabilitiesMap[businessType] || capabilitiesMap['OTHER'];
+
         // Simple, direct prompt - avoid any formatting instructions
         const aiPrompt = language === 'TR'
           ? `Kullanıcı şunu sordu: "${userMessage}"
 
-Bu soruya kibarca hayır de ve ${businessName} için sadece sipariş takibi ve stok kontrolü yapabildiğini söyle. Sadece yanıtı yaz, başka bir şey ekleme.`
+Bu soruya kibarca hayır de ve ${businessName} için sadece ${capabilities} konularında yardımcı olabildiğini söyle. Sadece yanıtı yaz, başka bir şey ekleme.`
           : `User asked: "${userMessage}"
 
-Politely decline and say you can only help with order tracking and stock check for ${businessName}. Just write the response, nothing else.`;
+Politely decline and say you can only help with ${capabilities} for ${businessName}. Just write the response, nothing else.`;
 
         console.log('📝 Off-topic prompt sent to Gemini (length:', aiPrompt.length, 'chars):', aiPrompt);
 

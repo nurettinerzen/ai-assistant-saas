@@ -116,17 +116,18 @@ export const FLOW_DEFINITIONS = {
     description: 'Kullanıcı randevu almak istiyor',
 
     // Required slots
-    requiredSlots: ['preferred_date', 'service_type'],
-    optionalSlots: ['preferred_time'],
+    requiredSlots: ['preferred_date'],
+    optionalSlots: ['preferred_time', 'service_type', 'party_size'],
 
     // Tool permissions
     allowedTools: [
-      'create_callback',  // For appointment scheduling
+      'create_appointment',  // Primary: Create appointment/reservation
+      'create_callback',     // Fallback: If appointment can't be created
     ],
 
-    // Verification required
-    requiresVerification: true,
-    verificationFields: ['name', 'phone'],
+    // No verification required — appointment tool collects name+phone itself
+    requiresVerification: false,
+    verificationFields: [],
 
     // Intent keywords
     keywords: [
@@ -229,6 +230,7 @@ export function mapIntentToFlow(intentName) {
     'order_status': 'ORDER_STATUS',
     'debt_inquiry': 'DEBT_INQUIRY',
     'complaint': 'COMPLAINT',
+    'appointment': 'APPOINTMENT',
 
     // Multiple intents can map to same flow
     'tracking_info': 'ORDER_STATUS',     // Tracking is part of order status
