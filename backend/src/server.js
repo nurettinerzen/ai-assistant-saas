@@ -90,6 +90,7 @@ import safeTestRoutes from './routes/safe-test.js';
 // Import jobs
 import { initMonthlyResetJob } from './jobs/monthlyReset.js';
 import { initializeStateCleanup } from './jobs/cleanup-expired-states.js';
+import { initErrorLogCleanup } from './jobs/errorLogCleanup.js';
 // Email sync is now MANUAL only - removed auto-sync job
 // import { initEmailSyncJob } from './jobs/emailSync.js';
 
@@ -265,8 +266,21 @@ app.use('/api/callbacks', callbackRoutes);
 
 
 // Error handling middleware
-app.use((err, req, res, next) => {
+app.use(async (err, req, res, next) => {
   console.error(err.stack);
+
+  // Persist to ErrorLog (non-blocking)
+  try {
+    const { logSystemError } = await import('./services/errorLogger.js');
+    logSystemError(err, {
+      endpoint: req.path,
+      method: req.method,
+      requestId: req.requestId,
+      businessId: req.businessId || null,
+      userId: req.userId || null,
+    }).catch(() => {}); // fire-and-forget
+  } catch (_) { /* import failure — don't break response */ }
+
   res.status(500).json({
     error: 'Something went wrong!',
     message: process.env.NODE_ENV === 'development' ? err.message : undefined
@@ -304,6 +318,7 @@ if (process.env.NODE_ENV !== 'test') {
   console.log('\n🚀 Initializing background jobs...');
   initMonthlyResetJob();
   initializeStateCleanup();
+  initErrorLogCleanup();
   // Email sync is now MANUAL only - users trigger sync from panel
   // initEmailSyncJob();
   console.log('✅ Background jobs initialized\n');

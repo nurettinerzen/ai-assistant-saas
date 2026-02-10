@@ -93,7 +93,7 @@ export function emitTurnMetrics(metrics) {
  * @param {Object} errorData
  */
 export function emitErrorMetrics(errorData) {
-  const { sessionId, channel, error, stack } = errorData;
+  const { sessionId, channel, error, stack, businessId, source } = errorData;
 
   console.error('🚨 [ErrorMetrics]', {
     sessionId,
@@ -102,7 +102,21 @@ export function emitErrorMetrics(errorData) {
     stack: stack?.substring(0, 200)
   });
 
-  // TODO: Send to error tracking (Sentry, Rollbar, etc.)
+  // Persist to ErrorLog table (replaces TODO for Sentry/Rollbar)
+  // Non-blocking: fire-and-forget, never awaited to avoid slowing down the request
+  import('../services/errorLogger.js')
+    .then(({ logError, ERROR_CATEGORY, SEVERITY }) => {
+      logError({
+        category: ERROR_CATEGORY.SYSTEM_ERROR,
+        severity: SEVERITY.HIGH,
+        message: error?.message || String(error),
+        error: error instanceof Error ? error : null,
+        source: source || 'orchestrator',
+        sessionId,
+        businessId: businessId || null,
+      }).catch(() => {}); // swallow — logError already has internal try/catch
+    })
+    .catch(() => {}); // swallow import errors
 }
 
 export default {

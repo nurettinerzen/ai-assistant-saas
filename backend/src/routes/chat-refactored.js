@@ -1209,6 +1209,18 @@ router.post('/widget', async (req, res) => {
       code: error.code
     });
 
+    // Persist to ErrorLog (non-blocking)
+    try {
+      const { logChatError } = await import('../services/errorLogger.js');
+      logChatError(error, {
+        sessionId: clientSessionId || null,
+        businessId: business?.id || null,
+        requestId: req.requestId,
+        endpoint: req.path,
+        method: req.method,
+      }).catch(() => {});
+    } catch (_) { /* import failure */ }
+
     // Standardized error format (P0)
     res.status(500).json({
       success: false,

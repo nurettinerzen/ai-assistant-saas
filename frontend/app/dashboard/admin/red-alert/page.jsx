@@ -9,7 +9,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Shield, AlertTriangle, AlertCircle, Activity,
-  TrendingUp, Clock, Server, Eye, ChevronLeft, ChevronRight
+  TrendingUp, Clock, Server, Eye, ChevronLeft, ChevronRight,
+  Bug, Wrench, MessageSquare, Globe, CheckCircle, XCircle, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
@@ -43,6 +44,24 @@ const EVENT_TYPE_LABELS = {
   pii_leak_block: 'PII Leak Block',
 };
 
+const ERROR_CATEGORY_LABELS = {
+  tool_failure: 'Tool Failure',
+  chat_error: 'Chat Error',
+  assistant_error: 'Assistant Error',
+  api_error: 'External API Error',
+  system_error: 'System Error',
+  webhook_error: 'Webhook Error',
+};
+
+const ERROR_CATEGORY_ICONS = {
+  tool_failure: Wrench,
+  chat_error: MessageSquare,
+  assistant_error: Server,
+  api_error: Globe,
+  system_error: AlertCircle,
+  webhook_error: Activity,
+};
+
 export default function RedAlertPage() {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -62,6 +81,22 @@ export default function RedAlertPage() {
     total: 0,
     hasMore: false,
   });
+
+  // Error Tracking State
+  const [errorSummary, setErrorSummary] = useState(null);
+  const [errorLogs, setErrorLogs] = useState([]);
+  const [errorFilters, setErrorFilters] = useState({
+    category: '',
+    severity: '',
+    resolved: '',
+  });
+  const [errorPagination, setErrorPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    hasMore: false,
+  });
+  const [expandedErrors, setExpandedErrors] = useState(new Set());
 
   // Check admin access
   useEffect(() => {
@@ -95,6 +130,8 @@ export default function RedAlertPage() {
         loadTimeline(),
         loadTopThreats(),
         loadHealth(),
+        loadErrorSummary(),
+        loadErrorLogs(),
       ]);
     } catch (error) {
       console.error('Failed to load dashboard:', error);
@@ -166,6 +203,60 @@ export default function RedAlertPage() {
     }
   };
 
+  // Error Tracking Data Loaders
+  const loadErrorSummary = async () => {
+    try {
+      const response = await apiClient.get('/api/red-alert/errors/summary');
+      setErrorSummary(response.data);
+    } catch (error) {
+      console.error('Failed to load error summary:', error);
+    }
+  };
+
+  const loadErrorLogs = async () => {
+    try {
+      const response = await apiClient.get('/api/red-alert/errors', {
+        params: {
+          hours: filters.hours,
+          category: errorFilters.category || undefined,
+          severity: errorFilters.severity || undefined,
+          resolved: errorFilters.resolved !== '' ? errorFilters.resolved : undefined,
+          limit: errorPagination.limit,
+          offset: (errorPagination.page - 1) * errorPagination.limit,
+        },
+      });
+      setErrorLogs(response.data.errors);
+      setErrorPagination(prev => ({
+        ...prev,
+        total: response.data.pagination.total,
+        hasMore: response.data.pagination.hasMore,
+      }));
+    } catch (error) {
+      console.error('Failed to load error logs:', error);
+    }
+  };
+
+  const handleResolveError = async (errorId, resolved) => {
+    try {
+      await apiClient.patch(`/api/red-alert/errors/${errorId}/resolve`, { resolved });
+      toast.success(resolved ? 'Error marked as resolved' : 'Error marked as unresolved');
+      loadErrorLogs();
+      loadErrorSummary();
+    } catch (error) {
+      console.error('Failed to resolve error:', error);
+      toast.error('Failed to update error status');
+    }
+  };
+
+  const toggleErrorExpand = (errorId) => {
+    setExpandedErrors(prev => {
+      const next = new Set(prev);
+      if (next.has(errorId)) next.delete(errorId);
+      else next.add(errorId);
+      return next;
+    });
+  };
+
   // Reload data when filters change
   useEffect(() => {
     if (isAdmin) {
@@ -179,6 +270,13 @@ export default function RedAlertPage() {
       loadEvents();
     }
   }, [pagination.page]);
+
+  // Reload error logs when error filters or pagination change
+  useEffect(() => {
+    if (isAdmin) {
+      loadErrorLogs();
+    }
+  }, [errorFilters.category, errorFilters.severity, errorFilters.resolved, errorPagination.page]);
 
   if (!isAdmin && !loading) {
     return (
@@ -219,7 +317,7 @@ export default function RedAlertPage() {
             Red Alert - Security Dashboard
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Real-time security event monitoring and threat analysis
+            Real-time security event monitoring and error tracking
           </p>
         </div>
         <Button onClick={loadDashboardData} variant="outline" size="sm">
@@ -296,60 +394,105 @@ export default function RedAlertPage() {
         </Card>
       )}
 
-      {/* Summary Stats */}
-      {summary && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Total Events (24h)</CardTitle>
-              <Activity className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-xl font-bold">{summary.summary.total24h}</div>
-              <p className="text-xs text-muted-foreground">
-                {summary.summary.total7d} in last 7 days
-              </p>
-            </CardContent>
-          </Card>
+      {/* Summary Stats — Security + Errors side by side */}
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
+        {summary && (
+          <>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Security Events (24h)</CardTitle>
+                <Activity className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-xl font-bold">{summary.summary.total24h}</div>
+                <p className="text-xs text-muted-foreground">
+                  {summary.summary.total7d} in 7 days
+                </p>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Critical Events</CardTitle>
-              <AlertTriangle className="h-4 w-4 text-red-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-xl font-bold text-red-600 dark:text-red-400">
-                {summary.summary.critical}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Requires immediate attention
-              </p>
-            </CardContent>
-          </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Critical Events</CardTitle>
+                <AlertTriangle className="h-4 w-4 text-red-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-xl font-bold text-red-600 dark:text-red-400">
+                  {summary.summary.critical}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Immediate attention
+                </p>
+              </CardContent>
+            </Card>
+          </>
+        )}
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Event Types</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-xl font-bold">
-                {Object.keys(summary.byType).length}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Distinct event types detected
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+        {errorSummary && (
+          <>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">App Errors (24h)</CardTitle>
+                <Bug className="h-4 w-4 text-orange-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-xl font-bold text-orange-600 dark:text-orange-400">
+                  {errorSummary.summary.total24h}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {errorSummary.summary.total7d} in 7 days
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className={errorSummary.summary.unresolved > 0 ? 'border-red-300 dark:border-red-800' : ''}>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Unresolved</CardTitle>
+                <XCircle className="h-4 w-4 text-red-600" />
+              </CardHeader>
+              <CardContent>
+                <div className={`text-xl font-bold ${errorSummary.summary.unresolved > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+                  {errorSummary.summary.unresolved}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Needs investigation
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Error Categories</CardTitle>
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-xl font-bold">
+                  {Object.keys(errorSummary.byCategory).length}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Active categories
+                </p>
+              </CardContent>
+            </Card>
+          </>
+        )}
+      </div>
 
       {/* Main Content Tabs */}
-      <Tabs defaultValue="events" className="space-y-4">
+      <Tabs defaultValue="errors" className="space-y-4">
         <TabsList>
+          <TabsTrigger value="errors">
+            <Bug className="h-4 w-4 mr-2" />
+            Errors
+            {errorSummary?.summary?.unresolved > 0 && (
+              <Badge variant="destructive" className="ml-2 text-xs px-1.5 py-0">
+                {errorSummary.summary.unresolved}
+              </Badge>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="events">
             <Eye className="h-4 w-4 mr-2" />
-            Events
+            Security Events
           </TabsTrigger>
           <TabsTrigger value="timeline">
             <Clock className="h-4 w-4 mr-2" />
@@ -364,6 +507,272 @@ export default function RedAlertPage() {
             Breakdown
           </TabsTrigger>
         </TabsList>
+
+        {/* Errors Tab */}
+        <TabsContent value="errors" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Bug className="h-5 w-5" />
+                Application Errors
+              </CardTitle>
+              <CardDescription>
+                Tool failures, API errors, system errors, and more
+              </CardDescription>
+              <div className="flex gap-4 mt-4">
+                <Select
+                  value={errorFilters.category || 'all'}
+                  onValueChange={(value) => {
+                    setErrorFilters(prev => ({ ...prev, category: value === 'all' ? '' : value }));
+                    setErrorPagination(prev => ({ ...prev, page: 1 }));
+                  }}
+                >
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="All Categories" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {Object.entries(ERROR_CATEGORY_LABELS).map(([key, label]) => (
+                      <SelectItem key={key} value={key}>{label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select
+                  value={errorFilters.severity || 'all'}
+                  onValueChange={(value) => {
+                    setErrorFilters(prev => ({ ...prev, severity: value === 'all' ? '' : value }));
+                    setErrorPagination(prev => ({ ...prev, page: 1 }));
+                  }}
+                >
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="All Severities" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Severities</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="critical">Critical</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select
+                  value={errorFilters.resolved !== '' ? errorFilters.resolved : 'all'}
+                  onValueChange={(value) => {
+                    setErrorFilters(prev => ({ ...prev, resolved: value === 'all' ? '' : value }));
+                    setErrorPagination(prev => ({ ...prev, page: 1 }));
+                  }}
+                >
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="All Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="false">Unresolved</SelectItem>
+                    <SelectItem value="true">Resolved</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-8"></TableHead>
+                    <TableHead>Last Seen</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Severity</TableHead>
+                    <TableHead>Source</TableHead>
+                    <TableHead>Message</TableHead>
+                    <TableHead className="text-center">Count</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {errorLogs.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                        No errors found
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    errorLogs.map((err) => {
+                      const CategoryIcon = ERROR_CATEGORY_ICONS[err.category] || AlertCircle;
+                      const isExpanded = expandedErrors.has(err.id);
+                      return (
+                        <React.Fragment key={err.id}>
+                          <TableRow
+                            className="cursor-pointer hover:bg-muted/50"
+                            onClick={() => toggleErrorExpand(err.id)}
+                          >
+                            <TableCell>
+                              {isExpanded
+                                ? <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                                : <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                              }
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap text-xs">
+                              {new Date(err.lastSeenAt).toLocaleString()}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1.5">
+                                <CategoryIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                                <span className="text-xs">{ERROR_CATEGORY_LABELS[err.category] || err.category}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge className={SEVERITY_COLORS[err.severity]}>
+                                {err.severity.toUpperCase()}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <code className="text-xs">{err.source}</code>
+                            </TableCell>
+                            <TableCell className="max-w-xs truncate text-xs" title={err.message}>
+                              {err.message}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <Badge variant="outline" className="font-mono">
+                                {err.occurrenceCount}x
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              {err.resolved ? (
+                                <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                  Resolved
+                                </Badge>
+                              ) : (
+                                <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                                  Open
+                                </Badge>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleResolveError(err.id, !err.resolved);
+                                }}
+                              >
+                                {err.resolved ? (
+                                  <XCircle className="h-4 w-4 text-red-500" />
+                                ) : (
+                                  <CheckCircle className="h-4 w-4 text-green-500" />
+                                )}
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                          {isExpanded && (
+                            <TableRow>
+                              <TableCell colSpan={9} className="bg-muted/30 p-4">
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs mb-3">
+                                  {err.toolName && (
+                                    <div>
+                                      <span className="text-muted-foreground">Tool:</span>{' '}
+                                      <code>{err.toolName}</code>
+                                    </div>
+                                  )}
+                                  {err.externalService && (
+                                    <div>
+                                      <span className="text-muted-foreground">Service:</span>{' '}
+                                      <code>{err.externalService}</code>
+                                      {err.externalStatus && <span className="ml-1">({err.externalStatus})</span>}
+                                    </div>
+                                  )}
+                                  {err.endpoint && (
+                                    <div>
+                                      <span className="text-muted-foreground">Endpoint:</span>{' '}
+                                      <code>{err.method} {err.endpoint}</code>
+                                    </div>
+                                  )}
+                                  {err.errorCode && (
+                                    <div>
+                                      <span className="text-muted-foreground">Code:</span>{' '}
+                                      <code>{err.errorCode}</code>
+                                    </div>
+                                  )}
+                                  {err.businessId && (
+                                    <div>
+                                      <span className="text-muted-foreground">Business:</span>{' '}
+                                      {err.businessId}
+                                    </div>
+                                  )}
+                                  {err.requestId && (
+                                    <div>
+                                      <span className="text-muted-foreground">Request:</span>{' '}
+                                      <code className="text-xs">{err.requestId}</code>
+                                    </div>
+                                  )}
+                                  <div>
+                                    <span className="text-muted-foreground">First Seen:</span>{' '}
+                                    {new Date(err.firstSeenAt).toLocaleString()}
+                                  </div>
+                                  {err.responseTimeMs && (
+                                    <div>
+                                      <span className="text-muted-foreground">Response Time:</span>{' '}
+                                      {err.responseTimeMs}ms
+                                    </div>
+                                  )}
+                                </div>
+                                {err.stackTrace && (
+                                  <div>
+                                    <div className="text-xs text-muted-foreground mb-1">Stack Trace:</div>
+                                    <pre className="text-xs bg-muted p-3 rounded-md overflow-x-auto max-h-48 overflow-y-auto whitespace-pre-wrap">
+                                      {err.stackTrace}
+                                    </pre>
+                                  </div>
+                                )}
+                                {err.resolvedBy && (
+                                  <div className="text-xs mt-2 text-muted-foreground">
+                                    Resolved by {err.resolvedBy} at {new Date(err.resolvedAt).toLocaleString()}
+                                  </div>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </React.Fragment>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+
+              {/* Error Pagination */}
+              {errorPagination.total > errorPagination.limit && (
+                <div className="flex items-center justify-between mt-4">
+                  <div className="text-sm text-muted-foreground">
+                    Showing {((errorPagination.page - 1) * errorPagination.limit) + 1} to{' '}
+                    {Math.min(errorPagination.page * errorPagination.limit, errorPagination.total)} of{' '}
+                    {errorPagination.total} errors
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setErrorPagination(prev => ({ ...prev, page: prev.page - 1 }))}
+                      disabled={errorPagination.page === 1}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      Previous
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setErrorPagination(prev => ({ ...prev, page: prev.page + 1 }))}
+                      disabled={!errorPagination.hasMore}
+                    >
+                      Next
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         {/* Events Tab */}
         <TabsContent value="events" className="space-y-4">

@@ -1970,3 +1970,63 @@ model SecurityEvent {
   @@index([businessId, createdAt])
   @@index([createdAt]) // For time-range queries
 }
+
+// ============================================================================
+// ERROR LOG (For Error Tracking Center in Red Alert)
+// ============================================================================
+// Captures all application errors: tool failures, chat errors, API errors, etc.
+// Separate from SecurityEvent — different dedup logic, different fields, different retention.
+model ErrorLog {
+  id              Int      @id @default(autoincrement())
+
+  // Classification (SSOT enums in errorLogger.js)
+  category        String   // tool_failure, chat_error, assistant_error, api_error, system_error, webhook_error
+  severity        String   // low, medium, high, critical
+  errorCode       String?  // Application-specific: GEMINI_TIMEOUT, 11LABS_RATE_LIMIT, etc.
+
+  // Error details (PII-redacted by redact.js before insert)
+  message         String   // Sanitized error message
+  stackTrace      String?  @db.Text  // Sanitized stack trace (max 2000 chars)
+
+  // Context
+  businessId      Int?
+  userId          Int?
+  requestId       String?  // Correlation with req.requestId
+  sessionId       String?  // Chat/WhatsApp session ID
+
+  // Source identification
+  source          String   // Where error occurred: chat-refactored, tools/index, routes/assistant, etc.
+  endpoint        String?
+  method          String?
+
+  // Tool-specific
+  toolName        String?
+
+  // External API-specific
+  externalService String?  // SSOT enum: gemini, elevenlabs, gmail, etc.
+  externalStatus  Int?     // HTTP status from external API
+  responseTimeMs  Int?
+
+  // Deduplication
+  fingerprint     String?  // Hash of (category+source+errorCode+normalizedMessage)
+  occurrenceCount Int      @default(1)
+  firstSeenAt     DateTime @default(now())  // First occurrence (never updated on dedup)
+  lastSeenAt      DateTime @default(now())  // Latest occurrence (updated on dedup)
+  latestRequestId String?  // RequestId of most recent occurrence
+
+  // Resolution
+  resolved        Boolean  @default(false)
+  resolvedAt      DateTime?
+  resolvedBy      String?  // Admin email
+
+  createdAt       DateTime @default(now())
+
+  @@index([category, createdAt])
+  @@index([severity, createdAt])
+  @@index([businessId, createdAt])
+  @@index([source, createdAt])
+  @@index([externalService, createdAt])
+  @@index([fingerprint, createdAt])
+  @@index([resolved, createdAt])
+  @@index([createdAt])
+}

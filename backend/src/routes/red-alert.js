@@ -325,4 +325,177 @@ router.get('/health', async (req, res) => {
   }
 });
 
+// ============================================================================
+// ERROR TRACKING CENTER — Application Error Endpoints
+// ============================================================================
+
+/**
+ * GET /api/red-alert/errors/summary
+ * Error counts by category and severity (24h, 7d) + unresolved count
+ */
+router.get('/errors/summary', async (req, res) => {
+  try {
+    const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const last7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    const [
+      byCategory,
+      bySeverity,
+      total24h,
+      total7d,
+      unresolvedCount,
+    ] = await Promise.all([
+      prisma.errorLog.groupBy({
+        by: ['category'],
+        where: { createdAt: { gte: last24h } },
+        _count: true,
+        _sum: { occurrenceCount: true },
+      }),
+      prisma.errorLog.groupBy({
+        by: ['severity'],
+        where: { createdAt: { gte: last24h } },
+        _count: true,
+      }),
+      prisma.errorLog.count({
+        where: { createdAt: { gte: last24h } },
+      }),
+      prisma.errorLog.count({
+        where: { createdAt: { gte: last7d } },
+      }),
+      prisma.errorLog.count({
+        where: { resolved: false },
+      }),
+    ]);
+
+    res.json({
+      summary: {
+        total24h,
+        total7d,
+        unresolved: unresolvedCount,
+      },
+      byCategory: byCategory.reduce((acc, item) => {
+        acc[item.category] = {
+          count: item._count,
+          totalOccurrences: item._sum?.occurrenceCount || item._count,
+        };
+        return acc;
+      }, {}),
+      bySeverity: bySeverity.reduce((acc, item) => {
+        acc[item.severity] = item._count;
+        return acc;
+      }, {}),
+    });
+  } catch (error) {
+    console.error('Red Alert errors summary error:', error);
+    res.status(500).json({ error: 'Failed to fetch error summary' });
+  }
+});
+
+/**
+ * GET /api/red-alert/errors
+ * Paginated error logs with filters
+ */
+router.get('/errors', async (req, res) => {
+  try {
+    const {
+      category,
+      severity,
+      source,
+      externalService,
+      resolved,
+      limit = 20,
+      offset = 0,
+      hours = 24,
+    } = req.query;
+
+    const since = new Date(Date.now() - parseInt(hours) * 60 * 60 * 1000);
+
+    const where = {
+      createdAt: { gte: since },
+      ...(category && { category }),
+      ...(severity && { severity }),
+      ...(source && { source }),
+      ...(externalService && { externalService }),
+      ...(resolved !== undefined && resolved !== '' && { resolved: resolved === 'true' }),
+    };
+
+    const [errors, total] = await Promise.all([
+      prisma.errorLog.findMany({
+        where,
+        orderBy: { lastSeenAt: 'desc' },
+        take: parseInt(limit),
+        skip: parseInt(offset),
+        select: {
+          id: true,
+          category: true,
+          severity: true,
+          errorCode: true,
+          message: true,
+          stackTrace: true,
+          businessId: true,
+          requestId: true,
+          sessionId: true,
+          source: true,
+          endpoint: true,
+          method: true,
+          toolName: true,
+          externalService: true,
+          externalStatus: true,
+          responseTimeMs: true,
+          occurrenceCount: true,
+          firstSeenAt: true,
+          lastSeenAt: true,
+          latestRequestId: true,
+          resolved: true,
+          resolvedAt: true,
+          resolvedBy: true,
+          createdAt: true,
+        },
+      }),
+      prisma.errorLog.count({ where }),
+    ]);
+
+    res.json({
+      errors,
+      pagination: {
+        total,
+        limit: parseInt(limit),
+        offset: parseInt(offset),
+        hasMore: total > parseInt(offset) + parseInt(limit),
+      },
+    });
+  } catch (error) {
+    console.error('Red Alert errors list error:', error);
+    res.status(500).json({ error: 'Failed to fetch error logs' });
+  }
+});
+
+/**
+ * PATCH /api/red-alert/errors/:id/resolve
+ * Mark an error as resolved (or unresolve)
+ */
+router.patch('/errors/:id/resolve', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { resolved = true } = req.body;
+
+    const updated = await prisma.errorLog.update({
+      where: { id: parseInt(id) },
+      data: {
+        resolved: Boolean(resolved),
+        resolvedAt: resolved ? new Date() : null,
+        resolvedBy: resolved ? (req.user?.email || 'admin') : null,
+      },
+    });
+
+    res.json({
+      message: resolved ? 'Error marked as resolved' : 'Error marked as unresolved',
+      error: updated,
+    });
+  } catch (error) {
+    console.error('Red Alert resolve error:', error);
+    res.status(500).json({ error: 'Failed to update error status' });
+  }
+});
+
 export default router;

@@ -132,6 +132,17 @@ export async function executeTool(toolName, args, business, context = {}) {
     return result;
   } catch (error) {
     console.error(`❌ Tool execution error for ${toolName}:`, error);
+
+    // Persist to ErrorLog (non-blocking)
+    import('../services/errorLogger.js')
+      .then(({ logToolError }) => {
+        logToolError(toolName, error, {
+          businessId: business?.id,
+          endpoint: context?.endpoint || null,
+        }).catch(() => {});
+      })
+      .catch(() => {});
+
     return {
       success: false,
       error: business.language === 'TR'

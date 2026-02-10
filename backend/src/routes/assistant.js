@@ -468,6 +468,21 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
       }
     } catch (elevenLabsError) {
       console.error('❌ 11Labs Agent creation failed:', elevenLabsError.response?.data || elevenLabsError.message);
+
+      // Persist to ErrorLog
+      import('../services/errorLogger.js')
+        .then(({ logApiError, EXTERNAL_SERVICE }) => {
+          logApiError(EXTERNAL_SERVICE.ELEVENLABS, elevenLabsError, {
+            source: 'routes/assistant',
+            endpoint: req.path,
+            method: req.method,
+            businessId: req.businessId,
+            errorCode: 'ELEVENLABS_CREATE_FAILED',
+            externalStatus: elevenLabsError.response?.status,
+          }).catch(() => {});
+        })
+        .catch(() => {});
+
       return res.status(500).json({
         error: 'Failed to create 11Labs agent',
         details: elevenLabsError.response?.data || elevenLabsError.message
@@ -595,6 +610,18 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
     });
   } catch (error) {
     console.error('Error creating assistant:', error);
+
+    import('../services/errorLogger.js')
+      .then(({ logAssistantError }) => {
+        logAssistantError(error, {
+          endpoint: req.path,
+          method: req.method,
+          businessId: req.businessId,
+          errorCode: 'ASSISTANT_CREATE_FAILED',
+        }).catch(() => {});
+      })
+      .catch(() => {});
+
     res.status(500).json({ error: 'Failed to create assistant' });
   }
 });
@@ -937,6 +964,20 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
         }
       } catch (updateError) {
         console.error('❌ 11Labs update failed:', updateError.response?.data || updateError.message);
+
+        import('../services/errorLogger.js')
+          .then(({ logApiError, EXTERNAL_SERVICE }) => {
+            logApiError(EXTERNAL_SERVICE.ELEVENLABS, updateError, {
+              source: 'routes/assistant',
+              endpoint: req.path,
+              method: req.method,
+              businessId: req.businessId,
+              errorCode: 'ELEVENLABS_UPDATE_FAILED',
+              externalStatus: updateError.response?.status,
+            }).catch(() => {});
+          })
+          .catch(() => {});
+
         // Don't fail the request, but warn in response
         return res.json({
           message: 'Assistant updated in database but 11Labs sync failed',
@@ -1239,6 +1280,20 @@ router.post('/:id/sync', authenticateToken, checkPermission('assistants:edit'), 
 
   } catch (error) {
     console.error('Error syncing assistant:', error);
+
+    import('../services/errorLogger.js')
+      .then(({ logApiError, EXTERNAL_SERVICE }) => {
+        logApiError(EXTERNAL_SERVICE.ELEVENLABS, error, {
+          source: 'routes/assistant',
+          endpoint: req.path,
+          method: req.method,
+          businessId: req.businessId,
+          errorCode: 'ELEVENLABS_SYNC_FAILED',
+          externalStatus: error.response?.status,
+        }).catch(() => {});
+      })
+      .catch(() => {});
+
     res.status(500).json({ error: 'Failed to sync assistant: ' + (error.response?.data?.detail || error.message) });
   }
 });
