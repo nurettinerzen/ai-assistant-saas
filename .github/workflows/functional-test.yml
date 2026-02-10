@@ -2,15 +2,8 @@ name: Functional Test
 
 on:
   schedule:
-    # 4x daily (every 6 hours, staggered 30min after security)
-    # 02:30 UTC = 05:30 Turkey
+    # 1x daily — 02:30 UTC = 05:30 Turkey
     - cron: '30 2 * * *'
-    # 08:30 UTC = 11:30 Turkey
-    - cron: '30 8 * * *'
-    # 14:30 UTC = 17:30 Turkey
-    - cron: '30 14 * * *'
-    # 20:30 UTC = 23:30 Turkey
-    - cron: '30 20 * * *'
   workflow_dispatch:  # Manuel çalıştırma için
 
 jobs:

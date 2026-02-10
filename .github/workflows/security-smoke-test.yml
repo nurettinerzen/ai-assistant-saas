@@ -2,15 +2,8 @@ name: Security Smoke Test
 
 on:
   schedule:
-    # 4x daily (every 6 hours, staggered)
-    # 02:00 UTC = 05:00 Turkey
+    # 1x daily — 02:00 UTC = 05:00 Turkey
     - cron: '0 2 * * *'
-    # 08:00 UTC = 11:00 Turkey
-    - cron: '0 8 * * *'
-    # 14:00 UTC = 17:00 Turkey
-    - cron: '0 14 * * *'
-    # 20:00 UTC = 23:00 Turkey
-    - cron: '0 20 * * *'
   workflow_dispatch:  # Manuel çalıştırma için
 
 jobs:

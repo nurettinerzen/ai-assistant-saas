@@ -2,15 +2,8 @@ name: Assistant & Conversation Test
 
 on:
   schedule:
-    # 4x daily (every 6 hours, staggered 1h after security)
-    # 03:00 UTC = 06:00 Turkey
+    # 1x daily — 03:00 UTC = 06:00 Turkey
     - cron: '0 3 * * *'
-    # 09:00 UTC = 12:00 Turkey
-    - cron: '0 9 * * *'
-    # 15:00 UTC = 18:00 Turkey
-    - cron: '0 15 * * *'
-    # 21:00 UTC = 00:00 Turkey (midnight)
-    - cron: '0 21 * * *'
   workflow_dispatch:  # Manuel çalıştırma için
 
 jobs:

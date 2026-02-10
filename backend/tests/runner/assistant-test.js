@@ -261,98 +261,108 @@ async function main() {
     process.exit(1);
   }
 
-  // Fetch first active assistant
-  console.log('🤖 Fetching assistant...');
-  let assistantId;
+  // Wrap test execution in try/finally to guarantee cleanup even on crash
+  let exitCode = 0;
   try {
-    const response = await axios.get(`${CONFIG.API_URL}/api/assistants`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    if (response.data.assistants && response.data.assistants.length > 0) {
-      assistantId = response.data.assistants[0].id;
-      console.log(`✅ Using assistant: ${response.data.assistants[0].name} (${assistantId})\n`);
-    } else {
-      console.error('❌ No assistants found for this account');
+    // Fetch first active assistant
+    console.log('🤖 Fetching assistant...');
+    let assistantId;
+    try {
+      const response = await axios.get(`${CONFIG.API_URL}/api/assistants`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.data.assistants && response.data.assistants.length > 0) {
+        assistantId = response.data.assistants[0].id;
+        console.log(`✅ Using assistant: ${response.data.assistants[0].name} (${assistantId})\n`);
+      } else {
+        console.error('❌ No assistants found for this account');
+        process.exit(1);
+      }
+    } catch (error) {
+      console.error('❌ Failed to fetch assistant:', error.message);
       process.exit(1);
     }
-  } catch (error) {
-    console.error('❌ Failed to fetch assistant:', error.message);
-    process.exit(1);
-  }
 
-  // Load scenarios based on test level
-  // 'customer-regression' is ALWAYS loaded (P0/P1 fixes must never regress)
-  const levels = ['gate', 'customer-regression'];
-  if (CONFIG.TEST_LEVEL === 'extended' || CONFIG.TEST_LEVEL === 'full') {
-    levels.push('extended');
-  }
-  if (CONFIG.TEST_LEVEL === 'full') {
-    levels.push('adversarial');
-  }
-
-  let allScenarios = [];
-  for (const level of levels) {
-    const scenarios = await loadScenarios(level);
-    allScenarios = allScenarios.concat(scenarios);
-    console.log(`📂 Loaded ${scenarios.length} ${level} scenarios`);
-  }
-
-  if (allScenarios.length === 0) {
-    console.log('⚠️  No scenarios found');
-    process.exit(0);
-  }
-
-  console.log(`\n🚀 Running ${allScenarios.length} scenarios...\n`);
-  console.log('='.repeat(80));
-
-  // Run scenarios
-  for (const scenario of allScenarios) {
-    const result = await runScenario(
-      scenario,
-      token,
-      assistantId,
-      CONFIG.ACCOUNT_A.businessId
-    );
-
-    reporter.recordScenario(scenario, result);
-
-    // Gate failure blocks deployment
-    if (result.status === 'failed' && scenario.level === 'gate') {
-      console.log('\n🚨 GATE TEST FAILED - DEPLOYMENT BLOCKED');
+    // Load scenarios based on test level
+    // 'customer-regression' is ALWAYS loaded (P0/P1 fixes must never regress)
+    const levels = ['gate', 'customer-regression'];
+    if (CONFIG.TEST_LEVEL === 'extended' || CONFIG.TEST_LEVEL === 'full') {
+      levels.push('extended');
     }
-  }
+    if (CONFIG.TEST_LEVEL === 'full') {
+      levels.push('adversarial');
+    }
 
-  // Generate report
-  console.log('\n' + '='.repeat(80));
-  const report = reporter.printSummary();
-  await reporter.saveReport();
+    let allScenarios = [];
+    for (const level of levels) {
+      const scenarios = await loadScenarios(level);
+      allScenarios = allScenarios.concat(scenarios);
+      console.log(`📂 Loaded ${scenarios.length} ${level} scenarios`);
+    }
 
-  // Check brand drift metrics
-  const allWarnings = reporter.getAllWarnings ? reporter.getAllWarnings() : [];
-  const brandMetrics = recordBrandViolations(allWarnings);
+    if (allScenarios.length === 0) {
+      console.log('⚠️  No scenarios found');
+      process.exit(0);
+    }
 
-  if (brandMetrics.message) {
-    console.log('\n' + brandMetrics.message);
-  }
+    console.log(`\n🚀 Running ${allScenarios.length} scenarios...\n`);
+    console.log('='.repeat(80));
 
-  // Cleanup any test assistants created during this run
-  await cleanupTestAssistants(token);
+    // Run scenarios
+    for (const scenario of allScenarios) {
+      const result = await runScenario(
+        scenario,
+        token,
+        assistantId,
+        CONFIG.ACCOUNT_A.businessId
+      );
 
-  // Exit with appropriate code
-  // Gate failures OR brand drift (>2 in 20 runs) = exit 1
-  let exitCode = 0;
-  if (report.stats.failed > 0) {
-    exitCode = 1;
-  } else if (brandMetrics.shouldFail) {
-    console.log('🚨 Brand drift threshold exceeded - marking as FAIL');
-    exitCode = 1;
+      reporter.recordScenario(scenario, result);
+
+      // Gate failure blocks deployment
+      if (result.status === 'failed' && scenario.level === 'gate') {
+        console.log('\n🚨 GATE TEST FAILED - DEPLOYMENT BLOCKED');
+      }
+    }
+
+    // Generate report
+    console.log('\n' + '='.repeat(80));
+    const report = reporter.printSummary();
+    await reporter.saveReport();
+
+    // Check brand drift metrics
+    const allWarnings = reporter.getAllWarnings ? reporter.getAllWarnings() : [];
+    const brandMetrics = recordBrandViolations(allWarnings);
+
+    if (brandMetrics.message) {
+      console.log('\n' + brandMetrics.message);
+    }
+
+    // Exit with appropriate code
+    // Gate failures OR brand drift (>2 in 20 runs) = exit 1
+    if (report.stats.failed > 0) {
+      exitCode = 1;
+    } else if (brandMetrics.shouldFail) {
+      console.log('🚨 Brand drift threshold exceeded - marking as FAIL');
+      exitCode = 1;
+    }
+  } finally {
+    // CLEANUP GUARANTEE: Always runs even on crash/exception
+    // Prevents test assistants from accumulating in the database
+    await cleanupTestAssistants(token);
   }
 
   process.exit(exitCode);
 }
 
 // Run tests
-main().catch(error => {
+main().catch(async (error) => {
   console.error('❌ Fatal error:', error);
+  // Emergency cleanup attempt
+  try {
+    await cleanupTestAssistants(null);
+  } catch (cleanupError) {
+    console.error('⚠️  Emergency cleanup failed:', cleanupError.message);
+  }
   process.exit(1);
 });

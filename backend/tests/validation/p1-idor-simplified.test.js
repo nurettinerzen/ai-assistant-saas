@@ -22,6 +22,10 @@ if (process.env.NODE_ENV === 'production') {
 describe('P1: IDOR SecurityEvent Logging', () => {
   let logSecurityEvent, EVENT_TYPE, SEVERITY;
 
+  // Track resources created during tests for guaranteed cleanup
+  const createdAssistantIds = [];
+  const createdBusinessIds = [];
+
   beforeAll(async () => {
     console.log('\n╔════════════════════════════════════════════════╗');
     console.log('║   P1: IDOR SecurityEvent Logging Test        ║');
@@ -35,6 +39,17 @@ describe('P1: IDOR SecurityEvent Logging', () => {
   });
 
   afterAll(async () => {
+    // Cleanup all test resources even if tests failed
+    for (const id of createdAssistantIds) {
+      try {
+        await prisma.assistant.delete({ where: { id } });
+      } catch (e) { /* already deleted or doesn't exist */ }
+    }
+    for (const id of createdBusinessIds) {
+      try {
+        await prisma.business.delete({ where: { id } });
+      } catch (e) { /* already deleted or doesn't exist */ }
+    }
     await prisma.$disconnect();
   });
 
@@ -51,10 +66,12 @@ describe('P1: IDOR SecurityEvent Logging', () => {
     const business1 = await prisma.business.create({
       data: { name: 'IDOR Test Business 1' },
     });
+    createdBusinessIds.push(business1.id);
 
     const business2 = await prisma.business.create({
       data: { name: 'IDOR Test Business 2' },
     });
+    createdBusinessIds.push(business2.id);
 
     // Create assistant for business1
     const assistant1 = await prisma.assistant.create({
@@ -71,6 +88,7 @@ describe('P1: IDOR SecurityEvent Logging', () => {
         dynamicVariables: [],
       },
     });
+    createdAssistantIds.push(assistant1.id);
 
     console.log(`✅ Created test resources:`);
     console.log(`   Business 1 ID: ${business1.id}`);

@@ -2,8 +2,8 @@ name: Assistant Test (Nightly - Extended)
 
 on:
   schedule:
-    # Once daily at 02:00 UTC = 05:00 Turkey
-    - cron: '0 2 * * *'
+    # 2x weekly — Monday & Thursday, 02:00 UTC = 05:00 Turkey
+    - cron: '0 2 * * 1,4'
   workflow_dispatch:  # Manuel çalıştırma için
 
 jobs:

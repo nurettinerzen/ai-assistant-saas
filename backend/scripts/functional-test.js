@@ -330,6 +330,25 @@ async function test3_AssistantManagement() {
     const existingAssistants = businessResponse.data?.assistants || [];
     logTest('Fetch assistants', businessResponse.status === 200, `Found ${existingAssistants.length} assistants`);
 
+    // Cleanup stale test assistants from previous failed runs
+    const staleTestAssistants = existingAssistants.filter(a =>
+      a.name?.startsWith('Test ') && /^Test \d+/.test(a.name)
+    );
+
+    if (staleTestAssistants.length > 0) {
+      console.log(`  🧹 Found ${staleTestAssistants.length} stale test assistant(s), cleaning up...`);
+      for (const stale of staleTestAssistants) {
+        try {
+          await axios.delete(`${CONFIG.API_URL}/api/assistants/${stale.id}`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          console.log(`  🧹 Deleted stale: ${stale.name} (${stale.id})`);
+        } catch (e) {
+          console.log(`  ⚠️  Could not delete stale ${stale.name}: ${e.message}`);
+        }
+      }
+    }
+
     // Test 3.2: Create a new test assistant
     // NOTE: This test requires ElevenLabs API integration which may fail
     try {
