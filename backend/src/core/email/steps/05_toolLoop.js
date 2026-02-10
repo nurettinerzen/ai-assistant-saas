@@ -336,10 +336,33 @@ function extractPhone(text) {
  */
 function extractOrderNumber(text) {
   if (!text) return null;
-  const match = text.match(/(?:sipariş|order|siparis)\s*(?:no|numarası|numarasi|number)?[:\s#-]*([A-Z0-9][\w-]{3,})/i)
-    || text.match(/#\s*([A-Z0-9][\w-]{3,})/i)
-    || text.match(/\b(ORD-[\w-]+)\b/i);
-  return match ? match[1].trim() : null;
+
+  // Pattern 1: Explicit order prefix (ORD-12345, SIP-12345, etc.)
+  // Most reliable — always check first
+  const prefixMatch = text.match(/\b(ORD-[\w-]+|SIP-[\w-]+|SP-[\w-]+)\b/i);
+  if (prefixMatch) return prefixMatch[1].trim();
+
+  // Pattern 2: "sipariş no: 12345" or "order number: 12345"
+  // Requires a separator (: # - or whitespace) after "no/numarası" keyword
+  // The number must start with a digit to avoid matching words like "Merhaba"
+  const keywordMatch = text.match(
+    /(?:sipariş|order|siparis)\s*(?:no|numarası|numarasi|number|num)[:\s#-]+(\d[\w-]{3,})/i
+  );
+  if (keywordMatch) return keywordMatch[1].trim();
+
+  // Pattern 3: "sipariş numaranız 202620321" or "sipariş 202620321"
+  // Number must start with a digit (prevents matching regular Turkish words)
+  const directMatch = text.match(
+    /(?:sipariş|order|siparis)\s*(?:numaranız|numaraniz|numarası|numarasi)?\s*[:;]?\s*(\d[\w-]{5,})/i
+  );
+  if (directMatch) return directMatch[1].trim();
+
+  // Pattern 4: Hashtag format (#12345)
+  // Number must start with a digit
+  const hashMatch = text.match(/#\s*(\d[\w-]{3,})/i);
+  if (hashMatch) return hashMatch[1].trim();
+
+  return null;
 }
 
 /**
