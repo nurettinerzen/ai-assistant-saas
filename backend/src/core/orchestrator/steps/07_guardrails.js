@@ -203,13 +203,20 @@ export async function applyGuardrails(params) {
   // Bu en kritik kontrol: verified olmadan hassas veri ASLA çıkamaz
   // collectedData: Zaten bilinen veriler - tekrar sorma (duplicate ask fix)
   // NOT_FOUND durumunda Leak Filter'ı ATLA - hassas veri yok, verification gereksiz
-  // ARCHITECTURE CHANGE: Leak Filter sadece tool başarılı olup gerçek veri döndüğünde çalışsın
+  // ARCHITECTURE CHANGE: Leak Filter sadece DATA-LOOKUP tool başarılı olup gerçek veri döndüğünde çalışsın
   // - Tool çağrılmadıysa: ortada veri yok, LLM kendi bilgisiyle konuşuyor
   // - Tool çağrıldı ama başarısız olduysa (NOT_FOUND, VALIDATION_ERROR): ortada veri yok
-  // - Tool çağrıldı ve başarılıysa: gerçek müşteri verisi var, filter gerekli
+  // - Action tool çağrıldıysa (create_appointment, create_callback): sadece işlem onayı, hassas veri yok
+  // - Data-lookup tool çağrıldı ve başarılıysa: gerçek müşteri verisi var, filter gerekli
   const noToolsCalled = !toolsCalled || toolsCalled.length === 0;
+
+  // Whitelist: Only these tools return sensitive customer data that needs Leak Filter protection
+  // Action tools (create_appointment, create_callback, etc.) return confirmations, not PII
+  const DATA_LOOKUP_TOOLS = ['customer_data_lookup', 'check_order_status', 'get_tracking_info', 'check_stock_crm', 'check_ticket_status_crm'];
   const hasSuccessfulDataTool = toolOutputs.some(o =>
-    normalizeOutcome(o?.outcome) === ToolOutcome.OK && o?.success === true
+    DATA_LOOKUP_TOOLS.includes(o?.name) &&
+    normalizeOutcome(o?.outcome) === ToolOutcome.OK &&
+    o?.success === true
   );
   const hasBypassOutcome = toolOutputs.some(o => shouldBypassLeakFilter(o?.outcome));
   const shouldSkipLeakFilter = notFoundOverrideApplied || hasBypassOutcome || noToolsCalled || !hasSuccessfulDataTool;
@@ -218,7 +225,8 @@ export async function applyGuardrails(params) {
       notFoundOverrideApplied,
       hasBypassOutcome,
       noToolsCalled,
-      hasSuccessfulDataTool
+      hasSuccessfulDataTool,
+      toolsCalled
     });
   }
   const leakFilterResult = shouldSkipLeakFilter
