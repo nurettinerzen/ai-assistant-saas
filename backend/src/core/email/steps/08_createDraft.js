@@ -165,35 +165,17 @@ function convertToHtml(text) {
  * Create draft in Gmail
  */
 async function createGmailDraft({ businessId, threadId, to, subject, body, inReplyTo }) {
-  // Gmail doesn't have a separate createDraft API endpoint easily accessible
-  // We'll add this method to the gmail service
-  // For now, return a placeholder that indicates we need to implement this
-
-  try {
-    // Check if gmail service has createDraft method
-    if (typeof gmailService.createDraft === 'function') {
-      return await gmailService.createDraft(businessId, {
-        threadId,
-        to,
-        subject,
-        body,
-        inReplyTo
-      });
-    }
-
-    // Fallback: Gmail draft creation needs to be implemented
-    console.warn('⚠️ [CreateDraft] Gmail createDraft not implemented yet');
-
-    return {
-      id: `pending-gmail-${Date.now()}`,
-      draftId: null,
-      provider: 'GMAIL',
-      pending: true
-    };
-  } catch (error) {
-    console.error('Gmail draft error:', error);
-    throw error;
-  }
+  // Gmail provider draft creation disabled.
+  // Drafts are managed in our database (EmailDraft table) and sent via messages.send.
+  // This avoids needing gmail.compose or gmail.modify scope.
+  console.log('📧 [CreateDraft] Gmail provider draft skipped (managed in DB)');
+  return {
+    id: `db-managed-${Date.now()}`,
+    draftId: null,
+    provider: 'GMAIL',
+    pending: false,
+    skipped: true
+  };
 }
 
 /**
