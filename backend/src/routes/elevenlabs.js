@@ -258,6 +258,23 @@ router.post('/webhook', async (req, res) => {
     }
   } catch (error) {
     console.error('❌ 11Labs webhook error:', error);
+
+    // Persist to ErrorLog
+    import('../services/errorLogger.js')
+      .then(({ logError, ERROR_CATEGORY, SEVERITY, EXTERNAL_SERVICE }) => {
+        logError({
+          category: ERROR_CATEGORY.WEBHOOK_ERROR,
+          severity: SEVERITY.HIGH,
+          message: error?.message,
+          error,
+          source: 'elevenlabs/webhook',
+          externalService: EXTERNAL_SERVICE.ELEVENLABS,
+          endpoint: req.path,
+          method: req.method,
+        }).catch(() => {});
+      })
+      .catch(() => {});
+
     // Still return 200 to acknowledge receipt
     res.status(200).json({ received: true, error: error.message });
   }
@@ -446,6 +463,23 @@ router.post('/post-call', async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     console.error('[11Labs Post-Call] Error:', error);
+
+    // Persist to ErrorLog
+    import('../services/errorLogger.js')
+      .then(({ logError, ERROR_CATEGORY, SEVERITY, EXTERNAL_SERVICE }) => {
+        logError({
+          category: ERROR_CATEGORY.API_ERROR,
+          severity: SEVERITY.HIGH,
+          message: error?.message,
+          error,
+          source: 'elevenlabs/post-call',
+          externalService: EXTERNAL_SERVICE.ELEVENLABS,
+          endpoint: req.path,
+          method: req.method,
+        }).catch(() => {});
+      })
+      .catch(() => {});
+
     res.status(500).json({ error: error.message });
   }
 });

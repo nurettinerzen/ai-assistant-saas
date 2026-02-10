@@ -17,45 +17,37 @@ router.use(authenticateToken);
 
 /**
  * GET /api/red-alert/summary
- * Security events summary for last 24h
+ * Security events summary (respects hours query param from time filter)
  */
 router.get('/summary', async (req, res) => {
   try {
     const { businessId } = req;
-    const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const last7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const { hours = 24 } = req.query;
+    const since = new Date(Date.now() - parseInt(hours) * 60 * 60 * 1000);
 
-    // Get event counts by type (last 24h)
+    // Get event counts by type
     const eventsByType = await prisma.securityEvent.groupBy({
       by: ['type'],
       where: {
-        createdAt: { gte: last24h },
+        createdAt: { gte: since },
         ...(businessId && { businessId }),
       },
       _count: true,
     });
 
-    // Get event counts by severity (last 24h)
+    // Get event counts by severity
     const eventsBySeverity = await prisma.securityEvent.groupBy({
       by: ['severity'],
       where: {
-        createdAt: { gte: last24h },
+        createdAt: { gte: since },
         ...(businessId && { businessId }),
       },
       _count: true,
     });
 
-    // Get total events (last 7 days for trend)
-    const total7d = await prisma.securityEvent.count({
+    const totalCount = await prisma.securityEvent.count({
       where: {
-        createdAt: { gte: last7d },
-        ...(businessId && { businessId }),
-      },
-    });
-
-    const total24h = await prisma.securityEvent.count({
-      where: {
-        createdAt: { gte: last24h },
+        createdAt: { gte: since },
         ...(businessId && { businessId }),
       },
     });
@@ -64,16 +56,16 @@ router.get('/summary', async (req, res) => {
     const criticalEvents = await prisma.securityEvent.count({
       where: {
         severity: 'critical',
-        createdAt: { gte: last24h },
+        createdAt: { gte: since },
         ...(businessId && { businessId }),
       },
     });
 
     res.json({
       summary: {
-        total24h,
-        total7d,
+        total: totalCount,
         critical: criticalEvents,
+        hours: parseInt(hours),
       },
       byType: eventsByType.reduce((acc, item) => {
         acc[item.type] = item._count;
@@ -331,36 +323,32 @@ router.get('/health', async (req, res) => {
 
 /**
  * GET /api/red-alert/errors/summary
- * Error counts by category and severity (24h, 7d) + unresolved count
+ * Error counts by category and severity (respects hours query param) + unresolved count
  */
 router.get('/errors/summary', async (req, res) => {
   try {
-    const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const last7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const { hours = 24 } = req.query;
+    const since = new Date(Date.now() - parseInt(hours) * 60 * 60 * 1000);
 
     const [
       byCategory,
       bySeverity,
-      total24h,
-      total7d,
+      totalCount,
       unresolvedCount,
     ] = await Promise.all([
       prisma.errorLog.groupBy({
         by: ['category'],
-        where: { createdAt: { gte: last24h } },
+        where: { createdAt: { gte: since } },
         _count: true,
         _sum: { occurrenceCount: true },
       }),
       prisma.errorLog.groupBy({
         by: ['severity'],
-        where: { createdAt: { gte: last24h } },
+        where: { createdAt: { gte: since } },
         _count: true,
       }),
       prisma.errorLog.count({
-        where: { createdAt: { gte: last24h } },
-      }),
-      prisma.errorLog.count({
-        where: { createdAt: { gte: last7d } },
+        where: { createdAt: { gte: since } },
       }),
       prisma.errorLog.count({
         where: { resolved: false },
@@ -369,8 +357,8 @@ router.get('/errors/summary', async (req, res) => {
 
     res.json({
       summary: {
-        total24h,
-        total7d,
+        total: totalCount,
+        hours: parseInt(hours),
         unresolved: unresolvedCount,
       },
       byCategory: byCategory.reduce((acc, item) => {

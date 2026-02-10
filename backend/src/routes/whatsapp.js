@@ -409,6 +409,18 @@ async function processWhatsAppMessage(business, from, messageBody, messageId) {
     await sendWhatsAppMessage(business, from, aiResponse, { inboundMessageId: messageId });
   } catch (error) {
     console.error('❌ Error processing WhatsApp message:', error);
+
+    // Persist to ErrorLog
+    import('../services/errorLogger.js')
+      .then(({ logChatError }) => {
+        logChatError(error, {
+          source: 'whatsapp',
+          businessId: business?.id,
+          sessionId: from || null,
+        }).catch(() => {});
+      })
+      .catch(() => {});
+
     // Try to send error message to user (no idempotency for error messages)
     try {
       await sendWhatsAppMessage(
@@ -1127,6 +1139,18 @@ router.post('/send', async (req, res) => {
     const result = await sendWhatsAppMessage(business, to, message);
     res.json({ success: true, data: result });
   } catch (error) {
+    // Persist to ErrorLog
+    import('../services/errorLogger.js')
+      .then(({ logChatError }) => {
+        logChatError(error, {
+          source: 'whatsapp/send',
+          businessId: parseInt(businessId) || null,
+          endpoint: req.path,
+          method: req.method,
+        }).catch(() => {});
+      })
+      .catch(() => {});
+
     res.status(500).json({
       error: 'Failed to send message',
       details: error.message

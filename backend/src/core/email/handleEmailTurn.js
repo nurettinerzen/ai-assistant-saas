@@ -563,6 +563,21 @@ export async function handleEmailTurn(params) {
   } catch (error) {
     console.error('❌ [EmailTurn] Fatal error:', error);
 
+    // Persist to ErrorLog
+    import('../../services/errorLogger.js')
+      .then(({ logError, ERROR_CATEGORY, SEVERITY }) => {
+        logError({
+          category: ERROR_CATEGORY.CHAT_ERROR,
+          severity: SEVERITY.HIGH,
+          message: error?.message,
+          error,
+          source: 'email/orchestrator',
+          businessId: ctx.businessId || null,
+          sessionId: ctx.threadId || null,
+        }).catch(() => {});
+      })
+      .catch(() => {});
+
     // Release idempotency lock
     if (ctx.lockId) {
       await failDraftLock(ctx.lockId, error.message);

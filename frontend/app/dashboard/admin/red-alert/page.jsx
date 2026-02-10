@@ -62,6 +62,13 @@ const ERROR_CATEGORY_ICONS = {
   webhook_error: Activity,
 };
 
+const TIME_LABELS = {
+  1: 'Last 1h',
+  6: 'Last 6h',
+  24: 'Last 24h',
+  168: 'Last 7d',
+};
+
 export default function RedAlertPage() {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -143,7 +150,9 @@ export default function RedAlertPage() {
 
   const loadSummary = async () => {
     try {
-      const response = await apiClient.get('/api/red-alert/summary');
+      const response = await apiClient.get('/api/red-alert/summary', {
+        params: { hours: filters.hours },
+      });
       setSummary(response.data);
     } catch (error) {
       console.error('Failed to load summary:', error);
@@ -206,7 +215,9 @@ export default function RedAlertPage() {
   // Error Tracking Data Loaders
   const loadErrorSummary = async () => {
     try {
-      const response = await apiClient.get('/api/red-alert/errors/summary');
+      const response = await apiClient.get('/api/red-alert/errors/summary', {
+        params: { hours: filters.hours },
+      });
       setErrorSummary(response.data);
     } catch (error) {
       console.error('Failed to load error summary:', error);
@@ -400,13 +411,13 @@ export default function RedAlertPage() {
           <>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Security Events (24h)</CardTitle>
+                <CardTitle className="text-sm font-medium">Security Events ({TIME_LABELS[filters.hours] || `${filters.hours}h`})</CardTitle>
                 <Activity className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-xl font-bold">{summary.summary.total24h}</div>
+                <div className="text-xl font-bold">{summary.summary.total}</div>
                 <p className="text-xs text-muted-foreground">
-                  {summary.summary.total7d} in 7 days
+                  {summary.summary.critical} critical
                 </p>
               </CardContent>
             </Card>
@@ -432,15 +443,15 @@ export default function RedAlertPage() {
           <>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">App Errors (24h)</CardTitle>
+                <CardTitle className="text-sm font-medium">App Errors ({TIME_LABELS[filters.hours] || `${filters.hours}h`})</CardTitle>
                 <Bug className="h-4 w-4 text-orange-600" />
               </CardHeader>
               <CardContent>
                 <div className="text-xl font-bold text-orange-600 dark:text-orange-400">
-                  {errorSummary.summary.total24h}
+                  {errorSummary.summary.total}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {errorSummary.summary.total7d} in 7 days
+                  {errorSummary.summary.unresolved} unresolved
                 </p>
               </CardContent>
             </Card>
@@ -1010,7 +1021,7 @@ export default function RedAlertPage() {
                             <div
                               className="h-full bg-red-600"
                               style={{
-                                width: `${(count / summary.summary.total24h) * 100}%`,
+                                width: `${(count / (summary.summary.total || 1)) * 100}%`,
                               }}
                             />
                           </div>
@@ -1041,7 +1052,7 @@ export default function RedAlertPage() {
                             <div
                               className="h-full bg-red-600"
                               style={{
-                                width: `${(count / summary.summary.total24h) * 100}%`,
+                                width: `${(count / (summary.summary.total || 1)) * 100}%`,
                               }}
                             />
                           </div>

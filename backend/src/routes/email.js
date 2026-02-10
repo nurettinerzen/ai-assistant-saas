@@ -680,6 +680,22 @@ router.post('/threads/:threadId/generate-draft', authenticateToken, async (req, 
     });
   } catch (error) {
     console.error('Manual draft generation error:', error);
+
+    import('../services/errorLogger.js')
+      .then(({ logError, ERROR_CATEGORY, SEVERITY }) => {
+        logError({
+          category: ERROR_CATEGORY.CHAT_ERROR,
+          severity: SEVERITY.HIGH,
+          message: error?.message,
+          error,
+          source: 'email/generate-draft',
+          businessId: req.businessId || null,
+          endpoint: req.path,
+          method: req.method,
+        }).catch(() => {});
+      })
+      .catch(() => {});
+
     res.status(500).json({ error: 'Failed to generate draft' });
   }
 });
@@ -822,6 +838,22 @@ router.post('/drafts/:draftId/regenerate', authenticateToken, async (req, res) =
     });
   } catch (error) {
     console.error('Regenerate draft error:', error);
+
+    import('../services/errorLogger.js')
+      .then(({ logError, ERROR_CATEGORY, SEVERITY }) => {
+        logError({
+          category: ERROR_CATEGORY.CHAT_ERROR,
+          severity: SEVERITY.HIGH,
+          message: error?.message,
+          error,
+          source: 'email/regenerate',
+          businessId: req.businessId || null,
+          endpoint: req.path,
+          method: req.method,
+        }).catch(() => {});
+      })
+      .catch(() => {});
+
     res.status(500).json({ error: 'Failed to regenerate draft' });
   }
 });
