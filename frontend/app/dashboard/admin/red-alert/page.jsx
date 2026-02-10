@@ -62,12 +62,6 @@ const ERROR_CATEGORY_ICONS = {
   webhook_error: Activity,
 };
 
-const TIME_LABELS = {
-  1: 'Last 1h',
-  6: 'Last 6h',
-  24: 'Last 24h',
-  168: 'Last 7d',
-};
 
 export default function RedAlertPage() {
   const [loading, setLoading] = useState(true);
@@ -411,7 +405,7 @@ export default function RedAlertPage() {
           <>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Security Events ({TIME_LABELS[filters.hours] || `${filters.hours}h`})</CardTitle>
+                <CardTitle className="text-sm font-medium">Security Events</CardTitle>
                 <Activity className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
@@ -443,7 +437,7 @@ export default function RedAlertPage() {
           <>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">App Errors ({TIME_LABELS[filters.hours] || `${filters.hours}h`})</CardTitle>
+                <CardTitle className="text-sm font-medium">App Errors</CardTitle>
                 <Bug className="h-4 w-4 text-orange-600" />
               </CardHeader>
               <CardContent>

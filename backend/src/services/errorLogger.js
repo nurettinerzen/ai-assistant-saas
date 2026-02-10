@@ -93,9 +93,9 @@ function generateFingerprint({ category, source, errorCode, errorName, endpoint,
 // ============================================================================
 // TIMEOUT GUARD
 // ============================================================================
-// Ensure logError never blocks the request for more than 200ms
+// Ensure logError never blocks the request for more than 500ms
 
-function withTimeout(promise, ms = 200) {
+function withTimeout(promise, ms = 500) {
   return Promise.race([
     promise,
     new Promise((_, reject) =>
