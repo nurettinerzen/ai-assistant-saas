@@ -753,19 +753,73 @@ router.post('/threads/:threadId/generate-draft-legacy', authenticateToken, async
 /**
  * Regenerate Draft
  * POST /api/email/drafts/:draftId/regenerate
+ *
+ * CRITICAL: Uses handleEmailTurn pipeline (NOT legacy emailAI.regenerateDraft).
+ * Legacy regenerateDraft() has NO tool/CRM integration — LLM hallucinates
+ * order data because it never fetches real data from CRM.
+ * handleEmailTurn runs the full pipeline: classification → tool gating →
+ * tool loop (CRM lookups) → draft generation with real data.
  */
 router.post('/drafts/:draftId/regenerate', authenticateToken, async (req, res) => {
   try {
     const { feedback } = req.body;
 
+    // 1. Find existing draft
     const draft = await emailAI.getDraft(req.params.draftId);
 
     if (!draft || draft.businessId !== req.businessId) {
       return res.status(404).json({ error: 'Draft not found' });
     }
 
-    const regenerated = await emailAI.regenerateDraft(req.params.draftId, feedback);
-    res.json(regenerated);
+    // 2. Mark old draft as REJECTED
+    await prisma.emailDraft.update({
+      where: { id: draft.id },
+      data: { status: 'REJECTED' }
+    });
+
+    // 3. Clear idempotency lock so handleEmailTurn can create a new draft.
+    // Without this, the lock (status=COMPLETED) blocks new draft generation
+    // for the same (businessId, threadId, messageId) tuple.
+    await prisma.emailDraftLock.deleteMany({
+      where: {
+        businessId: req.businessId,
+        threadId: draft.threadId,
+        sourceMessageId: draft.messageId
+      }
+    });
+
+    // 4. Generate new draft using full pipeline (with CRM/tool lookups)
+    const result = await handleEmailTurn({
+      businessId: req.businessId,
+      threadId: draft.threadId,
+      messageId: draft.messageId,
+      options: {
+        feedback,
+        createProviderDraft: true
+      }
+    });
+
+    if (!result.success) {
+      if (result.errorCode === 'GUARDRAIL_BLOCKED') {
+        return res.status(400).json({
+          error: result.error,
+          errorCode: result.errorCode,
+          blockedBy: result.blockedBy
+        });
+      }
+
+      return res.status(500).json({
+        error: result.error || 'Failed to regenerate draft',
+        errorCode: result.errorCode
+      });
+    }
+
+    res.json({
+      success: true,
+      draft: result.draft,
+      classification: result.classification,
+      toolsCalled: result.toolsCalled
+    });
   } catch (error) {
     console.error('Regenerate draft error:', error);
     res.status(500).json({ error: 'Failed to regenerate draft' });

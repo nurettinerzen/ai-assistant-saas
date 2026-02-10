@@ -100,7 +100,10 @@ export async function handleEmailTurn(params) {
     // Security context
     lockId: null,              // Idempotency lock ID
     allowedRecipients: null,   // Set by recipient ownership policy
-    safeRecipients: null       // Built by orchestrator, used at send time
+    safeRecipients: null,      // Built by orchestrator, used at send time
+
+    // Regeneration context
+    feedback: options.feedback || null  // User feedback from regenerate action
   };
 
   console.log(`\n📧 [EmailTurn] Starting draft generation for thread ${threadId}`);

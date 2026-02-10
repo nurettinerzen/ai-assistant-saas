@@ -72,6 +72,7 @@ export async function generateEmailDraft(ctx) {
     subject,
     customerEmail,
     customerName,
+    feedback,
     options = {}
   } = ctx;
 
@@ -202,7 +203,8 @@ export async function generateEmailDraft(ctx) {
       threadMessages,
       subject,
       customerEmail,
-      customerName
+      customerName,
+      feedback
     });
 
     // Call OpenAI
@@ -412,7 +414,8 @@ function buildEmailUserPrompt({
   threadMessages,
   subject,
   customerEmail,
-  customerName
+  customerName,
+  feedback
 }) {
   let prompt = `Please draft a reply to this email.\n\n`;
 
@@ -436,6 +439,13 @@ function buildEmailUserPrompt({
       const direction = msg.direction === 'INBOUND' ? 'Customer' : 'Us';
       prompt += `\n[${direction}]: ${msg.body?.substring(0, 500)}...\n`;
     }
+  }
+
+  // Add user feedback from regenerate action
+  if (feedback) {
+    prompt += `\n\n--- PREVIOUS DRAFT WAS REJECTED ---\n`;
+    prompt += `User feedback: ${feedback}\n`;
+    prompt += `Please rewrite the draft taking this feedback into account.\n`;
   }
 
   return prompt;
