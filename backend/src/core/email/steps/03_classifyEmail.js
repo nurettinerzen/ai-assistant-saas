@@ -10,7 +10,7 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_KEY);
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // Classification prompt
 const CLASSIFICATION_PROMPT = `You are an email classifier for a business assistant.
