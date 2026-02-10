@@ -266,7 +266,13 @@ export function getFullResult(record, queryType, language = 'TR') {
   // Generate detailed message based on query type AND add structured data
   // NOTE: Use original (non-redacted) data for messages, as they are shown to user
   // But use redacted data in result.data that goes to LLM
-  if (queryType === 'siparis' || queryType === 'order') {
+  //
+  // CRITICAL: Also detect order records by checking for orderNumber field.
+  // When classification fallback sends query_type='genel' but the record came
+  // from CrmOrder table, we must still return order data (status, tracking, etc.)
+  // Otherwise LLM sees only customerName/phone and can't answer order queries.
+  const isOrderRecord = !!(record.orderNumber || (record.status && !record.ticketNumber));
+  if (queryType === 'siparis' || queryType === 'order' || isOrderRecord) {
     const orderNo = customFields['Sipariş No'] || record.orderNumber;
     const status = customFields['Durum'] || record.status;
     const tracking = customFields['Kargo Takip No'] || record.trackingNumber;

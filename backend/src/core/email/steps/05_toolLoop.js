@@ -179,7 +179,8 @@ function determineToolsToRun(classification, availableTools, inboundMessage, thr
     'SUPPORT': 'ariza',
     'COMPLAINT': 'siparis',  // Complaints usually about orders
     'INQUIRY': 'genel',
-    'FOLLOW_UP': 'siparis'   // Follow-ups usually about orders
+    'FOLLOW_UP': 'siparis',  // Follow-ups usually about orders
+    'GENERAL': 'siparis'     // Fallback: when classification fails, default to order lookup
   };
 
   // customer_data_lookup: The universal lookup tool
