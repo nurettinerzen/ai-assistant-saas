@@ -47,15 +47,15 @@ const TICKET_STATUS_LABELS = {
 };
 
 const TICKET_STATUS_COLORS = {
-  pending: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
-  received: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-  in_review: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
-  in_progress: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-  waiting_parts: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
-  completed: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-  ready: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400',
-  delivered: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400',
-  cancelled: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+  pending: 'text-yellow-600 dark:text-yellow-400',
+  received: 'text-blue-600 dark:text-blue-400',
+  in_review: 'text-purple-600 dark:text-purple-400',
+  in_progress: 'text-blue-600 dark:text-blue-400',
+  waiting_parts: 'text-orange-600 dark:text-orange-400',
+  completed: 'text-green-600 dark:text-green-400',
+  ready: 'text-teal-600 dark:text-teal-400',
+  delivered: 'text-gray-600 dark:text-gray-400',
+  cancelled: 'text-red-600 dark:text-red-400',
 };
 
 export default function CRMDataPage() {
@@ -466,7 +466,7 @@ export default function CRMDataPage() {
                           </div>
                         </td>
                         <td className="p-3">
-                          <Badge className={TICKET_STATUS_COLORS[ticket.status] || 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400'}>
+                          <Badge variant="outline" className={TICKET_STATUS_COLORS[ticket.status] || 'text-gray-600 dark:text-gray-400'}>
                             {TICKET_STATUS_LABELS[ticket.status] || ticket.status}
                           </Badge>
                         </td>
