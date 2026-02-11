@@ -323,26 +323,26 @@ const MESSAGE_CATALOG = {
   },
   SECURITY_TOOL_REQUIRED_PRODUCT_SPEC: {
     TR: [
-      'Ürün özelliklerini kontrol etmem gerekiyor. Hangi ürün hakkında bilgi almak istediğinizi söyleyebilir misiniz?',
-      'Doğru ürün bilgisini sunabilmem için önce ürünü netleştirmem gerekiyor. Hangi ürünü soruyorsunuz?',
-      'Ürün detayına bakabilmem için ürün adını veya kodunu paylaşır mısınız?'
+      'Bu ürünün teknik özellikleri şu an sistemimde yok. Ürün adını, linkini veya ürün kodunu paylaşırsanız kontrol edebilirim.',
+      'Sorduğunuz ürünle ilgili detaylı bilgi elimde bulunmuyor. Ürün kodu veya tam adını paylaşır mısınız? Ayrıca web sitemizden de kontrol edebilirsiniz.',
+      'Bu ürünün özelliklerini görüntüleyemiyorum. Bana ürün kodunu veya linkini iletirseniz yardımcı olmaya çalışırım.'
     ],
     EN: [
-      "I need to check product specifications first. Could you tell me which product you'd like information about?",
-      'To provide accurate product details, I first need the product reference. Which product are you asking about?',
-      'Could you share the product name or code so I can check the specifications?'
+      "I don't have the technical specs for this product in my system right now. Could you share the product name, link, or SKU so I can look it up?",
+      "I don't have detailed information about that product. If you share the product code or full name, I can try to help. You can also check our website for details.",
+      "I can't access specifications for this product. Could you provide the product code or a link? I'll do my best to help."
     ]
   },
   SECURITY_TOOL_REQUIRED_STOCK_CHECK: {
     TR: [
-      'Stok bilgisini kontrol etmem gerekiyor. Ürün adını veya kodunu paylaşır mısınız?',
-      'Stok durumunu net söyleyebilmem için ürün adını ya da ürün kodunu iletir misiniz?',
-      'Doğru stok bilgisi için ürün adı veya kodu gerekli. Paylaşabilir misiniz?'
+      'Stok durumunu kontrol edebilmem için ürün adını veya ürün kodunu paylaşır mısınız?',
+      'Hangi ürünün stok durumunu merak ediyorsunuz? Ürün adını veya kodunu iletirseniz bakabilirim.',
+      'Stok bilgisine erişebilmem için ürünü belirtmeniz gerekiyor. Ürün adı veya kodu paylaşabilir misiniz?'
     ],
     EN: [
-      'I need to check stock information. Could you share the product name or code?',
-      'To confirm stock accurately, please share the product name or product code.',
-      'I need the product name or code to check stock status. Could you provide it?'
+      'Could you share the product name or code so I can check stock availability for you?',
+      'Which product are you asking about? If you share the product name or SKU, I can look into it.',
+      'I need the product name or code to check stock. Could you provide that?'
     ]
   },
   SECURITY_IDENTITY_MISMATCH_HARD_DENY: {

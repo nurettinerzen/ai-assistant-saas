@@ -735,7 +735,7 @@ export function checkOrderNotFoundPressure(response, toolOutputs = [], language 
  * @param {string} language - TR | EN
  * @returns {Object} { needsOverride, overrideResponse }
  */
-export function enforceRequiredToolCall(intent, toolsCalled = [], language = 'TR') {
+export function enforceRequiredToolCall(intent, toolsCalled = [], language = 'TR', responseText = '') {
   // Intent'ler ve tool zorunlulukları
   const TOOL_REQUIRED_INTENTS = {
     product_spec: {
@@ -763,6 +763,12 @@ export function enforceRequiredToolCall(intent, toolsCalled = [], language = 'TR
     return { needsOverride: false }; // Tool çağrılmış, sorun yok
   }
 
+  // P2-F: Enhanced check — even if tool wasn't called, check if LLM fabricated product data
+  // Detect specific product claims (price, specs, availability) in response
+  if (responseText && containsProductClaims(responseText, language)) {
+    console.warn(`🚨 [SecurityGateway] Product data fabrication detected for intent "${intent}"!`);
+  }
+
   // Tool çağrılmamış - deterministik response döndür
   const lang = language.toUpperCase() === 'EN' ? 'EN' : 'TR';
   const overrideVariant = getMessageVariant(intentConfig.messageKey, {
@@ -784,6 +790,39 @@ export function enforceRequiredToolCall(intent, toolsCalled = [], language = 'TR
     reason: 'TOOL_REQUIRED_NOT_CALLED',
     intent
   };
+}
+
+/**
+ * P2-F: Detect product-specific claims in response text
+ * Used to catch LLM hallucinating product info from training data
+ */
+function containsProductClaims(response, language = 'TR') {
+  const patterns = {
+    TR: [
+      // Price claims
+      /fiyat[ıi]?\s*[:\s]*[\d.,]+\s*(TL|₺|USD|\$|EUR|€)/i,
+      /[\d.,]+\s*(TL|₺)\s*(fiyat|ücret|maliyet)/i,
+      // Spec claims
+      /özellik(ler)?[iı]?\s*[:\s]*(boyut|ağırlık|güç|kapasite|renk|malzeme)/i,
+      /teknik\s*(detay|özellik|bilgi)\s*[:\s]/i,
+      // Availability claims
+      /stok(ta|umuzda)\s*(var|mevcut|bulunuyor)/i,
+      /mağaza(mız)?da\s*(mevcut|satışta|bulunuyor)/i,
+      /(web\s*site|online)\s*(mağaza)?(mız)?da\s*(mevcut|var|bulunuyor)/i,
+    ],
+    EN: [
+      /price\s*[:\s]*[\d.,]+\s*(USD|\$|EUR|€|GBP|£)/i,
+      /specifications?\s*[:\s]*(size|weight|power|capacity|color|material)/i,
+      /technical\s*(details?|specs?)\s*[:\s]/i,
+      /in\s*stock/i,
+      /available\s*(in\s*store|online|now)/i,
+    ]
+  };
+
+  const lang = language.toUpperCase() === 'EN' ? 'EN' : 'TR';
+  const langPatterns = patterns[lang] || patterns.TR;
+
+  return langPatterns.some(p => p.test(response));
 }
 
 // ============================================================================

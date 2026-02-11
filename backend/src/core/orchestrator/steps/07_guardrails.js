@@ -22,7 +22,7 @@ import { getMessageVariant } from '../../../messages/messageCatalog.js';
 // Enhanced guardrails (P0-A, P0-B, P1-A)
 import { validateToolOnlyData } from '../../../guardrails/toolOnlyDataGuard.js';
 import { validateInternalProtocol } from '../../../guardrails/internalProtocolGuard.js';
-import { validateConfabulation } from '../../../guardrails/antiConfabulationGuard.js';
+import { validateConfabulation, validateFieldGrounding } from '../../../guardrails/antiConfabulationGuard.js';
 
 // NEW: Merkezi Security Gateway - Leak Filter (P0)
 import {
@@ -36,6 +36,7 @@ import {
 } from '../../../guardrails/securityGateway.js';
 import { shouldBypassLeakFilter } from '../../../security/outcomePolicy.js';
 import { ToolOutcome, normalizeOutcome } from '../../../tools/toolResult.js';
+import { isFeatureEnabled } from '../../../config/feature-flags.js';
 
 export async function applyGuardrails(params) {
   const {
@@ -200,33 +201,16 @@ export async function applyGuardrails(params) {
   }
 
   // POLICY 1.5: Security Gateway Leak Filter (P0 - Verification-based)
-  // Bu en kritik kontrol: verified olmadan hassas veri ASLA çıkamaz
-  // collectedData: Zaten bilinen veriler - tekrar sorma (duplicate ask fix)
-  // NOT_FOUND durumunda Leak Filter'ı ATLA - hassas veri yok, verification gereksiz
-  // ARCHITECTURE CHANGE: Leak Filter sadece DATA-LOOKUP tool başarılı olup gerçek veri döndüğünde çalışsın
-  // - Tool çağrılmadıysa: ortada veri yok, LLM kendi bilgisiyle konuşuyor
-  // - Tool çağrıldı ama başarısız olduysa (NOT_FOUND, VALIDATION_ERROR): ortada veri yok
-  // - Action tool çağrıldıysa (create_appointment, create_callback): sadece işlem onayı, hassas veri yok
-  // - Data-lookup tool çağrıldı ve başarılıysa: gerçek müşteri verisi var, filter gerekli
-  const noToolsCalled = !toolsCalled || toolsCalled.length === 0;
-
-  // Whitelist: Only these tools return sensitive customer data that needs Leak Filter protection
-  // Action tools (create_appointment, create_callback, etc.) return confirmations, not PII
-  const DATA_LOOKUP_TOOLS = ['customer_data_lookup', 'check_order_status', 'get_tracking_info', 'check_stock_crm', 'check_ticket_status_crm'];
-  const hasSuccessfulDataTool = toolOutputs.some(o =>
-    DATA_LOOKUP_TOOLS.includes(o?.name) &&
-    normalizeOutcome(o?.outcome) === ToolOutcome.OK &&
-    o?.success === true
-  );
+  // P0 ARCHITECTURE FIX: Leak Filter now ALWAYS runs on response text.
+  // Previous logic: skip if no tool called or tool not successful → allowed LLM hallucinations to bypass filter.
+  // New logic: Only skip for NOT_FOUND overrides (no sensitive data) and explicit bypass outcomes.
+  // If LLM generates sensitive data WITHOUT tool call, leak filter catches it and blocks.
   const hasBypassOutcome = toolOutputs.some(o => shouldBypassLeakFilter(o?.outcome));
-  const shouldSkipLeakFilter = notFoundOverrideApplied || hasBypassOutcome || noToolsCalled || !hasSuccessfulDataTool;
+  const shouldSkipLeakFilter = notFoundOverrideApplied || hasBypassOutcome;
   if (shouldSkipLeakFilter) {
     console.log('✅ [SecurityGateway] Skipping Leak Filter:', {
       notFoundOverrideApplied,
-      hasBypassOutcome,
-      noToolsCalled,
-      hasSuccessfulDataTool,
-      toolsCalled
+      hasBypassOutcome
     });
   }
   const leakFilterResult = shouldSkipLeakFilter
@@ -266,8 +250,9 @@ export async function applyGuardrails(params) {
 
   // POLICY 1.55: Tool Required Enforcement (HP-07 Fix)
   // Intent "requiresToolCall" ise ama tool çağrılmadıysa, deterministik response döndür
-  if (intent) {
-    const toolEnforcementResult = enforceRequiredToolCall(intent, toolsCalled, language);
+  const productSpecEnabled = isFeatureEnabled('PRODUCT_SPEC_ENFORCE');
+  if (intent && productSpecEnabled) {
+    const toolEnforcementResult = enforceRequiredToolCall(intent, toolsCalled, language, responseText);
     if (toolEnforcementResult.needsOverride) {
       console.warn(`🔧 [SecurityGateway] Tool required but not called for intent "${intent}"`);
       metrics.toolRequiredNotCalled = {
@@ -288,6 +273,8 @@ export async function applyGuardrails(params) {
       // Response'u override et - LLM tool çağırmadan yanıt vermiş
       responseText = toolEnforcementResult.overrideResponse;
     }
+  } else if (intent && !productSpecEnabled) {
+    console.log('⚠️ [Guardrails] PRODUCT_SPEC_ENFORCE disabled — skipping tool enforcement');
   }
 
   // POLICY 1.6: Security Gateway Identity Match (eğer tool output varsa)
@@ -407,20 +394,25 @@ export async function applyGuardrails(params) {
     console.error('🚨 [Guardrails] TOOL_ONLY_DATA_LEAK detected!', toolOnlyDataResult.violation);
     metrics.toolOnlyDataViolation = toolOnlyDataResult.violation;
 
-    // Log violation but don't block - instead flag for correction
-    // The response will be corrected via LLM re-prompt if chat is available
-    if (chat) {
-      try {
-        const correctionPrompt = language === 'TR'
-          ? `DÜZELTME: Yanıtında tool çağırmadan hassas veri verdin. "${toolOnlyDataResult.violation.category}" kategorisinde veri sızıntısı tespit edildi. Yanıtını bu bilgi olmadan yeniden yaz.`
-          : `CORRECTION: Your response contains sensitive data without tool call. "${toolOnlyDataResult.violation.category}" data leak detected. Rewrite without this information.`;
+    // Kill-switch: If TOOL_ONLY_DATA_HARDBLOCK disabled, log only (pre-hardening behavior)
+    if (!isFeatureEnabled('TOOL_ONLY_DATA_HARDBLOCK')) {
+      console.warn('⚠️ [Guardrails] TOOL_ONLY_DATA_HARDBLOCK disabled — logging only, not blocking');
+    } else {
+      // P0-B FIX: Hard block — tool-only data without tool call is a data leak
+      const correctionConstraint = language === 'TR'
+        ? `Yanıtında tool çağırmadan "${toolOnlyDataResult.violation.category}" kategorisinde hassas veri verdin. Bu bilgiyi KESINLIKLE verme. Sistemi sorgulamadan "kargoda", "teslim edildi", "adresiniz" gibi bilgiler paylaşma. Bilmediğini kabul et.`
+        : `Your response contains "${toolOnlyDataResult.violation.category}" data without a tool call. Do NOT share this information. Never claim delivery status, address, or PII without querying the system. Admit you don't have the information.`;
 
-        console.log('🔧 [Guardrails] Requesting LLM correction for tool-only data leak...');
-        // Note: Correction would happen here if we have chat context
-        // For now, log and continue - the violation is tracked in metrics
-      } catch (e) {
-        console.error('Failed to apply tool-only data correction:', e);
-      }
+      return {
+        finalResponse: null,
+        needsCorrection: true,
+        correctionType: 'TOOL_ONLY_DATA_LEAK',
+        correctionConstraint,
+        violation: toolOnlyDataResult.violation,
+        guardrailsApplied: ['RESPONSE_FIREWALL', 'PII_PREVENTION', 'TOOL_ONLY_DATA_GUARD'],
+        blocked: true,
+        blockReason: 'TOOL_ONLY_DATA_LEAK_DETECTED'
+      };
     }
   }
 
@@ -467,6 +459,45 @@ export async function applyGuardrails(params) {
       blocked: true,
       blockReason: 'CONFABULATION_DETECTED'
     };
+  }
+
+  // POLICY 4b: Field-Level Grounding (P1-D)
+  // Even if tool was called, check that LLM claims match tool output fields
+  // Mode: FEATURE_FIELD_GROUNDING_HARDBLOCK=true → block | false → skip
+  // FIELD_GROUNDING_MODE env: 'block' (default) or 'monitor' (log only, don't block)
+  const fieldGroundingEnabled = isFeatureEnabled('FIELD_GROUNDING_HARDBLOCK');
+  const fieldGroundingMode = process.env.FIELD_GROUNDING_MODE || 'block'; // 'block' | 'monitor'
+  if (fieldGroundingEnabled && hadToolSuccess && toolOutputs.length > 0) {
+    const groundingResult = validateFieldGrounding(responseText, toolOutputs, language);
+
+    if (!groundingResult.grounded) {
+      console.error('🚨 [Guardrails] FIELD_GROUNDING_VIOLATION detected!', groundingResult.violation);
+      metrics.fieldGroundingViolation = groundingResult.violation;
+
+      if (fieldGroundingMode === 'monitor') {
+        // Monitor mode: log violation but DON'T block — useful for canary/tuning
+        console.warn('📊 [Guardrails] FIELD_GROUNDING in MONITOR mode — logging only, response passes through');
+        metrics.fieldGroundingMonitorOnly = true;
+      } else {
+        // Block mode: hard block and re-prompt LLM
+        const groundingConstraint = language === 'TR'
+          ? `Yanıtında tool sonucuyla uyuşmayan bilgi verdin. Alan: "${groundingResult.violation.field}", tool sonucu: "${groundingResult.violation.expected || 'yok'}", sen iddia ettin: "${groundingResult.violation.claimed}". Yanıtını SADECE tool sonucundaki bilgilere dayandırarak yeniden yaz.`
+          : `Your response contains information inconsistent with tool output. Field: "${groundingResult.violation.field}", tool result: "${groundingResult.violation.expected || 'none'}", you claimed: "${groundingResult.violation.claimed}". Rewrite based ONLY on tool output data.`;
+
+        return {
+          finalResponse: null,
+          needsCorrection: true,
+          correctionType: 'FIELD_GROUNDING',
+          correctionConstraint: groundingConstraint,
+          violation: groundingResult.violation,
+          guardrailsApplied: ['RESPONSE_FIREWALL', 'PII_PREVENTION', 'FIELD_GROUNDING'],
+          blocked: true,
+          blockReason: 'FIELD_GROUNDING_VIOLATION'
+        };
+      }
+    }
+  } else if (!fieldGroundingEnabled) {
+    console.log('⚠️ [Guardrails] FIELD_GROUNDING_HARDBLOCK disabled — skipping field grounding');
   }
 
   // POLICY 5: Action Claim Validation (CRITICAL + SOFT)
@@ -521,6 +552,29 @@ export async function applyGuardrails(params) {
   if (guidanceResult.guidanceAdded) {
     appliedPolicies[7] = `POLICY_GUIDANCE (+${guidanceResult.addedComponents.length})`;
   }
+
+  // ── Security Telemetry (P1-E: canary monitoring) ──
+  metrics.securityTelemetry = {
+    blocked: false,
+    blockReason: null,
+    repromptCount: 0, // Set by orchestrator when regenerateWithGuidance is called
+    fallbackUsed: !!overrideMessageKey,
+    fallbackMessageKey: overrideMessageKey || null,
+    policiesRan: appliedPolicies,
+    violations: {
+      toolOnlyData: !toolOnlyDataResult.safe ? toolOnlyDataResult.violation?.type : null,
+      internalProtocol: !internalProtocolResult.safe ? 'INTERNAL_PROTOCOL_LEAK' : null,
+      confabulation: !confabulationResult.safe ? confabulationResult.violation?.type : null,
+      fieldGrounding: metrics.fieldGroundingViolation?.type || null,
+    },
+    featureFlags: {
+      TOOL_ONLY_DATA_HARDBLOCK: isFeatureEnabled('TOOL_ONLY_DATA_HARDBLOCK'),
+      FIELD_GROUNDING_HARDBLOCK: fieldGroundingEnabled,
+      PRODUCT_SPEC_ENFORCE: productSpecEnabled,
+    },
+    toolsCalled: toolsCalled.length,
+    toolSuccess: hadToolSuccess,
+  };
 
   return {
     finalResponse: finalText,

@@ -79,6 +79,35 @@ export const FEATURE_FLAGS = {
   //   e.g. FEATURE_CHANNEL_PROOF_CANARY_KEYS=42,108
   CHANNEL_PROOF_CANARY_KEYS: (process.env.FEATURE_CHANNEL_PROOF_CANARY_KEYS || '')
     .split(',').map(k => k.trim()).filter(Boolean),
+
+  // ─── Security Policy Kill-Switches (P0/P1/P2 hardening) ───
+  // Each policy can be disabled independently if it causes false positives.
+  // When disabled, the policy falls back to its pre-hardening behavior.
+
+  // P0-A: Plain-text injection detector (CRITICAL = hard block, HIGH = prompt warning)
+  // Disable: Injection patterns stop blocking/warning, messages go through unfiltered.
+  // Rollback: Set FEATURE_PLAINTEXT_INJECTION_BLOCK=false
+  PLAINTEXT_INJECTION_BLOCK: process.env.FEATURE_PLAINTEXT_INJECTION_BLOCK !== 'false', // Default: ON
+
+  // P0-B: Tool-only data guard hard block (was log-only before hardening)
+  // Disable: Reverts to log-only behavior (violations logged but not blocked).
+  // Rollback: Set FEATURE_TOOL_ONLY_DATA_HARDBLOCK=false
+  TOOL_ONLY_DATA_HARDBLOCK: process.env.FEATURE_TOOL_ONLY_DATA_HARDBLOCK !== 'false', // Default: ON
+
+  // P1-D: Field-level grounding (response vs tool output consistency check)
+  // Disable: Skips field grounding entirely, LLM response passes through unchecked.
+  // Rollback: Set FEATURE_FIELD_GROUNDING_HARDBLOCK=false
+  FIELD_GROUNDING_HARDBLOCK: process.env.FEATURE_FIELD_GROUNDING_HARDBLOCK !== 'false', // Default: ON
+
+  // P1-E: Session-level throttling (per-user flood prevention)
+  // Disable: No session-level rate limiting, only business-level daily/monthly limits.
+  // Rollback: Set FEATURE_SESSION_THROTTLE=false
+  SESSION_THROTTLE: process.env.FEATURE_SESSION_THROTTLE !== 'false', // Default: ON
+
+  // P2-F: Product spec tool-required enforcement
+  // Disable: LLM can answer product questions without tool call (may hallucinate).
+  // Rollback: Set FEATURE_PRODUCT_SPEC_ENFORCE=false
+  PRODUCT_SPEC_ENFORCE: process.env.FEATURE_PRODUCT_SPEC_ENFORCE !== 'false', // Default: ON
 };
 
 /**

@@ -30,7 +30,8 @@ export function emitTurnMetrics(metrics) {
     inputTokens = 0,
     outputTokens = 0,
     error = null,
-    identityProof = null  // Channel identity proof telemetry
+    identityProof = null,  // Channel identity proof telemetry
+    securityTelemetry = null // Security policy telemetry (P1-E)
   } = metrics;
 
   // Console log (dev)
@@ -55,6 +56,22 @@ export function emitTurnMetrics(metrics) {
       secondFactorRequired: identityProof.secondFactorRequired,
       reason: identityProof.reason,
       durationMs: identityProof.durationMs
+    };
+  }
+
+  // Security telemetry (canary monitoring)
+  if (securityTelemetry) {
+    metricsLog.security = {
+      blocked: securityTelemetry.blocked,
+      blockReason: securityTelemetry.blockReason,
+      correctionType: securityTelemetry.correctionType,
+      repromptCount: securityTelemetry.repromptCount,
+      fallbackUsed: securityTelemetry.fallbackUsed,
+      injectionDetected: !!securityTelemetry.injectionDetected,
+      sessionThrottled: securityTelemetry.sessionThrottled,
+      latencyMs: securityTelemetry.latencyMs,
+      stage: securityTelemetry.stage || 'unknown',
+      featureFlags: securityTelemetry.featureFlags || {}
     };
   }
 

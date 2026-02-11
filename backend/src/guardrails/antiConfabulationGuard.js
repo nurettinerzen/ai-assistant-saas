@@ -408,8 +408,232 @@ Rewrite without specific dates/times.`
   return constraints[lang][category] || constraints[lang].deliveryEvents;
 }
 
+/**
+ * P1-D: Field-level grounding check
+ *
+ * Even when a tool was called successfully, the LLM may hallucinate
+ * fields that don't exist in the tool output. This function extracts
+ * claimed fields from the response and checks them against tool output.
+ *
+ * @param {string} response - LLM response text
+ * @param {Array} toolOutputs - Tool outputs [{name, output, outcome}]
+ * @param {string} language - TR | EN
+ * @returns {Object} { grounded: boolean, violation?: object }
+ */
+export function validateFieldGrounding(response, toolOutputs = [], language = 'TR') {
+  if (!response || !toolOutputs.length) return { grounded: true };
+
+  // Only check successful data tool outputs
+  const dataOutputs = toolOutputs.filter(t =>
+    t.success && t.output && (t.outcome === 'OK' || t.outcome === 'VERIFICATION_REQUIRED')
+  );
+
+  if (!dataOutputs.length) return { grounded: true };
+
+  const responseLower = response.toLowerCase();
+
+  for (const toolOutput of dataOutputs) {
+    const output = toolOutput.output;
+
+    // Check order field grounding
+    if (output.order) {
+      const violation = checkOrderFieldGrounding(responseLower, output.order, language);
+      if (violation) return { grounded: false, violation };
+    }
+
+    // Check tracking number fabrication
+    const trackingViolation = checkTrackingFabrication(response, output, language);
+    if (trackingViolation) return { grounded: false, violation: trackingViolation };
+
+    // Check address fabrication (tool output never contains full address)
+    const addressViolation = checkAddressFabrication(response, output, language);
+    if (addressViolation) return { grounded: false, violation: addressViolation };
+
+    // Check amount/price fabrication
+    const amountViolation = checkAmountFabrication(response, output, language);
+    if (amountViolation) return { grounded: false, violation: amountViolation };
+  }
+
+  return { grounded: true };
+}
+
+/**
+ * Check if LLM claims a different order status than what tool returned
+ */
+function checkOrderFieldGrounding(responseLower, orderData, language) {
+  if (!orderData.status) return null;
+
+  const actualStatus = orderData.status.toLowerCase();
+
+  // Status term mapping — each status has terms that CONTRADICT other statuses
+  const statusTerms = {
+    TR: {
+      'hazırlanıyor': ['kargoya verildi', 'kargoda', 'yolda', 'teslim edildi', 'teslim', 'ulaştı', 'iptal'],
+      'kargoya verildi': ['hazırlanıyor', 'teslim edildi', 'teslim', 'ulaştı', 'iptal'],
+      'kargoda': ['hazırlanıyor', 'teslim edildi', 'teslim', 'ulaştı', 'iptal'],
+      'teslim edildi': ['hazırlanıyor', 'kargoya verildi', 'kargoda', 'yolda', 'iptal'],
+      'iptal': ['hazırlanıyor', 'kargoya verildi', 'kargoda', 'teslim edildi', 'yolda'],
+    },
+    EN: {
+      'processing': ['shipped', 'delivered', 'in transit', 'cancelled'],
+      'shipped': ['processing', 'delivered', 'cancelled'],
+      'delivered': ['processing', 'shipped', 'in transit', 'cancelled'],
+      'cancelled': ['processing', 'shipped', 'delivered', 'in transit'],
+    }
+  };
+
+  const lang = language.toUpperCase() === 'EN' ? 'EN' : 'TR';
+  const terms = statusTerms[lang] || statusTerms.TR;
+
+  // Find which status group the actual status belongs to
+  for (const [statusKey, contradictingTerms] of Object.entries(terms)) {
+    if (actualStatus.includes(statusKey)) {
+      // Check if response contains contradicting terms
+      for (const term of contradictingTerms) {
+        if (responseLower.includes(term)) {
+          return {
+            type: 'FIELD_GROUNDING_VIOLATION',
+            field: 'order.status',
+            expected: orderData.status,
+            claimed: term,
+            reason: `Response claims "${term}" but tool returned status "${orderData.status}"`
+          };
+        }
+      }
+      break;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Check if LLM fabricates a tracking number not in tool output
+ */
+function checkTrackingFabrication(response, output, language) {
+  const trackingPatterns = [
+    /takip\s*(no|numarası?)\s*[:\s]*([A-Z0-9]{6,})/i,
+    /kargo\s*(takip|kodu)\s*[:\s]*([A-Z0-9]{6,})/i,
+    /tracking\s*(number|code|no)\s*[:\s]*([A-Z0-9]{6,})/i,
+  ];
+
+  for (const pattern of trackingPatterns) {
+    const match = response.match(pattern);
+    if (match) {
+      const claimedTracking = match[2];
+      const actualTracking = output.order?.trackingNumber;
+
+      // If tool has no tracking number but LLM claims one → fabrication
+      if (!actualTracking) {
+        return {
+          type: 'FIELD_GROUNDING_VIOLATION',
+          field: 'trackingNumber',
+          expected: null,
+          claimed: claimedTracking,
+          reason: 'Response contains tracking number but tool output has none'
+        };
+      }
+
+      // If tool has a tracking number but LLM claims a different one → fabrication
+      if (actualTracking && !actualTracking.toUpperCase().includes(claimedTracking.toUpperCase())) {
+        return {
+          type: 'FIELD_GROUNDING_VIOLATION',
+          field: 'trackingNumber',
+          expected: actualTracking,
+          claimed: claimedTracking,
+          reason: 'Response contains wrong tracking number'
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Check if LLM fabricates an address (tool output never has full address for security)
+ */
+function checkAddressFabrication(response, output, language) {
+  // If tool output has no address-like data but response mentions specific addresses
+  const addressPatterns = [
+    /adres(iniz)?\s*[:\s]+[A-ZÇĞİÖŞÜa-zçğıöşü]{3,}\s+(Mah|Cad|Sok|Bulv)/i,
+    /address\s*[:\s]+\d+\s+[A-Z][a-z]+\s+(St|Ave|Rd|Blvd|Dr)/i,
+    /teslimat\s*adresi\s*[:\s]+.{25,}/i,
+    /delivery\s*address\s*[:\s]+.{25,}/i,
+  ];
+
+  // Check if tool output has any address field
+  const hasAddress = output.address || output.deliveryAddress ||
+    output.order?.deliveryAddress || output.order?.address;
+
+  if (hasAddress) return null; // Tool has address data, can't validate content
+
+  for (const pattern of addressPatterns) {
+    if (pattern.test(response)) {
+      return {
+        type: 'FIELD_GROUNDING_VIOLATION',
+        field: 'address',
+        expected: null,
+        claimed: 'specific address',
+        reason: 'Response contains specific address but tool output has no address data'
+      };
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Check if LLM fabricates monetary amounts not in tool output
+ */
+function checkAmountFabrication(response, output, language) {
+  // Extract amounts from response
+  const amountPatterns = [
+    /(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{1,2})?)\s*(TL|₺|USD|\$|EUR|€)/g,
+    /(TL|₺|USD|\$|EUR|€)\s*(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{1,2})?)/g,
+  ];
+
+  // Collect all amounts from tool output for comparison
+  const toolAmounts = new Set();
+  if (output.order?.totalAmount) toolAmounts.add(normalizeAmount(String(output.order.totalAmount)));
+  if (output.debt?.sgk) toolAmounts.add(normalizeAmount(String(output.debt.sgk)));
+  if (output.debt?.tax) toolAmounts.add(normalizeAmount(String(output.debt.tax)));
+  if (output.ticket?.cost) toolAmounts.add(normalizeAmount(String(output.ticket.cost)));
+
+  // If no amounts in tool output, any specific amount in response is suspect
+  if (toolAmounts.size === 0) return null; // Can't validate if no reference amounts
+
+  for (const pattern of amountPatterns) {
+    let match;
+    while ((match = pattern.exec(response)) !== null) {
+      const amount = normalizeAmount(match[1] || match[2]);
+      if (amount && !toolAmounts.has(amount)) {
+        return {
+          type: 'FIELD_GROUNDING_VIOLATION',
+          field: 'amount',
+          expected: [...toolAmounts].join(', '),
+          claimed: amount,
+          reason: 'Response contains monetary amount not found in tool output'
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Normalize amount string for comparison (remove dots/commas formatting)
+ */
+function normalizeAmount(str) {
+  if (!str) return null;
+  // Remove thousand separators and normalize decimal
+  return str.replace(/\./g, '').replace(/,/g, '.').replace(/[^0-9.]/g, '');
+}
+
 export default {
   detectEventClaim,
   validateConfabulation,
+  validateFieldGrounding,
   getConfabulationConstraint
 };

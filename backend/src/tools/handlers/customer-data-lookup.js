@@ -96,9 +96,12 @@ export async function execute(args, business, context = {}) {
     const language = business.language || 'TR';
     const state = context.state || {};
 
-    // P0-UX FIX: Combine verification inputs - verification_input takes priority
-    // This allows LLM to pass phone last 4 digits OR name for verification
-    const effectiveVerificationInput = verification_input || customer_name;
+    // P0-C SECURITY FIX: verification_input ONLY accepted when state is pending/failed
+    // Prevents LLM single-shot bypass (sending all params in one call)
+    const isVerificationPending = state.verification?.status === 'pending' || state.verification?.status === 'failed';
+    const effectiveVerificationInput = isVerificationPending
+      ? (verification_input || customer_name)
+      : null; // Ignore verification_input when not in verification flow
 
     // SECURITY: Don't log PII (phone, vkn, tc, names)
     console.log('🔍 [CustomerDataLookup-V2] Query:', {
@@ -128,8 +131,8 @@ export async function execute(args, business, context = {}) {
 
     // P0-UX FIX: Process verification with ANY verification input (name OR phone_last4)
     // RECOVERY: Also handle 'failed' status — if user provides correct input, forgive past mistakes
-    const isVerificationActive = state.verification?.status === 'pending' || state.verification?.status === 'failed';
-    if (isVerificationActive && state.verification?.anchor && effectiveVerificationInput) {
+    // Note: isVerificationPending already computed above (P0-C fix)
+    if (isVerificationPending && state.verification?.anchor && effectiveVerificationInput) {
       console.log('🔐 [Verification] Processing verification (status:', state.verification.status, ')');
       console.log('🔐 [Verification] Input:', effectiveVerificationInput, '| Anchor phone:', state.verification.anchor.phone);
 
@@ -473,12 +476,12 @@ export async function execute(args, business, context = {}) {
     // verification in a single pass without multi-turn back-and-forth.
     // verifyAgainstAnchor() accepts: name, phone_last4, or full phone (10+ digits).
     let verificationInput = customer_name;
-    const isPending = state.verification?.status === 'pending';
-    if (isPending) {
+    // Reuse isVerificationPending from P0-C fix above
+    if (isVerificationPending) {
       // Pending state: accept any verification input (name or phone)
       verificationInput = customer_name || verification_input;
     }
-    if (customer_name && !isPending) {
+    if (customer_name && !isVerificationPending) {
       console.log('🔐 [SECURITY] customer_name provided but not in pending verification flow');
       console.log('🔐 [SECURITY] Checking for mismatch...');
 

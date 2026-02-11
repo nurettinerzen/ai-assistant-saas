@@ -933,6 +933,15 @@ router.post('/widget', async (req, res) => {
       // Lock the session
       await lockSession(sessionId, riskDetection.reason);
 
+      // Pre-LLM SecurityTelemetry (route-level block)
+      console.log('📊 [SecurityTelemetry]', {
+        blocked: true,
+        blockReason: riskDetection.reason,
+        stage: 'pre-llm',
+        source: 'route-guard',
+        latencyMs: Date.now() - _widgetStart,
+      });
+
       // Return lock message
       const lockMsg = getLockMessage(riskDetection.reason, language);
       return res.json({
@@ -953,6 +962,18 @@ router.post('/widget', async (req, res) => {
     // Session stays open but this specific message is rejected
     if (riskDetection.softRefusal) {
       console.log(`🛡️ [Chat Guard] SOFT REFUSAL - message rejected, session stays open`);
+
+      // Pre-LLM SecurityTelemetry (route-level soft refusal)
+      console.log('📊 [SecurityTelemetry]', {
+        blocked: true,
+        blockReason: 'PROMPT_INJECTION',
+        stage: 'pre-llm',
+        source: 'route-guard',
+        softRefusal: true,
+        riskType: riskDetection.warnings?.[0]?.type || 'UNKNOWN',
+        latencyMs: Date.now() - _widgetStart,
+      });
+
       return res.json({
         reply: riskDetection.refusalMessage,
         outcome: ToolOutcome.DENIED,
