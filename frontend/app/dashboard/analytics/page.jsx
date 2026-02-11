@@ -347,15 +347,25 @@ export default function AnalyticsPage() {
           <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">{t('dashboard.analyticsPage.channelDistribution')}</h3>
           {channelData.length > 0 ? (
             <div className="flex items-center justify-center">
-              <ResponsiveContainer width="100%" height={250}>
+              <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
                   <Pie
                     data={channelData}
                     cx="50%"
-                    cy="50%"
+                    cy="45%"
                     labelLine={false}
-                    label={(entry) => `${entry.name} ${entry.percentage}%`}
-                    outerRadius={80}
+                    label={({ cx, cy, midAngle, innerRadius, outerRadius, percentage }) => {
+                      const RADIAN = Math.PI / 180;
+                      const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+                      const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                      const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                      return percentage > 5 ? (
+                        <text x={x} y={y} fill="#fff" textAnchor="middle" dominantBaseline="central" fontSize={12} fontWeight={600}>
+                          {`${percentage}%`}
+                        </text>
+                      ) : null;
+                    }}
+                    outerRadius={90}
                     fill="#8884d8"
                     dataKey="value"
                   >
@@ -364,6 +374,14 @@ export default function AnalyticsPage() {
                     ))}
                   </Pie>
                   <Tooltip />
+                  <Legend
+                    verticalAlign="bottom"
+                    height={36}
+                    formatter={(value, entry) => {
+                      const item = channelData.find(d => d.name === value);
+                      return `${value} (${item?.percentage || 0}%)`;
+                    }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             </div>

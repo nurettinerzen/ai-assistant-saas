@@ -34,6 +34,30 @@ import {
   TabsTrigger,
 } from '@/components/ui/tabs';
 
+const TICKET_STATUS_LABELS = {
+  pending: 'Beklemede',
+  received: 'Teslim Alındı',
+  in_review: 'İnceleniyor',
+  in_progress: 'Tamir Ediliyor',
+  waiting_parts: 'Parça Bekleniyor',
+  completed: 'Tamir Edildi',
+  ready: 'Teslime Hazır',
+  delivered: 'Teslim Edildi',
+  cancelled: 'İptal Edildi',
+};
+
+const TICKET_STATUS_COLORS = {
+  pending: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
+  received: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+  in_review: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+  in_progress: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+  waiting_parts: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
+  completed: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+  ready: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400',
+  delivered: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400',
+  cancelled: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+};
+
 export default function CRMDataPage() {
   const { t } = useLanguage();
   const searchParams = useSearchParams();
@@ -442,7 +466,9 @@ export default function CRMDataPage() {
                           </div>
                         </td>
                         <td className="p-3">
-                          <Badge variant="outline">{ticket.status}</Badge>
+                          <Badge className={TICKET_STATUS_COLORS[ticket.status] || 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400'}>
+                            {TICKET_STATUS_LABELS[ticket.status] || ticket.status}
+                          </Badge>
                         </td>
                         <td className="p-3 max-w-md truncate text-sm">
                           {ticket.description || '-'}
