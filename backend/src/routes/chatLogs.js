@@ -140,14 +140,17 @@ router.get('/stats', authenticateToken, async (req, res) => {
       if (endDate) where.createdAt.lte = new Date(endDate);
     }
 
-    const [totalChats, totalMessages, activeChats] = await Promise.all([
+    const [totalChats, totalMessages, todayChats] = await Promise.all([
       prisma.chatLog.count({ where }),
       prisma.chatLog.aggregate({
         where,
         _sum: { messageCount: true }
       }),
       prisma.chatLog.count({
-        where: { ...where, status: 'active' }
+        where: {
+          businessId: req.businessId,
+          createdAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) }
+        }
       })
     ]);
 
@@ -162,7 +165,7 @@ router.get('/stats', authenticateToken, async (req, res) => {
     res.json({
       totalChats,
       totalMessages: totalMessages._sum.messageCount || 0,
-      activeChats,
+      todayChats,
       avgMessagesPerChat: totalChats > 0
         ? Math.round((totalMessages._sum.messageCount || 0) / totalChats * 10) / 10
         : 0

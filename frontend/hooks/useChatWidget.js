@@ -41,7 +41,7 @@ export function useChatStats() {
         totalChats: response.data.totalChats || 0,
         totalMessages: response.data.totalMessages || 0,
         avgMessagesPerChat: response.data.avgMessagesPerChat || 0,
-        activeChats: response.data.activeChats || 0,
+        todayChats: response.data.todayChats || 0,
       };
     },
     staleTime: 30000, // 30 seconds - stats change frequently

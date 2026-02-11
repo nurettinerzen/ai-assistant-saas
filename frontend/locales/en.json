@@ -2384,7 +2384,7 @@
       "conversations": "Conversations",
       "totalMessages": "Total Messages",
       "avgMessages": "Avg. Messages/Chat",
-      "activeChats": "Active Chats",
+      "todayChats": "Today's Chats",
       "settingsSaved": "Settings saved successfully!",
       "settingsSaveError": "Failed to save settings",
       "widgetEnabled": "Widget enabled",

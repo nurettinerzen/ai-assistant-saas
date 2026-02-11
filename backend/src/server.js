@@ -91,6 +91,7 @@ import safeTestRoutes from './routes/safe-test.js';
 import { initMonthlyResetJob } from './jobs/monthlyReset.js';
 import { initializeStateCleanup } from './jobs/cleanup-expired-states.js';
 import { initErrorLogCleanup } from './jobs/errorLogCleanup.js';
+import { initChatStatusCleanup } from './jobs/chatStatusCleanup.js';
 // Email sync is now MANUAL only - removed auto-sync job
 // import { initEmailSyncJob } from './jobs/emailSync.js';
 
@@ -319,6 +320,7 @@ if (process.env.NODE_ENV !== 'test') {
   initMonthlyResetJob();
   initializeStateCleanup();
   initErrorLogCleanup();
+  initChatStatusCleanup();
   // Email sync is now MANUAL only - users trigger sync from panel
   // initEmailSyncJob();
   console.log('✅ Background jobs initialized\n');

@@ -593,8 +593,8 @@ export default function ChatWidgetPage() {
                 <p className="text-xs text-gray-600 dark:text-gray-400">{t('dashboard.chatWidgetPage.avgMessages')}</p>
               </div>
               <div>
-                <p className="text-2xl font-bold text-primary-600">{chatStats.activeChats || 0}</p>
-                <p className="text-xs text-gray-600 dark:text-gray-400">{t('dashboard.chatWidgetPage.activeChats')}</p>
+                <p className="text-2xl font-bold text-primary-600">{chatStats.todayChats || 0}</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400">{t('dashboard.chatWidgetPage.todayChats')}</p>
               </div>
             </div>
           </Card>
