@@ -4,18 +4,17 @@
  */
 
 import prisma from '../../prismaClient.js';
-import { ok, notFound, validationError, systemError } from '../toolResult.js';
-import { normalizePhone as normalizePhoneUtil } from '../../utils/text.js';
+import { ok, notFound, validationError, systemError, verificationRequired } from '../toolResult.js';
 
 /**
  * Execute CRM ticket status check
  */
 export async function execute(args, business, context = {}) {
   try {
-    const { ticket_number, phone } = args;
+    const { ticket_number, phone, verification_input } = args;
     const language = business.language || 'TR';
 
-    console.log('🔍 CRM: Checking ticket status:', { ticket_number, phone });
+    console.log('🔍 CRM: Checking ticket status:', { ticket_number, phone, hasVerification: !!verification_input });
 
     // Validate - at least one parameter required
     if (!ticket_number && !phone) {
@@ -27,21 +26,21 @@ export async function execute(args, business, context = {}) {
       );
     }
 
-    // Normalize phone if provided
-    const normalizedPhone = phone ? normalizePhone(phone) : null;
+    // Normalize phone: strip to last 10 digits for flexible matching
+    const phoneDigits = phone ? stripToLast10Digits(phone) : null;
 
     // Build query
     const whereClause = { businessId: business.id };
 
-    if (ticket_number && normalizedPhone) {
+    if (ticket_number && phoneDigits) {
       whereClause.OR = [
         { ticketNumber: ticket_number },
-        { customerPhone: normalizedPhone }
+        { customerPhone: { contains: phoneDigits } }
       ];
     } else if (ticket_number) {
       whereClause.ticketNumber = ticket_number;
-    } else if (normalizedPhone) {
-      whereClause.customerPhone = normalizedPhone;
+    } else if (phoneDigits) {
+      whereClause.customerPhone = { contains: phoneDigits };
     }
 
     // Search for ticket
@@ -53,14 +52,37 @@ export async function execute(args, business, context = {}) {
     if (!ticket) {
       return notFound(
         language === 'TR'
-          ? `${ticket_number || normalizedPhone} için servis kaydı bulunamadı.`
-          : `Service ticket not found for ${ticket_number || normalizedPhone}.`
+          ? 'Bu bilgilerle eşleşen bir servis kaydı bulunamadı. Lütfen bilgilerinizi kontrol edin.'
+          : 'No service record found matching this information. Please check your details.'
       );
     }
 
     console.log(`✅ CRM Ticket found: ${ticket.ticketNumber}`);
 
-    // Format response
+    // Verification: require name before returning data
+    if (!verification_input) {
+      return verificationRequired(
+        language === 'TR'
+          ? 'Servis kaydı bulundu. Kimlik doğrulaması için ad ve soyadınızı söyler misiniz?'
+          : 'Service record found. Could you please tell me your full name for verification?',
+        { askFor: 'name' }
+      );
+    }
+
+    // Verify name against customerName
+    const inputName = verification_input.trim().toLowerCase().replace(/\s+/g, ' ');
+    const storedName = (ticket.customerName || '').trim().toLowerCase().replace(/\s+/g, ' ');
+
+    if (!storedName || !storedName.includes(inputName.split(' ')[0])) {
+      // Generic message — don't reveal whether record exists (security)
+      return notFound(
+        language === 'TR'
+          ? 'Bu bilgilerle eşleşen bir servis kaydı bulunamadı. Lütfen bilgilerinizi kontrol edin.'
+          : 'No service record found matching this information. Please check your details.'
+      );
+    }
+
+    // Verification passed — return full data
     const statusText = translateTicketStatus(ticket.status, language);
     const responseMessage = formatTicketMessage(ticket, statusText, language);
 
@@ -87,12 +109,12 @@ export async function execute(args, business, context = {}) {
   }
 }
 
-// P1 Fix: Use centralized phone normalization for consistency
-// This ensures CRM search uses same format as stored data
-function normalizePhone(phone) {
+// Strip phone to last 10 digits for flexible matching
+// DB may store as "5572690717", user may input "05572690717" or "+905572690717"
+function stripToLast10Digits(phone) {
   if (!phone) return '';
-  // Use central utility that normalizes to E.164 format
-  return normalizePhoneUtil(phone);
+  const digits = phone.replace(/\D/g, '');
+  return digits.length >= 10 ? digits.slice(-10) : digits;
 }
 
 // Translate ticket status

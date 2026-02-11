@@ -16,6 +16,10 @@ export default {
       phone: {
         type: 'string',
         description: 'Müşteri telefon numarası'
+      },
+      verification_input: {
+        type: 'string',
+        description: 'Kimlik doğrulama: Müşterinin isim ve soyismi'
       }
     },
     required: [] // At least one parameter should be provided
