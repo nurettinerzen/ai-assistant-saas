@@ -140,6 +140,19 @@ router.get('/stats', authenticateToken, async (req, res) => {
       if (endDate) where.createdAt.lte = new Date(endDate);
     }
 
+    // Business timezone'una göre bugünün başlangıcını hesapla
+    const business = await prisma.business.findUnique({
+      where: { id: req.businessId },
+      select: { timezone: true }
+    });
+    const tz = business?.timezone || 'Europe/Istanbul';
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('en-CA', { timeZone: tz }); // "2026-02-11"
+    const utcDate = new Date(now.toLocaleString('en-US', { timeZone: 'UTC' }));
+    const tzDate = new Date(now.toLocaleString('en-US', { timeZone: tz }));
+    const offsetMs = tzDate - utcDate;
+    const todayStart = new Date(new Date(dateStr + 'T00:00:00.000Z').getTime() - offsetMs);
+
     const [totalChats, totalMessages, todayChats] = await Promise.all([
       prisma.chatLog.count({ where }),
       prisma.chatLog.aggregate({
@@ -149,7 +162,7 @@ router.get('/stats', authenticateToken, async (req, res) => {
       prisma.chatLog.count({
         where: {
           businessId: req.businessId,
-          createdAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) }
+          createdAt: { gte: todayStart }
         }
       })
     ]);
