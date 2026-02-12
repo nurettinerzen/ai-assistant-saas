@@ -187,7 +187,13 @@ export default function EmailDashboardPage() {
 
               case 'completed':
                 console.log('Sync completed:', data);
-                toast.success(data.message || t('dashboard.emailPage.emailsSyncedSuccess'));
+                {
+                  const count = data.processedCount || 0;
+                  const msg = count > 0
+                    ? (locale === 'tr' ? `${count} yeni e-posta senkronize edildi` : `Synced ${count} new emails`)
+                    : (locale === 'tr' ? 'Tüm e-postalar güncel' : 'All emails are up to date');
+                  toast.success(msg);
+                }
 
                 // Final refresh
                 queryClient.invalidateQueries({ queryKey: ['email'] });
@@ -196,7 +202,7 @@ export default function EmailDashboardPage() {
 
               case 'error':
                 console.error('Sync error:', data);
-                toast.error(data.error || t('dashboard.emailPage.failedToSyncEmails'));
+                toast.error(t('dashboard.emailPage.failedToSyncEmails'));
                 setSyncing(false);
                 break;
             }
@@ -293,8 +299,7 @@ export default function EmailDashboardPage() {
       toast.success(t('dashboard.emailPage.draftGenerated'));
       queryClient.invalidateQueries({ queryKey: ['email'] });
     } catch (error) {
-      const errorMessage = error.response?.data?.error || t('dashboard.emailPage.failedToGenerateDraft');
-      toast.error(errorMessage);
+      toast.error(t('dashboard.emailPage.failedToGenerateDraft'));
     } finally {
       setGeneratingDraft(false);
     }

@@ -368,29 +368,15 @@ async syncNewMessages(businessId) {
       throw new Error('Gmail not connected');
     }
 
-    const lastSync = integration.lastSyncedAt;
     let query = 'in:inbox';
 
-    // DEBUG LOGS
-    console.log('=== GMAIL SYNC DEBUG ===');
-    console.log('lastSync from DB:', lastSync);
-    console.log('Date.now():', Date.now());
-    console.log('Current date:', new Date().toISOString());
-
-    // Her zaman son 7 günün maillerini çek (veya lastSync daha yeniyse onu kullan)
+    // Her zaman son 7 günün maillerini çek.
+    // lastSyncedAt kullanmıyoruz çünkü sayfa yenilenince SSE kesilir,
+    // DB'ye kaydedilmemiş mailler kaybolurdu. Duplicate'ler saveMessageToDb'de atlanır (isNew: false).
     const sevenDaysAgo = Math.floor((Date.now() - 7 * 24 * 60 * 60 * 1000) / 1000);
+    query += ` after:${sevenDaysAgo}`;
 
-    if (lastSync) {
-      const lastSyncTimestamp = Math.floor(lastSync.getTime() / 1000);
-      // lastSync 7 günden eskiyse, 7 günü kullan; değilse lastSync'i kullan
-      const effectiveTimestamp = Math.max(lastSyncTimestamp, sevenDaysAgo);
-      query += ` after:${effectiveTimestamp}`;
-      console.log('Using effective timestamp:', new Date(effectiveTimestamp * 1000).toISOString());
-    } else {
-      // İlk sync: son 7 günün maillerini getir
-      query += ` after:${sevenDaysAgo}`;
-      console.log('First sync: fetching last 7 days');
-    }
+    console.log(`📧 [Gmail Sync] Fetching last 7 days (after: ${new Date(sevenDaysAgo * 1000).toISOString()})`);
 
     // Paginate through ALL pages — Gmail API returns max ~100 IDs per page
     let allMessages = [];
@@ -410,13 +396,11 @@ async syncNewMessages(businessId) {
       console.log(`📧 [Gmail Sync] Page ${pageCount}: fetched ${messages.length} messages (total: ${allMessages.length}, hasMore: ${!!pageToken})`);
     } while (pageToken);
 
-    // Update last sync time AFTER all pages fetched successfully
-    await prisma.emailIntegration.update({
-      where: { businessId },
-      data: { lastSyncedAt: new Date() }
-    });
+    // NOT: lastSyncedAt'i burada güncellemiyoruz.
+    // SSE stream'de tüm mesajlar DB'ye kaydedildikten sonra güncellenir.
+    // Bu sayede sayfa yenilenince yarıda kalan sync tekrarlanabilir.
 
-    console.log(`📧 [Gmail Sync] Complete: ${allMessages.length} messages in ${pageCount} page(s)`);
+    console.log(`📧 [Gmail Sync] Fetched ${allMessages.length} messages in ${pageCount} page(s) — ready for DB save`);
     return allMessages;
   } catch (error) {
     console.error('Sync messages error:', error);

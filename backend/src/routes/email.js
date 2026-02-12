@@ -931,6 +931,12 @@ router.post('/sync', authenticateToken, async (req, res) => {
       }
     }
 
+    // All messages saved — now update lastSyncedAt
+    await prisma.emailIntegration.update({
+      where: { businessId: req.businessId },
+      data: { lastSyncedAt: new Date() }
+    });
+
     res.json({
       success: true,
       message: `Synced ${processedCount} new messages`,
@@ -1049,6 +1055,13 @@ router.get('/sync/stream', authenticateToken, async (req, res) => {
         });
       }
     }
+
+    // All messages saved to DB — NOW update lastSyncedAt
+    // (Not before, because page refresh kills SSE mid-loop and unsaved messages would be lost)
+    await prisma.emailIntegration.update({
+      where: { businessId: req.businessId },
+      data: { lastSyncedAt: new Date() }
+    });
 
     // Send completion event
     sendEvent('completed', {
