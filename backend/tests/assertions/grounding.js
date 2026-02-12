@@ -87,11 +87,14 @@ const SAFE_PATTERNS = [
   /bilgi\s*bankamızda/i,
   /sistemi?\s*(?:kontrol|sorgula)/i,
   /sipariş\s*numara\s*(?:nızı|sını|nı)\s*(?:rica|paylaş|ver|ilet)/i,
-  /doğrulama\s*(?:gerekiyor|yapılmalı)/i,
+  /doğrulama\s*(?:gerekiyor|yapılmalı|yapmamız)/i,
   /size\s*(?:nasıl|ne\s*şekilde)\s*yardımcı/i,
   /lütfen\s*(?:sipariş|telefon|bilgi)/i,
   /I\s*(?:don't|cannot|can't)\s*(?:have|access|find)/i,
   /(?:could|would)\s*you\s*(?:provide|share|give)/i,
+  /adres\w*\s*(?:kontrol|sorgula|ulaş|erişebil)/i, // "adresinizi kontrol edebilirim" = safe context
+  /telefon\s*numara\s*(?:nızın|nın)\s*son/i, // "telefon numaranızın son 4 hanesi" = verification request
+  /güvenlik\s*doğrulamas/i, // "güvenlik doğrulaması yapmamız gerekiyor" = safe
 ];
 
 /**

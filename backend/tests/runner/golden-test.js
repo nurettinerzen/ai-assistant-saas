@@ -87,6 +87,13 @@ async function loadFixtures() {
  */
 async function runGoldenScenario(scenario, token, assistantId, fixtures) {
   console.log(`\n▶️  Running ${scenario.id}: ${scenario.name}`);
+
+  // Skip mock-dependent scenarios when TEST_MOCK_TOOLS is not enabled
+  if (scenario.mockTools && process.env.TEST_MOCK_TOOLS !== '1') {
+    console.log(`  ⏭️  Skipping (mockTools=true but TEST_MOCK_TOOLS not set)`);
+    return { status: 'skipped', duration: 0, steps: [], failures: [], warnings: [] };
+  }
+
   if (verbose) {
     console.log(`   Description: ${scenario.description}`);
     console.log(`   MockTools: ${scenario.mockTools}`);
@@ -388,7 +395,7 @@ async function main() {
     console.log('  GOLDEN SUITE SUMMARY');
     console.log('═'.repeat(60));
     for (const scenario of report.scenarios) {
-      const icon = scenario.status === 'passed' ? '✅' : '❌';
+      const icon = scenario.status === 'passed' ? '✅' : scenario.status === 'skipped' ? '⏭️' : '❌';
       console.log(`  ${icon} ${scenario.id}: ${scenario.name} (${scenario.duration}ms)`);
       if (scenario.failures.length > 0) {
         for (const f of scenario.failures) {

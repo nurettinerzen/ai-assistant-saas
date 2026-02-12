@@ -79,7 +79,7 @@ jobs:
           cd backend
           node tests/runner/golden-test.js
 
-      - name: Run replay tests
+      - name: Run replay tests (sample)
         env:
           TEST_ACCOUNT_A_EMAIL: ${{ secrets.TEST_ACCOUNT_A_EMAIL }}
           TEST_ACCOUNT_A_PASSWORD: ${{ secrets.TEST_ACCOUNT_A_PASSWORD }}
@@ -90,6 +90,18 @@ jobs:
         run: |
           cd backend
           node tests/replay/replayRunner.js
+
+      - name: Run replay tests (prod regression)
+        env:
+          TEST_ACCOUNT_A_EMAIL: ${{ secrets.TEST_ACCOUNT_A_EMAIL }}
+          TEST_ACCOUNT_A_PASSWORD: ${{ secrets.TEST_ACCOUNT_A_PASSWORD }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+          API_URL: https://api.telyx.ai
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          cd backend
+          node tests/replay/replayRunner.js --file=tests/replay/prod-regression-202602.json
 
       - name: Upload golden & replay reports
         if: always()
