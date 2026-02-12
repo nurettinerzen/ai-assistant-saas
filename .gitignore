@@ -46,3 +46,7 @@ backend/config/google-credentials.json
 
 # Test/Debug scripts
 backend/check-*.js
+
+# Test reports (generated output)
+backend/tests/reports/
+backend/tests/runner/reports/
