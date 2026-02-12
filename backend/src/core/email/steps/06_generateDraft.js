@@ -370,7 +370,8 @@ ${getToolDataInstructions(toolResults, language)}
 - You are generating a DRAFT that will be reviewed before sending
 - Do NOT claim you have already taken actions (e.g., "I have processed your order")
 - Use tentative language: "I can help with...", "Based on our records...", "I see that..."
-- If tool data is not found, ask for clarifying information
+- If tool data is NOT_FOUND (no record at all), ask for clarifying information
+- If tool data is VERIFICATION_REQUIRED (record found, needs identity check), acknowledge what the customer provided and ask ONLY for the missing verification piece
 
 ### 4. NO PLACEHOLDERS OR INVENTED INFORMATION
 - ABSOLUTELY FORBIDDEN: [Your Name], [Company], [İletişim Bilgileri], etc.
@@ -399,9 +400,11 @@ ${getToolDataInstructions(toolResults, language)}
 
 ### 8. VERIFICATION POLICY
 - If sensitive information is requested but customer identity is not verified:
-  - Ask for minimum required verification info (order number, phone, etc.)
+  - NEVER re-ask for information the customer already provided in their email
+  - Only ask for the MISSING piece needed for verification (e.g. phone last 4 digits)
+  - Acknowledge what the customer already gave you (e.g. "Sipariş numaranızı aldım")
   - Do NOT guess or assume customer details
-  - Be helpful about what info you need
+  - Be helpful and specific about what info you need
 
 Current email classification: ${classification.intent} | Urgency: ${classification.urgency}`;
 }
@@ -641,6 +644,7 @@ function getToolDataInstructions(toolResults, language) {
   const hasSuccess = toolResults.some(r => normalizeOutcome(r.outcome) === ToolOutcome.OK);
   const hasNotFound = toolResults.some(r => normalizeOutcome(r.outcome) === ToolOutcome.NOT_FOUND);
   const hasError = toolResults.some(r => normalizeOutcome(r.outcome) === ToolOutcome.INFRA_ERROR);
+  const hasVerificationRequired = toolResults.some(r => normalizeOutcome(r.outcome) === ToolOutcome.VERIFICATION_REQUIRED);
 
   let instructions = '';
 
@@ -648,6 +652,12 @@ function getToolDataInstructions(toolResults, language) {
     instructions += language === 'TR'
       ? '- Müşteri/sipariş verisi bulundu. Bu bilgileri kullanarak yanıt verin.\n'
       : '- Customer/order data found. Use this information in your response.\n';
+  }
+
+  if (hasVerificationRequired) {
+    instructions += language === 'TR'
+      ? '- Kayıt bulundu ancak güvenlik doğrulaması gerekiyor. ÖNEMLİ: Müşterinin e-postasında zaten verdiği bilgileri (sipariş numarası, isim vb.) TEKRAR sormayın. Sadece eksik olan doğrulama bilgisini isteyin (ör. kayıtlı telefon numarasının son 4 hanesi). Müşterinin verdiği bilgiyi aldığınızı teyit edin.\n'
+      : '- Record found but security verification is required. IMPORTANT: Do NOT re-ask for information the customer already provided in their email (order number, name, etc.). Only ask for the missing verification info (e.g. last 4 digits of registered phone). Acknowledge the information the customer already gave.\n';
   }
 
   if (hasNotFound) {
