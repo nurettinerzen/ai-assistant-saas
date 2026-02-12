@@ -23,7 +23,10 @@
  *   1. This module NEVER mutates state. Returns a decision only.
  *   2. FAIL-CLOSED: Any error -> strength=NONE, required=true.
  *   3. Autoverify is gated by anchor.customerId === proof.matchedCustomerId (in autoverify.js).
- *   4. Email order-level autoverify disabled in MVP (CrmOrder has no customerEmail).
+ *   4. Email order-level: CrmOrder has no customerEmail, but customerId chain
+ *      (phone-based CrmOrder→CustomerData resolution) provides the security gate.
+ *      deriveEmailProof returns STRONG if email matches exactly 1 CustomerData.
+ *      autoverify.js then checks anchor.customerId === proof.matchedCustomerId.
  */
 
 import prisma from '../config/database.js';
@@ -37,13 +40,14 @@ export const ProofStrength = Object.freeze({
   NONE: 'NONE'
 });
 
-/**
- * Email query types where order-level autoverify is blocked (MVP).
- * CrmOrder has no customerEmail field, so we can't verify order ownership via email.
- */
-const ORDER_LEVEL_QUERY_TYPES = new Set([
-  'siparis', 'order', 'ariza', 'ticket'
-]);
+// NOTE: ORDER_LEVEL_QUERY_TYPES MVP restriction REMOVED.
+// CrmOrder has no customerEmail, but the customerId chain (phone-based
+// CrmOrder→CustomerData resolution in customer-data-lookup handler) now
+// provides the security gate. autoverify.js checks:
+//   anchor.customerId != null && proof.matchedCustomerId != null
+//   && proof.matchedCustomerId === anchor.customerId
+// If CrmOrder can't resolve to a CustomerData (0 or 2+ phone matches),
+// anchor.customerId stays null → autoverify is blocked (fail-closed).
 
 // ─── Core Functions ──────────────────────────────────────────────────
 
@@ -209,36 +213,20 @@ async function deriveWhatsAppProof(waPhone, businessId, startTime) {
  * Email `from` is DKIM/SPF verified by the email provider, but
  * forwards, aliases, and shared mailboxes are risks.
  *
- * MVP LIMITATION: CrmOrder has no customerEmail field, so email proof
- * cannot verify order ownership. Email autoverify is limited to
- * CustomerData-level (profile/account) queries.
+ * CrmOrder has no customerEmail field, but the customerId chain
+ * (phone-based CrmOrder→CustomerData resolution) provides security:
+ *   - deriveEmailProof returns STRONG if email matches exactly 1 CustomerData
+ *   - autoverify.js checks anchor.customerId === proof.matchedCustomerId
+ *   - If CrmOrder can't resolve → anchor.customerId is null → autoverify blocked
  *
  * @param {string} emailAddress - From email
  * @param {number} businessId
- * @param {Object} toolRequest - { queryType } to check order-level restriction
+ * @param {Object} toolRequest - { queryType } (kept for API compat, no longer gates proof)
  * @param {number} startTime
  * @returns {Promise<Object>} IdentityProof
  */
 async function deriveEmailProof(emailAddress, businessId, toolRequest, startTime) {
   const normalizedEmail = emailAddress.toLowerCase().trim();
-
-  // MVP restriction: block order/ticket-level autoverify for email
-  // CrmOrder doesn't have customerEmail, so we can't verify order ownership
-  if (toolRequest.queryType && ORDER_LEVEL_QUERY_TYPES.has(toolRequest.queryType.toLowerCase())) {
-    return {
-      strength: ProofStrength.WEAK,
-      matchedCustomerId: null,
-      matchedOrderId: null,
-      reasons: ['email_order_level_not_supported'],
-      evidence: {
-        channel: 'EMAIL',
-        matchType: 'email',
-        queryType: toolRequest.queryType,
-        restriction: 'order_level_blocked_mvp'
-      },
-      durationMs: Date.now() - startTime
-    };
-  }
 
   // Search CustomerData by email
   const customerMatches = await prisma.customerData.findMany({

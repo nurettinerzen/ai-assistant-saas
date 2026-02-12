@@ -169,13 +169,27 @@ describe('deriveIdentityProof', () => {
     expect(proof.matchedCustomerId).toBeNull();
   });
 
-  it('EMAIL + order-level query → WEAK (MVP restriction)', async () => {
+  it('EMAIL + order-level query + single match → STRONG (MVP restriction removed)', async () => {
+    prisma.customerData.findMany.mockResolvedValue([
+      { id: 'cust_1', email: 'test@example.com', companyName: 'Test Co' }
+    ]);
+
     const proof = await deriveIdentityProof(
       { channel: 'EMAIL', fromEmail: 'test@example.com', businessId: 1 },
       { queryType: 'siparis' }
     );
+    expect(proof.strength).toBe(ProofStrength.STRONG);
+    expect(proof.matchedCustomerId).toBe('cust_1');
+  });
+
+  it('EMAIL + order-level query + no match → WEAK', async () => {
+    prisma.customerData.findMany.mockResolvedValue([]);
+
+    const proof = await deriveIdentityProof(
+      { channel: 'EMAIL', fromEmail: 'unknown@example.com', businessId: 1 },
+      { queryType: 'siparis' }
+    );
     expect(proof.strength).toBe(ProofStrength.WEAK);
-    expect(proof.reasons).toContain('email_order_level_not_supported');
   });
 
   it('WHATSAPP + single customer match → STRONG', async () => {
@@ -222,7 +236,7 @@ describe('tryAutoverify', () => {
     vi.clearAllMocks();
   });
 
-  it('EMAIL strong proof + matching customerId → autoverify applies', async () => {
+  it('EMAIL strong proof + matching customerId → autoverify applies + telemetry', async () => {
     prisma.customerData.findMany.mockResolvedValue([
       { id: 'cust_1', email: 'test@example.com', companyName: 'Test' }
     ]);
@@ -232,6 +246,52 @@ describe('tryAutoverify', () => {
     });
 
     const toolResult = makeToolResult();
+    const metrics = {};
+
+    const result = await tryAutoverify({
+      toolResult,
+      toolName: 'customer_data_lookup',
+      business: { id: 1 },
+      state: { intent: 'ORDER' },
+      language: 'TR',
+      metrics
+    });
+
+    expect(result.applied).toBe(true);
+    expect(toolResult.outcome).toBe('OK');
+    expect(toolResult.success).toBe(true);
+    expect(toolResult.stateEvents[0].reason).toBe('channel_proof');
+    expect(toolResult.stateEvents[0].anchor.customerId).toBe('cust_1');
+
+    // Telemetry checks
+    expect(result.telemetry.autoverifyAttempted).toBe(true);
+    expect(result.telemetry.autoverifyApplied).toBe(true);
+    expect(result.telemetry.autoverifySkipReason).toBeNull();
+    expect(result.telemetry.anchorCustomerId).toBe('cust_1');
+    expect(result.telemetry.matchedCustomerId).toBe('cust_1');
+    expect(metrics.identityProof.autoverifyApplied).toBe(true);
+  });
+
+  it('EMAIL + order query + single match → autoverify applies (MVP restriction removed)', async () => {
+    prisma.customerData.findMany.mockResolvedValue([
+      { id: 'cust_1', email: 'test@example.com', companyName: 'Test' }
+    ]);
+    prisma.customerData.findUnique.mockResolvedValue({
+      id: 'cust_1', customerName: 'Test User', phone: '5551234567',
+      email: 'test@example.com', customFields: {}
+    });
+
+    const toolResult = makeToolResult({
+      _identityContext: {
+        channel: 'EMAIL',
+        fromEmail: 'test@example.com',
+        businessId: 1,
+        anchorId: 'cust_1',
+        anchorCustomerId: 'cust_1',
+        anchorSourceTable: 'CustomerData',
+        queryType: 'siparis'  // Previously blocked by MVP restriction
+      }
+    });
 
     const result = await tryAutoverify({
       toolResult,
@@ -243,12 +303,10 @@ describe('tryAutoverify', () => {
 
     expect(result.applied).toBe(true);
     expect(toolResult.outcome).toBe('OK');
-    expect(toolResult.success).toBe(true);
-    expect(toolResult.stateEvents[0].reason).toBe('channel_proof');
-    expect(toolResult.stateEvents[0].anchor.customerId).toBe('cust_1');
+    expect(result.telemetry.autoverifySkipReason).toBeNull();
   });
 
-  it('EMAIL strong proof + customerId MISMATCH → autoverify denied', async () => {
+  it('EMAIL strong proof + customerId MISMATCH → telemetry shows CUSTOMERID_MISMATCH', async () => {
     prisma.customerData.findMany.mockResolvedValue([
       { id: 'cust_OTHER', email: 'test@example.com', companyName: 'Other' }
     ]);
@@ -265,9 +323,13 @@ describe('tryAutoverify', () => {
 
     expect(result.applied).toBe(false);
     expect(toolResult.outcome).toBe('VERIFICATION_REQUIRED');
+    expect(result.telemetry.autoverifyAttempted).toBe(true);
+    expect(result.telemetry.autoverifySkipReason).toBe('CUSTOMERID_MISMATCH');
+    expect(result.telemetry.matchedCustomerId).toBe('cust_OTHER');
+    expect(result.telemetry.anchorCustomerId).toBe('cust_1');
   });
 
-  it('anchorCustomerId null → autoverify denied (fail-closed)', async () => {
+  it('anchorCustomerId null → telemetry shows NO_ANCHOR_CUSTOMERID', async () => {
     prisma.customerData.findMany.mockResolvedValue([
       { id: 'cust_1', email: 'test@example.com' }
     ]);
@@ -293,9 +355,11 @@ describe('tryAutoverify', () => {
     });
 
     expect(result.applied).toBe(false);
+    expect(result.telemetry.autoverifySkipReason).toBe('NO_ANCHOR_CUSTOMERID');
+    expect(result.telemetry.anchorCustomerId).toBeNull();
   });
 
-  it('CHAT channel → autoverify not applied (NONE proof)', async () => {
+  it('CHAT channel → telemetry shows PROOF_WEAK', async () => {
     const toolResult = makeToolResult({
       _identityContext: {
         channel: 'CHAT',
@@ -318,9 +382,12 @@ describe('tryAutoverify', () => {
     });
 
     expect(result.applied).toBe(false);
+    expect(result.telemetry.autoverifyAttempted).toBe(true);
+    expect(result.telemetry.autoverifySkipReason).toBe('PROOF_WEAK');
+    expect(result.telemetry.strength).toBe('NONE');
   });
 
-  it('non-VERIFICATION_REQUIRED outcome → skipped', async () => {
+  it('non-VERIFICATION_REQUIRED outcome → skipped (no telemetry)', async () => {
     const toolResult = makeToolResult({ outcome: 'OK' });
 
     const result = await tryAutoverify({
@@ -332,9 +399,10 @@ describe('tryAutoverify', () => {
     });
 
     expect(result.applied).toBe(false);
+    expect(result.telemetry).toBeNull();
   });
 
-  it('no _identityContext → skipped', async () => {
+  it('no _identityContext → skipped (no telemetry)', async () => {
     const toolResult = { outcome: 'VERIFICATION_REQUIRED', success: true };
 
     const result = await tryAutoverify({
@@ -346,9 +414,10 @@ describe('tryAutoverify', () => {
     });
 
     expect(result.applied).toBe(false);
+    expect(result.telemetry).toBeNull();
   });
 
-  it('DB error during proof derivation → fail-closed', async () => {
+  it('DB error during proof derivation → fail-closed + telemetry PROOF_WEAK', async () => {
     prisma.customerData.findMany.mockRejectedValue(new Error('Connection lost'));
 
     const toolResult = makeToolResult();
@@ -363,8 +432,10 @@ describe('tryAutoverify', () => {
 
     expect(result.applied).toBe(false);
     // deriveIdentityProof catches DB errors internally → returns NONE (not ERROR)
-    // tryAutoverify catch block only fires for unexpected errors outside deriveIdentityProof
+    // tryAutoverify sees NONE → PROOF_WEAK skip reason
     expect(result.telemetry.strength).toBe('NONE');
+    expect(result.telemetry.autoverifyAttempted).toBe(true);
+    expect(result.telemetry.autoverifySkipReason).toBe('PROOF_WEAK');
   });
 
   it('WHATSAPP strong proof + matching customerId → autoverify applies', async () => {
@@ -400,6 +471,38 @@ describe('tryAutoverify', () => {
 
     expect(result.applied).toBe(true);
     expect(toolResult.outcome).toBe('OK');
+    expect(result.telemetry.autoverifySkipReason).toBeNull();
+  });
+
+  it('EMAIL ambiguous (2 customers) → autoverify denied + PROOF_WEAK', async () => {
+    prisma.customerData.findMany.mockResolvedValue([
+      { id: 'cust_1', email: 'shared@example.com' },
+      { id: 'cust_2', email: 'shared@example.com' }
+    ]);
+
+    const toolResult = makeToolResult({
+      _identityContext: {
+        channel: 'EMAIL',
+        fromEmail: 'shared@example.com',
+        businessId: 1,
+        anchorId: 'cust_1',
+        anchorCustomerId: 'cust_1',
+        anchorSourceTable: 'CustomerData',
+        queryType: 'genel'
+      }
+    });
+
+    const result = await tryAutoverify({
+      toolResult,
+      toolName: 'customer_data_lookup',
+      business: { id: 1 },
+      state: {},
+      language: 'TR'
+    });
+
+    expect(result.applied).toBe(false);
+    expect(result.telemetry.autoverifySkipReason).toBe('PROOF_WEAK');
+    expect(result.telemetry.strength).toBe('WEAK');
   });
 });
 

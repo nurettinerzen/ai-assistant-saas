@@ -52,7 +52,15 @@ export async function tryAutoverify({ toolResult, toolName, business, state, lan
   }
 
   if (!isChannelProofEnabled({ businessId: business.id })) {
-    return { applied: false, toolResult, telemetry: null };
+    const skippedTelemetry = {
+      autoverifyAttempted: false,
+      autoverifyApplied: false,
+      autoverifySkipReason: 'FEATURE_DISABLED',
+      channel: idCtx.channel,
+      durationMs: 0
+    };
+    if (metrics) metrics.identityProof = skippedTelemetry;
+    return { applied: false, toolResult, telemetry: skippedTelemetry };
   }
 
   const proofStartTime = Date.now();
@@ -75,20 +83,29 @@ export async function tryAutoverify({ toolResult, toolName, business, state, lan
 
     const proofDurationMs = Date.now() - proofStartTime;
 
+    // Base telemetry — always populated
     const telemetry = {
+      autoverifyAttempted: true,
+      autoverifyApplied: false,
+      autoverifySkipReason: null,
       strength: proof.strength,
       channel: idCtx.channel,
-      matchedCustomerId: proof.matchedCustomerId,
-      autoverifyApplied: false,
+      matchedCustomerId: proof.matchedCustomerId || null,
+      anchorCustomerId: idCtx.anchorCustomerId || null,
+      anchorId: idCtx.anchorId || null,
+      anchorSourceTable: idCtx.anchorSourceTable || null,
+      queryType: idCtx.queryType || null,
       secondFactorRequired: verificationDecision.required,
       reason: verificationDecision.reason,
+      proofReasons: proof.reasons || [],
       durationMs: proofDurationMs
     };
 
     console.log('🔑 [Autoverify] Channel proof result:', telemetry);
 
-    // 3. If proof NOT sufficient → bail out
+    // 3. If proof NOT sufficient → bail out with specific skip reason
     if (verificationDecision.required) {
+      telemetry.autoverifySkipReason = 'PROOF_WEAK';
       if (metrics) metrics.identityProof = { ...telemetry };
       return { applied: false, toolResult, telemetry };
     }
@@ -96,12 +113,29 @@ export async function tryAutoverify({ toolResult, toolName, business, state, lan
     // 4. Anchor-proof match: anchor.customerId must match proof.matchedCustomerId
     const anchorId = idCtx.anchorId;
     const anchorCustomerId = idCtx.anchorCustomerId;
-    const anchorMatchesProof =
-      anchorCustomerId != null &&
-      proof.matchedCustomerId != null &&
-      proof.matchedCustomerId === anchorCustomerId;
 
-    if (!anchorMatchesProof) {
+    if (anchorCustomerId == null) {
+      telemetry.autoverifySkipReason = 'NO_ANCHOR_CUSTOMERID';
+      console.warn('⚠️ [Autoverify] anchorCustomerId is null — autoverify blocked (fail-closed)', {
+        anchorId,
+        anchorSourceTable: idCtx.anchorSourceTable
+      });
+      if (metrics) metrics.identityProof = { ...telemetry };
+      return { applied: false, toolResult, telemetry };
+    }
+
+    if (proof.matchedCustomerId == null) {
+      telemetry.autoverifySkipReason = 'NO_MATCHED_CUSTOMERID';
+      console.warn('⚠️ [Autoverify] proof.matchedCustomerId is null — autoverify blocked', {
+        proofStrength: proof.strength,
+        anchorCustomerId
+      });
+      if (metrics) metrics.identityProof = { ...telemetry };
+      return { applied: false, toolResult, telemetry };
+    }
+
+    if (proof.matchedCustomerId !== anchorCustomerId) {
+      telemetry.autoverifySkipReason = 'CUSTOMERID_MISMATCH';
       console.warn('⚠️ [Autoverify] Proof mismatch: proof.matchedCustomerId ≠ anchor.customerId', {
         proofCustomerId: proof.matchedCustomerId,
         anchorCustomerId,
@@ -123,6 +157,7 @@ export async function tryAutoverify({ toolResult, toolName, business, state, lan
     }
 
     if (!fullRecord) {
+      telemetry.autoverifySkipReason = 'RECORD_NOT_FOUND';
       console.error('❌ [Autoverify] Record not found for anchor', anchorId);
       if (metrics) metrics.identityProof = { ...telemetry };
       return { applied: false, toolResult, telemetry };
@@ -154,6 +189,7 @@ export async function tryAutoverify({ toolResult, toolName, business, state, lan
     ];
 
     telemetry.autoverifyApplied = true;
+    telemetry.autoverifySkipReason = null;
     if (metrics) metrics.identityProof = { ...telemetry };
 
     console.log('🔓 [Autoverify] Override complete — outcome now OK');
@@ -165,11 +201,16 @@ export async function tryAutoverify({ toolResult, toolName, business, state, lan
     console.error('❌ [Autoverify] Error (fail-closed):', proofError.message);
 
     const errorTelemetry = {
+      autoverifyAttempted: true,
+      autoverifyApplied: false,
+      autoverifySkipReason: 'PROOF_DERIVATION_ERROR',
       strength: 'ERROR',
       channel: idCtx.channel,
-      autoverifyApplied: false,
+      matchedCustomerId: null,
+      anchorCustomerId: idCtx.anchorCustomerId || null,
       secondFactorRequired: true,
       reason: 'proof_derivation_error',
+      error: proofError.message,
       durationMs: Date.now() - proofStartTime
     };
 
