@@ -495,7 +495,7 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
       data: {
         businessId,
         name,
-        voiceId,  // Frontend'den gelen voiceId (örn: 'tr-m-cihan')
+        voiceId: voiceId || defaults.voice,  // Frontend'den gelen voiceId, yoksa dil bazlı default
         systemPrompt: fullSystemPrompt,
         model: model || 'gpt-4',
         elevenLabsAgentId: elevenLabsAgentId,  // ✅ 11Labs'den dönen YENİ agent ID
