@@ -8,27 +8,21 @@
  *   "Channel possession signal" — NOT "verified identity".
  *   WhatsApp `from` means the sender possesses that phone number right now.
  *   It does NOT prove they are the account holder (SIM swap, family phone, etc.).
- *   This is why we only skip second factor for non-financial data with single match.
  *
  * Proof Strength Levels:
  *   STRONG  - Channel signal matches exactly ONE customer record in DB
  *   WEAK    - Channel signal exists but match is ambiguous (0 or 2+ records)
  *   NONE    - Channel provides no usable identity signal (e.g., anonymous chat)
  *
- * Data Classification:
- *   FINANCIAL  - Debt, billing, payment, accounting (always requires second factor)
- *   STANDARD   - Order status, tracking, repair status, appointments
- *
- * Decision Matrix:
- *   STRONG + STANDARD  -> skip second factor (autoverify)
- *   STRONG + FINANCIAL -> require second factor
- *   WEAK   + any       -> require second factor
- *   NONE   + any       -> require second factor
+ * Decision Matrix (FINANCIAL distinction REMOVED):
+ *   STRONG  -> skip second factor (autoverify)
+ *   WEAK    -> require second factor
+ *   NONE    -> require second factor
  *
  * SECURITY INVARIANTS:
  *   1. This module NEVER mutates state. Returns a decision only.
  *   2. FAIL-CLOSED: Any error -> strength=NONE, required=true.
- *   3. Financial data ALWAYS requires second factor, even with STRONG proof.
+ *   3. Autoverify is gated by anchor.customerId === proof.matchedCustomerId (in autoverify.js).
  *   4. Email order-level autoverify disabled in MVP (CrmOrder has no customerEmail).
  */
 
@@ -43,26 +37,6 @@ export const ProofStrength = Object.freeze({
   NONE: 'NONE'
 });
 
-export const DataClass = Object.freeze({
-  FINANCIAL: 'FINANCIAL',
-  STANDARD: 'STANDARD'
-});
-
-/**
- * Query types classified as FINANCIAL (always require second factor)
- */
-const FINANCIAL_QUERY_TYPES = new Set([
-  'borc', 'debt', 'muhasebe', 'sgk_borcu', 'vergi_borcu',
-  'odeme', 'payment', 'fatura', 'invoice', 'accounting'
-]);
-
-/**
- * Intent types classified as FINANCIAL
- */
-const FINANCIAL_INTENTS = new Set([
-  'BILLING', 'DEBT_INQUIRY', 'PAYMENT', 'REFUND', 'INVOICE'
-]);
-
 /**
  * Email query types where order-level autoverify is blocked (MVP).
  * CrmOrder has no customerEmail field, so we can't verify order ownership via email.
@@ -72,23 +46,6 @@ const ORDER_LEVEL_QUERY_TYPES = new Set([
 ]);
 
 // ─── Core Functions ──────────────────────────────────────────────────
-
-/**
- * Classify a query type or intent into a data class
- *
- * @param {string} queryType - Tool query_type parameter
- * @param {string} intent - Router intent (optional)
- * @returns {string} DataClass.FINANCIAL or DataClass.STANDARD
- */
-export function classifyDataClass(queryType, intent) {
-  if (queryType && FINANCIAL_QUERY_TYPES.has(queryType.toLowerCase())) {
-    return DataClass.FINANCIAL;
-  }
-  if (intent && FINANCIAL_INTENTS.has(intent.toUpperCase())) {
-    return DataClass.FINANCIAL;
-  }
-  return DataClass.STANDARD;
-}
 
 /**
  * Derive identity proof from channel context
@@ -329,12 +286,15 @@ async function deriveEmailProof(emailAddress, businessId, toolRequest, startTime
 /**
  * Determine if additional verification (second factor) is required.
  *
+ * FINANCIAL distinction REMOVED: STRONG proof is sufficient for ALL query types.
+ * Security is maintained by the anchor.customerId === proof.matchedCustomerId check
+ * in security/autoverify.js — this ensures the channel truly owns the record.
+ *
  * @param {Object} proof - Result of deriveIdentityProof()
- * @param {string} intent - Router intent (ORDER, BILLING, etc.)
- * @param {string} dataClass - DataClass.FINANCIAL or DataClass.STANDARD
+ * @param {string} intent - Router intent (unused, kept for API compat)
  * @returns {Object} { required: boolean, reason: string, requiredSlots: string[] }
  */
-export function shouldRequireAdditionalVerification(proof, intent, dataClass) {
+export function shouldRequireAdditionalVerification(proof, intent) {
   // FAIL-CLOSED: no proof -> always require
   if (!proof || !proof.strength) {
     return {
@@ -344,17 +304,8 @@ export function shouldRequireAdditionalVerification(proof, intent, dataClass) {
     };
   }
 
-  // FINANCIAL data class: ALWAYS require second factor regardless of proof strength
-  if (dataClass === DataClass.FINANCIAL) {
-    return {
-      required: true,
-      reason: 'financial_data_always_requires_second_factor',
-      requiredSlots: ['phone_last4']
-    };
-  }
-
-  // STRONG proof + STANDARD data: skip second factor (autoverify)
-  if (proof.strength === ProofStrength.STRONG && dataClass === DataClass.STANDARD) {
+  // STRONG proof: skip second factor (autoverify)
+  if (proof.strength === ProofStrength.STRONG) {
     return {
       required: false,
       reason: 'channel_proof_sufficient',
@@ -381,8 +332,6 @@ export function shouldRequireAdditionalVerification(proof, intent, dataClass) {
 
 export default {
   ProofStrength,
-  DataClass,
-  classifyDataClass,
   deriveIdentityProof,
   shouldRequireAdditionalVerification
 };

@@ -78,8 +78,10 @@ export async function applyEmailGuardrails(ctx) {
   // C) VERIFICATION POLICY
   // ============================================
   const verificationRequired = toolResults?.some(r => normalizeOutcome(r.outcome) === ToolOutcome.VERIFICATION_REQUIRED);
+  // Extract askFor from tool results so the fallback message only asks for the missing field
+  const askForField = toolResults?.find(r => normalizeOutcome(r.outcome) === ToolOutcome.VERIFICATION_REQUIRED)?._askFor || null;
 
-  const verificationResult = checkVerificationPolicy(modifiedContent, verificationRequired, language);
+  const verificationResult = checkVerificationPolicy(modifiedContent, verificationRequired, language, askForField);
   ctx.guardrailsApplied.push({
     name: 'VERIFICATION_POLICY',
     passed: verificationResult.passed,
@@ -188,7 +190,7 @@ function checkActionClaimGuard(content, hadToolSuccess, hadToolCalls, language) 
  * the LLM must NOT claim it's working on the request or will get back to the customer.
  * Only asking for the missing verification info is acceptable.
  */
-function checkVerificationPolicy(content, verificationRequired, language) {
+function checkVerificationPolicy(content, verificationRequired, language, askFor = null) {
   if (!verificationRequired) {
     return { passed: true, content };
   }
@@ -232,13 +234,13 @@ function checkVerificationPolicy(content, verificationRequired, language) {
   const verificationRequestPatterns = language === 'TR' ? [
     /doğrulama/gi,
     /kimlik/gi,
-    /sipariş numaras/gi,
-    /telefon numaran/gi,
+    /son\s*4\s*hane/gi,
+    /telefon.*son.*hane/gi,
     /bilgilerinizi paylaş/gi
   ] : [
     /verification/gi,
     /verify/gi,
-    /order number/gi,
+    /last\s*4\s*digits/gi,
     /phone number/gi,
     /confirm your identity/gi
   ];
@@ -249,10 +251,23 @@ function checkVerificationPolicy(content, verificationRequired, language) {
     return { passed: !stripped, content: modifiedContent };
   }
 
-  // Add verification request to content
-  const verificationMessage = language === 'TR'
-    ? '\n\nKimliğinizi doğrulamamız için lütfen kayıtlı telefon numaranızı veya sipariş numaranızı paylaşır mısınız?'
-    : '\n\nTo verify your identity, could you please provide your registered phone number or order number?';
+  // STEP 3: Build askFor-aware verification request.
+  // Only ask for the missing piece — do NOT re-ask for data already provided.
+  let verificationMessage;
+  if (askFor === 'phone_last4') {
+    verificationMessage = language === 'TR'
+      ? '\n\nDoğrulama için kayıtlı telefon numaranızın son 4 hanesini paylaşır mısınız?'
+      : '\n\nFor verification, could you please provide the last 4 digits of your registered phone number?';
+  } else if (askFor === 'name') {
+    verificationMessage = language === 'TR'
+      ? '\n\nDoğrulama için adınızı ve soyadınızı paylaşır mısınız?'
+      : '\n\nFor verification, could you please provide your full name?';
+  } else {
+    // Generic fallback (should be rare now)
+    verificationMessage = language === 'TR'
+      ? '\n\nKimliğinizi doğrulamamız için lütfen kayıtlı telefon numaranızın son 4 hanesini paylaşır mısınız?'
+      : '\n\nTo verify your identity, could you please provide the last 4 digits of your registered phone number?';
+  }
 
   return {
     passed: false,

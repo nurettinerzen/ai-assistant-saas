@@ -926,7 +926,7 @@ export async function handleIncomingMessage({
     const verificationState = state.verification?.status || 'none';
     const anchor = state.verification?.anchor;
     const verifiedIdentity = verificationState === 'verified' && anchor ? {
-      customerId: anchor.id,
+      customerId: anchor.customerId || anchor.id,  // Prefer explicit customerId; fallback to id for backward compat
       phone: anchor.phone,
       email: anchor.email,
       orderId: anchor.value,

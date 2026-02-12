@@ -77,6 +77,7 @@ function toStateAnchor(anchor) {
   if (!anchor) return null;
   return {
     id: anchor.id,
+    customerId: anchor.customerId || null,
     type: anchor.anchorType,
     value: anchor.anchorValue,
     name: anchor.name,
@@ -408,7 +409,40 @@ export async function execute(args, business, context = {}) {
     // ============================================================================
 
     const anchor = createAnchor(record, anchorType, anchorValue, sourceTable);
-    console.log('🔐 [Anchor] Created:', { type: anchor.anchorType, value: anchor.anchorValue, name: anchor.name, sourceTable: anchor.sourceTable });
+
+    // Resolve customerId for CrmOrder records (CrmOrder has no FK to CustomerData).
+    // Look up CustomerData by phone to establish the customer identity chain.
+    // If no match or multiple matches → customerId stays null → autoverify blocked (fail-closed).
+    if (sourceTable === 'CrmOrder' && !anchor.customerId && anchor.phone) {
+      try {
+        const phoneForLookup = anchor.phone.replace(/[^\d]/g, '');
+        const phoneVariants = [anchor.phone, phoneForLookup];
+        if (phoneForLookup.startsWith('90') && phoneForLookup.length > 10) {
+          phoneVariants.push(phoneForLookup.slice(2));
+        }
+
+        const customerMatches = await prisma.customerData.findMany({
+          where: {
+            businessId: business.id,
+            OR: phoneVariants.map(p => ({ phone: p }))
+          },
+          select: { id: true },
+          take: 2 // We only need to know if it's exactly 1
+        });
+
+        if (customerMatches.length === 1) {
+          anchor.customerId = customerMatches[0].id;
+          console.log('🔗 [Anchor] Resolved CrmOrder → CustomerData customerId:', anchor.customerId);
+        } else {
+          console.log('🔗 [Anchor] CrmOrder customerId unresolvable (matches:', customerMatches.length, ')');
+        }
+      } catch (resolveErr) {
+        console.error('⚠️ [Anchor] customerId resolution error (fail-closed):', resolveErr.message);
+        // anchor.customerId stays null → autoverify will not apply
+      }
+    }
+
+    console.log('🔐 [Anchor] Created:', { type: anchor.anchorType, value: anchor.anchorValue, name: anchor.name, customerId: anchor.customerId, sourceTable: anchor.sourceTable });
 
     // Attach identity context for central autoverify decision in 06_toolLoop.
     // Tool handler does NOT make the autoverify decision — it only provides context.
@@ -418,6 +452,7 @@ export async function execute(args, business, context = {}) {
       fromEmail: context.fromEmail || null,
       businessId: business.id,
       anchorId: anchor.id,
+      anchorCustomerId: anchor.customerId,  // P0: customerId chain for autoverify
       anchorSourceTable: anchor.sourceTable,
       queryType: query_type
     };

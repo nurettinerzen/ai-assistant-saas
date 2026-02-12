@@ -171,17 +171,29 @@ export function enforceToolRequiredPolicy({ classification, toolResults, languag
     }
 
     if (hasVerificationRequired) {
-      // Need verification
+      // Use the tool's own message + askFor when available.
+      // This prevents re-asking for data already provided (e.g. order number).
+      const verificationToolResult = toolResults?.find(r =>
+        requiredTools.includes(r.toolName) && normalizeOutcome(r.outcome) === ToolOutcome.VERIFICATION_REQUIRED
+      );
+      const toolMessage = verificationToolResult?.message;
+      const askFor = verificationToolResult?._askFor;
+
+      // If tool provided a specific message, use it instead of the generic catalog message.
+      // The tool message already knows which field is missing (e.g. phone_last4 only).
+      const message = toolMessage || getMessageVariant(policy.messageKey, {
+        language,
+        directiveType: 'ASK_VERIFICATION',
+        severity: 'info',
+        intent
+      }).text;
+
       return {
         enforced: true,
         action: 'ASK_VERIFICATION',
-        message: getMessageVariant(policy.messageKey, {
-          language,
-          directiveType: 'ASK_VERIFICATION',
-          severity: 'info',
-          intent
-        }).text,
-        requiredFields: policy.requiredFields,
+        message,
+        askFor,   // e.g. 'phone_last4' — propagated for guardrail awareness
+        requiredFields: askFor ? [askFor] : policy.requiredFields,
         reason: 'VERIFICATION_REQUIRED'
       };
     }

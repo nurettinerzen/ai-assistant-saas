@@ -20,14 +20,7 @@ import {
   shouldTerminate,
   OutcomeEventType
 } from '../../../security/outcomePolicy.js';
-import { isChannelProofEnabled } from '../../../config/feature-flags.js';
-import {
-  deriveIdentityProof,
-  classifyDataClass,
-  shouldRequireAdditionalVerification
-} from '../../../security/identityProof.js';
-import { getFullResult } from '../../../services/verification-service.js';
-import prisma from '../../../config/database.js';
+import { tryAutoverify } from '../../../security/autoverify.js';
 
 const MAX_ITERATIONS = 3;
 
@@ -314,159 +307,28 @@ export async function executeToolLoop(params) {
       }
 
       // ════════════════════════════════════════════════════════════════════
-      // CHANNEL IDENTITY PROOF AUTOVERIFY (Central Decision Point)
+      // CHANNEL IDENTITY PROOF AUTOVERIFY (Shared Helper)
       // ════════════════════════════════════════════════════════════════════
-      // When a tool returns VERIFICATION_REQUIRED with _identityContext,
-      // check if channel possession signal (e.g. WhatsApp phone) can skip
-      // second-factor verification for non-financial queries.
-      //
-      // Decision is CENTRALIZED here (not in tool handler) so that:
-      // 1. Tool handlers remain pure data fetchers
-      // 2. Any tool can benefit from autoverify without code duplication
-      // 3. Single point of control for security policy
-      // ════════════════════════════════════════════════════════════════════
-      const normalizedOutcomeForProof = normalizeOutcome(toolResult.outcome);
-      if (
-        normalizedOutcomeForProof === ToolOutcome.VERIFICATION_REQUIRED &&
-        toolResult._identityContext &&
-        isChannelProofEnabled({ businessId: business.id })
-      ) {
-        const idCtx = toolResult._identityContext;
-        const proofStartTime = Date.now();
+      const autoverifyResult = await tryAutoverify({
+        toolResult, toolName, business, state, language, metrics
+      });
 
-        try {
-          // 1. Derive channel identity proof (DB lookup: phone/email → customer match)
-          const proof = await deriveIdentityProof(
-            {
-              channel: idCtx.channel,
-              channelUserId: idCtx.channelUserId,
-              fromEmail: idCtx.fromEmail,
-              businessId: idCtx.businessId
-            },
-            { queryType: idCtx.queryType },
-            state
-          );
+      if (autoverifyResult.applied) {
+        // Update the collected toolResult in toolResults array
+        const lastToolResult = toolResults[toolResults.length - 1];
+        if (lastToolResult && lastToolResult.name === toolName) {
+          lastToolResult.outcome = ToolOutcome.OK;
+          lastToolResult.output = toolResult.data;
+          lastToolResult.message = toolResult.message;
+          lastToolResult.stateEvents = toolResult.stateEvents;
+        }
 
-          // 2. Classify data sensitivity (FINANCIAL always requires second factor)
-          const dataClass = classifyDataClass(idCtx.queryType, state.intent);
-
-          // 3. Central verification decision
-          const verificationDecision = shouldRequireAdditionalVerification(proof, state.intent, dataClass);
-
-          const proofDurationMs = Date.now() - proofStartTime;
-
-          console.log('🔑 [ToolLoop] Channel proof result:', {
-            channel: idCtx.channel,
-            strength: proof.strength,
-            matchedCustomerId: proof.matchedCustomerId,
-            dataClass,
-            required: verificationDecision.required,
-            reason: verificationDecision.reason,
-            durationMs: proofDurationMs
-          });
-
-          // 4. If proof sufficient: override VERIFICATION_REQUIRED → OK
-          //    SECURITY: anchor-proof match check — proof's matched customer must align with anchor
-          if (!verificationDecision.required) {
-            const anchorId = idCtx.anchorId;
-            const anchorMatchesProof =
-              (proof.matchedCustomerId && proof.matchedCustomerId === anchorId) ||
-              (proof.matchedOrderId && proof.matchedOrderId === anchorId);
-
-            if (anchorMatchesProof) {
-              console.log('✅ [ToolLoop] Channel proof AUTOVERIFY — skipping second factor');
-
-              // Re-fetch full record from DB (tool handler only returned verificationData, not full record)
-              const sourceTable = idCtx.anchorSourceTable || 'CustomerData';
-              let fullRecord;
-              if (sourceTable === 'CrmOrder') {
-                fullRecord = await prisma.crmOrder.findUnique({ where: { id: anchorId } });
-              } else {
-                fullRecord = await prisma.customerData.findUnique({ where: { id: anchorId } });
-              }
-
-              if (fullRecord) {
-                // Get the full result (same as verification-service getFullResult)
-                const fullResultData = getFullResult(fullRecord, idCtx.queryType, language);
-
-                // Override toolResult outcome + data
-                toolResult.outcome = ToolOutcome.OK;
-                toolResult.success = true;
-                toolResult.data = fullResultData.data;
-                toolResult.message = fullResultData.message;
-                toolResult.verificationRequired = false;
-
-                // Replace stateEvents with VERIFICATION_PASSED (channel_proof method)
-                toolResult.stateEvents = [
-                  {
-                    type: OutcomeEventType.VERIFICATION_PASSED,
-                    anchor: toolResult._identityContext.anchorId ? {
-                      id: anchorId,
-                      sourceTable,
-                      type: 'channel_proof'
-                    } : null,
-                    reason: 'channel_proof',
-                    proofStrength: proof.strength,
-                    attempts: 0
-                  }
-                ];
-
-                // Update the collected toolResult in toolResults array
-                const lastToolResult = toolResults[toolResults.length - 1];
-                if (lastToolResult && lastToolResult.name === toolName) {
-                  lastToolResult.outcome = ToolOutcome.OK;
-                  lastToolResult.output = toolResult.data;
-                  lastToolResult.message = toolResult.message;
-                  lastToolResult.stateEvents = toolResult.stateEvents;
-                }
-
-                // Update anchor with verified tool truth
-                if (toolName === 'customer_data_lookup') {
-                  state.anchor = {
-                    truth: toolResult.data,
-                    timestamp: new Date().toISOString()
-                  };
-                }
-
-                console.log('🔓 [ToolLoop] Autoverify override complete — outcome now OK');
-              } else {
-                console.error('❌ [ToolLoop] Autoverify: record not found for anchor', anchorId);
-                // Fall through to normal VERIFICATION_REQUIRED flow
-              }
-            } else {
-              console.warn('⚠️ [ToolLoop] Channel proof mismatch: proof customer ≠ anchor', {
-                proofCustomerId: proof.matchedCustomerId,
-                proofOrderId: proof.matchedOrderId,
-                anchorId
-              });
-              // Fall through to normal VERIFICATION_REQUIRED flow
-            }
-          }
-
-          // 5. Emit telemetry (regardless of decision)
-          if (metrics) {
-            metrics.identityProof = {
-              strength: proof.strength,
-              channel: idCtx.channel,
-              autoverifyApplied: !verificationDecision.required,
-              secondFactorRequired: verificationDecision.required,
-              reason: verificationDecision.reason,
-              durationMs: proofDurationMs
-            };
-          }
-        } catch (proofError) {
-          // FAIL-CLOSED: error in proof derivation → normal verification flow continues
-          console.error('❌ [ToolLoop] Channel proof error (fail-closed):', proofError.message);
-          if (metrics) {
-            metrics.identityProof = {
-              strength: 'ERROR',
-              channel: idCtx.channel,
-              autoverifyApplied: false,
-              secondFactorRequired: true,
-              reason: 'proof_derivation_error',
-              durationMs: Date.now() - proofStartTime
-            };
-          }
+        // Update anchor with verified tool truth
+        if (toolName === 'customer_data_lookup') {
+          state.anchor = {
+            truth: toolResult.data,
+            timestamp: new Date().toISOString()
+          };
         }
       }
 

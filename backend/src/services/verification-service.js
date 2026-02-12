@@ -45,8 +45,15 @@ export function requiresVerification(queryType) {
  * @returns {Object} Anchor object with verification data
  */
 export function createAnchor(record, anchorType, anchorValue, sourceTable = 'CustomerData') {
+  // customerId: For CustomerData records, customerId === id.
+  // For CrmOrder records, customerId is null here; the tool handler resolves it
+  // via resolveCustomerIdForOrder() before attaching _identityContext.
+  // This enables the autoverify chain: anchor.customerId must match proof.matchedCustomerId.
+  const customerId = sourceTable === 'CustomerData' ? record.id : null;
+
   return {
     id: record.id,
+    customerId,
     name: record.customerName || record.contactName || record.companyName,
     phone: record.customerPhone || record.phone,
     email: record.customerEmail || record.email,

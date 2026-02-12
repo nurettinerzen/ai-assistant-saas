@@ -13,6 +13,7 @@
 import { executeTool } from '../../../tools/index.js';
 import { ToolOutcome, ensureMessage, normalizeOutcome } from '../../../tools/toolResult.js';
 import { normalizePhone } from '../../../utils/text.js';
+import { tryAutoverify } from '../../../security/autoverify.js';
 
 // Maximum tool calls per email turn
 const MAX_TOOL_CALLS = 3;
@@ -77,6 +78,26 @@ export async function executeEmailToolLoop(ctx) {
 
       const executionTime = Date.now() - startTime;
 
+      // ════════════════════════════════════════════════════════════════════
+      // CHANNEL IDENTITY PROOF AUTOVERIFY (Email Pipeline)
+      // ════════════════════════════════════════════════════════════════════
+      // When tool returns VERIFICATION_REQUIRED + _identityContext,
+      // attempt autoverify using the sender's email as channel proof.
+      // Uses the same shared helper as chat/WA pipeline.
+      // ════════════════════════════════════════════════════════════════════
+      const autoverifyResult = await tryAutoverify({
+        toolResult: result,
+        toolName: name,
+        business,
+        state: emailState,
+        language: ctx.language,
+        metrics: ctx.metrics
+      });
+
+      if (autoverifyResult.applied) {
+        console.log('📧 [ToolLoop] Autoverify succeeded — tool result overridden to OK');
+      }
+
       // Ensure message is always present (critical for LLM context)
       const validatedResult = ensureMessage(result, name, generateDefaultMessage(name, result));
 
@@ -88,7 +109,8 @@ export async function executeEmailToolLoop(ctx) {
         success: validatedResult.success,
         data: validatedResult.data || null,
         message: validatedResult.message, // Now guaranteed to exist
-        executionTime
+        executionTime,
+        _askFor: result._identityContext ? (result.stateEvents?.[0]?.askFor || null) : null  // Preserve askFor for guardrails
       };
 
       ctx.toolResults.push(toolResult);
@@ -100,8 +122,8 @@ export async function executeEmailToolLoop(ctx) {
       });
 
       // If we got customer data, store it prominently
-      if (name === 'customer_data_lookup' && result.success && result.data) {
-        ctx.customerData = result.data;
+      if (name === 'customer_data_lookup' && validatedResult.success && validatedResult.data) {
+        ctx.customerData = validatedResult.data;
       }
     }
 
@@ -160,6 +182,8 @@ function determineToolsToRun(classification, availableTools, inboundMessage, thr
   const extractedVkn = extractVkn(latestBody) || extractVkn(combinedBody);
   const extractedTc = extractTc(latestBody) || extractTc(combinedBody);
   const extractedTicket = extractTicket(latestBody) || extractTicket(combinedBody);
+  // Extract phone last 4 digits from latest body (follow-up verification answer)
+  const extractedLast4 = extractPhoneLast4(latestBody);
 
   console.log('📧 [ToolLoop] Extracted identifiers (aggregated from thread):', {
     phone: !!extractedPhone,
@@ -168,6 +192,7 @@ function determineToolsToRun(classification, availableTools, inboundMessage, thr
     vkn: !!extractedVkn,
     tc: !!extractedTc,
     ticket: extractedTicket,
+    last4: extractedLast4,
     threadMessagesCount: allInboundBodies.length
   });
 
@@ -204,11 +229,14 @@ function determineToolsToRun(classification, availableTools, inboundMessage, thr
         if (extractedName) args.customer_name = extractedName;
 
         // Set verification_input for single-pass email verification.
-        // Priority: name > full phone (both accepted by verifyAgainstAnchor).
+        // Priority: name > last4 > full phone (all accepted by verifyAgainstAnchor).
         // Tool handler uses this ONLY when state.verification.status === 'pending'
         // (which buildEmailToolState synthesizes for email channel).
         if (extractedName) {
           args.verification_input = extractedName;
+        } else if (extractedLast4) {
+          // Customer sent just 4 digits (phone last 4) as a follow-up verification answer
+          args.verification_input = extractedLast4;
         } else if (extractedPhone) {
           // Phone serves double duty: lookup identifier AND verification input.
           // verifyAgainstAnchor accepts full phone (10+ digits) as valid verification.
@@ -400,6 +428,29 @@ function extractCustomerName(text) {
     return name || null;
   }
 
+  return null;
+}
+
+/**
+ * Extract phone last 4 digits from text.
+ * Matches standalone 4-digit numbers (not part of a longer number).
+ * Used for follow-up verification emails where customer sends just "8674".
+ */
+function extractPhoneLast4(text) {
+  if (!text) return null;
+  // Match a standalone 4-digit number (not adjacent to other digits)
+  const match = text.match(/(?<!\d)\d{4}(?!\d)/);
+  if (!match) return null;
+  // Avoid false positives: if text also contains a full phone or order number, skip
+  // Only return last4 when the text is very short (likely just the 4 digits)
+  // or the 4 digits appear with verification-related context
+  const trimmed = text.trim();
+  // Short message (< 20 chars): very likely a verification answer
+  if (trimmed.length < 20) return match[0];
+  // Contains verification context keywords
+  if (/(?:son\s*4|last\s*4|doğrulama|verification|telefon.*hane)/i.test(text)) {
+    return match[0];
+  }
   return null;
 }
 
