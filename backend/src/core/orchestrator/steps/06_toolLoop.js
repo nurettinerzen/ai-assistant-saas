@@ -174,7 +174,21 @@ export async function executeToolLoop(params) {
 
       let toolResult;
 
-      if (cachedResult) {
+      // ════════════════════════════════════════════════════════════════════
+      // TEST_MOCK_TOOLS HOOK (test-only, zero production impact)
+      // ════════════════════════════════════════════════════════════════════
+      // When TEST_MOCK_TOOLS=1 and state._mockToolOutputs has a fixture
+      // for this tool, return the fixture instead of calling the real tool.
+      // This enables deterministic golden suite testing without side-effects.
+      // ════════════════════════════════════════════════════════════════════
+      if (
+        process.env.TEST_MOCK_TOOLS === '1' &&
+        state._mockToolOutputs &&
+        state._mockToolOutputs[toolName]
+      ) {
+        toolResult = { ...state._mockToolOutputs[toolName] };
+        console.log(`🧪 [ToolLoop] TEST_MOCK_TOOLS: Using mock fixture for ${toolName} (outcome=${toolResult.outcome})`);
+      } else if (cachedResult) {
         // Use cached result (prevents duplicate operations)
         console.log(`♻️ [ToolLoop] Using cached result for ${toolName} (duplicate messageId)`);
         toolResult = cachedResult;

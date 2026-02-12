@@ -1,0 +1,107 @@
+{
+  "_doc": "Golden Suite mock tool outputs. Used by TEST_MOCK_TOOLS=1 mode.",
+
+  "order_found_verified": {
+    "name": "customer_data_lookup",
+    "success": true,
+    "outcome": "OK",
+    "message": "Sipariş bilgisi bulundu.",
+    "data": {
+      "orderId": "ORD-900001",
+      "status": "shipped",
+      "statusTR": "Kargoya verildi",
+      "trackingNumber": "YK34567890123",
+      "carrier": "Yurtiçi Kargo",
+      "shippingAddress": "Kadıköy Mah. Söğütlü Sok. No:12 Daire:3 Kadıköy/İstanbul",
+      "totalAmount": "349.90",
+      "currency": "TRY",
+      "orderDate": "2026-01-28T14:30:00Z",
+      "estimatedDelivery": "2026-02-03",
+      "items": [
+        { "name": "Kablosuz Kulaklık X200", "quantity": 1, "price": "349.90" }
+      ],
+      "customer": {
+        "name": "Ay***",
+        "phone": "+90555****8271",
+        "email": "a***@gmail.com"
+      }
+    },
+    "stateEvents": []
+  },
+
+  "order_not_found": {
+    "name": "customer_data_lookup",
+    "success": true,
+    "outcome": "NOT_FOUND",
+    "message": "Bu bilgilerle eşleşen bir kayıt bulunamadı.",
+    "data": null,
+    "stateEvents": []
+  },
+
+  "order_verification_required": {
+    "name": "customer_data_lookup",
+    "success": true,
+    "outcome": "VERIFICATION_REQUIRED",
+    "message": "Sipariş bilgilerine erişmek için doğrulama gerekiyor.",
+    "data": null,
+    "stateEvents": [
+      { "type": "VERIFICATION_REQUESTED", "fields": ["order_number", "phone_last4"] }
+    ]
+  },
+
+  "order_different_status": {
+    "_doc": "Status: 'processing' — LLM claims 'shipped' ise mismatch",
+    "name": "customer_data_lookup",
+    "success": true,
+    "outcome": "OK",
+    "message": "Sipariş bilgisi bulundu.",
+    "data": {
+      "orderId": "ORD-900002",
+      "status": "processing",
+      "statusTR": "Hazırlanıyor",
+      "trackingNumber": null,
+      "carrier": null,
+      "shippingAddress": "Çankaya Mah. Atatürk Cad. No:45 Çankaya/Ankara",
+      "totalAmount": "1299.00",
+      "currency": "TRY",
+      "orderDate": "2026-02-10T09:15:00Z",
+      "estimatedDelivery": null,
+      "items": [
+        { "name": "Akıllı Saat Pro", "quantity": 1, "price": "1299.00" }
+      ],
+      "customer": {
+        "name": "Me***",
+        "phone": "+90532****4592",
+        "email": "m***@outlook.com"
+      }
+    },
+    "stateEvents": []
+  },
+
+  "order_delivered": {
+    "name": "customer_data_lookup",
+    "success": true,
+    "outcome": "OK",
+    "message": "Sipariş bilgisi bulundu.",
+    "data": {
+      "orderId": "ORD-900003",
+      "status": "delivered",
+      "statusTR": "Teslim edildi",
+      "trackingNumber": "AR98765432109",
+      "carrier": "Aras Kargo",
+      "shippingAddress": "Nilüfer Mah. Çekirge Cad. No:8 Nilüfer/Bursa",
+      "totalAmount": "89.50",
+      "currency": "TRY",
+      "deliveredAt": "2026-02-08T16:45:00Z",
+      "items": [
+        { "name": "USB-C Kablo 2m", "quantity": 2, "price": "44.75" }
+      ],
+      "customer": {
+        "name": "Ze***",
+        "phone": "+90544****1023",
+        "email": "z***@yahoo.com"
+      }
+    },
+    "stateEvents": []
+  }
+}

@@ -27,6 +27,8 @@
     "crm-test": "node tests/runner/crm-test.js",
     "crm-test:verbose": "node tests/runner/crm-test.js --verbose",
     "test:all-smoke": "npm run security-test && npm run functional-test && npm run assistant-test",
+    "golden-test": "node tests/runner/golden-test.js",
+    "replay-test": "node tests/replay/replayRunner.js",
     "test:security": "node tests/security/test-child-safety.js && node tests/security/test-ssrf-protection.js",
     "cleanup-assistants": "node scripts/cleanup-test-assistants.js",
     "cleanup-assistants:delete": "node scripts/cleanup-test-assistants.js --delete"

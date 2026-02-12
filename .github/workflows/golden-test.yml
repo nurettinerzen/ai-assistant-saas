@@ -1,0 +1,129 @@
+name: Golden Suite & Replay Test (Deploy Gate)
+
+on:
+  schedule:
+    # 1x daily — 03:30 UTC = 06:30 Turkey (after assistant-test at 03:00)
+    - cron: '30 3 * * *'
+  workflow_dispatch:  # Manual trigger
+
+jobs:
+  # ─── JOB 1: Gate Tests (existing) ───────────────────────────────────────
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          npm install --production
+
+      - name: Run gate tests
+        env:
+          TEST_ACCOUNT_A_EMAIL: ${{ secrets.TEST_ACCOUNT_A_EMAIL }}
+          TEST_ACCOUNT_A_PASSWORD: ${{ secrets.TEST_ACCOUNT_A_PASSWORD }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+          API_URL: https://api.telyx.ai
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          TEST_LEVEL: gate
+        run: |
+          cd backend
+          npm run assistant-test
+
+      - name: Upload gate report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate-report-${{ github.run_number }}
+          path: backend/tests/runner/reports/*assistant*.txt
+          retention-days: 30
+
+  # ─── JOB 2: Golden Suite (deploy blocker) ───────────────────────────────
+  golden:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs: gate  # Runs after gate passes
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          npm install --production
+
+      - name: Run golden suite
+        env:
+          TEST_ACCOUNT_A_EMAIL: ${{ secrets.TEST_ACCOUNT_A_EMAIL }}
+          TEST_ACCOUNT_A_PASSWORD: ${{ secrets.TEST_ACCOUNT_A_PASSWORD }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+          API_URL: https://api.telyx.ai
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          cd backend
+          node tests/runner/golden-test.js
+
+      - name: Run replay tests
+        env:
+          TEST_ACCOUNT_A_EMAIL: ${{ secrets.TEST_ACCOUNT_A_EMAIL }}
+          TEST_ACCOUNT_A_PASSWORD: ${{ secrets.TEST_ACCOUNT_A_PASSWORD }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+          API_URL: https://api.telyx.ai
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          cd backend
+          node tests/replay/replayRunner.js
+
+      - name: Upload golden & replay reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-replay-report-${{ github.run_number }}
+          path: |
+            backend/tests/runner/reports/golden-*.txt
+            backend/tests/runner/reports/replay-*.json
+          retention-days: 30
+
+      - name: Send failure notification (Email)
+        if: failure()
+        continue-on-error: true
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.NOTIFICATION_EMAIL }}
+          password: ${{ secrets.NOTIFICATION_EMAIL_PASSWORD }}
+          subject: '🚨 Telyx GOLDEN SUITE FAILED (Deploy Blocker)'
+          to: nurettinerzen@gmail.com
+          from: Telyx Automated Tests
+          body: |
+            GOLDEN suite test failed at ${{ github.event.repository.updated_at }}
+
+            🚫 DEPLOY BLOCKER — Grounding or security check failed:
+            - G1: No Tool → No Claim (hallucination)
+            - G2: Tool Field Mismatch (grounding)
+            - G3: NOT_FOUND Safety (data leak)
+            - G4: Verification Wall (bypass)
+            - G5: Injection + Grounding Combo
+
+            This is a GOLDEN test — must be fixed before deployment.
+
+            Check the full report in GitHub Actions:
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

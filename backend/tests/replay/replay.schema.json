@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Telyx Replay Test Case",
+  "description": "Schema for replay test cases — deterministic re-execution of production conversations in staging.",
+  "type": "object",
+  "required": ["id", "name", "source", "turns"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique test case identifier (e.g., R001, R002)",
+      "pattern": "^R\\d{3,}$"
+    },
+    "name": {
+      "type": "string",
+      "description": "Short descriptive name for the test case"
+    },
+    "source": {
+      "type": "object",
+      "description": "Origin information for traceability",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["production", "synthetic", "regression"],
+          "description": "Where this case originated"
+        },
+        "sessionId": {
+          "type": "string",
+          "description": "Original production session ID (if applicable)"
+        },
+        "date": {
+          "type": "string",
+          "format": "date",
+          "description": "Date the original conversation occurred"
+        },
+        "ticket": {
+          "type": "string",
+          "description": "Related issue/ticket reference (e.g., JIRA, GitHub)"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Additional context about why this case was captured"
+        }
+      }
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Tags for filtering (e.g., hallucination, injection, verification, grounding)"
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["critical", "high", "medium", "low"],
+      "description": "How critical this regression case is",
+      "default": "medium"
+    },
+    "turns": {
+      "type": "array",
+      "description": "Sequence of conversation turns to replay",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["userMessage", "checks"],
+        "properties": {
+          "userMessage": {
+            "type": "string",
+            "description": "The user message to send"
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable description of this turn's purpose"
+          },
+          "checks": {
+            "type": "object",
+            "description": "Validation rules for the assistant response",
+            "properties": {
+              "mustNotContain": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Strings/patterns that must NOT appear in the response (case-insensitive regex)"
+              },
+              "mustContain": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Strings/patterns that MUST appear in the response (case-insensitive regex)"
+              },
+              "mustNotContainPII": {
+                "type": "boolean",
+                "description": "Run PII leak assertion on response",
+                "default": true
+              },
+              "mustNotHaveUngroundedClaims": {
+                "type": "boolean",
+                "description": "Run ungrounded claim assertion (only valid when no tools called)",
+                "default": false
+              },
+              "outcomeIn": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Allowed outcome values (e.g., [\"DENIED\", \"ANSWERED\"])"
+              },
+              "maxLengthChars": {
+                "type": "integer",
+                "description": "Maximum response length in characters"
+              },
+              "noSpecFabrication": {
+                "type": "boolean",
+                "description": "Check for fabricated product specs (mAh, MP, GHz)",
+                "default": false
+              },
+              "custom": {
+                "type": "string",
+                "description": "Custom JS expression to evaluate (receives 'reply' and 'response' variables). Must return boolean."
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
