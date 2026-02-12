@@ -5,7 +5,7 @@
 
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
@@ -31,7 +31,9 @@ import {
   ChevronRight,
   AlertCircle,
   Trash2,
-  ExternalLink
+  ExternalLink,
+  Search,
+  Paperclip
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast } from '@/lib/toast';
@@ -57,12 +59,22 @@ export default function EmailDashboardPage() {
   // React Query hooks
   const { data: emailStatus, isLoading: statusLoading } = useEmailStatus();
   const [statusFilter, setStatusFilter] = useState(null);
-  const { data: threads = [], isLoading: threadsLoading, refetch: refetchThreads } = useEmailThreads(statusFilter);
+  const [searchInput, setSearchInput] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const { data: threads = [], isLoading: threadsLoading, refetch: refetchThreads } = useEmailThreads(statusFilter, debouncedSearch || null);
   const { data: stats } = useEmailStats();
   const [selectedThreadId, setSelectedThreadId] = useState(null);
   const { data: selectedThread } = useEmailThread(selectedThreadId, !!selectedThreadId);
 
   const loading = statusLoading || threadsLoading;
+
+  // Debounce search input (300ms)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchInput);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   // UI State
   const [syncing, setSyncing] = useState(false);
@@ -149,8 +161,27 @@ export default function EmailDashboardPage() {
               case 'thread':
                 console.log('New thread:', data.thread);
 
-                // Invalidate and refetch threads and stats
-                queryClient.invalidateQueries({ queryKey: ['email', 'threads'] });
+                // Optimistic update: immediately add/update thread in cache
+                // so it appears in the list without waiting for refetch
+                if (data.thread) {
+                  queryClient.setQueriesData(
+                    { queryKey: ['email', 'threads'] },
+                    (old) => {
+                      if (!Array.isArray(old)) return old;
+                      const idx = old.findIndex(t => t.id === data.thread.id);
+                      if (idx >= 0) {
+                        // Update existing thread
+                        const updated = [...old];
+                        updated[idx] = { ...updated[idx], ...data.thread };
+                        return updated.sort((a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt));
+                      }
+                      // Add new thread at top
+                      return [data.thread, ...old];
+                    }
+                  );
+                }
+
+                // Also invalidate stats (counts may have changed)
                 queryClient.invalidateQueries({ queryKey: ['email', 'stats'] });
                 break;
 
@@ -417,8 +448,26 @@ export default function EmailDashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Thread List */}
         <div className="lg:col-span-1 bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden">
-          <div className="p-4 border-b border-neutral-200 dark:border-neutral-700">
+          <div className="p-4 border-b border-neutral-200 dark:border-neutral-700 space-y-3">
             <h2 className="font-semibold text-neutral-900 dark:text-white">{t('dashboard.emailPage.conversations')}</h2>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
+              <input
+                type="text"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder={locale === 'tr' ? 'Konu, isim veya e-posta ara...' : 'Search subject, name or email...'}
+                className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-300 dark:focus:ring-neutral-600"
+              />
+              {searchInput && (
+                <button
+                  onClick={() => setSearchInput('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2"
+                >
+                  <X className="h-3.5 w-3.5 text-neutral-400 hover:text-neutral-600" />
+                </button>
+              )}
+            </div>
           </div>
           <div className="divide-y divide-neutral-100 dark:divide-neutral-800 max-h-[600px] overflow-y-auto">
             {loading ? (
@@ -438,6 +487,9 @@ export default function EmailDashboardPage() {
                 const hasDraft = thread.drafts?.some(d => d.status === 'PENDING_REVIEW');
                 // Don't show badge for NEW or PENDING_REPLY status (they look the same as "no tag")
                 const showStatusBadge = thread.status && !['NEW', 'PENDING_REPLY'].includes(thread.status);
+                // Check if any message in thread has attachments
+                const attachmentCount = thread.messages?.reduce((sum, m) => sum + (m.attachments?.length || 0), 0) || 0;
+                const hasAttachments = attachmentCount > 0;
 
                 return (
                   <button
@@ -465,6 +517,12 @@ export default function EmailDashboardPage() {
                             <Badge className="bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400 text-xs">
                               {t('dashboard.emailPage.aiDraft')}
                             </Badge>
+                          )}
+                          {hasAttachments && (
+                            <span className="inline-flex items-center gap-1 text-xs text-neutral-500 dark:text-neutral-400">
+                              <Paperclip className="h-3 w-3" />
+                              <span>{attachmentCount > 1 ? `${attachmentCount} ${locale === 'tr' ? 'Ek' : 'Files'}` : (locale === 'tr' ? 'Ek' : 'File')}</span>
+                            </span>
                           )}
                         </div>
                       </div>
@@ -543,6 +601,26 @@ export default function EmailDashboardPage() {
                         {message.bodyText?.substring(0, 500)}
                         {message.bodyText?.length > 500 && '...'}
                       </p>
+                      {message.attachments?.length > 0 && (
+                        <div className="mt-3 pt-2 border-t border-neutral-200 dark:border-neutral-700">
+                          <div className="flex flex-wrap gap-2">
+                            {message.attachments.map((att, idx) => (
+                              <span
+                                key={idx}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-neutral-50 dark:bg-neutral-700 text-xs text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-600"
+                              >
+                                <Paperclip className="h-3 w-3 flex-shrink-0" />
+                                <span className="truncate max-w-[180px]">{att.filename}</span>
+                                {att.size > 0 && (
+                                  <span className="text-neutral-400 flex-shrink-0">
+                                    ({att.size > 1048576 ? `${(att.size / 1048576).toFixed(1)} MB` : `${Math.round(att.size / 1024)} KB`})
+                                  </span>
+                                )}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

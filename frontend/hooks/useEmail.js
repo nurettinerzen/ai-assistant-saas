@@ -19,15 +19,19 @@ export function useEmailStatus() {
 /**
  * Hook to fetch email threads
  * @param {string|null} status - Optional status filter
+ * @param {string|null} search - Optional search query
  * @returns {object} Query result with threads
  */
-export function useEmailThreads(status = null) {
+export function useEmailThreads(status = null, search = null) {
   return useQuery({
-    queryKey: ['email', 'threads', status],
+    queryKey: ['email', 'threads', status, search],
     queryFn: async () => {
       const params = { limit: 500 };
       if (status) {
         params.status = status;
+      }
+      if (search && search.trim()) {
+        params.search = search.trim();
       }
       const response = await apiClient.get('/api/email/threads', { params });
       return response.data.threads || [];

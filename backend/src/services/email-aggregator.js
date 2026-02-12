@@ -269,7 +269,8 @@ async disconnect(businessId) {
       return { thread, message: existingMessage, isNew: false };
     }
 
-    // Create message
+    // Create message — set createdAt to actual mail date for correct chronological ordering
+    const mailDate = new Date(message.date);
     const savedMessage = await prisma.emailMessage.create({
       data: {
         threadId: thread.id,
@@ -283,8 +284,9 @@ async disconnect(businessId) {
         bodyHtml: message.bodyHtml,
         attachments: message.attachments,
         status: direction === 'INBOUND' ? 'RECEIVED' : 'SENT',
-        receivedAt: direction === 'INBOUND' ? new Date(message.date) : null,
-        sentAt: direction === 'OUTBOUND' ? new Date(message.date) : null
+        receivedAt: direction === 'INBOUND' ? mailDate : null,
+        sentAt: direction === 'OUTBOUND' ? mailDate : null,
+        createdAt: mailDate  // Override default now() — ensures orderBy createdAt = chronological mail order
       }
     });
 
@@ -295,11 +297,18 @@ async disconnect(businessId) {
    * Get threads from database
    */
   async getThreadsFromDb(businessId, options = {}) {
-    const { status, limit = 20, offset = 0 } = options;
+    const { status, limit = 20, offset = 0, search } = options;
 
     const where = { businessId };
     if (status) {
       where.status = status;
+    }
+    if (search && search.trim()) {
+      where.OR = [
+        { subject: { contains: search.trim(), mode: 'insensitive' } },
+        { customerEmail: { contains: search.trim(), mode: 'insensitive' } },
+        { customerName: { contains: search.trim(), mode: 'insensitive' } }
+      ];
     }
 
     const threads = await prisma.emailThread.findMany({
@@ -342,6 +351,16 @@ async disconnect(businessId) {
         }
       }
     });
+
+    // Post-query sort: use actual mail date (receivedAt/sentAt) for correct chronological order
+    // Handles legacy records where createdAt was set to DB insert time, not mail date
+    if (thread?.messages) {
+      thread.messages.sort((a, b) => {
+        const dateA = new Date(a.receivedAt || a.sentAt || a.createdAt);
+        const dateB = new Date(b.receivedAt || b.sentAt || b.createdAt);
+        return dateA - dateB;
+      });
+    }
 
     return thread;
   }

@@ -392,19 +392,32 @@ async syncNewMessages(businessId) {
       console.log('First sync: fetching last 7 days');
     }
 
-    const { messages } = await this.getMessages(businessId, {
-      maxResults: 500, // Remove practical limit - fetch all emails from the period
-      query,
-      labelIds: ['INBOX']
-    });
+    // Paginate through ALL pages — Gmail API returns max ~100 IDs per page
+    let allMessages = [];
+    let pageToken = null;
+    let pageCount = 0;
 
-    // Update last sync time
+    do {
+      const { messages, nextPageToken } = await this.getMessages(businessId, {
+        maxResults: 100,  // Gmail optimal page size
+        query,
+        labelIds: ['INBOX'],
+        pageToken
+      });
+      allMessages = allMessages.concat(messages);
+      pageToken = nextPageToken;
+      pageCount++;
+      console.log(`📧 [Gmail Sync] Page ${pageCount}: fetched ${messages.length} messages (total: ${allMessages.length}, hasMore: ${!!pageToken})`);
+    } while (pageToken);
+
+    // Update last sync time AFTER all pages fetched successfully
     await prisma.emailIntegration.update({
       where: { businessId },
       data: { lastSyncedAt: new Date() }
     });
 
-    return messages;
+    console.log(`📧 [Gmail Sync] Complete: ${allMessages.length} messages in ${pageCount} page(s)`);
+    return allMessages;
   } catch (error) {
     console.error('Sync messages error:', error);
     throw error;
@@ -441,9 +454,10 @@ async disconnect(businessId) {
       return header ? header.value : null;
     };
 
-    // Get body content (attachments are intentionally not processed - security measure)
+    // Get body content + attachment metadata (content NOT downloaded — security measure)
     let bodyHtml = '';
     let bodyText = '';
+    const attachmentMeta = [];
 
     const processPayload = (payload) => {
       if (payload.mimeType === 'text/html') {
@@ -454,7 +468,15 @@ async disconnect(businessId) {
 
       if (payload.parts) {
         for (const part of payload.parts) {
-          // Skip attachments - only process text content (security measure)
+          // Collect attachment METADATA only (no content download)
+          if (part.filename && part.body?.attachmentId) {
+            attachmentMeta.push({
+              filename: part.filename,
+              mimeType: part.mimeType,
+              size: part.body.size || 0
+            });
+          }
+          // Process text parts recursively
           if (!part.filename && !part.body?.attachmentId) {
             processPayload(part);
           }
@@ -500,7 +522,7 @@ async disconnect(businessId) {
       references: getHeader('References'),
       bodyText: cleanBodyText,
       bodyHtml,
-      attachments: [], // Attachments disabled for security
+      attachments: attachmentMeta, // Metadata only — file content NOT downloaded (security)
       snippet: message.snippet,
       labelIds: message.labelIds || [],
       isUnread: (message.labelIds || []).includes('UNREAD')

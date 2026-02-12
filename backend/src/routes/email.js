@@ -211,14 +211,15 @@ router.get('/status', authenticateToken, async (req, res) => {
  */
 router.get('/threads', authenticateToken, requireProOrAbove, async (req, res) => {
   try {
-    const { status, limit = 20, offset = 0 } = req.query;
+    const { status, limit = 20, offset = 0, search } = req.query;
 
     const { threads, total } = await emailAggregator.getThreadsFromDb(
       req.businessId,
       {
         status,
         limit: parseInt(limit),
-        offset: parseInt(offset)
+        offset: parseInt(offset),
+        search: search || null
       }
     );
 
@@ -1024,13 +1025,13 @@ router.get('/sync/stream', authenticateToken, async (req, res) => {
         }
 
         // Send thread update event to frontend
-        // Fetch full thread data with messages and drafts
+        // Fetch full thread data with last message + draft for list display
         const fullThread = await prisma.emailThread.findUnique({
           where: { id: thread.id },
           include: {
             messages: {
-              orderBy: { createdAt: 'asc' },
-              take: 5
+              orderBy: { createdAt: 'desc' },
+              take: 1
             },
             drafts: {
               where: { status: 'PENDING_REVIEW' },
