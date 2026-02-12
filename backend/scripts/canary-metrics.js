@@ -53,14 +53,9 @@ async function collectMetrics() {
   // 1. Total chat sessions
   const totalSessions = await prisma.chatLog.count({ where });
 
-  // 2. Total messages (approximate from messageCount)
-  const sessionData = await prisma.chatLog.aggregate({
-    where,
-    _sum: { messageCount: true },
-    _avg: { messageCount: true },
-  });
-  const totalMessages = sessionData._sum.messageCount || 0;
-  const avgMsgsPerSession = sessionData._avg.messageCount || 0;
+  // 2. Total messages — calculated from actual JSON messages array
+  //    (messageCount column is not reliably populated)
+  let totalMessages = 0;
 
   // 3. Security events breakdown
   const securityEvents = await prisma.securityEvent.findMany({
@@ -78,11 +73,10 @@ async function collectMetrics() {
 
   // 4. Chat logs with messages — scan for confabulation signals
   //    (LLM claims without tool calls in response)
+  //    NOTE: messageCount field is not reliably populated, so we fetch all
+  //    chats and filter by actual messages content instead
   const chatsWithMessages = await prisma.chatLog.findMany({
-    where: {
-      ...where,
-      messageCount: { gt: 0 }
-    },
+    where,
     select: { id: true, messages: true, businessId: true },
     take: 500 // Cap for performance
   });
@@ -113,8 +107,13 @@ async function collectMetrics() {
     /^(iade|değişim|kargo|ne zaman|nerede|fiyat)/i,
   ];
 
+  let analyzedSessions = 0;
   for (const chat of chatsWithMessages) {
     const msgs = Array.isArray(chat.messages) ? chat.messages : [];
+    if (msgs.length === 0) continue;
+
+    analyzedSessions++;
+    totalMessages += msgs.length;
 
     for (let i = 0; i < msgs.length; i++) {
       const msg = msgs[i];
@@ -127,10 +126,20 @@ async function collectMetrics() {
       // Check confabulation: assistant claims data without preceding tool call
       // Heuristic: If response has order/tracking/amount data but previous user msg
       // didn't provide an order number → suspicious
+      //
+      // Safe contexts (not confabulation):
+      // - User provided order number earlier in conversation
+      // - User is providing verification code (4 digits, phone last4)
+      // - Assistant has toolCalls in this turn (data is grounded)
       const hasDataClaim = confabPatterns.some(p => p.test(content));
       const userProvidedOrder = /ORD-\d+|SIP-\d+/i.test(prevUserMsg);
+      const isVerificationResponse = /^\d{4}$/.test(prevUserMsg.trim()); // 4-digit verification code
+      const hadToolCallInTurn = msg.toolCalls && msg.toolCalls.length > 0;
+      const conversationHasOrder = msgs.slice(0, i).some(m =>
+        /ORD-\d+|SIP-\d+/i.test(m.content || '')
+      );
 
-      if (hasDataClaim && !userProvidedOrder) {
+      if (hasDataClaim && !userProvidedOrder && !isVerificationResponse && !hadToolCallInTurn && !conversationHasOrder) {
         confabulationCount++;
       }
 
@@ -156,6 +165,7 @@ async function collectMetrics() {
   // Calculate rates
   const confabulationRate = totalTurns > 0 ? confabulationCount / totalTurns : 0;
   const hardblockRate = totalTurns > 0 ? hardblockCount / totalTurns : 0;
+  const avgMsgsPerSession = analyzedSessions > 0 ? totalMessages / analyzedSessions : 0;
 
   return {
     timeRange: {
@@ -168,7 +178,7 @@ async function collectMetrics() {
       totalSessions,
       totalMessages,
       avgMsgsPerSession: Math.round(avgMsgsPerSession * 10) / 10,
-      analyzedSessions: chatsWithMessages.length,
+      analyzedSessions,
       analyzedTurns: totalTurns
     },
     metrics: {
