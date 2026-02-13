@@ -26,9 +26,9 @@ export const TOOL_FIELD_WHITELIST = {
   },
 
   customer_data_lookup: {
-    required: ['customerId', 'phone'],
-    priority: ['name', 'email', 'lastOrderDate', 'order'],
-    optional: ['address', 'preferences', 'notes']
+    required: ['customerName'],
+    priority: ['phone', 'email', 'order', 'verified'],
+    optional: ['address', 'preferences', 'notes', 'debt', 'appointment']
   },
 
   shipping_tracking: {
