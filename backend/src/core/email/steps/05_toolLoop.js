@@ -12,7 +12,7 @@
 
 import { executeTool } from '../../../tools/index.js';
 import { ToolOutcome, ensureMessage, normalizeOutcome } from '../../../tools/toolResult.js';
-import { normalizePhone } from '../../../utils/text.js';
+import { normalizePhone, phoneSearchVariants } from '../../../utils/text.js';
 import { tryAutoverify } from '../../../security/autoverify.js';
 
 // Maximum tool calls per email turn
@@ -353,11 +353,37 @@ function buildEmailToolState(ctx, toolName, args) {
 
 /**
  * Extract phone number from text
+ * Supports Turkish (+90/0XXX), US (+1XXX), and other international formats.
+ *
+ * Strategy: Try patterns from most specific to most general.
+ * We normalize and return the first match.
  */
 function extractPhone(text) {
   if (!text) return null;
-  const match = text.match(/(?:\+90|0)?[5][0-9]{9}|(?:\+90|0)?[2-4][0-9]{9}/);
-  return match ? normalizePhone(match[0]) : null;
+
+  // Pattern 1: International with + prefix: +1 424 527 5089, +90 532 123 4567, +44 7911 123456
+  const intlMatch = text.match(/\+\d[\d\s\-().]{7,18}\d/);
+  if (intlMatch) return normalizePhone(intlMatch[0]);
+
+  // Pattern 2: Turkish mobile/landline: 0532 123 45 67 or 532 123 45 67
+  const trMatch = text.match(/(?:0)?[2-5]\d{2}[\s\-.]?\d{3}[\s\-.]?\d{2}[\s\-.]?\d{2}/);
+  if (trMatch) return normalizePhone(trMatch[0]);
+
+  // Pattern 3: North American: (424) 527-5089, 424-527-5089, 424 527 5089
+  const naMatch = text.match(/\(?\d{3}\)?[\s\-.]?\d{3}[\s\-.]?\d{4}/);
+  if (naMatch) return normalizePhone(naMatch[0]);
+
+  // Pattern 4: Bare digits that look like phone (10-15 digits, possibly with spaces/dashes)
+  const bareMatch = text.match(/\d[\d\s\-]{8,17}\d/);
+  if (bareMatch) {
+    const digits = bareMatch[0].replace(/\D/g, '');
+    // Only accept if 10-15 digits (plausible phone number length)
+    if (digits.length >= 10 && digits.length <= 15) {
+      return normalizePhone(bareMatch[0]);
+    }
+  }
+
+  return null;
 }
 
 /**

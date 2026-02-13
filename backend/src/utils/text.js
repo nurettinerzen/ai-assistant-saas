@@ -48,18 +48,45 @@ export function normalizeTurkish(text) {
 export function normalizePhone(phone) {
   if (!phone) return '';
 
-  // Remove all non-digit characters
-  let cleaned = String(phone).replace(/\D/g, '');
+  const raw = String(phone).trim();
 
-  // Remove leading zeros
+  // Remove all non-digit characters (but remember if + was present)
+  const hadPlus = raw.startsWith('+');
+  let cleaned = raw.replace(/\D/g, '');
+
+  // Remove leading zeros (Turkish convention: 05XX → 5XX)
   cleaned = cleaned.replace(/^0+/, '');
 
-  // Add Turkey country code if missing
+  // If caller explicitly provided + prefix or a known country code,
+  // respect it instead of forcing +90 (Turkey).
+  // Known country codes: 1 (US/CA), 44 (UK), 49 (DE), 33 (FR), 90 (TR), etc.
+  // Heuristic: if number has 11+ digits and starts with a non-90 code,
+  // or had a + prefix, it's likely international.
+  if (hadPlus) {
+    // User explicitly typed +1... or +44... — trust the country code
+    return '+' + cleaned;
+  }
+
+  // Turkish mobile/landline: 10 digits starting with [2-5]
+  // e.g. 5321234567, 2121234567
+  if (cleaned.length === 10 && /^[2-5]/.test(cleaned)) {
+    return '+90' + cleaned;
+  }
+
+  // Already has Turkish country code: 90 + 10 digits
+  if (cleaned.startsWith('90') && cleaned.length === 12) {
+    return '+' + cleaned;
+  }
+
+  // International: 11+ digits not starting with 90 (e.g. 14245275089 = US)
+  if (cleaned.length >= 11 && !cleaned.startsWith('90')) {
+    return '+' + cleaned;
+  }
+
+  // Fallback: assume Turkish (backward compatible)
   if (!cleaned.startsWith('90')) {
     cleaned = '90' + cleaned;
   }
-
-  // Add + prefix
   return '+' + cleaned;
 }
 
@@ -77,6 +104,65 @@ export function normalizePhone(phone) {
  */
 export function comparePhones(phone1, phone2) {
   return normalizePhone(phone1) === normalizePhone(phone2);
+}
+
+/**
+ * Generate phone search variants for flexible DB matching.
+ *
+ * DB stores phones in various formats (with/without country code,
+ * with/without +, etc.). This returns all plausible variants to
+ * search against, ensuring we find a match regardless of how
+ * the number was stored.
+ *
+ * @param {string} phone - Raw phone input
+ * @returns {string[]} Unique search variants
+ *
+ * @example
+ * phoneSearchVariants('+905321234567')
+ * → ['+905321234567', '905321234567', '5321234567']
+ *
+ * phoneSearchVariants('14245275089')
+ * → ['+14245275089', '14245275089', '4245275089']
+ *
+ * phoneSearchVariants('4245275089')
+ * → ['+904245275089', '904245275089', '4245275089', '14245275089']
+ */
+export function phoneSearchVariants(phone) {
+  if (!phone) return [];
+
+  const raw = String(phone).trim();
+  const digits = raw.replace(/\D/g, '');
+  const normalized = normalizePhone(raw);
+  const normalizedDigits = normalized.replace(/^\+/, '');
+
+  const variants = new Set();
+
+  // 1. Normalized form (what normalizePhone returns)
+  variants.add(normalized);           // e.g. +905321234567 or +14245275089
+  variants.add(normalizedDigits);     // e.g. 905321234567 or 14245275089
+
+  // 2. Without any country code prefix (strip +90, +1, etc.)
+  //    TR: 905321234567 → 5321234567
+  //    US: 14245275089 → 4245275089
+  if (normalizedDigits.startsWith('90') && normalizedDigits.length > 10) {
+    variants.add(normalizedDigits.slice(2)); // Strip +90 → local TR number
+  }
+  if (normalizedDigits.startsWith('1') && normalizedDigits.length === 11) {
+    variants.add(normalizedDigits.slice(1)); // Strip +1 → local US number
+  }
+
+  // 3. Raw input as-is (in case DB stores in the same format user typed)
+  variants.add(raw);
+  if (digits && digits !== raw) variants.add(digits);
+
+  // 4. Ambiguous 10-digit numbers: could be TR local or US without country code
+  //    Try adding +1 prefix as an alternative (US interpretation)
+  if (digits.length === 10 && /^[2-9]/.test(digits)) {
+    variants.add('1' + digits);       // US: 4245275089 → 14245275089
+    variants.add('+1' + digits);      // US: 4245275089 → +14245275089
+  }
+
+  return [...variants].filter(Boolean);
 }
 
 /**

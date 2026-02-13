@@ -30,7 +30,7 @@
  */
 
 import prisma from '../config/database.js';
-import { normalizePhone } from '../utils/text.js';
+import { normalizePhone, phoneSearchVariants } from '../utils/text.js';
 
 // ─── Constants ───────────────────────────────────────────────────────
 
@@ -116,21 +116,17 @@ export async function deriveIdentityProof(channelContext, toolRequest = {}, stat
  * @returns {Promise<Object>} IdentityProof
  */
 async function deriveWhatsAppProof(waPhone, businessId, startTime) {
-  const normalizedPhone = normalizePhone(waPhone);
-  // Strip country code for flexible matching (DB may store with or without +90)
-  const phoneDigits = normalizedPhone.replace(/^\+/, '');
-  const withoutCountry = phoneDigits.replace(/^90/, '');
+  // Generate all plausible phone format variants for flexible DB matching
+  // Supports Turkish (+90), US (+1), and other international formats
+  const variants = phoneSearchVariants(waPhone);
+  const phoneOrConditions = variants.map(v => ({ phone: v }));
+  const customerPhoneOrConditions = variants.map(v => ({ customerPhone: v }));
 
   // Search CustomerData by phone (uses [businessId, phone] index)
   const customerMatches = await prisma.customerData.findMany({
     where: {
       businessId,
-      OR: [
-        { phone: normalizedPhone },
-        { phone: phoneDigits },
-        { phone: withoutCountry },
-        { phone: waPhone }
-      ]
+      OR: phoneOrConditions
     },
     select: { id: true, phone: true, companyName: true },
     take: 3 // We only need to know if it's 0, 1, or 2+
@@ -140,12 +136,7 @@ async function deriveWhatsAppProof(waPhone, businessId, startTime) {
   const orderMatches = await prisma.crmOrder.findMany({
     where: {
       businessId,
-      OR: [
-        { customerPhone: normalizedPhone },
-        { customerPhone: phoneDigits },
-        { customerPhone: withoutCountry },
-        { customerPhone: waPhone }
-      ]
+      OR: customerPhoneOrConditions
     },
     select: { id: true, customerPhone: true, orderNumber: true },
     take: 3

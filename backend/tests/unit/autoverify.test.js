@@ -50,6 +50,17 @@ vi.mock('../../src/messages/messageCatalog.js', () => ({
 // ─── Mock text utils ────────────────────────────────────────────────
 vi.mock('../../src/utils/text.js', () => ({
   normalizePhone: vi.fn((p) => p),
+  phoneSearchVariants: vi.fn((p) => {
+    // Return plausible variants so deriveWhatsAppProof can match DB mocks
+    if (!p) return [];
+    const raw = String(p).trim();
+    const digits = raw.replace(/\D/g, '');
+    const variants = new Set([raw, digits]);
+    if (raw.startsWith('+')) variants.add(raw.slice(1));
+    if (digits.startsWith('90') && digits.length > 10) variants.add(digits.slice(2));
+    if (digits.startsWith('1') && digits.length === 11) variants.add(digits.slice(1));
+    return [...variants].filter(Boolean);
+  }),
   compareTurkishNames: vi.fn(() => false),
   comparePhones: vi.fn(() => false)
 }));

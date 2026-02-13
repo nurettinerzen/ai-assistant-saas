@@ -11,7 +11,7 @@
  */
 
 import prisma from '../../prismaClient.js';
-import { normalizePhone, comparePhones } from '../../utils/text.js';
+import { normalizePhone, comparePhones, phoneSearchVariants } from '../../utils/text.js';
 
 /**
  * Normalize order number for consistent lookups
@@ -346,27 +346,23 @@ export async function execute(args, business, context = {}) {
     // SECURITY NOTE: Phone lookup is allowed, but will ALWAYS require name verification
     // before returning any PII (enforced by checkVerification below)
     else if (phone) {
-      // Normalize phone for consistent matching
-      // DB stores as "5328274926" (10 digits), user may say "05328274926" or "+905328274926"
+      // Generate all plausible phone variants for flexible matching.
+      // DB may store as "5328274926", "+905328274926", "14245275089", etc.
+      // phoneSearchVariants handles TR, US, and ambiguous formats.
+      const variants = phoneSearchVariants(phone);
       const normalizedPhone = normalizePhone(phone);
-      // Also try without country code (just 10 digits) for DB compatibility
-      const phoneWithoutCountry = normalizedPhone.replace(/^\+90/, '');
 
       console.log('🔍 [Lookup] Searching by phone:', {
         original: phone,
         normalized: normalizedPhone,
-        withoutCountry: phoneWithoutCountry
+        variants: variants.length
       });
 
       // First try CustomerData table
       record = await prisma.customerData.findFirst({
         where: {
           businessId: business.id,
-          OR: [
-            { phone: normalizedPhone },
-            { phone: phoneWithoutCountry },
-            { phone: phone } // Original as fallback
-          ]
+          OR: variants.map(v => ({ phone: v }))
         }
       });
 
@@ -376,11 +372,7 @@ export async function execute(args, business, context = {}) {
         const crmOrder = await prisma.crmOrder.findFirst({
           where: {
             businessId: business.id,
-            OR: [
-              { customerPhone: normalizedPhone },
-              { customerPhone: phoneWithoutCountry },
-              { customerPhone: phone }
-            ]
+            OR: variants.map(v => ({ customerPhone: v }))
           }
         });
 
@@ -393,7 +385,7 @@ export async function execute(args, business, context = {}) {
 
       if (record) {
         anchorType = 'phone';
-        anchorValue = phoneWithoutCountry;
+        anchorValue = normalizedPhone.replace(/^\+/, '');
       }
     }
 
@@ -415,16 +407,13 @@ export async function execute(args, business, context = {}) {
     // If no match or multiple matches → customerId stays null → autoverify blocked (fail-closed).
     if (sourceTable === 'CrmOrder' && !anchor.customerId && anchor.phone) {
       try {
-        const phoneForLookup = anchor.phone.replace(/[^\d]/g, '');
-        const phoneVariants = [anchor.phone, phoneForLookup];
-        if (phoneForLookup.startsWith('90') && phoneForLookup.length > 10) {
-          phoneVariants.push(phoneForLookup.slice(2));
-        }
+        // Use phoneSearchVariants for international-aware matching
+        const resolveVariants = phoneSearchVariants(anchor.phone);
 
         const customerMatches = await prisma.customerData.findMany({
           where: {
             businessId: business.id,
-            OR: phoneVariants.map(p => ({ phone: p }))
+            OR: resolveVariants.map(p => ({ phone: p }))
           },
           select: { id: true },
           take: 2 // We only need to know if it's exactly 1
