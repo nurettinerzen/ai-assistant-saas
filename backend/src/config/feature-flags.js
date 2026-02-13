@@ -73,7 +73,7 @@ export const FEATURE_FLAGS = {
   //   Financial queries (debt/billing/payment) ALWAYS require second factor.
   // When disabled: All channels require explicit verification (current behavior).
   // Rollback: Set FEATURE_CHANNEL_PROOF_AUTOVERIFY=false
-  CHANNEL_PROOF_AUTOVERIFY: process.env.FEATURE_CHANNEL_PROOF_AUTOVERIFY === 'true' || false,
+  CHANNEL_PROOF_AUTOVERIFY: process.env.FEATURE_CHANNEL_PROOF_AUTOVERIFY !== 'false', // Default: ON
 
   // Canary: Comma-separated businessIds to enable autoverify selectively
   //   e.g. FEATURE_CHANNEL_PROOF_CANARY_KEYS=42,108
