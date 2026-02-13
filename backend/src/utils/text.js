@@ -145,7 +145,16 @@ export function phoneSearchVariants(phone) {
   //    TR: 905321234567 → 5321234567
   //    US: 14245275089 → 4245275089
   if (normalizedDigits.startsWith('90') && normalizedDigits.length > 10) {
-    variants.add(normalizedDigits.slice(2)); // Strip +90 → local TR number
+    const withoutTR = normalizedDigits.slice(2);
+    variants.add(withoutTR); // Strip +90 → local TR number
+
+    // If the local part is 10 digits starting with [2-9], it could also be a US number
+    // that was wrongly assumed as TR by normalizePhone.
+    // e.g. 4245275089 → normalizePhone → +904245275089 → but actually US +14245275089
+    if (withoutTR.length === 10 && /^[2-9]/.test(withoutTR)) {
+      variants.add('1' + withoutTR);       // US interpretation: 14245275089
+      variants.add('+1' + withoutTR);      // US interpretation: +14245275089
+    }
   }
   if (normalizedDigits.startsWith('1') && normalizedDigits.length === 11) {
     variants.add(normalizedDigits.slice(1)); // Strip +1 → local US number
