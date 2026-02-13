@@ -18,6 +18,33 @@ import { getMessageVariant } from '../../../messages/messageCatalog.js';
  */
 // NOTE: requiredFields use CANONICAL tool schema names (via fieldNormalizer.js).
 // order_number (not order_id), phone (not phone_number), etc.
+
+// Human-readable labels for internal field names (used in NOT_FOUND messages)
+const FIELD_LABELS = {
+  TR: {
+    order_number: 'sipariş numarası',
+    phone: 'telefon numarası',
+    invoice_number: 'fatura numarası',
+    tracking_number: 'kargo takip numarası',
+    product_id: 'ürün kodu',
+    product_name: 'ürün adı',
+    sku: 'stok kodu',
+    return_number: 'iade numarası',
+    email: 'e-posta adresi'
+  },
+  EN: {
+    order_number: 'order number',
+    phone: 'phone number',
+    invoice_number: 'invoice number',
+    tracking_number: 'tracking number',
+    product_id: 'product ID',
+    product_name: 'product name',
+    sku: 'SKU',
+    return_number: 'return number',
+    email: 'email address'
+  }
+};
+
 const TOOL_REQUIRED_INTENTS = {
   ORDER: {
     tools: ['customer_data_lookup', 'check_order_status_crm'],
@@ -200,6 +227,8 @@ export function enforceToolRequiredPolicy({ classification, toolResults, languag
 
     if (hasNotFound) {
       // Data not found - ask for more info
+      // Translate internal field names to human-readable labels
+      const humanFields = policy.requiredFields.map(f => FIELD_LABELS[language]?.[f] || FIELD_LABELS.TR[f] || f);
       return {
         enforced: true,
         action: 'ASK_VERIFICATION',
@@ -210,8 +239,8 @@ export function enforceToolRequiredPolicy({ classification, toolResults, languag
           intent,
           variables: {
             fields: language === 'TR'
-              ? policy.requiredFields.join(' veya ')
-              : policy.requiredFields.join(' or ')
+              ? humanFields.join(' veya ')
+              : humanFields.join(' or ')
           }
         }).text,
         requiredFields: policy.requiredFields,
