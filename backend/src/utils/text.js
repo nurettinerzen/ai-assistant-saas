@@ -103,7 +103,14 @@ export function normalizePhone(phone) {
  * comparePhones("532-123-45-67", "90 532 123 45 67") → true
  */
 export function comparePhones(phone1, phone2) {
-  return normalizePhone(phone1) === normalizePhone(phone2);
+  // Quick check: identical after normalization
+  if (normalizePhone(phone1) === normalizePhone(phone2)) return true;
+
+  // Flexible check: any variant overlap means same number
+  // Handles ambiguous cases like 4245275089 (could be TR or US)
+  const v1 = phoneSearchVariants(phone1);
+  const v2Set = new Set(phoneSearchVariants(phone2));
+  return v1.some(v => v2Set.has(v));
 }
 
 /**
