@@ -366,6 +366,29 @@ export async function execute(args, business, context = {}) {
         }
       });
 
+      // If CustomerData found AND query is order-related, also fetch latest CrmOrder.
+      // CustomerData has customer info (name, email, phone) but NOT order info
+      // (orderNumber, status, tracking). CrmOrder has the order details.
+      // We prefer CrmOrder as the primary record for order queries so getFullResult()
+      // can access orderNumber, status, carrier, trackingNumber etc.
+      if (record && (query_type === 'siparis' || query_type === 'order')) {
+        const relatedOrder = await prisma.crmOrder.findFirst({
+          where: {
+            businessId: business.id,
+            OR: variants.map(v => ({ customerPhone: v }))
+          },
+          orderBy: { createdAt: 'desc' } // Most recent order
+        });
+
+        if (relatedOrder) {
+          console.log('✅ [Lookup] CustomerData found + related CrmOrder:', relatedOrder.orderNumber);
+          record = relatedOrder;
+          sourceTable = 'CrmOrder';
+        } else {
+          console.log('ℹ️ [Lookup] CustomerData found but no related CrmOrder for order query');
+        }
+      }
+
       // If not found in CustomerData, try CrmOrder table
       if (!record) {
         console.log('🔍 [Lookup] Not in CustomerData, searching CrmOrder by phone...');
