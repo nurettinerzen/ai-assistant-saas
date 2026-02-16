@@ -203,6 +203,7 @@ async function handleOrder(businessId, data) {
     order_number,
     customer_phone,
     customer_name,
+    customer_email,
     status,
     tracking_number,
     carrier,
@@ -230,6 +231,7 @@ async function handleOrder(businessId, data) {
     update: {
       customerPhone: phone,
       customerName: customer_name || null,
+      customerEmail: customer_email || null,
       status: status,
       trackingNumber: tracking_number || null,
       carrier: carrier || null,
@@ -243,6 +245,7 @@ async function handleOrder(businessId, data) {
       orderNumber: order_number,
       customerPhone: phone,
       customerName: customer_name || null,
+      customerEmail: customer_email || null,
       status: status,
       trackingNumber: tracking_number || null,
       carrier: carrier || null,
