@@ -362,6 +362,20 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
       };
       const langAnalysis = analysisPrompts[elevenLabsLang] || analysisPrompts.en;
 
+      // Sync workspace webhooks BEFORE agent create so we get the postCallWebhookId
+      let postCallWebhookId = process.env.ELEVENLABS_POST_CALL_WEBHOOK_ID || null;
+      try {
+        const workspaceSync = await elevenLabsService.ensureWorkspaceWebhookRouting({ backendUrl });
+        if (workspaceSync.ok) {
+          postCallWebhookId = postCallWebhookId || workspaceSync.postCallWebhookId || null;
+          console.log(`✅ [11Labs] Workspace webhook pre-sync ${workspaceSync.changed ? 'updated' : 'verified'} (postCallWebhookId=${postCallWebhookId || 'none'})`);
+        } else {
+          console.warn('⚠️ [11Labs] Workspace webhook pre-sync failed:', workspaceSync.error);
+        }
+      } catch (syncErr) {
+        console.warn('⚠️ [11Labs] Workspace webhook pre-sync error:', syncErr.message);
+      }
+
       const agentConfig = {
         name: `${name} - ${Date.now()}`,
         conversation_config: {
@@ -402,13 +416,17 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
           },
         },
         platform_settings: {
-          post_call_webhook: {
-            url: `${backendUrl}/api/elevenlabs/webhook`,
-            request_headers: {}
-          },
-          conversation_initiation_client_data_webhook: {
-            url: `${backendUrl}/api/elevenlabs/webhook`,
-            request_headers: {}
+          workspace_overrides: {
+            conversation_initiation_client_data_webhook: {
+              url: `${backendUrl}/api/elevenlabs/webhook`
+            },
+            ...(postCallWebhookId ? {
+              webhooks: {
+                post_call_webhook_id: postCallWebhookId,
+                events: ['transcript', 'call_initiation_failure'],
+                send_audio: false
+              }
+            } : {})
           }
         },
         metadata: {
@@ -418,6 +436,7 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
       };
 
       // DEBUG: Log the full agent config
+      console.log('🔍 DEBUG - agentConfig platform_settings:', JSON.stringify(agentConfig.platform_settings));
       console.log('🔍 DEBUG - agentConfig tools:', allTools.map(t => ({ name: t.name, type: t.type })));
 
       const elevenLabsResponse = await elevenLabsService.createAgent(agentConfig);
@@ -471,14 +490,7 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
         console.log('✅ 11Labs Agent tools updated with agentId in webhook URLs');
       }
 
-      // Workspace-level webhook settings are required for some 11Labs event types
-      const workspaceSync = await elevenLabsService.ensureWorkspaceWebhookRouting({ backendUrl });
-      if (!workspaceSync.ok) {
-        console.warn('⚠️ [11Labs] Workspace webhook sync failed:', workspaceSync.error);
-      } else {
-        console.log(`✅ [11Labs] Workspace webhook sync ${workspaceSync.changed ? 'updated' : 'verified'} (postCallWebhookId=${workspaceSync.postCallWebhookId || 'none'})`);
-      }
-
+      // Workspace sync already done before agent create (pre-sync above)
       const webhookDiagnostics = await elevenLabsService.getWebhookDiagnostics({
         agentId: elevenLabsAgentId,
         backendUrl
@@ -929,6 +941,20 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
         };
         const langAnalysis = analysisPrompts[elevenLabsLang] || analysisPrompts.en;
 
+        // Sync workspace webhooks BEFORE agent update to get postCallWebhookId
+        let postCallWebhookId = process.env.ELEVENLABS_POST_CALL_WEBHOOK_ID || null;
+        try {
+          const workspaceSync = await elevenLabsService.ensureWorkspaceWebhookRouting({ backendUrl });
+          if (workspaceSync.ok) {
+            postCallWebhookId = postCallWebhookId || workspaceSync.postCallWebhookId || null;
+            console.log(`✅ [11Labs] Workspace webhook pre-sync ${workspaceSync.changed ? 'updated' : 'verified'} (postCallWebhookId=${postCallWebhookId || 'none'})`);
+          } else {
+            console.warn('⚠️ [11Labs] Workspace webhook pre-sync failed (update):', workspaceSync.error);
+          }
+        } catch (syncErr) {
+          console.warn('⚠️ [11Labs] Workspace webhook pre-sync error (update):', syncErr.message);
+        }
+
         const agentUpdateConfig = {
           name,
           conversation_config: {
@@ -968,16 +994,22 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
             }
           },
           platform_settings: {
-            post_call_webhook: {
-              url: `${backendUrl}/api/elevenlabs/webhook`,
-              request_headers: {}
-            },
-            conversation_initiation_client_data_webhook: {
-              url: `${backendUrl}/api/elevenlabs/webhook`,
-              request_headers: {}
+            workspace_overrides: {
+              conversation_initiation_client_data_webhook: {
+                url: `${backendUrl}/api/elevenlabs/webhook`
+              },
+              ...(postCallWebhookId ? {
+                webhooks: {
+                  post_call_webhook_id: postCallWebhookId,
+                  events: ['transcript', 'call_initiation_failure'],
+                  send_audio: false
+                }
+              } : {})
             }
           }
         };
+
+        console.log('🔍 DEBUG - agentUpdateConfig platform_settings:', JSON.stringify(agentUpdateConfig.platform_settings));
 
         await elevenLabsService.updateAgent(assistant.elevenLabsAgentId, agentUpdateConfig);
         console.log('✅ 11Labs Agent updated with inline tools');
@@ -1000,13 +1032,6 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
               console.error(`❌ Failed to sync phone ${phone.phoneNumber}:`, syncErr.message);
             }
           }
-        }
-
-        const workspaceSync = await elevenLabsService.ensureWorkspaceWebhookRouting({ backendUrl });
-        if (!workspaceSync.ok) {
-          console.warn('⚠️ [11Labs] Workspace webhook sync failed (update):', workspaceSync.error);
-        } else {
-          console.log(`✅ [11Labs] Workspace webhook sync ${workspaceSync.changed ? 'updated' : 'verified'} after agent update (postCallWebhookId=${workspaceSync.postCallWebhookId || 'none'})`);
         }
 
         const webhookDiagnostics = await elevenLabsService.getWebhookDiagnostics({

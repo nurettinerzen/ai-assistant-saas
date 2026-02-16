@@ -227,8 +227,8 @@ const elevenLabsService = {
       workspaceSettings: null,
       workspaceWebhooks: null,
       checks: {
-        agentPostCallWebhookMatches: false,
-        agentInitWebhookMatches: false,
+        agentOverrideInitWebhookMatches: false,
+        agentOverrideHasPostCallWebhookId: false,
         workspaceInitWebhookMatches: false,
         workspaceHasPostCallWebhookId: false
       }
@@ -236,10 +236,12 @@ const elevenLabsService = {
 
     try {
       diagnostics.agent = await this.getAgent(agentId);
-      const agentSettings = diagnostics.agent?.platform_settings || {};
-      diagnostics.checks.agentPostCallWebhookMatches = agentSettings?.post_call_webhook?.url === mainWebhookUrl;
-      diagnostics.checks.agentInitWebhookMatches =
-        agentSettings?.conversation_initiation_client_data_webhook?.url === mainWebhookUrl;
+      const agentOverrides = diagnostics.agent?.platform_settings?.workspace_overrides || {};
+      // Agent-level workspace_overrides check
+      diagnostics.checks.agentOverrideInitWebhookMatches =
+        agentOverrides?.conversation_initiation_client_data_webhook?.url === mainWebhookUrl;
+      diagnostics.checks.agentOverrideHasPostCallWebhookId =
+        Boolean(agentOverrides?.webhooks?.post_call_webhook_id);
     } catch (error) {
       diagnostics.ok = false;
       diagnostics.agentError = error.response?.data || error.message;
@@ -1210,16 +1212,20 @@ export function buildAgentConfig(assistant, business, tools = [], integrations =
       }
     },
     platform_settings: {
-      post_call_webhook: {
-        url: `${backendUrl}/api/elevenlabs/webhook`,
-        request_headers: {}
-      },
-      conversation_initiation_client_data_webhook: {
-        url: `${backendUrl}/api/elevenlabs/webhook`,
-        request_headers: {}
-      },
       widget: {
         variant: 'full'
+      },
+      workspace_overrides: {
+        conversation_initiation_client_data_webhook: {
+          url: `${backendUrl}/api/elevenlabs/webhook`
+        },
+        ...(process.env.ELEVENLABS_POST_CALL_WEBHOOK_ID ? {
+          webhooks: {
+            post_call_webhook_id: process.env.ELEVENLABS_POST_CALL_WEBHOOK_ID,
+            events: ['transcript', 'call_initiation_failure'],
+            send_audio: false
+          }
+        } : {})
       }
     },
     // NOTE: tools array removed - use tool_ids with separately created webhook tools
