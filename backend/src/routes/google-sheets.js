@@ -531,6 +531,7 @@ router.post('/sync', authenticateToken, requireRole(['OWNER', 'ADMIN']), async (
                 data: {
                   customerPhone: orderData.customerPhone,
                   customerName: orderData.customerName,
+                  customerEmail: orderData.customerEmail || null,
                   status: orderData.status,
                   trackingNumber: orderData.trackingNumber || null,
                   carrier: orderData.carrier || null,
@@ -547,6 +548,7 @@ router.post('/sync', authenticateToken, requireRole(['OWNER', 'ADMIN']), async (
                   orderNumber: orderData.orderNumber,
                   customerPhone: orderData.customerPhone,
                   customerName: orderData.customerName,
+                  customerEmail: orderData.customerEmail || null,
                   status: orderData.status,
                   trackingNumber: orderData.trackingNumber || null,
                   carrier: orderData.carrier || null,

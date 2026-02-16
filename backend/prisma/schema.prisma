@@ -1425,6 +1425,7 @@ model CrmOrder {
   orderNumber       String
   customerPhone     String
   customerName      String?
+  customerEmail     String?
   status            String
   trackingNumber    String?
   carrier           String?
@@ -1439,6 +1440,7 @@ model CrmOrder {
 
   @@unique([businessId, orderNumber])
   @@index([businessId, customerPhone])
+  @@index([businessId, customerEmail])
 }
 
 // CRM Stok Verileri
