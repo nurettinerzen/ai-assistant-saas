@@ -1052,10 +1052,10 @@ export function buildAgentConfig(assistant, business, tools = [], integrations =
     },
     platform_settings: {
       post_call_webhook: {
-        url: `${backendUrl}/api/webhooks/elevenlabs/call-ended`
+        url: `${backendUrl}/api/elevenlabs/webhook`
       },
       conversation_initiation_client_data_webhook: {
-        url: `${backendUrl}/api/webhooks/elevenlabs/call-started`
+        url: `${backendUrl}/api/elevenlabs/webhook`
       },
       widget: {
         variant: 'full'
