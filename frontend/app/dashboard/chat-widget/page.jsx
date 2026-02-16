@@ -277,12 +277,17 @@ export default function ChatWidgetPage() {
   var conversationHistory = [];
   var isOpen = false;
   var sessionStorageKey = 'telyxChatSessionId_' + CONFIG.embedKey;
+  var sessionTsKey = 'telyxChatSessionTs_' + CONFIG.embedKey;
+  var SESSION_TTL_MS = 30 * 60 * 1000; // 30 minutes
   var sessionId = (function() {
     try {
       var stored = localStorage.getItem(sessionStorageKey);
-      if (stored) return stored;
+      var storedTs = parseInt(localStorage.getItem(sessionTsKey) || '0', 10);
+      var isExpired = Date.now() - storedTs > SESSION_TTL_MS;
+      if (stored && !isExpired) return stored;
       var newId = 'chat_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
       localStorage.setItem(sessionStorageKey, newId);
+      localStorage.setItem(sessionTsKey, String(Date.now()));
       return newId;
     } catch(e) {
       return 'chat_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
@@ -318,6 +323,9 @@ export default function ChatWidgetPage() {
   async function sendMessage() {
     var text = input.value.trim();
     if (!text) return;
+
+    // Keep session alive
+    try { localStorage.setItem(sessionTsKey, String(Date.now())); } catch(e) {}
 
     input.value = '';
     sendBtn.disabled = true;

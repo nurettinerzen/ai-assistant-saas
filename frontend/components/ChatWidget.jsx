@@ -7,7 +7,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Loader2 } from 'lucide-react';
+import { MessageCircle, X, Send, Loader2, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -232,6 +232,23 @@ useEffect(() => {
     }
   };
 
+  const startNewChat = () => {
+    const baseKey = embedKey || assistantId || 'default';
+    const idKey = `chatWidgetSessionId_${baseKey}`;
+    const tsKey = `chatWidgetSessionTs_${baseKey}`;
+    const newId = `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    try {
+      localStorage.setItem(idKey, newId);
+      localStorage.setItem(tsKey, String(Date.now()));
+    } catch { /* ignore */ }
+
+    setSessionId(newId);
+    setMessages([]);
+    setConversationHistory([]);
+    setInputValue('');
+  };
+
   const positionClasses = {
     'bottom-right': 'bottom-6 right-6',
     'bottom-left': 'bottom-6 left-6',
@@ -261,12 +278,21 @@ useEffect(() => {
               <MessageCircle className="h-5 w-5" />
               <span className="font-semibold">{displayButtonText}</span>
             </div>
-            <button
-              onClick={() => setIsOpen(false)}
-              className="hover:bg-white/20 rounded p-1 transition-colors"
-            >
-              <X className="h-5 w-5" />
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={startNewChat}
+                className="hover:bg-white/20 rounded p-1 transition-colors"
+                title={t('dashboard.chatWidgetPage.newChat') || 'Yeni sohbet'}
+              >
+                <RotateCcw className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setIsOpen(false)}
+                className="hover:bg-white/20 rounded p-1 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
           </div>
 
           {/* Messages */}
