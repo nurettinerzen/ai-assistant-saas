@@ -400,11 +400,13 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
             transcript_summary_prompt: langAnalysis.transcript_summary,
             success_evaluation_prompt: langAnalysis.success_evaluation
           },
-          // Webhook for conversation events
-          webhook: {
-            url: `${process.env.BACKEND_URL || 'https://api.telyx.com.tr'}/api/elevenlabs/webhook`,
-            events: ['conversation.ended', 'conversation.started'],
-            timing: 'after'
+        },
+        platform_settings: {
+          post_call_webhook: {
+            url: `${backendUrl}/api/elevenlabs/webhook`
+          },
+          conversation_initiation_client_data_webhook: {
+            url: `${backendUrl}/api/elevenlabs/webhook`
           }
         },
         metadata: {
