@@ -14,6 +14,8 @@
 import elevenLabsService from './elevenlabs.js';
 import concurrentCallManager from './concurrentCallManager.js';
 import metricsService from './metricsService.js';
+import prisma from '../prismaClient.js';
+import { isDoNotCall, normalizePhoneE164 } from '../phone-outbound-v1/outcomeWriter.js';
 
 /**
  * Error class for capacity limits
@@ -45,6 +47,40 @@ export async function initiateOutboundCallSafe(config) {
   let slotAcquired = false;
 
   try {
+    const normalizedToNumber = normalizePhoneE164(toNumber);
+    if (!normalizedToNumber) {
+      throw new CapacityError(
+        'Invalid destination phone number',
+        'INVALID_DESTINATION_PHONE',
+        null,
+        { toNumber }
+      );
+    }
+
+    // Fail-closed DNC precheck before any outbound trigger
+    if (!prisma.doNotCall || typeof prisma.doNotCall.findUnique !== 'function') {
+      throw new CapacityError(
+        'Do-Not-Call precheck is unavailable',
+        'DNC_PRECHECK_UNAVAILABLE',
+        null,
+        { businessId, toNumber: normalizedToNumber }
+      );
+    }
+
+    const blockedByDnc = await isDoNotCall({
+      businessId,
+      phoneE164: normalizedToNumber
+    });
+
+    if (blockedByDnc) {
+      throw new CapacityError(
+        'Destination phone is in do-not-call list',
+        'DO_NOT_CALL_BLOCKED',
+        null,
+        { businessId, toNumber: normalizedToNumber }
+      );
+    }
+
     // Step 1: Acquire concurrent call slot (business + global)
     console.log(`📞 Attempting to acquire call slot for business ${businessId}...`);
 
@@ -52,7 +88,7 @@ export async function initiateOutboundCallSafe(config) {
       businessId,
       null, // callId will be set after 11Labs response
       'outbound',
-      { agentId, toNumber }
+      { agentId, toNumber: normalizedToNumber }
     );
 
     if (!slotResult.success) {
@@ -88,10 +124,11 @@ export async function initiateOutboundCallSafe(config) {
     const call = await elevenLabsService.initiateOutboundCall({
       agentId,
       phoneNumberId,
-      toNumber,
+      toNumber: normalizedToNumber,
       clientData: {
         ...clientData,
         businessId,
+        toNumber: normalizedToNumber,
         internalCallId: callId
       }
     });

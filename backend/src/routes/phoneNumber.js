@@ -855,18 +855,28 @@ router.delete('/:id', async (req, res) => {
 // ============================================================================
 // TEST CALL
 // ============================================================================
+const VALID_CALL_TYPES = ['BILLING_REMINDER', 'APPOINTMENT_REMINDER', 'SHIPPING_UPDATE'];
+
 router.post('/:id/test-call', async (req, res) => {
   try {
     const { id } = req.params;
-    const { testPhoneNumber } = req.body;
+    const { testPhoneNumber, callType } = req.body;
     const businessId = req.businessId;
 
-    console.log('☎️ Initiating test call...', { id, testPhoneNumber });
+    console.log('☎️ Initiating test call...', { id, testPhoneNumber, callType });
+
+    if (!callType || !VALID_CALL_TYPES.includes(callType)) {
+      return res.status(400).json({
+        error: 'callType is required',
+        validTypes: VALID_CALL_TYPES,
+        example: { testPhoneNumber: '+905551234567', callType: 'BILLING_REMINDER' }
+      });
+    }
 
     if (!testPhoneNumber) {
       return res.status(400).json({
         error: 'Test phone number is required',
-        example: { testPhoneNumber: '+905551234567' }
+        example: { testPhoneNumber: '+905551234567', callType: 'BILLING_REMINDER' }
       });
     }
 
@@ -905,7 +915,7 @@ router.post('/:id/test-call', async (req, res) => {
       agentId: assistant.elevenLabsAgentId,
       phoneNumberId: phoneNumber.elevenLabsPhoneId,
       toNumber: testPhoneNumber,
-      clientData: { test: true, phoneNumberId: phoneNumber.id }
+      clientData: { test: true, phoneNumberId: phoneNumber.id, call_type: callType, phone_outbound_v1: true }
     });
 
     if (!result.success) {

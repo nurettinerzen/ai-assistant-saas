@@ -165,6 +165,7 @@ model Business {
   customerData             CustomerData[]
   customerDataFiles        CustomerDataFile[]
   callbackRequests         CallbackRequest[]
+  doNotCalls              DoNotCall[]
   chatLogs                 ChatLog[]
   pilotBusinesses          PilotBusiness[]         @relation("PilotBusinesses")
   emailPairs               EmailPair[]             @relation("EmailPairs")
@@ -1568,6 +1569,21 @@ model CallbackRequest {
   @@index([priority])
   @@index([requestedAt])
   @@index([customerPhone, topicHash, requestedAt]) // Duplicate detection index
+}
+
+model DoNotCall {
+  id        String   @id @default(cuid())
+  businessId Int
+  phoneE164 String
+  source    String   @default("PHONE_OUTBOUND_V1")
+  createdAt DateTime @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, phoneE164])
+  @@index([businessId])
+  @@index([phoneE164])
+  @@index([createdAt])
 }
 
 enum CallbackStatus {

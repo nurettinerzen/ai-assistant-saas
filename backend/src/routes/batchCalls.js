@@ -79,6 +79,57 @@ function normalizePhoneNumber(phone) {
   return null; // Invalid phone number
 }
 
+function inferCallType(assistant, dynamicVars = {}) {
+  const direction = assistant?.callDirection || '';
+
+  if (direction === 'outbound_collection' || dynamicVars.debt_amount) {
+    return 'BILLING_REMINDER';
+  }
+
+  if (dynamicVars.appointment_date) {
+    return 'APPOINTMENT_REMINDER';
+  }
+
+  if (dynamicVars.tracking_number || dynamicVars.shipping_status || dynamicVars.order_status) {
+    return 'SHIPPING_UPDATE';
+  }
+
+  return 'BILLING_REMINDER';
+}
+
+async function filterDoNotCallRecipients(businessId, recipients) {
+  if (!Array.isArray(recipients) || recipients.length === 0) {
+    return { allowedRecipients: [], blockedRecipients: [] };
+  }
+
+  if (!prisma.doNotCall || typeof prisma.doNotCall.findMany !== 'function') {
+    throw new Error('DNC_PRECHECK_UNAVAILABLE');
+  }
+
+  const phones = [...new Set(recipients.map(r => r.phone_number).filter(Boolean))];
+  if (phones.length === 0) {
+    return { allowedRecipients: recipients, blockedRecipients: [] };
+  }
+
+  const blocked = await prisma.doNotCall.findMany({
+    where: {
+      businessId,
+      phoneE164: {
+        in: phones
+      }
+    },
+    select: {
+      phoneE164: true
+    }
+  });
+
+  const blockedSet = new Set(blocked.map(item => item.phoneE164));
+  const allowedRecipients = recipients.filter(r => !blockedSet.has(r.phone_number));
+  const blockedRecipients = recipients.filter(r => blockedSet.has(r.phone_number));
+
+  return { allowedRecipients, blockedRecipients };
+}
+
 /**
  * Parse CSV/Excel file and return rows
  * Uses UTF-8 encoding to preserve Turkish characters (ğ, ü, ş, ı, ö, ç)
@@ -396,7 +447,7 @@ router.post('/', upload.single('file'), checkPermission('campaigns:view'), async
     }
 
     // Build recipients list
-    const recipients = [];
+    let recipients = [];
     const phoneColumn = mapping.phone || 'phone';
     let recipientIndex = 0;
 
@@ -464,6 +515,33 @@ router.post('/', upload.single('file'), checkPermission('campaigns:view'), async
       });
     }
 
+    // Fail-closed DNC precheck before outbound trigger
+    let blockedRecipients = [];
+    try {
+      const filtered = await filterDoNotCallRecipients(businessId, recipients);
+      recipients = filtered.allowedRecipients;
+      blockedRecipients = filtered.blockedRecipients;
+    } catch (dncError) {
+      if (dncError.message === 'DNC_PRECHECK_UNAVAILABLE') {
+        return res.status(503).json({
+          error: 'DNC precheck is unavailable',
+          errorTR: 'DNC ön kontrolü kullanılamıyor, toplu arama başlatılamadı'
+        });
+      }
+      throw dncError;
+    }
+
+    if (blockedRecipients.length > 0) {
+      console.log(`🛑 [BatchCall] Skipping ${blockedRecipients.length} DNC recipient(s)`);
+    }
+
+    if (recipients.length === 0) {
+      return res.status(400).json({
+        error: 'All recipients are blocked by do-not-call list',
+        errorTR: 'Tüm alıcılar aranmayacaklar listesinde, kampanya başlatılmadı'
+      });
+    }
+
     // Create batch call in database first
     const batchCall = await prisma.batchCall.create({
       data: {
@@ -500,6 +578,8 @@ router.post('/', upload.single('file'), checkPermission('campaigns:view'), async
         if (r.custom_1) dynamicVars.custom_1 = r.custom_1;
         if (r.custom_2) dynamicVars.custom_2 = r.custom_2;
 
+        const callType = inferCallType(assistant, dynamicVars);
+
         return {
           id: r.id,  // Use the same ID stored in DB
           phone_number: r.phone_number,
@@ -510,7 +590,9 @@ router.post('/', upload.single('file'), checkPermission('campaigns:view'), async
               business_id: businessId.toString(),
               batch_call_id: batchCall.id,
               recipient_id: r.id,  // Use the same ID stored in DB
-              channel: 'outbound'
+              channel: 'outbound',
+              phone_outbound_v1: true,
+              call_type: callType
             }
           }
         };
@@ -570,6 +652,7 @@ router.post('/', upload.single('file'), checkPermission('campaigns:view'), async
           ...batchCall,
           elevenLabsBatchId: elevenLabsBatchId
         },
+        skippedDoNotCall: blockedRecipients.length,
         message: `Batch call created with ${recipients.length} recipients`
       });
 

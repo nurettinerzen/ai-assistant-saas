@@ -93,6 +93,7 @@ function verifyElevenLabsSignature(req) {
 // SECURITY: Requires HMAC-SHA256 signature verification
 // ============================================================================
 router.post('/elevenlabs/call-started', async (req, res) => {
+  console.warn('[LEGACY_WEBHOOK_HIT] /api/webhooks/elevenlabs/call-started — consider migrating to /api/elevenlabs/webhook');
   // SECURITY: Verify signature first
   if (!verifyElevenLabsSignature(req)) {
     console.error('❌ 11Labs call-started signature verification failed');
@@ -254,6 +255,7 @@ router.post('/elevenlabs/call-started', async (req, res) => {
 // 11LABS CALL-ENDED / POST-CALL WEBHOOK
 // ============================================================================
 router.post('/elevenlabs/call-ended', async (req, res) => {
+  console.warn('[LEGACY_WEBHOOK_HIT] /api/webhooks/elevenlabs/call-ended — consider migrating to /api/elevenlabs/webhook');
   // SECURITY: Verify signature - ALWAYS required
   if (!verifyElevenLabsSignature(req)) {
     console.error('❌ 11Labs call-ended signature verification failed');
@@ -452,6 +454,7 @@ router.post('/elevenlabs/call-ended', async (req, res) => {
 // SECURITY: Requires HMAC-SHA256 signature verification
 // ============================================================================
 router.post('/elevenlabs/post-call', async (req, res) => {
+  console.warn('[LEGACY_WEBHOOK_HIT] /api/webhooks/elevenlabs/post-call — consider migrating to /api/elevenlabs/webhook');
   // SECURITY: Verify signature first
   if (!verifyElevenLabsSignature(req)) {
     console.error('❌ 11Labs post-call signature verification failed');

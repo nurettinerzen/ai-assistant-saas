@@ -22,6 +22,19 @@ import concurrentCallManager from '../services/concurrentCallManager.js';
 import elevenLabsService from '../services/elevenlabs.js';
 import metricsService from '../services/metricsService.js';
 import {
+  isPhoneOutboundV1Enabled,
+  isPhoneInboundEnabled,
+  getPhoneOutboundV1ClassifierMode
+} from '../config/feature-flags.js';
+import {
+  runFlowStep,
+  PHONE_OUTBOUND_V1_ALLOWED_TOOLS,
+  isAllowedOutboundV1Tool,
+  applyOutboundV1Actions,
+  normalizePhoneE164,
+  getInboundDisabledMessage
+} from '../phone-outbound-v1/index.js';
+import {
   containsChildSafetyViolation,
   logContentSafetyViolation
 } from '../utils/content-safety.js';
@@ -148,6 +161,192 @@ function getDynamicDateTimeContext(business) {
   return `\n\n## CURRENT INFORMATION (LIVE)\n- Today: ${dateStr}\n- Current time: ${timeStr}\n- Timezone: ${timezone}`;
 }
 
+function normalizeDirection(rawDirection = '') {
+  const direction = String(rawDirection || '').toLowerCase();
+  if (direction === 'web' || direction === 'chat' || !direction) {
+    return 'inbound';
+  }
+  if (direction.includes('outbound')) {
+    return 'outbound';
+  }
+  return direction;
+}
+
+function inferCallType({ metadata = {}, assistant = null } = {}) {
+  const directType = metadata.call_type || metadata.callType;
+  if (directType) {
+    const normalizedDirectType = String(directType).toUpperCase();
+    if (['BILLING_REMINDER', 'APPOINTMENT_REMINDER', 'SHIPPING_UPDATE'].includes(normalizedDirectType)) {
+      return normalizedDirectType;
+    }
+  }
+
+  const dynamicVars = metadata.dynamic_variables || metadata.dynamicVariables || {};
+
+  if (metadata.debt_amount || dynamicVars.debt_amount || assistant?.callDirection === 'outbound_collection') {
+    return 'BILLING_REMINDER';
+  }
+
+  if (metadata.appointment_date || dynamicVars.appointment_date) {
+    return 'APPOINTMENT_REMINDER';
+  }
+
+  if (
+    metadata.tracking_number || metadata.shipping_status ||
+    dynamicVars.tracking_number || dynamicVars.shipping_status || dynamicVars.order_status
+  ) {
+    return 'SHIPPING_UPDATE';
+  }
+
+  return 'BILLING_REMINDER';
+}
+
+function extractConversationMetadata(event = {}) {
+  const rootMetadata = event.metadata || {};
+  const phoneCallMetadata = rootMetadata.phone_call || {};
+  const initData = rootMetadata.conversation_initiation_client_data || {};
+  const initMetadata = initData.metadata || {};
+
+  return {
+    ...rootMetadata,
+    ...phoneCallMetadata,
+    ...initMetadata,
+    dynamic_variables: initData.dynamic_variables || rootMetadata.dynamic_variables || {}
+  };
+}
+
+async function getActiveCallSession(callId) {
+  if (!callId) return null;
+  return prisma.activeCallSession.findUnique({
+    where: { callId },
+    select: {
+      businessId: true,
+      direction: true,
+      metadata: true
+    }
+  });
+}
+
+async function updateActiveSessionMetadata(callId, nextMetadata) {
+  if (!callId) return;
+  await prisma.activeCallSession.updateMany({
+    where: { callId },
+    data: {
+      metadata: nextMetadata || {},
+      updatedAt: new Date()
+    }
+  });
+}
+
+function extractUserUtterance(event = {}, parameters = {}) {
+  const explicit =
+    event.user_utterance ||
+    event.user_transcript ||
+    event.user_message ||
+    event.transcript_text ||
+    event.utterance ||
+    null;
+
+  if (explicit) {
+    return String(explicit);
+  }
+
+  const ignoredKeys = new Set([
+    'tool_name',
+    'conversation_id',
+    'agent_id',
+    'dtmfDigits',
+    'dtmf_digits',
+    'call_id',
+    'business_id'
+  ]);
+
+  const candidateStrings = Object.entries(parameters || {})
+    .filter(([key, value]) => !ignoredKeys.has(key) && typeof value === 'string' && value.trim().length > 0)
+    .map(([, value]) => value.trim())
+    .sort((a, b) => b.length - a.length);
+
+  return candidateStrings[0] || '';
+}
+
+async function consumePendingV1Script(conversationId) {
+  if (!conversationId) return null;
+
+  const session = await getActiveCallSession(conversationId);
+  const pendingScript = session?.metadata?.phoneOutboundV1?.pendingScript;
+  if (!pendingScript) return null;
+
+  const nextMetadata = {
+    ...(session.metadata || {}),
+    phoneOutboundV1: {
+      ...(session.metadata?.phoneOutboundV1 || {}),
+      pendingScript: null
+    }
+  };
+
+  await updateActiveSessionMetadata(conversationId, nextMetadata);
+  return pendingScript;
+}
+
+async function runOutboundV1Turn({
+  assistant,
+  business,
+  conversationId,
+  eventMetadata = {},
+  userUtterance = '',
+  dtmfDigits = ''
+}) {
+  const activeSession = await getActiveCallSession(conversationId);
+  const sessionMetadata = activeSession?.metadata || {};
+  const v1Metadata = sessionMetadata.phoneOutboundV1 || {};
+
+  const callType = v1Metadata.callType || inferCallType({ metadata: eventMetadata, assistant });
+  const callSession = {
+    callId: conversationId,
+    sessionId: conversationId,
+    conversationId,
+    callType,
+    customerName: eventMetadata.customer_name || eventMetadata.customerName || v1Metadata.customerName || 'Müşteri',
+    phoneE164: normalizePhoneE164(eventMetadata.external_number || eventMetadata.caller_phone || v1Metadata.phoneE164 || '')
+  };
+
+  const flowResult = await runFlowStep({
+    business,
+    callSession,
+    userUtterance,
+    dtmfDigits,
+    flowState: v1Metadata.flowState || null,
+    classifierMode: getPhoneOutboundV1ClassifierMode()
+  });
+
+  const actionResults = await applyOutboundV1Actions(flowResult.actions || [], {
+    businessId: business.id,
+    assistantId: assistant.id,
+    callId: conversationId,
+    sessionId: conversationId,
+    customerName: callSession.customerName,
+    phoneE164: callSession.phoneE164
+  });
+
+  const nextMetadata = {
+    ...sessionMetadata,
+    phoneOutboundV1: {
+      enabled: true,
+      callType,
+      customerName: callSession.customerName,
+      phoneE164: callSession.phoneE164,
+      flowState: flowResult.nextState,
+      pendingScript: flowResult.nextScriptText || null,
+      lastLabel: flowResult.label || 'UNKNOWN',
+      actionResults
+    }
+  };
+
+  await updateActiveSessionMetadata(conversationId, nextMetadata);
+
+  return flowResult;
+}
+
 // ============================================================================
 // MAIN WEBHOOK ENDPOINT
 // ============================================================================
@@ -155,6 +354,7 @@ function getDynamicDateTimeContext(business) {
 router.post('/webhook', async (req, res) => {
   try {
     const event = req.body;
+    console.log('[MAIN_WEBHOOK_HIT] /api/elevenlabs/webhook');
     console.log('📞 11Labs Webhook received:', JSON.stringify(event, null, 2).substring(0, 500));
 
     // Determine event type
@@ -193,8 +393,10 @@ router.post('/webhook', async (req, res) => {
 
     // Verify signature in production ONLY for lifecycle events (not tool calls)
     // SECURITY: If webhook secret is configured, reject invalid signatures
-    if (process.env.NODE_ENV === 'production' && process.env.ELEVENLABS_WEBHOOK_SECRET) {
-      if (!verifyWebhookSignature(req, process.env.ELEVENLABS_WEBHOOK_SECRET)) {
+    if (process.env.NODE_ENV === 'production') {
+      if (!process.env.ELEVENLABS_WEBHOOK_SECRET) {
+        console.error('[SECURITY] ELEVENLABS_WEBHOOK_SECRET not set in production — webhook signature verification DISABLED');
+      } else if (!verifyWebhookSignature(req, process.env.ELEVENLABS_WEBHOOK_SECRET)) {
         console.error('❌ 11Labs webhook signature verification failed');
 
         // P0: Log webhook signature failure to SecurityEvent
@@ -210,29 +412,40 @@ router.post('/webhook', async (req, res) => {
       case 'tool_call':
       case 'client_tool_call': {
         console.log('🔧 11Labs Tool Call:', event.properties?.tool_name || event.tool_name);
-        const result = await handleToolCall(event);
+        const result = await handleToolCall(event, agentIdFromQuery);
         return res.json(result);
       }
 
       // ========== CONVERSATION STARTED ==========
       case 'conversation.started':
       case 'conversation_started': {
-        res.status(200).json({ received: true });
-        await handleConversationStarted(event);
-        break;
+        const startResult = await handleConversationStarted(event);
+        return res.status(200).json({
+          received: true,
+          ...(startResult || {})
+        });
       }
 
       // ========== CONVERSATION ENDED ==========
       case 'conversation.ended':
       case 'conversation_ended': {
-        res.status(200).json({ received: true });
         await handleConversationEnded(event);
-        break;
+        return res.status(200).json({ received: true });
       }
 
       // ========== AGENT RESPONSE - For dynamic prompts ==========
       case 'agent_response':
       case 'conversation.initiation': {
+        const conversationId = event.conversation_id || event.metadata?.conversation_id || null;
+        const pendingV1Script = await consumePendingV1Script(conversationId);
+
+        if (pendingV1Script) {
+          console.log('🧭 [PHONE_OUTBOUND_V1] Sending pending script via prompt_override');
+          return res.json({
+            prompt_override: pendingV1Script
+          });
+        }
+
         // Similar to VAPI's assistant-request for dynamic prompt injection
         const agentId = event.agent_id;
         if (agentId) {
@@ -242,6 +455,35 @@ router.post('/webhook', async (req, res) => {
           });
 
           if (assistant && assistant.business) {
+            const activeSession = await getActiveCallSession(conversationId);
+            const sessionDirection = normalizeDirection(
+              activeSession?.direction ||
+              assistant.callDirection ||
+              'inbound'
+            );
+
+            const outboundV1Enabled = sessionDirection === 'outbound' && isPhoneOutboundV1Enabled({
+              businessId: assistant.business.id
+            });
+
+            if (outboundV1Enabled && activeSession?.metadata?.phoneOutboundV1?.enabled) {
+              const utterance = extractUserUtterance(event, event);
+              if (utterance) {
+                const flowResult = await runOutboundV1Turn({
+                  assistant,
+                  business: assistant.business,
+                  conversationId,
+                  eventMetadata: extractConversationMetadata(event),
+                  userUtterance: utterance,
+                  dtmfDigits: event.dtmfDigits || event.dtmf_digits || ''
+                });
+
+                return res.json({
+                  prompt_override: flowResult.nextScriptText
+                });
+              }
+            }
+
             const dynamicContext = getDynamicDateTimeContext(assistant.business);
             console.log('📅 Injecting dynamic date/time for business:', assistant.business.name);
             return res.json({
@@ -254,7 +496,7 @@ router.post('/webhook', async (req, res) => {
 
       default:
         console.log(`ℹ️ Unhandled 11Labs event: ${eventType}`);
-        res.status(200).json({ received: true });
+        return res.status(200).json({ received: true });
     }
   } catch (error) {
     console.error('❌ 11Labs webhook error:', error);
@@ -535,48 +777,36 @@ async function handleToolCall(event, agentIdFromQuery = null) {
     // IMPORTANT: If agent_id is undefined/null, we cannot find the correct business
     if (!agent_id) {
       console.error('❌ No agent_id provided in tool call - cannot identify business');
-      // Try to find from conversation_id if available
       if (conversation_id) {
-        const callLog = await prisma.callLog.findFirst({
-          where: { callId: conversation_id },
-          include: {
-            assistant: {
-              include: {
-                business: {
-                  include: {
-                    integrations: { where: { isActive: true } },
-                    users: {
-                      where: { role: 'OWNER' },
-                      take: 1,
-                      select: { email: true }
-                    }
-                  }
-                }
+        const activeSession = await getActiveCallSession(conversation_id);
+        if (activeSession?.businessId) {
+          const business = await prisma.business.findUnique({
+            where: { id: activeSession.businessId },
+            include: {
+              integrations: { where: { isActive: true } },
+              users: {
+                where: { role: 'OWNER' },
+                take: 1,
+                select: { email: true }
               }
             }
-          }
-        });
-        if (callLog?.assistant?.business) {
-          const business = callLog.assistant.business;
-          console.log(`✅ Found business from conversation: ${business.name} (ID: ${business.id})`);
-
-          let resolvedCallerPhone = callerPhone || callLog.callerId;
-          if (resolvedCallerPhone === 'Unknown') resolvedCallerPhone = null;
-
-          const result = await executeTool(toolName, parameters, business, {
-            channel: 'PHONE',
-            conversationId: conversation_id,
-            callerPhone: resolvedCallerPhone
           });
 
-          // Apply same response format as main path
-          if (result.success) {
-            return {
-              success: true,
-              message: result.message || JSON.stringify(result.data),
-              data: result.data
-            };
-          } else {
+          if (business) {
+            const result = await executeTool(toolName, parameters, business, {
+              channel: 'PHONE',
+              conversationId: conversation_id,
+              callerPhone: callerPhone || null
+            });
+
+            if (result.success) {
+              return {
+                success: true,
+                message: result.message || JSON.stringify(result.data),
+                data: result.data
+              };
+            }
+
             return {
               success: false,
               error: result.error || 'Tool execution failed'
@@ -584,6 +814,7 @@ async function handleToolCall(event, agentIdFromQuery = null) {
           }
         }
       }
+
       return {
         success: false,
         error: 'Cannot identify business - no agent_id or conversation_id'
@@ -630,6 +861,64 @@ async function handleToolCall(event, agentIdFromQuery = null) {
       }
     }
 
+    const activeSession = await getActiveCallSession(conversation_id);
+    const sessionDirection = normalizeDirection(
+      activeSession?.direction ||
+      event.metadata?.phone_call?.call_type ||
+      event.metadata?.channel ||
+      assistant.callDirection ||
+      'inbound'
+    );
+
+    if (sessionDirection === 'inbound' && !isPhoneInboundEnabled()) {
+      console.log('⛔ [PHONE] inbound tool call blocked by PHONE_INBOUND_ENABLED=false');
+      return {
+        success: false,
+        error: 'PHONE_INBOUND_DISABLED',
+        message: getInboundDisabledMessage(business.language)
+      };
+    }
+
+    const outboundV1Enabled = sessionDirection === 'outbound' && isPhoneOutboundV1Enabled({
+      businessId: business.id
+    });
+
+    if (outboundV1Enabled) {
+      if (!isAllowedOutboundV1Tool(toolName)) {
+        console.warn(`⛔ [PHONE_OUTBOUND_V1] Rejected non-allowlisted tool: ${toolName}`);
+        return {
+          success: false,
+          error: 'TOOL_NOT_ALLOWED_IN_PHONE_OUTBOUND_V1',
+          message: `Allowed tools: ${PHONE_OUTBOUND_V1_ALLOWED_TOOLS.join(', ')}`
+        };
+      }
+
+      if (!conversation_id) {
+        return {
+          success: false,
+          error: 'MISSING_CONVERSATION_ID_FOR_PHONE_OUTBOUND_V1'
+        };
+      }
+
+      const flowResult = await runOutboundV1Turn({
+        assistant,
+        business,
+        conversationId: conversation_id,
+        eventMetadata: extractConversationMetadata(event),
+        userUtterance: extractUserUtterance(event, parameters),
+        dtmfDigits: parameters.dtmfDigits || parameters.dtmf_digits || ''
+      });
+
+      return {
+        success: true,
+        message: flowResult.nextScriptText,
+        data: {
+          label: flowResult.label,
+          terminal: flowResult.isTerminal
+        }
+      };
+    }
+
     // Execute tool using central tool system with caller phone in context
     const result = await executeTool(toolName, parameters, business, {
       channel: 'PHONE',
@@ -674,19 +963,22 @@ async function handleConversationStarted(event) {
   try {
     const conversationId = event.conversation_id;
     const agentId = event.agent_id;
-    const callerPhone = event.metadata?.caller_phone || event.caller_phone || 'Unknown';
+    const eventMetadata = extractConversationMetadata(event);
+    const callerPhone = eventMetadata.external_number || eventMetadata.caller_phone || event.caller_phone || 'Unknown';
 
     // Determine call direction from metadata or assistant settings
-    let direction = event.metadata?.channel ||
-                    event.metadata?.phone_call?.call_type ||
-                    'inbound';
-    if (direction === 'web' || direction === 'chat') {
-      direction = 'inbound';
-    }
+    let direction = normalizeDirection(
+      event.metadata?.channel ||
+      event.metadata?.phone_call?.call_type ||
+      eventMetadata.direction ||
+      'inbound'
+    );
 
     if (!conversationId) {
       console.warn('⚠️ No conversation ID in conversation.started event');
-      return;
+      return {
+        branch: 'missing_conversation_id'
+      };
     }
 
     // Find business by agent ID
@@ -697,7 +989,9 @@ async function handleConversationStarted(event) {
 
     if (!assistant) {
       console.warn(`⚠️ No assistant found for agent ${agentId}`);
-      return;
+      return {
+        branch: 'assistant_not_found'
+      };
     }
 
     // Use assistant's callDirection if not determined from metadata
@@ -706,17 +1000,62 @@ async function handleConversationStarted(event) {
     }
 
     const businessId = assistant.business.id;
+    const inboundEnabled = isPhoneInboundEnabled();
+    const outboundV1Enabled = direction === 'outbound' && isPhoneOutboundV1Enabled({ businessId });
+
+    if (direction === 'inbound' && !inboundEnabled) {
+      const disabledMessage = getInboundDisabledMessage(assistant.business?.language);
+      console.log(`⛔ [PHONE] Inbound disabled by flag for business ${businessId}, call ${conversationId}`);
+
+      await prisma.callLog.upsert({
+        where: { callId: conversationId },
+        update: {
+          businessId,
+          callerId: callerPhone,
+          direction: 'inbound',
+          status: 'inbound_disabled_v1',
+          summary: disabledMessage,
+          updatedAt: new Date()
+        },
+        create: {
+          businessId,
+          callId: conversationId,
+          callerId: callerPhone,
+          direction: 'inbound',
+          status: 'inbound_disabled_v1',
+          summary: disabledMessage,
+          createdAt: new Date()
+        }
+      });
+
+      try {
+        await elevenLabsService.terminateConversation(conversationId);
+      } catch (terminateError) {
+        console.error(`❌ Failed to terminate inbound-disabled call ${conversationId}:`, terminateError.message);
+      }
+
+      return {
+        branch: 'phone_inbound_disabled_v1',
+        inboundDisabled: true,
+        message: disabledMessage
+      };
+    }
 
     // P0.1: CRITICAL - Acquire concurrent call slot (business + global capacity)
     let slotAcquired = false;
     try {
-      console.log(`📞 [INBOUND] Acquiring slot for business ${businessId}, call ${conversationId}`);
+      console.log(`📞 [PHONE] Acquiring slot for business ${businessId}, call ${conversationId}, direction=${direction}`);
 
       const slotResult = await concurrentCallManager.acquireSlot(
         businessId,
         conversationId,
         direction,
-        { agentId, callerPhone, inbound: true }
+        {
+          agentId,
+          callerPhone,
+          inbound: direction === 'inbound',
+          phoneOutboundV1: outboundV1Enabled
+        }
       );
 
       if (!slotResult.success) {
@@ -752,7 +1091,10 @@ async function handleConversationStarted(event) {
           // Even if termination fails, we've logged it and denied the slot
         }
 
-        return; // Stop processing this webhook
+        return {
+          branch: 'capacity_rejected',
+          reason: slotResult.error
+        }; // Stop processing this webhook
       }
 
       slotAcquired = true;
@@ -780,7 +1122,9 @@ async function handleConversationStarted(event) {
         console.error(`❌ Failed to terminate after error:`, terminateError.message);
       }
 
-      return;
+      return {
+        branch: 'capacity_error'
+      };
     }
 
     // Create initial call log
@@ -795,9 +1139,37 @@ async function handleConversationStarted(event) {
       }
     });
 
+    if (outboundV1Enabled) {
+      console.log('🧭 [PHONE_OUTBOUND_V1] Main webhook path selected: /api/elevenlabs/webhook (legacy /api/webhooks/elevenlabs/* kept)');
+
+      const initialFlow = await runOutboundV1Turn({
+        assistant,
+        business: assistant.business,
+        conversationId,
+        eventMetadata,
+        userUtterance: '',
+        dtmfDigits: ''
+      });
+
+      return {
+        branch: 'phone_outbound_v1',
+        outboundV1: true,
+        initialLabel: initialFlow.label,
+        scriptTransport: 'prompt_override_and_tool_response'
+      };
+    }
+
     console.log(`✅ Conversation started logged: ${conversationId}`);
+    return {
+      branch: 'legacy_phone_flow',
+      outboundV1: false
+    };
   } catch (error) {
     console.error('❌ Error handling conversation started:', error);
+    return {
+      branch: 'error',
+      error: error.message
+    };
   }
 }
 

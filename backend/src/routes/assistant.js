@@ -628,10 +628,21 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
 
 
 // Test call yap
+const VALID_CALL_TYPES = ['BILLING_REMINDER', 'APPOINTMENT_REMINDER', 'SHIPPING_UPDATE'];
+
 router.post('/test-call', async (req, res) => {
   try {
     const { businessId } = req.user;
-    const { phoneNumber } = req.body;
+    const { phoneNumber, callType } = req.body;
+
+    // callType is required for outbound V1 so we know which flow runs
+    if (!callType || !VALID_CALL_TYPES.includes(callType)) {
+      return res.status(400).json({
+        error: 'callType is required',
+        validTypes: VALID_CALL_TYPES,
+        example: { phoneNumber: '+905551234567', callType: 'BILLING_REMINDER' }
+      });
+    }
 
     // Get assistant for this business
     const assistant = await prisma.assistant.findFirst({
@@ -663,7 +674,7 @@ router.post('/test-call', async (req, res) => {
       agentId: assistant.elevenLabsAgentId,
       phoneNumberId: fromPhoneNumber.elevenLabsPhoneId,
       toNumber: phoneNumber,
-      clientData: { test: true, assistantId: assistant.id }
+      clientData: { test: true, assistantId: assistant.id, call_type: callType, phone_outbound_v1: true }
     });
 
     if (!result.success) {

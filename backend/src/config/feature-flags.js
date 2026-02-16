@@ -44,6 +44,23 @@ export const FEATURE_FLAGS = {
   CHAT_USE_V2: process.env.FEATURE_CHAT_USE_V2 !== 'false', // Default: true (v2 is default)
   CHAT_V2_ROLLOUT_PERCENT: parseInt(process.env.FEATURE_CHAT_V2_ROLLOUT_PERCENT || '100', 10), // 0-100
 
+  // ─── PHONE Outbound V1 Gating ───
+  // Outbound V1 flow-runner gate
+  PHONE_OUTBOUND_V1_ENABLED: process.env.PHONE_OUTBOUND_V1_ENABLED === 'true',
+
+  // Inbound phone channel gate (default OFF in V1)
+  PHONE_INBOUND_ENABLED: process.env.PHONE_INBOUND_ENABLED === 'true',
+
+  // Canary rollout list: business IDs allowed to use outbound V1
+  PHONE_OUTBOUND_V1_CANARY_BUSINESS_IDS: (process.env.PHONE_OUTBOUND_V1_CANARY_BUSINESS_IDS || '')
+    .split(',').map(k => k.trim()).filter(Boolean),
+
+  // Label classifier mode for outbound V1
+  // KEYWORD_ONLY (default) | LLM_LABEL_ONLY
+  PHONE_OUTBOUND_V1_CLASSIFIER_MODE: process.env.PHONE_OUTBOUND_V1_CLASSIFIER_MODE === 'LLM_LABEL_ONLY'
+    ? 'LLM_LABEL_ONLY'
+    : 'KEYWORD_ONLY',
+
   // ─── Consolidation flags (new-branch-codex) ───
 
   // Route-level firewall mode: 'enforce' | 'telemetry'
@@ -216,11 +233,58 @@ export function isChannelProofEnabled(context = {}) {
   return false;
 }
 
+/**
+ * Check if PHONE outbound V1 is enabled for a business.
+ * Fail-closed: requires global flag + canary membership.
+ * @param {Object} context - { businessId }
+ * @returns {boolean}
+ */
+export function isPhoneOutboundV1Enabled(context = {}) {
+  if (FEATURE_FLAGS.PHONE_OUTBOUND_V1_ENABLED !== true) return false;
+
+  const canaryBusinessIds = FEATURE_FLAGS.PHONE_OUTBOUND_V1_CANARY_BUSINESS_IDS || [];
+  if (canaryBusinessIds.length === 0) return false;
+
+  if (!context.businessId) return false;
+  return canaryBusinessIds.includes(String(context.businessId));
+}
+
+/**
+ * Check if PHONE inbound handling is enabled.
+ * @returns {boolean}
+ */
+export function isPhoneInboundEnabled() {
+  return FEATURE_FLAGS.PHONE_INBOUND_ENABLED === true;
+}
+
+/**
+ * Get classifier mode for PHONE outbound V1.
+ * @returns {'KEYWORD_ONLY'|'LLM_LABEL_ONLY'}
+ */
+export function getPhoneOutboundV1ClassifierMode() {
+  return FEATURE_FLAGS.PHONE_OUTBOUND_V1_CLASSIFIER_MODE || 'KEYWORD_ONLY';
+}
+
+// ─── Startup log: PHONE V1 flags ───
+if (ENVIRONMENT !== 'test') {
+  console.log('[feature-flags] PHONE V1 startup config:');
+  console.log(`  PHONE_OUTBOUND_V1_ENABLED     = ${FEATURE_FLAGS.PHONE_OUTBOUND_V1_ENABLED}`);
+  console.log(`  PHONE_INBOUND_ENABLED          = ${FEATURE_FLAGS.PHONE_INBOUND_ENABLED}`);
+  console.log(`  PHONE_OUTBOUND_V1_CLASSIFIER   = ${FEATURE_FLAGS.PHONE_OUTBOUND_V1_CLASSIFIER_MODE}`);
+  console.log(`  PHONE_OUTBOUND_V1_CANARY_IDS   = [${FEATURE_FLAGS.PHONE_OUTBOUND_V1_CANARY_BUSINESS_IDS.join(',')}] (${FEATURE_FLAGS.PHONE_OUTBOUND_V1_CANARY_BUSINESS_IDS.length} entries)`);
+  if (FEATURE_FLAGS.PHONE_OUTBOUND_V1_ENABLED && FEATURE_FLAGS.PHONE_OUTBOUND_V1_CANARY_BUSINESS_IDS.length === 0) {
+    console.warn('[feature-flags] WARNING: PHONE_OUTBOUND_V1_ENABLED=true but canary list is empty — V1 will NOT activate for any business');
+  }
+}
+
 export default {
   FEATURE_FLAGS,
   isFeatureEnabled,
   getFeatureFlag,
   isChatterLLMEnabled,
   isChannelProofEnabled,
+  isPhoneOutboundV1Enabled,
+  isPhoneInboundEnabled,
+  getPhoneOutboundV1ClassifierMode,
   overrideFeatureFlag
 };

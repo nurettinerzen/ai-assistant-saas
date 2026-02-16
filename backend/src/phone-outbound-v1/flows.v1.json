@@ -1,0 +1,101 @@
+{
+  "version": "1.0",
+  "defaults": {
+    "maxSteps": 3,
+    "maxRetry": 2,
+    "allowedLabels": [
+      "YES",
+      "NO",
+      "LATER",
+      "DONT_CALL",
+      "ASK_AGENT",
+      "UNKNOWN"
+    ]
+  },
+  "callTypes": {
+    "BILLING_REMINDER": {
+      "opening": "Merhaba, {{businessName}} adına arıyorum. Kısa bir bilgilendirme için uygun musunuz?",
+      "cta": "Lütfen evet, hayır, sonra, temsilci veya aramayın diyebilirsiniz.",
+      "offTopicRedirect": "Bu hatta yalnızca kısa bir bilgilendirme yapabiliyorum. İsterseniz sizi yetkili ekip için geri aramaya yönlendirebilirim.",
+      "closingByLabel": {
+        "YES": "Teşekkür ederim, notunuzu aldım. İyi günler dilerim.",
+        "NO": "Anladım, talebinizi not aldım. İyi günler dilerim.",
+        "LATER": "Uygun olduğunuz bir zamanda tekrar arayacağız. İyi günler.",
+        "DONT_CALL": "Aranmak istemediğinizi kaydettim. Bu konuda tekrar aranmayacaksınız.",
+        "ASK_AGENT": "Sizi yetkili ekip için geri arama listesine aldım. Teşekkür ederim.",
+        "UNKNOWN": "Yanıtınızı netleştiremediğim için aramayı sonlandırıyorum. İyi günler."
+      },
+      "allowedLabels": [
+        "YES",
+        "NO",
+        "LATER",
+        "DONT_CALL",
+        "ASK_AGENT",
+        "UNKNOWN"
+      ],
+      "dtmfMap": {
+        "1": "YES",
+        "2": "NO",
+        "3": "LATER",
+        "4": "ASK_AGENT",
+        "9": "DONT_CALL"
+      }
+    },
+    "APPOINTMENT_REMINDER": {
+      "opening": "Merhaba, {{businessName}} adına arıyorum. Kısa bir randevu hatırlatması için uygun musunuz?",
+      "cta": "Lütfen evet, hayır, sonra, temsilci veya aramayın diyebilirsiniz.",
+      "offTopicRedirect": "Bu hatta yalnızca randevu hatırlatması için yardımcı olabiliyorum. İsterseniz sizi yetkili ekip için geri aramaya yönlendirebilirim.",
+      "closingByLabel": {
+        "YES": "Teşekkür ederim, onayınızı aldım. İyi günler dilerim.",
+        "NO": "Anladım, bilginizi not ettim. İyi günler dilerim.",
+        "LATER": "Uygun olduğunuz bir zamanda tekrar arayacağız. İyi günler.",
+        "DONT_CALL": "Aranmak istemediğinizi kaydettim. Bu konuda tekrar aranmayacaksınız.",
+        "ASK_AGENT": "Sizi yetkili ekip için geri arama listesine aldım. Teşekkür ederim.",
+        "UNKNOWN": "Yanıtınızı netleştiremediğim için aramayı sonlandırıyorum. İyi günler."
+      },
+      "allowedLabels": [
+        "YES",
+        "NO",
+        "LATER",
+        "DONT_CALL",
+        "ASK_AGENT",
+        "UNKNOWN"
+      ],
+      "dtmfMap": {
+        "1": "YES",
+        "2": "NO",
+        "3": "LATER",
+        "4": "ASK_AGENT",
+        "9": "DONT_CALL"
+      }
+    },
+    "SHIPPING_UPDATE": {
+      "opening": "Merhaba, {{businessName}} adına arıyorum. Kısa bir gönderi bilgilendirmesi için uygun musunuz?",
+      "cta": "Lütfen evet, hayır, sonra, temsilci veya aramayın diyebilirsiniz.",
+      "offTopicRedirect": "Bu hatta yalnızca kısa gönderi bilgilendirmesi yapabiliyorum. İsterseniz sizi yetkili ekip için geri aramaya yönlendirebilirim.",
+      "closingByLabel": {
+        "YES": "Teşekkür ederim, notunuzu aldım. İyi günler dilerim.",
+        "NO": "Anladım, talebinizi not aldım. İyi günler dilerim.",
+        "LATER": "Uygun olduğunuz bir zamanda tekrar arayacağız. İyi günler.",
+        "DONT_CALL": "Aranmak istemediğinizi kaydettim. Bu konuda tekrar aranmayacaksınız.",
+        "ASK_AGENT": "Sizi yetkili ekip için geri arama listesine aldım. Teşekkür ederim.",
+        "UNKNOWN": "Yanıtınızı netleştiremediğim için aramayı sonlandırıyorum. İyi günler."
+      },
+      "allowedLabels": [
+        "YES",
+        "NO",
+        "LATER",
+        "DONT_CALL",
+        "ASK_AGENT",
+        "UNKNOWN"
+      ],
+      "dtmfMap": {
+        "1": "YES",
+        "2": "NO",
+        "3": "LATER",
+        "4": "ASK_AGENT",
+        "9": "DONT_CALL"
+      }
+    }
+  }
+}
