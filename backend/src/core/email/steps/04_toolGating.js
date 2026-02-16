@@ -73,9 +73,12 @@ export async function gateEmailTools(ctx) {
       return { success: true };
     }
 
-    // If low confidence, reduce tools to minimal set
-    if (classification.confidence < 0.6) {
-      console.log('📧 [ToolGating] Low confidence - limiting to lookup tools only');
+    // NOTE: Confidence-based gating removed for email.
+    // All EMAIL_SAFE_TOOLS are already read-only, so additional confidence
+    // gating was overly aggressive — it blocked stock/order lookups even when
+    // the classifier correctly identified needs_tools: true.
+    if (classification.confidence < 0.4) {
+      console.log('📧 [ToolGating] Very low confidence (<0.4) - limiting to customer lookup only');
       gatedTools = gatedTools.filter(tool => {
         const toolName = tool.function?.name || tool.name;
         return toolName === 'customer_data_lookup';
