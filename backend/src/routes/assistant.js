@@ -403,10 +403,12 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
         },
         platform_settings: {
           post_call_webhook: {
-            url: `${backendUrl}/api/elevenlabs/webhook`
+            url: `${backendUrl}/api/elevenlabs/webhook`,
+            request_headers: {}
           },
           conversation_initiation_client_data_webhook: {
-            url: `${backendUrl}/api/elevenlabs/webhook`
+            url: `${backendUrl}/api/elevenlabs/webhook`,
+            request_headers: {}
           }
         },
         metadata: {
@@ -967,10 +969,12 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
           },
           platform_settings: {
             post_call_webhook: {
-              url: `${backendUrl}/api/elevenlabs/webhook`
+              url: `${backendUrl}/api/elevenlabs/webhook`,
+              request_headers: {}
             },
             conversation_initiation_client_data_webhook: {
-              url: `${backendUrl}/api/elevenlabs/webhook`
+              url: `${backendUrl}/api/elevenlabs/webhook`,
+              request_headers: {}
             }
           }
         };

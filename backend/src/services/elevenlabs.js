@@ -170,7 +170,8 @@ const elevenLabsService = {
       if (currentInitUrl !== mainWebhookUrl) {
         patch.conversation_initiation_client_data_webhook = {
           ...(current?.conversation_initiation_client_data_webhook || {}),
-          url: mainWebhookUrl
+          url: mainWebhookUrl,
+          request_headers: current?.conversation_initiation_client_data_webhook?.request_headers || {}
         };
       }
 
@@ -1210,10 +1211,12 @@ export function buildAgentConfig(assistant, business, tools = [], integrations =
     },
     platform_settings: {
       post_call_webhook: {
-        url: `${backendUrl}/api/elevenlabs/webhook`
+        url: `${backendUrl}/api/elevenlabs/webhook`,
+        request_headers: {}
       },
       conversation_initiation_client_data_webhook: {
-        url: `${backendUrl}/api/elevenlabs/webhook`
+        url: `${backendUrl}/api/elevenlabs/webhook`,
+        request_headers: {}
       },
       widget: {
         variant: 'full'
