@@ -21,7 +21,8 @@ import {
   User,
   Hash,
   Clock,
-  ExternalLink
+  ExternalLink,
+  Mail
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
@@ -130,7 +131,8 @@ export default function CRMDataPage() {
   const filterOrders = orders.filter(order =>
     order.orderNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     order.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    order.customerPhone?.includes(searchTerm)
+    order.customerPhone?.includes(searchTerm) ||
+    order.customerEmail?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const filterStock = stock.filter(item =>
@@ -141,7 +143,8 @@ export default function CRMDataPage() {
   const filterTickets = tickets.filter(ticket =>
     ticket.ticketNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     ticket.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    ticket.customerPhone?.includes(searchTerm)
+    ticket.customerPhone?.includes(searchTerm) ||
+    ticket.customerEmail?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Refresh data
@@ -329,6 +332,12 @@ export default function CRMDataPage() {
                                 {order.customerPhone}
                               </div>
                             )}
+                            {order.customerEmail && (
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                                <Mail className="w-3 h-3" />
+                                {order.customerEmail}
+                              </div>
+                            )}
                           </div>
                         </td>
                         <td className="p-3">
@@ -461,7 +470,16 @@ export default function CRMDataPage() {
                           <div>
                             <div className="font-medium">{ticket.customerName || 'N/A'}</div>
                             {ticket.customerPhone && (
-                              <div className="text-sm text-muted-foreground">{ticket.customerPhone}</div>
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                                <Phone className="w-3 h-3" />
+                                {ticket.customerPhone}
+                              </div>
+                            )}
+                            {ticket.customerEmail && (
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                                <Mail className="w-3 h-3" />
+                                {ticket.customerEmail}
+                              </div>
                             )}
                           </div>
                         </td>
