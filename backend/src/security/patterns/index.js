@@ -73,8 +73,16 @@ export const PROMPT_DISCLOSURE_REGEX_PATTERNS = Object.freeze([
 
 // Internal metadata/tool/system terms that should not leak to end users.
 export const INTERNAL_METADATA_TERMS = Object.freeze([
+  // Actual tool names (snake_case)
   'customer_data_lookup',
   'check_order_status',
+  'check_order_status_crm',
+  'check_stock_crm',
+  'check_ticket_status_crm',
+  'get_product_stock',
+  'create_callback',
+  'create_appointment',
+  'send_order_notification',
   'order_notification',
   'update_customer',
   'create_ticket',
@@ -88,8 +96,19 @@ export const INTERNAL_METADATA_TERMS = Object.freeze([
   'get_faq',
   'search_knowledge_base',
   'crm_search',
+  'crm_contact_lookup',
+  'crm_deal_lookup',
   'order_search',
   'product_search',
+  'appointment_lookup',
+  // LLM-hallucinated tool names (Gemini training data leaks)
+  'ecommerce_product_lookup',
+  'product_lookup',
+  'order_lookup',
+  'stock_lookup',
+  'inventory_lookup',
+  'shipping_lookup',
+  // camelCase variants
   'customerdatalookup',
   'checkorderstatus',
   'ordernotification',
@@ -105,25 +124,32 @@ export const INTERNAL_METADATA_TERMS = Object.freeze([
   'getfaq',
   'searchknowledgebase',
   'crmsearch',
+  // Debug/code prefixes
+  'tool_code',
+  'tool_code:',
   'tool_use',
   'tool_result',
   'function_call',
   'function_result',
+  // Secrets
   'api_key',
   'access_token',
   'bearer token',
   'jwt token',
+  // Internal IDs
   'businessid',
   'assistantid',
   'conversationid',
   'sessionid',
   'requestid',
+  // Infrastructure
   'prisma',
   'anthropic',
   'claude-3',
   'claude-2',
   'gpt-4',
   'openai',
+  'gemini',
   '__typename',
   'graphql',
   'mutation',
@@ -143,7 +169,17 @@ export const INTERNAL_TOOL_INVOCATION_PATTERNS = Object.freeze([
   /\b(used|using|called|calling|invoke|invoking|ran|running)\s+\w+_\w+\s*(tool|function)?/i,
   /\btool:\s*\w+/i,
   /\bfunction:\s*\w+/i,
-  /\btoolName:\s*["']?\w+/i
+  /\btoolName:\s*["']?\w+/i,
+  // Python-style debug syntax (Gemini hallucination: print(tool_name(...)))
+  /\bprint\s*\(\s*\w+_\w+\s*\(/i,
+  // Debug prefix patterns ([DEBUG], DEBUG_, debug:)
+  /\[DEBUG\]/i,
+  /\bDEBUG_\w+/,
+  /\bdebug:\s/i,
+  // tool_code: prefix (Gemini hallucination)
+  /\btool_code\s*:/i,
+  // Generic code-like tool invocations (e.g. tool_name(arg1, arg2))
+  /\b\w+_\w+\s*\([^)]*\)\s*$/m
 ]);
 
 // NOT_FOUND acknowledgements used by security gateway + test assertions.
