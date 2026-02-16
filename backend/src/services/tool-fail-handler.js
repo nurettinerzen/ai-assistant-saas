@@ -345,6 +345,8 @@ function countGuidanceComponents(response, language = 'TR') {
  */
 export function ensurePolicyGuidance(response, userMessage, language = 'TR') {
   const isPolicyMsg = isPolicyTopic(userMessage, language);
+  const lang = language.toUpperCase() === 'EN' ? 'EN' : 'TR';
+  const defaults = DEFAULT_GUIDANCE[lang] || DEFAULT_GUIDANCE.TR;
 
   // VERBOSE logging
   if (process.env.VERBOSE === 'true') {
@@ -362,9 +364,29 @@ export function ensurePolicyGuidance(response, userMessage, language = 'TR') {
 
   const components = countGuidanceComponents(response, language);
   const presentCount = Object.values(components).filter(Boolean).length;
+  const actionableGuidancePattern = lang === 'TR'
+    ? /(destek|iletişim|müşteri\s*hizmetleri|arayabilir|e-?posta|adım)/i
+    : /(support|contact|customer\s*service|call|email|step)/i;
+  const hasActionableGuidanceSignal = actionableGuidancePattern.test(response || '');
 
   if (process.env.VERBOSE === 'true') {
     console.log(`📋 [GuidanceGuard:ensurePolicyGuidance] components=${JSON.stringify(components)}, presentCount=${presentCount}`);
+  }
+
+  // For policy replies, we require at least one actionable guidance signal.
+  // If absent, append deterministic next-step + contact guidance.
+  if (!hasActionableGuidanceSignal) {
+    const forcedStep = lang === 'TR'
+      ? 'İzleyebileceğiniz adım: yeniden inceleme talebi oluşturup sipariş numaranızı paylaşın.'
+      : 'Next step: create a review request and share your order number.';
+
+    const enhancedResponse = `${response.trim()}\n\n${forcedStep} ${defaults.contactChannel}`;
+
+    return {
+      response: enhancedResponse,
+      guidanceAdded: true,
+      addedComponents: ['nextStep', 'contactChannel']
+    };
   }
 
   // If at least 2 components present, response is OK
@@ -376,8 +398,6 @@ export function ensurePolicyGuidance(response, userMessage, language = 'TR') {
   }
 
   // Need to add missing components
-  const lang = language.toUpperCase() === 'EN' ? 'EN' : 'TR';
-  const defaults = DEFAULT_GUIDANCE[lang] || DEFAULT_GUIDANCE.TR;
   const addedComponents = [];
   const toAdd = [];
 

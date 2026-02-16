@@ -9,6 +9,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { applyToolGatingPolicy } from '../../../policies/toolGatingPolicy.js';
 import { convertToolsToGeminiFunctions as convertToolsToGemini } from '../../../services/gemini-utils.js';
+import { isPolicyTopic } from '../../../services/tool-fail-handler.js';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
@@ -251,6 +252,8 @@ KURALLAR:
 
   // STEP 1: Apply tool gating policy
   const classifierConfidence = classification?.confidence || 0.9;
+  const languageCode = business?.language || 'TR';
+  const isPolicyTopicTurn = isPolicyTopic(userMessage || '', languageCode);
 
   // OPTIMIZATION: Skip tools entirely for CHATTER messages (greetings, acknowledgments)
   // This saves ~5000 tokens per CHATTER turn and reduces latency
@@ -260,6 +263,9 @@ KURALLAR:
   if (isChatter) {
     gatedTools = [];
     console.log('💬 [BuildLLMRequest] CHATTER detected — skipping all tools (0 token overhead)');
+  } else if (isPolicyTopicTurn) {
+    gatedTools = [];
+    console.log('📋 [BuildLLMRequest] POLICY topic detected — skipping tools for deterministic guidance responses');
   } else {
     // P0-FIX: ALWAYS start from full tool list (allToolNames), not stale state.allowedTools.
     // Previously: state.allowedTools from prior turn was reused as input → once a tool was gated out,

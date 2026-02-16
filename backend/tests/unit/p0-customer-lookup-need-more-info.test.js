@@ -36,7 +36,18 @@ beforeEach(() => {
 describe('P0 customer_data_lookup deterministic outcomes', () => {
   const business = { id: 1, language: 'TR' };
 
-  it('B1: order without last4 should return NEED_MORE_INFO and ask only phone_last4', async () => {
+  it('B1: existing order without last4 should request verification (phone_last4)', async () => {
+    prismaMock.crmOrder.findFirst
+      .mockResolvedValueOnce({
+        id: 'crm-order-1',
+        businessId: 1,
+        orderNumber: 'ORD-9837459',
+        customerName: 'Ahmet Yılmaz',
+        customerPhone: '+905551234567',
+        customerEmail: 'ahmet@example.com',
+        status: 'Hazırlanıyor'
+      });
+
     const result = await executeLookup(
       {
         query_type: 'siparis',
@@ -49,11 +60,10 @@ describe('P0 customer_data_lookup deterministic outcomes', () => {
       }
     );
 
-    expect(result.outcome).toBe(ToolOutcome.NEED_MORE_INFO);
-    expect(result.askFor).toEqual(['phone_last4']);
+    expect(result.outcome).toBe(ToolOutcome.VERIFICATION_REQUIRED);
+    expect(result.data?.askFor).toBe('phone_last4');
     expect(result.message.toLowerCase()).toContain('son 4');
-    expect(result.message.toLowerCase()).not.toContain('sipariş numaranızı paylaş');
-    expect(prismaMock.crmOrder.findFirst).not.toHaveBeenCalled();
+    expect(prismaMock.crmOrder.findFirst).toHaveBeenCalled();
   });
 
   it('B3: order + last4 provided but record missing should return NOT_FOUND (not NEED_MORE_INFO)', async () => {

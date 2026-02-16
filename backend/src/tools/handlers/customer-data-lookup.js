@@ -55,6 +55,20 @@ function normalizeOrderNumber(orderNumber) {
 
   return normalized;
 }
+
+function isLikelyValidOrderNumber(orderNumber) {
+  if (!orderNumber) return false;
+
+  const raw = String(orderNumber).trim();
+  const normalized = normalizeOrderNumber(raw);
+
+  // Accept common prefixed forms and plain numeric IDs.
+  // Reject unknown alphanumeric forms like "XYZ9999" to avoid false routing.
+  if (/^(?:ORD|ORDER|SIP|SIPARIS)[\s\-_]?\d{3,}$/i.test(raw)) return true;
+  if (/^\d{3,}$/.test(normalized)) return true;
+
+  return false;
+}
 import {
   requiresVerification,
   createAnchor,
@@ -66,6 +80,7 @@ import {
 import {
   ok,
   notFound,
+  validationError,
   verificationRequired,
   systemError,
   ToolOutcome,
@@ -87,16 +102,6 @@ function toStateAnchor(anchor) {
   };
 }
 
-function extractLast4Candidate(...candidates) {
-  for (const candidate of candidates) {
-    if (!candidate) continue;
-    const digits = String(candidate).replace(/\D/g, '');
-    if (digits.length === 4) return digits;
-    if (digits.length >= 10) return digits.slice(-4);
-  }
-  return null;
-}
-
 /**
  * Execute customer data lookup
  */
@@ -116,11 +121,15 @@ export async function execute(args, business, context = {}) {
 
     const normalizedQueryType = String(query_type || '').toLowerCase();
     const isOrderQuery = normalizedQueryType === 'siparis' || normalizedQueryType === 'order';
-    const providedPhoneLast4 = extractLast4Candidate(
-      phone,
-      verification_input,
-      state.verification?.collected?.last4
-    );
+
+    if (isOrderQuery && order_number && !isLikelyValidOrderNumber(order_number)) {
+      return validationError(
+        language === 'TR'
+          ? 'Sipariş numarası formatı geçersiz görünüyor. Lütfen sipariş numaranızı kontrol edip tekrar paylaşır mısınız?'
+          : 'The order number format looks invalid. Please verify your order number and share it again.',
+        'order_number'
+      );
+    }
 
     // SECURITY: Don't log PII (phone, vkn, tc, names)
     console.log('🔍 [CustomerDataLookup-V2] Query:', {
@@ -134,22 +143,6 @@ export async function execute(args, business, context = {}) {
       sessionId,
       verificationStatus: state.verification?.status || 'none'
     });
-
-    // Deterministic contract: for order lookups, collect phone_last4 before lookup attempts.
-    if (isOrderQuery && order_number && !providedPhoneLast4 && !isVerificationPending) {
-      return {
-        outcome: ToolOutcome.NEED_MORE_INFO,
-        success: true,
-        askFor: ['phone_last4'],
-        data: {
-          askFor: ['phone_last4'],
-          order_number: normalizeOrderNumber(order_number)
-        },
-        message: language === 'TR'
-          ? 'Sipariş numarasını aldım. Devam edebilmem için kayıtlı telefon numaranızın son 4 hanesini paylaşır mısınız?'
-          : 'I have your order number. To continue, could you share the last 4 digits of your registered phone number?'
-      };
-    }
 
     // ============================================================================
     // P0: VERIFICATION HANDLER - Process pending verification

@@ -342,6 +342,60 @@ function upsertCallbackContext({ state, userMessage, callbackIntentDetected }) {
   return { customerName, customerPhone };
 }
 
+function isLikelyVerificationInput(message = '') {
+  const trimmed = String(message || '').trim();
+  if (!trimmed) return false;
+
+  if (/^\d{4}$/.test(trimmed)) return true;
+
+  const compact = trimmed.replace(/[\s\-()]/g, '');
+  if (/^\+?\d{10,13}$/.test(compact)) return true;
+
+  const digits = trimmed.replace(/[^\d]/g, '');
+  if (digits.length === 4 && /\b(son|last|hane|digit)\b/i.test(trimmed)) {
+    return true;
+  }
+
+  return false;
+}
+
+function inferVerificationQueryType(state = {}, anchorType = null) {
+  const activeFlow = String(state.activeFlow || '').toUpperCase();
+  if (activeFlow === 'ORDER_STATUS' || activeFlow === 'TRACKING_INFO') return 'siparis';
+  if (activeFlow === 'DEBT_INQUIRY') return 'borc';
+  if (activeFlow === 'ACCOUNT_LOOKUP') return 'genel';
+
+  if (anchorType === 'order') return 'siparis';
+  if (anchorType === 'ticket') return 'ariza';
+  return 'genel';
+}
+
+function buildForcedVerificationToolCall(state = {}, userMessage = '') {
+  const anchor = state?.verification?.anchor;
+  const verificationInput = String(userMessage || '').trim();
+  if (!anchor || !verificationInput) return null;
+
+  const args = {
+    query_type: inferVerificationQueryType(state, anchor.type),
+    verification_input: verificationInput
+  };
+
+  if (anchor.type === 'order' && anchor.value) {
+    args.order_number = anchor.value;
+  } else if (anchor.type === 'phone') {
+    args.phone = anchor.phone || anchor.value || null;
+  } else if (anchor.type === 'vkn' && anchor.value) {
+    args.vkn = anchor.value;
+  } else if (anchor.type === 'tc' && anchor.value) {
+    args.tc = anchor.value;
+  }
+
+  return {
+    name: 'customer_data_lookup',
+    args
+  };
+}
+
 export async function makeRoutingDecision(params) {
   const { classification, state, userMessage, conversationHistory, language, business, sessionId = '' } = params;
 
@@ -524,6 +578,16 @@ export async function makeRoutingDecision(params) {
   if (state.verification?.status === 'pending' && state.verification?.anchor && !isNonVerificationFlow) {
     console.log('🔐 [Verification] Pending verification — LLM will handle input interpretation');
 
+    // Deterministic rescue: when user sends clear verification input (e.g. "4567"),
+    // arm a forced customer_data_lookup call so verification doesn't stall on LLM misses.
+    if (isLikelyVerificationInput(userMessage)) {
+      const forcedCall = buildForcedVerificationToolCall(state, userMessage);
+      if (forcedCall) {
+        state.forceToolCall = forcedCall;
+        console.log('🧭 [Verification] Forced verification tool call armed');
+      }
+    }
+
     // Add verification context for LLM's system prompt
     state.verificationContext = {
       status: 'pending',
@@ -537,7 +601,8 @@ export async function makeRoutingDecision(params) {
     return {
       directResponse: false,
       routing: messageRouting,
-      verificationPending: true
+      verificationPending: true,
+      forcedVerificationTool: !!state.forceToolCall
     };
   }
 

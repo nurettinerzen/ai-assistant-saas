@@ -43,6 +43,7 @@ import { ToolOutcome, normalizeOutcome } from '../tools/toolResult.js';
 import { getMessageVariant } from '../messages/messageCatalog.js';
 import { checkSessionThrottle } from '../services/sessionThrottle.js';
 import { getChannelMode, getHelpLinks } from '../config/channelMode.js';
+import { ensurePolicyGuidance } from '../services/tool-fail-handler.js';
 
 /**
  * Extract order number from user message
@@ -1134,6 +1135,18 @@ export async function handleIncomingMessage({
           userMessage,
           language
         );
+      }
+    }
+
+    // Deterministic post-pass for policy topics.
+    // applyGuardrails already does this in the normal path, but blocked/reprompt flows
+    // can bypass that stage and return without actionable policy guidance.
+    if (typeof finalResponse === 'string' && finalResponse.trim()) {
+      const policyGuidance = ensurePolicyGuidance(finalResponse, userMessage || '', language);
+      finalResponse = policyGuidance.response;
+      if (policyGuidance.guidanceAdded) {
+        const existing = Array.isArray(metrics.guidanceAdded) ? metrics.guidanceAdded : [];
+        metrics.guidanceAdded = [...new Set([...existing, ...policyGuidance.addedComponents])];
       }
     }
 
