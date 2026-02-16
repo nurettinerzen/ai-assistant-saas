@@ -95,6 +95,7 @@ export async function applyGuardrails(params) {
       finalResponse: firewallResult.sanitized,
       guardrailsApplied: ['RESPONSE_FIREWALL'],
       blocked: true,
+      blockReason: 'FIREWALL_BLOCK', // P2-FIX: explicit blockReason for telemetry
       softRefusal: true, // Flag for soft refusal (no session lock)
       violations: firewallResult.violations,
       messageKey: firewallResult.messageKey,

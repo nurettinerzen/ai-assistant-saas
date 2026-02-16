@@ -1063,9 +1063,10 @@ export async function handleIncomingMessage({
 
     // Security Gateway tarafından block edildiyse
     if (guardrailResult.blocked) {
-      console.warn(`🚨 [SecurityGateway] Response blocked: ${guardrailResult.blockReason}`);
+      console.warn(`🚨 [SecurityGateway] Response blocked: ${guardrailResult.blockReason}${guardrailResult.violations ? ` (violations: ${guardrailResult.violations.join(', ')})` : ''}`);
       metrics.securityGatewayBlock = {
         reason: guardrailResult.blockReason,
+        violations: guardrailResult.violations || null,
         details: guardrailResult.leaks || guardrailResult.mismatchDetails
       };
 
@@ -1161,6 +1162,7 @@ export async function handleIncomingMessage({
       secTelemetry.blocked = guardrailResult.blocked || false;
       secTelemetry.blockReason = guardrailResult.blockReason || null;
       secTelemetry.correctionType = guardrailResult.correctionType || null;
+      secTelemetry.violations = guardrailResult.violations || null; // P2-FIX: firewall violation types
       secTelemetry.repromptCount = repromptCount;
       secTelemetry.softRefusal = guardrailResult.softRefusal || false;
       secTelemetry.latencyMs = Date.now() - turnStartTime;
@@ -1183,6 +1185,7 @@ export async function handleIncomingMessage({
       console.log('📊 [SecurityTelemetry]', {
         blocked: secTelemetry.blocked,
         blockReason: secTelemetry.blockReason,
+        violations: secTelemetry.violations || null,
         correctionType: secTelemetry.correctionType,
         repromptCount: secTelemetry.repromptCount,
         fallbackUsed: secTelemetry.fallbackUsed || false,
