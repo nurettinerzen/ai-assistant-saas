@@ -29,6 +29,7 @@
 export const ToolOutcome = Object.freeze({
   OK: 'OK',
   NOT_FOUND: 'NOT_FOUND',
+  NEED_MORE_INFO: 'NEED_MORE_INFO',
   VALIDATION_ERROR: 'VALIDATION_ERROR',
   VERIFICATION_REQUIRED: 'VERIFICATION_REQUIRED',
   DENIED: 'DENIED',
@@ -40,6 +41,7 @@ export const ToolOutcome = Object.freeze({
 export const TOOL_OUTCOME_VALUES = Object.freeze([
   ToolOutcome.OK,
   ToolOutcome.NOT_FOUND,
+  ToolOutcome.NEED_MORE_INFO,
   ToolOutcome.VALIDATION_ERROR,
   ToolOutcome.VERIFICATION_REQUIRED,
   ToolOutcome.DENIED,

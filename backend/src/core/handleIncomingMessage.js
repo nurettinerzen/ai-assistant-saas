@@ -42,6 +42,7 @@ import { OutcomeEventType } from '../security/outcomePolicy.js';
 import { ToolOutcome, normalizeOutcome } from '../tools/toolResult.js';
 import { getMessageVariant } from '../messages/messageCatalog.js';
 import { checkSessionThrottle } from '../services/sessionThrottle.js';
+import { getChannelMode, getHelpLinks } from '../config/channelMode.js';
 
 /**
  * Extract order number from user message
@@ -120,6 +121,14 @@ async function regenerateWithGuidance(guidanceType, guidanceData, userMessage, l
     let guidance;
 
     if (guidanceType === 'VERIFICATION') {
+      const callbackFields = new Set(['customer_name', 'phone']);
+      const missingSet = new Set(Array.isArray(guidanceData) ? guidanceData : []);
+      const isCallbackInfoRequest = [...missingSet].every(field => callbackFields.has(field));
+      if (isCallbackInfoRequest && missingSet.size > 0) {
+        guidance = language === 'TR'
+          ? 'Kullanıcı geri arama istiyor. Kimlik doğrulama veya sipariş bilgisi isteme. Sadece ad-soyad ve telefon numarası iste.'
+          : 'The user requested a callback. Do not ask for identity verification or order details. Ask only for full name and phone number.';
+      } else {
       const missingFieldsText = guidanceData.map(f => {
         if (f === 'order_number') return language === 'TR' ? 'sipariş numarası' : 'order number';
         if (f === 'phone_last4') return language === 'TR' ? 'telefon numarasının son 4 hanesi' : 'last 4 digits of phone number';
@@ -129,6 +138,7 @@ async function regenerateWithGuidance(guidanceType, guidanceData, userMessage, l
       guidance = language === 'TR'
         ? `Kullanıcının sipariş bilgilerine erişmek için kimlik doğrulaması gerekiyor. Kullanıcıdan ${missingFieldsText} bilgisini iste. Doğal ve kibar bir şekilde sor. Şablon cümle KULLANMA.`
         : `Identity verification is required to access order information. Ask the user for their ${missingFieldsText}. Ask naturally and politely. Do NOT use template sentences.`;
+      }
 
     } else if (guidanceType === 'CONFABULATION') {
       guidance = language === 'TR'
@@ -144,6 +154,11 @@ async function regenerateWithGuidance(guidanceType, guidanceData, userMessage, l
       guidance = language === 'TR'
         ? `Sen bir müşteri hizmetleri asistanısın. ${guidanceData} Kullanıcının sorusuna yanıt ver ama SADECE sistemden dönen bilgileri kullan. Sistemde olmayan bilgiyi UYDURMA. Emin olmadığın konularda "sistemi kontrol edeyim" de.`
         : `You are a customer service assistant. ${guidanceData} Answer the user's question using ONLY the data returned from the system. Do NOT fabricate information not present in system data. If unsure, say "let me check the system".`;
+
+    } else if (guidanceType === 'KB_ONLY_URL_VIOLATION') {
+      guidance = language === 'TR'
+        ? `Yanıtında izinsiz URL tespit edildi. Yanıtı tekrar yaz, hiçbir URL ekleme. Link istenmişse "destek ekibimize ulaşabilirsiniz" yönlendirmesi yap.`
+        : `Unauthorized URLs detected in your response. Rewrite without any URLs. If a link is needed, direct the user to contact support.`;
     }
 
     const prompt = `${guidance}\n\nKullanıcı mesajı: "${userMessage}"\n\nYanıtın:`;
@@ -229,6 +244,10 @@ function determineTurnOutcome({
     return ToolOutcome.VERIFICATION_REQUIRED;
   }
 
+  if (guardrailResult?.needsCallbackInfo || guardrailResult?.blockReason === 'CALLBACK_INFO_REQUIRED') {
+    return ToolOutcome.NEED_MORE_INFO;
+  }
+
   if (guardrailResult?.blockReason === 'IDENTITY_MISMATCH' || guardrailResult?.blockReason === 'POLICY_DENIED') {
     return ToolOutcome.DENIED;
   }
@@ -250,6 +269,9 @@ function determineTurnOutcome({
   }
   if (toolOutcomes.includes(ToolOutcome.VALIDATION_ERROR)) {
     return ToolOutcome.VALIDATION_ERROR;
+  }
+  if (toolOutcomes.includes(ToolOutcome.NEED_MORE_INFO)) {
+    return ToolOutcome.NEED_MORE_INFO;
   }
 
   return ToolOutcome.OK;
@@ -510,6 +532,16 @@ export async function handleIncomingMessage({
     }
 
     // ========================================
+    // CHANNEL MODE: Resolve KB_ONLY vs FULL
+    // ========================================
+    const channelMode = getChannelMode(business, channel);
+    const helpLinks = channelMode === 'KB_ONLY' ? getHelpLinks(business) : {};
+    if (channelMode === 'KB_ONLY') {
+      console.log(`🔒 [Orchestrator] KB_ONLY mode active for channel=${channel}`);
+      metrics.channelMode = 'KB_ONLY';
+    }
+
+    // ========================================
     // STEP 1: Load Context
     // ========================================
     console.log('\n[STEP 1] Loading context...');
@@ -566,7 +598,7 @@ export async function handleIncomingMessage({
     // STEP 2: Prepare Context
     // ========================================
     console.log('\n[STEP 2] Preparing context...');
-    const { systemPrompt, conversationHistory, toolsAll } = await prepareContext({
+    const { systemPrompt, conversationHistory, toolsAll, hasKBMatch } = await prepareContext({
       business,
       assistant,
       state,
@@ -574,7 +606,8 @@ export async function handleIncomingMessage({
       timezone,
       prisma,
       sessionId: resolvedSessionId,
-      userMessage // V1 MVP: For intelligent KB retrieval
+      userMessage, // V1 MVP: For intelligent KB retrieval
+      channelMode
     });
 
     // P0 SECURITY: Prepend injection warning to system prompt if detected
@@ -593,11 +626,17 @@ export async function handleIncomingMessage({
     console.log('\n[STEP 3] Classifying message...');
     let classification = null;
 
+    // Snapshot extractedSlots BEFORE classification updates them.
+    // Used by toolLoop for repeat NOT_FOUND detection (compare old vs new identifiers).
+    state._previousExtractedSlots = state.extractedSlots ? { ...state.extractedSlots } : {};
+
     // OPTIMIZATION: Skip classifier when no active flow.
     // Classifier is only needed to distinguish SLOT_ANSWER vs FOLLOWUP_DISPUTE
     // during active flows. In idle state, LLM handles everything directly.
+    // P0-FIX: Also run classifier after NOT_FOUND/VALIDATION_ERROR so new slots get extracted.
     const needsClassifier = isFeatureEnabled('USE_MESSAGE_TYPE_ROUTING') &&
       (state.flowStatus === 'in_progress' || state.flowStatus === 'resolved' || state.flowStatus === 'post_result' ||
+       state.flowStatus === 'not_found' || state.flowStatus === 'validation_error' ||
        state.verification?.status === 'pending');
 
     if (needsClassifier) {
@@ -618,10 +657,11 @@ export async function handleIncomingMessage({
       // GUARD: During verification flow, classifier doesn't understand conversation context
       // (e.g., "8271" gets classified as order_number when it's actually phone_last4)
       // LLM handles context correctly via tool calls — don't let classifier corrupt state
+      // P0-FIX: Removed flowStatus === 'in_progress' — too broad, blocks slot extraction
+      // after NOT_FOUND when user provides new identifier. Only block during actual verification.
       if (classification.extractedSlots && Object.keys(classification.extractedSlots).length > 0) {
         const isVerificationPending = state.verificationContext ||
-          state.verification?.status === 'pending' ||
-          state.flowStatus === 'in_progress';
+          state.verification?.status === 'pending';
 
         if (isVerificationPending) {
           console.log('⚠️ [Classification] Verification in progress — skipping extractedSlots merge to prevent state corruption:', classification.extractedSlots);
@@ -654,7 +694,11 @@ export async function handleIncomingMessage({
       conversationHistory,
       language,
       business,
-      sessionId: resolvedSessionId
+      sessionId: resolvedSessionId,
+      channelMode,
+      helpLinks,
+      channel,
+      hasKBMatch
     });
 
     // Check for direct responses (slot escalation, dispute resolution)
@@ -732,7 +776,9 @@ export async function handleIncomingMessage({
       toolsAll,
       metrics,
       assistant, // CHATTER minimal prompt için
-      business   // CHATTER minimal prompt için
+      business,  // CHATTER minimal prompt için
+      channelMode,
+      helpLinks
     });
 
     console.log(`🔧 Gated tools: ${gatedTools.length}`);
@@ -756,7 +802,8 @@ export async function handleIncomingMessage({
       sessionId: resolvedSessionId,
       messageId,
       metrics,
-      effectsEnabled // DRY-RUN flag
+      effectsEnabled, // DRY-RUN flag
+      channelMode
     });
 
     let {
@@ -809,6 +856,34 @@ export async function handleIncomingMessage({
         success: r?.success
       })) || []
     });
+
+    // ========================================
+    // STATE RESET AFTER NOT_FOUND TERMINAL
+    // ========================================
+    // When toolLoop returns NOT_FOUND terminal, the current flow is dead.
+    // Reset flowStatus and activeFlow so next turn:
+    //   1. Classifier runs (needsClassifier check won't skip due to stale flowStatus)
+    //   2. extractedSlots merge is not blocked by stale isVerificationPending
+    //   3. Tool gating re-evaluates from clean state
+    //   4. Leak filter knows NOT_FOUND context via state.lastNotFound
+    const terminalOutcome = normalizeOutcome(toolLoopResult._terminalState);
+    if (terminalOutcome === ToolOutcome.NOT_FOUND) {
+      console.log('🔄 [Orchestrator] NOT_FOUND terminal — resetting flow state for next turn');
+      state.flowStatus = 'not_found';
+      // Keep state.activeFlow for context but mark it as completed
+      // state.lastNotFound is already set by outcomePolicy in toolLoop
+    }
+
+    if (terminalOutcome === ToolOutcome.VALIDATION_ERROR) {
+      console.log('🔄 [Orchestrator] VALIDATION_ERROR terminal — resetting flow state for next turn');
+      state.flowStatus = 'validation_error';
+      // Don't clear activeFlow — LLM may retry with correct params
+    }
+
+    if (terminalOutcome === ToolOutcome.NEED_MORE_INFO) {
+      console.log('🔄 [Orchestrator] NEED_MORE_INFO terminal — waiting for missing user input');
+      state.flowStatus = 'validation_error';
+    }
 
     // ========================================
     // ENUMERATION DEFENSE: Deterministic state-event tracking
@@ -975,7 +1050,12 @@ export async function handleIncomingMessage({
       verificationState, // Security Gateway için
       verifiedIdentity, // Identity mismatch kontrolü için
       intent: detectedIntent, // Tool enforcement için (HP-07 fix)
-      collectedData // Leak filter için - zaten bilinen veriler
+      collectedData, // Leak filter için - zaten bilinen veriler
+      channelMode,
+      helpLinks,
+      lastNotFound: state.lastNotFound || null, // P0-FIX: NOT_FOUND context for leak filter bypass
+      callbackPending: state.callbackFlow?.pending === true,
+      activeFlow: state.activeFlow || null
     });
 
     let { finalResponse } = guardrailResult;
@@ -1037,6 +1117,19 @@ export async function handleIncomingMessage({
         console.log('📋 Violation:', guardrailResult.violation);
         finalResponse = await regenerateWithGuidance(
           'FIELD_GROUNDING',
+          guardrailResult.correctionConstraint,
+          userMessage,
+          language
+        );
+      }
+
+      // ============================================
+      // KB_ONLY URL VIOLATION: Re-prompt LLM
+      // ============================================
+      if (guardrailResult.needsCorrection && guardrailResult.correctionType === 'KB_ONLY_URL_VIOLATION') {
+        console.log('🚨 [Orchestrator] KB_ONLY URL violation, re-prompting LLM...');
+        finalResponse = await regenerateWithGuidance(
+          'KB_ONLY_URL_VIOLATION',
           guardrailResult.correctionConstraint,
           userMessage,
           language
@@ -1145,6 +1238,7 @@ export async function handleIncomingMessage({
         guardrailMessageKey: guardrailResult.messageKey || null,
         guardrailVariantIndex: Number.isInteger(guardrailResult.variantIndex) ? guardrailResult.variantIndex : null,
         verificationState: state?.verification?.status || 'none',
+        repeatToolCallBlocked: !!toolLoopResult._repeatNotFoundBlocked,
         guidanceAdded: metrics.guidanceAdded || [],
         ...(persistMetadata || {})
       },

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useCallbacks, useCallbackStats, useUpdateCallback, useRetryCallback } from '@/hooks/useCallbacks';
+import { useCallbacks, useCallbackStats, useCallbackDetail, useUpdateCallback, useRetryCallback } from '@/hooks/useCallbacks';
 import {
   Phone,
   Clock,
@@ -15,7 +15,8 @@ import {
   Filter,
   Calendar,
   User,
-  MessageSquare
+  MessageSquare,
+  ExternalLink
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -74,6 +75,11 @@ export default function CallbacksPage() {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [notes, setNotes] = useState('');
   const [callbackNotes, setCallbackNotes] = useState('');
+
+  // Fetch full detail (with chat transcript) when a callback is selected
+  const { data: detailData, isLoading: detailLoading } = useCallbackDetail(
+    selectedCallback?.id
+  );
 
   const updateStatus = async (id, status) => {
     try {
@@ -333,7 +339,7 @@ export default function CallbacksPage() {
 
       {/* Details Dialog */}
       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{t('dashboard.callbacksPage.details')}</DialogTitle>
             <DialogDescription>
@@ -374,6 +380,34 @@ export default function CallbacksPage() {
                 <label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">{t('dashboard.callbacksPage.assistant')}</label>
                 <p className="mt-1 text-neutral-900 dark:text-white">{selectedCallback.assistant.name}</p>
               </div>
+            )}
+
+            {/* Chat History — link to chat detail page */}
+            {detailLoading && selectedCallback?.id && (
+              <div className="text-sm text-neutral-400 italic py-2">{t('common.loading')}</div>
+            )}
+            {!detailLoading && detailData?.chatTranscript && (
+              <div>
+                <label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                  {t('dashboard.callbacksPage.chatTranscript')}
+                </label>
+                <Button
+                  variant="outline"
+                  className="mt-2 w-full justify-between"
+                  onClick={() => router.push(`/dashboard/chat-history?chatId=${detailData.chatTranscript.id}`)}
+                >
+                  <span className="flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4" />
+                    {t('dashboard.callbacksPage.viewChatHistory')}
+                  </span>
+                  <ExternalLink className="h-4 w-4 text-neutral-400" />
+                </Button>
+              </div>
+            )}
+            {!detailLoading && detailData?.linkStatus === 'NOT_FOUND' && (
+              <p className="text-sm text-neutral-400 italic">
+                {t('dashboard.callbacksPage.chatTranscriptNotFound')}
+              </p>
             )}
 
             {/* Notes */}

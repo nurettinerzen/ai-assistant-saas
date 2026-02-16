@@ -4,7 +4,8 @@
  */
 
 import { PrismaClient } from '@prisma/client';
-import { ok, validationError, systemError } from '../toolResult.js';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { ok, systemError, ToolOutcome } from '../toolResult.js';
 import crypto from 'crypto';
 
 const prisma = new PrismaClient();
@@ -101,6 +102,84 @@ function generateTopicFromContext(context, language) {
   return topicParts.join(' - ');
 }
 
+/**
+ * Redact PII from text before sending to LLM
+ * Masks phone numbers, emails, dates, Turkish ID numbers
+ */
+function redactPII(text) {
+  if (!text) return '';
+  return text
+    .replace(/\b\d{10,11}\b/g, '[TEL]')                      // phone numbers (10-11 digits)
+    .replace(/\b[\w.-]+@[\w.-]+\.\w+\b/g, '[EMAIL]')         // email addresses
+    .replace(/\b\d{1,3}[./]\d{1,3}[./]\d{2,4}\b/g, '[DATE]') // date patterns
+    .replace(/\bTC?\s?\d{11}\b/gi, '[TCKN]');                 // Turkish ID number
+}
+
+/**
+ * Generate topic summary using LLM (gemini-2.0-flash-lite)
+ * PII is redacted before sending to model.
+ * Returns null on failure (caller should fallback to keyword-based).
+ */
+async function generateTopicWithLLM(conversationHistory, language) {
+  const recentMessages = (conversationHistory || []).slice(-10);
+  if (recentMessages.length === 0) return null;
+
+  // PII redaction before sending to LLM
+  const transcript = recentMessages
+    .map(m => `${m.role === 'user' ? 'Müşteri' : 'Asistan'}: ${redactPII(m.content || '')}`)
+    .join('\n');
+
+  const prompt = language === 'TR'
+    ? `Aşağıdaki müşteri-asistan konuşmasını 1 cümle ile özetle. Maksimum 100 karakter. Sadece konuyu belirt. Örnek: "Sipariş kargo gecikmesi sorunu"\n\n${transcript}`
+    : `Summarize this customer-assistant conversation in 1 sentence. Max 100 chars. Topic only. Example: "Order shipping delay issue"\n\n${transcript}`;
+
+  const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY);
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-lite' });
+
+  const result = await model.generateContent(prompt);
+  const summary = result.response?.text()?.trim();
+
+  if (!summary || summary.length === 0) return null;
+  return summary.length <= 160 ? summary : summary.substring(0, 157) + '...';
+}
+
+// Generic topic values that indicate keyword-based generation was inconclusive
+const GENERIC_TOPICS = [
+  'Müşteri talebi', 'Customer request',
+  'Genel görüşme talebi', 'General inquiry'
+];
+
+const PLACEHOLDER_NAMES = new Set([
+  'customer',
+  'unknown',
+  'anonim',
+  'anonymous',
+  'test',
+  '-',
+  'n/a',
+  'na'
+]);
+
+function isPlaceholderName(name) {
+  if (!name) return true;
+  const normalized = String(name).trim().toLowerCase();
+  return !normalized || PLACEHOLDER_NAMES.has(normalized);
+}
+
+function buildCallbackValidationError(language, missingFields) {
+  const askFor = missingFields.length > 0 ? missingFields : ['customer_name', 'phone'];
+  return {
+    outcome: ToolOutcome.VALIDATION_ERROR,
+    success: true,
+    validationError: true,
+    askFor,
+    data: { askFor },
+    message: language === 'TR'
+      ? 'Sizi arayabilmemiz için ad-soyad ve telefon numaranızı paylaşır mısınız?'
+      : 'To create your callback, could you share your full name and phone number?'
+  };
+}
+
 export default {
   name: 'create_callback',
 
@@ -109,25 +188,41 @@ export default {
       let { customerName, customerPhone, topic, priority = 'NORMAL' } = args;
       const language = business.language || 'TR';
 
-      // Validate required fields (topic is optional, will auto-generate)
-      if (!customerName || !customerPhone) {
-        const missing = [
-          !customerName && 'customerName',
-          !customerPhone && 'customerPhone'
-        ].filter(Boolean);
-
-        return validationError(
-          language === 'TR'
-            ? `Eksik bilgi: ${missing.join(', ')}`
-            : `Missing information: ${missing.join(', ')}`,
-          missing.join(', ')
-        );
+      // Deterministic contract: callback cannot proceed without real name + phone.
+      const missing = [];
+      if (isPlaceholderName(customerName)) {
+        missing.push('customer_name');
+      }
+      if (!customerPhone || String(customerPhone).trim() === '') {
+        missing.push('phone');
+      }
+      if (missing.length > 0) {
+        return buildCallbackValidationError(language, missing);
       }
 
       // AUTO-GENERATE TOPIC: If not provided, infer from conversation context
+      // Strategy: Deterministic (keyword) first → LLM fallback only if generic
       if (!topic || topic.trim().length === 0) {
+        // 1) Deterministic: keyword-based (fast, free, reliable)
         topic = generateTopicFromContext(context, language);
-        console.log(`🔧 [create_callback] Auto-generated topic: "${topic}"`);
+        console.log(`🔧 [create_callback] Keyword-generated topic: "${topic}"`);
+
+        // 2) LLM fallback: only if keyword gave a generic result AND we have conversation context
+        const isGenericTopic = GENERIC_TOPICS.some(g => topic === g);
+        if (isGenericTopic && context.conversationHistory?.length > 2) {
+          try {
+            const llmTopic = await Promise.race([
+              generateTopicWithLLM(context.conversationHistory, language),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('LLM topic timeout')), 5000))
+            ]);
+            if (llmTopic) {
+              topic = llmTopic;
+              console.log(`🤖 [create_callback] LLM-generated topic: "${topic}"`);
+            }
+          } catch (err) {
+            console.warn(`⚠️ [create_callback] LLM topic failed, using keyword: ${err.message}`);
+          }
+        }
       }
 
       // Ensure topic is not too long (max 160 chars for readability)
@@ -178,7 +273,7 @@ export default {
         data: {
           businessId: business.id,
           assistantId: context.assistantId || null,
-          callId: context.conversationId || null,
+          callId: context.conversationId || null, // callId = ChatLog.sessionId (links callback → chat)
           customerName,
           customerPhone,
           topic,

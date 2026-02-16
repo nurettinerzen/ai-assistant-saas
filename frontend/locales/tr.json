@@ -913,7 +913,10 @@
       "priorityUrgent": "Acil",
       "priorityHigh": "Yüksek",
       "priorityNormal": "Normal",
-      "priorityLow": "Düşük"
+      "priorityLow": "Düşük",
+      "chatTranscript": "Sohbet Geçmişi",
+      "chatTranscriptNotFound": "Sohbet geçmişi bulunamadı.",
+      "viewChatHistory": "Sohbet Geçmişini Görüntüle"
     },
     "integrationsPage": {
       "title": "Entegrasyonlar",

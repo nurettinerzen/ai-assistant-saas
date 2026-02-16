@@ -57,21 +57,32 @@ export default function ChatWidget({
     checkWidgetStatus();
   }, [embedKey, assistantId]);
 
-  // Generate or restore session ID on first open (stable across page reloads)
+  // Generate or restore session ID on first open
+  // Session expires after 30 minutes of inactivity → new conversation starts
   useEffect(() => {
     if (isOpen && !sessionId) {
-      const storageKey = `chatWidgetSessionId_${embedKey || assistantId || 'default'}`;
+      const baseKey = embedKey || assistantId || 'default';
+      const idKey = `chatWidgetSessionId_${baseKey}`;
+      const tsKey = `chatWidgetSessionTs_${baseKey}`;
+      const SESSION_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
       try {
-        const stored = localStorage.getItem(storageKey);
-        if (stored) {
-          setSessionId(stored);
+        const storedId = localStorage.getItem(idKey);
+        const storedTs = parseInt(localStorage.getItem(tsKey) || '0', 10);
+        const isExpired = Date.now() - storedTs > SESSION_TTL_MS;
+
+        if (storedId && !isExpired) {
+          setSessionId(storedId);
         } else {
+          // Expired or no session — start fresh
           const newId = `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-          localStorage.setItem(storageKey, newId);
+          localStorage.setItem(idKey, newId);
+          localStorage.setItem(tsKey, String(Date.now()));
           setSessionId(newId);
+          setMessages([]);
+          setConversationHistory([]);
         }
       } catch {
-        // localStorage unavailable (incognito, storage full) — generate ephemeral
         setSessionId(`chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
       }
     }
@@ -107,6 +118,12 @@ useEffect(() => {
   const sendMessage = async () => {
     const text = inputValue.trim();
     if (!text || isLoading) return;
+
+    // Keep session alive — update last activity timestamp
+    try {
+      const tsKey = `chatWidgetSessionTs_${embedKey || assistantId || 'default'}`;
+      localStorage.setItem(tsKey, String(Date.now()));
+    } catch { /* ignore */ }
 
     // Add user message to UI
     const userMessage = { role: 'user', content: text, timestamp: new Date() };

@@ -61,8 +61,13 @@ function applyFlowSpecificGating(flowTools, activeFlow, confidence) {
       return true;
     }
 
-    // Check flow match
-    if (!gating.allowedFlows.includes(activeFlow)) {
+    // P0-FIX: When activeFlow is null/undefined (idle state, post NOT_FOUND, etc.),
+    // allow create_callback — user can request callback from any context.
+    // Only block if activeFlow is explicitly set to a WRONG flow (e.g., STOCK_CHECK).
+    if (!activeFlow) {
+      // No active flow — allow tool (confidence check below still applies)
+      console.log(`✅ [ToolGating] ${tool} allowed: no active flow (idle/reset state)`);
+    } else if (!gating.allowedFlows.includes(activeFlow)) {
       console.log(`🚫 [ToolGating] ${tool} blocked: wrong flow (${activeFlow} not in ${gating.allowedFlows})`);
       return false;
     }

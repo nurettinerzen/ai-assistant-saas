@@ -50,6 +50,24 @@ export function useUpdateCallback() {
 }
 
 /**
+ * Hook to fetch single callback detail with chat transcript
+ * @param {string|null} callbackId - The callback ID to fetch
+ * @returns {object} Query result with callback detail + chatTranscript
+ */
+export function useCallbackDetail(callbackId) {
+  return useQuery({
+    queryKey: ['callbacks', 'detail', callbackId],
+    queryFn: async () => {
+      if (!callbackId) return null;
+      const { data } = await apiClient.callbacks.getById(callbackId);
+      return data;
+    },
+    enabled: !!callbackId,
+    staleTime: 30000, // 30 seconds
+  });
+}
+
+/**
  * Hook to retry a callback
  * @returns {object} Mutation object
  */

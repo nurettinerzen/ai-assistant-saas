@@ -85,7 +85,7 @@ router.get('/', authenticateToken, async (req, res) => {
             select: { name: true }
           }
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { updatedAt: 'desc' },
         skip,
         take: parseInt(limit)
       }),

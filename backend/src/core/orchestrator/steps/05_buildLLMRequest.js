@@ -51,6 +51,53 @@ export async function buildLLMRequest(params) {
     }
   }
 
+  // Callback precondition guidance (belt-and-suspenders with toolLoop precondition check)
+  // LLM should ask for name/phone BEFORE calling create_callback
+  if (!state.extractedSlots?.customer_name || !state.extractedSlots?.phone) {
+    enhancedSystemPrompt += `\n\nKRİTİK: create_callback aracını çağırmadan ÖNCE müşterinin adını ve telefon numarasını öğren. Bu bilgiler olmadan geri arama kaydı oluşturamazsın.`;
+  }
+
+  if (state.callbackFlow?.pending || state.activeFlow === 'CALLBACK_REQUEST') {
+    enhancedSystemPrompt += `
+
+## CALLBACK AKIŞI (DETERMINISTIC)
+- Bu konuşma geri arama talebi akışında.
+- SADECE ad-soyad ve telefon bilgisini topla.
+- Sipariş numarası, telefon son 4, kimlik doğrulama isteme.
+- create_callback çağrısında topic sorusu sorma; topic otomatik üretilecek.
+- Ad-soyad ve telefon mevcutsa create_callback çağır, yoksa sadece eksik alanı sor.`;
+  }
+
+  // ========================================
+  // KB_ONLY MODE: Inject channel restriction prompt
+  // ========================================
+  if (params.channelMode === 'KB_ONLY') {
+    const linksList = Object.entries(params.helpLinks || {})
+      .filter(([, v]) => v)
+      .map(([k, v]) => `- ${k}: ${v}`)
+      .join('\n');
+
+    enhancedSystemPrompt += `
+
+## KB_ONLY MOD (KRİTİK!)
+Bu kanal sadece bilgi bankası ve genel yardım için açıktır.
+
+YASAKLAR:
+- Kişisel sipariş/ödeme/iade/kargo bilgisi verme
+- "Kontrol ediyorum", "bakıyorum" gibi tool varmış gibi davranma
+- Sipariş durumu, teslimat tarihi, ödeme tutarı gibi claim yapma
+- Link uydurma — sadece aşağıdaki linkleri kullan
+
+${linksList ? `YARDIM LİNKLERİ:\n${linksList}` : 'Link bilgisi yok — "destek ekibimize ulaşabilirsiniz" yönlendirmesi yap.'}
+
+DAVRANIŞ:
+- Genel bilgi sorularına (iade süresi, kargo politikası, üyelik) Bilgi Bankası'ndan cevap ver
+- Kişisel veri sorusu gelirse: kısa sınır açıkla + yardım linki/destek yönlendirmesi yap
+- Doğal ve kısa konuş, robotik olma`;
+
+    console.log('🔒 [BuildLLMRequest] KB_ONLY prompt injected');
+  }
+
   // ========================================
   // ARCHITECTURE CHANGE: Inject verification & dispute context for LLM
   // ========================================
@@ -214,13 +261,13 @@ KURALLAR:
     gatedTools = [];
     console.log('💬 [BuildLLMRequest] CHATTER detected — skipping all tools (0 token overhead)');
   } else {
-    // If no flow-specific tools, use ALL available tools (extract names from toolsAll)
+    // P0-FIX: ALWAYS start from full tool list (allToolNames), not stale state.allowedTools.
+    // Previously: state.allowedTools from prior turn was reused as input → once a tool was gated out,
+    // it could never come back (feedback loop). Now gating always evaluates from the full set.
     const allToolNames = toolsAll.map(t => t.function?.name).filter(Boolean);
     console.log('🔧 [BuildLLMRequest] toolsAll:', { count: toolsAll.length, names: allToolNames });
 
-    const flowTools = (state.allowedTools && state.allowedTools.length > 0)
-      ? state.allowedTools
-      : allToolNames;
+    const flowTools = allToolNames;
 
     gatedTools = applyToolGatingPolicy({
       confidence: classifierConfidence,
@@ -294,8 +341,10 @@ KURALLAR:
     history: geminiHistory
   });
 
-  // STEP 6: Update state with gated tools
-  state.allowedTools = gatedTools;
+  // STEP 6: Track gated tools in state (telemetry only, NOT used as input for next turn)
+  // P0-FIX: Removed state.allowedTools feedback loop — was causing tools gated out once
+  // to stay gated forever. Gating now always evaluates from full toolsAll set.
+  state._lastGatedTools = gatedTools; // Underscore prefix = telemetry-only, not used as input
 
   return {
     chat,

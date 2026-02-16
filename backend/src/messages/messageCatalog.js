@@ -165,6 +165,30 @@ const MESSAGE_CATALOG = {
       'Please share your order number so I can continue.'
     ]
   },
+  CALLBACK_INFO_REQUIRED: {
+    TR: [
+      'Sizi arayabilmemiz için {fields} paylaşır mısınız?',
+      'Geri arama kaydı açabilmem için {fields} bilgisine ihtiyacım var.',
+      'Bu talebi iletebilmem için lütfen {fields} bilgisini yazın.'
+    ],
+    EN: [
+      'To arrange your callback, could you share your {fields}?',
+      'I need your {fields} to create a callback request.',
+      'Please share your {fields} so I can submit this callback request.'
+    ]
+  },
+  ORDER_PHONE_LAST4_REQUIRED: {
+    TR: [
+      'Sipariş numarasını aldım. Devam edebilmem için kayıtlı telefon numaranızın son 4 hanesini paylaşır mısınız?',
+      'Devam etmek için siparişe bağlı telefon numaranızın son 4 rakamını rica ederim.',
+      'Bu siparişte ilerlemek için telefonunuzun son 4 hanesini yazabilir misiniz?'
+    ],
+    EN: [
+      'I have your order number. To continue, please share the last 4 digits of your registered phone number.',
+      'To proceed, could you confirm the last 4 digits of the phone linked to this order?',
+      'Please provide the last 4 digits of your phone number so I can continue with this order.'
+    ]
+  },
   TERMINATED_CONVERSATION: {
     TR: [
       'Bu görüşme sonlandırılmıştır.',
@@ -321,6 +345,18 @@ const MESSAGE_CATALOG = {
       'This order number was not found in our records. Please verify it and resend.'
     ]
   },
+  NOT_FOUND_REPEAT: {
+    TR: [
+      'Bu bilgilerle daha önce arama yaptım ve kayıt bulunamadı. Farklı bir sipariş numarası, telefon numarası veya e-posta adresi paylaşırsanız tekrar kontrol edebilirim.',
+      'Aynı bilgilerle kayıt bulunamadı. Lütfen sipariş numaranızı kontrol edin veya farklı bir bilgi (telefon, e-posta) ile deneyelim.',
+      'Bu bilgiyle eşleşen kayıt yok. Sipariş numarasını tekrar kontrol eder misiniz? Alternatif olarak telefon numaranızla da arayabilirim.'
+    ],
+    EN: [
+      'I already searched with this information and no record was found. Could you share a different order number, phone number, or email so I can check again?',
+      'No record found with the same information. Please verify your order number or try with a different identifier.',
+      'No matching record for this information. Could you double-check the order number? I can also search by phone or email.'
+    ]
+  },
   SECURITY_TOOL_REQUIRED_PRODUCT_SPEC: {
     TR: [
       'Bu ürünün teknik özellikleri şu an sistemimde yok. Ürün adını, linkini veya ürün kodunu paylaşırsanız kontrol edebilirim.',
@@ -454,6 +490,64 @@ const MESSAGE_CATALOG = {
   EMAIL_NOT_FOUND_GENERIC: {
     TR: ['Kayıtlarımızda bu bilgiye ulaşamadım. Lütfen {fields} bilgisini kontrol edip tekrar paylaşır mısınız?'],
     EN: ['I could not find this information in our records. Could you please verify your {fields}?']
+  },
+
+  // ─── KB_ONLY Channel Mode Redirect Templates ───
+  // Used when channel is in KB_ONLY mode and user asks account-specific questions.
+  // Variables: {link} = help URL or fallback guidance, {contact} = support email or empty
+  KB_ONLY_ORDER_REDIRECT: {
+    TR: [
+      'Bu kanaldan kişisel sipariş bilgilerine erişemiyorum.{link}{contact}',
+      'Sipariş detaylarınızı bu kanaldan görüntüleyemiyorum.{link}{contact}',
+      'Kişisel sipariş bilgilerine buradan ulaşamıyorum.{link}{contact}'
+    ],
+    EN: [
+      "I can't access personal order information through this channel.{link}{contact}",
+      "I'm unable to view your order details here.{link}{contact}"
+    ]
+  },
+  KB_ONLY_PAYMENT_REDIRECT: {
+    TR: [
+      'Ödeme ve fatura bilgilerinize bu kanaldan erişemiyorum.{link}{contact}',
+      'Kişisel ödeme detaylarınızı buradan görüntüleyemiyorum.{link}{contact}',
+      'Ödeme bilgilerinize bu kanal üzerinden ulaşamıyorum.{link}{contact}'
+    ],
+    EN: [
+      "I can't access your payment or billing information through this channel.{link}{contact}",
+      "I'm unable to view your payment details here.{link}{contact}"
+    ]
+  },
+  KB_ONLY_RETURN_REDIRECT: {
+    TR: [
+      'Kişisel iade ve iptal işlemlerinize bu kanaldan erişemiyorum.{link}{contact}',
+      'İade ve iptal detaylarınızı buradan görüntüleyemiyorum.{link}{contact}',
+      'Kişisel iade bilgilerinize bu kanal üzerinden ulaşamıyorum.{link}{contact}'
+    ],
+    EN: [
+      "I can't access your return or cancellation details through this channel.{link}{contact}",
+      "I'm unable to process returns or cancellations here.{link}{contact}"
+    ]
+  },
+  KB_ONLY_ACCOUNT_REDIRECT: {
+    TR: [
+      'Hesap bilgilerinize bu kanaldan erişemiyorum.{link}{contact}',
+      'Kişisel hesap işlemlerinizi buradan gerçekleştiremiyorum.{link}{contact}',
+      'Hesap detaylarınıza bu kanal üzerinden ulaşamıyorum.{link}{contact}'
+    ],
+    EN: [
+      "I can't access your account information through this channel.{link}{contact}",
+      "I'm unable to manage account details here.{link}{contact}"
+    ]
+  },
+  KB_ONLY_GENERAL_REDIRECT: {
+    TR: [
+      'Bu bilgiye bu kanaldan erişemiyorum.{link}{contact}',
+      'Kişisel bilgilerinize buradan ulaşamıyorum.{link}{contact}'
+    ],
+    EN: [
+      "I can't access this information through this channel.{link}{contact}",
+      "I'm unable to retrieve personal information here.{link}{contact}"
+    ]
   }
 };
 

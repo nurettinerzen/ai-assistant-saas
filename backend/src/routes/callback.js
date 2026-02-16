@@ -198,7 +198,39 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Callback bulunamadı' });
     }
 
-    res.json(callback);
+    // Fetch linked chat transcript if callId exists
+    // callId = ChatLog.sessionId (set by create_callback tool handler)
+    let chatTranscript = null;
+    let linkStatus = callback.callId ? 'NOT_FOUND' : 'NO_LINK';
+
+    if (callback.callId) {
+      try {
+        const chatLog = await prisma.chatLog.findUnique({
+          where: { sessionId: callback.callId },
+          select: {
+            id: true,
+            sessionId: true,
+            channel: true,
+            createdAt: true,
+            messages: true // Json field, not a relation
+          }
+        });
+        if (chatLog) {
+          // messages is a Json column (array of {role, content, ...})
+          // Limit to last 50 entries for performance
+          const allMessages = Array.isArray(chatLog.messages) ? chatLog.messages : [];
+          chatTranscript = {
+            ...chatLog,
+            messages: allMessages.slice(-50)
+          };
+          linkStatus = 'FOUND';
+        }
+      } catch (chatErr) {
+        console.warn(`⚠️ Error fetching linked chat for callback ${id}:`, chatErr.message);
+      }
+    }
+
+    res.json({ ...callback, chatTranscript, linkStatus });
   } catch (error) {
     console.error('❌ Error fetching callback:', error);
     res.status(500).json({ error: 'Callback alınamadı' });

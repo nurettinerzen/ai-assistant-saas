@@ -348,10 +348,13 @@ const SENSITIVE_PATTERNS = {
  * @param {string} verificationState - Mevcut doğrulama durumu
  * @param {string} language - TR | EN
  * @param {Object} collectedData - Zaten toplanmış veriler (orderNumber, phone, name vb.)
+ * @param {Object} options - Flow context (callback pending vs regular verification)
  * @returns {Object} { safe, leaks, sanitized, telemetry }
  */
-export function applyLeakFilter(response, verificationState = 'none', language = 'TR', collectedData = {}) {
+export function applyLeakFilter(response, verificationState = 'none', language = 'TR', collectedData = {}, options = {}) {
   if (!response) return { safe: true, leaks: [], sanitized: response, telemetry: null };
+  const callbackPending = options.callbackPending === true;
+  const isCallbackFlow = callbackPending || options.activeFlow === 'CALLBACK_REQUEST';
 
   const leaks = [];
   const triggeredPatterns = []; // Debug: hangi pattern match etti
@@ -424,16 +427,29 @@ export function applyLeakFilter(response, verificationState = 'none', language =
   // Telemetry objesi (debug için - hangi pattern neden trigger etti)
   const telemetry = {
     verificationState,
-    reason: 'leak_filter_triggered',
+    reason: isCallbackFlow ? 'callback_flow_leak_filter_triggered' : 'leak_filter_triggered',
     extractedOrderNo: collectedData.orderNumber || collectedData.order_number || null,
     hasOrderNumber,
     hasPhone,
     hasName,
     missingFields,
+    isCallbackFlow,
     leakTypes: leaks.map(l => l.type),
     triggeredPatterns,
     hasPersonalDataLeak
   };
+
+  if (isCallbackFlow) {
+    // Callback flow never requests order verification fields.
+    // Guardrails should ask only callback contact slots.
+    return {
+      safe: false,
+      leaks,
+      needsCallbackInfo: true,
+      missingFields: ['customer_name', 'phone'],
+      telemetry
+    };
+  }
 
   // Return verification requirement - NOT a hardcoded response
   // The orchestrator will inject this into LLM context

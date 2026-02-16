@@ -913,7 +913,10 @@
       "priorityUrgent": "Urgent",
       "priorityHigh": "High",
       "priorityNormal": "Normal",
-      "priorityLow": "Low"
+      "priorityLow": "Low",
+      "chatTranscript": "Chat Transcript",
+      "chatTranscriptNotFound": "Chat transcript not found.",
+      "viewChatHistory": "View Chat History"
     },
     "integrationsPage": {
       "title": "Integrations",

@@ -7,9 +7,11 @@
  * - Returns final response text + metadata
  */
 
+import crypto from 'crypto';
 import { applyToolFailPolicy } from '../../../policies/toolFailPolicy.js';
 import { executeToolWithRetry } from '../../../services/tool-fail-handler.js';
 import { executeTool } from '../../../tools/index.js';
+import registry from '../../../tools/registry.js';
 import { getToolExecutionResult, setToolExecutionResult } from '../../../services/tool-idempotency-db.js';
 import { isSessionLocked, getLockMessage, checkEnumerationAttempt } from '../../../services/session-lock.js';
 import { GENERIC_ERROR_MESSAGES, ToolOutcome, normalizeOutcome } from '../../../tools/toolResult.js';
@@ -21,8 +23,124 @@ import {
   OutcomeEventType
 } from '../../../security/outcomePolicy.js';
 import { tryAutoverify } from '../../../security/autoverify.js';
+import { getMessage } from '../../../messages/messageCatalog.js';
 
 const MAX_ITERATIONS = 3;
+const REPEAT_WINDOW_MS = 10 * 60 * 1000;
+const REPEAT_IDENTIFIER_KEYS = ['order_number', 'phone', 'email', 'customer_name', 'vkn', 'tc', 'ticket_number'];
+
+/**
+ * Compute stable hash from tool args for repeat NOT_FOUND detection.
+ * Sorts keys, normalizes string values (trim+lowercase), returns 16-char SHA-256 prefix.
+ */
+function computeArgsHash(args) {
+  if (!args || typeof args !== 'object') return null;
+  try {
+    const sorted = Object.keys(args).sort().reduce((acc, key) => {
+      const val = args[key];
+      acc[key] = typeof val === 'string' ? val.trim().toLowerCase() : val;
+      return acc;
+    }, {});
+    return crypto.createHash('sha256').update(JSON.stringify(sorted)).digest('hex').substring(0, 16);
+  } catch { return null; }
+}
+
+function normalizeAskFor(rawAskFor) {
+  if (!rawAskFor) return [];
+  if (Array.isArray(rawAskFor)) return rawAskFor.filter(Boolean).map(String);
+  if (typeof rawAskFor === 'string') return [rawAskFor];
+  return [];
+}
+
+function isRepeatGuardOutcome(outcome) {
+  const normalized = normalizeOutcome(outcome);
+  return normalized === ToolOutcome.NOT_FOUND || normalized === ToolOutcome.NEED_MORE_INFO;
+}
+
+function hasNewIdentifierInState(state = {}) {
+  const currentSlots = state.extractedSlots || {};
+  const prevSlots = state._previousExtractedSlots || {};
+  return REPEAT_IDENTIFIER_KEYS.some(
+    key => currentSlots[key] && currentSlots[key] !== prevSlots[key]
+  );
+}
+
+function buildRepeatGuardMessage(language, previousRepeatState = {}) {
+  const askFor = normalizeAskFor(previousRepeatState.askFor);
+  if (askFor.includes('phone_last4')) {
+    return getMessage('ORDER_PHONE_LAST4_REQUIRED', { language });
+  }
+  if (askFor.includes('customer_name') || askFor.includes('phone')) {
+    const fields = language === 'TR'
+      ? 'ad-soyad ve telefon numaranızı'
+      : 'full name and phone number';
+    return getMessage('CALLBACK_INFO_REQUIRED', {
+      language,
+      variables: { fields }
+    });
+  }
+  return getMessage('NOT_FOUND_REPEAT', { language })
+    || (language === 'TR'
+      ? 'Bu bilgilerle kayıt bulunamadı. Lütfen farklı bir bilgi ile tekrar deneyin.'
+      : 'No record found. Please try with different information.');
+}
+
+export function shouldBlockRepeatedToolCall({ state, toolName, argsHash, language, nowMs = Date.now() }) {
+  if (!argsHash || !state?.lastToolAttempt) {
+    return { blocked: false };
+  }
+
+  const previous = state.lastToolAttempt;
+  if (previous.tool !== toolName || previous.argsHash !== argsHash) {
+    return { blocked: false };
+  }
+
+  if (!isRepeatGuardOutcome(previous.outcome)) {
+    return { blocked: false };
+  }
+
+  const lastAgeMs = nowMs - new Date(previous.at).getTime();
+  if (!Number.isFinite(lastAgeMs) || lastAgeMs >= REPEAT_WINDOW_MS) {
+    return { blocked: false };
+  }
+
+  if (hasNewIdentifierInState(state)) {
+    return { blocked: false };
+  }
+
+  return {
+    blocked: true,
+    outcome: normalizeOutcome(previous.outcome) || ToolOutcome.NEED_MORE_INFO,
+    message: buildRepeatGuardMessage(language, previous)
+  };
+}
+
+function trackRepeatableOutcome({ state, toolName, argsHash, outcome, toolResult }) {
+  if (!argsHash) return;
+  const normalizedOutcome = normalizeOutcome(outcome);
+  const previous = state.lastToolAttempt;
+
+  if (!isRepeatGuardOutcome(normalizedOutcome)) {
+    if (previous?.tool === toolName && previous?.argsHash === argsHash) {
+      delete state.lastToolAttempt;
+    }
+    return;
+  }
+
+  const withinWindow = previous?.at &&
+    (Date.now() - new Date(previous.at).getTime()) < REPEAT_WINDOW_MS;
+  const sameCall = previous?.tool === toolName && previous?.argsHash === argsHash;
+  const sameOutcome = previous?.outcome === normalizedOutcome;
+
+  state.lastToolAttempt = {
+    tool: toolName,
+    argsHash,
+    outcome: normalizedOutcome,
+    count: sameCall && sameOutcome && withinWindow ? (previous.count || 1) + 1 : 1,
+    askFor: normalizeAskFor(toolResult?.askFor || toolResult?.data?.askFor),
+    at: new Date().toISOString()
+  };
+}
 
 export async function executeToolLoop(params) {
   const {
@@ -41,6 +159,28 @@ export async function executeToolLoop(params) {
     metrics,
     effectsEnabled = true // DRY-RUN flag (default: true for backward compat)
   } = params;
+
+  // ========================================
+  // KB_ONLY: Hard tool kill-switch — zero tool execution risk
+  // LLM responds with text only, no tool calls possible
+  // ========================================
+  if (params.channelMode === 'KB_ONLY') {
+    console.log('🔒 [ToolLoop] KB_ONLY mode — tool loop bypassed, text-only LLM call');
+    const result = await chat.sendMessage(userMessage);
+    const responseText = result.response?.text() || '';
+    return {
+      reply: responseText,
+      inputTokens: result.response?.usageMetadata?.promptTokenCount || 0,
+      outputTokens: result.response?.usageMetadata?.candidatesTokenCount || 0,
+      hadToolSuccess: false,
+      hadToolFailure: false,
+      failedTool: null,
+      toolsCalled: [],
+      toolResults: [],
+      iterations: 0,
+      chat
+    };
+  }
 
   // Check lock state once more before tool execution (defensive).
   const lockStatus = await isSessionLocked(sessionId);
@@ -153,6 +293,65 @@ export async function executeToolLoop(params) {
       console.log(`🔧 [ToolLoop] Calling tool: ${toolName}`);
       toolsCalled.push(toolName);
 
+      // ════════════════════════════════════════════════════════════════════
+      // PRECONDITION CHECK: extractedSlots'ta gerekli alanlar var mı?
+      // ════════════════════════════════════════════════════════════════════
+      // Tool metadata'sında preconditions varsa, extractedSlots kontrol edilir.
+      // Eksikse tool çalıştırılmaz, LLM'e guidance function response gönderilir.
+      // Non-terminal: LLM doğal şekilde müşteriye eksik bilgiyi sorar.
+      const rawDef = registry.getRawDefinition(toolName);
+      const preconditions = rawDef?.metadata?.preconditions;
+
+      if (preconditions?.requiredSlots?.length > 0) {
+        const currentSlots = state.extractedSlots || {};
+        const missingSlots = preconditions.requiredSlots.filter(
+          slot => !currentSlots[slot] || String(currentSlots[slot]).trim() === ''
+        );
+
+        if (missingSlots.length > 0) {
+          console.log(`⚠️ [ToolLoop] Precondition FAILED for ${toolName}: missing [${missingSlots.join(', ')}]`);
+
+          const guidanceMsg = preconditions.guidance?.[language]
+            || preconditions.guidance?.TR
+            || `Missing required info: ${missingSlots.join(', ')}`;
+
+          // NON-TERMINAL: Send guidance back to LLM as function response
+          functionResponses.push({
+            functionResponse: {
+              name: toolName,
+              response: { message: guidanceMsg }
+            }
+          });
+          continue; // Skip tool execution, proceed to next function call
+        }
+      }
+
+      // Deterministic repeat breaker for NOT_FOUND / NEED_MORE_INFO outcomes.
+      const currentArgsHash = computeArgsHash(toolArgs);
+      const repeatGuardResult = shouldBlockRepeatedToolCall({
+        state,
+        toolName,
+        argsHash: currentArgsHash,
+        language
+      });
+      if (repeatGuardResult.blocked) {
+        console.log(`🔁 [ToolLoop] Repeat call blocked: ${toolName} hash=${currentArgsHash} outcome=${repeatGuardResult.outcome}`);
+        return {
+          reply: repeatGuardResult.message,
+          inputTokens: totalInputTokens,
+          outputTokens: totalOutputTokens,
+          hadToolSuccess: true,
+          hadToolFailure: false,
+          failedTool: null,
+          toolsCalled,
+          toolResults,
+          iterations,
+          chat: null,
+          _terminalState: repeatGuardResult.outcome,
+          _repeatNotFoundBlocked: true
+        };
+      }
+
       const toolStartTime = Date.now();
 
       // IDEMPOTENCY CHECK: Has this tool already been executed for this messageId?
@@ -194,6 +393,7 @@ export async function executeToolLoop(params) {
               state,
               language,
               sessionId,
+              conversationId: sessionId, // Links callback → ChatLog (callId = ChatLog.sessionId)
               messageId, // For tool-level idempotency
               channel,
               channelUserId,  // Channel identity signal for identity proof
@@ -303,6 +503,11 @@ export async function executeToolLoop(params) {
         // Store callback ID for tracking
         if (toolName === 'create_callback' && toolResult.data.callbackId) {
           state.lastCallbackId = toolResult.data.callbackId;
+          if (state.callbackFlow) {
+            state.callbackFlow.pending = false;
+            state.callbackFlow.completedAt = new Date().toISOString();
+            state.callbackFlow.missingFields = [];
+          }
         }
       }
 
@@ -332,6 +537,11 @@ export async function executeToolLoop(params) {
         }
       }
 
+      // Stamp argsHash on toolResult for state tracking (repeat NOT_FOUND detection)
+      if (currentArgsHash) {
+        toolResult._argsHash = currentArgsHash;
+      }
+
       // Apply centralized outcome -> state events (single writer: orchestrator)
       // Controlled by USE_STATE_EVENTS flag. Set FEATURE_USE_STATE_EVENTS=false to revert.
       const useStateEvents = process.env.FEATURE_USE_STATE_EVENTS !== 'false';
@@ -346,6 +556,13 @@ export async function executeToolLoop(params) {
       }
 
       const outcome = normalizeOutcome(toolResult.outcome);
+      trackRepeatableOutcome({
+        state,
+        toolName,
+        argsHash: currentArgsHash,
+        outcome,
+        toolResult
+      });
 
       if (shouldAskVerification(outcome)) {
         console.log('🔐 [ToolLoop] Verification required outcome received');

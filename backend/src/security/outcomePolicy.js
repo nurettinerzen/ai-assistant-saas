@@ -34,6 +34,7 @@ export function shouldAskVerification(outcome, _intent = null) {
 export function shouldTerminate(outcome) {
   const normalizedOutcome = normalizeOutcome(outcome);
   return normalizedOutcome === ToolOutcome.NOT_FOUND ||
+    normalizedOutcome === ToolOutcome.NEED_MORE_INFO ||
     normalizedOutcome === ToolOutcome.VALIDATION_ERROR ||
     normalizedOutcome === ToolOutcome.DENIED;
 }
@@ -44,6 +45,7 @@ export function shouldTerminate(outcome) {
 export function shouldBypassLeakFilter(outcome) {
   const normalizedOutcome = normalizeOutcome(outcome);
   return normalizedOutcome === ToolOutcome.NOT_FOUND ||
+    normalizedOutcome === ToolOutcome.NEED_MORE_INFO ||
     normalizedOutcome === ToolOutcome.VALIDATION_ERROR ||
     normalizedOutcome === ToolOutcome.VERIFICATION_REQUIRED ||
     normalizedOutcome === ToolOutcome.DENIED ||
@@ -64,7 +66,8 @@ export function deriveOutcomeEvents({ toolName, toolResult }) {
   if (normalizedOutcome === ToolOutcome.NOT_FOUND) {
     events.push({
       type: OutcomeEventType.RECORD_NOT_FOUND,
-      toolName
+      toolName,
+      argsHash: toolResult._argsHash || null // For repeat NOT_FOUND detection
     });
   }
 
@@ -123,7 +126,8 @@ export function applyOutcomeEventsToState(state, events = []) {
       case OutcomeEventType.RECORD_NOT_FOUND: {
         state.lastNotFound = {
           at: new Date().toISOString(),
-          tool: event.toolName || 'unknown'
+          tool: event.toolName || 'unknown',
+          argsHash: event.argsHash || null // For repeat NOT_FOUND detection
         };
         break;
       }

@@ -36,6 +36,15 @@ export default {
   metadata: {
     category: 'communication',
     businessTypes: ['ALL'], // Tüm iş tiplerinde kullanılabilir
-    requiresIntegration: false
+    requiresIntegration: false,
+    // Preconditions: extractedSlots'ta bu alanlar dolmadan tool çalıştırılmaz
+    // toolLoop non-terminal intercept ile LLM'e guidance gönderir
+    preconditions: {
+      requiredSlots: ['customer_name', 'phone'],
+      guidance: {
+        TR: 'Geri arama kaydı oluşturmak için müşterinin adı-soyadı ve telefon numarası gereklidir. Lütfen önce bu bilgileri müşteriden isteyin.',
+        EN: 'Customer name and phone number are required to create a callback. Please ask the customer first.'
+      }
+    }
   }
 };

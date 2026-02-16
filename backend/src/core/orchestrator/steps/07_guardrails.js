@@ -53,7 +53,10 @@ export async function applyGuardrails(params) {
     verificationState = 'none', // Doğrulama durumu
     verifiedIdentity = null, // Doğrulanmış kimlik
     intent = null, // Tespit edilen intent (requiresToolCall kontrolü için)
-    collectedData = {} // Zaten bilinen veriler (orderNumber, phone, name) - Leak filter için
+    collectedData = {}, // Zaten bilinen veriler (orderNumber, phone, name) - Leak filter için
+    lastNotFound = null, // P0-FIX: NOT_FOUND context from state for leak filter bypass
+    callbackPending = false,
+    activeFlow = null
   } = params;
 
   // Mutable response text (Product/Order not found override için)
@@ -145,6 +148,49 @@ export async function applyGuardrails(params) {
   }
 
   // ============================================
+  // POLICY 1.5: KB_ONLY URL ALLOWLIST
+  // In KB_ONLY mode, only helpLinks domains and exact URLs are allowed.
+  // ============================================
+  const { channelMode, helpLinks } = params;
+  if (channelMode === 'KB_ONLY') {
+    const urlRegex = /https?:\/\/[^\s)>"']+/gi;
+    const foundUrls = (responseText || '').match(urlRegex) || [];
+
+    if (foundUrls.length > 0) {
+      // Build allowlist: exact URL match + domain match
+      const allowedExact = new Set(Object.values(helpLinks || {}).filter(Boolean));
+      const allowedDomains = new Set();
+      for (const url of allowedExact) {
+        try { allowedDomains.add(new URL(url).hostname); } catch { /* skip invalid */ }
+      }
+
+      const isAllowed = (url) => {
+        if (allowedExact.has(url)) return true;
+        try {
+          const hostname = new URL(url).hostname;
+          return allowedDomains.has(hostname);
+        } catch { return false; }
+      };
+
+      const disallowed = foundUrls.filter(u => !isAllowed(u));
+      if (disallowed.length > 0) {
+        console.warn(`🚨 [Guardrail] KB_ONLY URL violation: ${disallowed.join(', ')}`);
+        return {
+          finalResponse: null,
+          needsCorrection: true,
+          correctionType: 'KB_ONLY_URL_VIOLATION',
+          correctionConstraint: language === 'EN'
+            ? `REMOVE all URLs from your response. Only these domains are allowed: ${Array.from(allowedDomains).join(', ') || 'none'}. Do not invent links.`
+            : `Yanıtından TÜM URL'leri kaldır. Sadece şu domainler izinli: ${Array.from(allowedDomains).join(', ') || 'yok'}. Link uydurma.`,
+          blocked: true,
+          blockReason: 'KB_ONLY_URL_ALLOWLIST',
+          guardrailsApplied: ['KB_ONLY_URL_ALLOWLIST']
+        };
+      }
+    }
+  }
+
+  // ============================================
   // POLICY 1.45: NOT_FOUND Early Check (P0 - S2 Fix)
   // Bu kontrol Leak Filter'dan ÖNCE yapılmalı!
   // Çünkü NOT_FOUND durumunda hassas veri yok, verification gereksiz
@@ -205,19 +251,58 @@ export async function applyGuardrails(params) {
   // Previous logic: skip if no tool called or tool not successful → allowed LLM hallucinations to bypass filter.
   // New logic: Only skip for NOT_FOUND overrides (no sensitive data) and explicit bypass outcomes.
   // If LLM generates sensitive data WITHOUT tool call, leak filter catches it and blocks.
+  //
+  // P0-FIX: Also skip if state has recent NOT_FOUND (within 5 minutes).
+  // After NOT_FOUND terminal, next turn LLM may generate text mentioning "müşteri/sipariş"
+  // without calling tools → toolOutputs empty → leak filter false positive → infinite verification loop.
   const hasBypassOutcome = toolOutputs.some(o => shouldBypassLeakFilter(o?.outcome));
-  const shouldSkipLeakFilter = notFoundOverrideApplied || hasBypassOutcome;
+  const hasRecentNotFound = lastNotFound?.at &&
+    (Date.now() - new Date(lastNotFound.at).getTime()) < 5 * 60 * 1000; // 5 minutes
+  const shouldSkipLeakFilter = notFoundOverrideApplied || hasBypassOutcome || hasRecentNotFound;
   if (shouldSkipLeakFilter) {
     console.log('✅ [SecurityGateway] Skipping Leak Filter:', {
       notFoundOverrideApplied,
-      hasBypassOutcome
+      hasBypassOutcome,
+      hasRecentNotFound: !!hasRecentNotFound
     });
   }
   const leakFilterResult = shouldSkipLeakFilter
     ? { safe: true } // NOT_FOUND response'u güvenli, Leak Filter'ı atla
-    : applyLeakFilter(responseText, verificationState, language, collectedData);
+    : applyLeakFilter(responseText, verificationState, language, collectedData, {
+      callbackPending,
+      activeFlow,
+      intent
+    });
 
   if (!leakFilterResult.safe) {
+    if (leakFilterResult.needsCallbackInfo) {
+      const callbackVariant = getMessageVariant('CALLBACK_INFO_REQUIRED', {
+        language,
+        sessionId,
+        channel,
+        intent,
+        directiveType: 'ASK_CALLBACK_INFO',
+        severity: 'info',
+        seedHint: 'callback_info_required',
+        variables: {
+          fields: language === 'TR'
+            ? 'ad-soyad ve telefon numaranızı'
+            : 'full name and phone number'
+        }
+      });
+
+      return {
+        finalResponse: callbackVariant.text,
+        needsCallbackInfo: true,
+        missingFields: ['customer_name', 'phone'],
+        guardrailsApplied: ['RESPONSE_FIREWALL', 'PII_PREVENTION', 'SECURITY_GATEWAY_CALLBACK_FLOW'],
+        blocked: true,
+        blockReason: 'CALLBACK_INFO_REQUIRED',
+        messageKey: callbackVariant.messageKey,
+        variantIndex: callbackVariant.variantIndex
+      };
+    }
+
     // Telemetry logging
     console.warn('🔐 [SecurityGateway] Verification required', {
       needsVerification: leakFilterResult.needsVerification,

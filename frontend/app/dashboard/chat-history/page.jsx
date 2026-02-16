@@ -5,7 +5,8 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -89,8 +90,9 @@ function generatePageNumbers(currentPage, totalPages) {
   return pages;
 }
 
-export default function ChatsPage() {
+function ChatsPageContent() {
   const { t, locale } = useLanguage();
+  const searchParams = useSearchParams();
   const [chats, setChats] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
@@ -206,7 +208,7 @@ export default function ChatsPage() {
     }
   };
 
-  const handleViewChat = async (chatId) => {
+  const handleViewChat = useCallback(async (chatId) => {
     try {
       const response = await apiClient.get(`/api/chat-logs/${chatId}`);
       setSelectedChat(response.data);
@@ -214,7 +216,15 @@ export default function ChatsPage() {
     } catch (error) {
       toast.error(t('dashboard.chatHistoryPage.failedToLoadChat'));
     }
-  };
+  }, [t]);
+
+  // Auto-open chat detail when navigated with ?chatId=xxx (e.g. from callbacks page)
+  useEffect(() => {
+    const chatId = searchParams.get('chatId');
+    if (chatId) {
+      handleViewChat(chatId);
+    }
+  }, [searchParams, handleViewChat]);
 
   const handleExport = async () => {
     try {
@@ -567,5 +577,20 @@ export default function ChatsPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+// Wrap with Suspense for useSearchParams
+export default function ChatsPage() {
+  return (
+    <Suspense fallback={
+      <div className="space-y-6">
+        <div className="h-8 w-64 bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse"></div>
+        <div className="h-12 w-full bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse"></div>
+        <div className="h-64 w-full bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse"></div>
+      </div>
+    }>
+      <ChatsPageContent />
+    </Suspense>
   );
 }
