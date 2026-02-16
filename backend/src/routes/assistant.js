@@ -948,6 +948,14 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
               transcript_summary_prompt: langAnalysis.transcript_summary,
               success_evaluation_prompt: langAnalysis.success_evaluation
             }
+          },
+          platform_settings: {
+            post_call_webhook: {
+              url: `${backendUrl}/api/elevenlabs/webhook`
+            },
+            conversation_initiation_client_data_webhook: {
+              url: `${backendUrl}/api/elevenlabs/webhook`
+            }
           }
         };
 
