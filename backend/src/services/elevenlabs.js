@@ -137,11 +137,12 @@ const elevenLabsService = {
 
   /**
    * List workspace webhooks
+   * NOTE: Uses /workspace/webhooks (NOT /convai/webhooks which is a different endpoint)
    * @param {boolean} includeUsages
    */
   async listWorkspaceWebhooks(includeUsages = true) {
     try {
-      const response = await elevenLabsClient.get('/convai/webhooks', {
+      const response = await elevenLabsClient.get('/workspace/webhooks', {
         params: includeUsages ? { include_usages: true } : undefined
       });
       return response.data?.webhooks || [];
@@ -152,9 +153,34 @@ const elevenLabsService = {
   },
 
   /**
+   * Create a workspace webhook (for post-call events)
+   * @param {Object} options
+   * @param {string} options.name - Display name
+   * @param {string} options.webhookUrl - HTTPS callback URL
+   * @returns {{ webhook_id: string, webhook_secret: string }}
+   */
+  async createWorkspaceWebhook({ name, webhookUrl }) {
+    try {
+      const response = await elevenLabsClient.post('/workspace/webhooks', {
+        settings: {
+          auth_type: 'hmac',
+          name,
+          webhook_url: webhookUrl
+        }
+      });
+      console.log('✅ 11Labs workspace webhook created:', response.data.webhook_id);
+      return response.data;
+    } catch (error) {
+      console.error('❌ 11Labs createWorkspaceWebhook error:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  /**
    * Ensure workspace-level webhook settings route to our main webhook URL.
-   * NOTE: post-call routing requires a webhook ID. Set ELEVENLABS_POST_CALL_WEBHOOK_ID
-   * to enforce a specific workspace webhook ID.
+   * 1. Checks existing workspace webhooks for one pointing to our URL
+   * 2. If none exists, creates a new workspace webhook via POST /workspace/webhooks
+   * 3. Updates ConvAI settings with the webhook ID and conversation_initiation URL
    * @param {Object} options
    * @param {string} options.backendUrl
    */
@@ -163,6 +189,40 @@ const elevenLabsService = {
     const forcedPostCallWebhookId = process.env.ELEVENLABS_POST_CALL_WEBHOOK_ID || null;
 
     try {
+      // Step 1: Find or create a workspace webhook pointing to our URL
+      let postCallWebhookId = forcedPostCallWebhookId;
+      let webhookSecret = null;
+
+      if (!postCallWebhookId) {
+        try {
+          const existingWebhooks = await this.listWorkspaceWebhooks(false);
+          const matchingWebhook = existingWebhooks.find(
+            wh => wh.webhook_url === mainWebhookUrl && !wh.is_disabled && !wh.is_auto_disabled
+          );
+
+          if (matchingWebhook) {
+            postCallWebhookId = matchingWebhook.webhook_id;
+            console.log(`✅ [11Labs] Found existing workspace webhook: ${postCallWebhookId} → ${mainWebhookUrl}`);
+          } else {
+            // No matching webhook exists — create one
+            console.log(`📝 [11Labs] No workspace webhook found for ${mainWebhookUrl}, creating...`);
+            const created = await this.createWorkspaceWebhook({
+              name: 'Telyx Post-Call Webhook',
+              webhookUrl: mainWebhookUrl
+            });
+            postCallWebhookId = created.webhook_id;
+            webhookSecret = created.webhook_secret;
+            console.log(`✅ [11Labs] Created workspace webhook: ${postCallWebhookId}`);
+            if (webhookSecret) {
+              console.log(`🔑 [11Labs] IMPORTANT: Save this webhook secret as ELEVENLABS_WORKSPACE_WEBHOOK_SECRET: ${webhookSecret.substring(0, 8)}...`);
+            }
+          }
+        } catch (listErr) {
+          console.warn('⚠️ [11Labs] Could not list/create workspace webhooks:', listErr.response?.data || listErr.message);
+        }
+      }
+
+      // Step 2: Update ConvAI settings
       const current = await this.getConvaiSettings();
       const patch = {};
 
@@ -175,9 +235,8 @@ const elevenLabsService = {
         };
       }
 
-      const currentWebhooks = current?.webhooks || {};
-      const postCallWebhookId = forcedPostCallWebhookId || currentWebhooks.post_call_webhook_id || null;
       if (postCallWebhookId) {
+        const currentWebhooks = current?.webhooks || {};
         const currentEvents = Array.isArray(currentWebhooks.events) ? currentWebhooks.events : [];
         const mergedEvents = [...new Set([...currentEvents, 'transcript', 'call_initiation_failure'])];
 
@@ -199,6 +258,7 @@ const elevenLabsService = {
         changed: Object.keys(patch).length > 0,
         mainWebhookUrl,
         postCallWebhookId: postCallWebhookId || null,
+        webhookSecret,
         current,
         updated
       };
@@ -259,7 +319,12 @@ const elevenLabsService = {
     }
 
     try {
-      diagnostics.workspaceWebhooks = await this.listWorkspaceWebhooks(true);
+      diagnostics.workspaceWebhooks = await this.listWorkspaceWebhooks(false);
+      // Check if any workspace webhook points to our URL
+      const matchingWh = diagnostics.workspaceWebhooks.find(wh => wh.webhook_url === mainWebhookUrl);
+      diagnostics.checks.workspaceWebhookUrlMatches = Boolean(matchingWh);
+      diagnostics.checks.workspaceWebhookDisabled = matchingWh ? (matchingWh.is_disabled || matchingWh.is_auto_disabled) : null;
+      diagnostics.matchingWebhookId = matchingWh?.webhook_id || null;
     } catch (error) {
       diagnostics.ok = false;
       diagnostics.workspaceWebhooksError = error.response?.data || error.message;
