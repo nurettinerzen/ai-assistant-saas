@@ -1282,7 +1282,8 @@ export function buildAgentConfig(assistant, business, tools = [], integrations =
       },
       workspace_overrides: {
         conversation_initiation_client_data_webhook: {
-          url: `${backendUrl}/api/elevenlabs/webhook`
+          url: `${backendUrl}/api/elevenlabs/webhook`,
+          request_headers: {}
         },
         ...(process.env.ELEVENLABS_POST_CALL_WEBHOOK_ID ? {
           webhooks: {

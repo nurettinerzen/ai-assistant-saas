@@ -418,7 +418,8 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
         platform_settings: {
           workspace_overrides: {
             conversation_initiation_client_data_webhook: {
-              url: `${backendUrl}/api/elevenlabs/webhook`
+              url: `${backendUrl}/api/elevenlabs/webhook`,
+              request_headers: {}
             },
             ...(postCallWebhookId ? {
               webhooks: {
