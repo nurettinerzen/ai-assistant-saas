@@ -110,8 +110,8 @@ export async function loadEmailContext(ctx) {
     ctx.emailSignature = business.emailIntegration.emailSignature;
     ctx.signatureType = business.emailIntegration.signatureType || 'PLAIN';
 
-    // Detect language from inbound message
-    ctx.language = detectLanguage(inboundMessage.bodyText || inboundMessage.subject);
+    // Detect language from inbound message, with business language as fallback
+    ctx.language = detectLanguage(inboundMessage.bodyText || inboundMessage.subject, business.language);
 
     console.log(`📧 [LoadContext] Business: ${business.name}, Provider: ${ctx.provider}`);
     console.log(`📧 [LoadContext] Thread: ${thread.subject}, Customer: ${ctx.customerEmail}`);
@@ -128,10 +128,11 @@ export async function loadEmailContext(ctx) {
 /**
  * Detect language from text
  * @param {string} text
+ * @param {string} [businessLanguage] - Business default language as fallback
  * @returns {string} 'TR' or 'EN'
  */
-function detectLanguage(text) {
-  if (!text) return 'EN';
+function detectLanguage(text, businessLanguage) {
+  if (!text) return businessLanguage || 'EN';
 
   const lowerText = text.toLowerCase();
 
@@ -140,7 +141,7 @@ function detectLanguage(text) {
     return 'TR';
   }
 
-  // Common Turkish words/phrases
+  // Common Turkish words/phrases (expanded with order/commerce terms)
   const turkishIndicators = [
     'merhaba', 'tesekkur', 'teşekkür', 'lutfen', 'lütfen', 'nasil', 'nasıl',
     'iyi gunler', 'iyi günler', 'saygilar', 'saygılar', 'sayin', 'sayın',
@@ -148,20 +149,35 @@ function detectLanguage(text) {
     'sikayet', 'şikayet', 'randevu', 'fiyat', 'urun', 'ürün', 'hizmet',
     'gorüşmek', 'görüşmek', 'ekteki', 'ilgili', 'konu', 'talep',
     'siparis', 'sipariş', 'odeme', 'ödeme', 'fatura', 'teslimat',
-    'selamlar', 'hayirli', 'hayırlı', 'kolay gelsin', 'iyilik'
+    'selamlar', 'hayirli', 'hayırlı', 'kolay gelsin', 'iyilik',
+    // Order/commerce terms often seen in ORDER intent emails
+    'nerede', 'durumu', 'durum', 'kargo', 'takip', 'numara',
+    'ne zaman', 'gelecek', 'teslim', 'iade', 'degisim', 'değişim',
+    'iptal', 'stok', 'stokta', 'mevcut', 'var mi', 'var mı',
+    'siparisim', 'siparişim', 'siparis no', 'sipariş no',
+    'nereden', 'nereye', 'sorunu', 'sorunum', 'yardim', 'yardım'
   ];
 
-  // Common English words/phrases
+  // English-only words/phrases
+  // NOTE: Ambiguous commerce terms (order, delivery, payment, invoice, shipping)
+  // are intentionally excluded — they appear in both TR and EN emails.
+  // Instead we use EN-only stopwords/phrases that never appear in Turkish text.
   const englishIndicators = [
+    // Greetings & closings (EN-only)
     'hello', 'hi there', 'dear', 'thank you', 'thanks', 'please', 'regards',
     'sincerely', 'best regards', 'kind regards', 'looking forward',
+    // EN-only phrases
     'i would like', 'i am', 'we are', 'could you', 'would you',
     'meeting', 'schedule', 'appointment', 'confirm', 'confirmation',
     'attached', 'please find', 'let me know', 'get back to',
     'happy to', 'hope this', 'following up', 'as discussed',
-    'invoice', 'payment', 'order', 'delivery', 'shipping',
     'question', 'inquiry', 'request', 'issue', 'problem',
-    'available', 'convenient', 'possible', 'appreciate'
+    'available', 'convenient', 'possible', 'appreciate',
+    // EN-only stopwords (never appear in Turkish emails)
+    ' the ', ' and ', ' your ', ' our ', ' this ', ' that ',
+    ' with ', ' from ', ' have ', ' been ', ' has been ',
+    'we will', 'you can', 'there is', 'do not', 'does not',
+    'would be', 'should be', 'will be', 'can be'
   ];
 
   let turkishScore = 0;
@@ -178,7 +194,8 @@ function detectLanguage(text) {
   if (turkishScore > englishScore) return 'TR';
   if (englishScore > turkishScore) return 'EN';
 
-  return 'EN'; // Default
+  // Tie or no matches: use business language as fallback
+  return businessLanguage || 'EN';
 }
 
 export default { loadEmailContext };
