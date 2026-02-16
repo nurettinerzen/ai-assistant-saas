@@ -354,11 +354,14 @@ async function runOutboundV1Turn({
 router.post('/webhook', async (req, res) => {
   try {
     const event = req.body;
-    console.log('[MAIN_WEBHOOK_HIT] /api/elevenlabs/webhook');
-    console.log('📞 11Labs Webhook received:', JSON.stringify(event, null, 2).substring(0, 500));
-
-    // Determine event type
     const eventType = event.type || event.event_type;
+    console.log('[MAIN_WEBHOOK_HIT]', JSON.stringify({
+      endpoint: '/api/elevenlabs/webhook',
+      eventType: eventType || 'unknown',
+      hasSignature: Boolean(req.headers['elevenlabs-signature']),
+      keys: Object.keys(event || {})
+    }));
+    console.log('📞 11Labs Webhook received:', JSON.stringify(event, null, 2).substring(0, 500));
 
     // Get agentId from query param (we embed it in webhook URL)
     const agentIdFromQuery = req.query.agentId;
@@ -394,9 +397,14 @@ router.post('/webhook', async (req, res) => {
     // Verify signature in production ONLY for lifecycle events (not tool calls)
     // SECURITY: If webhook secret is configured, reject invalid signatures
     if (process.env.NODE_ENV === 'production') {
-      if (!process.env.ELEVENLABS_WEBHOOK_SECRET) {
+      const candidateSecrets = [
+        process.env.ELEVENLABS_WEBHOOK_SECRET,
+        process.env.ELEVENLABS_WORKSPACE_WEBHOOK_SECRET
+      ].filter(Boolean);
+
+      if (candidateSecrets.length === 0) {
         console.error('[SECURITY] ELEVENLABS_WEBHOOK_SECRET not set in production — webhook signature verification DISABLED');
-      } else if (!verifyWebhookSignature(req, process.env.ELEVENLABS_WEBHOOK_SECRET)) {
+      } else if (!candidateSecrets.some(secret => verifyWebhookSignature(req, secret))) {
         console.error('❌ 11Labs webhook signature verification failed');
 
         // P0: Log webhook signature failure to SecurityEvent
@@ -431,6 +439,54 @@ router.post('/webhook', async (req, res) => {
       case 'conversation_ended': {
         await handleConversationEnded(event);
         return res.status(200).json({ received: true });
+      }
+
+      // ========== WORKSPACE POST-CALL WEBHOOK FORMAT ==========
+      case 'post_call_transcription':
+      case 'post_call_audio': {
+        const callData = event.data || {};
+        await handleConversationEnded({
+          conversation_id: callData.conversation_id || event.conversation_id,
+          agent_id: callData.agent_id || event.agent_id,
+          metadata: callData.metadata || event.metadata || {}
+        });
+        return res.status(200).json({ received: true, source: 'workspace_post_call' });
+      }
+
+      case 'call_initiation_failure': {
+        const failureData = event.data || {};
+        console.warn('⚠️ [11Labs] call initiation failure webhook:', failureData);
+
+        const conversationId = failureData.conversation_id || failureData.call_id || null;
+        const assistant = failureData.agent_id
+          ? await prisma.assistant.findFirst({
+            where: { elevenLabsAgentId: failureData.agent_id },
+            include: { business: true }
+          })
+          : null;
+
+        if (conversationId && assistant?.business?.id) {
+          await prisma.callLog.upsert({
+            where: { callId: conversationId },
+            update: {
+              businessId: assistant.business.id,
+              status: 'failed',
+              direction: 'outbound',
+              summary: `11Labs call initiation failure: ${failureData.reason || 'unknown'}`,
+              updatedAt: new Date()
+            },
+            create: {
+              businessId: assistant.business.id,
+              callId: conversationId,
+              status: 'failed',
+              direction: 'outbound',
+              summary: `11Labs call initiation failure: ${failureData.reason || 'unknown'}`,
+              createdAt: new Date()
+            }
+          });
+        }
+
+        return res.status(200).json({ received: true, source: 'workspace_call_initiation_failure' });
       }
 
       // ========== AGENT RESPONSE - For dynamic prompts ==========
@@ -1849,6 +1905,39 @@ router.get('/signed-url/:assistantId', async (req, res) => {
   } catch (error) {
     console.error('❌ Error getting signed URL:', error.response?.data || error.message);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================================
+// WEBHOOK DIAGNOSTICS ENDPOINT
+// ============================================================================
+router.get('/webhook-diagnostics/:agentId', authenticateToken, async (req, res) => {
+  try {
+    const { agentId } = req.params;
+    const backendUrl = process.env.BACKEND_URL || 'https://api.telyx.ai';
+    const sync = String(req.query.sync || '').toLowerCase() === 'true';
+
+    let workspaceSync = null;
+    if (sync) {
+      workspaceSync = await elevenLabsService.ensureWorkspaceWebhookRouting({ backendUrl });
+    }
+
+    const diagnostics = await elevenLabsService.getWebhookDiagnostics({
+      agentId,
+      backendUrl
+    });
+
+    return res.json({
+      success: true,
+      diagnostics,
+      workspaceSync
+    });
+  } catch (error) {
+    console.error('❌ Webhook diagnostics error:', error.response?.data || error.message);
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
   }
 });
 

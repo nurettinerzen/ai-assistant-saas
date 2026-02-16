@@ -107,6 +107,164 @@ const elevenLabsService = {
     }
   },
 
+  /**
+   * Get ConvAI workspace settings (webhook routing lives here in newer API versions)
+   */
+  async getConvaiSettings() {
+    try {
+      const response = await elevenLabsClient.get('/convai/settings');
+      return response.data || {};
+    } catch (error) {
+      console.error('❌ 11Labs getConvaiSettings error:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  /**
+   * Update ConvAI workspace settings
+   * @param {Object} payload
+   */
+  async updateConvaiSettings(payload) {
+    try {
+      const response = await elevenLabsClient.patch('/convai/settings', payload);
+      console.log('✅ 11Labs ConvAI settings updated');
+      return response.data || {};
+    } catch (error) {
+      console.error('❌ 11Labs updateConvaiSettings error:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  /**
+   * List workspace webhooks
+   * @param {boolean} includeUsages
+   */
+  async listWorkspaceWebhooks(includeUsages = true) {
+    try {
+      const response = await elevenLabsClient.get('/convai/webhooks', {
+        params: includeUsages ? { include_usages: true } : undefined
+      });
+      return response.data?.webhooks || [];
+    } catch (error) {
+      console.error('❌ 11Labs listWorkspaceWebhooks error:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  /**
+   * Ensure workspace-level webhook settings route to our main webhook URL.
+   * NOTE: post-call routing requires a webhook ID. Set ELEVENLABS_POST_CALL_WEBHOOK_ID
+   * to enforce a specific workspace webhook ID.
+   * @param {Object} options
+   * @param {string} options.backendUrl
+   */
+  async ensureWorkspaceWebhookRouting({ backendUrl }) {
+    const mainWebhookUrl = `${backendUrl}/api/elevenlabs/webhook`;
+    const forcedPostCallWebhookId = process.env.ELEVENLABS_POST_CALL_WEBHOOK_ID || null;
+
+    try {
+      const current = await this.getConvaiSettings();
+      const patch = {};
+
+      const currentInitUrl = current?.conversation_initiation_client_data_webhook?.url || null;
+      if (currentInitUrl !== mainWebhookUrl) {
+        patch.conversation_initiation_client_data_webhook = {
+          ...(current?.conversation_initiation_client_data_webhook || {}),
+          url: mainWebhookUrl
+        };
+      }
+
+      const currentWebhooks = current?.webhooks || {};
+      const postCallWebhookId = forcedPostCallWebhookId || currentWebhooks.post_call_webhook_id || null;
+      if (postCallWebhookId) {
+        const currentEvents = Array.isArray(currentWebhooks.events) ? currentWebhooks.events : [];
+        const mergedEvents = [...new Set([...currentEvents, 'transcript', 'call_initiation_failure'])];
+
+        patch.webhooks = {
+          ...currentWebhooks,
+          post_call_webhook_id: postCallWebhookId,
+          events: mergedEvents,
+          send_audio: currentWebhooks.send_audio === true
+        };
+      }
+
+      let updated = null;
+      if (Object.keys(patch).length > 0) {
+        updated = await this.updateConvaiSettings(patch);
+      }
+
+      return {
+        ok: true,
+        changed: Object.keys(patch).length > 0,
+        mainWebhookUrl,
+        postCallWebhookId: postCallWebhookId || null,
+        current,
+        updated
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        changed: false,
+        mainWebhookUrl,
+        error: error.response?.data || error.message
+      };
+    }
+  },
+
+  /**
+   * Diagnostics for webhook routing (agent + workspace)
+   * @param {Object} options
+   * @param {string} options.agentId
+   * @param {string} options.backendUrl
+   */
+  async getWebhookDiagnostics({ agentId, backendUrl }) {
+    const mainWebhookUrl = `${backendUrl}/api/elevenlabs/webhook`;
+    const diagnostics = {
+      ok: true,
+      mainWebhookUrl,
+      agent: null,
+      workspaceSettings: null,
+      workspaceWebhooks: null,
+      checks: {
+        agentPostCallWebhookMatches: false,
+        agentInitWebhookMatches: false,
+        workspaceInitWebhookMatches: false,
+        workspaceHasPostCallWebhookId: false
+      }
+    };
+
+    try {
+      diagnostics.agent = await this.getAgent(agentId);
+      const agentSettings = diagnostics.agent?.platform_settings || {};
+      diagnostics.checks.agentPostCallWebhookMatches = agentSettings?.post_call_webhook?.url === mainWebhookUrl;
+      diagnostics.checks.agentInitWebhookMatches =
+        agentSettings?.conversation_initiation_client_data_webhook?.url === mainWebhookUrl;
+    } catch (error) {
+      diagnostics.ok = false;
+      diagnostics.agentError = error.response?.data || error.message;
+    }
+
+    try {
+      diagnostics.workspaceSettings = await this.getConvaiSettings();
+      diagnostics.checks.workspaceInitWebhookMatches =
+        diagnostics.workspaceSettings?.conversation_initiation_client_data_webhook?.url === mainWebhookUrl;
+      diagnostics.checks.workspaceHasPostCallWebhookId =
+        Boolean(diagnostics.workspaceSettings?.webhooks?.post_call_webhook_id);
+    } catch (error) {
+      diagnostics.ok = false;
+      diagnostics.workspaceSettingsError = error.response?.data || error.message;
+    }
+
+    try {
+      diagnostics.workspaceWebhooks = await this.listWorkspaceWebhooks(true);
+    } catch (error) {
+      diagnostics.ok = false;
+      diagnostics.workspaceWebhooksError = error.response?.data || error.message;
+    }
+
+    return diagnostics;
+  },
+
   // ============================================================================
   // TOOL MANAGEMENT
   // ============================================================================

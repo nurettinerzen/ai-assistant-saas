@@ -468,6 +468,20 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
         });
         console.log('✅ 11Labs Agent tools updated with agentId in webhook URLs');
       }
+
+      // Workspace-level webhook settings are required for some 11Labs event types
+      const workspaceSync = await elevenLabsService.ensureWorkspaceWebhookRouting({ backendUrl });
+      if (!workspaceSync.ok) {
+        console.warn('⚠️ [11Labs] Workspace webhook sync failed:', workspaceSync.error);
+      } else {
+        console.log(`✅ [11Labs] Workspace webhook sync ${workspaceSync.changed ? 'updated' : 'verified'} (postCallWebhookId=${workspaceSync.postCallWebhookId || 'none'})`);
+      }
+
+      const webhookDiagnostics = await elevenLabsService.getWebhookDiagnostics({
+        agentId: elevenLabsAgentId,
+        backendUrl
+      });
+      console.log('🧪 [11Labs] Webhook diagnostics checks:', webhookDiagnostics.checks);
     } catch (elevenLabsError) {
       console.error('❌ 11Labs Agent creation failed:', elevenLabsError.response?.data || elevenLabsError.message);
 
@@ -983,6 +997,19 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
             }
           }
         }
+
+        const workspaceSync = await elevenLabsService.ensureWorkspaceWebhookRouting({ backendUrl });
+        if (!workspaceSync.ok) {
+          console.warn('⚠️ [11Labs] Workspace webhook sync failed (update):', workspaceSync.error);
+        } else {
+          console.log(`✅ [11Labs] Workspace webhook sync ${workspaceSync.changed ? 'updated' : 'verified'} after agent update (postCallWebhookId=${workspaceSync.postCallWebhookId || 'none'})`);
+        }
+
+        const webhookDiagnostics = await elevenLabsService.getWebhookDiagnostics({
+          agentId: assistant.elevenLabsAgentId,
+          backendUrl
+        });
+        console.log('🧪 [11Labs] Webhook diagnostics checks after update:', webhookDiagnostics.checks);
       } catch (updateError) {
         console.error('❌ 11Labs update failed:', updateError.response?.data || updateError.message);
 
