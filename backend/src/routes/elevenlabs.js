@@ -1970,6 +1970,27 @@ router.get('/inbound-gate-status', async (req, res) => {  // TODO: re-add authen
     const metrics = metricsService.getMetrics();
     const recentEvents = metricsService.getRecentEvents(20);
 
+    // Check 11Labs workspace webhook configuration
+    let elevenLabsWebhookConfig = null;
+    try {
+      const elService = (await import('../services/elevenlabs.js')).default;
+      const convaiSettings = await elService.getConvaiSettings();
+      const workspaceWebhooks = await elService.listWorkspaceWebhooks(false);
+      elevenLabsWebhookConfig = {
+        conversation_initiation_webhook_url: convaiSettings?.conversation_initiation_client_data_webhook?.url || null,
+        post_call_webhook_id: convaiSettings?.webhooks?.post_call_webhook_id || null,
+        workspace_webhooks: workspaceWebhooks.map(wh => ({
+          id: wh.webhook_id,
+          url: wh.webhook_url,
+          name: wh.name,
+          disabled: wh.is_disabled || wh.is_auto_disabled || false
+        })),
+        expected_url: `${process.env.BACKEND_URL || 'https://api.telyx.ai'}/api/elevenlabs/webhook`
+      };
+    } catch (elErr) {
+      elevenLabsWebhookConfig = { error: elErr.message };
+    }
+
     // Find recent inbound_disabled_v1 call logs
     const recentBlockedCalls = await prisma.callLog.findMany({
       where: { status: 'inbound_disabled_v1' },
@@ -2008,6 +2029,7 @@ router.get('/inbound-gate-status', async (req, res) => {  // TODO: re-add authen
         WEBHOOK_SECRET_SET: Boolean(process.env.ELEVENLABS_WEBHOOK_SECRET),
         WORKSPACE_SECRET_SET: Boolean(process.env.ELEVENLABS_WORKSPACE_WEBHOOK_SECRET)
       },
+      elevenLabsWebhookConfig,
       metrics: {
         phone_inbound_blocked_total: metrics.counters.phone_inbound_blocked_total,
         phone_inbound_tool_blocked_total: metrics.counters.phone_inbound_tool_blocked_total
