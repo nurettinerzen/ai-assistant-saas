@@ -1962,6 +1962,55 @@ router.get('/signed-url/:assistantId', async (req, res) => {
 });
 
 // ============================================================================
+// INBOUND GATE DIAGNOSTICS (temporary - for verifying inbound blocking)
+// ============================================================================
+router.get('/inbound-gate-status', authenticateToken, async (req, res) => {
+  try {
+    const inboundEnabled = isPhoneInboundEnabled();
+    const metrics = metricsService.getMetrics();
+    const recentEvents = metricsService.getRecentEvents(20);
+
+    // Find recent inbound_disabled_v1 call logs
+    const recentBlockedCalls = await prisma.callLog.findMany({
+      where: { status: 'inbound_disabled_v1' },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+      select: {
+        callId: true,
+        callerId: true,
+        direction: true,
+        status: true,
+        summary: true,
+        createdAt: true,
+        updatedAt: true,
+        businessId: true
+      }
+    });
+
+    return res.json({
+      inboundGate: {
+        PHONE_INBOUND_ENABLED: inboundEnabled,
+        NODE_ENV: process.env.NODE_ENV || 'unset',
+        WEBHOOK_SECRET_SET: Boolean(process.env.ELEVENLABS_WEBHOOK_SECRET),
+        WORKSPACE_SECRET_SET: Boolean(process.env.ELEVENLABS_WORKSPACE_WEBHOOK_SECRET)
+      },
+      metrics: {
+        phone_inbound_blocked_total: metrics.counters.phone_inbound_blocked_total,
+        phone_inbound_tool_blocked_total: metrics.counters.phone_inbound_tool_blocked_total
+      },
+      recentBlockedCalls,
+      recentEvents: recentEvents.filter(e =>
+        e.type === 'phone_inbound_blocked' || e.type === 'phone_inbound_tool_blocked'
+      ),
+      serverTime: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ Inbound gate status error:', error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================================
 // WEBHOOK DIAGNOSTICS ENDPOINT
 // ============================================================================
 router.get('/webhook-diagnostics/:agentId', authenticateToken, async (req, res) => {
