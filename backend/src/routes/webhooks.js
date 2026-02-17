@@ -10,6 +10,9 @@ import { PrismaClient } from '@prisma/client';
 import OpenAI from 'openai';
 import concurrentCallManager from '../services/concurrentCallManager.js';
 import { trackCallUsage } from '../services/usageTracking.js';
+import { isPhoneInboundEnabled } from '../config/feature-flags.js';
+import { getInboundDisabledMessage } from '../phone-outbound-v1/index.js';
+import metricsService from '../services/metricsService.js';
 
 // OpenAI client for summary translation
 const openai = process.env.OPENAI_API_KEY
@@ -31,8 +34,12 @@ const prisma = new PrismaClient();
 function verifyElevenLabsSignature(req) {
   const webhookSecret = process.env.ELEVENLABS_WEBHOOK_SECRET;
   if (!webhookSecret) {
-    console.warn('⚠️ ELEVENLABS_WEBHOOK_SECRET not configured - skipping signature verification');
-    return true; // Skip verification if secret not configured
+    if (process.env.NODE_ENV === 'production') {
+      console.error('[SECURITY] ELEVENLABS_WEBHOOK_SECRET not configured in production — REJECTING (fail-closed)');
+      return false;
+    }
+    console.warn('⚠️ ELEVENLABS_WEBHOOK_SECRET not configured - skipping signature verification (non-prod)');
+    return true;
   }
 
   const signature = req.headers['elevenlabs-signature'];
@@ -170,10 +177,51 @@ router.post('/elevenlabs/call-started', async (req, res) => {
         });
       } else {
         console.log(`✅ Inbound assistant found: ${phoneNumber.assistant.name} (${phoneNumber.assistant.id})`);
+      }
 
-        // IMPORTANT: For inbound calls, we should use the inbound assistant's agent_id
-        // If 11Labs is using a different agent (outbound), we need to signal which agent to use
-        // This may require returning the correct agent_id in the response
+      // V1 INBOUND GATE: Block inbound calls when feature is disabled (fail-closed)
+      if (!isPhoneInboundEnabled()) {
+        const disabledMessage = getInboundDisabledMessage();
+        console.log(`[INBOUND_BLOCKED] ${JSON.stringify({ callId, source: 'legacy', reason: 'PHONE_INBOUND_ENABLED=false', externalNumber })}`);
+        metricsService.incrementCounter('phone_inbound_blocked_total', { source: 'legacy' });
+
+        // Best-effort CallLog persist (businessId may not be resolved yet)
+        const bestEffortBusinessId = await extractBusinessIdFromAgent(agentId) ||
+          (agentPhoneId ? (await prisma.phoneNumber.findFirst({ where: { elevenLabsPhoneId: agentPhoneId }, select: { businessId: true } }))?.businessId : null);
+
+        if (bestEffortBusinessId && callId) {
+          try {
+            await prisma.callLog.upsert({
+              where: { callId },
+              update: {
+                businessId: bestEffortBusinessId,
+                callerId: externalNumber || 'Unknown',
+                direction: 'inbound',
+                status: 'inbound_disabled_v1',
+                summary: disabledMessage,
+                updatedAt: new Date()
+              },
+              create: {
+                businessId: bestEffortBusinessId,
+                callId,
+                callerId: externalNumber || 'Unknown',
+                direction: 'inbound',
+                status: 'inbound_disabled_v1',
+                summary: disabledMessage,
+                createdAt: new Date()
+              }
+            });
+          } catch (logErr) {
+            console.error('[INBOUND_BLOCKED] CallLog persist failed:', logErr.message);
+          }
+        }
+
+        return res.status(403).json({
+          success: false,
+          error: 'PHONE_INBOUND_DISABLED',
+          message: disabledMessage,
+          action: 'reject_call'
+        });
       }
     }
 
@@ -209,7 +257,12 @@ router.post('/elevenlabs/call-started', async (req, res) => {
     // =========================================================================
     // Acquire concurrent call slot
     // =========================================================================
-    const slotResult = await concurrentCallManager.acquireSlot(businessId);
+    const slotResult = await concurrentCallManager.acquireSlot(
+      businessId,
+      callId || null,
+      callDirection || 'outbound',
+      { agentId, externalNumber, source: 'legacy' }
+    );
 
     if (!slotResult.success) {
       console.log(`⚠️ Concurrent limit exceeded for business ${businessId}`);
@@ -348,7 +401,7 @@ router.post('/elevenlabs/call-ended', async (req, res) => {
     console.log('📊 Processing call for business:', businessId);
 
     // 1. Release concurrent call slot
-    await concurrentCallManager.releaseSlot(businessId);
+    await concurrentCallManager.releaseSlot(businessId, callId || null);
     console.log('✅ Call slot released for business:', businessId);
 
     // 2. Track minute usage

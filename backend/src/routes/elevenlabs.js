@@ -403,7 +403,8 @@ router.post('/webhook', async (req, res) => {
       ].filter(Boolean);
 
       if (candidateSecrets.length === 0) {
-        console.error('[SECURITY] ELEVENLABS_WEBHOOK_SECRET not set in production — webhook signature verification DISABLED');
+        console.error('[SECURITY] ELEVENLABS_WEBHOOK_SECRET not set in production — lifecycle events REJECTED (fail-closed)');
+        return res.status(401).json({ error: 'Webhook secret not configured — lifecycle events rejected in production' });
       } else if (!candidateSecrets.some(secret => verifyWebhookSignature(req, secret))) {
         console.error('❌ 11Labs webhook signature verification failed');
 
@@ -517,6 +518,12 @@ router.post('/webhook', async (req, res) => {
               assistant.callDirection ||
               'inbound'
             );
+
+            // INBOUND GATE: Don't serve prompt overrides for blocked inbound calls
+            if (sessionDirection === 'inbound' && !isPhoneInboundEnabled()) {
+              console.log(`[INBOUND_BLOCKED] agent_response/initiation blocked, conversationId=${conversationId}`);
+              return res.status(200).json({});
+            }
 
             const outboundV1Enabled = sessionDirection === 'outbound' && isPhoneOutboundV1Enabled({
               businessId: assistant.business.id
@@ -835,7 +842,31 @@ async function handleToolCall(event, agentIdFromQuery = null) {
       console.error('❌ No agent_id provided in tool call - cannot identify business');
       if (conversation_id) {
         const activeSession = await getActiveCallSession(conversation_id);
-        if (activeSession?.businessId) {
+
+        // FAIL-CLOSED: If no activeSession, direction is unknown → block
+        if (!activeSession) {
+          console.warn(`[TOOL_FAILCLOSED] No activeSession for conversation_id=${conversation_id}, agent_id missing — blocking tool execution`);
+          metricsService.incrementCounter('phone_inbound_tool_blocked_total', { source: 'no_session_no_agent' });
+          return {
+            success: false,
+            error: 'TOOL_BLOCKED_NO_SESSION',
+            message: 'Cannot verify call direction — tool execution blocked'
+          };
+        }
+
+        // INBOUND GATE: Check direction before executing tool
+        const fallbackDirection = normalizeDirection(activeSession.direction || 'inbound');
+        if (fallbackDirection === 'inbound' && !isPhoneInboundEnabled()) {
+          console.log(`[INBOUND_TOOL_BLOCKED] conversationId=${conversation_id}, source=no_agent_fallback`);
+          metricsService.incrementCounter('phone_inbound_tool_blocked_total', { source: 'no_agent_fallback' });
+          return {
+            success: false,
+            error: 'PHONE_INBOUND_DISABLED',
+            message: getInboundDisabledMessage()
+          };
+        }
+
+        if (activeSession.businessId) {
           const business = await prisma.business.findUnique({
             where: { id: activeSession.businessId },
             include: {
@@ -927,7 +958,8 @@ async function handleToolCall(event, agentIdFromQuery = null) {
     );
 
     if (sessionDirection === 'inbound' && !isPhoneInboundEnabled()) {
-      console.log('⛔ [PHONE] inbound tool call blocked by PHONE_INBOUND_ENABLED=false');
+      console.log(`[INBOUND_TOOL_BLOCKED] conversationId=${conversation_id}, source=main_agent_path`);
+      metricsService.incrementCounter('phone_inbound_tool_blocked_total', { source: 'main_agent_path' });
       return {
         success: false,
         error: 'PHONE_INBOUND_DISABLED',
@@ -1059,9 +1091,20 @@ async function handleConversationStarted(event) {
     const inboundEnabled = isPhoneInboundEnabled();
     const outboundV1Enabled = direction === 'outbound' && isPhoneOutboundV1Enabled({ businessId });
 
+    // Structured call-started log for monitoring
+    console.log(`[CALL_STARTED] ${JSON.stringify({
+      conversationId,
+      resolvedDirection: direction,
+      assistantDirection: assistant.callDirection || null,
+      metadataDirection: event.metadata?.phone_call?.call_type || event.metadata?.channel || null,
+      businessId,
+      agentId
+    })}`);
+
     if (direction === 'inbound' && !inboundEnabled) {
       const disabledMessage = getInboundDisabledMessage(assistant.business?.language);
-      console.log(`⛔ [PHONE] Inbound disabled by flag for business ${businessId}, call ${conversationId}`);
+      console.log(`[INBOUND_BLOCKED] ${JSON.stringify({ conversationId, source: 'main', reason: 'PHONE_INBOUND_ENABLED=false', businessId })}`);
+      metricsService.incrementCounter('phone_inbound_blocked_total', { source: 'main' });
 
       await prisma.callLog.upsert({
         where: { callId: conversationId },
@@ -1240,6 +1283,16 @@ async function handleConversationEnded(event) {
     }
 
     console.log(`📞 Conversation ended: ${conversationId}, fetching details...`);
+
+    // SECURITY: Protect inbound_disabled_v1 status from being overwritten
+    const existingLog = await prisma.callLog.findFirst({
+      where: { callId: conversationId },
+      select: { status: true }
+    });
+    if (existingLog?.status === 'inbound_disabled_v1') {
+      console.log(`[INBOUND_PROTECTED] conversationId=${conversationId} — skipping ended processing, status preserved`);
+      return;
+    }
 
     // Wait for 11Labs to process the conversation data (they need time to calculate duration, cost, etc.)
     await new Promise(resolve => setTimeout(resolve, 3000));

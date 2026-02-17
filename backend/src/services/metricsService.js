@@ -21,7 +21,9 @@ class MetricsService {
     // Counters (cumulative)
     this.counters = {
       concurrent_rejected_total: {}, // { reason_plan: count }
-      elevenlabs_429_total: 0
+      elevenlabs_429_total: 0,
+      phone_inbound_blocked_total: 0,       // lifecycle inbound block
+      phone_inbound_tool_blocked_total: 0   // tool-call inbound block
     };
 
     // Recent events (for debugging)
@@ -63,6 +65,18 @@ class MetricsService {
       this._logEvent('elevenlabs_429', {
         count: this.counters.elevenlabs_429_total
       });
+    } else if (name === 'phone_inbound_blocked_total') {
+      this.counters.phone_inbound_blocked_total += amount;
+      this._logEvent('phone_inbound_blocked', {
+        source: labels.source,
+        count: this.counters.phone_inbound_blocked_total
+      });
+    } else if (name === 'phone_inbound_tool_blocked_total') {
+      this.counters.phone_inbound_tool_blocked_total += amount;
+      this._logEvent('phone_inbound_tool_blocked', {
+        source: labels.source,
+        count: this.counters.phone_inbound_tool_blocked_total
+      });
     }
   }
 
@@ -75,7 +89,9 @@ class MetricsService {
       gauges: { ...this.gauges },
       counters: {
         concurrent_rejected_total: { ...this.counters.concurrent_rejected_total },
-        elevenlabs_429_total: this.counters.elevenlabs_429_total
+        elevenlabs_429_total: this.counters.elevenlabs_429_total,
+        phone_inbound_blocked_total: this.counters.phone_inbound_blocked_total,
+        phone_inbound_tool_blocked_total: this.counters.phone_inbound_tool_blocked_total
       },
       timestamp: new Date().toISOString()
     };
@@ -106,6 +122,14 @@ class MetricsService {
     output += '# TYPE elevenlabs_429_total counter\n';
     output += `elevenlabs_429_total ${this.counters.elevenlabs_429_total}\n\n`;
 
+    output += '# HELP phone_inbound_blocked_total Total inbound calls blocked by PHONE_INBOUND_ENABLED=false\n';
+    output += '# TYPE phone_inbound_blocked_total counter\n';
+    output += `phone_inbound_blocked_total ${this.counters.phone_inbound_blocked_total}\n\n`;
+
+    output += '# HELP phone_inbound_tool_blocked_total Total inbound tool calls blocked\n';
+    output += '# TYPE phone_inbound_tool_blocked_total counter\n';
+    output += `phone_inbound_tool_blocked_total ${this.counters.phone_inbound_tool_blocked_total}\n\n`;
+
     return output;
   }
 
@@ -125,6 +149,8 @@ class MetricsService {
     this.gauges.platform_global_active_calls = 0;
     this.counters.concurrent_rejected_total = {};
     this.counters.elevenlabs_429_total = 0;
+    this.counters.phone_inbound_blocked_total = 0;
+    this.counters.phone_inbound_tool_blocked_total = 0;
     this.recentEvents = [];
   }
 
