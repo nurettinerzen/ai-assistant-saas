@@ -38,10 +38,18 @@ export async function executeEmailToolLoop(ctx) {
     return { success: true };
   }
 
-  // Skip if classification says no tools needed
+  // Skip if classification says no tools needed — UNLESS stock/SKU keywords detected
+  // P5-FIX: Gemini classifier often sets needs_tools=false for stock queries.
+  // Stock keywords in the email body override the classifier's decision.
   if (!classification.needs_tools) {
-    console.log('📧 [ToolLoop] Classification indicates no tools needed');
-    return { success: true };
+    const body = (inboundMessage?.bodyText || '').toLowerCase();
+    const hasStockSignal = /(?:stok|stock|ürün\s*durumu|urun|var\s*mı|mevcut)/i.test(body) ||
+                           /\b[A-Z0-9][A-Z0-9\-]{4,}[A-Z0-9]\b/.test(inboundMessage?.bodyText || '');
+    if (!hasStockSignal) {
+      console.log('📧 [ToolLoop] Classification indicates no tools needed');
+      return { success: true };
+    }
+    console.log('📧 [ToolLoop] Classification says no tools, but stock/SKU signal detected — overriding');
   }
 
   try {
@@ -251,16 +259,37 @@ function determineToolsToRun(classification, availableTools, inboundMessage, thr
     }
   }
 
-  // Stock lookup if product/stock mentioned
+  // Stock lookup if product/stock/SKU mentioned — intent-agnostic
+  // P5-FIX: Classification intent is unreliable for stock queries (often misclassified
+  // as GENERAL/ORDER). Stock keywords in email body are sufficient signal.
   if (availableTools.includes('check_stock_crm')) {
-    const stockMatch = latestBody.match(/(?:stok|stock|ürün|urun|var\s*mı|mevcut)\s*/i);
-    if (stockMatch && classification.intent === 'INQUIRY') {
-      // Extract product name (rough heuristic)
-      const productMatch = latestBody.match(/(?:stok|stock)\s*(?:durumu|bilgisi)?[:\s]*(.+?)(?:\?|$)/im);
-      if (productMatch) {
+    const stockKeywords = /(?:stok|stock|ürün\s*(?:durumu|bilgisi)|urun|var\s*mı|mevcut)/i;
+    // SKU pattern: alphanumeric codes with hyphens (e.g. SMOKE-IPH16P, CK212LGT29)
+    const skuPattern = /\b([A-Z0-9][A-Z0-9\-]{4,}[A-Z0-9])\b/;
+    const hasStockKeyword = stockKeywords.test(latestBody);
+    const skuMatch = latestBody.match(skuPattern);
+
+    if (hasStockKeyword || skuMatch) {
+      // Try to extract product name or SKU code
+      // Strategy 1: SKU code (most reliable)
+      let productName = skuMatch ? skuMatch[1].trim() : null;
+
+      // Strategy 2: Text after "stok durumu/bilgisi" keywords
+      if (!productName) {
+        const productMatch = latestBody.match(/(?:stok|stock)\s*(?:durumu|bilgisi)?[:\s]*(.+?)(?:\?|$)/im);
+        if (productMatch) productName = productMatch[1].trim();
+      }
+
+      // Strategy 3: Text before "stok" keyword (e.g. "iPhone 16 Pro stokta var mı")
+      if (!productName) {
+        const beforeStok = latestBody.match(/([A-ZÇĞİÖŞÜa-zçğıöşü0-9\s\-]{3,40}?)\s*(?:stok|stock|var\s*mı)/i);
+        if (beforeStok) productName = beforeStok[1].trim();
+      }
+
+      if (productName) {
         toolsToRun.push({
           name: 'check_stock_crm',
-          args: { product_name: productMatch[1].trim() }
+          args: { product_name: productName }
         });
       }
     }

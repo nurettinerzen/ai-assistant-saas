@@ -34,7 +34,8 @@ export async function loadEmailContext(ctx) {
         integrations: {
           where: { isActive: true }
         },
-        emailIntegration: true
+        emailIntegration: true,
+        crmWebhook: true  // P5-FIX: Required for check_stock_crm / check_ticket_status_crm tool gating
       }
     });
 

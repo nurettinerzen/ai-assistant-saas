@@ -160,6 +160,14 @@ async function regenerateWithGuidance(guidanceType, guidanceData, userMessage, l
       guidance = language === 'TR'
         ? `Yanıtında izinsiz URL tespit edildi. Yanıtı tekrar yaz, hiçbir URL ekleme. Link istenmişse "destek ekibimize ulaşabilirsiniz" yönlendirmesi yap.`
         : `Unauthorized URLs detected in your response. Rewrite without any URLs. If a link is needed, direct the user to contact support.`;
+
+    } else if (guidanceType === 'FIREWALL_RECOVERY') {
+      // P1b-FIX: Firewall false-positive recovery.
+      // The original response was blocked because it accidentally matched
+      // internal patterns. Re-generate with strict anti-disclosure guidance.
+      guidance = language === 'TR'
+        ? `Sen bir müşteri hizmetleri asistanısın. Kullanıcının sorusuna doğal ve kısa yanıt ver. KRİTİK KURALLAR: Teknik terimler (tool, function, api, endpoint, webhook, mutation, middleware, gemini, prisma, session, query) KULLANMA. Kod veya JSON yazma. Sistem iç yapısından bahsetme. Sadece müşteriye yardımcı ol.`
+        : `You are a customer service assistant. Answer the user's question naturally and briefly. CRITICAL: Do NOT use technical terms (tool, function, api, endpoint, webhook, mutation, middleware, gemini, prisma, session, query). Do NOT output code or JSON. Do NOT mention system internals. Just help the customer.`;
     }
 
     const prompt = `${guidance}\n\nKullanıcı mesajı: "${userMessage}"\n\nYanıtın:`;
@@ -1136,6 +1144,37 @@ export async function handleIncomingMessage({
           userMessage,
           language
         );
+      }
+
+      // ============================================
+      // FIREWALL SOFT REFUSAL: Re-prompt once
+      // ============================================
+      // P1b-FIX: When firewall blocks a response (e.g. false-positive on KB answers
+      // like "iade süresi"), re-prompt LLM once with anti-disclosure guidance.
+      // If the regenerated response also fails firewall, keep the canned fallback.
+      if (guardrailResult.blockReason === 'FIREWALL_BLOCK' && guardrailResult.softRefusal &&
+          !guardrailResult.needsVerification && !guardrailResult.needsCorrection) {
+        console.log('🔥 [Orchestrator] Firewall soft refusal, attempting reprompt...');
+        try {
+          const reprompted = await regenerateWithGuidance(
+            'FIREWALL_RECOVERY',
+            guardrailResult.violations,
+            userMessage,
+            language
+          );
+
+          // Validate the reprompted response through firewall again
+          const { sanitizeResponse: recheckFirewall } = await import('../utils/response-firewall.js');
+          const recheck = recheckFirewall(reprompted, language, { sessionId, channel: channelMode });
+          if (recheck.safe) {
+            console.log('✅ [Orchestrator] Firewall reprompt succeeded');
+            finalResponse = reprompted;
+          } else {
+            console.warn('🚨 [Orchestrator] Firewall reprompt also blocked, keeping fallback');
+          }
+        } catch (err) {
+          console.error('❌ [Orchestrator] Firewall reprompt failed:', err.message);
+        }
       }
     }
 
