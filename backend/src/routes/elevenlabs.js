@@ -394,6 +394,53 @@ router.post('/webhook', async (req, res) => {
       return res.json(result);
     }
 
+    // ========== CONVERSATION INITIATION CLIENT DATA WEBHOOK ==========
+    // 11Labs sends this when an inbound Twilio/SIP call starts (NO signature, NO event type)
+    // Keys: caller_id, agent_id, called_number, call_sid, conversation_id
+    // Must be handled BEFORE signature check (this webhook has no signature)
+    const isConversationInitiation = !eventType && event.caller_id && event.agent_id && event.called_number && event.call_sid;
+    if (isConversationInitiation) {
+      console.log(`[CONVERSATION_INITIATION] ${JSON.stringify({
+        conversationId: event.conversation_id,
+        callerId: event.caller_id,
+        agentId: event.agent_id,
+        calledNumber: event.called_number,
+        callSid: event.call_sid
+      })}`);
+
+      // Run inbound blocking logic via handleConversationStarted
+      const initiationEvent = {
+        conversation_id: event.conversation_id,
+        agent_id: event.agent_id,
+        metadata: {
+          phone_call: {
+            direction: 'inbound',
+            external_number: event.caller_id,
+            call_type: 'inbound'
+          }
+        },
+        caller_phone: event.caller_id,
+        _isConversationInitiation: true
+      };
+
+      const startResult = await handleConversationStarted(initiationEvent);
+
+      // If inbound is blocked, return empty response (11Labs will see no overrides)
+      // The terminateConversation call in handleConversationStarted will kill the call
+      if (startResult?.inboundDisabled) {
+        console.log(`[INBOUND_BLOCKED_INITIATION] conversationId=${event.conversation_id} — returning empty initiation data`);
+        return res.status(200).json({});
+      }
+
+      // If not blocked, return conversation initiation client data
+      // This allows dynamic variables and overrides for outbound/allowed calls
+      return res.status(200).json({
+        type: 'conversation_initiation_client_data',
+        dynamic_variables: {},
+        conversation_config_override: {}
+      });
+    }
+
     // Verify signature in production ONLY for lifecycle events (not tool calls)
     // SECURITY: If webhook secret is configured, reject invalid signatures
     if (process.env.NODE_ENV === 'production') {
