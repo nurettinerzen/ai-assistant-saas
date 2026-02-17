@@ -396,7 +396,6 @@ router.post('/webhook', async (req, res) => {
 
     // Verify signature in production ONLY for lifecycle events (not tool calls)
     // SECURITY: If webhook secret is configured, reject invalid signatures
-    // TODO: TEMPORARY — log-only mode for debugging, re-enable reject after verification
     if (process.env.NODE_ENV === 'production') {
       const candidateSecrets = [
         process.env.ELEVENLABS_WEBHOOK_SECRET,
@@ -404,12 +403,16 @@ router.post('/webhook', async (req, res) => {
       ].filter(Boolean);
 
       if (candidateSecrets.length === 0) {
-        console.error('[SECURITY] ELEVENLABS_WEBHOOK_SECRET not set in production — LOG ONLY (debug mode)');
-        // TEMPORARILY allow through for debugging
+        console.error('[SECURITY] ELEVENLABS_WEBHOOK_SECRET not set in production — lifecycle events REJECTED (fail-closed)');
+        return res.status(401).json({ error: 'Webhook secret not configured — lifecycle events rejected in production' });
       } else if (!candidateSecrets.some(secret => verifyWebhookSignature(req, secret))) {
-        console.error(`[SIGNATURE_FAIL] 11Labs webhook signature verification failed — LOG ONLY (debug mode). eventType=${eventType}, hasSignature=${Boolean(req.headers['elevenlabs-signature'])}`);
-        metricsService.incrementCounter('phone_inbound_blocked_total', { source: 'signature_fail_debug' });
-        // TEMPORARILY allow through for debugging — will re-enable reject
+        console.error('❌ 11Labs webhook signature verification failed');
+
+        // P0: Log webhook signature failure to SecurityEvent
+        const { logWebhookSignatureFailure } = await import('../middleware/securityEventLogger.js');
+        await logWebhookSignatureFailure(req, '11labs', 401);
+
+        return res.status(401).json({ error: 'Invalid webhook signature' });
       }
     }
 
@@ -1961,7 +1964,7 @@ router.get('/signed-url/:assistantId', async (req, res) => {
 // ============================================================================
 // INBOUND GATE DIAGNOSTICS (temporary - for verifying inbound blocking)
 // ============================================================================
-router.get('/inbound-gate-status', async (req, res) => {  // TODO: re-add authenticateToken after debugging
+router.get('/inbound-gate-status', authenticateToken, async (req, res) => {
   try {
     const inboundEnabled = isPhoneInboundEnabled();
     const metrics = metricsService.getMetrics();
