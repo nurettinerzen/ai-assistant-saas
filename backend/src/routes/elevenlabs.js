@@ -1987,6 +1987,20 @@ router.get('/inbound-gate-status', async (req, res) => {  // TODO: re-add authen
       }
     });
 
+    // Also fetch last 5 call logs of ANY status to see if webhooks are working at all
+    const recentAllCalls = await prisma.callLog.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+      select: {
+        callId: true,
+        callerId: true,
+        direction: true,
+        status: true,
+        createdAt: true,
+        businessId: true
+      }
+    });
+
     return res.json({
       inboundGate: {
         PHONE_INBOUND_ENABLED: inboundEnabled,
@@ -1999,6 +2013,7 @@ router.get('/inbound-gate-status', async (req, res) => {  // TODO: re-add authen
         phone_inbound_tool_blocked_total: metrics.counters.phone_inbound_tool_blocked_total
       },
       recentBlockedCalls,
+      recentAllCalls,
       recentEvents: recentEvents.filter(e =>
         e.type === 'phone_inbound_blocked' || e.type === 'phone_inbound_tool_blocked'
       ),
