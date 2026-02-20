@@ -172,9 +172,21 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
     const inboundEnabled = isPhoneInboundEnabledForBusinessRecord(req.user?.business);
     const requestedDirection = isTextAssistant ? 'outbound' : (callDirection || 'outbound');
 
-    // Chat/inbound assistants are always editable. Only block unknown directions.
+    if (!isTextAssistant && requestedDirection === 'inbound' && !inboundEnabled) {
+      return sendOutboundOnlyV1(res);
+    }
+
+    // Block unknown directions.
     if (!isTextAssistant && !isAllowedDirection(requestedDirection)) {
       return sendOutboundOnlyV1(res);
+    }
+
+    // Phone assistants must always provide voiceId at API level.
+    if (!isTextAssistant && (typeof voiceId !== 'string' || voiceId.trim().length === 0)) {
+      return res.status(400).json({
+        error: 'voiceId is required for phone assistants',
+        errorTR: 'Telefon asistanı için voiceId zorunludur'
+      });
     }
 
     // Validate assistant name length
@@ -852,7 +864,11 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
     const currentDirection = assistant.callDirection || 'outbound';
     const requestedDirection = callDirection !== undefined ? callDirection : currentDirection;
 
-    // Chat/inbound assistants are always editable. Only block unknown directions.
+    if (requestedDirection === 'inbound' && !inboundEnabled) {
+      return sendOutboundOnlyV1(res);
+    }
+
+    // Block unknown directions.
     if (!isAllowedDirection(requestedDirection)) {
       return sendOutboundOnlyV1(res);
     }
@@ -961,9 +977,9 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
       data: updateData,
     });
 
-// ✅ Update 11Labs agent
+// ✅ Update 11Labs agent (phone assistants only)
     console.log('🔄 Checking 11Labs update - elevenLabsAgentId:', assistant.elevenLabsAgentId);
-    if (assistant.elevenLabsAgentId) {
+    if (!isTextAssistant && assistant.elevenLabsAgentId) {
       try {
         const lang = language || business?.language || 'TR';
         const elevenLabsLang = getElevenLabsLanguage(lang);
@@ -1150,7 +1166,7 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
           warning: '11Labs sync failed: ' + (updateError.response?.data?.detail || updateError.message)
         });
       }
-    } else {
+    } else if (!isTextAssistant) {
       console.warn('⚠️ No elevenLabsAgentId found for assistant:', assistant.id);
     }
 
@@ -1286,6 +1302,10 @@ router.post('/:id/sync', authenticateToken, checkPermission('assistants:edit'), 
 
     if (!assistant) {
       return res.status(404).json({ error: 'Assistant not found' });
+    }
+
+    if (assistant.assistantType === 'text') {
+      return res.status(400).json({ error: 'Text assistants do not support 11Labs sync' });
     }
 
     if (!assistant.elevenLabsAgentId) {

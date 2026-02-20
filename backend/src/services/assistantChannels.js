@@ -71,7 +71,9 @@ export function assistantHasCapability(assistant, capability) {
     return false;
   }
 
-  const fallback = getDefaultCapabilitiesForCallDirection(assistant.callDirection);
+  const fallback = assistant.assistantType === 'text'
+    ? [...CHAT_CAPABLE_CHANNELS]
+    : getDefaultCapabilitiesForCallDirection(assistant.callDirection);
   const capabilities = normalizeChannelCapabilities(assistant.channelCapabilities, fallback);
   return capabilities.includes(capability);
 }
@@ -148,6 +150,7 @@ export async function resolveChatAssistantForBusiness({ prisma, business, busine
   }
 
   const chatAssistants = (businessRecord.assistants || []).filter((assistant) =>
+    assistant.assistantType === 'text' &&
     assistantHasCapability(assistant, ASSISTANT_CHANNEL_CAPABILITIES.CHAT)
   );
 
@@ -176,6 +179,7 @@ export async function resolveChatAssistantForBusiness({ prisma, business, busine
     where: {
       businessId: businessRecord.id,
       isActive: true,
+      assistantType: 'text',
       channelCapabilities: {
         has: ASSISTANT_CHANNEL_CAPABILITIES.CHAT
       }
