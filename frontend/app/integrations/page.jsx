@@ -20,13 +20,23 @@ export default function IntegrationsPage() {
       color: 'from-green-500 to-emerald-500',
       integrations: [
         {
-          name: 'Google Sheets',
-          descKey: 'integrationsPage.googleSheets.desc',
+          name: 'Shopify',
+          descKey: 'integrationsPage.shopify.desc',
           textOnly: true
         },
         {
-          name: 'Custom CRM',
-          descKey: 'integrationsPage.customCrm.desc',
+          name: 'ikas',
+          descKey: 'integrationsPage.ikas.desc',
+          textOnly: true
+        },
+        {
+          name: 'WhatsApp Business',
+          descKey: 'integrationsPage.whatsapp.desc',
+          textOnly: true
+        },
+        {
+          name: 'Google Calendar',
+          descKey: 'integrationsPage.googleCalendar.desc',
           textOnly: true
         },
         {

@@ -6,7 +6,6 @@ import { ChannelsSection } from '@/components/ChannelsSection';
 import { SectorsSection } from '@/components/SectorsSection';
 import { IntegrationsSection } from '@/components/IntegrationsSection';
 import { HowItWorks } from '@/components/HowItWorks';
-import { LiveDemoSection } from '@/components/LiveDemoSection';
 import { Footer } from '@/components/Footer';
 import ChatWidget from '@/components/ChatWidget';
 import Link from 'next/link';
@@ -37,9 +36,6 @@ export default function Home() {
 
       {/* How It Works Section */}
       <HowItWorks />
-
-      {/* Live Demo Section */}
-      <LiveDemoSection />
 
       {/* CTA Section */}
       <section className="py-24 bg-gradient-to-br from-teal-600 via-blue-500 to-teal-600 relative overflow-hidden">

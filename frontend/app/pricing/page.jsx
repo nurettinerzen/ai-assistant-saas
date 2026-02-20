@@ -1,230 +1,93 @@
 'use client';
 
-import { Check } from 'lucide-react';
+import { Check, Zap } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
 import Navigation from '@/components/Navigation';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/contexts/LanguageContext';
-
-// Regional pricing configuration - YENİ PAKET YAPISI
-const REGIONAL_PRICING = {
-  TR: {
-    currency: '₺',
-    currencyPosition: 'after',
-    locale: 'tr-TR',
-    plans: {
-      // YENİ PAKETLER - Aşım ücretleri normal fiyattan yüksek olmalı
-      STARTER: { price: 799, minutes: 100, concurrent: 1, overageRate: 10 },
-      PRO: { price: 3999, minutes: 800, concurrent: 5, overageRate: 8 },
-      ENTERPRISE: { price: null, minutes: null, concurrent: 10, overageRate: 6 }
-    },
-    creditPackages: [
-      { minutes: 100, price: 650, unitPrice: 6.5 },
-      { minutes: 300, price: 1650, unitPrice: 5.5 },
-      { minutes: 500, price: 2500, unitPrice: 5.0 }
-    ]
-  },
-  // Türkiye odaklı - diğer bölgeler referans için
-  BR: {
-    currency: 'R$',
-    currencyPosition: 'before',
-    locale: 'pt-BR',
-    plans: {
-      STARTER: { price: 99, minutes: 100, concurrent: 1, overageRate: 2.5 },
-      PRO: { price: 499, minutes: 800, concurrent: 5, overageRate: 2.0 },
-      ENTERPRISE: { price: null, minutes: null, concurrent: 10, overageRate: 1.5 }
-    },
-    creditPackages: [
-      { minutes: 100, price: 200, unitPrice: 2.0 },
-      { minutes: 300, price: 525, unitPrice: 1.75 },
-      { minutes: 500, price: 750, unitPrice: 1.5 }
-    ]
-  },
-  US: {
-    currency: '$',
-    currencyPosition: 'before',
-    locale: 'en-US',
-    plans: {
-      STARTER: { price: 49, minutes: 100, concurrent: 1, overageRate: 0.35 },
-      PRO: { price: 199, minutes: 800, concurrent: 5, overageRate: 0.25 },
-      ENTERPRISE: { price: null, minutes: null, concurrent: 10, overageRate: 0.20 }
-    },
-    creditPackages: [
-      { minutes: 100, price: 30, unitPrice: 0.30 },
-      { minutes: 300, price: 75, unitPrice: 0.25 },
-      { minutes: 500, price: 100, unitPrice: 0.20 }
-    ]
-  }
-};
-
-// Map locale to region
-const LOCALE_TO_REGION = {
-  tr: 'TR',
-  pr: 'BR',
-  pt: 'BR',
-  en: 'US'
-};
+import {
+  SHARED_REGIONAL_PRICING,
+  SHARED_PLAN_META,
+  SHARED_FEATURE_ORDER,
+  LOCALE_TO_REGION,
+  formatSharedPrice,
+  getFeatureLabel,
+} from '@shared/pricing';
 
 export default function PricingPage() {
   const { t, locale } = useLanguage();
 
   // Determine region based on locale
   const region = LOCALE_TO_REGION[locale] || 'US';
-  const pricing = REGIONAL_PRICING[region] || REGIONAL_PRICING.US;
+  const pricing = SHARED_REGIONAL_PRICING[region] || SHARED_REGIONAL_PRICING.US;
   const isTR = region === 'TR';
-  const isBR = region === 'BR';
-
-  // Format price with currency
-  const formatPrice = (price) => {
-    if (price === null) return null;
-    const formatted = price.toLocaleString(pricing.locale);
-    return pricing.currencyPosition === 'before'
-      ? `${pricing.currency}${formatted}`
-      : `${formatted}${pricing.currency}`;
-  };
-
-  /**
-   * Feature Master List (ordered) - same order for ALL plans
-   * Features appear in this exact order, no gaps
-   */
-  const FEATURE_ORDER = [
-    'minutes',
-    'concurrent',
-    'assistants',
-    'phoneNumbers',
-    'phone',
-    'whatsapp',
-    'chatWidget',
-    'ecommerce',
-    'calendar',
-    'analytics',
-    'email',
-    'googleSheets',
-    'batchCalls',
-    'prioritySupport',
-    'apiAccess',
-    'slaGuarantee'
-  ];
-
-  // Feature availability per plan (in display order) - YENİ PAKET YAPISI
-  // Calendar ve Sheets tüm planlarda açık
-  const PLAN_FEATURES = {
-    STARTER: ['minutes', 'concurrent', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'ecommerce', 'calendar', 'googleSheets', 'analytics', 'email'],
-    PRO: ['minutes', 'concurrent', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'ecommerce', 'calendar', 'googleSheets', 'analytics', 'email', 'batchCalls', 'prioritySupport', 'apiAccess'],
-    ENTERPRISE: ['minutes', 'concurrent', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'ecommerce', 'calendar', 'googleSheets', 'analytics', 'email', 'batchCalls', 'prioritySupport', 'apiAccess', 'slaGuarantee']
-  };
-
-  // Plan names by region - YENİ
-  const planNames = {
-    STARTER: isTR ? 'Başlangıç' : 'Starter',
-    PRO: isTR ? 'Profesyonel' : 'Pro',
-    ENTERPRISE: isTR ? 'Kurumsal' : 'Enterprise'
-  };
-
-  // Plan descriptions by region - YENİ
-  const planDescriptions = {
-    STARTER: isTR
-      ? 'Küçük işletmeler için ideal başlangıç paketi'
-      : 'Perfect starter package for small businesses',
-    PRO: isTR
-      ? 'Yüksek hacimli işletmeler için tam donanımlı paket'
-      : 'Full-featured package for high-volume businesses',
-    ENTERPRISE: isTR
-      ? 'Özel ihtiyaçlar için kişiselleştirilmiş çözümler'
-      : 'Customized solutions for specific needs'
-  };
+  const lang = isTR ? 'tr' : 'en';
 
   const period = isTR ? '/ay' : '/month';
   const popularBadge = isTR ? 'Popüler' : 'Popular';
 
-  // YENİ PAKET YAPISI - 3 paket
-  const plans = [
-    {
-      id: 'STARTER',
-      name: planNames.STARTER,
-      ...pricing.plans.STARTER,
-      period,
-      description: planDescriptions.STARTER,
-      popular: false,
-    },
-    {
-      id: 'PRO',
-      name: planNames.PRO,
-      ...pricing.plans.PRO,
-      period,
-      description: planDescriptions.PRO,
-      popular: true,
-      badge: popularBadge,
-    },
-    {
-      id: 'ENTERPRISE',
-      name: planNames.ENTERPRISE,
-      ...pricing.plans.ENTERPRISE,
-      period: '',
-      description: planDescriptions.ENTERPRISE,
-      popular: false,
-    },
-  ];
-
-  // Feature labels by key - YENİ PAKET YAPISI
-  const getFeatureLabel = (key, plan) => {
-    const isEnterprise = plan.id === 'ENTERPRISE';
-
-    const labels = {
-      minutes: isEnterprise
-        ? (isTR ? '800+ dk (özel)' : '800+ min (custom)')
-        : (isTR ? `${plan.minutes} dk görüşme` : `${plan.minutes} min calls`),
-      concurrent: isEnterprise
-        ? (isTR ? '10+ eşzamanlı çağrı' : '10+ concurrent calls')
-        : (isTR ? `${plan.concurrent} eşzamanlı çağrı` : `${plan.concurrent} concurrent call${plan.concurrent > 1 ? 's' : ''}`),
-      assistants: isTR ? 'Sınırsız asistan' : 'Unlimited assistants',
-      phoneNumbers: isTR ? 'Sınırsız telefon numarası' : 'Unlimited phone numbers',
-      phone: isTR ? 'Telefon AI' : 'Phone AI',
-      whatsapp: isTR ? 'WhatsApp' : 'WhatsApp',
-      chatWidget: isTR ? 'Chat widget' : 'Chat widget',
-      email: isTR ? 'E-posta AI' : 'Email AI',
-      ecommerce: isTR ? 'E-ticaret entegrasyonu' : 'E-commerce integration',
-      calendar: isTR ? 'Google Takvim' : 'Google Calendar',
-      googleSheets: isTR ? 'Google Sheets' : 'Google Sheets',
-      batchCalls: isTR ? 'Toplu arama' : 'Batch calls',
-      analytics: isTR ? 'Analitik' : 'Analytics',
-      prioritySupport: isTR ? 'Öncelikli destek' : 'Priority support',
-      apiAccess: isTR ? 'API erişimi' : 'API access',
-      slaGuarantee: isTR ? 'SLA garantisi' : 'SLA guarantee'
+  // Build plan cards: TRIAL + STARTER + PRO + ENTERPRISE
+  const planIds = ['TRIAL', 'STARTER', 'PRO', 'ENTERPRISE'];
+  const plans = planIds.map((id) => {
+    const meta = SHARED_PLAN_META[id];
+    const planPricing = pricing.plans[id];
+    return {
+      id,
+      name: isTR ? meta.nameTR : meta.nameEN,
+      description: isTR ? meta.descTR : meta.descEN,
+      price: planPricing.price,
+      minutes: planPricing.minutes,
+      overageRate: planPricing.overageRate,
+      concurrentLimit: planPricing.concurrentLimit,
+      assistantsLimit: planPricing.assistantsLimit,
+      chatDays: planPricing.chatDays,
+      features: meta.features,
+      period: id === 'ENTERPRISE' ? '' : (id === 'TRIAL' ? '' : period),
+      popular: id === 'PRO',
+      badge: id === 'PRO' ? popularBadge : null,
     };
-    return labels[key] || key;
-  };
+  });
 
-  // Get only included features for a plan (no gaps, maintains order)
+  // Get features for a plan
   const getPlanFeatures = (plan) => {
-    const includedFeatures = PLAN_FEATURES[plan.id] || [];
-    // Filter FEATURE_ORDER to only include features in this plan's list
-    return FEATURE_ORDER
-      .filter(key => includedFeatures.includes(key))
-      .map(key => ({
+    // Always show minutes, concurrent, assistants first, then plan-specific features
+    const display = ['minutes', 'concurrent', 'assistants', ...plan.features];
+    // Deduplicate while keeping order
+    const seen = new Set();
+    return display
+      .filter((key) => {
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .map((key) => ({
         key,
-        text: getFeatureLabel(key, plan)
+        text: getFeatureLabel(key, lang, plan),
       }));
   };
 
+  // PAYG pricing info
+  const payg = pricing.plans.PAYG;
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-teal-50">
+    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-teal-50 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950">
       <Navigation />
 
       {/* Hero Section */}
       <section className="pt-32 pb-16">
         <div className="container mx-auto px-4">
           <div className="text-center max-w-3xl mx-auto">
-            <h1 className="text-5xl md:text-6xl font-bold mb-6">
+            <h1 className="text-5xl md:text-6xl font-bold mb-6 text-gray-900 dark:text-white">
               {t('pricing.title')}
             </h1>
-            <p className="text-xl text-gray-600 mb-4">
+            <p className="text-xl text-gray-600 dark:text-neutral-400 mb-4">
               {t('pricing.subtitle')}
             </p>
             <p className="text-sm text-primary font-medium">
-              {t('pricing.trial')}
+              {isTR
+                ? '15 dakika ücretsiz deneme — Kredi kartı gerekmez'
+                : '15-minute free trial — No credit card required'}
             </p>
           </div>
         </div>
@@ -233,17 +96,17 @@ export default function PricingPage() {
       {/* Pricing Cards */}
       <section className="py-12 pb-24">
         <div className="container mx-auto px-4">
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto items-stretch">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto items-stretch">
             {plans.map((plan) => (
               <div
                 key={plan.id}
-                className={`relative bg-white rounded-2xl p-6 shadow-lg border-2 transition-all duration-300 hover:shadow-xl flex flex-col ${
+                className={`relative bg-white dark:bg-neutral-800 rounded-2xl p-6 shadow-lg border-2 transition-all duration-300 hover:shadow-xl flex flex-col ${
                   plan.popular
                     ? 'border-primary'
-                    : 'border-gray-100 hover:border-gray-200'
+                    : 'border-gray-100 dark:border-neutral-700 hover:border-gray-200 dark:hover:border-neutral-600'
                 }`}
               >
-                {plan.popular && plan.badge && (
+                {plan.badge && (
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2">
                     <span className="bg-primary text-white text-sm font-semibold px-4 py-1.5 rounded-full">
                       {plan.badge}
@@ -252,48 +115,53 @@ export default function PricingPage() {
                 )}
 
                 <div className="text-center mb-6">
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
                     {plan.name}
                   </h3>
-                  <p className="text-gray-600 text-sm mb-4 h-[40px]">
+                  <p className="text-gray-600 dark:text-neutral-400 text-sm mb-4 min-h-[40px]">
                     {plan.description}
                   </p>
-                  <div className="flex items-baseline justify-center h-[40px]">
-                    {plan.price !== null ? (
+                  <div className="flex items-baseline justify-center min-h-[40px]">
+                    {plan.id === 'TRIAL' ? (
+                      <span className="text-3xl font-bold text-green-600 dark:text-green-400">
+                        {isTR ? 'Ücretsiz' : 'Free'}
+                      </span>
+                    ) : plan.price !== null ? (
                       <>
-                        <span className="text-3xl font-bold text-gray-900">
-                          {formatPrice(plan.price)}
+                        <span className="text-3xl font-bold text-gray-900 dark:text-white">
+                          {formatSharedPrice(plan.price, region)}
                         </span>
-                        <span className="text-gray-600 ml-1">{plan.period}</span>
+                        <span className="text-gray-600 dark:text-neutral-400 ml-1">{plan.period}</span>
                       </>
                     ) : (
-                      <span className="text-2xl font-bold text-gray-900">
-                        {isTR ? 'İletişime Geçin' : isBR ? 'Entre em Contato' : 'Contact Us'}
+                      <span className="text-2xl font-bold text-gray-900 dark:text-white">
+                        {isTR ? 'İletişime Geçin' : 'Contact Us'}
                       </span>
                     )}
                   </div>
-                  <div className="h-[20px] mt-2">
-                    {plan.overageRate ? (
-                      <p className="text-xs text-gray-500">
-                        {isTR ? `Aşım: ${plan.overageRate} ₺/dk` : isBR ? `Excedente: R$${plan.overageRate}/min` : `Overage: $${plan.overageRate}/min`}
+                  <div className="min-h-[20px] mt-2">
+                    {plan.id === 'TRIAL' && plan.chatDays ? (
+                      <p className="text-xs text-gray-500 dark:text-neutral-500">
+                        {isTR ? `${plan.chatDays} gün chat/WhatsApp` : `${plan.chatDays}-day chat/WhatsApp`}
+                      </p>
+                    ) : plan.overageRate ? (
+                      <p className="text-xs text-gray-500 dark:text-neutral-500">
+                        {isTR ? `Aşım: ${formatSharedPrice(plan.overageRate, region)}/dk` : `Overage: ${formatSharedPrice(plan.overageRate, region)}/min`}
                       </p>
                     ) : plan.id === 'ENTERPRISE' ? (
-                      <p className="text-xs text-gray-500">
-                        {isTR ? 'Özel fiyatlandırma' : isBR ? 'Preços personalizados' : 'Custom pricing'}
+                      <p className="text-xs text-gray-500 dark:text-neutral-500">
+                        {isTR ? 'Özel fiyatlandırma' : 'Custom pricing'}
                       </p>
                     ) : null}
                   </div>
                 </div>
 
-                {/* Features list - only shows included features, no gaps */}
+                {/* Features list */}
                 <ul className="space-y-2 mb-6 flex-grow">
                   {getPlanFeatures(plan).map((feature, idx) => (
-                    <li
-                      key={idx}
-                      className="flex items-center gap-2"
-                    >
+                    <li key={idx} className="flex items-center gap-2">
                       <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
-                      <span className="text-sm text-gray-700 truncate">
+                      <span className="text-sm text-gray-700 dark:text-neutral-300 truncate">
                         {feature.text}
                       </span>
                     </li>
@@ -314,7 +182,9 @@ export default function PricingPage() {
                     >
                       {plan.id === 'ENTERPRISE'
                         ? (isTR ? 'Bize Ulaşın' : 'Contact Us')
-                        : (isTR ? 'Hemen Başla' : 'Get Started')}
+                        : plan.id === 'TRIAL'
+                          ? (isTR ? 'Ücretsiz Dene' : 'Try Free')
+                          : (isTR ? 'Hemen Başla' : 'Get Started')}
                     </Button>
                   </Link>
                 </div>
@@ -322,48 +192,53 @@ export default function PricingPage() {
             ))}
           </div>
 
-          {/* Ekstra Kredi Bölümü - YENİ PAKET YAPISI */}
+          {/* PAYG Section */}
           <div className="mt-20 text-center max-w-4xl mx-auto">
-            <h3 className="text-2xl font-bold text-gray-900 mb-3">
-              {isTR ? 'Ekstra Dakika mı Lazım?' : 'Need Extra Minutes?'}
-            </h3>
-            <p className="text-gray-600 mb-8">
+            <div className="flex items-center justify-center gap-2 mb-3">
+              <Zap className="h-6 w-6 text-primary" />
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                {isTR ? 'Kullandıkça Öde' : 'Pay As You Go'}
+              </h3>
+            </div>
+            <p className="text-gray-600 dark:text-neutral-400 mb-8">
               {isTR
-                ? 'Kredi paketleri satın alın, süresi dolmaz'
-                : 'Buy credit packages, they never expire'}
+                ? 'Aylık taahhüt yok. Dakika başı ödeme yapın.'
+                : 'No monthly commitment. Pay per minute.'}
             </p>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-3xl mx-auto">
-              {pricing.creditPackages.map((pkg, index) => {
-                const isLast = index === pricing.creditPackages.length - 1;
-
-                return (
-                  <div
-                    key={index}
-                    className={`rounded-xl p-6 shadow-md border ${
-                      isLast
-                        ? 'bg-primary/10 border-primary/30'
-                        : 'bg-white border-gray-100'
-                    }`}
-                  >
-                    <div className={`text-3xl font-bold mb-2 ${isLast ? 'text-primary' : 'text-gray-900'}`}>
-                      {pkg.minutes} {isTR ? 'dk' : 'min'}
-                    </div>
-                    <div className={`text-xl font-semibold mb-1 ${isLast ? 'text-primary' : 'text-gray-700'}`}>
-                      {formatPrice(pkg.price)}
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      {formatPrice(pkg.unitPrice)}/{isTR ? 'dk' : 'min'}
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="bg-white dark:bg-neutral-800 rounded-2xl p-8 shadow-lg border border-gray-100 dark:border-neutral-700 max-w-lg mx-auto">
+              <div className="text-4xl font-bold text-primary mb-2">
+                {formatSharedPrice(payg.pricePerMinute, region)}<span className="text-lg text-gray-500 dark:text-neutral-400">/{isTR ? 'dk' : 'min'}</span>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-neutral-400 mb-4">
+                {isTR
+                  ? `Minimum ${payg.minTopup} dk yükleme (${formatSharedPrice(payg.minTopup * payg.pricePerMinute, region)})`
+                  : `Minimum ${payg.minTopup} min top-up (${formatSharedPrice(payg.minTopup * payg.pricePerMinute, region)})`}
+              </p>
+              <div className="flex flex-wrap justify-center gap-2 text-xs text-gray-500 dark:text-neutral-500">
+                <span className="bg-gray-100 dark:bg-neutral-700 px-2 py-1 rounded">
+                  {isTR ? 'Tüm kanallar dahil' : 'All channels included'}
+                </span>
+                <span className="bg-gray-100 dark:bg-neutral-700 px-2 py-1 rounded">
+                  {isTR ? `${payg.assistantsLimit} asistan` : `${payg.assistantsLimit} assistants`}
+                </span>
+                <span className="bg-gray-100 dark:bg-neutral-700 px-2 py-1 rounded">
+                  {isTR ? 'Bakiye süresi dolmaz' : 'Balance never expires'}
+                </span>
+              </div>
+              <div className="mt-6">
+                <Link href="/waitlist">
+                  <Button variant="outline" size="lg" className="w-full">
+                    {isTR ? 'Hemen Başla' : 'Get Started'}
+                  </Button>
+                </Link>
+              </div>
             </div>
           </div>
 
           {/* FAQ or Additional Info */}
           <div className="mt-16 text-center max-w-2xl mx-auto">
-            <p className="text-gray-600">
+            <p className="text-gray-600 dark:text-neutral-400">
               {t('pricing.questions')}{' '}
               <Link href="/contact" className="text-primary font-medium hover:underline">
                 {t('pricing.contactUs')}

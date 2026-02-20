@@ -9,11 +9,13 @@ import { ArrowRight } from 'lucide-react';
 export const IntegrationsSection = () => {
   const { t } = useLanguage();
 
-  // Only list integrations that are actually implemented in the system
+  // Integrations that are actually available in the product
   const integrations = [
-    { name: 'Google Sheets', textOnly: true },
-    { name: 'Custom CRM', textOnly: true },
-    { name: 'Webhook API', textOnly: true },
+    { name: 'Shopify' },
+    { name: 'ikas' },
+    { name: 'WhatsApp Business' },
+    { name: 'Google Calendar' },
+    { name: 'Webhook API' },
   ];
 
   return (

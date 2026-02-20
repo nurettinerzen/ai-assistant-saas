@@ -65,7 +65,7 @@
       "subtitle": "WhatsApp, Phone, Chat and Email - 24/7 AI-powered customer service",
       "cta": "Get Started Free",
       "ctaWaitlist": "Apply for Early Access",
-      "watch": "Watch Demo"
+      "watch": "See Pricing"
     },
     "channels": {
       "title": "All Channels in One Platform",
@@ -166,8 +166,8 @@
       }
     },
     "cta": {
-      "title": "Start Now - 14 Days Free",
-      "subtitle": "No credit card required. Cancel anytime.",
+      "title": "Get Started Now",
+      "subtitle": "Try with 15 free minutes of calls. No credit card required.",
       "startTrial": "Start Free",
       "applyEarlyAccess": "Apply for Early Access",
       "talkToSales": "Talk to Sales"
@@ -190,7 +190,7 @@
       "legal": "Legal",
       "privacy": "Privacy Policy",
       "terms": "Terms of Service",
-      "copyright": "2024 Telyx.ai - All rights reserved."
+      "copyright": "2025 Telyx.ai - All rights reserved."
     }
   },
   "navigation": {
@@ -2943,6 +2943,9 @@
     },
     "webhookApi": {
       "desc": "Connect to any system via Webhook API"
+    },
+    "whatsapp": {
+      "desc": "Automated messaging via WhatsApp Business API"
     },
     "ikas": {
       "desc": "Order and customer management with Turkey's leading e-commerce infrastructure"

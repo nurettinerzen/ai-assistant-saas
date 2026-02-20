@@ -65,7 +65,7 @@
       "subtitle": "WhatsApp, Telefon, Chat ve Email - 7/24 AI destekli müşteri hizmeti",
       "cta": "Ücretsiz Başla",
       "ctaWaitlist": "Erken Erişim İçin Başvur",
-      "watch": "Demo İzle"
+      "watch": "Fiyatları Gör"
     },
     "channels": {
       "title": "Tüm Kanallar Tek Platformda",
@@ -166,8 +166,8 @@
       }
     },
     "cta": {
-      "title": "Hemen Başlayın - 14 Gün Ücretsiz",
-      "subtitle": "Kredi kartı gerektirmez. İstediğiniz zaman iptal edin.",
+      "title": "Hemen Başlayın",
+      "subtitle": "15 dakika ücretsiz arama ile deneyin. Kredi kartı gerekmez.",
       "startTrial": "Ücretsiz Başlat",
       "applyEarlyAccess": "Erken Erişim İçin Başvur",
       "talkToSales": "Satış ile Konuşun"
@@ -190,7 +190,7 @@
       "legal": "Yasal",
       "privacy": "Gizlilik Politikası",
       "terms": "Kullanım Koşulları",
-      "copyright": "2024 Telyx.ai - Tüm hakları saklıdır."
+      "copyright": "2025 Telyx.ai - Tüm hakları saklıdır."
     }
   },
   "navigation": {
@@ -2943,6 +2943,9 @@
     },
     "webhookApi": {
       "desc": "Webhook API ile herhangi bir sisteme bağlanın"
+    },
+    "whatsapp": {
+      "desc": "WhatsApp Business API ile otomatik mesajlaşma"
     },
     "ikas": {
       "desc": "Türkiye'nin önde gelen e-ticaret altyapısı ile sipariş ve müşteri yönetimi"

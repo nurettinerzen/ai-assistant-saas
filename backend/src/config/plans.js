@@ -6,6 +6,10 @@
 // Central configuration for subscription plans with pricing, limits, and features
 // Supports multiple currencies and regions
 //
+// NOTE: Public-facing pricing values are also defined in shared/pricing.js
+// which is the single source of truth for the frontend pricing page.
+// When updating prices, update BOTH this file and shared/pricing.js.
+//
 // YENİ FİYATLANDIRMA (Ocak 2026):
 // - TRIAL: 15 dk telefon, 7 gün chat/whatsapp, 1 asistan
 // - PAYG: 23 TL/dk, PREPAID (bakiye yükleme), min 4 dk yükleme

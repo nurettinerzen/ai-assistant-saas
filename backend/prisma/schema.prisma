@@ -1296,6 +1296,21 @@ model WaitlistEntry {
   @@index([status])
 }
 
+model ContactMessage {
+  id           String   @id @default(cuid())
+  email        String
+  name         String
+  company      String?
+  phone        String?
+  businessType String?
+  message      String?
+  status       String   @default("new") // new, read, replied
+  createdAt    DateTime @default(now())
+
+  @@index([email])
+  @@index([createdAt])
+}
+
 // ============================================================================
 // KREDİ SİSTEMİ - YENİ MODELLER
 // ============================================================================

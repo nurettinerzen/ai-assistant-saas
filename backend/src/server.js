@@ -54,6 +54,8 @@ import batchCallsRoutes from './routes/batchCalls.js';
 import teamRoutes from './routes/team.js';
 // Waitlist
 import waitlistRoutes from './routes/waitlist.js';
+// Contact
+import contactRoutes from './routes/contact.js';
 // Onboarding
 import onboardingRoutes from './routes/onboarding.js';
 // Credits
@@ -242,6 +244,7 @@ app.use('/api/webhook', webhookRoutes);
 app.use('/api/batch-calls', batchCallsRoutes);
 app.use('/api/team', teamRoutes);
 app.use('/api/waitlist', waitlistRoutes);
+app.use('/api/contact', contactRoutes);
 app.use('/api/onboarding', onboardingRoutes);
 app.use('/api/credits', creditsRoutes);
 app.use('/api/metrics', metricsRoutes); // Internal metrics (protected)

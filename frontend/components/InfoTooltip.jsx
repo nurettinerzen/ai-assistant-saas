@@ -87,7 +87,7 @@ export default function InfoTooltip({
   }, []);
 
   const handleClose = useCallback(() => {
-    closeTimeout.current = setTimeout(() => setOpen(false), 100);
+    closeTimeout.current = setTimeout(() => setOpen(false), 150);
   }, []);
 
   useEffect(() => {
@@ -155,7 +155,7 @@ export default function InfoTooltip({
 
   return (
     <div className={className}>
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover open={open} onOpenChange={(v) => { if (v) handleOpen(); else handleClose(); }}>
         <PopoverTrigger asChild>
           <button
             type="button"
@@ -173,7 +173,7 @@ export default function InfoTooltip({
         </PopoverTrigger>
         <PopoverContent
           align="start"
-          sideOffset={8}
+          sideOffset={4}
           className="w-[min(92vw,30rem)] rounded-xl border border-neutral-200 bg-white p-4 shadow-xl dark:border-neutral-700 dark:bg-neutral-900"
           onMouseEnter={handleOpen}
           onMouseLeave={handleClose}

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, Play } from 'lucide-react';
+import { ArrowRight, BarChart3 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from './ui/button';
 import { WaveformAnimation } from './animations/WaveformAnimation';
@@ -10,13 +10,6 @@ import { useLanguage } from '@/contexts/LanguageContext';
 
 export const Hero = () => {
   const { t } = useLanguage();
-
-  const scrollToDemo = () => {
-    const demoSection = document.getElementById('live-demo');
-    if (demoSection) {
-      demoSection.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
@@ -80,15 +73,16 @@ export const Hero = () => {
                 <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
               </Button>
             </Link>
-            <Button
-              size="lg"
-              variant="outline"
-              onClick={scrollToDemo}
-              className="border-2 border-border hover:border-primary hover:bg-primary/5 group px-8 py-6 text-lg h-auto"
-            >
-              <Play className="mr-2 h-5 w-5" />
-              {t('landing.hero.watch')}
-            </Button>
+            <Link href="/pricing">
+              <Button
+                size="lg"
+                variant="outline"
+                className="border-2 border-border hover:border-primary hover:bg-primary/5 group px-8 py-6 text-lg h-auto"
+              >
+                <BarChart3 className="mr-2 h-5 w-5" />
+                {t('landing.hero.watch')}
+              </Button>
+            </Link>
           </motion.div>
         </motion.div>
       </div>
