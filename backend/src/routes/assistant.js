@@ -65,6 +65,14 @@ function isOutboundDirection(direction) {
   return typeof direction === 'string' && direction.startsWith('outbound');
 }
 
+function isChatDirection(direction) {
+  return typeof direction === 'string' && ['chat', 'whatsapp', 'email'].includes(direction);
+}
+
+function isAllowedDirection(direction) {
+  return isOutboundDirection(direction) || isChatDirection(direction) || direction === 'inbound';
+}
+
 function sendOutboundOnlyV1(res) {
   return res.status(403).json(OUTBOUND_ONLY_V1_ERROR);
 }
@@ -162,7 +170,8 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
     const inboundEnabled = isPhoneInboundEnabledForBusinessRecord(req.user?.business);
     const requestedDirection = callDirection || 'outbound';
 
-    if (!inboundEnabled && !isOutboundDirection(requestedDirection)) {
+    // Chat/inbound assistants are always editable. Only block unknown directions.
+    if (!isAllowedDirection(requestedDirection)) {
       return sendOutboundOnlyV1(res);
     }
 
@@ -829,7 +838,8 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
     const currentDirection = assistant.callDirection || 'outbound';
     const requestedDirection = callDirection !== undefined ? callDirection : currentDirection;
 
-    if (!inboundEnabled && !isOutboundDirection(requestedDirection)) {
+    // Chat/inbound assistants are always editable. Only block unknown directions.
+    if (!isAllowedDirection(requestedDirection)) {
       return sendOutboundOnlyV1(res);
     }
 

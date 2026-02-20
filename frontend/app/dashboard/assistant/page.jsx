@@ -269,8 +269,12 @@ export default function AssistantsPage() {
 
   const handleEdit = (assistant) => {
     const isOutbound = assistant.callDirection?.startsWith('outbound');
-    if (!isOutbound) {
-      toast.error('V1 modunda inbound asistanlar düzenlenemez. Yeni outbound asistan oluşturun.');
+    const isChat = assistant.callDirection === 'chat';
+    const isInbound = assistant.callDirection === 'inbound';
+
+    // Only block pure inbound (phone) assistants in V1
+    if (!isOutbound && !isChat && !isInbound) {
+      toast.error('Bu asistan türü düzenlenemez.');
       return;
     }
 
@@ -278,16 +282,14 @@ export default function AssistantsPage() {
     const voice = voices.find(v => v.id === assistant.voiceId);
     const inferredLang = voice?.language || businessLanguage || 'en';
 
-    // For outbound assistants, show a simple default prompt based on callPurpose
-    // instead of the full generated system prompt (which is too technical for customers)
     let displayPrompt = '';
 
     if (isOutbound && assistant.callPurpose) {
-      // Show simple default prompt for editing
       displayPrompt = DEFAULT_SYSTEM_PROMPTS[assistant.callPurpose]?.[inferredLang] || '';
+    } else if (isChat || isInbound) {
+      // For chat/inbound assistants, show the actual system prompt for editing
+      displayPrompt = assistant.systemPrompt || '';
     }
-    // For outbound without callPurpose, displayPrompt stays empty
-    // The full system prompt is generated in backend and should not be shown to customers
 
     setFormData({
       name: assistant.name,
@@ -297,7 +299,7 @@ export default function AssistantsPage() {
       language: assistant.language || inferredLang,
       tone: assistant.tone || 'formal',
       customNotes: assistant.customNotes || '',
-      callDirection: 'outbound',
+      callDirection: assistant.callDirection || 'outbound',
       callPurpose: assistant.callPurpose || 'collection',
     });
     setShowCreateModal(true);
@@ -449,7 +451,9 @@ export default function AssistantsPage() {
                       <span className="text-sm text-neutral-600 dark:text-neutral-400">
                         {isOutbound
                           ? t('dashboard.assistantsPage.outbound')
-                          : 'Inbound (V1 kilitli)'
+                          : assistant.callDirection === 'chat'
+                            ? 'Chat / WhatsApp / Email'
+                            : t('dashboard.assistantsPage.inbound') || 'Gelen'
                         }
                       </span>
                     </td>

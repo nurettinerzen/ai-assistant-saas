@@ -2,6 +2,68 @@ import { BASE_RULES } from '../config/prompts/base-rules.js';
 import { BUSINESS_TEMPLATES } from '../config/prompts/business-templates.js';
 import { TONE_RULES } from '../config/prompts/tone-rules.js';
 
+/**
+ * Chat / WhatsApp / Email prompt builder
+ * No phone-specific rules (silence, hangup, voicemail etc.)
+ */
+function buildChatPrompt(assistant, business, integrations = []) {
+  const businessName = business.name || 'İşletme';
+  const assistantName = assistant.name || 'Asistan';
+  const lang = (business.language || 'TR').toUpperCase();
+
+  const tone = assistant.tone || 'professional';
+  const toneRules = TONE_RULES[tone] || TONE_RULES.professional;
+
+  let prompt = lang === 'TR'
+    ? `Sen ${businessName} için metin tabanlı (chat/WhatsApp/email) müşteri asistanısın. Adın: ${assistantName}.
+
+## TEMEL KURALLAR
+- Kısa, net ve nazik cevap ver
+- Türkçe konuş (müşteri başka dilde yazarsa o dilde devam et)
+- Bilmediğin soruları dürüstçe belirt
+- Gerekirse canlı desteğe yönlendir
+- Telefon arama scripti veya ses yönergeleri KULLANMA
+- Markdown formatı kullanabilirsin (kalın, liste, link vb.)
+`
+    : `You are a text-based (chat/WhatsApp/email) customer assistant for ${businessName}. Your name: ${assistantName}.
+
+## CORE RULES
+- Keep answers short, clear, and polite
+- Respond in the language the customer writes in
+- Be honest when you don't know something
+- Guide to human support when needed
+- NEVER use phone call scripts or voice directions
+- You can use markdown formatting (bold, lists, links, etc.)
+`;
+
+  prompt += '\n\n' + toneRules;
+
+  if (assistant.customNotes && assistant.customNotes.trim()) {
+    prompt += `\n\n## ${lang === 'TR' ? 'İŞLETME ÖZEL BİLGİLER' : 'BUSINESS NOTES'}\n${assistant.customNotes}`;
+  }
+
+  const customPrompt = assistant.systemPrompt;
+  if (customPrompt && customPrompt.trim()) {
+    prompt += `\n\n## ${lang === 'TR' ? 'EK TALİMATLAR' : 'ADDITIONAL INSTRUCTIONS'}\n${customPrompt}`;
+  }
+
+  if (integrations.length > 0) {
+    const integrationNames = integrations.map(i => {
+      const names = {
+        'check_order_status': 'Sipariş durumu sorgulama',
+        'customer_data_lookup': 'Müşteri bilgisi sorgulama',
+        'get_product_stock': 'Stok kontrolü',
+        'get_tracking_info': 'Kargo takip',
+        'create_appointment': 'Randevu oluşturma',
+      };
+      return names[i] || i;
+    });
+    prompt += `\n\n## KULLANILAN ARAÇLAR\nŞu işlemleri yapabilirsin: ${integrationNames.join(', ')}`;
+  }
+
+  return prompt;
+}
+
 // Outbound Collection (Tahsilat) için özel kurallar
 const OUTBOUND_COLLECTION_RULES = `
 ## GİDEN ARAMA KURALLARI - TAHSİLAT
@@ -225,6 +287,12 @@ export function buildAssistantPrompt(assistant, business, integrations = []) {
   if (assistant.callDirection === 'outbound_general') {
     console.log('✅ Using OUTBOUND_GENERAL_RULES for general assistant');
     return buildOutboundGeneralPrompt(assistant, business);
+  }
+
+  // Chat / WhatsApp / Email — text-based channels (no phone rules)
+  if (assistant.callDirection === 'chat' || assistant.callDirection === 'whatsapp' || assistant.callDirection === 'email') {
+    console.log('💬 Using CHAT rules for text-based channel');
+    return buildChatPrompt(assistant, business, integrations);
   }
 
   console.log('📞 Using INBOUND rules (default)');
