@@ -74,9 +74,12 @@ import {
   TabsTrigger,
 } from '@/components/ui/tabs';
 import { useLanguage } from '@/contexts/LanguageContext';
+import PageIntro from '@/components/PageIntro';
+import { getPageHelp } from '@/content/pageHelp';
 
 export default function TeamPage() {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
+  const pageHelp = getPageHelp('team', locale);
   const { can, isOwner, user } = usePermissions();
 
   // React Query hooks
@@ -211,18 +214,24 @@ export default function TeamPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-neutral-900">{t('dashboard.teamPage.title')}</h1>
-          <p className="text-neutral-600 mt-1">{t('dashboard.teamPage.description')}</p>
-        </div>
-        {can('team:invite') && (
-          <Button onClick={() => setInviteModalOpen(true)}>
-            <UserPlus className="h-4 w-4 mr-2" />
-            {t('dashboard.teamPage.sendInvite')}
-          </Button>
-        )}
-      </div>
+      <PageIntro
+        title={pageHelp.title}
+        subtitle={pageHelp.subtitle}
+        locale={locale}
+        help={{
+          tooltipTitle: pageHelp.tooltipTitle,
+          tooltipBody: pageHelp.tooltipBody,
+          quickSteps: pageHelp.quickSteps,
+        }}
+        actions={
+          can('team:invite') ? (
+            <Button onClick={() => setInviteModalOpen(true)}>
+              <UserPlus className="h-4 w-4 mr-2" />
+              {t('dashboard.teamPage.sendInvite')}
+            </Button>
+          ) : null
+        }
+      />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

@@ -38,6 +38,8 @@ import {
 import { apiClient } from '@/lib/api';
 import { toast } from '@/lib/toast';
 import { useLanguage } from '@/contexts/LanguageContext';
+import PageIntro from '@/components/PageIntro';
+import { getPageHelp } from '@/content/pageHelp';
 import { formatDistanceToNow } from 'date-fns';
 import { useEmailStatus, useEmailThreads, useEmailThread, useEmailStats } from '@/hooks/useEmail';
 import { useQueryClient } from '@tanstack/react-query';
@@ -54,6 +56,7 @@ const STATUS_CONFIG = {
 
 export default function EmailDashboardPage() {
   const { t, locale } = useLanguage();
+  const pageHelp = getPageHelp('email', locale);
   const queryClient = useQueryClient();
 
   // React Query hooks
@@ -325,14 +328,16 @@ export default function EmailDashboardPage() {
   if (!loading && !emailStatus?.connected) {
     return (
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-semibold text-neutral-900 dark:text-white">
-          {t('dashboard.emailPage.title')}
-        </h1>
-          <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
-            {t('dashboard.emailPage.description')}
-          </p>
-        </div>
+        <PageIntro
+          title={pageHelp.title}
+          subtitle={pageHelp.subtitle}
+          locale={locale}
+          help={{
+            tooltipTitle: pageHelp.tooltipTitle,
+            tooltipBody: pageHelp.tooltipBody,
+            quickSteps: pageHelp.quickSteps,
+          }}
+        />
 
         <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-12 text-center">
           <Mail className="h-16 w-16 mx-auto text-neutral-600 dark:text-neutral-400 mb-4" />
@@ -353,24 +358,25 @@ export default function EmailDashboardPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-neutral-900 dark:text-white">
-          {t('dashboard.emailPage.title')}
-        </h1>
-          <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
-            {emailStatus?.email && (
-              <span className="text-sm">
-                {t('dashboard.emailPage.connected')}: <span className="font-medium">{emailStatus.email}</span>
-              </span>
-            )}
-          </p>
-        </div>
-        <Button onClick={handleSync} disabled={syncing}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
-          {syncing ? t('dashboard.emailPage.syncing') : t('dashboard.emailPage.syncEmails')}
-        </Button>
-      </div>
+      <PageIntro
+        title={pageHelp.title}
+        subtitle={emailStatus?.email
+          ? `${t('dashboard.emailPage.connected')}: ${emailStatus.email}`
+          : pageHelp.subtitle
+        }
+        locale={locale}
+        help={{
+          tooltipTitle: pageHelp.tooltipTitle,
+          tooltipBody: pageHelp.tooltipBody,
+          quickSteps: pageHelp.quickSteps,
+        }}
+        actions={
+          <Button onClick={handleSync} disabled={syncing}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
+            {syncing ? t('dashboard.emailPage.syncing') : t('dashboard.emailPage.syncEmails')}
+          </Button>
+        }
+      />
 
       {/* Stats - Clickable for filtering */}
       {/* Order: AI Taslak (DRAFT_READY), Yanıtlandı (REPLIED), Yanıt Gerekmiyor (NO_REPLY_NEEDED), Tüm Konuşmalar */}

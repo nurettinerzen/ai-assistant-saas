@@ -38,6 +38,8 @@ import {
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { useLanguage } from '@/contexts/LanguageContext';
+import PageIntro from '@/components/PageIntro';
+import { getPageHelp } from '@/content/pageHelp';
 
 const STATUS_CONFIG = {
   PENDING: { tKey: 'dashboard.callbacksPage.statusPending', color: 'text-yellow-600 dark:text-yellow-500', icon: Clock },
@@ -56,6 +58,7 @@ const PRIORITY_CONFIG = {
 
 export default function CallbacksPage() {
   const { t, locale } = useLanguage();
+  const pageHelp = getPageHelp('callbacks', locale);
   const router = useRouter();
 
   // React Query hooks
@@ -137,20 +140,22 @@ export default function CallbacksPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-neutral-900 dark:text-white">
-            {t('dashboard.callbacksPage.title')}
-          </h1>
-          <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
-            {t('dashboard.callbacksPage.subtitle')}
-          </p>
-        </div>
-        <Button onClick={() => { fetchCallbacks(); fetchStats(); }} variant="outline" size="sm">
-          <RefreshCw className="h-4 w-4 mr-2" />
-          {t('dashboard.callbacksPage.refresh')}
-        </Button>
-      </div>
+      <PageIntro
+        title={pageHelp.title}
+        subtitle={pageHelp.subtitle}
+        locale={locale}
+        help={{
+          tooltipTitle: pageHelp.tooltipTitle,
+          tooltipBody: pageHelp.tooltipBody,
+          quickSteps: pageHelp.quickSteps,
+        }}
+        actions={
+          <Button onClick={() => { fetchCallbacks(); fetchStats(); }} variant="outline" size="sm">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            {t('dashboard.callbacksPage.refresh')}
+          </Button>
+        }
+      />
 
 
       {/* Stats Cards */}

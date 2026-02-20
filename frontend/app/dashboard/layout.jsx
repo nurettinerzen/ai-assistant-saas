@@ -188,8 +188,8 @@ export default function DashboardLayout({ children }) {
       await apiClient.onboarding.complete();
       markOnboardingCompleteLocally(user?.businessId);
       setShowOnboarding(false);
-      // Reload to refresh user data
-      window.location.reload();
+      // Redirect to guide page after onboarding
+      window.location.href = '/dashboard/guides';
     } catch (error) {
       console.error('Failed to complete onboarding:', error);
     }

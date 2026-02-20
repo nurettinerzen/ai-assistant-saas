@@ -48,6 +48,8 @@ import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
 import { formatDate } from '@/lib/utils';
 import { useLanguage } from '@/contexts/LanguageContext';
+import PageIntro from '@/components/PageIntro';
+import { getPageHelp } from '@/content/pageHelp';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 
 // Simple cache for chats data
@@ -92,6 +94,7 @@ function generatePageNumbers(currentPage, totalPages) {
 
 function ChatsPageContent() {
   const { t, locale } = useLanguage();
+  const pageHelp = getPageHelp('chatHistory', locale);
   const searchParams = useSearchParams();
   const [chats, setChats] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -304,16 +307,16 @@ function ChatsPageContent() {
   if (loading && isInitialLoad) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-neutral-900 dark:text-white">
-              {t('dashboard.chatHistoryPage.title')}
-            </h1>
-            <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
-              {t('dashboard.chatHistoryPage.description')}
-            </p>
-          </div>
-        </div>
+        <PageIntro
+          title={pageHelp.title}
+          subtitle={pageHelp.subtitle}
+          locale={locale}
+          help={{
+            tooltipTitle: pageHelp.tooltipTitle,
+            tooltipBody: pageHelp.tooltipBody,
+            quickSteps: pageHelp.quickSteps,
+          }}
+        />
         <GradientLoaderInline text={t('dashboard.chatHistoryPage.loadingChats')} />
       </div>
     );
@@ -322,20 +325,22 @@ function ChatsPageContent() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
-            {t('dashboard.chatHistoryPage.title')}
-          </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            {t('dashboard.chatHistoryPage.description')}
-          </p>
-        </div>
-        <Button onClick={handleExport} variant="outline" size="sm">
-          <Download className="h-4 w-4 mr-2" />
-          {t('dashboard.chatHistoryPage.exportCsv')}
-        </Button>
-      </div>
+      <PageIntro
+        title={pageHelp.title}
+        subtitle={pageHelp.subtitle}
+        locale={locale}
+        help={{
+          tooltipTitle: pageHelp.tooltipTitle,
+          tooltipBody: pageHelp.tooltipBody,
+          quickSteps: pageHelp.quickSteps,
+        }}
+        actions={
+          <Button onClick={handleExport} variant="outline" size="sm">
+            <Download className="h-4 w-4 mr-2" />
+            {t('dashboard.chatHistoryPage.exportCsv')}
+          </Button>
+        }
+      />
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">

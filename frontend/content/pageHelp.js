@@ -76,8 +76,6 @@ const PAGE_HELP = {
       tooltipBody: [
         'Kampanya çalıştırmak için en az bir outbound asistan ve kullanılabilir telefon numarası gerekir.',
         'CSV/XLSX yüklerken telefon kolonu eşlemesini doğru yapmak başarım için kritiktir.',
-        'V1 notu: Gelen arama (inbound) akışları kapalı olabilir; kampanya modülü outbound odaklıdır.',
-        'Neden kilitli? Plan/entitlement izinleri kampanya erişimini kapatmış olabilir; Abonelik sayfasından kontrol edin.',
         'Çalışan kampanyalarda ilerleme, durum ve hata kayıtlarını bu ekrandan izleyip yönetirsiniz.'
       ],
       quickSteps: [
@@ -181,6 +179,102 @@ const PAGE_HELP = {
         'Gerekiyorsa düzenleme/suspend işlemini uygulayın.',
         'İşlem sonrası etkileri hızlıca doğrulayın.'
       ]
+    },
+    email: {
+      title: 'E-posta',
+      subtitle: 'Gelen e-postaları görüntüleyin, AI destekli taslakları inceleyin ve yanıtlarınızı bu sayfadan yönetin.',
+      tooltipTitle: 'E-posta sayfası',
+      tooltipBody: [
+        'E-posta entegrasyonu bağlandığında gelen mesajlar otomatik olarak bu sayfada listelenir.',
+        'AI, gelen her e-posta için otomatik taslak yanıt hazırlar; siz onaylayıp gönderirsiniz.',
+        'Konuşma geçmişini thread bazında takip edebilir, durumları (yeni, taslak hazır, yanıtlandı) filtreleyebilirsiniz.',
+        'E-posta entegrasyonunu Entegrasyonlar sayfasından bağlamanız gerekir.'
+      ],
+      quickSteps: [
+        'Entegrasyonlar sayfasından e-posta hesabını bağlayın.',
+        'Gelen e-postaları ve AI taslaklarını inceleyin.',
+        'Taslakları düzenleyip onaylayarak gönderin.'
+      ]
+    },
+    analytics: {
+      title: 'Analitik',
+      subtitle: 'Telefon, chat, WhatsApp ve e-posta kanallarındaki performans metriklerini ve trendleri bu sayfada takip edersiniz.',
+      tooltipTitle: 'Analitik sayfası',
+      tooltipBody: [
+        'Tüm kanalların toplam arama, mesaj ve yanıt metriklerini tek ekrandan görürsünüz.',
+        'Zaman aralığı filtresiyle günlük, haftalık veya aylık trendleri karşılaştırabilirsiniz.',
+        'En çok sorulan sorular ve yoğun saatler gibi detaylar operasyonel kararları destekler.',
+        'Verileri CSV olarak dışa aktarabilirsiniz.'
+      ],
+      quickSteps: [
+        'Zaman aralığını seçin.',
+        'Kanal bazlı metrikleri inceleyin.',
+        'Gerekirse verileri dışa aktarın.'
+      ]
+    },
+    callbacks: {
+      title: 'Geri Arama Talepleri',
+      subtitle: 'Müşterilerden gelen geri arama taleplerini bu sayfada görüntüler, önceliklendirir ve sonuçlandırırsınız.',
+      tooltipTitle: 'Geri Arama Talepleri sayfası',
+      tooltipBody: [
+        'AI asistan, görüşme sırasında müşterinin geri aranma talebi oluşturduğunda bu sayfada listelenir.',
+        'Talepleri duruma (bekleyen, devam eden, tamamlanan) ve önceliğe göre filtreleyebilirsiniz.',
+        'Her talep için notlar ekleyebilir ve arama geçmişine bağlantı kurabilirsiniz.',
+        'Acil ve yüksek öncelikli talepler ayrı vurgulanarak hızlı aksiyon alınmasını sağlar.'
+      ],
+      quickSteps: [
+        'Bekleyen talepleri kontrol edin.',
+        'Öncelikli talepleri ele alın.',
+        'Tamamlanan talepleri kapatın.'
+      ]
+    },
+    callHistory: {
+      title: 'Arama Geçmişi',
+      subtitle: 'Geçmiş telefon görüşmelerini, transkriptleri ve arama detaylarını bu sayfada incelersiniz.',
+      tooltipTitle: 'Arama Geçmişi sayfası',
+      tooltipBody: [
+        'Tüm gelen ve giden aramaların kaydı tarih, süre ve durum bilgileriyle listelenir.',
+        'Transkriptleri görüntüleyerek görüşme içeriğini detaylı inceleyebilirsiniz.',
+        'Arama kayıtlarını tarih aralığı, durum veya asistan bazında filtreleyebilirsiniz.',
+        'Kayıtları CSV olarak dışa aktarabilirsiniz.'
+      ],
+      quickSteps: [
+        'Arama listesini filtreleyin.',
+        'Detay ve transkriptleri inceleyin.',
+        'Gerekirse kayıtları dışa aktarın.'
+      ]
+    },
+    chatHistory: {
+      title: 'Sohbet Geçmişi',
+      subtitle: 'Chat widget ve WhatsApp üzerinden gerçekleşen sohbet oturumlarını bu sayfada görüntüler ve analiz edersiniz.',
+      tooltipTitle: 'Sohbet Geçmişi sayfası',
+      tooltipBody: [
+        'Web chat ve WhatsApp kanallarından gelen tüm sohbet oturumları burada listelenir.',
+        'Her oturumun mesaj geçmişini, süresini ve durumunu detaylı görebilirsiniz.',
+        'Tarih aralığı, kanal veya durum bazında filtreleme yapabilirsiniz.',
+        'Sohbet kayıtlarını dışa aktarabilirsiniz.'
+      ],
+      quickSteps: [
+        'Sohbet listesini filtreleyin.',
+        'Oturum detaylarını inceleyin.',
+        'Gerekirse kayıtları dışa aktarın.'
+      ]
+    },
+    team: {
+      title: 'Ekip',
+      subtitle: 'Ekip üyelerini davet eder, rollerini yönetir ve erişim izinlerini bu sayfada düzenlersiniz.',
+      tooltipTitle: 'Ekip sayfası',
+      tooltipBody: [
+        'Ekip üyelerinizi e-posta ile davet edebilir ve rol atayabilirsiniz.',
+        'Roller (sahip, yönetici, üye, izleyici) farklı erişim seviyeleri sunar.',
+        'Bekleyen davetleri yeniden gönderebilir veya iptal edebilirsiniz.',
+        'Üye çıkarma ve rol değişikliği işlemleri anında etki eder.'
+      ],
+      quickSteps: [
+        'Yeni ekip üyesi davet edin.',
+        'Rolleri ve izinleri gözden geçirin.',
+        'Bekleyen davetleri takip edin.'
+      ]
     }
   },
   en: {
@@ -252,8 +346,7 @@ const PAGE_HELP = {
       tooltipBody: [
         'Requires outbound assistant + available phone number.',
         'Column mapping quality directly affects call performance.',
-        'V1 is outbound-focused; inbound can be disabled.',
-        'If locked, check plan and entitlements in Subscription.'
+        'Track running campaigns for progress, status, and error logs from this screen.'
       ],
       quickSteps: [
         'Select outbound assistant.',
@@ -349,6 +442,102 @@ const PAGE_HELP = {
         'Review status and plan.',
         'Apply required action.',
         'Confirm results.'
+      ]
+    },
+    email: {
+      title: 'Email',
+      subtitle: 'View incoming emails, review AI-generated drafts, and manage your responses from this page.',
+      tooltipTitle: 'About this page',
+      tooltipBody: [
+        'Incoming emails are automatically listed here once the email integration is connected.',
+        'AI generates draft replies for each email; you review, edit, and send them.',
+        'Track conversation history per thread and filter by status (new, draft ready, replied).',
+        'Connect your email account from the Integrations page first.'
+      ],
+      quickSteps: [
+        'Connect email account via Integrations.',
+        'Review incoming emails and AI drafts.',
+        'Edit and send approved drafts.'
+      ]
+    },
+    analytics: {
+      title: 'Analytics',
+      subtitle: 'Track performance metrics and trends across phone, chat, WhatsApp, and email channels from this page.',
+      tooltipTitle: 'About this page',
+      tooltipBody: [
+        'View aggregate call, message, and response metrics across all channels.',
+        'Use time range filters to compare daily, weekly, or monthly trends.',
+        'Top questions and peak hours help inform operational decisions.',
+        'Export data as CSV for further analysis.'
+      ],
+      quickSteps: [
+        'Select a time range.',
+        'Review channel metrics.',
+        'Export data if needed.'
+      ]
+    },
+    callbacks: {
+      title: 'Callback Requests',
+      subtitle: 'View, prioritize, and resolve customer callback requests from this page.',
+      tooltipTitle: 'About this page',
+      tooltipBody: [
+        'When the AI assistant creates a callback request during a conversation, it appears here.',
+        'Filter requests by status (pending, in progress, completed) and priority level.',
+        'Add notes and link each request to its call history for context.',
+        'Urgent and high-priority requests are highlighted for quick action.'
+      ],
+      quickSteps: [
+        'Check pending requests.',
+        'Handle priority requests first.',
+        'Close completed requests.'
+      ]
+    },
+    callHistory: {
+      title: 'Call History',
+      subtitle: 'Review past phone calls, transcripts, and call details from this page.',
+      tooltipTitle: 'About this page',
+      tooltipBody: [
+        'All inbound and outbound call records are listed with date, duration, and status.',
+        'View transcripts to review conversation content in detail.',
+        'Filter records by date range, status, or assistant.',
+        'Export records as CSV for reporting.'
+      ],
+      quickSteps: [
+        'Filter the call list.',
+        'Review details and transcripts.',
+        'Export records if needed.'
+      ]
+    },
+    chatHistory: {
+      title: 'Chat History',
+      subtitle: 'View and analyze chat sessions from your website widget and WhatsApp channel.',
+      tooltipTitle: 'About this page',
+      tooltipBody: [
+        'All chat sessions from web chat and WhatsApp channels are listed here.',
+        'View message history, duration, and status for each session.',
+        'Filter by date range, channel, or status.',
+        'Export chat records for analysis.'
+      ],
+      quickSteps: [
+        'Filter the chat list.',
+        'Review session details.',
+        'Export records if needed.'
+      ]
+    },
+    team: {
+      title: 'Team',
+      subtitle: 'Invite team members, manage roles, and configure access permissions from this page.',
+      tooltipTitle: 'About this page',
+      tooltipBody: [
+        'Invite team members via email and assign roles.',
+        'Roles (owner, admin, member, viewer) provide different access levels.',
+        'Resend or cancel pending invitations as needed.',
+        'Member removal and role changes take effect immediately.'
+      ],
+      quickSteps: [
+        'Invite new team members.',
+        'Review roles and permissions.',
+        'Track pending invitations.'
       ]
     }
   }

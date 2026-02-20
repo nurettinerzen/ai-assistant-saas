@@ -9,6 +9,8 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useLanguage } from '@/contexts/LanguageContext';
+import PageIntro from '@/components/PageIntro';
+import { getPageHelp } from '@/content/pageHelp';
 import { useAnalyticsOverview, usePeakHours, useTopQuestions } from '@/hooks/useAnalytics';
 import {
   Select,
@@ -61,6 +63,7 @@ const WhatsAppIcon = ({ className }) => (
 
 export default function AnalyticsPage() {
   const { t, locale } = useLanguage();
+  const pageHelp = getPageHelp('analytics', locale);
   const [timeRange, setTimeRange] = useState('30d');
   const [channelFilter, setChannelFilter] = useState('all');
 
@@ -209,33 +212,37 @@ export default function AnalyticsPage() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-neutral-900 dark:text-white">{t('dashboard.analyticsPage.title')}</h1>
-          <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
-            {t('dashboard.analyticsPage.description')}
-          </p>
-        </div>
-        <div className="flex gap-3">
-          <Select value={timeRange} onValueChange={setTimeRange}>
-            <SelectTrigger className="w-48 h-9">
-              <Calendar className="h-4 w-4 mr-2" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {TIME_RANGES.map((range) => (
-                <SelectItem key={range.value} value={range.value}>
-                  {range.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button variant="outline" size="sm" className="h-9" onClick={handleExport} disabled={!analytics}>
-            <Download className="h-4 w-4 mr-2" />
-            {t('dashboard.analyticsPage.export')}
-          </Button>
-        </div>
-      </div>
+      <PageIntro
+        title={pageHelp.title}
+        subtitle={pageHelp.subtitle}
+        locale={locale}
+        help={{
+          tooltipTitle: pageHelp.tooltipTitle,
+          tooltipBody: pageHelp.tooltipBody,
+          quickSteps: pageHelp.quickSteps,
+        }}
+        actions={
+          <div className="flex gap-3">
+            <Select value={timeRange} onValueChange={setTimeRange}>
+              <SelectTrigger className="w-48 h-9">
+                <Calendar className="h-4 w-4 mr-2" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TIME_RANGES.map((range) => (
+                  <SelectItem key={range.value} value={range.value}>
+                    {range.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button variant="outline" size="sm" className="h-9" onClick={handleExport} disabled={!analytics}>
+              <Download className="h-4 w-4 mr-2" />
+              {t('dashboard.analyticsPage.export')}
+            </Button>
+          </div>
+        }
+      />
 
       {/* Overview Cards - 5 columns */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">

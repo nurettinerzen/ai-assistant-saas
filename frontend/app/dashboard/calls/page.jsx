@@ -34,6 +34,8 @@ import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
 import { formatDate, formatDuration, formatPhone } from '@/lib/utils';
 import { useLanguage } from '@/contexts/LanguageContext';
+import PageIntro from '@/components/PageIntro';
+import { getPageHelp } from '@/content/pageHelp';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 
 // Generate page numbers with ellipsis for pagination
@@ -78,6 +80,7 @@ const callsCache = {
 
 export default function CallsPage() {
   const { t, locale } = useLanguage();
+  const pageHelp = getPageHelp('callHistory', locale);
   const searchParams = useSearchParams();
   const [calls, setCalls] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -332,16 +335,16 @@ export default function CallsPage() {
   if (loading && isInitialLoad) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-neutral-900 dark:text-white">
-              {t('dashboard.callsPage.title')}
-            </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              {t('dashboard.callsPage.description')}
-            </p>
-          </div>
-        </div>
+        <PageIntro
+          title={pageHelp.title}
+          subtitle={pageHelp.subtitle}
+          locale={locale}
+          help={{
+            tooltipTitle: pageHelp.tooltipTitle,
+            tooltipBody: pageHelp.tooltipBody,
+            quickSteps: pageHelp.quickSteps,
+          }}
+        />
         <GradientLoaderInline text={t('dashboard.callsPage.loadingCalls')} />
       </div>
     );
@@ -350,20 +353,22 @@ export default function CallsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
-            {t('dashboard.callsPage.title')}
-          </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            {t('dashboard.callsPage.description')}
-          </p>
-        </div>
-        <Button onClick={handleExport} variant="outline" size="sm">
-          <Download className="h-4 w-4 mr-2" />
-          {t('dashboard.callsPage.exportCSV')}
-        </Button>
-      </div>
+      <PageIntro
+        title={pageHelp.title}
+        subtitle={pageHelp.subtitle}
+        locale={locale}
+        help={{
+          tooltipTitle: pageHelp.tooltipTitle,
+          tooltipBody: pageHelp.tooltipBody,
+          quickSteps: pageHelp.quickSteps,
+        }}
+        actions={
+          <Button onClick={handleExport} variant="outline" size="sm">
+            <Download className="h-4 w-4 mr-2" />
+            {t('dashboard.callsPage.exportCSV')}
+          </Button>
+        }
+      />
 
 
       {/* Filters */}

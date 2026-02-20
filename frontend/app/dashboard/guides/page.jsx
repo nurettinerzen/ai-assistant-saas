@@ -32,7 +32,6 @@ const GUIDE_CONTENT = {
       {
         id: 'how-it-works',
         icon: Globe,
-        iconGradient: 'from-blue-500 to-teal-600',
         title: 'Sistem Nasıl Çalışır?',
         body: [
           'Telyx, yapay zeka destekli bir iletişim platformudur. Dört ana kanal üzerinden müşterilerinizle otomatik iletişim kurarsınız:',
@@ -48,7 +47,6 @@ const GUIDE_CONTENT = {
       {
         id: 'knowledge-base',
         icon: BookOpen,
-        iconGradient: 'from-emerald-500 to-green-600',
         title: 'Bilgi Bankası Ne İşe Yarar?',
         body: [
           'Bilgi Bankası, asistanın konuşma sırasında referans aldığı doküman ve SSS havuzudur.',
@@ -61,7 +59,6 @@ const GUIDE_CONTENT = {
       {
         id: 'custom-data',
         icon: Database,
-        iconGradient: 'from-violet-500 to-purple-600',
         title: 'Özel Veriler Ne İşe Yarar?',
         body: [
           'Müşteriye özel kayıtları (sipariş, randevu, borç, servis bilgisi vb.) yükleyerek görüşmeleri kişiselleştirirsiniz.',
@@ -74,7 +71,6 @@ const GUIDE_CONTENT = {
       {
         id: 'campaigns',
         icon: Megaphone,
-        iconGradient: 'from-orange-500 to-red-500',
         title: 'Kampanyalar (Giden Arama)',
         body: [
           'Toplu giden arama (outbound) kampanyaları oluşturarak müşteri listenizi otomatik olarak ararsınız.',
@@ -92,10 +88,9 @@ const GUIDE_CONTENT = {
       {
         id: 'integrations',
         icon: Puzzle,
-        iconGradient: 'from-cyan-500 to-blue-600',
         title: 'Entegrasyonlar Ne Sağlar?',
         body: [
-          'Shopify, ikas, CRM, WhatsApp, Google Sheets gibi servisleri bağlayarak AI yanıtlarını gerçek verilerle zenginleştirirsiniz.',
+          'Shopify, ikas, CRM, WhatsApp, Google Calendar gibi servisleri bağlayarak AI yanıtlarını gerçek verilerle zenginleştirirsiniz.',
           'Bağlanan sistemler sipariş, müşteri ve operasyon verilerini asistana otomatik taşır.',
           'Her entegrasyon için bağlantı, test ve bağlantı kesme işlemlerini tek ekrandan yönetirsiniz.',
           'Bazı entegrasyonlar plan seviyesine göre kilitli olabilir.',
@@ -105,7 +100,6 @@ const GUIDE_CONTENT = {
       {
         id: 'quick-setup',
         icon: Zap,
-        iconGradient: 'from-amber-500 to-yellow-500',
         title: '5 Dakikada Kurulum',
         checklist: [
           { step: 'AI asistan oluşturun ve amacını belirleyin.', href: '/dashboard/assistant' },
@@ -122,7 +116,6 @@ const GUIDE_CONTENT = {
       {
         id: 'how-it-works',
         icon: Globe,
-        iconGradient: 'from-blue-500 to-teal-600',
         title: 'How Does the System Work?',
         body: [
           'Telyx is an AI-powered communication platform. You automate customer interactions across four main channels:',
@@ -138,7 +131,6 @@ const GUIDE_CONTENT = {
       {
         id: 'knowledge-base',
         icon: BookOpen,
-        iconGradient: 'from-emerald-500 to-green-600',
         title: 'What Is the Knowledge Base For?',
         body: [
           'The Knowledge Base is the document and FAQ pool that the assistant references during conversations.',
@@ -151,7 +143,6 @@ const GUIDE_CONTENT = {
       {
         id: 'custom-data',
         icon: Database,
-        iconGradient: 'from-violet-500 to-purple-600',
         title: 'What Is Custom Data For?',
         body: [
           'Upload customer-specific records (orders, appointments, balances, service info, etc.) to personalize conversations.',
@@ -164,7 +155,6 @@ const GUIDE_CONTENT = {
       {
         id: 'campaigns',
         icon: Megaphone,
-        iconGradient: 'from-orange-500 to-red-500',
         title: 'Campaigns (Outbound Calls)',
         body: [
           'Create batch outbound calling campaigns to automatically call your customer list.',
@@ -182,10 +172,9 @@ const GUIDE_CONTENT = {
       {
         id: 'integrations',
         icon: Puzzle,
-        iconGradient: 'from-cyan-500 to-blue-600',
         title: 'What Do Integrations Provide?',
         body: [
-          'Connect services like Shopify, ikas, CRM, WhatsApp, and Google Sheets to enrich AI responses with real data.',
+          'Connect services like Shopify, ikas, CRM, WhatsApp, and Google Calendar to enrich AI responses with real data.',
           'Connected systems automatically feed order, customer, and operational data to the assistant.',
           'Manage connect, test, and disconnect flows for each integration from a single screen.',
           'Some integrations may be locked based on your plan level.',
@@ -195,7 +184,6 @@ const GUIDE_CONTENT = {
       {
         id: 'quick-setup',
         icon: Zap,
-        iconGradient: 'from-amber-500 to-yellow-500',
         title: '5-Minute Setup',
         checklist: [
           { step: 'Create an AI assistant and define its purpose.', href: '/dashboard/assistant' },
@@ -219,11 +207,11 @@ function SectionCard({ section, locale }) {
   return (
     <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden">
       {/* Header */}
-      <div className={`flex items-center gap-3 px-6 py-4 bg-gradient-to-r ${section.iconGradient}`}>
-        <div className="flex items-center justify-center w-10 h-10 bg-white/20 rounded-xl">
-          <Icon className="h-5 w-5 text-white" />
+      <div className="flex items-center gap-3 px-6 py-4 border-b border-neutral-200 dark:border-neutral-700">
+        <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-neutral-100 dark:bg-neutral-800">
+          <Icon className="h-5 w-5 text-neutral-600 dark:text-neutral-300" />
         </div>
-        <h2 className="text-lg font-semibold text-white">{section.title}</h2>
+        <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">{section.title}</h2>
       </div>
 
       {/* Body */}
