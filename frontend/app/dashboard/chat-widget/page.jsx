@@ -446,8 +446,8 @@ export default function ChatWidgetPage() {
             </Select>
             <p className="text-xs text-gray-500 mt-2">
               {chatCapableAssistants.length === 0
-                ? 'Chat-capable assistant yok. Widget ilk kullanımda "Default Chat Assistant" otomatik oluşturur.'
-                : 'Chat/WhatsApp/Email aynı chat-capable assistant ile çalışabilir.'}
+                ? 'Henüz asistan oluşturmadınız. Asistanlar sayfasından bir asistan oluşturun.'
+                : 'Seçilen asistan chat widget, WhatsApp ve e-posta kanallarında kullanılır.'}
             </p>
           </Card>
 

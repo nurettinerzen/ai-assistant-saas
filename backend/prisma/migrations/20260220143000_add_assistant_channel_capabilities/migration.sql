@@ -8,9 +8,9 @@ CREATE INDEX IF NOT EXISTS "Business_chatAssistantId_idx"
 ALTER TABLE "Assistant"
   ADD COLUMN IF NOT EXISTS "channelCapabilities" TEXT[] NOT NULL DEFAULT ARRAY['phone_outbound'];
 
--- Existing inbound assistants should stay phone-only.
+-- Inbound assistants can also handle chat/whatsapp/email channels.
 UPDATE "Assistant"
-SET "channelCapabilities" = ARRAY['phone_inbound']
+SET "channelCapabilities" = ARRAY['phone_inbound', 'chat', 'whatsapp', 'email']
 WHERE "callDirection" = 'inbound';
 
 -- Existing outbound assistants remain outbound-only by default.

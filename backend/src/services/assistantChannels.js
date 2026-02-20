@@ -24,7 +24,12 @@ export function getDefaultCapabilitiesForCallDirection(callDirection) {
   }
 
   if (normalizedDirection === 'inbound') {
-    return [ASSISTANT_CHANNEL_CAPABILITIES.PHONE_INBOUND];
+    return [
+      ASSISTANT_CHANNEL_CAPABILITIES.PHONE_INBOUND,
+      ASSISTANT_CHANNEL_CAPABILITIES.CHAT,
+      ASSISTANT_CHANNEL_CAPABILITIES.WHATSAPP,
+      ASSISTANT_CHANNEL_CAPABILITIES.EMAIL
+    ];
   }
 
   if (
