@@ -39,7 +39,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Badge } from '@/components/ui/badge';
 import EmptyState from '@/components/EmptyState';
 import { Bot, Plus, Edit, Trash2, Search, PhoneOutgoing, MessageSquare, Loader2, RefreshCw, ChevronDown } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
@@ -557,15 +556,12 @@ export default function AssistantsPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      {isText ? (
-                        <Badge variant="secondary" className="bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300">
-                          {t('dashboard.assistantsPage.textAssistant')}
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary" className="bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300">
-                          {t('dashboard.assistantsPage.phoneAssistant')}
-                        </Badge>
-                      )}
+                      <span className="text-sm text-neutral-600 dark:text-neutral-400">
+                        {isText
+                          ? t('dashboard.assistantsPage.textAssistant')
+                          : t('dashboard.assistantsPage.phoneAssistant')
+                        }
+                      </span>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span className="text-sm text-neutral-600 dark:text-neutral-400">
@@ -650,19 +646,13 @@ export default function AssistantsPage() {
             <DialogTitle className="flex items-center gap-2">
               {isTextMode ? (
                 <>
-                  <MessageSquare className="h-5 w-5 text-teal-600" />
-                  {editingAssistant ? t('common.edit') : t('common.create')} {t('dashboard.assistantsPage.textAssistant')}
-                  <Badge variant="secondary" className="bg-teal-100 text-teal-700">
-                    Chat / WhatsApp / Email
-                  </Badge>
+                  <MessageSquare className="h-5 w-5 text-neutral-500" />
+                  {editingAssistant ? t('common.edit') : t('common.create')} — {t('dashboard.assistantsPage.textAssistant')}
                 </>
               ) : (
                 <>
-                  <PhoneOutgoing className="h-5 w-5 text-orange-600" />
-                  {editingAssistant ? t('common.edit') : t('common.create')} {t('dashboard.assistantsPage.phoneAssistant')}
-                  <Badge variant="secondary" className="bg-orange-100 text-orange-700">
-                    {t('dashboard.assistantsPage.outboundCall')}
-                  </Badge>
+                  <PhoneOutgoing className="h-5 w-5 text-neutral-500" />
+                  {editingAssistant ? t('common.edit') : t('common.create')} — {t('dashboard.assistantsPage.phoneAssistant')}
                 </>
               )}
             </DialogTitle>

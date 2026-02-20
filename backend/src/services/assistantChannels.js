@@ -194,7 +194,7 @@ export async function resolveChatAssistantForBusiness({ prisma, business, busine
       businessId: businessRecord.id,
       name: DEFAULT_CHAT_ASSISTANT_NAME,
       assistantType: 'text',
-      systemPrompt: getFallbackChatPrompt(language, businessRecord.name),
+      systemPrompt: '',
       model: 'gpt-4',
       timezone: businessRecord.timezone || 'Europe/Istanbul',
       firstMessage: getFallbackChatFirstMessage(language),
