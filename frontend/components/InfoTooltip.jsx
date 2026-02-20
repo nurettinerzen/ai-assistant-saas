@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Info } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
@@ -76,6 +76,25 @@ export default function InfoTooltip({
 }) {
   const [isDesktop, setIsDesktop] = useState(false);
   const [open, setOpen] = useState(false);
+  const closeTimeout = useRef(null);
+
+  const handleOpen = useCallback(() => {
+    if (closeTimeout.current) {
+      clearTimeout(closeTimeout.current);
+      closeTimeout.current = null;
+    }
+    setOpen(true);
+  }, []);
+
+  const handleClose = useCallback(() => {
+    closeTimeout.current = setTimeout(() => setOpen(false), 100);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (closeTimeout.current) clearTimeout(closeTimeout.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -141,9 +160,9 @@ export default function InfoTooltip({
           <button
             type="button"
             aria-label={resolvedAriaLabel}
-            onMouseEnter={() => setOpen(true)}
-            onMouseLeave={() => setOpen(false)}
-            onFocus={() => setOpen(true)}
+            onMouseEnter={handleOpen}
+            onMouseLeave={handleClose}
+            onFocus={handleOpen}
             className={cn(
               'inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-neutral-300 text-neutral-500 transition-colors hover:border-primary-500 hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:border-neutral-600 dark:text-neutral-300 dark:hover:border-primary-400 dark:hover:text-primary-300',
               triggerClassName
@@ -156,8 +175,8 @@ export default function InfoTooltip({
           align="start"
           sideOffset={8}
           className="w-[min(92vw,30rem)] rounded-xl border border-neutral-200 bg-white p-4 shadow-xl dark:border-neutral-700 dark:bg-neutral-900"
-          onMouseEnter={() => setOpen(true)}
-          onMouseLeave={() => setOpen(false)}
+          onMouseEnter={handleOpen}
+          onMouseLeave={handleClose}
         >
           <InfoContent
             title={title}
