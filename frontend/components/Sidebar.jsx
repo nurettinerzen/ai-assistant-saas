@@ -216,7 +216,7 @@ export default function Sidebar({ user, credits, business }) {
         onScroll={(e) => {
           sessionStorage.setItem('sidebar-scroll', e.target.scrollTop);
         }}
-        className="flex-1 overflow-y-auto py-4 px-3"
+        className="flex-1 min-h-0 overflow-y-auto py-3 px-3"
       >
         {[...NAVIGATION, ...ADMIN_NAVIGATION].map((section) => {
           const sectionLabel = section.label;
@@ -232,11 +232,11 @@ export default function Sidebar({ user, credits, business }) {
           if (visibleItems.length === 0) return null;
 
           return (
-            <div key={section.label} className="mb-4">
+            <div key={section.label} className="mb-3">
               {/* Section header */}
               <button
                 onClick={() => toggleSection(sectionLabel)}
-                className="flex items-center justify-between w-full px-3 py-1 text-[10px] font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                className="flex items-center justify-between w-full px-3 py-0.5 text-[10px] font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
               >
                 <span>{sectionLabel}</span>
                 {isCollapsed ? (
@@ -299,15 +299,15 @@ export default function Sidebar({ user, credits, business }) {
       </nav>
 
       {/* Language Switcher */}
-      <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-800">
+      <div className="px-4 py-2 border-t border-gray-200 dark:border-gray-800">
         <LanguageSwitcher />
       </div>
 
       {/* User profile */}
-      <div className="p-3 border-t border-gray-200 dark:border-gray-800">
+      <div className="px-3 py-2 border-t border-gray-200 dark:border-gray-800">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-3 w-full px-3 py-2.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+            <button className="flex items-center gap-3 w-full px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
               <Avatar className="h-8 w-8">
                 <AvatarFallback className="bg-primary-600 text-white text-sm">
                   {user?.name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'U'}
