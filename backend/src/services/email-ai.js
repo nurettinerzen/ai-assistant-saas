@@ -39,6 +39,7 @@ import { PrismaClient } from '@prisma/client';
 import { getDateTimeContext } from '../utils/dateTime.js';
 import { getActiveTools, executeTool } from '../tools/index.js';
 import { buildAssistantPrompt, getActiveTools as getPromptBuilderTools } from './promptBuilder.js';
+import { resolveChatAssistantForBusiness } from './assistantChannels.js';
 
 const prisma = new PrismaClient();
 
@@ -64,7 +65,7 @@ class EmailAIService {
         include: {
           assistants: {
             where: { isActive: true },
-            take: 1
+            orderBy: { createdAt: 'desc' }
           },
           integrations: {
             where: { isActive: true }
@@ -76,6 +77,13 @@ class EmailAIService {
       if (!business) {
         throw new Error('Business not found');
       }
+
+      const resolved = await resolveChatAssistantForBusiness({
+        prisma,
+        business,
+        allowAutoCreate: true
+      });
+      const selectedAssistant = resolved.assistant;
 
       // Get Knowledge Base content
       const knowledgeItems = await prisma.knowledgeBase.findMany({
@@ -92,7 +100,7 @@ class EmailAIService {
       // Build context
       const businessName = business.name;
       const businessType = business.businessType;
-      const assistantPrompt = business.assistants[0]?.systemPrompt || '';
+      const assistantPrompt = selectedAssistant?.systemPrompt || '';
       // IMPORTANT: Always detect language from the incoming email, not from business settings
       // This ensures we respond in the same language the customer used
       const detectedLanguage = this.detectLanguage(incomingMessage.bodyText || incomingMessage.subject);
@@ -109,7 +117,7 @@ class EmailAIService {
       const styleContext = this.buildStyleContext(styleProfile, language, customSignature, signatureType);
 
       // Build the prompt using central prompt builder
-      const assistant = business.assistants[0] || null;
+      const assistant = selectedAssistant || null;
       const systemPrompt = this.buildSystemPrompt({
         businessName,
         businessType,
@@ -509,7 +517,7 @@ Before responding, ask yourself:
           message: true,
           business: {
             include: {
-              assistants: { where: { isActive: true }, take: 1 },
+              assistants: { where: { isActive: true }, orderBy: { createdAt: 'desc' } },
               integrations: { where: { isActive: true } }
             }
           }
@@ -538,7 +546,12 @@ Before responding, ask yourself:
 
       const language = business.language || this.detectLanguage(incomingMessage?.bodyText || thread.subject);
       const knowledgeContext = this.buildKnowledgeContext(knowledgeItems);
-      const assistant = business.assistants[0] || null;
+      const resolved = await resolveChatAssistantForBusiness({
+        prisma,
+        business,
+        allowAutoCreate: true
+      });
+      const assistant = resolved.assistant || null;
 
       const systemPrompt = this.buildSystemPrompt({
         businessName: business.name,

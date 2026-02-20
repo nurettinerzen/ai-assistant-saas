@@ -2,6 +2,7 @@ import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticateToken, verifyBusinessAccess, requireRole } from '../middleware/auth.js';
 import { isPhoneInboundEnabledForBusinessRecord } from '../services/phoneInboundGate.js';
+import { ASSISTANT_CHANNEL_CAPABILITIES, assistantHasCapability } from '../services/assistantChannels.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -19,7 +20,8 @@ router.get('/chat-widget', authenticateToken, async (req, res) => {
       where: { id: req.businessId },
       select: {
         chatEmbedKey: true,
-        chatWidgetEnabled: true
+        chatWidgetEnabled: true,
+        chatAssistantId: true
       }
     });
 
@@ -29,7 +31,8 @@ router.get('/chat-widget', authenticateToken, async (req, res) => {
 
     res.json({
       embedKey: business.chatEmbedKey,
-      enabled: business.chatWidgetEnabled
+      enabled: business.chatWidgetEnabled,
+      chatAssistantId: business.chatAssistantId
     });
   } catch (error) {
     console.error('Get chat widget settings error:', error);
@@ -40,20 +43,55 @@ router.get('/chat-widget', authenticateToken, async (req, res) => {
 // Update chat widget enabled status
 router.put('/chat-widget', authenticateToken, async (req, res) => {
   try {
-    const { enabled } = req.body;
+    const { enabled, chatAssistantId } = req.body;
+    const updateData = {};
+
+    if (typeof enabled === 'boolean') {
+      updateData.chatWidgetEnabled = enabled;
+    }
+
+    if (chatAssistantId !== undefined) {
+      if (chatAssistantId === null || chatAssistantId === '') {
+        updateData.chatAssistantId = null;
+      } else {
+        const assistant = await prisma.assistant.findFirst({
+          where: {
+            id: chatAssistantId,
+            businessId: req.businessId,
+            isActive: true
+          }
+        });
+
+        if (!assistant) {
+          return res.status(400).json({ error: 'Selected chat assistant not found' });
+        }
+
+        if (!assistantHasCapability(assistant, ASSISTANT_CHANNEL_CAPABILITIES.CHAT)) {
+          return res.status(400).json({ error: 'Selected assistant is not chat-capable' });
+        }
+
+        updateData.chatAssistantId = assistant.id;
+      }
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ error: 'No valid fields to update' });
+    }
 
     const business = await prisma.business.update({
       where: { id: req.businessId },
-      data: { chatWidgetEnabled: enabled },
+      data: updateData,
       select: {
         chatEmbedKey: true,
-        chatWidgetEnabled: true
+        chatWidgetEnabled: true,
+        chatAssistantId: true
       }
     });
 
     res.json({
       embedKey: business.chatEmbedKey,
-      enabled: business.chatWidgetEnabled
+      enabled: business.chatWidgetEnabled,
+      chatAssistantId: business.chatAssistantId
     });
   } catch (error) {
     console.error('Update chat widget settings error:', error);

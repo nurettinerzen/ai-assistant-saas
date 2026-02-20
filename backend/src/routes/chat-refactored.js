@@ -61,9 +61,79 @@ import {
 // Session lock & risk detection
 import { isSessionLocked, getLockMessage, lockSession } from '../services/session-lock.js';
 import { detectUserRisks, getPIIWarningMessages } from '../services/user-risk-detector.js';
+import {
+  ASSISTANT_CHANNEL_CAPABILITIES,
+  assistantHasCapability,
+  resolveChatAssistantForBusiness
+} from '../services/assistantChannels.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
+
+const PLACEHOLDER_REGEX = /\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}/g;
+const PLACEHOLDER_DROP_KEYS = new Set([
+  'customer_name',
+  'customer',
+  'name',
+  'order_id',
+  'order_number',
+  'phone',
+  'email'
+]);
+
+function sanitizeChatReplyPlaceholders(reply, language = 'TR') {
+  if (typeof reply !== 'string' || reply.length === 0) {
+    return reply;
+  }
+
+  if (!reply.includes('{{')) {
+    return reply;
+  }
+
+  const segments = reply.match(/[^.!?\n]+[.!?]?/g) || [reply];
+  const cleanedSegments = [];
+
+  for (const segment of segments) {
+    PLACEHOLDER_REGEX.lastIndex = 0;
+    const matches = [...segment.matchAll(PLACEHOLDER_REGEX)];
+    if (matches.length === 0) {
+      const safeSegment = segment.trim();
+      if (safeSegment) cleanedSegments.push(safeSegment);
+      continue;
+    }
+
+    const shouldDrop = matches.some((match) => PLACEHOLDER_DROP_KEYS.has(String(match[1] || '').toLowerCase()));
+    if (shouldDrop) {
+      continue;
+    }
+
+    PLACEHOLDER_REGEX.lastIndex = 0;
+    const cleaned = segment
+      .replace(PLACEHOLDER_REGEX, '')
+      .replace(/\{\{|\}\}/g, '')
+      .replace(/\s{2,}/g, ' ')
+      .replace(/\s+([,.;!?])/g, '$1')
+      .trim();
+
+    if (cleaned) {
+      cleanedSegments.push(cleaned);
+    }
+  }
+
+  const sanitized = cleanedSegments
+    .join(' ')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\s+([,.;!?])/g, '$1')
+    .trim();
+
+  if (sanitized.length > 0) {
+    return sanitized;
+  }
+
+  return language === 'TR'
+    ? 'Merhaba! Size nasıl yardımcı olabilirim?'
+    : 'Hello! How can I help you today?';
+}
 
 /**
  * Main message handler with state machine
@@ -800,8 +870,12 @@ router.post('/widget', async (req, res) => {
   console.log('\n\n🆕 ========== NEW CHAT REQUEST ==========');
   console.log('📨 Request body:', req.body);
 
+  let business = null;
+  let clientSessionId = null;
+
   try {
-    const { embedKey, assistantId, sessionId: clientSessionId, message } = req.body;
+    const { embedKey, assistantId, sessionId: requestSessionId, message } = req.body;
+    clientSessionId = requestSessionId || null;
 
     if (!message) {
       return res.status(400).json({ error: 'message is required' });
@@ -813,16 +887,15 @@ router.post('/widget', async (req, res) => {
 
     // Get assistant and business
     let _t = Date.now();
-    let assistant;
+    let assistant = null;
 
     if (embedKey) {
-      const business = await prisma.business.findUnique({
+      business = await prisma.business.findUnique({
         where: { chatEmbedKey: embedKey },
         include: {
           assistants: {
             where: { isActive: true },
-            orderBy: { createdAt: 'desc' },
-            take: 1
+            orderBy: { createdAt: 'desc' }
           },
           integrations: { where: { isActive: true } },
           crmWebhook: true  // Required for CRM tool gating
@@ -837,30 +910,71 @@ router.post('/widget', async (req, res) => {
         return res.status(403).json({ error: 'Chat widget is disabled' });
       }
 
-      if (!business.assistants || business.assistants.length === 0) {
-        return res.status(404).json({ error: 'No active assistant found' });
+      const resolved = await resolveChatAssistantForBusiness({
+        prisma,
+        business,
+        allowAutoCreate: true
+      });
+
+      assistant = resolved.assistant;
+
+      if (!assistant) {
+        return res.status(404).json({ error: 'No chat-capable assistant found' });
       }
 
-      assistant = { ...business.assistants[0], business };
+      if (resolved.createdFallback) {
+        console.log(`🆕 [Widget] Auto-created fallback chat assistant for business ${business.id}`);
+      }
     } else {
-      assistant = await prisma.assistant.findFirst({
-        where: { id: assistantId },
+      const requestedAssistant = await prisma.assistant.findFirst({
+        where: {
+          id: assistantId,
+          isActive: true
+        },
         include: {
           business: {
             include: {
+              assistants: {
+                where: { isActive: true },
+                orderBy: { createdAt: 'desc' }
+              },
               integrations: { where: { isActive: true } },
               crmWebhook: true  // Required for CRM tool gating
             }
           }
         }
       });
+
+      if (!requestedAssistant) {
+        return res.status(404).json({ error: 'Assistant not found' });
+      }
+
+      business = requestedAssistant.business;
+
+      if (assistantHasCapability(requestedAssistant, ASSISTANT_CHANNEL_CAPABILITIES.CHAT)) {
+        assistant = requestedAssistant;
+      } else {
+        const resolved = await resolveChatAssistantForBusiness({
+          prisma,
+          business,
+          allowAutoCreate: true
+        });
+
+        assistant = resolved.assistant;
+
+        if (!assistant) {
+          return res.status(404).json({ error: 'No chat-capable assistant found' });
+        }
+
+        console.warn(`⚠️ [Widget] Requested assistant ${requestedAssistant.id} is not chat-capable. Using ${assistant.id} instead.`);
+      }
     }
 
-    if (!assistant) {
+    if (!assistant || !business) {
       return res.status(404).json({ error: 'Assistant not found' });
     }
 
-    const business = assistant.business;
+    assistant = { ...assistant, business };
     const language = business?.language || 'TR';
     const timezone = business?.timezone || 'Europe/Istanbul';
     console.log(`⏱️ [Widget] DB assistant+business: ${Date.now() - _t}ms`); _t = Date.now();
@@ -1171,9 +1285,13 @@ router.post('/widget', async (req, res) => {
     const routeFirewallMode = String(FEATURE_FLAGS.ROUTE_FIREWALL_MODE || 'telemetry').toLowerCase();
     const shouldEnforceRouteFirewall = routeFirewallMode === 'enforce';
 
-    const firewallResult = sanitizeResponse(result.reply, language);
+    let finalReply = sanitizeChatReplyPlaceholders(result.reply, language);
 
-    let finalReply = result.reply;
+    if (finalReply !== result.reply) {
+      console.warn(`🧹 [Widget] Placeholder artifacts sanitized for session ${sessionId}`);
+    }
+
+    const firewallResult = sanitizeResponse(finalReply, language);
 
     if (!firewallResult.safe) {
       // Always log for monitoring
@@ -1261,19 +1379,46 @@ router.get('/widget/status/:assistantId', async (req, res) => {
   try {
     const { assistantId } = req.params;
 
-    const assistant = await prisma.assistant.findFirst({
-      where: { id: assistantId },
+    const requestedAssistant = await prisma.assistant.findFirst({
+      where: {
+        id: assistantId,
+        isActive: true
+      },
       include: {
-        business: true
+        business: {
+          include: {
+            assistants: {
+              where: { isActive: true },
+              orderBy: { createdAt: 'desc' }
+            }
+          }
+        }
       }
     });
 
-    if (!assistant) {
+    if (!requestedAssistant) {
       return res.json({ active: false, reason: 'not_found' });
     }
 
+    const business = requestedAssistant.business;
+    let assistant = requestedAssistant;
+
+    if (!assistantHasCapability(requestedAssistant, ASSISTANT_CHANNEL_CAPABILITIES.CHAT)) {
+      const resolved = await resolveChatAssistantForBusiness({
+        prisma,
+        business,
+        allowAutoCreate: true
+      });
+
+      assistant = resolved.assistant;
+    }
+
+    if (!assistant) {
+      return res.json({ active: false, reason: 'no_chat_assistant' });
+    }
+
     const subscription = await prisma.subscription.findUnique({
-      where: { businessId: assistant.business.id },
+      where: { businessId: business.id },
       include: { business: true }
     });
 
@@ -1288,7 +1433,8 @@ router.get('/widget/status/:assistantId', async (req, res) => {
     res.json({
       active: true,
       assistantName: assistant.name,
-      businessName: assistant.business?.name
+      assistantId: assistant.id,
+      businessName: business?.name
     });
 
   } catch (error) {
@@ -1311,8 +1457,7 @@ router.get('/widget/status/embed/:embedKey', async (req, res) => {
           where: {
             isActive: true
           },
-          orderBy: { createdAt: 'desc' },
-          take: 1
+          orderBy: { createdAt: 'desc' }
         }
       }
     });
@@ -1325,8 +1470,16 @@ router.get('/widget/status/embed/:embedKey', async (req, res) => {
       return res.json({ active: false, reason: 'widget_disabled' });
     }
 
-    if (!business.assistants || business.assistants.length === 0) {
-      return res.json({ active: false, reason: 'no_assistant' });
+    const resolved = await resolveChatAssistantForBusiness({
+      prisma,
+      business,
+      allowAutoCreate: true
+    });
+
+    const assistant = resolved.assistant;
+
+    if (!assistant) {
+      return res.json({ active: false, reason: 'no_chat_assistant' });
     }
 
     const subscription = await prisma.subscription.findUnique({
@@ -1343,7 +1496,8 @@ router.get('/widget/status/embed/:embedKey', async (req, res) => {
 
     res.json({
       active: true,
-      assistantName: business.assistants[0].name,
+      assistantName: assistant.name,
+      assistantId: assistant.id,
       businessName: business.name
     });
 

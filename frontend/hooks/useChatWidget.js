@@ -1,5 +1,4 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/lib/api';
 import axios from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -19,6 +18,7 @@ export function useChatWidgetSettings() {
       return {
         embedKey: response.data.embedKey || '',
         enabled: response.data.enabled || false,
+        chatAssistantId: response.data.chatAssistantId || '',
       };
     },
     staleTime: 2 * 60 * 1000, // 2 minutes
@@ -56,10 +56,11 @@ export function useUpdateChatWidget() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ enabled }) => {
+    mutationFn: async ({ enabled, chatAssistantId }) => {
       const token = localStorage.getItem('token');
       return await axios.put(`${API_URL}/api/business/chat-widget`, {
-        enabled
+        ...(enabled !== undefined ? { enabled } : {}),
+        ...(chatAssistantId !== undefined ? { chatAssistantId } : {})
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });

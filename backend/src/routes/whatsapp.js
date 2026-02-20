@@ -51,6 +51,7 @@ import {
 import { isSessionLocked, getLockMessage, shouldSendAndMarkLockMessage, lockSession } from '../services/session-lock.js';
 import { detectUserRisks, getPIIWarningMessages } from '../services/user-risk-detector.js';
 import { getState, updateState } from '../services/state-manager.js';
+import { resolveChatAssistantForBusiness } from '../services/assistantChannels.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -184,8 +185,7 @@ router.post('/webhook', webhookRateLimiter.middleware(), async (req, res) => {
         include: {
           assistants: {
             where: { isActive: true },
-            orderBy: { createdAt: 'desc' },
-            take: 1
+            orderBy: { createdAt: 'desc' }
           },
           integrations: {
             where: { isActive: true }
@@ -204,8 +204,7 @@ router.post('/webhook', webhookRateLimiter.middleware(), async (req, res) => {
           include: {
             assistants: {
               where: { isActive: true },
-              orderBy: { createdAt: 'desc' },
-              take: 1
+              orderBy: { createdAt: 'desc' }
             },
             integrations: {
               where: { isActive: true }
@@ -222,8 +221,7 @@ router.post('/webhook', webhookRateLimiter.middleware(), async (req, res) => {
             include: {
               assistants: {
                 where: { isActive: true },
-                orderBy: { createdAt: 'desc' },
-                take: 1
+                orderBy: { createdAt: 'desc' }
               },
               integrations: {
                 where: { isActive: true }
@@ -382,11 +380,28 @@ async function processWhatsAppMessage(business, from, messageBody, messageId) {
 
     console.log('\n📱 [WhatsApp Adapter] Delegating to core orchestrator...');
 
+    const resolved = await resolveChatAssistantForBusiness({
+      prisma,
+      business,
+      allowAutoCreate: true
+    });
+
+    if (!resolved.assistant) {
+      console.error(`❌ [WhatsApp] No chat-capable assistant for business ${business.id}`);
+      await sendWhatsAppMessage(
+        business,
+        from,
+        'Üzgünüm, şu anda yanıt veremiyorum. Lütfen daha sonra tekrar deneyin.',
+        { inboundMessageId: messageId }
+      );
+      return;
+    }
+
     // Call core orchestrator (unified pipeline for all channels)
     const result = await handleIncomingMessage({
       channel: 'WHATSAPP',
       business,
-      assistant: business.assistants?.[0],
+      assistant: resolved.assistant,
       channelUserId: from,
       sessionId, // CRITICAL: Pass sessionId to prevent new session creation
       messageId,

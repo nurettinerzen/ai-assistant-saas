@@ -14,6 +14,11 @@ import { getEffectivePlanConfig, checkLimit } from '../services/planConfig.js';
 import { getMessageVariant } from '../messages/messageCatalog.js';
 import { isPhoneInboundEnabledForBusinessRecord } from '../services/phoneInboundGate.js';
 import { resolvePhoneOutboundAccessForBusinessId } from '../services/phoneOutboundAccess.js';
+import {
+  ASSISTANT_CHANNEL_CAPABILITIES,
+  getDefaultCapabilitiesForCallDirection,
+  normalizeChannelCapabilities
+} from '../services/assistantChannels.js';
 
 const router = express.Router();
 
@@ -153,7 +158,7 @@ router.get('/', authenticateToken, async (req, res) => {
 router.post('/', authenticateToken, checkPermission('assistants:create'), async (req, res) => {
   try {
     const businessId = req.businessId;
-    const { name, voiceId, firstMessage, systemPrompt, model, language, country, industry, timezone, tone, customNotes, callDirection, callPurpose, dynamicVariables } = req.body;
+    const { name, voiceId, firstMessage, systemPrompt, model, language, country, industry, timezone, tone, customNotes, callDirection, callPurpose, dynamicVariables, channelCapabilities } = req.body;
     const inboundEnabled = isPhoneInboundEnabledForBusinessRecord(req.user?.business);
     const requestedDirection = callDirection || 'outbound';
 
@@ -267,6 +272,11 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
       }
       console.log('📞 Outbound call purpose mapping:', callPurpose, '->', effectiveCallDirection);
     }
+
+    const finalChannelCapabilities = normalizeChannelCapabilities(
+      channelCapabilities,
+      getDefaultCapabilitiesForCallDirection(effectiveCallDirection)
+    );
 
     // Build full system prompt using promptBuilder
     // Create temporary assistant object for promptBuilder
@@ -555,6 +565,7 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
         tone: tone || 'professional',  // "friendly" or "professional"
         customNotes: customNotes || null,  // Business-specific notes
         callDirection: effectiveCallDirection,  // "inbound", "outbound", "outbound_sales", or "outbound_collection"
+        channelCapabilities: finalChannelCapabilities,
         callPurpose: callPurpose || null,  // For outbound: "collection", "reminder", "survey", "info", "custom"
         dynamicVariables: dynamicVariables || [],  // Dynamic variable names for outbound calls
       },
@@ -715,7 +726,14 @@ router.post('/test-call', async (req, res) => {
 
     // Get assistant for this business
     const assistant = await prisma.assistant.findFirst({
-      where: { businessId, isActive: true }
+      where: {
+        businessId,
+        isActive: true,
+        channelCapabilities: {
+          has: ASSISTANT_CHANNEL_CAPABILITIES.PHONE_OUTBOUND
+        }
+      },
+      orderBy: { createdAt: 'desc' }
     });
 
     if (!assistant) {
@@ -785,7 +803,7 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
   try {
     const businessId = req.businessId;
     const { id } = req.params;
-    const { name, voiceId, systemPrompt, firstMessage, model, language, tone, customNotes, callDirection, callPurpose, dynamicVariables } = req.body;
+    const { name, voiceId, systemPrompt, firstMessage, model, language, tone, customNotes, callDirection, callPurpose, dynamicVariables, channelCapabilities } = req.body;
 
     // Validate assistant name length if provided
     if (name && name.length > 25) {
@@ -871,6 +889,11 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
       console.log('📞 Outbound call purpose mapping (update):', effectivePurpose, '->', effectiveCallDirection);
     }
 
+    const finalChannelCapabilities = normalizeChannelCapabilities(
+      channelCapabilities !== undefined ? channelCapabilities : assistant.channelCapabilities,
+      getDefaultCapabilitiesForCallDirection(effectiveCallDirection)
+    );
+
     // Build full system prompt using promptBuilder
     const tempAssistant = {
       name,
@@ -898,6 +921,7 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
         tone: tone || assistant.tone || 'professional',  // Keep existing if not provided
         customNotes: customNotes !== undefined ? customNotes : assistant.customNotes,  // Allow null/empty
         callDirection: effectiveCallDirection,  // "inbound", "outbound", "outbound_sales", or "outbound_collection"
+        channelCapabilities: finalChannelCapabilities,
         callPurpose: callPurpose !== undefined ? callPurpose : assistant.callPurpose,
         dynamicVariables: dynamicVariables || assistant.dynamicVariables || [],
       },
@@ -1138,6 +1162,16 @@ router.delete('/:id', authenticateToken, checkPermission('assistants:edit'), asy
     await prisma.assistant.update({
       where: { id },
       data: { isActive: false },
+    });
+
+    await prisma.business.updateMany({
+      where: {
+        id: businessId,
+        chatAssistantId: id
+      },
+      data: {
+        chatAssistantId: null
+      }
     });
 
     res.json({ message: 'Assistant deleted successfully' });

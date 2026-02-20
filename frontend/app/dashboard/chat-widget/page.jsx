@@ -5,7 +5,7 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -43,6 +43,13 @@ export default function ChatWidgetPage() {
   const loading = widgetLoading || assistantsLoading;
   const embedKey = widgetSettings?.embedKey || '';
   const assistants = assistantsData?.data?.assistants || [];
+  const chatCapableAssistants = useMemo(
+    () => assistants.filter((assistant) =>
+      Array.isArray(assistant.channelCapabilities) &&
+      assistant.channelCapabilities.includes('chat')
+    ),
+    [assistants]
+  );
   const isPro = ['PRO', 'ENTERPRISE'].includes(subscription?.plan?.toUpperCase() || '');
 
   // Local UI state
@@ -55,7 +62,7 @@ export default function ChatWidgetPage() {
   const [placeholderText, setPlaceholderText] = useState('');
   const [showPreview, setShowPreview] = useState(false);
   const [showEmbedCode, setShowEmbedCode] = useState(false);
-  const [assistantId, setAssistantId] = useState('');
+  const [chatAssistantId, setChatAssistantId] = useState('');
 
   // Update isEnabled when widgetSettings loads
   useEffect(() => {
@@ -77,20 +84,22 @@ export default function ChatWidgetPage() {
     }
   }, [locale]);
 
-  // Load assistant from localStorage or set default when assistants data loads
+  // Resolve selected chat assistant from backend config + available chat-capable assistants
   useEffect(() => {
-    if (assistants.length > 0) {
-      const saved = localStorage.getItem('chatWidgetSettings');
-      const savedSettings = saved ? JSON.parse(saved) : {};
-
-      if (savedSettings.assistantId && assistants.find(a => a.id === savedSettings.assistantId)) {
-        setAssistantId(savedSettings.assistantId);
-      } else {
-        const outboundAssistant = assistants.find(a => a.callDirection?.startsWith('outbound'));
-        setAssistantId(outboundAssistant?.id || assistants[0].id);
-      }
+    if (chatCapableAssistants.length === 0) {
+      setChatAssistantId('');
+      return;
     }
-  }, [assistants]);
+
+    const configuredId = widgetSettings?.chatAssistantId;
+    const hasConfigured = configuredId && chatCapableAssistants.some((assistant) => assistant.id === configuredId);
+
+    if (hasConfigured) {
+      setChatAssistantId(configuredId);
+    } else {
+      setChatAssistantId(chatCapableAssistants[0].id);
+    }
+  }, [chatCapableAssistants, widgetSettings?.chatAssistantId]);
 
   // Load settings from localStorage
   useEffect(() => {
@@ -109,7 +118,10 @@ export default function ChatWidgetPage() {
   const saveSettings = async () => {
     try {
       // Save enabled state to backend using mutation
-      await updateWidget({ enabled: isEnabled });
+      await updateWidget({
+        enabled: isEnabled,
+        chatAssistantId: chatAssistantId || null
+      });
 
       // Save other settings to localStorage (these are UI preferences)
       const settings = {
@@ -118,8 +130,7 @@ export default function ChatWidgetPage() {
         showBranding: isPro ? showBranding : true,
         buttonText,
         welcomeMessage,
-        placeholderText,
-        assistantId
+        placeholderText
       };
       localStorage.setItem('chatWidgetSettings', JSON.stringify(settings));
       toast.success(t('dashboard.chatWidgetPage.settingsSaved'));
@@ -416,13 +427,17 @@ export default function ChatWidgetPage() {
 
           {/* Assistant Selection */}
           <Card className="p-6">
-            <Label htmlFor="assistant">{t('dashboard.chatWidgetPage.selectAssistant')}</Label>
-            <Select value={assistantId} onValueChange={setAssistantId}>
+            <Label htmlFor="chatAssistant">Chat Assistant</Label>
+            <Select
+              value={chatAssistantId}
+              onValueChange={setChatAssistantId}
+              disabled={chatCapableAssistants.length === 0}
+            >
               <SelectTrigger className="mt-2">
                 <SelectValue placeholder={t('dashboard.chatWidgetPage.chooseAssistant')} />
               </SelectTrigger>
               <SelectContent>
-                {assistants.map((assistant) => (
+                {chatCapableAssistants.map((assistant) => (
                   <SelectItem key={assistant.id} value={assistant.id}>
                     {assistant.name}
                   </SelectItem>
@@ -430,7 +445,9 @@ export default function ChatWidgetPage() {
               </SelectContent>
             </Select>
             <p className="text-xs text-gray-500 mt-2">
-              {assistants.length === 0 ? t('dashboard.chatWidgetPage.noAssistantsFound') : t('dashboard.chatWidgetPage.assistantWillHandle')}
+              {chatCapableAssistants.length === 0
+                ? 'Chat-capable assistant yok. Widget ilk kullanımda "Default Chat Assistant" otomatik oluşturur.'
+                : 'Chat/WhatsApp/Email aynı chat-capable assistant ile çalışabilir.'}
             </p>
           </Card>
 
@@ -611,9 +628,10 @@ export default function ChatWidgetPage() {
       </div>
 
       {/* Preview Widget */}
-      {showPreview && assistantId && (
+      {showPreview && (embedKey || chatAssistantId) && (
         <ChatWidget
-          assistantId={assistantId}
+          embedKey={embedKey || undefined}
+          assistantId={!embedKey ? chatAssistantId : undefined}
           position={position}
           primaryColor={primaryColor}
           showBranding={showBranding}

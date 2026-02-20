@@ -89,6 +89,7 @@ model Business {
   name                     String
   chatEmbedKey             String?                 @unique // Unique key for chat widget embedding
   chatWidgetEnabled        Boolean                 @default(false) // Is chat widget active for this business
+  chatAssistantId          String?                 // Preferred assistant for chat-capable channels (chat/wa/email)
   phoneInboundEnabled      Boolean                 @default(false) // Admin toggle: false=V1 outbound-only, true=FULL V2 inbound
   onboardingCompletedAt    DateTime?               // Business-level onboarding completion timestamp
   language                 String                  @default("TR") // Uygulama dili (TR, EN, PR, DE, ES, FR...)
@@ -175,6 +176,7 @@ model Business {
 
   @@index([name])
   @@index([suspended])
+  @@index([chatAssistantId])
 }
 
 model Assistant {
@@ -191,6 +193,7 @@ model Assistant {
   tone              String            @default("professional") // "friendly" or "professional"
   customNotes       String?           @db.Text // Business-specific notes
   callDirection     String            @default("outbound") // "inbound" or "outbound"
+  channelCapabilities String[]        @default(["phone_outbound"]) // ["chat","whatsapp","email","phone_outbound","phone_inbound"]
   callPurpose       String? // For outbound: "collection", "reminder", "survey", "info", "custom"
   dynamicVariables  String[]          @default([]) // Dynamic variable names for outbound calls
   createdAt         DateTime          @default(now())

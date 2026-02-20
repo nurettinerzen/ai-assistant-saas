@@ -10,6 +10,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import { resolveChatAssistantForBusiness } from '../../../services/assistantChannels.js';
 
 const prisma = new PrismaClient();
 
@@ -29,7 +30,7 @@ export async function loadEmailContext(ctx) {
       include: {
         assistants: {
           where: { isActive: true },
-          take: 1
+          orderBy: { createdAt: 'desc' }
         },
         integrations: {
           where: { isActive: true }
@@ -93,9 +94,19 @@ export async function loadEmailContext(ctx) {
       }
     });
 
+    const resolved = await resolveChatAssistantForBusiness({
+      prisma,
+      business,
+      allowAutoCreate: true
+    });
+
+    if (!resolved.assistant) {
+      return { success: false, error: 'No chat-capable assistant found' };
+    }
+
     // Update context
     ctx.business = business;
-    ctx.assistant = business.assistants[0] || null;
+    ctx.assistant = resolved.assistant;
     ctx.emailIntegration = business.emailIntegration;
     ctx.thread = thread;
     ctx.inboundMessage = inboundMessage;
