@@ -275,7 +275,9 @@ const SENSITIVE_PATTERNS = {
   // ============================================
   customerName: [
     // "İbrahim Yıldız adına kayıtlı", "Ahmet Kaya'ya ait"
-    /\b[A-ZÇĞİÖŞÜ][a-zçğıöşü]+\s+[A-ZÇĞİÖŞÜ][a-zçğıöşü]+\s*(adına|'?(n?[ıiuü]n)?\s*(ad|isim|kayıt|sipariş))/i,
+    // NOTE: Previously the `ad` alternative was too greedy — matched Turkish suffixes like
+    // "bulunmamaktadır" (-ad). Now requires standalone word boundary (\b) around ad/isim/kayıt.
+    /\b[A-ZÇĞİÖŞÜ][a-zçğıöşü]+\s+[A-ZÇĞİÖŞÜ][a-zçğıöşü]+\s*(adına|'?(n?[ıiuü]n)?\s*\b(adı|isim|kayıt|sipariş)\b)/i,
     // "kayıtlı isim: Mehmet Demir"
     /(kayıtlı|sipariş sahibi|müşteri)\s*(isim|ad|adı?)\s*[:=]?\s*[A-ZÇĞİÖŞÜ][a-zçğıöşü]+\s+[A-ZÇĞİÖŞÜ][a-zçğıöşü]+/i,
     // "Sayın Ahmet Bey/Hanım"
