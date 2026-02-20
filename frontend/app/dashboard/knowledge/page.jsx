@@ -32,7 +32,7 @@ import {
   useCreateFaq,
   useDeleteFaq
 } from '@/hooks/useKnowledge';
-import { toast, Toaster } from 'sonner';
+import { toast } from 'sonner';
 import { formatDate, formatFileSize } from '@/lib/utils';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -557,8 +557,6 @@ function KnowledgeBaseContent() {
         </DialogContent>
       </Dialog>
 
-      {/* Toast notifications */}
-      <Toaster position="top-right" richColors />
     </div>
   );
 }
