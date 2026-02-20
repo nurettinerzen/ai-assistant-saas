@@ -813,7 +813,12 @@
       "additionalInstructionsHint": "Asistanın bilmesi gereken özel kurallar, çalışma saatleri, adres vb. bilgiler.",
       "customNotesHint": "Çalışma saatleri, adres, özel kurallar vb. asistanın bilmesi gereken bilgiler.",
       "creating": "Oluşturuluyor...",
-      "updating": "Güncelleniyor..."
+      "updating": "Güncelleniyor...",
+      "textAssistant": "Yazı Asistanı",
+      "phoneAssistant": "Telefon Asistanı",
+      "textAssistantDesc": "Chat, WhatsApp ve e-posta kanalları",
+      "phoneAssistantDesc": "Giden telefon aramaları",
+      "typeCol": "Tip"
     },
     "callsPage": {
       "title": "Arama Geçmişi",

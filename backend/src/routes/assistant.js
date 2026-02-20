@@ -166,12 +166,14 @@ router.get('/', authenticateToken, async (req, res) => {
 router.post('/', authenticateToken, checkPermission('assistants:create'), async (req, res) => {
   try {
     const businessId = req.businessId;
-    const { name, voiceId, firstMessage, systemPrompt, model, language, country, industry, timezone, tone, customNotes, callDirection, callPurpose, dynamicVariables, channelCapabilities } = req.body;
+    const { name, voiceId, firstMessage, systemPrompt, model, language, country, industry, timezone, tone, customNotes, callDirection, callPurpose, dynamicVariables, channelCapabilities, assistantType: reqAssistantType } = req.body;
+    const assistantType = reqAssistantType === 'text' ? 'text' : 'phone';
+    const isTextAssistant = assistantType === 'text';
     const inboundEnabled = isPhoneInboundEnabledForBusinessRecord(req.user?.business);
-    const requestedDirection = callDirection || 'outbound';
+    const requestedDirection = isTextAssistant ? 'outbound' : (callDirection || 'outbound');
 
     // Chat/inbound assistants are always editable. Only block unknown directions.
-    if (!isAllowedDirection(requestedDirection)) {
+    if (!isTextAssistant && !isAllowedDirection(requestedDirection)) {
       return sendOutboundOnlyV1(res);
     }
 
@@ -269,8 +271,8 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
     // Determine effective callDirection based on callPurpose
     // For outbound calls, callPurpose determines the actual callDirection for prompt selection
     // 3 main purposes: sales, collection, general
-    let effectiveCallDirection = callDirection || 'outbound';
-    if (effectiveCallDirection === 'outbound' && callPurpose) {
+    let effectiveCallDirection = isTextAssistant ? 'outbound' : (callDirection || 'outbound');
+    if (!isTextAssistant && effectiveCallDirection === 'outbound' && callPurpose) {
       // Map callPurpose to specific callDirection for promptBuilder
       if (callPurpose === 'sales') {
         effectiveCallDirection = 'outbound_sales';
@@ -282,15 +284,15 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
       console.log('📞 Outbound call purpose mapping:', callPurpose, '->', effectiveCallDirection);
     }
 
-    const finalChannelCapabilities = normalizeChannelCapabilities(
-      channelCapabilities,
-      getDefaultCapabilitiesForCallDirection(effectiveCallDirection)
-    );
+    const finalChannelCapabilities = isTextAssistant
+      ? [ASSISTANT_CHANNEL_CAPABILITIES.CHAT, ASSISTANT_CHANNEL_CAPABILITIES.WHATSAPP, ASSISTANT_CHANNEL_CAPABILITIES.EMAIL]
+      : normalizeChannelCapabilities(channelCapabilities, getDefaultCapabilitiesForCallDirection(effectiveCallDirection));
 
     // Build full system prompt using promptBuilder
     // Create temporary assistant object for promptBuilder
     const tempAssistant = {
       name,
+      assistantType,
       systemPrompt: systemPrompt,
       tone: tone || 'professional',
       customNotes: customNotes || null,
@@ -304,6 +306,14 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
     const fullSystemPrompt = buildAssistantPrompt(tempAssistant, business, activeToolsList);
 
     // Default first message based on language (deterministic variant for TR/EN)
+    let finalFirstMessage = null;
+    let elevenLabsAgentId = null;
+
+    if (isTextAssistant) {
+      // Text assistants: no voice, no 11Labs, no firstMessage
+      console.log('💬 [Create] Text assistant — skipping 11Labs agent creation');
+    } else {
+    // Phone assistant: full 11Labs flow
     const localizedDefaultFirstMessage = ['TR', 'EN'].includes(lang)
       ? getMessageVariant('ASSISTANT_DEFAULT_FIRST_MESSAGE', {
         language: lang,
@@ -314,14 +324,13 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
       }).text
       : '';
     const defaultFirstMessage = localizedDefaultFirstMessage || defaults.firstMessage.replace('{name}', name);
-    const finalFirstMessage = firstMessage || defaultFirstMessage;
+    finalFirstMessage = firstMessage || defaultFirstMessage;
 
     // Get active tools based on business integrations (using central tool system)
     const activeToolsElevenLabs = getActiveToolsForElevenLabs(business);
     console.log('📤 11Labs Request - tools:', activeToolsElevenLabs.map(t => t.name));
 
     // ✅ 11Labs Conversational AI'da YENİ agent oluştur
-    let elevenLabsAgentId = null;
 
     try {
       // Convert our language code to 11Labs format (e.g., 'pr' -> 'pt-br')
@@ -558,25 +567,27 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
         details: elevenLabsError.response?.data || elevenLabsError.message
       });
     }
+    } // end if (!isTextAssistant) — 11Labs block
 
-    // ✅ Database'e 11Labs'den dönen agent ID'yi kaydet
+    // ✅ Database'e kaydet (text veya phone)
     // Save effectiveCallDirection so promptBuilder uses correct prompt on updates too
     const assistant = await prisma.assistant.create({
       data: {
         businessId,
         name,
-        voiceId: voiceId || defaults.voice,  // Frontend'den gelen voiceId, yoksa dil bazlı default
+        assistantType,
+        voiceId: isTextAssistant ? null : (voiceId || defaults.voice),
         systemPrompt: fullSystemPrompt,
         model: model || 'gpt-4',
-        elevenLabsAgentId: elevenLabsAgentId,  // ✅ 11Labs'den dönen YENİ agent ID
+        elevenLabsAgentId,
         timezone: businessTimezone,
         firstMessage: finalFirstMessage,
-        tone: tone || 'professional',  // "friendly" or "professional"
-        customNotes: customNotes || null,  // Business-specific notes
-        callDirection: effectiveCallDirection,  // "inbound", "outbound", "outbound_sales", or "outbound_collection"
+        tone: tone || 'professional',
+        customNotes: customNotes || null,
+        callDirection: effectiveCallDirection,
         channelCapabilities: finalChannelCapabilities,
-        callPurpose: callPurpose || null,  // For outbound: "collection", "reminder", "survey", "info", "custom"
-        dynamicVariables: dynamicVariables || [],  // Dynamic variable names for outbound calls
+        callPurpose: isTextAssistant ? null : (callPurpose || null),
+        dynamicVariables: isTextAssistant ? [] : (dynamicVariables || []),
       },
     });
 
@@ -824,7 +835,7 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
 
     // Check if assistant belongs to this business
     const assistant = await prisma.assistant.findFirst({
-      where: { 
+      where: {
         id,
         businessId,
         isActive: true,
@@ -834,6 +845,9 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
     if (!assistant) {
       return res.status(404).json({ error: 'Assistant not found' });
     }
+
+    // assistantType is immutable — set at creation, never changed
+    const isTextAssistant = assistant.assistantType === 'text';
     const inboundEnabled = isPhoneInboundEnabledForBusinessRecord(req.user?.business);
     const currentDirection = assistant.callDirection || 'outbound';
     const requestedDirection = callDirection !== undefined ? callDirection : currentDirection;
@@ -907,6 +921,7 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
     // Build full system prompt using promptBuilder
     const tempAssistant = {
       name,
+      assistantType: assistant.assistantType,
       systemPrompt: systemPrompt,
       tone: tone || assistant.tone || 'professional',
       customNotes: customNotes !== undefined ? customNotes : assistant.customNotes,
@@ -919,22 +934,31 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
     // Use central prompt builder to create the full system prompt, then add knowledge context
     const fullSystemPrompt = buildAssistantPrompt(tempAssistant, business, activeToolsList) + knowledgeContext;
 
-    // Update in database - save effectiveCallDirection so promptBuilder uses correct prompt
+    // Update in database
+    const updateData = {
+      name,
+      systemPrompt: fullSystemPrompt,
+      tone: tone || assistant.tone || 'professional',
+      customNotes: customNotes !== undefined ? customNotes : assistant.customNotes,
+    };
+
+    if (isTextAssistant) {
+      // Text: only update text-relevant fields, keep channelCapabilities
+      updateData.channelCapabilities = [ASSISTANT_CHANNEL_CAPABILITIES.CHAT, ASSISTANT_CHANNEL_CAPABILITIES.WHATSAPP, ASSISTANT_CHANNEL_CAPABILITIES.EMAIL];
+    } else {
+      // Phone: update all phone-related fields
+      updateData.voiceId = voiceId;
+      updateData.firstMessage = firstMessage || assistant.firstMessage;
+      updateData.model = model;
+      updateData.callDirection = effectiveCallDirection;
+      updateData.channelCapabilities = finalChannelCapabilities;
+      updateData.callPurpose = callPurpose !== undefined ? callPurpose : assistant.callPurpose;
+      updateData.dynamicVariables = dynamicVariables || assistant.dynamicVariables || [];
+    }
+
     const updatedAssistant = await prisma.assistant.update({
       where: { id },
-      data: {
-        name,
-        voiceId,
-        systemPrompt: fullSystemPrompt,
-        firstMessage: firstMessage || assistant.firstMessage,
-        model,
-        tone: tone || assistant.tone || 'professional',  // Keep existing if not provided
-        customNotes: customNotes !== undefined ? customNotes : assistant.customNotes,  // Allow null/empty
-        callDirection: effectiveCallDirection,  // "inbound", "outbound", "outbound_sales", or "outbound_collection"
-        channelCapabilities: finalChannelCapabilities,
-        callPurpose: callPurpose !== undefined ? callPurpose : assistant.callPurpose,
-        dynamicVariables: dynamicVariables || assistant.dynamicVariables || [],
-      },
+      data: updateData,
     });
 
 // ✅ Update 11Labs agent

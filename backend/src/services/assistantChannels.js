@@ -14,7 +14,7 @@ export const CHAT_CAPABLE_CHANNELS = Object.freeze([
 
 const VALID_CAPABILITIES = new Set(Object.values(ASSISTANT_CHANNEL_CAPABILITIES));
 
-export const DEFAULT_CHAT_ASSISTANT_NAME = 'Default Chat Assistant';
+export const DEFAULT_CHAT_ASSISTANT_NAME = 'Yazı Asistanı';
 
 export function getDefaultCapabilitiesForCallDirection(callDirection) {
   const normalizedDirection = (callDirection || '').toLowerCase();
@@ -193,13 +193,13 @@ export async function resolveChatAssistantForBusiness({ prisma, business, busine
     data: {
       businessId: businessRecord.id,
       name: DEFAULT_CHAT_ASSISTANT_NAME,
-      voiceId: getFallbackChatVoice(language),
+      assistantType: 'text',
       systemPrompt: getFallbackChatPrompt(language, businessRecord.name),
       model: 'gpt-4',
       timezone: businessRecord.timezone || 'Europe/Istanbul',
       firstMessage: getFallbackChatFirstMessage(language),
       tone: 'professional',
-      callDirection: 'chat',
+      callDirection: 'outbound',
       channelCapabilities: [...CHAT_CAPABLE_CHANNELS]
     }
   });

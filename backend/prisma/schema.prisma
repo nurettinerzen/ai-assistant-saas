@@ -183,7 +183,8 @@ model Assistant {
   id                String            @id @default(cuid())
   businessId        Int
   name              String
-  voiceId           String
+  assistantType     String            @default("phone") // "text" | "phone"
+  voiceId           String? // null for text assistants
   systemPrompt      String            @db.Text
   model             String            @default("gpt-4")
   elevenLabsAgentId String?           @unique // 11Labs Conversational AI Agent ID
@@ -192,7 +193,7 @@ model Assistant {
   firstMessage      String? // Custom first message
   tone              String            @default("professional") // "friendly" or "professional"
   customNotes       String?           @db.Text // Business-specific notes
-  callDirection     String            @default("outbound") // "inbound" or "outbound"
+  callDirection     String            @default("outbound") // phone-only: "inbound" | "outbound" | "outbound_*"
   channelCapabilities String[]        @default(["phone_outbound"]) // ["chat","whatsapp","email","phone_outbound","phone_inbound"]
   callPurpose       String? // For outbound: "collection", "reminder", "survey", "info", "custom"
   dynamicVariables  String[]          @default([]) // Dynamic variable names for outbound calls

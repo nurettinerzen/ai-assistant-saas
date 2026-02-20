@@ -269,7 +269,13 @@ Vedalaştıktan sonra başka bir şey söyleme.
  * @returns {String} Birleştirilmiş prompt
  */
 export function buildAssistantPrompt(assistant, business, integrations = []) {
-  console.log('🔧 buildAssistantPrompt called with callDirection:', assistant.callDirection);
+  console.log('🔧 buildAssistantPrompt called with assistantType:', assistant.assistantType, 'callDirection:', assistant.callDirection);
+
+  // Text assistant (chat / WhatsApp / email) — no phone rules
+  if (assistant.assistantType === 'text') {
+    console.log('💬 Using CHAT rules for text assistant');
+    return buildChatPrompt(assistant, business, integrations);
+  }
 
   // Outbound Sales için özel prompt
   if (assistant.callDirection === 'outbound_sales') {
@@ -289,13 +295,7 @@ export function buildAssistantPrompt(assistant, business, integrations = []) {
     return buildOutboundGeneralPrompt(assistant, business);
   }
 
-  // Chat / WhatsApp / Email — text-based channels (no phone rules)
-  if (assistant.callDirection === 'chat' || assistant.callDirection === 'whatsapp' || assistant.callDirection === 'email') {
-    console.log('💬 Using CHAT rules for text-based channel');
-    return buildChatPrompt(assistant, business, integrations);
-  }
-
-  console.log('📞 Using INBOUND rules (default)');
+  console.log('📞 Using INBOUND/PHONE rules (default)');
 
   // 1. Business type'a göre template seç
   const businessType = business.businessType || 'OTHER';

@@ -813,7 +813,12 @@
       "additionalInstructionsHint": "Special rules, working hours, address, etc. that the assistant should know.",
       "customNotesHint": "Working hours, address, special rules, etc. that the assistant should know.",
       "creating": "Creating...",
-      "updating": "Updating..."
+      "updating": "Updating...",
+      "textAssistant": "Text Assistant",
+      "phoneAssistant": "Phone Assistant",
+      "textAssistantDesc": "Chat, WhatsApp and email channels",
+      "phoneAssistantDesc": "Outbound phone calls",
+      "typeCol": "Type"
     },
     "callsPage": {
       "title": "Call History",
