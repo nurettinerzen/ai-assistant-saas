@@ -128,8 +128,8 @@ KURALLAR:
 - Eğer kullanıcı doğrulama bilgisi verdiyse, customer_data_lookup tool'unu verification_input parametresiyle çağır
 - Eğer kullanıcı farklı bir soru sorduysa, soruyu cevapla ama doğrulama ihtiyacını da hatırlat
 - Aynı cümleyi tekrar etme — her seferinde farklı ve doğal konuş
-- Yanlış anladığını fark edersen "Sanırım bir karışıklık oldu..." diyebilirsin
-- "Lütfen ad-soyadınızı yazınız" gibi form cümleleri KULLANMA`;
+- Yanlış anladığını fark edersen kibarca düzelt
+- Form cümleleri KULLANMA — sohbet gibi sor`;
 
     enhancedSystemPrompt += verificationGuidance;
     console.log('🔐 [BuildLLMRequest] Added verification context for LLM');
