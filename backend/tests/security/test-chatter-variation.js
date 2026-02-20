@@ -66,6 +66,10 @@ function runDirectiveContract() {
   assert(result.directive.avoidRepeatingHelpPhrase === true, 'Directive must set avoidRepeatingHelpPhrase');
   assert(typeof result.directive.activeTask === 'boolean', 'Directive must have boolean activeTask');
   assert(typeof result.directive.continueTaskIfAny === 'boolean', 'Directive must have continueTaskIfAny');
+  assert(Array.isArray(result.directive.responseOptions), 'Directive must include responseOptions array');
+  assert(result.directive.responseOptions.length >= 3, 'Greeting directive should provide multiple response options');
+  assert(typeof result.directive.responseSeed === 'string' && result.directive.responseSeed.length > 0, 'Directive must include responseSeed');
+  assert(Array.isArray(result.directive.avoidExactPhrases), 'Directive must include avoidExactPhrases');
 
   // Contract: catalog fallback must be present
   assert(result.catalogFallback, 'Must have catalogFallback');

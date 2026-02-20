@@ -190,6 +190,18 @@ Kullanıcı saygısız dil kullandı (${strike}. uyarı / 3 üzerinden).
     // ── LLM directive mode (flag ON) ──
     const assistantName = assistant?.name || 'Asistan';
     const businessName = business?.name || '';
+    const responseOptions = Array.isArray(chatterDirective.responseOptions)
+      ? chatterDirective.responseOptions.filter(Boolean).slice(0, 5)
+      : [];
+    const responseOptionsBlock = responseOptions.length > 0
+      ? `\nVARYASYON HAVUZU (aynı kalıbı tekrar etme, her yanıtta farklı bir tarz seç):\n${responseOptions.map(option => `- "${option}"`).join('\n')}`
+      : '';
+    const avoidExactPhrases = Array.isArray(chatterDirective.avoidExactPhrases)
+      ? chatterDirective.avoidExactPhrases.filter(Boolean)
+      : [];
+    const avoidExactPhrasesBlock = avoidExactPhrases.length > 0
+      ? `\nKESİN KULLANMA:\n${avoidExactPhrases.map(phrase => `- "${phrase}"`).join('\n')}`
+      : '';
 
     enhancedSystemPrompt += `
 
@@ -199,6 +211,7 @@ Kullanıcı saygısız dil kullandı (${strike}. uyarı / 3 üzerinden).
 - Konuşma durumu: ${chatterDirective.flowStatus}
 - Aktif görev var mı: ${chatterDirective.activeTask ? 'EVET — ' + (chatterDirective.activeFlow || 'devam eden iş') : 'HAYIR'}
 - Doğrulama bekleniyor mu: ${chatterDirective.verificationPending ? 'EVET' : 'HAYIR'}
+- Yanıt varyasyon tohumu: ${chatterDirective.responseSeed || 'default'}
 
 KURALLAR:
 - Selam/teşekküre kısa ve doğal cevap ver, robotik kalıp kullanma.
@@ -206,6 +219,8 @@ KURALLAR:
 - "Size nasıl yardımcı olabilirim?" veya benzer klişe yardım cümlelerini TEKRARLAMA.
 - Eğer aktif görev varsa, kısa yanıt sonrası göreve nazikçe geri dön.
 - Kullanıcı net bir talep vermediyse tek cümlelik sıcak bir karşılık ver.
+${responseOptionsBlock}
+${avoidExactPhrasesBlock}
 
 TON KISITLAMALARI:
 - Satış dili kullanma (no_salesy). "Harika fırsatlar", "kaçırma" gibi ifadeler YASAK.

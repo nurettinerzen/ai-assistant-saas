@@ -510,15 +510,18 @@ export async function applyGuardrails(params) {
     console.error('🚨 [Guardrails] INTERNAL_PROTOCOL_LEAK detected!', internalProtocolResult.violation);
     metrics.internalProtocolViolation = internalProtocolResult.violation;
 
-    // Same approach: flag for correction, don't hard block
-    if (chat) {
-      try {
-        console.log('🔧 [Guardrails] Requesting LLM correction for internal protocol leak...');
-        // Correction constraint is available in internalProtocolResult.correctionConstraint
-      } catch (e) {
-        console.error('Failed to apply internal protocol correction:', e);
-      }
-    }
+    console.log('🔧 [Guardrails] Requesting LLM correction for internal protocol leak...');
+    return {
+      finalResponse: null,
+      needsCorrection: true,
+      correctionType: 'INTERNAL_PROTOCOL_LEAK',
+      correctionConstraint: internalProtocolResult.correctionConstraint,
+      violation: internalProtocolResult.violation,
+      guardrailsApplied: ['RESPONSE_FIREWALL', 'PII_PREVENTION', 'INTERNAL_PROTOCOL_GUARD'],
+      blocked: true,
+      blockReason: 'INTERNAL_PROTOCOL_LEAK',
+      repromptCount: 1
+    };
   }
 
   // POLICY 4: Anti-Confabulation Guard (P1-A) - NOW WITH ENFORCEMENT

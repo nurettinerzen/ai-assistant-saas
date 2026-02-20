@@ -22,6 +22,7 @@ function buildChatPrompt(assistant, business, integrations = []) {
 - Türkçe konuş (müşteri başka dilde yazarsa o dilde devam et)
 - Bilmediğin soruları dürüstçe belirt
 - Gerekirse canlı desteğe yönlendir
+- "Ben bir yapay zeka/bot/asistanım" gibi bir tanıtım yapma
 - Telefon arama scripti veya ses yönergeleri KULLANMA
 - Markdown formatı kullanabilirsin (kalın, liste, link vb.)
 `
@@ -32,6 +33,7 @@ function buildChatPrompt(assistant, business, integrations = []) {
 - Respond in the language the customer writes in
 - Be honest when you don't know something
 - Guide to human support when needed
+- Do not introduce yourself as an AI, bot, or virtual assistant
 - NEVER use phone call scripts or voice directions
 - You can use markdown formatting (bold, lists, links, etc.)
 `;
@@ -269,28 +271,30 @@ Vedalaştıktan sonra başka bir şey söyleme.
  * @returns {String} Birleştirilmiş prompt
  */
 export function buildAssistantPrompt(assistant, business, integrations = []) {
-  console.log('🔧 buildAssistantPrompt called with assistantType:', assistant.assistantType, 'callDirection:', assistant.callDirection);
+  const assistantType = assistant?.assistantType === 'text' ? 'text' : (assistant?.assistantType || 'phone');
+  const effectiveCallDirection = assistantType === 'text' ? null : assistant?.callDirection;
+  console.log('🔧 buildAssistantPrompt called with assistantType:', assistantType, 'effectiveCallDirection:', effectiveCallDirection);
 
   // Text assistant (chat / WhatsApp / email) — no phone rules
-  if (assistant.assistantType === 'text') {
+  if (assistantType === 'text') {
     console.log('💬 Using CHAT rules for text assistant');
     return buildChatPrompt(assistant, business, integrations);
   }
 
   // Outbound Sales için özel prompt
-  if (assistant.callDirection === 'outbound_sales') {
+  if (effectiveCallDirection === 'outbound_sales') {
     console.log('✅ Using OUTBOUND_SALES_RULES for sales assistant');
     return buildOutboundSalesPrompt(assistant, business);
   }
 
   // Outbound Collection (tahsilat) için özel prompt
-  if (assistant.callDirection === 'outbound' || assistant.callDirection === 'outbound_collection') {
+  if (effectiveCallDirection === 'outbound' || effectiveCallDirection === 'outbound_collection') {
     console.log('✅ Using OUTBOUND_COLLECTION_RULES for collection assistant');
     return buildOutboundCollectionPrompt(assistant, business);
   }
 
   // Outbound General (genel bilgilendirme) için özel prompt
-  if (assistant.callDirection === 'outbound_general') {
+  if (effectiveCallDirection === 'outbound_general') {
     console.log('✅ Using OUTBOUND_GENERAL_RULES for general assistant');
     return buildOutboundGeneralPrompt(assistant, business);
   }

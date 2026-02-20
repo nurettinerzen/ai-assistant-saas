@@ -55,6 +55,44 @@ function hasActiveTask(state = {}) {
   return false;
 }
 
+function getGreetingResponseOptions(language = 'TR', activeTask = false) {
+  const lang = String(language || 'TR').toUpperCase() === 'EN' ? 'EN' : 'TR';
+
+  if (lang === 'EN') {
+    return activeTask
+      ? [
+          'Hey, let us pick up where we left off.',
+          'Hi again, we can continue the open request.',
+          'Hello, I can help you finish this step.',
+          'Hey there, we are still on this task and can continue now.',
+          'Hi, ready when you are to continue this flow.'
+        ]
+      : [
+          'Hey! How can I help today?',
+          'Hi there! What would you like to check?',
+          'Hello! I can help right away, what do you need?',
+          'Hey, tell me what you need and I will jump in.',
+          'Hi! I am here, what should we start with?'
+        ];
+  }
+
+  return activeTask
+    ? [
+        'Selam, kaldığımız yerden devam edelim.',
+        'Merhaba tekrar, açık olan işlemi birlikte tamamlayalım.',
+        'Selam, sonraki adımı beraber bitirebiliriz.',
+        'Tekrar merhaba, mevcut konudan devam edebilirim.',
+        'Selam, hazırsa devam edelim.'
+      ]
+    : [
+        'Selam! Nasıl yardımcı olayım?',
+        'Merhaba! Ne için buradayız, birlikte bakalım.',
+        'Selam! Neye bakmamı istersin?',
+        'Merhaba, hazırım. Ne yapmak istersin?',
+        'Selamlar! Hangi konuda destek istersin?'
+      ];
+}
+
 export function buildChatterResponse({ userMessage = '', state = {}, language = 'TR', sessionId = '' } = {}) {
   const text = String(userMessage || '').trim();
   const activeTask = hasActiveTask(state);
@@ -108,6 +146,18 @@ export function buildChatterDirective({ userMessage = '', state = {}, language =
 
   // Build the catalog fallback (used if LLM fails/times out)
   const catalogFallback = buildChatterResponse({ userMessage, state, language, sessionId });
+  const responseOptions = kind === 'greeting'
+    ? getGreetingResponseOptions(language, activeTask)
+    : [];
+  const responseSeed = [
+    sessionId,
+    kind,
+    catalogFallback.messageKey,
+    catalogFallback.variantIndex,
+    text.toLowerCase()
+  ]
+    .filter(Boolean)
+    .join('|');
 
   // Collect last assistant messages for anti-repetition context
   const lastAssistantUtterances = [];
@@ -125,7 +175,14 @@ export function buildChatterDirective({ userMessage = '', state = {}, language =
       expectedSlot: state.expectedSlot || null,
       avoidRepeatingHelpPhrase: true,
       maxSentences: 2,
-      continueTaskIfAny: activeTask
+      continueTaskIfAny: activeTask,
+      responseOptions,
+      responseSeed,
+      avoidExactPhrases: kind === 'greeting'
+        ? (String(language || 'TR').toUpperCase() === 'EN'
+            ? ['Hello, welcome.']
+            : ['Merhaba, hoş geldiniz.'])
+        : []
     },
     catalogFallback,
     messageKey: catalogFallback.messageKey,

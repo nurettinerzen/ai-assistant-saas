@@ -44,6 +44,7 @@ import { getMessageVariant } from '../messages/messageCatalog.js';
 import { checkSessionThrottle } from '../services/sessionThrottle.js';
 import { getChannelMode, getHelpLinks } from '../config/channelMode.js';
 import { ensurePolicyGuidance } from '../services/tool-fail-handler.js';
+import { validateInternalProtocol } from '../guardrails/internalProtocolGuard.js';
 
 /**
  * Extract order number from user message
@@ -97,6 +98,40 @@ function extractOrderNumberFromMessage(message) {
   // - "12345 TL ödedim" → PRICE
 
   return null;
+}
+
+function getInternalProtocolSafeFallback(language = 'TR') {
+  return String(language || '').toUpperCase() === 'EN'
+    ? 'I am doing well, thanks. How can I help you today?'
+    : 'İyiyim, teşekkürler. Sana nasıl yardımcı olayım?';
+}
+
+function extractModelResponseText(result) {
+  const directText = result?.response?.text?.();
+  if (typeof directText === 'string' && directText.trim()) {
+    return directText.trim();
+  }
+
+  const candidates = result?.response?.candidates;
+  if (!Array.isArray(candidates)) {
+    return '';
+  }
+
+  for (const candidate of candidates) {
+    const parts = candidate?.content?.parts;
+    if (!Array.isArray(parts)) {
+      continue;
+    }
+    const joined = parts
+      .map(part => (typeof part?.text === 'string' ? part.text : ''))
+      .join('')
+      .trim();
+    if (joined) {
+      return joined;
+    }
+  }
+
+  return '';
 }
 
 /**
@@ -168,18 +203,41 @@ async function regenerateWithGuidance(guidanceType, guidanceData, userMessage, l
       guidance = language === 'TR'
         ? `Sen bir müşteri hizmetleri asistanısın. Kullanıcının sorusuna doğal ve kısa yanıt ver. KRİTİK KURALLAR: Teknik terimler (tool, function, api, endpoint, webhook, mutation, middleware, gemini, prisma, session, query) KULLANMA. Kod veya JSON yazma. Sistem iç yapısından bahsetme. Sadece müşteriye yardımcı ol.`
         : `You are a customer service assistant. Answer the user's question naturally and briefly. CRITICAL: Do NOT use technical terms (tool, function, api, endpoint, webhook, mutation, middleware, gemini, prisma, session, query). Do NOT output code or JSON. Do NOT mention system internals. Just help the customer.`;
+
+    } else if (guidanceType === 'INTERNAL_PROTOCOL_LEAK') {
+      guidance = language === 'TR'
+        ? `Yanıtında iç sistem/protokol ifşası tespit edildi. ${guidanceData}
+Ek kurallar:
+- "Ben bir yapay zeka", "asistanım", "sistem gereği", "politika gereği", "erişimim yok", "yetkim yok" gibi ifadeleri KULLANMA.
+- Doğrudan kullanıcıya yardımcı olacak kısa ve doğal bir yanıt ver.
+- Eğer bilgi veremiyorsan iç kural anlatmadan alternatif yardım öner.
+- Cevap en fazla 2 cümle olsun.`
+        : `Internal protocol disclosure was detected in your response. ${guidanceData}
+Extra rules:
+- Do NOT use phrases like "I am an AI", "as an assistant", "system policy", "I don't have access", "I'm not authorized".
+- Give a short, natural customer-facing response.
+- If you cannot provide details, offer an alternative help path without mentioning internal rules.
+- Keep the answer within 2 sentences.`;
     }
 
     const prompt = `${guidance}\n\nKullanıcı mesajı: "${userMessage}"\n\nYanıtın:`;
 
     const result = await model.generateContent(prompt);
-    const response = result.response.text();
+    const response = extractModelResponseText(result);
+
+    if (!response) {
+      throw new Error('EMPTY_CORRECTION_RESPONSE');
+    }
 
     console.log(`✅ [Orchestrator] LLM regenerated (${guidanceType}):`, response.substring(0, 100));
     return response;
 
   } catch (error) {
     console.error('❌ [Orchestrator] LLM regeneration failed:', error.message);
+
+    if (guidanceType === 'INTERNAL_PROTOCOL_LEAK') {
+      return getInternalProtocolSafeFallback(language);
+    }
 
     // Minimal fallback - only for error cases
     if (guidanceType === 'VERIFICATION') {
@@ -1068,6 +1126,9 @@ export async function handleIncomingMessage({
     });
 
     let { finalResponse } = guardrailResult;
+    let correctionRepromptCount = Number.isInteger(guardrailResult.repromptCount)
+      ? guardrailResult.repromptCount
+      : 0;
 
     // Security Gateway tarafından block edildiyse
     if (guardrailResult.blocked) {
@@ -1147,6 +1208,35 @@ export async function handleIncomingMessage({
       }
 
       // ============================================
+      // INTERNAL PROTOCOL LEAK: Re-prompt LLM + Safe Fallback
+      // ============================================
+      if (guardrailResult.needsCorrection && guardrailResult.correctionType === 'INTERNAL_PROTOCOL_LEAK') {
+        console.log('🚨 [Orchestrator] Internal protocol leak detected, re-prompting LLM...');
+        console.log('📋 Violation:', guardrailResult.violation);
+
+        correctionRepromptCount = Math.max(correctionRepromptCount, 1);
+        const correctedCandidate = await regenerateWithGuidance(
+          'INTERNAL_PROTOCOL_LEAK',
+          guardrailResult.correctionConstraint,
+          userMessage,
+          language
+        );
+
+        const postCorrectionCheck = validateInternalProtocol(correctedCandidate, language);
+        if (!correctedCandidate?.trim() || !postCorrectionCheck.safe) {
+          console.warn('⚠️ [Orchestrator] Internal protocol correction failed post-check, using safe fallback');
+          finalResponse = getInternalProtocolSafeFallback(language);
+          metrics.internalProtocolFallbackUsed = true;
+          metrics.internalProtocolPostCheckViolation = postCorrectionCheck.safe
+            ? null
+            : postCorrectionCheck.violation;
+        } else {
+          finalResponse = correctedCandidate;
+          metrics.internalProtocolFallbackUsed = false;
+        }
+      }
+
+      // ============================================
       // FIREWALL SOFT REFUSAL: Re-prompt once
       // ============================================
       // P1b-FIX: When firewall blocks a response (e.g. false-positive on KB answers
@@ -1178,6 +1268,11 @@ export async function handleIncomingMessage({
       }
     }
 
+    if (guardrailResult.correctionType === 'INTERNAL_PROTOCOL_LEAK' && !String(finalResponse || '').trim()) {
+      finalResponse = getInternalProtocolSafeFallback(language);
+      metrics.internalProtocolFallbackUsed = true;
+    }
+
     // Deterministic post-pass for policy topics.
     // applyGuardrails already does this in the normal path, but blocked/reprompt flows
     // can bypass that stage and return without actionable policy guidance.
@@ -1192,8 +1287,8 @@ export async function handleIncomingMessage({
 
     // ── Security Policy Telemetry (canary monitoring) ──
     {
-      let repromptCount = 0;
-      if (guardrailResult.needsCorrection) repromptCount++;
+      let repromptCount = Number.isInteger(correctionRepromptCount) ? correctionRepromptCount : 0;
+      if (guardrailResult.needsCorrection && repromptCount === 0) repromptCount++;
       if (guardrailResult.needsVerification) repromptCount++;
 
       // Build or update security telemetry
