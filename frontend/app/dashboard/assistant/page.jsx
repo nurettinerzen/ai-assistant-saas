@@ -299,7 +299,14 @@ export default function AssistantsPage() {
         setShowCreateModal(false);
         resetForm();
       } catch (error) {
-        toast.error(error.response?.data?.error || t('errors.generic'));
+        const errCode = error.response?.data?.error;
+        if (errCode === 'ASSISTANT_LIMIT_REACHED') {
+          const data = error.response?.data;
+          const msg = locale === 'tr' ? data?.messageTR : data?.message;
+          toast.error(msg || t('dashboard.assistantsPage.limitReached'));
+        } else {
+          toast.error(errCode || t('errors.generic'));
+        }
       } finally {
         setCreating(false);
       }
@@ -327,7 +334,14 @@ export default function AssistantsPage() {
         setShowCreateModal(false);
         resetForm();
       } catch (error) {
-        toast.error(error.response?.data?.error || t('errors.generic'));
+        const errCode = error.response?.data?.error;
+        if (errCode === 'ASSISTANT_LIMIT_REACHED') {
+          const data = error.response?.data;
+          const msg = locale === 'tr' ? data?.messageTR : data?.message;
+          toast.error(msg || t('dashboard.assistantsPage.limitReached'));
+        } else {
+          toast.error(errCode || t('errors.generic'));
+        }
       } finally {
         setCreating(false);
       }

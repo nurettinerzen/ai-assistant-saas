@@ -253,7 +253,9 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
         messageTR: `${assistantsLimit} asistan limitine ulaştınız. Daha fazla oluşturmak için planınızı yükseltin.`,
         currentCount: assistantCount,
         limit: assistantsLimit,
-        plan: subscription.plan
+        assistantType: isTextAssistant ? 'text' : 'phone',
+        plan: subscription.plan,
+        upgradeUrl: '/dashboard/subscription'
       });
     }
 

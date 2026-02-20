@@ -818,7 +818,8 @@
       "phoneAssistant": "Phone Assistant",
       "textAssistantDesc": "Chat, WhatsApp and email channels",
       "phoneAssistantDesc": "Outbound phone calls",
-      "typeCol": "Type"
+      "typeCol": "Type",
+      "limitReached": "You've reached the assistant limit. Upgrade your plan."
     },
     "callsPage": {
       "title": "Call History",

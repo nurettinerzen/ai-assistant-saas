@@ -818,7 +818,8 @@
       "phoneAssistant": "Telefon Asistanı",
       "textAssistantDesc": "Chat, WhatsApp ve e-posta kanalları",
       "phoneAssistantDesc": "Giden telefon aramaları",
-      "typeCol": "Tip"
+      "typeCol": "Tip",
+      "limitReached": "Asistan limitine ulaştınız. Planınızı yükseltin."
     },
     "callsPage": {
       "title": "Arama Geçmişi",
