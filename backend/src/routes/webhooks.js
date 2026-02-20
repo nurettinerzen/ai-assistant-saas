@@ -10,9 +10,9 @@ import { PrismaClient } from '@prisma/client';
 import OpenAI from 'openai';
 import concurrentCallManager from '../services/concurrentCallManager.js';
 import { trackCallUsage } from '../services/usageTracking.js';
-import { isPhoneInboundEnabled } from '../config/feature-flags.js';
 import { getInboundDisabledMessage } from '../phone-outbound-v1/index.js';
 import metricsService from '../services/metricsService.js';
+import { isPhoneInboundEnabledForBusinessId } from '../services/phoneInboundGate.js';
 
 // OpenAI client for summary translation
 const openai = process.env.OPENAI_API_KEY
@@ -179,15 +179,15 @@ router.post('/elevenlabs/call-started', async (req, res) => {
         console.log(`✅ Inbound assistant found: ${phoneNumber.assistant.name} (${phoneNumber.assistant.id})`);
       }
 
-      // V1 INBOUND GATE: Block inbound calls when feature is disabled (fail-closed)
-      if (!isPhoneInboundEnabled()) {
-        const disabledMessage = getInboundDisabledMessage();
-        console.log(`[INBOUND_BLOCKED] ${JSON.stringify({ callId, source: 'legacy', reason: 'PHONE_INBOUND_ENABLED=false', externalNumber })}`);
-        metricsService.incrementCounter('phone_inbound_blocked_total', { source: 'legacy' });
+      const bestEffortBusinessId = await extractBusinessIdFromAgent(agentId) ||
+        (agentPhoneId ? (await prisma.phoneNumber.findFirst({ where: { elevenLabsPhoneId: agentPhoneId }, select: { businessId: true } }))?.businessId : null);
+      const inboundEnabled = await isPhoneInboundEnabledForBusinessId(bestEffortBusinessId);
 
-        // Best-effort CallLog persist (businessId may not be resolved yet)
-        const bestEffortBusinessId = await extractBusinessIdFromAgent(agentId) ||
-          (agentPhoneId ? (await prisma.phoneNumber.findFirst({ where: { elevenLabsPhoneId: agentPhoneId }, select: { businessId: true } }))?.businessId : null);
+      // V1 INBOUND GATE: Block inbound calls when business toggle is disabled (fail-closed)
+      if (!inboundEnabled) {
+        const disabledMessage = getInboundDisabledMessage();
+        console.log(`[INBOUND_BLOCKED] ${JSON.stringify({ callId, source: 'legacy', reason: 'business.phoneInboundEnabled=false', externalNumber, businessId: bestEffortBusinessId })}`);
+        metricsService.incrementCounter('phone_inbound_blocked_total', { source: 'legacy' });
 
         if (bestEffortBusinessId && callId) {
           try {

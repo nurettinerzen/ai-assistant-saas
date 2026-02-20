@@ -18,6 +18,10 @@ import {
 } from '../middleware/adminAuth.js';
 import { createAdminAuditLog, calculateChanges, auditContext } from '../middleware/auditLog.js';
 import { updateEnterpriseStripePrice, hasActiveStripeSubscription } from '../services/stripeEnterpriseService.js';
+import {
+  isPhoneInboundEnabledForBusinessRecord,
+  isPhoneInboundForceDisabled
+} from '../services/phoneInboundGate.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -256,6 +260,8 @@ router.get('/users/:id', async (req, res) => {
             currency: true,
             timezone: true,
             businessType: true,
+            phoneInboundEnabled: true,
+            onboardingCompletedAt: true,
             createdAt: true,
             suspended: true,
             suspendedAt: true,
@@ -309,6 +315,10 @@ router.get('/users/:id', async (req, res) => {
       return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
     }
 
+    if (user.business) {
+      user.business.phoneInboundEnabled = isPhoneInboundEnabledForBusinessRecord(user.business);
+    }
+
     // Get recent calls (without transcript)
     const recentCalls = await prisma.callLog.findMany({
       where: { businessId: user.business?.id },
@@ -343,6 +353,7 @@ router.patch('/users/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const allowedUserFields = ['suspended'];
+    const allowedBusinessFields = ['phoneInboundEnabled'];
     const allowedSubscriptionFields = [
       'plan', 'status', 'minutesUsed', 'balance', 'minutesLimit',
       'enterpriseMinutes', 'enterprisePrice', 'enterpriseConcurrent',
@@ -360,6 +371,7 @@ router.patch('/users/:id', async (req, res) => {
     }
 
     const userUpdates = {};
+    const businessUpdates = {};
     const subscriptionUpdates = {};
     const changes = {};
 
@@ -387,11 +399,39 @@ router.patch('/users/:id', async (req, res) => {
       }
     }
 
+    // Filter business-level feature updates
+    for (const field of allowedBusinessFields) {
+      if (req.body[field] !== undefined) {
+        const desiredValue = Boolean(req.body[field]);
+
+        if (field === 'phoneInboundEnabled' && desiredValue && isPhoneInboundForceDisabled()) {
+          return res.status(403).json({
+            error: 'PHONE_INBOUND_LOCKED_V1',
+            message: 'Inbound FULL_V2 geçici olarak global V1 outbound-only modunda kapalı.'
+          });
+        }
+
+        businessUpdates[field] = desiredValue;
+        changes[`business.${field}`] = {
+          old: user.business?.[field],
+          new: businessUpdates[field]
+        };
+      }
+    }
+
     // Update user if needed
     if (Object.keys(userUpdates).length > 0) {
       await prisma.user.update({
         where: { id: parseInt(id) },
         data: userUpdates
+      });
+    }
+
+    // Update business if needed
+    if (Object.keys(businessUpdates).length > 0 && user.business) {
+      await prisma.business.update({
+        where: { id: user.business.id },
+        data: businessUpdates
       });
     }
 
@@ -413,6 +453,10 @@ router.patch('/users/:id', async (req, res) => {
       where: { id: parseInt(id) },
       include: { business: { include: { subscription: true } } }
     });
+
+    if (updatedUser?.business) {
+      updatedUser.business.phoneInboundEnabled = isPhoneInboundEnabledForBusinessRecord(updatedUser.business);
+    }
 
     res.json({ success: true, user: sanitizeResponse(updatedUser, 'User') });
   } catch (error) {

@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 import { logAuthFailure, logCrossTenantAttempt } from './securityEventLogger.js';
+import { isPhoneInboundEnabledForBusinessRecord } from '../services/phoneInboundGate.js';
 
 const prisma = new PrismaClient();
 
@@ -33,6 +34,10 @@ export const authenticateToken = async (req, res, next) => {
       // Log auth failure
       await logAuthFailure(req, 'user_not_found', 401);
       return res.status(401).json({ error: 'User not found' });
+    }
+
+    if (user.business) {
+      user.business.phoneInboundEnabled = isPhoneInboundEnabledForBusinessRecord(user.business);
     }
 
     req.user = user;

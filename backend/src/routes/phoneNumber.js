@@ -10,7 +10,8 @@ import prisma from '../prismaClient.js';
 import { authenticateToken } from '../middleware/auth.js';
 import netgsmService from '../services/netgsm.js';
 import elevenLabsService from '../services/elevenlabs.js';
-import { SIP_PROVIDERS, getProvidersForCountry } from '../config/sip-providers.js';
+import { getProvidersForCountry } from '../config/sip-providers.js';
+import { resolvePhoneOutboundAccessForBusinessId } from '../services/phoneOutboundAccess.js';
 
 const router = express.Router();
 
@@ -38,6 +39,11 @@ const PRICING = {
     displayMonthly: 20, // ₺20/month displayed to customer (with markup)
     currency: 'TRY'
   }
+};
+
+const PHONE_ASSIGNMENT_DISABLED_V1_ERROR = {
+  error: 'PHONE_ASSIGNMENT_DISABLED_V1',
+  message: 'V1 sürümünde telefon numarası-assistant assignment kapalıdır.'
 };
 
 // ============================================================================
@@ -108,7 +114,7 @@ router.post('/provision', async (req, res) => {
     if (!countryCode) {
       return res.status(400).json({
         error: 'Country code is required',
-        example: { countryCode: 'TR or US', assistantId: 'optional' }
+        example: { countryCode: 'TR or US' }
 
       });
     }
@@ -147,21 +153,25 @@ router.post('/provision', async (req, res) => {
       });
     }
 
+    if (assistantId) {
+      return res.status(403).json(PHONE_ASSIGNMENT_DISABLED_V1_ERROR);
+    }
+
     console.log(`✅ Using provider: ${provider} for ${countryCode}`);
 
     let result;
 
     // ========== NETGSM + 11LABS SIP TRUNK (Turkey) ==========
     if (provider === 'NETGSM_ELEVENLABS') {
-      result = await provisionNetgsmElevenLabsNumber(businessId, assistantId);
+      result = await provisionNetgsmElevenLabsNumber(businessId);
     }
     // ========== 11LABS (USA - via Twilio) ==========
     else if (provider === 'ELEVENLABS') {
-      result = await provisionElevenLabsNumber(businessId, assistantId, countryCode);
+      result = await provisionElevenLabsNumber(businessId, countryCode);
     }
     // ========== NETGSM (uses 11Labs SIP trunk) ==========
     else if (provider === 'NETGSM') {
-      result = await provisionNetgsmElevenLabsNumber(businessId, assistantId);
+      result = await provisionNetgsmElevenLabsNumber(businessId);
     }
     else {
       return res.status(400).json({
@@ -198,7 +208,7 @@ router.post('/provision', async (req, res) => {
 // ============================================================================
 // HELPER: PROVISION NETGSM NUMBER + 11LABS SIP TRUNK (TURKEY)
 // ============================================================================
-async function provisionNetgsmElevenLabsNumber(businessId, assistantId) {
+async function provisionNetgsmElevenLabsNumber(businessId) {
   console.log('🇹🇷 Provisioning Netgsm 0850 number with 11Labs SIP Trunk...');
 
   // Step 1: Purchase 0850 number from Netgsm
@@ -209,38 +219,25 @@ async function provisionNetgsmElevenLabsNumber(businessId, assistantId) {
   const sipCredentials = await netgsmService.getSipCredentials(netgsmResult.numberId);
   console.log('✅ SIP credentials obtained');
 
-  // Step 3: Import to 11Labs as SIP Trunk if assistant is assigned
-  let elevenLabsPhoneId = null;
+  // Step 3: Import to 11Labs as SIP Trunk (no assistant assignment in V1)
   const formattedNumber = netgsmService.formatPhoneNumber(netgsmResult.phoneNumber);
-
-  if (assistantId) {
-    const assistant = await prisma.assistant.findUnique({
-      where: { id: assistantId }
+  let elevenLabsPhoneId = null;
+  try {
+    const elevenLabsResult = await elevenLabsService.importSipTrunkNumber({
+      phoneNumber: formattedNumber,
+      sipServer: sipCredentials.sipServer,  // Just hostname, no sip: prefix
+      sipUsername: sipCredentials.sipUsername,
+      sipPassword: sipCredentials.sipPassword,
+      transport: 'tcp',  // UDP not supported by 11Labs
+      mediaEncryption: 'disabled',
+      label: `Netgsm TR - ${formattedNumber}`
     });
 
-    if (!assistant || !assistant.elevenLabsAgentId) {
-      throw new Error('Invalid assistant or assistant not configured with 11Labs');
-    }
-
-    // Import to 11Labs as SIP Trunk with new API format
-    try {
-      const elevenLabsResult = await elevenLabsService.importSipTrunkNumber({
-        phoneNumber: formattedNumber,
-        sipServer: sipCredentials.sipServer,  // Just hostname, no sip: prefix
-        sipUsername: sipCredentials.sipUsername,
-        sipPassword: sipCredentials.sipPassword,
-        transport: 'tcp',  // UDP not supported by 11Labs
-        mediaEncryption: 'disabled',
-        agentId: assistant.elevenLabsAgentId,
-        label: `Netgsm TR - ${formattedNumber}`
-      });
-
-      elevenLabsPhoneId = elevenLabsResult.phone_number_id;
-      console.log('✅ Number imported to 11Labs SIP Trunk:', elevenLabsPhoneId);
-    } catch (error) {
-      console.error('❌ Failed to import to 11Labs:', error.message);
-      throw new Error(`Failed to import phone number to 11Labs: ${error.message}`);
-    }
+    elevenLabsPhoneId = elevenLabsResult.phone_number_id;
+    console.log('✅ Number imported to 11Labs SIP Trunk:', elevenLabsPhoneId);
+  } catch (error) {
+    console.error('❌ Failed to import to 11Labs:', error.message);
+    throw new Error(`Failed to import phone number to 11Labs: ${error.message}`);
   }
 
   // Step 4: Save to database
@@ -255,7 +252,7 @@ async function provisionNetgsmElevenLabsNumber(businessId, assistantId) {
       sipUsername: sipCredentials.sipUsername,
       sipPassword: sipCredentials.sipPassword,
       sipServer: sipCredentials.sipServer,
-      assistantId: assistantId,
+      assistantId: null,
       status: 'ACTIVE',
       monthlyCost: netgsmResult.monthlyCost,
       nextBillingDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) // 1 year from now
@@ -276,22 +273,8 @@ async function provisionNetgsmElevenLabsNumber(businessId, assistantId) {
 // ============================================================================
 // HELPER: PROVISION 11LABS NUMBER (via Twilio import)
 // ============================================================================
-async function provisionElevenLabsNumber(businessId, assistantId, countryCode = 'US') {
+async function provisionElevenLabsNumber(businessId, countryCode = 'US') {
   console.log(`🎙️ Provisioning 11Labs number for ${countryCode}...`);
-
-  // Get assistant if provided
-  let elevenLabsAgentId = null;
-  if (assistantId) {
-    const assistant = await prisma.assistant.findUnique({
-      where: { id: assistantId }
-    });
-
-    if (!assistant || !assistant.elevenLabsAgentId) {
-      throw new Error('Invalid assistant or assistant not configured with 11Labs');
-    }
-
-    elevenLabsAgentId = assistant.elevenLabsAgentId;
-  }
 
   // For now, 11Labs requires Twilio phone number to be imported
   // First, we need to get the phone number from Twilio
@@ -309,7 +292,7 @@ async function provisionElevenLabsNumber(businessId, assistantId, countryCode = 
       phoneNumber: `pending-${Date.now()}`,  // Placeholder until Twilio is configured
       countryCode: countryCode,
       provider: 'ELEVENLABS',
-      assistantId: assistantId,
+      assistantId: null,
       status: 'ACTIVE',
       monthlyCost: PRICING.ELEVENLABS.monthlyCost,
       nextBillingDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
@@ -351,26 +334,18 @@ router.post('/:id/import-twilio', async (req, res) => {
 
     // Get phone number record
     const phoneNumber = await prisma.phoneNumber.findFirst({
-      where: { id, businessId },
-      include: { assistant: true }
+      where: { id, businessId }
     });
 
     if (!phoneNumber) {
       return res.status(404).json({ error: 'Phone number record not found' });
     }
 
-    // Get agent ID from assistant
-    let agentId = null;
-    if (phoneNumber.assistant?.elevenLabsAgentId) {
-      agentId = phoneNumber.assistant.elevenLabsAgentId;
-    }
-
-    // Import to 11Labs
+    // Import to 11Labs (V1: no assistant assignment)
     const elevenLabsResult = await elevenLabsService.importPhoneNumber({
       phoneNumber: twilioPhoneNumber,
       twilioAccountSid,
       twilioAuthToken,
-      agentId,
       label: `Business ${businessId} - ${twilioPhoneNumber}`
     });
 
@@ -412,7 +387,6 @@ router.post('/import-sip', async (req, res) => {
       sipServer,
       sipUsername,
       sipPassword,
-      sipPort = 5060,
       sipTransport = 'TCP',  // UDP not supported by 11Labs, only TCP/TLS
       assistantId,
       provider = 'other'
@@ -428,6 +402,10 @@ router.post('/import-sip', async (req, res) => {
         required: ['phoneNumber', 'sipServer', 'sipUsername', 'sipPassword'],
         message: 'Telefon numarası ve SIP bilgileri gereklidir'
       });
+    }
+
+    if (assistantId) {
+      return res.status(403).json(PHONE_ASSIGNMENT_DISABLED_V1_ERROR);
     }
 
     // Check subscription limits
@@ -483,24 +461,6 @@ router.post('/import-sip', async (req, res) => {
       }
     }
 
-    // Get assistant if provided
-    let elevenLabsAgentId = null;
-    if (assistantId) {
-      const assistant = await prisma.assistant.findFirst({
-        where: { id: assistantId, businessId }
-      });
-
-      if (!assistant) {
-        return res.status(404).json({ error: 'Asistan bulunamadı' });
-      }
-
-      if (!assistant.elevenLabsAgentId) {
-        return res.status(400).json({ error: 'Asistan 11Labs ile yapılandırılmamış' });
-      }
-
-      elevenLabsAgentId = assistant.elevenLabsAgentId;
-    }
-
     // Validate transport - only TCP and TLS supported
     const validTransport = sipTransport?.toUpperCase() === 'TLS' ? 'tls' : 'tcp';
 
@@ -514,7 +474,6 @@ router.post('/import-sip', async (req, res) => {
         sipPassword: sipPassword,
         transport: validTransport,
         mediaEncryption: validTransport === 'tls' ? 'required' : 'disabled',
-        agentId: elevenLabsAgentId,
         label: `${provider === 'netgsm' ? 'NetGSM' : 'SIP'} TR - ${formattedNumber}`
       });
 
@@ -550,7 +509,7 @@ router.post('/import-sip', async (req, res) => {
           sipUsername: sipUsername,
           sipPassword: sipPassword,
           sipServer: sipServer,
-          assistantId: assistantId || existingPhone.assistantId,
+          assistantId: null,
           status: 'ACTIVE'
         }
       });
@@ -567,7 +526,7 @@ router.post('/import-sip', async (req, res) => {
           sipUsername: sipUsername,
           sipPassword: sipPassword,
           sipServer: sipServer,
-          assistantId: assistantId || null,
+          assistantId: null,
           status: 'ACTIVE',
           monthlyCost: PRICING.NETGSM.displayMonthly,
           nextBillingDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
@@ -661,122 +620,7 @@ router.patch('/:id/sip-config', async (req, res) => {
 // UPDATE ASSISTANT ASSIGNMENT
 // ============================================================================
 router.patch('/:id/assistant', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { assistantId } = req.body;
-    const businessId = req.businessId;
-
-    console.log('🔄 [Phone Assistant Update] Starting...');
-    console.log('   Phone DB ID:', id);
-    console.log('   New Assistant ID:', assistantId);
-    console.log('   Business ID:', businessId);
-
-    // Get phone number
-    const phoneNumber = await prisma.phoneNumber.findFirst({
-      where: {
-        id: id,
-        businessId: businessId
-      }
-    });
-
-    if (!phoneNumber) {
-      console.log('❌ Phone number not found in DB');
-      return res.status(404).json({ error: 'Phone number not found' });
-    }
-
-    console.log('   Phone Number:', phoneNumber.phoneNumber);
-    console.log('   elevenLabsPhoneId:', phoneNumber.elevenLabsPhoneId || 'NULL');
-
-    // Get new assistant
-    const assistant = await prisma.assistant.findFirst({
-      where: {
-        id: assistantId,
-        businessId: businessId
-      }
-    });
-
-    if (!assistant) {
-      console.log('❌ Assistant not found in DB');
-      return res.status(404).json({ error: 'Assistant not found' });
-    }
-
-    console.log('   Assistant Name:', assistant.name);
-    console.log('   elevenLabsAgentId:', assistant.elevenLabsAgentId || 'NULL');
-
-    // Check assistant has 11Labs ID
-    if (!assistant.elevenLabsAgentId) {
-      console.log('❌ Assistant has no 11Labs agent configured');
-      return res.status(400).json({ error: 'Assistant is not configured with 11Labs' });
-    }
-
-    let elevenLabsPhoneId = phoneNumber.elevenLabsPhoneId;
-
-    // If phone is not connected to 11Labs yet, import it first
-    if (!elevenLabsPhoneId) {
-      console.log('📞 Phone not connected to 11Labs, importing now...');
-      console.log('   Phone Number:', phoneNumber.phoneNumber);
-      console.log('   Agent ID:', assistant.elevenLabsAgentId);
-
-      try {
-        // Import to 11Labs using Twilio credentials from env
-        const importResult = await elevenLabsService.importPhoneNumber({
-          phoneNumber: phoneNumber.phoneNumber,
-          agentId: assistant.elevenLabsAgentId,
-          label: `Telyx - ${phoneNumber.phoneNumber}`
-        });
-
-        elevenLabsPhoneId = importResult.phone_number_id;
-        console.log('✅ Phone imported to 11Labs:', elevenLabsPhoneId);
-
-        // Update database with 11Labs phone ID
-        await prisma.phoneNumber.update({
-          where: { id: id },
-          data: { elevenLabsPhoneId: elevenLabsPhoneId }
-        });
-      } catch (importError) {
-        console.error('❌ 11Labs import FAILED:', importError.response?.data || importError.message);
-        return res.status(500).json({
-          error: 'Failed to import phone number to 11Labs',
-          details: importError.response?.data?.detail || importError.message
-        });
-      }
-    } else {
-      // Phone already connected, just update the agent assignment
-      console.log('📞 11Labs update started...');
-      console.log('   Phone ID:', elevenLabsPhoneId);
-      console.log('   Agent ID:', assistant.elevenLabsAgentId);
-      try {
-        await elevenLabsService.updatePhoneNumber(elevenLabsPhoneId, assistant.elevenLabsAgentId);
-        console.log('✅ 11Labs phone update SUCCESS');
-      } catch (elevenLabsError) {
-        console.error('❌ 11Labs sync FAILED:', elevenLabsError.response?.data || elevenLabsError.message);
-        return res.status(500).json({
-          error: 'Failed to sync with 11Labs',
-          details: elevenLabsError.message
-        });
-      }
-    }
-
-    // Update in database
-    const updated = await prisma.phoneNumber.update({
-      where: { id: id },
-      data: { assistantId: assistantId }
-    });
-
-    res.json({
-      success: true,
-      phoneNumber: updated.phoneNumber,
-      assistantId: updated.assistantId,
-      assistantName: assistant.name
-    });
-
-  } catch (error) {
-    console.error('❌ Update assistant error:', error);
-    res.status(500).json({
-      error: 'Failed to update assistant',
-      details: error.message
-    });
-  }
+  return res.status(403).json(PHONE_ASSIGNMENT_DISABLED_V1_ERROR);
 });
 
 // ============================================================================
@@ -880,6 +724,51 @@ router.post('/:id/test-call', async (req, res) => {
       });
     }
 
+    const outboundAccess = await resolvePhoneOutboundAccessForBusinessId(businessId);
+
+    if (!outboundAccess.hasAccess) {
+      if (outboundAccess.reasonCode === 'NO_SUBSCRIPTION') {
+        return res.status(403).json({
+          error: 'NO_SUBSCRIPTION',
+          message: 'No active subscription found for outbound test calls.',
+          messageTR: 'Outbound test araması için aktif abonelik bulunamadı.'
+        });
+      }
+
+      if (outboundAccess.reasonCode === 'SUBSCRIPTION_INACTIVE') {
+        return res.status(403).json({
+          error: 'SUBSCRIPTION_INACTIVE',
+          status: outboundAccess.status,
+          message: 'Subscription is not active.',
+          messageTR: 'Abonelik aktif değil.'
+        });
+      }
+
+      const reasonCode = outboundAccess.reasonCode || 'OUTBOUND_DISABLED';
+
+      let message = 'Outbound test call is disabled for your current configuration.';
+      let messageTR = 'Outbound test araması mevcut yapılandırmada kapalı.';
+
+      if (reasonCode === 'PLAN_DISABLED') {
+        message = `Outbound test call is disabled for ${outboundAccess.plan}.`;
+        messageTR = `Outbound test araması ${outboundAccess.plan} planında kapalı.`;
+      } else if (reasonCode === 'V1_OUTBOUND_ONLY') {
+        message = 'Outbound is disabled while inbound is disabled in V1 mode.';
+        messageTR = 'V1 modunda inbound kapalıyken outbound da kapalıdır.';
+      } else if (reasonCode === 'BUSINESS_DISABLED') {
+        message = 'Outbound is disabled because inbound is disabled for this business.';
+        messageTR = 'Bu işletmede inbound kapalı olduğu için outbound da kapalıdır.';
+      }
+
+      return res.status(403).json({
+        error: 'OUTBOUND_TEST_CALL_NOT_ALLOWED',
+        reasonCode,
+        requiredPlan: outboundAccess.requiredPlan,
+        message,
+        messageTR
+      });
+    }
+
     // Get phone number
     const phoneNumber = await prisma.phoneNumber.findFirst({
       where: {
@@ -892,7 +781,7 @@ router.post('/:id/test-call', async (req, res) => {
       return res.status(404).json({ error: 'Phone number not found' });
     }
 
-    // Get assistant to find agent ID
+    // Resolve outbound assistant (V1: phone-level assignment is disabled)
     let assistant = null;
     if (phoneNumber.assistantId) {
       assistant = await prisma.assistant.findUnique({
@@ -900,11 +789,24 @@ router.post('/:id/test-call', async (req, res) => {
       });
     }
 
+    const assignedAssistantIsOutbound = assistant?.callDirection?.startsWith('outbound');
+    if (!assignedAssistantIsOutbound || !assistant?.elevenLabsAgentId) {
+      assistant = await prisma.assistant.findFirst({
+        where: {
+          businessId,
+          isActive: true,
+          callDirection: { startsWith: 'outbound' },
+          elevenLabsAgentId: { not: null }
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+    }
+
     // P0.2: Use safeCallInitiator for capacity management
     if (!phoneNumber.elevenLabsPhoneId || !assistant?.elevenLabsAgentId) {
       return res.status(400).json({
-        error: 'Phone number not connected to 11Labs',
-        hint: 'Make sure the number is assigned to an assistant'
+        error: 'Phone number or outbound assistant not connected to 11Labs',
+        hint: 'Aktif bir outbound assistant oluşturup tekrar deneyin'
       });
     }
 

@@ -18,6 +18,9 @@ import Stripe from 'stripe';
 import emailService from '../services/emailService.js';
 import iyzicoSubscription from '../services/iyzicoSubscription.js';
 import paymentProvider from '../services/paymentProvider.js';
+import { getEffectivePlanConfig } from '../services/planConfig.js';
+import { isPhoneInboundEnabledForBusinessRecord } from '../services/phoneInboundGate.js';
+import { buildPhoneEntitlements } from '../services/phonePlanEntitlements.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -843,16 +846,24 @@ router.get('/current', verifyBusinessAccess, async (req, res) => {
       include: {
         business: {
           select: {
-            phoneNumbers: true
+            phoneNumbers: true,
+            country: true,
+            phoneInboundEnabled: true
           }
         }
       }
     });
 
     if (!subscription) {
+      const entitlements = buildPhoneEntitlements({
+        plan: 'FREE',
+        inboundEnabled: false
+      });
+
       return res.json({
         plan: 'FREE',
         status: 'TRIAL',
+        entitlements,
         usage: {
           minutes: { used: 0, limit: 0 },
           calls: { used: 0, limit: 0 },
@@ -862,17 +873,41 @@ router.get('/current', verifyBusinessAccess, async (req, res) => {
       });
     }
 
+    const effectivePlanConfig = getEffectivePlanConfig(subscription);
+    const effectiveInboundEnabled = isPhoneInboundEnabledForBusinessRecord(subscription.business);
+    const entitlements = buildPhoneEntitlements({
+      plan: subscription.plan,
+      inboundEnabled: effectiveInboundEnabled
+    });
+    const effectiveMinutesLimit = effectivePlanConfig.includedMinutes ?? subscription.minutesLimit;
+    const effectiveAssistantsLimit = effectivePlanConfig.assistantsLimit ?? subscription.assistantsLimit;
+    const effectivePhoneNumbersLimit = effectivePlanConfig.phoneNumbersLimit ?? subscription.phoneNumbersLimit;
+    const effectiveConcurrentLimit = effectivePlanConfig.concurrentLimit ?? subscription.concurrentLimit;
+
     // Calculate usage percentages
     const response = {
       ...subscription,
+      entitlements,
+      limits: {
+        minutes: effectiveMinutesLimit,
+        assistants: effectiveAssistantsLimit,
+        phoneNumbers: effectivePhoneNumbersLimit,
+        concurrent: effectiveConcurrentLimit,
+        overageRate: effectivePlanConfig.overageRate ?? subscription.overageRate,
+        outbound: {
+          testCallEnabled: entitlements.outbound?.testCall?.enabled ?? false,
+          campaignsEnabled: entitlements.outbound?.campaigns?.enabled ?? false,
+          campaignsRequiredPlan: entitlements.outbound?.campaigns?.requiredPlan || null
+        }
+      },
       usage: {
         minutes: {
           used: subscription.minutesUsed,
-          limit: subscription.minutesLimit,
-          percentage: subscription.minutesLimit > 0
-            ? Math.round((subscription.minutesUsed / subscription.minutesLimit) * 100)
+          limit: effectiveMinutesLimit,
+          percentage: effectiveMinutesLimit > 0
+            ? Math.round((subscription.minutesUsed / effectiveMinutesLimit) * 100)
             : 0,
-          unlimited: subscription.minutesLimit === -1
+          unlimited: effectiveMinutesLimit === -1 || effectiveMinutesLimit === null
         },
         calls: {
           used: subscription.callsThisMonth,
@@ -884,11 +919,11 @@ router.get('/current', verifyBusinessAccess, async (req, res) => {
         },
         assistants: {
           used: subscription.assistantsCreated,
-          limit: subscription.assistantsLimit
+          limit: effectiveAssistantsLimit
         },
         phoneNumbers: {
           used: subscription.business.phoneNumbers?.length || 0,
-          limit: subscription.phoneNumbersLimit
+          limit: effectivePhoneNumbersLimit
         }
       }
     };

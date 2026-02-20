@@ -11,7 +11,7 @@ import Link from 'next/link';
  * LockedFeature Component
  * Wraps content and shows a lock overlay if the user's plan doesn't have access
  *
- * @param {string} feature - Feature name from planFeatures.js (e.g., 'outboundCalls', 'customCrm')
+ * @param {string} feature - Feature name from planFeatures.js (e.g., 'batchCalls', 'customCrm')
  * @param {string} userPlan - User's current subscription plan
  * @param {React.ReactNode} children - Content to display (will be dimmed if locked)
  * @param {string} customMessage - Optional custom message to show

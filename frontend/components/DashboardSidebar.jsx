@@ -135,7 +135,7 @@ const ADMIN_NAVIGATION_ITEMS = [
 export function DashboardSidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { theme } = useTheme();
+  const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [subscription, setSubscription] = useState(null);
@@ -239,7 +239,7 @@ export function DashboardSidebar() {
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="p-6 border-b border-gray-200 dark:border-neutral-700">
-            <TelyxLogoCompact darkMode={mounted && theme === 'dark'} />
+            <TelyxLogoCompact darkMode={mounted && resolvedTheme === 'dark'} />
             {!loading && (
               <Badge
                 variant={plan === 'FREE' ? 'secondary' : 'default'}

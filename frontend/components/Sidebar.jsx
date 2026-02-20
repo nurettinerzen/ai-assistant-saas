@@ -37,6 +37,7 @@ import {
   MessageCircle,
   History,
   AlertTriangle,
+  BookMarked,
 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -69,7 +70,7 @@ export default function Sidebar({ user, credits, business }) {
   const pathname = usePathname();
   const { t, locale } = useLanguage();
   const { can } = usePermissions();
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState([]);
@@ -121,6 +122,7 @@ export default function Sidebar({ user, credits, business }) {
     {
       label: t('dashboard.sidebar.product'),
       items: [
+        { icon: BookMarked, label: locale === 'tr' ? 'Rehber' : 'Guide', href: NAVIGATION_ITEMS.guides.href, permission: 'assistants:view' },
         { icon: Bot, label: t('dashboard.assistants'), href: NAVIGATION_ITEMS.assistants.href, permission: 'assistants:view' },
         { icon: BookOpen, label: t('dashboard.knowledgeBase'), href: NAVIGATION_ITEMS.knowledgeBase.href, permission: 'knowledge:view' },
         { icon: MessageSquare, label: t('dashboard.sidebar.chatWidget'), href: NAVIGATION_ITEMS.chatWidget.href, permission: 'assistants:view' },
@@ -204,7 +206,7 @@ export default function Sidebar({ user, credits, business }) {
       {/* Logo */}
       <div className="h-14 flex items-center px-4 border-b border-gray-200 dark:border-gray-800">
         <Link href="/dashboard/assistant" className="flex items-center">
-          <TelyxLogoCompact darkMode={mounted && theme === 'dark'} />
+          <TelyxLogoCompact darkMode={mounted && resolvedTheme === 'dark'} />
         </Link>
       </div>
 

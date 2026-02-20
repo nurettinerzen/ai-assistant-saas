@@ -16,14 +16,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Phone, Check, Loader2, ExternalLink, HelpCircle, Eye, EyeOff, Info, BookOpen } from 'lucide-react';
+import { Phone, Loader2, ExternalLink, Eye, EyeOff, Info, BookOpen } from 'lucide-react';
 import Link from 'next/link';
 import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
@@ -35,10 +28,8 @@ export default function PhoneNumberModal({ isOpen, onClose, onSuccess }) {
   const [loadingCountries, setLoadingCountries] = useState(true);
   const [countries, setCountries] = useState([]);
   const [sipProviders, setSipProviders] = useState([]);
-  const [assistants, setAssistants] = useState([]);
   const [selectedCountry, setSelectedCountry] = useState(null);
   const [selectedProvider, setSelectedProvider] = useState(null);
-  const [selectedAssistant, setSelectedAssistant] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
   // SIP Form State - TCP is required for ElevenLabs
@@ -54,7 +45,6 @@ export default function PhoneNumberModal({ isOpen, onClose, onSuccess }) {
   useEffect(() => {
     if (isOpen) {
       loadCountries();
-      loadAssistants();
     }
   }, [isOpen]);
 
@@ -100,34 +90,11 @@ export default function PhoneNumberModal({ isOpen, onClose, onSuccess }) {
     }
   };
 
-  const loadAssistants = async () => {
-    try {
-      const response = await apiClient.assistants.getAll();
-      const assistantList = response.data.assistants || [];
-      // Only show INBOUND assistants for phone number assignment (exclude outbound*)
-      const inboundAssistants = assistantList.filter(a => a.isActive && !a.callDirection?.startsWith('outbound'));
-      setAssistants(inboundAssistants);
-
-      if (inboundAssistants.length > 0) {
-        setSelectedAssistant(inboundAssistants[0].id);
-      }
-    } catch (error) {
-      console.error('Failed to load assistants:', error);
-    }
-  };
-
   const handleSipFormChange = (field, value) => {
     setSipForm(prev => ({
       ...prev,
       [field]: value
     }));
-  };
-
-  const handleProviderChange = (providerId) => {
-    const provider = (selectedCountry?.sipProviders || sipProviders).find(p => p.id === providerId);
-    if (provider) {
-      setSelectedProvider(provider);
-    }
   };
 
   const handleImportSip = async () => {
@@ -148,11 +115,6 @@ export default function PhoneNumberModal({ isOpen, onClose, onSuccess }) {
       toast.error(t('dashboard.phoneNumbersPage.modal.sipPasswordRequired'));
       return;
     }
-    if (!selectedAssistant && assistants.length > 0) {
-      toast.error(t('dashboard.phoneNumbersPage.modal.pleaseSelectAssistant'));
-      return;
-    }
-
     setLoading(true);
     try {
       const response = await apiClient.phoneNumbers.importSip({
@@ -162,8 +124,7 @@ export default function PhoneNumberModal({ isOpen, onClose, onSuccess }) {
         sipPassword: sipForm.sipPassword,
         sipPort: parseInt(sipForm.sipPort) || 5060,
         sipTransport: sipForm.sipTransport,
-        provider: selectedProvider?.id || 'other',
-        assistantId: selectedAssistant || undefined
+        provider: selectedProvider?.id || 'other'
       });
 
       toast.success(response.data.message || t('dashboard.phoneNumbersPage.modal.numberProvisioned'));
@@ -184,7 +145,6 @@ export default function PhoneNumberModal({ isOpen, onClose, onSuccess }) {
   const handleClose = () => {
     setSelectedCountry(null);
     setSelectedProvider(null);
-    setSelectedAssistant('');
     setSipForm({
       phoneNumber: '',
       sipServer: '',
@@ -196,9 +156,6 @@ export default function PhoneNumberModal({ isOpen, onClose, onSuccess }) {
     setShowPassword(false);
     onClose();
   };
-
-  // Get current providers list
-  const currentProviders = selectedCountry?.sipProviders || sipProviders;
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -325,36 +282,6 @@ export default function PhoneNumberModal({ isOpen, onClose, onSuccess }) {
             <input type="hidden" value={sipForm.sipServer} />
             <input type="hidden" value={sipForm.sipPort} />
             <input type="hidden" value={sipForm.sipTransport} />
-          </div>
-
-          {/* Assistant Selection - Only Inbound Assistants */}
-          <div>
-            <Label className="text-base mb-3 block">{t('dashboard.phoneNumbersPage.modal.assignToAssistant')}</Label>
-            {assistants.length > 0 ? (
-              <>
-                <Select value={selectedAssistant} onValueChange={setSelectedAssistant}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={t('dashboard.phoneNumbersPage.modal.selectAssistant')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {assistants.map((assistant) => (
-                      <SelectItem key={assistant.id} value={assistant.id}>
-                        {assistant.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-2">
-                  {t('dashboard.phoneNumbersPage.modal.assistantConnectionNote')}
-                </p>
-              </>
-            ) : (
-              <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
-                <p className="text-sm text-amber-800 dark:text-amber-200">
-                  Gelen arama asistanı bulunamadı. Lütfen önce "Gelen Arama" tipinde bir asistan oluşturun.
-                </p>
-              </div>
-            )}
           </div>
 
           {/* Submit Button */}

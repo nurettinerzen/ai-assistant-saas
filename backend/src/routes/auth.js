@@ -7,6 +7,7 @@ import { authenticateToken } from '../middleware/auth.js';
 import { sendVerificationEmail, sendEmailChangeVerification, sendPasswordResetEmail } from '../services/emailService.js';
 import { generateOAuthState, validateOAuthState } from '../middleware/oauthState.js';
 import { safeRedirect } from '../middleware/redirectWhitelist.js';
+import { isPhoneInboundEnabledForBusinessRecord } from '../services/phoneInboundGate.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -308,6 +309,10 @@ router.post('/login', async (req, res) => {
       { expiresIn: '7d' }
     );
 
+    if (user.business) {
+      user.business.phoneInboundEnabled = isPhoneInboundEnabledForBusinessRecord(user.business);
+    }
+
     // Remove password from response
     const { password: _, ...userWithoutPassword } = user;
 
@@ -352,6 +357,10 @@ router.get('/me', authenticateToken, async (req, res) => {
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (user.business) {
+      user.business.phoneInboundEnabled = isPhoneInboundEnabledForBusinessRecord(user.business);
     }
 
     res.json(user);

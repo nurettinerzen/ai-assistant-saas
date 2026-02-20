@@ -15,6 +15,8 @@ import { toast } from '@/lib/toast';
 import { formatDate } from '@/lib/utils';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePermissions } from '@/hooks/usePermissions';
+import PageIntro from '@/components/PageIntro';
+import { getPageHelp } from '@/content/pageHelp';
 import CreditBalance from '@/components/CreditBalance';
 import BuyCreditModal from '@/components/BuyCreditModal';
 import {
@@ -43,7 +45,7 @@ const BASE_PLANS = [
     id: 'PAYG',
     nameKey: 'dashboard.subscriptionPage.planNamePayg',
     descriptionKey: 'dashboard.subscriptionPage.planDescPayg',
-    includedFeatures: ['payPerMinute', 'concurrent', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'analytics', 'email'],
+    includedFeatures: ['payPerMinute', 'concurrent', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'analytics', 'email', 'batchCalls'],
     isPayg: true,
     paymentModel: 'PREPAID',
   },
@@ -51,7 +53,7 @@ const BASE_PLANS = [
     id: 'STARTER',
     nameKey: 'dashboard.subscriptionPage.planNameStarter',
     descriptionKey: 'dashboard.subscriptionPage.planDescStarter',
-    includedFeatures: ['minutes', 'concurrent', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'analytics', 'email'],
+    includedFeatures: ['minutes', 'concurrent', 'assistants', 'phoneNumbers', 'phone', 'whatsapp', 'chatWidget', 'analytics', 'email', 'batchCalls'],
     paymentModel: 'POSTPAID',
   },
   {
@@ -74,6 +76,7 @@ const BASE_PLANS = [
 export default function SubscriptionPage() {
   const { t, locale } = useLanguage();
   const { can, loading: permissionsLoading } = usePermissions();
+  const pageHelp = getPageHelp('subscription', locale);
 
   // React Query hooks
   const { data: subscription, isLoading: subscriptionLoading, refetch: refetchSubscription } = useSubscription();
@@ -283,6 +286,26 @@ export default function SubscriptionPage() {
   const usagePercent = subscription
     ? (subscription.creditsUsed / subscription.creditsLimit) * 100
     : 0;
+  const inboundEntitlements = subscription?.entitlements?.inbound;
+  const outboundEntitlements = subscription?.entitlements?.outbound;
+  const inboundEnabled = inboundEntitlements?.enabled ?? false;
+  const outboundEnabled = outboundEntitlements?.enabled ?? false;
+  const customerDataStatus = subscription?.entitlements?.customerData?.enabled ? 'Açık' : 'Kapalı';
+
+  const getEntitlementReasonLabel = (reasonCode) => {
+    if (!reasonCode) return null;
+
+    const reasonLabels = {
+      PLAN_DISABLED: 'Plan kapalı',
+      V1_OUTBOUND_ONLY: 'V1 outbound-only kısıtı',
+      BUSINESS_DISABLED: 'İşletme inbound toggle kapalı'
+    };
+
+    return reasonLabels[reasonCode] || reasonCode;
+  };
+
+  const inboundReasonLabel = getEntitlementReasonLabel(inboundEntitlements?.reason);
+  const outboundReasonLabel = getEntitlementReasonLabel(outboundEntitlements?.reason);
 
   // Show loading while permissions are being loaded
   if (permissionsLoading || loading) {
@@ -307,10 +330,12 @@ export default function SubscriptionPage() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-semibold text-neutral-900 dark:text-white">{t('dashboard.subscriptionPage.title')}</h1>
-        <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">{t('dashboard.subscriptionPage.description')}</p>
-      </div>
+      <PageIntro
+        title={pageHelp?.title || t('dashboard.subscriptionPage.title')}
+        subtitle={pageHelp?.subtitle}
+        locale={locale}
+        help={pageHelp ? { tooltipTitle: pageHelp.tooltipTitle, tooltipBody: pageHelp.tooltipBody, quickSteps: pageHelp.quickSteps } : undefined}
+      />
 
       {/* Current plan & usage */}
       {!loading && subscription && (
@@ -362,6 +387,19 @@ export default function SubscriptionPage() {
                 </span>
               </div>
               )}
+            </div>
+
+            <div className="mt-4 rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-xs text-orange-800 dark:border-orange-900/40 dark:bg-orange-950/20 dark:text-orange-200">
+              <div>
+                Inbound: {inboundEnabled ? 'Açık' : 'Kapalı'}
+                {!inboundEnabled && inboundReasonLabel ? ` (${inboundReasonLabel})` : ''}
+              </div>
+              <div>
+                Outbound (test-call + campaigns): {outboundEnabled ? 'Açık' : 'Kapalı'}
+                {!outboundEnabled && outboundReasonLabel ? ` (${outboundReasonLabel})` : ''}
+                {typeof subscription?.limits?.concurrent === 'number' && ` · Concurrent limit: ${subscription.limits.concurrent}`}
+              </div>
+              <div>Özel veriler: {customerDataStatus}</div>
             </div>
 
             {/* Cancel Subscription Button - Only show for paid plans */}

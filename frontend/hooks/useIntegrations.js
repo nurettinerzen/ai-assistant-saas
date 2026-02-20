@@ -111,21 +111,42 @@ export function useWebhookStatus() {
  * Hook to fetch CRM webhook status
  * @returns {object} Query result with { isActive, lastDataAt, hasWebhook }
  */
-export function useCrmWebhookStatus() {
+export function useCrmWebhookStatus({ enabled = true } = {}) {
   return useQuery({
-    queryKey: ['integrations', 'crm', 'status'],
+    queryKey: ['integrations', 'crm', 'status', enabled ? 'enabled' : 'disabled'],
+    enabled,
     queryFn: async () => {
       try {
-        const response = await apiClient.get('/api/crm/webhook');
+        const response = await apiClient.get('/api/crm/webhook', {
+          // FREE/TRIAL locked plans can return 403 here; UI handles that gracefully.
+          suppressExpected403: true,
+        });
         return {
           hasWebhook: true,
           isActive: response.data?.webhook?.isActive ?? false,
           lastDataAt: response.data?.webhook?.lastDataAt || null,
           stats: response.data?.stats || null,
+          isLockedByAccess: false,
         };
       } catch (err) {
-        // 404 or 403 means no webhook configured or no access
-        return { hasWebhook: false, isActive: false, lastDataAt: null, stats: null };
+        if (err?.response?.status === 403) {
+          return {
+            hasWebhook: false,
+            isActive: false,
+            lastDataAt: null,
+            stats: null,
+            isLockedByAccess: true,
+          };
+        }
+
+        // 404 means webhook is not configured yet.
+        return {
+          hasWebhook: false,
+          isActive: false,
+          lastDataAt: null,
+          stats: null,
+          isLockedByAccess: false,
+        };
       }
     },
     staleTime: 60000,

@@ -13,6 +13,7 @@
 // Plan enum values
 export const PLANS = {
   FREE: 'FREE',
+  TRIAL: 'TRIAL',
   PAYG: 'PAYG',             // Pay as you go - same level as STARTER
   STARTER: 'STARTER',
   BASIC: 'BASIC',
@@ -23,6 +24,7 @@ export const PLANS = {
 // Plan hierarchy for comparison
 export const PLAN_HIERARCHY = {
   [PLANS.FREE]: 0,
+  [PLANS.TRIAL]: 1,
   [PLANS.PAYG]: 1,          // PAYG = STARTER level
   [PLANS.STARTER]: 1,
   [PLANS.BASIC]: 2,
@@ -68,7 +70,7 @@ export const COUNTRY_TO_REGION = {
  * |----------------|---------|---------|-------|-----|------------|
  * | E-posta        | hidden  | hidden  | locked| ✓   | ✓          |
  * | Entegrasyonlar | hidden  | hidden  | ✓     | ✓   | ✓          |
- * | Toplu Arama    | locked  | locked  | locked| ✓   | ✓          |
+ * | Toplu Arama    | locked  | ✓       | ✓     | ✓   | ✓          |
  */
 export const FEATURES = {
   // Sidebar features
@@ -108,11 +110,13 @@ export const FEATURES = {
     id: 'batch_calls',
     name: 'Toplu Arama',
     nameEN: 'Batch Calls',
-    requiredPlan: PLANS.PRO,
+    requiredPlan: PLANS.TRIAL,
     visibility: {
       [PLANS.FREE]: VISIBILITY.LOCKED,
-      [PLANS.STARTER]: VISIBILITY.LOCKED,
-      [PLANS.BASIC]: VISIBILITY.LOCKED,
+      [PLANS.TRIAL]: VISIBILITY.VISIBLE,
+      [PLANS.PAYG]: VISIBILITY.VISIBLE,
+      [PLANS.STARTER]: VISIBILITY.VISIBLE,
+      [PLANS.BASIC]: VISIBILITY.VISIBLE,
       [PLANS.PRO]: VISIBILITY.VISIBLE,
       [PLANS.ENTERPRISE]: VISIBILITY.VISIBLE
     },
@@ -412,8 +416,8 @@ export function getFeatureVisibility(featureId, userPlan, countryCode = null) {
 
   // If visibility not found for this plan, use fallback logic
   if (!visibility) {
-    if (normalizedPlan === 'PAYG') {
-      // PAYG should behave like STARTER for feature access
+    if (normalizedPlan === 'PAYG' || normalizedPlan === 'TRIAL') {
+      // PAYG/TRIAL should behave like STARTER for feature access
       visibility = feature.visibility?.[PLANS.STARTER] || feature.visibility?.[PLANS.FREE] || VISIBILITY.LOCKED;
     } else {
       // For unknown plans, default to LOCKED (safer than VISIBLE)

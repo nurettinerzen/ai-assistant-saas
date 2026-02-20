@@ -12,6 +12,8 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { useLanguage } from '@/contexts/LanguageContext';
+import PageIntro from '@/components/PageIntro';
+import { getPageHelp } from '@/content/pageHelp';
 import {
   Select,
   SelectContent,
@@ -29,6 +31,7 @@ import { useSubscription } from '@/hooks/useSubscription';
 
 export default function ChatWidgetPage() {
   const { t, locale } = useLanguage();
+  const pageHelp = getPageHelp('chatWidget', locale);
 
   // React Query hooks
   const { data: widgetSettings, isLoading: widgetLoading } = useChatWidgetSettings();
@@ -83,8 +86,8 @@ export default function ChatWidgetPage() {
       if (savedSettings.assistantId && assistants.find(a => a.id === savedSettings.assistantId)) {
         setAssistantId(savedSettings.assistantId);
       } else {
-        const inboundAssistant = assistants.find(a => !a.callDirection?.startsWith('outbound'));
-        setAssistantId(inboundAssistant?.id || assistants[0].id);
+        const outboundAssistant = assistants.find(a => a.callDirection?.startsWith('outbound'));
+        setAssistantId(outboundAssistant?.id || assistants[0].id);
       }
     }
   }, [assistants]);
@@ -385,14 +388,12 @@ export default function ChatWidgetPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-semibold text-neutral-900 dark:text-white">
-          {t('dashboard.chatWidgetPage.title')}
-        </h1>
-        <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
-          {t('dashboard.chatWidgetPage.pageDescription')}
-        </p>
-      </div>
+      <PageIntro
+        title={pageHelp?.title || t('dashboard.chatWidgetPage.title')}
+        subtitle={pageHelp?.subtitle}
+        locale={locale}
+        help={pageHelp ? { tooltipTitle: pageHelp.tooltipTitle, tooltipBody: pageHelp.tooltipBody, quickSteps: pageHelp.quickSteps } : undefined}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Configuration */}

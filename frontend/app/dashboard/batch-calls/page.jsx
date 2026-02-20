@@ -45,6 +45,8 @@ import { formatDate } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePermissions } from '@/hooks/usePermissions';
+import PageIntro from '@/components/PageIntro';
+import { getPageHelp } from '@/content/pageHelp';
 import Link from 'next/link';
 import { useBatchCalls, useBatchCallsAccess } from '@/hooks/useBatchCalls';
 import { useAssistants } from '@/hooks/useAssistants';
@@ -106,6 +108,7 @@ const TEMPLATE_VARIABLE_KEYS = {
 export default function BatchCallsPage() {
   const { t, locale } = useLanguage();
   const { can } = usePermissions();
+  const pageHelp = getPageHelp('campaigns', locale);
 
   // React Query hooks
   const { data: batchCalls = [], isLoading: batchCallsLoading, refetch: refetchBatchCalls } = useBatchCalls();
@@ -115,6 +118,17 @@ export default function BatchCallsPage() {
 
   const loading = batchCallsLoading || accessLoading || assistantsLoading || phoneNumbersLoading;
   const hasAccess = accessData?.hasAccess ?? true;
+  const lockReasonCode = accessData?.reasonCode || null;
+  const lockDescription = (locale === 'tr'
+    ? accessData?.messageTR
+    : accessData?.message) || t('dashboard.batchCallsPage.upgradePlanDesc');
+  const upgradeEligibleLock = lockReasonCode === 'PLAN_UPGRADE_REQUIRED'
+    || lockReasonCode === 'PLAN_DISABLED'
+    || lockReasonCode === 'NO_SUBSCRIPTION';
+  const lockTitle = upgradeEligibleLock
+    ? t('dashboard.batchCallsPage.upgradePlan')
+    : (locale === 'tr' ? 'Kampanya erişimi kilitli' : 'Campaign access is locked');
+  const showUpgradeButton = upgradeEligibleLock;
   const assistants = (assistantsData?.data?.assistants || []).filter(
     a => a.callDirection?.startsWith('outbound')
   );
@@ -389,7 +403,7 @@ export default function BatchCallsPage() {
     return TEMPLATE_VARIABLE_KEYS[formData.callPurpose] || {};
   };
 
-  // Render upgrade message for non-PRO users
+  // Render lock screen when outbound campaigns are not available
   if (!hasAccess && !loading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
@@ -398,17 +412,19 @@ export default function BatchCallsPage() {
             <ArrowUpCircle className="h-10 w-10 text-primary-600 dark:text-primary-400" />
           </div>
           <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-3">
-            {t('dashboard.batchCallsPage.upgradePlan')}
+            {lockTitle}
           </h2>
           <p className="text-neutral-600 dark:text-neutral-400 mb-6">
-            {t('dashboard.batchCallsPage.upgradePlanDesc')}
+            {lockDescription}
           </p>
-          <Link href="/dashboard/subscription">
-            <Button size="lg">
-              <ArrowUpCircle className="h-4 w-4 mr-2" />
-              {t('dashboard.batchCallsPage.upgradePlanBtn')}
-            </Button>
-          </Link>
+          {showUpgradeButton && (
+            <Link href="/dashboard/subscription">
+              <Button size="lg">
+                <ArrowUpCircle className="h-4 w-4 mr-2" />
+                {t('dashboard.batchCallsPage.upgradePlanBtn')}
+              </Button>
+            </Link>
+          )}
         </div>
       </div>
     );
@@ -417,22 +433,18 @@ export default function BatchCallsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-neutral-900 dark:text-white">
-            {t('dashboard.batchCallsPage.title')}
-          </h1>
-          <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
-            {t('dashboard.batchCallsPage.description')}
-          </p>
-        </div>
-        {can('campaigns:view') && (
+      <PageIntro
+        title={pageHelp?.title || t('dashboard.batchCallsPage.title')}
+        subtitle={pageHelp?.subtitle}
+        locale={locale}
+        help={pageHelp ? { tooltipTitle: pageHelp.tooltipTitle, tooltipBody: pageHelp.tooltipBody, quickSteps: pageHelp.quickSteps } : undefined}
+        actions={can('campaigns:view') && (
           <Button onClick={() => setShowCreateModal(true)}>
             <Plus className="h-4 w-4 mr-2" />
             {t('dashboard.batchCallsPage.createNewCall')}
           </Button>
         )}
-      </div>
+      />
 
       {/* Filters */}
       <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-4">

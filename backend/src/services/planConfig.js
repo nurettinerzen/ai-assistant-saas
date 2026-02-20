@@ -67,7 +67,7 @@ export function getEffectivePlanConfig(subscription) {
       chat: plan !== 'FREE',
       email: ['PRO', 'ENTERPRISE'].includes(plan),
       integrations: ['PRO', 'ENTERPRISE'].includes(plan),
-      batchCalls: ['PRO', 'ENTERPRISE'].includes(plan),
+      batchCalls: plan !== 'FREE',
       analytics: plan !== 'FREE',
       apiAccess: plan === 'ENTERPRISE'
     },

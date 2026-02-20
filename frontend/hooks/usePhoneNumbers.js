@@ -49,20 +49,3 @@ export function useReleasePhoneNumber() {
     },
   });
 }
-
-/**
- * Hook to assign phone number to assistant
- * @returns {object} Mutation object
- */
-export function useAssignPhoneNumber() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ phoneNumberId, assistantId }) => {
-      return await apiClient.phoneNumbers.assign(phoneNumberId, assistantId);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['phoneNumbers'] });
-    },
-  });
-}

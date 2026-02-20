@@ -1,6 +1,7 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticateToken, verifyBusinessAccess, requireRole } from '../middleware/auth.js';
+import { isPhoneInboundEnabledForBusinessRecord } from '../services/phoneInboundGate.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -107,6 +108,8 @@ router.get('/:businessId', authenticateToken, verifyBusinessAccess, async (req, 
     if (!business) {
       return res.status(404).json({ error: 'Business not found' });
     }
+
+    business.phoneInboundEnabled = isPhoneInboundEnabledForBusinessRecord(business);
 
     res.json(business);
   } catch (error) {

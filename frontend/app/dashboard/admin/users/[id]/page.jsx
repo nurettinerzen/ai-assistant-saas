@@ -31,6 +31,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import {
   Dialog,
   DialogContent,
@@ -48,6 +49,8 @@ import {
 } from '@/components/ui/select';
 import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
+import InfoTooltip from '@/components/InfoTooltip';
+import { getPageHelp } from '@/content/pageHelp';
 import { PLAN_COLORS } from '@/lib/planConfig';
 
 const ADMIN_EMAILS = ['nurettin@telyx.ai', 'admin@telyx.ai'];
@@ -56,6 +59,7 @@ export default function AdminUserDetailPage() {
   const router = useRouter();
   const params = useParams();
   const userId = params.id;
+  const adminPageHelp = getPageHelp('adminUserDetail', 'tr');
 
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -74,6 +78,7 @@ export default function AdminUserDetailPage() {
     enterpriseMinutes: null,
     enterprisePrice: null,
     enterpriseNotes: '',
+    phoneInboundEnabled: false,
   });
   const [suspendReason, setSuspendReason] = useState('');
 
@@ -115,6 +120,7 @@ export default function AdminUserDetailPage() {
         enterpriseMinutes: response.data.business?.subscription?.enterpriseMinutes || null,
         enterprisePrice: response.data.business?.subscription?.enterprisePrice || null,
         enterpriseNotes: response.data.business?.subscription?.enterpriseNotes || '',
+        phoneInboundEnabled: response.data.business?.phoneInboundEnabled || false,
       });
     } catch (error) {
       console.error('Failed to load user:', error);
@@ -232,7 +238,15 @@ export default function AdminUserDetailPage() {
             <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
               {user.name || user.email}
             </h1>
-            <p className="text-sm text-gray-500">{user.email}</p>
+            <div className="flex items-center gap-2 mt-1">
+              <p className="text-sm text-gray-500">{user.email}</p>
+              <InfoTooltip
+                locale="tr"
+                title={adminPageHelp?.tooltipTitle}
+                body={adminPageHelp?.tooltipBody}
+                quickSteps={adminPageHelp?.quickSteps}
+              />
+            </div>
           </div>
           {user.suspended && (
             <Badge variant="destructive">Dondurulmuş</Badge>
@@ -325,6 +339,12 @@ export default function AdminUserDetailPage() {
             <div className="flex justify-between">
               <span className="text-gray-500">Dil</span>
               <span className="text-gray-900 dark:text-white">{user.business?.language || '-'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500">Phone Inbound</span>
+              <Badge variant="outline">
+                V1 Outbound-only (Kilitli)
+              </Badge>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Kayıt Tarihi</span>
@@ -496,6 +516,19 @@ export default function AdminUserDetailPage() {
                   onChange={(e) => setEditForm({ ...editForm, balance: parseFloat(e.target.value) || 0 })}
                 />
               </div>
+            </div>
+            <div className="flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-800 p-3">
+              <div>
+                <Label className="text-sm">Phone Inbound (V2)</Label>
+                <p className="text-xs text-gray-500 mt-1">
+                  Global V1 outbound-only modunda kilitli. V2 için backend toggle açılmalıdır.
+                </p>
+              </div>
+              <Switch
+                checked={Boolean(editForm.phoneInboundEnabled)}
+                onCheckedChange={(checked) => setEditForm({ ...editForm, phoneInboundEnabled: checked })}
+                disabled
+              />
             </div>
             {editForm.plan === 'ENTERPRISE' && (
               <>

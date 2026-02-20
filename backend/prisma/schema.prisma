@@ -89,6 +89,8 @@ model Business {
   name                     String
   chatEmbedKey             String?                 @unique // Unique key for chat widget embedding
   chatWidgetEnabled        Boolean                 @default(false) // Is chat widget active for this business
+  phoneInboundEnabled      Boolean                 @default(false) // Admin toggle: false=V1 outbound-only, true=FULL V2 inbound
+  onboardingCompletedAt    DateTime?               // Business-level onboarding completion timestamp
   language                 String                  @default("TR") // Uygulama dili (TR, EN, PR, DE, ES, FR...)
   country                  String                  @default("TR") // Bölge kodu (TR, BR, US, DE...)
   currency                 String                  @default("TRY") // Para birimi (TRY, BRL, USD, EUR...)
@@ -188,7 +190,7 @@ model Assistant {
   firstMessage      String? // Custom first message
   tone              String            @default("professional") // "friendly" or "professional"
   customNotes       String?           @db.Text // Business-specific notes
-  callDirection     String            @default("inbound") // "inbound" or "outbound"
+  callDirection     String            @default("outbound") // "inbound" or "outbound"
   callPurpose       String? // For outbound: "collection", "reminder", "survey", "info", "custom"
   dynamicVariables  String[]          @default([]) // Dynamic variable names for outbound calls
   createdAt         DateTime          @default(now())

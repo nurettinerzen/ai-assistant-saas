@@ -375,7 +375,7 @@ export const PLAN_FEATURES = {
     prioritySupport: false,
     analytics: true,
     apiAccess: false,
-    batchCalls: false,
+    batchCalls: true,
     googleSheets: false,
     customCrm: false
   },
@@ -389,7 +389,7 @@ export const PLAN_FEATURES = {
     prioritySupport: false,
     analytics: true,
     apiAccess: false,
-    batchCalls: false,
+    batchCalls: true,
     googleSheets: false,
     customCrm: false
   },

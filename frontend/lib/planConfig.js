@@ -47,8 +47,6 @@ export const LEGACY_PLAN_MAP = {
 // Plan features configuration
 export const PLAN_FEATURES = {
   FREE: {
-    inboundCalls: true,
-    outboundCalls: false,
     whatsapp: true,
     chatWidget: true,
     email: true,
@@ -62,8 +60,7 @@ export const PLAN_FEATURES = {
     trialDays: 7,
   },
   TRIAL: {
-    inboundCalls: true,
-    outboundCalls: false,
+    batchCalls: true,
     whatsapp: true,
     chatWidget: true,
     email: true,
@@ -77,8 +74,6 @@ export const PLAN_FEATURES = {
     trialDays: 7,
   },
   PAYG: {
-    inboundCalls: true,
-    outboundCalls: true,
     whatsapp: true,
     chatWidget: true,
     email: true,
@@ -86,7 +81,7 @@ export const PLAN_FEATURES = {
     googleSheets: true,
     ecommerce: true,
     customCrm: false, // Can connect, usage PRO+
-    batchCalls: false,
+    batchCalls: true,
     apiAccess: false,
     maxMinutes: null,  // Balance-based
     maxAssistants: 5,
@@ -96,8 +91,6 @@ export const PLAN_FEATURES = {
     monthlyTokens: 1000000,
   },
   STARTER: {
-    inboundCalls: true,
-    outboundCalls: true,
     whatsapp: true,
     chatWidget: true,
     email: true,
@@ -105,7 +98,7 @@ export const PLAN_FEATURES = {
     googleSheets: true,
     ecommerce: true,
     customCrm: false, // Can connect, usage PRO+
-    batchCalls: false,
+    batchCalls: true,
     apiAccess: false,
     maxMinutes: 150,
     maxAssistants: 5,
@@ -115,8 +108,6 @@ export const PLAN_FEATURES = {
     monthlyTokens: 2000000,
   },
   PRO: {
-    inboundCalls: true,
-    outboundCalls: true,
     whatsapp: true,
     chatWidget: true,
     email: true,
@@ -135,8 +126,6 @@ export const PLAN_FEATURES = {
     monthlyTokens: 5000000,
   },
   ENTERPRISE: {
-    inboundCalls: true,
-    outboundCalls: true,
     whatsapp: true,
     chatWidget: true,
     email: true,

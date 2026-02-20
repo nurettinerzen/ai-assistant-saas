@@ -1,6 +1,6 @@
 /**
  * Assistants Page
- * Manage AI assistants with inbound/outbound type selection
+ * Manage AI assistants (outbound-only create flow)
  */
 
 'use client';
@@ -35,12 +35,13 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import EmptyState from '@/components/EmptyState';
-import TemplateSelector from '@/components/TemplateSelector';
-import { Bot, Plus, Edit, Trash2, Search, Phone, PhoneOutgoing, PhoneIncoming, Loader2, RefreshCw } from 'lucide-react';
+import { Bot, Plus, Edit, Trash2, Search, PhoneOutgoing, PhoneIncoming, Loader2, RefreshCw } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePermissions } from '@/hooks/usePermissions';
+import PageIntro from '@/components/PageIntro';
+import { getPageHelp } from '@/content/pageHelp';
 
 // Language code to accent name mapping
 const LANGUAGE_TO_ACCENT = {
@@ -80,15 +81,6 @@ const CALL_PURPOSES = {
 
 // Default first messages - simple and dynamic based on assistant name
 const DEFAULT_FIRST_MESSAGES = {
-  // Inbound: "Merhaba! Ben (asistan adı). Size nasıl yardımcı olabilirim?"
-  inbound: {
-    tr: (businessName, assistantName) => assistantName
-      ? `Merhaba! Ben ${assistantName}. Size nasıl yardımcı olabilirim?`
-      : `Merhaba! Size nasıl yardımcı olabilirim?`,
-    en: (businessName, assistantName) => assistantName
-      ? `Hello! I'm ${assistantName}. How can I help you?`
-      : `Hello! How can I help you?`
-  },
   // Outbound: "Merhaba! Ben (asistan adı). (şirket adı) adına arıyorum."
   outbound: {
     tr: (businessName, assistantName) => {
@@ -129,7 +121,9 @@ const DEFAULT_SYSTEM_PROMPTS = {
 export default function AssistantsPage() {
   const { t, locale } = useLanguage();
   const { can } = usePermissions();
+  const pageHelp = getPageHelp('assistants', locale);
   const [searchQuery, setSearchQuery] = useState('');
+  const isOutboundDirection = (direction) => typeof direction === 'string' && direction.startsWith('outbound');
 
   // Get user from localStorage
   const user = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || '{}') : {};
@@ -160,14 +154,10 @@ export default function AssistantsPage() {
   // Business info
   const businessLanguage = businessData?.data?.language?.toLowerCase() || locale || 'tr';
   const businessName = businessData?.data?.name || '';
-  const businessType = businessData?.data?.businessType || 'OTHER';
 
   // Modal states
-  const [showTypeSelector, setShowTypeSelector] = useState(false);
-  const [showTemplateSelector, setShowTemplateSelector] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingAssistant, setEditingAssistant] = useState(null);
-  const [selectedCallDirection, setSelectedCallDirection] = useState('inbound');
 
   const [formData, setFormData] = useState({
     name: '',
@@ -177,8 +167,8 @@ export default function AssistantsPage() {
     language: businessLanguage || locale || 'tr',
     tone: 'formal',
     customNotes: '',
-    callDirection: 'inbound',
-    callPurpose: '',
+    callDirection: 'outbound',
+    callPurpose: 'collection',
   });
   const [creating, setCreating] = useState(false);
   const [updating, setUpdating] = useState(false);
@@ -188,7 +178,7 @@ export default function AssistantsPage() {
   useEffect(() => {
     if (editingAssistant) return; // Don't update when editing existing assistant
 
-    if (formData.callDirection === 'outbound') {
+    if (isOutboundDirection(formData.callDirection)) {
       // Outbound: "Merhaba! Ben (asistan adı). (şirket adı) adına arıyorum."
       const lang = businessLanguage === 'tr' ? 'tr' : 'en';
       const outboundGreeting = DEFAULT_FIRST_MESSAGES.outbound?.[lang]?.(businessName, formData.name) || '';
@@ -196,20 +186,30 @@ export default function AssistantsPage() {
         ...prev,
         firstMessage: outboundGreeting,
       }));
-    } else if (formData.callDirection === 'inbound') {
-      // Inbound: "Merhaba! Ben (asistan adı). Size nasıl yardımcı olabilirim?"
-      const lang = businessLanguage === 'tr' ? 'tr' : 'en';
-      const inboundGreeting = DEFAULT_FIRST_MESSAGES.inbound?.[lang]?.(businessName, formData.name) || '';
-      setFormData(prev => ({
-        ...prev,
-        firstMessage: inboundGreeting,
-      }));
     }
   }, [formData.name, formData.callDirection, editingAssistant, businessName, businessLanguage]);
 
-  // Handle "Yeni Asistan" button click - show type selector first
+  // Handle "Yeni Asistan" button click - open outbound create flow directly
   const handleNewAssistant = () => {
-    setShowTypeSelector(true);
+    const defaultPurpose = 'collection';
+    const preferredVoiceId = typeof window !== 'undefined'
+      ? localStorage.getItem('onboarding_preferred_outbound_voice_id')
+      : null;
+    const preferredVoiceExists = preferredVoiceId && voices.some((voice) => voice.id === preferredVoiceId);
+    const defaultVoiceId = preferredVoiceExists ? preferredVoiceId : '';
+
+    setFormData({
+      name: '',
+      voiceId: defaultVoiceId,
+      systemPrompt: getDefaultSystemPrompt(defaultPurpose),
+      firstMessage: getDefaultFirstMessage('outbound', ''),
+      language: businessLanguage || 'tr',
+      tone: 'formal',
+      customNotes: '',
+      callDirection: 'outbound',
+      callPurpose: defaultPurpose,
+    });
+    setShowCreateModal(true);
   };
 
   // Get available call purposes (simplified - same for all business types)
@@ -222,8 +222,7 @@ export default function AssistantsPage() {
   // Get default first message based on call direction
   const getDefaultFirstMessage = (direction, assistantName) => {
     const lang = businessLanguage === 'tr' ? 'tr' : 'en';
-    const type = direction === 'outbound' ? 'outbound' : 'inbound';
-    const messageFn = DEFAULT_FIRST_MESSAGES[type]?.[lang];
+    const messageFn = DEFAULT_FIRST_MESSAGES.outbound?.[lang];
     return messageFn ? messageFn(businessName, assistantName) : '';
   };
 
@@ -231,32 +230,6 @@ export default function AssistantsPage() {
   const getDefaultSystemPrompt = (purpose) => {
     const lang = businessLanguage === 'tr' ? 'tr' : 'en';
     return DEFAULT_SYSTEM_PROMPTS[purpose]?.[lang] || '';
-  };
-
-  // Handle type selection
-  const handleTypeSelect = (direction) => {
-    setSelectedCallDirection(direction);
-    setShowTypeSelector(false);
-
-    if (direction === 'inbound') {
-      // For inbound, show template selector
-      setShowTemplateSelector(true);
-    } else {
-      // For outbound, go directly to create modal with outbound settings
-      const defaultPurpose = 'collection';
-      setFormData({
-        name: '',
-        voiceId: '',
-        systemPrompt: getDefaultSystemPrompt(defaultPurpose),
-        firstMessage: getDefaultFirstMessage('outbound', ''),
-        language: businessLanguage || 'tr',
-        tone: 'formal',
-        customNotes: '',
-        callDirection: 'outbound',
-        callPurpose: defaultPurpose,
-      });
-      setShowCreateModal(true);
-    }
   };
 
   // Handle call purpose change - update prompts automatically
@@ -269,39 +242,6 @@ export default function AssistantsPage() {
     }));
   };
 
-  const handleTemplateSelect = (template) => {
-    // Get default inbound greeting
-    const lang = businessLanguage === 'tr' ? 'tr' : 'en';
-    const inboundGreeting = DEFAULT_FIRST_MESSAGES.inbound?.[lang]?.(businessName, template?.name || '') || '';
-
-    if (template) {
-      setFormData({
-        name: template.name,
-        voiceId: '',
-        systemPrompt: template.prompt,
-        firstMessage: inboundGreeting,
-        language: template.language || businessLanguage || 'tr',
-        tone: 'formal',
-        customNotes: '',
-        callDirection: 'inbound',
-        callPurpose: '',
-      });
-    } else {
-      setFormData({
-        name: '',
-        voiceId: '',
-        systemPrompt: '',
-        firstMessage: inboundGreeting,
-        language: businessLanguage || 'tr',
-        tone: 'formal',
-        customNotes: '',
-        callDirection: 'inbound',
-        callPurpose: '',
-      });
-    }
-    setShowCreateModal(true);
-  };
-
   const handleCreate = async () => {
     if (!formData.name || !formData.voiceId) {
       toast.error(t('dashboard.assistantsPage.fillAllRequired'));
@@ -309,7 +249,7 @@ export default function AssistantsPage() {
     }
 
     // For outbound, firstMessage is auto-generated so just check if it exists
-    if (formData.callDirection === 'outbound' && !formData.firstMessage) {
+    if (isOutboundDirection(formData.callDirection) && !formData.firstMessage) {
       toast.error(t('dashboard.assistantsPage.enterAssistantName'));
       return;
     }
@@ -328,22 +268,25 @@ export default function AssistantsPage() {
   };
 
   const handleEdit = (assistant) => {
+    const isOutbound = assistant.callDirection?.startsWith('outbound');
+    if (!isOutbound) {
+      toast.error('V1 modunda inbound asistanlar düzenlenemez. Yeni outbound asistan oluşturun.');
+      return;
+    }
+
     setEditingAssistant(assistant);
     const voice = voices.find(v => v.id === assistant.voiceId);
     const inferredLang = voice?.language || businessLanguage || 'en';
 
     // For outbound assistants, show a simple default prompt based on callPurpose
     // instead of the full generated system prompt (which is too technical for customers)
-    // For inbound, also show empty since full prompt is generated in backend
-    // Check for all outbound variants: 'outbound', 'outbound_sales', 'outbound_collection'
-    const isOutbound = assistant.callDirection?.startsWith('outbound');
     let displayPrompt = '';
 
     if (isOutbound && assistant.callPurpose) {
       // Show simple default prompt for editing
       displayPrompt = DEFAULT_SYSTEM_PROMPTS[assistant.callPurpose]?.[inferredLang] || '';
     }
-    // For both outbound without callPurpose and inbound, displayPrompt stays empty
+    // For outbound without callPurpose, displayPrompt stays empty
     // The full system prompt is generated in backend and should not be shown to customers
 
     setFormData({
@@ -354,8 +297,8 @@ export default function AssistantsPage() {
       language: assistant.language || inferredLang,
       tone: assistant.tone || 'formal',
       customNotes: assistant.customNotes || '',
-      callDirection: assistant.callDirection || 'inbound',
-      callPurpose: assistant.callPurpose || '',
+      callDirection: 'outbound',
+      callPurpose: assistant.callPurpose || 'collection',
     });
     setShowCreateModal(true);
   };
@@ -409,11 +352,10 @@ export default function AssistantsPage() {
       language: businessLanguage || 'tr',
       tone: 'formal',
       customNotes: '',
-      callDirection: 'inbound',
-      callPurpose: '',
+      callDirection: 'outbound',
+      callPurpose: 'collection',
     });
     setEditingAssistant(null);
-    setSelectedCallDirection('inbound');
   };
 
   const filteredVoices = voices.filter(voice => {
@@ -428,22 +370,18 @@ export default function AssistantsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-neutral-900 dark:text-white">
-            {t('dashboard.assistantsPage.title')}
-          </h1>
-          <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
-            {t('dashboard.assistantsPage.description')}
-          </p>
-        </div>
-        {can('assistants:create') && (
+      <PageIntro
+        title={pageHelp?.title || t('dashboard.assistantsPage.title')}
+        subtitle={pageHelp?.subtitle}
+        locale={locale}
+        help={pageHelp ? { tooltipTitle: pageHelp.tooltipTitle, tooltipBody: pageHelp.tooltipBody, quickSteps: pageHelp.quickSteps } : undefined}
+        actions={can('assistants:create') && (
           <Button onClick={handleNewAssistant}>
             <Plus className="h-4 w-4 mr-2" />
             {t('dashboard.assistantsPage.create')}
           </Button>
         )}
-      </div>
+      />
 
       {/* Search */}
       {assistants.length > 0 && (
@@ -511,7 +449,7 @@ export default function AssistantsPage() {
                       <span className="text-sm text-neutral-600 dark:text-neutral-400">
                         {isOutbound
                           ? t('dashboard.assistantsPage.outbound')
-                          : t('dashboard.assistantsPage.inbound')
+                          : 'Inbound (V1 kilitli)'
                         }
                       </span>
                     </td>
@@ -540,6 +478,7 @@ export default function AssistantsPage() {
                             variant="ghost"
                             size="sm"
                             onClick={() => handleEdit(assistant)}
+                            disabled={!isOutbound}
                             className="h-8 px-2"
                           >
                             <Edit className="h-3.5 w-3.5" />
@@ -550,7 +489,7 @@ export default function AssistantsPage() {
                             variant="ghost"
                             size="sm"
                             onClick={() => handleSync(assistant)}
-                            disabled={syncing === assistant.id}
+                            disabled={syncing === assistant.id || !isOutbound}
                             title={t('dashboard.assistantsPage.syncWith11Labs')}
                             className="h-8 px-2"
                           >
@@ -585,58 +524,6 @@ export default function AssistantsPage() {
         />
       )}
 
-      {/* Type Selector Modal */}
-      <Dialog open={showTypeSelector} onOpenChange={setShowTypeSelector}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>
-              {t('dashboard.assistantsPage.typeSelectorTitle')}
-            </DialogTitle>
-            <DialogDescription>
-              {t('dashboard.assistantsPage.typeSelectorDesc')}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="grid grid-cols-2 gap-4 py-4">
-            {/* Inbound Option */}
-            <button
-              onClick={() => handleTypeSelect('inbound')}
-              className="flex flex-col items-center p-6 border-2 border-neutral-200 dark:border-neutral-700 rounded-xl hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all group"
-            >
-              <PhoneIncoming className="h-8 w-8 text-neutral-600 dark:text-neutral-400 mb-4" />
-              <h3 className="font-semibold text-neutral-900 dark:text-white mb-1">
-                {t('dashboard.assistantsPage.inboundCall')}
-              </h3>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 text-center">
-                {t('dashboard.assistantsPage.inboundCallDesc')}
-              </p>
-            </button>
-
-            {/* Outbound Option */}
-            <button
-              onClick={() => handleTypeSelect('outbound')}
-              className="flex flex-col items-center p-6 border-2 border-neutral-200 dark:border-neutral-700 rounded-xl hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all group"
-            >
-              <PhoneOutgoing className="h-8 w-8 text-neutral-600 dark:text-neutral-400 mb-4" />
-              <h3 className="font-semibold text-neutral-900 dark:text-white mb-1">
-                {t('dashboard.assistantsPage.outboundCall')}
-              </h3>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 text-center">
-                {t('dashboard.assistantsPage.outboundCallDesc')}
-              </p>
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Template selector modal (for inbound) */}
-      <TemplateSelector
-        isOpen={showTemplateSelector}
-        onClose={() => setShowTemplateSelector(false)}
-        onSelectTemplate={handleTemplateSelect}
-        selectedLanguage={businessLanguage}
-      />
-
       {/* Create/Edit modal */}
       <Dialog
         open={showCreateModal}
@@ -648,20 +535,13 @@ export default function AssistantsPage() {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              {formData.callDirection === 'outbound' ? (
-                <PhoneOutgoing className="h-5 w-5 text-orange-600" />
-              ) : (
-                <PhoneIncoming className="h-5 w-5 text-blue-600" />
-              )}
+              <PhoneOutgoing className="h-5 w-5 text-orange-600" />
               {editingAssistant ? t('common.edit') : t('common.create')} {t('dashboard.assistantsPage.name')}
               <Badge
                 variant="secondary"
-                className={formData.callDirection === 'outbound' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'}
+                className="bg-orange-100 text-orange-700"
               >
-                {formData.callDirection === 'outbound'
-                  ? t('dashboard.assistantsPage.outboundCall')
-                  : t('dashboard.assistantsPage.inboundCall')
-                }
+                {t('dashboard.assistantsPage.outboundCall')}
               </Badge>
             </DialogTitle>
             <DialogDescription>
@@ -691,30 +571,32 @@ export default function AssistantsPage() {
               />
             </div>
 
+            <div className="rounded-md border border-orange-200 bg-orange-50 px-3 py-2 text-xs text-orange-700 dark:border-orange-900/40 dark:bg-orange-950/30 dark:text-orange-200">
+              V1 modunda inbound kapalıdır. Asistanlar outbound olarak oluşturulur.
+            </div>
+
             {/* Call Purpose (only for outbound) */}
-            {formData.callDirection === 'outbound' && (
-              <div>
-                <Label>{t('dashboard.assistantsPage.callPurpose')}</Label>
-                <Select
-                  value={formData.callPurpose}
-                  onValueChange={handlePurposeChange}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={t('dashboard.assistantsPage.selectPurpose')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {getAvailablePurposes().map((purpose) => (
-                      <SelectItem key={purpose.value} value={purpose.value}>
-                        {t(`dashboard.assistantsPage.purpose${purpose.value.charAt(0).toUpperCase() + purpose.value.slice(1)}`)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-neutral-500 mt-1">
-                  {t('dashboard.assistantsPage.purposeAutoPromptHint')}
-                </p>
-              </div>
-            )}
+            <div>
+              <Label>{t('dashboard.assistantsPage.callPurpose')}</Label>
+              <Select
+                value={formData.callPurpose}
+                onValueChange={handlePurposeChange}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={t('dashboard.assistantsPage.selectPurpose')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {getAvailablePurposes().map((purpose) => (
+                    <SelectItem key={purpose.value} value={purpose.value}>
+                      {t(`dashboard.assistantsPage.purpose${purpose.value.charAt(0).toUpperCase() + purpose.value.slice(1)}`)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-neutral-500 mt-1">
+                {t('dashboard.assistantsPage.purposeAutoPromptHint')}
+              </p>
+            </div>
 
             {/* Language */}
             <div>
@@ -802,75 +684,45 @@ export default function AssistantsPage() {
               <Label htmlFor="firstMessage">
                 {t('dashboard.assistantsPage.greetingMessage')}
               </Label>
-              {formData.callDirection === 'outbound' ? (
-                // Outbound: Read-only, auto-generated
-                <>
-                  <div className="p-3 bg-neutral-50 border border-neutral-200 rounded-md text-sm text-neutral-700 dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-300">
-                    {formData.firstMessage || t('dashboard.assistantsPage.autoGeneratedWhenNamed')}
-                  </div>
-                  <p className="text-xs text-neutral-500 mt-1">
-                    {t('dashboard.assistantsPage.autoGeneratedHint')}
-                  </p>
-                </>
-              ) : (
-                // Inbound: Editable
-                <>
-                  <Textarea
-                    id="firstMessage"
-                    rows={2}
-                    value={formData.firstMessage}
-                    onChange={(e) => setFormData({ ...formData, firstMessage: e.target.value })}
-                    placeholder={t('dashboard.assistantsPage.greetingPlaceholder')}
-                  />
-                  <p className="text-xs text-neutral-500 mt-1">
-                    {t('dashboard.assistantsPage.greetingHint')}
-                  </p>
-                </>
-              )}
+              <div className="p-3 bg-neutral-50 border border-neutral-200 rounded-md text-sm text-neutral-700 dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-300">
+                {formData.firstMessage || t('dashboard.assistantsPage.autoGeneratedWhenNamed')}
+              </div>
+              <p className="text-xs text-neutral-500 mt-1">
+                {t('dashboard.assistantsPage.autoGeneratedHint')}
+              </p>
             </div>
 
             {/* System Prompt / Instructions - Only for outbound */}
-            {formData.callDirection === 'outbound' && (
-              <div>
-                <Label htmlFor="prompt">
-                  {t('dashboard.assistantsPage.instructions')}
-                </Label>
-                <Textarea
-                  id="prompt"
-                  rows={3}
-                  value={formData.systemPrompt}
-                  onChange={(e) => setFormData({ ...formData, systemPrompt: e.target.value })}
-                  placeholder={t('dashboard.assistantsPage.instructionsPlaceholder')}
-                />
-                <p className="text-xs text-neutral-500 mt-1">
-                  {t('dashboard.assistantsPage.instructionsHint')}
-                </p>
-              </div>
-            )}
+            <div>
+              <Label htmlFor="prompt">
+                {t('dashboard.assistantsPage.instructions')}
+              </Label>
+              <Textarea
+                id="prompt"
+                rows={3}
+                value={formData.systemPrompt}
+                onChange={(e) => setFormData({ ...formData, systemPrompt: e.target.value })}
+                placeholder={t('dashboard.assistantsPage.instructionsPlaceholder')}
+              />
+              <p className="text-xs text-neutral-500 mt-1">
+                {t('dashboard.assistantsPage.instructionsHint')}
+              </p>
+            </div>
 
             {/* Custom Notes / Additional Instructions */}
             <div>
               <Label htmlFor="customNotes">
-                {formData.callDirection === 'inbound'
-                  ? t('dashboard.assistantsPage.additionalInstructions')
-                  : t('dashboard.assistantsPage.customNotes')
-                }
+                {t('dashboard.assistantsPage.customNotes')}
               </Label>
               <Textarea
                 id="customNotes"
                 rows={4}
                 value={formData.customNotes}
                 onChange={(e) => setFormData({ ...formData, customNotes: e.target.value })}
-                placeholder={formData.callDirection === 'inbound'
-                  ? t('dashboard.assistantsPage.additionalInstructionsPlaceholder')
-                  : t('dashboard.assistantsPage.customNotesPlaceholder')
-                }
+                placeholder={t('dashboard.assistantsPage.customNotesPlaceholder')}
               />
               <p className="text-xs text-neutral-500 mt-1">
-                {formData.callDirection === 'inbound'
-                  ? t('dashboard.assistantsPage.additionalInstructionsHint')
-                  : t('dashboard.assistantsPage.customNotesHint')
-                }
+                {t('dashboard.assistantsPage.customNotesHint')}
               </p>
             </div>
           </div>

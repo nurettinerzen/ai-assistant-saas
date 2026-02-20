@@ -425,15 +425,14 @@ router.post('/widget', async (req, res) => {
 
     let assistant;
 
-    // New way: Use embedKey to find business and its inbound assistant
+    // New way: Use embedKey to find business and its active assistant
     if (embedKey) {
       const business = await prisma.business.findUnique({
         where: { chatEmbedKey: embedKey },
         include: {
           assistants: {
             where: {
-              isActive: true,
-              callDirection: 'inbound'
+              isActive: true
             },
             orderBy: { createdAt: 'desc' },
             take: 1
@@ -753,8 +752,7 @@ router.get('/embed/:embedKey', async (req, res) => {
       include: {
         assistants: {
           where: {
-            isActive: true,
-            callDirection: 'inbound'
+            isActive: true
           },
           orderBy: { createdAt: 'desc' },
           take: 1,
@@ -833,8 +831,7 @@ router.get('/widget/status/embed/:embedKey', async (req, res) => {
       include: {
         assistants: {
           where: {
-            isActive: true,
-            callDirection: 'inbound'
+            isActive: true
           },
           orderBy: { createdAt: 'desc' },
           take: 1

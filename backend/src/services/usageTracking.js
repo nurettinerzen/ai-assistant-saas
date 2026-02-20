@@ -9,6 +9,7 @@
 
 import { PrismaClient } from '@prisma/client';
 import emailService from './emailService.js';
+import { getEffectivePlanConfig } from './planConfig.js';
 
 const prisma = new PrismaClient();
 
@@ -263,7 +264,8 @@ export const checkLimit = async (businessId, limitType) => {
       include: {
         business: {
           select: {
-            phoneNumbers: true
+            phoneNumbers: true,
+            country: true
           }
         }
       }
@@ -273,40 +275,36 @@ export const checkLimit = async (businessId, limitType) => {
       return { reached: false, plan: 'FREE' };
     }
 
-    const plan = subscription.plan;
-    const limits = {
-      FREE: { minutes: 0, calls: 0, assistants: 0, phoneNumbers: 0 },
-      STARTER: { minutes: 300, calls: 50, assistants: 1, phoneNumbers: 1 },
-      PRO: { minutes: 1500, calls: -1, assistants: 2, phoneNumbers: 3 },
-      ENTERPRISE: { minutes: -1, calls: -1, assistants: 5, phoneNumbers: 10 }
-    };
-
-    const planLimits = limits[plan];
+    const effectivePlan = getEffectivePlanConfig(subscription);
     let usage, limit;
 
     switch (limitType) {
       case 'minutes':
         usage = subscription.minutesUsed;
-        limit = planLimits.minutes;
+        limit = effectivePlan.includedMinutes;
         break;
       case 'calls':
         usage = subscription.callsThisMonth;
-        limit = planLimits.calls;
+        limit = subscription.callsLimit;
         break;
       case 'assistants':
         usage = subscription.assistantsCreated;
-        limit = planLimits.assistants;
+        limit = effectivePlan.assistantsLimit;
         break;
       case 'phoneNumbers':
         usage = subscription.business.phoneNumbers?.length || 0;
-        limit = planLimits.phoneNumbers;
+        limit = effectivePlan.phoneNumbersLimit;
+        break;
+      case 'concurrent':
+        usage = subscription.activeCalls || 0;
+        limit = effectivePlan.concurrentLimit;
         break;
       default:
         return { reached: false };
     }
 
     // -1 means unlimited
-    if (limit === -1) {
+    if (limit === -1 || limit === null) {
       return { reached: false, usage, limit: 'unlimited' };
     }
 

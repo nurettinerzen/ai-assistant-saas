@@ -9,42 +9,26 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import EmptyState from '@/components/EmptyState';
 import PhoneNumberModal from '@/components/PhoneNumberModal';
-import { Phone, Plus, Trash2, Lock, Bot, Loader2 } from 'lucide-react';
+import { Phone, Plus, Trash2, Lock } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast, toastHelpers } from '@/lib/toast';
 import { formatPhone, formatDate } from '@/lib/utils';
 import { useLanguage } from '@/contexts/LanguageContext';
+import PageIntro from '@/components/PageIntro';
+import { getPageHelp } from '@/content/pageHelp';
 import Link from 'next/link';
 
-// Plan limitleri - Backend plan isimlerine uygun
-// NOT: FREE ve TRIAL planlarında 1 telefon numarası + 15 dk deneme hakkı var
-const PLAN_LIMITS = {
-  FREE: { phoneNumbers: 1, trialMinutes: 15 },
-  TRIAL: { phoneNumbers: 1, trialMinutes: 15 },
-  PAYG: { phoneNumbers: 1 },
-  STARTER: { phoneNumbers: 1 },
-  PRO: { phoneNumbers: 3 },
-  ENTERPRISE: { phoneNumbers: 10 }
-};
-
 export default function PhoneNumbersPage() {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
+  const pageHelp = getPageHelp('phoneNumbers', locale);
   const [phoneNumbers, setPhoneNumbers] = useState([]);
-  const [assistants, setAssistants] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [updatingPhoneId, setUpdatingPhoneId] = useState(null);
   const [showProvisionModal, setShowProvisionModal] = useState(false);
   const [subscription, setSubscription] = useState(null);
   const [isLocked, setIsLocked] = useState(false);
+  const [lockReason, setLockReason] = useState(null);
 
   // Prevent multiple API calls in strict mode
   const hasFetchedRef = useRef(false);
@@ -61,34 +45,16 @@ export default function PhoneNumbersPage() {
         const sub = subResponse.data;
         console.log('Phone page - subscription:', sub);
         setSubscription(sub);
-        // FREE ve TRIAL planları artık deneme hakkı ile erişebilir
-        // Sadece deneme süresi/dakikası bitmişse kilitle
-        const plan = sub?.plan || 'FREE';
-        const trialMinutesUsed = sub?.trialMinutesUsed || 0;
-        const trialChatExpiry = sub?.trialChatExpiry ? new Date(sub.trialChatExpiry) : null;
-        const now = new Date();
 
-        // Trial bitmiş mi kontrol et
-        const trialExpired = (plan === 'FREE' || plan === 'TRIAL') && (
-          trialMinutesUsed >= 15 ||
-          (trialChatExpiry && trialChatExpiry < now)
-        );
-
-        if (trialExpired) {
+        const outboundEntitlement = sub?.entitlements?.outbound;
+        if (!outboundEntitlement?.enabled) {
           setIsLocked(true);
+          setLockReason(outboundEntitlement?.reason || 'OUTBOUND_DISABLED');
         }
 
-        // Load phone numbers and assistants in parallel
-        const [phoneResponse, assistantsResponse] = await Promise.all([
-          apiClient.phoneNumbers.getAll(),
-          apiClient.assistants.getAll()
-        ]);
+        // Load phone numbers
+        const phoneResponse = await apiClient.phoneNumbers.getAll();
         setPhoneNumbers(phoneResponse.data.phoneNumbers || []);
-        // Filter to only INBOUND active assistants
-        // Phone numbers should only be assigned to inbound assistants
-        // Outbound assistants (outbound, outbound_sales, outbound_collection) are selected in batch call campaigns
-        const allAssistants = assistantsResponse.data.assistants || [];
-        setAssistants(allAssistants.filter(a => a.isActive && !a.callDirection?.startsWith('outbound')));
       } catch (error) {
         console.error('Failed to load data:', error);
         toast.error(t('dashboard.phoneNumbersPage.failedToLoad') || 'Telefon numaraları yüklenemedi');
@@ -112,30 +78,6 @@ export default function PhoneNumbersPage() {
     }
   };
 
-  const handleAssistantChange = async (phoneNumberId, newAssistantId) => {
-    if (!newAssistantId) return;
-
-    setUpdatingPhoneId(phoneNumberId);
-    try {
-      await apiClient.phoneNumbers.updateAssistant(phoneNumberId, newAssistantId);
-      toast.success(t('dashboard.phoneNumbersPage.assistantUpdated') || 'Assistant updated successfully');
-
-      // Update local state
-      setPhoneNumbers(prev => prev.map(p => {
-        if (p.id === phoneNumberId) {
-          const assistant = assistants.find(a => a.id === newAssistantId);
-          return { ...p, assistantId: newAssistantId, assistantName: assistant?.name };
-        }
-        return p;
-      }));
-    } catch (error) {
-      console.error('Failed to update assistant:', error);
-      toast.error(error.response?.data?.error || t('dashboard.phoneNumbersPage.failedToUpdateAssistant') || 'Asistan güncellenemedi');
-    } finally {
-      setUpdatingPhoneId(null);
-    }
-  };
-
   const handleRelease = async (phoneNumber) => {
     if (
       !confirm(
@@ -156,27 +98,36 @@ export default function PhoneNumbersPage() {
     }
   };
 
-  // 🔧 Check if user can add more numbers
+  const rawPhoneNumberLimit = subscription?.usage?.phoneNumbers?.limit ?? subscription?.limits?.phoneNumbers;
+  const phoneNumberLimit = rawPhoneNumberLimit === undefined ? 0 : rawPhoneNumberLimit;
+  const isPhoneNumberLimitUnlimited = phoneNumberLimit === -1 || phoneNumberLimit === null;
+
+  // Check if user can add more numbers
   const canAddNumber = () => {
     if (!subscription) return false;
-    const limit = PLAN_LIMITS[subscription.plan]?.phoneNumbers || 0;
-    if (limit === -1) return true; // unlimited
-    return phoneNumbers.length < limit;
+    if (isPhoneNumberLimitUnlimited) return true;
+    return phoneNumbers.length < phoneNumberLimit;
   };
 
-  // 🔧 Locked view - Trial expired
+  // 🔧 Locked view - outbound entitlement disabled
   if (isLocked) {
-    // Deneme süresi/dakikası bitti
-    const trialMinutesUsed = subscription?.trialMinutesUsed || 0;
-    const minutesExpired = trialMinutesUsed >= 15;
+    const reasonLabels = {
+      PLAN_DISABLED: 'Planınız PHONE outbound için yetkili değil.',
+      V1_OUTBOUND_ONLY: 'V1 outbound-only kısıtı nedeniyle PHONE outbound kapalı.',
+      BUSINESS_DISABLED: 'İşletme inbound toggle kapalı olduğu için outbound kapalı.'
+    };
+
+    const reasonText = reasonLabels[lockReason] || 'PHONE outbound bu hesapta kapalı.';
 
     return (
       <div className="space-y-6">
         {/* Header */}
-        <div>
-          <h1 className="text-2xl font-semibold text-neutral-900 dark:text-white">{t('dashboard.phoneNumbersPage.title')}</h1>
-          <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">{t('dashboard.phoneNumbersPage.description')}</p>
-        </div>
+        <PageIntro
+          title={pageHelp?.title || t('dashboard.phoneNumbersPage.title')}
+          subtitle={pageHelp?.subtitle}
+          locale={locale}
+          help={pageHelp ? { tooltipTitle: pageHelp.tooltipTitle, tooltipBody: pageHelp.tooltipBody, quickSteps: pageHelp.quickSteps } : undefined}
+        />
 
         {/* Trial Expired State */}
         <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-12 text-center">
@@ -184,19 +135,17 @@ export default function PhoneNumbersPage() {
             <Lock className="h-10 w-10 text-orange-500" />
           </div>
           <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-3">
-            {minutesExpired ? 'Deneme Dakikalarınız Bitti' : 'Deneme Süreniz Bitti'}
+            PHONE Outbound Kapalı
           </h2>
           <p className="text-neutral-600 dark:text-neutral-400 mb-2">
-            {minutesExpired
-              ? `15 dakikalık ücretsiz deneme hakkınızı kullandınız (${trialMinutesUsed.toFixed(1)} dk).`
-              : '7 günlük ücretsiz deneme süreniz sona erdi.'}
+            {reasonText}
           </p>
           <p className="text-neutral-600 dark:text-neutral-400 mb-6 max-w-md mx-auto">
-            Telefon AI özelliğini kullanmaya devam etmek için bakiye yükleyin veya bir plan seçin.
+            Plan ve entitlement durumunu güncellemek için abonelik sayfasını kontrol edin.
           </p>
           <Link href="/dashboard/subscription">
             <Button size="lg" className="bg-gradient-to-r from-teal-600 to-blue-500">
-              Plan Seç veya Bakiye Yükle →
+              Abonelik ve Entitlements →
             </Button>
           </Link>
         </div>
@@ -236,25 +185,27 @@ export default function PhoneNumbersPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-neutral-900 dark:text-white">{t('dashboard.phoneNumbersPage.title')}</h1>
-          <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">{t('dashboard.phoneNumbersPage.description')}</p>
-          {/* 🔧 Plan limit indicator */}
-          {subscription && (
-            <p className="text-sm text-primary-600 dark:text-primary-400 mt-2">
-              {phoneNumbers.length}/{PLAN_LIMITS[subscription.plan]?.phoneNumbers === -1 ? '∞' : PLAN_LIMITS[subscription.plan]?.phoneNumbers} {t('dashboard.phoneNumbersPage.numbersUsed')}
-            </p>
-          )}
-        </div>
-        <Button
-          onClick={() => setShowProvisionModal(true)}
-          disabled={!canAddNumber()}
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          {t('dashboard.phoneNumbersPage.getPhoneNumber')}
-        </Button>
-      </div>
+      <PageIntro
+        title={pageHelp?.title || t('dashboard.phoneNumbersPage.title')}
+        subtitle={pageHelp?.subtitle}
+        locale={locale}
+        help={pageHelp ? { tooltipTitle: pageHelp.tooltipTitle, tooltipBody: pageHelp.tooltipBody, quickSteps: pageHelp.quickSteps } : undefined}
+        actions={
+          <Button
+            onClick={() => setShowProvisionModal(true)}
+            disabled={!canAddNumber()}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            {t('dashboard.phoneNumbersPage.getPhoneNumber')}
+          </Button>
+        }
+      />
+      {/* Plan limit indicator */}
+      {subscription && (
+        <p className="text-sm text-primary-600 dark:text-primary-400 -mt-4">
+          {phoneNumbers.length}/{isPhoneNumberLimitUnlimited ? '∞' : phoneNumberLimit} {t('dashboard.phoneNumbersPage.numbersUsed')}
+        </p>
+      )}
 
       {/* Trial info banner for FREE/TRIAL plans */}
       {(subscription?.plan === 'FREE' || subscription?.plan === 'TRIAL') && (
@@ -338,62 +289,19 @@ export default function PhoneNumbersPage() {
               </div>
 
               <div className="space-y-3 mb-4">
-                {/* Assistant Selector */}
+                {/* Assistant Assignment */}
                 <div>
                   <label className="text-sm text-neutral-600 dark:text-neutral-400 mb-1 block">
                     {t('dashboard.phoneNumbersPage.assistant')}
                   </label>
-                  <div className="relative">
-                    {(() => {
-                      // Check if assigned assistant still exists in the list
-                      const assignedAssistantExists = number.assistantId && assistants.some(a => a.id === number.assistantId);
-                      const displayValue = assignedAssistantExists ? number.assistantId : '';
-                      const displayName = assignedAssistantExists
-                        ? number.assistantName
-                        : t('dashboard.phoneNumbersPage.notAssigned') || 'Not assigned';
-
-                      return (
-                        <Select
-                          value={displayValue}
-                          onValueChange={(value) => handleAssistantChange(number.id, value)}
-                          disabled={updatingPhoneId === number.id || assistants.length === 0}
-                        >
-                          <SelectTrigger className="w-full">
-                            {updatingPhoneId === number.id ? (
-                              <div className="flex items-center gap-2">
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                                <span>{t('common.updating') || 'Updating...'}</span>
-                              </div>
-                            ) : (
-                              <SelectValue placeholder={t('dashboard.phoneNumbersPage.selectAssistant') || 'Select assistant'}>
-                                <div className="flex items-center gap-2">
-                                  <Bot className={`h-4 w-4 ${assignedAssistantExists ? 'text-primary-500' : 'text-neutral-400'}`} />
-                                  <span className={!assignedAssistantExists ? 'text-neutral-400' : ''}>
-                                    {displayName}
-                                  </span>
-                                </div>
-                              </SelectValue>
-                            )}
-                          </SelectTrigger>
-                          <SelectContent>
-                            {assistants.map((assistant) => (
-                              <SelectItem key={assistant.id} value={assistant.id}>
-                                <div className="flex items-center gap-2">
-                                  <Bot className="h-4 w-4" />
-                                  <span>{assistant.name}</span>
-                                </div>
-                              </SelectItem>
-                            ))}
-                            {assistants.length === 0 && (
-                              <div className="px-2 py-1 text-sm text-neutral-500">
-                                {t('dashboard.phoneNumbersPage.noAssistants') || 'No assistants available'}
-                              </div>
-                            )}
-                          </SelectContent>
-                        </Select>
-                      );
-                    })()}
+                  <div className="rounded-md border border-neutral-200 dark:border-neutral-700 px-3 py-2 text-sm">
+                    <span className={!number.assistantId ? 'text-neutral-400' : 'text-neutral-700 dark:text-neutral-300'}>
+                      {number.assistantName || t('dashboard.phoneNumbersPage.notAssigned') || 'Not assigned'}
+                    </span>
                   </div>
+                  <p className="mt-1 text-xs text-orange-700 dark:text-orange-300">
+                    V1 modunda telefon numarası-assistant assignment kapalıdır.
+                  </p>
                 </div>
                 {/* Status */}
                 <div className="flex justify-between text-sm">

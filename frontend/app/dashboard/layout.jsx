@@ -11,6 +11,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 // Cache for user data (5 minutes)
 const USER_CACHE_KEY = 'dashboard_user_cache';
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const ONBOARDING_COMPLETED_PREFIX = 'onboarding_completed_business_';
 
 const getCachedUserData = () => {
   if (typeof window === 'undefined') return null;
@@ -38,6 +39,18 @@ const setCachedUserData = (data) => {
   } catch {
     // Ignore storage errors
   }
+};
+
+const getOnboardingStorageKey = (businessId) => `${ONBOARDING_COMPLETED_PREFIX}${businessId}`;
+
+const isOnboardingMarkedCompleteLocally = (businessId) => {
+  if (typeof window === 'undefined' || !businessId) return false;
+  return localStorage.getItem(getOnboardingStorageKey(businessId)) === '1';
+};
+
+const markOnboardingCompleteLocally = (businessId) => {
+  if (typeof window === 'undefined' || !businessId) return;
+  localStorage.setItem(getOnboardingStorageKey(businessId), '1');
 };
 
 export default function DashboardLayout({ children }) {
@@ -68,7 +81,11 @@ export default function DashboardLayout({ children }) {
       setCredits(cachedData.credits);
       setLoading(false);
       // Check onboarding from cached data
-      if (cachedData.user?.onboardingCompleted === false && !cachedData.isInvitedMember) {
+      if (
+        cachedData.user?.onboardingCompleted === false &&
+        !cachedData.isInvitedMember &&
+        !isOnboardingMarkedCompleteLocally(cachedData.user?.businessId)
+      ) {
         setShowOnboarding(true);
       }
     }
@@ -100,6 +117,9 @@ export default function DashboardLayout({ children }) {
       const userResponse = await apiClient.get('/api/auth/me');
       const userData = userResponse.data;
       setUser(userData);
+      if (userData.onboardingCompleted === true && userData.businessId) {
+        markOnboardingCompleteLocally(userData.businessId);
+      }
 
       // Email verification check - redirect to pending page if not verified
       // Skip check for invited team members (they were invited via email, so implicitly verified)
@@ -121,7 +141,9 @@ export default function DashboardLayout({ children }) {
             console.warn('Auto-complete onboarding failed:', err);
           }
         } else {
-          setShowOnboarding(true);
+          if (!isOnboardingMarkedCompleteLocally(userData.businessId)) {
+            setShowOnboarding(true);
+          }
         }
       }
 
@@ -164,6 +186,7 @@ export default function DashboardLayout({ children }) {
   const handleOnboardingComplete = async () => {
     try {
       await apiClient.onboarding.complete();
+      markOnboardingCompleteLocally(user?.businessId);
       setShowOnboarding(false);
       // Reload to refresh user data
       window.location.reload();
@@ -218,7 +241,12 @@ export default function DashboardLayout({ children }) {
 
       {/* Onboarding Modal */}
       {showOnboarding && (
-        <OnboardingModal open={showOnboarding} onClose={handleOnboardingComplete} />
+        <OnboardingModal
+          open={showOnboarding}
+          onClose={handleOnboardingComplete}
+          business={user?.business}
+          phoneInboundEnabled={Boolean(user?.business?.phoneInboundEnabled)}
+        />
       )}
     </div>
   );

@@ -820,7 +820,7 @@ router.post('/widget', async (req, res) => {
         where: { chatEmbedKey: embedKey },
         include: {
           assistants: {
-            where: { isActive: true, callDirection: 'inbound' },
+            where: { isActive: true },
             orderBy: { createdAt: 'desc' },
             take: 1
           },
@@ -1309,8 +1309,7 @@ router.get('/widget/status/embed/:embedKey', async (req, res) => {
       include: {
         assistants: {
           where: {
-            isActive: true,
-            callDirection: 'inbound'
+            isActive: true
           },
           orderBy: { createdAt: 'desc' },
           take: 1

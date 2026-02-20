@@ -12,6 +12,8 @@ import { getElevenLabsVoiceId } from '../constants/voices.js';
 // ✅ Plan configuration - P0-A: Single source of truth
 import { getEffectivePlanConfig, checkLimit } from '../services/planConfig.js';
 import { getMessageVariant } from '../messages/messageCatalog.js';
+import { isPhoneInboundEnabledForBusinessRecord } from '../services/phoneInboundGate.js';
+import { resolvePhoneOutboundAccessForBusinessId } from '../services/phoneOutboundAccess.js';
 
 const router = express.Router();
 
@@ -49,6 +51,18 @@ function getElevenLabsLanguage(lang) {
   return ELEVENLABS_LANGUAGE_MAP[normalized] || normalized;
 }
 const prisma = new PrismaClient();
+const OUTBOUND_ONLY_V1_ERROR = {
+  error: 'OUTBOUND_ONLY_V1',
+  message: 'V1 sürümünde inbound call assistant kapalıdır. Sadece outbound kullanılabilir.'
+};
+
+function isOutboundDirection(direction) {
+  return typeof direction === 'string' && direction.startsWith('outbound');
+}
+
+function sendOutboundOnlyV1(res) {
+  return res.status(403).json(OUTBOUND_ONLY_V1_ERROR);
+}
 
 // ============================================================
 // ASSISTANT DEFAULTS BY LANGUAGE
@@ -140,6 +154,12 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
   try {
     const businessId = req.businessId;
     const { name, voiceId, firstMessage, systemPrompt, model, language, country, industry, timezone, tone, customNotes, callDirection, callPurpose, dynamicVariables } = req.body;
+    const inboundEnabled = isPhoneInboundEnabledForBusinessRecord(req.user?.business);
+    const requestedDirection = callDirection || 'outbound';
+
+    if (!inboundEnabled && !isOutboundDirection(requestedDirection)) {
+      return sendOutboundOnlyV1(res);
+    }
 
     // Validate assistant name length
     if (!name || name.trim().length === 0) {
@@ -235,7 +255,7 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
     // Determine effective callDirection based on callPurpose
     // For outbound calls, callPurpose determines the actual callDirection for prompt selection
     // 3 main purposes: sales, collection, general
-    let effectiveCallDirection = callDirection || 'inbound';
+    let effectiveCallDirection = callDirection || 'outbound';
     if (effectiveCallDirection === 'outbound' && callPurpose) {
       // Map callPurpose to specific callDirection for promptBuilder
       if (callPurpose === 'sales') {
@@ -550,35 +570,8 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
       }
     });
 
-    // ✅ Telefon numarası varsa, yeni asistanı otomatik ata
-    // NOT: Outbound asistanlar için otomatik atama yapılmaz - onlar batch call için kullanılır
-    // Ayrıca telefon numarasında zaten bir asistan varsa, onu koruruz
-    try {
-      // Only auto-assign for inbound assistants (effectiveCallDirection already defined above)
-      if (effectiveCallDirection === 'inbound') {
-        const phoneNumber = await prisma.phoneNumber.findFirst({
-          where: { businessId }
-        });
-
-        // Only auto-assign if phone number has no assistant assigned yet
-        if (phoneNumber && phoneNumber.elevenLabsPhoneId && elevenLabsAgentId && !phoneNumber.assistantId) {
-          console.log('📱 Auto-assigning assistant to phone number:', phoneNumber.phoneNumber);
-          await elevenLabsService.updatePhoneNumber(phoneNumber.elevenLabsPhoneId, elevenLabsAgentId);
-          await prisma.phoneNumber.update({
-            where: { id: phoneNumber.id },
-            data: { assistantId: assistant.id }
-          });
-          console.log('✅ Phone number assigned to new assistant');
-        } else if (phoneNumber?.assistantId) {
-          console.log('📱 Phone number already has an assistant assigned, skipping auto-assign');
-        }
-      } else {
-        console.log('📱 Outbound assistant created, skipping phone number auto-assign');
-      }
-    } catch (phoneError) {
-      console.error('⚠️ Failed to auto-assign phone number:', phoneError);
-      // Don't fail the request, just log the error
-    }
+    // V1 outbound-only: never auto-assign assistants to phone numbers.
+    console.log('📱 Assistant created without phone number auto-assignment');
 
     // ✅ YENİ: Mevcut Knowledge Base içeriklerini yeni asistana ekle
     if (elevenLabsAgentId) {
@@ -672,6 +665,51 @@ router.post('/test-call', async (req, res) => {
         error: 'callType is required',
         validTypes: VALID_CALL_TYPES,
         example: { phoneNumber: '+905551234567', callType: 'BILLING_REMINDER' }
+      });
+    }
+
+    const outboundAccess = await resolvePhoneOutboundAccessForBusinessId(businessId);
+
+    if (!outboundAccess.hasAccess) {
+      if (outboundAccess.reasonCode === 'NO_SUBSCRIPTION') {
+        return res.status(403).json({
+          error: 'NO_SUBSCRIPTION',
+          message: 'No active subscription found for outbound test calls.',
+          messageTR: 'Outbound test araması için aktif abonelik bulunamadı.'
+        });
+      }
+
+      if (outboundAccess.reasonCode === 'SUBSCRIPTION_INACTIVE') {
+        return res.status(403).json({
+          error: 'SUBSCRIPTION_INACTIVE',
+          status: outboundAccess.status,
+          message: 'Subscription is not active.',
+          messageTR: 'Abonelik aktif değil.'
+        });
+      }
+
+      const reasonCode = outboundAccess.reasonCode || 'OUTBOUND_DISABLED';
+
+      let message = 'Outbound test call is disabled for your current configuration.';
+      let messageTR = 'Outbound test araması mevcut yapılandırmada kapalı.';
+
+      if (reasonCode === 'PLAN_DISABLED') {
+        message = `Outbound test call is disabled for ${outboundAccess.plan}.`;
+        messageTR = `Outbound test araması ${outboundAccess.plan} planında kapalı.`;
+      } else if (reasonCode === 'V1_OUTBOUND_ONLY') {
+        message = 'Outbound is disabled while inbound is disabled in V1 mode.';
+        messageTR = 'V1 modunda inbound kapalıyken outbound da kapalıdır.';
+      } else if (reasonCode === 'BUSINESS_DISABLED') {
+        message = 'Outbound is disabled because inbound is disabled for this business.';
+        messageTR = 'Bu işletmede inbound kapalı olduğu için outbound da kapalıdır.';
+      }
+
+      return res.status(403).json({
+        error: 'OUTBOUND_TEST_CALL_NOT_ALLOWED',
+        reasonCode,
+        requiredPlan: outboundAccess.requiredPlan,
+        message,
+        messageTR
       });
     }
 
@@ -769,6 +807,13 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
     if (!assistant) {
       return res.status(404).json({ error: 'Assistant not found' });
     }
+    const inboundEnabled = isPhoneInboundEnabledForBusinessRecord(req.user?.business);
+    const currentDirection = assistant.callDirection || 'outbound';
+    const requestedDirection = callDirection !== undefined ? callDirection : currentDirection;
+
+    if (!inboundEnabled && !isOutboundDirection(requestedDirection)) {
+      return sendOutboundOnlyV1(res);
+    }
 
     // Get business info with integrations for promptBuilder
     const business = await prisma.business.findUnique({
@@ -813,7 +858,7 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
     // For outbound calls, callPurpose determines the actual callDirection for prompt selection
     // 3 main purposes: sales, collection, general
     const effectivePurpose = callPurpose !== undefined ? callPurpose : assistant.callPurpose;
-    let effectiveCallDirection = callDirection || assistant.callDirection || 'inbound';
+    let effectiveCallDirection = callDirection || assistant.callDirection || 'outbound';
     if (effectiveCallDirection === 'outbound' && effectivePurpose) {
       // Map callPurpose to specific callDirection for promptBuilder
       if (effectivePurpose === 'sales') {
@@ -1016,25 +1061,8 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
         await elevenLabsService.updateAgent(assistant.elevenLabsAgentId, agentUpdateConfig);
         console.log('✅ 11Labs Agent updated with inline tools');
 
-        // Sync all phone numbers connected to this assistant in 11Labs
-        const connectedPhones = await prisma.phoneNumber.findMany({
-          where: {
-            assistantId: id,
-            elevenLabsPhoneId: { not: null }
-          }
-        });
-
-        if (connectedPhones.length > 0) {
-          console.log(`📞 Syncing ${connectedPhones.length} phone numbers to updated assistant`);
-          for (const phone of connectedPhones) {
-            try {
-              await elevenLabsService.updatePhoneNumber(phone.elevenLabsPhoneId, assistant.elevenLabsAgentId);
-              console.log(`✅ 11Labs Phone ${phone.phoneNumber} synced to agent`);
-            } catch (syncErr) {
-              console.error(`❌ Failed to sync phone ${phone.phoneNumber}:`, syncErr.message);
-            }
-          }
-        }
+        // V1 outbound-only: phone number-agent sync is intentionally disabled.
+        console.log('📞 Skipping phone number-agent sync (V1 outbound-only mode)');
 
         const webhookDiagnostics = await elevenLabsService.getWebhookDiagnostics({
           agentId: assistant.elevenLabsAgentId,
@@ -1534,7 +1562,8 @@ router.post('/from-template', authenticateToken, async (req, res) => {
         voiceId,
         systemPrompt,
         model: 'gpt-4',
-        language
+        language,
+        callDirection: 'outbound'
       })
     });
 

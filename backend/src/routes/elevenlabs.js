@@ -23,7 +23,6 @@ import elevenLabsService from '../services/elevenlabs.js';
 import metricsService from '../services/metricsService.js';
 import {
   isPhoneOutboundV1Enabled,
-  isPhoneInboundEnabled,
   getPhoneOutboundV1ClassifierMode
 } from '../config/feature-flags.js';
 import {
@@ -38,6 +37,7 @@ import {
   containsChildSafetyViolation,
   logContentSafetyViolation
 } from '../utils/content-safety.js';
+import { isPhoneInboundEnabledForBusiness } from '../services/phoneInboundGate.js';
 
 const router = express.Router();
 const openai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
@@ -520,7 +520,12 @@ router.post('/webhook', async (req, res) => {
             );
 
             // INBOUND GATE: Don't serve prompt overrides for blocked inbound calls
-            if (sessionDirection === 'inbound' && !isPhoneInboundEnabled()) {
+            const inboundEnabled = await isPhoneInboundEnabledForBusiness({
+              business: assistant.business,
+              businessId: assistant.business.id
+            });
+
+            if (sessionDirection === 'inbound' && !inboundEnabled) {
               console.log(`[INBOUND_BLOCKED] agent_response/initiation blocked, conversationId=${conversationId}`);
               return res.status(200).json({});
             }
@@ -856,7 +861,11 @@ async function handleToolCall(event, agentIdFromQuery = null) {
 
         // INBOUND GATE: Check direction before executing tool
         const fallbackDirection = normalizeDirection(activeSession.direction || 'inbound');
-        if (fallbackDirection === 'inbound' && !isPhoneInboundEnabled()) {
+        const inboundEnabled = await isPhoneInboundEnabledForBusiness({
+          businessId: activeSession.businessId
+        });
+
+        if (fallbackDirection === 'inbound' && !inboundEnabled) {
           console.log(`[INBOUND_TOOL_BLOCKED] conversationId=${conversation_id}, source=no_agent_fallback`);
           metricsService.incrementCounter('phone_inbound_tool_blocked_total', { source: 'no_agent_fallback' });
           return {
@@ -957,7 +966,12 @@ async function handleToolCall(event, agentIdFromQuery = null) {
       'inbound'
     );
 
-    if (sessionDirection === 'inbound' && !isPhoneInboundEnabled()) {
+    const inboundEnabledForToolCall = await isPhoneInboundEnabledForBusiness({
+      business,
+      businessId: business.id
+    });
+
+    if (sessionDirection === 'inbound' && !inboundEnabledForToolCall) {
       console.log(`[INBOUND_TOOL_BLOCKED] conversationId=${conversation_id}, source=main_agent_path`);
       metricsService.incrementCounter('phone_inbound_tool_blocked_total', { source: 'main_agent_path' });
       return {
@@ -1088,7 +1102,10 @@ async function handleConversationStarted(event) {
     }
 
     const businessId = assistant.business.id;
-    const inboundEnabled = isPhoneInboundEnabled();
+    const inboundEnabled = await isPhoneInboundEnabledForBusiness({
+      business: assistant.business,
+      businessId
+    });
     const outboundV1Enabled = direction === 'outbound' && isPhoneOutboundV1Enabled({ businessId });
 
     // Structured call-started log for monitoring
@@ -1103,7 +1120,7 @@ async function handleConversationStarted(event) {
 
     if (direction === 'inbound' && !inboundEnabled) {
       const disabledMessage = getInboundDisabledMessage(assistant.business?.language);
-      console.log(`[INBOUND_BLOCKED] ${JSON.stringify({ conversationId, source: 'main', reason: 'PHONE_INBOUND_ENABLED=false', businessId })}`);
+      console.log(`[INBOUND_BLOCKED] ${JSON.stringify({ conversationId, source: 'main', reason: 'business.phoneInboundEnabled=false', businessId })}`);
       metricsService.incrementCounter('phone_inbound_blocked_total', { source: 'main' });
 
       await prisma.callLog.upsert({

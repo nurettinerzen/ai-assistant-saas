@@ -130,11 +130,14 @@ class FeatureAccessController {
    * @returns {string} Plan name (STARTER, PRO, ENTERPRISE)
    */
   getRequiredPlanForFeature(feature) {
+    const trialFeatures = [
+      'batchCalls'
+    ];
+
     // Features available in PRO and above
     const proFeatures = [
       'email',
       'googleSheets',
-      'batchCalls',
       'prioritySupport',
       'advancedAnalytics',
       'apiAccess'
@@ -151,6 +154,10 @@ class FeatureAccessController {
 
     if (enterpriseFeatures.includes(feature)) {
       return 'ENTERPRISE';
+    }
+
+    if (trialFeatures.includes(feature)) {
+      return 'TRIAL';
     }
 
     if (proFeatures.includes(feature)) {

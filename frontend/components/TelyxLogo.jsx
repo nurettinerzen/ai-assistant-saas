@@ -42,11 +42,11 @@ export function TelyxLogoCompact({ darkMode = false, width = 180, height = 55 })
   return (
     <div className="relative">
       <Image
-        src="/telyx-logo-full.png"
+        src={darkMode ? '/telyx-logo-sidebar-white.png' : '/telyx-logo-sidebar-light.png'}
         alt="Telyx AI"
         width={width}
         height={height}
-        className={`object-contain ${darkMode ? 'brightness-0 invert' : ''}`}
+        className="object-contain"
         priority
       />
     </div>

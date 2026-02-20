@@ -13,8 +13,14 @@ export const metadata = {
   title: 'Telyx AI - AI Phone & Chat Assistant for Business',
   description: 'Automate your business communications with AI-powered phone calls, chat, email, and WhatsApp integration.',
   icons: {
-    icon: '/telyx-icon.png',
-    shortcut: '/telyx-icon.png',
+    icon: [
+      { url: '/telyx-icon.png', media: '(prefers-color-scheme: light)' },
+      { url: '/telyx-icon-white.png', media: '(prefers-color-scheme: dark)' },
+    ],
+    shortcut: [
+      { url: '/telyx-icon.png', media: '(prefers-color-scheme: light)' },
+      { url: '/telyx-icon-white.png', media: '(prefers-color-scheme: dark)' },
+    ],
     apple: '/telyx-icon.png',
   },
 };

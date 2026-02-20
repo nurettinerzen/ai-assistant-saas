@@ -29,6 +29,8 @@ import { apiClient } from '@/lib/api';
 import { toast, toastHelpers } from '@/lib/toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePermissions } from '@/hooks/usePermissions';
+import PageIntro from '@/components/PageIntro';
+import { getPageHelp } from '@/content/pageHelp';
 import UpgradeModal from '@/components/UpgradeModal';
 import {
   getIntegrationFeatureInfo,
@@ -117,17 +119,20 @@ const INTEGRATION_DOCS = {
 export default function IntegrationsPage() {
   const { t, locale } = useLanguage();
   const { can, user } = usePermissions();
+  const pageHelp = getPageHelp('integrations', locale);
 
   // React Query hooks
   const { data: integrationsData, isLoading: loading } = useIntegrations();
   const { data: userPlan } = useUserPlan();
+  const crmFeatureInfo = getIntegrationFeatureInfo('CUSTOM', userPlan);
+  const hasCrmEntitlement = !crmFeatureInfo.isLocked && !crmFeatureInfo.isHidden;
   const { data: whatsappStatus } = useWhatsAppStatus();
   const { data: iyzicoStatus } = useIyzicoStatus();
   const { data: emailStatus } = useEmailStatus();
   const { data: shopifyStatus } = useShopifyStatus();
   const { data: webhookStatus } = useWebhookStatus();
   const { data: ikasStatus } = useIkasStatus();
-  const { data: crmStatus } = useCrmWebhookStatus();
+  const { data: crmStatus } = useCrmWebhookStatus({ enabled: hasCrmEntitlement });
 
   const integrations = integrationsData?.integrations || [];
   const businessType = integrationsData?.businessType || 'OTHER';
@@ -675,10 +680,12 @@ const handleShopifyConnect = async () => {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-semibold text-neutral-900 dark:text-white">{t('dashboard.integrationsPage.title')}</h1>
-        <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">{t('dashboard.integrationsPage.description')}</p>
-      </div>
+      <PageIntro
+        title={pageHelp?.title || t('dashboard.integrationsPage.title')}
+        subtitle={pageHelp?.subtitle}
+        locale={locale}
+        help={pageHelp ? { tooltipTitle: pageHelp.tooltipTitle, tooltipBody: pageHelp.tooltipBody, quickSteps: pageHelp.quickSteps } : undefined}
+      />
 
       {/* All Integrations Grid */}
       {loading ? (
@@ -696,9 +703,8 @@ const handleShopifyConnect = async () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Custom CRM Integration - Only for ECOMMERCE - Moved to top */}
           {businessType === 'ECOMMERCE' && (() => {
-            const crmFeatureInfo = getIntegrationFeatureInfo('CUSTOM', userPlan);
-            const isCRMLocked = crmFeatureInfo.isLocked;
-            const isCrmConnected = crmStatus?.hasWebhook && crmStatus?.isActive;
+            const isCRMLocked = crmFeatureInfo.isLocked || crmStatus?.isLockedByAccess;
+            const isCrmConnected = !isCRMLocked && crmStatus?.hasWebhook && crmStatus?.isActive;
 
             return (
             <div className={`bg-white dark:bg-neutral-900 rounded-xl border p-6 transition-shadow ${isCRMLocked ? 'opacity-70 bg-neutral-50 dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700' : isCrmConnected ? 'border-neutral-400 dark:border-neutral-600 hover:shadow-md' : 'border-neutral-200 dark:border-neutral-700 hover:shadow-md'}`}>

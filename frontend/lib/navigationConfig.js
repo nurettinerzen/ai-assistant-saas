@@ -6,11 +6,19 @@
 
 export const NAVIGATION_ITEMS = {
   // Product
+  guides: {
+    labelTr: 'Rehber',
+    labelEn: 'Guide',
+    descriptionTr: 'Panelin nasıl çalıştığını ve kurulum adımlarını öğrenin.',
+    descriptionEn: 'Learn how the dashboard works and get setup steps.',
+    href: '/dashboard/guides',
+    group: 'product',
+  },
   assistants: {
     labelTr: 'Asistanlar',
     labelEn: 'Assistants',
-    descriptionTr: 'Gelen ve giden arama asistanlarınızı oluşturun ve yönetin.',
-    descriptionEn: 'Create and manage your inbound and outbound call assistants.',
+    descriptionTr: 'Giden arama asistanlarınızı oluşturun ve yönetin.',
+    descriptionEn: 'Create and manage your outbound call assistants.',
     href: '/dashboard/assistant',
     group: 'product',
   },

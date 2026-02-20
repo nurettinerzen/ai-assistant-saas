@@ -183,7 +183,7 @@ export function checkFeatureAccess(featureName) {
       const requirements = {
         email: 'PRO',
         integrations: 'PRO',
-        batchCalls: 'PRO',
+        batchCalls: 'TRIAL',
         analytics: 'STARTER',
         apiAccess: 'ENTERPRISE'
       };

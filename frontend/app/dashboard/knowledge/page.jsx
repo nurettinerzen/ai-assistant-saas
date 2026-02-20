@@ -36,10 +36,13 @@ import { toast, Toaster } from 'sonner';
 import { formatDate, formatFileSize } from '@/lib/utils';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePermissions } from '@/hooks/usePermissions';
+import PageIntro from '@/components/PageIntro';
+import { getPageHelp } from '@/content/pageHelp';
 
 function KnowledgeBaseContent() {
   const { t, locale } = useLanguage();
   const { can } = usePermissions();
+  const pageHelp = getPageHelp('knowledgeBase', locale);
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -239,16 +242,12 @@ function KnowledgeBaseContent() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-neutral-900 dark:text-white">
-            {t('dashboard.knowledgeBasePage.title')}
-          </h1>
-          <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
-            {t('dashboard.knowledgeBasePage.description')}
-          </p>
-        </div>
-      </div>
+      <PageIntro
+        title={pageHelp?.title || t('dashboard.knowledgeBasePage.title')}
+        subtitle={pageHelp?.subtitle}
+        locale={locale}
+        help={pageHelp ? { tooltipTitle: pageHelp.tooltipTitle, tooltipBody: pageHelp.tooltipBody, quickSteps: pageHelp.quickSteps } : undefined}
+      />
 
       {/* Tabs */}
       <Tabs

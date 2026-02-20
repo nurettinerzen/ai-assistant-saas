@@ -2,10 +2,13 @@ import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticateToken } from '../middleware/auth.js';
 import { checkPermission } from '../middleware/permissions.js';
-import { hasProFeatures } from '../config/plans.js';
 import multer from 'multer';
 import XLSX from 'xlsx';
 import axios from 'axios';
+import {
+  ENTITLEMENT_REASONS
+} from '../services/phonePlanEntitlements.js';
+import { resolvePhoneOutboundAccessForBusinessId } from '../services/phoneOutboundAccess.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -170,12 +173,123 @@ function parseFile(buffer, filename) {
  * Check if plan allows batch calls
  */
 async function checkBatchCallAccess(businessId) {
-  const subscription = await prisma.subscription.findUnique({
-    where: { businessId }
-  });
+  const access = await resolvePhoneOutboundAccessForBusinessId(businessId);
 
-  // PRO and ENTERPRISE plans have batch call access
-  return hasProFeatures(subscription?.plan);
+  return {
+    hasAccess: access.hasAccess,
+    plan: access.plan,
+    status: access.status,
+    reasonCode: access.reasonCode,
+    requiredPlan: access.requiredPlan,
+    outboundTestCallEnabled: access.outboundTestCallEnabled
+  };
+}
+
+function toBatchAccessPayload(access) {
+  if (access.hasAccess) {
+    return {
+      hasAccess: true,
+      reasonCode: null,
+      requiredPlan: null,
+      lockContext: null,
+      outboundTestCallEnabled: Boolean(access.outboundTestCallEnabled),
+      message: 'Outbound campaigns are available.',
+      messageTR: 'Outbound kampanya aramaları kullanılabilir.'
+    };
+  }
+
+  if (access.reasonCode === ENTITLEMENT_REASONS.PLAN_UPGRADE_REQUIRED) {
+    return {
+      hasAccess: false,
+      reasonCode: ENTITLEMENT_REASONS.PLAN_UPGRADE_REQUIRED,
+      requiredPlan: access.requiredPlan || 'TRIAL',
+      lockContext: 'PLAN',
+      outboundTestCallEnabled: Boolean(access.outboundTestCallEnabled),
+      message: `Outbound is available on ${access.requiredPlan || 'TRIAL'}+ plans.`,
+      messageTR: `Outbound ${access.requiredPlan || 'TRIAL'}+ planlarda açıktır.`
+    };
+  }
+
+  if (access.reasonCode === ENTITLEMENT_REASONS.PLAN_DISABLED) {
+    return {
+      hasAccess: false,
+      reasonCode: ENTITLEMENT_REASONS.PLAN_DISABLED,
+      requiredPlan: access.requiredPlan || 'TRIAL',
+      lockContext: 'PLAN',
+      outboundTestCallEnabled: Boolean(access.outboundTestCallEnabled),
+      message: `Outbound is disabled for ${access.plan || 'FREE'} plan.`,
+      messageTR: `${access.plan || 'FREE'} planında outbound kapalı.`
+    };
+  }
+
+  if (access.reasonCode === ENTITLEMENT_REASONS.V1_OUTBOUND_ONLY) {
+    return {
+      hasAccess: false,
+      reasonCode: ENTITLEMENT_REASONS.V1_OUTBOUND_ONLY,
+      requiredPlan: null,
+      lockContext: 'INBOUND_V1',
+      outboundTestCallEnabled: Boolean(access.outboundTestCallEnabled),
+      message: 'Inbound is disabled in V1 outbound-only mode.',
+      messageTR: 'V1 outbound-only modunda inbound kapalıdır.'
+    };
+  }
+
+  if (access.reasonCode === ENTITLEMENT_REASONS.BUSINESS_DISABLED) {
+    return {
+      hasAccess: false,
+      reasonCode: ENTITLEMENT_REASONS.BUSINESS_DISABLED,
+      requiredPlan: null,
+      lockContext: 'INBOUND_TOGGLE',
+      outboundTestCallEnabled: Boolean(access.outboundTestCallEnabled),
+      message: 'Outbound is disabled because inbound is disabled for this business.',
+      messageTR: 'Bu işletmede inbound kapalı olduğu için outbound kapalıdır.'
+    };
+  }
+
+  if (access.reasonCode === 'SUBSCRIPTION_INACTIVE') {
+    return {
+      hasAccess: false,
+      reasonCode: 'SUBSCRIPTION_INACTIVE',
+      requiredPlan: null,
+      lockContext: 'SUBSCRIPTION',
+      outboundTestCallEnabled: Boolean(access.outboundTestCallEnabled),
+      message: 'Subscription is not active.',
+      messageTR: 'Abonelik aktif değil.'
+    };
+  }
+
+  if (access.reasonCode === 'NO_SUBSCRIPTION') {
+    return {
+      hasAccess: false,
+      reasonCode: 'NO_SUBSCRIPTION',
+      requiredPlan: 'TRIAL',
+      lockContext: 'SUBSCRIPTION',
+      outboundTestCallEnabled: Boolean(access.outboundTestCallEnabled),
+      message: 'No active subscription found.',
+      messageTR: 'Aktif abonelik bulunamadı.'
+    };
+  }
+
+  return {
+    hasAccess: false,
+    reasonCode: access.reasonCode || ENTITLEMENT_REASONS.PLAN_DISABLED,
+    requiredPlan: access.requiredPlan || null,
+    lockContext: 'PLAN',
+    outboundTestCallEnabled: Boolean(access.outboundTestCallEnabled),
+    message: 'Campaigns are not available for your current plan.',
+    messageTR: 'Kampanyalar mevcut planınızda kullanılamaz.'
+  };
+}
+
+function sendBatchCallAccessDenied(res, access) {
+  const payload = toBatchAccessPayload(access);
+
+  return res.status(403).json({
+    ...payload,
+    error: payload.message,
+    errorTR: payload.messageTR,
+    upgrade: payload.reasonCode === ENTITLEMENT_REASONS.PLAN_UPGRADE_REQUIRED
+  });
 }
 
 // ============================================================
@@ -192,14 +306,8 @@ router.use(authenticateToken);
 router.get('/check-access', async (req, res) => {
   try {
     const businessId = req.businessId;
-    const hasAccess = await checkBatchCallAccess(businessId);
-
-    res.json({
-      hasAccess,
-      message: hasAccess
-        ? 'Batch calling is available'
-        : 'Upgrade to Professional or Enterprise plan for batch calling'
-    });
+    const access = await checkBatchCallAccess(businessId);
+    res.json(toBatchAccessPayload(access));
   } catch (error) {
     console.error('Check access error:', error);
     res.status(500).json({ error: 'Failed to check access' });
@@ -319,13 +427,9 @@ router.post('/parse', upload.single('file'), async (req, res) => {
     const businessId = req.businessId;
 
     // Check plan access
-    const hasAccess = await checkBatchCallAccess(businessId);
-    if (!hasAccess) {
-      return res.status(403).json({
-        error: 'Batch calling is only available for Professional and Enterprise plans',
-        errorTR: 'Toplu arama özelliği sadece Profesyonel ve Kurumsal planlarda kullanılabilir',
-        upgrade: true
-      });
+    const access = await checkBatchCallAccess(businessId);
+    if (!access.hasAccess) {
+      return sendBatchCallAccessDenied(res, access);
     }
 
     if (!req.file) {
@@ -360,13 +464,9 @@ router.post('/', upload.single('file'), checkPermission('campaigns:view'), async
     const businessId = req.businessId;
 
     // Check plan access
-    const hasAccess = await checkBatchCallAccess(businessId);
-    if (!hasAccess) {
-      return res.status(403).json({
-        error: 'Batch calling is only available for Professional and Enterprise plans',
-        errorTR: 'Toplu arama özelliği sadece Profesyonel ve Kurumsal planlarda kullanılabilir',
-        upgrade: true
-      });
+    const access = await checkBatchCallAccess(businessId);
+    if (!access.hasAccess) {
+      return sendBatchCallAccessDenied(res, access);
     }
 
     const { name, assistantId, phoneNumberId, columnMapping, scheduledAt } = req.body;
@@ -688,13 +788,9 @@ router.get('/', checkPermission('campaigns:view'), async (req, res) => {
     const businessId = req.businessId;
 
     // Check plan access
-    const hasAccess = await checkBatchCallAccess(businessId);
-    if (!hasAccess) {
-      return res.status(403).json({
-        error: 'Batch calling is only available for Professional and Enterprise plans',
-        errorTR: 'Toplu arama özelliği sadece Profesyonel ve Kurumsal planlarda kullanılabilir',
-        upgrade: true
-      });
+    const access = await checkBatchCallAccess(businessId);
+    if (!access.hasAccess) {
+      return sendBatchCallAccessDenied(res, access);
     }
 
     const batchCalls = await prisma.batchCall.findMany({

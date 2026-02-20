@@ -240,7 +240,7 @@ export const PLANS = {
       ecommerce: true,
       calendar: true,
       googleSheets: true,
-      batchCalls: false,
+      batchCalls: true,
       prioritySupport: false,
       analytics: true,
       apiAccess: false
@@ -275,7 +275,7 @@ export const PLANS = {
       ecommerce: true,
       calendar: true,
       googleSheets: true,
-      batchCalls: false,
+      batchCalls: true,
       prioritySupport: false,
       analytics: true,
       apiAccess: false
@@ -309,7 +309,7 @@ export const PLANS = {
       ecommerce: true,
       calendar: true,
       googleSheets: true,     // Tüm planlarda açık
-      batchCalls: false,      // Pro'da açık
+      batchCalls: true,
       prioritySupport: false, // Pro'da açık
       analytics: true,        // Basic analytics
       advancedAnalytics: false,
@@ -412,7 +412,7 @@ export const PLANS = {
       ecommerce: true,
       calendar: true,
       googleSheets: true,
-      batchCalls: false,
+      batchCalls: true,
       prioritySupport: false,
       analytics: true,
       apiAccess: false

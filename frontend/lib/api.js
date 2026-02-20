@@ -55,7 +55,10 @@ api.interceptors.response.use(
       }
       // Login sayfasındaysa hiçbir şey yapma, hatayı döndür
     } else if (error.response?.status === 403) {
-      toast.error('Access denied');
+      // Some locked-plan checks intentionally return 403 and should stay silent in UI.
+      if (!error.config?.suppressExpected403) {
+        toast.error('Access denied');
+      }
     } else if (error.response?.status === 429) {
       toast.error('Too many requests. Please try again later.');
     } else if (error.response?.status >= 500) {
@@ -200,7 +203,6 @@ export const apiClient = {
     provision: (data) => api.post('/api/phone-numbers/provision', data),
     importSip: (data) => api.post('/api/phone-numbers/import-sip', data),
     delete: (id) => api.delete(`/api/phone-numbers/${id}`),
-    updateAssistant: (id, assistantId) => api.patch(`/api/phone-numbers/${id}/assistant`, { assistantId }),
     testCall: (id, testPhoneNumber) => api.post(`/api/phone-numbers/${id}/test-call`, { testPhoneNumber }),
     getCountries: () => api.get('/api/phone-numbers/countries'),
   },

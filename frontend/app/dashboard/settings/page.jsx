@@ -26,6 +26,8 @@ import { apiClient } from '@/lib/api';
 import { toast, toastHelpers } from '@/lib/toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePermissions } from '@/hooks/usePermissions';
+import PageIntro from '@/components/PageIntro';
+import { getPageHelp } from '@/content/pageHelp';
 
 import {
   useProfile,
@@ -42,6 +44,7 @@ import {
 export default function SettingsPage() {
   const { t, locale, changeLocale } = useLanguage();
   const { can } = usePermissions();
+  const pageHelp = getPageHelp('settings', locale);
 
   // React Query hooks
   const { data: profileData, isLoading: profileLoading } = useProfile();
@@ -198,14 +201,12 @@ export default function SettingsPage() {
   return (
     <div className="space-y-8 max-w-4xl">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-semibold text-neutral-900 dark:text-white">
-          {t('dashboard.settingsPage.title')}
-        </h1>
-        <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
-          {t('dashboard.settingsPage.manageAccountPreferences')}
-        </p>
-      </div>
+      <PageIntro
+        title={pageHelp?.title || t('dashboard.settingsPage.title')}
+        subtitle={pageHelp?.subtitle}
+        locale={locale}
+        help={pageHelp ? { tooltipTitle: pageHelp.tooltipTitle, tooltipBody: pageHelp.tooltipBody, quickSteps: pageHelp.quickSteps } : undefined}
+      />
 
       {/* Profile Section */}
       <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-3 shadow-sm">

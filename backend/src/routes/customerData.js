@@ -82,7 +82,7 @@ async function syncElevenLabsAgents(businessId) {
           systemPrompt: assistant.systemPrompt,
           tone: assistant.tone || 'professional',
           customNotes: assistant.customNotes,
-          callDirection: assistant.callDirection || 'inbound'
+          callDirection: assistant.callDirection || 'outbound'
         };
         const fullSystemPrompt = buildAssistantPrompt(tempAssistant, business, activeToolsList);
 

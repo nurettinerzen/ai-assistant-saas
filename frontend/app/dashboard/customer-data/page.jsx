@@ -46,6 +46,8 @@ import { apiClient } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useLanguage } from '@/contexts/LanguageContext';
+import PageIntro from '@/components/PageIntro';
+import { getPageHelp } from '@/content/pageHelp';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -111,6 +113,7 @@ const formatDateDisplay = (dateValue, locale = 'tr') => {
 
 export default function CustomerDataPage() {
   const { t, locale } = useLanguage();
+  const pageHelp = getPageHelp('customerData', locale);
 
   // View mode: 'files' or 'records'
   const [viewMode, setViewMode] = useState('files');
@@ -345,21 +348,18 @@ export default function CustomerDataPage() {
     return (
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold text-neutral-900 dark:text-white">
-              {t('dashboard.customerDataPage.title')}
-            </h1>
-            <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
-              {t('dashboard.customerDataPage.description')}
-            </p>
-          </div>
-
-          <Button onClick={() => setShowUploadModal(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            {t('dashboard.customerDataPage.uploadNewData')}
-          </Button>
-        </div>
+        <PageIntro
+          title={pageHelp?.title || t('dashboard.customerDataPage.title')}
+          subtitle={pageHelp?.subtitle}
+          locale={locale}
+          help={pageHelp ? { tooltipTitle: pageHelp.tooltipTitle, tooltipBody: pageHelp.tooltipBody, quickSteps: pageHelp.quickSteps } : undefined}
+          actions={
+            <Button onClick={() => setShowUploadModal(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              {t('dashboard.customerDataPage.uploadNewData')}
+            </Button>
+          }
+        />
 
         {/* File List */}
         {loadingFiles ? (
