@@ -6,10 +6,11 @@ import { TONE_RULES } from '../config/prompts/tone-rules.js';
  * Chat / WhatsApp / Email prompt builder
  * No phone-specific rules (silence, hangup, voicemail etc.)
  */
-function buildChatPrompt(assistant, business, integrations = []) {
+function buildChatPrompt(assistant, business, integrations = [], options = {}) {
   const businessName = business.name || 'İşletme';
   const assistantName = assistant.name || 'Asistan';
   const lang = (business.language || 'TR').toUpperCase();
+  const businessIdentity = options.businessIdentity || null;
 
   const tone = assistant.tone || 'professional';
   const toneRules = TONE_RULES[tone] || TONE_RULES.professional;
@@ -41,6 +42,13 @@ SADECE aşağıdaki kaynaklardan bilgi ver:
 - İnternetten veya genel bilginden ${businessName} hakkında bilgi TÜRETME
 - Firma hakkında soru gelirse SADECE Bilgi Bankası'ndaki bilgileri kullan
 - Fiyat, ürün, hizmet, özellik gibi bilgileri Bilgi Bankası'nda yoksa UYDURMA
+
+## CLAIM POLİTİKASI (SIFIR UYDURMA)
+- Şirket/ürün/özellik claim'i için KB veya tool kanıtı yoksa KESİN iddia kurma
+- KB boşsa veya KB_CONFIDENCE=LOW ise: "Bu konuda elimde doğrulanmış bilgi yok" de
+- Bu durumda TEK bir netleştirme sorusu sor ve link/doküman/özellik adı iste
+- Genel dünya bilgisinden (telekom, TV, 4K vb.) şirket tanımı uydurma
+- Belirsizlikte: "${businessName} ile ilgili hangi konuyu soruyorsun?" diye yönlendir
 `
     : `You are a text-based (chat/WhatsApp/email) customer assistant for ${businessName}. Your name: ${assistantName}.
 
@@ -68,7 +76,25 @@ ONLY provide information from these sources:
 - Do NOT derive information about ${businessName} from the internet or general knowledge
 - If asked about the company, ONLY use Knowledge Base content
 - Do NOT fabricate prices, products, services, or features not in the Knowledge Base
+
+## CLAIM POLICY (ZERO FABRICATION)
+- Never make company/product/feature claims without KB or tool evidence
+- If KB is empty or KB_CONFIDENCE=LOW, say you do not have verified information
+- In that case ask exactly one clarification question and request a link/doc/feature name
+- Do not infer company description from general world knowledge
+- In ambiguity ask: "Which topic about ${businessName} are you asking about?"
 `;
+
+  if (businessIdentity) {
+    const summary = businessIdentity.identitySummary || (lang === 'TR' ? 'tanımlı değil' : 'not configured');
+    const aliases = (businessIdentity.businessAliases || []).join(', ') || (lang === 'TR' ? 'tanımlı değil' : 'not configured');
+    const entities = (businessIdentity.keyEntities || []).join(', ') || (lang === 'TR' ? 'tanımlı değil' : 'not configured');
+    const domains = (businessIdentity.allowedDomains || []).join(' | ') || (lang === 'TR' ? 'tanımlı değil' : 'not configured');
+
+    prompt += lang === 'TR'
+      ? `\n\n## BUSINESS IDENTITY\n- businessName: ${businessIdentity.businessName || businessName}\n- identitySummary: ${summary}\n- businessAliases: ${aliases}\n- keyEntities: ${entities}\n- allowedDomains: ${domains}`
+      : `\n\n## BUSINESS IDENTITY\n- businessName: ${businessIdentity.businessName || businessName}\n- identitySummary: ${summary}\n- businessAliases: ${aliases}\n- keyEntities: ${entities}\n- allowedDomains: ${domains}`;
+  }
 
   prompt += '\n\n' + toneRules;
 
@@ -302,7 +328,7 @@ Vedalaştıktan sonra başka bir şey söyleme.
  * @param {Array} integrations - Aktif entegrasyon listesi
  * @returns {String} Birleştirilmiş prompt
  */
-export function buildAssistantPrompt(assistant, business, integrations = []) {
+export function buildAssistantPrompt(assistant, business, integrations = [], options = {}) {
   const assistantType = assistant?.assistantType === 'text' ? 'text' : (assistant?.assistantType || 'phone');
   const effectiveCallDirection = assistantType === 'text' ? null : assistant?.callDirection;
   console.log('🔧 buildAssistantPrompt called with assistantType:', assistantType, 'effectiveCallDirection:', effectiveCallDirection);
@@ -310,7 +336,7 @@ export function buildAssistantPrompt(assistant, business, integrations = []) {
   // Text assistant (chat / WhatsApp / email) — no phone rules
   if (assistantType === 'text') {
     console.log('💬 Using CHAT rules for text assistant');
-    return buildChatPrompt(assistant, business, integrations);
+    return buildChatPrompt(assistant, business, integrations, options);
   }
 
   // Outbound Sales için özel prompt

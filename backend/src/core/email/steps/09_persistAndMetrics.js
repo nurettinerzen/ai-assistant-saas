@@ -26,6 +26,7 @@ export async function persistEmailMetrics(ctx) {
     guardrailsApplied,
     providerDraft,
     providerDraftError,
+    responseGrounding = 'GROUNDED',
     metrics,
     errors,
     // RAG-specific context
@@ -62,6 +63,7 @@ export async function persistEmailMetrics(ctx) {
             hasData: !!r.data
           })),
           guardrails: guardrailsApplied,
+          responseGrounding,
           providerDraftId: providerDraft?.draftId || providerDraft?.id,
           providerDraftError,
           // RAG metrics
@@ -97,6 +99,7 @@ export async function persistEmailMetrics(ctx) {
       classification,
       toolResults,
       guardrailsApplied,
+      responseGrounding,
       errors,
       // RAG metrics
       ragExamples,
@@ -142,6 +145,7 @@ async function logEmailMetrics({
   classification,
   toolResults,
   guardrailsApplied,
+  responseGrounding = 'GROUNDED',
   errors,
   ragExamples,
   resolvedSnippets,
@@ -174,6 +178,7 @@ async function logEmailMetrics({
       guardrailsApplied: guardrailsApplied?.map(g => g.name) || [],
       guardrailsPassed: guardrailsApplied?.filter(g => g.passed).map(g => g.name) || [],
       guardrailsFailed: guardrailsApplied?.filter(g => !g.passed).map(g => g.name) || [],
+      responseGrounding,
 
       // Tokens
       inputTokens: metrics?.inputTokens || 0,

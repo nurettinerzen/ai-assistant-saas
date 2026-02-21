@@ -93,6 +93,8 @@ model Business {
   phoneInboundEnabled      Boolean                 @default(false) // Admin toggle: false=V1 outbound-only, true=FULL V2 inbound
   onboardingCompletedAt    DateTime?               // Business-level onboarding completion timestamp
   language                 String                  @default("TR") // Uygulama dili (TR, EN, PR, DE, ES, FR...)
+  aliases                  String[]                @default([]) // Tenant-defined alternative business spellings for resolver
+  identitySummary          String?                 @db.Text // Optional short description used as business identity context
   country                  String                  @default("TR") // Bölge kodu (TR, BR, US, DE...)
   currency                 String                  @default("TRY") // Para birimi (TRY, BRL, USD, EUR...)
   timezone                 String                  @default("Europe/Istanbul")

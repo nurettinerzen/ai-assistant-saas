@@ -423,6 +423,8 @@ export async function handleEmailTurn(params) {
     metrics.steps.generateDraft = Date.now() - step6Start;
     metrics.inputTokens = generateResult.inputTokens;
     metrics.outputTokens = generateResult.outputTokens;
+    ctx.responseGrounding = ctx.responseGrounding || (ctx.draftForced ? 'CLARIFICATION' : 'GROUNDED');
+    metrics.responseGrounding = ctx.responseGrounding;
     console.log(`✅ [EmailTurn] Draft generated (${metrics.steps.generateDraft}ms)`);
 
     // ============================================
@@ -553,6 +555,7 @@ export async function handleEmailTurn(params) {
       metrics,
       classification: ctx.classification,
       toolsCalled: metrics.toolsCalled,
+      responseGrounding: ctx.responseGrounding,
       guardrailsApplied: ctx.guardrailsApplied,
       toolRequiredEnforced: toolRequiredResult?.enforced || false,
       piiModified: piiResult?.modified || false,

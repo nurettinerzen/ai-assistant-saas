@@ -1,55 +1,175 @@
 /**
- * V1 MVP: KB Retrieval Service
+ * KB Retrieval Service (Entity-First)
  *
- * Keyword-based retrieval with hard limits:
- * - Max 5 items returned
- * - Max 6000 chars total context
- * - Max 1500-2000 chars per item
- *
- * NO full KB dump - intelligent retrieval only
+ * Deterministic rules:
+ * - Entity match (EXACT/FUZZY) is always prioritized in retrieval terms.
+ * - Retrieval is top-N query based (not single keyword).
+ * - kbConfidence becomes LOW when entity match exists but KB has no entity evidence.
  */
 
 import prisma from '../config/database.js';
+import { ENTITY_MATCH_TYPES } from './entityTopicResolver.js';
+import { normalizeForMatch } from './businessIdentity.js';
 
 const MAX_KB_ITEMS = 5;
 const MAX_TOTAL_CHARS = 6000;
 const MAX_CHARS_PER_ITEM = 2000;
+const MAX_QUERY_TERMS = 5;
+const MAX_DB_SCAN_ITEMS = 50;
 
-/**
- * Retrieve relevant KB items based on user message
- *
- * @param {number} businessId - Business ID
- * @param {string} userMessage - User's message (for keyword extraction)
- * @returns {Promise<string>} - Formatted KB context (max 6000 chars)
- */
-export async function retrieveKB(businessId, userMessage) {
+const KB_CONFIDENCE = {
+  LOW: 'LOW',
+  MEDIUM: 'MEDIUM',
+  HIGH: 'HIGH'
+};
+
+const STOP_WORDS = new Set([
+  'bir', 'bu', 'şu', 'o', 've', 'veya', 'ile', 'mi', 'mı', 'mu', 'mü',
+  'ne', 'nasıl', 'neden', 'nerede', 'kim', 'ben', 'sen', 'biz', 'siz',
+  'the', 'a', 'an', 'and', 'or', 'is', 'are', 'was', 'were', 'be', 'been',
+  'what', 'how', 'why', 'where', 'who', 'i', 'you', 'we', 'they'
+]);
+
+function truncate(text, maxChars) {
+  if (text.length <= maxChars) return text;
+  return `${text.substring(0, maxChars)}...`;
+}
+
+function formatKBItem(item) {
+  const type = item.type?.toUpperCase();
+
+  if (type === 'DOCUMENT') {
+    return `### ${item.title || 'Belge'}\n${truncate(item.content || '', MAX_CHARS_PER_ITEM)}`;
+  }
+  if (type === 'FAQ') {
+    return `### S: ${item.question || 'Soru'}\nC: ${truncate(item.answer || '', MAX_CHARS_PER_ITEM)}`;
+  }
+  if (type === 'URL') {
+    return `### ${item.title || 'Web Sayfası'}\n${truncate(item.content || '', MAX_CHARS_PER_ITEM)}\nKaynak: ${item.url}`;
+  }
+
+  return '';
+}
+
+export function extractKeywords(message) {
+  return String(message || '')
+    .toLowerCase()
+    .replace(/[^\w\sğüşıöçĞÜŞİÖÇ]/g, ' ')
+    .split(/\s+/)
+    .map(word => word.trim())
+    .filter(Boolean)
+    .filter(word => word.length > 2)
+    .filter(word => !STOP_WORDS.has(word))
+    .filter((word, index, arr) => arr.indexOf(word) === index)
+    .slice(0, MAX_QUERY_TERMS);
+}
+
+export function buildRetrievalQueryTerms({ userMessage, entityResolution } = {}) {
+  const keywords = extractKeywords(userMessage);
+  const terms = [];
+
+  if (
+    entityResolution?.bestGuess &&
+    (entityResolution.entityMatchType === ENTITY_MATCH_TYPES.EXACT_MATCH ||
+      entityResolution.entityMatchType === ENTITY_MATCH_TYPES.FUZZY_MATCH)
+  ) {
+    terms.push(entityResolution.bestGuess);
+  }
+
+  for (const keyword of keywords) {
+    if (!terms.some(existing => normalizeForMatch(existing) === normalizeForMatch(keyword))) {
+      terms.push(keyword);
+    }
+  }
+
+  return terms.slice(0, MAX_QUERY_TERMS);
+}
+
+function itemTextForSearch(item) {
+  return [
+    item.title || '',
+    item.content || '',
+    item.question || '',
+    item.answer || '',
+    item.url || ''
+  ].join(' ');
+}
+
+function scoreItem(item, queryTerms, entityTermNormalized) {
+  const text = normalizeForMatch(itemTextForSearch(item));
+  let score = 0;
+
+  for (const term of queryTerms) {
+    const normalized = normalizeForMatch(term);
+    if (normalized && text.includes(normalized)) {
+      score += 1;
+    }
+  }
+
+  if (entityTermNormalized && text.includes(entityTermNormalized)) {
+    score += 2;
+  }
+
+  return score;
+}
+
+export function evaluateKbConfidence({ scoredItems = [], entityResolution = null } = {}) {
+  if (!Array.isArray(scoredItems) || scoredItems.length === 0) {
+    return KB_CONFIDENCE.LOW;
+  }
+
+  const entityRequired =
+    entityResolution?.entityMatchType === ENTITY_MATCH_TYPES.EXACT_MATCH ||
+    entityResolution?.entityMatchType === ENTITY_MATCH_TYPES.FUZZY_MATCH;
+
+  if (entityRequired && !scoredItems.some(item => item.entityMatch)) {
+    return KB_CONFIDENCE.LOW;
+  }
+
+  if (scoredItems.length >= 2 || (scoredItems[0]?.score || 0) >= 2) {
+    return KB_CONFIDENCE.HIGH;
+  }
+
+  return KB_CONFIDENCE.MEDIUM;
+}
+
+function emptyRetrievalResult(queryTerms = []) {
+  return {
+    context: '',
+    kbConfidence: KB_CONFIDENCE.LOW,
+    matchedItemCount: 0,
+    queriesUsed: queryTerms,
+    entityFoundInKB: false
+  };
+}
+
+export async function retrieveKB(businessId, userMessage, options = {}) {
   if (!userMessage || userMessage.trim().length === 0) {
-    return '';
+    return emptyRetrievalResult([]);
+  }
+
+  const { entityResolution = null } = options;
+  const queryTerms = buildRetrievalQueryTerms({ userMessage, entityResolution });
+
+  if (queryTerms.length === 0) {
+    return emptyRetrievalResult([]);
   }
 
   try {
-    // Extract keywords (simple approach: split into words, filter out common words)
-    const keywords = extractKeywords(userMessage);
-
-    if (keywords.length === 0) {
-      return '';
+    const orConditions = [];
+    for (const term of queryTerms) {
+      orConditions.push({ title: { contains: term, mode: 'insensitive' } });
+      orConditions.push({ content: { contains: term, mode: 'insensitive' } });
+      orConditions.push({ question: { contains: term, mode: 'insensitive' } });
+      orConditions.push({ answer: { contains: term, mode: 'insensitive' } });
+      orConditions.push({ url: { contains: term, mode: 'insensitive' } });
     }
 
-    // Build query with ILIKE for case-insensitive search
-    // Search in: title, content, question, answer, url
     const kbItems = await prisma.knowledgeBase.findMany({
       where: {
         businessId,
-        OR: [
-          // Document title/content
-          { title: { contains: keywords[0], mode: 'insensitive' } },
-          { content: { contains: keywords[0], mode: 'insensitive' } },
-          // FAQ question/answer
-          { question: { contains: keywords[0], mode: 'insensitive' } },
-          { answer: { contains: keywords[0], mode: 'insensitive' } },
-          // URL metadata
-          { url: { contains: keywords[0], mode: 'insensitive' } },
-        ]
+        status: 'ACTIVE',
+        OR: orConditions
       },
       select: {
         id: true,
@@ -58,113 +178,101 @@ export async function retrieveKB(businessId, userMessage) {
         content: true,
         question: true,
         answer: true,
-        url: true
+        url: true,
+        createdAt: true
       },
-      take: MAX_KB_ITEMS,
+      take: MAX_DB_SCAN_ITEMS,
       orderBy: {
-        createdAt: 'desc' // Most recent first
+        createdAt: 'desc'
       }
     });
 
     if (kbItems.length === 0) {
-      return '';
+      return emptyRetrievalResult(queryTerms);
     }
 
-    // Format KB items with char limits
+    const entityTermNormalized =
+      entityResolution?.bestGuess &&
+      (entityResolution.entityMatchType === ENTITY_MATCH_TYPES.EXACT_MATCH ||
+        entityResolution.entityMatchType === ENTITY_MATCH_TYPES.FUZZY_MATCH)
+        ? normalizeForMatch(entityResolution.bestGuess)
+        : '';
+
+    const scored = kbItems
+      .map(item => {
+        const text = normalizeForMatch(itemTextForSearch(item));
+        const entityMatch = !!(entityTermNormalized && text.includes(entityTermNormalized));
+        return {
+          ...item,
+          score: scoreItem(item, queryTerms, entityTermNormalized),
+          entityMatch
+        };
+      })
+      .filter(item => item.score > 0)
+      .sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
+
+    if (scored.length === 0) {
+      return emptyRetrievalResult(queryTerms);
+    }
+
+    const selected = [];
+    const seen = new Set();
+    for (const item of scored) {
+      if (selected.length >= MAX_KB_ITEMS) break;
+      if (seen.has(item.id)) continue;
+      seen.add(item.id);
+      selected.push(item);
+    }
+
     const formattedItems = [];
     let totalChars = 0;
-
-    for (const item of kbItems) {
+    for (const item of selected) {
       const formatted = formatKBItem(item);
-      const itemLength = formatted.length;
+      if (!formatted) continue;
 
-      // Check if adding this item would exceed total limit
-      if (totalChars + itemLength > MAX_TOTAL_CHARS) {
+      if (totalChars + formatted.length > MAX_TOTAL_CHARS) {
         break;
       }
 
       formattedItems.push(formatted);
-      totalChars += itemLength;
+      totalChars += formatted.length;
     }
 
     if (formattedItems.length === 0) {
-      return '';
+      return emptyRetrievalResult(queryTerms);
     }
 
-    // Build final KB context
+    const kbConfidence = evaluateKbConfidence({
+      scoredItems: selected,
+      entityResolution
+    });
+
     const kbContext = `
 ## BİLGİ BANKASI (${formattedItems.length} kayıt)
 
 ${formattedItems.join('\n\n---\n\n')}
 
-ÖNEMLİ: Yukarıdaki bilgileri kullanarak yanıt ver. Bilgi Bankası'nda olmayan bilgileri UYDURMA.
+ÖNEMLİ: Yukarıdaki bilgileri kullanarak yanıt ver. Bilgi Bankası'nda olmayan şirket/ürün/özellik bilgilerini UYDURMA.
 `;
 
-    console.log(`📚 [KB Retrieval] Retrieved ${formattedItems.length} items (${totalChars} chars) for businessId: ${businessId}`);
+    console.log(`📚 [KB Retrieval] entity-first terms=${queryTerms.join(', ')} items=${formattedItems.length} confidence=${kbConfidence} businessId=${businessId}`);
 
-    return kbContext;
-
+    return {
+      context: kbContext,
+      kbConfidence,
+      matchedItemCount: formattedItems.length,
+      queriesUsed: queryTerms,
+      entityFoundInKB: selected.some(item => item.entityMatch)
+    };
   } catch (error) {
     console.error('❌ [KB Retrieval] Error:', error);
-    return ''; // Fail gracefully - don't break the conversation
+    return emptyRetrievalResult(queryTerms);
   }
 }
 
-/**
- * Extract keywords from user message
- * Simple approach: remove common words, get unique words
- */
-function extractKeywords(message) {
-  // Turkish + English common words to ignore
-  const stopWords = new Set([
-    'bir', 'bu', 'şu', 'o', 've', 'veya', 'ile', 'mi', 'mı', 'mu', 'mü',
-    'ne', 'nasıl', 'neden', 'nerede', 'kim', 'ben', 'sen', 'biz', 'siz',
-    'the', 'a', 'an', 'and', 'or', 'is', 'are', 'was', 'were', 'be', 'been',
-    'what', 'how', 'why', 'where', 'who', 'i', 'you', 'we', 'they'
-  ]);
-
-  const words = message
-    .toLowerCase()
-    .replace(/[^\w\sğüşıöçĞÜŞİÖÇ]/g, '') // Remove punctuation
-    .split(/\s+/)
-    .filter(word => word.length > 2) // Min 3 chars
-    .filter(word => !stopWords.has(word));
-
-  // Return unique words (first 3 for performance)
-  return [...new Set(words)].slice(0, 3);
-}
-
-/**
- * Format KB item with char limit
- */
-function formatKBItem(item) {
-  let formatted = '';
-  const type = item.type?.toUpperCase(); // Normalize to uppercase for comparison
-
-  if (type === 'DOCUMENT') {
-    formatted = `### ${item.title || 'Belge'}\n${truncate(item.content || '', MAX_CHARS_PER_ITEM)}`;
-  } else if (type === 'FAQ') {
-    formatted = `### S: ${item.question || 'Soru'}\nC: ${truncate(item.answer || '', MAX_CHARS_PER_ITEM)}`;
-  } else if (type === 'URL') {
-    formatted = `### ${item.title || 'Web Sayfası'}\n${truncate(item.content || '', MAX_CHARS_PER_ITEM)}\nKaynak: ${item.url}`;
-  }
-
-  return formatted;
-}
-
-/**
- * Truncate text to max chars
- */
-function truncate(text, maxChars) {
-  if (text.length <= maxChars) {
-    return text;
-  }
-  return text.substring(0, maxChars) + '...';
-}
-
-/**
- * Get KB stats for a business (for debugging)
- */
 export async function getKBStats(businessId) {
   const stats = await prisma.knowledgeBase.groupBy({
     by: ['type'],

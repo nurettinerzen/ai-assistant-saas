@@ -43,6 +43,16 @@ import {
 import { classifyTone } from '../../../services/email-tone-classifier.js';
 import { cleanEmailText } from '../../../services/email-text-cleaner.js';
 import { ToolOutcome, normalizeOutcome } from '../../../tools/toolResult.js';
+import { buildBusinessIdentity } from '../../../services/businessIdentity.js';
+import { resolveMentionedEntity, ENTITY_MATCH_TYPES } from '../../../services/entityTopicResolver.js';
+import {
+  buildLowConfidenceClarification,
+  determineResponseGrounding,
+  RESPONSE_GROUNDING,
+  isBusinessClaimCategory
+} from '../../../services/responseGrounding.js';
+import { logEntityResolver, logShortCircuit } from '../../../services/entityResolverTelemetry.js';
+import { isFeatureEnabled } from '../../../config/feature-flags.js';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
@@ -79,6 +89,95 @@ export async function generateEmailDraft(ctx) {
   try {
     const ragStartTime = Date.now();
     const effectiveBusinessId = businessId || business?.id;
+    const inboundTextForEntity = inboundMessage?.bodyText || inboundMessage?.body || subject || '';
+
+    const businessIdentity = await buildBusinessIdentity({
+      business,
+      providedKnowledgeItems: knowledgeItems
+    });
+
+    const entityResolution = resolveMentionedEntity(inboundTextForEntity, businessIdentity, {
+      language
+    });
+
+    const { kbConfidence, hasKBMatch } = estimateEmailKbConfidence({
+      knowledgeItems,
+      entityResolution
+    });
+
+    ctx.businessIdentity = businessIdentity;
+    ctx.entityResolution = entityResolution;
+    ctx.kbConfidence = kbConfidence;
+    ctx.hasKBMatch = hasKBMatch;
+    ctx.entityResolverTelemetry = logEntityResolver({
+      channel: 'EMAIL',
+      entityResolution,
+      kbConfidence
+    });
+
+    if (
+      entityResolution.needsClarification &&
+      (entityResolution.entityMatchType === ENTITY_MATCH_TYPES.FUZZY_MATCH ||
+        entityResolution.entityMatchType === ENTITY_MATCH_TYPES.OUT_OF_SCOPE)
+    ) {
+      const shortCircuitReason = entityResolution.entityMatchType === ENTITY_MATCH_TYPES.OUT_OF_SCOPE
+        ? 'out_of_scope'
+        : 'clarification';
+      logShortCircuit({
+        reason: shortCircuitReason,
+        channel: 'EMAIL',
+        entityResolution,
+        kbConfidence
+      });
+      ctx.draftContent = entityResolution.clarificationQuestion;
+      ctx.responseGrounding = entityResolution.entityMatchType === ENTITY_MATCH_TYPES.OUT_OF_SCOPE
+        ? RESPONSE_GROUNDING.OUT_OF_SCOPE
+        : RESPONSE_GROUNDING.CLARIFICATION;
+      return {
+        success: true,
+        inputTokens: 0,
+        outputTokens: 0,
+        ragMetrics: {
+          latencyMs: 0,
+          examplesUsed: 0,
+          snippetsUsed: 0,
+          factGroundingEnforced: false
+        }
+      };
+    }
+
+    const strictGroundingEnabled = isFeatureEnabled('TEXT_STRICT_GROUNDING');
+    const businessClaimCategory = isBusinessClaimCategory({
+      userMessage: inboundTextForEntity,
+      entityResolution,
+      businessIdentity
+    });
+
+    if (strictGroundingEnabled && businessClaimCategory && (kbConfidence === 'LOW' || !hasKBMatch)) {
+      const strictClarification = buildLowConfidenceClarification({
+        businessIdentity,
+        language
+      });
+      logShortCircuit({
+        reason: 'clarification',
+        channel: 'EMAIL',
+        entityResolution,
+        kbConfidence
+      });
+      ctx.draftContent = strictClarification;
+      ctx.responseGrounding = RESPONSE_GROUNDING.CLARIFICATION;
+      return {
+        success: true,
+        inputTokens: 0,
+        outputTokens: 0,
+        ragMetrics: {
+          latencyMs: 0,
+          examplesUsed: 0,
+          snippetsUsed: 0,
+          factGroundingEnforced: false
+        }
+      };
+    }
 
     // Check business-level RAG settings
     const ragSettings = await shouldUseRAG(effectiveBusinessId, options);
@@ -194,7 +293,11 @@ export async function generateEmailDraft(ctx) {
       snippets: resolvedSnippets,
       factGrounding,
       similarPairs, // NEW: Pass similar pairs for tone/style matching
-      pairConfidence // NEW: Pass confidence score
+      pairConfidence, // NEW: Pass confidence score
+      businessIdentity,
+      entityResolution,
+      kbConfidence,
+      hasKBMatch
     });
 
     // Build user prompt (the email to reply to)
@@ -227,7 +330,32 @@ export async function generateEmailDraft(ctx) {
       };
     }
 
-    ctx.draftContent = draftContent;
+    const hadToolSuccess = sanitizedToolResults.some((toolResult) =>
+      normalizeOutcome(toolResult?.outcome) === ToolOutcome.OK
+    );
+
+    const groundingDecision = determineResponseGrounding({
+      finalResponse: draftContent,
+      kbConfidence,
+      hasKBMatch,
+      hadToolSuccess,
+      entityResolution,
+      language,
+      businessIdentity,
+      userMessage: inboundTextForEntity
+    });
+
+    let groundedDraftContent = groundingDecision.finalResponse;
+    let responseGrounding = groundingDecision.responseGrounding;
+
+    if (groundingDecision.ungroundedDetected) {
+      responseGrounding = RESPONSE_GROUNDING.CLARIFICATION;
+      groundedDraftContent = groundingDecision.finalResponse;
+      console.warn('⚠️ [GenerateDraft] Ungrounded email draft replaced with clarification');
+    }
+
+    ctx.responseGrounding = responseGrounding;
+    ctx.draftContent = groundedDraftContent;
     ctx.rawLLMResponse = response;
 
     // Store RAG context for metrics
@@ -284,6 +412,61 @@ export async function generateEmailDraft(ctx) {
   }
 }
 
+function normalizeForCheck(value) {
+  return String(value || '')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function estimateEmailKbConfidence({ knowledgeItems, entityResolution }) {
+  const hasKnowledge = Array.isArray(knowledgeItems) && knowledgeItems.length > 0;
+  if (!hasKnowledge) {
+    return {
+      kbConfidence: 'LOW',
+      hasKBMatch: false
+    };
+  }
+
+  const requiresEntityEvidence =
+    entityResolution?.entityMatchType === ENTITY_MATCH_TYPES.EXACT_MATCH ||
+    entityResolution?.entityMatchType === ENTITY_MATCH_TYPES.FUZZY_MATCH;
+
+  if (!requiresEntityEvidence) {
+    return {
+      kbConfidence: 'MEDIUM',
+      hasKBMatch: true
+    };
+  }
+
+  const target = normalizeForCheck(entityResolution?.bestGuess || '');
+  if (!target) {
+    return {
+      kbConfidence: 'MEDIUM',
+      hasKBMatch: true
+    };
+  }
+
+  const entityFound = knowledgeItems.some(item => {
+    const blob = normalizeForCheck([
+      item?.title || '',
+      item?.question || '',
+      item?.answer || '',
+      item?.content || '',
+      item?.url || ''
+    ].join(' '));
+    return blob.includes(target);
+  });
+
+  return {
+    kbConfidence: entityFound ? 'MEDIUM' : 'LOW',
+    hasKBMatch: entityFound
+  };
+}
+
 /**
  * Build system prompt for email draft generation
  */
@@ -302,7 +485,11 @@ function buildEmailSystemPrompt({
   snippets = [],
   factGrounding = {},
   similarPairs = [],
-  pairConfidence = 0
+  pairConfidence = 0,
+  businessIdentity = null,
+  entityResolution = null,
+  kbConfidence = 'LOW',
+  hasKBMatch = false
 }) {
   const timezone = business.timezone || 'UTC';
   const dateTimeContext = getDateTimeContext(timezone, language);
@@ -342,6 +529,13 @@ function buildEmailSystemPrompt({
 
   // NEW: Similar email pairs (tone/style matching)
   const pairContext = formatPairsForPrompt(similarPairs);
+  const identityName = businessIdentity?.businessName || business.name;
+  const identitySummary = businessIdentity?.identitySummary || 'not configured';
+  const identityAliases = (businessIdentity?.businessAliases || []).join(', ') || 'not configured';
+  const identityEntities = (businessIdentity?.keyEntities || []).join(', ') || 'not configured';
+  const allowedDomains = (businessIdentity?.allowedDomains || []).join(' | ') || 'not configured';
+  const resolverStatus = entityResolution?.entityMatchType || 'NONE';
+  const resolverBestGuess = entityResolution?.bestGuess || '-';
 
   return `${basePrompt}
 
@@ -356,6 +550,19 @@ ${ragContext}
 ${snippetContext}
 ${pairContext}
 ${factGroundingContext}
+## BUSINESS IDENTITY
+- businessName: ${identityName}
+- identitySummary: ${identitySummary}
+- businessAliases: ${identityAliases}
+- keyEntities: ${identityEntities}
+- allowedDomains: ${allowedDomains}
+
+## ENTITY RESOLUTION
+- entityMatchType: ${resolverStatus}
+- bestGuess: ${resolverBestGuess}
+- KB_CONFIDENCE: ${kbConfidence}
+- KB_MATCH: ${hasKBMatch ? 'YES' : 'NO'}
+
 ## CRITICAL EMAIL DRAFT RULES:
 
 ### 1. LANGUAGE (MOST IMPORTANT)
@@ -363,42 +570,50 @@ ${languageInstruction}
 - NEVER mix languages in the same email
 - Match greetings to language (English email = English greeting, Turkish email = Turkish greeting)
 
-### 2. TOOL DATA USAGE
+### 2. CLAIM POLICY (NO FABRICATION)
+- NEVER make company/product/feature claims without KB or tool evidence
+- If BUSINESS_CLAIM category and KB match is missing, NEVER claim feature/industry information
+- If KB_CONFIDENCE is LOW, explicitly say verified info is unavailable
+- In LOW confidence mode ask exactly one clarification question and request link/doc/feature name
+- Do NOT infer company definition from general world knowledge
+- In ambiguity ask which topic about ${identityName} the customer means
+
+### 3. TOOL DATA USAGE
 ${getToolDataInstructions(toolResults, language)}
 
-### 3. DRAFT-ONLY MODE
+### 4. DRAFT-ONLY MODE
 - You are generating a DRAFT that will be reviewed before sending
 - Do NOT claim you have already taken actions (e.g., "I have processed your order")
 - Use tentative language: "I can help with...", "Based on our records...", "I see that..."
 - If tool data is NOT_FOUND (no record at all), ask for clarifying information
 - If tool data is VERIFICATION_REQUIRED (record found, needs identity check), acknowledge what the customer provided and ask ONLY for the missing verification piece
 
-### 4. NO PLACEHOLDERS OR INVENTED INFORMATION
+### 5. NO PLACEHOLDERS OR INVENTED INFORMATION
 - ABSOLUTELY FORBIDDEN: [Your Name], [Company], [İletişim Bilgileri], etc.
 - ABSOLUTELY FORBIDDEN: Inventing names like "Mr. Erzen", "John Doe", "Nurettin"
 - ABSOLUTELY FORBIDDEN: Inventing titles like "CEO", "Manager", "Representative"
 - If information is missing → ask for it or omit it entirely
 - Only use REAL data from: similar email pairs, manual signature, or tool results
 
-### 5. SIGNATURE ENFORCEMENT (ZERO TOLERANCE)
+### 6. SIGNATURE ENFORCEMENT (ZERO TOLERANCE)
 - If manual signature is provided → use it EXACTLY (no modifications, no additions)
 - If NO manual signature → use ONLY closing pattern (e.g., "Best regards")
 - NEVER add name after closing if no manual signature exists
 - Review similar email pair examples to see what you actually use
 
-### 6. RESPONSE STYLE
+### 7. RESPONSE STYLE
 - Be natural and human-like
 - Match the tone/formality from similar email pair examples (PRIORITY)
 - Keep responses concise but complete
 - Address the customer's actual question/concern
 
-### 7. FORMAT
+### 8. FORMAT
 - Brief greeting (use customer's name if known)
 - Direct response to their message
 - If applicable, next steps or what you need from them
 - Short closing (see signature rules above)
 
-### 8. VERIFICATION POLICY
+### 9. VERIFICATION POLICY
 - If sensitive information is requested but customer identity is not verified:
   - NEVER re-ask for information the customer already provided in their email
   - Only ask for the MISSING piece needed for verification (e.g. phone last 4 digits)

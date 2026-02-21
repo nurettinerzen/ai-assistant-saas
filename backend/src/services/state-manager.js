@@ -90,6 +90,7 @@ export function createInitialState(sessionId) {
 
     // Security
     allowedTools: [],           // Tools permitted for current flow
+    responseGrounding: 'GROUNDED', // GROUNDED | UNGROUNDED | CLARIFICATION | OUT_OF_SCOPE
 
     // Metadata
     messageCount: 0,

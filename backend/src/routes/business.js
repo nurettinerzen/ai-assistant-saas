@@ -7,6 +7,39 @@ import { ASSISTANT_CHANNEL_CAPABILITIES, assistantHasCapability } from '../servi
 const router = express.Router();
 const prisma = new PrismaClient();
 
+function parseAliases(value) {
+  if (value == null) return [];
+
+  const source = Array.isArray(value)
+    ? value.map((item) => String(item || '').trim()).filter(Boolean)
+    : String(value)
+      .split(/[\n,;]+/g)
+      .map(item => item.trim())
+      .filter(Boolean);
+
+  const out = [];
+  const seen = new Set();
+
+  for (const item of source) {
+    const normalized = item
+      .normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    out.push(item.slice(0, 80));
+    if (out.length >= 20) break;
+  }
+
+  return out;
+}
+
+function sanitizeIdentitySummary(value) {
+  if (value == null) return null;
+  const text = String(value).replace(/\s+/g, ' ').trim();
+  return text ? text.slice(0, 600) : null;
+}
+
 // 🌍 SUPPORTED LANGUAGES (15+)
 const SUPPORTED_LANGUAGES = [
   'EN', 'TR', 'DE', 'FR', 'ES', 'IT', 'PT',
@@ -159,7 +192,15 @@ router.get('/:businessId', authenticateToken, verifyBusinessAccess, async (req, 
 // Update business settings
 router.put('/:businessId', authenticateToken, verifyBusinessAccess, requireRole(['OWNER', 'ADMIN']), async (req, res) => {
   try {
-    const { name, language, businessType, country, timezone } = req.body;
+    const {
+      name,
+      language,
+      businessType,
+      country,
+      timezone,
+      aliases,
+      identitySummary
+    } = req.body;
 
     // 🌍 Validate language if provided
     if (language && !SUPPORTED_LANGUAGES.includes(language.toUpperCase())) {
@@ -177,6 +218,8 @@ router.put('/:businessId', authenticateToken, verifyBusinessAccess, requireRole(
         ...(language && { language: language.toUpperCase() }),
         ...(country && { country: country.toUpperCase() }),
         ...(timezone && { timezone }),
+        ...(aliases !== undefined && { aliases: parseAliases(aliases) }),
+        ...(identitySummary !== undefined && { identitySummary: sanitizeIdentitySummary(identitySummary) }),
       },
     });
 

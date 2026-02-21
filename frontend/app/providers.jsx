@@ -2,9 +2,10 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export function Providers({ children }) {
+  const buildLogged = useRef(false);
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -22,6 +23,18 @@ export function Providers({ children }) {
         },
       })
   );
+
+  useEffect(() => {
+    if (buildLogged.current) return;
+    buildLogged.current = true;
+
+    const commitHash = process.env.NEXT_PUBLIC_COMMIT_HASH
+      || process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA
+      || 'unknown';
+    const appVersion = process.env.NEXT_PUBLIC_APP_VERSION || 'unknown';
+
+    console.info(`[Frontend Build] version=${appVersion} commit=${commitHash}`);
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

@@ -125,6 +125,12 @@ export const FEATURE_FLAGS = {
   // Disable: LLM can answer product questions without tool call (may hallucinate).
   // Rollback: Set FEATURE_PRODUCT_SPEC_ENFORCE=false
   PRODUCT_SPEC_ENFORCE: process.env.FEATURE_PRODUCT_SPEC_ENFORCE !== 'false', // Default: ON
+
+  // P0 Launch Guard: strict grounding for business claims in text channels
+  // When enabled: business/product/feature claims with KB LOW and no tool evidence
+  // are force-downgraded to clarification (no claim leakage).
+  // Rollback: Set TEXT_STRICT_GROUNDING=false
+  TEXT_STRICT_GROUNDING: process.env.TEXT_STRICT_GROUNDING !== 'false', // Default: ON
 };
 
 /**

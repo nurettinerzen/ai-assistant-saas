@@ -45,6 +45,15 @@ import { checkSessionThrottle } from '../services/sessionThrottle.js';
 import { getChannelMode, getHelpLinks } from '../config/channelMode.js';
 import { ensurePolicyGuidance } from '../services/tool-fail-handler.js';
 import { validateInternalProtocol } from '../guardrails/internalProtocolGuard.js';
+import { buildBusinessIdentity } from '../services/businessIdentity.js';
+import { resolveMentionedEntity, ENTITY_MATCH_TYPES } from '../services/entityTopicResolver.js';
+import {
+  buildLowConfidenceClarification,
+  determineResponseGrounding,
+  RESPONSE_GROUNDING,
+  isBusinessClaimCategory
+} from '../services/responseGrounding.js';
+import { logEntityResolver, logShortCircuit } from '../services/entityResolverTelemetry.js';
 
 /**
  * Extract order number from user message
@@ -662,10 +671,124 @@ export async function handleIncomingMessage({
     metrics.sessionId = resolvedSessionId;
 
     // ========================================
+    // STEP 1.5: Business Identity + Entity Resolver (deterministic, pre-LLM)
+    // ========================================
+    console.log('\n[STEP 1.5] Resolving business identity/entity...');
+
+    const businessIdentity = await buildBusinessIdentity({
+      business,
+      db: prisma
+    });
+
+    const entityResolution = resolveMentionedEntity(userMessage, businessIdentity, {
+      language
+    });
+
+    const resolverTelemetry = logEntityResolver({
+      channel,
+      entityResolution,
+      kbConfidence: 'PENDING'
+    });
+
+    metrics.businessIdentity = {
+      businessName: businessIdentity.businessName,
+      aliasCount: (businessIdentity.businessAliases || []).length,
+      keyEntityCount: (businessIdentity.keyEntities || []).length
+    };
+    metrics.entityResolution = entityResolution;
+    metrics.entityResolver = resolverTelemetry;
+
+    if (
+      entityResolution.needsClarification &&
+      (entityResolution.entityMatchType === ENTITY_MATCH_TYPES.FUZZY_MATCH ||
+        entityResolution.entityMatchType === ENTITY_MATCH_TYPES.OUT_OF_SCOPE)
+    ) {
+      const responseGrounding = entityResolution.entityMatchType === ENTITY_MATCH_TYPES.OUT_OF_SCOPE
+        ? RESPONSE_GROUNDING.OUT_OF_SCOPE
+        : RESPONSE_GROUNDING.CLARIFICATION;
+
+      const shortCircuitReason = responseGrounding === RESPONSE_GROUNDING.OUT_OF_SCOPE
+        ? 'out_of_scope'
+        : 'clarification';
+      logShortCircuit({
+        reason: shortCircuitReason,
+        channel,
+        entityResolution,
+        kbConfidence: 'SKIPPED'
+      });
+
+      state.responseGrounding = responseGrounding;
+      state.lastEntityResolution = {
+        ...entityResolution,
+        at: new Date().toISOString()
+      };
+
+      const clarificationReply = entityResolution.clarificationQuestion;
+
+      await persistAndEmitMetrics({
+        sessionId: resolvedSessionId,
+        state,
+        userMessage,
+        finalResponse: clarificationReply,
+        classification: {
+          type: 'ENTITY_RESOLUTION',
+          confidence: entityResolution.confidence
+        },
+        routing: {
+          routing: {
+            action: 'ENTITY_CLARIFICATION'
+          }
+        },
+        turnStartTime,
+        inputTokens: 0,
+        outputTokens: 0,
+        toolsCalled: [],
+        hadToolSuccess: false,
+        hadToolFailure: false,
+        failedTool: null,
+        channel,
+        businessId: business.id,
+        metrics,
+        responseGrounding,
+        effectsEnabled
+      });
+
+      return {
+        reply: clarificationReply,
+        outcome: ToolOutcome.NEED_MORE_INFO,
+        metadata: {
+          outcome: ToolOutcome.NEED_MORE_INFO,
+          responseGrounding,
+          entityMatchType: entityResolution.entityMatchType,
+          entityBestGuess: entityResolution.bestGuess || null,
+          entityConfidence: entityResolution.confidence
+        },
+        shouldEndSession: false,
+        forceEnd: false,
+        state,
+        metrics,
+        inputTokens: 0,
+        outputTokens: 0,
+        toolsCalled: [],
+        debug: {
+          directResponse: true,
+          entityResolution
+        }
+      };
+    }
+
+    // ========================================
     // STEP 2: Prepare Context
     // ========================================
     console.log('\n[STEP 2] Preparing context...');
-    const { systemPrompt, conversationHistory, toolsAll, hasKBMatch } = await prepareContext({
+    const {
+      systemPrompt,
+      conversationHistory,
+      toolsAll,
+      hasKBMatch,
+      kbConfidence,
+      retrievalMetadata
+    } = await prepareContext({
       business,
       assistant,
       state,
@@ -674,8 +797,107 @@ export async function handleIncomingMessage({
       prisma,
       sessionId: resolvedSessionId,
       userMessage, // V1 MVP: For intelligent KB retrieval
-      channelMode
+      channelMode,
+      businessIdentity,
+      entityResolution
     });
+
+    metrics.kbConfidence = kbConfidence;
+    metrics.kbRetrieval = retrievalMetadata;
+
+    const resolverWithKb = logEntityResolver({
+      channel,
+      entityResolution,
+      kbConfidence
+    });
+    metrics.entityResolverWithKb = resolverWithKb;
+
+    const strictGroundingEnabled = isFeatureEnabled('TEXT_STRICT_GROUNDING');
+    const businessClaimCategory = isBusinessClaimCategory({
+      userMessage,
+      entityResolution,
+      businessIdentity
+    });
+
+    if (strictGroundingEnabled && businessClaimCategory && (kbConfidence === 'LOW' || !hasKBMatch)) {
+      const clarificationReply = buildLowConfidenceClarification({
+        businessIdentity,
+        language
+      });
+      metrics.strictGroundingShortCircuit = true;
+      metrics.businessClaimCategory = true;
+
+      logShortCircuit({
+        reason: 'clarification',
+        channel,
+        entityResolution,
+        kbConfidence
+      });
+
+      state.responseGrounding = RESPONSE_GROUNDING.CLARIFICATION;
+      state.lastEntityResolution = {
+        ...entityResolution,
+        at: new Date().toISOString()
+      };
+
+      await persistAndEmitMetrics({
+        sessionId: resolvedSessionId,
+        state,
+        userMessage,
+        finalResponse: clarificationReply,
+        classification: {
+          type: 'GROUNDING_SHORT_CIRCUIT',
+          confidence: 1
+        },
+        routing: {
+          routing: {
+            action: 'GROUNDING_SHORT_CIRCUIT'
+          }
+        },
+        turnStartTime,
+        inputTokens: 0,
+        outputTokens: 0,
+        toolsCalled: [],
+        hadToolSuccess: false,
+        hadToolFailure: false,
+        failedTool: null,
+        channel,
+        businessId: business.id,
+        metrics: {
+          ...metrics,
+          strictGroundingShortCircuit: true,
+          businessClaimCategory: true
+        },
+        responseGrounding: RESPONSE_GROUNDING.CLARIFICATION,
+        effectsEnabled
+      });
+
+      return {
+        reply: clarificationReply,
+        outcome: ToolOutcome.NEED_MORE_INFO,
+        metadata: {
+          outcome: ToolOutcome.NEED_MORE_INFO,
+          responseGrounding: RESPONSE_GROUNDING.CLARIFICATION,
+          entityMatchType: entityResolution.entityMatchType,
+          entityBestGuess: entityResolution.bestGuess || null,
+          entityConfidence: entityResolution.confidence,
+          kbConfidence,
+          shortCircuitReason: 'LOW_KB_BUSINESS_CLAIM'
+        },
+        shouldEndSession: false,
+        forceEnd: false,
+        state,
+        metrics,
+        inputTokens: 0,
+        outputTokens: 0,
+        toolsCalled: [],
+        debug: {
+          directResponse: true,
+          shortCircuitReason: 'LOW_KB_BUSINESS_CLAIM',
+          entityResolution
+        }
+      };
+    }
 
     // P0 SECURITY: Prepend injection warning to system prompt if detected
     let effectiveSystemPrompt = systemPrompt;
@@ -778,12 +1000,31 @@ export async function handleIncomingMessage({
         console.log('📊 [Chatter-Telemetry] source=catalogTemplate (direct, flag OFF)');
       }
 
+      const directGrounding = determineResponseGrounding({
+        finalResponse: routingResult.reply,
+        kbConfidence,
+        hasKBMatch,
+        hadToolSuccess: false,
+        entityResolution,
+        language,
+        isChatter: !!routingResult.isChatter,
+        businessIdentity,
+        userMessage
+      });
+
+      const responseGrounding = directGrounding.responseGrounding === RESPONSE_GROUNDING.UNGROUNDED
+        ? RESPONSE_GROUNDING.CLARIFICATION
+        : directGrounding.responseGrounding;
+
+      const directReply = directGrounding.finalResponse;
+      state.responseGrounding = responseGrounding;
+
       // Save state and metrics (skip if dry-run)
       await persistAndEmitMetrics({
         sessionId: resolvedSessionId,
         state,
         userMessage,
-        finalResponse: routingResult.reply,
+        finalResponse: directReply,
         classification,
         routing: routingResult,
         turnStartTime,
@@ -796,14 +1037,16 @@ export async function handleIncomingMessage({
         channel,
         businessId: business.id,
         metrics,
+        responseGrounding,
         effectsEnabled // DRY-RUN flag
       });
 
       return {
-        reply: routingResult.reply,
+        reply: directReply,
         outcome: ToolOutcome.OK,
         metadata: {
           outcome: ToolOutcome.OK,
+          responseGrounding,
           ...(routingResult.metadata || {})
         },
         shouldEndSession: false,
@@ -814,6 +1057,7 @@ export async function handleIncomingMessage({
         outputTokens: 0,
         debug: {
           directResponse: true,
+          responseGrounding,
           metadata: routingResult.metadata
         }
       };
@@ -1017,6 +1261,7 @@ export async function handleIncomingMessage({
     // If tool failed, response is already forced template - return immediately
     if (hadToolFailure) {
       console.log('❌ [Orchestrator] Tool failure - returning forced template');
+      state.responseGrounding = RESPONSE_GROUNDING.CLARIFICATION;
 
       await persistAndEmitMetrics({
         sessionId: resolvedSessionId,
@@ -1035,6 +1280,7 @@ export async function handleIncomingMessage({
         channel,
         businessId: business.id,
         metrics,
+        responseGrounding: RESPONSE_GROUNDING.CLARIFICATION,
         effectsEnabled // DRY-RUN flag
       });
 
@@ -1043,7 +1289,8 @@ export async function handleIncomingMessage({
         outcome: ToolOutcome.INFRA_ERROR,
         metadata: {
           outcome: ToolOutcome.INFRA_ERROR,
-          failedTool
+          failedTool,
+          responseGrounding: RESPONSE_GROUNDING.CLARIFICATION
         },
         shouldEndSession: false,
         forceEnd: channel === 'PHONE', // Force end on phone if tool failed
@@ -1286,6 +1533,37 @@ export async function handleIncomingMessage({
       }
     }
 
+    // ========================================
+    // Response Grounding Classification
+    // ========================================
+    const groundingDecision = determineResponseGrounding({
+      finalResponse,
+      kbConfidence,
+      hasKBMatch,
+      hadToolSuccess,
+      entityResolution,
+      language,
+      isChatter: isChatterLLMMode || !!routingResult.isChatter,
+      businessIdentity,
+      userMessage
+    });
+
+    let responseGrounding = groundingDecision.responseGrounding;
+    if (groundingDecision.ungroundedDetected) {
+      metrics.ungroundedDetected = true;
+      finalResponse = groundingDecision.finalResponse;
+      responseGrounding = RESPONSE_GROUNDING.CLARIFICATION;
+      console.warn('⚠️ [Grounding] Ungrounded response intercepted and replaced with clarification');
+    } else {
+      finalResponse = groundingDecision.finalResponse;
+    }
+
+    state.responseGrounding = responseGrounding;
+    state.lastEntityResolution = {
+      ...(entityResolution || {}),
+      at: new Date().toISOString()
+    };
+
     // ── Security Policy Telemetry (canary monitoring) ──
     {
       let repromptCount = Number.isInteger(correctionRepromptCount) ? correctionRepromptCount : 0;
@@ -1368,6 +1646,7 @@ export async function handleIncomingMessage({
       channel,
       businessId: business.id,
       metrics,
+      responseGrounding,
       effectsEnabled // DRY-RUN flag
     });
 
@@ -1391,6 +1670,12 @@ export async function handleIncomingMessage({
         verificationState: state?.verification?.status || 'none',
         repeatToolCallBlocked: !!toolLoopResult._repeatNotFoundBlocked,
         guidanceAdded: metrics.guidanceAdded || [],
+        responseGrounding,
+        kbConfidence,
+        entityMatchType: entityResolution?.entityMatchType || null,
+        entityBestGuess: entityResolution?.bestGuess || null,
+        entityConfidence: entityResolution?.confidence ?? null,
+        ungroundedDetected: !!metrics.ungroundedDetected,
         ...(persistMetadata || {})
       },
       shouldEndSession,
@@ -1406,6 +1691,7 @@ export async function handleIncomingMessage({
         routing: routingResult.routing?.action,
         toolsCalled,
         hadToolSuccess,
+        responseGrounding,
         ...persistMetadata
       }
     };

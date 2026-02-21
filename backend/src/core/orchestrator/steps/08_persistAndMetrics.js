@@ -26,6 +26,7 @@ export async function persistAndEmitMetrics(params) {
     hadToolSuccess,
     hadToolFailure,
     failedTool,
+    responseGrounding = 'GROUNDED',
     channel,
     businessId,
     metrics,
@@ -46,6 +47,7 @@ export async function persistAndEmitMetrics(params) {
         toolsCalled: toolsCalled?.length || 0,
         hadToolSuccess,
         hadToolFailure,
+        responseGrounding,
         turnDuration: Date.now() - turnStartTime,
         _dryRun: true
       }
@@ -62,9 +64,22 @@ export async function persistAndEmitMetrics(params) {
     where: { sessionId }
   });
 
+  const persistedGrounding = responseGrounding === 'UNGROUNDED'
+    ? 'CLARIFICATION'
+    : responseGrounding;
+
+  const persistedResponse = responseGrounding === 'UNGROUNDED'
+    ? (
+      finalResponse && String(finalResponse).trim()
+        ? finalResponse
+        : 'Bu konuda doğrulanmış bilgi paylaşamıyorum. Hangi konuda bilgi istediğini netleştirebilir misin?'
+    )
+    : finalResponse;
+
   const assistantMessage = {
     role: 'assistant',
-    content: finalResponse,
+    content: persistedResponse,
+    responseGrounding: persistedGrounding,
     ...(toolsCalled?.length > 0 && { toolCalls: toolsCalled })
   };
 
@@ -168,6 +183,7 @@ export async function persistAndEmitMetrics(params) {
       toolsCalled: toolsCalled.length,
       hadToolSuccess,
       hadToolFailure,
+      responseGrounding: persistedGrounding,
       turnDuration
     }
   };

@@ -6,6 +6,39 @@ import { authenticateToken } from '../middleware/auth.js';
 const router = express.Router();
 const prisma = new PrismaClient();
 
+function parseAliases(value) {
+  if (value == null) return [];
+
+  const candidates = Array.isArray(value)
+    ? value.map((entry) => String(entry || '').trim()).filter(Boolean)
+    : String(value)
+      .split(/[\n,;]+/g)
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+
+  const deduped = [];
+  const seen = new Set();
+
+  for (const candidate of candidates) {
+    const normalized = candidate
+      .normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    deduped.push(candidate.slice(0, 80));
+    if (deduped.length >= 20) break;
+  }
+
+  return deduped;
+}
+
+function sanitizeIdentitySummary(value) {
+  if (value == null) return null;
+  const text = String(value).replace(/\s+/g, ' ').trim();
+  return text ? text.slice(0, 600) : null;
+}
+
 // GET /api/settings/profile
 router.get('/profile', authenticateToken, async (req, res) => {
   try {
@@ -27,6 +60,8 @@ router.get('/profile', authenticateToken, async (req, res) => {
       select: {
         id: true,
         name: true,
+        aliases: true,
+        identitySummary: true,
         businessType: true,
         language: true,
         country: true,
@@ -58,7 +93,19 @@ router.put('/profile', authenticateToken, async (req, res) => {
   try {
     const userId = req.userId;
     const businessId = req.businessId;
-    const { name, email, company, businessName, language, businessType, country, timezone } = req.body;
+    const {
+      name,
+      email,
+      company,
+      businessName,
+      language,
+      businessType,
+      country,
+      timezone,
+      aliases,
+      businessAliases,
+      identitySummary
+    } = req.body;
 
     // Update user name if provided
     let updatedUser = null;
@@ -79,6 +126,12 @@ router.put('/profile', authenticateToken, async (req, res) => {
     if (businessType !== undefined) businessUpdateData.businessType = businessType.toUpperCase();
     if (country !== undefined) businessUpdateData.country = country.toUpperCase();
     if (timezone !== undefined) businessUpdateData.timezone = timezone;
+    if (aliases !== undefined || businessAliases !== undefined) {
+      businessUpdateData.aliases = parseAliases(aliases !== undefined ? aliases : businessAliases);
+    }
+    if (identitySummary !== undefined) {
+      businessUpdateData.identitySummary = sanitizeIdentitySummary(identitySummary);
+    }
 
     let updatedBusiness = null;
     if (Object.keys(businessUpdateData).length > 0) {

@@ -671,6 +671,7 @@ router.post('/threads/:threadId/generate-draft', authenticateToken, async (req, 
       message: 'Draft generated successfully',
       draft: result.draft,
       classification: result.classification,
+      responseGrounding: result.responseGrounding || 'GROUNDED',
       toolsCalled: result.toolsCalled,
       guardrailsApplied: result.guardrailsApplied,
       providerDraftId: result.providerDraftId,
@@ -835,6 +836,7 @@ router.post('/drafts/:draftId/regenerate', authenticateToken, async (req, res) =
       success: true,
       draft: result.draft,
       classification: result.classification,
+      responseGrounding: result.responseGrounding || 'GROUNDED',
       toolsCalled: result.toolsCalled
     });
   } catch (error) {

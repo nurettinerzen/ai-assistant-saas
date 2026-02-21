@@ -8,6 +8,7 @@
 const PUBLIC_PATHS = [
   // Health checks
   '/health',
+  '/version',
   '/api/health',
 
   // Auth endpoints (public by design)

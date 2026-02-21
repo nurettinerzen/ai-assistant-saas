@@ -101,11 +101,16 @@ import { initChatStatusCleanup } from './jobs/chatStatusCleanup.js';
 import { assertAllRoutesProtected } from './middleware/routeEnforcement.js';
 // Log redaction for sensitive data
 import { logRedactionMiddleware } from './middleware/logRedaction.js';
+import BUILD_INFO from './config/buildInfo.js';
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+if (process.env.NODE_ENV !== 'test') {
+  console.log(`🔖 [Backend Build] version=${BUILD_INFO.version} commit=${BUILD_INFO.commitHash} buildTime=${BUILD_INFO.buildTime}`);
+}
 
 // CORS - Dynamic origins from environment variable
 const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',').map(origin => origin.trim()) || [];
@@ -167,26 +172,22 @@ app.use((req, res, next) => {
 
   // Log request start
   const clientIP = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
-
-  // Override res.json to capture status code and response size
-  const originalJson = res.json.bind(res);
-  res.json = function (body) {
+  res.on('finish', () => {
     const durationMs = Date.now() - startTime;
     const statusCode = res.statusCode;
-    const responseBytes = JSON.stringify(body).length;
+    const contentLength = Number(res.getHeader('content-length'));
+    const responseBytes = Number.isFinite(contentLength) && contentLength >= 0 ? contentLength : 0;
 
-    // Log access
     console.log(
-      `[${req.method}] ${req.path} ` +
+      `[${req.method}] ${req.originalUrl || req.path} ` +
       `statusCode=${statusCode} ` +
       `durationMs=${durationMs} ` +
       `responseBytes=${responseBytes} ` +
+      `commitHash="${BUILD_INFO.commitHash}" ` +
       `requestId="${requestId}" ` +
       `clientIP="${clientIP}"`
     );
-
-    return originalJson(body);
-  };
+  });
 
   next();
 });
@@ -196,7 +197,18 @@ app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok', 
     message: 'Telyx Backend - Production Ready',
-    version: '2.0.0',
+    version: BUILD_INFO.version,
+    commitHash: BUILD_INFO.commitHash,
+    buildTime: BUILD_INFO.buildTime,
+    timestamp: new Date().toISOString()
+  });
+});
+
+app.get('/version', (req, res) => {
+  res.json({
+    version: BUILD_INFO.version,
+    commitHash: BUILD_INFO.commitHash,
+    buildTime: BUILD_INFO.buildTime,
     timestamp: new Date().toISOString()
   });
 });
@@ -355,6 +367,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     console.log('========================================');
     console.log(`✅ Server running on port ${PORT}`);
     console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+    console.log(`🔖 Build: version=${BUILD_INFO.version} commit=${BUILD_INFO.commitHash}`);
     console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log('========================================\n');
   });
