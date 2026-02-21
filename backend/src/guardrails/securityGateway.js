@@ -347,16 +347,15 @@ const SENSITIVE_PATTERNS = {
     /(registered|belongs)\s+to\s+[A-Z][a-z]+\s+[A-Z][a-z]+/i,
   ],
 
-  // Takip numarası (tam veya kısmi)
-  tracking: [
-    /\b[A-Z]{2}\d{9,12}[A-Z]{0,2}\b/i, // Standart tracking format
-    /(?:\b(kargo|takip|tracking|shipment|waybill)\b.{0,24}\b[A-Z0-9\-]{6,}\b|\b[A-Z0-9\-]{6,}\b.{0,24}\b(kargo|takip|tracking|shipment|waybill)\b)/i,
-    /takip\s*(no|numarası?|kodu?)\s*[:=]?\s*[A-Z0-9\-]{6,}/i,
-    /tracking\s*(number|code|id)?\s*[:=]?\s*[A-Z0-9\-]{6,}/i,
-  ],
+  // ────────────────────────────────────────────────────────
+  // tracking / shipping / delivery / address — KALDIRILDI.
+  // Bu tipler artık CONTEXTUAL DETECTION ile taranır.
+  // Candidate token + ±80 char context window modeline geçildi.
+  // Aşağıdaki SENSITIVE_PATTERNS'ta kalan tipler:
+  //   customerName, phone, internal
+  // ────────────────────────────────────────────────────────
 
-  // Adres bilgileri
-  // "kat" tek başına çok genel ("kat kat artır" vb.) — sayısal bağlam gerekli
+  // Adres bilgileri — hâlâ regex-only (her adres pattern zaten bağlamlı)
   address: [
     /mahalle(si)?\s*[:=]?\s*[A-ZÇĞİÖŞÜa-zçğıöşü\s]{3,}/i,
     /sokak|cadde|bulvar/i,
@@ -365,26 +364,6 @@ const SENSITIVE_PATTERNS = {
     /\bkat\s*[:=]\s*\d/i,             // "kat: 5"
     /\b(daire|no)\s*[:=]?\s*\d+\s*[\s,/]+\s*kat\b/i, // "daire 5, kat 3"
     /ilçe(si)?\s*[:=]?\s*[A-ZÇĞİÖŞÜa-zçğıöşü\s]{3,}/i,
-  ],
-
-  // Kargo/Şube bilgileri
-  // ────────────────────────────────────────────────────────
-  // P1 MİMARİ: Carrier adları sadece CANDIDATE TOKEN.
-  // Gerçek shipping leak kararı hasContextualCarrierMention() ile verilir.
-  // Carrier match = (carrier adı) AND (yakın çevrede shipping context keyword)
-  // Shipping context: kargo, takip, gönderi, shipment, waybill, teslimat, tracking, cargo
-  // Bu sayede "Aras" bir isim, "PTT ile iletişim", "MNG holding" gibi false positive'ler önlenir.
-  // ────────────────────────────────────────────────────────
-  shipping: [
-    /dağıtım\s*(merkez|şube)/i,      // Bu zaten bağlamlı — "dağıtım merkezi/şubesi"
-  ],
-
-  // Teslimat detayları
-  delivery: [
-    /komşu(nuz)?a?\s*(teslim|bırak)/i,
-    /kapıcı|güvenlik|resepsiyon/i,
-    /imza(sı|lı)?\s*[:=]?\s*[A-ZÇĞİÖŞÜa-zçğıöşü\s\.]{2,}/i,
-    /teslim\s*alan\s*[:=]?\s*\S+/i,
   ],
 
   // Zaman aralığı
@@ -415,54 +394,164 @@ const SENSITIVE_PATTERNS = {
 };
 
 // ============================================================================
-// CONTEXTUAL DETECTION: Shared constants & helpers
+// CONTEXTUAL DETECTION — UNIFIED CANDIDATE + CONTEXT WINDOW MODEL
 // ============================================================================
-// Context window = ±80 karakter.  Neden 80?
+//
+// MİMARİ: 2-aşamalı karar
+//   A) Candidate token detection — metin içinde aday kelime bulunur
+//   B) ±CONTEXT_WINDOW karakter içinde context keyword doğrulaması
+//   → İkisi birlikte yoksa ASLA SANITIZE/BLOCK üretmez
+//
+// Context window = ±80 karakter.
 //   – ±30 çok dar: "Kargonuz Aras ile gönderildi" gibi cümleler kaçabilir
 //   – ±80 çoğu Türkçe/İngilizce cümleyi kapsar (~12-15 kelime)
 //   – False positive riski düşük çünkü zaten context keyword şartı var
+//
+// 4 grup:
+//   1. CARRIER  (aras, ptt, mng, ups, yurtiçi, ...) + shipping context
+//   2. DELIVERY (kapıcı, güvenlik, resepsiyon, imza, komşu, teslim alan) + delivery context
+//   3. TRACKING (takip, tracking, kargo + alfanumerik) + tracking context
+//   4. NUMERIC  (10-20 haneli sayı) + shipping/tracking context
+//
+// Her match telemetri döndürür: { triggerType, candidateToken, contextHit }
 // ============================================================================
 const CONTEXT_WINDOW = 80;
 
-const SHIPPING_CONTEXT_KEYWORDS = /\b(kargo|takip|gönderi|shipment|waybill|teslimat|tracking|cargo|paket|gönderildi|gonderildi|teslim)\b/i;
+// ── Shared context keyword sets ──────────────────────────────────────────
+const SHIPPING_CONTEXT_KEYWORDS = /\b(kargo|gönderi|shipment|waybill|teslimat|tracking|cargo|paket|gönderildi|gonderildi|teslim|dağıtım)\b/i;
+const DELIVERY_CONTEXT_KEYWORDS = /\b(teslim|bırak|bırakıldı|teslimat|kargo|gönderi|sipariş|paket|delivered|delivery)\b/i;
+const TRACKING_CONTEXT_KEYWORDS = /\b(kargo|takip|gönderi|shipment|waybill|teslimat|tracking|cargo|paket|gönderildi|gonderildi|teslim)\b/i;
 
-const TRACKING_CONTEXT_KEYWORDS = SHIPPING_CONTEXT_KEYWORDS; // aynı set
+// ── Candidate token definitions ──────────────────────────────────────────
+
+// 1. CARRIER candidates — firma isimleri
+const CARRIER_CANDIDATES = /\b(yurtiçi|yurtici|aras|mng|ptt|ups|fedex|dhl|sürat|surat|horoz)\b/gi;
+
+// 2. DELIVERY candidates — teslimat noktası / imza / kişi
+//    Türkçe ek uyumlu: güvenlik → güvenliğe, komşu → komşunuza, resepsiyon → resepsiyona
+//    \b sadece başta, sonda suffix'e izin ver ([a-zçğıöşüA-ZÇĞİÖŞÜ]* ile)
+const DELIVERY_CANDIDATES = /\b(kapıcı|güvenli[kğ]|resepsiyon|imza|komşu)[a-zçğıöşüA-ZÇĞİÖŞÜ]*/gi;
+
+// 3. TRACKING candidates — takip kelimesi + alfanumerik kod yakınlığı
+//    "takip no: TR123", "kargo takip 123456", "tracking number ABC123"
+//    NOT: "takip edin", "takip edebilirsiniz" (genel fiil kullanımı)
+const TRACKING_CODE_PATTERN = /\b[A-Z]{2}\d{9,12}[A-Z]{0,2}\b/i;  // TR1234567890
+const TRACKING_LABEL_PATTERN = /takip\s*(no|numarası?|kodu?)\s*[:=]?\s*[A-Z0-9\-]{6,}/i;
+const TRACKING_LABEL_EN_PATTERN = /tracking\s*(number|code|id)?\s*[:=]?\s*[A-Z0-9\-]{6,}/i;
+const TRACKING_PROXIMITY_CANDIDATES = /\b(kargo|tracking|shipment|waybill)\b/gi; // "takip" çıkarıldı — generic verb
+const TRACKING_PROXIMITY_CODE = /\b[A-Z0-9\-]{6,}\b/g;
+
+// 4. NUMERIC tracking — 10-20 haneli sayılar
 const NUMERIC_TRACKING_CANDIDATE = /\b\d{10,20}\b/g;
 
-function hasContextualTrackingNumber(response = '') {
-  NUMERIC_TRACKING_CANDIDATE.lastIndex = 0;
+// 5. SHIPPING-SPECIFIC patterns (daima bağlamlı — regex kendisi yeterli)
+const SHIPPING_SELF_CONTEXTUAL = /dağıtım\s*(merkez|şube)/i;
+
+// ── Generic context window scanner ──────────────────────────────────────
+/**
+ * Candidate regex'i response üzerinde tarar.
+ * Her match için ±CONTEXT_WINDOW karakter penceresi açar.
+ * Pencerede contextKeywords bulunursa → leak hit döndürür.
+ *
+ * @returns {Array<{candidateToken: string, contextHit: string, index: number}>}
+ */
+function scanCandidatesWithContext(response, candidateRegex, contextKeywords) {
+  candidateRegex.lastIndex = 0;
+  const hits = [];
   let match;
-  while ((match = NUMERIC_TRACKING_CANDIDATE.exec(response)) !== null) {
+  while ((match = candidateRegex.exec(response)) !== null) {
     const from = Math.max(0, match.index - CONTEXT_WINDOW);
     const to = Math.min(response.length, match.index + match[0].length + CONTEXT_WINDOW);
-    const contextWindow = response.slice(from, to);
-    if (TRACKING_CONTEXT_KEYWORDS.test(contextWindow)) {
-      return true;
+    const window = response.slice(from, to);
+    const ctxMatch = contextKeywords.exec(window);
+    contextKeywords.lastIndex = 0; // reset for next iteration
+    if (ctxMatch) {
+      hits.push({
+        candidateToken: match[0],
+        contextHit: ctxMatch[0],
+        index: match.index
+      });
     }
   }
-  return false;
+  return hits;
+}
+
+// ── Tracking proximity scanner (special: candidate + nearby code) ────────
+function scanTrackingProximity(response) {
+  TRACKING_PROXIMITY_CANDIDATES.lastIndex = 0;
+  const hits = [];
+  let match;
+  while ((match = TRACKING_PROXIMITY_CANDIDATES.exec(response)) !== null) {
+    const from = Math.max(0, match.index - 30);
+    const to = Math.min(response.length, match.index + match[0].length + 30);
+    const window = response.slice(from, to);
+    TRACKING_PROXIMITY_CODE.lastIndex = 0;
+    const codeMatch = TRACKING_PROXIMITY_CODE.exec(window);
+    if (codeMatch) {
+      hits.push({
+        candidateToken: match[0],
+        contextHit: codeMatch[0],
+        index: match.index
+      });
+    }
+  }
+  return hits;
 }
 
 // ============================================================================
-// P1: CONTEXTUAL CARRIER DETECTION
+// PUBLIC API: runContextualDetection
 // ============================================================================
-// Carrier adları sadece CANDIDATE TOKEN.
-// Gerçek shipping leak = (carrier adı) AND (±80 char içinde shipping context keyword)
-// ============================================================================
-const CARRIER_CANDIDATES = /\b(yurtiçi|yurtici|aras|mng|ptt|ups|fedex|dhl|sürat|surat|horoz)\b/gi;
+/**
+ * Tüm contextual leak gruplarını tarar.
+ * @returns {Array<{type: string, triggerType: string, candidateToken: string, contextHit: string}>}
+ */
+export function runContextualDetection(response = '') {
+  const results = [];
 
-function hasContextualCarrierMention(response = '') {
-  CARRIER_CANDIDATES.lastIndex = 0;
-  let match;
-  while ((match = CARRIER_CANDIDATES.exec(response)) !== null) {
-    const from = Math.max(0, match.index - CONTEXT_WINDOW);
-    const to = Math.min(response.length, match.index + match[0].length + CONTEXT_WINDOW);
-    const contextWindow = response.slice(from, to);
-    if (SHIPPING_CONTEXT_KEYWORDS.test(contextWindow)) {
-      return true;
-    }
+  // 1. CARRIER — firma + shipping context
+  const carrierHits = scanCandidatesWithContext(response, CARRIER_CANDIDATES, SHIPPING_CONTEXT_KEYWORDS);
+  for (const h of carrierHits) {
+    results.push({ type: 'shipping', triggerType: 'carrier_context', ...h });
   }
-  return false;
+
+  // 2. DELIVERY — teslimat noktası/imza + delivery context
+  const deliveryHits = scanCandidatesWithContext(response, DELIVERY_CANDIDATES, DELIVERY_CONTEXT_KEYWORDS);
+  for (const h of deliveryHits) {
+    results.push({ type: 'delivery', triggerType: 'delivery_context', ...h });
+  }
+
+  // 3. TRACKING — structural patterns (no context needed, pattern itself is contextual)
+  if (TRACKING_CODE_PATTERN.test(response)) {
+    const m = response.match(TRACKING_CODE_PATTERN);
+    results.push({ type: 'tracking', triggerType: 'tracking_code_format', candidateToken: m?.[0] || '', contextHit: 'format_match' });
+  }
+  if (TRACKING_LABEL_PATTERN.test(response)) {
+    const m = response.match(TRACKING_LABEL_PATTERN);
+    results.push({ type: 'tracking', triggerType: 'tracking_label_tr', candidateToken: m?.[0] || '', contextHit: 'label_match' });
+  }
+  if (TRACKING_LABEL_EN_PATTERN.test(response)) {
+    const m = response.match(TRACKING_LABEL_EN_PATTERN);
+    results.push({ type: 'tracking', triggerType: 'tracking_label_en', candidateToken: m?.[0] || '', contextHit: 'label_match' });
+  }
+  // Proximity: "kargo/tracking/shipment/waybill" + nearby alphanumeric code
+  const proxHits = scanTrackingProximity(response);
+  for (const h of proxHits) {
+    results.push({ type: 'tracking', triggerType: 'tracking_proximity', ...h });
+  }
+
+  // 4. NUMERIC — 10-20 haneli sayı + tracking context
+  const numericHits = scanCandidatesWithContext(response, NUMERIC_TRACKING_CANDIDATE, TRACKING_CONTEXT_KEYWORDS);
+  for (const h of numericHits) {
+    results.push({ type: 'tracking', triggerType: 'numeric_tracking', ...h });
+  }
+
+  // 5. SHIPPING self-contextual — dağıtım merkezi/şubesi (always contextual)
+  if (SHIPPING_SELF_CONTEXTUAL.test(response)) {
+    const m = response.match(SHIPPING_SELF_CONTEXTUAL);
+    results.push({ type: 'shipping', triggerType: 'shipping_self_contextual', candidateToken: m?.[0] || '', contextHit: 'self' });
+  }
+
+  return results;
 }
 
 function hasLookupToolPlan(options = {}) {
@@ -516,8 +605,8 @@ export function applyLeakFilter(response, verificationState = 'none', language =
   }
 
   // Verified değilse ACCOUNT_VERIFIED class pattern'leri kontrol et
-  // Bu pattern'ler kişisel veri içerir: adres, tracking, telefon, teslim bilgisi
   if (verificationState !== 'verified') {
+    // ── A) Regex-only patterns (customerName, address, timeWindow, phone) ──
     for (const [type, patterns] of Object.entries(SENSITIVE_PATTERNS)) {
       if (type === 'internal') continue; // Zaten kontrol edildi
 
@@ -530,23 +619,28 @@ export function applyLeakFilter(response, verificationState = 'none', language =
       }
     }
 
-    // Numeric-only tracking IDs must have shipping/tracking context nearby.
-    if (!leaks.some(l => l.type === 'tracking') && hasContextualTrackingNumber(response)) {
-      leaks.push({ type: 'tracking', pattern: 'contextual_numeric_tracking' });
-      triggeredPatterns.push({
-        type: 'tracking',
-        pattern: 'contextual_numeric_tracking',
-        dataClass: 'ACCOUNT_VERIFIED'
+    // ── B) Contextual detection (shipping, delivery, tracking) ──
+    // Candidate token + ±80 char context window — aday tek başına ASLA leak üretmez
+    const contextualHits = runContextualDetection(response);
+    const seenTypes = new Set();
+    for (const hit of contextualHits) {
+      if (seenTypes.has(hit.type)) continue; // Her tip için bir leak yeterli
+      if (leaks.some(l => l.type === hit.type)) continue; // regex zaten yakaladıysa skip
+      seenTypes.add(hit.type);
+      leaks.push({
+        type: hit.type,
+        pattern: `contextual:${hit.triggerType}`,
+        triggerType: hit.triggerType,
+        candidateToken: hit.candidateToken,
+        contextHit: hit.contextHit
       });
-    }
-
-    // P1: Carrier adları bağlam şartlı — yakınında shipping context keyword yoksa shipping leak değil.
-    if (!leaks.some(l => l.type === 'shipping') && hasContextualCarrierMention(response)) {
-      leaks.push({ type: 'shipping', pattern: 'contextual_carrier_mention' });
       triggeredPatterns.push({
-        type: 'shipping',
-        pattern: 'contextual_carrier_mention',
-        dataClass: 'ACCOUNT_VERIFIED'
+        type: hit.type,
+        pattern: `contextual:${hit.triggerType}`,
+        dataClass: 'ACCOUNT_VERIFIED',
+        triggerType: hit.triggerType,
+        candidateToken: hit.candidateToken,
+        contextHit: hit.contextHit
       });
     }
   }
@@ -1142,6 +1236,7 @@ export default {
   getDataClass,
   evaluateSecurityGateway,
   applyLeakFilter,
+  runContextualDetection,
   extractFieldsFromToolOutput,
   extractRecordOwner,
   checkProductNotFound,
