@@ -8,7 +8,7 @@
  */
 
 import prisma from '../config/database.js';
-import { ENTITY_MATCH_TYPES } from './entityTopicResolver.js';
+import { ENTITY_MATCH_TYPES, getEntityHint, getEntityMatchType } from './entityTopicResolver.js';
 import { normalizeForMatch } from './businessIdentity.js';
 
 const MAX_KB_ITEMS = 5;
@@ -67,13 +67,15 @@ export function extractKeywords(message) {
 export function buildRetrievalQueryTerms({ userMessage, entityResolution } = {}) {
   const keywords = extractKeywords(userMessage);
   const terms = [];
+  const matchType = getEntityMatchType(entityResolution);
+  const entityHint = getEntityHint(entityResolution);
 
   if (
-    entityResolution?.bestGuess &&
-    (entityResolution.entityMatchType === ENTITY_MATCH_TYPES.EXACT_MATCH ||
-      entityResolution.entityMatchType === ENTITY_MATCH_TYPES.FUZZY_MATCH)
+    entityHint &&
+    (matchType === ENTITY_MATCH_TYPES.EXACT_MATCH ||
+      matchType === ENTITY_MATCH_TYPES.FUZZY_MATCH)
   ) {
-    terms.push(entityResolution.bestGuess);
+    terms.push(entityHint);
   }
 
   for (const keyword of keywords) {
@@ -118,9 +120,10 @@ export function evaluateKbConfidence({ scoredItems = [], entityResolution = null
     return KB_CONFIDENCE.LOW;
   }
 
+  const matchType = getEntityMatchType(entityResolution);
   const entityRequired =
-    entityResolution?.entityMatchType === ENTITY_MATCH_TYPES.EXACT_MATCH ||
-    entityResolution?.entityMatchType === ENTITY_MATCH_TYPES.FUZZY_MATCH;
+    matchType === ENTITY_MATCH_TYPES.EXACT_MATCH ||
+    matchType === ENTITY_MATCH_TYPES.FUZZY_MATCH;
 
   if (entityRequired && !scoredItems.some(item => item.entityMatch)) {
     return KB_CONFIDENCE.LOW;
@@ -191,11 +194,13 @@ export async function retrieveKB(businessId, userMessage, options = {}) {
       return emptyRetrievalResult(queryTerms);
     }
 
+    const matchType = getEntityMatchType(entityResolution);
+    const entityHint = getEntityHint(entityResolution);
     const entityTermNormalized =
-      entityResolution?.bestGuess &&
-      (entityResolution.entityMatchType === ENTITY_MATCH_TYPES.EXACT_MATCH ||
-        entityResolution.entityMatchType === ENTITY_MATCH_TYPES.FUZZY_MATCH)
-        ? normalizeForMatch(entityResolution.bestGuess)
+      entityHint &&
+      (matchType === ENTITY_MATCH_TYPES.EXACT_MATCH ||
+        matchType === ENTITY_MATCH_TYPES.FUZZY_MATCH)
+        ? normalizeForMatch(entityHint)
         : '';
 
     const scored = kbItems

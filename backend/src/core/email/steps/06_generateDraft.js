@@ -44,14 +44,18 @@ import { classifyTone } from '../../../services/email-tone-classifier.js';
 import { cleanEmailText } from '../../../services/email-text-cleaner.js';
 import { ToolOutcome, normalizeOutcome } from '../../../tools/toolResult.js';
 import { buildBusinessIdentity } from '../../../services/businessIdentity.js';
-import { resolveMentionedEntity, ENTITY_MATCH_TYPES } from '../../../services/entityTopicResolver.js';
 import {
-  buildLowConfidenceClarification,
+  resolveMentionedEntity,
+  ENTITY_MATCH_TYPES,
+  getEntityHint,
+  getEntityMatchType
+} from '../../../services/entityTopicResolver.js';
+import {
   determineResponseGrounding,
   RESPONSE_GROUNDING,
   isBusinessClaimCategory
 } from '../../../services/responseGrounding.js';
-import { logEntityResolver, logShortCircuit } from '../../../services/entityResolverTelemetry.js';
+import { logEntityResolver } from '../../../services/entityResolverTelemetry.js';
 import { isFeatureEnabled } from '../../../config/feature-flags.js';
 
 const openai = new OpenAI({
@@ -115,37 +119,6 @@ export async function generateEmailDraft(ctx) {
       kbConfidence
     });
 
-    if (
-      entityResolution.needsClarification &&
-      (entityResolution.entityMatchType === ENTITY_MATCH_TYPES.FUZZY_MATCH ||
-        entityResolution.entityMatchType === ENTITY_MATCH_TYPES.OUT_OF_SCOPE)
-    ) {
-      const shortCircuitReason = entityResolution.entityMatchType === ENTITY_MATCH_TYPES.OUT_OF_SCOPE
-        ? 'out_of_scope'
-        : 'clarification';
-      logShortCircuit({
-        reason: shortCircuitReason,
-        channel: 'EMAIL',
-        entityResolution,
-        kbConfidence
-      });
-      ctx.draftContent = entityResolution.clarificationQuestion;
-      ctx.responseGrounding = entityResolution.entityMatchType === ENTITY_MATCH_TYPES.OUT_OF_SCOPE
-        ? RESPONSE_GROUNDING.OUT_OF_SCOPE
-        : RESPONSE_GROUNDING.CLARIFICATION;
-      return {
-        success: true,
-        inputTokens: 0,
-        outputTokens: 0,
-        ragMetrics: {
-          latencyMs: 0,
-          examplesUsed: 0,
-          snippetsUsed: 0,
-          factGroundingEnforced: false
-        }
-      };
-    }
-
     const strictGroundingEnabled = isFeatureEnabled('TEXT_STRICT_GROUNDING');
     const businessClaimCategory = isBusinessClaimCategory({
       userMessage: inboundTextForEntity,
@@ -154,29 +127,7 @@ export async function generateEmailDraft(ctx) {
     });
 
     if (strictGroundingEnabled && businessClaimCategory && (kbConfidence === 'LOW' || !hasKBMatch)) {
-      const strictClarification = buildLowConfidenceClarification({
-        businessIdentity,
-        language
-      });
-      logShortCircuit({
-        reason: 'clarification',
-        channel: 'EMAIL',
-        entityResolution,
-        kbConfidence
-      });
-      ctx.draftContent = strictClarification;
-      ctx.responseGrounding = RESPONSE_GROUNDING.CLARIFICATION;
-      return {
-        success: true,
-        inputTokens: 0,
-        outputTokens: 0,
-        ragMetrics: {
-          latencyMs: 0,
-          examplesUsed: 0,
-          snippetsUsed: 0,
-          factGroundingEnforced: false
-        }
-      };
+      ctx.strictGroundingHint = true;
     }
 
     // Check business-level RAG settings
@@ -431,9 +382,10 @@ function estimateEmailKbConfidence({ knowledgeItems, entityResolution }) {
     };
   }
 
+  const matchType = getEntityMatchType(entityResolution);
   const requiresEntityEvidence =
-    entityResolution?.entityMatchType === ENTITY_MATCH_TYPES.EXACT_MATCH ||
-    entityResolution?.entityMatchType === ENTITY_MATCH_TYPES.FUZZY_MATCH;
+    matchType === ENTITY_MATCH_TYPES.EXACT_MATCH ||
+    matchType === ENTITY_MATCH_TYPES.FUZZY_MATCH;
 
   if (!requiresEntityEvidence) {
     return {
@@ -442,7 +394,7 @@ function estimateEmailKbConfidence({ knowledgeItems, entityResolution }) {
     };
   }
 
-  const target = normalizeForCheck(entityResolution?.bestGuess || '');
+  const target = normalizeForCheck(getEntityHint(entityResolution) || '');
   if (!target) {
     return {
       kbConfidence: 'MEDIUM',
@@ -534,8 +486,9 @@ function buildEmailSystemPrompt({
   const identityAliases = (businessIdentity?.businessAliases || []).join(', ') || 'not configured';
   const identityEntities = (businessIdentity?.keyEntities || []).join(', ') || 'not configured';
   const allowedDomains = (businessIdentity?.allowedDomains || []).join(' | ') || 'not configured';
-  const resolverStatus = entityResolution?.entityMatchType || 'NONE';
-  const resolverBestGuess = entityResolution?.bestGuess || '-';
+  const resolverStatus = getEntityMatchType(entityResolution);
+  const resolverHint = getEntityHint(entityResolution) || '-';
+  const resolverClarificationHint = entityResolution?.clarificationQuestionHint || '-';
 
   return `${basePrompt}
 
@@ -559,7 +512,9 @@ ${factGroundingContext}
 
 ## ENTITY RESOLUTION
 - entityMatchType: ${resolverStatus}
-- bestGuess: ${resolverBestGuess}
+- entityHint: ${resolverHint}
+- needsClarification: ${entityResolution?.needsClarification ? 'YES' : 'NO'}
+- clarificationQuestionHint: ${resolverClarificationHint}
 - KB_CONFIDENCE: ${kbConfidence}
 - KB_MATCH: ${hasKBMatch ? 'YES' : 'NO'}
 

@@ -28,14 +28,6 @@ export const GuardrailAction = Object.freeze({
   NEED_MIN_INFO_FOR_TOOL: 'NEED_MIN_INFO_FOR_TOOL'
 });
 
-const LOOKUP_INTENT_HINTS = Object.freeze(new Set([
-  'order_status',
-  'tracking_info',
-  'ticket_status',
-  'debt_inquiry',
-  'verification_response'
-]));
-
 const LOOKUP_TOOL_HINTS = Object.freeze(new Set([
   'customer_data_lookup',
   'check_order_status',
@@ -302,10 +294,10 @@ function maskPhoneNumbers(text) {
     .replace(/\b(\d{3})\d{5,8}(\d{2})\b/g, '$1*****$2');
 }
 
-function getNoToolPlanSanitizeMessage(language = 'TR') {
+function getNoToolContextSanitizeMessage(language = 'TR') {
   return String(language || '').toUpperCase() === 'EN'
-    ? 'I cannot verify account-specific details from that response yet. Share your order number and I can check safely.'
-    : 'Bu yanıttaki hesaba özel detayları henüz doğrulayamıyorum. Sipariş numaranızı paylaşırsanız güvenli şekilde kontrol edebilirim.';
+    ? 'I cannot share account-specific details from that response securely right now.'
+    : 'Bu yanıttaki hesaba özel detayları şu anda güvenli şekilde paylaşamam.';
 }
 
 function sanitizeLeaksWithoutToolPlan(response, leaks = [], language = 'TR') {
@@ -319,7 +311,7 @@ function sanitizeLeaksWithoutToolPlan(response, leaks = [], language = 'TR') {
 
   // Other account-specific leaks (tracking/address/name/shipping/delivery) için
   // deterministic safe rewrite kullan.
-  return getNoToolPlanSanitizeMessage(language);
+  return getNoToolContextSanitizeMessage(language);
 }
 
 const INTERNAL_METADATA_PATTERNS = INTERNAL_METADATA_TERMS.map(term =>
@@ -554,17 +546,10 @@ export function runContextualDetection(response = '') {
   return results;
 }
 
-function hasLookupToolPlan(options = {}) {
+function hasLookupContext(options = {}) {
   const toolsCalled = Array.isArray(options.toolsCalled) ? options.toolsCalled : [];
   const hasLookupTool = toolsCalled.some(toolName => LOOKUP_TOOL_HINTS.has(toolName));
-  const intent = String(options.intent || '').trim().toLowerCase();
-  const hasLookupIntent = LOOKUP_INTENT_HINTS.has(intent);
-
-  if (options.toolPlanExists === true) {
-    return true;
-  }
-
-  return hasLookupTool || hasLookupIntent;
+  return hasLookupTool;
 }
 
 /**
@@ -746,7 +731,7 @@ export function applyLeakFilter(response, verificationState = 'none', language =
   if (!hasOrderNumber) missingFields.push('order_number');
   if (!hasPhone) missingFields.push('phone_last4');
 
-  const lookupToolPlanExists = hasLookupToolPlan(options);
+  const lookupToolContext = hasLookupContext(options);
 
   // Telemetry objesi (debug için - hangi pattern neden trigger etti)
   const telemetry = {
@@ -763,7 +748,7 @@ export function applyLeakFilter(response, verificationState = 'none', language =
     hasPersonalDataLeak,
     responseHasDigits,
     verificationMode: 'ORDER_VERIFY',
-    hasLookupToolPlan: lookupToolPlanExists
+    hasLookupContext: lookupToolContext
   };
 
   if (isCallbackFlow) {
@@ -778,9 +763,9 @@ export function applyLeakFilter(response, verificationState = 'none', language =
     };
   }
 
-  // Ask minimum info ONLY when planner/router produced a real lookup tool plan.
-  // Guardrail never steers domain by itself.
-  const shouldAskMinInfo = lookupToolPlanExists && missingFields.length > 0;
+  // Ask minimum info ONLY when a lookup tool was actually invoked in this turn.
+  // Guardrail never invents domain/scenario by itself.
+  const shouldAskMinInfo = lookupToolContext && missingFields.length > 0;
   if (shouldAskMinInfo) {
     return {
       safe: false,
@@ -798,7 +783,7 @@ export function applyLeakFilter(response, verificationState = 'none', language =
   // - Personal/account leak yoksa PASS
   // - Personal/account leak varsa önce deterministic sanitize
   // - Sanitize başarısızsa BLOCK
-  if (!lookupToolPlanExists) {
+  if (!lookupToolContext) {
     if (!hasPersonalDataLeak) {
       return {
         safe: true,
@@ -807,7 +792,7 @@ export function applyLeakFilter(response, verificationState = 'none', language =
         sanitized: response,
         telemetry: {
           ...telemetry,
-          reason: 'no_tool_plan_non_personal_pass'
+          reason: 'no_lookup_context_non_personal_pass'
         }
       };
     }
@@ -821,7 +806,7 @@ export function applyLeakFilter(response, verificationState = 'none', language =
         sanitized: sanitizedNoToolPlan,
         telemetry: {
           ...telemetry,
-          reason: 'sanitized_no_tool_plan_personal_leak'
+          reason: 'sanitized_no_lookup_context_personal_leak'
         }
       };
     }
@@ -835,15 +820,15 @@ export function applyLeakFilter(response, verificationState = 'none', language =
     leaks,
     needsVerification: false,
     missingFields: [],
-    blockReason: lookupToolPlanExists
-      ? 'LEAK_FILTER_BLOCKED_TOOL_PLAN_PATH'
+    blockReason: lookupToolContext
+      ? 'LEAK_FILTER_BLOCKED_LOOKUP_CONTEXT_PATH'
       : 'LEAK_FILTER_BLOCKED_SANITIZE_FAILED',
     blockedMessage: String(language || '').toUpperCase() === 'EN'
       ? 'I cannot share that detail right now for security reasons.'
       : 'Güvenlik nedeniyle bu detayı şu anda paylaşamıyorum.',
     telemetry: {
       ...telemetry,
-      reason: lookupToolPlanExists ? 'blocked_tool_plan_path' : 'blocked_sanitize_failed'
+      reason: lookupToolContext ? 'blocked_lookup_context_path' : 'blocked_sanitize_failed'
     }
   };
 }

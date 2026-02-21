@@ -7,6 +7,11 @@ export const ENTITY_MATCH_TYPES = {
   NONE: 'NONE'
 };
 
+export const ENTITY_CLARIFICATION_HINTS = {
+  CONFIRM_ENTITY: 'CONFIRM_ENTITY',
+  LIMIT_TO_BUSINESS_SCOPE: 'LIMIT_TO_BUSINESS_SCOPE'
+};
+
 const DEFAULT_FUZZY_THRESHOLD = 0.82;
 
 const OUT_OF_SCOPE_TRIGGER_TR = /\b(nedir|ne iş yapar|hakkında|hakkinda|şirket|sirket|firma|özellik|ozellik|ürün|urun)\b/i;
@@ -192,24 +197,32 @@ function extractCandidateMentions(message = '') {
   return dedupeNormalized(candidates).slice(0, 16);
 }
 
-function buildClarificationQuestion({ entityMatchType, bestGuess, businessName, language = 'TR' }) {
-  const lang = String(language || 'TR').toUpperCase();
+function buildResolverResult({
+  matchType = ENTITY_MATCH_TYPES.NONE,
+  entityHint = '',
+  confidence = 0,
+  needsClarification = false,
+  clarificationQuestionHint = null
+} = {}) {
+  return {
+    matchType,
+    entityHint,
+    confidence: toScore(confidence),
+    needsClarification: !!needsClarification,
+    clarificationQuestionHint: clarificationQuestionHint || null
+  };
+}
 
-  if (entityMatchType === ENTITY_MATCH_TYPES.FUZZY_MATCH) {
-    if (lang === 'TR') {
-      return `Bunu mu demek istedin: ${bestGuess}? Eğer evetse ne hakkında bilgi istiyorsun?`;
-    }
-    return `Did you mean ${bestGuess}? If yes, what would you like to know about it?`;
-  }
+export function getEntityMatchType(result = null) {
+  return result?.matchType || result?.entityMatchType || ENTITY_MATCH_TYPES.NONE;
+}
 
-  if (entityMatchType === ENTITY_MATCH_TYPES.OUT_OF_SCOPE) {
-    if (lang === 'TR') {
-      return `Ben ${businessName} ile ilgili yardımcı olabiliyorum. ${bestGuess} bununla mı ilgili, yoksa ${businessName} hakkında mı soruyorsun?`;
-    }
-    return `I can help with ${businessName}. Is "${bestGuess}" related to that, or are you asking about ${businessName}?`;
-  }
+export function getEntityHint(result = null) {
+  return result?.entityHint || result?.bestGuess || '';
+}
 
-  return '';
+export function getEntityClarificationHint(result = null) {
+  return result?.clarificationQuestionHint || null;
 }
 
 function resolveKnownEntities(identity = {}) {
@@ -237,18 +250,13 @@ export function resolveMentionedEntity(
   businessIdentity,
   { fuzzyThreshold = DEFAULT_FUZZY_THRESHOLD, language = 'TR' } = {}
 ) {
-  const businessName = businessIdentity?.businessName || 'Business';
+  const _language = language; // reserved for future locale-specific hinting
+  void _language;
   const knownEntities = resolveKnownEntities(businessIdentity);
   const normalizedMessage = normalizeForMatch(userMessage);
 
   if (!normalizedMessage) {
-    return {
-      entityMatchType: ENTITY_MATCH_TYPES.NONE,
-      bestGuess: '',
-      confidence: 0,
-      needsClarification: false,
-      clarificationQuestion: ''
-    };
+    return buildResolverResult();
   }
 
   for (const entity of knownEntities) {
@@ -256,13 +264,11 @@ export function resolveMentionedEntity(
     if (!normalizedEntity) continue;
 
     if (isWholeEntityMentioned(normalizedMessage, normalizedEntity)) {
-      return {
-        entityMatchType: ENTITY_MATCH_TYPES.EXACT_MATCH,
-        bestGuess: entity,
-        confidence: 1,
-        needsClarification: false,
-        clarificationQuestion: ''
-      };
+      return buildResolverResult({
+        matchType: ENTITY_MATCH_TYPES.EXACT_MATCH,
+        entityHint: entity,
+        confidence: 1
+      });
     }
   }
 
@@ -287,48 +293,31 @@ export function resolveMentionedEntity(
   }
 
   if (best.entity && best.score >= fuzzyThreshold) {
-    const clarificationQuestion = buildClarificationQuestion({
-      entityMatchType: ENTITY_MATCH_TYPES.FUZZY_MATCH,
-      bestGuess: best.entity,
-      businessName,
-      language
-    });
-
-    return {
-      entityMatchType: ENTITY_MATCH_TYPES.FUZZY_MATCH,
-      bestGuess: best.entity,
-      confidence: toScore(best.score),
+    return buildResolverResult({
+      matchType: ENTITY_MATCH_TYPES.FUZZY_MATCH,
+      entityHint: best.entity,
+      confidence: best.score,
       needsClarification: true,
-      clarificationQuestion
-    };
+      clarificationQuestionHint: ENTITY_CLARIFICATION_HINTS.CONFIRM_ENTITY
+    });
   }
 
   if (looksLikeOutOfScopePrompt(userMessage)) {
     const guess = pickOutOfScopeGuess(mentions);
     if (guess) {
-      const clarificationQuestion = buildClarificationQuestion({
-        entityMatchType: ENTITY_MATCH_TYPES.OUT_OF_SCOPE,
-        bestGuess: guess,
-        businessName,
-        language
-      });
-
-      return {
-        entityMatchType: ENTITY_MATCH_TYPES.OUT_OF_SCOPE,
-        bestGuess: guess,
+      return buildResolverResult({
+        matchType: ENTITY_MATCH_TYPES.OUT_OF_SCOPE,
+        entityHint: guess,
         confidence: 0.9,
         needsClarification: true,
-        clarificationQuestion
-      };
+        clarificationQuestionHint: ENTITY_CLARIFICATION_HINTS.LIMIT_TO_BUSINESS_SCOPE
+      });
     }
   }
 
-  return {
-    entityMatchType: ENTITY_MATCH_TYPES.NONE,
-    bestGuess: best.entity || '',
-    confidence: toScore(best.score),
-    needsClarification: false,
-    clarificationQuestion: ''
-  };
+  return buildResolverResult({
+    matchType: ENTITY_MATCH_TYPES.NONE,
+    entityHint: best.entity || '',
+    confidence: best.score
+  });
 }
-

@@ -1130,23 +1130,7 @@ router.post('/widget', async (req, res) => {
     console.log(`⏱️ [Widget] KB empty check: ${Date.now() - _t}ms`); _t = Date.now();
 
     if (isKBEmpty && !hasCRMTools && !looksLikeCRMQuery && !isGreetingOrChatter) {
-      console.log('⚠️ KB_EMPTY_FALLBACK: No KB content, no CRM tools, returning hard fallback');
-
-      const fallbackMessage = language === 'TR'
-        ? `Üzgünüm, şu anda bilgi bankamızda bu konuda bilgi bulunmuyor. Size daha iyi yardımcı olabilmemiz için lütfen ${business.contactEmail || business.phone || 'müşteri hizmetleri'} üzerinden bizimle iletişime geçin.`
-        : `Sorry, we don't have information about this in our knowledge base yet. For better assistance, please contact us at ${business.contactEmail || business.phone || 'customer service'}.`;
-
-      return res.json({
-        reply: fallbackMessage,
-        outcome: ToolOutcome.NOT_FOUND,
-        kbEmptyFallback: true,
-        conversationId: sessionId,
-        sessionId: clientSessionId || sessionId,
-        metadata: {
-          outcome: ToolOutcome.NOT_FOUND,
-          kbEmptyFallback: true
-        }
-      });
+      console.log('⚠️ KB_EMPTY_FALLBACK disabled (LLM-first mode) — continuing to orchestrator');
     }
 
     // NOTE: System prompt, KB retrieval, chatLog, dateTimeContext are all handled

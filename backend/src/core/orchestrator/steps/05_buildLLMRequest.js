@@ -7,9 +7,8 @@
  */
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { applyToolGatingPolicy } from '../../../policies/toolGatingPolicy.js';
 import { convertToolsToGeminiFunctions as convertToolsToGemini } from '../../../services/gemini-utils.js';
-import { isPolicyTopic } from '../../../services/tool-fail-handler.js';
+import { getEntityClarificationHint, getEntityHint, getEntityMatchType } from '../../../services/entityTopicResolver.js';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
@@ -24,7 +23,8 @@ export async function buildLLMRequest(params) {
     toolsAll,
     metrics,
     assistant,
-    business
+    business,
+    entityResolution
   } = params;
 
   // STEP 0: Enhance system prompt with known customer info
@@ -180,28 +180,54 @@ Kullanıcı saygısız dil kullandı (${strike}. uyarı / 3 üzerinden).
     console.log(`⚠️ [BuildLLMRequest] Added profanity context (strike ${strike}/3)`);
   }
 
-  // STEP 0.5: CHATTER messages — CONTEXT-PRESERVING PROMPT
-  // When chatterDirective is present (LLM mode), use directive-driven prompt.
-  // Otherwise (legacy direct template mode that reached here), use generic chatter guidance.
+  if (routingResult?.isKbOnlyRedirect && routingResult?.kbOnlyRedirect) {
+    const category = routingResult.kbOnlyRedirect.category || 'UNKNOWN';
+    const variables = routingResult.kbOnlyRedirect.variables || {};
+    enhancedSystemPrompt += `
+
+## KB_ONLY REDIRECT CONTEXT
+- category: ${category}
+- supportLink: ${variables.supportLink || '-'}
+- trackingLink: ${variables.trackingLink || '-'}
+- returnLink: ${variables.returnLink || '-'}
+- paymentLink: ${variables.paymentLink || '-'}
+
+KURAL:
+- Hesap/siparişe özel işlem yapma.
+- Kısa, net bir yönlendirme ver.
+- Tek bir güvenli sonraki adım öner.`;
+    console.log('🔒 [BuildLLMRequest] Added KB_ONLY redirect context');
+  }
+
+  // Entity resolver output is structural hint only; LLM decides final wording.
+  const resolverMatchType = getEntityMatchType(entityResolution);
+  const resolverEntityHint = getEntityHint(entityResolution);
+  const resolverClarificationHint = getEntityClarificationHint(entityResolution);
+  if (resolverMatchType !== 'NONE' || entityResolution?.needsClarification) {
+    enhancedSystemPrompt += `
+
+## ENTITY RESOLVER HINT (STRUCTURED, NO DIRECT REPLY)
+- matchType: ${resolverMatchType}
+- entityHint: ${resolverEntityHint || '-'}
+- confidence: ${entityResolution?.confidence ?? 0}
+- needsClarification: ${entityResolution?.needsClarification ? 'YES' : 'NO'}
+- clarificationQuestionHint: ${resolverClarificationHint || '-'}
+
+KURAL:
+- Resolver sonucu SADECE bağlam ipucudur, cevabı sen üretirsin.
+- needsClarification=YES ise TEK bir netleştirme sorusu sor.
+- OUT_OF_SCOPE ise işletme kapsamına nazikçe geri yönlendir.
+- FUZZY_MATCH ise "${resolverEntityHint || 'bu varlık'}" için doğrulayıcı kısa soru sor.`;
+    console.log('🧭 [BuildLLMRequest] Added structured entity resolver hint');
+  }
+
+  // STEP 0.5: CHATTER messages — LLM short response mode (always LLM)
   const isChatterRoute = routingResult?.isChatter || routingResult?.routing?.routing?.action === 'ACKNOWLEDGE_CHATTER';
   const chatterDirective = routingResult?.chatterDirective;
 
   if (chatterDirective) {
-    // ── LLM directive mode (flag ON) ──
     const assistantName = assistant?.name || 'Asistan';
     const businessName = business?.name || '';
-    const responseOptions = Array.isArray(chatterDirective.responseOptions)
-      ? chatterDirective.responseOptions.filter(Boolean).slice(0, 5)
-      : [];
-    const responseOptionsBlock = responseOptions.length > 0
-      ? `\nVARYASYON HAVUZU (aynı kalıbı tekrar etme, her yanıtta farklı bir tarz seç):\n${responseOptions.map(option => `- "${option}"`).join('\n')}`
-      : '';
-    const avoidExactPhrases = Array.isArray(chatterDirective.avoidExactPhrases)
-      ? chatterDirective.avoidExactPhrases.filter(Boolean)
-      : [];
-    const avoidExactPhrasesBlock = avoidExactPhrases.length > 0
-      ? `\nKESİN KULLANMA:\n${avoidExactPhrases.map(phrase => `- "${phrase}"`).join('\n')}`
-      : '';
 
     enhancedSystemPrompt += `
 
@@ -215,12 +241,10 @@ Kullanıcı saygısız dil kullandı (${strike}. uyarı / 3 üzerinden).
 
 KURALLAR:
 - Selam/teşekküre kısa ve doğal cevap ver, robotik kalıp kullanma.
-- Maksimum ${chatterDirective.maxSentences} cümle yaz.
+- ZORUNLU: tek cümle yaz (${chatterDirective.maxSentences} cümleyi aşma).
 - "Size nasıl yardımcı olabilirim?" veya benzer klişe yardım cümlelerini TEKRARLAMA.
 - Eğer aktif görev varsa, kısa yanıt sonrası göreve nazikçe geri dön.
 - Kullanıcı net bir talep vermediyse tek cümlelik sıcak bir karşılık ver.
-${responseOptionsBlock}
-${avoidExactPhrasesBlock}
 
 TON KISITLAMALARI:
 - Satış dili kullanma (no_salesy). "Harika fırsatlar", "kaçırma" gibi ifadeler YASAK.
@@ -229,7 +253,6 @@ TON KISITLAMALARI:
 - Önceki selamlaşmayı birebir tekrarlama, ama tutarlı bir ton ve üslup koru.`;
     console.log('💬 [BuildLLMRequest] CHATTER — LLM directive mode active');
   } else if (isChatterRoute) {
-    // ── Legacy mode (flag OFF, but reached LLM for some reason) ──
     const assistantName = assistant?.name || 'Asistan';
     const businessName = business?.name || '';
     const activeFlowSummary = state.activeFlow || state.flowStatus || 'none';
@@ -265,46 +288,24 @@ KURALLAR:
 4. requested_qty parametresi SADECE müşteri açık bir sayı söylediğinde doldurulur. "Kaç tane var?" gibi genel sorularda BOŞ bırakılır.
 5. Tool yanıtındaki quantity_check sonucunu kullan, kendi başına adet uydurma.`;
 
-  // STEP 1: Apply tool gating policy
   const classifierConfidence = classification?.confidence || 0.9;
-  const languageCode = business?.language || 'TR';
-  const isPolicyTopicTurn = isPolicyTopic(userMessage || '', languageCode);
 
-  // OPTIMIZATION: Skip tools entirely for CHATTER messages (greetings, acknowledgments)
-  // This saves ~5000 tokens per CHATTER turn and reduces latency
-  const isChatter = routingResult?.isChatter || routingResult?.routing?.routing?.action === 'ACKNOWLEDGE_CHATTER';
+  enhancedSystemPrompt += `
 
-  let gatedTools;
-  if (isChatter) {
-    gatedTools = [];
-    console.log('💬 [BuildLLMRequest] CHATTER detected — skipping all tools (0 token overhead)');
-  } else if (isPolicyTopicTurn) {
-    gatedTools = [];
-    console.log('📋 [BuildLLMRequest] POLICY topic detected — skipping tools for deterministic guidance responses');
-  } else {
-    // P0-FIX: ALWAYS start from full tool list (allToolNames), not stale state.allowedTools.
-    // Previously: state.allowedTools from prior turn was reused as input → once a tool was gated out,
-    // it could never come back (feedback loop). Now gating always evaluates from the full set.
-    const allToolNames = toolsAll.map(t => t.function?.name).filter(Boolean);
-    console.log('🔧 [BuildLLMRequest] toolsAll:', { count: toolsAll.length, names: allToolNames });
+## TOOL KULLANIM KURALI (LLM AUTHORITY)
+- Tool kullanmadan doğru ve güvenli cevap verebiliyorsan tool ÇAĞIRMA.
+- Tool gerekiyorsa önce minimum eksik bilgiyi TEK kısa soruyla iste.
+- Eksik bilgi tamamlanmadan tool çağırma.
+- Tool sonucu olmadan hesap/sipariş/kişisel claim üretme.`;
 
-    const flowTools = allToolNames;
-
-    gatedTools = applyToolGatingPolicy({
-      confidence: classifierConfidence,
-      activeFlow: state.activeFlow,
-      allowedTools: flowTools,
-      verificationStatus: state.verificationStatus,
-      metrics
-    });
-
-    console.log('🔧 [BuildLLMRequest]:', {
-      originalTools: flowTools.length,
-      gatedTools: gatedTools.length,
-      confidence: classifierConfidence.toFixed(2),
-      removed: flowTools.filter(t => !gatedTools.includes(t))
-    });
-  }
+  // LLM decides whether to call tools; backend only passes allowlisted tools.
+  const allToolNames = toolsAll.map(t => t.function?.name).filter(Boolean);
+  const gatedTools = allToolNames;
+  metrics.toolDecisionMode = 'llm_authority_allowlist_only';
+  console.log('🔧 [BuildLLMRequest] Allowlist tools passed to LLM:', {
+    count: gatedTools.length,
+    names: gatedTools
+  });
 
   // STEP 2: Filter tools based on gated list
   // toolsAll is in OpenAI format: {type: 'function', function: {name, description, parameters}}

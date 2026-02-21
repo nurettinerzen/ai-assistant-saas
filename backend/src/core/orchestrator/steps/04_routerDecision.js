@@ -15,82 +15,27 @@
  * - PROCESS_SLOT: (SIMPLIFIED) Only format validation, not input classification
  */
 
-import { routeMessage, handleDispute } from '../../../services/message-router.js';
-import { buildChatterResponse, buildChatterDirective, isPureChatter } from '../../../services/chatter-response.js';
-import { isFeatureEnabled, isChatterLLMEnabled } from '../../../config/feature-flags.js';
+import { routeMessage } from '../../../services/message-router.js';
+import { buildChatterDirective, isPureChatter } from '../../../services/chatter-response.js';
 import { hasAccountHint, classifyRedirectCategory, buildKbOnlyRedirectVariables } from '../../../config/channelMode.js';
-import { getMessageVariant } from '../../../messages/messageCatalog.js';
 
 /**
- * Unified chatter handler.
+ * Unified chatter handler (LLM-first).
  * Called from both the early regex path and the ACKNOWLEDGE_CHATTER action path.
- * When LLM_CHATTER_GREETING flag is ON: returns directResponse=false with directive for LLM.
- * When flag is OFF (default): returns directResponse=true with catalog template (legacy).
  */
-function handleChatter({ userMessage, state, language, sessionId, messageRouting, detectedBy, embedKey, businessId }) {
-  const useLLM = isChatterLLMEnabled({ embedKey, businessId });
-  const flagRawValue = process.env.FEATURE_LLM_CHATTER_GREETING;
-  const canaryKeys = process.env.FEATURE_LLM_CHATTER_CANARY_KEYS || '';
+function handleChatter({ userMessage, state, language, sessionId, messageRouting, detectedBy }) {
+  const chatterDirective = buildChatterDirective({ userMessage, state, language, sessionId });
 
-  console.log(`🔍 [ChatterFlag] LLM_CHATTER_GREETING: flagValue=${useLLM}, envRaw="${flagRawValue}", canary="${canaryKeys}", embedKey="${embedKey || ''}", businessId="${businessId || ''}", branch=${detectedBy}`);
-
-  if (useLLM) {
-    // ── LLM directive mode ──
-    const chatterDirective = buildChatterDirective({ userMessage, state, language, sessionId });
-
-    // Update chatter state for anti-repeat tracking
-    const previousRecent = Array.isArray(state?.chatter?.recent) ? state.chatter.recent : [];
-    const nextRecent = [
-      ...previousRecent,
-      { messageKey: chatterDirective.messageKey, variantIndex: chatterDirective.variantIndex }
-    ].slice(-2);
-
-    state.chatter = {
-      lastMessageKey: chatterDirective.messageKey,
-      lastVariantIndex: chatterDirective.variantIndex,
-      lastAt: new Date().toISOString(),
-      recent: nextRecent
-    };
-
-    const chatterRouting = {
-      ...messageRouting,
-      routing: {
-        ...messageRouting.routing,
-        action: 'ACKNOWLEDGE_CHATTER',
-        reason: `Chatter detected (${detectedBy}) — LLM directive mode`,
-        nextAction: 'llm-directive'
-      }
-    };
-
-    console.log(`💬 [RouterDecision] Chatter (${detectedBy}) — LLM directive mode, directResponse=false`);
-
-    return {
-      directResponse: false,
-      isChatter: true,
-      routing: chatterRouting,
-      chatterDirective: chatterDirective.directive,
-      catalogFallback: chatterDirective.catalogFallback,
-      metadata: {
-        messageKey: chatterDirective.messageKey,
-        variantIndex: chatterDirective.variantIndex,
-        detectedBy,
-        mode: 'llm_directive'
-      }
-    };
-  }
-
-  // ── Legacy catalog template mode (flag OFF) ──
-  const chatterVariant = buildChatterResponse({ userMessage, state, language, sessionId });
-
+  // Update chatter state for anti-repeat tracking
   const previousRecent = Array.isArray(state?.chatter?.recent) ? state.chatter.recent : [];
   const nextRecent = [
     ...previousRecent,
-    { messageKey: chatterVariant.messageKey, variantIndex: chatterVariant.variantIndex }
+    { messageKey: chatterDirective.messageKey, variantIndex: chatterDirective.variantIndex }
   ].slice(-2);
 
   state.chatter = {
-    lastMessageKey: chatterVariant.messageKey,
-    lastVariantIndex: chatterVariant.variantIndex,
+    lastMessageKey: chatterDirective.messageKey,
+    lastVariantIndex: chatterDirective.variantIndex,
     lastAt: new Date().toISOString(),
     recent: nextRecent
   };
@@ -100,23 +45,23 @@ function handleChatter({ userMessage, state, language, sessionId, messageRouting
     routing: {
       ...messageRouting.routing,
       action: 'ACKNOWLEDGE_CHATTER',
-      reason: `Chatter detected (${detectedBy}) — direct template`,
-      nextAction: 'direct-response'
+      reason: `Chatter detected (${detectedBy}) — LLM directive mode`,
+      nextAction: 'llm-directive'
     }
   };
 
-  console.log(`💬 [RouterDecision] Chatter (${detectedBy}) — direct template mode, directResponse=true`);
+  console.log(`💬 [RouterDecision] Chatter (${detectedBy}) — LLM directive mode, directResponse=false`);
 
   return {
-    directResponse: true,
-    reply: chatterVariant.text,
+    directResponse: false,
     routing: chatterRouting,
     isChatter: true,
+    chatterDirective: chatterDirective.directive,
     metadata: {
-      messageKey: chatterVariant.messageKey,
-      variantIndex: chatterVariant.variantIndex,
+      messageKey: chatterDirective.messageKey,
+      variantIndex: chatterDirective.variantIndex,
       detectedBy,
-      mode: 'direct_template'
+      mode: 'llm_directive'
     }
   };
 }
@@ -292,31 +237,6 @@ function extractNameCandidate(message = '', { allowLoose = false } = {}) {
   return candidate.trim();
 }
 
-function buildCallbackInfoMessage({ language, sessionId, channel, missingFields = [] }) {
-  const normalizedMissing = Array.isArray(missingFields) ? missingFields : [];
-  const fieldsLabel = language === 'TR'
-    ? (normalizedMissing.length === 2
-      ? 'ad-soyadınızı ve telefon numaranızı'
-      : normalizedMissing[0] === 'customer_name'
-        ? 'ad-soyadınızı'
-        : 'telefon numaranızı')
-    : (normalizedMissing.length === 2
-      ? 'full name and phone number'
-      : normalizedMissing[0] === 'customer_name'
-        ? 'full name'
-        : 'phone number');
-
-  return getMessageVariant('CALLBACK_INFO_REQUIRED', {
-    language,
-    sessionId,
-    channel,
-    directiveType: 'ASK_CALLBACK_INFO',
-    severity: 'info',
-    seedHint: normalizedMissing.join('|'),
-    variables: { fields: fieldsLabel }
-  }).text;
-}
-
 function upsertCallbackContext({ state, userMessage, callbackIntentDetected }) {
   const existingName = state.callbackFlow?.customerName || state.extractedSlots?.customer_name || null;
   const existingPhone = state.callbackFlow?.customerPhone || state.extractedSlots?.phone || null;
@@ -342,60 +262,6 @@ function upsertCallbackContext({ state, userMessage, callbackIntentDetected }) {
   return { customerName, customerPhone };
 }
 
-function isLikelyVerificationInput(message = '') {
-  const trimmed = String(message || '').trim();
-  if (!trimmed) return false;
-
-  if (/^\d{4}$/.test(trimmed)) return true;
-
-  const compact = trimmed.replace(/[\s\-()]/g, '');
-  if (/^\+?\d{10,13}$/.test(compact)) return true;
-
-  const digits = trimmed.replace(/[^\d]/g, '');
-  if (digits.length === 4 && /\b(son|last|hane|digit)\b/i.test(trimmed)) {
-    return true;
-  }
-
-  return false;
-}
-
-function inferVerificationQueryType(state = {}, anchorType = null) {
-  const activeFlow = String(state.activeFlow || '').toUpperCase();
-  if (activeFlow === 'ORDER_STATUS' || activeFlow === 'TRACKING_INFO') return 'siparis';
-  if (activeFlow === 'DEBT_INQUIRY') return 'borc';
-  if (activeFlow === 'ACCOUNT_LOOKUP') return 'genel';
-
-  if (anchorType === 'order') return 'siparis';
-  if (anchorType === 'ticket') return 'ariza';
-  return 'genel';
-}
-
-function buildForcedVerificationToolCall(state = {}, userMessage = '') {
-  const anchor = state?.verification?.anchor;
-  const verificationInput = String(userMessage || '').trim();
-  if (!anchor || !verificationInput) return null;
-
-  const args = {
-    query_type: inferVerificationQueryType(state, anchor.type),
-    verification_input: verificationInput
-  };
-
-  if (anchor.type === 'order' && anchor.value) {
-    args.order_number = anchor.value;
-  } else if (anchor.type === 'phone') {
-    args.phone = anchor.phone || anchor.value || null;
-  } else if (anchor.type === 'vkn' && anchor.value) {
-    args.vkn = anchor.value;
-  } else if (anchor.type === 'tc' && anchor.value) {
-    args.tc = anchor.value;
-  }
-
-  return {
-    name: 'customer_data_lookup',
-    args
-  };
-}
-
 export async function makeRoutingDecision(params) {
   const { classification, state, userMessage, conversationHistory, language, business, sessionId = '' } = params;
 
@@ -404,7 +270,7 @@ export async function makeRoutingDecision(params) {
   // Flow:
   //   1. KB hit → LLM answers from KB (tools already stripped in Step 2)
   //   2. No KB hit + regex hint fires → LLM redirect classifier (strict JSON)
-  //   3. Classifier confidence >= 0.7 + category != GENERAL → catalog template
+  //   3. Classifier confidence >= 0.7 + category != GENERAL → LLM redirect guidance
   //   4. Else → safe fallback via LLM (tools stripped, KB_ONLY prompt active)
   // ========================================
   if (params.channelMode === 'KB_ONLY' && !params.hasKBMatch && hasAccountHint(userMessage)) {
@@ -414,24 +280,18 @@ export async function makeRoutingDecision(params) {
     if (classifierResult && classifierResult.confidence >= 0.7 && classifierResult.category !== 'GENERAL') {
       const category = classifierResult.category;
       const variables = buildKbOnlyRedirectVariables(category, params.helpLinks || {}, language);
-      const catalogKey = `KB_ONLY_${category}_REDIRECT`;
-      const variant = getMessageVariant(catalogKey, {
-        language,
-        sessionId,
-        channel: params.channel || '',
-        variables
-      });
 
       console.log(`🔒 [RouterDecision] KB_ONLY redirect — category=${category}, confidence=${classifierResult.confidence.toFixed(2)}`);
 
       return {
-        directResponse: true,
-        reply: variant.text,
+        directResponse: false,
         routing: { routing: { action: 'KB_ONLY_REDIRECT', reason: `KB_ONLY classifier: category=${category}, confidence=${classifierResult.confidence}` } },
         isKbOnlyRedirect: true,
+        kbOnlyRedirect: {
+          category,
+          variables
+        },
         metadata: {
-          messageKey: variant.messageKey,
-          variantIndex: variant.variantIndex,
           mode: 'kb_only_redirect',
           category,
           classifierConfidence: classifierResult.confidence
@@ -491,28 +351,14 @@ export async function makeRoutingDecision(params) {
       }
     };
 
-    if (missingFields.length > 0) {
-      return {
-        directResponse: true,
-        reply: buildCallbackInfoMessage({
-          language,
-          sessionId,
-          channel: params.channel || '',
-          missingFields
-        }),
-        routing: callbackRouting,
-        callbackRequest: true,
-        metadata: {
-          mode: 'callback_intercept',
-          missingFields
-        }
-      };
-    }
-
     return {
       directResponse: false,
       routing: callbackRouting,
-      callbackRequest: true
+      callbackRequest: true,
+      metadata: {
+        mode: 'callback_intercept',
+        missingFields
+      }
     };
   }
 
@@ -544,7 +390,7 @@ export async function makeRoutingDecision(params) {
   // ========================================
   // EARLY CHATTER DETECTION (classifier-independent)
   // ========================================
-  // Pure chatter bypasses LLM only in idle state (or goes to LLM with directive if flag ON).
+  // Pure chatter still goes through LLM with short-response directive.
   // During active tasks (flow/verification), user input can carry task data.
   const hasActiveTask =
     state.verification?.status === 'pending' ||
@@ -553,7 +399,7 @@ export async function makeRoutingDecision(params) {
     Boolean(state.activeFlow);
 
   if (!hasActiveTask && isPureChatter(userMessage)) {
-    return handleChatter({ userMessage, state, language, sessionId, messageRouting, detectedBy: 'regex_early', embedKey: business?.embedKey, businessId: business?.id });
+    return handleChatter({ userMessage, state, language, sessionId, messageRouting, detectedBy: 'regex_early' });
   }
 
   // ========================================
@@ -578,16 +424,6 @@ export async function makeRoutingDecision(params) {
   if (state.verification?.status === 'pending' && state.verification?.anchor && !isNonVerificationFlow) {
     console.log('🔐 [Verification] Pending verification — LLM will handle input interpretation');
 
-    // Deterministic rescue: when user sends clear verification input (e.g. "4567"),
-    // arm a forced customer_data_lookup call so verification doesn't stall on LLM misses.
-    if (isLikelyVerificationInput(userMessage)) {
-      const forcedCall = buildForcedVerificationToolCall(state, userMessage);
-      if (forcedCall) {
-        state.forceToolCall = forcedCall;
-        console.log('🧭 [Verification] Forced verification tool call armed');
-      }
-    }
-
     // Add verification context for LLM's system prompt
     state.verificationContext = {
       status: 'pending',
@@ -601,8 +437,7 @@ export async function makeRoutingDecision(params) {
     return {
       directResponse: false,
       routing: messageRouting,
-      verificationPending: true,
-      forcedVerificationTool: !!state.forceToolCall
+      verificationPending: true
     };
   }
 
@@ -691,7 +526,7 @@ export async function makeRoutingDecision(params) {
     }
 
     case 'ACKNOWLEDGE_CHATTER': {
-      return handleChatter({ userMessage, state, language, sessionId, messageRouting, detectedBy: 'action_route', embedKey: business?.embedKey, businessId: business?.id });
+      return handleChatter({ userMessage, state, language, sessionId, messageRouting, detectedBy: 'action_route' });
     }
 
     default: {

@@ -23,7 +23,7 @@
  * Toplam: ~25 test, çalışma süresi < 1 saniye
  */
 
-import { describe, it, test, expect } from 'vitest';
+import { describe, it, test, expect } from '@jest/globals';
 import { applyLeakFilter, GuardrailAction } from '../../src/guardrails/securityGateway.js';
 
 // ============================================================================
@@ -226,15 +226,14 @@ describe('SMOKE 5: Contextual Carrier Detection', () => {
 });
 
 // ============================================================================
-// SECTION 6: Tool-Plan Gating
+// SECTION 6: Lookup Context Gating
 // ============================================================================
-describe('SMOKE 6: Tool-Plan Gating', () => {
-  it('order leak + toolPlanExists=true + missing fields → NEED_MIN_INFO_FOR_TOOL', () => {
+describe('SMOKE 6: Lookup Context Gating', () => {
+  it('order leak + lookup context + missing fields → NEED_MIN_INFO_FOR_TOOL', () => {
     const response = 'Takip numaranız TR1234567890 ve teslimat adresiniz İstanbul Kadıköy.';
     const result = applyLeakFilter(response, 'none', 'TR', {}, {
       intent: 'order_status',
-      toolsCalled: ['customer_data_lookup'],
-      toolPlanExists: true
+      toolsCalled: ['customer_data_lookup']
     });
 
     expect(result.safe).toBe(false);
@@ -243,7 +242,7 @@ describe('SMOKE 6: Tool-Plan Gating', () => {
     expect(result.missingFields).toContain('phone_last4');
   });
 
-  it('order leak + NO tool plan → SANITIZE (not BLOCK)', () => {
+  it('order leak + NO lookup context → SANITIZE (not BLOCK)', () => {
     const response = 'Siparişiniz Yurtiçi Kargo ile Kadıköy şubesine gönderildi. Takip no: TR1234567890';
     const result = applyLeakFilter(response, 'none', 'TR', {});
 
@@ -252,28 +251,25 @@ describe('SMOKE 6: Tool-Plan Gating', () => {
     expect(result.sanitized).not.toContain('TR1234567890');
   });
 
-  it('order leak + tool plan + all fields provided → still needs verification (BLOCK path)', () => {
+  it('order leak + no lookup tool + all fields provided → SANITIZE path', () => {
     const response = 'Takip numaranız TR1234567890 ve teslimat adresiniz Kadıköy.';
     const result = applyLeakFilter(response, 'none', 'TR', {
       orderNumber: 'ORD-001',
       phone: '05551234567'
     }, {
-      intent: 'order_status',
-      toolPlanExists: true
+      intent: 'order_status'
     });
 
-    // All fields provided, no missing → not NEED_MIN_INFO
-    // But still has personal leak → BLOCK (sanitize-first path applies only when no tool plan)
-    expect(result.action).toBe('BLOCK');
-    expect(result.safe).toBe(false);
+    expect(result.action).toBe('SANITIZE');
+    expect(result.safe).toBe(true);
   });
 });
 
 // ============================================================================
-// SECTION 7: Sanitize-First Architecture (No Tool Plan)
+// SECTION 7: Sanitize-First Architecture (No Lookup Context)
 // ============================================================================
-describe('SMOKE 7: Sanitize-First (No Tool Plan)', () => {
-  it('customerName leak + no tool plan → SANITIZE', () => {
+describe('SMOKE 7: Sanitize-First (No Lookup Context)', () => {
+  it('customerName leak + no lookup context → SANITIZE', () => {
     const response = 'İbrahim Yıldız adına kayıtlı siparişiniz bulunmaktadır.';
     const result = applyLeakFilter(response, 'none', 'TR', {});
 
@@ -282,7 +278,7 @@ describe('SMOKE 7: Sanitize-First (No Tool Plan)', () => {
     expect(result.sanitized).not.toContain('İbrahim Yıldız');
   });
 
-  it('address leak + no tool plan → SANITIZE', () => {
+  it('address leak + no lookup context → SANITIZE', () => {
     const response = 'Teslimat adresiniz Kadıköy mahallesi, Moda caddesi No: 15 olarak kayıtlıdır.';
     const result = applyLeakFilter(response, 'none', 'TR', {});
 
@@ -369,13 +365,13 @@ describe('SMOKE 10: Telemetry', () => {
     }
   });
 
-  it('leak filter with tool plan includes hasLookupToolPlan in telemetry', () => {
+  it('leak filter with lookup tool includes hasLookupContext in telemetry', () => {
     const response = 'Takip numaranız: TR1234567890 ve Kadıköy adresinize gönderildi.';
     const result = applyLeakFilter(response, 'none', 'TR', {}, {
       intent: 'order_status',
-      toolPlanExists: true
+      toolsCalled: ['customer_data_lookup']
     });
 
-    expect(result.telemetry?.hasLookupToolPlan).toBe(true);
+    expect(result.telemetry?.hasLookupContext).toBe(true);
   });
 });

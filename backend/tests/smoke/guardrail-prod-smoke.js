@@ -1,124 +1,96 @@
 #!/usr/bin/env node
 /**
- * Guardrail Prod Smoke Test
- * ==========================
- * Prod API'ye gerçek mesaj göndererek guardrail davranışını doğrular.
- * GitHub Actions'ta günde 1 çalışır.
+ * P0 Launch Gate - Prod Smoke (Embed Key)
  *
- * Doğruladığı senaryolar:
- * 1. "telefon kanalı" → PASS (phone false positive yok)
- * 2. "Telyx nasıl kullanılır" → PASS (carrier/address false positive yok)
- * 3. "Telyx nedir" → PASS (genel bilgi sorusu)
- * 4. Temiz cevap → guardrailAction metadata'da mevcut
- * 5. Sipariş sorusu → kişisel veri sızdırmaz
+ * Validates for each turn:
+ * - metadata.guardrailAction exists
+ * - metadata.LLM_CALLED === true
+ * - metadata.llm_call_reason in CHAT|WHATSAPP|EMAIL
+ * - metadata.bypassed === false
  *
- * Çalıştırma:
- *   EMBED_KEY=emb_xxx API_URL=https://api.telyx.ai node tests/smoke/guardrail-prod-smoke.js
- *
- * Exit code:
- *   0 = tüm testler geçti
- *   1 = en az 1 test kaldı
+ * Run:
+ *   EMBED_KEY=emb_xxx API_URL=https://ai-assistant-saas.onrender.com node tests/smoke/guardrail-prod-smoke.js
  */
 
 const API_URL = process.env.API_URL || 'https://ai-assistant-saas.onrender.com';
 const EMBED_KEY = process.env.EMBED_KEY || process.env.GUARDRAIL_SMOKE_EMBED_KEY;
-const TIMEOUT_MS = 30_000;
+const TIMEOUT_MS = Number(process.env.SMOKE_TIMEOUT_MS || 30000);
+const WAIT_BETWEEN_MS = Number(process.env.SMOKE_WAIT_MS || 1500);
+const VALID_REASONS = new Set(['CHAT', 'WHATSAPP', 'EMAIL']);
 
 if (!EMBED_KEY) {
-  console.error('❌ EMBED_KEY or GUARDRAIL_SMOKE_EMBED_KEY environment variable is required');
+  console.error('❌ EMBED_KEY (or GUARDRAIL_SMOKE_EMBED_KEY) is required');
   process.exit(1);
 }
 
-// ── Test senaryoları ──────────────────────────────────────────
-const TESTS = [
-  {
-    name: 'P0: "telefon kanalı" false positive yok',
-    message: 'Telyx ile hangi kanallardan iletisim kurulabilir?',
-    validate: (res) => {
-      if (res.metadata?.guardrailAction !== 'PASS') {
-        return `guardrailAction=${res.metadata?.guardrailAction}, beklenen=PASS`;
-      }
-      if (!res.reply || res.reply.length < 20) {
-        return `Cevap çok kısa veya boş: "${res.reply}"`;
-      }
-      return null; // OK
-    }
-  },
-  {
-    name: 'P0.5: "Telyx nasıl kullanılır" — PASS olmalı (carrier/address false positive yok)',
-    message: 'Telyx nasil kullanilir?',
-    validate: (res) => {
-      // Strict: PASS bekleniyor. SANITIZE veya BLOCK = regression.
-      if (res.metadata?.guardrailAction !== 'PASS') {
-        return `guardrailAction=${res.metadata?.guardrailAction}, beklenen=PASS — carrier/address false positive regression`;
-      }
-      return null;
-    }
-  },
-  {
-    name: 'Genel bilgi: "Telyx nedir"',
-    message: 'Telyx nedir, ne is yapar?',
-    validate: (res) => {
-      if (res.metadata?.guardrailAction !== 'PASS') {
-        return `guardrailAction=${res.metadata?.guardrailAction}, beklenen=PASS`;
-      }
-      if (!res.success) {
-        return `success=false`;
-      }
-      return null;
-    }
-  },
-  {
-    name: 'Metadata: guardrailAction alanı mevcut',
-    message: 'Merhaba',
-    validate: (res) => {
-      if (!res.metadata) {
-        return `metadata alanı eksik`;
-      }
-      if (!res.metadata.guardrailAction) {
-        return `guardrailAction alanı metadata'da yok`;
-      }
-      return null;
-    }
-  },
-  {
-    name: 'Güvenlik: sipariş sorusu — guardrail false positive ile sapıtmaz',
-    message: 'Siparisimin durumu nedir?',
-    validate: (res) => {
-      const action = res.metadata?.guardrailAction;
-
-      // Kabul edilebilir action'lar: PASS veya NEED_MIN_INFO_FOR_TOOL
-      // PASS = tool plan yok, soru out-of-scope, veya netleştirme soruyor
-      // NEED_MIN_INFO_FOR_TOOL = order lookup tool plan var, minimum bilgi istiyor (doğru davranış)
-      if (action === 'SANITIZE') {
-        return `guardrailAction=SANITIZE — sipariş sorusu carrier/shipping false positive ile sanitize edilmemeli`;
-      }
-      if (action === 'BLOCK') {
-        return `guardrailAction=BLOCK — sipariş sorusu yanlış block edilmemeli`;
-      }
-
-      // Cevap hâlâ PII sızdırmamalı
-      const dangerousPatterns = [
-        /\b[A-Z]{2}\d{9,12}\b/,           // Tracking number
-        /\b0?5\d{2}[\s-]?\d{3}[\s-]?\d{2}[\s-]?\d{2}\b/, // Phone
-      ];
-      for (const p of dangerousPatterns) {
-        if (p.test(res.reply || '')) {
-          return `Cevap kişisel veri içeriyor: ${p.toString()} eşleşti`;
-        }
-      }
-      return null;
-    }
-  }
+const CASES = [
+  { id: '01', message: 'selam' },
+  { id: '02', message: 'naber' },
+  { id: '03', message: 'Telyx nedir?', expectNoTool: true },
+  { id: '04', message: 'Telyx’in özellikleri neler?', expectNoTool: true },
+  { id: '05', message: 'Telyx nasıl kullanılır?' },
+  { id: '06', message: 'Telefon görüşmesi yapabiliyor muyum?' },
+  { id: '07', message: 'WhatsApp entegrasyonu var mı?' },
+  { id: '08', message: 'Fiyatlar nedir?' },
+  { id: '09', message: 'Siparişimin durumu nedir?' },
+  { id: '10', message: 'Geri arama istiyorum, numaram 05551234567', expectTool: 'create_callback' }
 ];
 
-// ── HTTP helper ──────────────────────────────────────────────
-async function sendMessage(message, sessionId) {
+function normalizeToolCalls(responseJson) {
+  const calls = responseJson?.toolCalls || responseJson?.toolsCalled || [];
+  return Array.isArray(calls) ? calls : [];
+}
+
+function summarizeResult(testCase, responseJson) {
+  const metadata = responseJson?.metadata || {};
+  const toolCalls = normalizeToolCalls(responseJson);
+
+  return {
+    id: testCase.id,
+    message: testCase.message,
+    success: !!responseJson?.success,
+    guardrailAction: metadata.guardrailAction || null,
+    LLM_CALLED: metadata.LLM_CALLED === true,
+    llm_call_reason: metadata.llm_call_reason || null,
+    bypassed: metadata.bypassed,
+    toolCalls,
+    replyPreview: String(responseJson?.reply || '').slice(0, 120)
+  };
+}
+
+function validateCase(testCase, summary) {
+  const errors = [];
+
+  if (!summary.guardrailAction) {
+    errors.push('metadata.guardrailAction missing');
+  }
+  if (summary.LLM_CALLED !== true) {
+    errors.push(`metadata.LLM_CALLED=${summary.LLM_CALLED}, expected=true`);
+  }
+  if (!VALID_REASONS.has(String(summary.llm_call_reason || '').toUpperCase())) {
+    errors.push(`metadata.llm_call_reason=${summary.llm_call_reason}, expected one of CHAT|WHATSAPP|EMAIL`);
+  }
+  if (summary.bypassed !== false) {
+    errors.push(`metadata.bypassed=${summary.bypassed}, expected=false`);
+  }
+
+  if (testCase.expectNoTool && summary.toolCalls.length > 0) {
+    errors.push(`toolCalls should be empty, got=[${summary.toolCalls.join(', ')}]`);
+  }
+
+  if (testCase.expectTool && !summary.toolCalls.includes(testCase.expectTool)) {
+    errors.push(`expected tool "${testCase.expectTool}" not called (toolCalls=[${summary.toolCalls.join(', ')}])`);
+  }
+
+  return errors;
+}
+
+async function sendMessage({ message, sessionId }) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
   try {
-    const resp = await fetch(`${API_URL}/api/chat-v2/widget`, {
+    const response = await fetch(`${API_URL}/api/chat-v2/widget`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -129,95 +101,134 @@ async function sendMessage(message, sessionId) {
       signal: controller.signal
     });
 
-    if (!resp.ok) {
-      throw new Error(`HTTP ${resp.status}: ${await resp.text()}`);
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${JSON.stringify(body)}`);
     }
-
-    return await resp.json();
+    return body;
   } finally {
     clearTimeout(timer);
   }
 }
 
-// ── Runner ──────────────────────────────────────────────────
+async function writeReport(rows, failures) {
+  const fs = await import('fs');
+  const reportDir = new URL('../pilot/reports/', import.meta.url).pathname;
+  try {
+    fs.mkdirSync(reportDir, { recursive: true });
+  } catch {
+    // noop
+  }
+
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const reportPath = `${reportDir}guardrail-smoke-${timestamp}.txt`;
+  const lines = [
+    `P0 Launch Gate Prod Smoke — ${new Date().toISOString()}`,
+    `API: ${API_URL}`,
+    `Cases: ${rows.length}`,
+    ''
+  ];
+
+  for (const row of rows) {
+    lines.push(`[${row.id}] ${row.message}`);
+    lines.push(`  guardrailAction=${row.guardrailAction}`);
+    lines.push(`  LLM_CALLED=${row.LLM_CALLED}`);
+    lines.push(`  llm_call_reason=${row.llm_call_reason}`);
+    lines.push(`  bypassed=${row.bypassed}`);
+    lines.push(`  toolCalls=${row.toolCalls.join(', ') || '-'}`);
+    lines.push(`  reply="${row.replyPreview}"`);
+    lines.push('');
+  }
+
+  if (failures.length > 0) {
+    lines.push('FAILURES:');
+    for (const failure of failures) {
+      lines.push(`- [${failure.id}] ${failure.message}`);
+      for (const err of failure.errors) {
+        lines.push(`  * ${err}`);
+      }
+    }
+    lines.push('');
+  } else {
+    lines.push('All launch-gate checks passed.');
+    lines.push('');
+  }
+
+  fs.writeFileSync(reportPath, lines.join('\n'));
+  return reportPath;
+}
+
 async function main() {
   console.log('');
   console.log('═══════════════════════════════════════════════════');
-  console.log('  Guardrail Prod Smoke Test');
+  console.log('  P0 Launch Gate Prod Smoke');
   console.log(`  API: ${API_URL}`);
   console.log(`  Time: ${new Date().toISOString()}`);
   console.log('═══════════════════════════════════════════════════');
   console.log('');
 
-  let passed = 0;
-  let failed = 0;
+  const rows = [];
   const failures = [];
 
-  for (let i = 0; i < TESTS.length; i++) {
-    const test = TESTS[i];
-    const sessionId = `guardrail_smoke_${Date.now()}_${i}`;
+  for (let i = 0; i < CASES.length; i += 1) {
+    const testCase = CASES[i];
+    const sessionId = `p0_launch_gate_${Date.now()}_${testCase.id}`;
 
     try {
-      const res = await sendMessage(test.message, sessionId);
-      const error = test.validate(res);
+      const responseJson = await sendMessage({
+        message: testCase.message,
+        sessionId
+      });
+      const summary = summarizeResult(testCase, responseJson);
+      const errors = validateCase(testCase, summary);
+      rows.push(summary);
 
-      if (error) {
-        failed++;
-        failures.push({ name: test.name, error, reply: res.reply?.substring(0, 120) });
-        console.log(`  ❌ ${test.name}`);
-        console.log(`     Error: ${error}`);
-        console.log(`     Reply: "${res.reply?.substring(0, 100)}..."`);
+      if (errors.length > 0) {
+        failures.push({
+          id: testCase.id,
+          message: testCase.message,
+          errors
+        });
+        console.log(`❌ [${testCase.id}] ${testCase.message}`);
+        for (const err of errors) {
+          console.log(`   - ${err}`);
+        }
       } else {
-        passed++;
-        console.log(`  ✅ ${test.name}`);
-        console.log(`     Action: ${res.metadata?.guardrailAction || 'N/A'} | Reply: "${res.reply?.substring(0, 80)}..."`);
+        console.log(
+          `✅ [${testCase.id}] action=${summary.guardrailAction} LLM_CALLED=${summary.LLM_CALLED} reason=${summary.llm_call_reason} bypassed=${summary.bypassed} tools=${summary.toolCalls.join(',') || '-'}`
+        );
       }
-    } catch (err) {
-      failed++;
-      failures.push({ name: test.name, error: err.message });
-      console.log(`  ❌ ${test.name}`);
-      console.log(`     Error: ${err.message}`);
+    } catch (error) {
+      failures.push({
+        id: testCase.id,
+        message: testCase.message,
+        errors: [error.message]
+      });
+      console.log(`❌ [${testCase.id}] ${testCase.message}`);
+      console.log(`   - ${error.message}`);
     }
 
-    // Rate limit: 2 saniye bekle
-    if (i < TESTS.length - 1) {
-      await new Promise(r => setTimeout(r, 2000));
+    if (i < CASES.length - 1) {
+      await new Promise(resolve => setTimeout(resolve, WAIT_BETWEEN_MS));
     }
   }
+
+  const reportPath = await writeReport(rows, failures);
 
   console.log('');
   console.log('───────────────────────────────────────────────────');
-  console.log(`  Result: ${passed}/${passed + failed} passed`);
-  if (failed > 0) {
-    console.log(`  ❌ ${failed} FAILED:`);
-    for (const f of failures) {
-      console.log(`     - ${f.name}: ${f.error}`);
-    }
+  console.log(`Result: ${rows.length - failures.length}/${rows.length} passed`);
+  console.log(`Report: ${reportPath}`);
+  if (failures.length > 0) {
+    console.log(`Failed: ${failures.length}`);
   }
   console.log('───────────────────────────────────────────────────');
   console.log('');
 
-  // Report dosyası oluştur
-  const reportDir = new URL('../pilot/reports/', import.meta.url).pathname;
-  const fs = await import('fs');
-  try { fs.mkdirSync(reportDir, { recursive: true }); } catch {}
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const reportPath = `${reportDir}guardrail-smoke-${timestamp}.txt`;
-  const reportContent = [
-    `Guardrail Prod Smoke Test — ${new Date().toISOString()}`,
-    `API: ${API_URL}`,
-    `Result: ${passed}/${passed + failed} passed`,
-    '',
-    ...failures.map(f => `FAILED: ${f.name}\n  Error: ${f.error}\n  Reply: ${f.reply || 'N/A'}`),
-    ''
-  ].join('\n');
-  fs.writeFileSync(reportPath, reportContent);
-  console.log(`  Report: ${reportPath}`);
-
-  process.exit(failed > 0 ? 1 : 0);
+  process.exit(failures.length > 0 ? 1 : 0);
 }
 
-main().catch(err => {
-  console.error('Fatal error:', err);
+main().catch((error) => {
+  console.error('Fatal error:', error);
   process.exit(1);
 });

@@ -31,8 +31,24 @@ export function emitTurnMetrics(metrics) {
     outputTokens = 0,
     error = null,
     identityProof = null,  // Channel identity proof telemetry
-    securityTelemetry = null // Security policy telemetry (P1-E)
+    securityTelemetry = null, // Security policy telemetry (P1-E)
+    llmCalled = null,
+    LLM_CALLED = null,
+    llmCallReason = null,
+    llm_call_reason = null,
+    llmBypassed = null,
+    bypassed = null
   } = metrics;
+
+  const llmCalledFlag = llmCalled === true || LLM_CALLED === true;
+  const llmReason = llm_call_reason
+    || llmCallReason
+    || String(channel || 'UNKNOWN').toUpperCase();
+  const llmBypassFlag = typeof bypassed === 'boolean'
+    ? bypassed
+    : typeof llmBypassed === 'boolean'
+      ? llmBypassed
+      : !llmCalledFlag;
 
   // Console log (dev)
   const metricsLog = {
@@ -44,7 +60,11 @@ export function emitTurnMetrics(metrics) {
     toolsCalled: toolsCalled.length,
     hadToolSuccess,
     hadToolFailure,
-    tokens: { input: inputTokens, output: outputTokens }
+    tokens: { input: inputTokens, output: outputTokens },
+    llmCalled: llmCalledFlag,
+    LLM_CALLED: llmCalledFlag,
+    llm_call_reason: llmReason,
+    bypassed: llmBypassFlag
   };
 
   // Identity proof telemetry (when channel proof is evaluated)

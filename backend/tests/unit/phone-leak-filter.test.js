@@ -8,7 +8,7 @@
  * 4. Leak tetiklenince final response sipariş no İSTEMEZ (phone-only → redact, not verify)
  */
 
-import { describe, test, expect } from 'vitest';
+import { describe, test, expect } from '@jest/globals';
 import { applyLeakFilter } from '../../src/guardrails/securityGateway.js';
 
 describe('Phone leak filter (P0 fix)', () => {
@@ -82,8 +82,8 @@ describe('Phone leak filter (P0 fix)', () => {
     expect(result.safe).toBe(true);
   });
 
-  // ─── CASE 5: Order-specific leak + no tool plan → SANITIZE (no auto-block) ───
-  test('CASE 5: Address/tracking leak with no tool plan → SANITIZE', () => {
+  // ─── CASE 5: Order-specific leak + no lookup context → SANITIZE (no auto-block) ───
+  test('CASE 5: Address/tracking leak with no lookup context → SANITIZE', () => {
     const response = 'Siparişiniz Yurtiçi Kargo ile Kadıköy şubesine gönderildi. Takip no: TR1234567890';
     const result = applyLeakFilter(response, 'none', 'TR', {});
 
@@ -101,8 +101,8 @@ describe('Phone leak filter (P0 fix)', () => {
     expect(result.needsVerification).toBeFalsy();
   });
 
-  // ─── CASE 7: customerName leak + no tool plan → SANITIZE ───
-  test('CASE 7: Customer name leak with no tool plan → SANITIZE', () => {
+  // ─── CASE 7: customerName leak + no lookup context → SANITIZE ───
+  test('CASE 7: Customer name leak with no lookup context → SANITIZE', () => {
     const response = 'İbrahim Yıldız adına kayıtlı siparişiniz bulunmaktadır.';
     const result = applyLeakFilter(response, 'none', 'TR', {});
 
@@ -111,13 +111,12 @@ describe('Phone leak filter (P0 fix)', () => {
     expect(result.sanitized).not.toContain('İbrahim Yıldız');
   });
 
-  // ─── CASE 8: Tool plan + order intent + missing fields → NEED_MIN_INFO_FOR_TOOL ───
-  test('CASE 8: Order lookup tool plan exists → NEED_MIN_INFO_FOR_TOOL', () => {
+  // ─── CASE 8: Lookup tool context + missing fields → NEED_MIN_INFO_FOR_TOOL ───
+  test('CASE 8: Order lookup tool context exists → NEED_MIN_INFO_FOR_TOOL', () => {
     const response = 'Takip numaranız TR1234567890 ve teslimat adresiniz İstanbul Kadıköy.';
     const result = applyLeakFilter(response, 'none', 'TR', {}, {
       intent: 'order_status',
-      toolsCalled: ['customer_data_lookup'],
-      toolPlanExists: true
+      toolsCalled: ['customer_data_lookup']
     });
 
     expect(result.safe).toBe(false);

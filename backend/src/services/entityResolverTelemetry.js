@@ -1,3 +1,5 @@
+import { getEntityHint, getEntityMatchType, getEntityClarificationHint } from './entityTopicResolver.js';
+
 function safeString(value) {
   const text = String(value ?? '').trim();
   return text || null;
@@ -10,9 +12,10 @@ function buildResolverPayload({
 } = {}) {
   return {
     channel: safeString(channel) || 'UNKNOWN',
-    matchType: entityResolution?.entityMatchType || 'NONE',
-    bestGuess: safeString(entityResolution?.bestGuess),
+    matchType: getEntityMatchType(entityResolution),
+    entityHint: safeString(getEntityHint(entityResolution)),
     needsClarification: !!entityResolution?.needsClarification,
+    clarificationQuestionHint: safeString(getEntityClarificationHint(entityResolution)),
     kbConfidence: safeString(kbConfidence) || 'UNKNOWN'
   };
 }

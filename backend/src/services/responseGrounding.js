@@ -1,4 +1,4 @@
-import { ENTITY_MATCH_TYPES } from './entityTopicResolver.js';
+import { ENTITY_MATCH_TYPES, getEntityHint, getEntityMatchType } from './entityTopicResolver.js';
 import { isFeatureEnabled } from '../config/feature-flags.js';
 
 export const RESPONSE_GROUNDING = {
@@ -89,9 +89,10 @@ function uniqueNormalized(values = []) {
 }
 
 function includesBusinessIdentityReference(userMessage = '', businessIdentity = null, entityResolution = null) {
+  const matchType = getEntityMatchType(entityResolution);
   if (
-    entityResolution?.entityMatchType === ENTITY_MATCH_TYPES.EXACT_MATCH ||
-    entityResolution?.entityMatchType === ENTITY_MATCH_TYPES.FUZZY_MATCH
+    matchType === ENTITY_MATCH_TYPES.EXACT_MATCH ||
+    matchType === ENTITY_MATCH_TYPES.FUZZY_MATCH
   ) {
     return true;
   }
@@ -107,7 +108,7 @@ function includesBusinessIdentityReference(userMessage = '', businessIdentity = 
     ...(businessIdentity?.businessAliases || []),
     ...(businessIdentity?.productNames || []),
     ...(businessIdentity?.keyEntities || []),
-    entityResolution?.bestGuess
+    getEntityHint(entityResolution)
   ]);
 
   if (identityTokens.length === 0) return false;
@@ -177,8 +178,9 @@ export function determineResponseGrounding({
   userMessage = ''
 } = {}) {
   const text = compactWhitespace(finalResponse);
+  const matchType = getEntityMatchType(entityResolution);
 
-  if (entityResolution?.entityMatchType === ENTITY_MATCH_TYPES.OUT_OF_SCOPE) {
+  if (matchType === ENTITY_MATCH_TYPES.OUT_OF_SCOPE) {
     return {
       responseGrounding: RESPONSE_GROUNDING.OUT_OF_SCOPE,
       finalResponse: text || buildLowConfidenceClarification({ businessIdentity, language }),
@@ -189,7 +191,7 @@ export function determineResponseGrounding({
   if (entityResolution?.needsClarification) {
     return {
       responseGrounding: RESPONSE_GROUNDING.CLARIFICATION,
-      finalResponse: text || entityResolution.clarificationQuestion || buildLowConfidenceClarification({ businessIdentity, language }),
+      finalResponse: text || buildLowConfidenceClarification({ businessIdentity, language }),
       ungroundedDetected: false
     };
   }

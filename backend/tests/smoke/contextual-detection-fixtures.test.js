@@ -12,7 +12,7 @@
  *   TP-01..TP-10 : TRUE POSITIVE  — leak bekleniyor (shipping/delivery bağlamı)
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from '@jest/globals';
 import { applyLeakFilter, runContextualDetection } from '../../src/guardrails/securityGateway.js';
 
 // ============================================================================

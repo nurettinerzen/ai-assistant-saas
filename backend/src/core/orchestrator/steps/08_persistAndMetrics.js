@@ -194,6 +194,13 @@ export async function persistAndEmitMetrics(params) {
       responseGrounding: persistedGrounding,
       assistantMessageType: normalizedAssistantMeta.messageType,
       guardrailAction: normalizedAssistantMeta.guardrailAction,
+      LLM_CALLED: metrics?.LLM_CALLED === true || metrics?.llmCalled === true,
+      llm_call_reason: metrics?.llm_call_reason || metrics?.llmCallReason || String(channel || 'UNKNOWN').toUpperCase(),
+      bypassed: typeof metrics?.bypassed === 'boolean'
+        ? metrics.bypassed
+        : typeof metrics?.llmBypassed === 'boolean'
+          ? metrics.llmBypassed
+          : !(metrics?.LLM_CALLED === true || metrics?.llmCalled === true),
       turnDuration
     }
   };

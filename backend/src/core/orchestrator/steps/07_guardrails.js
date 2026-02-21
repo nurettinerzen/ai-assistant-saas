@@ -83,34 +83,55 @@ function getFieldGroundingClarification(language = 'TR', violation = null) {
 
 function resolveMinInfoQuestion({
   language,
-  sessionId,
-  channel,
-  intent,
   missingFields = []
 }) {
   const missingSet = new Set(Array.isArray(missingFields) ? missingFields : []);
 
   const hasOrder = missingSet.has('order_number');
   const hasPhoneLast4 = missingSet.has('phone_last4');
+  const lang = String(language || 'TR').toUpperCase() === 'EN' ? 'EN' : 'TR';
 
-  let messageKey = 'VERIFICATION_REGEN_ORDER_ONLY';
-  if (hasOrder && hasPhoneLast4) {
-    messageKey = 'VERIFICATION_REGEN_ORDER_AND_PHONE';
-  } else if (!hasOrder && hasPhoneLast4) {
-    messageKey = 'ORDER_PHONE_LAST4_REQUIRED';
+  if (lang === 'EN') {
+    if (hasOrder && hasPhoneLast4) {
+      return {
+        text: 'To proceed safely, could you share your order number and the last 4 digits of your phone?',
+        messageKey: 'NEED_MIN_INFO_FOR_TOOL_DETERMINISTIC',
+        variantIndex: 0
+      };
+    }
+    if (hasPhoneLast4) {
+      return {
+        text: 'To proceed safely, could you share the last 4 digits of your phone?',
+        messageKey: 'NEED_MIN_INFO_FOR_TOOL_DETERMINISTIC',
+        variantIndex: 0
+      };
+    }
+    return {
+      text: 'To proceed safely, could you share your order number?',
+      messageKey: 'NEED_MIN_INFO_FOR_TOOL_DETERMINISTIC',
+      variantIndex: 0
+    };
   }
 
-  const variant = getMessageVariant(messageKey, {
-    language,
-    sessionId,
-    channel,
-    intent,
-    directiveType: 'ASK_VERIFICATION',
-    severity: 'info',
-    seedHint: [...missingSet].join(',') || 'min_info'
-  });
-
-  return variant;
+  if (hasOrder && hasPhoneLast4) {
+    return {
+      text: 'Güvenli şekilde devam edebilmem için sipariş numaranızı ve telefon numaranızın son 4 hanesini paylaşır mısınız?',
+      messageKey: 'NEED_MIN_INFO_FOR_TOOL_DETERMINISTIC',
+      variantIndex: 0
+    };
+  }
+  if (hasPhoneLast4) {
+    return {
+      text: 'Güvenli şekilde devam edebilmem için telefon numaranızın son 4 hanesini paylaşır mısınız?',
+      messageKey: 'NEED_MIN_INFO_FOR_TOOL_DETERMINISTIC',
+      variantIndex: 0
+    };
+  }
+  return {
+    text: 'Güvenli şekilde devam edebilmem için sipariş numaranızı paylaşır mısınız?',
+    messageKey: 'NEED_MIN_INFO_FOR_TOOL_DETERMINISTIC',
+    variantIndex: 0
+  };
 }
 
 export async function applyGuardrails(params) {
@@ -160,7 +181,6 @@ export async function applyGuardrails(params) {
         activeFlow,
         intent,
         toolsCalled,
-        toolPlanExists: Array.isArray(toolsCalled) && toolsCalled.length > 0
       });
 
       if (leakSanitizeResult.safe && leakSanitizeResult.action === GuardrailAction.SANITIZE && leakSanitizeResult.sanitized) {
@@ -382,36 +402,24 @@ export async function applyGuardrails(params) {
       activeFlow,
       intent,
       toolsCalled,
-      toolPlanExists: Array.isArray(toolsCalled) && toolsCalled.length > 0
     });
 
   if (!leakFilterResult.safe) {
     if (leakFilterResult.action === GuardrailAction.NEED_MIN_INFO_FOR_TOOL && leakFilterResult.needsCallbackInfo) {
-      const callbackVariant = getMessageVariant('CALLBACK_INFO_REQUIRED', {
-        language,
-        sessionId,
-        channel,
-        intent,
-        directiveType: 'ASK_CALLBACK_INFO',
-        severity: 'info',
-        seedHint: 'callback_info_required',
-        variables: {
-          fields: language === 'TR'
-            ? 'ad-soyad ve telefon numaranızı'
-            : 'full name and phone number'
-        }
-      });
+      const callbackMessage = String(language || 'TR').toUpperCase() === 'EN'
+        ? 'To create your callback request safely, could you share your full name and phone number?'
+        : 'Geri arama talebinizi güvenli şekilde oluşturabilmem için ad-soyad ve telefon numaranızı paylaşır mısınız?';
 
       return {
-        finalResponse: callbackVariant.text,
+        finalResponse: callbackMessage,
         action: GuardrailAction.NEED_MIN_INFO_FOR_TOOL,
         needsCallbackInfo: true,
         missingFields: ['customer_name', 'phone'],
         guardrailsApplied: ['RESPONSE_FIREWALL', 'PII_PREVENTION', 'SECURITY_GATEWAY_CALLBACK_FLOW'],
         blocked: true,
         blockReason: leakFilterResult.blockReason || 'CALLBACK_INFO_REQUIRED',
-        messageKey: callbackVariant.messageKey,
-        variantIndex: callbackVariant.variantIndex
+        messageKey: 'CALLBACK_INFO_REQUIRED_DETERMINISTIC',
+        variantIndex: 0
       };
     }
 
@@ -440,9 +448,6 @@ export async function applyGuardrails(params) {
     if (leakFilterResult.action === GuardrailAction.NEED_MIN_INFO_FOR_TOOL) {
       const minInfoVariant = resolveMinInfoQuestion({
         language,
-        sessionId,
-        channel,
-        intent,
         missingFields: leakFilterResult.missingFields || []
       });
 

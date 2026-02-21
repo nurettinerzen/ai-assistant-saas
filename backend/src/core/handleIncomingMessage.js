@@ -45,14 +45,42 @@ import { checkSessionThrottle } from '../services/sessionThrottle.js';
 import { getChannelMode, getHelpLinks } from '../config/channelMode.js';
 import { ensurePolicyGuidance } from '../services/tool-fail-handler.js';
 import { buildBusinessIdentity } from '../services/businessIdentity.js';
-import { resolveMentionedEntity, ENTITY_MATCH_TYPES } from '../services/entityTopicResolver.js';
+import { getEntityHint, getEntityMatchType, resolveMentionedEntity } from '../services/entityTopicResolver.js';
 import {
-  buildLowConfidenceClarification,
   determineResponseGrounding,
   RESPONSE_GROUNDING,
   isBusinessClaimCategory
 } from '../services/responseGrounding.js';
-import { logEntityResolver, logShortCircuit } from '../services/entityResolverTelemetry.js';
+import { logEntityResolver } from '../services/entityResolverTelemetry.js';
+
+const LLM_CALL_REASONS = new Set(['CHAT', 'WHATSAPP', 'EMAIL']);
+
+function normalizeLlmCallReason(channel = 'UNKNOWN') {
+  const normalized = String(channel || 'UNKNOWN').toUpperCase();
+  if (LLM_CALL_REASONS.has(normalized)) return normalized;
+  return normalized || 'UNKNOWN';
+}
+
+function buildLlmCallTrace(metrics = {}, { channel = 'UNKNOWN', sessionId = null } = {}) {
+  const normalizedChannel = String(channel || 'UNKNOWN').toUpperCase();
+  const llmCalled = metrics.LLM_CALLED === true || metrics.llmCalled === true;
+  const reason = metrics.llm_call_reason
+    || metrics.llmCallReason
+    || normalizeLlmCallReason(channel);
+  const bypassed = typeof metrics.bypassed === 'boolean'
+    ? metrics.bypassed
+    : typeof metrics.llmBypassed === 'boolean'
+      ? metrics.llmBypassed
+      : !llmCalled;
+
+  return {
+    sessionId: metrics.sessionId || sessionId || null,
+    channel: normalizedChannel,
+    LLM_CALLED: llmCalled,
+    llm_call_reason: reason,
+    bypassed
+  };
+}
 
 /**
  * Extract order number from user message
@@ -398,7 +426,13 @@ export async function handleIncomingMessage({
     channel,
     businessId: business.id,
     turnStartTime,
-    effectsEnabled // Track if this is dry-run
+    effectsEnabled, // Track if this is dry-run
+    llmCalled: false,
+    LLM_CALLED: false,
+    llmCallReason: normalizeLlmCallReason(channel),
+    llm_call_reason: normalizeLlmCallReason(channel),
+    llmBypassed: true,
+    bypassed: true
   };
 
   const prefix = effectsEnabled ? '📨' : '🔍';
@@ -455,6 +489,7 @@ export async function handleIncomingMessage({
         metrics: {
           ...metrics,
           llmCalled: false,
+          LLM_CALLED: false,
           contentSafetyBlock: true,
           securityTelemetry: contentSafetyTelemetry
         },
@@ -518,6 +553,7 @@ export async function handleIncomingMessage({
         metrics: {
           ...metrics,
           llmCalled: false,
+          LLM_CALLED: false,
           sessionThrottled: true,
           securityTelemetry: throttleTelemetry
         },
@@ -593,6 +629,7 @@ export async function handleIncomingMessage({
           metrics: {
             ...metrics,
             llmCalled: false,
+            LLM_CALLED: false,
             injectionBlock: true,
             securityTelemetry: injectionTelemetry
           },
@@ -705,85 +742,6 @@ export async function handleIncomingMessage({
     metrics.entityResolution = entityResolution;
     metrics.entityResolver = resolverTelemetry;
 
-    if (
-      entityResolution.needsClarification &&
-      (entityResolution.entityMatchType === ENTITY_MATCH_TYPES.FUZZY_MATCH ||
-        entityResolution.entityMatchType === ENTITY_MATCH_TYPES.OUT_OF_SCOPE)
-    ) {
-      const responseGrounding = entityResolution.entityMatchType === ENTITY_MATCH_TYPES.OUT_OF_SCOPE
-        ? RESPONSE_GROUNDING.OUT_OF_SCOPE
-        : RESPONSE_GROUNDING.CLARIFICATION;
-
-      const shortCircuitReason = responseGrounding === RESPONSE_GROUNDING.OUT_OF_SCOPE
-        ? 'out_of_scope'
-        : 'clarification';
-      logShortCircuit({
-        reason: shortCircuitReason,
-        channel,
-        entityResolution,
-        kbConfidence: 'SKIPPED'
-      });
-
-      state.responseGrounding = responseGrounding;
-      state.lastEntityResolution = {
-        ...entityResolution,
-        at: new Date().toISOString()
-      };
-
-      const clarificationReply = entityResolution.clarificationQuestion;
-
-      await persistAndEmitMetrics({
-        sessionId: resolvedSessionId,
-        state,
-        userMessage,
-        finalResponse: clarificationReply,
-        classification: {
-          type: 'ENTITY_RESOLUTION',
-          confidence: entityResolution.confidence
-        },
-        routing: {
-          routing: {
-            action: 'ENTITY_CLARIFICATION'
-          }
-        },
-        turnStartTime,
-        inputTokens: 0,
-        outputTokens: 0,
-        toolsCalled: [],
-        hadToolSuccess: false,
-        hadToolFailure: false,
-        failedTool: null,
-        channel,
-        businessId: business.id,
-        metrics,
-        responseGrounding,
-        effectsEnabled
-      });
-
-      return {
-        reply: clarificationReply,
-        outcome: ToolOutcome.NEED_MORE_INFO,
-        metadata: {
-          outcome: ToolOutcome.NEED_MORE_INFO,
-          responseGrounding,
-          entityMatchType: entityResolution.entityMatchType,
-          entityBestGuess: entityResolution.bestGuess || null,
-          entityConfidence: entityResolution.confidence
-        },
-        shouldEndSession: false,
-        forceEnd: false,
-        state,
-        metrics,
-        inputTokens: 0,
-        outputTokens: 0,
-        toolsCalled: [],
-        debug: {
-          directResponse: true,
-          entityResolution
-        }
-      };
-    }
-
     // ========================================
     // STEP 2: Prepare Context
     // ========================================
@@ -827,83 +785,9 @@ export async function handleIncomingMessage({
     });
 
     if (strictGroundingEnabled && businessClaimCategory && (kbConfidence === 'LOW' || !hasKBMatch)) {
-      const clarificationReply = buildLowConfidenceClarification({
-        businessIdentity,
-        language
-      });
-      metrics.strictGroundingShortCircuit = true;
+      metrics.strictGroundingHint = true;
       metrics.businessClaimCategory = true;
-
-      logShortCircuit({
-        reason: 'clarification',
-        channel,
-        entityResolution,
-        kbConfidence
-      });
-
-      state.responseGrounding = RESPONSE_GROUNDING.CLARIFICATION;
-      state.lastEntityResolution = {
-        ...entityResolution,
-        at: new Date().toISOString()
-      };
-
-      await persistAndEmitMetrics({
-        sessionId: resolvedSessionId,
-        state,
-        userMessage,
-        finalResponse: clarificationReply,
-        classification: {
-          type: 'GROUNDING_SHORT_CIRCUIT',
-          confidence: 1
-        },
-        routing: {
-          routing: {
-            action: 'GROUNDING_SHORT_CIRCUIT'
-          }
-        },
-        turnStartTime,
-        inputTokens: 0,
-        outputTokens: 0,
-        toolsCalled: [],
-        hadToolSuccess: false,
-        hadToolFailure: false,
-        failedTool: null,
-        channel,
-        businessId: business.id,
-        metrics: {
-          ...metrics,
-          strictGroundingShortCircuit: true,
-          businessClaimCategory: true
-        },
-        responseGrounding: RESPONSE_GROUNDING.CLARIFICATION,
-        effectsEnabled
-      });
-
-      return {
-        reply: clarificationReply,
-        outcome: ToolOutcome.NEED_MORE_INFO,
-        metadata: {
-          outcome: ToolOutcome.NEED_MORE_INFO,
-          responseGrounding: RESPONSE_GROUNDING.CLARIFICATION,
-          entityMatchType: entityResolution.entityMatchType,
-          entityBestGuess: entityResolution.bestGuess || null,
-          entityConfidence: entityResolution.confidence,
-          kbConfidence,
-          shortCircuitReason: 'LOW_KB_BUSINESS_CLAIM'
-        },
-        shouldEndSession: false,
-        forceEnd: false,
-        state,
-        metrics,
-        inputTokens: 0,
-        outputTokens: 0,
-        toolsCalled: [],
-        debug: {
-          directResponse: true,
-          shortCircuitReason: 'LOW_KB_BUSINESS_CLAIM',
-          entityResolution
-        }
-      };
+      console.log('🧭 [Grounding] LOW KB + business-claim context detected — hinting LLM, no short-circuit');
     }
 
     // P0 SECURITY: Prepend injection warning to system prompt if detected
@@ -997,86 +881,18 @@ export async function handleIncomingMessage({
       hasKBMatch
     });
 
-    // Check for direct responses (slot escalation, dispute resolution)
+    // Enforce LLM-first: any directResponse signal is treated as context only.
     if (routingResult.directResponse) {
-      console.log('↩️ [Orchestrator] Returning direct response (no LLM call)');
-
-      // Track chatterSource for direct template responses (flag OFF)
-      if (routingResult.isChatter) {
-        metrics.chatterSource = 'catalogTemplate';
-        console.log('📊 [Chatter-Telemetry] source=catalogTemplate (direct, flag OFF)');
-      }
-
-      const directGrounding = determineResponseGrounding({
-        finalResponse: routingResult.reply,
-        kbConfidence,
-        hasKBMatch,
-        hadToolSuccess: false,
-        entityResolution,
-        language,
-        isChatter: !!routingResult.isChatter,
-        businessIdentity,
-        userMessage
-      });
-
-      const responseGrounding = directGrounding.responseGrounding === RESPONSE_GROUNDING.UNGROUNDED
-        ? RESPONSE_GROUNDING.CLARIFICATION
-        : directGrounding.responseGrounding;
-
-      const directReply = directGrounding.finalResponse;
-      state.responseGrounding = responseGrounding;
-
-      // Save state and metrics (skip if dry-run)
-      await persistAndEmitMetrics({
-        sessionId: resolvedSessionId,
-        state,
-        userMessage,
-        finalResponse: directReply,
-        classification,
-        routing: routingResult,
-        turnStartTime,
-        inputTokens: 0,
-        outputTokens: 0,
-        toolsCalled: [],
-        hadToolSuccess: false,
-        hadToolFailure: false,
-        failedTool: null,
-        channel,
-        businessId: business.id,
-        metrics,
-        responseGrounding,
-        effectsEnabled // DRY-RUN flag
-      });
-
-      return {
-        reply: directReply,
-        outcome: ToolOutcome.OK,
-        metadata: {
-          outcome: ToolOutcome.OK,
-          responseGrounding,
-          ...(routingResult.metadata || {})
-        },
-        shouldEndSession: false,
-        forceEnd: routingResult.forceEnd || false,
-        state,
-        metrics,
-        inputTokens: 0,
-        outputTokens: 0,
-        debug: {
-          directResponse: true,
-          responseGrounding,
-          metadata: routingResult.metadata
-        }
-      };
+      metrics.directResponseSuppressed = true;
+      console.warn('⚠️ [Orchestrator] directResponse signal suppressed (LLM-first mode)');
     }
 
-    // LLM chatter directive mode: chatterDirective is set, directResponse is false.
-    // LLM will be called with tools off; if LLM fails, catalogFallback is returned.
+    // LLM chatter directive mode.
     const isChatterLLMMode = !!routingResult.chatterDirective;
     const chatterLLMStartTime = isChatterLLMMode ? Date.now() : null;
     if (isChatterLLMMode) {
       metrics.chatterLLMMode = true;
-      console.log('💬 [Telemetry] Chatter LLM mode ACTIVE — directResponse=false, tools=off, LLM will generate greeting');
+      console.log('💬 [Telemetry] Chatter LLM mode ACTIVE — directResponse=false, LLM will generate greeting');
       console.log('💬 [Telemetry] Chatter directive:', JSON.stringify(routingResult.chatterDirective));
     }
 
@@ -1095,6 +911,7 @@ export async function handleIncomingMessage({
       metrics,
       assistant, // CHATTER minimal prompt için
       business,  // CHATTER minimal prompt için
+      entityResolution,
       channelMode,
       helpLinks
     });
@@ -1105,6 +922,12 @@ export async function handleIncomingMessage({
     // STEP 6: Tool Loop
     // ========================================
     console.log('\n[STEP 6] Executing tool loop...');
+    metrics.llmCalled = true;
+    metrics.LLM_CALLED = true;
+    metrics.llmBypassed = false;
+    metrics.bypassed = false;
+    metrics.llmCallReason = normalizeLlmCallReason(channel);
+    metrics.llm_call_reason = metrics.llmCallReason;
     const verificationStatusBeforeToolLoop = state.verification?.status || 'none';
     const toolLoopResult = await executeToolLoop({
       chat,
@@ -1137,29 +960,14 @@ export async function handleIncomingMessage({
 
     console.log(`🔄 Tool loop completed: ${iterations} iterations, ${toolsCalled.length} tools called`);
 
-    // ── LLM chatter telemetry & fallback ──
+    // ── LLM chatter telemetry ──
     if (isChatterLLMMode) {
       const chatterLLMLatency = Date.now() - chatterLLMStartTime;
       metrics.chatterLLMLatency = chatterLLMLatency;
       metrics.chatterLLMTokens = { input: inputTokens, output: outputTokens };
 
       console.log(`📊 [Chatter-Telemetry] latency=${chatterLLMLatency}ms, tokens_in=${inputTokens}, tokens_out=${outputTokens}`);
-
-      // Fallback: if LLM returned empty/failed, use catalog
-      if (routingResult.catalogFallback) {
-        const trimmedResponse = (responseText || '').trim();
-        if (!trimmedResponse) {
-          console.warn('⚠️ [Orchestrator] LLM chatter response empty — falling back to catalog');
-          responseText = routingResult.catalogFallback.text;
-          metrics.chatterLLMFallback = true;
-          metrics.chatterSource = 'catalogFallback';
-        } else {
-          metrics.chatterSource = 'llm';
-        }
-      } else {
-        metrics.chatterSource = 'llm';
-      }
-
+      metrics.chatterSource = 'llm';
       console.log(`📊 [Chatter-Telemetry] source=${metrics.chatterSource}`);
     }
 
@@ -1506,7 +1314,7 @@ export async function handleIncomingMessage({
       : guardrailAction === 'BLOCK'
         ? 'system_barrier'
         : guardrailAction === 'SANITIZE'
-          ? 'sanitized_assistant'
+          ? 'system_barrier'
           : 'assistant_claim';
 
     const { shouldEndSession, forceEnd, metadata: persistMetadata } = await persistAndEmitMetrics({
@@ -1558,9 +1366,13 @@ export async function handleIncomingMessage({
         guidanceAdded: metrics.guidanceAdded || [],
         responseGrounding,
         kbConfidence,
-        entityMatchType: entityResolution?.entityMatchType || null,
-        entityBestGuess: entityResolution?.bestGuess || null,
+        entityMatchType: getEntityMatchType(entityResolution) || null,
+        entityHint: getEntityHint(entityResolution) || null,
+        entityBestGuess: getEntityHint(entityResolution) || null,
         entityConfidence: entityResolution?.confidence ?? null,
+        LLM_CALLED: metrics.LLM_CALLED === true,
+        llm_call_reason: metrics.llm_call_reason || metrics.llmCallReason || normalizeLlmCallReason(channel),
+        bypassed: metrics.bypassed === true || metrics.llmBypassed === true || metrics.LLM_CALLED !== true,
         ungroundedDetected: !!metrics.ungroundedDetected,
         ...(persistMetadata || {})
       },
@@ -1605,7 +1417,10 @@ export async function handleIncomingMessage({
       }).text,
       outcome: ToolOutcome.INFRA_ERROR,
       metadata: {
-        outcome: ToolOutcome.INFRA_ERROR
+        outcome: ToolOutcome.INFRA_ERROR,
+        LLM_CALLED: metrics.LLM_CALLED === true,
+        llm_call_reason: metrics.llm_call_reason || metrics.llmCallReason || normalizeLlmCallReason(channel),
+        bypassed: metrics.bypassed === true || metrics.llmBypassed === true || metrics.LLM_CALLED !== true
       },
       shouldEndSession: false,
       forceEnd: false,
@@ -1618,6 +1433,9 @@ export async function handleIncomingMessage({
         stack: error.stack?.substring(0, 500)
       }
     };
+  } finally {
+    const llmTrace = buildLlmCallTrace(metrics, { channel, sessionId });
+    console.log(`LLM_CALL_TRACE ${JSON.stringify(llmTrace)}`);
   }
 }
 
