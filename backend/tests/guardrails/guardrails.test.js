@@ -78,9 +78,8 @@ describe('Guardrail Policy Contracts', () => {
     );
 
     expect(result.safe).toBe(false);
-    expect(result.needsVerification).toBe(true);
-    expect(result.missingFields).toContain('order_number');
-    expect(result.missingFields).toContain('phone_last4');
+    expect(result.action).toBe('BLOCK');
+    expect(result.needsVerification).toBe(false);
   });
 
   it('should bypass leak filter for non-data terminal outcomes', () => {

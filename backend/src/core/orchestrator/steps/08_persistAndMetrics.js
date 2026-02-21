@@ -30,6 +30,7 @@ export async function persistAndEmitMetrics(params) {
     channel,
     businessId,
     metrics,
+    assistantMessageMeta = null,
     effectsEnabled = true // DRY-RUN flag (default: true for backward compat)
   } = params;
 
@@ -76,10 +77,17 @@ export async function persistAndEmitMetrics(params) {
     )
     : finalResponse;
 
+  const normalizedAssistantMeta = {
+    messageType: assistantMessageMeta?.messageType || 'assistant_claim',
+    guardrailAction: assistantMessageMeta?.guardrailAction || 'PASS',
+    guardrailReason: assistantMessageMeta?.guardrailReason || null
+  };
+
   const assistantMessage = {
     role: 'assistant',
     content: persistedResponse,
     responseGrounding: persistedGrounding,
+    metadata: normalizedAssistantMeta,
     ...(toolsCalled?.length > 0 && { toolCalls: toolsCalled })
   };
 
@@ -184,6 +192,8 @@ export async function persistAndEmitMetrics(params) {
       hadToolSuccess,
       hadToolFailure,
       responseGrounding: persistedGrounding,
+      assistantMessageType: normalizedAssistantMeta.messageType,
+      guardrailAction: normalizedAssistantMeta.guardrailAction,
       turnDuration
     }
   };

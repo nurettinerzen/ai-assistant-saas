@@ -21,6 +21,29 @@ import { comparePhones } from '../utils/text.js';
 import { ToolOutcome, normalizeOutcome } from '../tools/toolResult.js';
 import { getMessageVariant } from '../messages/messageCatalog.js';
 
+export const GuardrailAction = Object.freeze({
+  PASS: 'PASS',
+  SANITIZE: 'SANITIZE',
+  BLOCK: 'BLOCK',
+  NEED_MIN_INFO_FOR_TOOL: 'NEED_MIN_INFO_FOR_TOOL'
+});
+
+const LOOKUP_INTENT_HINTS = Object.freeze(new Set([
+  'order_status',
+  'tracking_info',
+  'ticket_status',
+  'debt_inquiry',
+  'verification_response'
+]));
+
+const LOOKUP_TOOL_HINTS = Object.freeze(new Set([
+  'customer_data_lookup',
+  'check_order_status',
+  'check_order_status_crm',
+  'check_ticket_status_crm',
+  'order_search'
+]));
+
 // ============================================================================
 // DATA CLASS TANIMLARI
 // ============================================================================
@@ -273,8 +296,30 @@ function maskPhoneNumbers(text) {
     .replace(/\b(0?5\d{2})[\s\-]?(\d{3})[\s\-]?(\d{2})[\s\-]?(\d{2})\b/g, (_, p1) => `${p1}*****${_.slice(-2)}`)
     // E.164: +90 555 123 4567
     .replace(/(\+90[\s\-]?5\d{2})[\s\-]?\d{3,}/g, (m) => m.slice(0, 7) + '*'.repeat(Math.max(0, m.replace(/[\s\-]/g, '').length - 9)) + m.slice(-2))
+    // "son 4 hane 1234" / "last 4 digits 1234"
+    .replace(/((?:son\s*4(?:\s*hane(?:si)?)?|last\s*4(?:\s*digits?)?)\s*[:=]?\s*)\d{4}\b/gi, '$1****')
     // 10-11 ardışık hane
     .replace(/\b(\d{3})\d{5,8}(\d{2})\b/g, '$1*****$2');
+}
+
+function getNoToolPlanSanitizeMessage(language = 'TR') {
+  return String(language || '').toUpperCase() === 'EN'
+    ? 'I cannot verify account-specific details from that response yet. Share your order number and I can check safely.'
+    : 'Bu yanıttaki hesaba özel detayları henüz doğrulayamıyorum. Sipariş numaranızı paylaşırsanız güvenli şekilde kontrol edebilirim.';
+}
+
+function sanitizeLeaksWithoutToolPlan(response, leaks = [], language = 'TR') {
+  const leakTypes = new Set((Array.isArray(leaks) ? leaks : []).map(l => l?.type).filter(Boolean));
+  if (leakTypes.size === 0) return null;
+
+  // Phone-only leak'ler için partial redaction uygula (maksimum bağlam korunur).
+  if ([...leakTypes].every(type => type === 'phone' || type === 'internal')) {
+    return maskPhoneNumbers(response);
+  }
+
+  // Other account-specific leaks (tracking/address/name/shipping/delivery) için
+  // deterministic safe rewrite kullan.
+  return getNoToolPlanSanitizeMessage(language);
 }
 
 const INTERNAL_METADATA_PATTERNS = INTERNAL_METADATA_TERMS.map(term =>
@@ -305,9 +350,9 @@ const SENSITIVE_PATTERNS = {
   // Takip numarası (tam veya kısmi)
   tracking: [
     /\b[A-Z]{2}\d{9,12}[A-Z]{0,2}\b/i, // Standart tracking format
-    /\b\d{10,20}\b/, // Sadece rakam
-    /takip\s*(no|numarası?|kodu?)\s*[:=]?\s*\S+/i,
-    /tracking\s*(number|code|id)?\s*[:=]?\s*\S+/i,
+    /(?:\b(kargo|takip|tracking|shipment|waybill)\b.{0,24}\b[A-Z0-9\-]{6,}\b|\b[A-Z0-9\-]{6,}\b.{0,24}\b(kargo|takip|tracking|shipment|waybill)\b)/i,
+    /takip\s*(no|numarası?|kodu?)\s*[:=]?\s*[A-Z0-9\-]{6,}/i,
+    /tracking\s*(number|code|id)?\s*[:=]?\s*[A-Z0-9\-]{6,}/i,
   ],
 
   // Adres bilgileri
@@ -320,7 +365,7 @@ const SENSITIVE_PATTERNS = {
 
   // Kargo/Şube bilgileri
   shipping: [
-    /yurtiçi|aras|mng|ptt|ups|fedex|dhl|sürat|horoz/i,
+    /\b(yurtiçi|yurtici|aras|mng|ptt|ups|fedex|dhl|sürat|surat|horoz)\b/i,
     /şube(si|niz|miz)?\s*[:=]?\s*[A-ZÇĞİÖŞÜa-zçğıöşü\s]{3,}/i,
     /dağıtım\s*(merkez|şube)/i,
   ],
@@ -347,7 +392,7 @@ const SENSITIVE_PATTERNS = {
     /\b0?5\d{2}[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}\b/,  // TR mobil: 05xx xxx xx xx
     /\+90[\s\-]?5\d{2}[\s\-]?\d{3}/,                       // E.164: +90 5xx xxx (en az 7 hane)
     /\b\d{10,11}\b/,                                        // 10-11 hane ardışık rakam
-    /(?:son\s*4|last\s*4|xxxx)\s*[:=]?\s*\d{4}\b/i,        // "son 4 hanesi 1234" (yüksek skor)
+    /(?:son\s*4(?:\s*hane(?:si)?)?|last\s*4(?:\s*digits?)?|xxxx)\s*[:=]?\s*\d{4}\b/i, // "son 4 hanesi 1234"
     /telefon\s*(?:no|numarası?|numaranız)\s*[:=]\s*[\d\s\-\+]{7,}/i, // "telefon no: 05551234567" (rakam ZORUNLU, en az 7 hane)
   ],
 
@@ -359,6 +404,36 @@ const SENSITIVE_PATTERNS = {
     /güvenlik\s*protokol/i,
   ]
 };
+
+const TRACKING_CONTEXT_KEYWORDS = /\b(kargo|takip|tracking|shipment|waybill)\b/i;
+const NUMERIC_TRACKING_CANDIDATE = /\b\d{10,20}\b/g;
+
+function hasContextualTrackingNumber(response = '') {
+  NUMERIC_TRACKING_CANDIDATE.lastIndex = 0;
+  let match;
+  while ((match = NUMERIC_TRACKING_CANDIDATE.exec(response)) !== null) {
+    const from = Math.max(0, match.index - 24);
+    const to = Math.min(response.length, match.index + match[0].length + 24);
+    const contextWindow = response.slice(from, to);
+    if (TRACKING_CONTEXT_KEYWORDS.test(contextWindow)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function hasLookupToolPlan(options = {}) {
+  const toolsCalled = Array.isArray(options.toolsCalled) ? options.toolsCalled : [];
+  const hasLookupTool = toolsCalled.some(toolName => LOOKUP_TOOL_HINTS.has(toolName));
+  const intent = String(options.intent || '').trim().toLowerCase();
+  const hasLookupIntent = LOOKUP_INTENT_HINTS.has(intent);
+
+  if (options.toolPlanExists === true) {
+    return true;
+  }
+
+  return hasLookupTool || hasLookupIntent;
+}
 
 /**
  * Leak Filter - LLM output'unda hassas veri kontrolü
@@ -374,7 +449,15 @@ const SENSITIVE_PATTERNS = {
  * @returns {Object} { safe, leaks, sanitized, telemetry }
  */
 export function applyLeakFilter(response, verificationState = 'none', language = 'TR', collectedData = {}, options = {}) {
-  if (!response) return { safe: true, leaks: [], sanitized: response, telemetry: null };
+  if (!response) {
+    return {
+      safe: true,
+      action: GuardrailAction.PASS,
+      leaks: [],
+      sanitized: response,
+      telemetry: null
+    };
+  }
   const callbackPending = options.callbackPending === true;
   const isCallbackFlow = callbackPending || options.activeFlow === 'CALLBACK_REQUEST';
 
@@ -403,10 +486,26 @@ export function applyLeakFilter(response, verificationState = 'none', language =
         }
       }
     }
+
+    // Numeric-only tracking IDs must have shipping/tracking context nearby.
+    if (!leaks.some(l => l.type === 'tracking') && hasContextualTrackingNumber(response)) {
+      leaks.push({ type: 'tracking', pattern: 'contextual_numeric_tracking' });
+      triggeredPatterns.push({
+        type: 'tracking',
+        pattern: 'contextual_numeric_tracking',
+        dataClass: 'ACCOUNT_VERIFIED'
+      });
+    }
   }
 
   if (leaks.length === 0) {
-    return { safe: true, leaks: [], sanitized: response, telemetry: null };
+    return {
+      safe: true,
+      action: GuardrailAction.PASS,
+      leaks: [],
+      sanitized: response,
+      telemetry: null
+    };
   }
 
   // ============================================
@@ -432,6 +531,7 @@ export function applyLeakFilter(response, verificationState = 'none', language =
       // Sadece phone leak vardı (veya phone + internal), digit yok → tamamen safe
       return {
         safe: true,
+        action: GuardrailAction.PASS,
         leaks: [],
         sanitized: response,
         telemetry: { reason: 'phone_word_no_digits_pass', triggeredPatterns, responseHasDigits: false }
@@ -446,13 +546,14 @@ export function applyLeakFilter(response, verificationState = 'none', language =
   // (phone leak zaten yukarıda digit yoksa kaldırıldı, ama yine de guard)
   const hasPersonalDataLeak = leaks.some(l => {
     if (l.type === 'phone') return responseHasDigits; // digit yoksa personal data değil
-    return ['address', 'tracking', 'timeWindow', 'delivery', 'customerName'].includes(l.type);
+    return ['address', 'tracking', 'shipping', 'timeWindow', 'delivery', 'customerName'].includes(l.type);
   });
 
   if (isPolicyResponse && !hasPersonalDataLeak && onlyInternalLeak) {
     console.log('✅ [LeakFilter] Policy response detected, allowing through');
     return {
       safe: true,
+      action: GuardrailAction.PASS,
       leaks: [],
       sanitized: response,
       telemetry: { reason: 'policy_response_allowed', triggeredPatterns }
@@ -472,6 +573,7 @@ export function applyLeakFilter(response, verificationState = 'none', language =
     console.log('🔒 [LeakFilter] Phone number redacted (masked), no verification needed');
     return {
       safe: true,
+      action: GuardrailAction.SANITIZE,
       leaks,
       sanitized,
       telemetry: {
@@ -497,6 +599,8 @@ export function applyLeakFilter(response, verificationState = 'none', language =
   if (!hasOrderNumber) missingFields.push('order_number');
   if (!hasPhone) missingFields.push('phone_last4');
 
+  const lookupToolPlanExists = hasLookupToolPlan(options);
+
   // Telemetry objesi (debug için - hangi pattern neden trigger etti)
   const telemetry = {
     verificationState,
@@ -511,26 +615,89 @@ export function applyLeakFilter(response, verificationState = 'none', language =
     triggeredPatterns,
     hasPersonalDataLeak,
     responseHasDigits,
-    verificationMode: 'ORDER_VERIFY'
+    verificationMode: 'ORDER_VERIFY',
+    hasLookupToolPlan: lookupToolPlanExists
   };
 
   if (isCallbackFlow) {
     return {
       safe: false,
+      action: GuardrailAction.NEED_MIN_INFO_FOR_TOOL,
       leaks,
       needsCallbackInfo: true,
       missingFields: ['customer_name', 'phone'],
+      blockReason: 'CALLBACK_INFO_REQUIRED',
       telemetry
     };
   }
 
-  // Return verification requirement — ONLY for order/account data leaks
+  // Ask minimum info ONLY when planner/router produced a real lookup tool plan.
+  // Guardrail never steers domain by itself.
+  const shouldAskMinInfo = lookupToolPlanExists && missingFields.length > 0;
+  if (shouldAskMinInfo) {
+    return {
+      safe: false,
+      action: GuardrailAction.NEED_MIN_INFO_FOR_TOOL,
+      leaks,
+      needsVerification: true,
+      missingFields,
+      blockReason: 'NEED_MIN_INFO_FOR_TOOL',
+      telemetry
+    };
+  }
+
+  // Tool plan yoksa otomatik block yapma.
+  // Kural:
+  // - Personal/account leak yoksa PASS
+  // - Personal/account leak varsa önce deterministic sanitize
+  // - Sanitize başarısızsa BLOCK
+  if (!lookupToolPlanExists) {
+    if (!hasPersonalDataLeak) {
+      return {
+        safe: true,
+        action: GuardrailAction.PASS,
+        leaks: [],
+        sanitized: response,
+        telemetry: {
+          ...telemetry,
+          reason: 'no_tool_plan_non_personal_pass'
+        }
+      };
+    }
+
+    const sanitizedNoToolPlan = sanitizeLeaksWithoutToolPlan(response, leaks, language);
+    if (typeof sanitizedNoToolPlan === 'string' && sanitizedNoToolPlan.trim()) {
+      return {
+        safe: true,
+        action: GuardrailAction.SANITIZE,
+        leaks,
+        sanitized: sanitizedNoToolPlan,
+        telemetry: {
+          ...telemetry,
+          reason: 'sanitized_no_tool_plan_personal_leak'
+        }
+      };
+    }
+  }
+
+  // Residual high-risk path: sanitize üretilemedi veya tool-plan akışında
+  // minimum bilgi kararı verilemedi. Bu durumda deterministic barrier uygula.
   return {
     safe: false,
+    action: GuardrailAction.BLOCK,
     leaks,
-    needsVerification: true,
-    missingFields,
-    telemetry
+    needsVerification: false,
+    missingFields: [],
+    blockReason: lookupToolPlanExists
+      ? 'LEAK_FILTER_BLOCKED_TOOL_PLAN_PATH'
+      : 'LEAK_FILTER_BLOCKED_SANITIZE_FAILED',
+    blockedMessage: String(language || '').toUpperCase() === 'EN'
+      ? 'I cannot share that detail right now for security reasons.'
+      : 'Güvenlik nedeniyle bu detayı şu anda paylaşamıyorum.',
+    telemetry: {
+      ...telemetry,
+      reason: lookupToolPlanExists ? 'blocked_tool_plan_path' : 'blocked_sanitize_failed'
+    }
   };
 }
 
@@ -917,6 +1084,7 @@ function containsProductClaims(response, language = 'TR') {
 // ============================================================================
 
 export default {
+  GuardrailAction,
   DATA_CLASSES,
   getDataClass,
   evaluateSecurityGateway,

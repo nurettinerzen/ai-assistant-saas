@@ -44,7 +44,6 @@ import { getMessageVariant } from '../messages/messageCatalog.js';
 import { checkSessionThrottle } from '../services/sessionThrottle.js';
 import { getChannelMode, getHelpLinks } from '../config/channelMode.js';
 import { ensurePolicyGuidance } from '../services/tool-fail-handler.js';
-import { validateInternalProtocol } from '../guardrails/internalProtocolGuard.js';
 import { buildBusinessIdentity } from '../services/businessIdentity.js';
 import { resolveMentionedEntity, ENTITY_MATCH_TYPES } from '../services/entityTopicResolver.js';
 import {
@@ -316,12 +315,20 @@ function determineTurnOutcome({
     return ToolOutcome.INFRA_ERROR;
   }
 
+  if (guardrailResult?.action === 'NEED_MIN_INFO_FOR_TOOL') {
+    return ToolOutcome.NEED_MORE_INFO;
+  }
+
   if (guardrailResult?.needsVerification || guardrailResult?.blockReason === 'VERIFICATION_REQUIRED') {
     return ToolOutcome.VERIFICATION_REQUIRED;
   }
 
   if (guardrailResult?.needsCallbackInfo || guardrailResult?.blockReason === 'CALLBACK_INFO_REQUIRED') {
     return ToolOutcome.NEED_MORE_INFO;
+  }
+
+  if (guardrailResult?.action === 'BLOCK') {
+    return ToolOutcome.DENIED;
   }
 
   if (guardrailResult?.blockReason === 'IDENTITY_MISMATCH' || guardrailResult?.blockReason === 'POLICY_DENIED') {
@@ -1374,9 +1381,6 @@ export async function handleIncomingMessage({
     });
 
     let { finalResponse } = guardrailResult;
-    let correctionRepromptCount = Number.isInteger(guardrailResult.repromptCount)
-      ? guardrailResult.repromptCount
-      : 0;
 
     // Security Gateway tarafından block edildiyse
     if (guardrailResult.blocked) {
@@ -1386,139 +1390,10 @@ export async function handleIncomingMessage({
         violations: guardrailResult.violations || null,
         details: guardrailResult.leaks || guardrailResult.mismatchDetails
       };
-
-      // ============================================
-      // VERIFICATION REQUIRED: Re-prompt LLM
-      // ============================================
-      if (guardrailResult.needsVerification && guardrailResult.missingFields?.length > 0) {
-        console.log('🔐 [Orchestrator] Verification required, re-prompting LLM...');
-        finalResponse = await regenerateWithGuidance(
-          'VERIFICATION',
-          guardrailResult.missingFields,
-          userMessage,
-          language
-        );
-      }
-
-      // ============================================
-      // CONFABULATION DETECTED: Re-prompt LLM
-      // ============================================
-      if (guardrailResult.needsCorrection && guardrailResult.correctionType === 'CONFABULATION') {
-        console.log('🚨 [Orchestrator] Confabulation detected, re-prompting LLM...');
-        console.log('📋 Violation:', guardrailResult.violation);
-        finalResponse = await regenerateWithGuidance(
-          'CONFABULATION',
-          guardrailResult.correctionConstraint,
-          userMessage,
-          language
-        );
-      }
-
-      // ============================================
-      // TOOL-ONLY DATA LEAK: Re-prompt LLM
-      // ============================================
-      if (guardrailResult.needsCorrection && guardrailResult.correctionType === 'TOOL_ONLY_DATA_LEAK') {
-        console.log('🚨 [Orchestrator] Tool-only data leak detected, re-prompting LLM...');
-        console.log('📋 Violation:', guardrailResult.violation);
-        finalResponse = await regenerateWithGuidance(
-          'TOOL_ONLY_DATA_LEAK',
-          guardrailResult.correctionConstraint,
-          userMessage,
-          language
-        );
-      }
-
-      // ============================================
-      // FIELD GROUNDING VIOLATION: Re-prompt LLM
-      // ============================================
-      if (guardrailResult.needsCorrection && guardrailResult.correctionType === 'FIELD_GROUNDING') {
-        console.log('🚨 [Orchestrator] Field grounding violation detected, re-prompting LLM...');
-        console.log('📋 Violation:', guardrailResult.violation);
-        finalResponse = await regenerateWithGuidance(
-          'FIELD_GROUNDING',
-          guardrailResult.correctionConstraint,
-          userMessage,
-          language
-        );
-      }
-
-      // ============================================
-      // KB_ONLY URL VIOLATION: Re-prompt LLM
-      // ============================================
-      if (guardrailResult.needsCorrection && guardrailResult.correctionType === 'KB_ONLY_URL_VIOLATION') {
-        console.log('🚨 [Orchestrator] KB_ONLY URL violation, re-prompting LLM...');
-        finalResponse = await regenerateWithGuidance(
-          'KB_ONLY_URL_VIOLATION',
-          guardrailResult.correctionConstraint,
-          userMessage,
-          language
-        );
-      }
-
-      // ============================================
-      // INTERNAL PROTOCOL LEAK: Re-prompt LLM + Safe Fallback
-      // ============================================
-      if (guardrailResult.needsCorrection && guardrailResult.correctionType === 'INTERNAL_PROTOCOL_LEAK') {
-        console.log('🚨 [Orchestrator] Internal protocol leak detected, re-prompting LLM...');
-        console.log('📋 Violation:', guardrailResult.violation);
-
-        correctionRepromptCount = Math.max(correctionRepromptCount, 1);
-        const correctedCandidate = await regenerateWithGuidance(
-          'INTERNAL_PROTOCOL_LEAK',
-          guardrailResult.correctionConstraint,
-          userMessage,
-          language
-        );
-
-        const postCorrectionCheck = validateInternalProtocol(correctedCandidate, language);
-        if (!correctedCandidate?.trim() || !postCorrectionCheck.safe) {
-          console.warn('⚠️ [Orchestrator] Internal protocol correction failed post-check, using safe fallback');
-          finalResponse = getInternalProtocolSafeFallback(language);
-          metrics.internalProtocolFallbackUsed = true;
-          metrics.internalProtocolPostCheckViolation = postCorrectionCheck.safe
-            ? null
-            : postCorrectionCheck.violation;
-        } else {
-          finalResponse = correctedCandidate;
-          metrics.internalProtocolFallbackUsed = false;
-        }
-      }
-
-      // ============================================
-      // FIREWALL SOFT REFUSAL: Re-prompt once
-      // ============================================
-      // P1b-FIX: When firewall blocks a response (e.g. false-positive on KB answers
-      // like "iade süresi"), re-prompt LLM once with anti-disclosure guidance.
-      // If the regenerated response also fails firewall, keep the canned fallback.
-      if (guardrailResult.blockReason === 'FIREWALL_BLOCK' && guardrailResult.softRefusal &&
-          !guardrailResult.needsVerification && !guardrailResult.needsCorrection) {
-        console.log('🔥 [Orchestrator] Firewall soft refusal, attempting reprompt...');
-        try {
-          const reprompted = await regenerateWithGuidance(
-            'FIREWALL_RECOVERY',
-            guardrailResult.violations,
-            userMessage,
-            language
-          );
-
-          // Validate the reprompted response through firewall again
-          const { sanitizeResponse: recheckFirewall } = await import('../utils/response-firewall.js');
-          const recheck = recheckFirewall(reprompted, language, { sessionId, channel: channelMode });
-          if (recheck.safe) {
-            console.log('✅ [Orchestrator] Firewall reprompt succeeded');
-            finalResponse = reprompted;
-          } else {
-            console.warn('🚨 [Orchestrator] Firewall reprompt also blocked, keeping fallback');
-          }
-        } catch (err) {
-          console.error('❌ [Orchestrator] Firewall reprompt failed:', err.message);
-        }
-      }
     }
-
-    if (guardrailResult.correctionType === 'INTERNAL_PROTOCOL_LEAK' && !String(finalResponse || '').trim()) {
+    if (!String(finalResponse || '').trim()) {
       finalResponse = getInternalProtocolSafeFallback(language);
-      metrics.internalProtocolFallbackUsed = true;
+      metrics.guardrailFallbackUsed = true;
     }
 
     // Deterministic post-pass for policy topics.
@@ -1566,17 +1441,13 @@ export async function handleIncomingMessage({
 
     // ── Security Policy Telemetry (canary monitoring) ──
     {
-      let repromptCount = Number.isInteger(correctionRepromptCount) ? correctionRepromptCount : 0;
-      if (guardrailResult.needsCorrection && repromptCount === 0) repromptCount++;
-      if (guardrailResult.needsVerification) repromptCount++;
-
       // Build or update security telemetry
       const secTelemetry = metrics.securityTelemetry || {};
       secTelemetry.blocked = guardrailResult.blocked || false;
       secTelemetry.blockReason = guardrailResult.blockReason || null;
-      secTelemetry.correctionType = guardrailResult.correctionType || null;
+      secTelemetry.action = guardrailResult.action || 'PASS';
       secTelemetry.violations = guardrailResult.violations || null; // P2-FIX: firewall violation types
-      secTelemetry.repromptCount = repromptCount;
+      secTelemetry.repromptCount = 0;
       secTelemetry.softRefusal = guardrailResult.softRefusal || false;
       secTelemetry.latencyMs = Date.now() - turnStartTime;
 
@@ -1598,8 +1469,8 @@ export async function handleIncomingMessage({
       console.log('📊 [SecurityTelemetry]', {
         blocked: secTelemetry.blocked,
         blockReason: secTelemetry.blockReason,
+        action: secTelemetry.action,
         violations: secTelemetry.violations || null,
-        correctionType: secTelemetry.correctionType,
         repromptCount: secTelemetry.repromptCount,
         fallbackUsed: secTelemetry.fallbackUsed || false,
         injectionDetected: !!secTelemetry.injectionDetected,
@@ -1629,6 +1500,15 @@ export async function handleIncomingMessage({
     // STEP 8: Persist and Metrics
     // ========================================
     console.log('\n[STEP 8] Persisting state and emitting metrics...');
+    const guardrailAction = guardrailResult.action || 'PASS';
+    const assistantMessageType = guardrailAction === 'NEED_MIN_INFO_FOR_TOOL' || guardrailResult.needsCallbackInfo
+      ? 'clarification'
+      : guardrailAction === 'BLOCK'
+        ? 'system_barrier'
+        : guardrailAction === 'SANITIZE'
+          ? 'sanitized_assistant'
+          : 'assistant_claim';
+
     const { shouldEndSession, forceEnd, metadata: persistMetadata } = await persistAndEmitMetrics({
       sessionId: resolvedSessionId,
       state,
@@ -1647,6 +1527,11 @@ export async function handleIncomingMessage({
       businessId: business.id,
       metrics,
       responseGrounding,
+      assistantMessageMeta: {
+        messageType: assistantMessageType,
+        guardrailAction,
+        guardrailReason: guardrailResult.blockReason || null
+      },
       effectsEnabled // DRY-RUN flag
     });
 
@@ -1665,6 +1550,7 @@ export async function handleIncomingMessage({
       metadata: {
         outcome: turnOutcome,
         guardrailsApplied: guardrailResult.guardrailsApplied || [],
+        guardrailAction,
         guardrailMessageKey: guardrailResult.messageKey || null,
         guardrailVariantIndex: Number.isInteger(guardrailResult.variantIndex) ? guardrailResult.variantIndex : null,
         verificationState: state?.verification?.status || 'none',

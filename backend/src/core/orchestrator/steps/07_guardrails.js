@@ -27,6 +27,7 @@ import { validateConfabulation, validateFieldGrounding } from '../../../guardrai
 // NEW: Merkezi Security Gateway - Leak Filter (P0)
 import {
   applyLeakFilter,
+  GuardrailAction,
   evaluateSecurityGateway,
   extractFieldsFromToolOutput,
   extractRecordOwner,
@@ -37,6 +38,80 @@ import {
 import { shouldBypassLeakFilter } from '../../../security/outcomePolicy.js';
 import { ToolOutcome, normalizeOutcome } from '../../../tools/toolResult.js';
 import { isFeatureEnabled } from '../../../config/feature-flags.js';
+
+function getBarrierMessage(language = 'TR') {
+  return String(language || '').toUpperCase() === 'EN'
+    ? 'I cannot share that detail right now for security reasons.'
+    : 'Güvenlik nedeniyle bu detayı şu anda paylaşamıyorum.';
+}
+
+function getInternalProtocolSafeRewrite(language = 'TR') {
+  return String(language || '').toUpperCase() === 'EN'
+    ? 'I can help with your request. Tell me what you need and I will assist.'
+    : 'Bu konuda yardımcı olabilirim. İhtiyacınızı yazın, size destek olayım.';
+}
+
+function getConfabulationClarification(language = 'TR', violation = null) {
+  const lang = String(language || '').toUpperCase() === 'EN' ? 'EN' : 'TR';
+  const category = violation?.category;
+
+  if (category === 'stockEvents' || category === 'businessDescriptionClaims') {
+    return lang === 'EN'
+      ? 'I do not have verifiable source data for that detail yet. Could you share the exact product or model so I can check clearly?'
+      : 'Bu detayı doğrulayacak kaynak veriye henüz sahip değilim. Net kontrol için ürün adı veya modelini paylaşır mısınız?';
+  }
+
+  return lang === 'EN'
+    ? 'I do not have enough verified data to confirm that yet. Could you share your order number so I can check clearly?'
+    : 'Bu bilgiyi doğrulamak için henüz yeterli kayıt yok. Net kontrol için sipariş numaranızı paylaşır mısınız?';
+}
+
+function getFieldGroundingClarification(language = 'TR', violation = null) {
+  const lang = String(language || '').toUpperCase() === 'EN' ? 'EN' : 'TR';
+  const field = violation?.field;
+
+  if (field === 'trackingNumber') {
+    return lang === 'EN'
+      ? 'To share the exact tracking detail, I need to re-check the order record. Could you share your order number?'
+      : 'Takip detayını net paylaşmam için sipariş kaydını tekrar kontrol etmem gerekiyor. Sipariş numaranızı paylaşır mısınız?';
+  }
+
+  return lang === 'EN'
+    ? 'To provide the exact detail, I need to verify the latest record first. Could you share your order number?'
+    : 'Detayı doğru paylaşmam için kaydı önce doğrulamam gerekiyor. Sipariş numaranızı paylaşır mısınız?';
+}
+
+function resolveMinInfoQuestion({
+  language,
+  sessionId,
+  channel,
+  intent,
+  missingFields = []
+}) {
+  const missingSet = new Set(Array.isArray(missingFields) ? missingFields : []);
+
+  const hasOrder = missingSet.has('order_number');
+  const hasPhoneLast4 = missingSet.has('phone_last4');
+
+  let messageKey = 'VERIFICATION_REGEN_ORDER_ONLY';
+  if (hasOrder && hasPhoneLast4) {
+    messageKey = 'VERIFICATION_REGEN_ORDER_AND_PHONE';
+  } else if (!hasOrder && hasPhoneLast4) {
+    messageKey = 'ORDER_PHONE_LAST4_REQUIRED';
+  }
+
+  const variant = getMessageVariant(messageKey, {
+    language,
+    sessionId,
+    channel,
+    intent,
+    directiveType: 'ASK_VERIFICATION',
+    severity: 'info',
+    seedHint: [...missingSet].join(',') || 'min_info'
+  });
+
+  return variant;
+}
 
 export async function applyGuardrails(params) {
   const {
@@ -75,32 +150,56 @@ export async function applyGuardrails(params) {
   });
 
   if (!firewallResult.safe) {
-    console.error('🚨 [FIREWALL] Response blocked!', firewallResult.violations);
+    const violations = Array.isArray(firewallResult.violations) ? firewallResult.violations : [];
+    const onlyUnredactedPii = violations.length === 1 && violations[0] === 'UNREDACTED_PII';
+    let recoveredByLeakSanitizer = false;
 
-    // Log violation for monitoring
-    await logFirewallViolation({
-      violations: firewallResult.violations,
-      original: firewallResult.original,
-      sessionId,
-      timestamp: new Date().toISOString()
-    }, null, chat?.businessId);
+    if (onlyUnredactedPii) {
+      const leakSanitizeResult = applyLeakFilter(responseText, verificationState, language, collectedData, {
+        callbackPending,
+        activeFlow,
+        intent,
+        toolsCalled,
+        toolPlanExists: Array.isArray(toolsCalled) && toolsCalled.length > 0
+      });
 
-    // SOFT REFUSAL: Don't lock session for first/occasional firewall violations
-    // Track violation count in metrics - orchestrator can decide to lock on repeated abuse
-    // This allows user to continue conversation without hard termination
-    console.log('🛡️ [Firewall] Soft refusal - response sanitized, session remains open');
+      if (leakSanitizeResult.safe && leakSanitizeResult.action === GuardrailAction.SANITIZE && leakSanitizeResult.sanitized) {
+        responseText = leakSanitizeResult.sanitized;
+        recoveredByLeakSanitizer = true;
+        metrics.firewallPiiSanitized = true;
+        console.warn('🛡️ [Firewall] UNREDACTED_PII recovered via leak sanitizer (masked output)');
+      }
+    }
 
-    // Return sanitized fallback response WITHOUT locking
-    return {
-      finalResponse: firewallResult.sanitized,
-      guardrailsApplied: ['RESPONSE_FIREWALL'],
-      blocked: true,
-      blockReason: 'FIREWALL_BLOCK', // P2-FIX: explicit blockReason for telemetry
-      softRefusal: true, // Flag for soft refusal (no session lock)
-      violations: firewallResult.violations,
-      messageKey: firewallResult.messageKey,
-      variantIndex: firewallResult.variantIndex
-    };
+    if (!recoveredByLeakSanitizer) {
+      console.error('🚨 [FIREWALL] Response blocked!', firewallResult.violations);
+
+      // Log violation for monitoring
+      await logFirewallViolation({
+        violations: firewallResult.violations,
+        original: firewallResult.original,
+        sessionId,
+        timestamp: new Date().toISOString()
+      }, null, chat?.businessId);
+
+      // SOFT REFUSAL: Don't lock session for first/occasional firewall violations
+      // Track violation count in metrics - orchestrator can decide to lock on repeated abuse
+      // This allows user to continue conversation without hard termination
+      console.log('🛡️ [Firewall] Soft refusal - response sanitized, session remains open');
+
+      // Return sanitized fallback response WITHOUT locking
+      return {
+        finalResponse: firewallResult.sanitized,
+        action: GuardrailAction.SANITIZE,
+        guardrailsApplied: ['RESPONSE_FIREWALL'],
+        blocked: true,
+        blockReason: 'FIREWALL_BLOCK', // P2-FIX: explicit blockReason for telemetry
+        softRefusal: true, // Flag for soft refusal (no session lock)
+        violations: firewallResult.violations,
+        messageKey: firewallResult.messageKey,
+        variantIndex: firewallResult.variantIndex
+      };
+    }
   }
 
   console.log('✅ [Firewall] Response passed security checks');
@@ -135,8 +234,10 @@ export async function applyGuardrails(params) {
 
     return {
       finalResponse: safeMessage,
+      action: GuardrailAction.BLOCK,
       guardrailsApplied: ['PII_PREVENTION'],
       blocked: true,
+      blockReason: 'PII_RISK',
       lockReason: 'PII_RISK',
       piiFindings: piiScan.findings.map(f => ({ type: f.type, severity: f.severity }))
     };
@@ -176,14 +277,11 @@ export async function applyGuardrails(params) {
       const disallowed = foundUrls.filter(u => !isAllowed(u));
       if (disallowed.length > 0) {
         console.warn(`🚨 [Guardrail] KB_ONLY URL violation: ${disallowed.join(', ')}`);
+        const sanitizedResponse = String(responseText || '').replace(urlRegex, (url) => (isAllowed(url) ? url : '')).replace(/\s{2,}/g, ' ').trim();
         return {
-          finalResponse: null,
-          needsCorrection: true,
-          correctionType: 'KB_ONLY_URL_VIOLATION',
-          correctionConstraint: language === 'EN'
-            ? `REMOVE all URLs from your response. Only these domains are allowed: ${Array.from(allowedDomains).join(', ') || 'none'}. Do not invent links.`
-            : `Yanıtından TÜM URL'leri kaldır. Sadece şu domainler izinli: ${Array.from(allowedDomains).join(', ') || 'yok'}. Link uydurma.`,
-          blocked: true,
+          finalResponse: sanitizedResponse || getBarrierMessage(language),
+          action: GuardrailAction.SANITIZE,
+          blocked: false,
           blockReason: 'KB_ONLY_URL_ALLOWLIST',
           guardrailsApplied: ['KB_ONLY_URL_ALLOWLIST']
         };
@@ -278,15 +376,17 @@ export async function applyGuardrails(params) {
     });
   }
   const leakFilterResult = shouldSkipLeakFilter
-    ? { safe: true } // NOT_FOUND response'u güvenli, Leak Filter'ı atla
+    ? { safe: true, action: GuardrailAction.PASS } // NOT_FOUND response'u güvenli, Leak Filter'ı atla
     : applyLeakFilter(responseText, verificationState, language, collectedData, {
       callbackPending,
       activeFlow,
-      intent
+      intent,
+      toolsCalled,
+      toolPlanExists: Array.isArray(toolsCalled) && toolsCalled.length > 0
     });
 
   if (!leakFilterResult.safe) {
-    if (leakFilterResult.needsCallbackInfo) {
+    if (leakFilterResult.action === GuardrailAction.NEED_MIN_INFO_FOR_TOOL && leakFilterResult.needsCallbackInfo) {
       const callbackVariant = getMessageVariant('CALLBACK_INFO_REQUIRED', {
         language,
         sessionId,
@@ -304,11 +404,12 @@ export async function applyGuardrails(params) {
 
       return {
         finalResponse: callbackVariant.text,
+        action: GuardrailAction.NEED_MIN_INFO_FOR_TOOL,
         needsCallbackInfo: true,
         missingFields: ['customer_name', 'phone'],
         guardrailsApplied: ['RESPONSE_FIREWALL', 'PII_PREVENTION', 'SECURITY_GATEWAY_CALLBACK_FLOW'],
         blocked: true,
-        blockReason: 'CALLBACK_INFO_REQUIRED',
+        blockReason: leakFilterResult.blockReason || 'CALLBACK_INFO_REQUIRED',
         messageKey: callbackVariant.messageKey,
         variantIndex: callbackVariant.variantIndex
       };
@@ -316,7 +417,8 @@ export async function applyGuardrails(params) {
 
     // Telemetry logging — enriched with verificationMode, hasDigits, leakTypes
     const leakTelemetry = leakFilterResult.telemetry || {};
-    console.warn('🔐 [SecurityGateway] Verification required', {
+    console.warn('🔐 [SecurityGateway] Leak filter triggered', {
+      action: leakFilterResult.action || 'UNKNOWN',
       needsVerification: leakFilterResult.needsVerification,
       missingFields: leakFilterResult.missingFields,
       leakTypes: leakTelemetry.leakTypes || [],
@@ -335,22 +437,43 @@ export async function applyGuardrails(params) {
       telemetry: leakTelemetry
     };
 
-    // Return verification requirement - orchestrator will handle LLM re-prompt
-    // NO hardcoded response - LLM will generate natural verification request
+    if (leakFilterResult.action === GuardrailAction.NEED_MIN_INFO_FOR_TOOL) {
+      const minInfoVariant = resolveMinInfoQuestion({
+        language,
+        sessionId,
+        channel,
+        intent,
+        missingFields: leakFilterResult.missingFields || []
+      });
+
+      return {
+        finalResponse: minInfoVariant.text,
+        action: GuardrailAction.NEED_MIN_INFO_FOR_TOOL,
+        needsVerification: true,
+        missingFields: leakFilterResult.missingFields || [],
+        guardrailsApplied: ['RESPONSE_FIREWALL', 'PII_PREVENTION', 'SECURITY_GATEWAY_LEAK_FILTER'],
+        blocked: true,
+        blockReason: 'NEED_MIN_INFO_FOR_TOOL',
+        leaks: leakFilterResult.leaks,
+        telemetry: leakFilterResult.telemetry,
+        messageKey: minInfoVariant.messageKey,
+        variantIndex: minInfoVariant.variantIndex
+      };
+    }
+
     return {
-      finalResponse: null, // Signal that LLM needs to regenerate
-      needsVerification: true,
-      missingFields: leakFilterResult.missingFields || [],
+      finalResponse: leakFilterResult.blockedMessage || getBarrierMessage(language),
+      action: GuardrailAction.BLOCK,
       guardrailsApplied: ['RESPONSE_FIREWALL', 'PII_PREVENTION', 'SECURITY_GATEWAY_LEAK_FILTER'],
       blocked: true,
-      blockReason: 'VERIFICATION_REQUIRED',
+      blockReason: leakFilterResult.blockReason || 'SECURITY_GATEWAY_BLOCK',
       leaks: leakFilterResult.leaks,
       telemetry: leakFilterResult.telemetry
     };
   }
 
   // If leak filter returned a sanitized (redacted) response, use it
-  if (leakFilterResult.sanitized && leakFilterResult.sanitized !== responseText) {
+  if (leakFilterResult.action === GuardrailAction.SANITIZE && leakFilterResult.sanitized && leakFilterResult.sanitized !== responseText) {
     console.log('🔒 [SecurityGateway] Leak filter passed with redaction applied');
     responseText = leakFilterResult.sanitized;
   } else {
@@ -447,6 +570,7 @@ export async function applyGuardrails(params) {
 
           return {
             finalResponse: hardDenyResponse,
+            action: GuardrailAction.BLOCK,
             guardrailsApplied: ['RESPONSE_FIREWALL', 'PII_PREVENTION', 'SECURITY_GATEWAY_IDENTITY_MISMATCH'],
             blocked: true,
             blockReason: 'IDENTITY_MISMATCH',
@@ -507,16 +631,9 @@ export async function applyGuardrails(params) {
     if (!isFeatureEnabled('TOOL_ONLY_DATA_HARDBLOCK')) {
       console.warn('⚠️ [Guardrails] TOOL_ONLY_DATA_HARDBLOCK disabled — logging only, not blocking');
     } else {
-      // P0-B FIX: Hard block — tool-only data without tool call is a data leak
-      const correctionConstraint = language === 'TR'
-        ? `Yanıtında tool çağırmadan "${toolOnlyDataResult.violation.category}" kategorisinde hassas veri verdin. Bu bilgiyi KESINLIKLE verme. Sistemi sorgulamadan "kargoda", "teslim edildi", "adresiniz" gibi bilgiler paylaşma. Bilmediğini kabul et.`
-        : `Your response contains "${toolOnlyDataResult.violation.category}" data without a tool call. Do NOT share this information. Never claim delivery status, address, or PII without querying the system. Admit you don't have the information.`;
-
       return {
-        finalResponse: null,
-        needsCorrection: true,
-        correctionType: 'TOOL_ONLY_DATA_LEAK',
-        correctionConstraint,
+        finalResponse: getBarrierMessage(language),
+        action: GuardrailAction.BLOCK,
         violation: toolOnlyDataResult.violation,
         guardrailsApplied: ['RESPONSE_FIREWALL', 'PII_PREVENTION', 'TOOL_ONLY_DATA_GUARD'],
         blocked: true,
@@ -532,19 +649,8 @@ export async function applyGuardrails(params) {
   if (!internalProtocolResult.safe) {
     console.error('🚨 [Guardrails] INTERNAL_PROTOCOL_LEAK detected!', internalProtocolResult.violation);
     metrics.internalProtocolViolation = internalProtocolResult.violation;
-
-    console.log('🔧 [Guardrails] Requesting LLM correction for internal protocol leak...');
-    return {
-      finalResponse: null,
-      needsCorrection: true,
-      correctionType: 'INTERNAL_PROTOCOL_LEAK',
-      correctionConstraint: internalProtocolResult.correctionConstraint,
-      violation: internalProtocolResult.violation,
-      guardrailsApplied: ['RESPONSE_FIREWALL', 'PII_PREVENTION', 'INTERNAL_PROTOCOL_GUARD'],
-      blocked: true,
-      blockReason: 'INTERNAL_PROTOCOL_LEAK',
-      repromptCount: 1
-    };
+    responseText = getInternalProtocolSafeRewrite(language);
+    metrics.internalProtocolSanitized = true;
   }
 
   // POLICY 4: Anti-Confabulation Guard (P1-A) - NOW WITH ENFORCEMENT
@@ -560,24 +666,15 @@ export async function applyGuardrails(params) {
   if (!confabulationResult.safe) {
     console.error('🚨 [Guardrails] CONFABULATION detected!', confabulationResult.violation);
     metrics.confabulationViolation = confabulationResult.violation;
-
-    // P0 FIX: Return needsCorrection flag - orchestrator will re-prompt LLM
-    return {
-      finalResponse: null,
-      needsCorrection: true,
-      correctionType: 'CONFABULATION',
-      correctionConstraint: confabulationResult.correctionConstraint,
-      violation: confabulationResult.violation,
-      guardrailsApplied: ['RESPONSE_FIREWALL', 'PII_PREVENTION', 'ANTI_CONFABULATION'],
-      blocked: true,
-      blockReason: 'CONFABULATION_DETECTED'
-    };
+    responseText = getConfabulationClarification(language, confabulationResult.violation);
+    metrics.confabulationClarification = true;
   }
 
   // POLICY 4b: Field-Level Grounding (P1-D)
-  // Even if tool was called, check that LLM claims match tool output fields
-  // Mode: FEATURE_FIELD_GROUNDING_HARDBLOCK=true → block | false → skip
-  // FIELD_GROUNDING_MODE env: 'block' (default) or 'monitor' (log only, don't block)
+  // Even if tool was called, check that LLM claims match tool output fields.
+  // Enforcement mode:
+  // - monitor: log only
+  // - block (default): deterministic clarification rewrite (no hard block)
   const fieldGroundingEnabled = isFeatureEnabled('FIELD_GROUNDING_HARDBLOCK');
   const fieldGroundingMode = process.env.FIELD_GROUNDING_MODE || 'block'; // 'block' | 'monitor'
   if (fieldGroundingEnabled && hadToolSuccess && toolOutputs.length > 0) {
@@ -592,21 +689,8 @@ export async function applyGuardrails(params) {
         console.warn('📊 [Guardrails] FIELD_GROUNDING in MONITOR mode — logging only, response passes through');
         metrics.fieldGroundingMonitorOnly = true;
       } else {
-        // Block mode: hard block and re-prompt LLM
-        const groundingConstraint = language === 'TR'
-          ? `Yanıtında tool sonucuyla uyuşmayan bilgi verdin. Alan: "${groundingResult.violation.field}", tool sonucu: "${groundingResult.violation.expected || 'yok'}", sen iddia ettin: "${groundingResult.violation.claimed}". Yanıtını SADECE tool sonucundaki bilgilere dayandırarak yeniden yaz.`
-          : `Your response contains information inconsistent with tool output. Field: "${groundingResult.violation.field}", tool result: "${groundingResult.violation.expected || 'none'}", you claimed: "${groundingResult.violation.claimed}". Rewrite based ONLY on tool output data.`;
-
-        return {
-          finalResponse: null,
-          needsCorrection: true,
-          correctionType: 'FIELD_GROUNDING',
-          correctionConstraint: groundingConstraint,
-          violation: groundingResult.violation,
-          guardrailsApplied: ['RESPONSE_FIREWALL', 'PII_PREVENTION', 'FIELD_GROUNDING'],
-          blocked: true,
-          blockReason: 'FIELD_GROUNDING_VIOLATION'
-        };
+        responseText = getFieldGroundingClarification(language, groundingResult.violation);
+        metrics.fieldGroundingClarification = true;
       }
     }
   } else if (!fieldGroundingEnabled) {
@@ -666,11 +750,14 @@ export async function applyGuardrails(params) {
     appliedPolicies[7] = `POLICY_GUIDANCE (+${guidanceResult.addedComponents.length})`;
   }
 
+  const responseChanged = String(finalText || '') !== String(initialResponseText || '');
+  const finalAction = responseChanged ? GuardrailAction.SANITIZE : GuardrailAction.PASS;
+
   // ── Security Telemetry (P1-E: canary monitoring) ──
   metrics.securityTelemetry = {
     blocked: false,
     blockReason: null,
-    repromptCount: 0, // Set by orchestrator when regenerateWithGuidance is called
+    repromptCount: 0,
     fallbackUsed: !!overrideMessageKey,
     fallbackMessageKey: overrideMessageKey || null,
     policiesRan: appliedPolicies,
@@ -691,6 +778,7 @@ export async function applyGuardrails(params) {
 
   return {
     finalResponse: finalText,
+    action: finalAction,
     guardrailsApplied: appliedPolicies,
     messageKey: overrideMessageKey,
     variantIndex: overrideVariantIndex
