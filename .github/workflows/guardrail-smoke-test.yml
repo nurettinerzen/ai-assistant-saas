@@ -1,0 +1,65 @@
+name: Guardrail Smoke Test
+
+on:
+  schedule:
+    # 1x daily — 04:00 UTC = 07:00 Turkey
+    - cron: '0 4 * * *'
+  workflow_dispatch:  # Manuel çalıştırma için
+
+jobs:
+  guardrail-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          npm install --production
+
+      - name: Run guardrail prod smoke test
+        env:
+          EMBED_KEY: ${{ secrets.GUARDRAIL_SMOKE_EMBED_KEY }}
+          API_URL: https://ai-assistant-saas.onrender.com
+        run: |
+          cd backend
+          npm run guardrail-smoke
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: guardrail-smoke-report-${{ github.run_number }}
+          path: backend/tests/pilot/reports/*guardrail*.txt
+          retention-days: 30
+
+      - name: Send failure notification (Email)
+        if: failure()
+        continue-on-error: true
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.NOTIFICATION_EMAIL }}
+          password: ${{ secrets.NOTIFICATION_EMAIL_PASSWORD }}
+          subject: '🚨 Telyx Guardrail Smoke Test FAILED'
+          to: nurettinerzen@gmail.com
+          from: Telyx Automated Tests
+          body: |
+            Guardrail smoke test failed at ${{ github.event.repository.updated_at }}
+
+            This test validates the guardrail leak filter behavior:
+            - "telefon kanalı" phone false positive
+            - PTT/carrier contextual detection
+            - Personal data leak prevention
+
+            Check the full report in GitHub Actions:
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
