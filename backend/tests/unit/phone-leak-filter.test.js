@@ -8,6 +8,7 @@
  * 4. Leak tetiklenince final response sipariş no İSTEMEZ (phone-only → redact, not verify)
  */
 
+import { describe, test, expect } from 'vitest';
 import { applyLeakFilter } from '../../src/guardrails/securityGateway.js';
 
 describe('Phone leak filter (P0 fix)', () => {
@@ -28,6 +29,16 @@ describe('Phone leak filter (P0 fix)', () => {
     const result = applyLeakFilter(response, 'none', 'EN', {});
 
     expect(result.safe).toBe(true);
+  });
+
+  // ─── CASE 1c: "kayıtlıdır" should not trigger shipping via "aras" substring ───
+  test('CASE 1c: "kayıtlıdır" → no shipping false positive', () => {
+    const response = 'Bu bilgi sistemde kayıtlıdır ve doğrulama beklenmektedir.';
+    const result = applyLeakFilter(response, 'none', 'TR', {});
+
+    const shippingLeaks = (result.leaks || []).filter(l => l.type === 'shipping');
+    expect(shippingLeaks).toHaveLength(0);
+    expect(result.action).toBe('PASS');
   });
 
   // ─── CASE 2: Gerçek telefon numarası → leak TRUE, redacted ───
@@ -71,13 +82,14 @@ describe('Phone leak filter (P0 fix)', () => {
     expect(result.safe).toBe(true);
   });
 
-  // ─── CASE 5: Order-specific leak → needsVerification TRUE ───
-  test('CASE 5: Address/tracking leak → needsVerification=true', () => {
+  // ─── CASE 5: Order-specific leak + no tool plan → SANITIZE (no auto-block) ───
+  test('CASE 5: Address/tracking leak with no tool plan → SANITIZE', () => {
     const response = 'Siparişiniz Yurtiçi Kargo ile Kadıköy şubesine gönderildi. Takip no: TR1234567890';
     const result = applyLeakFilter(response, 'none', 'TR', {});
 
-    expect(result.safe).toBe(false);
-    expect(result.needsVerification).toBe(true);
+    expect(result.safe).toBe(true);
+    expect(result.action).toBe('SANITIZE');
+    expect(result.sanitized).not.toContain('TR1234567890');
   });
 
   // ─── CASE 6: No tool called + no digits = phone leak impossible ───
@@ -89,12 +101,37 @@ describe('Phone leak filter (P0 fix)', () => {
     expect(result.needsVerification).toBeFalsy();
   });
 
-  // ─── CASE 7: customerName leak → needsVerification TRUE ───
-  test('CASE 7: Customer name leak → still triggers verification', () => {
+  // ─── CASE 7: customerName leak + no tool plan → SANITIZE ───
+  test('CASE 7: Customer name leak with no tool plan → SANITIZE', () => {
     const response = 'İbrahim Yıldız adına kayıtlı siparişiniz bulunmaktadır.';
     const result = applyLeakFilter(response, 'none', 'TR', {});
 
+    expect(result.safe).toBe(true);
+    expect(result.action).toBe('SANITIZE');
+    expect(result.sanitized).not.toContain('İbrahim Yıldız');
+  });
+
+  // ─── CASE 8: Tool plan + order intent + missing fields → NEED_MIN_INFO_FOR_TOOL ───
+  test('CASE 8: Order lookup tool plan exists → NEED_MIN_INFO_FOR_TOOL', () => {
+    const response = 'Takip numaranız TR1234567890 ve teslimat adresiniz İstanbul Kadıköy.';
+    const result = applyLeakFilter(response, 'none', 'TR', {}, {
+      intent: 'order_status',
+      toolsCalled: ['customer_data_lookup'],
+      toolPlanExists: true
+    });
+
     expect(result.safe).toBe(false);
-    expect(result.needsVerification).toBe(true);
+    expect(result.action).toBe('NEED_MIN_INFO_FOR_TOOL');
+    expect(result.missingFields).toContain('order_number');
+    expect(result.missingFields).toContain('phone_last4');
+  });
+
+  // ─── CASE 9: Numeric code without tracking context → not tracking leak ───
+  test('CASE 9: 11-digit number without tracking context should not be tracking', () => {
+    const response = 'Referans kodu 12345678901 olarak kaydedildi.';
+    const result = applyLeakFilter(response, 'none', 'TR', {});
+
+    const trackingLeaks = (result.leaks || []).filter(l => l.type === 'tracking');
+    expect(trackingLeaks).toHaveLength(0);
   });
 });
