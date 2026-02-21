@@ -261,6 +261,22 @@ function escapeRegExp(str) {
   return String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+/**
+ * Mask phone numbers in response text.
+ * Replaces digits with asterisks, keeping first 3 and last 2 visible.
+ * e.g. "05551234567" → "055*****67"
+ */
+function maskPhoneNumbers(text) {
+  if (!text) return text;
+  return text
+    // TR mobil: 0555 123 45 67 veya 05551234567
+    .replace(/\b(0?5\d{2})[\s\-]?(\d{3})[\s\-]?(\d{2})[\s\-]?(\d{2})\b/g, (_, p1) => `${p1}*****${_.slice(-2)}`)
+    // E.164: +90 555 123 4567
+    .replace(/(\+90[\s\-]?5\d{2})[\s\-]?\d{3,}/g, (m) => m.slice(0, 7) + '*'.repeat(Math.max(0, m.replace(/[\s\-]/g, '').length - 9)) + m.slice(-2))
+    // 10-11 ardışık hane
+    .replace(/\b(\d{3})\d{5,8}(\d{2})\b/g, '$1*****$2');
+}
+
 const INTERNAL_METADATA_PATTERNS = INTERNAL_METADATA_TERMS.map(term =>
   new RegExp(escapeRegExp(term), 'i')
 );
@@ -324,11 +340,15 @@ const SENSITIVE_PATTERNS = {
     /(bugün|yarın)\s*saat\s*\d/i,
   ],
 
-  // Telefon
+  // Telefon — SADECE rakam-temelli pattern'ler.
+  // "telefon" kelimesi tek başına ASLA phone leak tetiklemez.
+  // Tetiklenme koşulu: response'ta gerçek telefon numarası formatı olmalı.
   phone: [
-    /\b0?5\d{2}[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}\b/,
-    /\+90[\s\-]?5\d{2}/,
-    /telefon(unuz)?\s*[:=]?\s*[\d\s\-\+]+/i,
+    /\b0?5\d{2}[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}\b/,  // TR mobil: 05xx xxx xx xx
+    /\+90[\s\-]?5\d{2}[\s\-]?\d{3}/,                       // E.164: +90 5xx xxx (en az 7 hane)
+    /\b\d{10,11}\b/,                                        // 10-11 hane ardışık rakam
+    /(?:son\s*4|last\s*4|xxxx)\s*[:=]?\s*\d{4}\b/i,        // "son 4 hanesi 1234" (yüksek skor)
+    /telefon\s*(?:no|numarası?|numaranız)\s*[:=]\s*[\d\s\-\+]{7,}/i, // "telefon no: 05551234567" (rakam ZORUNLU, en az 7 hane)
   ],
 
   // Internal/System
@@ -392,16 +412,42 @@ export function applyLeakFilter(response, verificationState = 'none', language =
   // ============================================
   // CHECK: Is this a PUBLIC/policy response?
   // ============================================
-  // If response is about policy (iade, garanti, süre) and no personal data,
-  // DON'T block it - let it through
   const onlyInternalLeak = leaks.every(l => l.type === 'internal');
   const isPolicyResponse = POLICY_RESPONSE_HINT_PATTERNS.some(pattern => pattern.test(response));
 
-  // If it's a policy response with only minor internal pattern match, let it pass
-  // But if there's address/tracking/phone/customerName leak, still block
-  const hasPersonalDataLeak = leaks.some(l =>
-    ['address', 'tracking', 'phone', 'timeWindow', 'delivery', 'customerName'].includes(l.type)
-  );
+  // ============================================
+  // PHONE LEAK RECLASSIFICATION (P0 FIX)
+  // ============================================
+  // "telefon" kelimesi ≠ phone number.
+  // phone leak = sadece gerçek rakam-temelli pattern match.
+  // Eğer response'ta hiç digit yoksa phone leak geçersiz → kaldır.
+  const responseHasDigits = /\d/.test(response);
+  const hasPhoneLeak = leaks.some(l => l.type === 'phone');
+
+  if (hasPhoneLeak && !responseHasDigits) {
+    // "Telefon kanalı" gibi bir ifade, gerçek numara değil → phone leak'i düşür
+    console.log('✅ [LeakFilter] Phone pattern matched but NO digits in response — dropping phone leak (false positive)');
+    const filteredLeaks = leaks.filter(l => l.type !== 'phone');
+    if (filteredLeaks.length === 0 || filteredLeaks.every(l => l.type === 'internal')) {
+      // Sadece phone leak vardı (veya phone + internal), digit yok → tamamen safe
+      return {
+        safe: true,
+        leaks: [],
+        sanitized: response,
+        telemetry: { reason: 'phone_word_no_digits_pass', triggeredPatterns, responseHasDigits: false }
+      };
+    }
+    // Diğer leak tipleri hâlâ var, phone'u çıkar ve devam et
+    leaks.length = 0;
+    leaks.push(...filteredLeaks);
+  }
+
+  // hasPersonalDataLeak: phone leak SADECE digit varsa sayılır
+  // (phone leak zaten yukarıda digit yoksa kaldırıldı, ama yine de guard)
+  const hasPersonalDataLeak = leaks.some(l => {
+    if (l.type === 'phone') return responseHasDigits; // digit yoksa personal data değil
+    return ['address', 'tracking', 'timeWindow', 'delivery', 'customerName'].includes(l.type);
+  });
 
   if (isPolicyResponse && !hasPersonalDataLeak && onlyInternalLeak) {
     console.log('✅ [LeakFilter] Policy response detected, allowing through');
@@ -414,10 +460,35 @@ export function applyLeakFilter(response, verificationState = 'none', language =
   }
 
   // ============================================
+  // PHONE-ONLY LEAK → REDACT, NOT VERIFY (P0 FIX)
+  // ============================================
+  // Phone leak varsa ve digit varsa → gerçek numara yakalandı → redact (mask) + PASS.
+  // needsVerification SADECE order-specific leak'ler için (tracking, address, customerName vb.)
+  const onlyPhoneAndInternal = leaks.every(l => l.type === 'phone' || l.type === 'internal');
+  if (hasPhoneLeak && responseHasDigits && onlyPhoneAndInternal) {
+    // Gerçek telefon numarası bulundu ama bu order verification gerektirmez.
+    // Numarayı maskele ve response'u geçir.
+    const sanitized = maskPhoneNumbers(response);
+    console.log('🔒 [LeakFilter] Phone number redacted (masked), no verification needed');
+    return {
+      safe: true,
+      leaks,
+      sanitized,
+      telemetry: {
+        reason: 'phone_redacted_pass',
+        triggeredPatterns,
+        responseHasDigits: true,
+        verificationMode: 'PHONE_REDACT',
+        hasPersonalDataLeak: false
+      }
+    };
+  }
+
+  // ============================================
   // VERIFICATION REQUIREMENT DETECTION
   // ============================================
-  // Determine what's missing for verification - NO HARDCODED RESPONSES!
-  // LLM will generate natural response based on this guidance
+  // needsVerification SADECE order/account-specific leak'ler için:
+  // tracking, address, shipping, delivery, timeWindow, customerName
   const hasOrderNumber = !!(collectedData.orderNumber || collectedData.order_number);
   const hasPhone = !!(collectedData.phone || collectedData.last4);
   const hasName = !!(collectedData.name || collectedData.customerName);
@@ -438,12 +509,12 @@ export function applyLeakFilter(response, verificationState = 'none', language =
     isCallbackFlow,
     leakTypes: leaks.map(l => l.type),
     triggeredPatterns,
-    hasPersonalDataLeak
+    hasPersonalDataLeak,
+    responseHasDigits,
+    verificationMode: 'ORDER_VERIFY'
   };
 
   if (isCallbackFlow) {
-    // Callback flow never requests order verification fields.
-    // Guardrails should ask only callback contact slots.
     return {
       safe: false,
       leaks,
@@ -453,14 +524,12 @@ export function applyLeakFilter(response, verificationState = 'none', language =
     };
   }
 
-  // Return verification requirement - NOT a hardcoded response
-  // The orchestrator will inject this into LLM context
+  // Return verification requirement — ONLY for order/account data leaks
   return {
     safe: false,
     leaks,
     needsVerification: true,
     missingFields,
-    // NO sanitized response - LLM will generate natural response
     telemetry
   };
 }

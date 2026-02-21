@@ -259,12 +259,22 @@ export async function applyGuardrails(params) {
   const hasBypassOutcome = toolOutputs.some(o => shouldBypassLeakFilter(o?.outcome));
   const hasRecentNotFound = lastNotFound?.at &&
     (Date.now() - new Date(lastNotFound.at).getTime()) < 5 * 60 * 1000; // 5 minutes
-  const shouldSkipLeakFilter = notFoundOverrideApplied || hasBypassOutcome || hasRecentNotFound;
+
+  // P0 GUARD: Tool çağrılmadıysa VE response'ta rakam yoksa → phone leak imkansız, skip
+  const noToolsCalled = !toolsCalled || toolsCalled.length === 0;
+  const noDigitsInResponse = !/\d/.test(responseText || '');
+  const noToolNoDigitBypass = noToolsCalled && noDigitsInResponse;
+  if (noToolNoDigitBypass) {
+    console.log('✅ [LeakFilter] No tools called + no digits in response → phone leak impossible, skipping');
+  }
+
+  const shouldSkipLeakFilter = notFoundOverrideApplied || hasBypassOutcome || hasRecentNotFound || noToolNoDigitBypass;
   if (shouldSkipLeakFilter) {
     console.log('✅ [SecurityGateway] Skipping Leak Filter:', {
       notFoundOverrideApplied,
       hasBypassOutcome,
-      hasRecentNotFound: !!hasRecentNotFound
+      hasRecentNotFound: !!hasRecentNotFound,
+      noToolNoDigitBypass
     });
   }
   const leakFilterResult = shouldSkipLeakFilter
@@ -304,18 +314,25 @@ export async function applyGuardrails(params) {
       };
     }
 
-    // Telemetry logging
+    // Telemetry logging — enriched with verificationMode, hasDigits, leakTypes
+    const leakTelemetry = leakFilterResult.telemetry || {};
     console.warn('🔐 [SecurityGateway] Verification required', {
       needsVerification: leakFilterResult.needsVerification,
       missingFields: leakFilterResult.missingFields,
-      telemetry: leakFilterResult.telemetry
+      leakTypes: leakTelemetry.leakTypes || [],
+      verificationMode: leakTelemetry.verificationMode || 'ORDER_VERIFY',
+      hasDigits: leakTelemetry.responseHasDigits ?? null,
+      triggerPatterns: (leakTelemetry.triggeredPatterns || []).map(p => ({ type: p.type, pattern: p.pattern }))
     });
 
     // Metrics'e telemetry ekle (debug için)
     metrics.leakFilterViolation = {
       leaks: leakFilterResult.leaks,
       verificationState,
-      telemetry: leakFilterResult.telemetry
+      verificationMode: leakTelemetry.verificationMode || 'ORDER_VERIFY',
+      responseHasDigits: leakTelemetry.responseHasDigits ?? null,
+      leakTypes: leakTelemetry.leakTypes || [],
+      telemetry: leakTelemetry
     };
 
     // Return verification requirement - orchestrator will handle LLM re-prompt
@@ -332,7 +349,13 @@ export async function applyGuardrails(params) {
     };
   }
 
-  console.log('✅ [SecurityGateway] Leak filter passed');
+  // If leak filter returned a sanitized (redacted) response, use it
+  if (leakFilterResult.sanitized && leakFilterResult.sanitized !== responseText) {
+    console.log('🔒 [SecurityGateway] Leak filter passed with redaction applied');
+    responseText = leakFilterResult.sanitized;
+  } else {
+    console.log('✅ [SecurityGateway] Leak filter passed');
+  }
 
   // POLICY 1.55: Tool Required Enforcement (HP-07 Fix)
   // Intent "requiresToolCall" ise ama tool çağrılmadıysa, deterministik response döndür
