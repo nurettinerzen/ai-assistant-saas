@@ -526,10 +526,11 @@ export async function applyGuardrails(params) {
 
   // POLICY 4: Anti-Confabulation Guard (P1-A) - NOW WITH ENFORCEMENT
   // Prevents event/fact claims without tool backup
+  const hasKBMatch = params.hasKBMatch || false;
   const confabulationResult = validateConfabulation(
     responseText,
     toolCallsForGuard,
-    false, // hasKBMatch - would need to be passed from context
+    hasKBMatch,
     language
   );
 

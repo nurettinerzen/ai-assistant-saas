@@ -1122,7 +1122,8 @@ export async function handleIncomingMessage({
       helpLinks,
       lastNotFound: state.lastNotFound || null, // P0-FIX: NOT_FOUND context for leak filter bypass
       callbackPending: state.callbackFlow?.pending === true,
-      activeFlow: state.activeFlow || null
+      activeFlow: state.activeFlow || null,
+      hasKBMatch // Anti-confabulation: businessDescriptionClaims KB-backed check
     });
 
     let { finalResponse } = guardrailResult;

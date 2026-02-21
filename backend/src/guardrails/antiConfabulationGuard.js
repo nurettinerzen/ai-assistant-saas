@@ -67,6 +67,18 @@ const EVENT_CLAIM_PATTERNS = {
       /(pazartesi|salı|çarşamba|perşembe|cuma|cumartesi|pazar)\s*(günü|gününe)/i,
       /saat\s*(\d{1,2})[:\.]?(\d{2})?\s*(civarı|'da|'de|sıralarında)/i,
       /(\d{1,2})[\.\/](\d{1,2})[\.\/](\d{2,4})\s*(tarihinde|'de|'da)/i,
+    ],
+
+    // İşletme tanımı/hizmet iddiaları (tool/KB olmadan uydurma)
+    businessDescriptionClaims: [
+      /\b(hizmet|çözüm|ürün)(ler)?(imiz)?\s*(sun|sağla)(maktayız|uyoruz|ıyoruz|maktadır)/i,
+      /\b(telekomünikasyon|iletişim|teknoloji|yazılım|donanım)\s*(hizmet|çözüm|ürün)/i,
+      /\b(geniş\s*(bir\s*)?(yelpa?ze|kanal|seçenek|yelpaze))/i,
+      /\b(internet|telefon|televizyon|tv|4k|hd|yayın)\s*(hizmet|paket|abonelik)/i,
+      /\b(müşterilerimize|firmamız|şirketimiz)\s*.{0,30}(sun|sağla|teklif|hizmet)/i,
+      /\bolarak\s*.{0,40}(sunmaktayız|sağlamaktayız|sunuyoruz|sağlıyoruz)/i,
+      /\b(arşiv|platform|içerik|kanal)\s*(sun|sağla)(maktayız|uyoruz|ıyoruz)/i,
+      /\b(yerli|yabancı)\s*(yapım|film|dizi|içerik)/i,
     ]
   },
 
@@ -103,6 +115,17 @@ const EVENT_CLAIM_PATTERNS = {
       /(monday|tuesday|wednesday|thursday|friday|saturday|sunday)/i,
       /at\s*(\d{1,2})[:\.]?(\d{2})?\s*(am|pm|o'clock)?/i,
       /on\s*(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/i,
+    ],
+
+    // Business description/service claims (fabrication without tool/KB)
+    businessDescriptionClaims: [
+      /\b(we|our\s+company)\s*(offer|provide|deliver|supply)(s)?\s/i,
+      /\b(telecommunications?|communication|technology|software|hardware)\s*(service|solution|product)/i,
+      /\b(wide\s*range|broad\s*spectrum|comprehensive\s*suite)\s/i,
+      /\b(internet|phone|television|tv|4k|hd|streaming|broadcast)\s*(service|package|subscription)/i,
+      /\b(our\s*(customers?|clients?))\s*.{0,30}(offer|provide|deliver)/i,
+      /\b(content|archive|platform|channel)\s*(we\s*)?(offer|provide|deliver)/i,
+      /\b(domestic|international|foreign)\s*(production|film|series|content|show)/i,
     ]
   }
 };
@@ -195,8 +218,8 @@ export function validateConfabulation(response, toolCalls = [], hasKBMatch = fal
   const needsToolBackup = ['deliveryEvents', 'orderEvents', 'serviceEvents', 'timeAssertions']
     .includes(detection.category);
 
-  // Stock claims can use KB
-  const canUseKB = ['stockEvents'].includes(detection.category);
+  // Stock claims and business description claims can use KB
+  const canUseKB = ['stockEvents', 'businessDescriptionClaims'].includes(detection.category);
 
   if (needsToolBackup && !hasToolSuccess) {
     return {
@@ -317,7 +340,24 @@ BUNUN YERİNE:
 - "Kesin süre için sistemi kontrol etmeliyim" de
 - Müşteriyi güncel bilgi için yönlendir
 
-Yanıtını kesin tarih/saat olmadan yeniden yaz.`
+Yanıtını kesin tarih/saat olmadan yeniden yaz.`,
+
+      businessDescriptionClaims: `
+DÜZELTME GEREKLİ - HALÜSİNASYON TESPİT EDİLDİ:
+İşletmenin ne yaptığı, hangi hizmetleri sunduğu hakkında Bilgi Bankası'nda OLMAYAN bilgi uydurdun.
+
+YASAK (Bilgi Bankası'nda yoksa):
+- İşletmenin sektörünü, hizmetlerini, ürünlerini tanımlama
+- "Telekomünikasyon/internet/televizyon hizmeti sunuyoruz" gibi iddialar
+- "Geniş yelpazede çözümler sağlıyoruz" gibi genel tanımlar
+- Ürün özellikleri, fiyatlar, paketler uydurma
+
+BUNUN YERİNE:
+- "Bu konuda Bilgi Bankamda detay yok" de
+- Müşteriyi web sitesine veya iletişim kanallarına yönlendir
+- Bilgi Bankası'ndaki bilgileri kullan, olmayanı ekleme
+
+Yanıtını uydurma işletme tanımları olmadan yeniden yaz.`
     },
 
     EN: {
@@ -400,7 +440,24 @@ INSTEAD:
 - Say "I need to check for exact timing"
 - Direct customer to updated info
 
-Rewrite without specific dates/times.`
+Rewrite without specific dates/times.`,
+
+      businessDescriptionClaims: `
+CORRECTION REQUIRED - CONFABULATION DETECTED:
+You fabricated information about the business that is NOT in the Knowledge Base.
+
+DO NOT (without Knowledge Base source):
+- Describe the business sector, services, or products
+- Claim "we offer telecommunications/internet/television services"
+- Make general claims like "we provide a wide range of solutions"
+- Fabricate product features, prices, or packages
+
+INSTEAD:
+- Say "I don't have details about that in my knowledge base"
+- Direct the customer to the website or contact channels
+- Only use information from the Knowledge Base
+
+Rewrite without fabricated business descriptions.`
     }
   };
 

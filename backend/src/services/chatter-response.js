@@ -2,7 +2,11 @@ import { getMessageVariant } from '../messages/messageCatalog.js';
 
 const GREETING_PATTERNS = [
   /\b(selam|selamlar|merhaba|günaydın|iyi akşamlar|iyi günler)\b/i,
-  /\b(hi|hello|hey|good morning|good evening)\b/i
+  /\b(naber|napıyorsun|nasılsın|nasıl gidiyor|ne haber|nbr|nbrr|nasilsin|nasil gidiyor)\b/i,
+  /\b(iyi misin|iyimisin|naapıyosun|n['']?aber|ne var ne yok)\b/i,
+  /\b(her ?şey.{0,5}(yolunda|iyi)|olunda)\b/i,
+  /\b(hi|hello|hey|good morning|good evening|howdy|what'?s up|sup)\b/i,
+  /\b(how are you|how'?s it going|how do you do)\b/i
 ];
 
 const THANKS_PATTERNS = [
@@ -31,12 +35,19 @@ export function isPureChatter(text) {
 
   const words = trimmed.split(/\s+/);
 
-  // Only short messages qualify as pure chatter (max 3 words)
-  // "merhaba siparişimi sorgulayabilir misiniz" = 4 words → NOT chatter
-  if (words.length > 3) return false;
+  // Business-relevant keywords — if any present, message is NOT pure chatter
+  const businessKeywords = /\b(sipariş|siparişim|kargo|ürün|fiyat|iade|stok|borç|ödeme|teslimat|takip|nerede|durum|order|price|product|delivery|refund|stock|payment|tracking|where)\b/i;
 
-  // Pure greeting or thanks (1-3 words)
-  if (isGreeting(trimmed) || isThanks(trimmed)) return true;
+  // Short messages (≤3 words): greeting or thanks → chatter (unless has business keywords)
+  if (words.length <= 3 && (isGreeting(trimmed) || isThanks(trimmed))) {
+    if (!businessKeywords.test(trimmed)) return true;
+  }
+
+  // Extended greetings (4-5 words): ONLY if it matches greeting pattern AND
+  // contains no business-relevant keywords (sipariş, kargo, ürün, fiyat, etc.)
+  if (words.length <= 5 && isGreeting(trimmed)) {
+    if (!businessKeywords.test(trimmed)) return true;
+  }
 
   // Very short filler messages (1-2 words)
   if (words.length <= 2) {
