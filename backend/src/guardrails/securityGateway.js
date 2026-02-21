@@ -414,15 +414,27 @@ const SENSITIVE_PATTERNS = {
   ]
 };
 
-const TRACKING_CONTEXT_KEYWORDS = /\b(kargo|takip|tracking|shipment|waybill)\b/i;
+// ============================================================================
+// CONTEXTUAL DETECTION: Shared constants & helpers
+// ============================================================================
+// Context window = ±80 karakter.  Neden 80?
+//   – ±30 çok dar: "Kargonuz Aras ile gönderildi" gibi cümleler kaçabilir
+//   – ±80 çoğu Türkçe/İngilizce cümleyi kapsar (~12-15 kelime)
+//   – False positive riski düşük çünkü zaten context keyword şartı var
+// ============================================================================
+const CONTEXT_WINDOW = 80;
+
+const SHIPPING_CONTEXT_KEYWORDS = /\b(kargo|takip|gönderi|shipment|waybill|teslimat|tracking|cargo|paket|gönderildi|gonderildi|teslim)\b/i;
+
+const TRACKING_CONTEXT_KEYWORDS = SHIPPING_CONTEXT_KEYWORDS; // aynı set
 const NUMERIC_TRACKING_CANDIDATE = /\b\d{10,20}\b/g;
 
 function hasContextualTrackingNumber(response = '') {
   NUMERIC_TRACKING_CANDIDATE.lastIndex = 0;
   let match;
   while ((match = NUMERIC_TRACKING_CANDIDATE.exec(response)) !== null) {
-    const from = Math.max(0, match.index - 24);
-    const to = Math.min(response.length, match.index + match[0].length + 24);
+    const from = Math.max(0, match.index - CONTEXT_WINDOW);
+    const to = Math.min(response.length, match.index + match[0].length + CONTEXT_WINDOW);
     const contextWindow = response.slice(from, to);
     if (TRACKING_CONTEXT_KEYWORDS.test(contextWindow)) {
       return true;
@@ -434,18 +446,17 @@ function hasContextualTrackingNumber(response = '') {
 // ============================================================================
 // P1: CONTEXTUAL CARRIER DETECTION
 // ============================================================================
-// Carrier adları sadece candidate token. Gerçek shipping leak kararı bağlamla verilir.
-// Carrier match = (carrier adı) AND (yakın çevrede shipping context keyword)
+// Carrier adları sadece CANDIDATE TOKEN.
+// Gerçek shipping leak = (carrier adı) AND (±80 char içinde shipping context keyword)
 // ============================================================================
 const CARRIER_CANDIDATES = /\b(yurtiçi|yurtici|aras|mng|ptt|ups|fedex|dhl|sürat|surat|horoz)\b/gi;
-const SHIPPING_CONTEXT_KEYWORDS = /\b(kargo|takip|gönderi|shipment|waybill|teslimat|tracking|cargo|paket|gönderildi|teslim)\b/i;
 
 function hasContextualCarrierMention(response = '') {
   CARRIER_CANDIDATES.lastIndex = 0;
   let match;
   while ((match = CARRIER_CANDIDATES.exec(response)) !== null) {
-    const from = Math.max(0, match.index - 30);
-    const to = Math.min(response.length, match.index + match[0].length + 30);
+    const from = Math.max(0, match.index - CONTEXT_WINDOW);
+    const to = Math.min(response.length, match.index + match[0].length + CONTEXT_WINDOW);
     const contextWindow = response.slice(from, to);
     if (SHIPPING_CONTEXT_KEYWORDS.test(contextWindow)) {
       return true;
