@@ -145,24 +145,83 @@ describe('SMOKE 4: Contextual Tracking Detection', () => {
 });
 
 // ============================================================================
-// SECTION 5: Shipping Word Boundary Fix
+// SECTION 5: Contextual Carrier Detection (P1)
+// Carrier adları sadece candidate token. Karar bağlamla verilir.
+// Carrier match = (carrier adı) AND (yakın çevrede shipping context keyword)
 // ============================================================================
-describe('SMOKE 5: Shipping Word Boundary', () => {
+describe('SMOKE 5: Contextual Carrier Detection', () => {
+  // --- FALSE POSITIVES (PASS bekleniyor) ---
   it('"kayıtlıdır" (contains "aras" substring) → NO shipping leak', () => {
     const response = 'Bu bilgi sistemde kayıtlıdır ve doğrulama beklenmektedir.';
     const result = applyLeakFilter(response, 'none', 'TR', {});
-
-    const shippingLeaks = (result.leaks || []).filter(l => l.type === 'shipping');
-    expect(shippingLeaks).toHaveLength(0);
     expect(result.action).toBe('PASS');
   });
 
-  it('"Aras Kargo" (standalone word) → shipping leak detected', () => {
-    const response = 'Siparişiniz Aras Kargo ile gönderildi.';
+  it('"PTT ile iletişim" → NO shipping leak (iletişim bağlamı)', () => {
+    const response = 'Telyx üzerinden telefon, WhatsApp, e-posta ve PTT gibi kanallarla iletişim kurabilirsiniz.';
     const result = applyLeakFilter(response, 'none', 'TR', {});
+    expect(result.action).toBe('PASS');
+  });
 
-    const shippingLeaks = (result.leaks || []).filter(l => l.type === 'shipping');
-    expect(shippingLeaks.length).toBeGreaterThan(0);
+  it('"Aras beye iletilecek" → NO shipping leak (kişi ismi)', () => {
+    const response = 'Aras beye iletilecektir.';
+    const result = applyLeakFilter(response, 'none', 'TR', {});
+    expect(result.action).toBe('PASS');
+  });
+
+  it('"MNG Holding" → NO shipping leak (şirket ismi)', () => {
+    const response = 'MNG Holding büyük bir şirkettir.';
+    const result = applyLeakFilter(response, 'none', 'TR', {});
+    expect(result.action).toBe('PASS');
+  });
+
+  it('"kat kat artır" → NO address leak (kat = floor değil)', () => {
+    const response = 'Telyx ile iletişim kanallarınızı kat kat artırabilirsiniz.';
+    const result = applyLeakFilter(response, 'none', 'TR', {});
+    expect(result.action).toBe('PASS');
+  });
+
+  it('"şube için yönetim" → NO shipping leak (yönetim bağlamı)', () => {
+    const response = 'Telyx birden fazla şube için merkezi yönetim sunar.';
+    const result = applyLeakFilter(response, 'none', 'TR', {});
+    expect(result.action).toBe('PASS');
+  });
+
+  it('"UPS and downs" → NO shipping leak (İngilizce bağlam)', () => {
+    const response = 'Bu sistemdeki ups and downs normaldir.';
+    const result = applyLeakFilter(response, 'none', 'TR', {});
+    expect(result.action).toBe('PASS');
+  });
+
+  // --- TRUE POSITIVES (LEAK bekleniyor) ---
+  it('"PTT Kargo ile gönderildi" → shipping leak (kargo bağlamı)', () => {
+    const response = 'Siparişiniz PTT Kargo ile gönderildi.';
+    const result = applyLeakFilter(response, 'none', 'TR', {});
+    expect(result.action).not.toBe('PASS');
+  });
+
+  it('"Aras Kargo ile teslim" → shipping leak (kargo bağlamı)', () => {
+    const response = 'Paketiniz Aras Kargo ile teslim edildi.';
+    const result = applyLeakFilter(response, 'none', 'TR', {});
+    expect(result.action).not.toBe('PASS');
+  });
+
+  it('"Yurtiçi Kargo gönderi" → shipping leak (kargo bağlamı)', () => {
+    const response = 'Yurtiçi Kargo ile gönderiniz yola çıktı.';
+    const result = applyLeakFilter(response, 'none', 'TR', {});
+    expect(result.action).not.toBe('PASS');
+  });
+
+  it('"dağıtım merkezi" → shipping leak (always contextual)', () => {
+    const response = 'Dağıtım merkezine ulaşmıştır.';
+    const result = applyLeakFilter(response, 'none', 'TR', {});
+    expect(result.action).not.toBe('PASS');
+  });
+
+  it('"3. kat" → address leak (sayısal bağlam)', () => {
+    const response = 'Adres: Kadıköy mahallesi, 3. kat daire 5.';
+    const result = applyLeakFilter(response, 'none', 'TR', {});
+    expect(result.action).not.toBe('PASS');
   });
 });
 

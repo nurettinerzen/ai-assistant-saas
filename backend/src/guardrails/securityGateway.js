@@ -356,18 +356,27 @@ const SENSITIVE_PATTERNS = {
   ],
 
   // Adres bilgileri
+  // "kat" tek başına çok genel ("kat kat artır" vb.) — sayısal bağlam gerekli
   address: [
     /mahalle(si)?\s*[:=]?\s*[A-ZÇĞİÖŞÜa-zçğıöşü\s]{3,}/i,
     /sokak|cadde|bulvar/i,
-    /\b(apt|apartman|bina|daire|kat)\b/i,
+    /\b(apt|apartman|bina|daire)\b/i,
+    /\b\d+\s*\.\s*kat\b/i,           // "3. kat"
+    /\bkat\s*[:=]\s*\d/i,             // "kat: 5"
+    /\b(daire|no)\s*[:=]?\s*\d+\s*[\s,/]+\s*kat\b/i, // "daire 5, kat 3"
     /ilçe(si)?\s*[:=]?\s*[A-ZÇĞİÖŞÜa-zçğıöşü\s]{3,}/i,
   ],
 
   // Kargo/Şube bilgileri
+  // ────────────────────────────────────────────────────────
+  // P1 MİMARİ: Carrier adları sadece CANDIDATE TOKEN.
+  // Gerçek shipping leak kararı hasContextualCarrierMention() ile verilir.
+  // Carrier match = (carrier adı) AND (yakın çevrede shipping context keyword)
+  // Shipping context: kargo, takip, gönderi, shipment, waybill, teslimat, tracking, cargo
+  // Bu sayede "Aras" bir isim, "PTT ile iletişim", "MNG holding" gibi false positive'ler önlenir.
+  // ────────────────────────────────────────────────────────
   shipping: [
-    /\b(yurtiçi|yurtici|aras|mng|ptt|ups|fedex|dhl|sürat|surat|horoz)\b/i,
-    /şube(si|niz|miz)?\s*[:=]?\s*[A-ZÇĞİÖŞÜa-zçğıöşü\s]{3,}/i,
-    /dağıtım\s*(merkez|şube)/i,
+    /dağıtım\s*(merkez|şube)/i,      // Bu zaten bağlamlı — "dağıtım merkezi/şubesi"
   ],
 
   // Teslimat detayları
@@ -416,6 +425,29 @@ function hasContextualTrackingNumber(response = '') {
     const to = Math.min(response.length, match.index + match[0].length + 24);
     const contextWindow = response.slice(from, to);
     if (TRACKING_CONTEXT_KEYWORDS.test(contextWindow)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// ============================================================================
+// P1: CONTEXTUAL CARRIER DETECTION
+// ============================================================================
+// Carrier adları sadece candidate token. Gerçek shipping leak kararı bağlamla verilir.
+// Carrier match = (carrier adı) AND (yakın çevrede shipping context keyword)
+// ============================================================================
+const CARRIER_CANDIDATES = /\b(yurtiçi|yurtici|aras|mng|ptt|ups|fedex|dhl|sürat|surat|horoz)\b/gi;
+const SHIPPING_CONTEXT_KEYWORDS = /\b(kargo|takip|gönderi|shipment|waybill|teslimat|tracking|cargo|paket|gönderildi|teslim)\b/i;
+
+function hasContextualCarrierMention(response = '') {
+  CARRIER_CANDIDATES.lastIndex = 0;
+  let match;
+  while ((match = CARRIER_CANDIDATES.exec(response)) !== null) {
+    const from = Math.max(0, match.index - 30);
+    const to = Math.min(response.length, match.index + match[0].length + 30);
+    const contextWindow = response.slice(from, to);
+    if (SHIPPING_CONTEXT_KEYWORDS.test(contextWindow)) {
       return true;
     }
   }
@@ -493,6 +525,16 @@ export function applyLeakFilter(response, verificationState = 'none', language =
       triggeredPatterns.push({
         type: 'tracking',
         pattern: 'contextual_numeric_tracking',
+        dataClass: 'ACCOUNT_VERIFIED'
+      });
+    }
+
+    // P1: Carrier adları bağlam şartlı — yakınında shipping context keyword yoksa shipping leak değil.
+    if (!leaks.some(l => l.type === 'shipping') && hasContextualCarrierMention(response)) {
+      leaks.push({ type: 'shipping', pattern: 'contextual_carrier_mention' });
+      triggeredPatterns.push({
+        type: 'shipping',
+        pattern: 'contextual_carrier_mention',
         dataClass: 'ACCOUNT_VERIFIED'
       });
     }
