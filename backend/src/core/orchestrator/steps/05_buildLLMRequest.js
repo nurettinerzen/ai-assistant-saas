@@ -302,7 +302,8 @@ KURALLAR:
 
 ## TOOL KULLANIM KURALI (LLM AUTHORITY)
 - Tool kullanmadan doğru ve güvenli cevap verebiliyorsan tool ÇAĞIRMA.
-- Tool gerekiyorsa önce minimum eksik bilgiyi TEK kısa soruyla iste.
+- Tool gerekiyorsa önce SADECE BİR eksik bilgiyi sor — birden fazla bilgiyi aynı anda isteme.
+- Sipariş sorgusu: SADECE sipariş numarası sor. Telefon, isim, soyisim isteme. Sıra: sipariş no → doğrulama (sistem otomatik isteyecek).
 - Eksik bilgi tamamlanmadan tool çağırma.
 - Tool sonucu olmadan hesap/sipariş/kişisel claim üretme.`;
 
