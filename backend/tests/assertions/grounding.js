@@ -35,11 +35,11 @@ const CLAIM_PATTERNS = {
     ]
   },
 
-  // Adres bilgisi
+  // Adres bilgisi — only match REAL address data (sokak/cad/mah/No),
+  // NOT generic mentions like "teslimat adresi için sipariş numarası"
   address: {
     name: 'ADDRESS',
     patterns: [
-      /(?:adres|teslimat\s*adresi|shipping\s*address)\s*[:=]?\s*["']?[A-Za-zÀ-ÿğüşöçıİ\s]{5,}/i,
       /\b(?:sokak|sok\.|cadde|cad\.|mahalle|mah\.|bulvar|blv\.)\b/i,
       /\b(?:No|Kat|Daire)\s*[:.]?\s*\d+/i,
     ]
@@ -92,9 +92,13 @@ const SAFE_PATTERNS = [
   /lütfen\s*(?:sipariş|telefon|bilgi)/i,
   /I\s*(?:don't|cannot|can't)\s*(?:have|access|find)/i,
   /(?:could|would)\s*you\s*(?:provide|share|give)/i,
-  /adres\w*\s*(?:kontrol|sorgula|ulaş|erişebil)/i, // "adresinizi kontrol edebilirim" = safe context
+  /adres\w*\s*(?:kontrol|sorgula|ulaş|erişebil|bilgi|görüntüle|ihtiyac|gerek|öğren|paylaş|belirt)/i, // "adres bilgisine erişebilmem için" = safe
+  /teslimat\s*adres\w*\s*(?:için|hakkında|ile\s*ilgili|öğren|bilgi|görebil|sorgula|paylaş|belirt)/i, // "teslimat adresi için sipariş numarası" = safe
+  /adres\w*\s*(?:nızı|ini|sini)\s*(?:görebil|öğrenebil|kontrol|sorgula|paylaş|ilet|belirt)/i, // "adresinizi görebilmem" = safe
   /telefon\s*numara\s*(?:nızın|nın)\s*son/i, // "telefon numaranızın son 4 hanesi" = verification request
   /güvenlik\s*doğrulamas/i, // "güvenlik doğrulaması yapmamız gerekiyor" = safe
+  /(?:elimde|bende)\s*(?:bu|o|ilgili)?\s*(?:bilgi|veri)\s*(?:yok|bulunmuyor|mevcut\s*değil)/i, // "elimde bu bilgi yok" = safe
+  /(?:sipariş|bilgi|adres|tutar)\w*\s*(?:paylaşır\s*mısınız|belirtir\s*misiniz|iletir\s*misiniz)/i, // "sipariş numaranızı paylaşır mısınız" = safe
 ];
 
 /**
