@@ -62,6 +62,11 @@ export async function sendConversationTurn(
         toolCalls: response.data.toolCalls || [],
         verificationStatus: response.data.verificationStatus || 'none',
         metadata: response.data.metadata || {},
+        // Guardrail telemetry (for test assertions)
+        guardrailAction: response.data.metadata?.guardrailAction || 'PASS',
+        guardrailReason: response.data.metadata?.guardrailReason || null,
+        messageType: response.data.metadata?.messageType || 'assistant_claim',
+        leakFilterDebug: response.data.metadata?.leakFilterDebug || null,
         rawResponse: response.data
       };
     } catch (error) {

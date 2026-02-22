@@ -243,6 +243,18 @@ export class Reporter {
           content += `   ❌ Step ${f.step}: ${f.assertion} - ${f.reason}\n`;
         });
       }
+      // Print guardrail telemetry for failed steps
+      if (scenario.status === 'failed' && scenario.steps) {
+        scenario.steps.forEach(step => {
+          if (step.guardrailTelemetry) {
+            const gt = step.guardrailTelemetry;
+            content += `   🛡️ guardrailAction=${gt.guardrailAction} guardrailReason=${gt.guardrailReason || 'none'} messageType=${gt.messageType || 'unknown'}\n`;
+            if (gt.leakFilterDebug) {
+              content += `   🔍 leakFilter: ruleId=${gt.leakFilterDebug.ruleId || 'none'} triggerType=${gt.leakFilterDebug.triggerType || 'none'}\n`;
+            }
+          }
+        });
+      }
     });
 
     content += '\n' + '='.repeat(80) + '\n';

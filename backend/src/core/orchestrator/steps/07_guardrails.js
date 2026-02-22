@@ -639,12 +639,20 @@ export async function applyGuardrails(params) {
         console.warn('📊 [Guardrails] FIELD_GROUNDING in MONITOR mode — logging only, response passes through');
         metrics.fieldGroundingMonitorOnly = true;
       } else {
+        // Field grounding violation: re-prompt LLM with correction guidance
+        const correctionConstraint = groundingResult.violation
+          ? `Yanıtındaki ${groundingResult.violation.field || 'alan'} bilgisi tool çıktısıyla uyuşmuyor. Tool çıktısında "${groundingResult.violation.expected || 'bilinmiyor'}" var ama sen "${groundingResult.violation.claimed || 'farklı bilgi'}" dedin. SADECE tool'dan gelen veriyi kullan.`
+          : 'Tool çıktısında olmayan bilgi vermeyin. SADECE tool\'dan dönen gerçek veriyi kullanın.';
+
         return {
-          finalResponse: getBarrierMessage(language),
+          finalResponse: responseText,
           action: GuardrailAction.BLOCK,
           guardrailsApplied: ['RESPONSE_FIREWALL', 'PII_PREVENTION', 'FIELD_GROUNDING'],
           blocked: true,
-          blockReason: 'FIELD_GROUNDING_VIOLATION'
+          blockReason: 'FIELD_GROUNDING_VIOLATION',
+          needsCorrection: true,
+          correctionType: 'FIELD_GROUNDING',
+          correctionConstraint
         };
       }
     }

@@ -151,6 +151,14 @@ async function runScenario(scenario, token, assistantId, businessId) {
       // Store reply for cross-step consistency checks
       scenarioContext.previousReplies[step.id] = response.reply;
 
+      // Capture guardrail telemetry for debugging
+      stepResult.guardrailTelemetry = {
+        guardrailAction: response.metadata?.guardrailAction || 'PASS',
+        guardrailReason: response.metadata?.guardrailReason || null,
+        messageType: response.metadata?.messageType || 'assistant_claim',
+        leakFilterDebug: response.metadata?.leakFilterDebug || null
+      };
+
       // Run assertions
       for (const assertionConfig of step.assertions) {
         try {

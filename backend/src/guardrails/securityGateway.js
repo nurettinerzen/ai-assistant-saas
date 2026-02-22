@@ -441,26 +441,37 @@ function detectClaimGateTopic({ intent = null, activeFlow = null, userMessage = 
   const normalizedFlow = String(activeFlow || '').toUpperCase();
   const text = String(userMessage || '').toLowerCase();
 
-  const isOrderTopic =
-    TOOL_REQUIRED_CLAIM_GATES.ORDER_STATUS.intents.has(normalizedIntent) ||
-    TOOL_REQUIRED_CLAIM_GATES.ORDER_STATUS.flows.has(normalizedFlow) ||
-    /\b(sipariş|siparis|order|kargo|tracking|teslimat|durum)\b/i.test(text);
+  // ORDER_STATUS: Intent/flow match is authoritative
+  if (TOOL_REQUIRED_CLAIM_GATES.ORDER_STATUS.intents.has(normalizedIntent) ||
+      TOOL_REQUIRED_CLAIM_GATES.ORDER_STATUS.flows.has(normalizedFlow)) {
+    return 'ORDER_STATUS';
+  }
 
-  if (isOrderTopic) return 'ORDER_STATUS';
+  // ORDER_STATUS text fallback: only match when a SPECIFIC order is referenced
+  // Broad terms like "kargo", "durum" alone are policy questions, not order lookups
+  const hasOrderIdentifier = /\b(ORD|SIP|ORDER)[-_]\d+/i.test(text) ||
+    /sipariş(im|imi|imin|ımı|ıma|ım)\b/i.test(text) ||
+    /sipariş\s*(no|numarası|numaram)/i.test(text) ||
+    /\btracking\b/i.test(text);
+  if (hasOrderIdentifier) return 'ORDER_STATUS';
 
-  const isTicketTopic =
-    TOOL_REQUIRED_CLAIM_GATES.TICKET_STATUS.intents.has(normalizedIntent) ||
-    TOOL_REQUIRED_CLAIM_GATES.TICKET_STATUS.flows.has(normalizedFlow) ||
-    /\b(ticket|destek kaydı|support ticket|ariza kaydi|case id)\b/i.test(text);
+  // TICKET_STATUS
+  if (TOOL_REQUIRED_CLAIM_GATES.TICKET_STATUS.intents.has(normalizedIntent) ||
+      TOOL_REQUIRED_CLAIM_GATES.TICKET_STATUS.flows.has(normalizedFlow)) {
+    return 'TICKET_STATUS';
+  }
+  if (/\b(ticket|destek kaydı|support ticket|ariza kaydi|case id)\b/i.test(text)) {
+    return 'TICKET_STATUS';
+  }
 
-  if (isTicketTopic) return 'TICKET_STATUS';
-
-  const isProductTopic =
-    TOOL_REQUIRED_CLAIM_GATES.PRODUCT_INFO.intents.has(normalizedIntent) ||
-    TOOL_REQUIRED_CLAIM_GATES.PRODUCT_INFO.flows.has(normalizedFlow) ||
-    /\b(stok|stock|ürün|urun|product|özellik|ozellik|spec|fiyat|price|sku|model)\b/i.test(text);
-
-  if (isProductTopic) return 'PRODUCT_INFO';
+  // PRODUCT_INFO
+  if (TOOL_REQUIRED_CLAIM_GATES.PRODUCT_INFO.intents.has(normalizedIntent) ||
+      TOOL_REQUIRED_CLAIM_GATES.PRODUCT_INFO.flows.has(normalizedFlow)) {
+    return 'PRODUCT_INFO';
+  }
+  if (/\b(stok|stock|ürün|urun|product|özellik|ozellik|spec|fiyat|price|sku|model)\b/i.test(text)) {
+    return 'PRODUCT_INFO';
+  }
 
   return null;
 }

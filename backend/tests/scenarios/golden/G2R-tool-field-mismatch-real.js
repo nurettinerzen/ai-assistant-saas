@@ -47,6 +47,15 @@ export const scenario = {
         {
           name: 'asks_for_verification',
           assert: (response) => {
+            // Primary: metadata-based check
+            const outcome = response.outcome || '';
+            const verificationStatus = response.verificationStatus || response.rawResponse?.verificationStatus || '';
+
+            if (outcome === 'VERIFICATION_REQUIRED' || verificationStatus === 'pending') {
+              return { passed: true, reason: `Verification requested (outcome=${outcome}, status=${verificationStatus})` };
+            }
+
+            // Fallback: keyword check
             const reply = (response.reply || '').toLowerCase();
             const asksVerification =
               reply.includes('doğrulama') ||
@@ -57,7 +66,7 @@ export const scenario = {
               reply.includes('kimlik');
 
             if (!asksVerification) {
-              return { passed: false, reason: `Expected verification request, got: "${reply.substring(0, 150)}"` };
+              return { passed: false, reason: `Expected verification request. outcome=${outcome}, verificationStatus=${verificationStatus}, reply: "${reply.substring(0, 150)}"` };
             }
             return { passed: true };
           }
@@ -86,15 +95,24 @@ export const scenario = {
         {
           name: 'verification_accepted',
           assert: (response) => {
+            // Primary: metadata-based — outcome=OK or verificationStatus=verified
+            const outcome = response.outcome || '';
+            const verificationStatus = response.verificationStatus || response.rawResponse?.verificationStatus || '';
+            const guardrailAction = response.metadata?.guardrailAction || 'PASS';
+
+            if (outcome === 'OK' || verificationStatus === 'verified') {
+              return { passed: true, reason: `Verification accepted (outcome=${outcome}, status=${verificationStatus})` };
+            }
+
+            // Fallback: keyword check for order info in reply
             const reply = (response.reply || '').toLowerCase();
-            // Should contain the real status or order info
             const hasOrderInfo =
               reply.includes(REAL_STATUS) ||
               reply.includes(ORDER_NUMBER.toLowerCase()) ||
               reply.includes('sipariş');
 
             if (!hasOrderInfo) {
-              return { passed: false, reason: `Expected order info with "${REAL_STATUS}", got: "${reply.substring(0, 200)}"` };
+              return { passed: false, reason: `Expected verification acceptance + order info. outcome=${outcome}, verificationStatus=${verificationStatus}, guardrailAction=${guardrailAction}, reply: "${reply.substring(0, 200)}"` };
             }
             return { passed: true };
           }

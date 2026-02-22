@@ -173,6 +173,9 @@ async function runGoldenScenario(scenario, token, assistantId, fixtures) {
         console.log(`    Reply: ${(response.reply || '').substring(0, 150)}`);
         console.log(`    Outcome: ${response.outcome}`);
         console.log(`    Tools: ${JSON.stringify(response.toolCalls || [])}`);
+        console.log(`    GuardrailAction: ${response.metadata?.guardrailAction || 'PASS'}`);
+        console.log(`    GuardrailReason: ${response.metadata?.guardrailReason || 'none'}`);
+        console.log(`    MessageType: ${response.metadata?.messageType || 'unknown'}`);
       }
 
       if (!response.success) {
@@ -208,6 +211,14 @@ async function runGoldenScenario(scenario, token, assistantId, fixtures) {
       // Store reply for cross-step context
       scenarioContext.previousReplies[step.id] = response.reply;
 
+      // Capture guardrail telemetry for debugging
+      stepResult.guardrailTelemetry = {
+        guardrailAction: response.metadata?.guardrailAction || 'PASS',
+        guardrailReason: response.metadata?.guardrailReason || null,
+        messageType: response.metadata?.messageType || 'assistant_claim',
+        leakFilterDebug: response.metadata?.leakFilterDebug || null
+      };
+
       // Prepare response with additional fields for assertion access
       const enrichedResponse = {
         ...response,
@@ -240,6 +251,7 @@ async function runGoldenScenario(scenario, token, assistantId, fixtures) {
               });
               result.status = 'failed';
               console.log(`    ❌ ${assertionConfig.name}: ${assertionResult.reason}`);
+              console.log(`       🛡️ action=${response.metadata?.guardrailAction || 'PASS'} reason=${response.metadata?.guardrailReason || 'none'} type=${response.metadata?.messageType || 'unknown'}`);
             } else {
               result.warnings.push({
                 step: step.id,

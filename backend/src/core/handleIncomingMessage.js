@@ -921,6 +921,38 @@ export async function handleIncomingMessage({
       console.warn('⚠️ [Orchestrator] directResponse signal suppressed (LLM-first mode)');
     }
 
+    // ========================================
+    // STEP 4.5: New Order Anchor Detection (S6 fix)
+    // ========================================
+    // If user mentions a DIFFERENT order number than the currently verified anchor,
+    // force tool routing so LLM does not skip the lookup.
+    const messageOrderNumber = extractOrderNumberFromMessage(userMessage);
+    const currentAnchorOrder = state.verification?.anchor?.value || state.anchor?.order_number || null;
+
+    if (messageOrderNumber && currentAnchorOrder &&
+        messageOrderNumber !== currentAnchorOrder) {
+      console.log(`🔄 [Orchestrator] New order detected: ${messageOrderNumber} (current anchor: ${currentAnchorOrder})`);
+
+      // Reset verification state — new order needs new verification
+      if (state.verification) {
+        state.verification.status = 'none';
+        state.verification.anchor = null;
+      }
+
+      // Update extractedSlots with new order
+      state.extractedSlots = {
+        ...state.extractedSlots,
+        order_number: messageOrderNumber
+      };
+
+      // Force activeFlow to ORDER_STATUS so tool gating enables customer_data_lookup
+      state.activeFlow = 'ORDER_STATUS';
+      state.flowStatus = 'in_progress';
+
+      metrics.newOrderAnchorDetected = true;
+      console.log(`🔄 [Orchestrator] Verification reset + flow forced to ORDER_STATUS for new order`);
+    }
+
     // LLM chatter directive mode.
     const isChatterLLMMode = !!routingResult.chatterDirective;
     const chatterLLMStartTime = isChatterLLMMode ? Date.now() : null;
