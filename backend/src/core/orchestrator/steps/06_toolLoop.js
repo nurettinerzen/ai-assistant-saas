@@ -322,6 +322,9 @@ export async function executeToolLoop(params) {
       });
       if (repeatGuardResult.blocked) {
         console.log(`🔁 [ToolLoop] Repeat call blocked: ${toolName} hash=${currentArgsHash} outcome=${repeatGuardResult.outcome}`);
+        const repeatMessageType = normalizeOutcome(repeatGuardResult.outcome) === ToolOutcome.DENIED
+          ? 'system_barrier'
+          : 'clarification';
         return {
           reply: repeatGuardResult.message,
           inputTokens: totalInputTokens,
@@ -334,6 +337,7 @@ export async function executeToolLoop(params) {
           iterations,
           chat: null,
           _terminalState: repeatGuardResult.outcome,
+          _terminalMessageType: repeatMessageType,
           _repeatNotFoundBlocked: true
         };
       }
@@ -441,6 +445,7 @@ export async function executeToolLoop(params) {
         output: toolResult.data ?? null, // Don't fallback to full toolResult - keep clean
         outcome: toolResult.outcome ?? null,
         message: toolResult.message ?? null,
+        askFor: toolResult.askFor || toolResult.data?.askFor || null,
         stateEvents: toolResult.stateEvents ?? []
       });
 
@@ -585,6 +590,7 @@ export async function executeToolLoop(params) {
             iterations,
             chat: null,
             _terminalState: ToolOutcome.NOT_FOUND,
+            _terminalMessageType: 'clarification',
             _enumerationCount: enumerationResult.attempts,
             _enumerationCounted: enumerationResult.counted
           };
@@ -604,7 +610,10 @@ export async function executeToolLoop(params) {
           toolResults,
           iterations,
           chat: null,
-          _terminalState: outcome || 'TERMINAL'
+          _terminalState: outcome || 'TERMINAL',
+          _terminalMessageType: (outcome === ToolOutcome.DENIED || outcome === ToolOutcome.INFRA_ERROR)
+            ? 'system_barrier'
+            : 'clarification'
         };
       }
 

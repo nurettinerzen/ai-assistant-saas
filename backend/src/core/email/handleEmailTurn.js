@@ -385,13 +385,23 @@ export async function handleEmailTurn(params) {
     if (toolRequiredResult.enforced) {
       console.warn(`⚠️ [EmailTurn] Tool required policy enforced: ${toolRequiredResult.reason}`);
 
-      // For ASK_VERIFICATION action, we generate a special draft
-      if (toolRequiredResult.action === 'ASK_VERIFICATION') {
+      // Barrier-only forced drafts: single clarification question or system barrier.
+      if (toolRequiredResult.action === 'NEED_MIN_INFO_FOR_TOOL' || toolRequiredResult.action === 'ASK_VERIFICATION') {
         ctx.forcedDraftContent = toolRequiredResult.message;
         ctx.draftForced = true;
+        ctx.assistantMessageMeta = {
+          messageType: 'clarification',
+          guardrailAction: 'NEED_MIN_INFO_FOR_TOOL',
+          guardrailReason: toolRequiredResult.reason || 'NEED_MIN_INFO_FOR_TOOL'
+        };
       } else if (toolRequiredResult.action === 'SYSTEM_ERROR_FALLBACK') {
         ctx.forcedDraftContent = toolRequiredResult.message;
         ctx.draftForced = true;
+        ctx.assistantMessageMeta = {
+          messageType: 'system_barrier',
+          guardrailAction: 'BLOCK',
+          guardrailReason: toolRequiredResult.reason || 'SYSTEM_ERROR'
+        };
       }
     }
 
@@ -424,6 +434,19 @@ export async function handleEmailTurn(params) {
     metrics.inputTokens = generateResult.inputTokens;
     metrics.outputTokens = generateResult.outputTokens;
     ctx.responseGrounding = ctx.responseGrounding || (ctx.draftForced ? 'CLARIFICATION' : 'GROUNDED');
+    if (!ctx.assistantMessageMeta) {
+      ctx.assistantMessageMeta = ctx.responseGrounding === 'CLARIFICATION'
+        ? {
+          messageType: 'clarification',
+          guardrailAction: 'NEED_MIN_INFO_FOR_TOOL',
+          guardrailReason: null
+        }
+        : {
+          messageType: 'assistant_claim',
+          guardrailAction: 'PASS',
+          guardrailReason: null
+        };
+    }
     metrics.responseGrounding = ctx.responseGrounding;
     console.log(`✅ [EmailTurn] Draft generated (${metrics.steps.generateDraft}ms)`);
 

@@ -31,11 +31,9 @@ import {
   evaluateSecurityGateway,
   extractFieldsFromToolOutput,
   extractRecordOwner,
-  checkProductNotFound,
-  checkOrderNotFoundPressure,
-  enforceRequiredToolCall
+  evaluateToolRequiredClaimGate,
+  evaluateNotFoundClaimGate
 } from '../../../guardrails/securityGateway.js';
-import { shouldBypassLeakFilter } from '../../../security/outcomePolicy.js';
 import { ToolOutcome, normalizeOutcome } from '../../../tools/toolResult.js';
 import { isFeatureEnabled } from '../../../config/feature-flags.js';
 
@@ -43,42 +41,6 @@ function getBarrierMessage(language = 'TR') {
   return String(language || '').toUpperCase() === 'EN'
     ? 'I cannot share that detail right now for security reasons.'
     : 'Güvenlik nedeniyle bu detayı şu anda paylaşamıyorum.';
-}
-
-function getInternalProtocolSafeRewrite(language = 'TR') {
-  return String(language || '').toUpperCase() === 'EN'
-    ? 'I can help with your request. Tell me what you need and I will assist.'
-    : 'Bu konuda yardımcı olabilirim. İhtiyacınızı yazın, size destek olayım.';
-}
-
-function getConfabulationClarification(language = 'TR', violation = null) {
-  const lang = String(language || '').toUpperCase() === 'EN' ? 'EN' : 'TR';
-  const category = violation?.category;
-
-  if (category === 'stockEvents' || category === 'businessDescriptionClaims') {
-    return lang === 'EN'
-      ? 'I do not have verifiable source data for that detail yet. Could you share the exact product or model so I can check clearly?'
-      : 'Bu detayı doğrulayacak kaynak veriye henüz sahip değilim. Net kontrol için ürün adı veya modelini paylaşır mısınız?';
-  }
-
-  return lang === 'EN'
-    ? 'I do not have enough verified data to confirm that yet. Could you share your order number so I can check clearly?'
-    : 'Bu bilgiyi doğrulamak için henüz yeterli kayıt yok. Net kontrol için sipariş numaranızı paylaşır mısınız?';
-}
-
-function getFieldGroundingClarification(language = 'TR', violation = null) {
-  const lang = String(language || '').toUpperCase() === 'EN' ? 'EN' : 'TR';
-  const field = violation?.field;
-
-  if (field === 'trackingNumber') {
-    return lang === 'EN'
-      ? 'To share the exact tracking detail, I need to re-check the order record. Could you share your order number?'
-      : 'Takip detayını net paylaşmam için sipariş kaydını tekrar kontrol etmem gerekiyor. Sipariş numaranızı paylaşır mısınız?';
-  }
-
-  return lang === 'EN'
-    ? 'To provide the exact detail, I need to verify the latest record first. Could you share your order number?'
-    : 'Detayı doğru paylaşmam için kaydı önce doğrulamam gerekiyor. Sipariş numaranızı paylaşır mısınız?';
 }
 
 function resolveMinInfoQuestion({
@@ -89,9 +51,33 @@ function resolveMinInfoQuestion({
 
   const hasOrder = missingSet.has('order_number');
   const hasPhoneLast4 = missingSet.has('phone_last4');
+  const hasTicket = missingSet.has('ticket_number');
+  const hasProduct = missingSet.has('product_name');
+  const hasReference = missingSet.has('reference_id');
   const lang = String(language || 'TR').toUpperCase() === 'EN' ? 'EN' : 'TR';
 
   if (lang === 'EN') {
+    if (hasTicket) {
+      return {
+        text: 'To continue, could you share your ticket number?',
+        messageKey: 'NEED_MIN_INFO_FOR_TOOL_DETERMINISTIC',
+        variantIndex: 0
+      };
+    }
+    if (hasProduct) {
+      return {
+        text: 'To continue, could you share the product name or model?',
+        messageKey: 'NEED_MIN_INFO_FOR_TOOL_DETERMINISTIC',
+        variantIndex: 0
+      };
+    }
+    if (hasReference) {
+      return {
+        text: 'To continue, could you share your reference number?',
+        messageKey: 'NEED_MIN_INFO_FOR_TOOL_DETERMINISTIC',
+        variantIndex: 0
+      };
+    }
     if (hasOrder && hasPhoneLast4) {
       return {
         text: 'To proceed safely, could you share your order number and the last 4 digits of your phone?',
@@ -113,6 +99,27 @@ function resolveMinInfoQuestion({
     };
   }
 
+  if (hasTicket) {
+    return {
+      text: 'Devam edebilmem için ticket numaranızı paylaşır mısınız?',
+      messageKey: 'NEED_MIN_INFO_FOR_TOOL_DETERMINISTIC',
+      variantIndex: 0
+    };
+  }
+  if (hasProduct) {
+    return {
+      text: 'Devam edebilmem için ürün adı veya model bilgisini paylaşır mısınız?',
+      messageKey: 'NEED_MIN_INFO_FOR_TOOL_DETERMINISTIC',
+      variantIndex: 0
+    };
+  }
+  if (hasReference) {
+    return {
+      text: 'Devam edebilmem için referans numarasını paylaşır mısınız?',
+      messageKey: 'NEED_MIN_INFO_FOR_TOOL_DETERMINISTIC',
+      variantIndex: 0
+    };
+  }
   if (hasOrder && hasPhoneLast4) {
     return {
       text: 'Güvenli şekilde devam edebilmem için sipariş numaranızı ve telefon numaranızın son 4 hanesini paylaşır mısınız?',
@@ -134,6 +141,18 @@ function resolveMinInfoQuestion({
   };
 }
 
+function buildNotFoundClarification(language = 'TR', missingFields = []) {
+  const minInfoVariant = resolveMinInfoQuestion({ language, missingFields });
+  const isEn = String(language || '').toUpperCase() === 'EN';
+  return {
+    text: isEn
+      ? `I could not find a matching record with the provided details. ${minInfoVariant.text}`
+      : `Paylaşılan bilgilerle eşleşen kayıt bulamadım. ${minInfoVariant.text}`,
+    messageKey: minInfoVariant.messageKey,
+    variantIndex: minInfoVariant.variantIndex
+  };
+}
+
 export async function applyGuardrails(params) {
   const {
     responseText: initialResponseText,
@@ -150,15 +169,12 @@ export async function applyGuardrails(params) {
     verifiedIdentity = null, // Doğrulanmış kimlik
     intent = null, // Tespit edilen intent (requiresToolCall kontrolü için)
     collectedData = {}, // Zaten bilinen veriler (orderNumber, phone, name) - Leak filter için
-    lastNotFound = null, // P0-FIX: NOT_FOUND context from state for leak filter bypass
     callbackPending = false,
     activeFlow = null
   } = params;
 
-  // Mutable response text (Product/Order not found override için)
+  // Mutable response text (sanitize policies)
   let responseText = initialResponseText;
-  let overrideMessageKey = null;
-  let overrideVariantIndex = null;
 
   console.log('🛡️ [Guardrails] Applying policies...');
 
@@ -309,100 +325,13 @@ export async function applyGuardrails(params) {
     }
   }
 
-  // ============================================
-  // POLICY 1.45: NOT_FOUND Early Check (P0 - S2 Fix)
-  // Bu kontrol Leak Filter'dan ÖNCE yapılmalı!
-  // Çünkü NOT_FOUND durumunda hassas veri yok, verification gereksiz
-  // ============================================
-  let notFoundOverrideApplied = false;
-  if (toolOutputs.length > 0) {
-    console.log('🔍 [Guardrails] Early NOT_FOUND check (before Leak Filter):', {
-      toolOutputsCount: toolOutputs.length,
-      outcomes: toolOutputs.map(o => o?.outcome)
-    });
-
-    // Sipariş bulunamadı kontrolü - Leak Filter'dan ÖNCE
-    const earlyOrderNotFoundCheck = checkOrderNotFoundPressure(responseText, toolOutputs, language);
-    if (earlyOrderNotFoundCheck.needsOverride) {
-      console.warn(`🔧 [SecurityGateway] Early NOT_FOUND override APPLIED:`, {
-        reason: earlyOrderNotFoundCheck.reason,
-        originalResponse: responseText?.substring(0, 100)
-      });
-      metrics.orderNotFoundOverride = earlyOrderNotFoundCheck.reason;
-      overrideMessageKey = earlyOrderNotFoundCheck.messageKey || overrideMessageKey;
-      overrideVariantIndex = Number.isInteger(earlyOrderNotFoundCheck.variantIndex)
-        ? earlyOrderNotFoundCheck.variantIndex
-        : overrideVariantIndex;
-      metrics.guardrailOverrides = metrics.guardrailOverrides || [];
-      metrics.guardrailOverrides.push({
-        reason: earlyOrderNotFoundCheck.reason,
-        messageKey: earlyOrderNotFoundCheck.messageKey,
-        channel,
-        intent
-      });
-      responseText = earlyOrderNotFoundCheck.overrideResponse;
-      notFoundOverrideApplied = true;
-    }
-
-    // Ürün bulunamadı kontrolü de erken yap
-    const earlyProductNotFoundCheck = checkProductNotFound(responseText, toolOutputs, language);
-    if (earlyProductNotFoundCheck.needsOverride) {
-      console.warn(`🔧 [SecurityGateway] Early Product NOT_FOUND override: ${earlyProductNotFoundCheck.reason}`);
-      metrics.productNotFoundOverride = earlyProductNotFoundCheck.reason;
-      overrideMessageKey = earlyProductNotFoundCheck.messageKey || overrideMessageKey;
-      overrideVariantIndex = Number.isInteger(earlyProductNotFoundCheck.variantIndex)
-        ? earlyProductNotFoundCheck.variantIndex
-        : overrideVariantIndex;
-      metrics.guardrailOverrides = metrics.guardrailOverrides || [];
-      metrics.guardrailOverrides.push({
-        reason: earlyProductNotFoundCheck.reason,
-        messageKey: earlyProductNotFoundCheck.messageKey,
-        channel,
-        intent
-      });
-      responseText = earlyProductNotFoundCheck.overrideResponse;
-      notFoundOverrideApplied = true;
-    }
-  }
-
-  // POLICY 1.5: Security Gateway Leak Filter (P0 - Verification-based)
-  // P0 ARCHITECTURE FIX: Leak Filter now ALWAYS runs on response text.
-  // Previous logic: skip if no tool called or tool not successful → allowed LLM hallucinations to bypass filter.
-  // New logic: Only skip for NOT_FOUND overrides (no sensitive data) and explicit bypass outcomes.
-  // If LLM generates sensitive data WITHOUT tool call, leak filter catches it and blocks.
-  //
-  // P0-FIX: Also skip if state has recent NOT_FOUND (within 5 minutes).
-  // After NOT_FOUND terminal, next turn LLM may generate text mentioning "müşteri/sipariş"
-  // without calling tools → toolOutputs empty → leak filter false positive → infinite verification loop.
-  const hasBypassOutcome = toolOutputs.some(o => shouldBypassLeakFilter(o?.outcome));
-  const hasRecentNotFound = lastNotFound?.at &&
-    (Date.now() - new Date(lastNotFound.at).getTime()) < 5 * 60 * 1000; // 5 minutes
-
-  // P0 GUARD: Tool çağrılmadıysa VE response'ta rakam yoksa → phone leak imkansız, skip
-  const noToolsCalled = !toolsCalled || toolsCalled.length === 0;
-  const noDigitsInResponse = !/\d/.test(responseText || '');
-  const noToolNoDigitBypass = noToolsCalled && noDigitsInResponse;
-  if (noToolNoDigitBypass) {
-    console.log('✅ [LeakFilter] No tools called + no digits in response → phone leak impossible, skipping');
-  }
-
-  const shouldSkipLeakFilter = notFoundOverrideApplied || hasBypassOutcome || hasRecentNotFound || noToolNoDigitBypass;
-  if (shouldSkipLeakFilter) {
-    console.log('✅ [SecurityGateway] Skipping Leak Filter:', {
-      notFoundOverrideApplied,
-      hasBypassOutcome,
-      hasRecentNotFound: !!hasRecentNotFound,
-      noToolNoDigitBypass
-    });
-  }
-  const leakFilterResult = shouldSkipLeakFilter
-    ? { safe: true, action: GuardrailAction.PASS } // NOT_FOUND response'u güvenli, Leak Filter'ı atla
-    : applyLeakFilter(responseText, verificationState, language, collectedData, {
-      callbackPending,
-      activeFlow,
-      intent,
-      toolsCalled,
-    });
+  // POLICY 1.5: Security Gateway Leak Filter (barrier-only)
+  const leakFilterResult = applyLeakFilter(responseText, verificationState, language, collectedData, {
+    callbackPending,
+    activeFlow,
+    intent,
+    toolsCalled,
+  });
 
   if (!leakFilterResult.safe) {
     if (leakFilterResult.action === GuardrailAction.NEED_MIN_INFO_FOR_TOOL && leakFilterResult.needsCallbackInfo) {
@@ -430,7 +359,7 @@ export async function applyGuardrails(params) {
       needsVerification: leakFilterResult.needsVerification,
       missingFields: leakFilterResult.missingFields,
       leakTypes: leakTelemetry.leakTypes || [],
-      verificationMode: leakTelemetry.verificationMode || 'ORDER_VERIFY',
+      verificationMode: leakTelemetry.verificationMode || 'PHONE_REDACT',
       hasDigits: leakTelemetry.responseHasDigits ?? null,
       triggerPatterns: (leakTelemetry.triggeredPatterns || []).map(p => ({ type: p.type, pattern: p.pattern }))
     });
@@ -439,7 +368,7 @@ export async function applyGuardrails(params) {
     metrics.leakFilterViolation = {
       leaks: leakFilterResult.leaks,
       verificationState,
-      verificationMode: leakTelemetry.verificationMode || 'ORDER_VERIFY',
+      verificationMode: leakTelemetry.verificationMode || 'PHONE_REDACT',
       responseHasDigits: leakTelemetry.responseHasDigits ?? null,
       leakTypes: leakTelemetry.leakTypes || [],
       telemetry: leakTelemetry
@@ -506,36 +435,57 @@ export async function applyGuardrails(params) {
     console.log('✅ [SecurityGateway] Leak filter passed');
   }
 
-  // POLICY 1.55: Tool Required Enforcement (HP-07 Fix)
-  // Intent "requiresToolCall" ise ama tool çağrılmadıysa, deterministik response döndür
-  const productSpecEnabled = isFeatureEnabled('PRODUCT_SPEC_ENFORCE');
-  if (intent && productSpecEnabled) {
-    const toolEnforcementResult = enforceRequiredToolCall(intent, toolsCalled, language, responseText);
-    if (toolEnforcementResult.needsOverride) {
-      console.warn(`🔧 [SecurityGateway] Tool required but not called for intent "${intent}"`);
-      metrics.toolRequiredNotCalled = {
-        intent,
-        reason: toolEnforcementResult.reason
-      };
-      overrideMessageKey = toolEnforcementResult.messageKey || overrideMessageKey;
-      overrideVariantIndex = Number.isInteger(toolEnforcementResult.variantIndex)
-        ? toolEnforcementResult.variantIndex
-        : overrideVariantIndex;
-      metrics.guardrailOverrides = metrics.guardrailOverrides || [];
-      metrics.guardrailOverrides.push({
-        reason: toolEnforcementResult.reason,
-        messageKey: toolEnforcementResult.messageKey,
-        channel,
-        intent
-      });
-      // Response'u override et - LLM tool çağırmadan yanıt vermiş
-      responseText = toolEnforcementResult.overrideResponse;
-    }
-  } else if (intent && !productSpecEnabled) {
-    console.log('⚠️ [Guardrails] PRODUCT_SPEC_ENFORCE disabled — skipping tool enforcement');
+  // POLICY 1.55: Tool-required claim gate (single clarification)
+  const toolRequiredGate = evaluateToolRequiredClaimGate({
+    intent,
+    activeFlow,
+    userMessage,
+    toolsCalled
+  });
+  if (toolRequiredGate.needsMinInfo) {
+    const minInfoVariant = resolveMinInfoQuestion({
+      language,
+      missingFields: toolRequiredGate.missingFields || []
+    });
+    metrics.toolRequiredClaimGate = {
+      reason: toolRequiredGate.reason,
+      topic: toolRequiredGate.topic,
+      missingFields: toolRequiredGate.missingFields || []
+    };
+    return {
+      finalResponse: minInfoVariant.text,
+      action: GuardrailAction.NEED_MIN_INFO_FOR_TOOL,
+      blocked: true,
+      blockReason: toolRequiredGate.reason || 'NEED_MIN_INFO_FOR_TOOL',
+      missingFields: toolRequiredGate.missingFields || [],
+      guardrailsApplied: ['RESPONSE_FIREWALL', 'PII_PREVENTION', 'CLAIM_GATE_TOOL_REQUIRED'],
+      messageKey: minInfoVariant.messageKey,
+      variantIndex: minInfoVariant.variantIndex
+    };
   }
 
-  // POLICY 1.6: Security Gateway Identity Match (eğer tool output varsa)
+  // POLICY 1.6: NOT_FOUND claim gate (single clarification, no content rewrite policy)
+  const notFoundGate = evaluateNotFoundClaimGate(toolOutputs);
+  if (notFoundGate.needsClarification) {
+    const clarification = buildNotFoundClarification(language, notFoundGate.missingFields || []);
+    metrics.notFoundClaimGate = {
+      reason: notFoundGate.reason,
+      toolName: notFoundGate.toolName || null,
+      missingFields: notFoundGate.missingFields || []
+    };
+    return {
+      finalResponse: clarification.text,
+      action: GuardrailAction.NEED_MIN_INFO_FOR_TOOL,
+      blocked: true,
+      blockReason: notFoundGate.reason || 'TOOL_NOT_FOUND',
+      missingFields: notFoundGate.missingFields || [],
+      guardrailsApplied: ['RESPONSE_FIREWALL', 'PII_PREVENTION', 'CLAIM_GATE_NOT_FOUND'],
+      messageKey: clarification.messageKey,
+      variantIndex: clarification.variantIndex
+    };
+  }
+
+  // POLICY 1.7: Security Gateway Identity Match (eğer tool output varsa)
   // verifiedIdentity vs requestedRecord owner karşılaştırması
   //
   // IMPORTANT: Tool handler already performs anchor-based verification.
@@ -611,35 +561,6 @@ export async function applyGuardrails(params) {
     }
   }
 
-  // POLICY 1.7: Product/Order Not Found Handler - MOVED TO POLICY 1.45 (before Leak Filter)
-  // NOT_FOUND kontrolü artık Leak Filter'dan ÖNCE yapılıyor (line 135-165)
-  // Bu blok kaldırıldı çünkü erken kontrol zaten yapıldı
-  // Eski kontrol burada kalırsa duplicate çalışır - gereksiz
-  if (toolOutputs.length > 0 && !notFoundOverrideApplied) {
-    // Sadece erken kontrol yapılmadıysa burada yap (güvenlik için)
-    console.log('🔍 [Guardrails] Late NOT_FOUND check (fallback):', {
-      count: toolOutputs.length
-    });
-
-    const lateOrderNotFoundCheck = checkOrderNotFoundPressure(responseText, toolOutputs, language);
-    if (lateOrderNotFoundCheck.needsOverride) {
-      console.warn(`🔧 [SecurityGateway] Late NOT_FOUND override: ${lateOrderNotFoundCheck.reason}`);
-      metrics.orderNotFoundOverride = lateOrderNotFoundCheck.reason;
-      overrideMessageKey = lateOrderNotFoundCheck.messageKey || overrideMessageKey;
-      overrideVariantIndex = Number.isInteger(lateOrderNotFoundCheck.variantIndex)
-        ? lateOrderNotFoundCheck.variantIndex
-        : overrideVariantIndex;
-      metrics.guardrailOverrides = metrics.guardrailOverrides || [];
-      metrics.guardrailOverrides.push({
-        reason: lateOrderNotFoundCheck.reason,
-        messageKey: lateOrderNotFoundCheck.messageKey,
-        channel,
-        intent
-      });
-      responseText = lateOrderNotFoundCheck.overrideResponse;
-    }
-  }
-
   // POLICY 2: Tool-Only Data Guard (P0-A - semantic gating)
   // Prevents tool-only data leaks without proper tool calls
   const toolCallsForGuard = toolsCalled.map(name => ({
@@ -675,12 +596,16 @@ export async function applyGuardrails(params) {
   if (!internalProtocolResult.safe) {
     console.error('🚨 [Guardrails] INTERNAL_PROTOCOL_LEAK detected!', internalProtocolResult.violation);
     metrics.internalProtocolViolation = internalProtocolResult.violation;
-    responseText = getInternalProtocolSafeRewrite(language);
-    metrics.internalProtocolSanitized = true;
+    return {
+      finalResponse: getBarrierMessage(language),
+      action: GuardrailAction.BLOCK,
+      guardrailsApplied: ['RESPONSE_FIREWALL', 'PII_PREVENTION', 'INTERNAL_PROTOCOL_GUARD'],
+      blocked: true,
+      blockReason: 'INTERNAL_PROTOCOL_LEAK'
+    };
   }
 
-  // POLICY 4: Anti-Confabulation Guard (P1-A) - NOW WITH ENFORCEMENT
-  // Prevents event/fact claims without tool backup
+  // POLICY 4: Anti-Confabulation Guard (monitor-only, no rewrite/override)
   const hasKBMatch = params.hasKBMatch || false;
   const confabulationResult = validateConfabulation(
     responseText,
@@ -692,15 +617,11 @@ export async function applyGuardrails(params) {
   if (!confabulationResult.safe) {
     console.error('🚨 [Guardrails] CONFABULATION detected!', confabulationResult.violation);
     metrics.confabulationViolation = confabulationResult.violation;
-    responseText = getConfabulationClarification(language, confabulationResult.violation);
-    metrics.confabulationClarification = true;
+    metrics.confabulationMonitorOnly = true;
   }
 
   // POLICY 4b: Field-Level Grounding (P1-D)
-  // Even if tool was called, check that LLM claims match tool output fields.
-  // Enforcement mode:
-  // - monitor: log only
-  // - block (default): deterministic clarification rewrite (no hard block)
+  // No rewrite: monitor-only or hard block with a single barrier message.
   const fieldGroundingEnabled = isFeatureEnabled('FIELD_GROUNDING_HARDBLOCK');
   const fieldGroundingMode = process.env.FIELD_GROUNDING_MODE || 'block'; // 'block' | 'monitor'
   if (fieldGroundingEnabled && hadToolSuccess && toolOutputs.length > 0) {
@@ -715,8 +636,13 @@ export async function applyGuardrails(params) {
         console.warn('📊 [Guardrails] FIELD_GROUNDING in MONITOR mode — logging only, response passes through');
         metrics.fieldGroundingMonitorOnly = true;
       } else {
-        responseText = getFieldGroundingClarification(language, groundingResult.violation);
-        metrics.fieldGroundingClarification = true;
+        return {
+          finalResponse: getBarrierMessage(language),
+          action: GuardrailAction.BLOCK,
+          guardrailsApplied: ['RESPONSE_FIREWALL', 'PII_PREVENTION', 'FIELD_GROUNDING'],
+          blocked: true,
+          blockReason: 'FIELD_GROUNDING_VIOLATION'
+        };
       }
     }
   } else if (!fieldGroundingEnabled) {
@@ -784,8 +710,8 @@ export async function applyGuardrails(params) {
     blocked: false,
     blockReason: null,
     repromptCount: 0,
-    fallbackUsed: !!overrideMessageKey,
-    fallbackMessageKey: overrideMessageKey || null,
+    fallbackUsed: false,
+    fallbackMessageKey: null,
     policiesRan: appliedPolicies,
     violations: {
       toolOnlyData: !toolOnlyDataResult.safe ? toolOnlyDataResult.violation?.type : null,
@@ -796,7 +722,7 @@ export async function applyGuardrails(params) {
     featureFlags: {
       TOOL_ONLY_DATA_HARDBLOCK: isFeatureEnabled('TOOL_ONLY_DATA_HARDBLOCK'),
       FIELD_GROUNDING_HARDBLOCK: fieldGroundingEnabled,
-      PRODUCT_SPEC_ENFORCE: productSpecEnabled,
+      PRODUCT_SPEC_ENFORCE: isFeatureEnabled('PRODUCT_SPEC_ENFORCE'),
     },
     toolsCalled: toolsCalled.length,
     toolSuccess: hadToolSuccess,
@@ -805,9 +731,7 @@ export async function applyGuardrails(params) {
   return {
     finalResponse: finalText,
     action: finalAction,
-    guardrailsApplied: appliedPolicies,
-    messageKey: overrideMessageKey,
-    variantIndex: overrideVariantIndex
+    guardrailsApplied: appliedPolicies
   };
 }
 

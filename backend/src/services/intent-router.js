@@ -446,8 +446,6 @@ export async function routeIntent(userMessage, sessionId, language = 'TR', busin
     if (intent === 'off_topic') {
       const { shouldTerminate, count } = incrementOffTopicCounter(sessionId);
 
-      const businessName = businessInfo.name || 'şirketimiz';
-
       // If session should terminate, use hardcoded message
       if (shouldTerminate) {
         return {
@@ -460,86 +458,14 @@ export async function routeIntent(userMessage, sessionId, language = 'TR', busin
         };
       }
 
-      // Generate natural AI response for off-topic (1st and 2nd strike)
-      try {
-        const model = genAI.getGenerativeModel({
-          model: 'gemini-2.5-flash',
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 500,  // Plenty of tokens for a natural response
-            stopSequences: ['\n\n', '---', '*'],  // Stop at formatting attempts
-            // CRITICAL: Disable thinking mode - this is the real fix!
-            thinkingConfig: {
-              thinkingBudget: 0
-            }
-          },
-          safetySettings: [
-            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' }
-          ]
-        });
-
-        // Build capabilities text based on business type
-        const businessType = businessInfo.businessType || 'OTHER';
-        const capabilitiesMap = {
-          'RESTAURANT': 'rezervasyon, menü bilgisi ve sipariş alma',
-          'SALON': 'randevu oluşturma ve hizmet bilgisi',
-          'CLINIC': 'randevu oluşturma ve hizmet bilgisi',
-          'ECOMMERCE': 'sipariş takibi, stok kontrolü ve kargo bilgisi',
-          'SERVICE': 'randevu oluşturma, sipariş takibi ve destek',
-          'OTHER': 'sipariş takibi, randevu ve genel bilgi'
-        };
-        const capabilities = capabilitiesMap[businessType] || capabilitiesMap['OTHER'];
-
-        // Simple, direct prompt - avoid any formatting instructions
-        const aiPrompt = language === 'TR'
-          ? `Kullanıcı şunu sordu: "${userMessage}"
-
-Bu soruya kibarca hayır de ve ${businessName} için sadece ${capabilities} konularında yardımcı olabildiğini söyle. Sadece yanıtı yaz, başka bir şey ekleme.`
-          : `User asked: "${userMessage}"
-
-Politely decline and say you can only help with ${capabilities} for ${businessName}. Just write the response, nothing else.`;
-
-        console.log('📝 Off-topic prompt sent to Gemini (length:', aiPrompt.length, 'chars):', aiPrompt);
-
-        const result = await model.generateContent(aiPrompt);
-        const response = result.response;
-
-        console.log('🔍 Full Gemini result object:', JSON.stringify(result, null, 2));
-        console.log('🔍 Gemini response candidates:', response.candidates);
-        console.log('🔍 Gemini response object:', {
-          text: response.text ? response.text() : 'NO TEXT',
-          candidates: response.candidates?.length,
-          finishReason: response.candidates?.[0]?.finishReason,
-          promptFeedback: response.promptFeedback
-        });
-
-        const aiResponse = response.text().trim();
-
-        console.log('✅ Off-topic AI response generated (length:', aiResponse.length, '):', aiResponse);
-
-        return {
-          intent,
-          tools: [],
-          shouldTerminate: false,
-          response: aiResponse
-        };
-
-      } catch (error) {
-        console.error('❌ AI response generation failed, using fallback:', error);
-
-        // Fallback to simple message if AI fails
-        return {
-          intent,
-          tools: [],
-          shouldTerminate: false,
-          response: language === 'TR'
-            ? `Üzgünüm, sadece ${businessName} ile ilgili sorularınızı yanıtlayabilirim.`
-            : `Sorry, I can only answer questions about ${businessName}.`
-        };
-      }
+      // LLM-first: do not generate direct off-topic responses here.
+      return {
+        intent,
+        tools: [],
+        shouldTerminate: false,
+        letLLMRespond: true,
+        offTopicStrike: count
+      };
     }
 
     // 3. Get tools for intent

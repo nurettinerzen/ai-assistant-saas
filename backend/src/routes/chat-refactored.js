@@ -176,6 +176,10 @@ async function handleMessage(sessionId, businessId, userMessage, language, busin
  * LEGACY: Old handleMessage implementation (kept for reference, delete after validation)
  */
 async function handleMessageLEGACY(sessionId, businessId, userMessage, systemPrompt, conversationHistory, language, business) {
+  if (process.env.ENABLE_LEGACY_CHAT_HANDLER !== 'true') {
+    throw new Error('LEGACY_HANDLER_DISABLED');
+  }
+
   console.log(`\n📨 [HandleMessage] Session: ${sessionId}, Message: "${userMessage.substring(0, 50)}..."`);
 
   // 1. Get current state

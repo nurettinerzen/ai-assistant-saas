@@ -31,6 +31,11 @@ export async function applyEmailGuardrails(ctx) {
   const { draftContent, toolResults, customerEmail, language } = ctx;
 
   ctx.guardrailsApplied = [];
+  ctx.assistantMessageMeta = ctx.assistantMessageMeta || {
+    messageType: 'assistant_claim',
+    guardrailAction: 'PASS',
+    guardrailReason: null
+  };
 
   let modifiedContent = draftContent;
   let blocked = false;
@@ -72,6 +77,11 @@ export async function applyEmailGuardrails(ctx) {
   if (actionClaimResult.modified) {
     modifiedContent = actionClaimResult.content;
     console.warn('🛡️ [Guardrails] Action claim modified:', actionClaimResult.claims);
+    ctx.assistantMessageMeta = {
+      messageType: 'sanitized_assistant',
+      guardrailAction: 'SANITIZE',
+      guardrailReason: 'ACTION_CLAIM_GUARD'
+    };
   }
 
   // ============================================
@@ -92,6 +102,11 @@ export async function applyEmailGuardrails(ctx) {
     // Don't block, but modify content to include verification request
     modifiedContent = verificationResult.content;
     console.warn('🛡️ [Guardrails] Verification policy applied');
+    ctx.assistantMessageMeta = {
+      messageType: 'clarification',
+      guardrailAction: 'NEED_MIN_INFO_FOR_TOOL',
+      guardrailReason: 'VERIFICATION_POLICY'
+    };
   }
 
   // ============================================
@@ -107,6 +122,11 @@ export async function applyEmailGuardrails(ctx) {
   if (piiResult.modified) {
     modifiedContent = piiResult.content;
     console.log('🛡️ [Guardrails] PII scrubbed:', piiResult.scrubbed);
+    ctx.assistantMessageMeta = {
+      messageType: 'sanitized_assistant',
+      guardrailAction: 'SANITIZE',
+      guardrailReason: 'PII_SCRUB'
+    };
   }
 
   // ============================================

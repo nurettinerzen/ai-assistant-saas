@@ -26,6 +26,7 @@ export async function persistEmailMetrics(ctx) {
     guardrailsApplied,
     providerDraft,
     providerDraftError,
+    assistantMessageMeta,
     responseGrounding = 'GROUNDED',
     metrics,
     errors,
@@ -63,6 +64,11 @@ export async function persistEmailMetrics(ctx) {
             hasData: !!r.data
           })),
           guardrails: guardrailsApplied,
+          messageType: assistantMessageMeta?.messageType
+            || (responseGrounding === 'CLARIFICATION' ? 'clarification' : 'assistant_claim'),
+          guardrailAction: assistantMessageMeta?.guardrailAction
+            || (responseGrounding === 'CLARIFICATION' ? 'NEED_MIN_INFO_FOR_TOOL' : 'PASS'),
+          guardrailReason: assistantMessageMeta?.guardrailReason || null,
           responseGrounding,
           providerDraftId: providerDraft?.draftId || providerDraft?.id,
           providerDraftError,

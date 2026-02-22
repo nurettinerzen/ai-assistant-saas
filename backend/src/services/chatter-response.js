@@ -136,11 +136,11 @@ export function buildChatterDirective({ userMessage = '', state = {}, language =
       verificationPending: state.verification?.status === 'pending',
       activeFlow: state.activeFlow || null,
       expectedSlot: state.expectedSlot || null,
-      avoidRepeatingHelpPhrase: true,
-      maxSentences: 1,
+      maxSentences: 2,
+      askSingleFollowupQuestion: true,
       continueTaskIfAny: activeTask,
       responseSeed,
-      brevity: 'ONE_SENTENCE_SHORT_NO_REPEAT'
+      brevity: 'SHORT_GREETING_PLUS_ONE_QUESTION'
     },
     messageKey: catalogVariant.messageKey,
     variantIndex: catalogVariant.variantIndex

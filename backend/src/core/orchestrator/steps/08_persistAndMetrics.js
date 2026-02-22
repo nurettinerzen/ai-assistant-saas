@@ -77,9 +77,24 @@ export async function persistAndEmitMetrics(params) {
     )
     : finalResponse;
 
+  const fallbackGuardrailAction = hadToolFailure
+    ? 'BLOCK'
+    : persistedGrounding === 'CLARIFICATION'
+      ? 'NEED_MIN_INFO_FOR_TOOL'
+      : 'PASS';
+
+  const inferMessageTypeFromAction = (action, grounding) => {
+    if (action === 'BLOCK') return 'system_barrier';
+    if (action === 'SANITIZE') return 'sanitized_assistant';
+    if (action === 'NEED_MIN_INFO_FOR_TOOL') return 'clarification';
+    if (grounding === 'CLARIFICATION') return 'clarification';
+    return 'assistant_claim';
+  };
+
+  const normalizedGuardrailAction = assistantMessageMeta?.guardrailAction || fallbackGuardrailAction;
   const normalizedAssistantMeta = {
-    messageType: assistantMessageMeta?.messageType || 'assistant_claim',
-    guardrailAction: assistantMessageMeta?.guardrailAction || 'PASS',
+    messageType: assistantMessageMeta?.messageType || inferMessageTypeFromAction(normalizedGuardrailAction, persistedGrounding),
+    guardrailAction: normalizedGuardrailAction,
     guardrailReason: assistantMessageMeta?.guardrailReason || null
   };
 
@@ -193,7 +208,9 @@ export async function persistAndEmitMetrics(params) {
       hadToolFailure,
       responseGrounding: persistedGrounding,
       assistantMessageType: normalizedAssistantMeta.messageType,
+      messageType: normalizedAssistantMeta.messageType,
       guardrailAction: normalizedAssistantMeta.guardrailAction,
+      guardrailReason: normalizedAssistantMeta.guardrailReason,
       LLM_CALLED: metrics?.LLM_CALLED === true || metrics?.llmCalled === true,
       llm_call_reason: metrics?.llm_call_reason || metrics?.llmCallReason || String(channel || 'UNKNOWN').toUpperCase(),
       bypassed: typeof metrics?.bypassed === 'boolean'

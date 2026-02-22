@@ -96,15 +96,14 @@ describe('SMOKE 3: Real Phone Number → SANITIZE (Mask)', () => {
 // Bu tipler kaldırıldı — güvenlik tool gating + LLM prompt ile sağlanıyor
 // ============================================================================
 describe('SMOKE 4: Removed leak types → all PASS', () => {
-  it('11-digit number → SANITIZE (phone pattern catches 10-11 digit sequences)', () => {
+  it('11-digit plain number → PASS (no generic 10/11-digit phone masking)', () => {
     const response = 'Referans kodu 12345678901 olarak kaydedildi.';
     const result = applyLeakFilter(response, 'none', 'TR', {});
-    // 11-digit number matches phone \d{10,11} pattern → masked as potential phone
-    // No tracking detection (removed), but phone mask still applies
-    expect(result.action).toBe('SANITIZE');
+    // Generic 10/11-digit number should not be treated as phone.
+    expect(result.action).toBe('PASS');
     const trackingLeaks = (result.leaks || []).filter(l => l.type === 'tracking');
     expect(trackingLeaks).toHaveLength(0);
-    expect(result.leaks.some(l => l.type === 'phone')).toBe(true);
+    expect(result.leaks.some(l => l.type === 'phone')).toBe(false);
   });
 
   it('"kayıtlıdır" (contains "aras" substring) → PASS', () => {

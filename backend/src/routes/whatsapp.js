@@ -462,6 +462,10 @@ async function processWhatsAppMessage(business, from, messageBody, messageId) {
  * Kept for reference during migration. Will be removed after validation.
  */
 async function generateAIResponse_DEPRECATED(business, phoneNumber, messageBody, context = {}) {
+  if (process.env.ENABLE_LEGACY_WHATSAPP_HANDLER !== 'true') {
+    throw new Error('LEGACY_WHATSAPP_HANDLER_DISABLED');
+  }
+
   try {
     console.log('\n📱 [WhatsApp] Delegating to core orchestrator...');
 

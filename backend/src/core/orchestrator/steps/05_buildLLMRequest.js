@@ -237,20 +237,13 @@ KURAL:
 - Konuşma durumu: ${chatterDirective.flowStatus}
 - Aktif görev var mı: ${chatterDirective.activeTask ? 'EVET — ' + (chatterDirective.activeFlow || 'devam eden iş') : 'HAYIR'}
 - Doğrulama bekleniyor mu: ${chatterDirective.verificationPending ? 'EVET' : 'HAYIR'}
-- Yanıt varyasyon tohumu: ${chatterDirective.responseSeed || 'default'}
 
 KURALLAR:
-- Selam/teşekküre kısa ve doğal cevap ver, robotik kalıp kullanma.
-- ZORUNLU: tek cümle yaz (${chatterDirective.maxSentences} cümleyi aşma).
-- "Size nasıl yardımcı olabilirim?" veya benzer klişe yardım cümlelerini TEKRARLAMA.
-- Eğer aktif görev varsa, kısa yanıt sonrası göreve nazikçe geri dön.
-- Kullanıcı net bir talep vermediyse tek cümlelik sıcak bir karşılık ver.
-
-TON KISITLAMALARI:
-- Satış dili kullanma (no_salesy). "Harika fırsatlar", "kaçırma" gibi ifadeler YASAK.
-- Garip veya aşırı samimi selamlaşmalardan kaçın (no_weird_greetings). "Canım müşterim", "tatlım" gibi ifadeler YASAK.
-- Aşırı dostane/informal olma (no_overfriendly). Profesyonel ama sıcak bir ton koru.
-- Önceki selamlaşmayı birebir tekrarlama, ama tutarlı bir ton ve üslup koru.`;
+- Selam/teşekküre kısa ve doğal cevap ver.
+- Cevabı 1-2 cümle ile sınırla (${chatterDirective.maxSentences} cümleyi aşma).
+- Kısa selamdan sonra en fazla 1 net takip sorusu sor.
+- Aktif görev varsa soruyu o göreve geri bağla.
+- Backend şablonlarını tekrar etme, cevabı doğal varyasyonla kendin üret.`;
     console.log('💬 [BuildLLMRequest] CHATTER — LLM directive mode active');
   } else if (isChatterRoute) {
     const assistantName = assistant?.name || 'Asistan';
@@ -267,9 +260,9 @@ TON KISITLAMALARI:
 
 KURALLAR:
 - Selam/teşekküre kısa ve doğal cevap ver, robotik kalıp kullanma.
-- Eğer konuşmada aktif bir görev varsa (ör: sipariş, doğrulama), kısa yanıt sonrası göreve nazikçe geri dön.
-- "Size nasıl yardımcı olabilirim?" cümlesini her selamda tekrarlama.
-- Kullanıcı net bir talep vermediyse tek cümlelik sıcak bir karşılık ver.`;
+- Cevabı 1-2 cümlede tut.
+- Kısa selamdan sonra en fazla 1 net takip sorusu sor.
+- Eğer konuşmada aktif bir görev varsa (ör: sipariş, doğrulama), soruyu göreve geri bağla.`;
     console.log('💬 [BuildLLMRequest] CHATTER — context-preserving guidance aktif');
   }
 

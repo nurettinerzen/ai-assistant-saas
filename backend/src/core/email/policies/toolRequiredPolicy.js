@@ -120,6 +120,34 @@ const TOOL_OPTIONAL_INTENTS = [
   'FOLLOW_UP'
 ];
 
+function getFieldLabel(fieldName, language = 'TR') {
+  const lang = String(language || '').toUpperCase() === 'EN' ? 'EN' : 'TR';
+  return FIELD_LABELS[lang]?.[fieldName] || FIELD_LABELS.TR?.[fieldName] || fieldName;
+}
+
+function buildNeedMinInfoQuestion({
+  language = 'TR',
+  requiredFields = [],
+  reason = 'NO_TOOLS_CALLED'
+}) {
+  const lang = String(language || '').toUpperCase() === 'EN' ? 'EN' : 'TR';
+  const normalizedFields = (Array.isArray(requiredFields) ? requiredFields : []).filter(Boolean);
+  const firstField = normalizedFields[0] || 'order_number';
+  const fieldLabel = getFieldLabel(firstField, lang);
+
+  if (lang === 'EN') {
+    if (reason === 'NOT_FOUND') {
+      return `I could not find a matching record with the provided details. Could you share your ${fieldLabel}?`;
+    }
+    return `Could you share your ${fieldLabel} so I can continue?`;
+  }
+
+  if (reason === 'NOT_FOUND') {
+    return `Paylaşılan bilgilerle eşleşen kayıt bulamadım. Devam edebilmem için ${fieldLabel} paylaşır mısınız?`;
+  }
+  return `Devam edebilmem için ${fieldLabel} paylaşır mısınız?`;
+}
+
 /**
  * Enforce tool required policy
  *
@@ -152,16 +180,19 @@ export function enforceToolRequiredPolicy({ classification, toolResults, languag
     // No required tools were called
     console.warn(`⚠️ [ToolRequired] Intent ${intent} requires tools but none were called`);
 
+    const requiredFields = policy.requiredFields?.length > 0
+      ? [policy.requiredFields[0]]
+      : ['order_number'];
+
     return {
       enforced: true,
-      action: policy.fallbackBehavior,
-      message: getMessageVariant(policy.messageKey, {
+      action: 'NEED_MIN_INFO_FOR_TOOL',
+      message: buildNeedMinInfoQuestion({
         language,
-        directiveType: 'ASK_VERIFICATION',
-        severity: 'info',
-        intent
-      }).text,
-      requiredFields: policy.requiredFields,
+        requiredFields,
+        reason: 'NO_TOOLS_CALLED'
+      }),
+      requiredFields,
       reason: 'NO_TOOLS_CALLED'
     };
   }
@@ -217,7 +248,7 @@ export function enforceToolRequiredPolicy({ classification, toolResults, languag
 
       return {
         enforced: true,
-        action: 'ASK_VERIFICATION',
+        action: 'NEED_MIN_INFO_FOR_TOOL',
         message,
         askFor,   // e.g. 'phone_last4' — propagated for guardrail awareness
         requiredFields: askFor ? [askFor] : policy.requiredFields,
@@ -226,24 +257,19 @@ export function enforceToolRequiredPolicy({ classification, toolResults, languag
     }
 
     if (hasNotFound) {
-      // Data not found - ask for more info
-      // Translate internal field names to human-readable labels
-      const humanFields = policy.requiredFields.map(f => FIELD_LABELS[language]?.[f] || FIELD_LABELS.TR[f] || f);
+      // Data not found - ask one minimal clarification question
+      const requiredFields = policy.requiredFields?.length > 0
+        ? [policy.requiredFields[0]]
+        : ['order_number'];
       return {
         enforced: true,
-        action: 'ASK_VERIFICATION',
-        message: getMessageVariant('EMAIL_NOT_FOUND_GENERIC', {
+        action: 'NEED_MIN_INFO_FOR_TOOL',
+        message: buildNeedMinInfoQuestion({
           language,
-          directiveType: 'ASK_VERIFICATION',
-          severity: 'info',
-          intent,
-          variables: {
-            fields: language === 'TR'
-              ? humanFields.join(' veya ')
-              : humanFields.join(' or ')
-          }
-        }).text,
-        requiredFields: policy.requiredFields,
+          requiredFields,
+          reason: 'NOT_FOUND'
+        }),
+        requiredFields,
         reason: 'NOT_FOUND'
       };
     }

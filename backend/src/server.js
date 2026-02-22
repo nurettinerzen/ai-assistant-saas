@@ -107,6 +107,7 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const LEGACY_ROUTES_ENABLED = process.env.ENABLE_LEGACY_ROUTES === 'true';
 
 if (process.env.NODE_ENV !== 'test') {
   console.log(`🔖 [Backend Build] version=${BUILD_INFO.version} commit=${BUILD_INFO.commitHash} buildTime=${BUILD_INFO.buildTime}`);
@@ -238,7 +239,16 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/cost-calculator', costCalculatorRoutes);
 app.use('/api/webhooks', webhooksRoutes);
 // Chat endpoints
-app.use('/api/chat-legacy', chatLegacyRoutes); // DEPRECATED: Old Gemini-based implementation
+if (LEGACY_ROUTES_ENABLED) {
+  app.use('/api/chat-legacy', chatLegacyRoutes); // Explicit opt-in only
+} else {
+  app.use('/api/chat-legacy', (_req, res) => {
+    return res.status(410).json({
+      error: 'LEGACY_ROUTE_DISABLED',
+      message: 'Legacy chat route is disabled.'
+    });
+  });
+}
 app.use('/api/chat', chatRoutes); // Main endpoint (uses core/orchestrator)
 app.use('/api/chat-v2', chatRoutes); // Alias for backward compatibility
 app.use('/api/chat-logs', chatLogRoutes);

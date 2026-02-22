@@ -13,13 +13,10 @@
  */
 import {
   INTERNAL_METADATA_TERMS,
-  NOT_FOUND_RESPONSE_PATTERNS,
-  ORDER_FABRICATION_PATTERNS,
   POLICY_RESPONSE_HINT_PATTERNS
 } from '../security/patterns/index.js';
 import { comparePhones } from '../utils/text.js';
 import { ToolOutcome, normalizeOutcome } from '../tools/toolResult.js';
-import { getMessageVariant } from '../messages/messageCatalog.js';
 
 export const GuardrailAction = Object.freeze({
   PASS: 'PASS',
@@ -28,13 +25,26 @@ export const GuardrailAction = Object.freeze({
   NEED_MIN_INFO_FOR_TOOL: 'NEED_MIN_INFO_FOR_TOOL'
 });
 
-const LOOKUP_TOOL_HINTS = Object.freeze(new Set([
-  'customer_data_lookup',
-  'check_order_status',
-  'check_order_status_crm',
-  'check_ticket_status_crm',
-  'order_search'
-]));
+const TOOL_REQUIRED_CLAIM_GATES = Object.freeze({
+  ORDER_STATUS: {
+    intents: new Set(['order_status', 'tracking_info', 'debt_inquiry']),
+    flows: new Set(['ORDER_STATUS', 'DEBT_INQUIRY']),
+    requiredTools: new Set(['customer_data_lookup', 'check_order_status', 'check_order_status_crm', 'order_search']),
+    missingFields: ['order_number']
+  },
+  TICKET_STATUS: {
+    intents: new Set(['ticket_status', 'support_ticket']),
+    flows: new Set(['TICKET_STATUS', 'SUPPORT']),
+    requiredTools: new Set(['check_ticket_status_crm']),
+    missingFields: ['ticket_number']
+  },
+  PRODUCT_INFO: {
+    intents: new Set(['product_spec', 'stock_check', 'pricing']),
+    flows: new Set(['PRODUCT_INFO', 'STOCK_CHECK']),
+    requiredTools: new Set(['get_product_stock', 'check_stock_crm', 'search_products']),
+    missingFields: ['product_name']
+  }
+});
 
 // ============================================================================
 // DATA CLASS TANIMLARI
@@ -278,20 +288,33 @@ function escapeRegExp(str) {
 
 /**
  * Mask phone numbers in response text.
- * Replaces digits with asterisks, keeping first 3 and last 2 visible.
- * e.g. "05551234567" → "055*****67"
+ * Replaces digits with asterisks, keeping first 3 and last 2 digits visible.
  */
 function maskPhoneNumbers(text) {
   if (!text) return text;
+
+  const maskDigitsPreservingFormat = (value, keepStart = 3, keepEnd = 2) => {
+    const raw = String(value || '');
+    const digits = raw.replace(/\D/g, '');
+    if (digits.length === 0) return raw;
+
+    const visibleStart = Math.min(keepStart, digits.length);
+    const visibleEnd = Math.min(keepEnd, Math.max(0, digits.length - visibleStart));
+    let digitIndex = 0;
+
+    return raw.replace(/\d/g, (digit) => {
+      const current = digitIndex;
+      digitIndex += 1;
+      const inVisibleStart = current < visibleStart;
+      const inVisibleEnd = current >= (digits.length - visibleEnd);
+      return inVisibleStart || inVisibleEnd ? digit : '*';
+    });
+  };
+
   return text
-    // TR mobil: 0555 123 45 67 veya 05551234567
-    .replace(/\b(0?5\d{2})[\s\-]?(\d{3})[\s\-]?(\d{2})[\s\-]?(\d{2})\b/g, (_, p1) => `${p1}*****${_.slice(-2)}`)
-    // E.164: +90 555 123 4567
-    .replace(/(\+90[\s\-]?5\d{2})[\s\-]?\d{3,}/g, (m) => m.slice(0, 7) + '*'.repeat(Math.max(0, m.replace(/[\s\-]/g, '').length - 9)) + m.slice(-2))
-    // "son 4 hane 1234" / "last 4 digits 1234"
-    .replace(/((?:son\s*4(?:\s*hane(?:si)?)?|last\s*4(?:\s*digits?)?)\s*[:=]?\s*)\d{4}\b/gi, '$1****')
-    // 10-11 ardışık hane
-    .replace(/\b(\d{3})\d{5,8}(\d{2})\b/g, '$1*****$2');
+    .replace(/(?:\+90[\s.-]?)?0?5\d{2}[\s.-]?\d{3}[\s.-]?\d{2}[\s.-]?\d{2}\b/g, match => maskDigitsPreservingFormat(match))
+    .replace(/(?:\+1[\s.-]?)?(?:\(\d{3}\)|\d{3})[\s.-]\d{3}[\s.-]\d{4}\b/g, match => maskDigitsPreservingFormat(match))
+    .replace(/((?:son\s*4(?:\s*hane(?:si)?)?|last\s*4(?:\s*digits?)?)\s*[:=]?\s*)\d{4}\b/gi, '$1****');
 }
 
 const INTERNAL_METADATA_PATTERNS = INTERNAL_METADATA_TERMS.map(term =>
@@ -310,14 +333,12 @@ const INTERNAL_METADATA_PATTERNS = INTERNAL_METADATA_TERMS.map(term =>
 // - Guardrail = son bariyer (phone mask + internal block), direksiyon değil.
 // ============================================================================
 const SENSITIVE_PATTERNS = {
-  // Telefon — SADECE rakam-temelli pattern'ler.
-  // "telefon" kelimesi tek başına ASLA phone leak tetiklemez.
+  // Telefon — sadece net TR/US formatlari.
+  // Rastgele 10-11 haneli sayilar telefon kabul edilmez.
   phone: [
-    /\b0?5\d{2}[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}\b/,  // TR mobil: 05xx xxx xx xx
-    /\+90[\s\-]?5\d{2}[\s\-]?\d{3}/,                       // E.164: +90 5xx xxx (en az 7 hane)
-    /\b\d{10,11}\b/,                                        // 10-11 hane ardışık rakam
-    /(?:son\s*4(?:\s*hane(?:si)?)?|last\s*4(?:\s*digits?)?|xxxx)\s*[:=]?\s*\d{4}\b/i, // "son 4 hanesi 1234"
-    /telefon\s*(?:no|numarası?|numaranız)\s*[:=]\s*[\d\s\-\+]{7,}/i, // "telefon no: 05551234567" (rakam ZORUNLU)
+    /(?:\+90[\s.-]?)?0?5\d{2}[\s.-]?\d{3}[\s.-]?\d{2}[\s.-]?\d{2}\b/, // TR: 0555 123 45 67 / +90 555 123 45 67
+    /(?:\+1[\s.-]?)?(?:\(\d{3}\)|\d{3})[\s.-]\d{3}[\s.-]\d{4}\b/,      // US: (555) 123-4567 / 555-123-4567
+    /(?:son\s*4(?:\s*hane(?:si)?)?|last\s*4(?:\s*digits?)?)\s*[:=]?\s*\d{4}\b/i
   ],
 
   // Internal/System — asla dışarı çıkmamalı
@@ -335,12 +356,6 @@ const SENSITIVE_PATTERNS = {
  */
 export function runContextualDetection(_response = '') {
   return [];
-}
-
-function hasLookupContext(options = {}) {
-  const toolsCalled = Array.isArray(options.toolsCalled) ? options.toolsCalled : [];
-  const hasLookupTool = toolsCalled.some(toolName => LOOKUP_TOOL_HINTS.has(toolName));
-  return hasLookupTool;
 }
 
 /**
@@ -421,6 +436,100 @@ export function applyLeakFilter(response, verificationState = 'none', language =
   return { safe: true, action: GuardrailAction.PASS, leaks: [], sanitized: response, telemetry: null };
 }
 
+function detectClaimGateTopic({ intent = null, activeFlow = null, userMessage = '' }) {
+  const normalizedIntent = String(intent || '').toLowerCase();
+  const normalizedFlow = String(activeFlow || '').toUpperCase();
+  const text = String(userMessage || '').toLowerCase();
+
+  const isOrderTopic =
+    TOOL_REQUIRED_CLAIM_GATES.ORDER_STATUS.intents.has(normalizedIntent) ||
+    TOOL_REQUIRED_CLAIM_GATES.ORDER_STATUS.flows.has(normalizedFlow) ||
+    /\b(sipariş|siparis|order|kargo|tracking|teslimat|durum)\b/i.test(text);
+
+  if (isOrderTopic) return 'ORDER_STATUS';
+
+  const isTicketTopic =
+    TOOL_REQUIRED_CLAIM_GATES.TICKET_STATUS.intents.has(normalizedIntent) ||
+    TOOL_REQUIRED_CLAIM_GATES.TICKET_STATUS.flows.has(normalizedFlow) ||
+    /\b(ticket|destek kaydı|support ticket|ariza kaydi|case id)\b/i.test(text);
+
+  if (isTicketTopic) return 'TICKET_STATUS';
+
+  const isProductTopic =
+    TOOL_REQUIRED_CLAIM_GATES.PRODUCT_INFO.intents.has(normalizedIntent) ||
+    TOOL_REQUIRED_CLAIM_GATES.PRODUCT_INFO.flows.has(normalizedFlow) ||
+    /\b(stok|stock|ürün|urun|product|özellik|ozellik|spec|fiyat|price|sku|model)\b/i.test(text);
+
+  if (isProductTopic) return 'PRODUCT_INFO';
+
+  return null;
+}
+
+/**
+ * Tool-required claim gate:
+ * If a lookup-required topic is detected but no required tool is called,
+ * return a minimal-information request instead of backend templates.
+ */
+export function evaluateToolRequiredClaimGate({
+  intent = null,
+  activeFlow = null,
+  userMessage = '',
+  toolsCalled = []
+} = {}) {
+  const topic = detectClaimGateTopic({ intent, activeFlow, userMessage });
+  if (!topic) return { needsMinInfo: false };
+
+  const topicConfig = TOOL_REQUIRED_CLAIM_GATES[topic];
+  if (!topicConfig) return { needsMinInfo: false };
+
+  const called = new Set((Array.isArray(toolsCalled) ? toolsCalled : []).map(String));
+  const hasRequiredToolCall = [...topicConfig.requiredTools].some(tool => called.has(tool));
+  if (hasRequiredToolCall) {
+    return { needsMinInfo: false };
+  }
+
+  return {
+    needsMinInfo: true,
+    reason: 'TOOL_REQUIRED_NOT_CALLED',
+    topic,
+    missingFields: topicConfig.missingFields
+  };
+}
+
+/**
+ * NOT_FOUND claim gate:
+ * If any tool produced NOT_FOUND, convert to a clarification action.
+ */
+export function evaluateNotFoundClaimGate(toolOutputs = []) {
+  const firstNotFound = (Array.isArray(toolOutputs) ? toolOutputs : []).find((output) => {
+    const normalized = normalizeOutcome(output?.outcome);
+    if (normalized === ToolOutcome.NOT_FOUND) return true;
+    const data = output?.output?.truth || output?.output?.data || output?.output;
+    return normalizeOutcome(data?.outcome) === ToolOutcome.NOT_FOUND;
+  });
+
+  if (!firstNotFound) {
+    return { needsClarification: false };
+  }
+
+  const toolName = String(firstNotFound?.name || '').toLowerCase();
+  let missingFields = ['reference_id'];
+  if (toolName.includes('ticket')) {
+    missingFields = ['ticket_number'];
+  } else if (toolName.includes('stock') || toolName.includes('product')) {
+    missingFields = ['product_name'];
+  } else if (toolName.includes('order') || toolName.includes('customer_data_lookup')) {
+    missingFields = ['order_number'];
+  }
+
+  return {
+    needsClarification: true,
+    reason: 'TOOL_NOT_FOUND',
+    missingFields,
+    toolName: firstNotFound?.name || null
+  };
+}
+
 // ============================================================================
 // TOOL OUTPUT FIELD EXTRACTOR
 // ============================================================================
@@ -486,317 +595,21 @@ export function extractRecordOwner(toolResult) {
   };
 }
 
-// ============================================================================
-// PRODUCT NOT FOUND HANDLER (Kova C - HP-07, HP-18)
-// ============================================================================
-
 /**
- * Ürün bulunamadı durumunu tespit et
- * LLM "bilgim yok" yerine net "bulunamadı" demeli
- *
- * @param {string} response - LLM response
- * @param {Array} toolOutputs - Tool çıktıları
- * @param {string} language - TR | EN
- * @returns {Object} { needsOverride, overrideResponse }
+ * Backward-compatible no-op wrappers.
+ * Steering overrides were removed; claim gates are now handled via
+ * evaluateToolRequiredClaimGate / evaluateNotFoundClaimGate.
  */
-export function checkProductNotFound(response, toolOutputs = [], language = 'TR') {
-  // Tool output'larında product search olup NOT_FOUND dönmüş mü?
-  // toolOutputs artık full result objeleri içeriyor: { name, success, output, outcome, message }
-  const productSearchResult = toolOutputs.find(result => {
-    if (!result) return false;
-
-    // Direct outcome check (from toolResult.js - PRIMARY check)
-    if (normalizeOutcome(result.outcome) === ToolOutcome.NOT_FOUND) return true;
-
-    // Check nested data in output
-    const data = result.output?.truth || result.output?.data || result.output;
-
-    return (
-      normalizeOutcome(data?.outcome) === ToolOutcome.NOT_FOUND ||
-      // Legacy flags
-      result.output?.notFound === true ||
-      data?.notFound === true ||
-      data?.found === false ||
-      data?.products?.length === 0 ||
-      // Type/error indicators
-      data?.type === 'PRODUCT_NOT_FOUND' ||
-      data?.error === 'PRODUCT_NOT_FOUND' ||
-      // Message content check
-      /ürün.*bulunamadı|product.*not.*found|kayıt.*bulunamadı/i.test(result.message || data?.message || '')
-    );
-  });
-
-  if (!productSearchResult) {
-    return { needsOverride: false };
-  }
-
-  const lang = language.toUpperCase() === 'EN' ? 'EN' : 'TR';
-  const patterns = NOT_FOUND_RESPONSE_PATTERNS[lang] || NOT_FOUND_RESPONSE_PATTERNS.TR;
-
-  const hasNotFoundStatement = patterns.some(p => p.test(response));
-
-  if (hasNotFoundStatement) {
-    return { needsOverride: false }; // LLM zaten doğru söylemiş
-  }
-
-  // LLM "bulunamadı" dememiş - override et
-  const overrideVariant = getMessageVariant('SECURITY_PRODUCT_NOT_FOUND', {
-    language,
-    directiveType: 'SECURITY_GATEWAY',
-    severity: 'info',
-    seedHint: `PRODUCT_NOT_FOUND|${response || ''}`
-  });
-  const overrideResponse = overrideVariant.text;
-
-  return {
-    needsOverride: true,
-    overrideResponse,
-    messageKey: overrideVariant.messageKey,
-    variantIndex: overrideVariant.variantIndex,
-    reason: 'PRODUCT_NOT_FOUND_NOT_ACKNOWLEDGED'
-  };
-}
-
-// ============================================================================
-// ORDER NOT FOUND HANDLER (HP-01 - Sipariş bulunamadı sonrası baskı)
-// ============================================================================
-
-/**
- * Sipariş bulunamadı durumunda:
- * 1. LLM "bulunamadı" demiş mi kontrol et (ürün gibi)
- * 2. LLM ürün listesi uyduruyor mu kontrol et
- *
- * @param {string} response - LLM response
- * @param {Array} toolOutputs - Tool çıktıları
- * @param {string} language - TR | EN
- * @returns {Object} { needsOverride, overrideResponse }
- */
-export function checkOrderNotFoundPressure(response, toolOutputs = [], language = 'TR') {
-  // P0-DEBUG: Log input for debugging
-  console.log('🔍 [checkOrderNotFoundPressure] Input:', {
-    responseLength: response?.length || 0,
-    toolOutputsCount: toolOutputs?.length || 0,
-    toolOutputs: toolOutputs?.map(r => ({
-      name: r?.name,
-      outcome: r?.outcome,
-      success: r?.success,
-      hasMessage: !!r?.message
-    }))
-  });
-
-  // Tool output'larında order search olup NOT_FOUND dönmüş mü?
-  // toolOutputs artık full result objeleri içeriyor: { name, success, output, outcome, message }
-  const orderNotFound = toolOutputs.find(result => {
-    if (!result) return false;
-
-    // Direct outcome check (from toolResult.js - PRIMARY check)
-    if (normalizeOutcome(result.outcome) === ToolOutcome.NOT_FOUND) {
-      console.log('✅ [checkOrderNotFoundPressure] Found NOT_FOUND via direct outcome check');
-      return true;
-    }
-
-    // Check nested data in output
-    const data = result.output?.truth || result.output?.data || result.output;
-
-    const isNotFound = (
-      normalizeOutcome(data?.outcome) === ToolOutcome.NOT_FOUND ||
-      // Legacy flags
-      result.output?.notFound === true ||
-      data?.notFound === true ||
-      data?.orderFound === false ||
-      data?.found === false ||
-      // Type/error indicators
-      data?.type === 'ORDER_NOT_FOUND' ||
-      data?.error === 'ORDER_NOT_FOUND' ||
-      data?.error === 'NOT_FOUND' ||
-      // Message content check
-      /sipariş.*bulunamadı|order.*not.*found|kayıt.*bulunamadı|no.*matching.*record|eşleşen.*bulunamadı/i.test(result.message || data?.message || '')
-    );
-
-    if (isNotFound) {
-      console.log('✅ [checkOrderNotFoundPressure] Found NOT_FOUND via nested/legacy check');
-    }
-
-    return isNotFound;
-  });
-
-  console.log('🔍 [checkOrderNotFoundPressure] Detection result:', {
-    orderNotFound: !!orderNotFound,
-    foundInTool: orderNotFound?.name
-  });
-
-  if (!orderNotFound) {
-    return { needsOverride: false };
-  }
-
-  const lang = language.toUpperCase() === 'EN' ? 'EN' : 'TR';
-
-  // ============================================
-  // STEP 1: LLM "bulunamadı" demiş mi kontrol et
-  // ============================================
-  const notFoundPatternsForLang = NOT_FOUND_RESPONSE_PATTERNS[lang] || NOT_FOUND_RESPONSE_PATTERNS.TR;
-  const hasNotFoundStatement = notFoundPatternsForLang.some(p => p.test(response));
-
-  // ============================================
-  // STEP 2: LLM ürün listesi uyduruyor mu?
-  // ============================================
-  const fabricationPatternsForLang = ORDER_FABRICATION_PATTERNS[lang] || ORDER_FABRICATION_PATTERNS.TR;
-  const hasFabrication = fabricationPatternsForLang.some(p => p.test(response));
-
-  // ============================================
-  // DECISION LOGIC
-  // ============================================
-
-  // Case 1: LLM "bulunamadı" demiş ve fabrication yok → OK
-  if (hasNotFoundStatement && !hasFabrication) {
-    return { needsOverride: false };
-  }
-
-  // Case 2: LLM fabrication yapıyor → Override
-  if (hasFabrication) {
-    const overrideVariant = getMessageVariant('SECURITY_ORDER_NOT_FOUND_FABRICATION', {
-      language: lang,
-      directiveType: 'SECURITY_GATEWAY',
-      severity: 'warning',
-      seedHint: `ORDER_NOT_FOUND_FABRICATION|${response || ''}`
-    });
-    const overrideResponse = overrideVariant.text;
-
-    return {
-      needsOverride: true,
-      overrideResponse,
-      messageKey: overrideVariant.messageKey,
-      variantIndex: overrideVariant.variantIndex,
-      reason: 'ORDER_NOT_FOUND_FABRICATION_DETECTED'
-    };
-  }
-
-  // Case 3: LLM "bulunamadı" DEMEMİŞ (spesifik cevap vermiş) → Override
-  // Bu kritik: tool NOT_FOUND döndü ama LLM bunu acknowledge etmedi
-  if (!hasNotFoundStatement) {
-    console.warn('⚠️ [SecurityGateway] ORDER_NOT_FOUND but LLM did not acknowledge - enforcing fallback');
-
-    const overrideVariant = getMessageVariant('SECURITY_ORDER_NOT_FOUND_NOT_ACK', {
-      language: lang,
-      directiveType: 'SECURITY_GATEWAY',
-      severity: 'info',
-      seedHint: `ORDER_NOT_FOUND_NO_ACK|${response || ''}`
-    });
-    const overrideResponse = overrideVariant.text;
-
-    return {
-      needsOverride: true,
-      overrideResponse,
-      messageKey: overrideVariant.messageKey,
-      variantIndex: overrideVariant.variantIndex,
-      reason: 'ORDER_NOT_FOUND_NOT_ACKNOWLEDGED'
-    };
-  }
-
+export function checkProductNotFound() {
   return { needsOverride: false };
 }
 
-// ============================================================================
-// REQUIRES TOOL CALL ENFORCEMENT (HP-07 Fix)
-// ============================================================================
-
-/**
- * Intent'in tool çağrısı gerektirip gerektirmediğini kontrol et
- * Tool çağrılmamışsa deterministik response döndür
- *
- * @param {string} intent - Tespit edilen intent (product_spec, stock_check vb.)
- * @param {Array} toolsCalled - Çağrılan tool'ların listesi
- * @param {string} language - TR | EN
- * @returns {Object} { needsOverride, overrideResponse }
- */
-export function enforceRequiredToolCall(intent, toolsCalled = [], language = 'TR', responseText = '') {
-  // Intent'ler ve tool zorunlulukları
-  const TOOL_REQUIRED_INTENTS = {
-    product_spec: {
-      requiredTools: ['get_product_stock', 'search_products'],
-      messageKey: 'SECURITY_TOOL_REQUIRED_PRODUCT_SPEC'
-    },
-    stock_check: {
-      requiredTools: ['get_product_stock', 'search_products'],
-      messageKey: 'SECURITY_TOOL_REQUIRED_STOCK_CHECK'
-    }
-  };
-
-  // Bu intent tool gerektiriyor mu?
-  const intentConfig = TOOL_REQUIRED_INTENTS[intent];
-  if (!intentConfig) {
-    return { needsOverride: false };
-  }
-
-  // Tool çağrılmış mı kontrol et
-  const calledRequiredTool = intentConfig.requiredTools.some(tool =>
-    toolsCalled.includes(tool)
-  );
-
-  if (calledRequiredTool) {
-    return { needsOverride: false }; // Tool çağrılmış, sorun yok
-  }
-
-  // P2-F: Enhanced check — even if tool wasn't called, check if LLM fabricated product data
-  // Detect specific product claims (price, specs, availability) in response
-  if (responseText && containsProductClaims(responseText, language)) {
-    console.warn(`🚨 [SecurityGateway] Product data fabrication detected for intent "${intent}"!`);
-  }
-
-  // Tool çağrılmamış - deterministik response döndür
-  const lang = language.toUpperCase() === 'EN' ? 'EN' : 'TR';
-  const overrideVariant = getMessageVariant(intentConfig.messageKey, {
-    language: lang,
-    directiveType: 'SECURITY_GATEWAY',
-    severity: 'info',
-    intent,
-    seedHint: `${intent}|REQUIRED_TOOL_NOT_CALLED`
-  });
-  const overrideResponse = overrideVariant.text;
-
-  console.warn(`⚠️ [SecurityGateway] TOOL_REQUIRED intent "${intent}" but no tool called! Enforcing fallback.`);
-
-  return {
-    needsOverride: true,
-    overrideResponse,
-    messageKey: overrideVariant.messageKey,
-    variantIndex: overrideVariant.variantIndex,
-    reason: 'TOOL_REQUIRED_NOT_CALLED',
-    intent
-  };
+export function checkOrderNotFoundPressure() {
+  return { needsOverride: false };
 }
 
-/**
- * P2-F: Detect product-specific claims in response text
- * Used to catch LLM hallucinating product info from training data
- */
-function containsProductClaims(response, language = 'TR') {
-  const patterns = {
-    TR: [
-      // Price claims
-      /fiyat[ıi]?\s*[:\s]*[\d.,]+\s*(TL|₺|USD|\$|EUR|€)/i,
-      /[\d.,]+\s*(TL|₺)\s*(fiyat|ücret|maliyet)/i,
-      // Spec claims
-      /özellik(ler)?[iı]?\s*[:\s]*(boyut|ağırlık|güç|kapasite|renk|malzeme)/i,
-      /teknik\s*(detay|özellik|bilgi)\s*[:\s]/i,
-      // Availability claims
-      /stok(ta|umuzda)\s*(var|mevcut|bulunuyor)/i,
-      /mağaza(mız)?da\s*(mevcut|satışta|bulunuyor)/i,
-      /(web\s*site|online)\s*(mağaza)?(mız)?da\s*(mevcut|var|bulunuyor)/i,
-    ],
-    EN: [
-      /price\s*[:\s]*[\d.,]+\s*(USD|\$|EUR|€|GBP|£)/i,
-      /specifications?\s*[:\s]*(size|weight|power|capacity|color|material)/i,
-      /technical\s*(details?|specs?)\s*[:\s]/i,
-      /in\s*stock/i,
-      /available\s*(in\s*store|online|now)/i,
-    ]
-  };
-
-  const lang = language.toUpperCase() === 'EN' ? 'EN' : 'TR';
-  const langPatterns = patterns[lang] || patterns.TR;
-
-  return langPatterns.some(p => p.test(response));
+export function enforceRequiredToolCall() {
+  return { needsOverride: false };
 }
 
 // ============================================================================
@@ -809,6 +622,8 @@ export default {
   getDataClass,
   evaluateSecurityGateway,
   applyLeakFilter,
+  evaluateToolRequiredClaimGate,
+  evaluateNotFoundClaimGate,
   runContextualDetection,
   extractFieldsFromToolOutput,
   extractRecordOwner,

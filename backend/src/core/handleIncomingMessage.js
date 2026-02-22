@@ -82,6 +82,18 @@ function buildLlmCallTrace(metrics = {}, { channel = 'UNKNOWN', sessionId = null
   };
 }
 
+function mapAssistantMessageType({
+  guardrailAction = 'PASS',
+  responseGrounding = RESPONSE_GROUNDING.GROUNDED,
+  needsCallbackInfo = false
+} = {}) {
+  if (guardrailAction === 'BLOCK') return 'system_barrier';
+  if (guardrailAction === 'SANITIZE') return 'sanitized_assistant';
+  if (guardrailAction === 'NEED_MIN_INFO_FOR_TOOL' || needsCallbackInfo) return 'clarification';
+  if (responseGrounding === RESPONSE_GROUNDING.CLARIFICATION) return 'clarification';
+  return 'assistant_claim';
+}
+
 /**
  * Extract order number from user message
  * CONSERVATIVE: Only matches clear order number patterns to avoid false positives
@@ -480,7 +492,12 @@ export async function handleIncomingMessage({
         reply: getBlockedContentMessage(language),
         outcome: ToolOutcome.DENIED,
         metadata: {
-          outcome: ToolOutcome.DENIED
+          outcome: ToolOutcome.DENIED,
+          guardrailAction: 'BLOCK',
+          messageType: 'system_barrier',
+          LLM_CALLED: false,
+          llm_call_reason: normalizeLlmCallReason(channel),
+          bypassed: true
         },
         shouldEndSession: false,
         forceEnd: false,
@@ -545,7 +562,14 @@ export async function handleIncomingMessage({
       return {
         reply: throttleMessage,
         outcome: ToolOutcome.DENIED,
-        metadata: { outcome: ToolOutcome.DENIED },
+        metadata: {
+          outcome: ToolOutcome.DENIED,
+          guardrailAction: 'BLOCK',
+          messageType: 'system_barrier',
+          LLM_CALLED: false,
+          llm_call_reason: normalizeLlmCallReason(channel),
+          bypassed: true
+        },
         shouldEndSession: false,
         forceEnd: false,
         locked: false,
@@ -620,7 +644,12 @@ export async function handleIncomingMessage({
           metadata: {
             outcome: ToolOutcome.DENIED,
             injectionBlocked: true,
-            injectionType: injectionCheck.type
+            injectionType: injectionCheck.type,
+            guardrailAction: 'BLOCK',
+            messageType: 'system_barrier',
+            LLM_CALLED: false,
+            llm_call_reason: normalizeLlmCallReason(channel),
+            bypassed: true
           },
           shouldEndSession: false,
           forceEnd: false,
@@ -693,7 +722,12 @@ export async function handleIncomingMessage({
         outcome: ToolOutcome.DENIED,
         metadata: {
           outcome: ToolOutcome.DENIED,
-          lockReason: contextResult.terminationReason || null
+          lockReason: contextResult.terminationReason || null,
+          guardrailAction: 'BLOCK',
+          messageType: 'system_barrier',
+          LLM_CALLED: false,
+          llm_call_reason: normalizeLlmCallReason(channel),
+          bypassed: true
         },
         shouldEndSession: true,
         forceEnd: true,
@@ -1044,7 +1078,12 @@ export async function handleIncomingMessage({
           metadata: {
             outcome: ToolOutcome.DENIED,
             lockReason: 'ENUMERATION',
-            failedAttempts: enumResult.attempts
+            failedAttempts: enumResult.attempts,
+            guardrailAction: 'BLOCK',
+            messageType: 'system_barrier',
+            LLM_CALLED: metrics.LLM_CALLED === true,
+            llm_call_reason: metrics.llm_call_reason || metrics.llmCallReason || normalizeLlmCallReason(channel),
+            bypassed: metrics.bypassed === true
           },
           shouldEndSession: false,
           forceEnd: false,
@@ -1096,6 +1135,11 @@ export async function handleIncomingMessage({
         businessId: business.id,
         metrics,
         responseGrounding: RESPONSE_GROUNDING.CLARIFICATION,
+        assistantMessageMeta: {
+          messageType: 'system_barrier',
+          guardrailAction: 'BLOCK',
+          guardrailReason: 'TOOL_INFRA_ERROR'
+        },
         effectsEnabled // DRY-RUN flag
       });
 
@@ -1105,7 +1149,12 @@ export async function handleIncomingMessage({
         metadata: {
           outcome: ToolOutcome.INFRA_ERROR,
           failedTool,
-          responseGrounding: RESPONSE_GROUNDING.CLARIFICATION
+          responseGrounding: RESPONSE_GROUNDING.CLARIFICATION,
+          guardrailAction: 'BLOCK',
+          messageType: 'system_barrier',
+          LLM_CALLED: metrics.LLM_CALLED === true,
+          llm_call_reason: metrics.llm_call_reason || metrics.llmCallReason || normalizeLlmCallReason(channel),
+          bypassed: metrics.bypassed === true
         },
         shouldEndSession: false,
         forceEnd: channel === 'PHONE', // Force end on phone if tool failed
@@ -1309,13 +1358,11 @@ export async function handleIncomingMessage({
     // ========================================
     console.log('\n[STEP 8] Persisting state and emitting metrics...');
     const guardrailAction = guardrailResult.action || 'PASS';
-    const assistantMessageType = guardrailAction === 'NEED_MIN_INFO_FOR_TOOL' || guardrailResult.needsCallbackInfo
-      ? 'clarification'
-      : guardrailAction === 'BLOCK'
-        ? 'system_barrier'
-        : guardrailAction === 'SANITIZE'
-          ? 'system_barrier'
-          : 'assistant_claim';
+    const assistantMessageType = mapAssistantMessageType({
+      guardrailAction,
+      responseGrounding,
+      needsCallbackInfo: guardrailResult.needsCallbackInfo
+    });
 
     const { shouldEndSession, forceEnd, metadata: persistMetadata } = await persistAndEmitMetrics({
       sessionId: resolvedSessionId,
@@ -1359,6 +1406,7 @@ export async function handleIncomingMessage({
         outcome: turnOutcome,
         guardrailsApplied: guardrailResult.guardrailsApplied || [],
         guardrailAction,
+        messageType: assistantMessageType,
         guardrailMessageKey: guardrailResult.messageKey || null,
         guardrailVariantIndex: Number.isInteger(guardrailResult.variantIndex) ? guardrailResult.variantIndex : null,
         verificationState: state?.verification?.status || 'none',
@@ -1422,6 +1470,8 @@ export async function handleIncomingMessage({
       outcome: ToolOutcome.INFRA_ERROR,
       metadata: {
         outcome: ToolOutcome.INFRA_ERROR,
+        guardrailAction: 'BLOCK',
+        messageType: 'system_barrier',
         LLM_CALLED: metrics.LLM_CALLED === true,
         llm_call_reason: metrics.llm_call_reason || metrics.llmCallReason || normalizeLlmCallReason(channel),
         bypassed: metrics.bypassed === true || metrics.llmBypassed === true || metrics.LLM_CALLED !== true
