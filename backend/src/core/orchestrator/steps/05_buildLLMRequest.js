@@ -229,6 +229,15 @@ KURAL:
     const assistantName = assistant?.name || 'Asistan';
     const businessName = business?.name || '';
 
+    // Tekrar algılama: son assistant cevaplarından benzersiz olanları bul
+    const recentAssistantMsgs = conversationHistory
+      .filter(m => m.role === 'assistant')
+      .map(m => String(m.content || '').trim())
+      .slice(-5);
+    const uniqueResponses = [...new Set(recentAssistantMsgs)];
+    const hasRepetition = recentAssistantMsgs.length >= 2 && uniqueResponses.length < recentAssistantMsgs.length;
+    const repeatedPhrase = hasRepetition ? uniqueResponses[uniqueResponses.length - 1] : null;
+
     enhancedSystemPrompt += `
 
 ## CHATTER KISA YANIT MODU (LLM Directive)
@@ -243,8 +252,14 @@ KURALLAR:
 - Cevabı 1-2 cümle ile sınırla (${chatterDirective.maxSentences} cümleyi aşma).
 - Kısa selamdan sonra en fazla 1 net takip sorusu sor.
 - Aktif görev varsa soruyu o göreve geri bağla.
-- Backend şablonlarını tekrar etme, cevabı doğal varyasyonla kendin üret.`;
-    console.log('💬 [BuildLLMRequest] CHATTER — LLM directive mode active');
+- Backend şablonlarını tekrar etme, cevabı doğal varyasyonla kendin üret.${hasRepetition ? `
+
+⚠️ TEKRAR YASAĞI (KRİTİK):
+Önceki cevaplarında "${repeatedPhrase}" ifadesini ZATEN KULLANDIN.
+Bu cevabı veya benzerini TEKRAR KULLANMA.
+Farklı bir selamlama ve farklı bir soru sor.
+Örnek varyasyonlar: "Hoş geldin!", "Tekrar merhaba!", "Selamlar!", "Hey, nasıl yardımcı olabilirim?", "Buyur, dinliyorum!"` : ''}`;
+    console.log(`💬 [BuildLLMRequest] CHATTER — LLM directive mode active${hasRepetition ? ' (anti-repeat injected)' : ''}`);
   } else if (isChatterRoute) {
     const assistantName = assistant?.name || 'Asistan';
     const businessName = business?.name || '';
@@ -322,7 +337,7 @@ KURALLAR:
   const isChatterLLM = !!chatterDirective;
   const generationConfig = isChatterLLM
     ? {
-        temperature: 0.5,
+        temperature: 0.8,
         topP: 0.95,
         topK: 40,
         maxOutputTokens: 200,
@@ -337,7 +352,7 @@ KURALLAR:
       };
 
   if (isChatterLLM) {
-    console.log('💬 [BuildLLMRequest] CHATTER budget: maxOutputTokens=200, temperature=0.5');
+    console.log('💬 [BuildLLMRequest] CHATTER budget: maxOutputTokens=200, temperature=0.8');
   }
 
   const model = genAI.getGenerativeModel({
