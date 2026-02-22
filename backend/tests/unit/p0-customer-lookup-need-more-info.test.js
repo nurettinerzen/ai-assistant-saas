@@ -84,4 +84,39 @@ describe('P0 customer_data_lookup deterministic outcomes', () => {
     expect(result.outcome).toBe(ToolOutcome.NOT_FOUND);
     expect(result.outcome).not.toBe(ToolOutcome.NEED_MORE_INFO);
   });
+
+  it('B4: numeric order input should fallback to phone lookup before returning NOT_FOUND', async () => {
+    prismaMock.crmOrder.findFirst
+      .mockResolvedValueOnce(null) // order exact
+      .mockResolvedValueOnce(null) // order normalized
+      .mockResolvedValueOnce(null) // order contains
+      .mockResolvedValueOnce({     // phone fallback (crmOrder by customerPhone)
+        id: 'crm-order-phone-1',
+        businessId: 1,
+        orderNumber: 'ORD-424527',
+        customerName: 'Ahmet Yılmaz',
+        customerPhone: '4245275089',
+        customerEmail: 'ahmet@example.com',
+        status: 'Hazırlanıyor'
+      });
+
+    prismaMock.customerData.findMany.mockResolvedValue([]);
+    prismaMock.customerData.findFirst.mockResolvedValue(null);
+
+    const result = await executeLookup(
+      {
+        query_type: 'siparis',
+        order_number: '4245275089'
+      },
+      business,
+      {
+        state: { verification: { status: 'none' } },
+        sessionId: 'test-b4'
+      }
+    );
+
+    expect(result.outcome).not.toBe(ToolOutcome.NOT_FOUND);
+    expect(prismaMock.crmOrder.findFirst).toHaveBeenCalledTimes(4);
+    expect(prismaMock.crmOrder.findFirst.mock.calls[3][0]?.where?.OR?.[0]).toHaveProperty('customerPhone');
+  });
 });

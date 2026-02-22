@@ -11,7 +11,7 @@
  */
 
 import prisma from '../../prismaClient.js';
-import { normalizePhone, comparePhones, phoneSearchVariants } from '../../utils/text.js';
+import { normalizePhone, phoneSearchVariants } from '../../utils/text.js';
 
 /**
  * Normalize order number for consistent lookups
@@ -68,6 +68,71 @@ function isLikelyValidOrderNumber(orderNumber) {
   if (/^\d{3,}$/.test(normalized)) return true;
 
   return false;
+}
+
+function looksLikePhoneIdentifier(value) {
+  if (!value) return false;
+  const raw = String(value).trim();
+  if (!raw) return false;
+
+  // If there are letters, treat it as an order/reference code, not phone.
+  if (/[a-zA-Z\u00C0-\u024F]/.test(raw)) return false;
+
+  const digits = raw.replace(/\D/g, '');
+  return digits.length === 10 || digits.length === 11;
+}
+
+async function findRecordByPhone({ businessId, phone, queryType }) {
+  const variants = phoneSearchVariants(phone);
+  const normalizedPhone = normalizePhone(phone);
+  const normalizedQueryType = String(queryType || '').toLowerCase();
+
+  // First try CustomerData table
+  let record = await prisma.customerData.findFirst({
+    where: {
+      businessId,
+      OR: variants.map(v => ({ phone: v }))
+    }
+  });
+  let sourceTable = 'CustomerData';
+
+  // If CustomerData found AND query is order-related, fetch latest CrmOrder.
+  if (record && (normalizedQueryType === 'siparis' || normalizedQueryType === 'order')) {
+    const relatedOrder = await prisma.crmOrder.findFirst({
+      where: {
+        businessId,
+        OR: variants.map(v => ({ customerPhone: v }))
+      },
+      orderBy: { createdAt: 'desc' } // Most recent order
+    });
+
+    if (relatedOrder) {
+      record = relatedOrder;
+      sourceTable = 'CrmOrder';
+    }
+  }
+
+  // If not found in CustomerData, try CrmOrder table
+  if (!record) {
+    const crmOrder = await prisma.crmOrder.findFirst({
+      where: {
+        businessId,
+        OR: variants.map(v => ({ customerPhone: v }))
+      }
+    });
+
+    if (crmOrder) {
+      record = crmOrder;
+      sourceTable = 'CrmOrder';
+    }
+  }
+
+  return {
+    record,
+    sourceTable,
+    normalizedPhone,
+    variantsCount: variants.length
+  };
 }
 import {
   requiresVerification,
@@ -342,10 +407,31 @@ export async function execute(args, business, context = {}) {
         }
 
         if (!record) {
-          // P0-1 FIX: Use generic message to prevent enumeration attacks
-          // SECURITY: Do NOT reveal that this specific order number doesn't exist
-          console.log('📭 [Lookup] Order not found in both CrmOrder and CustomerData');
-          return notFound(GENERIC_ERROR_MESSAGES[language] || GENERIC_ERROR_MESSAGES.TR);
+          if (looksLikePhoneIdentifier(order_number)) {
+            // Deterministic recovery: if order-like lookup fails but identifier is numeric 10-11,
+            // retry as phone to avoid false NOT_FOUND due LLM arg mismatch.
+            console.log('🔁 [Lookup] Order not found, retrying same identifier as phone');
+            const phoneLookup = await findRecordByPhone({
+              businessId: business.id,
+              phone: order_number,
+              queryType: query_type
+            });
+
+            if (phoneLookup.record) {
+              console.log('✅ [Lookup] Recovered via phone fallback');
+              record = phoneLookup.record;
+              sourceTable = phoneLookup.sourceTable;
+              anchorType = 'phone';
+              anchorValue = phoneLookup.normalizedPhone.replace(/^\+/, '');
+            }
+          }
+
+          if (!record) {
+            // P0-1 FIX: Use generic message to prevent enumeration attacks
+            // SECURITY: Do NOT reveal that this specific order number doesn't exist
+            console.log('📭 [Lookup] Order not found in both CrmOrder and CustomerData');
+            return notFound(GENERIC_ERROR_MESSAGES[language] || GENERIC_ERROR_MESSAGES.TR);
+          }
         }
       }
     }
@@ -373,69 +459,23 @@ export async function execute(args, business, context = {}) {
     // SECURITY NOTE: Phone lookup is allowed, but will ALWAYS require name verification
     // before returning any PII (enforced by checkVerification below)
     else if (phone) {
-      // Generate all plausible phone variants for flexible matching.
-      // DB may store as "5328274926", "+905328274926", "14245275089", etc.
-      // phoneSearchVariants handles TR, US, and ambiguous formats.
-      const variants = phoneSearchVariants(phone);
-      const normalizedPhone = normalizePhone(phone);
+      const phoneLookup = await findRecordByPhone({
+        businessId: business.id,
+        phone,
+        queryType: query_type
+      });
 
       console.log('🔍 [Lookup] Searching by phone:', {
         original: phone,
-        normalized: normalizedPhone,
-        variants: variants.length
+        normalized: phoneLookup.normalizedPhone,
+        variants: phoneLookup.variantsCount
       });
 
-      // First try CustomerData table
-      record = await prisma.customerData.findFirst({
-        where: {
-          businessId: business.id,
-          OR: variants.map(v => ({ phone: v }))
-        }
-      });
-
-      // If CustomerData found AND query is order-related, also fetch latest CrmOrder.
-      // CustomerData has customer info (name, email, phone) but NOT order info
-      // (orderNumber, status, tracking). CrmOrder has the order details.
-      // We prefer CrmOrder as the primary record for order queries so getFullResult()
-      // can access orderNumber, status, carrier, trackingNumber etc.
-      if (record && (query_type === 'siparis' || query_type === 'order')) {
-        const relatedOrder = await prisma.crmOrder.findFirst({
-          where: {
-            businessId: business.id,
-            OR: variants.map(v => ({ customerPhone: v }))
-          },
-          orderBy: { createdAt: 'desc' } // Most recent order
-        });
-
-        if (relatedOrder) {
-          console.log('✅ [Lookup] CustomerData found + related CrmOrder:', relatedOrder.orderNumber);
-          record = relatedOrder;
-          sourceTable = 'CrmOrder';
-        } else {
-          console.log('ℹ️ [Lookup] CustomerData found but no related CrmOrder for order query');
-        }
-      }
-
-      // If not found in CustomerData, try CrmOrder table
-      if (!record) {
-        console.log('🔍 [Lookup] Not in CustomerData, searching CrmOrder by phone...');
-        const crmOrder = await prisma.crmOrder.findFirst({
-          where: {
-            businessId: business.id,
-            OR: variants.map(v => ({ customerPhone: v }))
-          }
-        });
-
-        if (crmOrder) {
-          console.log('✅ [Lookup] Found CRM order by phone:', crmOrder.orderNumber);
-          record = crmOrder;
-          sourceTable = 'CrmOrder';
-        }
-      }
-
-      if (record) {
+      if (phoneLookup.record) {
+        record = phoneLookup.record;
+        sourceTable = phoneLookup.sourceTable;
         anchorType = 'phone';
-        anchorValue = normalizedPhone.replace(/^\+/, '');
+        anchorValue = phoneLookup.normalizedPhone.replace(/^\+/, '');
       }
     }
 

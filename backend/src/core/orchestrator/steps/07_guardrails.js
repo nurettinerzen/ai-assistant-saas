@@ -50,6 +50,7 @@ function resolveMinInfoQuestion({
   const missingSet = new Set(Array.isArray(missingFields) ? missingFields : []);
 
   const hasOrder = missingSet.has('order_number');
+  const hasOrderOrPhone = missingSet.has('order_or_phone');
   const hasPhoneLast4 = missingSet.has('phone_last4');
   const hasTicket = missingSet.has('ticket_number');
   const hasProduct = missingSet.has('product_name');
@@ -57,6 +58,13 @@ function resolveMinInfoQuestion({
   const lang = String(language || 'TR').toUpperCase() === 'EN' ? 'EN' : 'TR';
 
   if (lang === 'EN') {
+    if (hasOrderOrPhone) {
+      return {
+        text: 'To continue, could you confirm whether this is your phone number or your order number?',
+        messageKey: 'NEED_MIN_INFO_FOR_TOOL_DETERMINISTIC',
+        variantIndex: 0
+      };
+    }
     if (hasTicket) {
       return {
         text: 'To continue, could you share your ticket number?',
@@ -80,7 +88,7 @@ function resolveMinInfoQuestion({
     }
     if (hasOrder && hasPhoneLast4) {
       return {
-        text: 'To proceed safely, could you share your order number and the last 4 digits of your phone?',
+        text: 'To proceed safely, could you share your order number?',
         messageKey: 'NEED_MIN_INFO_FOR_TOOL_DETERMINISTIC',
         variantIndex: 0
       };
@@ -99,6 +107,13 @@ function resolveMinInfoQuestion({
     };
   }
 
+  if (hasOrderOrPhone) {
+    return {
+      text: 'Devam edebilmem için bunun telefon numarası mı yoksa sipariş numarası mı olduğunu teyit eder misiniz?',
+      messageKey: 'NEED_MIN_INFO_FOR_TOOL_DETERMINISTIC',
+      variantIndex: 0
+    };
+  }
   if (hasTicket) {
     return {
       text: 'Devam edebilmem için ticket numaranızı paylaşır mısınız?',
@@ -122,7 +137,7 @@ function resolveMinInfoQuestion({
   }
   if (hasOrder && hasPhoneLast4) {
     return {
-      text: 'Güvenli şekilde devam edebilmem için sipariş numaranızı ve telefon numaranızın son 4 hanesini paylaşır mısınız?',
+      text: 'Güvenli şekilde devam edebilmem için sipariş numaranızı paylaşır mısınız?',
       messageKey: 'NEED_MIN_INFO_FOR_TOOL_DETERMINISTIC',
       variantIndex: 0
     };
@@ -465,7 +480,7 @@ export async function applyGuardrails(params) {
   }
 
   // POLICY 1.6: NOT_FOUND claim gate (single clarification, no content rewrite policy)
-  const notFoundGate = evaluateNotFoundClaimGate(toolOutputs);
+  const notFoundGate = evaluateNotFoundClaimGate(toolOutputs, { userMessage });
   if (notFoundGate.needsClarification) {
     const clarification = buildNotFoundClarification(language, notFoundGate.missingFields || []);
     metrics.notFoundClaimGate = {

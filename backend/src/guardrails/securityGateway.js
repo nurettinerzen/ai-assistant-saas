@@ -286,6 +286,27 @@ function escapeRegExp(str) {
   return String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+function normalizeTopicText(value = '') {
+  return String(value || '')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+}
+
+function looksLikeAmbiguousOrderOrPhoneInput(userMessage = '') {
+  const raw = String(userMessage || '').trim();
+  if (!raw) return false;
+
+  // Any alphabetic marker means the user already disambiguated the identifier type.
+  if (/[a-zA-Z\u00C0-\u024F]/.test(raw)) return false;
+
+  const digits = raw.replace(/\D/g, '');
+  if (digits.length !== 10 && digits.length !== 11) return false;
+
+  // Allow numeric-only entries with lightweight punctuation/spaces.
+  return /^[\d\s()+\-_.#]+$/.test(raw);
+}
+
 /**
  * Mask phone numbers in response text.
  * Replaces digits with asterisks, keeping first 3 and last 2 digits visible.
@@ -439,7 +460,7 @@ export function applyLeakFilter(response, verificationState = 'none', language =
 function detectClaimGateTopic({ intent = null, activeFlow = null, userMessage = '' }) {
   const normalizedIntent = String(intent || '').toLowerCase();
   const normalizedFlow = String(activeFlow || '').toUpperCase();
-  const text = String(userMessage || '').toLowerCase();
+  const text = normalizeTopicText(userMessage);
 
   // ORDER_STATUS: Intent/flow match is authoritative
   if (TOOL_REQUIRED_CLAIM_GATES.ORDER_STATUS.intents.has(normalizedIntent) ||
@@ -447,12 +468,15 @@ function detectClaimGateTopic({ intent = null, activeFlow = null, userMessage = 
     return 'ORDER_STATUS';
   }
 
-  // ORDER_STATUS text fallback: only match when a SPECIFIC order is referenced
-  // Broad terms like "kargo", "durum" alone are policy questions, not order lookups
-  const hasOrderIdentifier = /\b(ORD|SIP|ORDER)[-_]\d+/i.test(text) ||
-    /sipariş(im|imi|imin|ımı|ıma|ım)\b/i.test(text) ||
-    /sipariş\s*(no|numarası|numaram)/i.test(text) ||
-    /\btracking\b/i.test(text);
+  // ORDER_STATUS text fallback: detect direct "where is my order" variants (TR/EN)
+  // using accent-insensitive text to cover "siparisim nerde kaldi" type inputs.
+  const hasOrderIdentifier = /\b(ord|sip|order)[-_]\d+\b/i.test(text) ||
+    /\bsiparis\s*(no|numarasi|numaram|num)\b/i.test(text) ||
+    /\btracking\b/i.test(text) ||
+    /\border\s*status\b/i.test(text) ||
+    /\bwhere\s+is\s+my\s+(order|package)\b/i.test(text) ||
+    /\bsiparis(?:im)?\s*(nerede|nerde|durum(?:u)?|ne durumda|hangi asamada|ne asamada|kaldi)\b/i.test(text) ||
+    /\bkargom?\s*(nerede|nerde|durum(?:u)?|ne durumda|kaldi)\b/i.test(text);
   if (hasOrderIdentifier) return 'ORDER_STATUS';
 
   // TICKET_STATUS
@@ -511,7 +535,8 @@ export function evaluateToolRequiredClaimGate({
  * NOT_FOUND claim gate:
  * If any tool produced NOT_FOUND, convert to a clarification action.
  */
-export function evaluateNotFoundClaimGate(toolOutputs = []) {
+export function evaluateNotFoundClaimGate(toolOutputs = [], options = {}) {
+  const { userMessage = '' } = options;
   const firstNotFound = (Array.isArray(toolOutputs) ? toolOutputs : []).find((output) => {
     const normalized = normalizeOutcome(output?.outcome);
     if (normalized === ToolOutcome.NOT_FOUND) return true;
@@ -530,7 +555,9 @@ export function evaluateNotFoundClaimGate(toolOutputs = []) {
   } else if (toolName.includes('stock') || toolName.includes('product')) {
     missingFields = ['product_name'];
   } else if (toolName.includes('order') || toolName.includes('customer_data_lookup')) {
-    missingFields = ['order_number'];
+    missingFields = looksLikeAmbiguousOrderOrPhoneInput(userMessage)
+      ? ['order_or_phone']
+      : ['order_number'];
   }
 
   return {
