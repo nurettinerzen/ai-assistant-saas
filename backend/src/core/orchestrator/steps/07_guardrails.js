@@ -466,6 +466,8 @@ export async function applyGuardrails(params) {
       };
     }
 
+    // P0-3: Debug bilgisi — BLOCK olduğunda neden tetiklendiğini metadata'ya aktar
+    const blockFirstLeak = (leakFilterResult.leaks || [])[0] || {};
     return {
       finalResponse: leakFilterResult.blockedMessage || getBarrierMessage(language),
       action: GuardrailAction.BLOCK,
@@ -473,7 +475,15 @@ export async function applyGuardrails(params) {
       blocked: true,
       blockReason: leakFilterResult.blockReason || 'SECURITY_GATEWAY_BLOCK',
       leaks: leakFilterResult.leaks,
-      telemetry: leakFilterResult.telemetry
+      telemetry: leakFilterResult.telemetry,
+      leakFilterDebug: {
+        ruleId: blockFirstLeak.triggerType || blockFirstLeak.type || 'unknown',
+        triggerType: blockFirstLeak.triggerType || null,
+        candidateToken: blockFirstLeak.candidateToken || null,
+        contextHit: blockFirstLeak.contextHit || null,
+        leakTypes: (leakFilterResult.leaks || []).map(l => l.type),
+        reason: leakFilterResult.telemetry?.reason || null
+      }
     };
   }
 
@@ -481,6 +491,17 @@ export async function applyGuardrails(params) {
   if (leakFilterResult.action === GuardrailAction.SANITIZE && leakFilterResult.sanitized && leakFilterResult.sanitized !== responseText) {
     console.log('🔒 [SecurityGateway] Leak filter passed with redaction applied');
     responseText = leakFilterResult.sanitized;
+
+    // P0-3: Debug bilgisi — SANITIZE olduğunda neden tetiklendiğini metadata'ya aktar
+    const firstLeak = (leakFilterResult.leaks || [])[0] || {};
+    metrics.leakFilterDebug = {
+      ruleId: firstLeak.triggerType || firstLeak.type || 'unknown',
+      triggerType: firstLeak.triggerType || null,
+      candidateToken: firstLeak.candidateToken || null,
+      contextHit: firstLeak.contextHit || null,
+      leakTypes: (leakFilterResult.leaks || []).map(l => l.type),
+      reason: leakFilterResult.telemetry?.reason || null
+    };
   } else {
     console.log('✅ [SecurityGateway] Leak filter passed');
   }

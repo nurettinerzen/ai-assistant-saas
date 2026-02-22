@@ -1374,6 +1374,10 @@ export async function handleIncomingMessage({
         llm_call_reason: metrics.llm_call_reason || metrics.llmCallReason || normalizeLlmCallReason(channel),
         bypassed: metrics.bypassed === true || metrics.llmBypassed === true || metrics.LLM_CALLED !== true,
         ungroundedDetected: !!metrics.ungroundedDetected,
+        // P0-3: SANITIZE/BLOCK debug — prod'da "neden sanitize oldu" tek bakışta anlaşılır
+        ...(guardrailResult.leakFilterDebug || metrics.leakFilterDebug
+          ? { leakFilterDebug: guardrailResult.leakFilterDebug || metrics.leakFilterDebug }
+          : {}),
         ...(persistMetadata || {})
       },
       shouldEndSession,

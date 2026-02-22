@@ -294,89 +294,33 @@ function maskPhoneNumbers(text) {
     .replace(/\b(\d{3})\d{5,8}(\d{2})\b/g, '$1*****$2');
 }
 
-function getNoToolContextSanitizeMessage(language = 'TR') {
-  return String(language || '').toUpperCase() === 'EN'
-    ? 'I cannot share account-specific details from that response securely right now.'
-    : 'Bu yanıttaki hesaba özel detayları şu anda güvenli şekilde paylaşamam.';
-}
-
-function sanitizeLeaksWithoutToolPlan(response, leaks = [], language = 'TR') {
-  const leakTypes = new Set((Array.isArray(leaks) ? leaks : []).map(l => l?.type).filter(Boolean));
-  if (leakTypes.size === 0) return null;
-
-  // Phone-only leak'ler için partial redaction uygula (maksimum bağlam korunur).
-  if ([...leakTypes].every(type => type === 'phone' || type === 'internal')) {
-    return maskPhoneNumbers(response);
-  }
-
-  // Other account-specific leaks (tracking/address/name/shipping/delivery) için
-  // deterministic safe rewrite kullan.
-  return getNoToolContextSanitizeMessage(language);
-}
-
 const INTERNAL_METADATA_PATTERNS = INTERNAL_METADATA_TERMS.map(term =>
   new RegExp(escapeRegExp(term), 'i')
 );
 
-/**
- * Hassas veri pattern'leri
- * Bu pattern'ler LLM output'unda aranır
- */
+// ============================================================================
+// LEAK FILTER PATTERN'LERİ — SADECE phone + internal
+// ============================================================================
+// customerName / address / shipping / delivery / tracking / timeWindow
+// KALDIRILDI. Bu tipler false positive üretiyordu ve LLM'i bozuyordu.
+//
+// GÜVENLİK NASIL SAĞLANIYOR:
+// - Sipariş/CRM verileri zaten tool ile geliyor. Tool çağrılmadan detay yok.
+// - LLM prompt'unda "kanıt yoksa iddia yok" kuralı var.
+// - Guardrail = son bariyer (phone mask + internal block), direksiyon değil.
+// ============================================================================
 const SENSITIVE_PATTERNS = {
-  // ============================================
-  // CUSTOMER NAME / IDENTITY (P0 - Never expose before verification!)
-  // ============================================
-  customerName: [
-    // "İbrahim Yıldız adına kayıtlı", "Ahmet Kaya'ya ait"
-    // NOTE: Previously the `ad` alternative was too greedy — matched Turkish suffixes like
-    // "bulunmamaktadır" (-ad). Now requires standalone word boundary (\b) around ad/isim/kayıt.
-    /\b[A-ZÇĞİÖŞÜ][a-zçğıöşü]+\s+[A-ZÇĞİÖŞÜ][a-zçğıöşü]+\s*(adına|'?(n?[ıiuü]n)?\s*\b(adı|isim|kayıt|sipariş)\b)/i,
-    // "kayıtlı isim: Mehmet Demir"
-    /(kayıtlı|sipariş sahibi|müşteri)\s*(isim|ad|adı?)\s*[:=]?\s*[A-ZÇĞİÖŞÜ][a-zçğıöşü]+\s+[A-ZÇĞİÖŞÜ][a-zçğıöşü]+/i,
-    // "Sayın Ahmet Bey/Hanım"
-    /sayın\s+[A-ZÇĞİÖŞÜ][a-zçğıöşü]+\s+(bey|hanım)/i,
-    // English: "registered to John Smith", "belongs to Jane Doe"
-    /(registered|belongs)\s+to\s+[A-Z][a-z]+\s+[A-Z][a-z]+/i,
-  ],
-
-  // ────────────────────────────────────────────────────────
-  // tracking / shipping / delivery / address — KALDIRILDI.
-  // Bu tipler artık CONTEXTUAL DETECTION ile taranır.
-  // Candidate token + ±80 char context window modeline geçildi.
-  // Aşağıdaki SENSITIVE_PATTERNS'ta kalan tipler:
-  //   customerName, phone, internal
-  // ────────────────────────────────────────────────────────
-
-  // Adres bilgileri — hâlâ regex-only (her adres pattern zaten bağlamlı)
-  address: [
-    /mahalle(si)?\s*[:=]?\s*[A-ZÇĞİÖŞÜa-zçğıöşü\s]{3,}/i,
-    /sokak|cadde|bulvar/i,
-    /\b(apt|apartman|bina|daire)\b/i,
-    /\b\d+\s*\.\s*kat\b/i,           // "3. kat"
-    /\bkat\s*[:=]\s*\d/i,             // "kat: 5"
-    /\b(daire|no)\s*[:=]?\s*\d+\s*[\s,/]+\s*kat\b/i, // "daire 5, kat 3"
-    /ilçe(si)?\s*[:=]?\s*[A-ZÇĞİÖŞÜa-zçğıöşü\s]{3,}/i,
-  ],
-
-  // Zaman aralığı
-  timeWindow: [
-    /saat\s*(\d{1,2})[:\.](\d{2})?\s*(ile|[-–])\s*(\d{1,2})/i,
-    /(\d{1,2})[:\.](\d{2})?\s*(civarı|sıralarında|gibi)/i,
-    /(bugün|yarın)\s*saat\s*\d/i,
-  ],
-
   // Telefon — SADECE rakam-temelli pattern'ler.
   // "telefon" kelimesi tek başına ASLA phone leak tetiklemez.
-  // Tetiklenme koşulu: response'ta gerçek telefon numarası formatı olmalı.
   phone: [
     /\b0?5\d{2}[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}\b/,  // TR mobil: 05xx xxx xx xx
     /\+90[\s\-]?5\d{2}[\s\-]?\d{3}/,                       // E.164: +90 5xx xxx (en az 7 hane)
     /\b\d{10,11}\b/,                                        // 10-11 hane ardışık rakam
     /(?:son\s*4(?:\s*hane(?:si)?)?|last\s*4(?:\s*digits?)?|xxxx)\s*[:=]?\s*\d{4}\b/i, // "son 4 hanesi 1234"
-    /telefon\s*(?:no|numarası?|numaranız)\s*[:=]\s*[\d\s\-\+]{7,}/i, // "telefon no: 05551234567" (rakam ZORUNLU, en az 7 hane)
+    /telefon\s*(?:no|numarası?|numaranız)\s*[:=]\s*[\d\s\-\+]{7,}/i, // "telefon no: 05551234567" (rakam ZORUNLU)
   ],
 
-  // Internal/System
+  // Internal/System — asla dışarı çıkmamalı
   internal: [
     ...INTERNAL_METADATA_PATTERNS,
     /verification\s*(state|flow|fsm)/i,
@@ -385,165 +329,12 @@ const SENSITIVE_PATTERNS = {
   ]
 };
 
-// ============================================================================
-// CONTEXTUAL DETECTION — UNIFIED CANDIDATE + CONTEXT WINDOW MODEL
-// ============================================================================
-//
-// MİMARİ: 2-aşamalı karar
-//   A) Candidate token detection — metin içinde aday kelime bulunur
-//   B) ±CONTEXT_WINDOW karakter içinde context keyword doğrulaması
-//   → İkisi birlikte yoksa ASLA SANITIZE/BLOCK üretmez
-//
-// Context window = ±80 karakter.
-//   – ±30 çok dar: "Kargonuz Aras ile gönderildi" gibi cümleler kaçabilir
-//   – ±80 çoğu Türkçe/İngilizce cümleyi kapsar (~12-15 kelime)
-//   – False positive riski düşük çünkü zaten context keyword şartı var
-//
-// 4 grup:
-//   1. CARRIER  (aras, ptt, mng, ups, yurtiçi, ...) + shipping context
-//   2. DELIVERY (kapıcı, güvenlik, resepsiyon, imza, komşu, teslim alan) + delivery context
-//   3. TRACKING (takip, tracking, kargo + alfanumerik) + tracking context
-//   4. NUMERIC  (10-20 haneli sayı) + shipping/tracking context
-//
-// Her match telemetri döndürür: { triggerType, candidateToken, contextHit }
-// ============================================================================
-const CONTEXT_WINDOW = 80;
-
-// ── Shared context keyword sets ──────────────────────────────────────────
-const SHIPPING_CONTEXT_KEYWORDS = /\b(kargo|gönderi|shipment|waybill|teslimat|tracking|cargo|paket|gönderildi|gonderildi|teslim|dağıtım)\b/i;
-const DELIVERY_CONTEXT_KEYWORDS = /\b(teslim|bırak|bırakıldı|teslimat|kargo|gönderi|sipariş|paket|delivered|delivery)\b/i;
-const TRACKING_CONTEXT_KEYWORDS = /\b(kargo|takip|gönderi|shipment|waybill|teslimat|tracking|cargo|paket|gönderildi|gonderildi|teslim)\b/i;
-
-// ── Candidate token definitions ──────────────────────────────────────────
-
-// 1. CARRIER candidates — firma isimleri
-const CARRIER_CANDIDATES = /\b(yurtiçi|yurtici|aras|mng|ptt|ups|fedex|dhl|sürat|surat|horoz)\b/gi;
-
-// 2. DELIVERY candidates — teslimat noktası / imza / kişi
-//    Türkçe ek uyumlu: güvenlik → güvenliğe, komşu → komşunuza, resepsiyon → resepsiyona
-//    \b sadece başta, sonda suffix'e izin ver ([a-zçğıöşüA-ZÇĞİÖŞÜ]* ile)
-const DELIVERY_CANDIDATES = /\b(kapıcı|güvenli[kğ]|resepsiyon|imza|komşu)[a-zçğıöşüA-ZÇĞİÖŞÜ]*/gi;
-
-// 3. TRACKING candidates — takip kelimesi + alfanumerik kod yakınlığı
-//    "takip no: TR123", "kargo takip 123456", "tracking number ABC123"
-//    NOT: "takip edin", "takip edebilirsiniz" (genel fiil kullanımı)
-const TRACKING_CODE_PATTERN = /\b[A-Z]{2}\d{9,12}[A-Z]{0,2}\b/i;  // TR1234567890
-const TRACKING_LABEL_PATTERN = /takip\s*(no|numarası?|kodu?)\s*[:=]?\s*[A-Z0-9\-]{6,}/i;
-const TRACKING_LABEL_EN_PATTERN = /tracking\s*(number|code|id)?\s*[:=]?\s*[A-Z0-9\-]{6,}/i;
-const TRACKING_PROXIMITY_CANDIDATES = /\b(kargo|tracking|shipment|waybill)\b/gi; // "takip" çıkarıldı — generic verb
-const TRACKING_PROXIMITY_CODE = /\b[A-Z0-9\-]{6,}\b/g;
-
-// 4. NUMERIC tracking — 10-20 haneli sayılar
-const NUMERIC_TRACKING_CANDIDATE = /\b\d{10,20}\b/g;
-
-// 5. SHIPPING-SPECIFIC patterns (daima bağlamlı — regex kendisi yeterli)
-const SHIPPING_SELF_CONTEXTUAL = /dağıtım\s*(merkez|şube)/i;
-
-// ── Generic context window scanner ──────────────────────────────────────
 /**
- * Candidate regex'i response üzerinde tarar.
- * Her match için ±CONTEXT_WINDOW karakter penceresi açar.
- * Pencerede contextKeywords bulunursa → leak hit döndürür.
- *
- * @returns {Array<{candidateToken: string, contextHit: string, index: number}>}
+ * Backward-compat stub — contextual detection kaldırıldı.
+ * Artık boş array döner. Eski test'ler kırılmasın diye export korunuyor.
  */
-function scanCandidatesWithContext(response, candidateRegex, contextKeywords) {
-  candidateRegex.lastIndex = 0;
-  const hits = [];
-  let match;
-  while ((match = candidateRegex.exec(response)) !== null) {
-    const from = Math.max(0, match.index - CONTEXT_WINDOW);
-    const to = Math.min(response.length, match.index + match[0].length + CONTEXT_WINDOW);
-    const window = response.slice(from, to);
-    const ctxMatch = contextKeywords.exec(window);
-    contextKeywords.lastIndex = 0; // reset for next iteration
-    if (ctxMatch) {
-      hits.push({
-        candidateToken: match[0],
-        contextHit: ctxMatch[0],
-        index: match.index
-      });
-    }
-  }
-  return hits;
-}
-
-// ── Tracking proximity scanner (special: candidate + nearby code) ────────
-function scanTrackingProximity(response) {
-  TRACKING_PROXIMITY_CANDIDATES.lastIndex = 0;
-  const hits = [];
-  let match;
-  while ((match = TRACKING_PROXIMITY_CANDIDATES.exec(response)) !== null) {
-    const from = Math.max(0, match.index - 30);
-    const to = Math.min(response.length, match.index + match[0].length + 30);
-    const window = response.slice(from, to);
-    TRACKING_PROXIMITY_CODE.lastIndex = 0;
-    const codeMatch = TRACKING_PROXIMITY_CODE.exec(window);
-    if (codeMatch) {
-      hits.push({
-        candidateToken: match[0],
-        contextHit: codeMatch[0],
-        index: match.index
-      });
-    }
-  }
-  return hits;
-}
-
-// ============================================================================
-// PUBLIC API: runContextualDetection
-// ============================================================================
-/**
- * Tüm contextual leak gruplarını tarar.
- * @returns {Array<{type: string, triggerType: string, candidateToken: string, contextHit: string}>}
- */
-export function runContextualDetection(response = '') {
-  const results = [];
-
-  // 1. CARRIER — firma + shipping context
-  const carrierHits = scanCandidatesWithContext(response, CARRIER_CANDIDATES, SHIPPING_CONTEXT_KEYWORDS);
-  for (const h of carrierHits) {
-    results.push({ type: 'shipping', triggerType: 'carrier_context', ...h });
-  }
-
-  // 2. DELIVERY — teslimat noktası/imza + delivery context
-  const deliveryHits = scanCandidatesWithContext(response, DELIVERY_CANDIDATES, DELIVERY_CONTEXT_KEYWORDS);
-  for (const h of deliveryHits) {
-    results.push({ type: 'delivery', triggerType: 'delivery_context', ...h });
-  }
-
-  // 3. TRACKING — structural patterns (no context needed, pattern itself is contextual)
-  if (TRACKING_CODE_PATTERN.test(response)) {
-    const m = response.match(TRACKING_CODE_PATTERN);
-    results.push({ type: 'tracking', triggerType: 'tracking_code_format', candidateToken: m?.[0] || '', contextHit: 'format_match' });
-  }
-  if (TRACKING_LABEL_PATTERN.test(response)) {
-    const m = response.match(TRACKING_LABEL_PATTERN);
-    results.push({ type: 'tracking', triggerType: 'tracking_label_tr', candidateToken: m?.[0] || '', contextHit: 'label_match' });
-  }
-  if (TRACKING_LABEL_EN_PATTERN.test(response)) {
-    const m = response.match(TRACKING_LABEL_EN_PATTERN);
-    results.push({ type: 'tracking', triggerType: 'tracking_label_en', candidateToken: m?.[0] || '', contextHit: 'label_match' });
-  }
-  // Proximity: "kargo/tracking/shipment/waybill" + nearby alphanumeric code
-  const proxHits = scanTrackingProximity(response);
-  for (const h of proxHits) {
-    results.push({ type: 'tracking', triggerType: 'tracking_proximity', ...h });
-  }
-
-  // 4. NUMERIC — 10-20 haneli sayı + tracking context
-  const numericHits = scanCandidatesWithContext(response, NUMERIC_TRACKING_CANDIDATE, TRACKING_CONTEXT_KEYWORDS);
-  for (const h of numericHits) {
-    results.push({ type: 'tracking', triggerType: 'numeric_tracking', ...h });
-  }
-
-  // 5. SHIPPING self-contextual — dağıtım merkezi/şubesi (always contextual)
-  if (SHIPPING_SELF_CONTEXTUAL.test(response)) {
-    const m = response.match(SHIPPING_SELF_CONTEXTUAL);
-    results.push({ type: 'shipping', triggerType: 'shipping_self_contextual', candidateToken: m?.[0] || '', contextHit: 'self' });
-  }
-
-  return results;
+export function runContextualDetection(_response = '') {
+  return [];
 }
 
 function hasLookupContext(options = {}) {
@@ -567,270 +358,67 @@ function hasLookupContext(options = {}) {
  */
 export function applyLeakFilter(response, verificationState = 'none', language = 'TR', collectedData = {}, options = {}) {
   if (!response) {
-    return {
-      safe: true,
-      action: GuardrailAction.PASS,
-      leaks: [],
-      sanitized: response,
-      telemetry: null
-    };
+    return { safe: true, action: GuardrailAction.PASS, leaks: [], sanitized: response, telemetry: null };
   }
-  const callbackPending = options.callbackPending === true;
-  const isCallbackFlow = callbackPending || options.activeFlow === 'CALLBACK_REQUEST';
 
   const leaks = [];
-  const triggeredPatterns = []; // Debug: hangi pattern match etti
 
-  // Internal pattern'ler her zaman kontrol edilir (NEVER_EXPOSE class)
+  // ── 1. Internal metadata — ASLA dışarı çıkmamalı (NEVER_EXPOSE) ──
   for (const pattern of SENSITIVE_PATTERNS.internal) {
     if (pattern.test(response)) {
       leaks.push({ type: 'internal', pattern: pattern.toString() });
-      triggeredPatterns.push({ type: 'internal', pattern: pattern.toString(), dataClass: 'NEVER_EXPOSE' });
     }
   }
 
-  // Verified değilse ACCOUNT_VERIFIED class pattern'leri kontrol et
-  if (verificationState !== 'verified') {
-    // ── A) Regex-only patterns (customerName, address, timeWindow, phone) ──
-    for (const [type, patterns] of Object.entries(SENSITIVE_PATTERNS)) {
-      if (type === 'internal') continue; // Zaten kontrol edildi
-
-      for (const pattern of patterns) {
-        if (pattern.test(response)) {
-          leaks.push({ type, pattern: pattern.toString() });
-          triggeredPatterns.push({ type, pattern: pattern.toString(), dataClass: 'ACCOUNT_VERIFIED' });
-          break; // Her tip için bir leak yeterli
-        }
-      }
-    }
-
-    // ── B) Contextual detection (shipping, delivery, tracking) ──
-    // Candidate token + ±80 char context window — aday tek başına ASLA leak üretmez
-    const contextualHits = runContextualDetection(response);
-    const seenTypes = new Set();
-    for (const hit of contextualHits) {
-      if (seenTypes.has(hit.type)) continue; // Her tip için bir leak yeterli
-      if (leaks.some(l => l.type === hit.type)) continue; // regex zaten yakaladıysa skip
-      seenTypes.add(hit.type);
-      leaks.push({
-        type: hit.type,
-        pattern: `contextual:${hit.triggerType}`,
-        triggerType: hit.triggerType,
-        candidateToken: hit.candidateToken,
-        contextHit: hit.contextHit
-      });
-      triggeredPatterns.push({
-        type: hit.type,
-        pattern: `contextual:${hit.triggerType}`,
-        dataClass: 'ACCOUNT_VERIFIED',
-        triggerType: hit.triggerType,
-        candidateToken: hit.candidateToken,
-        contextHit: hit.contextHit
-      });
-    }
-  }
-
-  if (leaks.length === 0) {
-    return {
-      safe: true,
-      action: GuardrailAction.PASS,
-      leaks: [],
-      sanitized: response,
-      telemetry: null
-    };
-  }
-
-  // ============================================
-  // CHECK: Is this a PUBLIC/policy response?
-  // ============================================
-  const onlyInternalLeak = leaks.every(l => l.type === 'internal');
-  const isPolicyResponse = POLICY_RESPONSE_HINT_PATTERNS.some(pattern => pattern.test(response));
-
-  // ============================================
-  // PHONE LEAK RECLASSIFICATION (P0 FIX)
-  // ============================================
-  // "telefon" kelimesi ≠ phone number.
-  // phone leak = sadece gerçek rakam-temelli pattern match.
-  // Eğer response'ta hiç digit yoksa phone leak geçersiz → kaldır.
+  // ── 2. Phone number — gerçek rakam-temelli maskeleme ──
   const responseHasDigits = /\d/.test(response);
-  const hasPhoneLeak = leaks.some(l => l.type === 'phone');
-
-  if (hasPhoneLeak && !responseHasDigits) {
-    // "Telefon kanalı" gibi bir ifade, gerçek numara değil → phone leak'i düşür
-    console.log('✅ [LeakFilter] Phone pattern matched but NO digits in response — dropping phone leak (false positive)');
-    const filteredLeaks = leaks.filter(l => l.type !== 'phone');
-    if (filteredLeaks.length === 0 || filteredLeaks.every(l => l.type === 'internal')) {
-      // Sadece phone leak vardı (veya phone + internal), digit yok → tamamen safe
-      return {
-        safe: true,
-        action: GuardrailAction.PASS,
-        leaks: [],
-        sanitized: response,
-        telemetry: { reason: 'phone_word_no_digits_pass', triggeredPatterns, responseHasDigits: false }
-      };
-    }
-    // Diğer leak tipleri hâlâ var, phone'u çıkar ve devam et
-    leaks.length = 0;
-    leaks.push(...filteredLeaks);
-  }
-
-  // hasPersonalDataLeak: phone leak SADECE digit varsa sayılır
-  // (phone leak zaten yukarıda digit yoksa kaldırıldı, ama yine de guard)
-  const hasPersonalDataLeak = leaks.some(l => {
-    if (l.type === 'phone') return responseHasDigits; // digit yoksa personal data değil
-    return ['address', 'tracking', 'shipping', 'timeWindow', 'delivery', 'customerName'].includes(l.type);
-  });
-
-  if (isPolicyResponse && !hasPersonalDataLeak && onlyInternalLeak) {
-    console.log('✅ [LeakFilter] Policy response detected, allowing through');
-    return {
-      safe: true,
-      action: GuardrailAction.PASS,
-      leaks: [],
-      sanitized: response,
-      telemetry: { reason: 'policy_response_allowed', triggeredPatterns }
-    };
-  }
-
-  // ============================================
-  // PHONE-ONLY LEAK → REDACT, NOT VERIFY (P0 FIX)
-  // ============================================
-  // Phone leak varsa ve digit varsa → gerçek numara yakalandı → redact (mask) + PASS.
-  // needsVerification SADECE order-specific leak'ler için (tracking, address, customerName vb.)
-  const onlyPhoneAndInternal = leaks.every(l => l.type === 'phone' || l.type === 'internal');
-  if (hasPhoneLeak && responseHasDigits && onlyPhoneAndInternal) {
-    // Gerçek telefon numarası bulundu ama bu order verification gerektirmez.
-    // Numarayı maskele ve response'u geçir.
-    const sanitized = maskPhoneNumbers(response);
-    console.log('🔒 [LeakFilter] Phone number redacted (masked), no verification needed');
-    return {
-      safe: true,
-      action: GuardrailAction.SANITIZE,
-      leaks,
-      sanitized,
-      telemetry: {
-        reason: 'phone_redacted_pass',
-        triggeredPatterns,
-        responseHasDigits: true,
-        verificationMode: 'PHONE_REDACT',
-        hasPersonalDataLeak: false
+  if (responseHasDigits) {
+    for (const pattern of SENSITIVE_PATTERNS.phone) {
+      if (pattern.test(response)) {
+        leaks.push({ type: 'phone', pattern: pattern.toString() });
+        break; // Bir phone leak yeterli
       }
-    };
+    }
   }
 
-  // ============================================
-  // VERIFICATION REQUIREMENT DETECTION
-  // ============================================
-  // needsVerification SADECE order/account-specific leak'ler için:
-  // tracking, address, shipping, delivery, timeWindow, customerName
-  const hasOrderNumber = !!(collectedData.orderNumber || collectedData.order_number);
-  const hasPhone = !!(collectedData.phone || collectedData.last4);
-  const hasName = !!(collectedData.name || collectedData.customerName);
+  // ── Hiç leak yoksa → PASS ──
+  if (leaks.length === 0) {
+    return { safe: true, action: GuardrailAction.PASS, leaks: [], sanitized: response, telemetry: null };
+  }
 
-  let missingFields = [];
-  if (!hasOrderNumber) missingFields.push('order_number');
-  if (!hasPhone) missingFields.push('phone_last4');
+  const hasPhoneLeak = leaks.some(l => l.type === 'phone');
+  const hasInternalLeak = leaks.some(l => l.type === 'internal');
 
-  const lookupToolContext = hasLookupContext(options);
-
-  // Telemetry objesi (debug için - hangi pattern neden trigger etti)
-  const telemetry = {
-    verificationState,
-    reason: isCallbackFlow ? 'callback_flow_leak_filter_triggered' : 'leak_filter_triggered',
-    extractedOrderNo: collectedData.orderNumber || collectedData.order_number || null,
-    hasOrderNumber,
-    hasPhone,
-    hasName,
-    missingFields,
-    isCallbackFlow,
-    leakTypes: leaks.map(l => l.type),
-    triggeredPatterns,
-    hasPersonalDataLeak,
-    responseHasDigits,
-    verificationMode: 'ORDER_VERIFY',
-    hasLookupContext: lookupToolContext
-  };
-
-  if (isCallbackFlow) {
+  // ── Internal-only leak → policy response kontrolü ──
+  if (hasInternalLeak && !hasPhoneLeak) {
+    const isPolicyResponse = POLICY_RESPONSE_HINT_PATTERNS.some(p => p.test(response));
+    if (isPolicyResponse) {
+      return { safe: true, action: GuardrailAction.PASS, leaks: [], sanitized: response,
+        telemetry: { reason: 'policy_response_allowed' } };
+    }
+    // Internal leak, policy response değil → BLOCK
     return {
-      safe: false,
-      action: GuardrailAction.NEED_MIN_INFO_FOR_TOOL,
-      leaks,
-      needsCallbackInfo: true,
-      missingFields: ['customer_name', 'phone'],
-      blockReason: 'CALLBACK_INFO_REQUIRED',
-      telemetry
+      safe: false, action: GuardrailAction.BLOCK, leaks,
+      blockedMessage: String(language || '').toUpperCase() === 'EN'
+        ? 'I cannot share that detail right now for security reasons.'
+        : 'Güvenlik nedeniyle bu detayı şu anda paylaşamıyorum.',
+      blockReason: 'INTERNAL_METADATA_LEAK',
+      telemetry: { reason: 'internal_metadata_blocked', leakTypes: ['internal'] }
     };
   }
 
-  // Ask minimum info ONLY when a lookup tool was actually invoked in this turn.
-  // Guardrail never invents domain/scenario by itself.
-  const shouldAskMinInfo = lookupToolContext && missingFields.length > 0;
-  if (shouldAskMinInfo) {
+  // ── Phone leak → mask ve geçir ──
+  if (hasPhoneLeak) {
+    const sanitized = maskPhoneNumbers(response);
+    console.log('🔒 [LeakFilter] Phone number redacted (masked)');
     return {
-      safe: false,
-      action: GuardrailAction.NEED_MIN_INFO_FOR_TOOL,
-      leaks,
-      needsVerification: true,
-      missingFields,
-      blockReason: 'NEED_MIN_INFO_FOR_TOOL',
-      telemetry
+      safe: true, action: GuardrailAction.SANITIZE, leaks, sanitized,
+      telemetry: { reason: 'phone_redacted_pass', responseHasDigits: true, verificationMode: 'PHONE_REDACT' }
     };
   }
 
-  // Tool plan yoksa otomatik block yapma.
-  // Kural:
-  // - Personal/account leak yoksa PASS
-  // - Personal/account leak varsa önce deterministic sanitize
-  // - Sanitize başarısızsa BLOCK
-  if (!lookupToolContext) {
-    if (!hasPersonalDataLeak) {
-      return {
-        safe: true,
-        action: GuardrailAction.PASS,
-        leaks: [],
-        sanitized: response,
-        telemetry: {
-          ...telemetry,
-          reason: 'no_lookup_context_non_personal_pass'
-        }
-      };
-    }
-
-    const sanitizedNoToolPlan = sanitizeLeaksWithoutToolPlan(response, leaks, language);
-    if (typeof sanitizedNoToolPlan === 'string' && sanitizedNoToolPlan.trim()) {
-      return {
-        safe: true,
-        action: GuardrailAction.SANITIZE,
-        leaks,
-        sanitized: sanitizedNoToolPlan,
-        telemetry: {
-          ...telemetry,
-          reason: 'sanitized_no_lookup_context_personal_leak'
-        }
-      };
-    }
-  }
-
-  // Residual high-risk path: sanitize üretilemedi veya tool-plan akışında
-  // minimum bilgi kararı verilemedi. Bu durumda deterministic barrier uygula.
-  return {
-    safe: false,
-    action: GuardrailAction.BLOCK,
-    leaks,
-    needsVerification: false,
-    missingFields: [],
-    blockReason: lookupToolContext
-      ? 'LEAK_FILTER_BLOCKED_LOOKUP_CONTEXT_PATH'
-      : 'LEAK_FILTER_BLOCKED_SANITIZE_FAILED',
-    blockedMessage: String(language || '').toUpperCase() === 'EN'
-      ? 'I cannot share that detail right now for security reasons.'
-      : 'Güvenlik nedeniyle bu detayı şu anda paylaşamıyorum.',
-    telemetry: {
-      ...telemetry,
-      reason: lookupToolContext ? 'blocked_lookup_context_path' : 'blocked_sanitize_failed'
-    }
-  };
+  // Fallback — buraya düşmemeli
+  return { safe: true, action: GuardrailAction.PASS, leaks: [], sanitized: response, telemetry: null };
 }
 
 // ============================================================================

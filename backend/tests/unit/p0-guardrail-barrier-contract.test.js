@@ -2,6 +2,16 @@ import { describe, it, expect } from 'vitest';
 import { applyGuardrails } from '../../src/core/orchestrator/steps/07_guardrails.js';
 import { applyLeakFilter } from '../../src/guardrails/securityGateway.js';
 
+/**
+ * P0 Guardrail Barrier Contract
+ *
+ * Leak filter artik SADECE phone maskeleme + internal metadata block yapiyor.
+ * customerName / address / shipping / delivery / tracking KALDIRILDI.
+ * NEED_MIN_INFO_FOR_TOOL artik leak filter'dan tetiklenmez.
+ *
+ * Guvenlik: Tool gating + LLM prompt ile saglaniyor.
+ */
+
 describe('P0 Guardrail Barrier Contract', () => {
   const baseParams = {
     hadToolSuccess: false,
@@ -46,11 +56,9 @@ describe('P0 Guardrail Barrier Contract', () => {
     expect(result.sanitized).toContain('*');
   });
 
-  it('3) "kayıtlıdır" does not create shipping false positive from substring matches', () => {
+  it('3) "kayıtlıdır" does not create any false positive', () => {
     const result = applyLeakFilter('Müşteri bilgisi sistemde kayıtlıdır.', 'none', 'TR', {});
-    const shippingLeaks = (result.leaks || []).filter(l => l.type === 'shipping');
 
-    expect(shippingLeaks).toHaveLength(0);
     expect(result.action).toBe('PASS');
   });
 
@@ -61,20 +69,18 @@ describe('P0 Guardrail Barrier Contract', () => {
     expect(trackingLeaks).toHaveLength(0);
   });
 
-  it('5) order-status intent + tool plan + missing data => NEED_MIN_INFO_FOR_TOOL (single question)', async () => {
-    const result = await applyGuardrails({
-      ...baseParams,
-      intent: 'order_status',
-      toolsCalled: ['customer_data_lookup'],
-      userMessage: 'Siparişim nerede?',
-      responseText: 'Siparişiniz Yurtiçi Kargo ile Kadıköy şubesine gönderildi.'
-    });
+  it('5) Shipping/carrier text → PASS (detection removed, security via tool gating)', () => {
+    // Eski davranis: NEED_MIN_INFO_FOR_TOOL
+    // Yeni davranis: PASS — shipping detection kaldirildi
+    const result = applyLeakFilter(
+      'Siparişiniz Yurtiçi Kargo ile Kadıköy şubesine gönderildi.',
+      'none',
+      'TR',
+      {}
+    );
 
-    expect(result.action).toBe('NEED_MIN_INFO_FOR_TOOL');
-    expect(result.blocked).toBe(true);
-    expect(result.blockReason).toBe('NEED_MIN_INFO_FOR_TOOL');
-    expect(result.missingFields).toContain('order_number');
-    expect(result.missingFields).toContain('phone_last4');
-    expect((result.finalResponse.match(/\?/g) || []).length).toBeLessThanOrEqual(1);
+    expect(result.action).toBe('PASS');
+    const shippingLeaks = (result.leaks || []).filter(l => l.type === 'shipping');
+    expect(shippingLeaks).toHaveLength(0);
   });
 });

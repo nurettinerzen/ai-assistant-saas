@@ -2,241 +2,160 @@
  * Contextual Detection Fixture Tests
  * ====================================
  *
- * 20 fixture test — candidate + ±80 char context window modelini doğrular.
+ * Contextual detection (carrier, delivery, shipping, tracking, customerName)
+ * KALDIRILDI. Artik leak filter sadece phone mask + internal block yapiyor.
  *
- * Kural: Candidate token tek başına ASLA SANITIZE/BLOCK üretmez.
- *        Candidate + context keyword birlikte olmalı.
+ * Bu test dosyasi:
+ * - runContextualDetection stub'inin bos array dondurdugunu dogrular
+ * - Eski "true positive" senaryolarin artik PASS dondurdugunu dogrular
+ * - False positive'lerin zaten PASS oldugunu dogrular
  *
- * Gruplar:
- *   FP-01..FP-10 : FALSE POSITIVE — PASS bekleniyor (genel bağlam)
- *   TP-01..TP-10 : TRUE POSITIVE  — leak bekleniyor (shipping/delivery bağlamı)
+ * Guvenlik: Tool gating + LLM prompt ile saglaniyor, regex ile degil.
  */
 
 import { describe, it, expect } from '@jest/globals';
 import { applyLeakFilter, runContextualDetection } from '../../src/guardrails/securityGateway.js';
 
 // ============================================================================
-// FALSE POSITIVES — PASS bekleniyor
-// Candidate token var ama shipping/delivery/tracking bağlamı YOK
+// runContextualDetection stub — always returns []
 // ============================================================================
-describe('Contextual Detection: FALSE POSITIVES (PASS)', () => {
-
-  // FP-01: "veri güvenliği" — güvenlik kelimesi genel bağlamda
-  it('FP-01: "veri güvenliği sağlar" → PASS (güvenlik = security, not delivery)', () => {
-    const response = 'Telyx, müşteri verilerinizin güvenliğini en üst düzeyde sağlar.';
-    const result = applyLeakFilter(response, 'none', 'TR', {});
-    expect(result.action).toBe('PASS');
-    // contextual detection should return empty for delivery
-    const hits = runContextualDetection(response);
-    const deliveryHits = hits.filter(h => h.type === 'delivery');
-    expect(deliveryHits).toHaveLength(0);
+describe('runContextualDetection stub', () => {
+  it('always returns empty array (contextual detection removed)', () => {
+    const hits = runContextualDetection('Paketiniz Aras Kargo ile gönderildi.');
+    expect(hits).toEqual([]);
   });
 
-  // FP-02: "yapay zeka imzalı" — imza kelimesi genel bağlamda
-  it('FP-02: "yapay zeka imzalı deneyim" → PASS (imza = signature metaphor)', () => {
-    const response = 'Telyx ile yapay zeka imzalı bir müşteri deneyimi yaşayın.';
-    const result = applyLeakFilter(response, 'none', 'TR', {});
-    expect(result.action).toBe('PASS');
-    const hits = runContextualDetection(response);
-    const deliveryHits = hits.filter(h => h.type === 'delivery');
-    expect(deliveryHits).toHaveLength(0);
+  it('returns empty array for delivery context', () => {
+    const hits = runContextualDetection('Kargonuz kapıcıya teslim edildi.');
+    expect(hits).toEqual([]);
   });
 
-  // FP-03: "takip edin" — takip kelimesi fiil olarak
-  it('FP-03: "gelişmeleri takip edin" → PASS (takip = follow, not tracking)', () => {
-    const response = 'Yeni özelliklerimizi takip edin ve gelişmelerden haberdar olun.';
-    const result = applyLeakFilter(response, 'none', 'TR', {});
-    expect(result.action).toBe('PASS');
+  it('returns empty array for tracking context', () => {
+    const hits = runContextualDetection('Takip numaranız: TR1234567890');
+    expect(hits).toEqual([]);
   });
 
-  // FP-04: "PTT ile iletişim" — PTT iletişim kanalı olarak
-  it('FP-04: "PTT ile iletişim kurabilirsiniz" → PASS (communication channel)', () => {
-    const response = 'Müşterilerinize PTT, telefon ve WhatsApp gibi kanallarla ulaşabilirsiniz.';
-    const result = applyLeakFilter(response, 'none', 'TR', {});
-    expect(result.action).toBe('PASS');
+  it('returns empty array for empty string', () => {
+    const hits = runContextualDetection('');
+    expect(hits).toEqual([]);
   });
 
-  // FP-05: "Aras bey" — kişi ismi
-  it('FP-05: "Aras beye iletilecek" → PASS (person name, no shipping context)', () => {
-    const response = 'Aras beye iletilecektir.';
-    const result = applyLeakFilter(response, 'none', 'TR', {});
+  it('returns empty array for no argument', () => {
+    const hits = runContextualDetection();
+    expect(hits).toEqual([]);
+  });
+});
+
+// ============================================================================
+// Eski FALSE POSITIVES — hala PASS (degismedi)
+// ============================================================================
+describe('Former false positives: still PASS', () => {
+  it('FP-01: "veri güvenliği sağlar" → PASS', () => {
+    const result = applyLeakFilter('Telyx, müşteri verilerinizin güvenliğini en üst düzeyde sağlar.', 'none', 'TR', {});
     expect(result.action).toBe('PASS');
   });
 
-  // FP-06: "güvenlik önlemleri" — güvenlik = genel güvenlik
-  it('FP-06: "güvenlik önlemleri alınmıştır" → PASS (security measures)', () => {
-    const response = 'Platformumuzda çeşitli güvenlik önlemleri alınmıştır.';
-    const result = applyLeakFilter(response, 'none', 'TR', {});
+  it('FP-02: "yapay zeka imzalı deneyim" → PASS', () => {
+    const result = applyLeakFilter('Telyx ile yapay zeka imzalı bir müşteri deneyimi yaşayın.', 'none', 'TR', {});
     expect(result.action).toBe('PASS');
   });
 
-  // FP-07: "resepsiyon hizmeti" — resepsiyon otel/ofis bağlamında
-  it('FP-07: "resepsiyon hizmeti sunuyoruz" → PASS (reception service)', () => {
-    const response = 'Otelimizde 7/24 resepsiyon hizmeti sunuyoruz.';
-    const result = applyLeakFilter(response, 'none', 'TR', {});
+  it('FP-03: "gelişmeleri takip edin" → PASS', () => {
+    const result = applyLeakFilter('Yeni özelliklerimizi takip edin ve gelişmelerden haberdar olun.', 'none', 'TR', {});
     expect(result.action).toBe('PASS');
   });
 
-  // FP-08: "komşu ülkeler" — komşu genel bağlam
-  it('FP-08: "komşu ülkelere hizmet" → PASS (neighbor countries)', () => {
-    const response = 'Telyx, Türkiye ve komşu ülkelere hizmet vermektedir.';
-    const result = applyLeakFilter(response, 'none', 'TR', {});
+  it('FP-04: "PTT ile iletişim kurabilirsiniz" → PASS', () => {
+    const result = applyLeakFilter('Müşterilerinize PTT, telefon ve WhatsApp gibi kanallarla ulaşabilirsiniz.', 'none', 'TR', {});
     expect(result.action).toBe('PASS');
   });
 
-  // FP-09: "kapıcı yok" — kapıcı kelimesi ama teslimat bağlamı yok
-  it('FP-09: "MNG Holding büyük şirket" → PASS (company reference)', () => {
-    const response = 'MNG Holding, Türkiye\'nin en büyük holdinglerinden biridir.';
-    const result = applyLeakFilter(response, 'none', 'TR', {});
+  it('FP-05: "Aras beye iletilecek" → PASS', () => {
+    const result = applyLeakFilter('Aras beye iletilecektir.', 'none', 'TR', {});
     expect(result.action).toBe('PASS');
   });
 
-  // FP-10: "imzaladık" — imza kelimesi anlaşma bağlamında
-  it('FP-10: "anlaşmayı imzaladık" → PASS (signed agreement, not delivery)', () => {
-    const response = 'Yeni iş ortağımızla anlaşmayı imzaladık ve çalışmaya başlıyoruz.';
-    const result = applyLeakFilter(response, 'none', 'TR', {});
+  it('FP-06: "güvenlik önlemleri alınmıştır" → PASS', () => {
+    const result = applyLeakFilter('Platformumuzda çeşitli güvenlik önlemleri alınmıştır.', 'none', 'TR', {});
+    expect(result.action).toBe('PASS');
+  });
+
+  it('FP-07: "resepsiyon hizmeti sunuyoruz" → PASS', () => {
+    const result = applyLeakFilter('Otelimizde 7/24 resepsiyon hizmeti sunuyoruz.', 'none', 'TR', {});
+    expect(result.action).toBe('PASS');
+  });
+
+  it('FP-08: "komşu ülkelere hizmet" → PASS', () => {
+    const result = applyLeakFilter('Telyx, Türkiye ve komşu ülkelere hizmet vermektedir.', 'none', 'TR', {});
+    expect(result.action).toBe('PASS');
+  });
+
+  it('FP-09: "MNG Holding büyük şirket" → PASS', () => {
+    const result = applyLeakFilter('MNG Holding, Türkiye\'nin en büyük holdinglerinden biridir.', 'none', 'TR', {});
+    expect(result.action).toBe('PASS');
+  });
+
+  it('FP-10: "anlaşmayı imzaladık" → PASS', () => {
+    const result = applyLeakFilter('Yeni iş ortağımızla anlaşmayı imzaladık ve çalışmaya başlıyoruz.', 'none', 'TR', {});
     expect(result.action).toBe('PASS');
   });
 });
 
 // ============================================================================
-// TRUE POSITIVES — Leak bekleniyor (SANITIZE veya BLOCK)
-// Candidate token + context keyword birlikte var
+// Eski TRUE POSITIVES — artik hepsi PASS (contextual detection kaldirildi)
+// Guvenlik: tool gating + LLM prompt ile saglaniyor
 // ============================================================================
-describe('Contextual Detection: TRUE POSITIVES (leak detected)', () => {
-
-  // TP-01: "kapıcıya teslim edildi" — delivery context
-  it('TP-01: "kapıcıya teslim edildi" → NOT PASS (delivery leak)', () => {
-    const response = 'Paketiniz kapıcıya teslim edildi.';
-    const result = applyLeakFilter(response, 'none', 'TR', {});
-    expect(result.action).not.toBe('PASS');
-    const hits = runContextualDetection(response);
-    const deliveryHits = hits.filter(h => h.type === 'delivery');
-    expect(deliveryHits.length).toBeGreaterThan(0);
-    expect(deliveryHits[0].triggerType).toBe('delivery_context');
-    expect(deliveryHits[0].candidateToken).toMatch(/kapıcı/i);
+describe('Former true positives: now PASS (detection removed)', () => {
+  it('TP-01: "kapıcıya teslim edildi" → PASS', () => {
+    const result = applyLeakFilter('Paketiniz kapıcıya teslim edildi.', 'none', 'TR', {});
+    expect(result.action).toBe('PASS');
   });
 
-  // TP-02: "güvenliğe bırakıldı" — delivery context
-  it('TP-02: "güvenliğe bırakıldı" → NOT PASS (delivery leak)', () => {
-    const response = 'Kargonuz güvenliğe bırakıldı.';
-    const result = applyLeakFilter(response, 'none', 'TR', {});
-    expect(result.action).not.toBe('PASS');
-    const hits = runContextualDetection(response);
-    const deliveryHits = hits.filter(h => h.type === 'delivery');
-    expect(deliveryHits.length).toBeGreaterThan(0);
+  it('TP-02: "güvenliğe bırakıldı" → PASS', () => {
+    const result = applyLeakFilter('Kargonuz güvenliğe bırakıldı.', 'none', 'TR', {});
+    expect(result.action).toBe('PASS');
   });
 
-  // TP-03: "imza ile teslim alındı" — delivery context
-  it('TP-03: "imza ile teslim alındı" → NOT PASS (delivery leak)', () => {
-    const response = 'Paketiniz imza ile teslim alındı.';
-    const result = applyLeakFilter(response, 'none', 'TR', {});
-    expect(result.action).not.toBe('PASS');
-    const hits = runContextualDetection(response);
-    const deliveryHits = hits.filter(h => h.type === 'delivery');
-    expect(deliveryHits.length).toBeGreaterThan(0);
+  it('TP-03: "imza ile teslim alındı" → PASS', () => {
+    const result = applyLeakFilter('Paketiniz imza ile teslim alındı.', 'none', 'TR', {});
+    expect(result.action).toBe('PASS');
   });
 
-  // TP-04: "Aras Kargo ile gönderildi" — carrier + shipping context
-  it('TP-04: "Aras Kargo ile gönderildi" → NOT PASS (shipping leak)', () => {
-    const response = 'Siparişiniz Aras Kargo ile gönderildi.';
-    const result = applyLeakFilter(response, 'none', 'TR', {});
-    expect(result.action).not.toBe('PASS');
-    const hits = runContextualDetection(response);
-    const shippingHits = hits.filter(h => h.type === 'shipping');
-    expect(shippingHits.length).toBeGreaterThan(0);
-    expect(shippingHits[0].triggerType).toBe('carrier_context');
+  it('TP-04: "Aras Kargo ile gönderildi" → PASS', () => {
+    const result = applyLeakFilter('Siparişiniz Aras Kargo ile gönderildi.', 'none', 'TR', {});
+    expect(result.action).toBe('PASS');
   });
 
-  // TP-05: "kargo takip numarası TR1234567890" — tracking code format
-  it('TP-05: "Takip numaranız: TR1234567890" → NOT PASS (tracking leak)', () => {
-    const response = 'Takip numaranız: TR1234567890';
-    const result = applyLeakFilter(response, 'none', 'TR', {});
-    expect(result.action).not.toBe('PASS');
-    const hits = runContextualDetection(response);
-    const trackingHits = hits.filter(h => h.type === 'tracking');
-    expect(trackingHits.length).toBeGreaterThan(0);
+  it('TP-05: "Takip numaranız: TR1234567890" → PASS (no tracking detection)', () => {
+    const result = applyLeakFilter('Takip numaranız: TR1234567890', 'none', 'TR', {});
+    expect(result.action).toBe('PASS');
   });
 
-  // TP-06: "dağıtım merkezine ulaştı" — self-contextual shipping
-  it('TP-06: "dağıtım merkezine ulaştı" → NOT PASS (shipping leak)', () => {
-    const response = 'Gönderiniz dağıtım merkezine ulaştı.';
-    const result = applyLeakFilter(response, 'none', 'TR', {});
-    expect(result.action).not.toBe('PASS');
-    const hits = runContextualDetection(response);
-    const shippingHits = hits.filter(h => h.type === 'shipping');
-    expect(shippingHits.length).toBeGreaterThan(0);
-    expect(shippingHits[0].triggerType).toBe('shipping_self_contextual');
+  it('TP-06: "dağıtım merkezine ulaştı" → PASS', () => {
+    const result = applyLeakFilter('Gönderiniz dağıtım merkezine ulaştı.', 'none', 'TR', {});
+    expect(result.action).toBe('PASS');
   });
 
-  // TP-07: "komşunuza teslim edildi" — komşu + delivery context
-  it('TP-07: "komşunuza teslim edildi" → NOT PASS (delivery leak)', () => {
-    const response = 'Kargonuz komşunuza teslim edildi.';
-    const result = applyLeakFilter(response, 'none', 'TR', {});
-    expect(result.action).not.toBe('PASS');
+  it('TP-07: "komşunuza teslim edildi" → PASS', () => {
+    const result = applyLeakFilter('Kargonuz komşunuza teslim edildi.', 'none', 'TR', {});
+    expect(result.action).toBe('PASS');
   });
 
-  // TP-08: "resepsiyona bırakıldı" — resepsiyon + delivery context
-  it('TP-08: "resepsiyona bırakıldı" → NOT PASS (delivery leak)', () => {
-    const response = 'Paketiniz resepsiyona bırakıldı.';
-    const result = applyLeakFilter(response, 'none', 'TR', {});
-    expect(result.action).not.toBe('PASS');
-    const hits = runContextualDetection(response);
-    const deliveryHits = hits.filter(h => h.type === 'delivery');
-    expect(deliveryHits.length).toBeGreaterThan(0);
+  it('TP-08: "resepsiyona bırakıldı" → PASS', () => {
+    const result = applyLeakFilter('Paketiniz resepsiyona bırakıldı.', 'none', 'TR', {});
+    expect(result.action).toBe('PASS');
   });
 
-  // TP-09: numeric tracking with kargo context
-  it('TP-09: "kargo takip no 12345678901" → NOT PASS (numeric tracking)', () => {
-    const response = 'Kargo takip numaranız 12345678901 olarak belirlenmiştir.';
-    const result = applyLeakFilter(response, 'none', 'TR', {});
-    expect(result.action).not.toBe('PASS');
+  it('TP-09: "kargo takip no 12345678901" → no tracking leak (phone mask may apply)', () => {
+    const result = applyLeakFilter('Kargo takip numaranız 12345678901 olarak belirlenmiştir.', 'none', 'TR', {});
+    // 11-digit number will match phone pattern → SANITIZE (phone masking)
+    // But it won't be tracking detection
+    const trackingLeaks = (result.leaks || []).filter(l => l.type === 'tracking');
+    expect(trackingLeaks).toHaveLength(0);
   });
 
-  // TP-10: "Yurtiçi Kargo ile teslimat" — carrier + shipping context
-  it('TP-10: "Yurtiçi Kargo ile teslimat" → NOT PASS (carrier shipping)', () => {
-    const response = 'Yurtiçi Kargo ile teslimat yapılacaktır.';
-    const result = applyLeakFilter(response, 'none', 'TR', {});
-    expect(result.action).not.toBe('PASS');
-    const hits = runContextualDetection(response);
-    const shippingHits = hits.filter(h => h.type === 'shipping');
-    expect(shippingHits.length).toBeGreaterThan(0);
-  });
-});
-
-// ============================================================================
-// TELEMETRY — contextual hits include triggerType, candidateToken, contextHit
-// ============================================================================
-describe('Contextual Detection: Telemetry Fields', () => {
-  it('carrier hit telemetry has triggerType, candidateToken, contextHit', () => {
-    const response = 'Paketiniz Aras Kargo ile gönderildi.';
-    const hits = runContextualDetection(response);
-    const carrier = hits.find(h => h.triggerType === 'carrier_context');
-    expect(carrier).toBeTruthy();
-    expect(carrier.triggerType).toBe('carrier_context');
-    expect(carrier.candidateToken).toMatch(/aras/i);
-    expect(carrier.contextHit).toBeTruthy();
-  });
-
-  it('delivery hit telemetry has triggerType, candidateToken, contextHit', () => {
-    const response = 'Kargonuz kapıcıya teslim edildi.';
-    const hits = runContextualDetection(response);
-    const delivery = hits.find(h => h.triggerType === 'delivery_context');
-    expect(delivery).toBeTruthy();
-    expect(delivery.triggerType).toBe('delivery_context');
-    expect(delivery.candidateToken).toMatch(/kapıcı/i);
-    expect(delivery.contextHit).toBeTruthy();
-  });
-
-  it('leak filter propagates contextual telemetry to triggeredPatterns', () => {
-    const response = 'Siparişiniz PTT Kargo ile gönderildi.';
-    const result = applyLeakFilter(response, 'none', 'TR', {});
-    expect(result.action).not.toBe('PASS');
-
-    const ctxLeak = (result.leaks || []).find(l => l.triggerType);
-    expect(ctxLeak).toBeTruthy();
-    expect(ctxLeak.triggerType).toBeTruthy();
-    expect(ctxLeak.candidateToken).toBeTruthy();
-    expect(ctxLeak.contextHit).toBeTruthy();
+  it('TP-10: "Yurtiçi Kargo ile teslimat" → PASS', () => {
+    const result = applyLeakFilter('Yurtiçi Kargo ile teslimat yapılacaktır.', 'none', 'TR', {});
+    expect(result.action).toBe('PASS');
   });
 });

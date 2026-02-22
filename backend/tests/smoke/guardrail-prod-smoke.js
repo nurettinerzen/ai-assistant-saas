@@ -33,7 +33,8 @@ const CASES = [
   { id: '07', message: 'WhatsApp entegrasyonu var mı?' },
   { id: '08', message: 'Fiyatlar nedir?' },
   { id: '09', message: 'Siparişimin durumu nedir?' },
-  { id: '10', message: 'Geri arama istiyorum, numaram 05551234567', expectTool: 'create_callback' }
+  // Case 10: 2-turn senaryo — ilk turda tool çağrısı zorunlu DEĞİL (LLM isim/konu sorabilir)
+  { id: '10a', message: 'Geri arama istiyorum, numaram 05551234567' },
 ];
 
 function normalizeToolCalls(responseJson) {
@@ -210,6 +211,42 @@ async function main() {
 
     if (i < CASES.length - 1) {
       await new Promise(resolve => setTimeout(resolve, WAIT_BETWEEN_MS));
+    }
+  }
+
+  // ── Case 10b: 2-turn callback senaryo (aynı session'da devam) ──
+  // LLM 10a'da isim sormuş olmalı → 10b'de isim verince create_callback çağırmalı
+  const case10aRow = rows.find(r => r.id === '10a');
+  if (case10aRow) {
+    const case10bSessionId = `p0_launch_gate_${Date.now()}_10a`; // NOT the same session — smoke test 10a used a unique session
+    // We need the SAME sessionId as 10a. But 10a already ran with its own sessionId.
+    // Since we can't reuse it easily, we create a fresh 2-turn within one session:
+    const multiTurnSessionId = `p0_callback_2turn_${Date.now()}`;
+    const case10b = { id: '10b', message: 'Adım Ahmet Yılmaz, saat 14:00 uygun', expectTool: 'create_callback' };
+    try {
+      await new Promise(resolve => setTimeout(resolve, WAIT_BETWEEN_MS));
+      // Turn 1: geri arama iste
+      await sendMessage({ message: 'Geri arama istiyorum, numaram 05551234567', sessionId: multiTurnSessionId });
+      await new Promise(resolve => setTimeout(resolve, WAIT_BETWEEN_MS));
+      // Turn 2: isim ver → tool çağrılmalı
+      const turn2Response = await sendMessage({ message: case10b.message, sessionId: multiTurnSessionId });
+      const summary10b = summarizeResult(case10b, turn2Response);
+      const errors10b = validateCase(case10b, summary10b);
+      rows.push(summary10b);
+
+      if (errors10b.length > 0) {
+        failures.push({ id: case10b.id, message: case10b.message, errors: errors10b });
+        console.log(`❌ [${case10b.id}] ${case10b.message}`);
+        for (const err of errors10b) { console.log(`   - ${err}`); }
+      } else {
+        console.log(
+          `✅ [${case10b.id}] action=${summary10b.guardrailAction} LLM_CALLED=${summary10b.LLM_CALLED} reason=${summary10b.llm_call_reason} bypassed=${summary10b.bypassed} tools=${summary10b.toolCalls.join(',') || '-'}`
+        );
+      }
+    } catch (error) {
+      failures.push({ id: case10b.id, message: case10b.message, errors: [error.message] });
+      console.log(`❌ [${case10b.id}] ${case10b.message}`);
+      console.log(`   - ${error.message}`);
     }
   }
 

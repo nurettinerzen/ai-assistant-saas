@@ -69,7 +69,7 @@ describe('Guardrail Policy Contracts', () => {
     expect(decision.hasIdentityMismatch).toBe(false);
   });
 
-  it('should block unverified personal leaks with missing verification fields', () => {
+  it('should PASS tracking+address text (detection removed, security via tool gating)', () => {
     const result = applyLeakFilter(
       'Takip numaranız TR1234567890 ve teslimat adresiniz İstanbul Kadıköy.',
       'none',
@@ -77,9 +77,10 @@ describe('Guardrail Policy Contracts', () => {
       {}
     );
 
-    expect(result.safe).toBe(false);
-    expect(result.action).toBe('BLOCK');
-    expect(result.needsVerification).toBe(false);
+    // Tracking/address detection kaldirildi — artik PASS
+    // Guvenlik: tool gating + LLM prompt ile saglaniyor
+    expect(result.safe).toBe(true);
+    expect(result.action).toBe('PASS');
   });
 
   it('should bypass leak filter for non-data terminal outcomes', () => {
