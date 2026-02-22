@@ -594,14 +594,17 @@ export async function applyGuardrails(params) {
   const internalProtocolResult = validateInternalProtocol(responseText, language);
 
   if (!internalProtocolResult.safe) {
-    console.error('🚨 [Guardrails] INTERNAL_PROTOCOL_LEAK detected!', internalProtocolResult.violation);
+    console.warn('⚠️ [Guardrails] INTERNAL_PROTOCOL_LEAK detected — requesting correction', internalProtocolResult.violation);
     metrics.internalProtocolViolation = internalProtocolResult.violation;
     return {
-      finalResponse: getBarrierMessage(language),
+      finalResponse: responseText,
       action: GuardrailAction.BLOCK,
       guardrailsApplied: ['RESPONSE_FIREWALL', 'PII_PREVENTION', 'INTERNAL_PROTOCOL_GUARD'],
       blocked: true,
-      blockReason: 'INTERNAL_PROTOCOL_LEAK'
+      blockReason: 'INTERNAL_PROTOCOL_LEAK',
+      needsCorrection: true,
+      correctionType: 'INTERNAL_PROTOCOL_LEAK',
+      correctionConstraint: internalProtocolResult.correctionConstraint
     };
   }
 

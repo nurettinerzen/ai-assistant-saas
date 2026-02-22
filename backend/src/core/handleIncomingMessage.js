@@ -1239,6 +1239,37 @@ export async function handleIncomingMessage({
 
     let { finalResponse } = guardrailResult;
 
+    // ── needsCorrection: re-prompt LLM instead of hard block ──
+    if (guardrailResult.needsCorrection && guardrailResult.correctionType) {
+      console.warn(`🔄 [Orchestrator] Guardrail requests correction: ${guardrailResult.correctionType}`);
+      try {
+        const corrected = await regenerateWithGuidance(
+          guardrailResult.correctionType,
+          guardrailResult.correctionConstraint || '',
+          userMessage,
+          language
+        );
+        if (corrected && String(corrected).trim()) {
+          finalResponse = corrected;
+          metrics.guardrailCorrectionApplied = guardrailResult.correctionType;
+          metrics.securityTelemetry = metrics.securityTelemetry || {};
+          metrics.securityTelemetry.repromptCount = 1;
+          // Override block — correction succeeded
+          guardrailResult.blocked = false;
+          guardrailResult.action = 'PASS';
+          console.log(`✅ [Orchestrator] Correction succeeded for ${guardrailResult.correctionType}`);
+        } else {
+          // Correction returned empty — use safe fallback
+          finalResponse = getInternalProtocolSafeFallback(language);
+          metrics.guardrailFallbackUsed = true;
+        }
+      } catch (correctionError) {
+        console.error('❌ [Orchestrator] Correction failed:', correctionError.message);
+        finalResponse = getInternalProtocolSafeFallback(language);
+        metrics.guardrailFallbackUsed = true;
+      }
+    }
+
     // Security Gateway tarafından block edildiyse
     if (guardrailResult.blocked) {
       console.warn(`🚨 [SecurityGateway] Response blocked: ${guardrailResult.blockReason}${guardrailResult.violations ? ` (violations: ${guardrailResult.violations.join(', ')})` : ''}`);
