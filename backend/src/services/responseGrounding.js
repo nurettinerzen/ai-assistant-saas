@@ -237,12 +237,20 @@ export function determineResponseGrounding({
   });
   const missingKbEvidence = kbConfidence === 'LOW' || hasKBMatch === false;
 
+  // Backend response replacement is ONLY allowed for:
+  //   1. BLOCK/SANITIZE (PII, internal leak, etc.) — handled upstream in guardrails
+  //   2. Tool required (min info question) — handled upstream in guardrails
+  //   3. Real contradiction (tool result vs final-state claim) — handled by field grounding
+  //
+  // Low-KB / ungrounded situations: set metadata for telemetry, do NOT replace response.
+  // LLM's response passes through — grounding label is informational only.
+
   if (strictGroundingEnabled && businessClaimCategory && missingKbEvidence) {
     return {
       responseGrounding: RESPONSE_GROUNDING.UNGROUNDED,
-      finalResponse: buildLowConfidenceClarification({ businessIdentity, language }),
-      ungroundedDetected: true,
-      policyReason: 'BUSINESS_CLAIM_LOW_KB_BLOCK'
+      finalResponse: text,
+      ungroundedDetected: false,
+      policyReason: 'BUSINESS_CLAIM_LOW_KB_TELEMETRY'
     };
   }
 
@@ -254,9 +262,11 @@ export function determineResponseGrounding({
     };
   }
 
+  // Catch-all: LOW KB without business claim — conversational, greeting, etc.
+  // Label as GROUNDED (no business claim risk), pass LLM response through.
   return {
-    responseGrounding: RESPONSE_GROUNDING.UNGROUNDED,
-    finalResponse: buildLowConfidenceClarification({ businessIdentity, language }),
-    ungroundedDetected: true
+    responseGrounding: RESPONSE_GROUNDING.GROUNDED,
+    finalResponse: text,
+    ungroundedDetected: false
   };
 }
