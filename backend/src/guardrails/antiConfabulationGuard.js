@@ -515,49 +515,125 @@ export function validateFieldGrounding(response, toolOutputs = [], language = 'T
 }
 
 /**
- * Check if LLM claims a different order status than what tool returned
+ * Normalize combining characters for Turkish text comparison.
+ * JS `.toLowerCase()` turns 'İ' into 'i\u0307' (i + combining dot above).
+ * NFD → strip combining marks → ensures "i̇ade" matches "iade".
+ */
+function normalizeTurkish(str) {
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+/**
+ * Phrase-level match with broad separator class.
+ * Covers: whitespace, punctuation, parens, dash, slash, colon, emoji, etc.
+ * Avoids "teslim" matching "teslimat" — only matches complete phrases.
+ *
+ * SEP = start/end of string OR any non-alphanumeric-Turkish character
+ */
+function matchesPhrase(text, phrase) {
+  const normalizedText = normalizeTurkish(text);
+  const normalizedPhrase = normalizeTurkish(phrase);
+  const escaped = normalizedPhrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // After NFD strip: ç→c, ğ→g, ö→o, ş→s, ü→u, İ→I. Only ı (U+0131) stays.
+  // WORD_CHAR = letter (a-z, ı) or digit — anything that continues a "word"
+  // SEP = NOT a word char (or start/end of string)
+  const WORD = 'a-zA-Z\\u0131\\u01300-9';
+  const SEP = `(?:^|[^${WORD}])`;
+  const SEP_END = `(?:[^${WORD}]|$)`;
+  const regex = new RegExp(`${SEP}${escaped}${SEP_END}`, 'i');
+  return regex.test(normalizedText);
+}
+
+/**
+ * High-risk final-state phrases only.
+ * These are the claims that mislead customers into thinking an irreversible
+ * action has occurred (delivery, cancellation, refund).
+ * Informational status terms (kargoda, yolda, hazırlanıyor) are NOT checked.
+ */
+const HIGH_RISK_PHRASES = {
+  TR: [
+    // "teslim edildi" variants
+    'teslim edildi', 'teslim edilmiş', 'teslim alındı', 'teslim alınmış',
+    // "iptal" variants
+    'iptal edildi', 'iptal edilmiş',
+    // "iade" variants
+    'iade onaylandı', 'iade edildi', 'iade edilmiş', 'iade kabul edildi',
+    // "ücret iadesi" variants
+    'ücret iadesi yapıldı', 'ücret iadesi tamamlandı', 'para iadesi yapıldı', 'geri ödeme yapıldı',
+  ],
+  EN: [
+    'delivered', 'has been delivered',
+    'cancelled', 'has been cancelled',
+    'refund approved', 'refund completed', 'refund processed',
+    'returned', 'has been returned',
+  ]
+};
+
+/**
+ * Which actual statuses are COMPATIBLE with each high-risk phrase.
+ * If a phrase is NOT in the compatible set for the actual status → contradiction.
+ */
+const COMPATIBLE_STATUS_MAP = {
+  TR: {
+    'teslim edildi':            ['teslim edildi', 'delivered'],
+    'teslim edilmiş':           ['teslim edildi', 'delivered'],
+    'teslim alındı':            ['teslim edildi', 'delivered'],
+    'teslim alınmış':           ['teslim edildi', 'delivered'],
+    'iptal edildi':             ['iptal edildi', 'iptal', 'cancelled'],
+    'iptal edilmiş':            ['iptal edildi', 'iptal', 'cancelled'],
+    'iade onaylandı':           ['iade edildi', 'iade onaylandı', 'returned', 'refunded'],
+    'iade edildi':              ['iade edildi', 'iade onaylandı', 'returned', 'refunded'],
+    'iade edilmiş':             ['iade edildi', 'iade onaylandı', 'returned', 'refunded'],
+    'iade kabul edildi':        ['iade edildi', 'iade onaylandı', 'returned', 'refunded'],
+    'ücret iadesi yapıldı':     ['ücret iadesi', 'iade edildi', 'refunded'],
+    'ücret iadesi tamamlandı':  ['ücret iadesi', 'iade edildi', 'refunded'],
+    'para iadesi yapıldı':      ['ücret iadesi', 'iade edildi', 'refunded'],
+    'geri ödeme yapıldı':       ['ücret iadesi', 'iade edildi', 'refunded'],
+  },
+  EN: {
+    'delivered':           ['delivered'],
+    'has been delivered':  ['delivered'],
+    'cancelled':           ['cancelled'],
+    'has been cancelled':  ['cancelled'],
+    'refund approved':     ['refunded', 'returned'],
+    'refund completed':    ['refunded', 'returned'],
+    'refund processed':    ['refunded', 'returned'],
+    'returned':            ['returned', 'refunded'],
+    'has been returned':   ['returned', 'refunded'],
+  }
+};
+
+/**
+ * Check if LLM claims a high-risk final status that contradicts tool data.
+ *
+ * Design principles:
+ * 1. Only check high-risk final-state claims (teslim edildi, iptal edildi, iade, ücret iadesi)
+ * 2. Phrase-level matching (not substring) — "teslimat tarihi" won't match "teslim edildi"
+ * 3. Variant coverage — "teslim edilmiş", "teslim alınmış" etc.
  */
 function checkOrderFieldGrounding(responseLower, orderData, language) {
   if (!orderData.status) return null;
 
   const actualStatus = orderData.status.toLowerCase();
-
-  // Status term mapping — each status has terms that CONTRADICT other statuses
-  const statusTerms = {
-    TR: {
-      'hazırlanıyor': ['kargoya verildi', 'kargoda', 'yolda', 'teslim edildi', 'ulaştı', 'iptal'],
-      'kargoya verildi': ['hazırlanıyor', 'teslim edildi', 'ulaştı', 'iptal'],
-      'kargoda': ['hazırlanıyor', 'teslim edildi', 'ulaştı', 'iptal'],
-      'teslim edildi': ['hazırlanıyor', 'kargoya verildi', 'kargoda', 'yolda', 'iptal'],
-      'iptal': ['hazırlanıyor', 'kargoya verildi', 'kargoda', 'teslim edildi', 'yolda'],
-    },
-    EN: {
-      'processing': ['shipped', 'delivered', 'in transit', 'cancelled'],
-      'shipped': ['processing', 'delivered', 'cancelled'],
-      'delivered': ['processing', 'shipped', 'in transit', 'cancelled'],
-      'cancelled': ['processing', 'shipped', 'delivered', 'in transit'],
-    }
-  };
-
   const lang = language.toUpperCase() === 'EN' ? 'EN' : 'TR';
-  const terms = statusTerms[lang] || statusTerms.TR;
+  const phrases = HIGH_RISK_PHRASES[lang] || HIGH_RISK_PHRASES.TR;
+  const compatMap = COMPATIBLE_STATUS_MAP[lang] || COMPATIBLE_STATUS_MAP.TR;
 
-  // Find which status group the actual status belongs to
-  for (const [statusKey, contradictingTerms] of Object.entries(terms)) {
-    if (actualStatus.includes(statusKey)) {
-      // Check if response contains contradicting terms
-      for (const term of contradictingTerms) {
-        if (responseLower.includes(term)) {
-          return {
-            type: 'FIELD_GROUNDING_VIOLATION',
-            field: 'order.status',
-            expected: orderData.status,
-            claimed: term,
-            reason: `Response claims "${term}" but tool returned status "${orderData.status}"`
-          };
-        }
-      }
-      break;
+  for (const phrase of phrases) {
+    if (!matchesPhrase(responseLower, phrase)) continue;
+
+    // Check if this phrase is compatible with the actual status
+    const compatibleStatuses = compatMap[phrase] || [];
+    const isCompatible = compatibleStatuses.some(s => actualStatus.includes(s));
+
+    if (!isCompatible) {
+      return {
+        type: 'FIELD_GROUNDING_VIOLATION',
+        field: 'order.status',
+        expected: orderData.status,
+        claimed: phrase,
+        reason: `Response claims "${phrase}" but tool returned status "${orderData.status}"`
+      };
     }
   }
 

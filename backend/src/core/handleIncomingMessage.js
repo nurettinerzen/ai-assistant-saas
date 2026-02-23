@@ -1454,20 +1454,20 @@ export async function handleIncomingMessage({
         );
         if (corrected && String(corrected).trim()) {
           if (guardrailResult.correctionType === 'FIELD_GROUNDING') {
+            // FIELD_GROUNDING: Only fallback on actual status contradiction, not missing fields.
+            // Missing carrier/tracking is LLM style — not a safety risk.
+            // Reprompt limit: exactly 1 correction attempt (this block). If still wrong → deterministic fallback.
             const orderPayload = extractLatestOrderPayload(toolOutputs);
-            const hasMissingCriticalFields = !isFieldGroundingResponseComplete(
-              corrected,
-              orderPayload,
-              responseText
-            );
             const contradictionCheck = validateFieldGrounding(corrected, toolOutputs, language);
             const contradictsToolTruth = !contradictionCheck.grounded;
 
-            // Fallback only when critical order fields are missing OR response still contradicts tool truth.
-            if ((hasMissingCriticalFields || contradictsToolTruth) && orderPayload) {
+            if (contradictsToolTruth && orderPayload) {
               finalResponse = buildDeterministicOrderResponse(orderPayload, language);
               metrics.fieldGroundingDeterministicFallback = true;
-              console.warn('⚠️ [Orchestrator] FIELD_GROUNDING correction still incomplete/contradictory — applied deterministic tool-truth response');
+              metrics.securityTelemetry = metrics.securityTelemetry || {};
+              metrics.securityTelemetry.repromptCount = 1;
+              metrics.securityTelemetry.fallbackUsed = true;
+              console.warn('⚠️ [Orchestrator] FIELD_GROUNDING: 1 reprompt exhausted, still contradicts → deterministic fallback');
             } else {
               finalResponse = corrected;
             }

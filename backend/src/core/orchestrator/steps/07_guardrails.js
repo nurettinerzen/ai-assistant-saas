@@ -699,9 +699,15 @@ export async function applyGuardrails(params) {
         metrics.fieldGroundingMonitorOnly = true;
       } else {
         // Field grounding violation: re-prompt LLM with correction guidance
+        // Tell LLM what IS allowed (informational phrases) and what to fix (false final-state claim)
+        const isEN = String(language || '').toUpperCase() === 'EN';
         const correctionConstraint = groundingResult.violation
-          ? `Yanıtındaki ${groundingResult.violation.field || 'alan'} bilgisi tool çıktısıyla uyuşmuyor. Tool çıktısında "${groundingResult.violation.expected || 'bilinmiyor'}" var ama sen "${groundingResult.violation.claimed || 'farklı bilgi'}" dedin. SADECE tool'dan gelen veriyi kullan.`
-          : 'Tool çıktısında olmayan bilgi vermeyin. SADECE tool\'dan dönen gerçek veriyi kullanın.';
+          ? (isEN
+              ? `Your response claims "${groundingResult.violation.claimed}" but the tool returned status "${groundingResult.violation.expected}". Correct ONLY this status claim. You MAY freely use phrases like "estimated delivery date", "tracking number", "carrier". Just don't claim a final status that contradicts the tool data.`
+              : `Yanıtında "${groundingResult.violation.claimed}" diyorsun ama tool'dan gelen durum "${groundingResult.violation.expected}". SADECE bu durum iddiasını düzelt. "Tahmini teslimat tarihi", "takip numarası", "kargo firması" gibi bilgilendirme ifadeleri SERBEST. Tool verisine aykırı bir kesin durum (teslim edildi, iptal edildi vb.) iddia etme.`)
+          : (isEN
+              ? 'Tool output is the source of truth. Do not claim a final status not in the tool data.'
+              : 'Tool çıktısı gerçeğin kaynağıdır. Tool verisinde olmayan bir kesin durum iddia etme.');
 
         return {
           finalResponse: responseText,
