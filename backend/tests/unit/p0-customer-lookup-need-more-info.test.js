@@ -119,4 +119,44 @@ describe('P0 customer_data_lookup deterministic outcomes', () => {
     expect(prismaMock.crmOrder.findFirst).toHaveBeenCalledTimes(4);
     expect(prismaMock.crmOrder.findFirst.mock.calls[3][0]?.where?.OR?.[0]).toHaveProperty('customerPhone');
   });
+
+  it('B5: verified session should bypass re-verification and return full order data', async () => {
+    prismaMock.crmOrder.findFirst.mockResolvedValueOnce({
+      id: 'crm-order-verified-1',
+      businessId: 1,
+      orderNumber: 'ORD-777777',
+      customerName: 'Nurettin Erzen',
+      customerPhone: '+14245275089',
+      customerEmail: 'nurettin@example.com',
+      status: 'kargoda',
+      trackingNumber: 'TRK123456',
+      carrier: 'Yurtici Kargo',
+      estimatedDelivery: '2026-02-28'
+    });
+    prismaMock.customerData.findMany.mockResolvedValue([]);
+
+    const result = await executeLookup(
+      {
+        query_type: 'siparis',
+        order_number: 'ORD-777777'
+      },
+      business,
+      {
+        sessionId: 'test-b5',
+        state: {
+          verification: {
+            status: 'verified',
+            anchor: { id: 'prev-anchor-id' }
+          }
+        }
+      }
+    );
+
+    expect(result.outcome).toBe(ToolOutcome.OK);
+    expect(result.message.toLowerCase()).toContain('kargoda');
+    expect(result.data?.order?.status).toBe('kargoda');
+    expect(result.data?.order?.trackingNumber).toBe('TRK123456');
+    expect(result.data?.order?.carrier).toBe('Yurtici Kargo');
+    expect(result.data?.order?.estimatedDelivery).toBeDefined();
+  });
 });
