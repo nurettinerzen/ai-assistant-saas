@@ -182,6 +182,140 @@ function extractModelResponseText(result) {
   return '';
 }
 
+function summarizeToolPayloadForCorrection(toolOutputs = []) {
+  if (!Array.isArray(toolOutputs) || toolOutputs.length === 0) {
+    return '[]';
+  }
+
+  const compact = toolOutputs.slice(-3).map(output => ({
+    tool: output?.name || null,
+    outcome: output?.outcome || null,
+    data: output?.output || null
+  }));
+
+  try {
+    const json = JSON.stringify(
+      compact,
+      (_key, value) => (typeof value === 'string' && value.length > 240 ? `${value.substring(0, 240)}...` : value),
+      2
+    );
+    return json.length > 7000 ? `${json.substring(0, 7000)}...` : json;
+  } catch {
+    return '[]';
+  }
+}
+
+export function extractLatestOrderPayload(toolOutputs = []) {
+  if (!Array.isArray(toolOutputs)) return null;
+
+  for (let i = toolOutputs.length - 1; i >= 0; i--) {
+    const output = toolOutputs[i]?.output;
+    if (!output || typeof output !== 'object') continue;
+
+    const order = output?.order && typeof output.order === 'object' ? output.order : output;
+    const hasOrderShape = Boolean(
+      order?.status ||
+      order?.trackingNumber ||
+      order?.carrier ||
+      order?.estimatedDelivery ||
+      order?.items ||
+      order?.totalAmount
+    );
+
+    if (!hasOrderShape) continue;
+
+    return {
+      orderNumber: order.orderNumber || null,
+      status: order.status || null,
+      trackingNumber: order.trackingNumber || null,
+      carrier: order.carrier || null,
+      estimatedDelivery: order.estimatedDelivery || null,
+      items: order.items || null,
+      totalAmount: order.totalAmount || null
+    };
+  }
+
+  return null;
+}
+
+function hasRichOrderPayload(orderPayload = null) {
+  if (!orderPayload) return false;
+  const richnessFields = [
+    orderPayload.status,
+    orderPayload.trackingNumber,
+    orderPayload.carrier,
+    orderPayload.estimatedDelivery,
+    orderPayload.items,
+    orderPayload.totalAmount
+  ];
+  return richnessFields.filter(v => v !== null && v !== undefined && String(v).trim() !== '').length >= 3;
+}
+
+export function isFieldGroundingResponseComplete(responseText, orderPayload, previousResponse = '') {
+  if (!orderPayload) return true;
+  const response = String(responseText || '');
+  const responseLower = response.toLowerCase();
+
+  if (orderPayload.status && !responseLower.includes(String(orderPayload.status).toLowerCase())) {
+    return false;
+  }
+  if (orderPayload.trackingNumber && !responseLower.includes(String(orderPayload.trackingNumber).toLowerCase())) {
+    return false;
+  }
+  if (orderPayload.carrier && !responseLower.includes(String(orderPayload.carrier).toLowerCase())) {
+    return false;
+  }
+  if (orderPayload.estimatedDelivery && !responseLower.includes(String(orderPayload.estimatedDelivery).toLowerCase())) {
+    return false;
+  }
+
+  const previous = String(previousResponse || '').trim();
+  if (hasRichOrderPayload(orderPayload) && previous.length > 0) {
+    const minLength = Math.max(80, Math.floor(previous.length * 0.6));
+    if (response.trim().length < minLength) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+export function buildDeterministicOrderResponse(orderPayload, language = 'TR') {
+  const isTR = String(language || '').toUpperCase() !== 'EN';
+  const status = orderPayload?.status || (isTR ? 'bilinmiyor' : 'unknown');
+  const trackingNumber = orderPayload?.trackingNumber || (isTR ? 'bulunmuyor' : 'not available');
+  const carrier = orderPayload?.carrier || (isTR ? 'bilinmiyor' : 'unknown');
+  const estimatedDelivery = orderPayload?.estimatedDelivery ? String(orderPayload.estimatedDelivery) : null;
+  const items = orderPayload?.items;
+  const totalAmount = orderPayload?.totalAmount;
+
+  const itemText = Array.isArray(items)
+    ? items.map(item => {
+      if (typeof item === 'string') return item;
+      if (item && typeof item === 'object') return item.name || item.title || JSON.stringify(item);
+      return String(item);
+    }).join(', ')
+    : (items ? String(items) : null);
+
+  if (isTR) {
+    let response = `Sipariş detayları: status: ${status}; trackingNumber: ${trackingNumber}; carrier: ${carrier}`;
+    if (estimatedDelivery) response += `; estimatedDelivery: ${estimatedDelivery}`;
+    if (itemText) response += `. items: ${itemText}`;
+    if (totalAmount !== null && totalAmount !== undefined && String(totalAmount).trim() !== '') {
+      response += `. totalAmount: ${totalAmount}`;
+    }
+    return response;
+  }
+
+  let response = `Order details: status: ${status}; trackingNumber: ${trackingNumber}; carrier: ${carrier}`;
+  if (estimatedDelivery) response += `; estimatedDelivery: ${estimatedDelivery}`;
+  if (itemText) response += `. items: ${itemText}`;
+  if (totalAmount !== null && totalAmount !== undefined && String(totalAmount).trim() !== '') {
+    response += `. totalAmount: ${totalAmount}`;
+  }
+  return response;
+}
+
 /**
  * Regenerate LLM response with guidance
  * Used when guardrails detect issues (verification needed, confabulation, etc.)
@@ -190,9 +324,10 @@ function extractModelResponseText(result) {
  * @param {any} guidanceData - Type-specific data (missingFields or correctionConstraint)
  * @param {string} userMessage - Original user message
  * @param {string} language - 'TR' | 'EN'
+ * @param {Object} options - Optional context for correction quality
  * @returns {Promise<string>} Regenerated response
  */
-async function regenerateWithGuidance(guidanceType, guidanceData, userMessage, language) {
+async function regenerateWithGuidance(guidanceType, guidanceData, userMessage, language, options = {}) {
   try {
     const { getGeminiModel } = await import('../services/gemini-utils.js');
 
@@ -203,6 +338,9 @@ async function regenerateWithGuidance(guidanceType, guidanceData, userMessage, l
     });
 
     let guidance;
+
+    const toolOutputs = Array.isArray(options.toolOutputs) ? options.toolOutputs : [];
+    const previousResponse = typeof options.previousResponse === 'string' ? options.previousResponse : '';
 
     if (guidanceType === 'VERIFICATION') {
       const callbackFields = new Set(['customer_name', 'phone']);
@@ -235,9 +373,28 @@ async function regenerateWithGuidance(guidanceType, guidanceData, userMessage, l
         : `You are a customer service assistant. ${guidanceData} Answer the user's question but NEVER share order status, address, phone, tracking number or any personal data. Explain that order number and verification are needed to access this information.`;
 
     } else if (guidanceType === 'FIELD_GROUNDING') {
+      const toolPayloadJson = summarizeToolPayloadForCorrection(toolOutputs);
       guidance = language === 'TR'
-        ? `Sen bir müşteri hizmetleri asistanısın. ${guidanceData} Kullanıcının sorusuna yanıt ver ama SADECE sistemden dönen bilgileri kullan. Sistemde olmayan bilgiyi UYDURMA. Emin olmadığın konularda "sistemi kontrol edeyim" de.`
-        : `You are a customer service assistant. ${guidanceData} Answer the user's question using ONLY the data returned from the system. Do NOT fabricate information not present in system data. If unsure, say "let me check the system".`;
+        ? `Sen bir müşteri hizmetleri asistanısın. ${guidanceData}
+FIELD_GROUNDING DÜZELTME KURALLARI:
+1) SADECE hatalı alanı düzelt, doğru alanları KORU.
+2) TOOL_PAYLOAD_JSON içindeki tüm mevcut alanları yanıtında koru.
+3) TOOL_PAYLOAD_JSON'da status/trackingNumber/carrier/estimatedDelivery varsa, yanıtında bu alanları da açıkça yaz.
+4) Tool verisi zenginse, yanıtı kısaltma veya "sadece kargoda" gibi minimal bırakma.
+5) Tool çıktısı gerçeğin tek kaynağıdır.
+
+TOOL_PAYLOAD_JSON:
+${toolPayloadJson}`
+        : `You are a customer service assistant. ${guidanceData}
+FIELD_GROUNDING CORRECTION RULES:
+1) Correct ONLY the incorrect field and preserve correct fields.
+2) Preserve all available fields from TOOL_PAYLOAD_JSON.
+3) If TOOL_PAYLOAD_JSON has status/trackingNumber/carrier/estimatedDelivery, include those fields explicitly.
+4) Do not shorten a rich response to a minimal one.
+5) Tool output is the source of truth.
+
+TOOL_PAYLOAD_JSON:
+${toolPayloadJson}`;
 
     } else if (guidanceType === 'KB_ONLY_URL_VIOLATION') {
       guidance = language === 'TR'
@@ -268,7 +425,7 @@ Extra rules:
 - Keep the answer within 2 sentences.`;
     }
 
-    const prompt = `${guidance}\n\nKullanıcı mesajı: "${userMessage}"\n\nYanıtın:`;
+    const prompt = `${guidance}\n\nKullanıcı mesajı: "${userMessage}"\n\nÖnceki yanıt (düzeltilecek): "${previousResponse}"\n\nYanıtın:`;
 
     const result = await model.generateContent(prompt);
     const response = extractModelResponseText(result);
@@ -1279,10 +1436,32 @@ export async function handleIncomingMessage({
           guardrailResult.correctionType,
           guardrailResult.correctionConstraint || '',
           userMessage,
-          language
+          language,
+          {
+            toolOutputs,
+            previousResponse: responseText
+          }
         );
         if (corrected && String(corrected).trim()) {
-          finalResponse = corrected;
+          if (guardrailResult.correctionType === 'FIELD_GROUNDING') {
+            const orderPayload = extractLatestOrderPayload(toolOutputs);
+            const correctionLooksComplete = isFieldGroundingResponseComplete(
+              corrected,
+              orderPayload,
+              responseText
+            );
+
+            if (!correctionLooksComplete && orderPayload) {
+              finalResponse = buildDeterministicOrderResponse(orderPayload, language);
+              metrics.fieldGroundingDeterministicFallback = true;
+              console.warn('⚠️ [Orchestrator] FIELD_GROUNDING correction lost detail — applied deterministic tool-truth response');
+            } else {
+              finalResponse = corrected;
+            }
+          } else {
+            finalResponse = corrected;
+          }
+
           metrics.guardrailCorrectionApplied = guardrailResult.correctionType;
           metrics.securityTelemetry = metrics.securityTelemetry || {};
           metrics.securityTelemetry.repromptCount = 1;

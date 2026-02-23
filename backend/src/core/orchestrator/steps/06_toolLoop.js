@@ -28,6 +28,15 @@ import { getMessage } from '../../../messages/messageCatalog.js';
 const MAX_ITERATIONS = 3;
 const REPEAT_WINDOW_MS = 10 * 60 * 1000;
 const REPEAT_IDENTIFIER_KEYS = ['order_number', 'phone', 'email', 'customer_name', 'vkn', 'tc', 'ticket_number'];
+const CALLBACK_PHONE_PATTERN = /(\+?\d[\d\s\-()]{8,}\d)/;
+const CALLBACK_NAME_PATTERN = /[A-Za-zÇĞİÖŞÜçğıöşü]{2,}/g;
+const CALLBACK_PLACEHOLDER_NAMES = new Set(['customer', 'unknown', 'anonymous', 'test', 'user', 'n/a', 'na', '-']);
+const CALLBACK_NAME_STOPWORDS = new Set([
+  'beni', 'bana', 'ara', 'arayin', 'arayabilir', 'arayabilirsiniz', 'lutfen', 'lütfen',
+  'telefon', 'numara', 'numarasi', 'numarami', 'geri', 'donus', 'donusum', 'cagri', 'talep',
+  'please', 'call', 'me', 'back', 'callback', 'agent', 'representative', 'human', 'support',
+  'my', 'name', 'is', 'i', 'am'
+]);
 
 /**
  * Compute stable hash from tool args for repeat NOT_FOUND detection.
@@ -43,6 +52,97 @@ function computeArgsHash(args) {
     }, {});
     return crypto.createHash('sha256').update(JSON.stringify(sorted)).digest('hex').substring(0, 16);
   } catch { return null; }
+}
+
+function normalizeCallbackPhone(rawPhone) {
+  if (!rawPhone) return null;
+  const compact = String(rawPhone).replace(/[^\d+]/g, '');
+  const digits = compact.replace(/\D/g, '');
+  if (digits.length < 10 || digits.length > 13) return null;
+  return compact.startsWith('+') ? `+${digits}` : digits;
+}
+
+export function extractCallbackPhone(message = '') {
+  const match = String(message || '').match(CALLBACK_PHONE_PATTERN);
+  return normalizeCallbackPhone(match?.[1] || null);
+}
+
+function looksLikeRealCallbackName(name) {
+  if (!name) return false;
+  const normalized = String(name).trim().toLowerCase();
+  if (!normalized || CALLBACK_PLACEHOLDER_NAMES.has(normalized)) return false;
+
+  const tokens = normalized.split(/\s+/).filter(Boolean);
+  if (tokens.length < 2 || tokens.length > 4) return false;
+  if (tokens.some(token => CALLBACK_NAME_STOPWORDS.has(token))) return false;
+  return true;
+}
+
+export function extractCallbackName(message = '') {
+  const text = String(message || '').replace(CALLBACK_PHONE_PATTERN, ' ').trim();
+  if (!text) return null;
+
+  const introMatch = text.match(/(?:adim|adım|isim|ismim|my\s+name\s+is|i\s+am)\s*[:\-]?\s*([A-Za-zÇĞİÖŞÜçğıöşü]+(?:\s+[A-Za-zÇĞİÖŞÜçğıöşü]+){1,2})/i);
+  if (introMatch?.[1] && looksLikeRealCallbackName(introMatch[1])) {
+    return introMatch[1].trim();
+  }
+
+  const tokens = text.match(CALLBACK_NAME_PATTERN) || [];
+  if (tokens.length < 2) return null;
+
+  const candidate = tokens.slice(0, 3).join(' ').trim();
+  return looksLikeRealCallbackName(candidate) ? candidate : null;
+}
+
+export function hydrateCreateCallbackArgs({ userMessage, state, args = {} }) {
+  const extractedSlots = state.extractedSlots || {};
+  const callbackFlow = state.callbackFlow || {};
+
+  const existingNameCandidate = args.customerName || callbackFlow.customerName || extractedSlots.customer_name || null;
+  const existingPhoneCandidate = args.customerPhone || callbackFlow.customerPhone || extractedSlots.phone || null;
+  const existingName = looksLikeRealCallbackName(existingNameCandidate) ? existingNameCandidate : null;
+  const existingPhone = normalizeCallbackPhone(existingPhoneCandidate);
+
+  const parsedPhone = extractCallbackPhone(userMessage);
+  const parsedName = extractCallbackName(userMessage);
+
+  const customerName = existingName || parsedName || null;
+  const customerPhone = existingPhone || parsedPhone || null;
+
+  const hydratedArgs = {
+    ...args,
+    ...(customerName ? { customerName } : {}),
+    ...(customerPhone ? { customerPhone } : {})
+  };
+
+  return {
+    hydratedArgs,
+    extracted: {
+      customer_name: customerName,
+      phone: customerPhone
+    }
+  };
+}
+
+export function buildCallbackMissingGuidance(missingSlots, language) {
+  const missing = Array.isArray(missingSlots) ? missingSlots : [];
+  const isEN = String(language || 'TR').toUpperCase() === 'EN';
+
+  if (missing.length === 1 && missing[0] === 'customer_name') {
+    return isEN
+      ? 'To create your callback request, could you share your full name?'
+      : 'Geri arama talebinizi olusturmak icin ad-soyadinizi paylasir misiniz?';
+  }
+
+  if (missing.length === 1 && missing[0] === 'phone') {
+    return isEN
+      ? 'To create your callback request, could you share your phone number?'
+      : 'Geri arama talebinizi olusturmak icin telefon numaranizi paylasir misiniz?';
+  }
+
+  return isEN
+    ? 'To create your callback request, could you share your full name and phone number?'
+    : 'Geri arama talebinizi olusturmak icin ad-soyad ve telefon numaranizi paylasir misiniz?';
 }
 
 function normalizeAskFor(rawAskFor) {
@@ -274,10 +374,31 @@ export async function executeToolLoop(params) {
 
     for (const functionCall of functionCalls) {
       const toolName = functionCall.name;
-      const toolArgs = functionCall.args;
+      let toolArgs = functionCall.args || {};
 
       console.log(`🔧 [ToolLoop] Calling tool: ${toolName}`);
       toolsCalled.push(toolName);
+
+      // Deterministic callback arg extraction:
+      // Do not rely solely on LLM function arguments for critical callback fields.
+      if (toolName === 'create_callback') {
+        const { hydratedArgs, extracted } = hydrateCreateCallbackArgs({
+          userMessage,
+          state,
+          args: toolArgs
+        });
+
+        toolArgs = hydratedArgs;
+        state.extractedSlots = state.extractedSlots || {};
+        if (extracted.customer_name) state.extractedSlots.customer_name = extracted.customer_name;
+        if (extracted.phone) state.extractedSlots.phone = extracted.phone;
+
+        if (state.callbackFlow?.pending) {
+          state.callbackFlow.customerName = extracted.customer_name || state.callbackFlow.customerName || null;
+          state.callbackFlow.customerPhone = extracted.phone || state.callbackFlow.customerPhone || null;
+          state.callbackFlow.updatedAt = new Date().toISOString();
+        }
+      }
 
       // ════════════════════════════════════════════════════════════════════
       // PRECONDITION CHECK: extractedSlots'ta gerekli alanlar var mı?
@@ -289,7 +410,11 @@ export async function executeToolLoop(params) {
       const preconditions = rawDef?.metadata?.preconditions;
 
       if (preconditions?.requiredSlots?.length > 0) {
-        const currentSlots = state.extractedSlots || {};
+        const currentSlots = { ...(state.extractedSlots || {}) };
+        if (toolName === 'create_callback') {
+          if (toolArgs.customerName) currentSlots.customer_name = currentSlots.customer_name || toolArgs.customerName;
+          if (toolArgs.customerPhone) currentSlots.phone = currentSlots.phone || toolArgs.customerPhone;
+        }
         const missingSlots = preconditions.requiredSlots.filter(
           slot => !currentSlots[slot] || String(currentSlots[slot]).trim() === ''
         );
@@ -297,7 +422,9 @@ export async function executeToolLoop(params) {
         if (missingSlots.length > 0) {
           console.log(`⚠️ [ToolLoop] Precondition FAILED for ${toolName}: missing [${missingSlots.join(', ')}]`);
 
-          const guidanceMsg = preconditions.guidance?.[language]
+          const guidanceMsg = toolName === 'create_callback'
+            ? buildCallbackMissingGuidance(missingSlots, language)
+            : preconditions.guidance?.[language]
             || preconditions.guidance?.TR
             || `Missing required info: ${missingSlots.join(', ')}`;
 

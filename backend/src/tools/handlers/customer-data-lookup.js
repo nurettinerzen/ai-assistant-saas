@@ -169,10 +169,12 @@ export async function execute(args, business, context = {}) {
     const sessionId = context.sessionId || context.conversationId;
     const language = business.language || 'TR';
     const state = context.state || {};
+    const verificationState = state.verification?.status || state.verificationStatus || 'none';
+    const isSessionVerified = verificationState === 'verified';
 
     // P0-C SECURITY FIX: verification_input ONLY accepted when state is pending/failed
     // Prevents LLM single-shot bypass (sending all params in one call)
-    const isVerificationPending = state.verification?.status === 'pending' || state.verification?.status === 'failed';
+    const isVerificationPending = verificationState === 'pending' || verificationState === 'failed';
     const effectiveVerificationInput = isVerificationPending
       ? (verification_input || customer_name)
       : null; // Ignore verification_input when not in verification flow
@@ -202,7 +204,7 @@ export async function execute(args, business, context = {}) {
       has_tc: !!tc,
       businessId: business.id,
       sessionId,
-      verificationStatus: state.verification?.status || 'none'
+      verificationStatus: verificationState
     });
 
     // ============================================================================
@@ -212,7 +214,7 @@ export async function execute(args, business, context = {}) {
     console.log('🔐 [Debug] Verification check:', {
       hasState: !!state,
       hasVerification: !!state.verification,
-      status: state.verification?.status,
+      status: verificationState,
       hasAnchor: !!state.verification?.anchor,
       hasVerificationInput: !!effectiveVerificationInput,
       verificationInput: effectiveVerificationInput
@@ -554,6 +556,24 @@ export async function execute(args, business, context = {}) {
 
     // P0 SECURITY: Detect identity switch (anchor change within session)
     // If user switches to a different customer mid-conversation, require new verification
+    // SESSION-LEVEL VERIFIED BYPASS:
+    // Once verified in this session, do not trigger tool-level re-verification again.
+    if (isSessionVerified) {
+      console.log('✅ [Verification] Session already verified — bypassing checkVerification');
+      const fullResult = getFullResult(record, query_type, language);
+      return {
+        ...ok(fullResult.data, fullResult.message),
+        _identityContext,
+        stateEvents: [
+          {
+            type: OutcomeEventType.VERIFICATION_PASSED,
+            anchor: toStateAnchor(anchor),
+            attempts: 0
+          }
+        ]
+      };
+    }
+
     console.log('🔐 [Debug] Identity switch check:', {
       hasStateAnchor: !!state.verification?.anchor,
       stateAnchorId: state.verification?.anchor?.id,
