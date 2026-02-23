@@ -525,9 +525,9 @@ function checkOrderFieldGrounding(responseLower, orderData, language) {
   // Status term mapping — each status has terms that CONTRADICT other statuses
   const statusTerms = {
     TR: {
-      'hazırlanıyor': ['kargoya verildi', 'kargoda', 'yolda', 'teslim edildi', 'teslim', 'ulaştı', 'iptal'],
-      'kargoya verildi': ['hazırlanıyor', 'teslim edildi', 'teslim', 'ulaştı', 'iptal'],
-      'kargoda': ['hazırlanıyor', 'teslim edildi', 'teslim', 'ulaştı', 'iptal'],
+      'hazırlanıyor': ['kargoya verildi', 'kargoda', 'yolda', 'teslim edildi', 'ulaştı', 'iptal'],
+      'kargoya verildi': ['hazırlanıyor', 'teslim edildi', 'ulaştı', 'iptal'],
+      'kargoda': ['hazırlanıyor', 'teslim edildi', 'ulaştı', 'iptal'],
       'teslim edildi': ['hazırlanıyor', 'kargoya verildi', 'kargoda', 'yolda', 'iptal'],
       'iptal': ['hazırlanıyor', 'kargoya verildi', 'kargoda', 'teslim edildi', 'yolda'],
     },
