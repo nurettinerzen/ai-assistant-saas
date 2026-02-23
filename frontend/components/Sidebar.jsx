@@ -216,7 +216,7 @@ export default function Sidebar({ user, credits, business }) {
         onScroll={(e) => {
           sessionStorage.setItem('sidebar-scroll', e.target.scrollTop);
         }}
-        className="flex-1 min-h-0 overflow-y-auto py-3 px-3"
+        className="flex-1 min-h-0 overflow-y-auto py-2 px-3"
       >
         {[...NAVIGATION, ...ADMIN_NAVIGATION].map((section) => {
           const sectionLabel = section.label;
@@ -232,7 +232,7 @@ export default function Sidebar({ user, credits, business }) {
           if (visibleItems.length === 0) return null;
 
           return (
-            <div key={section.label} className="mb-3">
+            <div key={section.label} className="mb-1.5">
               {/* Section header */}
               <button
                 onClick={() => toggleSection(sectionLabel)}
@@ -263,7 +263,7 @@ export default function Sidebar({ user, credits, business }) {
                             setIsMobileOpen(false);
                             handleLockedFeatureClick(item.featureId);
                           }}
-                          className="flex items-center justify-between w-full px-3 py-1.5 rounded-md text-[13px] text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                          className="flex items-center justify-between w-full px-3 py-1 rounded-md text-[13px] text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                         >
                           <div className="flex items-center gap-2.5">
                             <Icon className="h-4 w-4 flex-shrink-0" />
@@ -280,7 +280,7 @@ export default function Sidebar({ user, credits, business }) {
                         href={item.href}
                         onClick={() => setIsMobileOpen(false)}
                         className={cn(
-                          'flex items-center gap-2.5 px-3 py-1.5 rounded-md text-[13px] font-medium transition-all',
+                          'flex items-center gap-2.5 px-3 py-1 rounded-md text-[13px] font-medium transition-all',
                           isActive
                             ? 'bg-white dark:bg-gray-800 text-primary-600 dark:text-primary-400 shadow-sm'
                             : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
@@ -299,12 +299,12 @@ export default function Sidebar({ user, credits, business }) {
       </nav>
 
       {/* Language Switcher */}
-      <div className="px-4 py-2 border-t border-gray-200 dark:border-gray-800">
+      <div className="px-4 py-1.5 border-t border-gray-200 dark:border-gray-800">
         <LanguageSwitcher />
       </div>
 
       {/* User profile */}
-      <div className="px-3 py-2 border-t border-gray-200 dark:border-gray-800">
+      <div className="px-3 py-1.5 border-t border-gray-200 dark:border-gray-800">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="flex items-center gap-3 w-full px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">

@@ -115,6 +115,28 @@ function toStateAnchor(anchor) {
   };
 }
 
+function isSameVerificationScope(previousAnchor, nextAnchor) {
+  if (!previousAnchor || !nextAnchor) return false;
+
+  if (
+    previousAnchor.id &&
+    nextAnchor.id &&
+    String(previousAnchor.id) === String(nextAnchor.id)
+  ) {
+    return true;
+  }
+
+  if (
+    previousAnchor.customerId &&
+    nextAnchor.customerId &&
+    String(previousAnchor.customerId) === String(nextAnchor.customerId)
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
 const ORDER_CUSTOM_FIELD_NAMES = Object.freeze([
   'Sipariş No',
   'Siparis No',
@@ -554,38 +576,25 @@ export async function execute(args, business, context = {}) {
       queryType: query_type
     };
 
-    // P0 SECURITY: Detect identity switch (anchor change within session)
-    // If user switches to a different customer mid-conversation, require new verification
-    // SESSION-LEVEL VERIFIED BYPASS:
-    // Once verified in this session, do not trigger tool-level re-verification again.
-    if (isSessionVerified) {
-      console.log('✅ [Verification] Session already verified — bypassing checkVerification');
-      const fullResult = getFullResult(record, query_type, language);
-      return {
-        ...ok(fullResult.data, fullResult.message),
-        _identityContext,
-        stateEvents: [
-          {
-            type: OutcomeEventType.VERIFICATION_PASSED,
-            anchor: toStateAnchor(anchor),
-            attempts: 0
-          }
-        ]
-      };
-    }
-
+    const previousVerificationAnchor = state.verification?.anchor || null;
+    const sameVerificationScope = isSameVerificationScope(previousVerificationAnchor, anchor);
+    const hasPreviousVerificationAnchor = Boolean(previousVerificationAnchor?.id);
     console.log('🔐 [Debug] Identity switch check:', {
-      hasStateAnchor: !!state.verification?.anchor,
-      stateAnchorId: state.verification?.anchor?.id,
+      hasStateAnchor: hasPreviousVerificationAnchor,
+      stateAnchorId: previousVerificationAnchor?.id,
+      stateAnchorCustomerId: previousVerificationAnchor?.customerId || null,
       newAnchorId: anchor.id,
-      isDifferent: state.verification?.anchor?.id !== anchor.id
+      newAnchorCustomerId: anchor.customerId || null,
+      sameVerificationScope
     });
-    const identitySwitch = state.verification?.anchor?.id && state.verification.anchor.id !== anchor.id;
+    const identitySwitch = hasPreviousVerificationAnchor && !sameVerificationScope;
 
     if (identitySwitch) {
       console.log('🚨 [SECURITY] Identity switch detected!', {
-        previousAnchor: state.verification.anchor.id,
-        newAnchor: anchor.id
+        previousAnchor: previousVerificationAnchor?.id,
+        previousCustomerId: previousVerificationAnchor?.customerId || null,
+        newAnchor: anchor.id,
+        newCustomerId: anchor.customerId || null
       });
 
       // Force new verification by treating as if no verification data provided
@@ -611,6 +620,29 @@ export async function execute(args, business, context = {}) {
           }
         ]
       };
+    }
+
+    // SESSION-LEVEL VERIFIED BYPASS (scoped):
+    // Only bypass re-verification when current anchor/customer scope matches
+    // the previously verified anchor in session state.
+    if (isSessionVerified && sameVerificationScope) {
+      console.log('✅ [Verification] Session already verified for same scope — bypassing checkVerification');
+      const fullResult = getFullResult(record, query_type, language);
+      return {
+        ...ok(fullResult.data, fullResult.message),
+        _identityContext,
+        stateEvents: [
+          {
+            type: OutcomeEventType.VERIFICATION_PASSED,
+            anchor: toStateAnchor(anchor),
+            attempts: 0
+          }
+        ]
+      };
+    }
+
+    if (isSessionVerified && !sameVerificationScope) {
+      console.log('🔐 [Verification] Verified session scope mismatch — fresh verification required');
     }
 
     // P0 SECURITY: Enforce two-step verification AND detect mismatches

@@ -119,7 +119,7 @@ describe('P0 customer_data_lookup deterministic outcomes', () => {
     expect(prismaMock.crmOrder.findFirst.mock.calls[0][0]?.where?.OR?.[0]).toHaveProperty('customerPhone');
   });
 
-  it('B5: verified session should bypass re-verification and return full order data', async () => {
+  it('B5: verified session with switched anchor should force fresh verification', async () => {
     prismaMock.crmOrder.findMany.mockResolvedValueOnce([{
       id: 'crm-order-verified-1',
       businessId: 1,
@@ -151,11 +151,44 @@ describe('P0 customer_data_lookup deterministic outcomes', () => {
       }
     );
 
+    expect(result.outcome).toBe(ToolOutcome.VERIFICATION_REQUIRED);
+    expect(result.data?.askFor).toBe('name');
+  });
+
+  it('B6: verified session should bypass re-verification only within same customer scope', async () => {
+    prismaMock.crmOrder.findMany.mockResolvedValueOnce([{
+      id: 'crm-order-verified-2',
+      businessId: 1,
+      orderNumber: 'ORD-888888',
+      customerName: 'Nurettin Erzen',
+      customerPhone: '+14245275089',
+      customerEmail: 'nurettin@example.com',
+      status: 'kargoda',
+      trackingNumber: 'TRK999888',
+      carrier: 'Yurtici Kargo',
+      estimatedDelivery: '2026-02-28'
+    }]);
+    prismaMock.customerData.findMany.mockResolvedValueOnce([{ id: 'cust-42' }]);
+
+    const result = await executeLookup(
+      {
+        query_type: 'siparis',
+        order_number: 'ORD-888888'
+      },
+      business,
+      {
+        sessionId: 'test-b6',
+        state: {
+          verification: {
+            status: 'verified',
+            anchor: { id: 'prev-anchor-id', customerId: 'cust-42' }
+          }
+        }
+      }
+    );
+
     expect(result.outcome).toBe(ToolOutcome.OK);
     expect(result.message.toLowerCase()).toContain('kargoda');
     expect(result.data?.order?.status).toBe('kargoda');
-    expect(result.data?.order?.trackingNumber).toBe('TRK123456');
-    expect(result.data?.order?.carrier).toBe('Yurtici Kargo');
-    expect(result.data?.order?.estimatedDelivery).toBeDefined();
   });
 });

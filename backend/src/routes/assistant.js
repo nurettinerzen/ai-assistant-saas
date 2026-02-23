@@ -1210,6 +1210,12 @@ router.delete('/:id', authenticateToken, checkPermission('assistants:edit'), asy
       }
     }
 
+    // Clear assistantId from any PhoneNumber records that reference this assistant
+    await prisma.phoneNumber.updateMany({
+      where: { assistantId: id },
+      data: { assistantId: null },
+    });
+
     // Delete from database (soft delete)
     await prisma.assistant.update({
       where: { id },

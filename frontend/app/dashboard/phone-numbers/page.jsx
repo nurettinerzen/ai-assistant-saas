@@ -239,17 +239,7 @@ export default function PhoneNumbersPage() {
         </div>
       )}
 
-      {/* Limit warning */}
-      {!canAddNumber() && phoneNumbers.length > 0 && (
-        <div className="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-xl p-4">
-          <p className="text-sm text-yellow-800 dark:text-yellow-200">
-            ⚠️ {t('dashboard.phoneNumbersPage.phoneLimitReached')}
-            <Link href="/dashboard/subscription" className="ml-2 underline font-medium">
-              {t('dashboard.subscriptionPage.upgrade')}
-            </Link>
-          </p>
-        </div>
-      )}
+      {/* Limit warning removed — all plans have same phone number limit (1) */}
 
       {/* Phone numbers grid */}
       {loading ? (
@@ -299,9 +289,7 @@ export default function PhoneNumbersPage() {
                       {number.assistantName || t('dashboard.phoneNumbersPage.notAssigned') || 'Not assigned'}
                     </span>
                   </div>
-                  <p className="mt-1 text-xs text-orange-700 dark:text-orange-300">
-                    V1 modunda telefon numarası-assistant assignment kapalıdır.
-                  </p>
+                  {/* V1 assignment note removed */}
                 </div>
                 {/* Status */}
                 <div className="flex justify-between text-sm">

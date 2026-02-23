@@ -513,13 +513,21 @@ function isLikelyVerificationAttempt(userMessage) {
   return false;
 }
 
-function determineTurnOutcome({
+export function determineTurnOutcome({
   toolLoopResult,
   guardrailResult,
   hadToolFailure = false
 }) {
   if (hadToolFailure) {
     return ToolOutcome.INFRA_ERROR;
+  }
+
+  const normalizedTerminal = normalizeOutcome(toolLoopResult?._terminalState);
+
+  // Preserve terminal NOT_FOUND contract even if guardrails rewrite text into
+  // a clarification prompt for UX purposes.
+  if (normalizedTerminal === ToolOutcome.NOT_FOUND) {
+    return ToolOutcome.NOT_FOUND;
   }
 
   if (guardrailResult?.action === 'NEED_MIN_INFO_FOR_TOOL') {
@@ -542,7 +550,6 @@ function determineTurnOutcome({
     return ToolOutcome.DENIED;
   }
 
-  const normalizedTerminal = normalizeOutcome(toolLoopResult?._terminalState);
   if (normalizedTerminal) {
     return normalizedTerminal;
   }

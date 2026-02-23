@@ -52,6 +52,7 @@ import { isSessionLocked, getLockMessage, shouldSendAndMarkLockMessage, lockSess
 import { detectUserRisks, getPIIWarningMessages } from '../services/user-risk-detector.js';
 import { getState, updateState } from '../services/state-manager.js';
 import { resolveChatAssistantForBusiness } from '../services/assistantChannels.js';
+import { syncPersistedAssistantReply } from '../services/reply-parity.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -422,6 +423,18 @@ async function processWhatsAppMessage(business, from, messageBody, messageId) {
 
     // Send response using business's credentials (with idempotency)
     await sendWhatsAppMessage(business, from, aiResponse, { inboundMessageId: messageId });
+    try {
+      const paritySync = await syncPersistedAssistantReply({
+        sessionId,
+        persistedReply: result.reply,
+        finalReply: aiResponse
+      });
+      if (paritySync.updated) {
+        console.log(`🔁 [WhatsApp] Persisted assistant reply synchronized (index=${paritySync.targetIndex})`);
+      }
+    } catch (parityError) {
+      console.error('⚠️ [WhatsApp] Failed to synchronize persisted reply:', parityError.message);
+    }
   } catch (error) {
     console.error('❌ Error processing WhatsApp message:', error);
 

@@ -61,6 +61,7 @@ import {
 // Session lock & risk detection
 import { isSessionLocked, getLockMessage, lockSession } from '../services/session-lock.js';
 import { detectUserRisks, getPIIWarningMessages } from '../services/user-risk-detector.js';
+import { syncPersistedAssistantReply, updateAssistantReplyInMessages } from '../services/reply-parity.js';
 import {
   ASSISTANT_CHANNEL_CAPABILITIES,
   assistantHasCapability,
@@ -1301,6 +1302,25 @@ router.post('/widget', async (req, res) => {
       finalReply = `${warningText}\n\n${finalReply}`;
     }
 
+    const historyParity = updateAssistantReplyInMessages({
+      messages: existingLog?.messages || [],
+      persistedReply: result.reply,
+      finalReply
+    });
+
+    try {
+      const paritySync = await syncPersistedAssistantReply({
+        sessionId,
+        persistedReply: result.reply,
+        finalReply
+      });
+      if (paritySync.updated) {
+        console.log(`🔁 [Widget] Persisted assistant reply synchronized (index=${paritySync.targetIndex})`);
+      }
+    } catch (parityError) {
+      console.error('⚠️ [Widget] Failed to synchronize persisted reply:', parityError.message);
+    }
+
     // P0: Reload state to get updated verification status after tool execution
     const updatedState = await getState(sessionId);
 
@@ -1315,7 +1335,7 @@ router.post('/widget', async (req, res) => {
       // conversationId remains the canonical internal session key.
       sessionId: clientSessionId || sessionId,
       assistantName: assistant.name,
-      history: existingLog?.messages || [],
+      history: historyParity.updated ? historyParity.messages : (existingLog?.messages || []),
       verificationStatus: updatedState.verification?.status || 'none', // P0: Gate requirement for verification tests
       warnings: hasPIIWarnings ? piiWarnings : undefined,
       toolsCalled: result.toolsCalled || [], // For test assertions (deprecated, use toolCalls)

@@ -162,7 +162,6 @@ export default function InfoTooltip({
             aria-label={resolvedAriaLabel}
             onMouseEnter={handleOpen}
             onMouseLeave={handleClose}
-            onFocus={handleOpen}
             className={cn(
               'inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-neutral-300 text-neutral-500 transition-colors hover:border-primary-500 hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:border-neutral-600 dark:text-neutral-300 dark:hover:border-primary-400 dark:hover:text-primary-300',
               triggerClassName
@@ -177,6 +176,8 @@ export default function InfoTooltip({
           className="w-[min(92vw,30rem)] rounded-xl border border-neutral-200 bg-white p-4 shadow-xl dark:border-neutral-700 dark:bg-neutral-900"
           onMouseEnter={handleOpen}
           onMouseLeave={handleClose}
+          onFocusOutside={(e) => e.preventDefault()}
+          onPointerDownOutside={(e) => e.preventDefault()}
         >
           <InfoContent
             title={title}
