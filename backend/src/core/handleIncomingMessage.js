@@ -306,20 +306,22 @@ export function buildDeterministicOrderResponse(orderPayload, language = 'TR') {
     : (items ? String(items) : null);
 
   if (isTR) {
-    let response = `Sipariş detayları: status: ${status}; trackingNumber: ${trackingNumber}; carrier: ${carrier}`;
-    if (estimatedDelivery) response += `; estimatedDelivery: ${estimatedDelivery}`;
-    if (itemText) response += `. items: ${itemText}`;
+    let response = `Siparişinizin durumu: ${status}. Kargo takip numarası: ${trackingNumber}, kargo firması: ${carrier}`;
+    if (estimatedDelivery) response += `, tahmini teslimat tarihi: ${estimatedDelivery}`;
+    response += '.';
+    if (itemText) response += ` Ürünler: ${itemText}.`;
     if (totalAmount !== null && totalAmount !== undefined && String(totalAmount).trim() !== '') {
-      response += `. totalAmount: ${totalAmount}`;
+      response += ` Toplam tutar: ${totalAmount} TL.`;
     }
     return response;
   }
 
-  let response = `Order details: status: ${status}; trackingNumber: ${trackingNumber}; carrier: ${carrier}`;
-  if (estimatedDelivery) response += `; estimatedDelivery: ${estimatedDelivery}`;
-  if (itemText) response += `. items: ${itemText}`;
+  let response = `Your order status: ${status}. Tracking number: ${trackingNumber}, carrier: ${carrier}`;
+  if (estimatedDelivery) response += `, estimated delivery: ${estimatedDelivery}`;
+  response += '.';
+  if (itemText) response += ` Items: ${itemText}.`;
   if (totalAmount !== null && totalAmount !== undefined && String(totalAmount).trim() !== '') {
-    response += `. totalAmount: ${totalAmount}`;
+    response += ` Total amount: ${totalAmount}.`;
   }
   return response;
 }
