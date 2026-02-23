@@ -168,6 +168,36 @@ function buildNotFoundClarification(language = 'TR', missingFields = []) {
   };
 }
 
+function isCallbackWorkflowContext({ intent, activeFlow, callbackPending }) {
+  if (callbackPending) return true;
+
+  const flow = String(activeFlow || '').toUpperCase();
+  if (flow === 'CALLBACK_REQUEST') return true;
+
+  const normalizedIntent = String(intent || '').toLowerCase();
+  return normalizedIntent.includes('callback')
+    || normalizedIntent.includes('escalat')
+    || normalizedIntent.includes('manager')
+    || normalizedIntent.includes('representative');
+}
+
+function isWorkflowCollectionResponse(responseText = '') {
+  const response = String(responseText || '');
+  if (!response.trim()) return false;
+
+  const mentionsCallbackFlow = /(geri\s*arama|callback|yönetici|yonetici|yetkili|temsilci|manager|representative|live support|canlı destek)/i.test(response);
+  if (!mentionsCallbackFlow) return false;
+
+  const asksContactFields = /(ad[\s-]?soyad|isim|full name|name|telefon|phone|numara|number)/i.test(response);
+  const confirmsNextStep = /(talep|kay[itı]|kayd[ıi]|oluşturabilirim|ilet[e]?bilirim|arrange|register|create)/i.test(response);
+
+  // Explicit factual claim patterns should never be bypassed.
+  const hasFactualOrderClaim = /(teslim edildi|kargoda|tracking\s*(number|no|code)|takip\s*(no|numarası?)|estimated delivery|tahmini teslimat|bakiye|borç|payment amount|invoice|adresiniz|address\s*:)/i.test(response);
+  if (hasFactualOrderClaim) return false;
+
+  return asksContactFields || confirmsNextStep;
+}
+
 export async function applyGuardrails(params) {
   const {
     responseText: initialResponseText,
@@ -583,7 +613,21 @@ export async function applyGuardrails(params) {
     success: true // If tool was called at this point, it succeeded
   }));
 
-  const toolOnlyDataResult = validateToolOnlyData(responseText, toolCallsForGuard, language);
+  const bypassToolOnlyDataGuard = isCallbackWorkflowContext({ intent, activeFlow, callbackPending })
+    && isWorkflowCollectionResponse(responseText);
+
+  const toolOnlyDataResult = bypassToolOnlyDataGuard
+    ? {
+      safe: true,
+      bypassed: true,
+      bypassReason: 'CALLBACK_WORKFLOW_PRE_TOOL'
+    }
+    : validateToolOnlyData(responseText, toolCallsForGuard, language);
+
+  if (bypassToolOnlyDataGuard) {
+    console.log('✅ [Guardrails] TOOL_ONLY_DATA bypassed for callback workflow pre-tool conversation');
+    metrics.toolOnlyDataBypass = 'CALLBACK_WORKFLOW_PRE_TOOL';
+  }
 
   if (!toolOnlyDataResult.safe) {
     console.error('🚨 [Guardrails] TOOL_ONLY_DATA_LEAK detected!', toolOnlyDataResult.violation);
@@ -715,7 +759,9 @@ export async function applyGuardrails(params) {
     'RESPONSE_FIREWALL',
     'PII_PREVENTION',
     'SECURITY_GATEWAY', // Leak Filter + Identity Match
-    toolOnlyDataResult.safe ? 'TOOL_ONLY_DATA' : 'TOOL_ONLY_DATA (VIOLATION)',
+    toolOnlyDataResult.bypassed
+      ? `TOOL_ONLY_DATA (BYPASSED:${toolOnlyDataResult.bypassReason})`
+      : (toolOnlyDataResult.safe ? 'TOOL_ONLY_DATA' : 'TOOL_ONLY_DATA (VIOLATION)'),
     internalProtocolResult.safe ? 'INTERNAL_PROTOCOL' : 'INTERNAL_PROTOCOL (VIOLATION)',
     confabulationResult.safe ? 'ANTI_CONFABULATION' : 'ANTI_CONFABULATION (VIOLATION)',
     'ACTION_CLAIM',

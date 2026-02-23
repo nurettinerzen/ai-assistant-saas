@@ -30,4 +30,11 @@ describe('P0 FIELD_GROUNDING regression helpers', () => {
     expect(deterministic).toContain('trk123456');
     expect(deterministic).toContain('yurtici kargo');
   });
+
+  it('accepts natural response style when critical fields are present and consistent', () => {
+    const natural = 'Siparisiniz kargoda. Takip numaraniz TRK123456 ve Yurtiçi ile sevk ediliyor.';
+    expect(
+      isFieldGroundingResponseComplete(natural, payload, 'Eski yanit')
+    ).toBe(true);
+  });
 });

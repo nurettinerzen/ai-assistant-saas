@@ -52,6 +52,7 @@ import {
   isBusinessClaimCategory
 } from '../services/responseGrounding.js';
 import { logEntityResolver } from '../services/entityResolverTelemetry.js';
+import { validateFieldGrounding } from '../guardrails/antiConfabulationGuard.js';
 
 const LLM_CALL_REASONS = new Set(['CHAT', 'WHATSAPP', 'EMAIL']);
 
@@ -238,43 +239,50 @@ export function extractLatestOrderPayload(toolOutputs = []) {
   return null;
 }
 
-function hasRichOrderPayload(orderPayload = null) {
-  if (!orderPayload) return false;
-  const richnessFields = [
-    orderPayload.status,
-    orderPayload.trackingNumber,
-    orderPayload.carrier,
-    orderPayload.estimatedDelivery,
-    orderPayload.items,
-    orderPayload.totalAmount
-  ];
-  return richnessFields.filter(v => v !== null && v !== undefined && String(v).trim() !== '').length >= 3;
+function normalizeGroundingText(value = '') {
+  return String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
 }
 
-export function isFieldGroundingResponseComplete(responseText, orderPayload, previousResponse = '') {
+function containsTrackingNumber(responseText = '', trackingNumber = '') {
+  const response = String(responseText || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+  const tracking = String(trackingNumber || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+  if (!tracking || tracking.length < 5) return true;
+  return response.includes(tracking);
+}
+
+function containsStatus(responseText = '', status = '') {
+  const normalizedResponse = normalizeGroundingText(responseText);
+  const statusTokens = normalizeGroundingText(status).split(/\s+/).filter(token => token.length > 2);
+  if (statusTokens.length === 0) return true;
+  return statusTokens.some(token => normalizedResponse.includes(token));
+}
+
+function containsCarrier(responseText = '', carrier = '') {
+  const normalizedResponse = normalizeGroundingText(responseText);
+  const carrierTokens = normalizeGroundingText(carrier).split(/\s+/).filter(token => token.length > 2);
+  if (carrierTokens.length === 0) return true;
+  const matchedCount = carrierTokens.filter(token => normalizedResponse.includes(token)).length;
+  const threshold = Math.max(1, Math.ceil(carrierTokens.length / 2));
+  return matchedCount >= threshold;
+}
+
+export function isFieldGroundingResponseComplete(responseText, orderPayload, _previousResponse = '') {
   if (!orderPayload) return true;
-  const response = String(responseText || '');
-  const responseLower = response.toLowerCase();
 
-  if (orderPayload.status && !responseLower.includes(String(orderPayload.status).toLowerCase())) {
+  // Critical fields only; do not enforce rigid formatting/style.
+  if (orderPayload.status && !containsStatus(responseText, orderPayload.status)) {
     return false;
   }
-  if (orderPayload.trackingNumber && !responseLower.includes(String(orderPayload.trackingNumber).toLowerCase())) {
+  if (orderPayload.trackingNumber && !containsTrackingNumber(responseText, orderPayload.trackingNumber)) {
     return false;
   }
-  if (orderPayload.carrier && !responseLower.includes(String(orderPayload.carrier).toLowerCase())) {
+  if (orderPayload.carrier && !containsCarrier(responseText, orderPayload.carrier)) {
     return false;
-  }
-  if (orderPayload.estimatedDelivery && !responseLower.includes(String(orderPayload.estimatedDelivery).toLowerCase())) {
-    return false;
-  }
-
-  const previous = String(previousResponse || '').trim();
-  if (hasRichOrderPayload(orderPayload) && previous.length > 0) {
-    const minLength = Math.max(80, Math.floor(previous.length * 0.6));
-    if (response.trim().length < minLength) {
-      return false;
-    }
   }
 
   return true;
@@ -1445,16 +1453,19 @@ export async function handleIncomingMessage({
         if (corrected && String(corrected).trim()) {
           if (guardrailResult.correctionType === 'FIELD_GROUNDING') {
             const orderPayload = extractLatestOrderPayload(toolOutputs);
-            const correctionLooksComplete = isFieldGroundingResponseComplete(
+            const hasMissingCriticalFields = !isFieldGroundingResponseComplete(
               corrected,
               orderPayload,
               responseText
             );
+            const contradictionCheck = validateFieldGrounding(corrected, toolOutputs, language);
+            const contradictsToolTruth = !contradictionCheck.grounded;
 
-            if (!correctionLooksComplete && orderPayload) {
+            // Fallback only when critical order fields are missing OR response still contradicts tool truth.
+            if ((hasMissingCriticalFields || contradictsToolTruth) && orderPayload) {
               finalResponse = buildDeterministicOrderResponse(orderPayload, language);
               metrics.fieldGroundingDeterministicFallback = true;
-              console.warn('⚠️ [Orchestrator] FIELD_GROUNDING correction lost detail — applied deterministic tool-truth response');
+              console.warn('⚠️ [Orchestrator] FIELD_GROUNDING correction still incomplete/contradictory — applied deterministic tool-truth response');
             } else {
               finalResponse = corrected;
             }

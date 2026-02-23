@@ -120,7 +120,7 @@ describe('P0 customer_data_lookup deterministic outcomes', () => {
   });
 
   it('B5: verified session should bypass re-verification and return full order data', async () => {
-    prismaMock.crmOrder.findFirst.mockResolvedValueOnce({
+    prismaMock.crmOrder.findMany.mockResolvedValueOnce([{
       id: 'crm-order-verified-1',
       businessId: 1,
       orderNumber: 'ORD-777777',
@@ -131,7 +131,7 @@ describe('P0 customer_data_lookup deterministic outcomes', () => {
       trackingNumber: 'TRK123456',
       carrier: 'Yurtici Kargo',
       estimatedDelivery: '2026-02-28'
-    });
+    }]);
     prismaMock.customerData.findMany.mockResolvedValue([]);
 
     const result = await executeLookup(
