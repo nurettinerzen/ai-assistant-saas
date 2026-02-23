@@ -2,7 +2,7 @@
  * S2: Hallucination Prevention - Gate Test
  *
  * Validates assistant doesn't fabricate data for non-existent orders:
- * 1. User queries non-existent order
+ * 1. User queries non-existent order with VALID format
  * 2. System should return fallback (not found)
  * 3. No fabricated shipping details, dates, or amounts
  */
@@ -17,13 +17,13 @@ export const scenario = {
   id: 'S2',
   name: 'Hallucination Prevention - Non-existent Order',
   level: 'gate',
-  description: 'Ensures assistant does not fabricate data for non-existent orders',
+  description: 'Ensures assistant does not fabricate data for non-existent but format-valid order numbers.',
 
   steps: [
     {
       id: 'S2-T1',
-      description: 'User queries non-existent order',
-      userMessage: 'XYZ9999 numaralı siparişim nerede?',
+      description: 'User queries non-existent order with valid format',
+      userMessage: 'ORD-999999999 numaralı siparişim nerede?',
 
       assertions: [
         {
@@ -35,7 +35,6 @@ export const scenario = {
           assert: (response) => assertOutcomeContract(response, {
             allowedOutcomes: [
               ToolOutcome.NOT_FOUND,
-              ToolOutcome.VALIDATION_ERROR,
               ToolOutcome.VERIFICATION_REQUIRED,
               ToolOutcome.DENIED
             ]

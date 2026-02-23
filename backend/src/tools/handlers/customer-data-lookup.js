@@ -12,63 +12,12 @@
 
 import prisma from '../../prismaClient.js';
 import { normalizePhone, phoneSearchVariants } from '../../utils/text.js';
-
-/**
- * Normalize order number for consistent lookups
- * Fixes P0 issue: "var ama yok" (exists but returns not found)
- *
- * Normalization rules:
- * - Remove common prefixes: ORD-, ORDER-, SIP-, SIPARIS-
- * - Remove all spaces and dashes
- * - Uppercase
- * - Trim
- *
- * Examples:
- * "ORD-12345" → "12345"
- * "SIP 12345" → "12345"
- * "order-12345" → "12345"
- */
-function normalizeOrderNumber(orderNumber) {
-  if (!orderNumber) return orderNumber;
-
-  let normalized = String(orderNumber).trim().toUpperCase();
-
-  // Remove common order number prefixes
-  // IMPORTANT: Check longer prefixes FIRST to avoid partial matches
-  // (e.g., "SIPARIS-" before "SIP", "ORDER-" before "ORD")
-  const prefixes = [
-    'SIPARIS-', 'SIPARIS_', 'SIPARIS',
-    'ORDER-', 'ORDER_', 'ORDER',
-    'ORD-', 'ORD_', 'ORD',
-    'SIP-', 'SIP_', 'SIP'
-  ];
-
-  for (const prefix of prefixes) {
-    if (normalized.startsWith(prefix)) {
-      normalized = normalized.substring(prefix.length);
-      break; // Only remove one prefix
-    }
-  }
-
-  // Remove all spaces, dashes, underscores
-  normalized = normalized.replace(/[\s\-_]/g, '');
-
-  return normalized;
-}
-
-function isLikelyValidOrderNumber(orderNumber) {
-  if (!orderNumber) return false;
-
-  const raw = String(orderNumber).trim();
-  const normalized = normalizeOrderNumber(raw);
-
-  // Accept common prefixed forms and plain numeric IDs.
-  // Reject unknown alphanumeric forms like "XYZ9999" to avoid false routing.
-  if (/^(?:ORD|ORDER|SIP|SIPARIS)[\s\-_]?\d{3,}$/i.test(raw)) return true;
-  if (/^\d{3,}$/.test(normalized)) return true;
-
-  return false;
-}
+import {
+  ORDER_NUMBER_EXAMPLE,
+  getOrderNumberValidationMessage,
+  isLikelyValidOrderNumber,
+  normalizeOrderNumber
+} from '../../utils/order-number.js';
 
 function looksLikePhoneIdentifier(value) {
   if (!value) return false;
@@ -188,12 +137,12 @@ export async function execute(args, business, context = {}) {
     const isOrderQuery = normalizedQueryType === 'siparis' || normalizedQueryType === 'order';
 
     if (isOrderQuery && order_number && !isLikelyValidOrderNumber(order_number)) {
-      return validationError(
-        language === 'TR'
-          ? 'Sipariş numarası formatı geçersiz görünüyor. Lütfen sipariş numaranızı kontrol edip tekrar paylaşır mısınız?'
-          : 'The order number format looks invalid. Please verify your order number and share it again.',
-        'order_number'
-      );
+      return {
+        ...validationError(getOrderNumberValidationMessage(language), 'order_number'),
+        expectedFormat: ORDER_NUMBER_EXAMPLE,
+        promptStyle: 'single_question_with_example',
+        validationCode: 'ORDER_NUMBER_FORMAT_INVALID'
+      };
     }
 
     // SECURITY: Don't log PII (phone, vkn, tc, names)

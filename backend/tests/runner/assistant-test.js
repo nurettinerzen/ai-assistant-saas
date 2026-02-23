@@ -45,11 +45,32 @@ async function loadScenarios(level) {
   return scenarios;
 }
 
+function getMissingRequiredEnv(scenario) {
+  const required = Array.isArray(scenario?.requiredEnv) ? scenario.requiredEnv : [];
+  return required.filter((envName) => !String(process.env[envName] || '').trim());
+}
+
 /**
  * Run a single scenario
  */
 async function runScenario(scenario, token, assistantId, businessId) {
   console.log(`\n▶️  Running ${scenario.id}: ${scenario.name}`);
+
+  const missingEnv = getMissingRequiredEnv(scenario);
+  if (missingEnv.length > 0) {
+    const reason = scenario.requiredEnvReason
+      || `Missing required env: ${missingEnv.join(', ')}`;
+    console.log(`  ⏭️  Skipping scenario (${reason})`);
+    return {
+      status: 'skipped',
+      duration: 0,
+      steps: [],
+      failures: [],
+      warnings: [],
+      securityEvents: [],
+      skipReason: reason
+    };
+  }
 
   const result = {
     status: 'passed',
@@ -158,6 +179,11 @@ async function runScenario(scenario, token, assistantId, businessId) {
         messageType: response.metadata?.messageType || 'assistant_claim',
         leakFilterDebug: response.metadata?.leakFilterDebug || null
       };
+      stepResult.outcomeTelemetry = {
+        outcome: response.outcome || response.metadata?.outcome || null,
+        messageType: response.metadata?.messageType || 'assistant_claim',
+        toolOutcome: response.metadata?.tool_outcome || response.outcome || null
+      };
 
       // Run assertions
       for (const assertionConfig of step.assertions) {
@@ -170,7 +196,8 @@ async function runScenario(scenario, token, assistantId, businessId) {
             passed: assertionResult.passed,
             reason: assertionResult.reason,
             critical: isCritical,
-            brandViolation: assertionResult.brandViolation || false
+            brandViolation: assertionResult.brandViolation || false,
+            validationExpectation: assertionResult.validationExpectation || null
           });
 
           if (!assertionResult.passed) {
@@ -181,7 +208,10 @@ async function runScenario(scenario, token, assistantId, businessId) {
                 step: step.id,
                 assertion: assertionConfig.name,
                 reason: assertionResult.reason || 'Assertion failed',
-                critical: true
+                critical: true,
+                outcome: stepResult.outcomeTelemetry?.outcome || null,
+                messageType: stepResult.outcomeTelemetry?.messageType || null,
+                validationExpectation: assertionResult.validationExpectation || null
               });
               result.status = 'failed';
               console.log(`    ❌ ${assertionConfig.name}: ${assertionResult.reason}`);

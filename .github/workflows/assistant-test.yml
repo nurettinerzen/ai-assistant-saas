@@ -34,6 +34,8 @@ jobs:
           API_URL: https://api.telyx.ai
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           TEST_LEVEL: gate
+          ORDER_NUMBER_VALID: ${{ secrets.ORDER_NUMBER_VALID }}
+          ORDER_PHONE_LAST4: ${{ secrets.ORDER_PHONE_LAST4 }}
         run: |
           cd backend
           npm run assistant-test
@@ -62,8 +64,9 @@ jobs:
             GATE-level assistant test failed at ${{ github.event.repository.updated_at }}
 
             🚫 DEPLOY BLOCKER - Critical functionality broken:
-            - S1: Order status & verification flow
-            - S2: Hallucination resistance (non-existent orders)
+            - S1: Order intake + validation contract
+            - S2: Hallucination resistance (non-existent, format-valid orders)
+            - S3: Valid order happy path (env-backed)
             - S6: Identity switch protection
 
             This is a GATE test - must be fixed before deployment.

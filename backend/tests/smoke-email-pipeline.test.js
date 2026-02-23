@@ -6,12 +6,12 @@
  *
  * Prerequisites:
  *   - DB has test CustomerData: nurettinerzen@gmail.com, phone 14245275089
- *   - DB has test CrmOrder: ORD-TEST-7890, phone 14245275089, status kargoda
+ *   - DB has test CrmOrder for ORDER_NUMBER_VALID env, phone 14245275089, status kargoda
  *
  * Scenarios:
  *   1. Happy path: Known email + real order number → autoverify → full data
  *   2. Happy path: Known email + phone number → autoverify → full data
- *   3. Fake order number → NOT_FOUND
+ *   3. Input validation split: invalid format -> VALIDATION_ERROR, fake valid format -> NOT_FOUND
  *   4. Cross-customer leak: Unknown email + real order → VERIFICATION_REQUIRED
  *   5. Phone normalization: Various formats → all resolve to same record
  *   6. Verification flow: Name match, phone_last4 match, phone full match
@@ -60,8 +60,12 @@ const TEST_PHONE_DB = '14245275089';       // How it's stored in DB
 const TEST_PHONE_US = '+14245275089';      // US format with +
 const TEST_PHONE_BARE = '4245275089';      // Without country code
 const TEST_PHONE_TR_WRONG = '+904245275089'; // Wrongly assumed as TR
-const TEST_ORDER = 'ORD-TEST-7890';
+const TEST_ORDER_VALID = (process.env.ORDER_NUMBER_VALID || '').trim();
+const HAS_VALID_ORDER = TEST_ORDER_VALID.length > 0;
+const describeIfValidOrder = HAS_VALID_ORDER ? describe : describe.skip;
+const itIfValidOrder = HAS_VALID_ORDER ? it : it.skip;
 const TEST_CUSTOMER_NAME = 'Nurettin Erzen';
+const INVALID_FORMAT_ORDER = 'ORD-TEST-7890';
 const FAKE_ORDER = 'ORD-999999';
 const FAKE_EMAIL = 'hacker@evil.com';
 const FAKE_PHONE = '5559999999';
@@ -140,9 +144,9 @@ describe('Smoke Test: Preconditions', () => {
     expect(customer.contactName).toBe(TEST_CUSTOMER_NAME);
   });
 
-  it('test CrmOrder exists in DB', async () => {
+  itIfValidOrder('test CrmOrder exists in DB', async () => {
     const order = await prisma.crmOrder.findFirst({
-      where: { businessId: TEST_BUSINESS_ID, orderNumber: TEST_ORDER }
+      where: { businessId: TEST_BUSINESS_ID, orderNumber: TEST_ORDER_VALID }
     });
     expect(order).not.toBeNull();
     expect(order.customerPhone).toBe(TEST_PHONE_DB);
@@ -165,18 +169,18 @@ describe('Smoke Test: Preconditions', () => {
 // SCENARIO 1: Happy Path — Email + Real Order Number
 // ═══════════════════════════════════════════════════════════════════════
 
-describe('Scenario 1: Email + Real Order Number → Autoverify → Full Data', () => {
+describeIfValidOrder('Scenario 1: Email + Real Order Number → Autoverify → Full Data', () => {
 
   it('Step 1: extractOrderNumber parses order from email body', () => {
-    const body = 'merhaba siparisim ne durumda acaba?\n\nsiparis no: ORD-TEST-7890\n\nBest,\nNurettin Erzen';
+    const body = `merhaba siparisim ne durumda acaba?\n\nsiparis no: ${TEST_ORDER_VALID}\n\nBest,\nNurettin Erzen`;
     const orderNo = extractOrderNumber(body);
-    expect(orderNo).toBe('ORD-TEST-7890');
+    expect(orderNo).toBe(TEST_ORDER_VALID);
   });
 
   it('Step 2: tool finds CrmOrder by order number', async () => {
     const result = await callTool({
       query_type: 'siparis',
-      order_number: TEST_ORDER
+      order_number: TEST_ORDER_VALID
     });
 
     // Without autoverify, should get VERIFICATION_REQUIRED (tool doesn't do autoverify)
@@ -198,7 +202,7 @@ describe('Scenario 1: Email + Real Order Number → Autoverify → Full Data', (
     // First get tool result with _identityContext
     const toolResult = await callTool({
       query_type: 'siparis',
-      order_number: TEST_ORDER
+      order_number: TEST_ORDER_VALID
     });
 
     // Only try autoverify if VERIFICATION_REQUIRED
@@ -215,7 +219,7 @@ describe('Scenario 1: Email + Real Order Number → Autoverify → Full Data', (
       expect(toolResult.outcome).toBe('OK');
       expect(toolResult.data).toBeDefined();
       expect(toolResult.data.order).toBeDefined();
-      expect(toolResult.data.order.orderNumber).toBe(TEST_ORDER);
+      expect(toolResult.data.order.orderNumber).toBe(TEST_ORDER_VALID);
       expect(toolResult.data.order.status).toBe('kargoda');
     }
     // If tool already returned OK (e.g. via pending verification state), that's fine too
@@ -226,7 +230,7 @@ describe('Scenario 1: Email + Real Order Number → Autoverify → Full Data', (
 // SCENARIO 2: Happy Path — Email + Phone Number
 // ═══════════════════════════════════════════════════════════════════════
 
-describe('Scenario 2: Email + Phone → Find Order → Autoverify', () => {
+describeIfValidOrder('Scenario 2: Email + Phone → Find Order → Autoverify', () => {
 
   it('Step 1: extractPhone handles bare US number', () => {
     const body = 'Nurettin Erzen\n4245275089\n\nBest,\nNurettin Erzen';
@@ -263,7 +267,7 @@ describe('Scenario 2: Email + Phone → Find Order → Autoverify', () => {
       expect(result.data).toBeDefined();
       // Should have found the CrmOrder for order query
       expect(result.data.order).toBeDefined();
-      expect(result.data.order.orderNumber).toBe(TEST_ORDER);
+      expect(result.data.order.orderNumber).toBe(TEST_ORDER_VALID);
     }
   });
 
@@ -277,25 +281,39 @@ describe('Scenario 2: Email + Phone → Find Order → Autoverify', () => {
 
     expect(result.outcome).toBe('OK');
     expect(result.data.order).toBeDefined();
-    expect(result.data.order.orderNumber).toBe(TEST_ORDER);
+    expect(result.data.order.orderNumber).toBe(TEST_ORDER_VALID);
     expect(result.data.order.status).toBe('kargoda');
     expect(result.data.order.trackingNumber).toBe('TR987654321');
   });
 });
 
 // ═══════════════════════════════════════════════════════════════════════
-// SCENARIO 3: Fake Order Number → NOT_FOUND
+// SCENARIO 3: Validation Split (INVALID_FORMAT vs NOT_FOUND)
 // ═══════════════════════════════════════════════════════════════════════
 
-describe('Scenario 3: Fake Order Number → NOT_FOUND (no data leak)', () => {
+describe('Scenario 3: Validation Split (INVALID_FORMAT vs NOT_FOUND)', () => {
 
-  it('Step 1: extractOrderNumber parses various fake formats', () => {
+  it('Step 1: extractOrderNumber parses invalid + fake-valid formats', () => {
+    expect(extractOrderNumber(`siparis no: ${INVALID_FORMAT_ORDER}`)).toBe(INVALID_FORMAT_ORDER);
     expect(extractOrderNumber('siparis no: ORD-999999')).toBe('ORD-999999');
     expect(extractOrderNumber('order number: 123456789')).toBe('123456789');
     expect(extractOrderNumber('#55555')).toBe('55555');
   });
 
-  it('Step 2: tool returns NOT_FOUND for fake order', async () => {
+  it('Step 2: invalid format order returns VALIDATION_ERROR with format guidance', async () => {
+    const result = await callTool({
+      query_type: 'siparis',
+      order_number: INVALID_FORMAT_ORDER
+    });
+
+    expect(result.outcome).toBe('VALIDATION_ERROR');
+    expect(result.field).toBe('order_number');
+    expect(result.expectedFormat).toBe('ORD-123456');
+    expect(result.promptStyle).toBe('single_question_with_example');
+    expect(result.message).toContain('ORD-123456');
+  });
+
+  it('Step 3: fake but format-valid order returns NOT_FOUND', async () => {
     const result = await callTool({
       query_type: 'siparis',
       order_number: FAKE_ORDER
@@ -309,7 +327,7 @@ describe('Scenario 3: Fake Order Number → NOT_FOUND (no data leak)', () => {
     expect(result.message).not.toContain(TEST_PHONE_DB);
   });
 
-  it('Step 3: toolRequiredPolicy enforces NOT_FOUND correctly', () => {
+  it('Step 4: toolRequiredPolicy enforces NOT_FOUND correctly', () => {
     const policy = enforceToolRequiredPolicy({
       classification: { intent: 'ORDER' },
       toolResults: [{ toolName: 'customer_data_lookup', outcome: 'NOT_FOUND' }],
@@ -330,7 +348,7 @@ describe('Scenario 3: Fake Order Number → NOT_FOUND (no data leak)', () => {
 // SCENARIO 4: Cross-Customer Leak — Unknown Email + Real Order
 // ═══════════════════════════════════════════════════════════════════════
 
-describe('Scenario 4: Cross-Customer Leak Prevention', () => {
+describeIfValidOrder('Scenario 4: Cross-Customer Leak Prevention', () => {
 
   it('Step 1: deriveEmailProof returns WEAK for unknown email', async () => {
     const proof = await deriveIdentityProof(
@@ -343,7 +361,7 @@ describe('Scenario 4: Cross-Customer Leak Prevention', () => {
 
   it('Step 2: tool with unknown email returns VERIFICATION_REQUIRED for real order', async () => {
     const result = await callTool(
-      { query_type: 'siparis', order_number: TEST_ORDER },
+      { query_type: 'siparis', order_number: TEST_ORDER_VALID },
       { fromEmail: FAKE_EMAIL }
     );
 
@@ -355,7 +373,7 @@ describe('Scenario 4: Cross-Customer Leak Prevention', () => {
 
   it('Step 3: autoverify DENIES because email proof mismatches', async () => {
     const toolResult = await callTool(
-      { query_type: 'siparis', order_number: TEST_ORDER },
+      { query_type: 'siparis', order_number: TEST_ORDER_VALID },
       { fromEmail: FAKE_EMAIL }
     );
 
@@ -381,7 +399,7 @@ describe('Scenario 4: Cross-Customer Leak Prevention', () => {
     const result = await callToolWithVerification(
       {
         query_type: 'siparis',
-        order_number: TEST_ORDER,
+        order_number: TEST_ORDER_VALID,
         customer_name: 'Hakan Yilmaz',
         verification_input: 'Hakan Yilmaz'
       },
@@ -457,15 +475,15 @@ describe('Scenario 5: Phone Normalization & Cross-Format Matching', () => {
 // SCENARIO 6: Verification Flow — Name, Phone Last4, Full Phone
 // ═══════════════════════════════════════════════════════════════════════
 
-describe('Scenario 6: Verification Against Anchor', () => {
+describeIfValidOrder('Scenario 6: Verification Against Anchor', () => {
   let anchor;
 
   beforeAll(async () => {
     // Create a realistic anchor from test CrmOrder
     const order = await prisma.crmOrder.findFirst({
-      where: { businessId: TEST_BUSINESS_ID, orderNumber: TEST_ORDER }
+      where: { businessId: TEST_BUSINESS_ID, orderNumber: TEST_ORDER_VALID }
     });
-    anchor = createAnchor(order, 'order', TEST_ORDER, 'CrmOrder');
+    anchor = createAnchor(order, 'order', TEST_ORDER_VALID, 'CrmOrder');
     // Manually set customerId (normally done by tool handler)
     const customer = await prisma.customerData.findFirst({
       where: { businessId: TEST_BUSINESS_ID, email: TEST_EMAIL }
@@ -611,12 +629,12 @@ describe('Scenario 8: extractOrderNumber Format Support', () => {
 // SCENARIO 9: Tool Result Shape Validation
 // ═══════════════════════════════════════════════════════════════════════
 
-describe('Scenario 9: Tool Result Shape & Whitelist', () => {
+describeIfValidOrder('Scenario 9: Tool Result Shape & Whitelist', () => {
 
   it('OK result has expected fields for whitelist', async () => {
     const result = await callToolWithVerification({
       query_type: 'siparis',
-      order_number: TEST_ORDER,
+      order_number: TEST_ORDER_VALID,
       customer_name: TEST_CUSTOMER_NAME,
       verification_input: TEST_CUSTOMER_NAME
     });
@@ -635,18 +653,18 @@ describe('Scenario 9: Tool Result Shape & Whitelist', () => {
 
   it('getFullResult returns correct shape for CrmOrder', async () => {
     const order = await prisma.crmOrder.findFirst({
-      where: { businessId: TEST_BUSINESS_ID, orderNumber: TEST_ORDER }
+      where: { businessId: TEST_BUSINESS_ID, orderNumber: TEST_ORDER_VALID }
     });
 
     const result = getFullResult(order, 'siparis', 'TR');
 
     expect(result.data).toBeDefined();
     expect(result.data.order).toBeDefined();
-    expect(result.data.order.orderNumber).toBe(TEST_ORDER);
+    expect(result.data.order.orderNumber).toBe(TEST_ORDER_VALID);
     expect(result.data.order.status).toBe('kargoda');
     expect(result.data.order.trackingNumber).toBe('TR987654321');
     expect(result.data.order.carrier).toBe('YURTICI');
-    expect(result.message).toContain('ORD-TEST-7890');
+    expect(result.message).toContain(TEST_ORDER_VALID);
     expect(result.message).toContain('kargoda');
   });
 });

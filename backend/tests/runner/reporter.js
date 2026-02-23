@@ -40,7 +40,8 @@ export class Reporter {
       failures: result.failures || [],
       warnings: result.warnings || [],
       infraErrors: result.infraErrors || [],
-      securityEvents: result.securityEvents || []
+      securityEvents: result.securityEvents || [],
+      skipReason: result.skipReason || null
     });
 
     this.results.stats.total++;
@@ -140,7 +141,24 @@ export class Reporter {
         console.log(`${idx + 1}. ${failure.name} (${failure.scenario})`);
         failure.failures.forEach(f => {
           console.log(`   - Step ${f.step}: ${f.assertion} - ${f.reason}`);
+          const diag = [];
+          if (f.validationExpectation) diag.push(`validation=${f.validationExpectation}`);
+          if (f.outcome) diag.push(`outcome=${f.outcome}`);
+          if (f.messageType) diag.push(`messageType=${f.messageType}`);
+          if (diag.length > 0) {
+            console.log(`     ↳ ${diag.join(' ')}`);
+          }
         });
+      });
+      console.log('');
+    }
+
+    const skippedWithReason = report.scenarios.filter(s => s.status === 'skipped' && s.skipReason);
+    if (skippedWithReason.length > 0) {
+      console.log('SKIPPED SCENARIOS');
+      console.log('='.repeat(80));
+      skippedWithReason.forEach((scenario, idx) => {
+        console.log(`${idx + 1}. ${scenario.name} (${scenario.id}) - ${scenario.skipReason}`);
       });
       console.log('');
     }
@@ -228,7 +246,24 @@ export class Reporter {
         content += `${idx + 1}. ${failure.name} (${failure.scenario})\n`;
         failure.failures.forEach(f => {
           content += `   - Step ${f.step}: ${f.assertion} - ${f.reason}\n`;
+          const diag = [];
+          if (f.validationExpectation) diag.push(`validation=${f.validationExpectation}`);
+          if (f.outcome) diag.push(`outcome=${f.outcome}`);
+          if (f.messageType) diag.push(`messageType=${f.messageType}`);
+          if (diag.length > 0) {
+            content += `     ↳ ${diag.join(' ')}\n`;
+          }
         });
+      });
+      content += '\n';
+    }
+
+    const skippedWithReason = report.scenarios.filter(s => s.status === 'skipped' && s.skipReason);
+    if (skippedWithReason.length > 0) {
+      content += 'SKIPPED SCENARIOS\n';
+      content += '='.repeat(80) + '\n';
+      skippedWithReason.forEach((scenario, idx) => {
+        content += `${idx + 1}. ${scenario.name} (${scenario.id}) - ${scenario.skipReason}\n`;
       });
       content += '\n';
     }
@@ -238,6 +273,9 @@ export class Reporter {
     report.scenarios.forEach(scenario => {
       const statusIcon = scenario.status === 'passed' ? '✅' : scenario.status === 'failed' ? '❌' : '⏭️';
       content += `${statusIcon} ${scenario.id}: ${scenario.name} [${scenario.level}] (${scenario.duration}ms)\n`;
+      if (scenario.status === 'skipped' && scenario.skipReason) {
+        content += `   ⏭️ reason: ${scenario.skipReason}\n`;
+      }
       if (scenario.failures.length > 0) {
         scenario.failures.forEach(f => {
           content += `   ❌ Step ${f.step}: ${f.assertion} - ${f.reason}\n`;
@@ -246,6 +284,10 @@ export class Reporter {
       // Print guardrail telemetry for failed steps
       if (scenario.status === 'failed' && scenario.steps) {
         scenario.steps.forEach(step => {
+          if (step.outcomeTelemetry) {
+            const ot = step.outcomeTelemetry;
+            content += `   🧪 outcome=${ot.outcome || 'unknown'} tool_outcome=${ot.toolOutcome || 'unknown'} messageType=${ot.messageType || 'unknown'}\n`;
+          }
           if (step.guardrailTelemetry) {
             const gt = step.guardrailTelemetry;
             content += `   🛡️ guardrailAction=${gt.guardrailAction} guardrailReason=${gt.guardrailReason || 'none'} messageType=${gt.messageType || 'unknown'}\n`;

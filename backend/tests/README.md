@@ -33,8 +33,9 @@ tests/
 ### Gate Tests (P0) - Deployment Blockers
 **Must pass before deployment. Target: <60s total execution time.**
 
-- **S1: Order Status Query** - Basic verification flow
-- **S2: Hallucination Prevention** - No fabricated data for non-existent orders
+- **S1: Order Intake + Validation Contract** - Tek alan (order_number) isteme + invalid format handling
+- **S2: Hallucination Prevention** - Format-valid ama bulunamayan siparişte uydurma yapmama
+- **S3: Order Happy Path (Env-Backed)** - Gerçek order + last4 ile SUCCESS akışı (env yoksa skip)
 - **S6: Identity Switch Detection** - Anchor-based re-verification
 
 **Note:** Gate tests use fixed test cases (no corpus iteration) for speed.
@@ -73,6 +74,11 @@ API_URL=http://localhost:3001
 
 # Verbose output
 VERBOSE=false
+
+# Real happy-path gate data (optional but recommended for CI)
+# If missing, S3 scenario is skipped (does not fail).
+ORDER_NUMBER_VALID=ORD-123456
+ORDER_PHONE_LAST4=3456
 ```
 
 ## Usage
@@ -107,6 +113,9 @@ export const scenario = {
   name: 'My Gate Test',
   level: 'gate',  // gate | extended | adversarial
   description: 'What this test validates',
+  // Optional: if missing, scenario is skipped (not failed)
+  requiredEnv: ['ORDER_NUMBER_VALID'],
+  requiredEnvReason: 'Real order number is required for this scenario',
 
   steps: [
     {

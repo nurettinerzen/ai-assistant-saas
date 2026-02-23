@@ -7,6 +7,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { verificationCache } from './verification-manager.js';
 import { detectNumberType } from '../utils/text.js';
+import { isLikelyValidOrderNumber } from '../utils/order-number.js';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
@@ -183,10 +184,21 @@ export function validateInputFormat(message) {
   if (!message) return null;
   const trimmed = message.trim();
 
-  // Order number format (prefix formats only - high confidence)
-  const prefixMatch = trimmed.match(/\b(ORD|SIP|ORDER)[-_](\d{6,12})\b/i);
-  if (prefixMatch) {
-    return { type: 'ORDER_NUMBER', value: prefixMatch[0], confidence: 'high' };
+  // Order number format (centralized validator contract)
+  const orderPrefixCandidate = trimmed.match(/\b(?:ORD|ORDER|SIP|SIPARIS)[\s\-_]*[A-Z0-9][A-Z0-9\s\-_]{2,}\b/i);
+  if (orderPrefixCandidate) {
+    const candidate = orderPrefixCandidate[0].trim();
+    if (isLikelyValidOrderNumber(candidate)) {
+      return { type: 'ORDER_NUMBER', value: candidate, confidence: 'high' };
+    }
+  }
+
+  const orderKeywordCandidate = trimmed.match(/(?:sipariş|siparis|order)\s*(?:no|numarası|numarasi|number|num)?[:\s#-]+([A-Z0-9][A-Z0-9\s\-_]{2,})/i);
+  if (orderKeywordCandidate) {
+    const candidate = orderKeywordCandidate[1].trim();
+    if (isLikelyValidOrderNumber(candidate)) {
+      return { type: 'ORDER_NUMBER', value: candidate, confidence: 'medium' };
+    }
   }
 
   // Turkish mobile phone format

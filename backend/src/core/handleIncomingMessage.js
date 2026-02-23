@@ -1421,7 +1421,10 @@ export async function handleIncomingMessage({
     // ========================================
     console.log('\n[STEP 8] Persisting state and emitting metrics...');
     const guardrailAction = guardrailResult.action || 'PASS';
-    const assistantMessageType = mapAssistantMessageType({
+    const terminalMessageType = typeof toolLoopResult?._terminalMessageType === 'string'
+      ? toolLoopResult._terminalMessageType
+      : null;
+    const assistantMessageType = terminalMessageType || mapAssistantMessageType({
       guardrailAction,
       responseGrounding,
       needsCallbackInfo: guardrailResult.needsCallbackInfo
@@ -1461,18 +1464,37 @@ export async function handleIncomingMessage({
       guardrailResult,
       hadToolFailure
     });
+    const normalizedToolOutcomes = Array.isArray(toolLoopResult?.toolResults)
+      ? toolLoopResult.toolResults
+        .map(result => normalizeOutcome(result?.outcome))
+        .filter(Boolean)
+      : [];
+    const terminalValidationResult = Array.isArray(toolLoopResult?.toolResults)
+      ? toolLoopResult.toolResults.find(result => normalizeOutcome(result?.outcome) === ToolOutcome.VALIDATION_ERROR)
+      : null;
 
     return {
       reply: finalResponse,
       outcome: turnOutcome,
       metadata: {
         outcome: turnOutcome,
+        tool_outcome: turnOutcome,
+        toolOutcomes: normalizedToolOutcomes,
         guardrailsApplied: guardrailResult.guardrailsApplied || [],
         guardrailAction,
         messageType: assistantMessageType,
+        guardrailMissingFields: Array.isArray(guardrailResult.missingFields) ? guardrailResult.missingFields : [],
         guardrailMessageKey: guardrailResult.messageKey || null,
         guardrailVariantIndex: Number.isInteger(guardrailResult.variantIndex) ? guardrailResult.variantIndex : null,
         verificationState: state?.verification?.status || 'none',
+        ...(terminalValidationResult
+          ? {
+            validationErrorField: terminalValidationResult.field || null,
+            validationErrorExpectedFormat: terminalValidationResult.expectedFormat || null,
+            validationErrorPromptStyle: terminalValidationResult.promptStyle || null,
+            validationErrorCode: terminalValidationResult.validationCode || null
+          }
+          : {}),
         repeatToolCallBlocked: !!toolLoopResult._repeatNotFoundBlocked,
         guidanceAdded: metrics.guidanceAdded || [],
         responseGrounding,

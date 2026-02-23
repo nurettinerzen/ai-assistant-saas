@@ -446,6 +446,10 @@ export async function executeToolLoop(params) {
         outcome: toolResult.outcome ?? null,
         message: toolResult.message ?? null,
         askFor: toolResult.askFor || toolResult.data?.askFor || null,
+        field: toolResult.field ?? null,
+        expectedFormat: toolResult.expectedFormat ?? null,
+        promptStyle: toolResult.promptStyle ?? null,
+        validationCode: toolResult.validationCode ?? null,
         stateEvents: toolResult.stateEvents ?? []
       });
 

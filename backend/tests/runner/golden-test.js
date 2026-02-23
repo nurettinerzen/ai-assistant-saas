@@ -37,6 +37,11 @@ const args = process.argv.slice(2);
 const scenarioFilter = args.find(a => a.startsWith('--scenario='))?.split('=')[1];
 const verbose = process.env.VERBOSE === 'true' || args.includes('--verbose');
 
+function getMissingRequiredEnv(scenario) {
+  const required = Array.isArray(scenario?.requiredEnv) ? scenario.requiredEnv : [];
+  return required.filter((envName) => !String(process.env[envName] || '').trim());
+}
+
 /**
  * Load golden scenarios from directory
  */
@@ -87,6 +92,21 @@ async function loadFixtures() {
  */
 async function runGoldenScenario(scenario, token, assistantId, fixtures) {
   console.log(`\n▶️  Running ${scenario.id}: ${scenario.name}`);
+
+  const missingEnv = getMissingRequiredEnv(scenario);
+  if (missingEnv.length > 0) {
+    const reason = scenario.requiredEnvReason
+      || `Missing required env: ${missingEnv.join(', ')}`;
+    console.log(`  ⏭️  Skipping scenario (${reason})`);
+    return {
+      status: 'skipped',
+      duration: 0,
+      steps: [],
+      failures: [],
+      warnings: [],
+      skipReason: reason
+    };
+  }
 
   // Skip mock-dependent scenarios when TEST_MOCK_TOOLS is not enabled
   if (scenario.mockTools && process.env.TEST_MOCK_TOOLS !== '1') {
@@ -218,6 +238,11 @@ async function runGoldenScenario(scenario, token, assistantId, fixtures) {
         messageType: response.metadata?.messageType || 'assistant_claim',
         leakFilterDebug: response.metadata?.leakFilterDebug || null
       };
+      stepResult.outcomeTelemetry = {
+        outcome: response.outcome || response.metadata?.outcome || null,
+        messageType: response.metadata?.messageType || 'assistant_claim',
+        toolOutcome: response.metadata?.tool_outcome || response.outcome || null
+      };
 
       // Prepare response with additional fields for assertion access
       const enrichedResponse = {
@@ -237,7 +262,8 @@ async function runGoldenScenario(scenario, token, assistantId, fixtures) {
             name: assertionConfig.name,
             passed: assertionResult.passed,
             reason: assertionResult.reason,
-            critical: isCritical
+            critical: isCritical,
+            validationExpectation: assertionResult.validationExpectation || null
           });
 
           if (!assertionResult.passed) {
@@ -247,7 +273,10 @@ async function runGoldenScenario(scenario, token, assistantId, fixtures) {
                 step: step.id,
                 assertion: assertionConfig.name,
                 reason: assertionResult.reason || 'Assertion failed',
-                critical: true
+                critical: true,
+                outcome: stepResult.outcomeTelemetry?.outcome || null,
+                messageType: stepResult.outcomeTelemetry?.messageType || null,
+                validationExpectation: assertionResult.validationExpectation || null
               });
               result.status = 'failed';
               console.log(`    ❌ ${assertionConfig.name}: ${assertionResult.reason}`);
