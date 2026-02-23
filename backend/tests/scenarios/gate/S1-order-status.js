@@ -3,14 +3,13 @@
  *
  * Contract:
  * 1) User says "sipariş durumu" without identifier -> ask only order_number
- * 2) Fake format (ORD-TEST-7890) -> VALIDATION_ERROR + clarification metadata
+ * 2) Atypical order format (ORD-TEST-7890) -> DB lookup first, then NOT_FOUND (no early format reject)
  */
 
 import { assertNoToolCalls, assertToolCalled } from '../../assertions/routing.js';
 import {
   assertMessageTypeContract,
-  assertOutcomeContract,
-  assertValidationErrorExpected
+  assertOutcomeContract
 } from '../../assertions/outcome-contract.js';
 import { ToolOutcome } from '../../../src/tools/toolResult.js';
 
@@ -34,7 +33,7 @@ export const scenario = {
   id: 'S1',
   name: 'Order Intake + Validation Contract',
   level: 'gate',
-  description: 'Separates "ask order number" flow from invalid format validation flow using metadata-first assertions.',
+  description: 'Separates "ask order number" flow from DB-first order lookup behavior using metadata-first assertions.',
 
   steps: [
     {
@@ -66,7 +65,7 @@ export const scenario = {
 
     {
       id: 'S1-T2',
-      description: 'User sends fake order format -> VALIDATION_ERROR contract',
+      description: 'User sends atypical order format -> DB-first lookup and NOT_FOUND',
       userMessage: 'ORD-TEST-7890 numaralı siparişimi kontrol eder misin?',
 
       assertions: [
@@ -75,11 +74,9 @@ export const scenario = {
           assert: (response) => assertToolCalled(response.toolCalls || [], 'customer_data_lookup')
         },
         {
-          name: 'validation_error_expected_contract',
-          assert: (response) => assertValidationErrorExpected(response, {
-            field: 'order_number',
-            expectedFormat: 'ORD-123456',
-            promptStyle: 'single_question_with_example'
+          name: 'not_found_outcome_contract',
+          assert: (response) => assertOutcomeContract(response, {
+            allowedOutcomes: [ToolOutcome.NOT_FOUND]
           })
         }
       ]

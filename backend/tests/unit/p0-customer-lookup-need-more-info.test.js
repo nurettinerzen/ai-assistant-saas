@@ -3,6 +3,7 @@ import { ToolOutcome } from '../../src/tools/toolResult.js';
 
 const prismaMock = {
   crmOrder: {
+    findMany: jest.fn(),
     findFirst: jest.fn(),
     findUnique: jest.fn()
   },
@@ -26,6 +27,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  prismaMock.crmOrder.findMany.mockResolvedValue([]);
   prismaMock.crmOrder.findFirst.mockResolvedValue(null);
   prismaMock.customerData.findMany.mockResolvedValue([]);
   prismaMock.customerData.findFirst.mockResolvedValue(null);
@@ -37,16 +39,15 @@ describe('P0 customer_data_lookup deterministic outcomes', () => {
   const business = { id: 1, language: 'TR' };
 
   it('B1: existing order without last4 should request verification (phone_last4)', async () => {
-    prismaMock.crmOrder.findFirst
-      .mockResolvedValueOnce({
-        id: 'crm-order-1',
-        businessId: 1,
-        orderNumber: 'ORD-9837459',
-        customerName: 'Ahmet Yılmaz',
-        customerPhone: '+905551234567',
-        customerEmail: 'ahmet@example.com',
-        status: 'Hazırlanıyor'
-      });
+    prismaMock.crmOrder.findMany.mockResolvedValueOnce([{
+      id: 'crm-order-1',
+      businessId: 1,
+      orderNumber: 'ORD-9837459',
+      customerName: 'Ahmet Yılmaz',
+      customerPhone: '+905551234567',
+      customerEmail: 'ahmet@example.com',
+      status: 'Hazırlanıyor'
+    }]);
 
     const result = await executeLookup(
       {
@@ -63,7 +64,7 @@ describe('P0 customer_data_lookup deterministic outcomes', () => {
     expect(result.outcome).toBe(ToolOutcome.VERIFICATION_REQUIRED);
     expect(result.data?.askFor).toBe('phone_last4');
     expect(result.message.toLowerCase()).toContain('son 4');
-    expect(prismaMock.crmOrder.findFirst).toHaveBeenCalled();
+    expect(prismaMock.crmOrder.findMany).toHaveBeenCalled();
   });
 
   it('B3: order + last4 provided but record missing should return NOT_FOUND (not NEED_MORE_INFO)', async () => {
@@ -80,25 +81,22 @@ describe('P0 customer_data_lookup deterministic outcomes', () => {
       }
     );
 
-    expect(prismaMock.crmOrder.findFirst).toHaveBeenCalled();
+    expect(prismaMock.crmOrder.findMany).toHaveBeenCalled();
     expect(result.outcome).toBe(ToolOutcome.NOT_FOUND);
     expect(result.outcome).not.toBe(ToolOutcome.NEED_MORE_INFO);
   });
 
   it('B4: numeric order input should fallback to phone lookup before returning NOT_FOUND', async () => {
-    prismaMock.crmOrder.findFirst
-      .mockResolvedValueOnce(null) // order exact
-      .mockResolvedValueOnce(null) // order normalized
-      .mockResolvedValueOnce(null) // order contains
-      .mockResolvedValueOnce({     // phone fallback (crmOrder by customerPhone)
-        id: 'crm-order-phone-1',
-        businessId: 1,
-        orderNumber: 'ORD-424527',
-        customerName: 'Ahmet Yılmaz',
-        customerPhone: '4245275089',
-        customerEmail: 'ahmet@example.com',
-        status: 'Hazırlanıyor'
-      });
+    prismaMock.crmOrder.findMany.mockResolvedValueOnce([]);
+    prismaMock.crmOrder.findFirst.mockResolvedValueOnce({
+      id: 'crm-order-phone-1',
+      businessId: 1,
+      orderNumber: 'ORD-424527',
+      customerName: 'Ahmet Yılmaz',
+      customerPhone: '4245275089',
+      customerEmail: 'ahmet@example.com',
+      status: 'Hazırlanıyor'
+    });
 
     prismaMock.customerData.findMany.mockResolvedValue([]);
     prismaMock.customerData.findFirst.mockResolvedValue(null);
@@ -116,7 +114,8 @@ describe('P0 customer_data_lookup deterministic outcomes', () => {
     );
 
     expect(result.outcome).not.toBe(ToolOutcome.NOT_FOUND);
-    expect(prismaMock.crmOrder.findFirst).toHaveBeenCalledTimes(4);
-    expect(prismaMock.crmOrder.findFirst.mock.calls[3][0]?.where?.OR?.[0]).toHaveProperty('customerPhone');
+    expect(prismaMock.crmOrder.findMany).toHaveBeenCalledTimes(1);
+    expect(prismaMock.crmOrder.findFirst).toHaveBeenCalled();
+    expect(prismaMock.crmOrder.findFirst.mock.calls[0][0]?.where?.OR?.[0]).toHaveProperty('customerPhone');
   });
 });

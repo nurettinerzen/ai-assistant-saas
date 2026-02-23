@@ -11,7 +11,7 @@
  * Scenarios:
  *   1. Happy path: Known email + real order number → autoverify → full data
  *   2. Happy path: Known email + phone number → autoverify → full data
- *   3. Input validation split: invalid format -> VALIDATION_ERROR, fake valid format -> NOT_FOUND
+ *   3. Input validation split: too-short -> VALIDATION_ERROR, DB-miss -> NOT_FOUND
  *   4. Cross-customer leak: Unknown email + real order → VERIFICATION_REQUIRED
  *   5. Phone normalization: Various formats → all resolve to same record
  *   6. Verification flow: Name match, phone_last4 match, phone full match
@@ -65,7 +65,7 @@ const HAS_VALID_ORDER = TEST_ORDER_VALID.length > 0;
 const describeIfValidOrder = HAS_VALID_ORDER ? describe : describe.skip;
 const itIfValidOrder = HAS_VALID_ORDER ? it : it.skip;
 const TEST_CUSTOMER_NAME = 'Nurettin Erzen';
-const INVALID_FORMAT_ORDER = 'ORD-TEST-7890';
+const INVALID_FORMAT_ORDER = '12';
 const FAKE_ORDER = 'ORD-999999';
 const FAKE_EMAIL = 'hacker@evil.com';
 const FAKE_PHONE = '5559999999';
@@ -288,19 +288,18 @@ describeIfValidOrder('Scenario 2: Email + Phone → Find Order → Autoverify', 
 });
 
 // ═══════════════════════════════════════════════════════════════════════
-// SCENARIO 3: Validation Split (INVALID_FORMAT vs NOT_FOUND)
+// SCENARIO 3: Validation Split (SHORT_INPUT vs NOT_FOUND)
 // ═══════════════════════════════════════════════════════════════════════
 
-describe('Scenario 3: Validation Split (INVALID_FORMAT vs NOT_FOUND)', () => {
+describe('Scenario 3: Validation Split (SHORT_INPUT vs NOT_FOUND)', () => {
 
-  it('Step 1: extractOrderNumber parses invalid + fake-valid formats', () => {
-    expect(extractOrderNumber(`siparis no: ${INVALID_FORMAT_ORDER}`)).toBe(INVALID_FORMAT_ORDER);
+  it('Step 1: extractOrderNumber parses fake-valid formats', () => {
     expect(extractOrderNumber('siparis no: ORD-999999')).toBe('ORD-999999');
     expect(extractOrderNumber('order number: 123456789')).toBe('123456789');
     expect(extractOrderNumber('#55555')).toBe('55555');
   });
 
-  it('Step 2: invalid format order returns VALIDATION_ERROR with format guidance', async () => {
+  it('Step 2: too-short order input returns VALIDATION_ERROR', async () => {
     const result = await callTool({
       query_type: 'siparis',
       order_number: INVALID_FORMAT_ORDER
@@ -308,9 +307,7 @@ describe('Scenario 3: Validation Split (INVALID_FORMAT vs NOT_FOUND)', () => {
 
     expect(result.outcome).toBe('VALIDATION_ERROR');
     expect(result.field).toBe('order_number');
-    expect(result.expectedFormat).toBe('ORD-123456');
-    expect(result.promptStyle).toBe('single_question_with_example');
-    expect(result.message).toContain('ORD-123456');
+    expect(result.message).toMatch(/en az 3 karakter|at least 3 characters/i);
   });
 
   it('Step 3: fake but format-valid order returns NOT_FOUND', async () => {

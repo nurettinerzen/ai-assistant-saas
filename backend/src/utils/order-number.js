@@ -1,21 +1,13 @@
 /**
- * Order Number Normalization + Validation Contract
+ * Order number helpers.
  *
- * Production-supported prefixes are intentionally strict:
- * - ORD
- * - ORDER
- * - SIP
- * - SIPARIS
+ * Product principle:
+ * - DB is the source of truth for order-number validity.
+ * - Pre-checks should be minimal (empty / too short only).
  *
- * Accepted examples:
- * - ORD-123456
- * - ORDER_2024_001
- * - SIP 987654
- * - 123456
- *
- * Rejected examples:
- * - ORD-TEST-7890  (alpha segment in numeric body)
- * - XYZ9999        (unsupported prefix)
+ * NOTE:
+ * `normalizeOrderNumber` still strips well-known prefixes to improve DB matching
+ * across heterogeneous data sources (e.g. "ORD-12345" vs "12345").
  */
 
 export const SUPPORTED_ORDER_PREFIXES = Object.freeze([
@@ -25,11 +17,9 @@ export const SUPPORTED_ORDER_PREFIXES = Object.freeze([
   'SIP'
 ]);
 
-export const ORDER_NUMBER_EXAMPLE = 'ORD-123456';
-
 function normalizeInput(value) {
   if (value === null || value === undefined) return '';
-  return String(value).trim().toUpperCase();
+  return String(value).trim().toUpperCase().replace(/\s+/g, ' ');
 }
 
 function splitSupportedPrefix(rawOrderNumber) {
@@ -47,11 +37,6 @@ function splitSupportedPrefix(rawOrderNumber) {
 
 /**
  * Normalize order number for DB lookup (prefix stripped, separators removed).
- *
- * Examples:
- * - "ORD-12345" => "12345"
- * - "SIP 12345" => "12345"
- * - "12345" => "12345"
  */
 export function normalizeOrderNumber(orderNumber) {
   const raw = normalizeInput(orderNumber);
@@ -62,36 +47,26 @@ export function normalizeOrderNumber(orderNumber) {
 }
 
 /**
- * Determine whether order number matches production validation contract.
+ * Normalize user-provided order number for direct DB query attempts.
+ * Keeps semantic characters, just trims/cases/collapses extra spaces.
+ */
+export function normalizeOrderLookupInput(orderNumber) {
+  return normalizeInput(orderNumber);
+}
+
+/**
+ * Minimal sanity check only.
  *
- * Rules:
- * - Prefixed forms are valid only when prefix is supported and body is numeric.
- * - Plain numeric identifiers are valid.
- * - Unknown alpha prefixes / alpha body segments are invalid.
+ * Intentionally does NOT enforce regex/prefix rules so valid-but-unusual
+ * order numbers can still be checked against DB.
  */
 export function isLikelyValidOrderNumber(orderNumber) {
-  const raw = normalizeInput(orderNumber);
+  const raw = normalizeOrderLookupInput(orderNumber);
   if (!raw) return false;
 
-  const { prefix, remainder } = splitSupportedPrefix(raw);
+  const compact = raw.replace(/[\s\-_]/g, '');
+  if (compact.length < 3) return false;
 
-  if (prefix) {
-    if (!remainder) return false;
-    if (!/^[\d\s\-_]+$/.test(remainder)) return false;
-    return remainder.replace(/\D/g, '').length >= 3;
-  }
-
-  if (/[A-Z]/.test(raw)) return false;
-  if (!/^[\d\s\-_]+$/.test(raw)) return false;
-
-  return raw.replace(/\D/g, '').length >= 3;
+  // Must contain at least one alphanumeric character.
+  return /[A-Z0-9]/.test(compact);
 }
-
-export function getOrderNumberValidationMessage(language = 'TR') {
-  if (String(language || '').toUpperCase() === 'EN') {
-    return `Order numbers are usually in this format: ${ORDER_NUMBER_EXAMPLE}. Could you share your order number?`;
-  }
-
-  return `Sipariş numaran genelde şu formatta olur: ${ORDER_NUMBER_EXAMPLE}. Elindeki sipariş numarasını paylaşır mısın?`;
-}
-

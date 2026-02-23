@@ -13,9 +13,8 @@
 import prisma from '../../prismaClient.js';
 import { normalizePhone, phoneSearchVariants } from '../../utils/text.js';
 import {
-  ORDER_NUMBER_EXAMPLE,
-  getOrderNumberValidationMessage,
   isLikelyValidOrderNumber,
+  normalizeOrderLookupInput,
   normalizeOrderNumber
 } from '../../utils/order-number.js';
 
@@ -116,6 +115,51 @@ function toStateAnchor(anchor) {
   };
 }
 
+const ORDER_CUSTOM_FIELD_NAMES = Object.freeze([
+  'Sipariş No',
+  'Siparis No',
+  'SİPARİŞ NO',
+  'Sipariş Numarası',
+  'order_number',
+  'orderNumber',
+  'Order Number',
+  'Order No'
+]);
+
+function buildOrderLookupCandidates(orderNumber) {
+  const normalizedLookup = normalizeOrderLookupInput(orderNumber);
+  const compactNormalized = normalizeOrderNumber(orderNumber);
+  const compactLookup = normalizedLookup.replace(/\s+/g, '');
+
+  return {
+    normalizedLookup,
+    compactNormalized,
+    exactCandidates: Array.from(new Set([
+      normalizedLookup,
+      compactLookup,
+      compactNormalized
+    ].filter(Boolean)))
+  };
+}
+
+function normalizedOrderMatch(value, normalizedOrder) {
+  if (!value || !normalizedOrder) return false;
+  return normalizeOrderNumber(String(value)) === normalizedOrder;
+}
+
+function buildOrderAmbiguityResponse(language = 'TR') {
+  return {
+    outcome: ToolOutcome.NEED_MORE_INFO,
+    success: true,
+    data: null,
+    message: language === 'TR'
+      ? 'Bu sipariş numarası birden fazla kayıtla eşleşti. Lütfen sipariş numarasını tek bir formatla tekrar paylaşır mısın?'
+      : 'This order number matches multiple records. Please share the order number again in a single exact format.',
+    field: 'order_number',
+    ambiguity: true
+  };
+}
+
 /**
  * Execute customer data lookup
  */
@@ -135,14 +179,17 @@ export async function execute(args, business, context = {}) {
 
     const normalizedQueryType = String(query_type || '').toLowerCase();
     const isOrderQuery = normalizedQueryType === 'siparis' || normalizedQueryType === 'order';
+    const orderLookup = order_number ? buildOrderLookupCandidates(order_number) : null;
 
-    if (isOrderQuery && order_number && !isLikelyValidOrderNumber(order_number)) {
-      return {
-        ...validationError(getOrderNumberValidationMessage(language), 'order_number'),
-        expectedFormat: ORDER_NUMBER_EXAMPLE,
-        promptStyle: 'single_question_with_example',
-        validationCode: 'ORDER_NUMBER_FORMAT_INVALID'
-      };
+    // Minimal validation only: reject empty/too-short values.
+    // Do not apply format/prefix regex gates before DB lookup.
+    if (isOrderQuery && order_number !== undefined && order_number !== null && !isLikelyValidOrderNumber(order_number)) {
+      return validationError(
+        language === 'TR'
+          ? 'Sipariş numarası çok kısa görünüyor. En az 3 karakter olacak şekilde tekrar paylaşır mısın?'
+          : 'The order number looks too short. Please share it again with at least 3 characters.',
+        'order_number'
+      );
     }
 
     // SECURITY: Don't log PII (phone, vkn, tc, names)
@@ -259,44 +306,41 @@ export async function execute(args, business, context = {}) {
 
     // Strategy 1: Order number
     if (order_number) {
-      // Normalize for flexible matching but also keep original
-      const normalizedOrderNumber = normalizeOrderNumber(order_number);
-      const originalUpperCase = String(order_number).trim().toUpperCase();
+      const {
+        normalizedLookup,
+        compactNormalized,
+        exactCandidates
+      } = orderLookup;
 
       console.log('🔍 [Lookup] Searching by order_number:', {
         original: order_number,
-        originalUpperCase,
-        normalized: normalizedOrderNumber
+        normalizedLookup,
+        compactNormalized,
+        exactCandidates
       });
 
-      // Try CrmOrder first - search with BOTH original and normalized values
-      // DB may store "ORD-12345" or just "12345" depending on source
-      let crmOrder = await prisma.crmOrder.findFirst({
+      const crmOrderCandidates = await prisma.crmOrder.findMany({
         where: {
           businessId: business.id,
-          orderNumber: originalUpperCase  // Try exact match first
+          orderNumber: { in: exactCandidates }
         }
       });
 
-      // If not found, try with normalized (no prefix)
-      if (!crmOrder) {
-        crmOrder = await prisma.crmOrder.findFirst({
-          where: {
-            businessId: business.id,
-            orderNumber: normalizedOrderNumber
-          }
+      const normalizedCrmOrders = crmOrderCandidates.filter(
+        (candidate) => normalizedOrderMatch(candidate.orderNumber, compactNormalized)
+      );
+
+      if (normalizedCrmOrders.length > 1) {
+        console.warn('⚠️ [Lookup] Ambiguous CrmOrder matches for normalized order number:', {
+          businessId: business.id,
+          order_number: normalizedLookup,
+          normalized: compactNormalized,
+          matchCount: normalizedCrmOrders.length
         });
+        return buildOrderAmbiguityResponse(language);
       }
 
-      // If still not found, try contains search for partial match
-      if (!crmOrder) {
-        crmOrder = await prisma.crmOrder.findFirst({
-          where: {
-            businessId: business.id,
-            orderNumber: { contains: normalizedOrderNumber, mode: 'insensitive' }
-          }
-        });
-      }
+      const crmOrder = normalizedCrmOrders[0];
 
       if (crmOrder) {
         console.log('✅ [Lookup] Found CRM order:', crmOrder.orderNumber);
@@ -305,54 +349,77 @@ export async function execute(args, business, context = {}) {
         anchorValue = crmOrder.orderNumber;
         sourceTable = 'CrmOrder';
       } else {
-        // Try CustomerData (first check orderNo field, then customFields)
-        console.log('🔍 [Lookup] Not in CrmOrder, searching CustomerData...');
+        console.log('🔍 [Lookup] Not in CrmOrder, searching CustomerData with DB filters...');
 
-        // FIRST: Check top-level orderNo field
-        const allCustomers = await prisma.customerData.findMany({
-          where: { businessId: business.id }
+        const customerOrderNoCandidates = await prisma.customerData.findMany({
+          where: {
+            businessId: business.id,
+            orderNo: { in: exactCandidates }
+          }
         });
 
-        for (const customer of allCustomers) {
-          // Check top-level orderNo field first
-          if (customer.orderNo) {
-            const normalizedDbOrderNo = normalizeOrderNumber(customer.orderNo);
-            if (normalizedDbOrderNo === normalizedOrderNumber) {
-              console.log('✅ [Lookup] Found in CustomerData.orderNo');
-              record = customer;
-              anchorType = 'order';
-              anchorValue = normalizedOrderNumber;
-              break;
-            }
+        const normalizedCustomerOrderNoMatches = customerOrderNoCandidates.filter(
+          (candidate) => normalizedOrderMatch(candidate.orderNo, compactNormalized)
+        );
+
+        const customFieldWhereClauses = [];
+        for (const fieldName of ORDER_CUSTOM_FIELD_NAMES) {
+          for (const candidate of exactCandidates) {
+            customFieldWhereClauses.push({
+              customFields: {
+                path: [fieldName],
+                equals: candidate
+              }
+            });
           }
         }
 
-        // SECOND: If not found, search in customFields for order number
-        if (!record) {
-          const orderFieldNames = [
-            'Sipariş No', 'Siparis No', 'SİPARİŞ NO', 'Sipariş Numarası',
-            'order_number', 'orderNumber', 'Order Number', 'Order No'
-          ];
-
-          for (const customer of allCustomers) {
-            if (customer.customFields) {
-              for (const fieldName of orderFieldNames) {
-                const fieldValue = customer.customFields[fieldName];
-                if (fieldValue) {
-                  // SECURITY FIX: Normalize both sides for comparison
-                  const normalizedFieldValue = normalizeOrderNumber(String(fieldValue));
-                  if (normalizedFieldValue === normalizedOrderNumber) {
-                    console.log('✅ [Lookup] Found in CustomerData.customFields');
-                    record = customer;
-                    anchorType = 'order';
-                    anchorValue = normalizedOrderNumber;
-                    break;
-                  }
-                }
-              }
-              if (record) break;
+        let normalizedCustomerCustomFieldMatches = [];
+        if (customFieldWhereClauses.length > 0) {
+          const customerCustomFieldCandidates = await prisma.customerData.findMany({
+            where: {
+              businessId: business.id,
+              OR: customFieldWhereClauses
             }
-          }
+          });
+
+          normalizedCustomerCustomFieldMatches = customerCustomFieldCandidates.filter((candidate) => {
+            if (!candidate.customFields || typeof candidate.customFields !== 'object') {
+              return false;
+            }
+
+            return ORDER_CUSTOM_FIELD_NAMES.some((fieldName) => {
+              const fieldValue = candidate.customFields[fieldName];
+              return normalizedOrderMatch(fieldValue, compactNormalized);
+            });
+          });
+        }
+
+        const normalizedCustomerMatchesMap = new Map();
+        for (const match of normalizedCustomerOrderNoMatches) {
+          normalizedCustomerMatchesMap.set(match.id, match);
+        }
+        for (const match of normalizedCustomerCustomFieldMatches) {
+          normalizedCustomerMatchesMap.set(match.id, match);
+        }
+        const normalizedCustomerMatches = Array.from(normalizedCustomerMatchesMap.values());
+
+        if (normalizedCustomerMatches.length > 1) {
+          console.warn('⚠️ [Lookup] Ambiguous CustomerData matches for normalized order number:', {
+            businessId: business.id,
+            order_number: normalizedLookup,
+            normalized: compactNormalized,
+            matchCount: normalizedCustomerMatches.length
+          });
+          return buildOrderAmbiguityResponse(language);
+        }
+
+        if (normalizedCustomerMatches.length === 1) {
+          const matchedCustomer = normalizedCustomerMatches[0];
+          console.log('✅ [Lookup] Found in CustomerData by exact DB-level match');
+          record = matchedCustomer;
+          anchorType = 'order';
+          anchorValue = matchedCustomer.orderNo || normalizedLookup;
         }
 
         if (!record) {
