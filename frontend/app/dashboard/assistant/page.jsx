@@ -391,11 +391,11 @@ export default function AssistantsPage() {
     setEditingAssistant(assistant);
 
     if (isText) {
-      // Text assistant edit
+      // Text assistant edit — show user's original instructions, NOT the auto-generated systemPrompt
       setFormData({
         name: assistant.name,
         voiceId: '',
-        systemPrompt: assistant.systemPrompt || '',
+        systemPrompt: assistant.userInstructions || '',
         firstMessage: '',
         language: assistant.language || businessLanguage || 'tr',
         tone: assistant.tone || 'formal',

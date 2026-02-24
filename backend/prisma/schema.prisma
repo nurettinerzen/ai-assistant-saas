@@ -195,6 +195,7 @@ model Assistant {
   firstMessage      String? // Custom first message
   tone              String            @default("professional") // "friendly" or "professional"
   customNotes       String?           @db.Text // Business-specific notes
+  userInstructions  String?           @db.Text // User's original instructions (kept separate from auto-generated systemPrompt)
   callDirection     String            @default("outbound") // phone-only: "inbound" | "outbound" | "outbound_*"
   channelCapabilities String[]        @default(["phone_outbound"]) // ["chat","whatsapp","email","phone_outbound","phone_inbound"]
   callPurpose       String? // For outbound: "collection", "reminder", "survey", "info", "custom"

@@ -598,6 +598,7 @@ router.post('/', authenticateToken, checkPermission('assistants:create'), async 
         firstMessage: finalFirstMessage,
         tone: tone || 'professional',
         customNotes: customNotes || null,
+        userInstructions: systemPrompt || null, // Store user's original instructions separately
         callDirection: effectiveCallDirection,
         channelCapabilities: finalChannelCapabilities,
         callPurpose: isTextAssistant ? null : (callPurpose || null),
@@ -958,6 +959,7 @@ router.put('/:id', authenticateToken, checkPermission('assistants:edit'), async 
       systemPrompt: fullSystemPrompt,
       tone: tone || assistant.tone || 'professional',
       customNotes: customNotes !== undefined ? customNotes : assistant.customNotes,
+      userInstructions: systemPrompt !== undefined ? (systemPrompt || null) : assistant.userInstructions,
     };
 
     if (isTextAssistant) {
