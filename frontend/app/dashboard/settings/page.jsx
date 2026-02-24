@@ -63,10 +63,6 @@ export default function SettingsPage() {
   // Local state for form inputs
   const [profile, setProfile] = useState({ name: '', email: '', company: '' });
   const [region, setRegion] = useState({ language: 'TR', country: 'TR', timezone: 'Europe/Istanbul' });
-  const [businessIdentity, setBusinessIdentity] = useState({
-    aliases: '',
-    identitySummary: '',
-  });
   const [notifications, setNotifications] = useState({
     emailOnCall: true,
     emailOnLimit: true,
@@ -99,10 +95,6 @@ export default function SettingsPage() {
         language: bizData.language || 'TR',
         country: bizData.country || 'TR',
         timezone: bizData.timezone || 'Europe/Istanbul',
-      });
-      setBusinessIdentity({
-        aliases: Array.isArray(bizData.aliases) ? bizData.aliases.join(', ') : '',
-        identitySummary: bizData.identitySummary || '',
       });
     }
   }, [profileData]);
@@ -155,27 +147,6 @@ export default function SettingsPage() {
     toast.error(t('dashboard.settingsPage.regionUpdateFailed'));
   }
 };
-
-  const handleSaveBusinessIdentity = async () => {
-    const parsedAliases = businessIdentity.aliases
-      .split(/[\n,;]+/g)
-      .map((entry) => entry.trim())
-      .filter(Boolean);
-
-    try {
-      await toastHelpers.async(
-        updateProfile.mutateAsync({
-          aliases: parsedAliases,
-          identitySummary: businessIdentity.identitySummary,
-        }),
-        'Saving business identity...',
-        'Business identity updated'
-      );
-    } catch (error) {
-      console.error('Update business identity error:', error);
-      toast.error('Failed to update business identity');
-    }
-  };
 
   const handleSaveSignature = async () => {
     try {
@@ -282,47 +253,7 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* Business Identity Section */}
-      {can('settings:edit') && (
-      <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-3 shadow-sm">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="p-2 rounded-lg">
-            <Globe className="h-5 w-5 text-primary-600 dark:text-primary-400" />
-          </div>
-          <div>
-            <h2 className="text-sm font-semibold text-neutral-900 dark:text-white">Business Identity</h2>
-            <p className="text-xs text-neutral-500 dark:text-neutral-400">Alternative spellings and short company summary used by resolver.</p>
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          <div>
-            <Label htmlFor="aliases">Şirket adının farklı yazımları</Label>
-            <Textarea
-              id="aliases"
-              value={businessIdentity.aliases}
-              onChange={(e) => setBusinessIdentity({ ...businessIdentity, aliases: e.target.value })}
-              placeholder="Örn: Telyx, Telix, Telyks"
-              rows={3}
-            />
-          </div>
-          <div>
-            <Label htmlFor="identitySummary">Identity Summary</Label>
-            <Textarea
-              id="identitySummary"
-              value={businessIdentity.identitySummary}
-              onChange={(e) => setBusinessIdentity({ ...businessIdentity, identitySummary: e.target.value })}
-              placeholder="Şirketinizi 1-2 cümleyle tanımlayın"
-              rows={3}
-            />
-          </div>
-        </div>
-
-        <div className="flex justify-end mt-6">
-          <Button onClick={handleSaveBusinessIdentity}>Save Identity</Button>
-        </div>
-      </div>
-      )}
+      {/* Business Identity — moved to Assistant wizard */}
 
       {/* Business Type Section - Removed
          Business type is now set during onboarding and cannot be changed afterwards.

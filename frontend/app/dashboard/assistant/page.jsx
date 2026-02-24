@@ -40,7 +40,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import EmptyState from '@/components/EmptyState';
-import { Bot, Plus, Edit, Trash2, Search, PhoneOutgoing, MessageSquare, Loader2, RefreshCw, ChevronDown } from 'lucide-react';
+import { apiClient } from '@/lib/api';
+import { Bot, Plus, Edit, Trash2, Search, PhoneOutgoing, MessageSquare, Loader2, RefreshCw, ChevronDown, ChevronRight } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -176,6 +177,24 @@ export default function AssistantsPage() {
   const [creating, setCreating] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [syncing, setSyncing] = useState(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
+  // Business identity — business-level fields shown in assistant wizard
+  const [bizIdentity, setBizIdentity] = useState({
+    identitySummary: '',
+    aliases: '',
+  });
+
+  // Populate business identity from businessData
+  useEffect(() => {
+    if (businessData?.data) {
+      const biz = businessData.data;
+      setBizIdentity({
+        identitySummary: biz.identitySummary || '',
+        aliases: Array.isArray(biz.aliases) ? biz.aliases.join(', ') : '',
+      });
+    }
+  }, [businessData]);
 
   const isTextMode = formData.assistantType === 'text';
 
@@ -275,6 +294,22 @@ export default function AssistantsPage() {
     }));
   };
 
+  // Save business identity fields (business-level, not per-assistant)
+  const saveBizIdentity = async () => {
+    try {
+      const parsedAliases = bizIdentity.aliases
+        .split(/[\n,;]+/g)
+        .map((entry) => entry.trim())
+        .filter(Boolean);
+      await apiClient.settings.updateProfile({
+        aliases: parsedAliases,
+        identitySummary: bizIdentity.identitySummary,
+      });
+    } catch (err) {
+      console.error('Business identity save failed:', err);
+    }
+  };
+
   const handleCreate = async () => {
     if (isTextMode) {
       // Text assistant: only name required
@@ -295,6 +330,7 @@ export default function AssistantsPage() {
           customNotes: formData.customNotes,
         };
         await createAssistant.mutateAsync(textPayload);
+        await saveBizIdentity();
         toast.success(t('dashboard.assistantsPage.createdSuccess'));
         setShowCreateModal(false);
         resetForm();
@@ -330,6 +366,7 @@ export default function AssistantsPage() {
           assistantType: 'phone',
         };
         await createAssistant.mutateAsync(phonePayload);
+        await saveBizIdentity();
         toast.success(t('dashboard.assistantsPage.createdSuccess'));
         setShowCreateModal(false);
         resetForm();
@@ -411,6 +448,7 @@ export default function AssistantsPage() {
       } else {
         await updateAssistant.mutateAsync({ id: editingAssistant.id, formData });
       }
+      await saveBizIdentity();
       toast.success(t('dashboard.assistantsPage.updatedSuccess'));
       setShowCreateModal(false);
       resetForm();
@@ -884,6 +922,65 @@ export default function AssistantsPage() {
               <p className="text-xs text-neutral-500 mt-1">
                 {t('dashboard.assistantsPage.customNotesHint')}
               </p>
+            </div>
+
+            {/* ===== BUSINESS IDENTITY (business-level) ===== */}
+            <div className="border-t border-neutral-200 dark:border-neutral-700 pt-4 mt-2">
+              <Label htmlFor="identitySummary">
+                {locale === 'tr' ? 'İşletme Tanımı' : 'Business Description'}
+              </Label>
+              <Textarea
+                id="identitySummary"
+                rows={2}
+                value={bizIdentity.identitySummary}
+                onChange={(e) => setBizIdentity({ ...bizIdentity, identitySummary: e.target.value })}
+                placeholder={locale === 'tr'
+                  ? 'İşletmenizi 1-2 cümleyle tanımlayın. Örn: "Telyx, yapay zeka destekli müşteri iletişim platformudur."'
+                  : 'Describe your business in 1-2 sentences.'
+                }
+              />
+              <p className="text-xs text-neutral-500 mt-1">
+                {locale === 'tr'
+                  ? 'Asistanın müşteriyle konuşurken işletmenizi nasıl tanımlayacağını belirler.'
+                  : 'Defines how the assistant describes your business during conversations.'
+                }
+              </p>
+            </div>
+
+            {/* Advanced: Aliases (collapsible) */}
+            <div>
+              <button
+                type="button"
+                onClick={() => setShowAdvanced(!showAdvanced)}
+                className="flex items-center gap-1 text-xs font-medium text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors"
+              >
+                {showAdvanced ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                {locale === 'tr' ? 'Gelişmiş Ayarlar' : 'Advanced Settings'}
+              </button>
+
+              {showAdvanced && (
+                <div className="mt-2">
+                  <Label htmlFor="aliases">
+                    {locale === 'tr' ? 'Alternatif İsimler' : 'Alternative Names'}
+                  </Label>
+                  <Textarea
+                    id="aliases"
+                    rows={2}
+                    value={bizIdentity.aliases}
+                    onChange={(e) => setBizIdentity({ ...bizIdentity, aliases: e.target.value })}
+                    placeholder={locale === 'tr'
+                      ? 'Kısaltma, eski isim veya şube adı varsa ekleyin. Örn: Telix, Telyx AI, Telyx İstanbul'
+                      : 'Add abbreviations, old names, or branch names. E.g.: Telix, Telyx AI'
+                    }
+                  />
+                  <p className="text-xs text-neutral-500 mt-1">
+                    {locale === 'tr'
+                      ? 'Virgül, noktalı virgül veya yeni satır ile ayırın.'
+                      : 'Separate with comma, semicolon, or new line.'
+                    }
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
