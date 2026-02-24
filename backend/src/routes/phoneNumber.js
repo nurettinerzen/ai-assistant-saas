@@ -82,7 +82,7 @@ router.get('/', async (req, res) => {
         provider: pn.provider,
         status: pn.status,
         assistantId: pn.assistant?.isActive ? pn.assistantId : null,
-        assistantName: pn.assistant?.isActive ? pn.assistant.name : 'Unassigned',
+        assistantName: pn.assistant?.isActive ? pn.assistant.name : null,
         monthlyCost: pn.monthlyCost,
         nextBillingDate: pn.nextBillingDate,
         createdAt: pn.createdAt,
