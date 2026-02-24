@@ -1,0 +1,93 @@
+P0 Launch Gate Prod Smoke — 2026-02-22T01:52:50.560Z
+API: https://ai-assistant-saas.onrender.com
+Cases: 11
+
+[01] selam
+  guardrailAction=PASS
+  LLM_CALLED=true
+  llm_call_reason=CHAT
+  bypassed=false
+  toolCalls=-
+  reply="Merhaba, size nasıl yardımcı olabilirim?"
+
+[02] naber
+  guardrailAction=PASS
+  LLM_CALLED=true
+  llm_call_reason=CHAT
+  bypassed=false
+  toolCalls=-
+  reply="Merhaba, ben Ali. Size nasıl yardımcı olabilirim?"
+
+[03] Telyx nedir?
+  guardrailAction=PASS
+  LLM_CALLED=true
+  llm_call_reason=CHAT
+  bypassed=false
+  toolCalls=-
+  reply="Telyx, yapay zeka destekli çok kanallı bir müşteri iletişim platformudur. İşletmelerin müşteri hizmetlerini 7/24 otomati"
+
+[04] Telyx’in özellikleri neler?
+  guardrailAction=PASS
+  LLM_CALLED=true
+  llm_call_reason=CHAT
+  bypassed=false
+  toolCalls=-
+  reply="Telyx, yapay zeka destekli çok kanallı bir müşteri iletişim platformudur. Başlıca özellikleri şunlardır: * **7/24 Kesint"
+
+[05] Telyx nasıl kullanılır?
+  guardrailAction=PASS
+  LLM_CALLED=true
+  llm_call_reason=CHAT
+  bypassed=false
+  toolCalls=-
+  reply="Telyx'i kullanmaya başlamak için 4 adım bulunmaktadır: 1. **Hesap Oluşturun:** Telyx'e kaydolarak işletme bilgilerinizi "
+
+[06] Telefon görüşmesi yapabiliyor muyum?
+  guardrailAction=PASS
+  LLM_CALLED=true
+  llm_call_reason=CHAT
+  bypassed=false
+  toolCalls=-
+  reply="Evet, Telyx yapay zeka destekli gelen ve giden arama yönetimi ile telefon görüşmesi yapabilir."
+
+[07] WhatsApp entegrasyonu var mı?
+  guardrailAction=PASS
+  LLM_CALLED=true
+  llm_call_reason=CHAT
+  bypassed=false
+  toolCalls=-
+  reply="Evet, Telyx'in desteklediği kanallar arasında WhatsApp Business API üzerinden otomatik mesajlaşma entegrasyonu bulunmakt"
+
+[08] Fiyatlar nedir?
+  guardrailAction=PASS
+  LLM_CALLED=true
+  llm_call_reason=CHAT
+  bypassed=false
+  toolCalls=-
+  reply="Telyx ile ilgili hangi ürün veya hizmetin fiyatlarını öğrenmek istersiniz?"
+
+[09] Siparişimin durumu nedir?
+  guardrailAction=NEED_MIN_INFO_FOR_TOOL
+  LLM_CALLED=true
+  llm_call_reason=CHAT
+  bypassed=false
+  toolCalls=-
+  reply="Güvenli şekilde devam edebilmem için sipariş numaranızı paylaşır mısınız?"
+
+[10a] Geri arama istiyorum, numaram 05551234567
+  guardrailAction=PASS
+  LLM_CALLED=true
+  llm_call_reason=CHAT
+  bypassed=false
+  toolCalls=-
+  reply="Geri arama talebiniz için teşekkür ederiz. Size daha iyi yardımcı olabilmem adına isminizi ve soyisminizi rica edebilir "
+
+[10b] Adım Ahmet Yılmaz, saat 14:00 uygun
+  guardrailAction=PASS
+  LLM_CALLED=true
+  llm_call_reason=CHAT
+  bypassed=false
+  toolCalls=create_callback
+  reply="Ahmet Bey, geri arama kaydınızı oluşturdum. Sizinle en kısa sürede iletişime geçilecektir."
+
+All launch-gate checks passed.

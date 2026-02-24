@@ -26,6 +26,7 @@ import { applyGuardrails } from './orchestrator/steps/07_guardrails.js';
 import { persistAndEmitMetrics } from './orchestrator/steps/08_persistAndMetrics.js';
 import { isFeatureEnabled } from '../config/feature-flags.js';
 import prisma from '../config/database.js';
+import { sanitizeResponse } from '../utils/response-firewall.js';
 import {
   containsChildSafetyViolation,
   getBlockedContentMessage,
@@ -153,6 +154,39 @@ function getInternalProtocolSafeFallback(language = 'TR') {
   return String(language || '').toUpperCase() === 'EN'
     ? 'I am doing well, thanks. How can I help you today?'
     : 'İyiyim, teşekkürler. Sana nasıl yardımcı olayım?';
+}
+
+function finalizeResponseText({
+  reply = '',
+  language = 'TR',
+  channel = 'CHAT',
+  sessionId = '',
+  intent = null
+} = {}) {
+  const fallback = getInternalProtocolSafeFallback(language);
+  const text = typeof reply === 'string' ? reply.trim() : '';
+
+  if (!text) {
+    return fallback;
+  }
+
+  if (!isFeatureEnabled('UNIFIED_RESPONSE_SANITIZER')) {
+    return text;
+  }
+
+  const firewall = sanitizeResponse(text, language, {
+    sessionId,
+    channel,
+    intent
+  });
+
+  if (!firewall.safe) {
+    return fallback;
+  }
+
+  return typeof firewall.sanitized === 'string' && firewall.sanitized.trim()
+    ? firewall.sanitized.trim()
+    : text;
 }
 
 function extractModelResponseText(result) {
@@ -621,6 +655,14 @@ export async function handleIncomingMessage({
     bypassed: true
   };
 
+  const finalizeReply = (reply, intentHint = null) => finalizeResponseText({
+    reply,
+    language,
+    channel,
+    sessionId: metrics.sessionId || sessionId || '',
+    intent: intentHint
+  });
+
   const prefix = effectsEnabled ? '📨' : '🔍';
   const mode = effectsEnabled ? 'PRODUCTION' : 'DRY-RUN';
 
@@ -663,7 +705,7 @@ export async function handleIncomingMessage({
 
       // Return safe response WITHOUT calling LLM
       return {
-        reply: getBlockedContentMessage(language),
+        reply: finalizeReply(getBlockedContentMessage(language)),
         outcome: ToolOutcome.DENIED,
         metadata: {
           outcome: ToolOutcome.DENIED,
@@ -734,7 +776,7 @@ export async function handleIncomingMessage({
       console.log('📊 [SecurityTelemetry]', throttleTelemetry);
 
       return {
-        reply: throttleMessage,
+        reply: finalizeReply(throttleMessage),
         outcome: ToolOutcome.DENIED,
         metadata: {
           outcome: ToolOutcome.DENIED,
@@ -811,9 +853,11 @@ export async function handleIncomingMessage({
         console.log('📊 [SecurityTelemetry]', injectionTelemetry);
 
         return {
-          reply: language === 'TR'
-            ? 'Bu mesaj güvenlik politikamız gereği işlenemiyor. Size nasıl yardımcı olabilirim?'
-            : 'This message cannot be processed due to our security policy. How can I help you?',
+          reply: finalizeReply(
+            language === 'TR'
+              ? 'Bu mesaj güvenlik politikamız gereği işlenemiyor. Size nasıl yardımcı olabilirim?'
+              : 'This message cannot be processed due to our security policy. How can I help you?'
+          ),
           outcome: ToolOutcome.DENIED,
           metadata: {
             outcome: ToolOutcome.DENIED,
@@ -892,7 +936,7 @@ export async function handleIncomingMessage({
         }).text;
 
       return {
-        reply: replyMessage,
+        reply: finalizeReply(replyMessage),
         outcome: ToolOutcome.DENIED,
         metadata: {
           outcome: ToolOutcome.DENIED,
@@ -1022,10 +1066,7 @@ export async function handleIncomingMessage({
     // Classifier is only needed to distinguish SLOT_ANSWER vs FOLLOWUP_DISPUTE
     // during active flows. In idle state, LLM handles everything directly.
     // P0-FIX: Also run classifier after NOT_FOUND/VALIDATION_ERROR so new slots get extracted.
-    const needsClassifier = isFeatureEnabled('USE_MESSAGE_TYPE_ROUTING') &&
-      (state.flowStatus === 'in_progress' || state.flowStatus === 'resolved' || state.flowStatus === 'post_result' ||
-       state.flowStatus === 'not_found' || state.flowStatus === 'validation_error' ||
-       state.verification?.status === 'pending');
+    const needsClassifier = isFeatureEnabled('USE_MESSAGE_TYPE_ROUTING');
 
     if (needsClassifier) {
       classification = await classifyMessage({
@@ -1279,7 +1320,7 @@ export async function handleIncomingMessage({
         console.warn(`🚨 [Enumeration] Session blocked after ${enumResult.attempts} attempts`);
 
         return {
-          reply: getLockMessage('ENUMERATION', language, resolvedSessionId),
+          reply: finalizeReply(getLockMessage('ENUMERATION', language, resolvedSessionId)),
           outcome: ToolOutcome.DENIED,
           metadata: {
             outcome: ToolOutcome.DENIED,
@@ -1350,7 +1391,7 @@ export async function handleIncomingMessage({
       });
 
       return {
-        reply: responseText,
+        reply: finalizeReply(responseText),
         outcome: ToolOutcome.INFRA_ERROR,
         metadata: {
           outcome: ToolOutcome.INFRA_ERROR,
@@ -1673,7 +1714,7 @@ export async function handleIncomingMessage({
       : null;
 
     return {
-      reply: finalResponse,
+      reply: finalizeReply(finalResponse, detectedIntent),
       outcome: turnOutcome,
       metadata: {
         outcome: turnOutcome,
@@ -1744,13 +1785,13 @@ export async function handleIncomingMessage({
 
     // Return safe fallback response
     return {
-      reply: getMessageVariant('FATAL_ERROR', {
+      reply: finalizeReply(getMessageVariant('FATAL_ERROR', {
         language,
         sessionId: metrics.sessionId || sessionId || '',
         directiveType: 'FATAL',
         severity: 'critical',
         channel
-      }).text,
+      }).text),
       outcome: ToolOutcome.INFRA_ERROR,
       metadata: {
         outcome: ToolOutcome.INFRA_ERROR,

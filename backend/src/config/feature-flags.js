@@ -126,6 +126,21 @@ export const FEATURE_FLAGS = {
   // Rollback: Set FEATURE_PRODUCT_SPEC_ENFORCE=false
   PRODUCT_SPEC_ENFORCE: process.env.FEATURE_PRODUCT_SPEC_ENFORCE !== 'false', // Default: ON
 
+  // P0: Strict order/tracking/debt claim gate
+  // When enabled: order-like factual claims are blocked unless a required tool was called.
+  // Rollback: Set FEATURE_STRICT_ORDER_TOOL_REQUIRED=false
+  STRICT_ORDER_TOOL_REQUIRED: process.env.FEATURE_STRICT_ORDER_TOOL_REQUIRED !== 'false', // Default: ON
+
+  // P0: Unified final response sanitizer
+  // When enabled: all orchestrator response exits are finalized through firewall sanitizer.
+  // Rollback: Set FEATURE_UNIFIED_RESPONSE_SANITIZER=false
+  UNIFIED_RESPONSE_SANITIZER: process.env.FEATURE_UNIFIED_RESPONSE_SANITIZER !== 'false', // Default: ON
+
+  // P0: Disable automatic decoding of encoded user payloads
+  // When enabled: decode attempts run only for explicit, justified decode requests.
+  // Rollback: Set FEATURE_DISABLE_AUTO_DECODE=false
+  DISABLE_AUTO_DECODE: process.env.FEATURE_DISABLE_AUTO_DECODE !== 'false', // Default: ON
+
   // P0 Launch Guard: strict grounding for business claims in text channels
   // When enabled: business/product/feature claims with KB LOW and no tool evidence
   // are force-downgraded to clarification (no claim leakage).

@@ -262,6 +262,38 @@ function upsertCallbackContext({ state, userMessage, callbackIntentDetected }) {
   return { customerName, customerPhone };
 }
 
+function normalizeFlowHeuristicText(message = '') {
+  return String(message || '')
+    .toLowerCase()
+    .replace(/ı/g, 'i')
+    .replace(/İ/g, 'i')
+    .replace(/ö/g, 'o')
+    .replace(/ü/g, 'u')
+    .replace(/ş/g, 's')
+    .replace(/ç/g, 'c')
+    .replace(/ğ/g, 'g')
+    .replace(/[^\w\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function inferFlowFromMessage(message = '') {
+  const text = normalizeFlowHeuristicText(message);
+  if (!text) return null;
+
+  const stockPattern = /\b(stok|stock|envanter|available|availability|kac tane|kac adet|adet|tane|kac var|ne kadar var)\b/;
+  if (stockPattern.test(text)) {
+    return 'STOCK_CHECK';
+  }
+
+  const productPattern = /\b(urun|product|model|ozellik|spec|garanti|warranty|renk|color|fiyat|price)\b/;
+  if (productPattern.test(text)) {
+    return 'PRODUCT_INFO';
+  }
+
+  return null;
+}
+
 export async function makeRoutingDecision(params) {
   const { classification, state, userMessage, conversationHistory, language, business, sessionId = '' } = params;
 
@@ -413,13 +445,15 @@ export async function makeRoutingDecision(params) {
   // LLM sees the conversation history and understands what the user is providing.
   // Only apply verification flow for intents that actually need it.
   // Stock follow-ups should never trigger verification.
-  const NON_VERIFICATION_FLOWS = ['STOCK_CHECK', 'PRODUCT_INQUIRY'];
+  const NON_VERIFICATION_FLOWS = ['STOCK_CHECK', 'PRODUCT_INFO'];
+  const inferredFlow = inferFlowFromMessage(userMessage);
   // Also check lastStockContext — after post-result reset, activeFlow is null
   // but we still shouldn't inject verification for stock follow-ups.
   const hasRecentStockContext = !!state.lastStockContext || state.anchor?.type === 'STOCK';
   const isNonVerificationFlow = hasRecentStockContext ||
     NON_VERIFICATION_FLOWS.includes(state.activeFlow) ||
-    NON_VERIFICATION_FLOWS.includes(classification?.suggestedFlow);
+    NON_VERIFICATION_FLOWS.includes(classification?.suggestedFlow) ||
+    NON_VERIFICATION_FLOWS.includes(inferredFlow);
 
   if (state.verification?.status === 'pending' && state.verification?.anchor && !isNonVerificationFlow) {
     console.log('🔐 [Verification] Pending verification — LLM will handle input interpretation');
@@ -496,15 +530,17 @@ export async function makeRoutingDecision(params) {
 
     case 'RUN_INTENT_ROUTER': {
       // New intent detected — will be handled by LLM with tools
-      if (routing.suggestedFlow) {
-        state.activeFlow = routing.suggestedFlow;
+      const nextFlow = routing.suggestedFlow || classification?.suggestedFlow || inferredFlow || null;
+
+      if (nextFlow) {
+        state.activeFlow = nextFlow;
         state.flowStatus = 'in_progress';
 
         // Clear stale verification from previous flows when starting a new flow.
         // Without this, verification.status='pending' from an old order/debt flow
         // bleeds into unrelated flows (e.g. stock queries).
-        if (state.verification?.status === 'pending') {
-          console.log(`🧹 [RouterDecision] Clearing stale verification (was pending) — new flow: ${routing.suggestedFlow}`);
+        if (state.verification?.status === 'pending' || NON_VERIFICATION_FLOWS.includes(nextFlow)) {
+          console.log(`🧹 [RouterDecision] Clearing stale verification — new flow: ${nextFlow}`);
           state.verification = { status: 'none' };
         }
       }

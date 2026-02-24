@@ -9,8 +9,100 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { convertToolsToGeminiFunctions as convertToolsToGemini } from '../../../services/gemini-utils.js';
 import { getEntityClarificationHint, getEntityHint, getEntityMatchType } from '../../../services/entityTopicResolver.js';
+import { getFlow } from '../../../config/flow-definitions.js';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+const FLOW_TOOL_OVERRIDES = Object.freeze({
+  STOCK_CHECK: ['get_product_stock', 'check_stock_crm'],
+  CALLBACK_REQUEST: ['create_callback']
+});
+
+function normalizeFlowName(flowName) {
+  const normalized = String(flowName || '').toUpperCase();
+  if (!normalized) return null;
+  if (normalized === 'PRODUCT_INQUIRY') return 'PRODUCT_INFO';
+  return normalized;
+}
+
+function normalizeFlowHeuristicText(message = '') {
+  return String(message || '')
+    .toLowerCase()
+    .replace(/ı/g, 'i')
+    .replace(/İ/g, 'i')
+    .replace(/ö/g, 'o')
+    .replace(/ü/g, 'u')
+    .replace(/ş/g, 's')
+    .replace(/ç/g, 'c')
+    .replace(/ğ/g, 'g')
+    .replace(/[^\w\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function inferFlowFromMessage(message = '') {
+  const text = normalizeFlowHeuristicText(message);
+  if (!text) return null;
+
+  if (/\b(stok|stock|envanter|available|availability|kac tane|kac adet|adet|tane|kac var|ne kadar var)\b/.test(text)) {
+    return 'STOCK_CHECK';
+  }
+
+  if (/\b(urun|product|model|ozellik|spec|garanti|warranty|renk|color|fiyat|price)\b/.test(text)) {
+    return 'PRODUCT_INFO';
+  }
+
+  return null;
+}
+
+export function resolveFlowScopedTools({ state, classification, routingResult, userMessage = '', allToolNames = [] }) {
+  const normalizedAllTools = Array.isArray(allToolNames) ? allToolNames.filter(Boolean) : [];
+  if (normalizedAllTools.length === 0) {
+    return {
+      resolvedFlow: null,
+      gatedTools: []
+    };
+  }
+
+  const candidates = [
+    state?.activeFlow,
+    routingResult?.routing?.routing?.suggestedFlow,
+    classification?.suggestedFlow,
+    inferFlowFromMessage(userMessage)
+  ].map(normalizeFlowName).filter(Boolean);
+
+  const resolvedFlow = candidates[0] || null;
+  if (!resolvedFlow) {
+    return {
+      resolvedFlow: null,
+      gatedTools: normalizedAllTools
+    };
+  }
+
+  const overrideTools = FLOW_TOOL_OVERRIDES[resolvedFlow];
+  const flowTools = Array.isArray(overrideTools) && overrideTools.length > 0
+    ? overrideTools
+    : getFlow(resolvedFlow)?.allowedTools || [];
+
+  if (flowTools.length === 0) {
+    return {
+      resolvedFlow,
+      gatedTools: normalizedAllTools
+    };
+  }
+
+  let gatedTools = normalizedAllTools.filter(tool => flowTools.includes(tool));
+
+  // Safety hard-stop: product/stock flows must not expose customer lookup tooling.
+  if (resolvedFlow === 'PRODUCT_INFO' || resolvedFlow === 'STOCK_CHECK') {
+    gatedTools = gatedTools.filter(tool => tool !== 'customer_data_lookup');
+  }
+
+  return {
+    resolvedFlow,
+    gatedTools
+  };
+}
 
 export async function buildLLMRequest(params) {
   const {
@@ -111,8 +203,13 @@ DAVRANIŞ:
   // When activeFlow is null (e.g. after post-result reset), also check if there's a recent
   // stock context — if so, this is NOT a verification scenario.
   const hasRecentStockContext = !!state.lastStockContext || state.anchor?.type === 'STOCK';
+  const verificationFlowHint = normalizeFlowName(
+    state.activeFlow ||
+    routingResult?.routing?.routing?.suggestedFlow ||
+    classification?.suggestedFlow
+  );
   const isVerificationRelevant = !hasRecentStockContext &&
-    (!state.activeFlow || VERIFICATION_FLOWS.includes(state.activeFlow));
+    VERIFICATION_FLOWS.includes(String(verificationFlowHint || ''));
 
   if (state.verificationContext && isVerificationRelevant) {
     const vc = state.verificationContext;
@@ -309,12 +406,25 @@ KURALLAR:
 
   // LLM decides whether to call tools; backend only passes allowlisted tools.
   const allToolNames = toolsAll.map(t => t.function?.name).filter(Boolean);
-  const gatedTools = allToolNames;
+  const { gatedTools, resolvedFlow } = resolveFlowScopedTools({
+    state,
+    classification,
+    routingResult,
+    userMessage,
+    allToolNames
+  });
   metrics.toolDecisionMode = 'llm_authority_allowlist_only';
   console.log('🔧 [BuildLLMRequest] Allowlist tools passed to LLM:', {
     count: gatedTools.length,
-    names: gatedTools
+    names: gatedTools,
+    resolvedFlow: resolvedFlow || 'NONE'
   });
+
+  metrics.flowScopedTools = {
+    resolvedFlow: resolvedFlow || null,
+    allToolCount: allToolNames.length,
+    gatedToolCount: gatedTools.length
+  };
 
   // STEP 2: Filter tools based on gated list
   // toolsAll is in OpenAI format: {type: 'function', function: {name, description, parameters}}

@@ -13,6 +13,36 @@
  */
 
 import { getLockMessage } from './session-lock.js';
+import { isFeatureEnabled } from '../config/feature-flags.js';
+
+function normalizeSecurityText(text = '') {
+  return String(text || '')
+    .normalize('NFKC')
+    .replace(/[\u200B-\u200F\uFEFF]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function shouldAttemptExplicitDecode(message = '') {
+  const text = normalizeSecurityText(message).toLowerCase();
+  if (!text) return false;
+
+  const hasDecodeRequest = /(decode|de-?code|deşifre|deşifre et|coz|çöz|çözümle|çözümlemesi)/i.test(text);
+  const hasEncodedType = /(base64|hex|url\s*encoded|encoded|kodlanmis|kodlanmış)/i.test(text);
+  const hasReason = /(security|güvenlik|analiz|analysis|debug|test|incele|kontrol)/i.test(text);
+  const hasScope = /(this|bu)(?:\s+\w+){0,3}\s*(payload|string|text|mesaj|metin|icerik|içerik)/i.test(text);
+
+  return hasDecodeRequest && hasEncodedType && hasReason && hasScope;
+}
+
+function findPatternMatch(pattern, targets = []) {
+  for (const target of targets) {
+    if (!target) continue;
+    const match = String(target).match(pattern);
+    if (match) return match;
+  }
+  return null;
+}
 
 /**
  * Decode potential Base64/URL encoded content
@@ -141,6 +171,9 @@ const INJECTION_PATTERNS = {
   // Key=value config overrides: verification_required=false, override=true, scope=all, mode=unrestricted
   configKeyValue: /\b(?:verification[_-]?required|override|bypass|scope|mode|access[_-]?level|auth[_-]?required|safety[_-]?mode|filter[_-]?mode)\s*[=:]\s*(?:false|true|off|on|none|all|unrestricted|disabled|admin)\b/i,
 
+  // JSON-style config overrides: {"verification_required": false, "scope":"all_customers"}
+  jsonConfigOverride: /"(?:verification[_-]?required|override|scope|mode|blocked[_-]?phrases|response[_-]?policy|data[_-]?access|fields)"\s*:\s*(?:"[^"]+"|true|false|null|\[[^\]]*\]|\{[^}]*\})/i,
+
   // System/role impersonation: "System:", "Admin:", "Developer mode:", "[SYSTEM]"
   roleImpersonation: /(?:^|\n)\s*(?:\[?\s*(?:system|admin|developer|root|assistant|operator)\s*\]?\s*[:>]|BEGIN\s+SYSTEM|END\s+SYSTEM)/im,
 
@@ -168,13 +201,17 @@ const INJECTION_PATTERNS = {
   // Blocked phrase patterns: system-config specific payloads seen in pen test
   blockedPhrases: [
     /verification_required\s*=\s*false/i,
+    /verification\s*[_-]?\s*required\s*(?:=|:|>|=>)\s*(?:false|off|0)/i,
     /scope\s*=\s*all_customers/i,
+    /scope\s*(?:=|:|>|=>)\s*all_customers/i,
     /mode\s*>\s*unrestricted/i,
     /bypass[-_]?reason/i,
     /blocked[-_]?phrases/i,
+    /(?:ignore|disable|remove|suppress).{0,40}blocked[-_ ]?phrases/i,
     /response[-_]?policy/i,
     /data[-_]?access/i,
     /fields\s*>\s*(?:phone|address|order_history|payment_method|name)/i,
+    /(?:all_customers|payment_method|order_history).{0,30}(?:allow|expose|unrestricted|scope)/i,
   ]
 };
 
@@ -189,28 +226,36 @@ export function detectPromptInjection(message) {
     return { detected: false, type: null, severity: 'NONE', pattern: null };
   }
 
-  // Collect signals — CRITICAL only when multiple signals combine
+  const normalizedMessage = normalizeSecurityText(message);
+  const scanTargets = [message, normalizedMessage];
+
+  // Collect signals
   const signals = [];
 
   // XML config block
-  const xmlMatch = message.match(INJECTION_PATTERNS.xmlConfigBlock);
+  const xmlMatch = findPatternMatch(INJECTION_PATTERNS.xmlConfigBlock, scanTargets);
   if (xmlMatch) {
     signals.push({ type: 'XML_CONFIG_INJECTION', pattern: xmlMatch[0].substring(0, 80) });
   }
 
   // Config key-value override
-  if (INJECTION_PATTERNS.configKeyValue.test(message)) {
+  if (findPatternMatch(INJECTION_PATTERNS.configKeyValue, scanTargets)) {
     signals.push({ type: 'CONFIG_OVERRIDE', pattern: 'config_key_value' });
   }
 
+  // JSON-style override payload
+  if (findPatternMatch(INJECTION_PATTERNS.jsonConfigOverride, scanTargets)) {
+    signals.push({ type: 'JSON_CONFIG_OVERRIDE', pattern: 'json_config_override' });
+  }
+
   // Role impersonation
-  if (INJECTION_PATTERNS.roleImpersonation.test(message)) {
+  if (findPatternMatch(INJECTION_PATTERNS.roleImpersonation, scanTargets)) {
     signals.push({ type: 'ROLE_IMPERSONATION', pattern: 'role_impersonation' });
   }
 
   // Instruction override (EN)
   for (const pattern of INJECTION_PATTERNS.instructionOverride) {
-    if (pattern.test(message)) {
+    if (findPatternMatch(pattern, scanTargets)) {
       signals.push({ type: 'INSTRUCTION_OVERRIDE', pattern: pattern.toString().substring(0, 60) });
       break; // One match is enough
     }
@@ -218,7 +263,7 @@ export function detectPromptInjection(message) {
 
   // Instruction override (TR)
   for (const pattern of INJECTION_PATTERNS.instructionOverrideTR) {
-    if (pattern.test(message)) {
+    if (findPatternMatch(pattern, scanTargets)) {
       signals.push({ type: 'INSTRUCTION_OVERRIDE_TR', pattern: pattern.toString().substring(0, 60) });
       break;
     }
@@ -227,7 +272,7 @@ export function detectPromptInjection(message) {
   // Blocked phrases (pen test payloads — high confidence attack indicators)
   const blockedPhraseHits = [];
   for (const pattern of INJECTION_PATTERNS.blockedPhrases) {
-    if (pattern.test(message)) {
+    if (findPatternMatch(pattern, scanTargets)) {
       blockedPhraseHits.push(pattern.toString().substring(0, 60));
     }
   }
@@ -240,29 +285,28 @@ export function detectPromptInjection(message) {
     return { detected: false, type: null, severity: 'NONE', pattern: null };
   }
 
-  // ── Severity decision: CRITICAL only on strong combinations ──
-  // CRITICAL = hard block (no LLM call). Must be very confident to avoid false positives.
-  //
-  // CRITICAL conditions (at least 2 signals, or a known pen-test combination):
-  //   - XML + configKeyValue together (classic injection payload)
-  //   - XML + instructionOverride together
-  //   - configKeyValue + instructionOverride together
-  //   - 2+ blockedPhrases in same message (pen test payload)
-  //   - roleImpersonation + any other signal
-  //   - 3+ signals of any kind
+  // ── Severity decision ──
+  // Hard signals are CRITICAL even when standalone:
+  // - XML/system-config style payload
+  // - config override payload (key/value or JSON)
+  // - blocked-phrase suppression / scope escalation payload
   const signalTypes = new Set(signals.map(s => s.type));
   const hasXml = signalTypes.has('XML_CONFIG_INJECTION');
   const hasConfig = signalTypes.has('CONFIG_OVERRIDE');
+  const hasJsonConfig = signalTypes.has('JSON_CONFIG_OVERRIDE');
   const hasRole = signalTypes.has('ROLE_IMPERSONATION');
   const hasInstruction = signalTypes.has('INSTRUCTION_OVERRIDE') || signalTypes.has('INSTRUCTION_OVERRIDE_TR');
-  const hasBlockedPhrase = signalTypes.has('BLOCKED_PHRASE');
   const blockedPhraseCount = blockedPhraseHits.length;
+  const hasHardSignal = hasXml || hasConfig || hasJsonConfig || blockedPhraseCount >= 1;
 
   const isCritical =
+    hasHardSignal ||
     (signals.length >= 3) ||
     (hasXml && hasConfig) ||
     (hasXml && hasInstruction) ||
+    (hasXml && hasJsonConfig) ||
     (hasConfig && hasInstruction) ||
+    (hasJsonConfig && hasInstruction) ||
     (hasRole && signals.length >= 2) ||
     (blockedPhraseCount >= 2);
 
@@ -306,8 +350,17 @@ export function detectUserRisks(message, language = 'TR', state = {}) {
   const warnings = [];
 
   // === 0. ENCODED CONTENT DETECTION ===
-  // Decode Base64/URL/Hex and check for hidden injection attempts
-  const decodedContent = tryDecodeContent(message);
+  // Default policy: no automatic decode.
+  // Decode is allowed only when explicit decode request + reason + scope are present.
+  const disableAutoDecode = isFeatureEnabled('DISABLE_AUTO_DECODE');
+  const explicitDecodeRequest = shouldAttemptExplicitDecode(message);
+  const shouldDecode = disableAutoDecode ? explicitDecodeRequest : true;
+
+  if (disableAutoDecode && !explicitDecodeRequest) {
+    console.log('🛡️ [Risk Detector] Auto decode skipped (DISABLE_AUTO_DECODE enabled)');
+  }
+
+  const decodedContent = shouldDecode ? tryDecodeContent(message) : null;
 
   if (decodedContent && decodedContent.length > 0) {
     console.warn('🔍 [Risk Detector] Encoded content detected:', decodedContent.map(d => d.type));

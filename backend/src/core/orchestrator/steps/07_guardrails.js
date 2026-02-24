@@ -481,32 +481,34 @@ export async function applyGuardrails(params) {
   }
 
   // POLICY 1.55: Tool-required claim gate (single clarification)
-  const toolRequiredGate = evaluateToolRequiredClaimGate({
-    intent,
-    activeFlow,
-    userMessage,
-    toolsCalled
-  });
-  if (toolRequiredGate.needsMinInfo) {
-    const minInfoVariant = resolveMinInfoQuestion({
-      language,
-      missingFields: toolRequiredGate.missingFields || []
+  if (isFeatureEnabled('STRICT_ORDER_TOOL_REQUIRED')) {
+    const toolRequiredGate = evaluateToolRequiredClaimGate({
+      intent,
+      activeFlow,
+      userMessage,
+      toolsCalled
     });
-    metrics.toolRequiredClaimGate = {
-      reason: toolRequiredGate.reason,
-      topic: toolRequiredGate.topic,
-      missingFields: toolRequiredGate.missingFields || []
-    };
-    return {
-      finalResponse: minInfoVariant.text,
-      action: GuardrailAction.NEED_MIN_INFO_FOR_TOOL,
-      blocked: true,
-      blockReason: toolRequiredGate.reason || 'NEED_MIN_INFO_FOR_TOOL',
-      missingFields: toolRequiredGate.missingFields || [],
-      guardrailsApplied: ['RESPONSE_FIREWALL', 'PII_PREVENTION', 'CLAIM_GATE_TOOL_REQUIRED'],
-      messageKey: minInfoVariant.messageKey,
-      variantIndex: minInfoVariant.variantIndex
-    };
+    if (toolRequiredGate.needsMinInfo) {
+      const minInfoVariant = resolveMinInfoQuestion({
+        language,
+        missingFields: toolRequiredGate.missingFields || []
+      });
+      metrics.toolRequiredClaimGate = {
+        reason: toolRequiredGate.reason,
+        topic: toolRequiredGate.topic,
+        missingFields: toolRequiredGate.missingFields || []
+      };
+      return {
+        finalResponse: minInfoVariant.text,
+        action: GuardrailAction.NEED_MIN_INFO_FOR_TOOL,
+        blocked: true,
+        blockReason: toolRequiredGate.reason || 'NEED_MIN_INFO_FOR_TOOL',
+        missingFields: toolRequiredGate.missingFields || [],
+        guardrailsApplied: ['RESPONSE_FIREWALL', 'PII_PREVENTION', 'CLAIM_GATE_TOOL_REQUIRED'],
+        messageKey: minInfoVariant.messageKey,
+        variantIndex: minInfoVariant.variantIndex
+      };
+    }
   }
 
   // POLICY 1.6: NOT_FOUND claim gate (single clarification, no content rewrite policy)

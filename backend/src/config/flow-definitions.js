@@ -150,7 +150,7 @@ export const FLOW_DEFINITIONS = {
     // Tool permissions
     allowedTools: [
       'get_product_stock',     // Check stock
-      'customer_data_lookup',  // General product info
+      'check_stock_crm',       // CRM stock lookup
     ],
 
     // NO verification required (public information)

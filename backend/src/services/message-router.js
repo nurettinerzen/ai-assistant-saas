@@ -68,14 +68,29 @@ export async function routeMessage(userMessage, state, lastAssistantMessage, lan
  * @returns {Object} Routing decision
  */
 function decideRouting(messageType, state, business) {
-  const { type, confidence } = messageType;
+  const { type, confidence, suggestedFlow } = messageType;
   const { activeFlow, flowStatus, expectedSlot, anchor, postResultTurns } = state;
+
+  const normalizedSuggestedFlow = String(suggestedFlow || '').toUpperCase();
+  const transactionalSuggestedFlows = new Set(['ORDER_STATUS', 'TRACKING_INFO', 'DEBT_INQUIRY']);
 
   // ============================================
   // CONFIDENCE THRESHOLD CHECK (Priority)
   // ============================================
   // If confidence too low, let Gemini handle naturally
   if (confidence < 0.7) {
+    // Guardrail: even in low confidence, transactional intents should not be routed as chatter.
+    if (transactionalSuggestedFlows.has(normalizedSuggestedFlow)) {
+      return {
+        action: 'RUN_INTENT_ROUTER',
+        reason: `Low confidence (${confidence.toFixed(2)}) but transactional flow suggested (${normalizedSuggestedFlow})`,
+        nextAction: 'intent-router',
+        suggestedFlow: normalizedSuggestedFlow,
+        safeMode: true,
+        confidence
+      };
+    }
+
     return {
       action: 'ACKNOWLEDGE_CHATTER',
       reason: `Low confidence (${confidence.toFixed(2)}) - letting Gemini handle naturally`,

@@ -4,7 +4,7 @@
  */
 
 import express from 'express';
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { authenticateToken, requireRole } from '../middleware/auth.js';
 import googleSheetsService from '../services/google-sheets.js';
 import { generateOAuthState, validateOAuthState } from '../middleware/oauthState.js';
@@ -12,6 +12,9 @@ import { safeRedirect } from '../middleware/redirectWhitelist.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
+const PRODUCT_UPSERT_BATCH_SIZE = 300;
+const PRODUCT_LOOKUP_BATCH_SIZE = 1000;
+const INVENTORY_LOG_BATCH_SIZE = 1000;
 
 // Helper: Get Google credentials from env
 const getGoogleCredentials = () => {
@@ -65,6 +68,97 @@ const ensureValidToken = async (business) => {
     refreshToken: business.googleSheetsRefreshToken
   };
 };
+
+function chunkArray(items, size) {
+  const safeSize = Math.max(1, size);
+  const chunks = [];
+  for (let i = 0; i < items.length; i += safeSize) {
+    chunks.push(items.slice(i, i + safeSize));
+  }
+  return chunks;
+}
+
+async function getExistingProductsBySku(businessId, skuList = []) {
+  const uniqueSkus = [...new Set((skuList || []).filter(Boolean))];
+  const existingBySku = new Map();
+
+  for (const skuChunk of chunkArray(uniqueSkus, PRODUCT_LOOKUP_BATCH_SIZE)) {
+    const rows = await prisma.product.findMany({
+      where: {
+        businessId,
+        sku: { in: skuChunk }
+      },
+      select: {
+        id: true,
+        sku: true,
+        stockQuantity: true
+      }
+    });
+
+    for (const row of rows) {
+      existingBySku.set(row.sku, row);
+    }
+  }
+
+  return existingBySku;
+}
+
+async function upsertProductsInBatches(businessId, products = []) {
+  for (const batch of chunkArray(products, PRODUCT_UPSERT_BATCH_SIZE)) {
+    const now = new Date();
+    const values = batch.map(product => Prisma.sql`(
+      ${businessId},
+      ${product.sku},
+      ${product.name},
+      ${product.description || null},
+      ${product.price},
+      ${product.category || null},
+      ${product.stockQuantity},
+      ${product.lowStockThreshold},
+      ${true},
+      ${now},
+      ${now}
+    )`);
+
+    await prisma.$executeRaw(
+      Prisma.sql`
+        INSERT INTO "Product" (
+          "businessId",
+          "sku",
+          "name",
+          "description",
+          "price",
+          "category",
+          "stockQuantity",
+          "lowStockThreshold",
+          "isActive",
+          "createdAt",
+          "updatedAt"
+        )
+        VALUES ${Prisma.join(values)}
+        ON CONFLICT ("businessId","sku")
+        DO UPDATE SET
+          "name" = EXCLUDED."name",
+          "description" = EXCLUDED."description",
+          "price" = EXCLUDED."price",
+          "category" = EXCLUDED."category",
+          "stockQuantity" = EXCLUDED."stockQuantity",
+          "lowStockThreshold" = EXCLUDED."lowStockThreshold",
+          "updatedAt" = EXCLUDED."updatedAt"
+      `
+    );
+  }
+}
+
+async function createInventoryLogsInBatches(logs = []) {
+  if (!Array.isArray(logs) || logs.length === 0) return;
+
+  for (const logBatch of chunkArray(logs, INVENTORY_LOG_BATCH_SIZE)) {
+    await prisma.inventoryLog.createMany({
+      data: logBatch
+    });
+  }
+}
 
 // ==================== AUTH ENDPOINTS ====================
 
@@ -426,76 +520,63 @@ router.post('/sync', authenticateToken, requireRole(['OWNER', 'ADMIN']), async (
         );
 
         results.products.total = products.length;
+        if (products.length > 0) {
+          const existingBySku = await getExistingProductsBySku(
+            req.businessId,
+            products.map(p => p.sku)
+          );
 
-        for (const productData of products) {
-          try {
-            const existing = await prisma.product.findUnique({
-              where: {
-                businessId_sku: {
-                  businessId: req.businessId,
-                  sku: productData.sku
-                }
-              }
-            });
+          const inventoryLogs = [];
+          const createdProducts = [];
+
+          for (const productData of products) {
+            const existing = existingBySku.get(productData.sku);
 
             if (existing) {
-              await prisma.product.update({
-                where: { id: existing.id },
-                data: {
-                  name: productData.name,
-                  description: productData.description,
-                  price: productData.price,
-                  stockQuantity: productData.stockQuantity,
-                  lowStockThreshold: productData.lowStockThreshold,
-                  category: productData.category
-                }
-              });
+              results.products.updated++;
 
               if (productData.stockQuantity !== existing.stockQuantity) {
-                await prisma.inventoryLog.create({
-                  data: {
-                    productId: existing.id,
-                    changeType: productData.stockQuantity > existing.stockQuantity ? 'RESTOCK' : 'ADJUSTMENT',
-                    quantityChange: Math.abs(productData.stockQuantity - existing.stockQuantity),
-                    newQuantity: productData.stockQuantity,
-                    note: 'Google Sheets sync'
-                  }
+                inventoryLogs.push({
+                  productId: existing.id,
+                  changeType: productData.stockQuantity > existing.stockQuantity ? 'RESTOCK' : 'ADJUSTMENT',
+                  quantityChange: Math.abs(productData.stockQuantity - existing.stockQuantity),
+                  newQuantity: productData.stockQuantity,
+                  note: 'Google Sheets sync'
                 });
               }
-
-              results.products.updated++;
             } else {
-              const newProduct = await prisma.product.create({
-                data: {
-                  businessId: req.businessId,
-                  sku: productData.sku,
-                  name: productData.name,
-                  description: productData.description,
-                  price: productData.price,
-                  stockQuantity: productData.stockQuantity,
-                  lowStockThreshold: productData.lowStockThreshold,
-                  category: productData.category
-                }
-              });
-
-              await prisma.inventoryLog.create({
-                data: {
-                  productId: newProduct.id,
-                  changeType: 'RESTOCK',
-                  quantityChange: productData.stockQuantity,
-                  newQuantity: productData.stockQuantity,
-                  note: 'Initial import from Google Sheets'
-                }
-              });
-
               results.products.imported++;
+              createdProducts.push(productData);
             }
-          } catch (err) {
-            results.products.errors.push({ sku: productData.sku, error: err.message });
           }
+
+          await upsertProductsInBatches(req.businessId, products);
+
+          if (createdProducts.length > 0) {
+            const createdBySku = await getExistingProductsBySku(
+              req.businessId,
+              createdProducts.map(p => p.sku)
+            );
+
+            for (const productData of createdProducts) {
+              const createdRow = createdBySku.get(productData.sku);
+              if (!createdRow) continue;
+
+              inventoryLogs.push({
+                productId: createdRow.id,
+                changeType: 'RESTOCK',
+                quantityChange: productData.stockQuantity,
+                newQuantity: productData.stockQuantity,
+                note: 'Initial import from Google Sheets'
+              });
+            }
+          }
+
+          await createInventoryLogsInBatches(inventoryLogs);
         }
       } catch (err) {
         console.error('Products sync error:', err);
+        results.products.errors.push({ error: err.message });
       }
     }
 
