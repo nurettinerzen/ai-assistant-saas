@@ -1,6 +1,7 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import rateLimit from 'express-rate-limit';
+import { sendWaitlistNotificationEmail } from '../services/emailService.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -71,9 +72,14 @@ router.post('/', async (req, res) => {
       }
     });
 
-    // Optional: Send notification email to admin
-    // You can implement email notification here using your preferred email service
-    // Example: sendEmail('info@telyx.ai', 'New Waitlist Application', { name, email, company, businessType, message });
+    // Send notification email to admin
+    try {
+      await sendWaitlistNotificationEmail({ name, email, company, businessType, message });
+      console.log(`📧 Waitlist notification sent for: ${email}`);
+    } catch (emailError) {
+      console.error('⚠️ Waitlist notification email failed:', emailError.message);
+      // Don't fail the request if email fails — entry is already saved
+    }
 
     res.status(201).json({
       success: true,

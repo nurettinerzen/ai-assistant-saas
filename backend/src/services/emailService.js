@@ -1009,6 +1009,62 @@ export const sendTeamInvitationEmail = async ({ email, inviterName, businessName
   return sendEmail(email, subject, html);
 };
 
+/**
+ * 22. Waitlist Application Notification (to admin)
+ */
+export const sendWaitlistNotificationEmail = async ({ name, email, company, businessType, message }) => {
+  const subject = `Yeni Waitlist Başvurusu: ${name}`;
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333333; margin: 0; padding: 0; background-color: #f4f4f5;">
+      <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background-color: #667eea; color: #ffffff; padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
+          <h1 style="margin: 0; font-size: 24px; font-weight: 600; color: #ffffff;">Yeni Waitlist Başvurusu</h1>
+        </div>
+        <div style="background-color: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px;">
+          <div style="background-color: #f9fafb; padding: 24px; border-radius: 8px; margin: 0 0 24px 0; border: 1px solid #e5e7eb;">
+            <div style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
+              <span style="color: #6b7280; font-size: 14px;">Ad Soyad</span><br>
+              <strong>${name}</strong>
+            </div>
+            <div style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
+              <span style="color: #6b7280; font-size: 14px;">E-posta</span><br>
+              <strong><a href="mailto:${email}" style="color: #667eea;">${email}</a></strong>
+            </div>
+            ${company ? `<div style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
+              <span style="color: #6b7280; font-size: 14px;">Şirket</span><br>
+              <strong>${company}</strong>
+            </div>` : ''}
+            ${businessType ? `<div style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
+              <span style="color: #6b7280; font-size: 14px;">İşletme Türü</span><br>
+              <strong>${businessType}</strong>
+            </div>` : ''}
+            ${message ? `<div style="padding: 12px 0;">
+              <span style="color: #6b7280; font-size: 14px;">Mesaj</span><br>
+              <span>${message}</span>
+            </div>` : ''}
+          </div>
+
+          <p style="text-align: center;">
+            <a href="${FRONTEND_URL}/dashboard" style="display: inline-block; padding: 12px 32px; background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px;">Dashboard'a Git</a>
+          </p>
+        </div>
+        <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 14px;">
+          <p style="margin: 0;">Telyx.AI Waitlist Bildirimi</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return sendEmail('info@telyx.ai', subject, html);
+};
+
 export default {
   sendVerificationEmail,
   sendPasswordResetEmail,
@@ -1030,5 +1086,6 @@ export default {
   sendOverageLimitReachedEmail,
   sendAutoReloadFailedEmail,
   sendLowBalanceWarning,
-  sendTeamInvitationEmail
+  sendTeamInvitationEmail,
+  sendWaitlistNotificationEmail
 };
