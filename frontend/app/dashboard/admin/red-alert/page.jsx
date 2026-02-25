@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Shield, AlertTriangle, AlertCircle, Activity,
   Clock, Server, Eye, ChevronLeft, ChevronRight,
@@ -71,11 +70,19 @@ export default function RedAlertPage() {
   const [timeline, setTimeline] = useState([]);
   const [topThreats, setTopThreats] = useState({ topIPs: [], topEndpoints: [] });
   const [health, setHealth] = useState(null);
-  const [activeTab, setActiveTab] = useState('errors');
-  const [filters, setFilters] = useState({
-    hours: 24,
-    severity: '',
-    type: '',
+  const [activePanel, setActivePanel] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('redAlertPanel') || 'errors';
+    }
+    return 'errors';
+  });
+  const [filters, setFilters] = useState(() => {
+    let hours = 168; // default: Son 7 Gün
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('redAlertHours');
+      if (saved) hours = parseInt(saved);
+    }
+    return { hours, severity: '', type: '' };
   });
   const [pagination, setPagination] = useState({
     page: 1,
@@ -137,7 +144,7 @@ export default function RedAlertPage() {
       ]);
     } catch (error) {
       console.error('Failed to load dashboard:', error);
-      toast.error('Failed to load security dashboard');
+      toast.error('Güvenlik paneli yüklenemedi');
     } finally {
       setLoading(false);
     }
@@ -264,6 +271,19 @@ export default function RedAlertPage() {
     });
   };
 
+  // Persist preferences
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('redAlertHours', filters.hours.toString());
+    }
+  }, [filters.hours]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('redAlertPanel', activePanel);
+    }
+  }, [activePanel]);
+
   // Reload data when filters change
   useEffect(() => {
     if (isAdmin) {
@@ -292,10 +312,10 @@ export default function RedAlertPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Shield className="h-5 w-5" />
-              Access Denied
+              Erişim Engellendi
             </CardTitle>
             <CardDescription>
-              You don't have permission to access the Red Alert dashboard.
+              Red Alert paneline erişim yetkiniz yok.
             </CardDescription>
           </CardHeader>
         </Card>
@@ -308,685 +328,618 @@ export default function RedAlertPage() {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <Activity className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading security dashboard...</p>
+          <p className="text-muted-foreground">Güvenlik paneli yükleniyor...</p>
         </div>
       </div>
     );
   }
 
+  // Nav card helper
+  const NavCard = ({ id, icon: Icon, iconColor, title, value, subtitle, borderColor, activeBorderColor }) => {
+    const isActive = activePanel === id;
+    return (
+      <Card
+        className={`cursor-pointer transition-all ${
+          isActive
+            ? `border-2 ${activeBorderColor} shadow-md`
+            : `hover:${borderColor}`
+        }`}
+        onClick={() => setActivePanel(id)}
+      >
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle className="text-sm font-medium">{title}</CardTitle>
+          <Icon className={`h-4 w-4 ${iconColor}`} />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{value}</div>
+          <p className="text-xs text-muted-foreground">{subtitle}</p>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const unresolvedCount = errorSummary?.summary?.unresolved || 0;
+  const totalErrors = errorSummary?.summary?.total || 0;
+  const totalEvents = summary?.summary?.total || 0;
+  const threatCount = (topThreats.topIPs?.length || 0) + (topThreats.topEndpoints?.length || 0);
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
-      {/* Header */}
+      {/* Header + Time Filter */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-semibold flex items-center gap-2">
             <Shield className="h-6 w-6 text-red-600" />
-            Red Alert - Güvenlik Paneli
+            Red Alert
+            {health && (
+              <Badge className={SEVERITY_COLORS[health.status] + ' ml-2 text-xs'}>
+                {health.healthScore}/100
+              </Badge>
+            )}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
             Güvenlik olayları ve uygulama hatalarını gerçek zamanlı izleme
           </p>
         </div>
-        <Button onClick={loadDashboardData} variant="outline" size="sm">
-          <Activity className="h-4 w-4 mr-2" />
-          Yenile
-        </Button>
+        <div className="flex items-center gap-2">
+          <Select
+            value={filters.hours.toString()}
+            onValueChange={(value) => setFilters(prev => ({ ...prev, hours: parseInt(value) }))}
+          >
+            <SelectTrigger className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="1">Son 1 Saat</SelectItem>
+              <SelectItem value="6">Son 6 Saat</SelectItem>
+              <SelectItem value="24">Son 24 Saat</SelectItem>
+              <SelectItem value="168">Son 7 Gün</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button onClick={loadDashboardData} variant="outline" size="sm">
+            <Activity className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
-      {/* Time Range Filter */}
-      <div className="mb-6">
-        <Select
-          value={filters.hours.toString()}
-          onValueChange={(value) => setFilters(prev => ({ ...prev, hours: parseInt(value) }))}
-        >
-          <SelectTrigger className="w-48">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="1">Son 1 Saat</SelectItem>
-            <SelectItem value="6">Son 6 Saat</SelectItem>
-            <SelectItem value="24">Son 24 Saat</SelectItem>
-            <SelectItem value="168">Son 7 Gün</SelectItem>
-          </SelectContent>
-        </Select>
+      {/* Navigation Cards — 4 cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <NavCard
+          id="errors"
+          icon={Bug}
+          iconColor="text-orange-600"
+          title="Uygulama Hataları"
+          value={
+            <span className="text-orange-600 dark:text-orange-400">{totalErrors}</span>
+          }
+          subtitle={
+            unresolvedCount > 0
+              ? <span className="text-red-500 font-medium">{unresolvedCount} çözülmemiş</span>
+              : 'Tümü çözüldü'
+          }
+          activeBorderColor="border-orange-500 dark:border-orange-400"
+          borderColor="border-orange-300"
+        />
+        <NavCard
+          id="events"
+          icon={Eye}
+          iconColor="text-blue-600"
+          title="Güvenlik Olayları"
+          value={totalEvents}
+          subtitle={
+            summary?.summary?.critical > 0
+              ? <span className="text-red-500 font-medium">{summary.summary.critical} kritik</span>
+              : 'Kritik olay yok'
+          }
+          activeBorderColor="border-blue-500 dark:border-blue-400"
+          borderColor="border-blue-300"
+        />
+        <NavCard
+          id="timeline"
+          icon={Clock}
+          iconColor="text-purple-600"
+          title="Zaman Çizelgesi"
+          value={timeline.length}
+          subtitle="Saatlik dağılım"
+          activeBorderColor="border-purple-500 dark:border-purple-400"
+          borderColor="border-purple-300"
+        />
+        <NavCard
+          id="threats"
+          icon={AlertTriangle}
+          iconColor="text-red-600"
+          title="Tehdit Kaynakları"
+          value={threatCount}
+          subtitle="IP + Endpoint"
+          activeBorderColor="border-red-500 dark:border-red-400"
+          borderColor="border-red-300"
+        />
       </div>
 
-      {/* Health Score Card */}
-      {health && (
-        <Card className="mb-4 border-2 border-red-200 dark:border-red-900">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Shield className={`h-4 w-4 ${HEALTH_STATUS_COLORS[health.status]}`} />
-              Güvenlik Sağlık Skoru
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-6">
-              <div className="text-center">
-                <div className={`text-4xl font-bold ${HEALTH_STATUS_COLORS[health.status]}`}>
-                  {health.healthScore}
-                </div>
-                <div className="text-xs text-muted-foreground mt-1">/ 100</div>
-              </div>
-              <div className="flex-1 grid grid-cols-3 gap-3">
-                <div className="text-center">
-                  <div className="text-xl font-bold text-red-600 dark:text-red-400">
-                    {health.events.critical}
-                  </div>
-                  <div className="text-xs text-muted-foreground">Kritik</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-xl font-bold text-orange-600 dark:text-orange-400">
-                    {health.events.high}
-                  </div>
-                  <div className="text-xs text-muted-foreground">Yüksek</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-xl font-bold">
-                    {health.events.total}
-                  </div>
-                  <div className="text-xs text-muted-foreground">Toplam</div>
-                </div>
-              </div>
-              <div className="text-center">
-                <Badge className={SEVERITY_COLORS[health.status] + ' text-sm px-3 py-1'}>
-                  {health.status.toUpperCase()}
-                </Badge>
-                {health.events.total === 0 && (
-                  <div className="text-xs text-muted-foreground mt-1">Tehdit tespit edilmedi</div>
-                )}
+      {/* ═══════════ Panel: Uygulama Hataları ═══════════ */}
+      {activePanel === 'errors' && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Bug className="h-5 w-5" />
+                  Uygulama Hataları
+                </CardTitle>
+                <CardDescription className="mt-1">
+                  Araç hataları, API hataları, sistem hataları ve diğerleri
+                </CardDescription>
               </div>
             </div>
+            <div className="flex gap-4 mt-4">
+              <Select
+                value={errorFilters.category || 'all'}
+                onValueChange={(value) => {
+                  setErrorFilters(prev => ({ ...prev, category: value === 'all' ? '' : value }));
+                  setErrorPagination(prev => ({ ...prev, page: 1 }));
+                }}
+              >
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Tüm Kategoriler" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tüm Kategoriler</SelectItem>
+                  {Object.entries(ERROR_CATEGORY_LABELS).map(([key, label]) => (
+                    <SelectItem key={key} value={key}>{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={errorFilters.severity || 'all'}
+                onValueChange={(value) => {
+                  setErrorFilters(prev => ({ ...prev, severity: value === 'all' ? '' : value }));
+                  setErrorPagination(prev => ({ ...prev, page: 1 }));
+                }}
+              >
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Tüm Önem Dereceleri" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tüm Önem Dereceleri</SelectItem>
+                  <SelectItem value="medium">Orta</SelectItem>
+                  <SelectItem value="high">Yüksek</SelectItem>
+                  <SelectItem value="critical">Kritik</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={errorFilters.resolved !== '' ? errorFilters.resolved : 'all'}
+                onValueChange={(value) => {
+                  setErrorFilters(prev => ({ ...prev, resolved: value === 'all' ? '' : value }));
+                  setErrorPagination(prev => ({ ...prev, page: 1 }));
+                }}
+              >
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Tüm Durumlar" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tüm Durumlar</SelectItem>
+                  <SelectItem value="false">Çözülmemiş</SelectItem>
+                  <SelectItem value="true">Çözülmüş</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-8"></TableHead>
+                  <TableHead>Son Görülme</TableHead>
+                  <TableHead>Kategori</TableHead>
+                  <TableHead>Önem</TableHead>
+                  <TableHead>Kaynak</TableHead>
+                  <TableHead>Mesaj</TableHead>
+                  <TableHead className="text-center">Tekrar</TableHead>
+                  <TableHead>Durum</TableHead>
+                  <TableHead>İşlem</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {errorLogs.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                      Hata bulunamadı
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  errorLogs.map((err) => {
+                    const CategoryIcon = ERROR_CATEGORY_ICONS[err.category] || AlertCircle;
+                    const isExpanded = expandedErrors.has(err.id);
+                    return (
+                      <React.Fragment key={err.id}>
+                        <TableRow
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => toggleErrorExpand(err.id)}
+                        >
+                          <TableCell>
+                            {isExpanded
+                              ? <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                              : <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                            }
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap text-xs">
+                            {new Date(err.lastSeenAt).toLocaleString()}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1.5">
+                              <CategoryIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                              <span className="text-xs">{ERROR_CATEGORY_LABELS[err.category] || err.category}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={SEVERITY_COLORS[err.severity]}>
+                              {err.severity.toUpperCase()}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <code className="text-xs">{err.source}</code>
+                          </TableCell>
+                          <TableCell className="max-w-xs truncate text-xs" title={err.message}>
+                            {err.message}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge variant="outline" className="font-mono">
+                              {err.occurrenceCount}x
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {err.resolved ? (
+                              <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                Çözüldü
+                              </Badge>
+                            ) : (
+                              <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                                Açık
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleResolveError(err.id, !err.resolved);
+                              }}
+                            >
+                              {err.resolved ? (
+                                <XCircle className="h-4 w-4 text-red-500" />
+                              ) : (
+                                <CheckCircle className="h-4 w-4 text-green-500" />
+                              )}
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                        {isExpanded && (
+                          <TableRow>
+                            <TableCell colSpan={9} className="bg-muted/30 p-4">
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs mb-3">
+                                {err.toolName && (
+                                  <div>
+                                    <span className="text-muted-foreground">Tool:</span>{' '}
+                                    <code>{err.toolName}</code>
+                                  </div>
+                                )}
+                                {err.externalService && (
+                                  <div>
+                                    <span className="text-muted-foreground">Servis:</span>{' '}
+                                    <code>{err.externalService}</code>
+                                    {err.externalStatus && <span className="ml-1">({err.externalStatus})</span>}
+                                  </div>
+                                )}
+                                {err.endpoint && (
+                                  <div>
+                                    <span className="text-muted-foreground">Endpoint:</span>{' '}
+                                    <code>{err.method} {err.endpoint}</code>
+                                  </div>
+                                )}
+                                {err.errorCode && (
+                                  <div>
+                                    <span className="text-muted-foreground">Kod:</span>{' '}
+                                    <code>{err.errorCode}</code>
+                                  </div>
+                                )}
+                                {err.businessId && (
+                                  <div>
+                                    <span className="text-muted-foreground">Business:</span>{' '}
+                                    {err.businessId}
+                                  </div>
+                                )}
+                                {err.requestId && (
+                                  <div>
+                                    <span className="text-muted-foreground">Request:</span>{' '}
+                                    <code className="text-xs">{err.requestId}</code>
+                                  </div>
+                                )}
+                                <div>
+                                  <span className="text-muted-foreground">İlk Görülme:</span>{' '}
+                                  {new Date(err.firstSeenAt).toLocaleString()}
+                                </div>
+                                {err.responseTimeMs && (
+                                  <div>
+                                    <span className="text-muted-foreground">Yanıt Süresi:</span>{' '}
+                                    {err.responseTimeMs}ms
+                                  </div>
+                                )}
+                              </div>
+                              {err.stackTrace && (
+                                <div>
+                                  <div className="text-xs text-muted-foreground mb-1">Stack Trace:</div>
+                                  <pre className="text-xs bg-muted p-3 rounded-md overflow-x-auto max-h-48 overflow-y-auto whitespace-pre-wrap">
+                                    {err.stackTrace}
+                                  </pre>
+                                </div>
+                              )}
+                              {err.resolvedBy && (
+                                <div className="text-xs mt-2 text-muted-foreground">
+                                  {err.resolvedBy} tarafından {new Date(err.resolvedAt).toLocaleString()} tarihinde çözüldü
+                                </div>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </React.Fragment>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+
+            {/* Error Pagination */}
+            {errorPagination.total > errorPagination.limit && (
+              <div className="flex items-center justify-between mt-4">
+                <div className="text-sm text-muted-foreground">
+                  {((errorPagination.page - 1) * errorPagination.limit) + 1} -{' '}
+                  {Math.min(errorPagination.page * errorPagination.limit, errorPagination.total)} / toplam{' '}
+                  {errorPagination.total} hata
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setErrorPagination(prev => ({ ...prev, page: prev.page - 1 }))}
+                    disabled={errorPagination.page === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Önceki
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setErrorPagination(prev => ({ ...prev, page: prev.page + 1 }))}
+                    disabled={!errorPagination.hasMore}
+                  >
+                    Sonraki
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
 
-      {/* Summary Stats — Clickable cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-        {summary && (
-          <>
-            <Card
-              className="cursor-pointer transition-colors hover:border-blue-400 dark:hover:border-blue-600"
-              onClick={() => {
-                setFilters(prev => ({ ...prev, severity: '' }));
-                setActiveTab('events');
-              }}
-            >
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Güvenlik Olayları</CardTitle>
-                <Activity className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{summary.summary.total}</div>
-                <p className="text-xs text-muted-foreground">
-                  {summary.summary.critical > 0
-                    ? `${summary.summary.critical} kritik`
-                    : 'Kritik olay yok'}
-                </p>
-              </CardContent>
-            </Card>
+      {/* ═══════════ Panel: Güvenlik Olayları ═══════════ */}
+      {activePanel === 'events' && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Güvenlik Olayları</CardTitle>
+            <CardDescription>
+              Filtreleme seçenekleri ile güvenlik olayları
+            </CardDescription>
+            <div className="flex gap-4 mt-4">
+              <Select
+                value={filters.severity || 'all'}
+                onValueChange={(value) => setFilters(prev => ({ ...prev, severity: value === 'all' ? '' : value }))}
+              >
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Tüm Önem Dereceleri" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tüm Önem Dereceleri</SelectItem>
+                  <SelectItem value="low">Düşük</SelectItem>
+                  <SelectItem value="medium">Orta</SelectItem>
+                  <SelectItem value="high">Yüksek</SelectItem>
+                  <SelectItem value="critical">Kritik</SelectItem>
+                </SelectContent>
+              </Select>
 
-            <Card
-              className={`cursor-pointer transition-colors hover:border-red-400 dark:hover:border-red-600 ${
-                summary.summary.critical > 0 ? 'border-red-300 dark:border-red-800' : ''
-              }`}
-              onClick={() => {
-                setFilters(prev => ({ ...prev, severity: 'critical' }));
-                setActiveTab('events');
-              }}
-            >
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Kritik Olaylar</CardTitle>
-                <AlertTriangle className="h-4 w-4 text-red-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-red-600 dark:text-red-400">
-                  {summary.summary.critical}
+              <Select
+                value={filters.type || 'all'}
+                onValueChange={(value) => setFilters(prev => ({ ...prev, type: value === 'all' ? '' : value }))}
+              >
+                <SelectTrigger className="w-64">
+                  <SelectValue placeholder="Tüm Olay Türleri" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tüm Olay Türleri</SelectItem>
+                  {Object.entries(EVENT_TYPE_LABELS).map(([key, label]) => (
+                    <SelectItem key={key} value={key}>{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Zaman</TableHead>
+                  <TableHead>Tür</TableHead>
+                  <TableHead>Önem</TableHead>
+                  <TableHead>Endpoint</TableHead>
+                  <TableHead>Metod</TableHead>
+                  <TableHead>Durum</TableHead>
+                  <TableHead>IP Adresi</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {events.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center text-muted-foreground">
+                      Güvenlik olayı bulunamadı
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  events.map((event) => (
+                    <TableRow key={event.id}>
+                      <TableCell className="whitespace-nowrap">
+                        {new Date(event.createdAt).toLocaleString()}
+                      </TableCell>
+                      <TableCell>
+                        <code className="text-xs">{EVENT_TYPE_LABELS[event.type] || event.type}</code>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={SEVERITY_COLORS[event.severity]}>
+                          {event.severity.toUpperCase()}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <code className="text-xs">{event.endpoint || '-'}</code>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{event.method || '-'}</Badge>
+                      </TableCell>
+                      <TableCell>{event.statusCode || '-'}</TableCell>
+                      <TableCell>
+                        <code className="text-xs">{event.ipAddress || '-'}</code>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+
+            {/* Pagination */}
+            {pagination.total > pagination.limit && (
+              <div className="flex items-center justify-between mt-4">
+                <div className="text-sm text-muted-foreground">
+                  {((pagination.page - 1) * pagination.limit) + 1} -{' '}
+                  {Math.min(pagination.page * pagination.limit, pagination.total)} / toplam{' '}
+                  {pagination.total} olay
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Acil müdahale gerekli
-                </p>
-              </CardContent>
-            </Card>
-          </>
-        )}
-
-        {errorSummary && (
-          <Card
-            className={`cursor-pointer transition-colors hover:border-orange-400 dark:hover:border-orange-600 ${
-              errorSummary.summary.unresolved > 0 ? 'border-orange-300 dark:border-orange-800' : ''
-            }`}
-            onClick={() => {
-              setErrorFilters(prev => ({ ...prev, resolved: '' }));
-              setActiveTab('errors');
-            }}
-          >
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Uygulama Hataları</CardTitle>
-              <Bug className="h-4 w-4 text-orange-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-                {errorSummary.summary.total}
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
+                    disabled={pagination.page === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Önceki
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
+                    disabled={!pagination.hasMore}
+                  >
+                    Sonraki
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
-              <p className="text-xs text-muted-foreground">
-                {errorSummary.summary.unresolved > 0
-                  ? <span className="text-red-500 font-medium">{errorSummary.summary.unresolved} çözülmemiş</span>
-                  : 'Tümü çözüldü'}
-              </p>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-
-      {/* Main Content Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="errors">
-            <Bug className="h-4 w-4 mr-2" />
-            Hatalar
-            {errorSummary?.summary?.unresolved > 0 && (
-              <Badge variant="destructive" className="ml-2 text-xs px-1.5 py-0">
-                {errorSummary.summary.unresolved}
-              </Badge>
             )}
-          </TabsTrigger>
-          <TabsTrigger value="events">
-            <Eye className="h-4 w-4 mr-2" />
-            Güvenlik Olayları
-          </TabsTrigger>
-          <TabsTrigger value="timeline">
-            <Clock className="h-4 w-4 mr-2" />
-            Zaman Çizelgesi
-          </TabsTrigger>
-          <TabsTrigger value="threats">
-            <AlertCircle className="h-4 w-4 mr-2" />
-            Tehdit Kaynakları
-          </TabsTrigger>
-        </TabsList>
+          </CardContent>
+        </Card>
+      )}
 
-        {/* Errors Tab */}
-        <TabsContent value="errors" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Bug className="h-5 w-5" />
-                Uygulama Hataları
-              </CardTitle>
-              <CardDescription>
-                Araç hataları, API hataları, sistem hataları ve diğerleri
-              </CardDescription>
-              <div className="flex gap-4 mt-4">
-                <Select
-                  value={errorFilters.category || 'all'}
-                  onValueChange={(value) => {
-                    setErrorFilters(prev => ({ ...prev, category: value === 'all' ? '' : value }));
-                    setErrorPagination(prev => ({ ...prev, page: 1 }));
-                  }}
-                >
-                  <SelectTrigger className="w-48">
-                    <SelectValue placeholder="Tüm Kategoriler" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tüm Kategoriler</SelectItem>
-                    {Object.entries(ERROR_CATEGORY_LABELS).map(([key, label]) => (
-                      <SelectItem key={key} value={key}>{label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Select
-                  value={errorFilters.severity || 'all'}
-                  onValueChange={(value) => {
-                    setErrorFilters(prev => ({ ...prev, severity: value === 'all' ? '' : value }));
-                    setErrorPagination(prev => ({ ...prev, page: 1 }));
-                  }}
-                >
-                  <SelectTrigger className="w-48">
-                    <SelectValue placeholder="Tüm Önem Dereceleri" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tüm Önem Dereceleri</SelectItem>
-                    <SelectItem value="medium">Orta</SelectItem>
-                    <SelectItem value="high">Yüksek</SelectItem>
-                    <SelectItem value="critical">Kritik</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <Select
-                  value={errorFilters.resolved !== '' ? errorFilters.resolved : 'all'}
-                  onValueChange={(value) => {
-                    setErrorFilters(prev => ({ ...prev, resolved: value === 'all' ? '' : value }));
-                    setErrorPagination(prev => ({ ...prev, page: 1 }));
-                  }}
-                >
-                  <SelectTrigger className="w-48">
-                    <SelectValue placeholder="Tüm Durumlar" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tüm Durumlar</SelectItem>
-                    <SelectItem value="false">Çözülmemiş</SelectItem>
-                    <SelectItem value="true">Çözülmüş</SelectItem>
-                  </SelectContent>
-                </Select>
+      {/* ═══════════ Panel: Zaman Çizelgesi ═══════════ */}
+      {activePanel === 'timeline' && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Olay Zaman Çizelgesi</CardTitle>
+            <CardDescription>
+              Saatlik olay dağılımı
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {timeline.length === 0 ? (
+              <div className="text-center text-muted-foreground py-12">
+                Zaman çizelgesi verisi yok
               </div>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-8"></TableHead>
-                    <TableHead>Son Görülme</TableHead>
-                    <TableHead>Kategori</TableHead>
-                    <TableHead>Önem</TableHead>
-                    <TableHead>Kaynak</TableHead>
-                    <TableHead>Mesaj</TableHead>
-                    <TableHead className="text-center">Tekrar</TableHead>
-                    <TableHead>Durum</TableHead>
-                    <TableHead>İşlem</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {errorLogs.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
-                        Hata bulunamadı
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    errorLogs.map((err) => {
-                      const CategoryIcon = ERROR_CATEGORY_ICONS[err.category] || AlertCircle;
-                      const isExpanded = expandedErrors.has(err.id);
-                      return (
-                        <React.Fragment key={err.id}>
-                          <TableRow
-                            className="cursor-pointer hover:bg-muted/50"
-                            onClick={() => toggleErrorExpand(err.id)}
-                          >
-                            <TableCell>
-                              {isExpanded
-                                ? <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                                : <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                              }
-                            </TableCell>
-                            <TableCell className="whitespace-nowrap text-xs">
-                              {new Date(err.lastSeenAt).toLocaleString()}
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-1.5">
-                                <CategoryIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                                <span className="text-xs">{ERROR_CATEGORY_LABELS[err.category] || err.category}</span>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge className={SEVERITY_COLORS[err.severity]}>
-                                {err.severity.toUpperCase()}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <code className="text-xs">{err.source}</code>
-                            </TableCell>
-                            <TableCell className="max-w-xs truncate text-xs" title={err.message}>
-                              {err.message}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <Badge variant="outline" className="font-mono">
-                                {err.occurrenceCount}x
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              {err.resolved ? (
-                                <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                                  Çözüldü
-                                </Badge>
-                              ) : (
-                                <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
-                                  Açık
-                                </Badge>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleResolveError(err.id, !err.resolved);
-                                }}
-                              >
-                                {err.resolved ? (
-                                  <XCircle className="h-4 w-4 text-red-500" />
-                                ) : (
-                                  <CheckCircle className="h-4 w-4 text-green-500" />
-                                )}
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                          {isExpanded && (
-                            <TableRow>
-                              <TableCell colSpan={9} className="bg-muted/30 p-4">
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs mb-3">
-                                  {err.toolName && (
-                                    <div>
-                                      <span className="text-muted-foreground">Tool:</span>{' '}
-                                      <code>{err.toolName}</code>
-                                    </div>
-                                  )}
-                                  {err.externalService && (
-                                    <div>
-                                      <span className="text-muted-foreground">Service:</span>{' '}
-                                      <code>{err.externalService}</code>
-                                      {err.externalStatus && <span className="ml-1">({err.externalStatus})</span>}
-                                    </div>
-                                  )}
-                                  {err.endpoint && (
-                                    <div>
-                                      <span className="text-muted-foreground">Endpoint:</span>{' '}
-                                      <code>{err.method} {err.endpoint}</code>
-                                    </div>
-                                  )}
-                                  {err.errorCode && (
-                                    <div>
-                                      <span className="text-muted-foreground">Code:</span>{' '}
-                                      <code>{err.errorCode}</code>
-                                    </div>
-                                  )}
-                                  {err.businessId && (
-                                    <div>
-                                      <span className="text-muted-foreground">Business:</span>{' '}
-                                      {err.businessId}
-                                    </div>
-                                  )}
-                                  {err.requestId && (
-                                    <div>
-                                      <span className="text-muted-foreground">Request:</span>{' '}
-                                      <code className="text-xs">{err.requestId}</code>
-                                    </div>
-                                  )}
-                                  <div>
-                                    <span className="text-muted-foreground">First Seen:</span>{' '}
-                                    {new Date(err.firstSeenAt).toLocaleString()}
-                                  </div>
-                                  {err.responseTimeMs && (
-                                    <div>
-                                      <span className="text-muted-foreground">Response Time:</span>{' '}
-                                      {err.responseTimeMs}ms
-                                    </div>
-                                  )}
-                                </div>
-                                {err.stackTrace && (
-                                  <div>
-                                    <div className="text-xs text-muted-foreground mb-1">Stack Trace:</div>
-                                    <pre className="text-xs bg-muted p-3 rounded-md overflow-x-auto max-h-48 overflow-y-auto whitespace-pre-wrap">
-                                      {err.stackTrace}
-                                    </pre>
-                                  </div>
-                                )}
-                                {err.resolvedBy && (
-                                  <div className="text-xs mt-2 text-muted-foreground">
-                                    Resolved by {err.resolvedBy} at {new Date(err.resolvedAt).toLocaleString()}
-                                  </div>
-                                )}
-                              </TableCell>
-                            </TableRow>
-                          )}
-                        </React.Fragment>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
+            ) : (
+              <LineChart
+                data={timeline.map(t => ({
+                  time: new Date(t.timestamp).toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  }),
+                  events: t.count,
+                }))}
+                dataKey="events"
+                xAxisKey="time"
+                color="#ef4444"
+                height={400}
+              />
+            )}
+          </CardContent>
+        </Card>
+      )}
 
-              {/* Error Pagination */}
-              {errorPagination.total > errorPagination.limit && (
-                <div className="flex items-center justify-between mt-4">
-                  <div className="text-sm text-muted-foreground">
-                    {((errorPagination.page - 1) * errorPagination.limit) + 1} -{' '}
-                    {Math.min(errorPagination.page * errorPagination.limit, errorPagination.total)} / toplam{' '}
-                    {errorPagination.total} hata
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setErrorPagination(prev => ({ ...prev, page: prev.page - 1 }))}
-                      disabled={errorPagination.page === 1}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                      Önceki
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setErrorPagination(prev => ({ ...prev, page: prev.page + 1 }))}
-                      disabled={!errorPagination.hasMore}
-                    >
-                      Sonraki
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Events Tab */}
-        <TabsContent value="events" className="space-y-4">
+      {/* ═══════════ Panel: Tehdit Kaynakları ═══════════ */}
+      {activePanel === 'threats' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card>
             <CardHeader>
-              <CardTitle>Güvenlik Olayları</CardTitle>
+              <CardTitle>En Çok Tehdit IP'leri</CardTitle>
               <CardDescription>
-                Filtreleme seçenekleri ile güvenlik olayları
-              </CardDescription>
-              <div className="flex gap-4 mt-4">
-                <Select
-                  value={filters.severity || 'all'}
-                  onValueChange={(value) => setFilters(prev => ({ ...prev, severity: value === 'all' ? '' : value, page: 1 }))}
-                >
-                  <SelectTrigger className="w-48">
-                    <SelectValue placeholder="Tüm Önem Dereceleri" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tüm Önem Dereceleri</SelectItem>
-                    <SelectItem value="low">Düşük</SelectItem>
-                    <SelectItem value="medium">Orta</SelectItem>
-                    <SelectItem value="high">Yüksek</SelectItem>
-                    <SelectItem value="critical">Kritik</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <Select
-                  value={filters.type || 'all'}
-                  onValueChange={(value) => setFilters(prev => ({ ...prev, type: value === 'all' ? '' : value, page: 1 }))}
-                >
-                  <SelectTrigger className="w-64">
-                    <SelectValue placeholder="Tüm Olay Türleri" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tüm Olay Türleri</SelectItem>
-                    {Object.entries(EVENT_TYPE_LABELS).map(([key, label]) => (
-                      <SelectItem key={key} value={key}>{label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Zaman</TableHead>
-                    <TableHead>Tür</TableHead>
-                    <TableHead>Önem</TableHead>
-                    <TableHead>Endpoint</TableHead>
-                    <TableHead>Metod</TableHead>
-                    <TableHead>Durum</TableHead>
-                    <TableHead>IP Adresi</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {events.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center text-muted-foreground">
-                        Güvenlik olayı bulunamadı
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    events.map((event) => (
-                      <TableRow key={event.id}>
-                        <TableCell className="whitespace-nowrap">
-                          {new Date(event.createdAt).toLocaleString()}
-                        </TableCell>
-                        <TableCell>
-                          <code className="text-xs">{EVENT_TYPE_LABELS[event.type] || event.type}</code>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={SEVERITY_COLORS[event.severity]}>
-                            {event.severity.toUpperCase()}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <code className="text-xs">{event.endpoint || '-'}</code>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{event.method || '-'}</Badge>
-                        </TableCell>
-                        <TableCell>{event.statusCode || '-'}</TableCell>
-                        <TableCell>
-                          <code className="text-xs">{event.ipAddress || '-'}</code>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-
-              {/* Pagination */}
-              {pagination.total > pagination.limit && (
-                <div className="flex items-center justify-between mt-4">
-                  <div className="text-sm text-muted-foreground">
-                    {((pagination.page - 1) * pagination.limit) + 1} -{' '}
-                    {Math.min(pagination.page * pagination.limit, pagination.total)} / toplam{' '}
-                    {pagination.total} olay
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
-                      disabled={pagination.page === 1}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                      Önceki
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
-                      disabled={!pagination.hasMore}
-                    >
-                      Sonraki
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Timeline Tab */}
-        <TabsContent value="timeline">
-          <Card>
-            <CardHeader>
-              <CardTitle>Olay Zaman Çizelgesi</CardTitle>
-              <CardDescription>
-                Saatlik olay dağılımı
+                En fazla güvenlik olayı üreten IP adresleri
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {timeline.length === 0 ? (
-                <div className="text-center text-muted-foreground py-12">
-                  Zaman çizelgesi verisi yok
+              {topThreats.topIPs.length === 0 ? (
+                <div className="text-center text-muted-foreground py-8">
+                  Tehdit verisi yok
                 </div>
               ) : (
-                <LineChart
-                  data={timeline.map(t => ({
-                    time: new Date(t.timestamp).toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    }),
-                    events: t.count,
+                <BarChart
+                  data={topThreats.topIPs.map(t => ({
+                    ip: t.ip,
+                    count: t.count,
                   }))}
-                  dataKey="events"
-                  xAxisKey="time"
-                  color="#ef4444"
-                  height={400}
+                  dataKey="count"
+                  xAxisKey="ip"
+                  horizontal={true}
                 />
               )}
             </CardContent>
           </Card>
-        </TabsContent>
 
-        {/* Top Threats Tab */}
-        <TabsContent value="threats" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>En Çok Tehdit IP'leri</CardTitle>
-                <CardDescription>
-                  En fazla güvenlik olayı üreten IP adresleri
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {topThreats.topIPs.length === 0 ? (
-                  <div className="text-center text-muted-foreground py-8">
-                    Tehdit verisi yok
-                  </div>
-                ) : (
-                  <BarChart
-                    data={topThreats.topIPs.map(t => ({
-                      ip: t.ip,
-                      count: t.count,
-                    }))}
-                    dataKey="count"
-                    xAxisKey="ip"
-                    horizontal={true}
-                  />
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>En Çok Hedeflenen Endpoint'ler</CardTitle>
-                <CardDescription>
-                  En fazla saldırıya uğrayan API endpoint'leri
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {topThreats.topEndpoints.length === 0 ? (
-                  <div className="text-center text-muted-foreground py-8">
-                    Tehdit verisi yok
-                  </div>
-                ) : (
-                  <BarChart
-                    data={topThreats.topEndpoints.map(t => ({
-                      endpoint: t.endpoint.replace('/api/', ''),
-                      count: t.count,
-                    }))}
-                    dataKey="count"
-                    xAxisKey="endpoint"
-                    horizontal={true}
-                  />
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-      </Tabs>
+          <Card>
+            <CardHeader>
+              <CardTitle>En Çok Hedeflenen Endpoint'ler</CardTitle>
+              <CardDescription>
+                En fazla saldırıya uğrayan API endpoint'leri
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {topThreats.topEndpoints.length === 0 ? (
+                <div className="text-center text-muted-foreground py-8">
+                  Tehdit verisi yok
+                </div>
+              ) : (
+                <BarChart
+                  data={topThreats.topEndpoints.map(t => ({
+                    endpoint: t.endpoint.replace('/api/', ''),
+                    count: t.count,
+                  }))}
+                  dataKey="count"
+                  xAxisKey="endpoint"
+                  horizontal={true}
+                />
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
