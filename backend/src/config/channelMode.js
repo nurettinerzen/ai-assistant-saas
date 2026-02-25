@@ -145,7 +145,7 @@ export function hasAccountHint(message) {
  * Classify a user message into a redirect category using LLM.
  * Returns { category, confidence } or null on failure.
  *
- * Uses gemini-2.0-flash-lite for speed/cost — no tools, strict JSON output.
+ * Uses gemini-2.5-flash-lite for speed/cost — no tools, strict JSON output.
  *
  * @param {string} userMessage - Raw user message
  * @returns {Promise<{ category: string, confidence: number } | null>}
@@ -155,7 +155,7 @@ export async function classifyRedirectCategory(userMessage) {
     const { getGeminiModel } = await import('../services/gemini-utils.js');
 
     const model = getGeminiModel({
-      model: 'gemini-2.0-flash-lite',
+      model: 'gemini-2.5-flash-lite',
       temperature: 0.0,
       maxOutputTokens: 60,
     });

@@ -116,7 +116,7 @@ function redactPII(text) {
 }
 
 /**
- * Generate topic summary using LLM (gemini-2.0-flash-lite)
+ * Generate topic summary using LLM (gemini-2.5-flash-lite)
  * PII is redacted before sending to model.
  * Returns null on failure (caller should fallback to keyword-based).
  */
@@ -134,7 +134,7 @@ async function generateTopicWithLLM(conversationHistory, language) {
     : `Summarize this customer-assistant conversation in 1 sentence. Max 100 chars. Topic only. Example: "Order shipping delay issue"\n\n${transcript}`;
 
   const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY);
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-lite' });
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
 
   const result = await model.generateContent(prompt);
   const summary = result.response?.text()?.trim();

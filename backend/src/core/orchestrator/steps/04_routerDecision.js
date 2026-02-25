@@ -128,7 +128,7 @@ function hasCallbackHint(message = '') {
 /**
  * Layer B: Mini LLM classifier — confirms callback intent.
  * Only called when Layer A hint fires.
- * Uses gemini-2.0-flash-lite for speed (~200ms).
+ * Uses gemini-2.5-flash-lite for speed (~200ms).
  * Returns { isCallback: boolean, confidence: number }
  */
 async function classifyCallbackIntent(message = '', language = 'TR') {
@@ -136,7 +136,7 @@ async function classifyCallbackIntent(message = '', language = 'TR') {
     const { getGeminiClient } = await import('../../../services/gemini-utils.js');
     const genAI = getGeminiClient();
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash-lite',
+      model: 'gemini-2.5-flash-lite',
       generationConfig: {
         temperature: 0,
         maxOutputTokens: 30,
