@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Shield, AlertTriangle, AlertCircle, Activity,
-  TrendingUp, Clock, Server, Eye, ChevronLeft, ChevronRight,
+  Clock, Eye, ChevronLeft, ChevronRight,
   Bug, Wrench, MessageSquare, Globe, CheckCircle, XCircle, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
@@ -71,6 +71,7 @@ export default function RedAlertPage() {
   const [timeline, setTimeline] = useState([]);
   const [topThreats, setTopThreats] = useState({ topIPs: [], topEndpoints: [] });
   const [health, setHealth] = useState(null);
+  const [activeTab, setActiveTab] = useState('errors');
   const [filters, setFilters] = useState({
     hours: 24,
     severity: '',
@@ -244,12 +245,13 @@ export default function RedAlertPage() {
   const handleResolveError = async (errorId, resolved) => {
     try {
       await apiClient.patch(`/api/red-alert/errors/${errorId}/resolve`, { resolved });
-      toast.success(resolved ? 'Error marked as resolved' : 'Error marked as unresolved');
+      toast.success(resolved ? 'Hata çözüldü olarak işaretlendi' : 'Hata tekrar açıldı');
       loadErrorLogs();
       loadErrorSummary();
+      loadHealth();
     } catch (error) {
       console.error('Failed to resolve error:', error);
-      toast.error('Failed to update error status');
+      toast.error('Hata durumu güncellenemedi');
     }
   };
 
@@ -319,15 +321,15 @@ export default function RedAlertPage() {
         <div>
           <h1 className="text-2xl font-semibold flex items-center gap-2">
             <Shield className="h-6 w-6 text-red-600" />
-            Red Alert - Security Dashboard
+            Red Alert - Güvenlik Paneli
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Real-time security event monitoring and error tracking
+            Güvenlik olayları ve uygulama hatalarını gerçek zamanlı izleme
           </p>
         </div>
         <Button onClick={loadDashboardData} variant="outline" size="sm">
           <Activity className="h-4 w-4 mr-2" />
-          Refresh
+          Yenile
         </Button>
       </div>
 
@@ -341,10 +343,10 @@ export default function RedAlertPage() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="1">Last Hour</SelectItem>
-            <SelectItem value="6">Last 6 Hours</SelectItem>
-            <SelectItem value="24">Last 24 Hours</SelectItem>
-            <SelectItem value="168">Last 7 Days</SelectItem>
+            <SelectItem value="1">Son 1 Saat</SelectItem>
+            <SelectItem value="6">Son 6 Saat</SelectItem>
+            <SelectItem value="24">Son 24 Saat</SelectItem>
+            <SelectItem value="168">Son 7 Gün</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -355,7 +357,7 @@ export default function RedAlertPage() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Shield className={`h-4 w-4 ${HEALTH_STATUS_COLORS[health.status]}`} />
-              Security Health Score
+              Güvenlik Sağlık Skoru
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -371,19 +373,19 @@ export default function RedAlertPage() {
                   <div className="text-xl font-bold text-red-600 dark:text-red-400">
                     {health.events.critical}
                   </div>
-                  <div className="text-xs text-muted-foreground">Critical</div>
+                  <div className="text-xs text-muted-foreground">Kritik</div>
                 </div>
                 <div className="text-center">
                   <div className="text-xl font-bold text-orange-600 dark:text-orange-400">
                     {health.events.high}
                   </div>
-                  <div className="text-xs text-muted-foreground">High</div>
+                  <div className="text-xs text-muted-foreground">Yüksek</div>
                 </div>
                 <div className="text-center">
                   <div className="text-xl font-bold">
                     {health.events.total}
                   </div>
-                  <div className="text-xs text-muted-foreground">Total</div>
+                  <div className="text-xs text-muted-foreground">Toplam</div>
                 </div>
               </div>
               <div className="text-center">
@@ -391,7 +393,7 @@ export default function RedAlertPage() {
                   {health.status.toUpperCase()}
                 </Badge>
                 {health.events.total === 0 && (
-                  <div className="text-xs text-muted-foreground mt-1">No threats detected</div>
+                  <div className="text-xs text-muted-foreground mt-1">Tehdit tespit edilmedi</div>
                 )}
               </div>
             </div>
@@ -399,34 +401,50 @@ export default function RedAlertPage() {
         </Card>
       )}
 
-      {/* Summary Stats — Security + Errors side by side */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
+      {/* Summary Stats — Clickable cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
         {summary && (
           <>
-            <Card>
+            <Card
+              className="cursor-pointer transition-colors hover:border-blue-400 dark:hover:border-blue-600"
+              onClick={() => {
+                setFilters(prev => ({ ...prev, severity: '' }));
+                setActiveTab('events');
+              }}
+            >
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Security Events</CardTitle>
+                <CardTitle className="text-sm font-medium">Güvenlik Olayları</CardTitle>
                 <Activity className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-xl font-bold">{summary.summary.total}</div>
+                <div className="text-2xl font-bold">{summary.summary.total}</div>
                 <p className="text-xs text-muted-foreground">
-                  {summary.summary.critical} critical
+                  {summary.summary.critical > 0
+                    ? `${summary.summary.critical} kritik`
+                    : 'Kritik olay yok'}
                 </p>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card
+              className={`cursor-pointer transition-colors hover:border-red-400 dark:hover:border-red-600 ${
+                summary.summary.critical > 0 ? 'border-red-300 dark:border-red-800' : ''
+              }`}
+              onClick={() => {
+                setFilters(prev => ({ ...prev, severity: 'critical' }));
+                setActiveTab('events');
+              }}
+            >
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Critical Events</CardTitle>
+                <CardTitle className="text-sm font-medium">Kritik Olaylar</CardTitle>
                 <AlertTriangle className="h-4 w-4 text-red-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-xl font-bold text-red-600 dark:text-red-400">
+                <div className="text-2xl font-bold text-red-600 dark:text-red-400">
                   {summary.summary.critical}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Immediate attention
+                  Acil müdahale gerekli
                 </p>
               </CardContent>
             </Card>
@@ -434,61 +452,39 @@ export default function RedAlertPage() {
         )}
 
         {errorSummary && (
-          <>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">App Errors</CardTitle>
-                <Bug className="h-4 w-4 text-orange-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-xl font-bold text-orange-600 dark:text-orange-400">
-                  {errorSummary.summary.total}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {errorSummary.summary.unresolved} unresolved
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className={errorSummary.summary.unresolved > 0 ? 'border-red-300 dark:border-red-800' : ''}>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Unresolved</CardTitle>
-                <XCircle className="h-4 w-4 text-red-600" />
-              </CardHeader>
-              <CardContent>
-                <div className={`text-xl font-bold ${errorSummary.summary.unresolved > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
-                  {errorSummary.summary.unresolved}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Needs investigation
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Error Categories</CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-xl font-bold">
-                  {Object.keys(errorSummary.byCategory).length}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Active categories
-                </p>
-              </CardContent>
-            </Card>
-          </>
+          <Card
+            className={`cursor-pointer transition-colors hover:border-orange-400 dark:hover:border-orange-600 ${
+              errorSummary.summary.unresolved > 0 ? 'border-orange-300 dark:border-orange-800' : ''
+            }`}
+            onClick={() => {
+              setErrorFilters(prev => ({ ...prev, resolved: '' }));
+              setActiveTab('errors');
+            }}
+          >
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Uygulama Hataları</CardTitle>
+              <Bug className="h-4 w-4 text-orange-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                {errorSummary.summary.total}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {errorSummary.summary.unresolved > 0
+                  ? <span className="text-red-500 font-medium">{errorSummary.summary.unresolved} çözülmemiş</span>
+                  : 'Tümü çözüldü'}
+              </p>
+            </CardContent>
+          </Card>
         )}
       </div>
 
       {/* Main Content Tabs */}
-      <Tabs defaultValue="errors" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="errors">
             <Bug className="h-4 w-4 mr-2" />
-            Errors
+            Hatalar
             {errorSummary?.summary?.unresolved > 0 && (
               <Badge variant="destructive" className="ml-2 text-xs px-1.5 py-0">
                 {errorSummary.summary.unresolved}
@@ -497,19 +493,15 @@ export default function RedAlertPage() {
           </TabsTrigger>
           <TabsTrigger value="events">
             <Eye className="h-4 w-4 mr-2" />
-            Security Events
+            Güvenlik Olayları
           </TabsTrigger>
           <TabsTrigger value="timeline">
             <Clock className="h-4 w-4 mr-2" />
-            Timeline
+            Zaman Çizelgesi
           </TabsTrigger>
           <TabsTrigger value="threats">
             <AlertCircle className="h-4 w-4 mr-2" />
-            Top Threats
-          </TabsTrigger>
-          <TabsTrigger value="breakdown">
-            <Server className="h-4 w-4 mr-2" />
-            Breakdown
+            Tehdit Kaynakları
           </TabsTrigger>
         </TabsList>
 
@@ -519,10 +511,10 @@ export default function RedAlertPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Bug className="h-5 w-5" />
-                Application Errors
+                Uygulama Hataları
               </CardTitle>
               <CardDescription>
-                Tool failures, API errors, system errors, and more
+                Araç hataları, API hataları, sistem hataları ve diğerleri
               </CardDescription>
               <div className="flex gap-4 mt-4">
                 <Select
@@ -533,10 +525,10 @@ export default function RedAlertPage() {
                   }}
                 >
                   <SelectTrigger className="w-48">
-                    <SelectValue placeholder="All Categories" />
+                    <SelectValue placeholder="Tüm Kategoriler" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Categories</SelectItem>
+                    <SelectItem value="all">Tüm Kategoriler</SelectItem>
                     {Object.entries(ERROR_CATEGORY_LABELS).map(([key, label]) => (
                       <SelectItem key={key} value={key}>{label}</SelectItem>
                     ))}
@@ -551,13 +543,13 @@ export default function RedAlertPage() {
                   }}
                 >
                   <SelectTrigger className="w-48">
-                    <SelectValue placeholder="All Severities" />
+                    <SelectValue placeholder="Tüm Önem Dereceleri" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Severities</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="critical">Critical</SelectItem>
+                    <SelectItem value="all">Tüm Önem Dereceleri</SelectItem>
+                    <SelectItem value="medium">Orta</SelectItem>
+                    <SelectItem value="high">Yüksek</SelectItem>
+                    <SelectItem value="critical">Kritik</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -569,12 +561,12 @@ export default function RedAlertPage() {
                   }}
                 >
                   <SelectTrigger className="w-48">
-                    <SelectValue placeholder="All Status" />
+                    <SelectValue placeholder="Tüm Durumlar" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="false">Unresolved</SelectItem>
-                    <SelectItem value="true">Resolved</SelectItem>
+                    <SelectItem value="all">Tüm Durumlar</SelectItem>
+                    <SelectItem value="false">Çözülmemiş</SelectItem>
+                    <SelectItem value="true">Çözülmüş</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -584,21 +576,21 @@ export default function RedAlertPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-8"></TableHead>
-                    <TableHead>Last Seen</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Severity</TableHead>
-                    <TableHead>Source</TableHead>
-                    <TableHead>Message</TableHead>
-                    <TableHead className="text-center">Count</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Action</TableHead>
+                    <TableHead>Son Görülme</TableHead>
+                    <TableHead>Kategori</TableHead>
+                    <TableHead>Önem</TableHead>
+                    <TableHead>Kaynak</TableHead>
+                    <TableHead>Mesaj</TableHead>
+                    <TableHead className="text-center">Tekrar</TableHead>
+                    <TableHead>Durum</TableHead>
+                    <TableHead>İşlem</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {errorLogs.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
-                        No errors found
+                        Hata bulunamadı
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -645,11 +637,11 @@ export default function RedAlertPage() {
                             <TableCell>
                               {err.resolved ? (
                                 <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                                  Resolved
+                                  Çözüldü
                                 </Badge>
                               ) : (
                                 <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
-                                  Open
+                                  Açık
                                 </Badge>
                               )}
                             </TableCell>
@@ -749,9 +741,9 @@ export default function RedAlertPage() {
               {errorPagination.total > errorPagination.limit && (
                 <div className="flex items-center justify-between mt-4">
                   <div className="text-sm text-muted-foreground">
-                    Showing {((errorPagination.page - 1) * errorPagination.limit) + 1} to{' '}
-                    {Math.min(errorPagination.page * errorPagination.limit, errorPagination.total)} of{' '}
-                    {errorPagination.total} errors
+                    {((errorPagination.page - 1) * errorPagination.limit) + 1} -{' '}
+                    {Math.min(errorPagination.page * errorPagination.limit, errorPagination.total)} / toplam{' '}
+                    {errorPagination.total} hata
                   </div>
                   <div className="flex gap-2">
                     <Button
@@ -761,7 +753,7 @@ export default function RedAlertPage() {
                       disabled={errorPagination.page === 1}
                     >
                       <ChevronLeft className="h-4 w-4" />
-                      Previous
+                      Önceki
                     </Button>
                     <Button
                       variant="outline"
@@ -769,7 +761,7 @@ export default function RedAlertPage() {
                       onClick={() => setErrorPagination(prev => ({ ...prev, page: prev.page + 1 }))}
                       disabled={!errorPagination.hasMore}
                     >
-                      Next
+                      Sonraki
                       <ChevronRight className="h-4 w-4" />
                     </Button>
                   </div>
@@ -783,9 +775,9 @@ export default function RedAlertPage() {
         <TabsContent value="events" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Security Events</CardTitle>
+              <CardTitle>Güvenlik Olayları</CardTitle>
               <CardDescription>
-                Recent security events with filtering options
+                Filtreleme seçenekleri ile güvenlik olayları
               </CardDescription>
               <div className="flex gap-4 mt-4">
                 <Select
@@ -793,14 +785,14 @@ export default function RedAlertPage() {
                   onValueChange={(value) => setFilters(prev => ({ ...prev, severity: value === 'all' ? '' : value, page: 1 }))}
                 >
                   <SelectTrigger className="w-48">
-                    <SelectValue placeholder="All Severities" />
+                    <SelectValue placeholder="Tüm Önem Dereceleri" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Severities</SelectItem>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="critical">Critical</SelectItem>
+                    <SelectItem value="all">Tüm Önem Dereceleri</SelectItem>
+                    <SelectItem value="low">Düşük</SelectItem>
+                    <SelectItem value="medium">Orta</SelectItem>
+                    <SelectItem value="high">Yüksek</SelectItem>
+                    <SelectItem value="critical">Kritik</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -809,10 +801,10 @@ export default function RedAlertPage() {
                   onValueChange={(value) => setFilters(prev => ({ ...prev, type: value === 'all' ? '' : value, page: 1 }))}
                 >
                   <SelectTrigger className="w-64">
-                    <SelectValue placeholder="All Event Types" />
+                    <SelectValue placeholder="Tüm Olay Türleri" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Event Types</SelectItem>
+                    <SelectItem value="all">Tüm Olay Türleri</SelectItem>
                     {Object.entries(EVENT_TYPE_LABELS).map(([key, label]) => (
                       <SelectItem key={key} value={key}>{label}</SelectItem>
                     ))}
@@ -824,20 +816,20 @@ export default function RedAlertPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Time</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Severity</TableHead>
+                    <TableHead>Zaman</TableHead>
+                    <TableHead>Tür</TableHead>
+                    <TableHead>Önem</TableHead>
                     <TableHead>Endpoint</TableHead>
-                    <TableHead>Method</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>IP Address</TableHead>
+                    <TableHead>Metod</TableHead>
+                    <TableHead>Durum</TableHead>
+                    <TableHead>IP Adresi</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {events.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center text-muted-foreground">
-                        No security events found
+                        Güvenlik olayı bulunamadı
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -874,9 +866,9 @@ export default function RedAlertPage() {
               {pagination.total > pagination.limit && (
                 <div className="flex items-center justify-between mt-4">
                   <div className="text-sm text-muted-foreground">
-                    Showing {((pagination.page - 1) * pagination.limit) + 1} to{' '}
-                    {Math.min(pagination.page * pagination.limit, pagination.total)} of{' '}
-                    {pagination.total} events
+                    {((pagination.page - 1) * pagination.limit) + 1} -{' '}
+                    {Math.min(pagination.page * pagination.limit, pagination.total)} / toplam{' '}
+                    {pagination.total} olay
                   </div>
                   <div className="flex gap-2">
                     <Button
@@ -886,7 +878,7 @@ export default function RedAlertPage() {
                       disabled={pagination.page === 1}
                     >
                       <ChevronLeft className="h-4 w-4" />
-                      Previous
+                      Önceki
                     </Button>
                     <Button
                       variant="outline"
@@ -894,7 +886,7 @@ export default function RedAlertPage() {
                       onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
                       disabled={!pagination.hasMore}
                     >
-                      Next
+                      Sonraki
                       <ChevronRight className="h-4 w-4" />
                     </Button>
                   </div>
@@ -908,15 +900,15 @@ export default function RedAlertPage() {
         <TabsContent value="timeline">
           <Card>
             <CardHeader>
-              <CardTitle>Event Timeline</CardTitle>
+              <CardTitle>Olay Zaman Çizelgesi</CardTitle>
               <CardDescription>
-                Hourly event distribution over time
+                Saatlik olay dağılımı
               </CardDescription>
             </CardHeader>
             <CardContent>
               {timeline.length === 0 ? (
                 <div className="text-center text-muted-foreground py-12">
-                  No timeline data available
+                  Zaman çizelgesi verisi yok
                 </div>
               ) : (
                 <LineChart
@@ -942,15 +934,15 @@ export default function RedAlertPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
-                <CardTitle>Top Threat IPs</CardTitle>
+                <CardTitle>En Çok Tehdit IP'leri</CardTitle>
                 <CardDescription>
-                  IP addresses with most security events
+                  En fazla güvenlik olayı üreten IP adresleri
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 {topThreats.topIPs.length === 0 ? (
                   <div className="text-center text-muted-foreground py-8">
-                    No threat data available
+                    Tehdit verisi yok
                   </div>
                 ) : (
                   <BarChart
@@ -968,15 +960,15 @@ export default function RedAlertPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Top Target Endpoints</CardTitle>
+                <CardTitle>En Çok Hedeflenen Endpoint'ler</CardTitle>
                 <CardDescription>
-                  Most attacked API endpoints
+                  En fazla saldırıya uğrayan API endpoint'leri
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 {topThreats.topEndpoints.length === 0 ? (
                   <div className="text-center text-muted-foreground py-8">
-                    No threat data available
+                    Tehdit verisi yok
                   </div>
                 ) : (
                   <BarChart
@@ -994,72 +986,6 @@ export default function RedAlertPage() {
           </div>
         </TabsContent>
 
-        {/* Breakdown Tab */}
-        <TabsContent value="breakdown" className="space-y-4">
-          {summary && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Events by Type</CardTitle>
-                  <CardDescription>
-                    Distribution of security event types
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {Object.entries(summary.byType).map(([type, count]) => (
-                      <div key={type} className="flex items-center justify-between">
-                        <span className="text-sm">{EVENT_TYPE_LABELS[type] || type}</span>
-                        <div className="flex items-center gap-3">
-                          <div className="w-32 bg-muted h-2 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-red-600"
-                              style={{
-                                width: `${(count / (summary.summary.total || 1)) * 100}%`,
-                              }}
-                            />
-                          </div>
-                          <span className="text-sm font-medium w-12 text-right">{count}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Events by Severity</CardTitle>
-                  <CardDescription>
-                    Distribution of event severity levels
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {Object.entries(summary.bySeverity).map(([severity, count]) => (
-                      <div key={severity} className="flex items-center justify-between">
-                        <Badge className={SEVERITY_COLORS[severity]}>
-                          {severity.toUpperCase()}
-                        </Badge>
-                        <div className="flex items-center gap-3">
-                          <div className="w-32 bg-muted h-2 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-red-600"
-                              style={{
-                                width: `${(count / (summary.summary.total || 1)) * 100}%`,
-                              }}
-                            />
-                          </div>
-                          <span className="text-sm font-medium w-12 text-right">{count}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-        </TabsContent>
       </Tabs>
     </div>
   );
