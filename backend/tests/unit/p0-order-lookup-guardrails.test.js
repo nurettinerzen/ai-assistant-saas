@@ -1,4 +1,4 @@
-import { describe, expect, it } from '@jest/globals';
+import { describe, expect, it } from 'vitest';
 import { ToolOutcome } from '../../src/tools/toolResult.js';
 import { applyGuardrails } from '../../src/core/orchestrator/steps/07_guardrails.js';
 
@@ -95,5 +95,32 @@ describe('P0 order lookup guardrail contracts', () => {
     expect(result.finalResponse).toContain('VKN');
     expect(result.finalResponse).toContain('TC');
     expect(result.finalResponse.toLowerCase()).toContain('telefon');
+  });
+
+  it('asks debt identity fields when user sends only TC number but intent is debt_inquiry', async () => {
+    const result = await applyGuardrails({
+      ...baseParams,
+      intent: 'debt_inquiry',
+      hadToolSuccess: true,
+      toolsCalled: ['customer_data_lookup'],
+      toolOutputs: [
+        {
+          name: 'customer_data_lookup',
+          success: true,
+          outcome: ToolOutcome.NOT_FOUND,
+          output: null
+        }
+      ],
+      userMessage: '57106594322',
+      responseText: 'Bu bilgilerle eşleşen kayıt bulunamadı.'
+    });
+
+    expect(result.action).toBe('NEED_MIN_INFO_FOR_TOOL');
+    expect(result.blockReason).toBe('TOOL_NOT_FOUND');
+    expect(result.finalResponse).toContain('VKN');
+    expect(result.finalResponse).toContain('TC');
+    expect(result.finalResponse.toLowerCase()).toContain('telefon');
+    // Should NOT show order/phone ambiguity question
+    expect(result.finalResponse.toLowerCase()).not.toContain('sipariş');
   });
 });

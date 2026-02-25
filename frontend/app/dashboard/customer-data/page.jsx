@@ -161,7 +161,8 @@ export default function CustomerDataPage() {
   const { data: files = [], isLoading: loadingFiles } = useCustomerDataFiles();
   const {
     data: recordsData,
-    isLoading: loadingRecords
+    isLoading: loadingRecords,
+    refetch: refetchRecords
   } = useCustomerDataRecords(
     selectedFile?.id,
     {
@@ -807,7 +808,7 @@ export default function CustomerDataPage() {
     try {
       await apiClient.customerData.delete(recordId);
       toast.success(t('dashboard.customerDataPage.recordDeleted'));
-      loadRecords();
+      refetchRecords();
     } catch (error) {
       console.error('Error deleting record:', error);
       toast.error(t('dashboard.customerDataPage.deleteFailed'));
@@ -823,7 +824,7 @@ export default function CustomerDataPage() {
       toast.success(t('dashboard.customerDataPage.recordsDeleted', { count: selectedRecords.length }));
       setSelectedRecords([]);
       setShowDeleteConfirmModal(false);
-      loadRecords();
+      refetchRecords();
     } catch (error) {
       console.error('Error bulk deleting:', error);
       toast.error(t('dashboard.customerDataPage.deleteFailed'));
@@ -870,7 +871,7 @@ export default function CustomerDataPage() {
       toast.success(t('dashboard.customerDataPage.recordAdded'));
       setShowAddModal(false);
       setAddFormData({});
-      loadRecords();
+      refetchRecords();
     } catch (error) {
       console.error('Error adding record:', error);
       const errorMsg = error.response?.data?.error || t('dashboard.customerDataPage.addFailed');

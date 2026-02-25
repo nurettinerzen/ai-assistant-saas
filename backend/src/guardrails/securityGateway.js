@@ -558,7 +558,7 @@ export function evaluateToolRequiredClaimGate({
  * If any tool produced NOT_FOUND, convert to a clarification action.
  */
 export function evaluateNotFoundClaimGate(toolOutputs = [], options = {}) {
-  const { userMessage = '' } = options;
+  const { userMessage = '', intent = null, activeFlow = null } = options;
   const firstNotFound = (Array.isArray(toolOutputs) ? toolOutputs : []).find((output) => {
     const normalized = normalizeOutcome(output?.outcome);
     if (normalized === ToolOutcome.NOT_FOUND) return true;
@@ -570,13 +570,21 @@ export function evaluateNotFoundClaimGate(toolOutputs = [], options = {}) {
     return { needsClarification: false };
   }
 
+  // Check if debt context is active via intent/flow OR message content
+  const normalizedIntent = String(intent || '').toLowerCase();
+  const normalizedFlow = String(activeFlow || '').toUpperCase();
+  const isDebtContext =
+    TOOL_REQUIRED_CLAIM_GATES.DEBT_INQUIRY.intents.has(normalizedIntent) ||
+    TOOL_REQUIRED_CLAIM_GATES.DEBT_INQUIRY.flows.has(normalizedFlow) ||
+    looksLikeDebtOrPaymentInput(userMessage);
+
   const toolName = String(firstNotFound?.name || '').toLowerCase();
   let missingFields = ['reference_id'];
   if (toolName.includes('ticket')) {
     missingFields = ['ticket_number'];
   } else if (toolName.includes('stock') || toolName.includes('product')) {
     missingFields = ['product_name'];
-  } else if (toolName.includes('customer_data_lookup') && looksLikeDebtOrPaymentInput(userMessage)) {
+  } else if (toolName.includes('customer_data_lookup') && isDebtContext) {
     missingFields = ['vkn_or_tc_or_phone'];
   } else if (toolName.includes('order') || toolName.includes('customer_data_lookup')) {
     missingFields = looksLikeAmbiguousOrderOrPhoneInput(userMessage)

@@ -527,7 +527,7 @@ export async function applyGuardrails(params) {
   }
 
   // POLICY 1.6: NOT_FOUND claim gate (single clarification, no content rewrite policy)
-  const notFoundGate = evaluateNotFoundClaimGate(toolOutputs, { userMessage });
+  const notFoundGate = evaluateNotFoundClaimGate(toolOutputs, { userMessage, intent, activeFlow });
   if (notFoundGate.needsClarification) {
     const clarification = buildNotFoundClarification(language, notFoundGate.missingFields || []);
     metrics.notFoundClaimGate = {
