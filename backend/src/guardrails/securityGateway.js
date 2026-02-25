@@ -27,10 +27,16 @@ export const GuardrailAction = Object.freeze({
 
 const TOOL_REQUIRED_CLAIM_GATES = Object.freeze({
   ORDER_STATUS: {
-    intents: new Set(['order_status', 'tracking_info', 'debt_inquiry']),
-    flows: new Set(['ORDER_STATUS', 'DEBT_INQUIRY']),
+    intents: new Set(['order_status', 'tracking_info']),
+    flows: new Set(['ORDER_STATUS']),
     requiredTools: new Set(['customer_data_lookup', 'check_order_status', 'check_order_status_crm', 'order_search']),
     missingFields: ['order_number']
+  },
+  DEBT_INQUIRY: {
+    intents: new Set(['debt_inquiry']),
+    flows: new Set(['DEBT_INQUIRY']),
+    requiredTools: new Set(['customer_data_lookup']),
+    missingFields: ['vkn_or_tc_or_phone']
   },
   TICKET_STATUS: {
     intents: new Set(['ticket_status', 'support_ticket']),
@@ -307,6 +313,13 @@ function looksLikeAmbiguousOrderOrPhoneInput(userMessage = '') {
   return /^[\d\s()+\-_.#]+$/.test(raw);
 }
 
+function looksLikeDebtOrPaymentInput(userMessage = '') {
+  const text = normalizeTopicText(userMessage);
+  if (!text) return false;
+
+  return /\b(borc|borcum|debt|odeme|payment|fatura|invoice|bakiye|vergi|sgk|tahsilat)\b/i.test(text);
+}
+
 /**
  * Mask phone numbers in response text.
  * Replaces digits with asterisks, keeping first 3 and last 2 digits visible.
@@ -479,6 +492,15 @@ function detectClaimGateTopic({ intent = null, activeFlow = null, userMessage = 
     /\bkargom?\s*(nerede|nerde|durum(?:u)?|ne durumda|kaldi)\b/i.test(text);
   if (hasOrderIdentifier) return 'ORDER_STATUS';
 
+  // DEBT_INQUIRY
+  if (TOOL_REQUIRED_CLAIM_GATES.DEBT_INQUIRY.intents.has(normalizedIntent) ||
+      TOOL_REQUIRED_CLAIM_GATES.DEBT_INQUIRY.flows.has(normalizedFlow)) {
+    return 'DEBT_INQUIRY';
+  }
+  if (looksLikeDebtOrPaymentInput(text)) {
+    return 'DEBT_INQUIRY';
+  }
+
   // TICKET_STATUS
   if (TOOL_REQUIRED_CLAIM_GATES.TICKET_STATUS.intents.has(normalizedIntent) ||
       TOOL_REQUIRED_CLAIM_GATES.TICKET_STATUS.flows.has(normalizedFlow)) {
@@ -554,6 +576,8 @@ export function evaluateNotFoundClaimGate(toolOutputs = [], options = {}) {
     missingFields = ['ticket_number'];
   } else if (toolName.includes('stock') || toolName.includes('product')) {
     missingFields = ['product_name'];
+  } else if (toolName.includes('customer_data_lookup') && looksLikeDebtOrPaymentInput(userMessage)) {
+    missingFields = ['vkn_or_tc_or_phone'];
   } else if (toolName.includes('order') || toolName.includes('customer_data_lookup')) {
     missingFields = looksLikeAmbiguousOrderOrPhoneInput(userMessage)
       ? ['order_or_phone']

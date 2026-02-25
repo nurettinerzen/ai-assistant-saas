@@ -38,6 +38,25 @@ beforeEach(() => {
 describe('P0 customer_data_lookup deterministic outcomes', () => {
   const business = { id: 1, language: 'TR' };
 
+  it('B0: debt query without identifier should return NEED_MORE_INFO (not NOT_FOUND)', async () => {
+    const result = await executeLookup(
+      {
+        query_type: 'muhasebe'
+      },
+      business,
+      {
+        state: { verification: { status: 'none' } },
+        sessionId: 'test-b0'
+      }
+    );
+
+    expect(result.outcome).toBe(ToolOutcome.NEED_MORE_INFO);
+    expect(result.field).toBe('vkn_or_tc_or_phone');
+    expect(result.message.toLowerCase()).toContain('vkn');
+    expect(prismaMock.crmOrder.findMany).not.toHaveBeenCalled();
+    expect(prismaMock.customerData.findFirst).not.toHaveBeenCalled();
+  });
+
   it('B1: existing order without last4 should request verification (phone_last4)', async () => {
     prismaMock.crmOrder.findMany.mockResolvedValueOnce([{
       id: 'crm-order-1',
@@ -117,6 +136,36 @@ describe('P0 customer_data_lookup deterministic outcomes', () => {
     expect(prismaMock.crmOrder.findMany).toHaveBeenCalledTimes(1);
     expect(prismaMock.crmOrder.findFirst).toHaveBeenCalled();
     expect(prismaMock.crmOrder.findFirst.mock.calls[0][0]?.where?.OR?.[0]).toHaveProperty('customerPhone');
+  });
+
+  it('B4.1: pending verification without input should re-request verification, not run lookup', async () => {
+    const result = await executeLookup(
+      {
+        query_type: 'muhasebe'
+      },
+      business,
+      {
+        state: {
+          verification: {
+            status: 'pending',
+            anchor: {
+              id: 'cust-1',
+              name: 'Ahmet Yılmaz',
+              phone: '+905551234567',
+              anchorType: 'phone',
+              anchorValue: '5551234567',
+              sourceTable: 'CustomerData'
+            }
+          }
+        },
+        sessionId: 'test-b4-1'
+      }
+    );
+
+    expect(result.outcome).toBe(ToolOutcome.VERIFICATION_REQUIRED);
+    expect(result.data?.askFor).toBe('phone_last4');
+    expect(prismaMock.crmOrder.findMany).not.toHaveBeenCalled();
+    expect(prismaMock.customerData.findFirst).not.toHaveBeenCalled();
   });
 
   it('B5: verified session with switched anchor should force fresh verification', async () => {

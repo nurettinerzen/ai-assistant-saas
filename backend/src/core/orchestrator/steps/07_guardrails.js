@@ -55,6 +55,7 @@ function resolveMinInfoQuestion({
   const hasTicket = missingSet.has('ticket_number');
   const hasProduct = missingSet.has('product_name');
   const hasReference = missingSet.has('reference_id');
+  const hasDebtIdentity = missingSet.has('vkn_or_tc_or_phone');
   const lang = String(language || 'TR').toUpperCase() === 'EN' ? 'EN' : 'TR';
 
   if (lang === 'EN') {
@@ -75,6 +76,13 @@ function resolveMinInfoQuestion({
     if (hasProduct) {
       return {
         text: 'To continue, could you share the product name or model?',
+        messageKey: 'NEED_MIN_INFO_FOR_TOOL_DETERMINISTIC',
+        variantIndex: 0
+      };
+    }
+    if (hasDebtIdentity) {
+      return {
+        text: 'To continue, could you share your tax ID, Turkish ID number, or registered phone number?',
         messageKey: 'NEED_MIN_INFO_FOR_TOOL_DETERMINISTIC',
         variantIndex: 0
       };
@@ -124,6 +132,13 @@ function resolveMinInfoQuestion({
   if (hasProduct) {
     return {
       text: 'Devam edebilmem için ürün adı veya model bilgisini paylaşır mısınız?',
+      messageKey: 'NEED_MIN_INFO_FOR_TOOL_DETERMINISTIC',
+      variantIndex: 0
+    };
+  }
+  if (hasDebtIdentity) {
+    return {
+      text: 'Devam edebilmem için VKN, TC Kimlik numarası veya kayıtlı telefon numaranızı paylaşır mısınız?',
       messageKey: 'NEED_MIN_INFO_FOR_TOOL_DETERMINISTIC',
       variantIndex: 0
     };

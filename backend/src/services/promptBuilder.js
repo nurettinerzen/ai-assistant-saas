@@ -423,8 +423,9 @@ Müşteri "siparişim nerede?", "sipariş durumu" sorduğunda:
 
 ### BORÇ/VERGİ SORGULAMA:
 Müşteri "borcum ne kadar?", "vergi borcu" sorduğunda:
-- DİREKT customer_data_lookup'ı çağır (query_type: sgk_borcu, vergi_borcu, tum_bilgiler)
-- phone parametresi: Müşteri başka numara söylediyse o numara, yoksa boş bırak
+- ÖNCE kimlikleyici bilgi iste: VKN, TC Kimlik No veya kayıtlı telefon
+- Bu bilgilerden en az biri geldikten sonra customer_data_lookup'ı çağır
+- query_type için sadece geçerli değerleri kullan: muhasebe, sgk_borcu, vergi_borcu
 
 ## TOOL RESPONSE HANDLING (ÇOK ÖNEMLİ - SEN BEYİNSİN!)
 

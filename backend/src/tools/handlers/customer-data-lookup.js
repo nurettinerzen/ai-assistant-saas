@@ -183,6 +183,40 @@ function buildOrderAmbiguityResponse(language = 'TR') {
   };
 }
 
+const ACCOUNTING_QUERY_TYPES = new Set([
+  'muhasebe',
+  'sgk_borcu',
+  'vergi_borcu',
+  'borc',
+  'debt',
+  'odeme',
+  'payment',
+  'fatura',
+  'invoice'
+]);
+
+function isAccountingQueryType(queryType) {
+  return ACCOUNTING_QUERY_TYPES.has(String(queryType || '').toLowerCase());
+}
+
+function buildAccountingMissingIdentityResponse(language = 'TR') {
+  const isEnglish = String(language || '').toUpperCase() === 'EN';
+  const message = isEnglish
+    ? 'To check your debt details, could you share your tax ID, Turkish ID number, or registered phone number?'
+    : 'Borç detayınızı kontrol edebilmem için VKN, TC Kimlik numarası veya kayıtlı telefon numaranızı paylaşır mısınız?';
+
+  const askFor = ['vkn_or_tc_or_phone'];
+
+  return {
+    outcome: ToolOutcome.NEED_MORE_INFO,
+    success: true,
+    data: { askFor },
+    askFor,
+    field: 'vkn_or_tc_or_phone',
+    message
+  };
+}
+
 /**
  * Execute customer data lookup
  */
@@ -204,6 +238,8 @@ export async function execute(args, business, context = {}) {
 
     const normalizedQueryType = String(query_type || '').toLowerCase();
     const isOrderQuery = normalizedQueryType === 'siparis' || normalizedQueryType === 'order';
+    const isAccountingQuery = isAccountingQueryType(normalizedQueryType);
+    const hasLookupIdentifier = Boolean(order_number || phone || vkn || tc);
     const orderLookup = order_number ? buildOrderLookupCandidates(order_number) : null;
 
     // Minimal validation only: reject empty/too-short values.
@@ -318,6 +354,31 @@ export async function execute(args, business, context = {}) {
           }
         ]
       };
+    }
+
+    // If verification is pending but the user did not provide verification input
+    // and also did not provide a new lookup identifier, keep requesting verification.
+    if (isVerificationPending && state.verification?.anchor && !effectiveVerificationInput && !hasLookupIdentifier) {
+      const verificationReminder = checkVerification(state.verification.anchor, null, query_type, language);
+      return {
+        ...verificationRequired(verificationReminder.message, {
+          askFor: verificationReminder.askFor,
+          anchor: verificationReminder.anchor
+        }),
+        stateEvents: [
+          {
+            type: OutcomeEventType.VERIFICATION_REQUIRED,
+            askFor: verificationReminder.askFor,
+            anchor: verificationReminder.anchor
+          }
+        ]
+      };
+    }
+
+    // Debt/accounting lookups must request an identifier first.
+    // Returning NEED_MORE_INFO avoids false NOT_FOUND -> TOOL_NOT_FOUND blocks.
+    if (isAccountingQuery && !hasLookupIdentifier) {
+      return buildAccountingMissingIdentityResponse(language);
     }
 
     // ============================================================================

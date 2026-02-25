@@ -278,8 +278,21 @@ export function getFullResult(record, queryType, language = 'TR') {
   // When classification fallback sends query_type='genel' but the record came
   // from CrmOrder table, we must still return order data (status, tracking, etc.)
   // Otherwise LLM sees only customerName/phone and can't answer order queries.
+  const normalizedQueryType = String(queryType || '').toLowerCase();
   const isOrderRecord = !!(record.orderNumber || (record.status && !record.ticketNumber));
-  if (queryType === 'siparis' || queryType === 'order' || isOrderRecord) {
+  const isDebtQuery = [
+    'borc',
+    'debt',
+    'muhasebe',
+    'sgk_borcu',
+    'vergi_borcu',
+    'odeme',
+    'payment',
+    'fatura',
+    'invoice'
+  ].includes(normalizedQueryType);
+
+  if (normalizedQueryType === 'siparis' || normalizedQueryType === 'order' || isOrderRecord) {
     const orderNo = customFields['Sipariş No'] || record.orderNumber;
     const status = customFields['Durum'] || record.status;
     const tracking = customFields['Kargo Takip No'] || record.trackingNumber;
@@ -304,9 +317,11 @@ export function getFullResult(record, queryType, language = 'TR') {
       ? `${orderNo} numaralı siparişiniz "${status}" durumunda.${tracking ? ` Kargo takip no: ${tracking}` : ''}${carrier ? ` (${carrier})` : ''}${delivery ? ` Tahmini teslimat: ${formatDate(delivery, language)}` : ''}`
       : `Your order ${orderNo} is "${status}".${tracking ? ` Tracking: ${tracking}` : ''}${carrier ? ` (${carrier})` : ''}`;
 
-  } else if (queryType === 'borc' || queryType === 'debt') {
+  } else if (isDebtQuery) {
     const sgk = customFields['SGK Borcu'] || customFields.sgkDebt;
     const tax = customFields['Vergi Borcu'] || customFields.taxDebt;
+    const sgkOnly = normalizedQueryType === 'sgk_borcu';
+    const taxOnly = normalizedQueryType === 'vergi_borcu';
 
     // Add debt fields to data
     result.data.debt = {
@@ -314,11 +329,27 @@ export function getFullResult(record, queryType, language = 'TR') {
       tax: tax || null
     };
 
-    result.message = language === 'TR'
-      ? `Borç bilgileriniz:${sgk ? ` SGK: ${sgk} TL` : ''}${tax ? `, Vergi: ${tax} TL` : ''}`
-      : `Your debt information:${sgk ? ` SSI: ${sgk} TL` : ''}${tax ? `, Tax: ${tax} TL` : ''}`;
+    if (sgkOnly) {
+      result.message = language === 'TR'
+        ? (sgk ? `SGK borcunuz: ${sgk} TL` : 'Kayıtlarda SGK borcu görünmüyor.')
+        : (sgk ? `Your SSI debt is ${sgk} TL.` : 'No SSI debt is visible in records.');
+    } else if (taxOnly) {
+      result.message = language === 'TR'
+        ? (tax ? `Vergi borcunuz: ${tax} TL` : 'Kayıtlarda vergi borcu görünmüyor.')
+        : (tax ? `Your tax debt is ${tax} TL.` : 'No tax debt is visible in records.');
+    } else {
+      result.message = language === 'TR'
+        ? `Borç bilgileriniz:${sgk ? ` SGK: ${sgk} TL` : ''}${tax ? `, Vergi: ${tax} TL` : ''}${!sgk && !tax ? ' Kayıtlarda açık borç görünmüyor.' : ''}`
+        : `Your debt information:${sgk ? ` SSI: ${sgk} TL` : ''}${tax ? `, Tax: ${tax} TL` : ''}${!sgk && !tax ? ' No outstanding debt is visible in records.' : ''}`;
+    }
 
-  } else if (queryType === 'ariza' || queryType === 'ticket') {
+    if (sgkOnly) {
+      result.data.debt.tax = null;
+    }
+    if (taxOnly) {
+      result.data.debt.sgk = null;
+    }
+  } else if (normalizedQueryType === 'ariza' || normalizedQueryType === 'ticket') {
     const ticketNo = customFields['Servis No'] || record.ticketNumber;
     const status = customFields['Durum'] || record.status;
     const issue = customFields['Arıza'] || record.issue;
