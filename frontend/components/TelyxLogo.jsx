@@ -38,7 +38,7 @@ export function TelyxIcon({ className = 'w-8 h-8', darkMode = false }) {
 }
 
 // Compact version for sidebar - full logo scaled appropriately
-export function TelyxLogoCompact({ darkMode = false, width = 180, height = 55 }) {
+export function TelyxLogoCompact({ darkMode = false, width = 140, height = 42 }) {
   return (
     <div className="relative">
       <Image

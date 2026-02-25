@@ -59,11 +59,11 @@ export default function LanguageSwitcher() {
           <DropdownMenuItem
             key={lang.code}
             onClick={() => handleChangeLocale(lang.code)}
-            className={`cursor-pointer ${locale === lang.code ? 'bg-primary-50' : ''}`}
+            className={`cursor-pointer ${locale === lang.code ? 'bg-accent' : ''}`}
           >
             <span className="text-xl mr-2">{lang.flag}</span>
             <span className="flex-1">{lang.nativeName}</span>
-            {locale === lang.code && <span className="text-primary-600">✓</span>}
+            {locale === lang.code && <span className="text-primary">✓</span>}
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>

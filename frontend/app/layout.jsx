@@ -10,8 +10,8 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 });
 
 export const metadata = {
-  title: 'Telyx AI - AI Phone & Chat Assistant for Business',
-  description: 'Automate your business communications with AI-powered phone calls, chat, email, and WhatsApp integration.',
+  title: 'Telyx AI',
+  description: 'Yapay zeka destekli telefon, chat, e-posta ve WhatsApp ile işletme iletişiminizi otomatikleştirin.',
   icons: {
     icon: [
       { url: '/telyx-icon.png', media: '(prefers-color-scheme: light)' },
