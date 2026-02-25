@@ -99,7 +99,8 @@ router.get('/signed/:token', mediaAccessLimiter, async (req, res) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Content-Type', media.mimeType || 'application/octet-stream');
     res.setHeader('Content-Disposition', `inline; filename="${media.fileName}"`);
-    res.setHeader('Cache-Control', 'private, max-age=60'); // Cache 1 minute
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Pragma', 'no-cache');
 
     // Serve file
     res.sendFile(requestedPath);

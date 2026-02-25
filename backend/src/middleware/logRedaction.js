@@ -65,6 +65,32 @@ const PII_PATTERNS = {
 };
 
 /**
+ * Sensitive query params for URL log redaction
+ */
+const SENSITIVE_QUERY_KEYS = [
+  'code',
+  'state',
+  'token',
+  'access_token',
+  'refresh_token',
+  'id_token',
+  'session',
+  'sessionid',
+  'session_id',
+  'password',
+  'secret',
+  'signature',
+  'hmac',
+  'email',
+  'phone',
+  'authuser',
+  'prompt',
+  'scope',
+  'tckn',
+  'vkn'
+];
+
+/**
  * Redact sensitive value
  * @param {string} value - Value to redact
  * @param {boolean} partial - Show partial value (e.g., last 4 digits)
@@ -190,6 +216,80 @@ export function redactPII(str) {
 }
 
 /**
+ * Check if a query parameter key should be redacted
+ * @param {string} key
+ * @returns {boolean}
+ */
+function isSensitiveQueryKey(key) {
+  const normalized = String(key || '').toLowerCase();
+  return SENSITIVE_QUERY_KEYS.some((pattern) => normalized.includes(pattern));
+}
+
+/**
+ * Redact sensitive query params from a URL string
+ * Default behavior strips all query params from logs.
+ * @param {string} url
+ * @param {object} options
+ * @param {string[]} options.allowlist - optional query keys to preserve
+ * @returns {string}
+ */
+export function sanitizeUrlForLogs(url, options = {}) {
+  if (!url || typeof url !== 'string') {
+    return url;
+  }
+
+  const [path, rawQuery] = url.split('?');
+  if (!rawQuery) {
+    return path;
+  }
+
+  const allowlist = Array.isArray(options.allowlist)
+    ? options.allowlist.map((item) => String(item).toLowerCase())
+    : [];
+
+  // Safer default: remove query completely unless allowlist is explicitly set.
+  if (allowlist.length === 0) {
+    return path;
+  }
+
+  const source = new URLSearchParams(rawQuery);
+  const sanitized = new URLSearchParams();
+  for (const [key, value] of source.entries()) {
+    const normalized = key.toLowerCase();
+    if (!allowlist.includes(normalized)) {
+      continue;
+    }
+
+    if (isSensitiveQueryKey(normalized)) {
+      sanitized.append(key, '[REDACTED]');
+      continue;
+    }
+
+    sanitized.append(key, value);
+  }
+
+  const query = sanitized.toString();
+  return query ? `${path}?${query}` : path;
+}
+
+/**
+ * Safe request path for access logs
+ * @param {object} req
+ * @returns {string}
+ */
+export function getSafeRequestPath(req) {
+  if (!req) {
+    return '/';
+  }
+
+  if (req.path) {
+    return req.path;
+  }
+
+  return sanitizeUrlForLogs(req.originalUrl || req.url || '/');
+}
+
+/**
  * Safe console.log wrapper with automatic redaction
  * @param {string} message - Log message
  * @param {any} data - Data to log (will be redacted)
@@ -215,10 +315,6 @@ export function safeLog(message, data = null) {
  * - Request body secrets
  */
 export function logRedactionMiddleware(req, res, next) {
-  // Store original values
-  const originalHeaders = req.headers;
-  const originalBody = req.body;
-
   // Override req.log if using a logger (winston, pino, etc.)
   if (req.log) {
     const originalLog = req.log;

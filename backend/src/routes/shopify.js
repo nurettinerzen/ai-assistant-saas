@@ -119,7 +119,12 @@ router.get('/auth', authenticateToken, async (req, res) => {
  * This is called by Shopify after user authorizes
  */
 router.get('/callback', async (req, res) => {
-    console.log('🔔 Shopify callback received:', req.query);
+  console.log('🔔 Shopify callback received', {
+    shop: typeof req.query.shop === 'string' ? req.query.shop : null,
+    hasCode: Boolean(req.query.code),
+    hasState: Boolean(req.query.state),
+    hasHmac: Boolean(req.query.hmac)
+  });
   try {
     const { code, shop, state, hmac } = req.query;
 

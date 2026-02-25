@@ -100,49 +100,109 @@ import { initChatStatusCleanup } from './jobs/chatStatusCleanup.js';
 // Route protection enforcement
 import { assertAllRoutesProtected } from './middleware/routeEnforcement.js';
 // Log redaction for sensitive data
-import { logRedactionMiddleware } from './middleware/logRedaction.js';
+import { getSafeRequestPath, logRedactionMiddleware } from './middleware/logRedaction.js';
 import BUILD_INFO from './config/buildInfo.js';
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 const LEGACY_ROUTES_ENABLED = process.env.ENABLE_LEGACY_ROUTES === 'true';
+const FRAME_ANCESTORS = (process.env.CSP_FRAME_ANCESTORS || "'none'").trim();
+
+function normalizeOrigin(value) {
+  if (!value || typeof value !== 'string') {
+    return null;
+  }
+  return value.trim().replace(/\/+$/, '');
+}
+
+function parseOrigins(value) {
+  if (!value) {
+    return [];
+  }
+
+  return value
+    .split(',')
+    .map((item) => normalizeOrigin(item))
+    .filter(Boolean);
+}
+
+const allowedOrigins = new Set([
+  ...parseOrigins(process.env.ALLOWED_ORIGINS),
+  normalizeOrigin(process.env.FRONTEND_URL),
+  normalizeOrigin(process.env.APP_URL)
+].filter(Boolean));
+const publicCorsAllowedOrigins = new Set([
+  ...allowedOrigins,
+  ...parseOrigins(process.env.PUBLIC_CORS_ORIGINS),
+  ...parseOrigins(process.env.WIDGET_ALLOWED_ORIGINS)
+]);
+const publicCorsPathPrefixes = ['/api/chat', '/api/chat-v2'];
+
+const corsMethods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'];
+const corsAllowedHeaders = [
+  'Content-Type',
+  'Authorization',
+  'X-Requested-With',
+  'X-Webhook-Secret',
+  'Stripe-Signature',
+  'ElevenLabs-Signature'
+];
 
 if (process.env.NODE_ENV !== 'test') {
   console.log(`🔖 [Backend Build] version=${BUILD_INFO.version} commit=${BUILD_INFO.commitHash} buildTime=${BUILD_INFO.buildTime}`);
 }
 
-// CORS - Dynamic origins from environment variable
-const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',').map(origin => origin.trim()) || [];
-
-if (allowedOrigins.length === 0) {
+if (allowedOrigins.size === 0) {
   console.warn('WARNING: ALLOWED_ORIGINS is not defined. CORS will block all cross-origin requests.');
 }
 
-// Routes that should allow ANY origin (for embeddable widgets and auth)
-const publicCorsRoutes = ['/api/chat', '/api/chat-v2', '/api/widget', '/api/auth'];
+app.disable('x-powered-by');
 
-app.use(cors({
-  origin: function (origin, callback) {
-    // Allow requests with no origin (mobile apps, curl, etc.)
-    if (!origin) return callback(null, true);
+const corsOptionsDelegate = (req, callback) => {
+  const origin = normalizeOrigin(req.header('Origin'));
+  const requestPath = req.path || '';
+  const isPublicCorsPath = publicCorsPathPrefixes.some(
+    (prefix) => requestPath === prefix || requestPath.startsWith(`${prefix}/`)
+  );
+  const originPool = isPublicCorsPath ? publicCorsAllowedOrigins : allowedOrigins;
+  const isAllowedOrigin = Boolean(origin && originPool.has(origin));
 
-    if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      // Will be checked per-route below
-      callback(null, false);
-    }
-  },
-  credentials: true
-}));
+  callback(null, {
+    origin: isAllowedOrigin,
+    credentials: !isPublicCorsPath,
+    methods: corsMethods,
+    allowedHeaders: corsAllowedHeaders,
+    maxAge: 600,
+    optionsSuccessStatus: 204
+  });
+};
 
-// Special CORS for public widget routes - allow ANY origin
-app.use(publicCorsRoutes, cors({
-  origin: true, // Allow all origins for chat widget
-  credentials: true
-}));
+app.use((req, res, next) => {
+  res.vary('Origin');
+  next();
+});
+
+app.use(cors(corsOptionsDelegate));
+
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Content-Security-Policy', `frame-ancestors ${FRAME_ANCESTORS};`);
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+  res.setHeader('Cross-Origin-Resource-Policy', 'same-site');
+  res.removeHeader('Server');
+  next();
+});
+
+app.use((req, res, next) => {
+  const path = req.path || '';
+  if (path === '/health' || path === '/version' || path === '/api' || path.startsWith('/api/')) {
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Pragma', 'no-cache');
+  }
+  next();
+});
 
 // ⚠️ WEBHOOK ROUTES - RAW BODY (BEFORE express.json())
 app.use('/api/subscription/webhook', express.raw({ type: 'application/json' }));
@@ -180,7 +240,7 @@ app.use((req, res, next) => {
     const responseBytes = Number.isFinite(contentLength) && contentLength >= 0 ? contentLength : 0;
 
     console.log(
-      `[${req.method}] ${req.originalUrl || req.path} ` +
+      `[${req.method}] ${getSafeRequestPath(req)} ` +
       `statusCode=${statusCode} ` +
       `durationMs=${durationMs} ` +
       `responseBytes=${responseBytes} ` +
