@@ -142,8 +142,10 @@ const THREAT_PATTERNS = {
  * PII patterns (user sharing their own sensitive data)
  */
 const PII_PATTERNS = {
-  // Turkish TC Kimlik (11 digits)
-  tc_kimlik: /\b[1-9]\d{10}\b/g,
+  // TC Kimlik / VKN detection REMOVED.
+  // 11-digit numbers are ambiguous: could be TC, VKN, phone, or any numeric input
+  // the tool actively asks for. Showing "don't share your TC here" when the bot
+  // itself asked for it is contradictory. Flow-level handling is the correct approach.
 
   // Credit card (16 digits)
   credit_card: /\b(?:\d{4}[-\s]?){3}\d{4}\b/g,
@@ -593,18 +595,8 @@ export function detectUserRisks(message, language = 'TR', state = {}) {
   }
 
   // === 4. PII INPUT DETECTION (warn, don't lock immediately) ===
-  const tcMatches = message.match(PII_PATTERNS.tc_kimlik);
-  if (tcMatches && tcMatches.length > 0) {
-    warnings.push({
-      type: 'PII_TC_KIMLIK',
-      severity: 'HIGH',
-      count: tcMatches.length,
-      action: 'WARN',
-      userMessage: language === 'TR'
-        ? '⚠️ Lütfen TC Kimlik numaranızı burada paylaşmayın.'
-        : '⚠️ Please do not share your ID number here.'
-    });
-  }
+  // TC Kimlik / VKN warning REMOVED — bot actively asks for these numbers,
+  // showing "don't share" is contradictory. Flow-level handling instead.
 
   const cardMatches = message.match(PII_PATTERNS.credit_card);
   if (cardMatches && cardMatches.length > 0) {
