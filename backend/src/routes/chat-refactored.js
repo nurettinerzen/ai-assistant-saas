@@ -10,6 +10,7 @@
  */
 
 import express from 'express';
+import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 // getDateTimeContext, buildAssistantPrompt: handled by orchestrator Step 2 (02_prepareContext.js)
 import { getActiveTools as getPromptBuilderTools } from '../services/promptBuilder.js';
@@ -70,6 +71,30 @@ import {
 
 const router = express.Router();
 const prisma = new PrismaClient();
+
+/**
+ * Dashboard preview detection: validate JWT token and check business ownership.
+ * Used to bypass chatWidgetEnabled/trial checks for authenticated dashboard users
+ * previewing their own widget.
+ */
+async function _isDashboardPreview(req, businessId) {
+  try {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    if (!token) return false;
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      select: { businessId: true }
+    });
+
+    // Only bypass for the user's OWN business
+    return user?.businessId === businessId;
+  } catch {
+    return false;
+  }
+}
 
 const PLACEHOLDER_REGEX = /\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}/g;
 const PLACEHOLDER_DROP_KEYS = new Set([
@@ -912,7 +937,12 @@ router.post('/widget', async (req, res) => {
       }
 
       if (!business.chatWidgetEnabled) {
-        return res.status(403).json({ error: 'Chat widget is disabled' });
+        // Dashboard preview bypass: if request has valid auth token for same business, allow
+        const isDashboardPreview = await _isDashboardPreview(req, business.id);
+        if (!isDashboardPreview) {
+          return res.status(403).json({ error: 'Chat widget is disabled' });
+        }
+        console.log('🔓 [Widget] Dashboard preview bypass — chatWidgetEnabled check skipped');
       }
 
       const resolved = await resolveChatAssistantForBusiness({
@@ -993,13 +1023,17 @@ router.post('/widget', async (req, res) => {
     console.log(`⏱️ [Widget] DB subscription: ${Date.now() - _t}ms`); _t = Date.now();
 
     if (subscription && isFreePlanExpired(subscription)) {
-      console.log('🚫 Trial expired');
-      return res.status(403).json({
-        error: language === 'TR'
-          ? 'Deneme süreniz doldu. Lütfen bir plan seçin.'
-          : 'Your trial has expired. Please choose a plan.',
-        expired: true
-      });
+      const isDashboardPreview = await _isDashboardPreview(req, business.id);
+      if (!isDashboardPreview) {
+        console.log('🚫 Trial expired');
+        return res.status(403).json({
+          error: language === 'TR'
+            ? 'Deneme süreniz doldu. Lütfen bir plan seçin.'
+            : 'Your trial has expired. Please choose a plan.',
+          expired: true
+        });
+      }
+      console.log('🔓 [Widget] Dashboard preview bypass — trial expiry check skipped');
     }
 
     // NEW: Get or create universal session ID

@@ -156,9 +156,18 @@ useEffect(() => {
         requestBody.assistantId = assistantId;
       }
 
+      // In preview mode, send auth token so backend can bypass widget-enabled/trial checks
+      const headers = { 'Content-Type': 'application/json' };
+      if (preview) {
+        try {
+          const token = localStorage.getItem('token');
+          if (token) headers['Authorization'] = `Bearer ${token}`;
+        } catch { /* ignore — embedded widget won't have localStorage token */ }
+      }
+
       const response = await fetch(`${API_URL}/api/chat-v2/widget`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(requestBody)
       });
 
