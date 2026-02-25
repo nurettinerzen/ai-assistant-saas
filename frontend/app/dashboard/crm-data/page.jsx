@@ -35,28 +35,62 @@ import {
   TabsTrigger,
 } from '@/components/ui/tabs';
 
+const ORDER_STATUS_LABELS = {
+  pending: 'Beklemede',
+  confirmed: 'Onaylandı',
+  processing: 'Hazırlanıyor',
+  shipped: 'Kargoya Verildi',
+  in_transit: 'Yolda',
+  out_for_delivery: 'Dağıtımda',
+  delivered: 'Teslim Edildi',
+  cancelled: 'İptal Edildi',
+  returned: 'İade Edildi',
+  refunded: 'İade Edildi (Ödeme)',
+};
+
+const ORDER_STATUS_COLORS = {
+  pending: 'text-yellow-600 dark:text-yellow-400',
+  confirmed: 'text-blue-600 dark:text-blue-400',
+  processing: 'text-purple-600 dark:text-purple-400',
+  shipped: 'text-indigo-600 dark:text-indigo-400',
+  in_transit: 'text-blue-600 dark:text-blue-400',
+  out_for_delivery: 'text-teal-600 dark:text-teal-400',
+  delivered: 'text-green-600 dark:text-green-400',
+  cancelled: 'text-red-600 dark:text-red-400',
+  returned: 'text-orange-600 dark:text-orange-400',
+  refunded: 'text-gray-600 dark:text-gray-400',
+};
+
 const TICKET_STATUS_LABELS = {
+  open: 'Açık',
   pending: 'Beklemede',
   received: 'Teslim Alındı',
   in_review: 'İnceleniyor',
   in_progress: 'Tamir Ediliyor',
   waiting_parts: 'Parça Bekleniyor',
+  escalated: 'Yönlendirildi',
   completed: 'Tamir Edildi',
+  resolved: 'Çözüldü',
   ready: 'Teslime Hazır',
   delivered: 'Teslim Edildi',
   cancelled: 'İptal Edildi',
+  closed: 'Kapatıldı',
 };
 
 const TICKET_STATUS_COLORS = {
+  open: 'text-yellow-600 dark:text-yellow-400',
   pending: 'text-yellow-600 dark:text-yellow-400',
   received: 'text-blue-600 dark:text-blue-400',
   in_review: 'text-purple-600 dark:text-purple-400',
   in_progress: 'text-blue-600 dark:text-blue-400',
   waiting_parts: 'text-orange-600 dark:text-orange-400',
+  escalated: 'text-red-600 dark:text-red-400',
   completed: 'text-green-600 dark:text-green-400',
+  resolved: 'text-green-600 dark:text-green-400',
   ready: 'text-teal-600 dark:text-teal-400',
   delivered: 'text-gray-600 dark:text-gray-400',
   cancelled: 'text-red-600 dark:text-red-400',
+  closed: 'text-gray-600 dark:text-gray-400',
 };
 
 export default function CRMDataPage() {
@@ -341,7 +375,9 @@ export default function CRMDataPage() {
                           </div>
                         </td>
                         <td className="p-3">
-                          <Badge variant="outline">{order.status}</Badge>
+                          <Badge variant="outline" className={ORDER_STATUS_COLORS[order.status] || 'text-gray-600 dark:text-gray-400'}>
+                            {ORDER_STATUS_LABELS[order.status] || order.status}
+                          </Badge>
                         </td>
                         <td className="p-3">
                           {order.trackingNumber ? (
