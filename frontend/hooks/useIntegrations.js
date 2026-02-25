@@ -121,10 +121,14 @@ export function useCrmWebhookStatus({ enabled = true } = {}) {
           // FREE/TRIAL locked plans can return 403 here; UI handles that gracefully.
           suppressExpected403: true,
         });
+        const webhookData = response.data?.webhook;
+        // Only show as "connected" if webhook has actually received data.
+        // isActive defaults to true on auto-create, so lastDataAt is the real signal.
+        const hasReceivedData = Boolean(webhookData?.lastDataAt);
         return {
           hasWebhook: true,
-          isActive: response.data?.webhook?.isActive ?? false,
-          lastDataAt: response.data?.webhook?.lastDataAt || null,
+          isActive: (webhookData?.isActive ?? false) && hasReceivedData,
+          lastDataAt: webhookData?.lastDataAt || null,
           stats: response.data?.stats || null,
           isLockedByAccess: false,
         };

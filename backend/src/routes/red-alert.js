@@ -290,16 +290,22 @@ router.get('/health', async (req, res) => {
       },
     });
 
-    // Simple health scoring
+    // Also count unresolved app errors (ErrorLog) — they affect health too
+    const unresolvedErrorCount = await prisma.errorLog.count({
+      where: { resolved: false },
+    });
+
+    // Health scoring: security events + unresolved app errors
     let healthScore = 100;
-    healthScore -= criticalCount * 10; // -10 per critical
-    healthScore -= highCount * 3;      // -3 per high
+    healthScore -= criticalCount * 10;       // -10 per critical security event
+    healthScore -= highCount * 3;            // -3 per high security event
+    healthScore -= unresolvedErrorCount * 2; // -2 per unresolved app error
     healthScore = Math.max(0, healthScore);
 
     let status = 'healthy';
     if (criticalCount > 0) status = 'critical';
-    else if (highCount > 5) status = 'warning';
-    else if (highCount > 0) status = 'caution';
+    else if (highCount > 5 || unresolvedErrorCount > 10) status = 'warning';
+    else if (highCount > 0 || unresolvedErrorCount > 0) status = 'caution';
 
     res.json({
       healthScore,
@@ -309,6 +315,7 @@ router.get('/health', async (req, res) => {
         high: highCount,
         total: totalCount,
       },
+      unresolvedErrors: unresolvedErrorCount,
     });
 
   } catch (error) {
@@ -351,7 +358,7 @@ router.get('/errors/summary', async (req, res) => {
         where: { createdAt: { gte: since } },
       }),
       prisma.errorLog.count({
-        where: { resolved: false },
+        where: { resolved: false, createdAt: { gte: since } },
       }),
     ]);
 
