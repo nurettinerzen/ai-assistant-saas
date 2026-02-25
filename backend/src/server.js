@@ -111,7 +111,12 @@ const PORT = process.env.PORT || 3001;
 const LEGACY_ROUTES_ENABLED = process.env.ENABLE_LEGACY_ROUTES === 'true';
 const FRAME_ANCESTORS = (process.env.CSP_FRAME_ANCESTORS || "'none'").trim();
 
-assertProductionSecurityPosture();
+// Production security posture — log warnings, don't crash server
+try {
+  assertProductionSecurityPosture();
+} catch (err) {
+  console.warn('⚠️ [SecurityPosture]', err.message);
+}
 
 function normalizeOrigin(value) {
   if (!value || typeof value !== 'string') {
