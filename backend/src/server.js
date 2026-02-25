@@ -107,6 +107,10 @@ import { authRateLimiter, apiRateLimiter } from './middleware/rateLimiter.js';
 import { assertProductionSecurityPosture } from './security/productionGuardrails.js';
 
 const app = express();
+// Render (and most PaaS) terminate TLS at the reverse proxy.
+// Without this, Express sees req.protocol as 'http' and __Host- cookies
+// with Secure attribute won't work correctly.
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3001;
 const LEGACY_ROUTES_ENABLED = process.env.ENABLE_LEGACY_ROUTES === 'true';
 const FRAME_ANCESTORS = (process.env.CSP_FRAME_ANCESTORS || "'none'").trim();

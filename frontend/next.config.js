@@ -7,7 +7,7 @@ const contentSecurityPolicy = [
   "object-src 'none'",
   `frame-ancestors ${frameAncestors}`,
   "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://www.gstatic.com https://static.iyzipay.com https://sandbox-static.iyzipay.com",
-  "style-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline' https://accounts.google.com",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data: https:",
   "connect-src 'self' https: wss:",
