@@ -627,9 +627,10 @@ export default function ChatWidgetPage() {
         </div>
       </div>
 
-      {/* Preview Widget */}
+      {/* Preview Widget — preview mode skips public status check */}
       {showPreview && (embedKey || chatAssistantId) && (
         <ChatWidget
+          preview
           embedKey={embedKey || undefined}
           assistantId={!embedKey ? chatAssistantId : undefined}
           position={position}

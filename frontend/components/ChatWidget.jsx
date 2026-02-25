@@ -20,7 +20,8 @@ export default function ChatWidget({
   position = 'bottom-right',
   primaryColor = '#00A2B3',
   showBranding = true,
-  buttonText
+  buttonText,
+  preview = false     // Dashboard preview mode — skip status check
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([]);
@@ -32,7 +33,13 @@ export default function ChatWidget({
   const { t } = useLanguage();
 
   // Check widget status on mount
+  // In preview mode (dashboard), skip the public status check — always show widget
   useEffect(() => {
+    if (preview) {
+      setIsWidgetEnabled(true);
+      return;
+    }
+
     const checkWidgetStatus = async () => {
       try {
         let statusUrl;
@@ -55,7 +62,7 @@ export default function ChatWidget({
     };
 
     checkWidgetStatus();
-  }, [embedKey, assistantId]);
+  }, [embedKey, assistantId, preview]);
 
   // Generate or restore session ID on first open
   // Session expires after 30 minutes of inactivity → new conversation starts
