@@ -12,17 +12,6 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 export const metadata = {
   title: 'Telyx AI',
   description: 'Yapay zeka destekli telefon, chat, e-posta ve WhatsApp ile işletme iletişiminizi otomatikleştirin.',
-  icons: {
-    icon: [
-      { url: '/telyx-icon.png', media: '(prefers-color-scheme: light)' },
-      { url: '/telyx-icon-white.png', media: '(prefers-color-scheme: dark)' },
-    ],
-    shortcut: [
-      { url: '/telyx-icon.png', media: '(prefers-color-scheme: light)' },
-      { url: '/telyx-icon-white.png', media: '(prefers-color-scheme: dark)' },
-    ],
-    apple: '/telyx-icon.png',
-  },
 };
 
 export default function RootLayout({ children }) {
