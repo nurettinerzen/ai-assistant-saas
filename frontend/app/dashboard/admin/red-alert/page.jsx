@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Shield, AlertTriangle, AlertCircle, Activity,
-  Clock, Eye, ChevronLeft, ChevronRight,
+  Clock, Server, Eye, ChevronLeft, ChevronRight,
   Bug, Wrench, MessageSquare, Globe, CheckCircle, XCircle, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
