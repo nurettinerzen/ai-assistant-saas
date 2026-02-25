@@ -1439,7 +1439,14 @@ export async function handleIncomingMessage({
     const toolOutputs = toolLoopResult.toolResults || [];
 
     // Intent bilgisini al (tool enforcement için)
-    const detectedIntent = routingResult.routing?.routing?.intent || null;
+    // Source of truth chain: routing suggestedFlow → classifier suggestedFlow → state.activeFlow
+    // Normalize: 'ORDER_STATUS' → 'order_status' (gate intents are lowercase)
+    const rawFlow =
+      routingResult.routing?.routing?.suggestedFlow
+      || classification?.suggestedFlow
+      || state.activeFlow
+      || null;
+    const turnIntent = rawFlow ? String(rawFlow).toLowerCase() : null;
 
     // ============================================
     // COLLECTED DATA: Zaten bilinen veriler
@@ -1461,6 +1468,16 @@ export async function handleIncomingMessage({
       hasName: !!collectedData.name
     });
 
+    // ── Intent threading debug (P0-DEBUG) ──
+    console.log('🧭 [IntentThread] intent(before guardrails):', {
+      turnIntent,
+      rawFlow,
+      activeFlow: state.activeFlow || null,
+      classifierSuggestedFlow: classification?.suggestedFlow || null,
+      routingSuggestedFlow: routingResult.routing?.routing?.suggestedFlow || null,
+      toolsCalled,
+    });
+
     const guardrailResult = await applyGuardrails({
       responseText,
       hadToolSuccess,
@@ -1474,7 +1491,7 @@ export async function handleIncomingMessage({
       userMessage,
       verificationState, // Security Gateway için
       verifiedIdentity, // Identity mismatch kontrolü için
-      intent: detectedIntent, // Tool enforcement için (HP-07 fix)
+      intent: turnIntent, // Tool enforcement için — normalized from suggestedFlow chain
       collectedData, // Leak filter için - zaten bilinen veriler
       channelMode,
       helpLinks,
@@ -1485,6 +1502,14 @@ export async function handleIncomingMessage({
     });
 
     let { finalResponse } = guardrailResult;
+
+    // ── Intent threading debug (P0-DEBUG) — post-guardrails ──
+    console.log('🧭 [IntentThread] guardrailResult:', {
+      action: guardrailResult.action || 'PASS',
+      blockReason: guardrailResult.blockReason || null,
+      missingFields: guardrailResult.missingFields || [],
+      needsCorrection: !!guardrailResult.needsCorrection,
+    });
 
     // ── needsCorrection: re-prompt LLM instead of hard block ──
     if (guardrailResult.needsCorrection && guardrailResult.correctionType) {
@@ -1699,11 +1724,18 @@ export async function handleIncomingMessage({
     console.log(`\n✅ [Orchestrator] Turn completed successfully`);
     console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
 
-    const turnOutcome = determineTurnOutcome({
+    let turnOutcome = determineTurnOutcome({
       toolLoopResult,
       guardrailResult,
       hadToolFailure
     });
+
+    // ── Contract enforcement: clarification ⇒ NEED_MORE_INFO (fail-safe) ──
+    if (assistantMessageType === 'clarification' && turnOutcome === ToolOutcome.OK) {
+      console.warn('🔒 [ContractEnforce] messageType=clarification but outcome=OK → overriding to NEED_MORE_INFO');
+      turnOutcome = ToolOutcome.NEED_MORE_INFO;
+    }
+
     const normalizedToolOutcomes = Array.isArray(toolLoopResult?.toolResults)
       ? toolLoopResult.toolResults
         .map(result => normalizeOutcome(result?.outcome))
@@ -1714,7 +1746,7 @@ export async function handleIncomingMessage({
       : null;
 
     return {
-      reply: finalizeReply(finalResponse, detectedIntent),
+      reply: finalizeReply(finalResponse, turnIntent),
       outcome: turnOutcome,
       metadata: {
         outcome: turnOutcome,
