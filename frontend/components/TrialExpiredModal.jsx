@@ -151,8 +151,8 @@ export default function TrialExpiredModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden">
+    <div className="fixed inset-0 bg-black/60 z-50 p-4 overflow-y-auto">
+      <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl max-w-lg w-full max-h-[calc(100dvh-2rem)] overflow-y-auto my-4 mx-auto">
         {/* Header with gradient */}
         <div className="bg-gradient-to-r from-amber-500 to-orange-500 p-6 text-white relative">
           <button
@@ -174,7 +174,7 @@ export default function TrialExpiredModal({
         {/* Trial Usage Summary */}
         <div className="p-6 border-b border-neutral-200 dark:border-neutral-700">
           <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-3">{txt.trialUsed}</p>
-          <div className="flex gap-4">
+          <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex items-center gap-2 bg-green-50 dark:bg-green-900/20 rounded-lg px-3 py-2">
               <Phone className="h-4 w-4 text-green-600" />
               <span className="text-sm font-medium text-green-700 dark:text-green-400">
@@ -297,14 +297,14 @@ export default function TrialExpiredModal({
         </div>
 
         {/* Footer */}
-        <div className="px-6 pb-6 flex items-center justify-between">
+        <div className="px-6 pb-6 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3">
           <button
             onClick={handleViewAllPlans}
-            className="text-sm text-primary-600 hover:text-primary-700 hover:underline"
+            className="text-sm text-primary-600 hover:text-primary-700 hover:underline text-left"
           >
             {txt.viewAllPlans}
           </button>
-          <Button variant="ghost" onClick={onClose} disabled={loading !== null}>
+          <Button variant="ghost" onClick={onClose} disabled={loading !== null} className="self-end sm:self-auto">
             {txt.later}
           </Button>
         </div>

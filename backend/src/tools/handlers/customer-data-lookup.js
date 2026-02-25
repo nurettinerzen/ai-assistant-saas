@@ -17,6 +17,7 @@ import {
   normalizeOrderLookupInput,
   normalizeOrderNumber
 } from '../../utils/order-number.js';
+import { isValidTckn, isValidVkn } from '../../utils/pii-validators/tr.js';
 
 function looksLikePhoneIdentifier(value) {
   if (!value) return false;
@@ -478,6 +479,26 @@ export async function execute(args, business, context = {}) {
 
     // Strategy 2: VKN/TC
     else if (vkn || tc) {
+      // Validate TC/VKN checksum before DB query — reject invalid early
+      if (tc && !isValidTckn(tc)) {
+        console.log('❌ [Lookup] Invalid TCKN checksum:', { tc: '***' });
+        return validationError(
+          language === 'TR'
+            ? 'Geçersiz TC Kimlik numarası. Lütfen 11 haneli TC Kimlik numaranızı kontrol edip tekrar paylaşır mısınız?'
+            : 'Invalid Turkish ID number. Please check your 11-digit ID number and try again.',
+          'tc'
+        );
+      }
+      if (vkn && !isValidVkn(vkn)) {
+        console.log('❌ [Lookup] Invalid VKN checksum:', { vkn: '***' });
+        return validationError(
+          language === 'TR'
+            ? 'Geçersiz VKN (Vergi Kimlik Numarası). Lütfen 10 haneli VKN\'nizi kontrol edip tekrar paylaşır mısınız?'
+            : 'Invalid tax ID number. Please check your 10-digit tax ID and try again.',
+          'vkn'
+        );
+      }
+
       console.log('🔍 [Lookup] Searching by VKN/TC');
 
       const whereClause = { businessId: business.id };

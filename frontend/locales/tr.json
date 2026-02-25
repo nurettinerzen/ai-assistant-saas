@@ -2735,6 +2735,33 @@
       "assistantInstructions": "Asistan Talimatları",
       "assistantInstructionsDesc": "Asistanınızın nasıl davranması gerektiğine dair talimatlar"
     },
+    "location": {
+      "countryRegion": "Ülke / Bölge",
+      "timezone": "Saat Dilimi",
+      "autoDetected": "Otomatik algılandı",
+      "countries": {
+        "TR": "Türkiye",
+        "US": "Amerika Birleşik Devletleri"
+      },
+      "timezones": {
+        "europeIstanbul": "(UTC+3) İstanbul, Türkiye",
+        "europeLondon": "(UTC+0) Londra, Birleşik Krallık",
+        "europeParis": "(UTC+1) Paris, Fransa",
+        "europeBerlin": "(UTC+1) Berlin, Almanya",
+        "americaNewYork": "(UTC-5) New York, Doğu Saati",
+        "americaLosAngeles": "(UTC-8) Los Angeles, Pasifik Saati",
+        "americaChicago": "(UTC-6) Chicago, Merkezi Saat",
+        "americaDenver": "(UTC-7) Denver, Dağ Saati",
+        "americaToronto": "(UTC-5) Toronto, Kanada",
+        "americaSaoPaulo": "(UTC-3) Sao Paulo, Brezilya",
+        "europeMoscow": "(UTC+3) Moskova, Rusya",
+        "asiaDubai": "(UTC+4) Dubai, BAE",
+        "asiaKolkata": "(UTC+5:30) Mumbai, Hindistan",
+        "asiaSingapore": "(UTC+8) Singapur",
+        "asiaTokyo": "(UTC+9) Tokyo, Japonya",
+        "australiaSydney": "(UTC+11) Sidney, Avustralya"
+      }
+    },
     "industries": {
       "restaurant": "Restoran",
       "salonSpa": "Kuaför & Spa",
@@ -2752,7 +2779,12 @@
     "voice": {
       "male": "Erkek",
       "female": "Kadın",
-      "previewComingSoon": "Ses önizleme yakında"
+      "previewComingSoon": "Ses önizleme yakında",
+      "outboundUsage": "Bu ses outbound aramalarda kullanılacak.",
+      "optionalStep": "Bu adım opsiyoneldir.",
+      "loading": "Sesler yükleniyor...",
+      "noVoices": "Bu dil için uygun ses bulunamadı. Lütfen başka bir dil deneyin.",
+      "playSampleError": "Ses örneği oynatılamadı"
     },
     "voiceDemo": {
       "title": "AI Asistanınızı Test Edin",
@@ -2774,7 +2806,8 @@
       "assistantCreated": "Asistan oluşturuldu!",
       "failedToCreate": "Asistan oluşturulamadı",
       "error": "Bir hata oluştu",
-      "creatingAssistant": "Asistan oluşturuluyor..."
+      "creatingAssistant": "Asistan oluşturuluyor...",
+      "previewStepSkipped": "Asistan önizleme adımı bu sürümde atlandı."
     },
     "final": {
       "allSet": "Hazırsınız!",

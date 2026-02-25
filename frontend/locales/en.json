@@ -2735,6 +2735,33 @@
       "assistantInstructions": "Assistant Instructions",
       "assistantInstructionsDesc": "Instructions for how your assistant should behave"
     },
+    "location": {
+      "countryRegion": "Country / Region",
+      "timezone": "Timezone",
+      "autoDetected": "Auto-detected",
+      "countries": {
+        "TR": "Turkey",
+        "US": "United States"
+      },
+      "timezones": {
+        "europeIstanbul": "(UTC+3) Istanbul, Turkey",
+        "europeLondon": "(UTC+0) London, UK",
+        "europeParis": "(UTC+1) Paris, France",
+        "europeBerlin": "(UTC+1) Berlin, Germany",
+        "americaNewYork": "(UTC-5) New York, Eastern Time",
+        "americaLosAngeles": "(UTC-8) Los Angeles, Pacific Time",
+        "americaChicago": "(UTC-6) Chicago, Central Time",
+        "americaDenver": "(UTC-7) Denver, Mountain Time",
+        "americaToronto": "(UTC-5) Toronto, Canada",
+        "americaSaoPaulo": "(UTC-3) Sao Paulo, Brazil",
+        "europeMoscow": "(UTC+3) Moscow, Russia",
+        "asiaDubai": "(UTC+4) Dubai, UAE",
+        "asiaKolkata": "(UTC+5:30) Mumbai, India",
+        "asiaSingapore": "(UTC+8) Singapore",
+        "asiaTokyo": "(UTC+9) Tokyo, Japan",
+        "australiaSydney": "(UTC+11) Sydney, Australia"
+      }
+    },
     "industries": {
       "restaurant": "Restaurant",
       "salonSpa": "Salon & Spa",
@@ -2752,7 +2779,12 @@
     "voice": {
       "male": "Male",
       "female": "Female",
-      "previewComingSoon": "Voice preview coming soon"
+      "previewComingSoon": "Voice preview coming soon",
+      "outboundUsage": "This voice will be used for outbound calls.",
+      "optionalStep": "This step is optional.",
+      "loading": "Loading voices...",
+      "noVoices": "No voices are available for this language. Please try another language.",
+      "playSampleError": "Could not play sample"
     },
     "voiceDemo": {
       "title": "Test Your AI Assistant",
@@ -2774,7 +2806,8 @@
       "assistantCreated": "Assistant created!",
       "failedToCreate": "Failed to create assistant",
       "error": "An error occurred",
-      "creatingAssistant": "Creating assistant..."
+      "creatingAssistant": "Creating assistant...",
+      "previewStepSkipped": "Assistant preview step was skipped in this version."
     },
     "final": {
       "allSet": "All Set!",

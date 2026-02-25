@@ -28,29 +28,48 @@ import { useLanguage } from '@/contexts/LanguageContext';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-const COUNTRIES = [
-  { id: 'TR', name: 'Türkiye', nameLocal: 'Türkiye', flag: '🇹🇷', timezone: 'Europe/Istanbul' },
-  { id: 'US', name: 'United States', nameLocal: 'United States', flag: '🇺🇸', timezone: 'America/New_York' }
+const COUNTRY_CONFIG = [
+  { id: 'TR', flag: '🇹🇷', timezone: 'Europe/Istanbul' },
+  { id: 'US', flag: '🇺🇸', timezone: 'America/New_York' }
 ];
 
-const TIMEZONES = [
-  { id: 'Europe/Istanbul', name: '(UTC+3) Istanbul, Turkey' },
-  { id: 'Europe/London', name: '(UTC+0) London, UK' },
-  { id: 'Europe/Paris', name: '(UTC+1) Paris, France' },
-  { id: 'Europe/Berlin', name: '(UTC+1) Berlin, Germany' },
-  { id: 'America/New_York', name: '(UTC-5) New York, Eastern Time' },
-  { id: 'America/Los_Angeles', name: '(UTC-8) Los Angeles, Pacific Time' },
-  { id: 'America/Chicago', name: '(UTC-6) Chicago, Central Time' },
-  { id: 'America/Denver', name: '(UTC-7) Denver, Mountain Time' },
-  { id: 'America/Toronto', name: '(UTC-5) Toronto, Canada' },
-  { id: 'America/Sao_Paulo', name: '(UTC-3) São Paulo, Brazil' },
-  { id: 'Europe/Moscow', name: '(UTC+3) Moscow, Russia' },
-  { id: 'Asia/Dubai', name: '(UTC+4) Dubai, UAE' },
-  { id: 'Asia/Kolkata', name: '(UTC+5:30) Mumbai, India' },
-  { id: 'Asia/Singapore', name: '(UTC+8) Singapore' },
-  { id: 'Asia/Tokyo', name: '(UTC+9) Tokyo, Japan' },
-  { id: 'Australia/Sydney', name: '(UTC+11) Sydney, Australia' }
+const TIMEZONE_IDS = [
+  'Europe/Istanbul',
+  'Europe/London',
+  'Europe/Paris',
+  'Europe/Berlin',
+  'America/New_York',
+  'America/Los_Angeles',
+  'America/Chicago',
+  'America/Denver',
+  'America/Toronto',
+  'America/Sao_Paulo',
+  'Europe/Moscow',
+  'Asia/Dubai',
+  'Asia/Kolkata',
+  'Asia/Singapore',
+  'Asia/Tokyo',
+  'Australia/Sydney'
 ];
+
+const TIMEZONE_TRANSLATION_KEYS = {
+  'Europe/Istanbul': 'europeIstanbul',
+  'Europe/London': 'europeLondon',
+  'Europe/Paris': 'europeParis',
+  'Europe/Berlin': 'europeBerlin',
+  'America/New_York': 'americaNewYork',
+  'America/Los_Angeles': 'americaLosAngeles',
+  'America/Chicago': 'americaChicago',
+  'America/Denver': 'americaDenver',
+  'America/Toronto': 'americaToronto',
+  'America/Sao_Paulo': 'americaSaoPaulo',
+  'Europe/Moscow': 'europeMoscow',
+  'Asia/Dubai': 'asiaDubai',
+  'Asia/Kolkata': 'asiaKolkata',
+  'Asia/Singapore': 'asiaSingapore',
+  'Asia/Tokyo': 'asiaTokyo',
+  'Australia/Sydney': 'australiaSydney'
+};
 
 const getLanguageFromLocale = (loc) => {
   const mapping = { tr: 'TR', en: 'EN' };
@@ -61,7 +80,7 @@ const getBrowserCountry = () => {
   if (typeof navigator === 'undefined') return 'TR';
 
   const region = (navigator.language || 'tr-TR').split('-')[1]?.toUpperCase();
-  const isSupported = COUNTRIES.some((country) => country.id === region);
+  const isSupported = COUNTRY_CONFIG.some((country) => country.id === region);
   return isSupported ? region : 'TR';
 };
 
@@ -128,6 +147,22 @@ export function OnboardingModal({ open, onClose, business, phoneInboundEnabled =
       SERVICE: t('onboarding.prompts.service'),
       OTHER: t('onboarding.prompts.other')
     }),
+    [t]
+  );
+
+  const COUNTRIES = useMemo(
+    () => COUNTRY_CONFIG.map((country) => ({
+      ...country,
+      name: t(`onboarding.location.countries.${country.id}`)
+    })),
+    [t]
+  );
+
+  const TIMEZONES = useMemo(
+    () => TIMEZONE_IDS.map((timezoneId) => ({
+      id: timezoneId,
+      name: t(`onboarding.location.timezones.${TIMEZONE_TRANSLATION_KEYS[timezoneId]}`)
+    })),
     [t]
   );
 
@@ -288,20 +323,20 @@ export function OnboardingModal({ open, onClose, business, phoneInboundEnabled =
   return (
     <Dialog open={open} onOpenChange={() => {}}>
       <DialogContent
-        className="max-w-2xl max-h-[85vh] overflow-hidden [&>button]:hidden"
+        className="max-w-2xl w-[calc(100vw-1rem)] sm:w-full h-[calc(100dvh-1rem)] sm:h-auto sm:max-h-[85vh] !overflow-hidden !flex !flex-col p-4 sm:p-6 [&>button]:hidden"
         onPointerDownOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
       >
-        <DialogHeader>
+        <DialogHeader className="shrink-0">
           <DialogTitle className="text-xl font-semibold">{currentStepMeta?.title}</DialogTitle>
           <p className="text-sm text-gray-500 dark:text-gray-400">{currentStepMeta?.description}</p>
         </DialogHeader>
 
-        <div className="flex items-center justify-between my-4">
+        <div className="flex items-center justify-start sm:justify-between gap-1 my-2 sm:my-4 shrink-0 overflow-x-auto pb-1">
           {visibleSteps.map((s, index) => (
-            <div key={s.id} className="flex items-center">
-              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium ${
+            <div key={s.id} className="flex items-center shrink-0">
+              <div className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-xs font-medium ${
                 index < currentStepIndex
                   ? 'bg-green-500 text-white'
                   : index === currentStepIndex
@@ -311,13 +346,13 @@ export function OnboardingModal({ open, onClose, business, phoneInboundEnabled =
                 {index < currentStepIndex ? <Check className="w-3 h-3" /> : index + 1}
               </div>
               {index < visibleSteps.length - 1 && (
-                <div className={`w-10 h-0.5 mx-1.5 ${index < currentStepIndex ? 'bg-green-500' : 'bg-gray-200 dark:bg-neutral-700'}`} />
+                <div className={`w-6 sm:w-10 h-0.5 mx-1 ${index < currentStepIndex ? 'bg-green-500' : 'bg-gray-200 dark:bg-neutral-700'}`} />
               )}
             </div>
           ))}
         </div>
 
-        <div className="min-h-[280px] overflow-y-auto pr-1">
+        <div className="flex-1 min-h-0 overflow-y-auto pr-1">
           {step === 1 && (
             <div className="space-y-4">
               <div>
@@ -347,8 +382,8 @@ export function OnboardingModal({ open, onClose, business, phoneInboundEnabled =
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                   <Label className="text-sm font-medium flex items-center gap-2">
-                    Country / Region
-                    {autoDetected.country && <Badge variant="secondary" className="text-[10px]">Auto-detected</Badge>}
+                    {t('onboarding.location.countryRegion')}
+                    {autoDetected.country && <Badge variant="secondary" className="text-[10px]">{t('onboarding.location.autoDetected')}</Badge>}
                   </Label>
                   <select
                     value={data.country}
@@ -365,7 +400,7 @@ export function OnboardingModal({ open, onClose, business, phoneInboundEnabled =
                   >
                     {COUNTRIES.map((country) => (
                       <option key={country.id} value={country.id}>
-                        {country.flag} {country.nameLocal}
+                        {country.flag} {country.name}
                       </option>
                     ))}
                   </select>
@@ -373,8 +408,8 @@ export function OnboardingModal({ open, onClose, business, phoneInboundEnabled =
 
                 <div>
                   <Label className="text-sm font-medium flex items-center gap-2">
-                    Timezone
-                    {autoDetected.timezone && <Badge variant="secondary" className="text-[10px]">Auto-detected</Badge>}
+                    {t('onboarding.location.timezone')}
+                    {autoDetected.timezone && <Badge variant="secondary" className="text-[10px]">{t('onboarding.location.autoDetected')}</Badge>}
                   </Label>
                   <select
                     value={data.timezone}
@@ -397,24 +432,24 @@ export function OnboardingModal({ open, onClose, business, phoneInboundEnabled =
             <div>
               <div className="mb-3">
                 <p className="text-sm text-gray-700 dark:text-gray-300">
-                  Bu ses outbound aramalarda kullanılacak.
+                  {t('onboarding.voice.outboundUsage')}
                 </p>
                 {!isFullV2Mode && (
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Bu adım opsiyoneldir.</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t('onboarding.voice.optionalStep')}</p>
                 )}
               </div>
 
               {voicesLoading ? (
                 <div className="text-center py-8">
                   <Loader2 className="h-6 w-6 mx-auto text-teal-600 animate-spin mb-3" />
-                  <p className="text-sm text-gray-600 dark:text-gray-400">{t('onboarding.voice.loading') || 'Loading voices...'}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">{t('onboarding.voice.loading')}</p>
                 </div>
               ) : availableVoices.length === 0 ? (
                 <div className="text-center py-8">
-                  <p className="text-sm text-gray-600 dark:text-gray-400">{t('onboarding.voice.noVoices') || 'No voices available for this language. Please try another language.'}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">{t('onboarding.voice.noVoices')}</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {availableVoices.map((voice) => (
                     <Card
                       key={voice.id}
@@ -436,7 +471,7 @@ export function OnboardingModal({ open, onClose, business, phoneInboundEnabled =
                             onClick={(e) => {
                               e.stopPropagation();
                               const audio = new Audio(voice.sampleUrl);
-                              audio.play().catch(() => toast.error('Could not play sample'));
+                              audio.play().catch(() => toast.error(t('onboarding.voice.playSampleError')));
                             }}
                           >
                             <Play className="w-3 h-3" />
@@ -490,7 +525,7 @@ export function OnboardingModal({ open, onClose, business, phoneInboundEnabled =
                 <VoiceDemo assistantId={createdAssistantId} />
               ) : createdAssistantId === 'SKIPPED_LEGACY_PREVIEW' ? (
                 <div className="text-center py-8">
-                  <p className="text-gray-600 dark:text-gray-400">Asistan önizleme adımı bu sürümde atlandı.</p>
+                  <p className="text-gray-600 dark:text-gray-400">{t('onboarding.messages.previewStepSkipped')}</p>
                 </div>
               ) : (
                 <div className="text-center py-8">
@@ -512,7 +547,7 @@ export function OnboardingModal({ open, onClose, business, phoneInboundEnabled =
           )}
         </div>
 
-        <div className="flex items-center justify-between mt-4 pt-4 border-t dark:border-neutral-700">
+        <div className="flex items-center justify-between mt-3 pt-3 border-t dark:border-neutral-700 shrink-0 gap-2">
           <Button variant="outline" size="sm" onClick={prevStep} disabled={currentStepIndex === 0 || loading}>
             <ChevronLeft className="w-3 h-3 mr-1" />
             {t('onboarding.buttons.back')}
