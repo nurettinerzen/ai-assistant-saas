@@ -35,6 +35,9 @@
     "golden-test": "node tests/runner/golden-test.js",
     "replay-test": "node tests/replay/replayRunner.js",
     "test:security": "node tests/security/test-child-safety.js && node tests/security/test-ssrf-protection.js",
+    "security:config-integrity": "node scripts/security-config-integrity.js --json",
+    "security:subdomain-check": "node scripts/subdomain-takeover-check.js",
+    "ops:backup-restore-drill": "node scripts/backup-restore-drill.js",
     "cleanup-assistants": "node scripts/cleanup-test-assistants.js",
     "cleanup-assistants:delete": "node scripts/cleanup-test-assistants.js --delete",
     "guardrail-smoke": "node tests/smoke/guardrail-prod-smoke.js"

@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { apiClient } from '@/lib/api';
 
 // Permission definitions - must match backend
 const ROLE_PERMISSIONS = {
@@ -65,16 +66,23 @@ export function usePermissions() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Try to get user from localStorage
-    try {
-      const storedUser = localStorage.getItem('user');
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
-      }
-    } catch (e) {
-      console.error('Failed to parse user from localStorage:', e);
-    }
-    setLoading(false);
+    let mounted = true;
+    apiClient.auth.me()
+      .then((response) => {
+        if (!mounted) return;
+        setUser(response.data || null);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setUser(null);
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   /**
@@ -139,11 +147,6 @@ export function usePermissions() {
    */
   const updateUser = useCallback((newUser) => {
     setUser(newUser);
-    if (newUser) {
-      localStorage.setItem('user', JSON.stringify(newUser));
-    } else {
-      localStorage.removeItem('user');
-    }
   }, []);
 
   return {

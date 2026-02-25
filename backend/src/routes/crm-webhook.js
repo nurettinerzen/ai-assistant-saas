@@ -12,6 +12,8 @@ import express from 'express';
 import crypto from 'crypto';
 import prisma from '../prismaClient.js';
 import { normalizePhone as normalizePhoneUtil } from '../utils/text.js';
+import { safeCompareHex, safeCompareStrings } from '../security/constantTime.js';
+import { webhookRateLimiter } from '../middleware/rateLimiter.js';
 
 const router = express.Router();
 
@@ -57,10 +59,7 @@ function verifyCRMSignature(req, webhookSecret) {
       .digest('hex');
 
     // Constant-time comparison
-    return crypto.timingSafeEqual(
-      Buffer.from(signature, 'hex'),
-      Buffer.from(expectedSignature, 'hex')
-    );
+    return safeCompareHex(signature, expectedSignature);
   } catch (error) {
     console.error('❌ CRM signature verification error:', error.message);
     return false;
@@ -69,7 +68,7 @@ function verifyCRMSignature(req, webhookSecret) {
 
 /**
  * CRM Webhook Endpoint
- * POST /api/webhook/crm/:businessId/:webhookSecret
+ * POST /api/webhook/crm/:businessId
  *
  * SECURITY: Requires HMAC-SHA256 signature in X-CRM-Signature header
  * Format: timestamp=<unix_timestamp>,signature=<hmac_hex>
@@ -77,16 +76,16 @@ function verifyCRMSignature(req, webhookSecret) {
  *
  * IDEMPOTENCY: Optional event_id field ensures duplicate events are ignored
  */
-router.post('/:businessId/:webhookSecret', async (req, res) => {
+router.post('/:businessId', webhookRateLimiter.middleware(), async (req, res) => {
   try {
-    const { businessId, webhookSecret } = req.params;
+    const { businessId } = req.params;
     const data = req.body;
+    const providedSecret = req.headers['x-webhook-secret'];
 
     // Step 1: Verify webhook exists and is active
     const webhook = await prisma.crmWebhook.findFirst({
       where: {
         businessId: parseInt(businessId),
-        webhookSecret: webhookSecret,
         isActive: true
       }
     });
@@ -95,11 +94,12 @@ router.post('/:businessId/:webhookSecret', async (req, res) => {
       return res.status(401).json({ error: 'Invalid webhook credentials' });
     }
 
-    // Step 2: SECURITY - Verify HMAC signature (optional)
-    // URL secret is already sufficient security. HMAC signature is only validated
-    // when the client sends the X-CRM-Signature header.
-    const hasSignatureHeader = req.headers['x-crm-signature'];
-    if (hasSignatureHeader && !verifyCRMSignature(req, webhookSecret)) {
+    if (!providedSecret || !safeCompareStrings(String(providedSecret), webhook.webhookSecret)) {
+      return res.status(401).json({ error: 'Invalid webhook credentials' });
+    }
+
+    // Step 2: SECURITY - Verify HMAC signature (required)
+    if (!verifyCRMSignature(req, webhook.webhookSecret)) {
       console.error('❌ CRM webhook signature verification failed for business:', businessId);
       return res.status(401).json({ error: 'Invalid signature' });
     }

@@ -50,7 +50,6 @@ import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
 import { PLAN_COLORS } from '@/lib/planConfig';
 
-const ADMIN_EMAILS = ['nurettin@telyx.ai', 'admin@telyx.ai'];
 
 export default function AdminUsersPage() {
   const router = useRouter();
@@ -82,8 +81,7 @@ export default function AdminUsersPage() {
   const checkAdminAccess = async () => {
     try {
       const response = await apiClient.get('/api/auth/me');
-      const userEmail = response.data?.email;
-      if (ADMIN_EMAILS.includes(userEmail)) {
+      if (response.data?.isAdmin === true) {
         setIsAdmin(true);
       } else {
         setIsAdmin(false);

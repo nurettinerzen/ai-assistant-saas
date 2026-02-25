@@ -1,10 +1,23 @@
 const path = require('path');
 
 const frameAncestors = process.env.CSP_FRAME_ANCESTORS || "'none'";
+const contentSecurityPolicy = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  `frame-ancestors ${frameAncestors}`,
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://www.gstatic.com https://static.iyzipay.com https://sandbox-static.iyzipay.com",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https:",
+  "font-src 'self' data: https:",
+  "connect-src 'self' https: wss:",
+  "frame-src 'self' https://accounts.google.com https://*.iyzipay.com",
+  "form-action 'self' https:",
+].join('; ');
 
 const securityHeaders = [
   { key: 'X-Content-Type-Options', value: 'nosniff' },
-  { key: 'Content-Security-Policy', value: `frame-ancestors ${frameAncestors};` },
+  { key: 'Content-Security-Policy', value: `${contentSecurityPolicy};` },
   { key: 'Referrer-Policy', value: 'no-referrer' },
   { key: 'Permissions-Policy', value: 'geolocation=(), microphone=(), camera=()' },
   { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },

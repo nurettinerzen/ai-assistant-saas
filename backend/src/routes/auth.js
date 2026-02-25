@@ -1,18 +1,23 @@
 import express from 'express';
 import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { PrismaClient } from '@prisma/client';
 import { authenticateToken } from '../middleware/auth.js';
-import { sendVerificationEmail, sendEmailChangeVerification, sendPasswordResetEmail } from '../services/emailService.js';
+import { requireRecentAuth } from '../middleware/reauth.js';
+import { sendVerificationEmail, sendEmailChangeVerification, sendPasswordResetEmail, sendAdminMfaCodeEmail } from '../services/emailService.js';
 import { generateOAuthState, validateOAuthState } from '../middleware/oauthState.js';
 import { safeRedirect } from '../middleware/redirectWhitelist.js';
 import { isPhoneInboundEnabledForBusinessRecord } from '../services/phoneInboundGate.js';
+import { validatePasswordPolicy, passwordPolicyMessage } from '../security/passwordPolicy.js';
+import { clearSessionCookie, issueSession } from '../security/sessionToken.js';
+import { isAdmin } from '../middleware/adminAuth.js';
+import { safeCompareStrings } from '../security/constantTime.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
 const FRONTEND_URL = process.env.FRONTEND_URL;
+const OOB_TOKEN_TTL_MS = 10 * 60 * 1000;
 
 // Rate limit tracking for resend verification (in-memory, for production use Redis)
 const resendRateLimits = new Map();
@@ -31,6 +36,16 @@ const generateChatEmbedKey = () => {
   return `emb_${crypto.randomBytes(16).toString('hex')}`;
 };
 
+const generateMfaCode = () => String(crypto.randomInt(0, 1_000_000)).padStart(6, '0');
+
+function hashMfaCode(adminId, code) {
+  const pepper = process.env.ADMIN_MFA_PEPPER || process.env.JWT_SECRET || '';
+  return crypto
+    .createHash('sha256')
+    .update(`${adminId}:${code}:${pepper}`, 'utf8')
+    .digest('hex');
+}
+
 /**
  * Helper: Create and send verification email
  */
@@ -40,9 +55,9 @@ const createAndSendVerificationEmail = async (userId, email, businessName) => {
     where: { userId }
   });
 
-  // Create new token (24 hours validity)
+  // Create new token (10 minute validity)
   const token = generateVerificationToken();
-  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  const expiresAt = new Date(Date.now() + OOB_TOKEN_TTL_MS);
 
   await prisma.emailVerificationToken.create({
     data: {
@@ -53,7 +68,7 @@ const createAndSendVerificationEmail = async (userId, email, businessName) => {
   });
 
   // Send verification email
-  const verificationUrl = `${FRONTEND_URL}/auth/verify-email?token=${token}`;
+  const verificationUrl = `${FRONTEND_URL}/auth/verify-email#token=${token}`;
   await sendVerificationEmail(email, verificationUrl, businessName);
 
   return token;
@@ -67,6 +82,15 @@ router.post('/register', async (req, res) => {
     // Validation
     if (!email || !password || !businessName) {
       return res.status(400).json({ error: 'All fields are required' });
+    }
+
+    const passwordValidation = validatePasswordPolicy(password);
+    if (!passwordValidation.valid) {
+      return res.status(400).json({
+        error: passwordPolicyMessage(),
+        code: 'WEAK_PASSWORD',
+        requirements: passwordValidation.errors,
+      });
     }
 
     // Check if user already exists
@@ -125,12 +149,7 @@ router.post('/register', async (req, res) => {
       return { user, business, subscription };
     });
 
-    // Generate JWT token (include role for quick access)
-    const token = jwt.sign(
-      { userId: result.user.id, email: result.user.email, businessId: result.business.id, role: result.user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+    const token = issueSession(res, result.user);
 
     // Send verification email
     try {
@@ -167,6 +186,15 @@ router.post("/signup", async (req, res) => {
     // Validation
     if (!email || !password || !fullName || !businessName) {
       return res.status(400).json({ error: "All fields are required" });
+    }
+
+    const passwordValidation = validatePasswordPolicy(password);
+    if (!passwordValidation.valid) {
+      return res.status(400).json({
+        error: passwordPolicyMessage(),
+        code: 'WEAK_PASSWORD',
+        requirements: passwordValidation.errors,
+      });
     }
 
     // Check invite code
@@ -248,11 +276,7 @@ router.post("/signup", async (req, res) => {
 
       return { user, business };
     });
-    const token = jwt.sign(
-      { userId: result.user.id, businessId: result.business.id, role: result.user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" }
-    );
+    const token = issueSession(res, result.user);
 
     // Send verification email
     try {
@@ -302,12 +326,7 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Generate JWT token (include role for quick access)
-    const token = jwt.sign(
-      { userId: user.id, email: user.email, businessId: user.businessId, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+    const token = issueSession(res, user);
 
     if (user.business) {
       user.business.phoneInboundEnabled = isPhoneInboundEnabledForBusinessRecord(user.business);
@@ -341,6 +360,7 @@ router.get('/me', authenticateToken, async (req, res) => {
         name: true,
         role: true,
         businessId: true,
+        tokenVersion: true,
         onboardingCompleted: true,
         emailVerified: true,
         emailVerifiedAt: true,
@@ -363,11 +383,226 @@ router.get('/me', authenticateToken, async (req, res) => {
       user.business.phoneInboundEnabled = isPhoneInboundEnabledForBusinessRecord(user.business);
     }
 
-    res.json(user);
+    const adminProfile = await prisma.adminUser.findUnique({
+      where: { email: user.email.toLowerCase() },
+      select: { id: true, role: true, isActive: true },
+    });
+
+    res.json({
+      ...user,
+      isAdmin: Boolean(adminProfile?.isActive),
+      adminRole: adminProfile?.isActive ? adminProfile.role : null,
+    });
   } catch (error) {
     console.error('Get user error:', error);
     res.status(500).json({ error: 'Failed to fetch user data' });
   }
+});
+
+// Logout (revokes all active sessions for this user)
+router.post('/logout', authenticateToken, async (req, res) => {
+  try {
+    await prisma.user.update({
+      where: { id: req.userId },
+      data: { tokenVersion: { increment: 1 } },
+    });
+
+    clearSessionCookie(res);
+    return res.json({ message: 'Logout successful' });
+  } catch (error) {
+    console.error('Logout error:', error);
+    return res.status(500).json({ error: 'Logout failed' });
+  }
+});
+
+// Explicit step-up authentication for sensitive transactions
+router.post('/reauthenticate', authenticateToken, async (req, res) => {
+  try {
+    const { password } = req.body || {};
+    if (!password) {
+      return res.status(400).json({ error: 'Password is required' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.userId },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        businessId: true,
+        tokenVersion: true,
+        password: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const validPassword = await bcrypt.compare(password, user.password);
+    if (!validPassword) {
+      return res.status(401).json({ error: 'Invalid password' });
+    }
+
+    const amr = Array.isArray(req.auth?.amr) && req.auth.amr.length > 0
+      ? req.auth.amr
+      : ['pwd'];
+
+    issueSession(res, user, { amr });
+    return res.json({ message: 'Re-authentication successful' });
+  } catch (error) {
+    console.error('Re-authenticate error:', error);
+    return res.status(500).json({ error: 'Failed to re-authenticate' });
+  }
+});
+
+// Admin MFA challenge (email OTP)
+router.post('/admin-mfa/challenge', authenticateToken, isAdmin, requireRecentAuth(30), async (req, res) => {
+  try {
+    const admin = await prisma.adminUser.findUnique({
+      where: { email: String(req.user.email || '').toLowerCase() },
+      select: { id: true, email: true, name: true, isActive: true },
+    });
+
+    if (!admin || !admin.isActive) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    // Clean stale and previous pending challenges for this user
+    await prisma.adminMfaChallenge.deleteMany({
+      where: {
+        adminId: admin.id,
+        OR: [
+          { expiresAt: { lt: new Date() } },
+          { usedAt: { not: null } },
+        ],
+      },
+    });
+
+    const code = generateMfaCode();
+    const expiresAt = new Date(Date.now() + OOB_TOKEN_TTL_MS);
+    const codeHash = hashMfaCode(admin.id, code);
+
+    const challenge = await prisma.adminMfaChallenge.create({
+      data: {
+        adminId: admin.id,
+        adminEmail: admin.email,
+        userId: req.userId,
+        codeHash,
+        expiresAt,
+      },
+      select: {
+        id: true,
+        expiresAt: true,
+      },
+    });
+
+    await sendAdminMfaCodeEmail(admin.email, code, expiresAt);
+
+    return res.json({
+      challengeId: challenge.id,
+      expiresAt: challenge.expiresAt,
+      delivery: 'email',
+      ...(process.env.NODE_ENV !== 'production' ? { debugCode: code } : {}),
+    });
+  } catch (error) {
+    console.error('Admin MFA challenge error:', error);
+    return res.status(500).json({ error: 'Failed to create MFA challenge' });
+  }
+});
+
+// Admin MFA verify
+router.post('/admin-mfa/verify', authenticateToken, isAdmin, async (req, res) => {
+  try {
+    const { challengeId, code } = req.body || {};
+    if (!challengeId || !code) {
+      return res.status(400).json({ error: 'challengeId and code are required' });
+    }
+
+    const admin = await prisma.adminUser.findUnique({
+      where: { email: String(req.user.email || '').toLowerCase() },
+      select: { id: true, email: true, isActive: true },
+    });
+
+    if (!admin || !admin.isActive) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const challenge = await prisma.adminMfaChallenge.findUnique({
+      where: { id: String(challengeId) },
+      select: {
+        id: true,
+        adminId: true,
+        userId: true,
+        codeHash: true,
+        attempts: true,
+        expiresAt: true,
+        usedAt: true,
+      },
+    });
+
+    if (!challenge || challenge.adminId !== admin.id || challenge.userId !== req.userId) {
+      return res.status(400).json({ error: 'Invalid challenge' });
+    }
+
+    if (challenge.usedAt) {
+      return res.status(400).json({ error: 'Challenge already used' });
+    }
+
+    if (new Date() > challenge.expiresAt) {
+      await prisma.adminMfaChallenge.delete({ where: { id: challenge.id } });
+      return res.status(400).json({ error: 'Challenge expired', code: 'MFA_EXPIRED' });
+    }
+
+    if (challenge.attempts >= 5) {
+      return res.status(429).json({ error: 'Too many attempts', code: 'MFA_TOO_MANY_ATTEMPTS' });
+    }
+
+    const expectedHash = hashMfaCode(admin.id, String(code));
+    const valid = safeCompareStrings(challenge.codeHash, expectedHash);
+
+    if (!valid) {
+      await prisma.adminMfaChallenge.update({
+        where: { id: challenge.id },
+        data: { attempts: { increment: 1 } },
+      });
+      return res.status(401).json({ error: 'Invalid code', code: 'MFA_INVALID_CODE' });
+    }
+
+    await prisma.adminMfaChallenge.update({
+      where: { id: challenge.id },
+      data: { usedAt: new Date() },
+    });
+
+    const mfaIssuedAt = Date.now();
+    issueSession(res, req.user, {
+      amr: ['pwd', 'otp'],
+      adminMfaAt: mfaIssuedAt,
+    });
+
+    return res.json({
+      message: 'Admin MFA verified',
+      verifiedAt: new Date(mfaIssuedAt).toISOString(),
+    });
+  } catch (error) {
+    console.error('Admin MFA verify error:', error);
+    return res.status(500).json({ error: 'Failed to verify MFA code' });
+  }
+});
+
+// Admin MFA status
+router.get('/admin-mfa/status', authenticateToken, isAdmin, async (req, res) => {
+  const maxAgeMinutes = parseInt(process.env.ADMIN_MFA_MAX_AGE_MINUTES || '720', 10);
+  const maxAgeMs = Math.max(1, maxAgeMinutes) * 60 * 1000;
+  const adminMfaAt = req.auth?.adminMfaAt ? Number(req.auth.adminMfaAt) : 0;
+  const amr = Array.isArray(req.auth?.amr) ? req.auth.amr : [];
+  const mfaVerified = amr.includes('otp') && adminMfaAt > 0 && (Date.now() - adminMfaAt) <= maxAgeMs;
+
+  return res.json({
+    mfaVerified,
+    verifiedAt: adminMfaAt ? new Date(adminMfaAt).toISOString() : null,
+    maxAgeMinutes: Math.max(1, maxAgeMinutes),
+  });
 });
 
 // ============================================================================
@@ -375,9 +610,9 @@ router.get('/me', authenticateToken, async (req, res) => {
 // ============================================================================
 
 // Verify email with token
-router.get('/verify-email', async (req, res) => {
+router.post('/verify-email', async (req, res) => {
   try {
-    const { token } = req.query;
+    const { token } = req.body || {};
 
     if (!token) {
       return res.status(400).json({ error: 'Token is required' });
@@ -603,17 +838,7 @@ router.post('/google', async (req, res) => {
       });
     }
 
-    // Generate JWT token
-    const token = jwt.sign(
-      {
-        userId: user.id,
-        email: user.email,
-        businessId: user.businessId,
-        role: user.role,
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+    const token = issueSession(res, user);
 
     // Remove password from response
     const { password: _, ...userWithoutPassword } = user;
@@ -822,17 +1047,7 @@ router.post('/google/code', async (req, res) => {
       });
     }
 
-    // Generate JWT token
-    const token = jwt.sign(
-      {
-        userId: user.id,
-        email: user.email,
-        businessId: user.businessId,
-        role: user.role,
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+    const token = issueSession(res, user);
 
     const { password: _, ...userWithoutPassword } = user;
 
@@ -881,9 +1096,9 @@ router.post('/forgot-password', async (req, res) => {
       where: { userId: user.id }
     });
 
-    // Create new token (1 hour validity)
+    // Create new token (10 minute validity)
     const token = generateVerificationToken();
-    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+    const expiresAt = new Date(Date.now() + OOB_TOKEN_TTL_MS);
 
     await prisma.passwordResetToken.create({
       data: {
@@ -894,7 +1109,7 @@ router.post('/forgot-password', async (req, res) => {
     });
 
     // Send password reset email
-    const resetUrl = `${FRONTEND_URL}/reset-password?token=${token}`;
+    const resetUrl = `${FRONTEND_URL}/reset-password#token=${token}`;
     await sendPasswordResetEmail(user.email, resetUrl);
 
     res.json({
@@ -916,23 +1131,12 @@ router.post('/reset-password', async (req, res) => {
     }
 
     // Validate password strength
-    const passwordErrors = [];
-    if (password.length < 8) {
-      passwordErrors.push('at least 8 characters');
-    }
-    if (!/[A-Z]/.test(password)) {
-      passwordErrors.push('at least 1 uppercase letter');
-    }
-    if (!/[a-z]/.test(password)) {
-      passwordErrors.push('at least 1 lowercase letter');
-    }
-    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-      passwordErrors.push('at least 1 punctuation mark');
-    }
-    if (passwordErrors.length > 0) {
+    const passwordValidation = validatePasswordPolicy(password);
+    if (!passwordValidation.valid) {
       return res.status(400).json({
-        error: `Password must contain: ${passwordErrors.join(', ')}`,
-        code: 'WEAK_PASSWORD'
+        error: passwordPolicyMessage(),
+        code: 'WEAK_PASSWORD',
+        requirements: passwordValidation.errors,
       });
     }
 
@@ -955,11 +1159,16 @@ router.post('/reset-password', async (req, res) => {
     // Hash new password
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    const terminateAllSessions = req.body?.terminateAllSessions !== false;
+
     // Update password and delete token
     await prisma.$transaction([
       prisma.user.update({
         where: { id: resetToken.userId },
-        data: { password: hashedPassword }
+        data: {
+          password: hashedPassword,
+          ...(terminateAllSessions ? { tokenVersion: { increment: 1 } } : {}),
+        }
       }),
       prisma.passwordResetToken.delete({ where: { id: resetToken.id } })
     ]);
@@ -974,7 +1183,7 @@ router.post('/reset-password', async (req, res) => {
 });
 
 // Change email and resend verification
-router.post('/change-email', authenticateToken, async (req, res) => {
+router.post('/change-email', authenticateToken, requireRecentAuth(15), async (req, res) => {
   try {
     const { newEmail, password } = req.body;
 

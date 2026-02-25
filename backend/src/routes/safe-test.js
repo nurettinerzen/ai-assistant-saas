@@ -2,7 +2,7 @@
  * Safe Test Endpoints for Production Validation
  *
  * SECURITY:
- * - Admin-only access (email whitelist)
+ * - Admin-only access (AdminUser table + MFA)
  * - SAFE_TEST_MODE=true required in env
  * - Does NOT modify real data
  * - Only triggers SecurityEvent logging
@@ -10,32 +10,14 @@
 
 import express from 'express';
 import { authenticateToken } from '../middleware/auth.js';
+import { isAdmin, requireAdminMfa } from '../middleware/adminAuth.js';
 import { logSecurityEvent, EVENT_TYPE, SEVERITY } from '../middleware/securityEventLogger.js';
 import { PrismaClient } from '@prisma/client';
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
-const ADMIN_EMAILS = ['nurettin@telyx.ai', 'admin@telyx.ai'];
 const SAFE_TEST_MODE = process.env.SAFE_TEST_MODE === 'true';
-
-// Admin check middleware
-const requireAdmin = async (req, res, next) => {
-  try {
-    const user = await prisma.user.findUnique({
-      where: { id: req.userId },
-      select: { email: true },
-    });
-
-    if (!ADMIN_EMAILS.includes(user?.email)) {
-      return res.status(403).json({ error: 'Admin access required' });
-    }
-
-    next();
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to verify admin access' });
-  }
-};
 
 // Safe mode check
 const requireSafeMode = (req, res, next) => {
@@ -50,7 +32,8 @@ const requireSafeMode = (req, res, next) => {
 
 // Apply middleware to all routes
 router.use(authenticateToken);
-router.use(requireAdmin);
+router.use(isAdmin);
+router.use(requireAdminMfa);
 router.use(requireSafeMode);
 
 /**

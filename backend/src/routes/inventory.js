@@ -4,6 +4,7 @@ import { authenticateToken, requireRole } from '../middleware/auth.js';
 import multer from 'multer';
 import csvParser from 'csv-parser';
 import { Readable } from 'stream';
+import { validateUntrustedUpload } from '../security/uploadSecurity.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -231,6 +232,12 @@ router.post('/products/import', authenticateToken, requireRole(['OWNER', 'ADMIN'
     if (!req.file) {
       return res.status(400).json({ error: 'CSV file is required' });
     }
+
+    await validateUntrustedUpload({
+      fileBuffer: req.file.buffer,
+      fileName: req.file.originalname,
+      maxSizeBytes: 5 * 1024 * 1024,
+    });
 
     const results = [];
     const errors = [];

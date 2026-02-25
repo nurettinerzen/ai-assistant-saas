@@ -13,6 +13,7 @@ import { Check, CreditCard, Loader2, AlertCircle, X } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast } from '@/lib/toast';
 import { formatDate } from '@/lib/utils';
+import { renderTrustedCheckoutHtml } from '@/lib/safeHtml';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import PageIntro from '@/components/PageIntro';
@@ -148,19 +149,7 @@ export default function SubscriptionPage() {
   // Handle iyzico checkout form rendering
   useEffect(() => {
     if (showPaymentModal && checkoutFormHtml && checkoutContainerRef.current) {
-      const container = checkoutContainerRef.current;
-      container.innerHTML = checkoutFormHtml;
-
-      // Execute scripts in the checkout form
-      const scripts = container.getElementsByTagName('script');
-      Array.from(scripts).forEach(oldScript => {
-        const newScript = document.createElement('script');
-        Array.from(oldScript.attributes).forEach(attr => {
-          newScript.setAttribute(attr.name, attr.value);
-        });
-        newScript.text = oldScript.text;
-        oldScript.parentNode?.replaceChild(newScript, oldScript);
-      });
+      renderTrustedCheckoutHtml(checkoutContainerRef.current, checkoutFormHtml);
     }
   }, [showPaymentModal, checkoutFormHtml]);
 

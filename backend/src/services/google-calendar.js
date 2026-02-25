@@ -49,7 +49,10 @@ class GoogleCalendarService {
       const { tokens } = await oauth2Client.getToken(tokenParams);
       return tokens;
     } catch (error) {
-      console.error('Google Calendar token error:', error);
+      console.error('Google Calendar token error:', {
+        message: error.message,
+        code: error.code,
+      });
       throw new Error('Failed to get Google Calendar tokens');
     }
   }

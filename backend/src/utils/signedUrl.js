@@ -77,22 +77,26 @@ export const verifySignedMediaToken = (token) => {
 };
 
 /**
- * Generate full signed URL
+ * Generate signed media access descriptor.
+ * Token must be sent via `X-Media-Access-Token` or `Authorization: Bearer`.
  * @param {string} mediaId - Media ID
  * @param {number} userId - User ID
  * @param {number} businessId - Business ID
  * @param {string} baseUrl - Backend URL (optional, uses env)
- * @returns {string} Full signed URL
+ * @returns {{ url: string, token: string }} Signed endpoint and token
  */
-export const generateSignedMediaUrl = (mediaId, userId, businessId, baseUrl = null) => {
+export const generateSignedMediaAccess = (mediaId, userId, businessId, baseUrl = null) => {
   const token = generateSignedMediaToken(mediaId, userId, businessId);
   const base = baseUrl || process.env.BACKEND_URL || 'http://localhost:3000';
 
-  return `${base}/api/media/signed/${token}`;
+  return {
+    url: `${base}/api/media/signed`,
+    token,
+  };
 };
 
 export default {
   generateSignedMediaToken,
   verifySignedMediaToken,
-  generateSignedMediaUrl
+  generateSignedMediaAccess
 };

@@ -9,7 +9,7 @@
  * - Secrets NEVER in query params (URL logging)
  */
 
-import crypto from 'crypto';
+import { safeCompareStrings } from '../security/constantTime.js';
 
 /**
  * Middleware: Require valid cron secret header
@@ -47,37 +47,21 @@ export function requireCronSecret(req, res, next) {
     });
   }
 
-  // Constant-time comparison to prevent timing attacks
-  try {
-    const isValid = crypto.timingSafeEqual(
-      Buffer.from(providedSecret),
-      Buffer.from(cronSecret)
-    );
-
-    if (!isValid) {
-      console.error('❌ Invalid cron secret provided', {
-        path: req.path,
-        ip: req.ip
-      });
-      return res.status(401).json({
-        error: 'Unauthorized',
-        message: 'Invalid cron secret'
-      });
-    }
-
-    // Success: continue to cron handler
-    console.log(`✅ Cron auth successful: ${req.method} ${req.path}`);
-    next();
-  } catch (error) {
-    console.error('❌ Cron auth error:', error.message, {
+  const isValid = safeCompareStrings(String(providedSecret), String(cronSecret));
+  if (!isValid) {
+    console.error('❌ Invalid cron secret provided', {
       path: req.path,
       ip: req.ip
     });
     return res.status(401).json({
       error: 'Unauthorized',
-      message: 'Authentication failed'
+      message: 'Invalid cron secret'
     });
   }
+
+  // Success: continue to cron handler
+  console.log(`✅ Cron auth successful: ${req.method} ${req.path}`);
+  next();
 }
 
 /**

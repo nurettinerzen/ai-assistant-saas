@@ -9,6 +9,7 @@
 
 import crypto from 'crypto';
 import { PrismaClient } from '@prisma/client';
+import { safeCompareStrings } from '../security/constantTime.js';
 
 const prisma = new PrismaClient();
 
@@ -70,7 +71,7 @@ export async function getWebhookUrl(businessId) {
   }
 
   const baseUrl = process.env.BACKEND_URL;
-  return `${baseUrl}/api/webhook/incoming/${businessId}/${config.webhookSecret}`;
+  return `${baseUrl}/api/webhook/incoming/${businessId}`;
 }
 
 /**
@@ -93,7 +94,7 @@ export async function regenerateSecret(businessId) {
 /**
  * Validate incoming webhook request
  */
-export async function validateWebhookRequest(businessId, secret) {
+export async function validateWebhookRequest(businessId, providedSecret) {
   try {
     const config = await prisma.webhookConfig.findUnique({
       where: { businessId: parseInt(businessId) }
@@ -107,7 +108,7 @@ export async function validateWebhookRequest(businessId, secret) {
       return { valid: false, error: 'Webhook is disabled' };
     }
 
-    if (config.webhookSecret !== secret) {
+    if (!providedSecret || !safeCompareStrings(config.webhookSecret, String(providedSecret))) {
       return { valid: false, error: 'Invalid webhook secret' };
     }
 

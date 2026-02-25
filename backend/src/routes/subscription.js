@@ -15,6 +15,7 @@ import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticateToken, verifyBusinessAccess } from '../middleware/auth.js';
 import Stripe from 'stripe';
+import crypto from 'crypto';
 import emailService from '../services/emailService.js';
 import iyzicoSubscription from '../services/iyzicoSubscription.js';
 import paymentProvider from '../services/paymentProvider.js';
@@ -32,6 +33,11 @@ function getStripe() {
     stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
   }
   return stripe;
+}
+
+function hashValue(value) {
+  if (!value) return null;
+  return crypto.createHash('sha256').update(String(value), 'utf8').digest('hex').slice(0, 12);
 }
 
 // Plan configurations with both Stripe and iyzico pricing
@@ -469,7 +475,11 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
 // ============================================================================
 
 router.post('/iyzico-webhook', express.json(), async (req, res) => {
-  console.log('📥 iyzico webhook received:', req.body);
+  console.log('📥 iyzico webhook received', {
+    webhookType: req.body?.iyziEventType || req.body?.status || 'unknown',
+    hasToken: Boolean(req.body?.token),
+    hasConversationId: Boolean(req.body?.conversationId),
+  });
 
   try {
     const result = await iyzicoSubscription.processWebhook(req.body);
@@ -495,7 +505,11 @@ router.post('/iyzico-payment-callback', async (req, res) => {
   const { planId, businessId } = req.query;
   const frontendUrl = process.env.FRONTEND_URL;
 
-  console.log('📥 iyzico payment callback received:', { token, planId, businessId });
+  console.log('📥 iyzico payment callback received:', {
+    hasToken: Boolean(token),
+    planId,
+    businessId
+  });
 
   if (!token) {
     return res.redirect(`${frontendUrl}/pricing?error=missing_token`);
@@ -578,7 +592,7 @@ router.post('/iyzico-subscription-callback', async (req, res) => {
   const { token } = req.body;
   const frontendUrl = process.env.FRONTEND_URL;
 
-  console.log('📥 iyzico subscription callback received:', { token });
+  console.log('📥 iyzico subscription callback received', { tokenHash: hashValue(token) });
 
   if (!token) {
     return res.redirect(`${frontendUrl}/dashboard/subscription?status=error&message=missing_token`);
@@ -593,7 +607,10 @@ router.post('/iyzico-subscription-callback', async (req, res) => {
       return res.redirect(`${frontendUrl}/dashboard/subscription?status=error`);
     }
 
-    console.log('iyzico subscription result:', result);
+    console.log('iyzico subscription result received', {
+      success: Boolean(result?.success),
+      reference: result?.subscriptionReferenceCode ? hashValue(result.subscriptionReferenceCode) : null
+    });
 
     // Find subscription by pending token
     const subscription = await prisma.subscription.findFirst({
@@ -639,7 +656,7 @@ router.post('/iyzico-callback', async (req, res) => {
   const { token } = req.body;
   const frontendUrl = process.env.FRONTEND_URL;
 
-  console.log('📥 iyzico callback received:', { token });
+  console.log('📥 iyzico callback received', { tokenHash: hashValue(token) });
 
   if (!token) {
     return res.redirect(`${frontendUrl}/dashboard/subscription?status=error&message=missing_token`);
@@ -654,7 +671,10 @@ router.post('/iyzico-callback', async (req, res) => {
       return res.redirect(`${frontendUrl}/dashboard/subscription?status=error`);
     }
 
-    console.log('iyzico subscription result:', result);
+    console.log('iyzico subscription result received', {
+      success: Boolean(result?.success),
+      reference: result?.subscriptionReferenceCode ? hashValue(result.subscriptionReferenceCode) : null
+    });
 
     // Find subscription by pending token
     const subscription = await prisma.subscription.findFirst({

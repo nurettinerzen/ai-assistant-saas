@@ -7,39 +7,50 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-// Admin email whitelist
-const ADMIN_EMAILS = [
-  'nurettin@telyx.ai',
-  'admin@telyx.ai'
-];
+const ADMIN_BOOTSTRAP_EMAILS = (process.env.ADMIN_BOOTSTRAP_EMAILS || '')
+  .split(',')
+  .map((value) => value.trim().toLowerCase())
+  .filter(Boolean);
+
+const ADMIN_MFA_MAX_AGE_MINUTES = parseInt(process.env.ADMIN_MFA_MAX_AGE_MINUTES || '720', 10);
+
+function isBootstrapAdmin(email = '') {
+  return ADMIN_BOOTSTRAP_EMAILS.includes(String(email || '').toLowerCase());
+}
 
 /**
  * Check if user is admin and create/update AdminUser record
  */
 export async function isAdmin(req, res, next) {
   try {
-    const userEmail = req.user?.email;
+    const userEmail = String(req.user?.email || '').toLowerCase();
 
-    if (!userEmail || !ADMIN_EMAILS.includes(userEmail)) {
-      return res.status(403).json({ error: 'Admin yetkisi gerekli' });
+    if (!userEmail) {
+      return res.status(403).json({ error: 'Admin access required' });
     }
 
-    // Get or create AdminUser record
     let admin = await prisma.adminUser.findUnique({
       where: { email: userEmail }
     });
 
     if (!admin) {
-      // First login - auto create
+      if (!isBootstrapAdmin(userEmail)) {
+        return res.status(403).json({ error: 'Admin access required' });
+      }
+
+      // Bootstrap path: explicitly controlled by environment.
       admin = await prisma.adminUser.create({
         data: {
           email: userEmail,
           name: req.user.name || userEmail.split('@')[0],
-          role: 'SUPER_ADMIN'
+          role: 'SUPER_ADMIN',
+          isActive: true,
         }
       });
-    } else if (!admin.isActive) {
-      return res.status(403).json({ error: 'Admin hesabı devre dışı' });
+    }
+
+    if (!admin.isActive) {
+      return res.status(403).json({ error: 'Admin account is disabled' });
     }
 
     // Update last login
@@ -52,8 +63,28 @@ export async function isAdmin(req, res, next) {
     next();
   } catch (error) {
     console.error('Admin auth error:', error);
-    res.status(500).json({ error: 'Yetkilendirme hatası' });
+    res.status(500).json({ error: 'Authorization error' });
   }
+}
+
+/**
+ * Enforce MFA for admin routes.
+ * Token claims are set by /api/auth/admin-mfa/verify.
+ */
+export function requireAdminMfa(req, res, next) {
+  const amr = Array.isArray(req.auth?.amr) ? req.auth.amr : [];
+  const adminMfaAt = req.auth?.adminMfaAt ? Number(req.auth.adminMfaAt) : 0;
+  const maxAgeMs = Math.max(1, ADMIN_MFA_MAX_AGE_MINUTES) * 60 * 1000;
+
+  if (!amr.includes('otp') || !adminMfaAt || (Date.now() - adminMfaAt) > maxAgeMs) {
+    return res.status(428).json({
+      error: 'Admin MFA required',
+      code: 'ADMIN_MFA_REQUIRED',
+      maxAgeMinutes: Math.max(1, ADMIN_MFA_MAX_AGE_MINUTES),
+    });
+  }
+
+  return next();
 }
 
 /**
@@ -244,4 +275,4 @@ export function validateBusinessAccess(req, res, next) {
   next();
 }
 
-export { ADMIN_EMAILS };
+export { ADMIN_BOOTSTRAP_EMAILS };

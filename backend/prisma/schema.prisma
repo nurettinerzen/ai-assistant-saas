@@ -26,6 +26,7 @@ model User {
   suspendedAt         DateTime?
   suspendReason       String?
   deletedAt           DateTime?
+  tokenVersion        Int                      @default(0)
   createdAt           DateTime                 @default(now())
   updatedAt           DateTime                 @updatedAt
   business            Business                 @relation(fields: [businessId], references: [id])
@@ -1728,9 +1729,27 @@ model AdminUser {
   updatedAt DateTime   @updatedAt
   lastLogin DateTime?
   auditLogs AuditLog[]
+  mfaChallenges AdminMfaChallenge[]
 
   @@index([email])
   @@index([role])
+}
+
+model AdminMfaChallenge {
+  id         String   @id @default(cuid())
+  adminId    String
+  adminEmail String
+  userId     Int
+  codeHash   String
+  expiresAt  DateTime
+  usedAt     DateTime?
+  attempts   Int      @default(0)
+  createdAt  DateTime @default(now())
+  admin      AdminUser @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId, expiresAt])
+  @@index([adminEmail, expiresAt])
+  @@index([userId, createdAt])
 }
 
 enum AdminRole {

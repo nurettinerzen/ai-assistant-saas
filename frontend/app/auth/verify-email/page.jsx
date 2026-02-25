@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import Link from 'next/link';
 import { Phone, CheckCircle, XCircle, Loader2, RefreshCw } from 'lucide-react';
@@ -13,10 +13,9 @@ import { TelyxLogoFull } from '@/components/TelyxLogo';
 
 function VerifyEmailContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { t } = useLanguage();
   const { resolvedTheme } = useTheme();
-  const token = searchParams.get('token');
+  const [token, setToken] = useState('');
 
   const [mounted, setMounted] = useState(false);
   const [status, setStatus] = useState('verifying'); // verifying, success, error, expired
@@ -25,6 +24,13 @@ function VerifyEmailContent() {
 
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    const hashToken = hash.get('token') || '';
+    setToken(hashToken);
   }, []);
 
   useEffect(() => {
@@ -42,7 +48,7 @@ function VerifyEmailContent() {
     try {
       setStatus('verifying');
 
-      const response = await apiClient.get(`/api/auth/verify-email?token=${token}`);
+      const response = await apiClient.post('/api/auth/verify-email', { token });
       const data = response.data;
 
       setStatus('success');

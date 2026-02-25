@@ -104,22 +104,14 @@ export default function EmailDashboardPage() {
     setSyncing(true);
 
     try {
-      // Get auth token
-      const token = localStorage.getItem('token');
-      if (!token) {
-        toast.error(t('dashboard.emailPage.authRequired'));
-        setSyncing(false);
-        return;
-      }
-
       // Create EventSource with custom headers (requires polyfill or fetch workaround)
       // Since EventSource doesn't support custom headers, we'll use fetch with stream
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/email/sync/stream`,
         {
           method: 'GET',
+          credentials: 'include',
           headers: {
-            Authorization: `Bearer ${token}`,
             Accept: 'text/event-stream'
           }
         }

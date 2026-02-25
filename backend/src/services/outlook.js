@@ -231,7 +231,10 @@ class OutlookService {
         console.log(`Outlook token refreshed for business ${businessId}`);
         return newCredentials.access_token;
       } catch (error) {
-        console.error('Outlook token refresh failed:', error.response?.data || error);
+        console.error('Outlook token refresh failed:', {
+          status: error.response?.status,
+          message: error.response?.data?.error_description || error.response?.data?.error || error.message
+        });
         throw new Error('Outlook token expired. Please reconnect.');
       }
     }

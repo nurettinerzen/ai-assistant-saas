@@ -56,15 +56,11 @@ import LanguageSwitcher from './LanguageSwitcher';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import UpgradeModal from './UpgradeModal';
+import { apiClient } from '@/lib/api';
 import { VISIBILITY, getFeatureVisibility } from '@/lib/features';
 import { getPlanDisplayName } from '@/lib/planConfig';
 import { TelyxLogoCompact } from './TelyxLogo';
 import { NAVIGATION_ITEMS } from '@/lib/navigationConfig';
-
-// Admin email whitelist - should match backend
-const ADMIN_EMAILS = [
-  'nurettin@telyx.ai'
-];
 
 export default function Sidebar({ user, credits, business }) {
   const pathname = usePathname();
@@ -157,7 +153,7 @@ export default function Sidebar({ user, credits, business }) {
   ];
 
   // Admin-only navigation
-  const isUserAdmin = ADMIN_EMAILS.includes(user?.email);
+  const isUserAdmin = user?.isAdmin === true;
   const ADMIN_NAVIGATION = isUserAdmin ? [
     {
       label: 'Admin',
@@ -192,10 +188,14 @@ export default function Sidebar({ user, credits, business }) {
     );
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    window.location.href = '/login';
+  const handleLogout = async () => {
+    try {
+      await apiClient.auth.logout();
+    } catch (_error) {
+      // Ignore network issues during logout.
+    } finally {
+      window.location.href = '/login';
+    }
   };
 
   // Get plan display name from centralized config

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import Link from 'next/link';
 import { Phone, Loader2, ArrowLeft, CheckCircle, XCircle, Eye, EyeOff } from 'lucide-react';
@@ -16,7 +16,6 @@ import { TelyxLogoFull } from '@/components/TelyxLogo';
 
 function ResetPasswordContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { locale, t } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -28,39 +27,23 @@ function ResetPasswordContent() {
     confirmPassword: '',
   });
 
-  const token = searchParams.get('token');
+  const [token, setToken] = useState('');
 
   useEffect(() => {
-    if (!token) {
+    if (typeof window === 'undefined') return;
+    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    const hashToken = hash.get('token') || '';
+    setToken(hashToken);
+    if (!hashToken) {
       setError(t('auth.invalidOrMissingToken'));
     }
-  }, [token, locale]);
+  }, [locale, t]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (formData.password !== formData.confirmPassword) {
       toast.error(t('auth.passwordsDoNotMatch'));
-      return;
-    }
-
-    // Validate password strength
-    const passwordErrors = [];
-    if (formData.password.length < 8) {
-      passwordErrors.push(t('auth.atLeast8Chars'));
-    }
-    if (!/[A-Z]/.test(formData.password)) {
-      passwordErrors.push(t('auth.atLeast1Uppercase'));
-    }
-    if (!/[a-z]/.test(formData.password)) {
-      passwordErrors.push(t('auth.atLeast1Lowercase'));
-    }
-    if (!/[!@#$%^&*(),.?":{}|<>]/.test(formData.password)) {
-      passwordErrors.push(t('auth.atLeast1Punctuation'));
-    }
-    if (passwordErrors.length > 0) {
-      const errorMsg = t('auth.passwordMustContain').replace('{requirements}', passwordErrors.join(', '));
-      toast.error(errorMsg);
       return;
     }
 
@@ -165,7 +148,7 @@ function ResetPasswordContent() {
               value={formData.password}
               onChange={handleChange}
               placeholder="******"
-              minLength={8}
+              minLength={12}
             />
             <button
               type="button"
@@ -191,7 +174,7 @@ function ResetPasswordContent() {
               value={formData.confirmPassword}
               onChange={handleChange}
               placeholder="******"
-              minLength={8}
+              minLength={12}
             />
             <button
               type="button"

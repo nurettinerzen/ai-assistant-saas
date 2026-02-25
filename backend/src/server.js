@@ -102,11 +102,16 @@ import { assertAllRoutesProtected } from './middleware/routeEnforcement.js';
 // Log redaction for sensitive data
 import { getSafeRequestPath, logRedactionMiddleware } from './middleware/logRedaction.js';
 import BUILD_INFO from './config/buildInfo.js';
+import { preventParameterPollution } from './middleware/parameterPollution.js';
+import { authRateLimiter, apiRateLimiter } from './middleware/rateLimiter.js';
+import { assertProductionSecurityPosture } from './security/productionGuardrails.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 const LEGACY_ROUTES_ENABLED = process.env.ENABLE_LEGACY_ROUTES === 'true';
 const FRAME_ANCESTORS = (process.env.CSP_FRAME_ANCESTORS || "'none'").trim();
+
+assertProductionSecurityPosture();
 
 function normalizeOrigin(value) {
   if (!value || typeof value !== 'string') {
@@ -209,11 +214,12 @@ app.use('/api/subscription/webhook', express.raw({ type: 'application/json' }));
 app.use('/api/elevenlabs/webhook', express.json()); // 11Labs webhook needs parsed JSON
 app.use('/api/elevenlabs/post-call', express.json()); // 11Labs post-call webhook
 app.use('/api/webhook/incoming', express.json()); // External webhooks (Zapier, etc.)
-app.use('/api/webhook/crm', express.json()); // CRM webhook (NO AUTH - secured by webhookSecret)
+app.use('/api/webhook/crm', express.json()); // CRM webhook (NO AUTH - secured by header secret + signature)
 
 // ✅ OTHER ROUTES - JSON PARSE
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(preventParameterPollution);
 
 // ============================================================================
 // LOG REDACTION MIDDLEWARE (Security - P1)
@@ -275,7 +281,7 @@ app.get('/version', (req, res) => {
 });
 
 // API Routes
-app.use('/api/auth', authRoutes);
+app.use('/api/auth', authRateLimiter.middleware(), authRoutes);
 app.use('/api/business', businessRoutes);
 app.use('/api/call-logs', callLogRoutes);
 app.use('/api/subscription', subscriptionRoutes);
@@ -294,7 +300,7 @@ app.use('/api', demoRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/voices', voicesRoutes);
-app.use('/api/knowledge', knowledgeRoutes);
+app.use('/api/knowledge', apiRateLimiter.middleware(), knowledgeRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/cost-calculator', costCalculatorRoutes);
 app.use('/api/webhooks', webhooksRoutes);
@@ -309,8 +315,8 @@ if (LEGACY_ROUTES_ENABLED) {
     });
   });
 }
-app.use('/api/chat', chatRoutes); // Main endpoint (uses core/orchestrator)
-app.use('/api/chat-v2', chatRoutes); // Alias for backward compatibility
+app.use('/api/chat', apiRateLimiter.middleware(), chatRoutes); // Main endpoint (uses core/orchestrator)
+app.use('/api/chat-v2', apiRateLimiter.middleware(), chatRoutes); // Alias for backward compatibility
 app.use('/api/chat-logs', chatLogRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
 app.use('/api/iyzico', iyzicoRoutes);
@@ -323,7 +329,7 @@ app.use('/api/woocommerce', woocommerceRoutes);
 // CRM Webhook Integration (MUST be before /api/webhook to avoid conflicts!)
 app.use('/api/webhook/crm', crmWebhookRoutes);
 app.use('/api/webhook', webhookRoutes);
-app.use('/api/batch-calls', batchCallsRoutes);
+app.use('/api/batch-calls', apiRateLimiter.middleware(), batchCallsRoutes);
 app.use('/api/team', teamRoutes);
 app.use('/api/waitlist', waitlistRoutes);
 app.use('/api/contact', contactRoutes);
@@ -342,7 +348,7 @@ app.use('/api/balance', balanceRoutes);
 app.use('/api/usage', usageRoutes);
 app.use('/api/crm', crmRoutes);
 // Customer Data (for AI assistant matching)
-app.use('/api/customer-data', customerDataRoutes);
+app.use('/api/customer-data', apiRateLimiter.middleware(), customerDataRoutes);
 // Cron jobs (for external schedulers like cron-job.org)
 app.use('/api/cron', cronRoutes);
 // Admin panel

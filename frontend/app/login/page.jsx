@@ -69,10 +69,6 @@ export default function LoginPage() {
 
       const data = res.data;
 
-      // Save token and user data
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
-
       if (data.isNewUser) {
         toast.success(t('auth.accountCreated'));
       } else {
@@ -106,10 +102,6 @@ export default function LoginPage() {
 
       const data = res.data;
 
-      // Save token and user data
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
-
       if (data.isNewUser) {
         toast.success(t('auth.accountCreated'));
       } else {
@@ -133,10 +125,6 @@ export default function LoginPage() {
     try {
       const response = await apiClient.post('/api/auth/login', formData);
       const data = response.data;
-
-      // Save token and user data
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
 
       toast.success(t('auth.loginSuccess'));
 

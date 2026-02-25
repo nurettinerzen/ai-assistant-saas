@@ -11,7 +11,6 @@
 import { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
-import axios from 'axios';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -36,11 +35,7 @@ import {
 import { TelyxLogoCompact } from '@/components/TelyxLogo';
 import { cn } from '@/lib/utils';
 import { PLAN_HIERARCHY, hasPlanAccess } from '@/lib/planConfig';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
-
-// Admin email whitelist - should match backend
-const ADMIN_EMAILS = ['nurettin@telyx.ai', 'admin@telyx.ai'];
+import { apiClient } from '@/lib/api';
 
 const NAVIGATION_ITEMS = [
   {
@@ -140,7 +135,7 @@ export function DashboardSidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const [subscription, setSubscription] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [userEmail, setUserEmail] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -153,12 +148,8 @@ export function DashboardSidebar() {
 
   const fetchUserInfo = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-
-      const headers = { Authorization: `Bearer ${token}` };
-      const res = await axios.get(`${API_URL}/api/auth/me`, { headers });
-      setUserEmail(res.data?.email);
+      const res = await apiClient.auth.me();
+      setIsAdmin(Boolean(res.data?.isAdmin));
     } catch (error) {
       console.error('User info fetch error:', error);
     }
@@ -166,11 +157,7 @@ export function DashboardSidebar() {
 
   const fetchSubscription = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-
-      const headers = { Authorization: `Bearer ${token}` };
-      const res = await axios.get(`${API_URL}/api/subscription/current`, { headers });
+      const res = await apiClient.subscription.getCurrent();
       setSubscription(res.data);
       setLoading(false);
     } catch (error) {
@@ -179,10 +166,12 @@ export function DashboardSidebar() {
     }
   };
 
-  const isAdmin = userEmail && ADMIN_EMAILS.includes(userEmail);
-
-  const handleLogout = () => {
-    localStorage.removeItem('token');
+  const handleLogout = async () => {
+    try {
+      await apiClient.auth.logout();
+    } catch (_error) {
+      // Ignore and continue redirect.
+    }
     router.push('/login');
   };
 

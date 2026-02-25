@@ -7,18 +7,17 @@
  * - Idempotency stats
  * - Classifier health
  *
- * SECURITY: Protected by internal auth (token or IP allowlist)
+ * SECURITY: Protected by admin session auth (or internal IP allowlist)
  */
 
 import express from 'express';
 import { getDashboardMetrics } from '../services/routing-metrics.js';
 import { getShadowModeStats } from '../utils/shadow-mode.js';
 import { getIdempotencyStats } from '../services/tool-idempotency.js';
+import { authenticateToken } from '../middleware/auth.js';
+import { isAdmin } from '../middleware/adminAuth.js';
 
 const router = express.Router();
-
-// Internal metrics token (set via environment variable)
-const METRICS_TOKEN = process.env.INTERNAL_METRICS_TOKEN;
 
 // IP allowlist for metrics access (localhost + internal IPs)
 const ALLOWED_IPS = [
@@ -32,8 +31,8 @@ const ALLOWED_IPS = [
  * Authentication middleware for metrics endpoints
  *
  * Allows access if:
- * - Request has valid internal metrics token (header or query param)
  * - Request comes from allowed IP (localhost, internal)
+ * - Request has authenticated admin session (cookie/Bearer)
  * - METRICS_AUTH_DISABLED=true (for local dev only)
  */
 function metricsAuth(req, res, next) {
@@ -42,13 +41,7 @@ function metricsAuth(req, res, next) {
     return next();
   }
 
-  // Option 2: Valid token in header or query
-  const token = req.headers['x-metrics-token'] || req.query.token;
-  if (METRICS_TOKEN && token === METRICS_TOKEN) {
-    return next();
-  }
-
-  // Option 3: Request from allowed IP
+  // Option 2: Request from allowed IP
   const clientIp = req.ip || req.connection.remoteAddress || '';
   const normalizedIp = clientIp.replace('::ffff:', ''); // IPv4-mapped IPv6
 
@@ -56,11 +49,9 @@ function metricsAuth(req, res, next) {
     return next();
   }
 
-  // Reject unauthorized requests
-  console.warn(`⚠️ [Metrics] Unauthorized access attempt from IP: ${clientIp}`);
-  return res.status(401).json({
-    success: false,
-    error: 'Unauthorized. Provide valid X-Metrics-Token header or access from allowed IP.'
+  // Option 3: Authenticated admin session (cookie/Bearer)
+  return authenticateToken(req, res, () => {
+    return isAdmin(req, res, next);
   });
 }
 

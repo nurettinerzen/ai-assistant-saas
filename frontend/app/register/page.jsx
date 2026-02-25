@@ -74,10 +74,6 @@ export default function RegisterPage() {
 
       const data = res.data;
 
-      // Save token and user data
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
-
       if (data.isNewUser) {
         toast.success(t('auth.accountCreated'));
       } else {
@@ -110,10 +106,6 @@ export default function RegisterPage() {
       });
 
       const data = res.data;
-
-      // Save token and user data
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
 
       if (data.isNewUser) {
         toast.success(t('auth.accountCreated'));
@@ -156,9 +148,6 @@ export default function RegisterPage() {
     try {
       const response = await apiClient.post('/api/auth/register', formData);
       const data = response.data;
-
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
       // Redirect to email verification pending page
       router.push('/auth/email-pending');
     } catch (err) {
@@ -293,7 +282,7 @@ export default function RegisterPage() {
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   required
-                  minLength={8}
+                  minLength={12}
                   data-testid="password-input"
                 />
               </div>

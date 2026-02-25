@@ -7,6 +7,7 @@
 // ============================================================================
 
 import { Resend } from 'resend';
+import { sanitizeEmailAddress, sanitizeHeaderValue, escapeHtml } from '../utils/mailSanitizer.js';
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const FROM_EMAIL = process.env.EMAIL_FROM || 'Telyx.AI <info@telyx.ai>';
@@ -24,20 +25,28 @@ if (RESEND_API_KEY) {
  * Send email helper
  */
 const sendEmail = async (to, subject, html) => {
+  const safeTo = sanitizeEmailAddress(to);
+  const safeSubject = sanitizeHeaderValue(subject);
+  const safeFrom = sanitizeHeaderValue(FROM_EMAIL);
+
+  if (!safeTo) {
+    throw new Error('Invalid recipient email');
+  }
+
   if (!resend) {
-    console.log(`📧 [EMAIL PREVIEW] To: ${to}, Subject: ${subject}`);
+    console.log(`📧 [EMAIL PREVIEW] To: ${safeTo}, Subject: ${safeSubject}`);
     console.log(html);
     return { sent: false, reason: 'no_api_key' };
   }
 
   try {
     const result = await resend.emails.send({
-      from: FROM_EMAIL,
-      to: [to],
-      subject,
+      from: safeFrom,
+      to: [safeTo],
+      subject: safeSubject,
       html
     });
-    console.log(`✅ Email sent to ${to}: ${subject} (ID: ${result.data?.id})`);
+    console.log(`✅ Email sent to ${safeTo}: ${safeSubject} (ID: ${result.data?.id})`);
     return { sent: true, id: result.data?.id };
   } catch (error) {
     console.error('❌ Email send error:', error);
@@ -49,6 +58,8 @@ const sendEmail = async (to, subject, html) => {
  * 1. Email Verification Email
  */
 export const sendVerificationEmail = async (email, verificationUrl, businessName) => {
+  const safeBusinessName = businessName ? escapeHtml(businessName) : '';
+  const safeVerificationUrl = sanitizeHeaderValue(verificationUrl);
   const subject = 'Telyx.AI - Email Adresinizi Doğrulayın';
   const html = `
     <!DOCTYPE html>
@@ -63,20 +74,20 @@ export const sendVerificationEmail = async (email, verificationUrl, businessName
           <h1 style="margin: 0; font-size: 24px; font-weight: 600; color: #ffffff;">Email Adresinizi Doğrulayın</h1>
         </div>
         <div style="background-color: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px;">
-          <p style="margin: 0 0 16px 0; color: #333333;">Merhaba${businessName ? ` <strong>${businessName}</strong>` : ''},</p>
+          <p style="margin: 0 0 16px 0; color: #333333;">Merhaba${safeBusinessName ? ` <strong>${safeBusinessName}</strong>` : ''},</p>
           <p style="margin: 0 0 16px 0; color: #333333;">Telyx.AI'a kayıt olduğunuz için teşekkürler! Hesabınızı aktif hale getirmek için email adresinizi doğrulamanız gerekmektedir.</p>
 
           <p style="text-align: center;">
-            <a href="${verificationUrl}" style="display: inline-block; padding: 16px 48px; background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; margin: 24px 0; font-weight: 600; font-size: 16px;">Email Adresimi Doğrula</a>
+            <a href="${safeVerificationUrl}" style="display: inline-block; padding: 16px 48px; background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; margin: 24px 0; font-weight: 600; font-size: 16px;">Email Adresimi Doğrula</a>
           </p>
 
           <div style="background-color: #fef3c7; padding: 16px; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 24px 0;">
-            <p style="margin: 0; color: #333333;"><strong>⏰ Önemli:</strong> Bu link 24 saat geçerlidir. Süre dolarsa yeni bir doğrulama linki talep edebilirsiniz.</p>
+            <p style="margin: 0; color: #333333;"><strong>⏰ Önemli:</strong> Bu link 10 dakika geçerlidir. Süre dolarsa yeni bir doğrulama linki talep edebilirsiniz.</p>
           </div>
 
           <p style="font-size: 14px; color: #6b7280; margin: 0 0 16px 0;">
             Eğer butona tıklayamıyorsanız, aşağıdaki linki tarayıcınıza kopyalayabilirsiniz:<br>
-            <a href="${verificationUrl}" style="color: #667eea; word-break: break-all;">${verificationUrl}</a>
+            <a href="${safeVerificationUrl}" style="color: #667eea; word-break: break-all;">${safeVerificationUrl}</a>
           </p>
 
           <p style="font-size: 14px; color: #6b7280; margin: 0;">
@@ -99,6 +110,7 @@ export const sendVerificationEmail = async (email, verificationUrl, businessName
  * 2. Password Reset Email
  */
 export const sendPasswordResetEmail = async (email, resetUrl) => {
+  const safeResetUrl = sanitizeHeaderValue(resetUrl);
   const subject = 'Telyx.AI - Şifre Sıfırlama';
   const html = `
     <!DOCTYPE html>
@@ -118,11 +130,11 @@ export const sendPasswordResetEmail = async (email, resetUrl) => {
           <p>Şifrenizi sıfırlamak için bir talep aldık. Yeni şifre belirlemek için aşağıdaki butona tıklayın:</p>
 
           <p style="text-align: center;">
-            <a href="${resetUrl}" style="display: inline-block; padding: 16px 48px; background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; margin: 24px 0; font-weight: 600; font-size: 16px;">Şifremi Sıfırla</a>
+            <a href="${safeResetUrl}" style="display: inline-block; padding: 16px 48px; background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; margin: 24px 0; font-weight: 600; font-size: 16px;">Şifremi Sıfırla</a>
           </p>
 
           <div style="background-color: #fef3c7; padding: 16px; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 24px 0;">
-            <p style="margin: 0;"><strong>⏰ Önemli:</strong> Bu link 1 saat geçerlidir.</p>
+            <p style="margin: 0;"><strong>⏰ Önemli:</strong> Bu link 10 dakika geçerlidir.</p>
           </div>
 
           <p style="font-size: 14px; color: #6b7280;">
@@ -145,6 +157,7 @@ export const sendPasswordResetEmail = async (email, resetUrl) => {
  * 3. Welcome Email (after verification)
  */
 export const sendWelcomeEmail = async (email, userName) => {
+  const safeUserName = userName ? escapeHtml(userName) : '';
   const subject = "Telyx.AI'a Hoş Geldiniz!";
   const html = `
     <!DOCTYPE html>
@@ -160,7 +173,7 @@ export const sendWelcomeEmail = async (email, userName) => {
           <h1>Telyx.AI'a Hoş Geldiniz!</h1>
         </div>
         <div style="background-color: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px;">
-          <p>Merhaba${userName ? ` <strong>${userName}</strong>` : ''},</p>
+          <p>Merhaba${safeUserName ? ` <strong>${safeUserName}</strong>` : ''},</p>
           <p>Telyx.AI ailesine hoş geldiniz! Hesabınız aktif ve kullanıma hazır.</p>
 
           <div style="background-color: #f9fafb; padding: 20px; border-radius: 8px; margin: 24px 0;">
@@ -199,6 +212,7 @@ export const sendWelcomeEmail = async (email, userName) => {
  * 4. Low Balance Alert (PAYG)
  */
 export const sendLowBalanceAlert = async (email, currentBalance) => {
+  const safeBalance = Number.isFinite(Number(currentBalance)) ? Number(currentBalance) : 0;
   const subject = 'Telyx.AI - Bakiyeniz Azalıyor';
   const html = `
     <!DOCTYPE html>
@@ -219,7 +233,7 @@ export const sendLowBalanceAlert = async (email, currentBalance) => {
 
           <div style="background-color: #fef3c7; padding: 24px; border-radius: 8px; text-align: center; margin: 24px 0;">
             <p style="margin: 0 0 8px 0; color: #6b7280;">Mevcut Bakiye:</p>
-            <p style="font-size: 32px; font-weight: bold; color: #d97706;">${currentBalance} TL</p>
+            <p style="font-size: 32px; font-weight: bold; color: #d97706;">${safeBalance} TL</p>
           </div>
 
           <p style="text-align: center;">
@@ -303,6 +317,8 @@ export const sendOverageInvoice = async (email, overageMinutes, amount, billingP
  * 6. Email Change Verification
  */
 export const sendEmailChangeVerification = async (newEmail, verificationUrl) => {
+  const safeNewEmail = escapeHtml(newEmail || '');
+  const safeVerificationUrl = sanitizeHeaderValue(verificationUrl);
   const subject = 'Telyx.AI - Yeni Email Adresinizi Doğrulayın';
   const html = `
     <!DOCTYPE html>
@@ -319,14 +335,14 @@ export const sendEmailChangeVerification = async (newEmail, verificationUrl) => 
         </div>
         <div style="background-color: #ffffff; padding: 40px 30px; border-radius: 0 0 12px 12px;">
           <p>Merhaba,</p>
-          <p>Email adresinizi <strong>${newEmail}</strong> olarak değiştirmek istediğinizi gördük. Bu değişikliği tamamlamak için lütfen yeni email adresinizi doğrulayın.</p>
+          <p>Email adresinizi <strong>${safeNewEmail}</strong> olarak değiştirmek istediğinizi gördük. Bu değişikliği tamamlamak için lütfen yeni email adresinizi doğrulayın.</p>
 
           <p style="text-align: center;">
-            <a href="${verificationUrl}" style="display: inline-block; padding: 16px 48px; background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Yeni Email Adresimi Doğrula</a>
+            <a href="${safeVerificationUrl}" style="display: inline-block; padding: 16px 48px; background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Yeni Email Adresimi Doğrula</a>
           </p>
 
           <div style="background-color: #fef3c7; padding: 16px; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 24px 0;">
-            <p style="margin: 0;"><strong>⏰ Önemli:</strong> Bu link 24 saat geçerlidir.</p>
+            <p style="margin: 0;"><strong>⏰ Önemli:</strong> Bu link 10 dakika geçerlidir.</p>
           </div>
 
           <p style="font-size: 14px; color: #6b7280;">
@@ -1013,7 +1029,12 @@ export const sendTeamInvitationEmail = async ({ email, inviterName, businessName
  * 22. Waitlist Application Notification (to admin)
  */
 export const sendWaitlistNotificationEmail = async ({ name, email, company, businessType, message }) => {
-  const subject = `Yeni Waitlist Başvurusu: ${name}`;
+  const safeName = escapeHtml(name || '');
+  const safeEmail = sanitizeEmailAddress(email) || 'invalid@email';
+  const safeCompany = company ? escapeHtml(company) : '';
+  const safeBusinessType = businessType ? escapeHtml(businessType) : '';
+  const safeMessage = message ? escapeHtml(message) : '';
+  const subject = `Yeni Waitlist Başvurusu: ${sanitizeHeaderValue(name || 'Unknown')}`;
   const html = `
     <!DOCTYPE html>
     <html>
@@ -1030,23 +1051,23 @@ export const sendWaitlistNotificationEmail = async ({ name, email, company, busi
           <div style="background-color: #f9fafb; padding: 24px; border-radius: 8px; margin: 0 0 24px 0; border: 1px solid #e5e7eb;">
             <div style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
               <span style="color: #6b7280; font-size: 14px;">Ad Soyad</span><br>
-              <strong>${name}</strong>
+              <strong>${safeName}</strong>
             </div>
             <div style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
               <span style="color: #6b7280; font-size: 14px;">E-posta</span><br>
-              <strong><a href="mailto:${email}" style="color: #667eea;">${email}</a></strong>
+              <strong><a href="mailto:${safeEmail}" style="color: #667eea;">${safeEmail}</a></strong>
             </div>
-            ${company ? `<div style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
+            ${safeCompany ? `<div style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
               <span style="color: #6b7280; font-size: 14px;">Şirket</span><br>
-              <strong>${company}</strong>
+              <strong>${safeCompany}</strong>
             </div>` : ''}
-            ${businessType ? `<div style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
+            ${safeBusinessType ? `<div style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
               <span style="color: #6b7280; font-size: 14px;">İşletme Türü</span><br>
-              <strong>${businessType}</strong>
+              <strong>${safeBusinessType}</strong>
             </div>` : ''}
-            ${message ? `<div style="padding: 12px 0;">
+            ${safeMessage ? `<div style="padding: 12px 0;">
               <span style="color: #6b7280; font-size: 14px;">Mesaj</span><br>
-              <span>${message}</span>
+              <span>${safeMessage}</span>
             </div>` : ''}
           </div>
 
@@ -1063,6 +1084,38 @@ export const sendWaitlistNotificationEmail = async ({ name, email, company, busi
   `;
 
   return sendEmail('info@telyx.ai', subject, html);
+};
+
+export const sendAdminMfaCodeEmail = async (email, code, expiresAt) => {
+  const safeCode = escapeHtml(code || '');
+  const expiryLabel = expiresAt instanceof Date ? expiresAt.toLocaleString('en-US', { hour12: false }) : '';
+  const subject = 'Telyx Admin MFA Verification Code';
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333333; margin: 0; padding: 0; background-color: #f4f4f5;">
+      <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background-color: #111827; color: #ffffff; padding: 30px; text-align: center; border-radius: 12px 12px 0 0;">
+          <h1 style="margin: 0; font-size: 22px; color: #ffffff;">Admin MFA Code</h1>
+        </div>
+        <div style="background-color: #ffffff; padding: 30px; border-radius: 0 0 12px 12px;">
+          <p>A new admin verification code was requested for your account.</p>
+          <div style="font-size: 32px; letter-spacing: 6px; font-weight: 700; text-align: center; margin: 20px 0; color: #111827;">
+            ${safeCode}
+          </div>
+          <p>This code expires in 10 minutes${expiryLabel ? ` (until ${escapeHtml(expiryLabel)})` : ''}.</p>
+          <p>If you did not request this code, contact security immediately.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return sendEmail(email, subject, html);
 };
 
 export default {
@@ -1087,5 +1140,6 @@ export default {
   sendAutoReloadFailedEmail,
   sendLowBalanceWarning,
   sendTeamInvitationEmail,
-  sendWaitlistNotificationEmail
+  sendWaitlistNotificationEmail,
+  sendAdminMfaCodeEmail
 };

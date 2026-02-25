@@ -123,18 +123,15 @@ const DEFAULT_SYSTEM_PROMPTS = {
 
 export default function AssistantsPage() {
   const { t, locale } = useLanguage();
-  const { can } = usePermissions();
+  const { can, user } = usePermissions();
   const pageHelp = getPageHelp('assistants', locale);
   const [searchQuery, setSearchQuery] = useState('');
   const isOutboundDirection = (direction) => typeof direction === 'string' && direction.startsWith('outbound');
 
-  // Get user from localStorage
-  const user = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || '{}') : {};
-
   // React Query hooks
   const { data: assistantsData, isLoading: assistantsLoading } = useAssistants();
   const { data: voicesData, isLoading: voicesLoading } = useVoices();
-  const { data: businessData } = useBusiness(user.businessId);
+  const { data: businessData } = useBusiness(user?.businessId);
   const createAssistant = useCreateAssistant();
   const updateAssistant = useUpdateAssistant();
   const deleteAssistant = useDeleteAssistant();

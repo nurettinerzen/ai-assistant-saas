@@ -4,6 +4,8 @@
  */
 
 import axios from 'axios';
+import crypto from 'crypto';
+import { safeCompareStrings } from '../security/constantTime.js';
 
 const WHATSAPP_API_URL = 'https://graph.facebook.com/v18.0';
 
@@ -78,12 +80,11 @@ class WhatsAppService {
    * Verify webhook signature
    */
   verifyWebhookSignature(payload, signature, appSecret) {
-    const crypto = require('crypto');
     const expectedSignature = crypto
       .createHmac('sha256', appSecret)
       .update(payload)
       .digest('hex');
-    return signature === `sha256=${expectedSignature}`;
+    return safeCompareStrings(String(signature || ''), `sha256=${expectedSignature}`);
   }
 }
 

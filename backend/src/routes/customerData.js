@@ -9,6 +9,8 @@ import { getActiveToolsForElevenLabs } from '../tools/index.js';
 import { buildAssistantPrompt, getActiveTools as getPromptBuilderTools } from '../services/promptBuilder.js';
 // V1 MVP: Global limit enforcement
 import { checkCRMLimit } from '../services/globalLimits.js';
+import { validateUntrustedUpload } from '../security/uploadSecurity.js';
+import { auditSensitiveDataAccess } from '../middleware/sensitiveDataAudit.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -600,6 +602,12 @@ router.post('/parse', upload.single('file'), async (req, res) => {
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
+    await validateUntrustedUpload({
+      fileBuffer: req.file.buffer,
+      fileName: req.file.originalname,
+      maxSizeBytes: 5 * 1024 * 1024,
+    });
+
     const { data, columns } = parseFile(req.file.buffer, req.file.originalname);
 
     // Return first 5 rows as preview
@@ -632,6 +640,12 @@ router.post('/import', upload.single('file'), async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
     }
+
+    await validateUntrustedUpload({
+      fileBuffer: req.file.buffer,
+      fileName: req.file.originalname,
+      maxSizeBytes: 5 * 1024 * 1024,
+    });
 
     const { columnMapping, dataType = 'custom' } = req.body;
 
@@ -881,7 +895,7 @@ router.post('/import', upload.single('file'), async (req, res) => {
  * GET /api/customer-data/files
  * List all imported files for the business
  */
-router.get('/files', async (req, res) => {
+router.get('/files', auditSensitiveDataAccess('customer_data_file_list'), async (req, res) => {
   try {
     const businessId = req.businessId;
 
@@ -907,7 +921,7 @@ router.get('/files', async (req, res) => {
  * GET /api/customer-data/files/:id
  * Get a single file with its records
  */
-router.get('/files/:id', async (req, res) => {
+router.get('/files/:id', auditSensitiveDataAccess('customer_data_file', (req) => req.params.id), async (req, res) => {
   try {
     const businessId = req.businessId;
     const { id } = req.params;
@@ -1008,7 +1022,7 @@ router.delete('/files/:id', async (req, res) => {
  * GET /api/customer-data
  * List all customer data for the business with pagination
  */
-router.get('/', async (req, res) => {
+router.get('/', auditSensitiveDataAccess('customer_data_records'), async (req, res) => {
   try {
     const businessId = req.businessId;
     const { page = 1, limit = 50, search, tag } = req.query;
@@ -1063,7 +1077,7 @@ router.get('/', async (req, res) => {
  * GET /api/customer-data/lookup
  * Lookup customer by phone number (for AI assistant)
  */
-router.get('/lookup', async (req, res) => {
+router.get('/lookup', auditSensitiveDataAccess('customer_data_lookup', (req) => req.query.phone || null), async (req, res) => {
   try {
     const businessId = req.businessId;
     const { phone } = req.query;
@@ -1146,7 +1160,7 @@ router.get('/debug', async (req, res) => {
  * GET /api/customer-data/:id
  * Get a single customer data record
  */
-router.get('/:id', async (req, res) => {
+router.get('/:id', auditSensitiveDataAccess('customer_data_record', (req) => req.params.id), async (req, res) => {
   try {
     const businessId = req.businessId;
     const { id } = req.params;

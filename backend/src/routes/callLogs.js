@@ -4,6 +4,7 @@ import { authenticateToken } from '../middleware/auth.js';
 import axios from 'axios';
 import OpenAI from 'openai';
 import { getPricePerMinute } from '../config/plans.js';
+import { auditSensitiveDataAccess } from '../middleware/sensitiveDataAudit.js';
 
 const router = express.Router();
 const openai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
@@ -142,7 +143,7 @@ async function fetchAndProcessConversation(conversationId, business) {
 router.use(authenticateToken);
 
 // Export calls as CSV - MUST be defined before /:id route
-router.get('/export', async (req, res) => {
+router.get('/export', auditSensitiveDataAccess('call_logs_export'), async (req, res) => {
   try {
     const { businessId } = req;
 
@@ -216,7 +217,7 @@ router.get('/export', async (req, res) => {
 
 // Get all call logs for the user's business (PHONE CALLS ONLY)
 // Note: This endpoint is for phone calls only. Chat/WhatsApp logs are handled separately.
-router.get('/', async (req, res) => {
+router.get('/', auditSensitiveDataAccess('call_logs_list'), async (req, res) => {
   try {
     const { businessId } = req;
     const { status, search, direction, endReason, startDate, endDate, page = 1, limit = 20 } = req.query;
@@ -355,7 +356,7 @@ router.get('/', async (req, res) => {
 });
 
 // Get a single call log by ID (supports both phone calls and chat/WhatsApp)
-router.get('/:id', async (req, res) => {
+router.get('/:id', auditSensitiveDataAccess('call_log_detail', (req) => req.params.id), async (req, res) => {
   try {
     const { id } = req.params;
     const { businessId } = req;
@@ -545,8 +546,8 @@ router.post('/', async (req, res) => {
 });
 
 // Get call recording audio (proxy from 11Labs)
-// Token can be passed via Authorization header or query param (for <audio> elements)
-router.get('/:id/audio', async (req, res) => {
+// Auth is cookie/Bearer token only (no query token support)
+router.get('/:id/audio', auditSensitiveDataAccess('call_log_audio', (req) => req.params.id), async (req, res) => {
   try {
     const { businessId } = req;
     const { id } = req.params;

@@ -25,7 +25,6 @@ import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
 
 // Admin email whitelist - should match backend
-const ADMIN_EMAILS = ['nurettin@telyx.ai', 'admin@telyx.ai'];
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -40,9 +39,7 @@ export default function AdminDashboardPage() {
   const checkAdminAccess = async () => {
     try {
       const response = await apiClient.get('/api/auth/me');
-      const userEmail = response.data?.email;
-
-      if (ADMIN_EMAILS.includes(userEmail)) {
+      if (response.data?.isAdmin === true) {
         setIsAdmin(true);
         loadStats();
       } else {

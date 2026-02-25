@@ -53,6 +53,7 @@ import { detectUserRisks, getPIIWarningMessages } from '../services/user-risk-de
 import { getState, updateState } from '../services/state-manager.js';
 import { resolveChatAssistantForBusiness } from '../services/assistantChannels.js';
 import { syncPersistedAssistantReply } from '../services/reply-parity.js';
+import { safeCompareHex } from '../security/constantTime.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -136,21 +137,18 @@ function verifyWhatsAppSignature(req, appSecret) {
     .update(JSON.stringify(req.body))
     .digest('hex');
 
-  // Constant-time comparison to prevent timing attacks
-  try {
-    return crypto.timingSafeEqual(
-      Buffer.from(signatureHash, 'hex'),
-      Buffer.from(expectedHash, 'hex')
-    );
-  } catch (e) {
-    console.error('❌ Signature verification failed:', e.message);
-    return false;
-  }
+  return safeCompareHex(signatureHash, expectedHash);
 }
 
 // Webhook - Incoming messages (Multi-tenant)
 router.post('/webhook', webhookRateLimiter.middleware(), async (req, res) => {
-  console.log('🔔 WhatsApp WEBHOOK RECEIVED:', JSON.stringify(req.body, null, 2));
+  const entryCount = Array.isArray(req.body?.entry) ? req.body.entry.length : 0;
+  const changeCount = Array.isArray(req.body?.entry?.[0]?.changes) ? req.body.entry[0].changes.length : 0;
+  console.log('🔔 WhatsApp WEBHOOK RECEIVED', {
+    object: req.body?.object || null,
+    entryCount,
+    changeCount,
+  });
 
   // SECURITY: Verify webhook signature
   const appSecret = process.env.WHATSAPP_APP_SECRET || process.env.META_APP_SECRET;

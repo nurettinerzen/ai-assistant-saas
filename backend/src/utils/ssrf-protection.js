@@ -13,6 +13,28 @@ import { promisify } from 'util';
 const dnsResolve4 = promisify(dns.resolve4);
 const dnsResolve6 = promisify(dns.resolve6);
 
+const DEFAULT_PROTOCOLS = process.env.NODE_ENV === 'production'
+  ? ['https:']
+  : ['https:', 'http:'];
+const ALLOWED_PROTOCOLS = (process.env.SSRF_ALLOWED_PROTOCOLS || DEFAULT_PROTOCOLS.join(','))
+  .split(',')
+  .map((value) => value.trim().toLowerCase())
+  .filter(Boolean);
+
+const ALLOWED_PORTS = (process.env.SSRF_ALLOWED_PORTS || '80,443')
+  .split(',')
+  .map((value) => parseInt(value.trim(), 10))
+  .filter((value) => Number.isInteger(value) && value > 0 && value <= 65535);
+
+const DOMAIN_ALLOWLIST = (process.env.SSRF_DOMAIN_ALLOWLIST || '')
+  .split(',')
+  .map((value) => value.trim().toLowerCase())
+  .filter(Boolean);
+
+const PATH_ALLOWLIST_REGEX = process.env.SSRF_PATH_ALLOWLIST_REGEX
+  ? new RegExp(process.env.SSRF_PATH_ALLOWLIST_REGEX)
+  : null;
+
 /**
  * Private IP ranges (RFC 1918, RFC 4193, etc.)
  */
@@ -59,6 +81,15 @@ function isDangerousHostname(hostname) {
   return DANGEROUS_HOSTNAMES.some(dangerous => lower === dangerous || lower.endsWith(`.${dangerous}`));
 }
 
+function isAllowedDomain(hostname) {
+  if (DOMAIN_ALLOWLIST.length === 0) {
+    return true;
+  }
+
+  const lower = hostname.toLowerCase();
+  return DOMAIN_ALLOWLIST.some((allowed) => lower === allowed || lower.endsWith(`.${allowed}`));
+}
+
 /**
  * Validate URL for SSRF protection
  * @param {string} url - URL to validate
@@ -68,11 +99,11 @@ export async function validateUrlForSSRF(url) {
   try {
     const parsed = new URL(url);
 
-    // 1. Protocol check - only allow HTTP/HTTPS
-    if (!['http:', 'https:'].includes(parsed.protocol)) {
+    // 1. Protocol check
+    if (!ALLOWED_PROTOCOLS.includes(parsed.protocol.toLowerCase())) {
       return {
         safe: false,
-        reason: `Protocol not allowed: ${parsed.protocol}. Only http: and https: are permitted.`
+        reason: `Protocol not allowed: ${parsed.protocol}`
       };
     }
 
@@ -80,6 +111,31 @@ export async function validateUrlForSSRF(url) {
     let hostname = parsed.hostname;
     if (hostname.startsWith('[') && hostname.endsWith(']')) {
       hostname = hostname.slice(1, -1);
+    }
+
+    const effectivePort = parsed.port
+      ? parseInt(parsed.port, 10)
+      : (parsed.protocol === 'https:' ? 443 : 80);
+
+    if (!ALLOWED_PORTS.includes(effectivePort)) {
+      return {
+        safe: false,
+        reason: `Port not allowed: ${effectivePort}`
+      };
+    }
+
+    if (!isAllowedDomain(hostname)) {
+      return {
+        safe: false,
+        reason: `Domain not allowlisted: ${hostname}`
+      };
+    }
+
+    if (PATH_ALLOWLIST_REGEX && !PATH_ALLOWLIST_REGEX.test(parsed.pathname || '/')) {
+      return {
+        safe: false,
+        reason: `Path not allowlisted: ${parsed.pathname || '/'}`
+      };
     }
 
     // 2. Hostname check - block dangerous hostnames

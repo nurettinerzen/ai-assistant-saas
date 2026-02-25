@@ -254,11 +254,11 @@ export function OnboardingModal({ open, onClose, business, phoneInboundEnabled =
     setLoading(true);
     try {
       let businessId = business?.id;
-      if (!businessId && typeof window !== 'undefined') {
+      if (!businessId) {
         try {
-          const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
-          businessId = storedUser.businessId;
-        } catch {
+          const authResponse = await apiClient.auth.me();
+          businessId = authResponse.data?.businessId || authResponse.data?.business?.id || null;
+        } catch (_error) {
           businessId = null;
         }
       }

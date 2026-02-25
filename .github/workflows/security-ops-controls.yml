@@ -1,0 +1,100 @@
+name: Security Ops Controls
+
+on:
+  schedule:
+    # Daily control checks
+    - cron: '0 1 * * *'
+    # Weekly extended drill
+    - cron: '0 2 * * 0'
+  workflow_dispatch:
+
+jobs:
+  config-integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install backend dependencies
+        run: npm --prefix backend ci --omit=dev
+
+      - name: Compute security config digest
+        env:
+          SECURITY_CONFIG_BASELINE_SHA256: ${{ secrets.SECURITY_CONFIG_BASELINE_SHA256 }}
+        run: |
+          if [ -n "${SECURITY_CONFIG_BASELINE_SHA256:-}" ]; then
+            node backend/scripts/security-config-integrity.js --json --fail-on-mismatch
+          else
+            node backend/scripts/security-config-integrity.js --json
+          fi
+
+  subdomain-takeover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install backend dependencies
+        run: npm --prefix backend ci --omit=dev
+
+      - name: Run subdomain takeover check
+        env:
+          SUBDOMAIN_ASSETS: ${{ secrets.SUBDOMAIN_ASSETS }}
+        run: |
+          if [ -z "${SUBDOMAIN_ASSETS:-}" ]; then
+            echo "SUBDOMAIN_ASSETS secret is not configured; skipping takeover check."
+            exit 0
+          fi
+          npm --prefix backend run security:subdomain-check
+
+      - name: Upload takeover report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: subdomain-takeover-report-${{ github.run_number }}
+          path: backend/tests/reports/subdomain-takeover-check-*.json
+          retention-days: 30
+
+  backup-restore-drill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install backend dependencies
+        run: npm --prefix backend ci --omit=dev
+
+      - name: Run backup restore drill
+        env:
+          BACKUP_RESTORE_DUMP_PATH: ${{ secrets.BACKUP_RESTORE_DUMP_PATH }}
+          BACKUP_RESTORE_REQUIRE_REAL: ${{ secrets.BACKUP_RESTORE_REQUIRE_REAL }}
+        run: npm --prefix backend run ops:backup-restore-drill
+
+      - name: Upload backup restore drill report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backup-restore-drill-report-${{ github.run_number }}
+          path: backend/tests/reports/backup-restore-drill-*.json
+          retention-days: 30

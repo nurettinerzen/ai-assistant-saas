@@ -53,7 +53,6 @@ import InfoTooltip from '@/components/InfoTooltip';
 import { getPageHelp } from '@/content/pageHelp';
 import { PLAN_COLORS } from '@/lib/planConfig';
 
-const ADMIN_EMAILS = ['nurettin@telyx.ai', 'admin@telyx.ai'];
 
 export default function AdminUserDetailPage() {
   const router = useRouter();
@@ -95,8 +94,7 @@ export default function AdminUserDetailPage() {
   const checkAdminAccess = async () => {
     try {
       const response = await apiClient.get('/api/auth/me');
-      const userEmail = response.data?.email;
-      if (ADMIN_EMAILS.includes(userEmail)) {
+      if (response.data?.isAdmin === true) {
         setIsAdmin(true);
       } else {
         setIsAdmin(false);

@@ -107,7 +107,8 @@ router.get('/webhook', async (req, res) => {
         webhookSecret: webhook.webhookSecret,
         isActive: webhook.isActive,
         lastDataAt: webhook.lastDataAt,
-        url: `${apiUrl}/api/webhook/crm/${businessId}/${webhook.webhookSecret}`
+        authHeader: 'X-Webhook-Secret',
+        url: `${apiUrl}/api/webhook/crm/${businessId}`
       },
       stats: {
         orders: { count: orderCount, lastUpdate: lastOrder?.updatedAt },
@@ -147,7 +148,8 @@ router.post('/webhook/regenerate', async (req, res) => {
 
     res.json({
       webhookSecret: webhook.webhookSecret,
-      url: `${apiUrl}/api/webhook/crm/${businessId}/${webhook.webhookSecret}`
+      authHeader: 'X-Webhook-Secret',
+      url: `${apiUrl}/api/webhook/crm/${businessId}`
     });
 
   } catch (error) {

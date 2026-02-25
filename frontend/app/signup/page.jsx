@@ -22,13 +22,6 @@ export default function SignupPage() {
   useEffect(() => {
     setMounted(true);
   }, []);
-
-  useEffect(() => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    router.push('/dashboard/assistant');
-  }
-}, [router]);
   const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
@@ -44,19 +37,12 @@ export default function SignupPage() {
   // Check if user is already logged in
   useEffect(() => {
     const checkExistingAuth = async () => {
-      const token = localStorage.getItem('token');
-      if (token) {
-        try {
-          const response = await apiClient.get('/api/auth/me');
-          // User is authenticated, redirect to assistant page
-          // Dashboard will handle onboarding if needed
-          router.push('/dashboard/assistant');
-          return;
-        } catch (error) {
-          // Token is invalid, remove it
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-        }
+      try {
+        await apiClient.auth.me();
+        router.push('/dashboard/assistant');
+        return;
+      } catch (_error) {
+        // Not authenticated yet, stay on signup page.
       }
       setCheckingAuth(false);
     };
@@ -87,29 +73,7 @@ export default function SignupPage() {
         return;
       }
 
-      // Validate password strength
-      const passwordErrors = [];
-      if (formData.password.length < 8) {
-        passwordErrors.push(t('auth.atLeast8Chars'));
-      }
-      if (!/[A-Z]/.test(formData.password)) {
-        passwordErrors.push(t('auth.atLeast1Uppercase'));
-      }
-      if (!/[a-z]/.test(formData.password)) {
-        passwordErrors.push(t('auth.atLeast1Lowercase'));
-      }
-      if (!/[!@#$%^&*(),.?":{}|<>]/.test(formData.password)) {
-        passwordErrors.push(t('auth.atLeast1Punctuation'));
-      }
-      if (passwordErrors.length > 0) {
-        toast.error(t('auth.passwordMustContain', { requirements: passwordErrors.join(', ') }));
-        setLoading(false);
-        return;
-      }
-
-      const response = await apiClient.auth.signup(formData);
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+      await apiClient.auth.signup(formData);
       toast.success(t('auth.accountCreated'));
       // Redirect to email verification pending page
       router.push('/auth/email-pending');
@@ -220,7 +184,7 @@ export default function SignupPage() {
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   required
-                  minLength={8}
+                  minLength={12}
                 />
               </div>
               <p className="text-xs text-gray-500 dark:text-neutral-500 mt-1">

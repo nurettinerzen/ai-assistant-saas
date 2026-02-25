@@ -9,6 +9,7 @@ import {
   ENTITLEMENT_REASONS
 } from '../services/phonePlanEntitlements.js';
 import { resolvePhoneOutboundAccessForBusinessId } from '../services/phoneOutboundAccess.js';
+import { validateUntrustedUpload } from '../security/uploadSecurity.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -436,6 +437,12 @@ router.post('/parse', upload.single('file'), async (req, res) => {
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
+    await validateUntrustedUpload({
+      fileBuffer: req.file.buffer,
+      fileName: req.file.originalname,
+      maxSizeBytes: 5 * 1024 * 1024,
+    });
+
     const { data, columns } = parseFile(req.file.buffer, req.file.originalname);
 
     // Return first 5 rows as preview
@@ -481,6 +488,12 @@ router.post('/', upload.single('file'), checkPermission('campaigns:view'), async
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
     }
+
+    await validateUntrustedUpload({
+      fileBuffer: req.file.buffer,
+      fileName: req.file.originalname,
+      maxSizeBytes: 5 * 1024 * 1024,
+    });
 
     // Verify assistant belongs to this business and is outbound type
     // callDirection can be 'outbound', 'outbound_sales', 'outbound_collection', or 'outbound_general'

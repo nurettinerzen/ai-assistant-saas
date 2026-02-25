@@ -14,24 +14,11 @@ if (!API_BASE_URL) {
 
 const api = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
 });
-
-// Request interceptor - Add auth token
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
 
 // Response interceptor - Handle errors globally
 api.interceptors.response.use(
@@ -44,13 +31,9 @@ api.interceptors.response.use(
       // WhatsApp connect hatası Meta'dan geliyor, logout yapma
       const isWhatsAppConnect = error.config?.url?.includes('/whatsapp/connect');
       // Login sayfasında zaten olabilir, o yüzden redirect yapma
-      const token = localStorage.getItem('token');
       const isLoginPage = typeof window !== 'undefined' && window.location.pathname === '/login';
       
-      if (token && !isLoginPage) {
-        // Token geçersiz, logout yap
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+      if (!isWhatsAppConnect && !isLoginPage && typeof window !== 'undefined') {
         window.location.href = '/login';
       }
       // Login sayfasındaysa hiçbir şey yapma, hatayı döndür
@@ -83,9 +66,15 @@ export const apiClient = {
     login: (credentials) => api.post('/api/auth/login', credentials),
     signup: (data) => api.post('/api/auth/signup', data),
     register: (data) => api.post('/api/auth/register', data),
+    me: () => api.get('/api/auth/me'),
     logout: () => api.post('/api/auth/logout'),
-    verifyEmail: (code) => api.post('/api/auth/verify-email', { code }),
-    googleAuth: (token) => api.post('/api/auth/google', { token }),
+    verifyEmail: (token) => api.post('/api/auth/verify-email', { token }),
+    reauthenticate: (password) => api.post('/api/auth/reauthenticate', { password }),
+    googleAuth: (credential) => api.post('/api/auth/google', { credential }),
+    googleCodeAuth: (code) => api.post('/api/auth/google/code', { code }),
+    adminMfaChallenge: () => api.post('/api/auth/admin-mfa/challenge'),
+    adminMfaVerify: (challengeId, code) => api.post('/api/auth/admin-mfa/verify', { challengeId, code }),
+    adminMfaStatus: () => api.get('/api/auth/admin-mfa/status'),
   },
 
   // Dashboard stats
@@ -222,8 +211,8 @@ export const apiClient = {
     sendInvite: (data) => api.post('/api/team/invite', data),
     cancelInvite: (id) => api.delete(`/api/team/invitations/${id}`),
     resendInvite: (id) => api.post(`/api/team/invitations/${id}/resend`),
-    getInvitationByToken: (token) => api.get(`/api/team/invitation/${token}`),
-    acceptInvitation: (token, data) => api.post(`/api/team/invitation/${token}/accept`, data),
+    getInvitationByToken: (token) => api.post('/api/team/invitation/lookup', { token }),
+    acceptInvitation: (token, data) => api.post('/api/team/invitation/accept', { token, ...data }),
   },
 
   // Onboarding

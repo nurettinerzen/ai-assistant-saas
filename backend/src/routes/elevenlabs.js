@@ -38,6 +38,7 @@ import {
   logContentSafetyViolation
 } from '../utils/content-safety.js';
 import { isPhoneInboundEnabledForBusiness } from '../services/phoneInboundGate.js';
+import { safeCompareHex } from '../security/constantTime.js';
 
 const router = express.Router();
 const openai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
@@ -124,7 +125,7 @@ function verifyWebhookSignature(req, secret) {
       .update(payload)
       .digest('hex');
 
-    return hash === expectedHash;
+    return safeCompareHex(hash, expectedHash);
   } catch (error) {
     console.error('❌ Signature verification error:', error);
     return false;
@@ -606,7 +607,12 @@ router.post('/post-call', async (req, res) => {
       status
     } = req.body;
 
-    console.log('[11Labs Post-Call] Received:', JSON.stringify(req.body, null, 2).substring(0, 1000));
+    console.log('[11Labs Post-Call] Received', {
+      eventType: req.body?.type || 'post_call',
+      conversationId: req.body?.conversation_id || req.body?.data?.conversation_id || null,
+      agentId: req.body?.agent_id || req.body?.data?.agent_id || null,
+      status: req.body?.status || req.body?.data?.status || null,
+    });
     console.log('[11Labs Post-Call] Conversation:', conversation_id);
 
     // Find assistant by agent ID

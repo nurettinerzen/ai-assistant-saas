@@ -250,7 +250,7 @@ export default function TranscriptModal({ callId, isOpen, onClose }) {
 
                 <audio
                   ref={audioRef}
-                  src={`${process.env.NEXT_PUBLIC_API_URL || ''}/api/call-logs/${call.id}/audio?token=${typeof window !== 'undefined' ? localStorage.getItem('token') || '' : ''}`}
+                  src={`${process.env.NEXT_PUBLIC_API_URL || ''}/api/call-logs/${call.id}/audio`}
                   preload="metadata"
                   onTimeUpdate={handleTimeUpdate}
                   onLoadedMetadata={handleLoadedMetadata}

@@ -13,6 +13,7 @@ import { trackCallUsage } from '../services/usageTracking.js';
 import { getInboundDisabledMessage } from '../phone-outbound-v1/index.js';
 import metricsService from '../services/metricsService.js';
 import { isPhoneInboundEnabledForBusinessId } from '../services/phoneInboundGate.js';
+import { safeCompareHex } from '../security/constantTime.js';
 
 // OpenAI client for summary translation
 const openai = process.env.OPENAI_API_KEY
@@ -77,16 +78,7 @@ function verifyElevenLabsSignature(req) {
       .update(payload)
       .digest('hex');
 
-    // Constant-time comparison to prevent timing attacks
-    try {
-      return crypto.timingSafeEqual(
-        Buffer.from(receivedHash, 'hex'),
-        Buffer.from(expectedHash, 'hex')
-      );
-    } catch (e) {
-      console.error('❌ 11Labs signature comparison failed:', e.message);
-      return false;
-    }
+    return safeCompareHex(receivedHash, expectedHash);
   } catch (error) {
     console.error('❌ Signature verification error:', error);
     return false;
@@ -108,8 +100,11 @@ router.post('/elevenlabs/call-started', async (req, res) => {
   }
 
   try {
-    // Log raw payload for debugging
-    console.log('📥 11Labs call-started RAW payload:', JSON.stringify(req.body, null, 2));
+    console.log('📥 11Labs call-started event', {
+      type: req.body?.type || null,
+      conversationId: req.body?.data?.conversation_id || req.body?.conversation_id || null,
+      agentId: req.body?.data?.agent_id || req.body?.agent_id || null,
+    });
 
     // 11Labs webhook structure: { type, data: { ... } }
     const { type, data } = req.body;
@@ -316,8 +311,12 @@ router.post('/elevenlabs/call-ended', async (req, res) => {
   }
 
   try {
-    // Log raw payload for debugging
-    console.log('📥 11Labs call-ended RAW payload:', JSON.stringify(req.body, null, 2));
+    console.log('📥 11Labs call-ended event', {
+      type: req.body?.type || null,
+      conversationId: req.body?.data?.conversation_id || req.body?.conversation_id || null,
+      agentId: req.body?.data?.agent_id || req.body?.agent_id || null,
+      status: req.body?.data?.status || req.body?.status || null,
+    });
 
     // 11Labs post-call webhook structure:
     // { type: "post_call_transcription", data: { conversation_id, agent_id, status, metadata: { call_duration_secs, ... } } }

@@ -898,7 +898,12 @@ async function handleMessageLEGACY(sessionId, businessId, userMessage, systemPro
 router.post('/widget', async (req, res) => {
   const _widgetStart = Date.now();
   console.log('\n\n🆕 ========== NEW CHAT REQUEST ==========');
-  console.log('📨 Request body:', req.body);
+  console.log('📨 Chat request received', {
+    hasEmbedKey: Boolean(req.body?.embedKey),
+    hasAssistantId: Boolean(req.body?.assistantId),
+    hasSessionId: Boolean(req.body?.sessionId),
+    messageLength: typeof req.body?.message === 'string' ? req.body.message.length : 0,
+  });
 
   let business = null;
   let clientSessionId = null;

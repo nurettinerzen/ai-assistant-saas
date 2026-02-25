@@ -7,6 +7,7 @@ import { Home, Bot, Calendar, Package, Phone, Settings, CreditCard, LogOut, Menu
 import { Button } from '@/components/ui/button';
 import { useTranslation } from '@/lib/translations';
 import LanguageSwitcher from './LanguageSwitcher';
+import { apiClient } from '@/lib/api';
 
 export default function DashboardLayout({ children }) {
   const router = useRouter();
@@ -17,18 +18,27 @@ export default function DashboardLayout({ children }) {
   const t = useTranslation(lang);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (!storedUser) {
-      router.push('/login');
-    } else {
-      setUser(JSON.parse(storedUser));
-    }
+    let mounted = true;
+    apiClient.auth.me()
+      .then((response) => {
+        if (mounted) setUser(response.data);
+      })
+      .catch(() => {
+        if (mounted) router.push('/login');
+      });
+    return () => {
+      mounted = false;
+    };
   }, [router]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    router.push('/login');
+  const handleLogout = async () => {
+    try {
+      await apiClient.auth.logout();
+    } catch (_error) {
+      // ignore
+    } finally {
+      router.push('/login');
+    }
   };
 
   const navigation = [

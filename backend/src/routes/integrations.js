@@ -601,7 +601,7 @@ router.post('/whatsapp/connect', requireOwner, async (req, res) => {
     console.log('Validating with Meta:', {
       phoneNumberId,
       tokenLength: accessToken?.length,
-      tokenStart: accessToken?.substring(0, 20)
+      hasVerifyToken: Boolean(verifyToken),
     });
 
     // Validate access token with Meta API

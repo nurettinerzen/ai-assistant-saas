@@ -8,38 +8,13 @@ import { Toaster } from 'sonner';
 import { OnboardingModal } from '@/components/OnboardingModal';
 import { useLanguage } from '@/contexts/LanguageContext';
 
-// Cache for user data (5 minutes)
-const USER_CACHE_KEY = 'dashboard_user_cache';
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+// Avoid storing user/session data in browser storage.
+const USER_CACHE_KEY = 'dashboard_user_cache_disabled';
 const ONBOARDING_COMPLETED_PREFIX = 'onboarding_completed_business_';
 
-const getCachedUserData = () => {
-  if (typeof window === 'undefined') return null;
-  try {
-    const cached = sessionStorage.getItem(USER_CACHE_KEY);
-    if (!cached) return null;
-    const { data, timestamp } = JSON.parse(cached);
-    if (Date.now() - timestamp > CACHE_DURATION) {
-      sessionStorage.removeItem(USER_CACHE_KEY);
-      return null;
-    }
-    return data;
-  } catch {
-    return null;
-  }
-};
+const getCachedUserData = () => null;
 
-const setCachedUserData = (data) => {
-  if (typeof window === 'undefined') return;
-  try {
-    sessionStorage.setItem(USER_CACHE_KEY, JSON.stringify({
-      data,
-      timestamp: Date.now()
-    }));
-  } catch {
-    // Ignore storage errors
-  }
-};
+const setCachedUserData = () => {};
 
 const getOnboardingStorageKey = (businessId) => `${ONBOARDING_COMPLETED_PREFIX}${businessId}`;
 
@@ -64,13 +39,6 @@ export default function DashboardLayout({ children }) {
   const initialLoadDone = useRef(false);
 
   useEffect(() => {
-    // Check authentication
-    const token = localStorage.getItem('token');
-    if (!token) {
-      router.push('/login');
-      return;
-    }
-
     // Try to load from cache first for instant display
     // IMPORTANT: Only use cache if it has subscription data to prevent sidebar flash
     const cachedData = getCachedUserData();
@@ -174,7 +142,6 @@ export default function DashboardLayout({ children }) {
     } catch (error) {
       console.error('Failed to load user data:', error);
       if (error.response?.status === 401) {
-        localStorage.removeItem('token');
         sessionStorage.removeItem(USER_CACHE_KEY);
         router.push('/login');
       }

@@ -85,7 +85,8 @@ export const EVENT_TYPE = {
   SSRF_BLOCK: 'ssrf_block',
   RATE_LIMIT_HIT: 'rate_limit_hit',
   WEBHOOK_INVALID_SIGNATURE: 'webhook_invalid_signature',
-  PII_LEAK_BLOCK: 'pii_leak_block'
+  PII_LEAK_BLOCK: 'pii_leak_block',
+  SENSITIVE_DATA_ACCESS: 'sensitive_data_access',
 };
 
 /**
@@ -296,6 +297,28 @@ export async function logPIILeakBlock(req, piiTypes, businessId = null) {
   });
 }
 
+/**
+ * Helper: Log sensitive data access audit event (metadata only).
+ */
+export async function logSensitiveDataAccess(req, details = {}) {
+  await logSecurityEvent({
+    type: EVENT_TYPE.SENSITIVE_DATA_ACCESS,
+    severity: SEVERITY.MEDIUM,
+    businessId: req.businessId || null,
+    userId: req.userId || null,
+    ipAddress: req.ip,
+    userAgent: req.headers['user-agent'],
+    endpoint: req.path,
+    method: req.method,
+    statusCode: 200,
+    details: {
+      resourceType: details.resourceType || 'unknown',
+      resourceId: details.resourceId || null,
+      actorRole: details.actorRole || null,
+    },
+  });
+}
+
 export default {
   logSecurityEvent,
   attachSecurityLogger,
@@ -306,6 +329,7 @@ export default {
   logSSRFBlock,
   logRateLimitHit,
   logPIILeakBlock,
+  logSensitiveDataAccess,
   SEVERITY,
   EVENT_TYPE
 };

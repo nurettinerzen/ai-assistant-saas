@@ -47,13 +47,7 @@ export default function EmailPendingPage() {
 
   const checkAuthStatus = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        router.push('/login');
-        return;
-      }
-
-      const response = await apiClient.get('/api/auth/me');
+      const response = await apiClient.auth.me();
       const userData = response.data;
       setUser(userData);
 
@@ -65,7 +59,6 @@ export default function EmailPendingPage() {
     } catch (error) {
       console.error('Auth check error:', error);
       if (error.response?.status === 401) {
-        localStorage.removeItem('token');
         router.push('/login');
       }
     } finally {
@@ -118,10 +111,14 @@ export default function EmailPendingPage() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    router.push('/login');
+  const handleLogout = async () => {
+    try {
+      await apiClient.auth.logout();
+    } catch (_error) {
+      // Ignore network errors, still redirect.
+    } finally {
+      router.push('/login');
+    }
   };
 
   const formatCountdown = (seconds) => {

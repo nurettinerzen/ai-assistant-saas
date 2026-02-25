@@ -35,7 +35,6 @@ import {
 import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
 
-const ADMIN_EMAILS = ['nurettin@telyx.ai', 'admin@telyx.ai'];
 
 const STATUS_COLORS = {
   completed: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
@@ -79,8 +78,7 @@ export default function AdminCallsPage() {
   const checkAdminAccess = async () => {
     try {
       const response = await apiClient.get('/api/auth/me');
-      const userEmail = response.data?.email;
-      if (ADMIN_EMAILS.includes(userEmail)) {
+      if (response.data?.isAdmin === true) {
         setIsAdmin(true);
       } else {
         setIsAdmin(false);

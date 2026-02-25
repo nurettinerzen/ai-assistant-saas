@@ -52,12 +52,9 @@ export default function VoicesPage() {
   // Load business language - memoized to prevent recreation
   const loadBusinessLanguage = useCallback(async () => {
     try {
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
-      if (user.businessId) {
-        const response = await apiClient.business.get(user.businessId);
-        const language = response.data.language || response.data.business?.language || 'TR';
-        setBusinessLanguage(language);
-      }
+      const response = await apiClient.auth.me();
+      const language = response.data?.business?.language || response.data?.language || 'TR';
+      setBusinessLanguage(language);
     } catch (error) {
       console.error('Failed to load business language:', error);
     }

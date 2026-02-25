@@ -157,23 +157,20 @@ export default function GoogleSheetsPage() {
   };
 
   const handleConnect = async () => {
-  try {
-    const token = localStorage.getItem('token');
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/google-sheets/auth-url`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    const data = await res.json();
-    
-    if (data.authUrl) {
-      window.location.href = data.authUrl;
-    } else {
-      alert('Bağlantı başlatılamadı');
+    try {
+      const res = await apiClient.get('/api/google-sheets/auth-url');
+      const data = res.data;
+
+      if (data.authUrl) {
+        window.location.href = data.authUrl;
+      } else {
+        alert('Bağlantı başlatılamadı');
+      }
+    } catch (error) {
+      console.error('Connect error:', error);
+      alert('Bağlantı hatası');
     }
-  } catch (error) {
-    console.error('Connect error:', error);
-    alert('Bağlantı hatası');
-  }
-};
+  };
 
   const handleDisconnect = async () => {
     if (!confirm('Google Sheets bağlantısını kesmek istediğinizden emin misiniz?')) return;

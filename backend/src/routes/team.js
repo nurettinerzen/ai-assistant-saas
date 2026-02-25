@@ -6,7 +6,6 @@
 import express from 'express';
 import crypto from 'crypto';
 import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 import { authenticateToken } from '../middleware/auth.js';
 import { checkPermission, requireOwner } from '../middleware/permissions.js';
@@ -18,6 +17,8 @@ import {
   logMemberRemoved
 } from '../utils/auditLogger.js';
 import { sendTeamInvitationEmail } from '../services/emailService.js';
+import { validatePasswordPolicy, passwordPolicyMessage } from '../security/passwordPolicy.js';
+import { issueSession } from '../security/sessionToken.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -42,7 +43,10 @@ const invitationSendLimiter = rateLimit({
 const invitationAcceptLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 5,
-  keyGenerator: (req) => `invite_accept:${req.params.token || 'unknown'}`,
+  keyGenerator: (req) => {
+    const token = req.body?.token || req.params?.token || 'unknown';
+    return `invite_accept:${token}`;
+  },
   message: { error: 'Çok fazla deneme yaptınız. Lütfen 15 dakika sonra tekrar deneyin.' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -340,7 +344,7 @@ router.post('/invite', authenticateToken, checkPermission('team:invite'), invita
 
     // Generate invitation link
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
-    const inviteLink = `${frontendUrl}/invitation/${token}`;
+    const inviteLink = `${frontendUrl}/invitation#token=${token}`;
 
     // Send invitation email
     try {
@@ -459,7 +463,7 @@ router.post('/invitations/:id/resend', authenticateToken, checkPermission('team:
     });
 
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
-    const inviteLink = `${frontendUrl}/invitation/${newToken}`;
+    const inviteLink = `${frontendUrl}/invitation#token=${newToken}`;
 
     // Resend invitation email
     try {
@@ -491,29 +495,39 @@ router.post('/invitations/:id/resend', authenticateToken, checkPermission('team:
 // PUBLIC INVITATION ENDPOINTS (No auth required)
 // ============================================================================
 
+async function findActiveInvitationByToken(token) {
+  if (!token) return null;
+  const invitation = await prisma.invitation.findUnique({
+    where: { token },
+    include: {
+      business: {
+        select: { name: true }
+      },
+      invitedBy: {
+        select: { name: true, email: true }
+      }
+    }
+  });
+
+  if (!invitation || invitation.acceptedAt || new Date() > invitation.expiresAt) {
+    return null;
+  }
+
+  return invitation;
+}
+
 /**
- * GET /api/team/invitation/:token
- * Get invitation details by token (public)
+ * POST /api/team/invitation/lookup
+ * Get invitation details by token (public, token in body)
  * SECURITY: Normalized error messages (anti-enumeration)
  */
-router.get('/invitation/:token', async (req, res) => {
+router.post('/invitation/lookup', async (req, res) => {
   try {
-    const { token } = req.params;
-
-    const invitation = await prisma.invitation.findUnique({
-      where: { token },
-      include: {
-        business: {
-          select: { name: true }
-        },
-        invitedBy: {
-          select: { name: true, email: true }
-        }
-      }
-    });
+    const { token } = req.body || {};
+    const invitation = await findActiveInvitationByToken(token);
 
     // Normalize error messages (anti-enumeration)
-    if (!invitation || invitation.acceptedAt || new Date() > invitation.expiresAt) {
+    if (!invitation) {
       return res.status(400).json({
         error: 'Davet linki geçersiz veya süresi dolmuş'
       });
@@ -542,27 +556,20 @@ router.get('/invitation/:token', async (req, res) => {
 });
 
 /**
- * POST /api/team/invitation/:token/accept
- * Accept an invitation (public)
+ * POST /api/team/invitation/accept
+ * Accept an invitation (public, token in body)
  * SECURITY: Rate limited (5/15min), replay prevention, transaction, normalized errors
  * - If user is logged in: Just add to business
  * - If new user: Requires name and password
  */
-router.post('/invitation/:token/accept', invitationAcceptLimiter, async (req, res) => {
+router.post('/invitation/accept', invitationAcceptLimiter, async (req, res) => {
   try {
-    const { token } = req.params;
-    const { name, password } = req.body;
+    const { token, name, password } = req.body || {};
 
-    // Find invitation
-    const invitation = await prisma.invitation.findUnique({
-      where: { token },
-      include: {
-        business: true
-      }
-    });
+    const invitation = await findActiveInvitationByToken(token);
 
     // Normalize error messages (anti-enumeration + replay prevention)
-    if (!invitation || invitation.acceptedAt || new Date() > invitation.expiresAt) {
+    if (!invitation) {
       return res.status(400).json({ error: 'Davet linki geçersiz veya süresi dolmuş' });
     }
 
@@ -595,9 +602,12 @@ router.post('/invitation/:token/accept', invitationAcceptLimiter, async (req, re
         });
       }
 
-      if (password.length < 6) {
+      const passwordValidation = validatePasswordPolicy(password);
+      if (!passwordValidation.valid) {
         return res.status(400).json({
-          error: 'Şifre en az 6 karakter olmalı'
+          error: passwordPolicyMessage(),
+          code: 'WEAK_PASSWORD',
+          requirements: passwordValidation.errors,
         });
       }
 
@@ -646,12 +656,7 @@ router.post('/invitation/:token/accept', invitationAcceptLimiter, async (req, re
       req
     });
 
-    // Generate JWT token for the new user
-    const jwtToken = jwt.sign(
-      { userId: user.id, businessId: user.businessId, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+    const jwtToken = issueSession(res, user);
 
     res.status(201).json({
       success: true,

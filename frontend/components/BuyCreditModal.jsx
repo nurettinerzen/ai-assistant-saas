@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { apiClient } from '@/lib/api';
 import { toast } from '@/lib/toast';
+import { renderTrustedCheckoutHtml } from '@/lib/safeHtml';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -136,19 +137,7 @@ export default function BuyCreditModal({ isOpen, onClose, onSuccess }) {
   // Handle iyzico checkout form rendering
   useEffect(() => {
     if (checkoutFormHtml && checkoutContainerRef.current) {
-      const container = checkoutContainerRef.current;
-      container.innerHTML = checkoutFormHtml;
-
-      // Execute scripts in the checkout form
-      const scripts = container.getElementsByTagName('script');
-      Array.from(scripts).forEach(oldScript => {
-        const newScript = document.createElement('script');
-        Array.from(oldScript.attributes).forEach(attr => {
-          newScript.setAttribute(attr.name, attr.value);
-        });
-        newScript.text = oldScript.text;
-        oldScript.parentNode?.replaceChild(newScript, oldScript);
-      });
+      renderTrustedCheckoutHtml(checkoutContainerRef.current, checkoutFormHtml);
     }
   }, [checkoutFormHtml]);
 

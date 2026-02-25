@@ -76,11 +76,17 @@ export default function TemplateSelector({ isOpen, onClose, onSelectTemplate, se
         // Load business info to get type and language
         let lang = 'tr'; // Default to Turkish
         let bizType = null;
-        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        let businessId = null;
+        try {
+          const meResponse = await apiClient.auth.me();
+          businessId = meResponse.data?.businessId || meResponse.data?.business?.id || null;
+        } catch (_error) {
+          businessId = null;
+        }
 
-        if (user.businessId) {
+        if (businessId) {
           try {
-            const response = await apiClient.business.get(user.businessId);
+            const response = await apiClient.business.get(businessId);
             // API returns business directly, not wrapped in { business: ... }
             const business = response.data;
             const businessLang = business?.language?.toLowerCase();

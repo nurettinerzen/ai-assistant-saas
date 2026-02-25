@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Loader2, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import { renderTrustedCheckoutHtml } from '@/lib/safeHtml';
 
 export default function IyzicoCheckoutPage() {
   const containerRef = useRef(null);
@@ -29,24 +30,7 @@ export default function IyzicoCheckoutPage() {
 
     try {
       if (containerRef.current) {
-        // Clear any previous content
-        containerRef.current.innerHTML = '';
-
-        // Create a div to hold the checkout form
-        const formDiv = document.createElement('div');
-        formDiv.innerHTML = checkoutContent;
-        containerRef.current.appendChild(formDiv);
-
-        // Execute scripts
-        const scripts = formDiv.getElementsByTagName('script');
-        Array.from(scripts).forEach(oldScript => {
-          const newScript = document.createElement('script');
-          Array.from(oldScript.attributes).forEach(attr => {
-            newScript.setAttribute(attr.name, attr.value);
-          });
-          newScript.textContent = oldScript.textContent;
-          document.head.appendChild(newScript);
-        });
+        renderTrustedCheckoutHtml(containerRef.current, checkoutContent);
 
         setLoading(false);
 

@@ -3,7 +3,6 @@ import { PrismaClient } from '@prisma/client';
 import { authenticateToken } from '../middleware/auth.js';
 import multer from 'multer';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import fs from 'fs/promises';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
@@ -14,25 +13,26 @@ import { PDFParse } from 'pdf-parse';
 import { checkKBItemLimit, checkKBStorageLimit, getURLCrawlLimit } from '../services/globalLimits.js';
 // P0 SECURITY: SSRF protection
 import { validateUrlForSSRF, logSSRFAttempt } from '../utils/ssrf-protection.js';
+import {
+  resolveUntrustedUploadDir,
+  generateSafeUploadFilename,
+  validateUntrustedUpload,
+} from '../security/uploadSecurity.js';
 
 const require = createRequire(import.meta.url);
 const mammoth = require('mammoth');
 
 const router = express.Router();
 const prisma = new PrismaClient();
-
-// ES modules için __dirname alternatifi
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const KNOWLEDGE_UPLOAD_DIR = resolveUntrustedUploadDir('knowledge');
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, '../../uploads/'));
+    cb(null, KNOWLEDGE_UPLOAD_DIR);
   },
   filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+    cb(null, generateSafeUploadFilename(file.originalname));
   }
 });
 
@@ -219,6 +219,24 @@ router.post('/documents', authenticateToken, upload.single('file'), async (req, 
 
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    try {
+      await validateUntrustedUpload({
+        filePath: req.file.path,
+        fileName: req.file.originalname,
+        maxSizeBytes: 10 * 1024 * 1024,
+      });
+    } catch (scanError) {
+      try {
+        await fs.unlink(req.file.path);
+      } catch (_cleanupError) {
+        // ignore cleanup failures
+      }
+      return res.status(400).json({
+        error: 'Uploaded file failed security scanning',
+        code: scanError.message,
+      });
     }
 
     // V1 MVP: Check KB item count limit BEFORE upload

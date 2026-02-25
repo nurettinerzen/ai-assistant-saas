@@ -28,16 +28,17 @@ export default function CalendarPage() {
     notes: ''
   });
 
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      router.push('/login');
-      return;
-    }
+  const authFetch = (url, options = {}) =>
+    fetch(url, {
+      credentials: 'include',
+      ...options,
+      headers: {
+        ...(options.headers || {}),
+      },
+    });
 
-    fetch(`${API_URL}/api/auth/me`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
+  useEffect(() => {
+    authFetch(`${API_URL}/api/auth/me`)
       .then(res => res.json())
       .then(data => {
         if (data.id) {
@@ -53,10 +54,7 @@ export default function CalendarPage() {
 
   const loadAppointments = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${API_URL}/api/appointments`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const res = await authFetch(`${API_URL}/api/appointments`);
       const data = await res.json();
       setAppointments(data || []);
     } catch (error) {
@@ -67,11 +65,9 @@ export default function CalendarPage() {
   const handleAddAppointment = async (e) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${API_URL}/api/appointments`, {
+      const res = await authFetch(`${API_URL}/api/appointments`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(newAppointment)
@@ -104,11 +100,7 @@ export default function CalendarPage() {
     if (!confirm('Cancel this appointment?')) return;
 
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${API_URL}/api/appointments/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const res = await authFetch(`${API_URL}/api/appointments/${id}`, { method: 'DELETE' });
 
       if (res.ok) {
         alert('Appointment cancelled');
@@ -124,11 +116,9 @@ export default function CalendarPage() {
     const formData = new FormData(e.target);
     
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${API_URL}/api/integrations/reservation/connect`, {
+      const res = await authFetch(`${API_URL}/api/integrations/reservation/connect`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -149,16 +139,14 @@ export default function CalendarPage() {
     }
   };
 
-  const handleConnectBooking = async (e) => {
+const handleConnectBooking = async (e) => {
   e.preventDefault();
   const formData = new FormData(e.target);
   
   try {
-    const token = localStorage.getItem('token');
-    const res = await fetch(`${API_URL}/api/integrations/booking/connect`, {
+    const res = await authFetch(`${API_URL}/api/integrations/booking/connect`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({

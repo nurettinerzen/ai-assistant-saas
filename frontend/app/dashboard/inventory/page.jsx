@@ -40,17 +40,18 @@ export default function InventoryPage() {
     category: ''
   });
 
+  const authFetch = (url, options = {}) =>
+    fetch(url, {
+      credentials: 'include',
+      ...options,
+      headers: {
+        ...(options.headers || {}),
+      },
+    });
+
   // Load user & inventory
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      router.push('/login');
-      return;
-    }
-
-    fetch(`${API_URL}/api/auth/me`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
+    authFetch(`${API_URL}/api/auth/me`)
       .then(res => res.json())
       .then(data => {
         if (!data.id) return router.push('/login');
@@ -64,10 +65,7 @@ export default function InventoryPage() {
 
   const loadProducts = async (businessId) => {
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${API_URL}/api/products?businessId=${businessId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await authFetch(`${API_URL}/api/products?businessId=${businessId}`);
       const data = await res.json();
       setProducts(data || []);
     } catch (error) {
@@ -79,12 +77,9 @@ export default function InventoryPage() {
   const handleAddProduct = async (e) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem('token');
-
-      const res = await fetch(`${API_URL}/api/products`, {
+      const res = await authFetch(`${API_URL}/api/products`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -126,13 +121,11 @@ export default function InventoryPage() {
     setUploadResult(null);
 
     try {
-      const token = localStorage.getItem('token');
       const formData = new FormData();
       formData.append('file', file);
 
-      const res = await fetch(`${API_URL}/api/inventory/products/import`, {
+      const res = await authFetch(`${API_URL}/api/inventory/products/import`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
         body: formData
       });
 
@@ -170,12 +163,9 @@ export default function InventoryPage() {
   const handleConnectSheets = async (e) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem('token');
-
-      const res = await fetch(`${API_URL}/api/google-sheets/connect`, {
+      const res = await authFetch(`${API_URL}/api/google-sheets/connect`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(sheetsConfig)
@@ -198,12 +188,7 @@ export default function InventoryPage() {
     setSyncing(true);
 
     try {
-      const token = localStorage.getItem('token');
-
-      const res = await fetch(`${API_URL}/api/google-sheets/sync`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await authFetch(`${API_URL}/api/google-sheets/sync`, { method: 'POST' });
 
       const data = await res.json();
       if (!res.ok) return alert(data.error);
@@ -220,11 +205,7 @@ export default function InventoryPage() {
     if (!confirm('Disconnect Sheets?')) return;
 
     try {
-      const token = localStorage.getItem('token');
-      await fetch(`${API_URL}/api/google-sheets/disconnect`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await authFetch(`${API_URL}/api/google-sheets/disconnect`, { method: 'POST' });
 
       setConnected(false);
       alert('Disconnected');
@@ -696,11 +677,9 @@ export default function InventoryPage() {
         const formData = new FormData(e.target);
         
         try {
-          const token = localStorage.getItem('token');
-          const res = await fetch(`${API_URL}/api/integrations/erp/connect`, {
+          const res = await authFetch(`${API_URL}/api/integrations/erp/connect`, {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
             },
             body: JSON.stringify({

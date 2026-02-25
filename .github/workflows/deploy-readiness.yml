@@ -1,0 +1,30 @@
+name: Deploy Readiness
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  deploy-readiness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Run production deploy script (dry-run)
+        env:
+          NODE_ENV: production
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        run: |
+          chmod +x backend/deploy/production-deploy.sh
+          backend/deploy/production-deploy.sh --dry-run --skip-migrate

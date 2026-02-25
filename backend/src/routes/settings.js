@@ -2,6 +2,9 @@ import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import { authenticateToken } from '../middleware/auth.js';
+import { requireRecentAuth } from '../middleware/reauth.js';
+import { validatePasswordPolicy, passwordPolicyMessage } from '../security/passwordPolicy.js';
+import { issueSession } from '../security/sessionToken.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -201,18 +204,23 @@ router.put('/notifications', authenticateToken, async (req, res) => {
 });
 
 // POST /api/settings/change-password
-router.post('/change-password', authenticateToken, async (req, res) => {
+router.post('/change-password', authenticateToken, requireRecentAuth(15), async (req, res) => {
   try {
     const userId = req.userId;
-    const { currentPassword, newPassword } = req.body;
+    const { currentPassword, newPassword, terminateAllSessions = true } = req.body;
 
     // Validate input
     if (!currentPassword || !newPassword) {
       return res.status(400).json({ error: 'Current password and new password are required' });
     }
 
-    if (newPassword.length < 6) {
-      return res.status(400).json({ error: 'New password must be at least 6 characters' });
+    const passwordValidation = validatePasswordPolicy(newPassword);
+    if (!passwordValidation.valid) {
+      return res.status(400).json({
+        error: passwordPolicyMessage(),
+        code: 'WEAK_PASSWORD',
+        requirements: passwordValidation.errors,
+      });
     }
 
     // Get user with password
@@ -235,13 +243,28 @@ router.post('/change-password', authenticateToken, async (req, res) => {
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
     // Update password
-    await prisma.user.update({
+    const updatedUser = await prisma.user.update({
       where: { id: userId },
-      data: { password: hashedPassword }
+      data: {
+        password: hashedPassword,
+        ...(terminateAllSessions ? { tokenVersion: { increment: 1 } } : {}),
+      },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        businessId: true,
+        tokenVersion: true,
+      },
     });
 
+    issueSession(res, updatedUser, { amr: ['pwd'] });
+
     console.log(`✅ Password changed for user ${userId}`);
-    res.json({ message: 'Password changed successfully' });
+    res.json({
+      message: 'Password changed successfully',
+      sessionsRevoked: Boolean(terminateAllSessions),
+    });
   } catch (error) {
     console.error('Error changing password:', error);
     res.status(500).json({ error: 'Failed to change password' });

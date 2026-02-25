@@ -75,11 +75,9 @@ const PUBLIC_PATHS = [
   '/api/integrations/shopify/callback',
   '/api/integrations/ideasoft/callback',
 
-  // Public invitation endpoints
-  '/api/team/invitation/:token',
-  '/api/team/invitation/:token/accept',
-  '/api/invitation/:token',
-  '/api/invitation/:token/accept',
+  // Public invitation endpoints (token in request body, not URL path)
+  '/api/team/invitation/lookup',
+  '/api/team/invitation/accept',
 
   // Waitlist (public)
   '/api/waitlist',
@@ -93,14 +91,12 @@ const PUBLIC_PATHS = [
   '/api/subscription/plans',
   '/api/cost-calculator/pricing',
 
-  // Media access (secured by signed token, not JWT)
-  '/api/media/signed/:token',
-  '/api/signed/:token',  // Alt pattern
+  // Media access (signed token only via headers, never URL path/query)
+  '/api/media/signed',
 
-  // CRM webhook (secured by webhookSecret, not JWT)
-  '/api/webhook/crm/:businessId/:webhookSecret',
-  '/api/crm/:businessId/:webhookSecret',
-  '/api/:businessId/:webhookSecret',  // Alt pattern
+  // CRM webhook (secured by webhook headers/signature, not JWT)
+  '/api/webhook/crm/:businessId',
+  '/api/crm/:businessId', // Alt pattern
 
   // Voice samples (public for demos/previews)
   '/api/voices',

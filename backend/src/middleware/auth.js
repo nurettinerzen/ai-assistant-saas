@@ -1,22 +1,22 @@
-import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 import { logAuthFailure, logCrossTenantAttempt } from './securityEventLogger.js';
 import { isPhoneInboundEnabledForBusinessRecord } from '../services/phoneInboundGate.js';
+import { extractSessionToken, verifySessionToken } from '../security/sessionToken.js';
+import { safeCompareStrings } from '../security/constantTime.js';
 
 const prisma = new PrismaClient();
 
 export const authenticateToken = async (req, res, next) => {
   try {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+    const token = extractSessionToken(req);
 
     if (!token) {
       // Log auth failure
       await logAuthFailure(req, 'missing_token', 401);
-      return res.status(401).json({ error: 'Authorization header required' });
+      return res.status(401).json({ error: 'Authentication required' });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = verifySessionToken(token);
 
     // Fetch user with business details
     const user = await prisma.user.findUnique({
@@ -36,6 +36,14 @@ export const authenticateToken = async (req, res, next) => {
       return res.status(401).json({ error: 'User not found' });
     }
 
+    const tokenVersion = Number.isInteger(user.tokenVersion) ? user.tokenVersion : 0;
+    const decodedTokenVersion = Number.isInteger(decoded.tv) ? decoded.tv : 0;
+
+    if (!safeCompareStrings(String(tokenVersion), String(decodedTokenVersion))) {
+      await logAuthFailure(req, 'token_revoked', 401);
+      return res.status(401).json({ error: 'Session has been revoked. Please sign in again.' });
+    }
+
     if (user.business) {
       user.business.phoneInboundEnabled = isPhoneInboundEnabledForBusinessRecord(user.business);
     }
@@ -44,6 +52,13 @@ export const authenticateToken = async (req, res, next) => {
     req.userId = user.id;
     req.businessId = user.businessId;
     req.userRole = user.role;
+    req.auth = {
+      tokenVersion: decodedTokenVersion,
+      reauthAt: decoded.reauthAt || null,
+      adminMfaAt: decoded.adminMfaAt || null,
+      amr: Array.isArray(decoded.amr) ? decoded.amr : [],
+      issuedAt: decoded.iat || null,
+    };
 
     next();
   } catch (error) {

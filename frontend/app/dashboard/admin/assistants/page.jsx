@@ -48,7 +48,6 @@ import {
 import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
 
-const ADMIN_EMAILS = ['nurettin@telyx.ai', 'admin@telyx.ai'];
 
 export default function AdminAssistantsPage() {
   const [loading, setLoading] = useState(true);
@@ -77,8 +76,7 @@ export default function AdminAssistantsPage() {
   const checkAdminAccess = async () => {
     try {
       const response = await apiClient.get('/api/auth/me');
-      const userEmail = response.data?.email;
-      if (ADMIN_EMAILS.includes(userEmail)) {
+      if (response.data?.isAdmin === true) {
         setIsAdmin(true);
       } else {
         setIsAdmin(false);

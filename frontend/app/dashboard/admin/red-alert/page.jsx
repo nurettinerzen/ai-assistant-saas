@@ -16,7 +16,6 @@ import { toast } from 'sonner';
 import { LineChart } from '@/components/charts/LineChart';
 import { BarChart } from '@/components/charts/BarChart';
 
-const ADMIN_EMAILS = ['nurettin@telyx.ai', 'admin@telyx.ai'];
 
 const SEVERITY_COLORS = {
   low: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
@@ -112,8 +111,7 @@ export default function RedAlertPage() {
     const checkAdminAccess = async () => {
       try {
         const response = await apiClient.get('/api/auth/me');
-        const userEmail = response.data?.email;
-        if (ADMIN_EMAILS.includes(userEmail)) {
+        if (response.data?.isAdmin === true) {
           setIsAdmin(true);
           loadDashboardData();
         } else {

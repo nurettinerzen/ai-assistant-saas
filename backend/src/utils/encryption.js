@@ -11,6 +11,7 @@ const SALT_LENGTH = 64;
 const TAG_LENGTH = 16;
 const KEY_LENGTH = 32;
 const ITERATIONS = 100000;
+let warnedWeakFallback = false;
 
 /**
  * Derives encryption key from secret using PBKDF2
@@ -28,6 +29,27 @@ function deriveKey(secret, salt) {
   );
 }
 
+function getEncryptionSecret() {
+  const configuredSecret = process.env.ENCRYPTION_SECRET;
+  if (typeof configuredSecret === 'string' && configuredSecret.trim().length >= 16) {
+    return configuredSecret;
+  }
+
+  // Non-production fallback for local/dev convenience.
+  if (process.env.NODE_ENV !== 'production') {
+    const jwtSecret = process.env.JWT_SECRET;
+    if (typeof jwtSecret === 'string' && jwtSecret.trim().length >= 16) {
+      if (!warnedWeakFallback) {
+        warnedWeakFallback = true;
+        console.warn('⚠️ ENCRYPTION_SECRET is not set. Falling back to JWT_SECRET in non-production.');
+      }
+      return jwtSecret;
+    }
+  }
+
+  throw new Error('ENCRYPTION_SECRET must be configured with at least 16 characters');
+}
+
 /**
  * Encrypts sensitive data
  * @param {string} text - The text to encrypt
@@ -36,7 +58,7 @@ function deriveKey(secret, salt) {
 export function encrypt(text) {
   if (!text) return null;
 
-  const secret = process.env.ENCRYPTION_SECRET || 'default-secret-change-in-production';
+  const secret = getEncryptionSecret();
 
   // Generate random salt and IV
   const salt = crypto.randomBytes(SALT_LENGTH);
@@ -67,7 +89,7 @@ export function encrypt(text) {
 export function decrypt(encryptedText) {
   if (!encryptedText) return null;
 
-  const secret = process.env.ENCRYPTION_SECRET || 'default-secret-change-in-production';
+  const secret = getEncryptionSecret();
 
   try {
     // Split the encrypted text

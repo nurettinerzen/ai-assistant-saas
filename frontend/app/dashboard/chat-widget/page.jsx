@@ -259,34 +259,70 @@ export default function ChatWidgetPage() {
   // Create container
   var container = document.createElement('div');
   container.id = 'telyx-widget-container';
-  container.innerHTML = \`
-    <button id="telyx-widget-btn" aria-label="\${CONFIG.buttonText}">
-      <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>
-    </button>
-    <div id="telyx-chat-window">
-      <div id="telyx-chat-header">
-        <h3>\${CONFIG.buttonText}</h3>
-        <button id="telyx-close-btn">&times;</button>
-      </div>
-      <div id="telyx-chat-messages"></div>
-      <div id="telyx-chat-input-area">
-        <input id="telyx-chat-input" type="text" placeholder="\${CONFIG.placeholderText}" />
-        <button id="telyx-send-btn">
-          <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-        </button>
-      </div>
-      \${CONFIG.showBranding ? '<div id="telyx-branding">Powered by <a href="https://telyx.ai" target="_blank">Telyx.ai</a></div>' : ''}
-    </div>
-  \`;
+
+  var btn = document.createElement('button');
+  btn.id = 'telyx-widget-btn';
+  btn.setAttribute('aria-label', CONFIG.buttonText);
+  btn.textContent = '💬';
+
+  var chatWindow = document.createElement('div');
+  chatWindow.id = 'telyx-chat-window';
+
+  var chatHeader = document.createElement('div');
+  chatHeader.id = 'telyx-chat-header';
+  var title = document.createElement('h3');
+  title.textContent = CONFIG.buttonText;
+  var closeBtn = document.createElement('button');
+  closeBtn.id = 'telyx-close-btn';
+  closeBtn.textContent = '×';
+  chatHeader.appendChild(title);
+  chatHeader.appendChild(closeBtn);
+
+  var messagesDiv = document.createElement('div');
+  messagesDiv.id = 'telyx-chat-messages';
+
+  var inputArea = document.createElement('div');
+  inputArea.id = 'telyx-chat-input-area';
+  var input = document.createElement('input');
+  input.id = 'telyx-chat-input';
+  input.type = 'text';
+  input.placeholder = CONFIG.placeholderText;
+  var sendBtn = document.createElement('button');
+  sendBtn.id = 'telyx-send-btn';
+  sendBtn.textContent = '➤';
+  inputArea.appendChild(input);
+  inputArea.appendChild(sendBtn);
+
+  chatWindow.appendChild(chatHeader);
+  chatWindow.appendChild(messagesDiv);
+  chatWindow.appendChild(inputArea);
+
+  if (CONFIG.showBranding) {
+    var branding = document.createElement('div');
+    branding.id = 'telyx-branding';
+    var brandingText = document.createElement('span');
+    brandingText.textContent = 'Powered by ';
+    var brandingLink = document.createElement('a');
+    brandingLink.href = 'https://telyx.ai';
+    brandingLink.target = '_blank';
+    brandingLink.rel = 'noopener noreferrer';
+    brandingLink.textContent = 'Telyx.ai';
+    branding.appendChild(brandingText);
+    branding.appendChild(brandingLink);
+    chatWindow.appendChild(branding);
+  }
+
+  container.appendChild(btn);
+  container.appendChild(chatWindow);
   document.body.appendChild(container);
 
   // Elements
-  var btn = document.getElementById('telyx-widget-btn');
-  var chatWindow = document.getElementById('telyx-chat-window');
-  var closeBtn = document.getElementById('telyx-close-btn');
-  var messagesDiv = document.getElementById('telyx-chat-messages');
-  var input = document.getElementById('telyx-chat-input');
-  var sendBtn = document.getElementById('telyx-send-btn');
+  btn = document.getElementById('telyx-widget-btn');
+  chatWindow = document.getElementById('telyx-chat-window');
+  closeBtn = document.getElementById('telyx-close-btn');
+  messagesDiv = document.getElementById('telyx-chat-messages');
+  input = document.getElementById('telyx-chat-input');
+  sendBtn = document.getElementById('telyx-send-btn');
 
   var conversationHistory = [];
   var isOpen = false;

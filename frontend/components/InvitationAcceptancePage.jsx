@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
 import {
@@ -44,10 +44,19 @@ function getRoleBadgeColor(role) {
   return colors[role] || 'bg-gray-100 text-gray-800';
 }
 
-export default function InvitationPage() {
-  const params = useParams();
+function extractTokenFromHash() {
+  if (typeof window === 'undefined') return null;
+  const hash = String(window.location.hash || '').replace(/^#/, '');
+  if (!hash) return null;
+
+  const params = new URLSearchParams(hash);
+  const token = params.get('token');
+  return token ? token.trim() : null;
+}
+
+export default function InvitationAcceptancePage({ initialToken = null }) {
   const router = useRouter();
-  const token = params.token;
+  const [token, setToken] = useState(initialToken ? String(initialToken) : null);
 
   const [loading, setLoading] = useState(true);
   const [invitation, setInvitation] = useState(null);
@@ -64,25 +73,57 @@ export default function InvitationPage() {
   });
 
   useEffect(() => {
-    loadInvitation();
-  }, [token]);
-
-  const loadInvitation = async () => {
-    setLoading(true);
-    try {
-      const response = await apiClient.team.getInvitationByToken(token);
-      setInvitation(response.data.invitation);
-      setExistingUser(response.data.existingUser);
-    } catch (error) {
-      const message = error.response?.data?.error || 'Davet bulunamadı';
-      setError(message);
-    } finally {
-      setLoading(false);
+    if (initialToken) {
+      setToken(String(initialToken));
+      return;
     }
-  };
+
+    const hashToken = extractTokenFromHash();
+    if (hashToken) {
+      setToken(hashToken);
+      return;
+    }
+
+    setLoading(false);
+    setError('Davet tokenı bulunamadı');
+  }, [initialToken]);
+
+  useEffect(() => {
+    if (!token) return;
+
+    let cancelled = false;
+    const loadInvitation = async () => {
+      setLoading(true);
+      try {
+        const response = await apiClient.team.getInvitationByToken(token);
+        if (cancelled) return;
+        setInvitation(response.data.invitation);
+        setExistingUser(response.data.existingUser);
+        setError(null);
+      } catch (requestError) {
+        if (cancelled) return;
+        const message = requestError.response?.data?.error || 'Davet bulunamadı';
+        setError(message);
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadInvitation();
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
 
   const handleAccept = async (e) => {
     e.preventDefault();
+
+    if (!token) {
+      toast.error('Davet tokenı bulunamadı');
+      return;
+    }
 
     // Validate form for new users
     if (!existingUser) {
@@ -90,8 +131,8 @@ export default function InvitationPage() {
         toast.error('İsim alanı gerekli');
         return;
       }
-      if (form.password.length < 6) {
-        toast.error('Şifre en az 6 karakter olmalı');
+      if (form.password.length < 12) {
+        toast.error('Şifre en az 12 karakter olmalı');
         return;
       }
       if (form.password !== form.confirmPassword) {
@@ -103,28 +144,22 @@ export default function InvitationPage() {
     setAccepting(true);
     try {
       const data = existingUser ? {} : { name: form.name, password: form.password };
-      const response = await apiClient.team.acceptInvitation(token, data);
-
-      // Save token and user to localStorage
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+      await apiClient.team.acceptInvitation(token, data);
 
       setAccepted(true);
       toast.success('Daveti kabul ettiniz! Yönlendiriliyorsunuz...');
 
-      // Redirect to dashboard after a short delay
       setTimeout(() => {
         router.push('/dashboard');
       }, 2000);
-    } catch (error) {
-      const message = error.response?.data?.error || 'Davet kabul edilemedi';
+    } catch (requestError) {
+      const message = requestError.response?.data?.error || 'Davet kabul edilemedi';
       toast.error(message);
     } finally {
       setAccepting(false);
     }
   };
 
-  // Loading state
   if (loading) {
     return (
       <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
@@ -136,7 +171,6 @@ export default function InvitationPage() {
     );
   }
 
-  // Error state
   if (error) {
     return (
       <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-4">
@@ -156,7 +190,6 @@ export default function InvitationPage() {
     );
   }
 
-  // Success state
   if (accepted) {
     return (
       <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-4">
@@ -169,7 +202,7 @@ export default function InvitationPage() {
                 {invitation.businessName} ekibine katıldınız.
               </p>
               <p className="text-sm text-neutral-500">
-                Dashboard'a yönlendiriliyorsunuz...
+                Dashboard&apos;a yönlendiriliyorsunuz...
               </p>
             </div>
           </CardContent>
@@ -178,7 +211,6 @@ export default function InvitationPage() {
     );
   }
 
-  // Invitation details
   return (
     <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
@@ -192,7 +224,6 @@ export default function InvitationPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {/* Invitation Details */}
           <div className="space-y-4 mb-6">
             <div className="flex items-center gap-3 p-3 bg-neutral-50 rounded-lg">
               <Building2 className="h-5 w-5 text-neutral-400" />
@@ -229,9 +260,7 @@ export default function InvitationPage() {
             </div>
           </div>
 
-          {/* Accept Form */}
           <form onSubmit={handleAccept}>
-            {/* New user registration fields */}
             {!existingUser && (
               <div className="space-y-4 mb-6">
                 <div className="space-y-2">
@@ -251,11 +280,11 @@ export default function InvitationPage() {
                   <Input
                     id="password"
                     type="password"
-                    placeholder="En az 6 karakter"
+                    placeholder="En az 12 karakter"
                     value={form.password}
                     onChange={(e) => setForm({ ...form, password: e.target.value })}
                     required
-                    minLength={6}
+                    minLength={12}
                   />
                 </div>
 
@@ -288,7 +317,6 @@ export default function InvitationPage() {
             </Button>
           </form>
 
-          {/* Expiry notice */}
           <p className="text-xs text-neutral-500 text-center mt-4">
             Bu davet{' '}
             {new Date(invitation.expiresAt).toLocaleDateString('tr-TR', {

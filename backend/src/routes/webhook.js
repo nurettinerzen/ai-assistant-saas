@@ -11,6 +11,7 @@ import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticateToken } from '../middleware/auth.js';
 import webhookService from '../services/webhook.js';
+import { webhookRateLimiter } from '../middleware/rateLimiter.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -20,18 +21,19 @@ const prisma = new PrismaClient();
 // ============================================================================
 
 /**
- * POST /api/webhook/incoming/:businessId/:secret
+ * POST /api/webhook/incoming/:businessId
  * Receive incoming webhook data (NO AUTH - secret validates request)
  */
-router.post('/incoming/:businessId/:secret', async (req, res) => {
+router.post('/incoming/:businessId', webhookRateLimiter.middleware(), async (req, res) => {
   try {
-    const { businessId, secret } = req.params;
+    const { businessId } = req.params;
     const payload = req.body;
+    const webhookSecret = req.headers['x-webhook-secret'];
 
     console.log(`📥 Incoming webhook for business ${businessId}`);
 
     // Validate request
-    const validation = await webhookService.validateWebhookRequest(businessId, secret);
+    const validation = await webhookService.validateWebhookRequest(businessId, webhookSecret);
 
     if (!validation.valid) {
       console.warn(`⚠️ Invalid webhook request: ${validation.error}`);
@@ -116,6 +118,7 @@ router.post('/setup', async (req, res) => {
       success: true,
       message: 'Webhook activated successfully',
       webhookUrl,
+      authHeader: 'X-Webhook-Secret',
       secret: config.webhookSecret,
       isActive: config.isActive
     });
@@ -151,6 +154,7 @@ router.get('/config', async (req, res) => {
     res.json({
       configured: true,
       webhookUrl,
+      authHeader: 'X-Webhook-Secret',
       secret: config.webhookSecret,
       isActive: config.isActive,
       createdAt: config.createdAt,
@@ -194,6 +198,7 @@ router.post('/regenerate', async (req, res) => {
       success: true,
       message: 'Webhook secret regenerated',
       webhookUrl,
+      authHeader: 'X-Webhook-Secret',
       secret: config.webhookSecret
     });
 

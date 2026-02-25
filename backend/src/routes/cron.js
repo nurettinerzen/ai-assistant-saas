@@ -150,7 +150,7 @@ function markJobCompleted(jobName, success, error = null) {
 /**
  * DEPRECATED: Old cron secret verification (kept for reference)
  * NOW USING: requireCronSecret from ../middleware/cronAuth.js
- * - Uses crypto.timingSafeEqual for constant-time comparison
+ * - Uses hashed constant-time comparison helper
  * - Rejects query param secrets (security: secrets in headers only)
  * - Better error messages
  */

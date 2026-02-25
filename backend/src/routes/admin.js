@@ -9,12 +9,12 @@ import Stripe from 'stripe';
 import { authenticateToken } from '../middleware/auth.js';
 import {
   isAdmin,
+  requireAdminMfa,
   logAuditAction,
   sanitizeResponse,
   buildChangesObject,
   validateBusinessAccess,
-  canAccessBusiness,
-  ADMIN_EMAILS
+  canAccessBusiness
 } from '../middleware/adminAuth.js';
 import { createAdminAuditLog, calculateChanges, auditContext } from '../middleware/auditLog.js';
 import { updateEnterpriseStripePrice, hasActiveStripeSubscription } from '../services/stripeEnterpriseService.js';
@@ -22,6 +22,7 @@ import {
   isPhoneInboundEnabledForBusinessRecord,
   isPhoneInboundForceDisabled
 } from '../services/phoneInboundGate.js';
+import { buildSecurityConfigDigest, compareBaselineDigest } from '../security/configIntegrity.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -34,6 +35,31 @@ const stripe = process.env.STRIPE_SECRET_KEY
 // Apply auth and admin middleware to all routes
 router.use(authenticateToken);
 router.use(isAdmin);
+router.use(requireAdminMfa);
+
+/**
+ * GET /api/admin/security/config-integrity
+ * Returns deterministic hash of security-relevant config for tamper detection.
+ */
+router.get('/security/config-integrity', async (_req, res) => {
+  try {
+    const baseline = process.env.SECURITY_CONFIG_BASELINE_SHA256 || null;
+    const result = await buildSecurityConfigDigest();
+    const compare = compareBaselineDigest(result.digest, baseline);
+
+    return res.json({
+      digest: result.digest,
+      baselineConfigured: Boolean(baseline),
+      baselineStatus: compare.reason,
+      generatedAt: result.payload.generatedAt,
+      monitoredEnvKeys: result.envKeys,
+      monitoredFilePaths: result.filePaths,
+    });
+  } catch (error) {
+    console.error('Admin: Failed to compute config integrity digest:', error);
+    return res.status(500).json({ error: 'Failed to compute config integrity digest' });
+  }
+});
 
 /**
  * GET /api/admin/enterprise-customers

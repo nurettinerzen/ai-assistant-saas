@@ -58,7 +58,10 @@ class HubSpotService {
         expiresIn: response.data.expires_in
       };
     } catch (error) {
-      console.error('HubSpot token error:', error.response?.data);
+      console.error('HubSpot token error:', {
+        status: error.response?.status,
+        message: error.response?.data?.message || error.message
+      });
       throw new Error('Failed to get HubSpot access token');
     }
   }
@@ -80,7 +83,10 @@ class HubSpotService {
       );
       return response.data;
     } catch (error) {
-      console.error('HubSpot create contact error:', error.response?.data);
+      console.error('HubSpot create contact error:', {
+        status: error.response?.status,
+        message: error.response?.data?.message || error.message
+      });
       throw error;
     }
   }
@@ -122,7 +128,10 @@ class HubSpotService {
       );
       return response.data;
     } catch (error) {
-      console.error('HubSpot create deal error:', error.response?.data);
+      console.error('HubSpot create deal error:', {
+        status: error.response?.status,
+        message: error.response?.data?.message || error.message
+      });
       throw error;
     }
   }

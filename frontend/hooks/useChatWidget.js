@@ -11,9 +11,8 @@ export function useChatWidgetSettings() {
   return useQuery({
     queryKey: ['chatWidget', 'settings'],
     queryFn: async () => {
-      const token = localStorage.getItem('token');
       const response = await axios.get(`${API_URL}/api/business/chat-widget`, {
-        headers: { Authorization: `Bearer ${token}` }
+        withCredentials: true,
       });
       return {
         embedKey: response.data.embedKey || '',
@@ -33,9 +32,8 @@ export function useChatStats() {
   return useQuery({
     queryKey: ['chatWidget', 'stats'],
     queryFn: async () => {
-      const token = localStorage.getItem('token');
       const response = await axios.get(`${API_URL}/api/chat-logs/stats`, {
-        headers: { Authorization: `Bearer ${token}` }
+        withCredentials: true,
       });
       return {
         totalChats: response.data.totalChats || 0,
@@ -57,12 +55,11 @@ export function useUpdateChatWidget() {
 
   return useMutation({
     mutationFn: async ({ enabled, chatAssistantId }) => {
-      const token = localStorage.getItem('token');
       return await axios.put(`${API_URL}/api/business/chat-widget`, {
         ...(enabled !== undefined ? { enabled } : {}),
         ...(chatAssistantId !== undefined ? { chatAssistantId } : {})
       }, {
-        headers: { Authorization: `Bearer ${token}` }
+        withCredentials: true,
       });
     },
     onSuccess: () => {

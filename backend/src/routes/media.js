@@ -24,13 +24,30 @@ const mediaAccessLimiter = rateLimit({
   legacyHeaders: false
 });
 
+function extractMediaAccessToken(req) {
+  const headerToken = req.headers['x-media-access-token'];
+  if (typeof headerToken === 'string' && headerToken.trim()) {
+    return headerToken.trim();
+  }
+
+  const authHeader = req.headers.authorization;
+  if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+    return authHeader.slice(7);
+  }
+
+  return null;
+}
+
 /**
- * GET /api/media/signed/:token
- * Serve media file with signed token
+ * GET /api/media/signed
+ * Serve media file with signed token passed in header (never in URL)
  */
-router.get('/signed/:token', mediaAccessLimiter, async (req, res) => {
+router.get('/signed', mediaAccessLimiter, async (req, res) => {
   try {
-    const { token } = req.params;
+    const token = extractMediaAccessToken(req);
+    if (!token) {
+      return res.status(400).json({ error: 'Media access token is required in header' });
+    }
 
     // Verify token
     let decoded;

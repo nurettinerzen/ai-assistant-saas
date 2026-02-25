@@ -214,7 +214,7 @@ const elevenLabsService = {
             webhookSecret = created.webhook_secret;
             console.log(`✅ [11Labs] Created workspace webhook: ${postCallWebhookId}`);
             if (webhookSecret) {
-              console.log(`🔑 [11Labs] IMPORTANT: Save this webhook secret as ELEVENLABS_WORKSPACE_WEBHOOK_SECRET: ${webhookSecret.substring(0, 8)}...`);
+              console.log('🔑 [11Labs] Workspace webhook secret received. Store it in your secret manager.');
             }
           }
         } catch (listErr) {
