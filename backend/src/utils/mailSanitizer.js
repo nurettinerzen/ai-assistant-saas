@@ -1,4 +1,4 @@
-const HEADER_INJECTION_PATTERN = /[\r\n%0a%0d]/gi;
+const HEADER_INJECTION_PATTERN = /[\r\n]|%0[ad]/gi;
 const SIMPLE_EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function sanitizeHeaderValue(value = '') {
