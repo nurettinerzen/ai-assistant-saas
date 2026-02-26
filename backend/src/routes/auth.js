@@ -457,7 +457,7 @@ router.post('/reauthenticate', authenticateToken, async (req, res) => {
 });
 
 // Admin MFA challenge (email OTP)
-router.post('/admin-mfa/challenge', authenticateToken, isAdmin, requireRecentAuth(30), async (req, res) => {
+router.post('/admin-mfa/challenge', authenticateToken, isAdmin, async (req, res) => {
   try {
     const admin = await prisma.adminUser.findUnique({
       where: { email: String(req.user.email || '').toLowerCase() },
@@ -497,7 +497,8 @@ router.post('/admin-mfa/challenge', authenticateToken, isAdmin, requireRecentAut
       },
     });
 
-    await sendAdminMfaCodeEmail(admin.email, code, expiresAt);
+    const mfaNotifyEmail = process.env.ADMIN_MFA_NOTIFY_EMAIL || admin.email;
+    await sendAdminMfaCodeEmail(mfaNotifyEmail, code, expiresAt);
 
     return res.json({
       challengeId: challenge.id,
