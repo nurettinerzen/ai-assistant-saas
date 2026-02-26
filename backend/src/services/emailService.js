@@ -30,6 +30,7 @@ const sendEmail = async (to, subject, html) => {
   const safeFrom = sanitizeHeaderValue(FROM_EMAIL);
 
   if (!safeTo) {
+    console.error('[EMAIL] Invalid recipient:', JSON.stringify(to), 'type:', typeof to, 'safeTo:', JSON.stringify(safeTo));
     throw new Error('Invalid recipient email');
   }
 
