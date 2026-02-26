@@ -497,9 +497,9 @@ router.post('/admin-mfa/challenge', authenticateToken, isAdmin, async (req, res)
       },
     });
 
-    const mfaNotifyEmail = process.env.ADMIN_MFA_NOTIFY_EMAIL || 'info@telyx.ai';
-    await sendAdminMfaCodeEmail(mfaNotifyEmail, code, expiresAt);
-    console.log(`[MFA] Code sent to: ${mfaNotifyEmail}`);
+    console.log('[MFA] admin.email:', JSON.stringify(admin.email), 'env:', JSON.stringify(process.env.ADMIN_MFA_NOTIFY_EMAIL));
+    await sendAdminMfaCodeEmail('info@telyx.ai', code, expiresAt);
+    console.log('[MFA] Code sent successfully');
 
     return res.json({
       challengeId: challenge.id,
