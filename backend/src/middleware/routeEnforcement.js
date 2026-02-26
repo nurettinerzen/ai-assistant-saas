@@ -96,6 +96,7 @@ const PUBLIC_PATHS = [
 
   // CRM webhook (secured by webhook headers/signature, not JWT)
   '/api/webhook/crm/:businessId',
+  '/api/webhook/crm/:businessId/:webhookSecret',
   '/api/crm/:businessId', // Alt pattern
 
   // Voice samples (public for demos/previews)

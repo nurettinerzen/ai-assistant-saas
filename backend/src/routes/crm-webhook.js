@@ -68,17 +68,19 @@ function verifyCRMSignature(req, webhookSecret) {
 
 /**
  * CRM Webhook Endpoint
- * POST /api/webhook/crm/:businessId
+ * POST /api/webhook/crm/:businessId/:webhookSecret
+ * POST /api/webhook/crm/:businessId (legacy header fallback)
  *
- * SECURITY: Requires HMAC-SHA256 signature in X-CRM-Signature header
+ * SECURITY: URL secret OR X-Webhook-Secret must match webhook secret
+ * HMAC signature is optional and validated when X-CRM-Signature exists
  * Format: timestamp=<unix_timestamp>,signature=<hmac_hex>
  * Signature payload: `${timestamp}.${JSON.stringify(body)}`
  *
  * IDEMPOTENCY: Optional event_id field ensures duplicate events are ignored
  */
-router.post('/:businessId', webhookRateLimiter.middleware(), async (req, res) => {
+router.post('/:businessId/:webhookSecret?', webhookRateLimiter.middleware(), async (req, res) => {
   try {
-    const { businessId } = req.params;
+    const { businessId, webhookSecret } = req.params;
     const data = req.body;
     const providedSecret = req.headers['x-webhook-secret'];
 
@@ -94,12 +96,18 @@ router.post('/:businessId', webhookRateLimiter.middleware(), async (req, res) =>
       return res.status(401).json({ error: 'Invalid webhook credentials' });
     }
 
-    if (!providedSecret || !safeCompareStrings(String(providedSecret), webhook.webhookSecret)) {
+    const secretFromHeader = typeof providedSecret === 'string' ? providedSecret : '';
+    const secretFromUrl = typeof webhookSecret === 'string' ? webhookSecret : '';
+    const credentialSecret = secretFromUrl || secretFromHeader;
+
+    if (!credentialSecret || !safeCompareStrings(String(credentialSecret), webhook.webhookSecret)) {
       return res.status(401).json({ error: 'Invalid webhook credentials' });
     }
 
-    // Step 2: SECURITY - Verify HMAC signature (required)
-    if (!verifyCRMSignature(req, webhook.webhookSecret)) {
+    // Step 2: SECURITY - Verify HMAC signature when provided
+    const hasSignatureHeader = typeof req.headers['x-crm-signature'] === 'string'
+      && req.headers['x-crm-signature'].trim().length > 0;
+    if (hasSignatureHeader && !verifyCRMSignature(req, webhook.webhookSecret)) {
       console.error('❌ CRM webhook signature verification failed for business:', businessId);
       return res.status(401).json({ error: 'Invalid signature' });
     }
