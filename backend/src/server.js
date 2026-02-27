@@ -257,7 +257,7 @@ app.use('/api/subscription/webhook', express.raw({ type: 'application/json' }));
 app.use('/api/elevenlabs/webhook', express.json()); // 11Labs webhook needs parsed JSON
 app.use('/api/elevenlabs/post-call', express.json()); // 11Labs post-call webhook
 app.use('/api/webhook/incoming', express.json()); // External webhooks (Zapier, etc.)
-app.use('/api/webhook/crm', express.json()); // CRM webhook (NO AUTH - secured by header secret + signature)
+app.use('/api/webhook/crm', express.json({ limit: '5mb' })); // CRM webhook (NO AUTH - secured by header secret + signature)
 
 // ✅ OTHER ROUTES - JSON PARSE
 app.use(express.json());
