@@ -60,12 +60,20 @@
   },
   "landing": {
     "hero": {
-      "badge": "AI Customer Service Platform",
+      "badge": "AI-Powered Customer Service Platform",
       "title": "Automate Customer Service with AI",
       "subtitle": "WhatsApp, Phone, Chat and Email - 24/7 AI-powered customer service",
       "cta": "Get Started Free",
+      "ctaPrimary": "Try Free",
+      "ctaDemo": "Request Demo",
       "ctaWaitlist": "Apply for Early Access",
-      "watch": "See Pricing"
+      "watch": "See Pricing",
+      "demoProcess": {
+        "title": "How does the demo work?",
+        "step1": "Sign up",
+        "step2": "Connect integrations (WhatsApp, Email, Shopify)",
+        "step3": "Go live and measure from the dashboard"
+      }
     },
     "channels": {
       "title": "All Channels in One Platform",
@@ -304,6 +312,53 @@
       "start": "Get Started Free",
       "applyEarlyAccess": "Apply for Early Access",
       "contact": "Contact Us"
+    },
+    "deepDive": {
+      "title": "Operational visibility and governance",
+      "subtitle": "Track quality and performance without losing control.",
+      "dashboardKpi": {
+        "title": "Dashboard & KPI",
+        "desc": "Track metrics that guide daily operations and team decisions.",
+        "item1": "Resolution rate by channel and intent",
+        "item2": "Deflection and handoff trends",
+        "item3": "SLA risk alerts for delayed responses",
+        "item4": "Channel distribution over time"
+      },
+      "securityKvkk": {
+        "title": "Security & KVKK",
+        "desc": "Built with practical controls for data handling and review.",
+        "item1": "Role-based access for sensitive actions",
+        "item2": "Audit logs for key user operations",
+        "item3": "Data minimization and controlled retention approach"
+      },
+      "integrations": {
+        "title": "Integrations",
+        "desc": "Connect business data and keep assistant answers current.",
+        "item1": "Data flows from ERP/CRM and commerce systems",
+        "item2": "Webhook-based sync for external platforms",
+        "item3": "Sheets/Calendar support for lightweight operations"
+      }
+    },
+    "solutions": {
+      "title": "Industry solutions",
+      "subtitle": "Pre-built flows for common requests in each vertical.",
+      "link": "View solution flow",
+      "ecommerce": {
+        "title": "E-commerce",
+        "desc": "Order status, returns, and shipping updates."
+      },
+      "restaurant": {
+        "title": "Restaurant",
+        "desc": "Reservations, menu details, and order inquiries."
+      },
+      "salon": {
+        "title": "Salon",
+        "desc": "Appointments, reminders, and service details."
+      },
+      "support": {
+        "title": "Support",
+        "desc": "FAQ automation with safe handoff to agents."
+      }
     }
   },
   "solutions": {
@@ -350,6 +405,11 @@
       "cta": {
         "title": "Provide 24/7 Support to Your E-commerce Customers",
         "subtitle": "AI assistant integrated with ikas, Shopify and other platforms"
+      },
+      "exampleFlow": {
+        "step1": "Order status request -> fetch from ERP/Shopify/ikas -> respond with up-to-date status.",
+        "step2": "Return request -> classify issue -> open return form and add tags.",
+        "step3": "Cargo tracking -> generate tracking link -> share and update automatically."
       }
     },
     "restaurant": {
@@ -384,6 +444,11 @@
       "cta": {
         "title": "Automate Your Restaurant Reservations",
         "subtitle": "Seamless reservation management with Google Calendar integration"
+      },
+      "exampleFlow": {
+        "step1": "Reservation request -> check availability from calendar -> offer slots instantly.",
+        "step2": "Menu question -> return allergen/portion details -> suggest suitable items.",
+        "step3": "Order inquiry -> confirm status from POS/integration -> inform customer."
       }
     },
     "salon": {
@@ -418,6 +483,11 @@
       "cta": {
         "title": "Simplify Your Salon Appointments",
         "subtitle": "Automatic appointment management with calendar integration"
+      },
+      "exampleFlow": {
+        "step1": "Appointment request -> match staff + service duration -> suggest best slot.",
+        "step2": "Pre-visit question -> share service details and preparation guidance.",
+        "step3": "No-show risk -> send reminder and confirm attendance."
       }
     },
     "support": {
@@ -452,12 +522,21 @@
       "cta": {
         "title": "Strengthen Your Customer Support",
         "subtitle": "Increase customer satisfaction with AI"
+      },
+      "exampleFlow": {
+        "step1": "Incoming issue -> detect intent and priority from message.",
+        "step2": "Knowledge lookup -> provide grounded answer with references.",
+        "step3": "If unresolved -> create ticket and handoff with conversation summary."
       }
     },
     "cta": {
       "title": "Don't See Your Industry?",
       "subtitle": "Our AI assistants can be adapted to any industry. Let's discuss your needs.",
       "contact": "Contact Us"
+    },
+    "exampleFlow": {
+      "title": "Example flow",
+      "subtitle": "A practical 3-step automation + integration pattern."
     }
   },
   "contact": {
@@ -660,7 +739,7 @@
     "sidebar": {
       "overview": "Overview",
       "assistants": "Assistants",
-      "calls": "Calls",
+      "calls": "CALLS",
       "analytics": "Analytics",
       "integrations": "Integrations",
       "settings": "Settings",
@@ -675,7 +754,6 @@
       "monitor": "MONITOR",
       "system": "SYSTEM",
       "emailInbox": "Email",
-      "calls": "CALLS",
       "outboundCalls": "Outbound Calls",
       "inboundCalls": "Inbound Calls",
       "callHistory": "Call History",
@@ -1615,7 +1693,10 @@
       "csvDate": "Date",
       "csvCategory": "Category",
       "csvSubtopics": "Subtopics",
-      "reportDownloaded": "Report downloaded"
+      "reportDownloaded": "Report downloaded",
+      "channelSessionDurationTitle": "Channel session duration",
+      "averageSessionDuration": "Average session duration",
+      "totalSessionDuration": "Total session duration"
     },
     "chatsPage": {
       "title": "Chat History",
@@ -2449,66 +2530,117 @@
     }
   },
   "onboarding": {
-    "welcome": "Welcome",
-    "businessType": "Business Type",
-    "selectTemplate": "Select Template",
-    "customizeAssistant": "Customize Assistant",
-    "complete": "Complete",
-    "step1": {
-      "title": "Choose Language",
-      "description": "Select your preferred language"
+    "steps": {
+      "chooseIndustry": "Choose Industry",
+      "pickVoice": "Pick Your Voice",
+      "addTraining": "Add Training",
+      "testAssistant": "Test Assistant",
+      "complete": "Complete"
     },
-    "step2": {
-      "title": "Choose Industry",
-      "description": "Tell us about your business"
+    "descriptions": {
+      "tellUsAboutBusiness": "Tell us about your business",
+      "selectAssistantVoice": "Select your assistant voice",
+      "createFirstGreeting": "Create your first greeting",
+      "tryItOut": "Try it out!",
+      "allSet": "You are all set!"
     },
-    "step3": {
-      "title": "Pick Your Voice",
-      "description": "Select your assistant's voice"
+    "labels": {
+      "language": "Language",
+      "selectAssistantLanguage": "Select assistant language",
+      "country": "Country",
+      "selectBusinessLocation": "Select your business location",
+      "businessType": "Business Type",
+      "businessTimezone": "Business Timezone",
+      "selectBusinessTimezone": "Select your business operating timezone",
+      "greetingMessage": "Greeting Message",
+      "greetingMessageDesc": "The first sentence your assistant will say",
+      "assistantInstructions": "Assistant Instructions",
+      "assistantInstructionsDesc": "Instructions for how your assistant should behave"
     },
-    "step4": {
-      "title": "Add Training",
-      "description": "Create your first greeting"
-    },
-    "step5": {
-      "title": "Test Assistant",
-      "description": "Try it out!"
-    },
-    "step6": {
-      "title": "Complete",
-      "description": "You're all set!"
+    "location": {
+      "countryRegion": "Country / Region",
+      "timezone": "Timezone",
+      "autoDetected": "Auto-detected",
+      "countries": {
+        "TR": "Turkey",
+        "US": "United States"
+      },
+      "timezones": {
+        "europeIstanbul": "(UTC+3) Istanbul, Turkey",
+        "europeLondon": "(UTC+0) London, UK",
+        "europeParis": "(UTC+1) Paris, France",
+        "europeBerlin": "(UTC+1) Berlin, Germany",
+        "americaNewYork": "(UTC-5) New York, Eastern Time",
+        "americaLosAngeles": "(UTC-8) Los Angeles, Pacific Time",
+        "americaChicago": "(UTC-6) Chicago, Central Time",
+        "americaDenver": "(UTC-7) Denver, Mountain Time",
+        "americaToronto": "(UTC-5) Toronto, Canada",
+        "americaSaoPaulo": "(UTC-3) Sao Paulo, Brazil",
+        "europeMoscow": "(UTC+3) Moscow, Russia",
+        "asiaDubai": "(UTC+4) Dubai, UAE",
+        "asiaKolkata": "(UTC+5:30) Mumbai, India",
+        "asiaSingapore": "(UTC+8) Singapore",
+        "asiaTokyo": "(UTC+9) Tokyo, Japan",
+        "australiaSydney": "(UTC+11) Sydney, Australia"
+      }
     },
     "industries": {
       "restaurant": "Restaurant",
-      "salon": "Salon/Spa",
+      "salonSpa": "Salon & Spa",
       "ecommerce": "E-commerce",
       "professionalServices": "Professional Services",
       "other": "Other"
     },
-    "voiceTones": {
-      "professional": "Professional",
-      "friendly": "Friendly",
-      "warm": "Warm",
-      "energetic": "Energetic"
+    "prompts": {
+      "restaurant": "You are a restaurant assistant. Take reservations, provide menu information, share working hours, answer customer questions.",
+      "salon": "You are a salon assistant. Book appointments, provide information about services and prices, share available times.",
+      "ecommerce": "You are an e-commerce assistant. Provide stock information, order status updates, explain return and exchange processes.",
+      "service": "You are a professional service assistant. Book appointments, provide service information, help with pricing.",
+      "other": "You are a business assistant. Answer customer questions, provide information, be helpful."
     },
-    "greetingLabel": "Greeting Message",
-    "greetingPlaceholder": "Enter your greeting message...",
-    "greetingTip": "Tip: Keep your greeting short, friendly, and include your business name.",
-    "greetingExample": "Example:",
-    "testYourAssistant": "Test Your Assistant",
-    "startVoiceTest": "Start Voice Test",
-    "endCall": "End Call",
-    "creatingAssistant": "Creating your assistant...",
-    "onboardingComplete": "You're All Set!",
-    "onboardingCompleteDesc": "Your AI assistant is ready to go. Here's what you can do next:",
-    "upgradeToGetPhone": "Upgrade to Get Your Phone Number",
-    "upgradeDesc": "Start receiving real calls",
-    "addMoreTrainings": "Add More Trainings",
-    "addTrainingsDesc": "Teach your assistant about your services",
-    "setupIntegrations": "Set Up Integrations",
-    "setupIntegrationsDesc": "Connect Google Calendar, Shopify, or others",
-    "stepOf": "Step",
-    "of": "of"
+    "voice": {
+      "male": "Male",
+      "female": "Female",
+      "previewComingSoon": "Voice preview coming soon",
+      "outboundUsage": "This voice will be used for outbound calls.",
+      "optionalStep": "This step is optional.",
+      "loading": "Loading voices...",
+      "noVoices": "No voices are available for this language. Please try another language.",
+      "playSampleError": "Could not play sample"
+    },
+    "voiceDemo": {
+      "title": "Test Your AI Assistant",
+      "description": "Click the button below to start a voice conversation with your AI assistant",
+      "createAssistantFirst": "Please create an assistant first to test",
+      "startVoiceTest": "Start Voice Test",
+      "endCall": "End Call",
+      "allowMicrophone": "Make sure to allow microphone access when prompted",
+      "callStatus": {
+        "starting": "Starting call...",
+        "started": "Call started! Speak now...",
+        "ended": "Call ended",
+        "speaking": "Assistant is speaking...",
+        "listening": "Listening..."
+      }
+    },
+    "messages": {
+      "completed": "Completed!",
+      "assistantCreated": "Assistant created!",
+      "failedToCreate": "Failed to create assistant",
+      "error": "An error occurred",
+      "creatingAssistant": "Creating assistant...",
+      "previewStepSkipped": "Assistant preview step was skipped in this version."
+    },
+    "final": {
+      "allSet": "All Set!",
+      "assistantReady": "Your AI assistant is ready to use."
+    },
+    "buttons": {
+      "back": "Back",
+      "next": "Next",
+      "complete": "Complete",
+      "loading": "Loading..."
+    }
   },
   "errors": {
     "generic": "An error occurred",
@@ -2707,119 +2839,6 @@
       "email": "Email"
     }
   },
-  "onboarding": {
-    "steps": {
-      "chooseIndustry": "Choose Industry",
-      "pickVoice": "Pick Your Voice",
-      "addTraining": "Add Training",
-      "testAssistant": "Test Assistant",
-      "complete": "Complete"
-    },
-    "descriptions": {
-      "tellUsAboutBusiness": "Tell us about your business",
-      "selectAssistantVoice": "Select your assistant voice",
-      "createFirstGreeting": "Create your first greeting",
-      "tryItOut": "Try it out!",
-      "allSet": "You are all set!"
-    },
-    "labels": {
-      "language": "Language",
-      "selectAssistantLanguage": "Select assistant language",
-      "country": "Country",
-      "selectBusinessLocation": "Select your business location",
-      "businessType": "Business Type",
-      "businessTimezone": "Business Timezone",
-      "selectBusinessTimezone": "Select your business operating timezone",
-      "greetingMessage": "Greeting Message",
-      "greetingMessageDesc": "The first sentence your assistant will say",
-      "assistantInstructions": "Assistant Instructions",
-      "assistantInstructionsDesc": "Instructions for how your assistant should behave"
-    },
-    "location": {
-      "countryRegion": "Country / Region",
-      "timezone": "Timezone",
-      "autoDetected": "Auto-detected",
-      "countries": {
-        "TR": "Turkey",
-        "US": "United States"
-      },
-      "timezones": {
-        "europeIstanbul": "(UTC+3) Istanbul, Turkey",
-        "europeLondon": "(UTC+0) London, UK",
-        "europeParis": "(UTC+1) Paris, France",
-        "europeBerlin": "(UTC+1) Berlin, Germany",
-        "americaNewYork": "(UTC-5) New York, Eastern Time",
-        "americaLosAngeles": "(UTC-8) Los Angeles, Pacific Time",
-        "americaChicago": "(UTC-6) Chicago, Central Time",
-        "americaDenver": "(UTC-7) Denver, Mountain Time",
-        "americaToronto": "(UTC-5) Toronto, Canada",
-        "americaSaoPaulo": "(UTC-3) Sao Paulo, Brazil",
-        "europeMoscow": "(UTC+3) Moscow, Russia",
-        "asiaDubai": "(UTC+4) Dubai, UAE",
-        "asiaKolkata": "(UTC+5:30) Mumbai, India",
-        "asiaSingapore": "(UTC+8) Singapore",
-        "asiaTokyo": "(UTC+9) Tokyo, Japan",
-        "australiaSydney": "(UTC+11) Sydney, Australia"
-      }
-    },
-    "industries": {
-      "restaurant": "Restaurant",
-      "salonSpa": "Salon & Spa",
-      "ecommerce": "E-commerce",
-      "professionalServices": "Professional Services",
-      "other": "Other"
-    },
-    "prompts": {
-      "restaurant": "You are a restaurant assistant. Take reservations, provide menu information, share working hours, answer customer questions.",
-      "salon": "You are a salon assistant. Book appointments, provide information about services and prices, share available times.",
-      "ecommerce": "You are an e-commerce assistant. Provide stock information, order status updates, explain return and exchange processes.",
-      "service": "You are a professional service assistant. Book appointments, provide service information, help with pricing.",
-      "other": "You are a business assistant. Answer customer questions, provide information, be helpful."
-    },
-    "voice": {
-      "male": "Male",
-      "female": "Female",
-      "previewComingSoon": "Voice preview coming soon",
-      "outboundUsage": "This voice will be used for outbound calls.",
-      "optionalStep": "This step is optional.",
-      "loading": "Loading voices...",
-      "noVoices": "No voices are available for this language. Please try another language.",
-      "playSampleError": "Could not play sample"
-    },
-    "voiceDemo": {
-      "title": "Test Your AI Assistant",
-      "description": "Click the button below to start a voice conversation with your AI assistant",
-      "createAssistantFirst": "Please create an assistant first to test",
-      "startVoiceTest": "Start Voice Test",
-      "endCall": "End Call",
-      "allowMicrophone": "Make sure to allow microphone access when prompted",
-      "callStatus": {
-        "starting": "Starting call...",
-        "started": "Call started! Speak now...",
-        "ended": "Call ended",
-        "speaking": "Assistant is speaking...",
-        "listening": "Listening..."
-      }
-    },
-    "messages": {
-      "completed": "Completed!",
-      "assistantCreated": "Assistant created!",
-      "failedToCreate": "Failed to create assistant",
-      "error": "An error occurred",
-      "creatingAssistant": "Creating assistant...",
-      "previewStepSkipped": "Assistant preview step was skipped in this version."
-    },
-    "final": {
-      "allSet": "All Set!",
-      "assistantReady": "Your AI assistant is ready to use."
-    },
-    "buttons": {
-      "back": "Back",
-      "next": "Next",
-      "complete": "Complete",
-      "loading": "Loading..."
-    }
-  },
   "about": {
     "hero": {
       "title": "About Telyx.ai",
@@ -2839,12 +2858,35 @@
     },
     "team": {
       "title": "Our Team",
-      "content": "As a small but passionate team, we work every day to improve the customer experience of businesses."
+      "content": "As a small but passionate team, we work every day to improve the customer experience of businesses.",
+      "roles": {
+        "founder": {
+          "title": "Founder",
+          "desc": "Owns product direction and partner relationships."
+        },
+        "product": {
+          "title": "Product & AI",
+          "desc": "Builds assistant flows, quality checks, and analytics."
+        },
+        "customerOps": {
+          "title": "Customer Operations",
+          "desc": "Handles launch, onboarding, and channel operations."
+        }
+      }
     },
     "cta": {
       "title": "Join Us",
       "subtitle": "Apply for early access and discover the power of AI-powered customer service.",
       "button": "Apply for Early Access"
+    },
+    "companyInfo": {
+      "title": "Company information",
+      "description": "Telyx builds practical AI assistants for customer communication workflows across phone, chat, WhatsApp, and email.",
+      "locationLabel": "Location",
+      "contactLabel": "Contact channel",
+      "legalAddressLabel": "Legal address",
+      "locationFallback": "Location details shared during onboarding and contract stage.",
+      "legalAddressFallback": "Legal address is shared in contract/proposal documents when required."
     }
   },
   "help": {
@@ -2972,7 +3014,10 @@
       "email": "Email",
       "accounting": "Accounting",
       "payment": "Payment",
-      "sms": "SMS"
+      "sms": "SMS",
+      "communication": "Communication",
+      "crm": "CRM",
+      "scheduling": "Scheduling"
     },
     "googleSheets": {
       "desc": "Sync customer data with Google Sheets"
@@ -3024,6 +3069,18 @@
       "subtitle": "Start using all integrations for free",
       "button": "Apply for Early Access",
       "contact": "Contact Us"
+    },
+    "catalogCount": "{count} integrations in the current catalog",
+    "status": {
+      "available": "Available",
+      "soon": "Coming soon"
+    },
+    "cardCta": {
+      "available": "Open in panel",
+      "soon": "Contact us"
+    },
+    "hubspot": {
+      "desc": "Two-way sync of contacts and ticket updates"
     }
   },
   "upgradeModal": {
@@ -3089,5 +3146,31 @@
     "hoursAgo": "{count} hours ago",
     "dayAgo": "{count} day ago",
     "daysAgo": "{count} days ago"
+  },
+  "marketingFaq": {
+    "title": "Frequently asked questions",
+    "subtitle": "Clear answers before you go live.",
+    "items": {
+      "integrationTime": {
+        "question": "How long does integration take?",
+        "answer": "Standard setup is usually completed in 15-30 minutes. Special systems and custom mapping can take 1-3 business days."
+      },
+      "requiredData": {
+        "question": "Which data is required to start?",
+        "answer": "At minimum: business profile, core FAQ/process content, and at least one channel integration. Optional order/CRM data improves answer quality."
+      },
+      "aiToHuman": {
+        "question": "When does AI ask for human support?",
+        "answer": "In low-confidence, policy-sensitive, or exception scenarios, the assistant can hand off to an agent or request explicit approval."
+      },
+      "kvkk": {
+        "question": "What is your KVKK approach?",
+        "answer": "We follow data minimization, role-based access, auditability, and retention controls. Final legal assessment should be done with your compliance counsel."
+      },
+      "pricingOverage": {
+        "question": "How does overage pricing work?",
+        "answer": "When included plan minutes are exhausted, additional usage is billed with the defined overage rate. Channel-specific overage details are shown on pricing."
+      }
+    }
   }
 }

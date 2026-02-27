@@ -65,7 +65,7 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   }
 

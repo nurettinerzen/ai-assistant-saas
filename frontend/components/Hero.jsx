@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, BarChart3 } from 'lucide-react';
+import { ArrowRight, Link2, MessageCircleMore, Rocket, UserPlus } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from './ui/button';
 import { WaveformAnimation } from './animations/WaveformAnimation';
@@ -10,6 +10,11 @@ import { useLanguage } from '@/contexts/LanguageContext';
 
 export const Hero = () => {
   const { t } = useLanguage();
+  const demoSteps = [
+    { icon: UserPlus, title: t('landing.hero.demoProcess.step1') },
+    { icon: Link2, title: t('landing.hero.demoProcess.step2') },
+    { icon: Rocket, title: t('landing.hero.demoProcess.step3') },
+  ];
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
@@ -64,25 +69,59 @@ export const Hero = () => {
             transition={{ delay: 0.6, duration: 0.7 }}
             className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16"
           >
-            <Link href="/waitlist">
+            <Link href="/signup">
               <Button
                 size="lg"
-                className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-blue-lg group px-8 py-6 text-lg h-auto"
+                className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground shadow-blue-lg group px-8 py-6 text-lg h-auto"
               >
-                {t('landing.hero.ctaWaitlist')}
+                {t('landing.hero.ctaPrimary')}
                 <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
               </Button>
             </Link>
-            <Link href="/pricing">
+            <Link href="/contact">
               <Button
                 size="lg"
                 variant="outline"
-                className="border-2 border-border hover:border-primary hover:bg-primary/5 group px-8 py-6 text-lg h-auto"
+                className="w-full sm:w-auto border-2 border-border hover:border-primary hover:bg-primary/5 group px-8 py-6 text-lg h-auto"
               >
-                <BarChart3 className="mr-2 h-5 w-5" />
-                {t('landing.hero.watch')}
+                <MessageCircleMore className="mr-2 h-5 w-5" />
+                {t('landing.hero.ctaDemo')}
               </Button>
             </Link>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.7, duration: 0.7 }}
+            className="mx-auto max-w-3xl rounded-2xl border border-primary/20 bg-white/80 dark:bg-neutral-900/70 backdrop-blur-sm p-4 sm:p-6"
+          >
+            <div className="flex flex-col gap-4">
+              <p className="text-sm sm:text-base font-semibold text-foreground dark:text-white">
+                {t('landing.hero.demoProcess.title')}
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {demoSteps.map((step, index) => {
+                  const Icon = step.icon;
+                  return (
+                    <div
+                      key={step.title}
+                      className="flex items-center gap-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-3"
+                    >
+                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold">
+                        {index + 1}
+                      </div>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Icon className="h-4 w-4 text-primary flex-shrink-0" />
+                        <span className="text-sm text-neutral-700 dark:text-neutral-200 text-left">
+                          {step.title}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </motion.div>
         </motion.div>
       </div>

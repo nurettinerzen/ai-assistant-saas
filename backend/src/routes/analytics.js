@@ -81,6 +81,43 @@ router.get('/overview', authenticateToken, async (req, res) => {
     const emailsAnswered = sentEmailDrafts.length;
     const totalEmailThreads = emailThreads.length;
 
+    const toDurationSeconds = (start, end) => {
+      if (!start || !end) return 0;
+      const diff = Math.round((new Date(end).getTime() - new Date(start).getTime()) / 1000);
+      return diff > 0 ? diff : 0;
+    };
+
+    const chatTotalSessionDuration = chatLogs.reduce(
+      (sum, session) => sum + toDurationSeconds(session.createdAt, session.updatedAt),
+      0
+    );
+    const whatsappTotalSessionDuration = whatsappLogs.reduce(
+      (sum, session) => sum + toDurationSeconds(session.createdAt, session.updatedAt),
+      0
+    );
+    const emailTotalSessionDuration = emailThreads.reduce(
+      (sum, thread) => sum + toDurationSeconds(thread.createdAt, thread.lastMessageAt || thread.updatedAt),
+      0
+    );
+
+    const channelSessionDuration = {
+      chat: {
+        sessions: chatSessions,
+        averageSeconds: chatSessions > 0 ? Math.round(chatTotalSessionDuration / chatSessions) : 0,
+        totalSeconds: chatTotalSessionDuration
+      },
+      whatsapp: {
+        sessions: whatsappSessions,
+        averageSeconds: whatsappSessions > 0 ? Math.round(whatsappTotalSessionDuration / whatsappSessions) : 0,
+        totalSeconds: whatsappTotalSessionDuration
+      },
+      email: {
+        sessions: totalEmailThreads,
+        averageSeconds: totalEmailThreads > 0 ? Math.round(emailTotalSessionDuration / totalEmailThreads) : 0,
+        totalSeconds: emailTotalSessionDuration
+      }
+    };
+
     // Calls over time WITH chats, whatsapp, and emails
     const callsByDate = {};
     const chatsByDate = {};
@@ -210,7 +247,8 @@ router.get('/overview', authenticateToken, async (req, res) => {
       assistantPerformance,
 
       // Channel stats
-      channelStats
+      channelStats,
+      channelSessionDuration
     });
   } catch (error) {
     console.error('Error fetching analytics:', error);

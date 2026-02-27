@@ -7,6 +7,7 @@ import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useLanguage } from '@/contexts/LanguageContext';
+import MarketingFAQ from '@/components/MarketingFAQ';
 import { ShoppingCart, UtensilsCrossed, Scissors, HeadphonesIcon, ArrowRight } from 'lucide-react';
 
 export default function SolutionsPage() {
@@ -72,14 +73,14 @@ export default function SolutionsPage() {
       <Navigation />
 
       {/* Hero Section */}
-      <section className="pt-32 pb-16">
+      <section className="pt-28 md:pt-32 pb-12 md:pb-16">
         <div className="container mx-auto px-4">
           <div className="text-center max-w-3xl mx-auto">
             <motion.h1
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
-              className="text-5xl md:text-6xl font-bold mb-6"
+              className="text-4xl sm:text-5xl md:text-6xl font-bold mb-6"
             >
               {t('solutions.hero.title')}
             </motion.h1>
@@ -140,6 +141,10 @@ export default function SolutionsPage() {
           </div>
         </div>
       </section>
+
+      <div className="container mx-auto px-4">
+        <MarketingFAQ />
+      </div>
 
       {/* CTA Section */}
       <section className="py-20">

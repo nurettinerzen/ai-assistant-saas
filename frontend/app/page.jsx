@@ -38,27 +38,27 @@ export default function Home() {
       <HowItWorks />
 
       {/* CTA Section */}
-      <section className="py-24 bg-gradient-to-br from-teal-600 via-blue-500 to-teal-600 relative overflow-hidden">
+      <section className="py-16 md:py-24 bg-gradient-to-br from-teal-600 via-blue-500 to-teal-600 relative overflow-hidden">
         <div className="absolute inset-0 opacity-20">
           <div className="absolute top-0 left-0 w-96 h-96 bg-white rounded-full filter blur-3xl animate-float"></div>
           <div className="absolute bottom-0 right-0 w-96 h-96 bg-white rounded-full filter blur-3xl animate-float" style={{ animationDelay: '2s' }}></div>
         </div>
 
         <div className="relative container mx-auto px-4 text-center">
-          <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+          <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">
             {t('landing.cta.title')}
           </h2>
-          <p className="text-xl text-blue-100 mb-12 max-w-2xl mx-auto">
+          <p className="text-base md:text-xl text-blue-100 mb-10 md:mb-12 max-w-2xl mx-auto">
             {t('landing.cta.subtitle')}
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/waitlist">
-              <Button size="lg" className="bg-white text-teal-600 hover:bg-gray-100 shadow-xl text-lg px-8 py-6">
+              <Button size="lg" className="w-full sm:w-auto bg-white text-teal-600 hover:bg-gray-100 shadow-xl text-lg px-8 py-6">
                 {t('landing.cta.applyEarlyAccess')}
               </Button>
             </Link>
             <Link href="/contact">
-              <Button size="lg" variant="outline" className="glass border-white/30 text-white hover:bg-white/10 text-lg px-8 py-6">
+              <Button size="lg" variant="outline" className="w-full sm:w-auto glass border-white/30 text-white hover:bg-white/10 text-lg px-8 py-6">
                 {t('landing.cta.talkToSales')}
               </Button>
             </Link>

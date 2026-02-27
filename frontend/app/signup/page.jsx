@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { SecurePasswordInput } from '@/components/ui/secure-password-input';
 import { Label } from '@/components/ui/label';
 import { Mail, Lock, User, Loader2, Ticket, Building2 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
@@ -22,7 +23,7 @@ export default function SignupPage() {
   useEffect(() => {
     setMounted(true);
   }, []);
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [formData, setFormData] = useState({
@@ -33,6 +34,9 @@ export default function SignupPage() {
     inviteCode: '',
   });
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const passwordToggleLabels = locale === 'tr'
+    ? { show: 'Şifreyi göster', hide: 'Şifreyi gizle' }
+    : { show: 'Show password', hide: 'Hide password' };
 
   // Check if user is already logged in
   useEffect(() => {
@@ -110,7 +114,7 @@ export default function SignupPage() {
       <div className="w-full max-w-md">
         <div className="flex justify-between items-center mb-8">
           <Link href="/">
-            <TelyxLogoFull width={200} height={60} darkMode={mounted && resolvedTheme === 'dark'} />
+            <TelyxLogoFull width={160} height={48} darkMode={mounted && resolvedTheme === 'dark'} />
           </Link>
           <LanguageSwitcher />
         </div>
@@ -176,15 +180,18 @@ export default function SignupPage() {
               <Label htmlFor="password">{t('auth.password')}</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                <Input
+                <SecurePasswordInput
                   id="password"
-                  type="password"
                   placeholder="••••••••"
                   className="pl-10"
                   value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  onValueChange={(password) => setFormData((prev) => ({ ...prev, password }))}
                   required
                   minLength={12}
+                  showToggle
+                  aria-label={t('auth.password')}
+                  toggleShowLabel={passwordToggleLabels.show}
+                  toggleHideLabel={passwordToggleLabels.hide}
                 />
               </div>
               <p className="text-xs text-gray-500 dark:text-neutral-500 mt-1">

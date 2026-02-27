@@ -9,7 +9,6 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import {
   SHARED_REGIONAL_PRICING,
   SHARED_PLAN_META,
-  SHARED_FEATURE_ORDER,
   LOCALE_TO_REGION,
   formatSharedPrice,
   getFeatureLabel,
@@ -69,19 +68,46 @@ export default function PricingPage() {
 
   // PAYG pricing info
   const payg = pricing.plans.PAYG;
+  const overageRatePerMinute = pricing.plans.STARTER?.overageRate || pricing.plans.PRO?.overageRate || payg.pricePerMinute;
+  const overageRows = [
+    {
+      channel: isTR ? 'Arama dakikası' : 'Voice minute',
+      unit: isTR ? '1 dk' : '1 min',
+      rate: `${formatSharedPrice(overageRatePerMinute, region)}/${isTR ? 'dk' : 'min'}`,
+      note: isTR ? 'Plan dakikası bittikten sonra uygulanır.' : 'Applies after plan minutes are consumed.',
+    },
+    {
+      channel: isTR ? 'WhatsApp mesajı' : 'WhatsApp message',
+      unit: isTR ? '1 mesaj' : '1 message',
+      rate: isTR ? 'Ek ücret yok' : 'No extra fee',
+      note: isTR ? 'Mevcut plan kapsamında kullanılır.' : 'Handled within current plan scope.',
+    },
+    {
+      channel: isTR ? 'E-posta yanıt/draft' : 'Email reply/draft',
+      unit: isTR ? '1 e-posta' : '1 email',
+      rate: isTR ? 'Ek ücret yok' : 'No extra fee',
+      note: isTR ? 'Ayrı mesaj başı aşım tanımı yok.' : 'No separate per-message overage is defined.',
+    },
+    {
+      channel: isTR ? 'Web chat mesajı' : 'Web chat message',
+      unit: isTR ? '1 mesaj' : '1 message',
+      rate: isTR ? 'Ek ücret yok' : 'No extra fee',
+      note: isTR ? 'Mevcut plan kapsamında kullanılır.' : 'Handled within current plan scope.',
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-teal-50 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950">
       <Navigation />
 
       {/* Hero Section */}
-      <section className="pt-32 pb-16">
+      <section className="pt-28 md:pt-32 pb-12 md:pb-16">
         <div className="container mx-auto px-4">
           <div className="text-center max-w-3xl mx-auto">
-            <h1 className="text-5xl md:text-6xl font-bold mb-6 text-gray-900 dark:text-white">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-6 text-gray-900 dark:text-white">
               {t('pricing.title')}
             </h1>
-            <p className="text-xl text-gray-600 dark:text-neutral-400 mb-4">
+            <p className="text-base sm:text-xl text-gray-600 dark:text-neutral-400 mb-4">
               {t('pricing.subtitle')}
             </p>
             <p className="text-sm text-primary font-medium">
@@ -161,7 +187,7 @@ export default function PricingPage() {
                   {getPlanFeatures(plan).map((feature, idx) => (
                     <li key={idx} className="flex items-center gap-2">
                       <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
-                      <span className="text-sm text-gray-700 dark:text-neutral-300 truncate">
+                  <span className="text-sm text-gray-700 dark:text-neutral-300 leading-snug">
                         {feature.text}
                       </span>
                     </li>
@@ -170,7 +196,7 @@ export default function PricingPage() {
 
                 {/* Button always at bottom */}
                 <div className="mt-auto">
-                  <Link href={plan.id === 'ENTERPRISE' ? '/contact' : '/waitlist'} className="block">
+                  <Link href={plan.id === 'ENTERPRISE' ? '/contact' : '/signup'} className="block">
                     <Button
                       className={`w-full ${
                         plan.popular
@@ -206,7 +232,7 @@ export default function PricingPage() {
                 : 'No monthly commitment. Pay per minute.'}
             </p>
 
-            <div className="bg-white dark:bg-neutral-800 rounded-2xl p-8 shadow-lg border border-gray-100 dark:border-neutral-700 max-w-lg mx-auto">
+            <div className="bg-white dark:bg-neutral-800 rounded-2xl p-6 md:p-8 shadow-lg border border-gray-100 dark:border-neutral-700 max-w-lg mx-auto">
               <div className="text-4xl font-bold text-primary mb-2">
                 {formatSharedPrice(payg.pricePerMinute, region)}<span className="text-lg text-gray-500 dark:text-neutral-400">/{isTR ? 'dk' : 'min'}</span>
               </div>
@@ -227,9 +253,82 @@ export default function PricingPage() {
                 </span>
               </div>
               <div className="mt-6">
-                <Link href="/waitlist">
+                <Link href="/signup">
                   <Button variant="outline" size="lg" className="w-full">
                     {isTR ? 'Hemen Başla' : 'Get Started'}
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          {/* Overage Details */}
+          <div className="mt-20 max-w-5xl mx-auto">
+            <div className="text-center mb-8">
+              <h3 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
+                {isTR ? 'Paket aşım detayları' : 'Plan overage details'}
+              </h3>
+              <p className="text-gray-600 dark:text-neutral-400 max-w-3xl mx-auto">
+                {isTR
+                  ? 'Paket aşımı, planınızda tanımlı dakikaların bitmesinden sonra oluşan ek kullanımı ifade eder.'
+                  : 'Plan overage means extra usage after the included plan minutes are exhausted.'}
+              </p>
+            </div>
+
+            <div className="bg-white dark:bg-neutral-800 rounded-2xl border border-gray-100 dark:border-neutral-700 shadow-lg overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[680px]">
+                  <thead className="bg-gray-50 dark:bg-neutral-900/60 border-b border-gray-100 dark:border-neutral-700">
+                    <tr>
+                      <th className="text-left px-5 py-3 text-sm font-semibold text-gray-900 dark:text-white">
+                        {isTR ? 'Kanal' : 'Channel'}
+                      </th>
+                      <th className="text-left px-5 py-3 text-sm font-semibold text-gray-900 dark:text-white">
+                        {isTR ? 'Birim' : 'Unit'}
+                      </th>
+                      <th className="text-left px-5 py-3 text-sm font-semibold text-gray-900 dark:text-white">
+                        {isTR ? 'Aşım ücreti' : 'Overage rate'}
+                      </th>
+                      <th className="text-left px-5 py-3 text-sm font-semibold text-gray-900 dark:text-white">
+                        {isTR ? 'Not' : 'Note'}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {overageRows.map((row) => (
+                      <tr key={row.channel} className="border-b border-gray-100 dark:border-neutral-700/80 last:border-b-0">
+                        <td className="px-5 py-4 text-sm font-medium text-gray-900 dark:text-white">{row.channel}</td>
+                        <td className="px-5 py-4 text-sm text-gray-700 dark:text-neutral-300">{row.unit}</td>
+                        <td className="px-5 py-4 text-sm text-gray-700 dark:text-neutral-300">{row.rate}</td>
+                        <td className="px-5 py-4 text-sm text-gray-600 dark:text-neutral-400">{row.note}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          {/* Decision CTA */}
+          <div className="mt-20 max-w-4xl mx-auto">
+            <div className="rounded-3xl border border-gray-200 dark:border-neutral-700 bg-gradient-to-r from-slate-900 to-blue-900 p-10 text-center shadow-xl">
+              <h3 className="text-3xl md:text-4xl font-bold text-white mb-4">
+                {isTR ? 'Hâlâ kararsız mısınız?' : 'Still undecided?'}
+              </h3>
+              <p className="text-lg text-blue-100 mb-8">
+                {isTR
+                  ? 'İhtiyacınıza göre doğru paketi birlikte seçelim.'
+                  : 'Let’s choose the right package together for your needs.'}
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Link href="/contact">
+                  <Button variant="outline" size="lg" className="border-white/30 text-white hover:bg-white/10">
+                    {isTR ? 'Demo Talep Et' : 'Request Demo'}
+                  </Button>
+                </Link>
+                <Link href="/signup">
+                  <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                    {isTR ? 'Ücretsiz Dene' : 'Try Free'}
                   </Button>
                 </Link>
               </div>

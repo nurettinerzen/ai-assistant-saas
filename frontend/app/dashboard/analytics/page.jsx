@@ -302,6 +302,59 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
+      {/* Channel Session Duration Cards */}
+      <div>
+        <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-3">
+          {t('dashboard.analyticsPage.channelSessionDurationTitle')}
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <MessageCircle className="h-4 w-4 text-[#3B82F6]" />
+              <p className="text-sm font-semibold text-neutral-900 dark:text-white">{t('dashboard.analyticsPage.chatSessions')}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                {t('dashboard.analyticsPage.averageSessionDuration')}: <span className="font-semibold text-neutral-900 dark:text-white">{formatDuration(analytics?.channelSessionDuration?.chat?.averageSeconds || 0)}</span>
+              </p>
+              <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                {t('dashboard.analyticsPage.totalSessionDuration')}: <span className="font-semibold text-neutral-900 dark:text-white">{formatDuration(analytics?.channelSessionDuration?.chat?.totalSeconds || 0)}</span>
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <WhatsAppIcon className="h-4 w-4 text-[#10B981]" />
+              <p className="text-sm font-semibold text-neutral-900 dark:text-white">WhatsApp</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                {t('dashboard.analyticsPage.averageSessionDuration')}: <span className="font-semibold text-neutral-900 dark:text-white">{formatDuration(analytics?.channelSessionDuration?.whatsapp?.averageSeconds || 0)}</span>
+              </p>
+              <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                {t('dashboard.analyticsPage.totalSessionDuration')}: <span className="font-semibold text-neutral-900 dark:text-white">{formatDuration(analytics?.channelSessionDuration?.whatsapp?.totalSeconds || 0)}</span>
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Mail className="h-4 w-4 text-[#F59E0B]" />
+              <p className="text-sm font-semibold text-neutral-900 dark:text-white">{t('dashboard.analyticsPage.email')}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                {t('dashboard.analyticsPage.averageSessionDuration')}: <span className="font-semibold text-neutral-900 dark:text-white">{formatDuration(analytics?.channelSessionDuration?.email?.averageSeconds || 0)}</span>
+              </p>
+              <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                {t('dashboard.analyticsPage.totalSessionDuration')}: <span className="font-semibold text-neutral-900 dark:text-white">{formatDuration(analytics?.channelSessionDuration?.email?.totalSeconds || 0)}</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Multi-Channel Activity Chart */}

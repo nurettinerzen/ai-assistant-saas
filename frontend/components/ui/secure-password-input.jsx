@@ -14,11 +14,16 @@ const SecurePasswordInput = React.forwardRef(({
   className,
   showToggle = false,
   onValueChange,
+  toggleShowLabel = 'Show password',
+  toggleHideLabel = 'Hide password',
+  value,
+  onChange,
   ...props
 }, ref) => {
   const inputRef = React.useRef(null)
   const [showPassword, setShowPassword] = React.useState(false)
-  const [internalValue, setInternalValue] = React.useState('')
+  const [internalValue, setInternalValue] = React.useState(typeof value === 'string' ? value : '')
+  const isControlled = value !== undefined
 
   // Combine refs
   React.useImperativeHandle(ref, () => inputRef.current)
@@ -57,14 +62,22 @@ const SecurePasswordInput = React.forwardRef(({
     return () => observer.disconnect()
   }, [showPassword, onValueChange])
 
+  React.useEffect(() => {
+    if (isControlled) {
+      setInternalValue(typeof value === 'string' ? value : '')
+    }
+  }, [isControlled, value])
+
   // Handle value changes
   const handleChange = (e) => {
-    setInternalValue(e.target.value)
+    if (!isControlled) {
+      setInternalValue(e.target.value)
+    }
     if (onValueChange) {
       onValueChange(e.target.value)
     }
-    if (props.onChange) {
-      props.onChange(e)
+    if (onChange) {
+      onChange(e)
     }
   }
 
@@ -79,7 +92,7 @@ const SecurePasswordInput = React.forwardRef(({
         {...props}
         ref={inputRef}
         type={showPassword ? 'text' : 'password'}
-        value={internalValue}
+        value={isControlled ? value : internalValue}
         onChange={handleChange}
         autoComplete={props.autoComplete || 'current-password'}
         className={cn(
@@ -92,8 +105,10 @@ const SecurePasswordInput = React.forwardRef(({
         <button
           type="button"
           onClick={toggleVisibility}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none"
-          tabIndex={-1}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 rounded"
+          aria-label={showPassword ? toggleHideLabel : toggleShowLabel}
+          title={showPassword ? toggleHideLabel : toggleShowLabel}
+          aria-pressed={showPassword}
         >
           {showPassword ? (
             <EyeOff className="h-4 w-4" />

@@ -8,6 +8,7 @@ import { useTheme } from 'next-themes';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { SecurePasswordInput } from '@/components/ui/secure-password-input';
 import { Label } from '@/components/ui/label';
 import { toast, Toaster } from 'sonner';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -19,8 +20,8 @@ const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
 export default function LoginPage() {
   const router = useRouter();
-  const { t } = useLanguage();
-  const { theme, resolvedTheme } = useTheme();
+  const { t, locale } = useLanguage();
+  const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -123,8 +124,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const response = await apiClient.post('/api/auth/login', formData);
-      const data = response.data;
+      await apiClient.post('/api/auth/login', formData);
 
       toast.success(t('auth.loginSuccess'));
 
@@ -163,6 +163,10 @@ export default function LoginPage() {
     }
   };
 
+  const passwordToggleLabels = locale === 'tr'
+    ? { show: 'Şifreyi göster', hide: 'Şifreyi gizle' }
+    : { show: 'Show password', hide: 'Hide password' };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-50 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 flex items-center justify-center p-4">
       {/* Google Sign-In Script */}
@@ -194,7 +198,7 @@ export default function LoginPage() {
         <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-xl border border-neutral-200 dark:border-neutral-700 p-8">
           {/* Logo and Language Switcher */}
           <div className="flex items-center justify-between mb-8">
-            <TelyxLogoFull width={200} height={60} darkMode={mounted && resolvedTheme === 'dark'} />
+            <TelyxLogoFull width={160} height={48} darkMode={mounted && resolvedTheme === 'dark'} />
             <LanguageSwitcher />
           </div>
 
@@ -226,15 +230,18 @@ export default function LoginPage() {
             {/* Password */}
             <div>
               <Label htmlFor="password">{t('auth.password')}</Label>
-              <Input
+              <SecurePasswordInput
                 id="password"
                 name="password"
-                type="password"
                 required
+                showToggle
                 value={formData.password}
-                onChange={handleChange}
+                onValueChange={(password) => setFormData((prev) => ({ ...prev, password }))}
                 placeholder={t('auth.passwordPlaceholder')}
                 className="mt-1"
+                aria-label={t('auth.password')}
+                toggleShowLabel={passwordToggleLabels.show}
+                toggleHideLabel={passwordToggleLabels.hide}
               />
             </div>
 

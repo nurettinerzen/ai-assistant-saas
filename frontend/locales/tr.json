@@ -60,12 +60,20 @@
   },
   "landing": {
     "hero": {
-      "badge": "AI Müşteri Hizmetleri Platformu",
+      "badge": "AI Destekli Müşteri Hizmetleri Platformu",
       "title": "AI ile Müşteri Hizmetlerini Otomatikleştirin",
       "subtitle": "WhatsApp, Telefon, Chat ve Email - 7/24 AI destekli müşteri hizmeti",
       "cta": "Ücretsiz Başla",
+      "ctaPrimary": "Ücretsiz Dene",
+      "ctaDemo": "Demo Talep Et",
       "ctaWaitlist": "Erken Erişim İçin Başvur",
-      "watch": "Fiyatları Gör"
+      "watch": "Fiyatları Gör",
+      "demoProcess": {
+        "title": "Demo nasıl çalışır?",
+        "step1": "Kayıt ol",
+        "step2": "Entegrasyonlarını bağla (WhatsApp, Email, Shopify)",
+        "step3": "Canlıya al ve panelden ölç"
+      }
     },
     "channels": {
       "title": "Tüm Kanallar Tek Platformda",
@@ -304,6 +312,53 @@
       "start": "Ücretsiz Başla",
       "applyEarlyAccess": "Erken Erişim İçin Başvur",
       "contact": "İletişime Geçin"
+    },
+    "deepDive": {
+      "title": "Operasyon görünürlüğü ve yönetim",
+      "subtitle": "Kaliteyi ve performansı kontrolde tutarak ilerleyin.",
+      "dashboardKpi": {
+        "title": "Dashboard ve KPI",
+        "desc": "Günlük operasyon kararlarını destekleyen metrikleri takip edin.",
+        "item1": "Kanal ve niyet bazlı çözüm oranı",
+        "item2": "Deflection ve handoff trendleri",
+        "item3": "Geciken yanıtlar için SLA risk uyarıları",
+        "item4": "Kanallar arası dağılım analizi"
+      },
+      "securityKvkk": {
+        "title": "Güvenlik ve KVKK",
+        "desc": "Veri süreçlerinde ölçülebilir ve denetlenebilir yaklaşım.",
+        "item1": "Hassas işlemler için rol bazlı yetkilendirme",
+        "item2": "Kritik işlemler için audit log takibi",
+        "item3": "Veri minimizasyonu ve kontrollü saklama prensibi"
+      },
+      "integrations": {
+        "title": "Entegrasyonlar",
+        "desc": "İş verisini sisteme bağlayın, yanıtları güncel tutun.",
+        "item1": "ERP/CRM ve e-ticaret sistemlerinden veri akışı",
+        "item2": "Webhook ile harici platform senkronizasyonu",
+        "item3": "Hafif operasyonlar için Sheets/Takvim desteği"
+      }
+    },
+    "solutions": {
+      "title": "Sektörel çözümler",
+      "subtitle": "Her sektör için hazır örnek akışlarla hızlı kurulum.",
+      "link": "Çözüm akışına git",
+      "ecommerce": {
+        "title": "E-ticaret",
+        "desc": "Sipariş durumu, iade ve kargo süreçleri."
+      },
+      "restaurant": {
+        "title": "Restoran",
+        "desc": "Rezervasyon, menü bilgisi ve sipariş soruları."
+      },
+      "salon": {
+        "title": "Salon",
+        "desc": "Randevu, hatırlatma ve hizmet bilgilendirmesi."
+      },
+      "support": {
+        "title": "Destek",
+        "desc": "SSS otomasyonu ve kontrollü temsilci devri."
+      }
     }
   },
   "solutions": {
@@ -350,6 +405,11 @@
       "cta": {
         "title": "E-ticaret Müşterilerinize 7/24 Destek Sunun",
         "subtitle": "ikas, Shopify ve diğer platformlarla entegre AI asistan"
+      },
+      "exampleFlow": {
+        "step1": "Sipariş durumu sorusu -> ERP/Shopify/ikas üzerinden sorgula -> güncel durumu yanıtla.",
+        "step2": "İade talebi -> sorunu sınıflandır -> iade formu oluştur ve etiketle.",
+        "step3": "Kargo takibi -> takip linkini üret -> otomatik paylaş ve güncelle."
       }
     },
     "restaurant": {
@@ -384,6 +444,11 @@
       "cta": {
         "title": "Restoran Rezervasyonlarınızı Otomatikleştirin",
         "subtitle": "Google Calendar entegrasyonu ile sorunsuz rezervasyon yönetimi"
+      },
+      "exampleFlow": {
+        "step1": "Rezervasyon talebi -> takvim uygunluğunu kontrol et -> uygun saatleri sun.",
+        "step2": "Menü sorusu -> alerjen/porsiyon bilgisi ver -> uygun ürün öner.",
+        "step3": "Sipariş sorusu -> POS/entegrasyondan durumu çek -> müşteriyi bilgilendir."
       }
     },
     "salon": {
@@ -418,6 +483,11 @@
       "cta": {
         "title": "Salon Randevularınızı Kolaylaştırın",
         "subtitle": "Takvim entegrasyonu ile otomatik randevu yönetimi"
+      },
+      "exampleFlow": {
+        "step1": "Randevu talebi -> personel + süre eşleştirmesi yap -> en uygun saati öner.",
+        "step2": "Ön görüşme sorusu -> hizmet içeriği ve hazırlık bilgisini paylaş.",
+        "step3": "No-show riski -> hatırlatma gönder ve katılım onayı al."
       }
     },
     "support": {
@@ -452,12 +522,21 @@
       "cta": {
         "title": "Müşteri Desteğinizi Güçlendirin",
         "subtitle": "AI ile müşteri memnuniyetini artırın"
+      },
+      "exampleFlow": {
+        "step1": "Gelen sorun -> niyet ve öncelik tespiti yap.",
+        "step2": "Bilgi tabanı araması -> dayanaklı yanıtla çözüm sun.",
+        "step3": "Çözülemezse -> ticket oluştur ve konuşma özetiyle temsilciye devret."
       }
     },
     "cta": {
       "title": "Sektörünüzü Göremediniz mi?",
       "subtitle": "AI asistanlarımız her sektöre uyarlanabilir. İhtiyaçlarınızı konuşalım.",
       "contact": "Bizimle İletişime Geçin"
+    },
+    "exampleFlow": {
+      "title": "Örnek akış",
+      "subtitle": "3 adımda otomasyon + entegrasyon çıktı modeli."
     }
   },
   "contact": {
@@ -660,7 +739,7 @@
     "sidebar": {
       "overview": "Genel Bakış",
       "assistants": "Asistanlar",
-      "calls": "Aramalar",
+      "calls": "ARAMALAR",
       "analytics": "Analitik",
       "integrations": "Entegrasyonlar",
       "settings": "Ayarlar",
@@ -675,7 +754,6 @@
       "monitor": "İZLE",
       "system": "SİSTEM",
       "emailInbox": "E-posta",
-      "calls": "ARAMALAR",
       "outboundCalls": "Giden Arama",
       "inboundCalls": "Gelen Arama",
       "callHistory": "Arama Geçmişi",
@@ -1615,7 +1693,10 @@
       "csvDate": "Tarih",
       "csvCategory": "Kategori",
       "csvSubtopics": "Alt Konular",
-      "reportDownloaded": "Rapor indirildi"
+      "reportDownloaded": "Rapor indirildi",
+      "channelSessionDurationTitle": "Kanal oturum süreleri",
+      "averageSessionDuration": "Ortalama oturum süresi",
+      "totalSessionDuration": "Toplam oturum süresi"
     },
     "chatsPage": {
       "title": "Sohbet Geçmişi",
@@ -2449,66 +2530,117 @@
     }
   },
   "onboarding": {
-    "welcome": "Hoş Geldiniz",
-    "businessType": "İşletme Türü",
-    "selectTemplate": "Şablon Seçin",
-    "customizeAssistant": "Asistanı Özelleştirin",
-    "complete": "Tamamla",
-    "step1": {
-      "title": "Dil Seçin",
-      "description": "Tercih ettiğiniz dili seçin"
+    "steps": {
+      "chooseIndustry": "Sektör Seçin",
+      "pickVoice": "Ses Seçin",
+      "addTraining": "Eğitim Ekle",
+      "testAssistant": "Asistanı Test Et",
+      "complete": "Tamamlandı"
     },
-    "step2": {
-      "title": "Sektör Seçin",
-      "description": "İşletmeniz hakkında bilgi verin"
+    "descriptions": {
+      "tellUsAboutBusiness": "İşletmeniz hakkında bilgi verin",
+      "selectAssistantVoice": "Asistan sesinizi seçin",
+      "createFirstGreeting": "İlk selamlama mesajınızı oluşturun",
+      "tryItOut": "Deneyin!",
+      "allSet": "Hazırsınız!"
     },
-    "step3": {
-      "title": "Ses Seçin",
-      "description": "Asistanınızın sesini seçin"
+    "labels": {
+      "language": "Dil",
+      "selectAssistantLanguage": "Asistan dilini seçin",
+      "country": "Ülke",
+      "selectBusinessLocation": "İşletme konumunuzu seçin",
+      "businessType": "İşletme Türü",
+      "businessTimezone": "İşletme Saat Dilimi",
+      "selectBusinessTimezone": "İşletme saat diliminizi seçin",
+      "greetingMessage": "Karşılama Mesajı",
+      "greetingMessageDesc": "Asistanınızın söyleyeceği ilk cümle",
+      "assistantInstructions": "Asistan Talimatları",
+      "assistantInstructionsDesc": "Asistanınızın nasıl davranması gerektiğine dair talimatlar"
     },
-    "step4": {
-      "title": "Eğitim Ekle",
-      "description": "İlk karşılama mesajınızı oluşturun"
-    },
-    "step5": {
-      "title": "Asistanı Test Et",
-      "description": "Deneyin!"
-    },
-    "step6": {
-      "title": "Tamamla",
-      "description": "Hazırsınız!"
+    "location": {
+      "countryRegion": "Ülke / Bölge",
+      "timezone": "Saat Dilimi",
+      "autoDetected": "Otomatik algılandı",
+      "countries": {
+        "TR": "Türkiye",
+        "US": "Amerika Birleşik Devletleri"
+      },
+      "timezones": {
+        "europeIstanbul": "(UTC+3) İstanbul, Türkiye",
+        "europeLondon": "(UTC+0) Londra, Birleşik Krallık",
+        "europeParis": "(UTC+1) Paris, Fransa",
+        "europeBerlin": "(UTC+1) Berlin, Almanya",
+        "americaNewYork": "(UTC-5) New York, Doğu Saati",
+        "americaLosAngeles": "(UTC-8) Los Angeles, Pasifik Saati",
+        "americaChicago": "(UTC-6) Chicago, Merkezi Saat",
+        "americaDenver": "(UTC-7) Denver, Dağ Saati",
+        "americaToronto": "(UTC-5) Toronto, Kanada",
+        "americaSaoPaulo": "(UTC-3) Sao Paulo, Brezilya",
+        "europeMoscow": "(UTC+3) Moskova, Rusya",
+        "asiaDubai": "(UTC+4) Dubai, BAE",
+        "asiaKolkata": "(UTC+5:30) Mumbai, Hindistan",
+        "asiaSingapore": "(UTC+8) Singapur",
+        "asiaTokyo": "(UTC+9) Tokyo, Japonya",
+        "australiaSydney": "(UTC+11) Sidney, Avustralya"
+      }
     },
     "industries": {
       "restaurant": "Restoran",
-      "salon": "Kuaför/Spa",
+      "salonSpa": "Kuaför & Spa",
       "ecommerce": "E-ticaret",
       "professionalServices": "Profesyonel Hizmetler",
       "other": "Diğer"
     },
-    "voiceTones": {
-      "professional": "Profesyonel",
-      "friendly": "Samimi",
-      "warm": "Sıcak",
-      "energetic": "Enerjik"
+    "prompts": {
+      "restaurant": "Bir restoran asistanısınız. Rezervasyon alın, menü bilgisi verin, çalışma saatlerini paylaşın, müşteri sorularını yanıtlayın.",
+      "salon": "Bir kuaför asistanısınız. Randevu alın, hizmetler ve fiyatlar hakkında bilgi verin, uygun saatleri paylaşın.",
+      "ecommerce": "Bir e-ticaret asistanısınız. Stok bilgisi verin, sipariş durumu güncellemeleri yapın, iade ve değişim süreçlerini açıklayın.",
+      "service": "Bir profesyonel hizmet asistanısınız. Randevu alın, hizmet bilgisi verin, fiyatlandırma konusunda yardımcı olun.",
+      "other": "Bir işletme asistanısınız. Müşteri sorularını yanıtlayın, bilgi verin, yardımcı olun."
     },
-    "greetingLabel": "Karşılama Mesajı",
-    "greetingPlaceholder": "Karşılama mesajınızı girin...",
-    "greetingTip": "İpucu: Karşılamanızı kısa, samimi tutun ve işletme adınızı ekleyin.",
-    "greetingExample": "Örnek:",
-    "testYourAssistant": "Asistanınızı Test Edin",
-    "startVoiceTest": "Ses Testi Başlat",
-    "endCall": "Aramayı Sonlandır",
-    "creatingAssistant": "Asistanınız oluşturuluyor...",
-    "onboardingComplete": "Hazırsınız!",
-    "onboardingCompleteDesc": "AI asistanınız kullanıma hazır. Şimdi yapabilecekleriniz:",
-    "upgradeToGetPhone": "Telefon Numarası Almak İçin Yükseltin",
-    "upgradeDesc": "Gerçek aramalar almaya başlayın",
-    "addMoreTrainings": "Daha Fazla Eğitim Ekle",
-    "addTrainingsDesc": "Asistanınıza hizmetlerinizi öğretin",
-    "setupIntegrations": "Entegrasyonları Kurun",
-    "setupIntegrationsDesc": "Google Calendar, Shopify veya diğerlerini bağlayın",
-    "stepOf": "Adım",
-    "of": "/"
+    "voice": {
+      "male": "Erkek",
+      "female": "Kadın",
+      "previewComingSoon": "Ses önizleme yakında",
+      "outboundUsage": "Bu ses outbound aramalarda kullanılacak.",
+      "optionalStep": "Bu adım opsiyoneldir.",
+      "loading": "Sesler yükleniyor...",
+      "noVoices": "Bu dil için uygun ses bulunamadı. Lütfen başka bir dil deneyin.",
+      "playSampleError": "Ses örneği oynatılamadı"
+    },
+    "voiceDemo": {
+      "title": "AI Asistanınızı Test Edin",
+      "description": "AI asistanınızla sesli görüşme başlatmak için aşağıdaki butona tıklayın",
+      "createAssistantFirst": "Test etmek için önce bir asistan oluşturun",
+      "startVoiceTest": "Sesli Testi Başlat",
+      "endCall": "Aramayı Bitir",
+      "allowMicrophone": "İstendiğinde mikrofon erişimine izin vermeyi unutmayın",
+      "callStatus": {
+        "starting": "Arama başlatılıyor...",
+        "started": "Arama başladı! Şimdi konuşun...",
+        "ended": "Arama sona erdi",
+        "speaking": "Asistan konuşuyor...",
+        "listening": "Dinliyor..."
+      }
+    },
+    "messages": {
+      "completed": "Tamamlandı!",
+      "assistantCreated": "Asistan oluşturuldu!",
+      "failedToCreate": "Asistan oluşturulamadı",
+      "error": "Bir hata oluştu",
+      "creatingAssistant": "Asistan oluşturuluyor...",
+      "previewStepSkipped": "Asistan önizleme adımı bu sürümde atlandı."
+    },
+    "final": {
+      "allSet": "Hazırsınız!",
+      "assistantReady": "AI asistanınız kullanıma hazır."
+    },
+    "buttons": {
+      "back": "Geri",
+      "next": "İleri",
+      "complete": "Tamamla",
+      "loading": "Yükleniyor..."
+    }
   },
   "errors": {
     "generic": "Bir hata oluştu",
@@ -2707,119 +2839,6 @@
       "email": "E-posta"
     }
   },
-  "onboarding": {
-    "steps": {
-      "chooseIndustry": "Sektör Seçin",
-      "pickVoice": "Ses Seçin",
-      "addTraining": "Eğitim Ekle",
-      "testAssistant": "Asistanı Test Et",
-      "complete": "Tamamlandı"
-    },
-    "descriptions": {
-      "tellUsAboutBusiness": "İşletmeniz hakkında bilgi verin",
-      "selectAssistantVoice": "Asistan sesinizi seçin",
-      "createFirstGreeting": "İlk selamlama mesajınızı oluşturun",
-      "tryItOut": "Deneyin!",
-      "allSet": "Hazırsınız!"
-    },
-    "labels": {
-      "language": "Dil",
-      "selectAssistantLanguage": "Asistan dilini seçin",
-      "country": "Ülke",
-      "selectBusinessLocation": "İşletme konumunuzu seçin",
-      "businessType": "İşletme Türü",
-      "businessTimezone": "İşletme Saat Dilimi",
-      "selectBusinessTimezone": "İşletme saat diliminizi seçin",
-      "greetingMessage": "Karşılama Mesajı",
-      "greetingMessageDesc": "Asistanınızın söyleyeceği ilk cümle",
-      "assistantInstructions": "Asistan Talimatları",
-      "assistantInstructionsDesc": "Asistanınızın nasıl davranması gerektiğine dair talimatlar"
-    },
-    "location": {
-      "countryRegion": "Ülke / Bölge",
-      "timezone": "Saat Dilimi",
-      "autoDetected": "Otomatik algılandı",
-      "countries": {
-        "TR": "Türkiye",
-        "US": "Amerika Birleşik Devletleri"
-      },
-      "timezones": {
-        "europeIstanbul": "(UTC+3) İstanbul, Türkiye",
-        "europeLondon": "(UTC+0) Londra, Birleşik Krallık",
-        "europeParis": "(UTC+1) Paris, Fransa",
-        "europeBerlin": "(UTC+1) Berlin, Almanya",
-        "americaNewYork": "(UTC-5) New York, Doğu Saati",
-        "americaLosAngeles": "(UTC-8) Los Angeles, Pasifik Saati",
-        "americaChicago": "(UTC-6) Chicago, Merkezi Saat",
-        "americaDenver": "(UTC-7) Denver, Dağ Saati",
-        "americaToronto": "(UTC-5) Toronto, Kanada",
-        "americaSaoPaulo": "(UTC-3) Sao Paulo, Brezilya",
-        "europeMoscow": "(UTC+3) Moskova, Rusya",
-        "asiaDubai": "(UTC+4) Dubai, BAE",
-        "asiaKolkata": "(UTC+5:30) Mumbai, Hindistan",
-        "asiaSingapore": "(UTC+8) Singapur",
-        "asiaTokyo": "(UTC+9) Tokyo, Japonya",
-        "australiaSydney": "(UTC+11) Sidney, Avustralya"
-      }
-    },
-    "industries": {
-      "restaurant": "Restoran",
-      "salonSpa": "Kuaför & Spa",
-      "ecommerce": "E-ticaret",
-      "professionalServices": "Profesyonel Hizmetler",
-      "other": "Diğer"
-    },
-    "prompts": {
-      "restaurant": "Bir restoran asistanısınız. Rezervasyon alın, menü bilgisi verin, çalışma saatlerini paylaşın, müşteri sorularını yanıtlayın.",
-      "salon": "Bir kuaför asistanısınız. Randevu alın, hizmetler ve fiyatlar hakkında bilgi verin, uygun saatleri paylaşın.",
-      "ecommerce": "Bir e-ticaret asistanısınız. Stok bilgisi verin, sipariş durumu güncellemeleri yapın, iade ve değişim süreçlerini açıklayın.",
-      "service": "Bir profesyonel hizmet asistanısınız. Randevu alın, hizmet bilgisi verin, fiyatlandırma konusunda yardımcı olun.",
-      "other": "Bir işletme asistanısınız. Müşteri sorularını yanıtlayın, bilgi verin, yardımcı olun."
-    },
-    "voice": {
-      "male": "Erkek",
-      "female": "Kadın",
-      "previewComingSoon": "Ses önizleme yakında",
-      "outboundUsage": "Bu ses outbound aramalarda kullanılacak.",
-      "optionalStep": "Bu adım opsiyoneldir.",
-      "loading": "Sesler yükleniyor...",
-      "noVoices": "Bu dil için uygun ses bulunamadı. Lütfen başka bir dil deneyin.",
-      "playSampleError": "Ses örneği oynatılamadı"
-    },
-    "voiceDemo": {
-      "title": "AI Asistanınızı Test Edin",
-      "description": "AI asistanınızla sesli görüşme başlatmak için aşağıdaki butona tıklayın",
-      "createAssistantFirst": "Test etmek için önce bir asistan oluşturun",
-      "startVoiceTest": "Sesli Testi Başlat",
-      "endCall": "Aramayı Bitir",
-      "allowMicrophone": "İstendiğinde mikrofon erişimine izin vermeyi unutmayın",
-      "callStatus": {
-        "starting": "Arama başlatılıyor...",
-        "started": "Arama başladı! Şimdi konuşun...",
-        "ended": "Arama sona erdi",
-        "speaking": "Asistan konuşuyor...",
-        "listening": "Dinliyor..."
-      }
-    },
-    "messages": {
-      "completed": "Tamamlandı!",
-      "assistantCreated": "Asistan oluşturuldu!",
-      "failedToCreate": "Asistan oluşturulamadı",
-      "error": "Bir hata oluştu",
-      "creatingAssistant": "Asistan oluşturuluyor...",
-      "previewStepSkipped": "Asistan önizleme adımı bu sürümde atlandı."
-    },
-    "final": {
-      "allSet": "Hazırsınız!",
-      "assistantReady": "AI asistanınız kullanıma hazır."
-    },
-    "buttons": {
-      "back": "Geri",
-      "next": "İleri",
-      "complete": "Tamamla",
-      "loading": "Yükleniyor..."
-    }
-  },
   "about": {
     "hero": {
       "title": "Telyx.ai Hakkında",
@@ -2839,12 +2858,35 @@
     },
     "team": {
       "title": "Ekibimiz",
-      "content": "Küçük ama tutkulu bir ekip olarak, her gün işletmelerin müşteri deneyimini iyileştirmek için çalışıyoruz."
+      "content": "Küçük ama tutkulu bir ekip olarak, her gün işletmelerin müşteri deneyimini iyileştirmek için çalışıyoruz.",
+      "roles": {
+        "founder": {
+          "title": "Kurucu",
+          "desc": "Ürün vizyonu ve iş ortaklıklarını yönetir."
+        },
+        "product": {
+          "title": "Ürün ve AI",
+          "desc": "Asistan akışları, kalite kontrolleri ve analitiği geliştirir."
+        },
+        "customerOps": {
+          "title": "Müşteri Operasyonları",
+          "desc": "Kurulum, onboarding ve kanal operasyonlarını yönetir."
+        }
+      }
     },
     "cta": {
       "title": "Bize Katılın",
       "subtitle": "Erken erişim için başvurun ve AI destekli müşteri hizmetlerinin gücünü keşfedin.",
       "button": "Erken Erişim İçin Başvurun"
+    },
+    "companyInfo": {
+      "title": "Şirket bilgileri",
+      "description": "Telyx, telefon, chat, WhatsApp ve e-posta kanallarında müşteri iletişim süreçlerini otomatikleştiren pratik AI asistanları geliştirir.",
+      "locationLabel": "Konum",
+      "contactLabel": "İletişim kanalı",
+      "legalAddressLabel": "Yasal adres",
+      "locationFallback": "Konum bilgisi onboarding ve sözleşme aşamasında paylaşılır.",
+      "legalAddressFallback": "Yasal adres bilgisi gerekli durumlarda teklif/sözleşme dokümanlarında paylaşılır."
     }
   },
   "help": {
@@ -2972,7 +3014,10 @@
       "email": "E-Posta",
       "accounting": "Muhasebe",
       "payment": "Ödeme",
-      "sms": "SMS"
+      "sms": "SMS",
+      "communication": "İletişim",
+      "crm": "CRM",
+      "scheduling": "Planlama"
     },
     "googleSheets": {
       "desc": "Google Sheets ile müşteri verilerini senkronize edin"
@@ -3024,6 +3069,18 @@
       "subtitle": "Tüm entegrasyonları ücretsiz kullanmaya başlayın",
       "button": "Erken Erişim İçin Başvurun",
       "contact": "İletişime Geçin"
+    },
+    "catalogCount": "Güncel katalogda {count} entegrasyon",
+    "status": {
+      "available": "Mevcut",
+      "soon": "Yakında"
+    },
+    "cardCta": {
+      "available": "Panelde aç",
+      "soon": "İletişime geç"
+    },
+    "hubspot": {
+      "desc": "Müşteri ve talep bilgilerini iki yönlü senkronize edin"
     }
   },
   "upgradeModal": {
@@ -3089,5 +3146,31 @@
     "hoursAgo": "{count} saat önce",
     "dayAgo": "{count} gün önce",
     "daysAgo": "{count} gün önce"
+  },
+  "marketingFaq": {
+    "title": "Sık sorulan sorular",
+    "subtitle": "Canlıya geçmeden önce net cevaplar.",
+    "items": {
+      "integrationTime": {
+        "question": "Entegrasyon ne kadar sürer?",
+        "answer": "Standart kurulumlar genellikle 15-30 dakika içinde tamamlanır. Özel sistemler ve ileri eşleştirmeler 1-3 iş günü sürebilir."
+      },
+      "requiredData": {
+        "question": "Başlamak için hangi veriler gerekir?",
+        "answer": "Minimum olarak: şirket profili, temel SSS/süreç içeriği ve en az bir kanal entegrasyonu gerekir. Sipariş/CRM verisi kaliteyi artırır."
+      },
+      "aiToHuman": {
+        "question": "AI hangi durumda insana devreder?",
+        "answer": "Düşük güven, politika riski veya istisna durumlarında temsilci devri yapabilir ya da insan onayı isteyebilir."
+      },
+      "kvkk": {
+        "question": "KVKK yaklaşımınız nedir?",
+        "answer": "Veri minimizasyonu, rol bazlı erişim, denetlenebilirlik ve saklama kontrolleri uygularız. Nihai hukuki değerlendirme için kurumunuzun hukuk birimi ile çalışılmalıdır."
+      },
+      "pricingOverage": {
+        "question": "Paket aşımı nasıl çalışır?",
+        "answer": "Plandaki dahil dakikalar bittiğinde kullanım tanımlı aşım tarifesiyle fiyatlanır. Kanal bazlı detaylar fiyatlandırma sayfasında açıktır."
+      }
+    }
   }
 }

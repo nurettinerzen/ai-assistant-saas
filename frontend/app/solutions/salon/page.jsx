@@ -11,6 +11,11 @@ import { Scissors, Calendar, Bell, Users, Clock } from 'lucide-react';
 
 export default function SalonSolutionPage() {
   const { t } = useLanguage();
+  const flowSteps = [
+    'solutions.salon.exampleFlow.step1',
+    'solutions.salon.exampleFlow.step2',
+    'solutions.salon.exampleFlow.step3',
+  ];
 
   const useCases = [
     {
@@ -103,6 +108,29 @@ export default function SalonSolutionPage() {
                 </motion.div>
               );
             })}
+          </div>
+        </div>
+      </section>
+
+      <section className="py-16">
+        <div className="container mx-auto px-4">
+          <div className="max-w-5xl mx-auto bg-white dark:bg-neutral-800 rounded-2xl border border-gray-100 dark:border-neutral-700 p-6 md:p-8 shadow-sm">
+            <h2 className="text-3xl font-bold mb-3 text-gray-900 dark:text-white">
+              {t('solutions.exampleFlow.title')}
+            </h2>
+            <p className="text-gray-600 dark:text-neutral-400 mb-6">
+              {t('solutions.exampleFlow.subtitle')}
+            </p>
+            <div className="space-y-3">
+              {flowSteps.map((stepKey, index) => (
+                <div key={stepKey} className="rounded-xl border border-gray-200 dark:border-neutral-700 bg-gray-50 dark:bg-neutral-900 p-4">
+                  <p className="text-sm font-semibold text-primary mb-1">{index + 1}</p>
+                  <p className="text-sm md:text-base text-gray-700 dark:text-neutral-200">
+                    {t(stepKey)}
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
