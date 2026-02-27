@@ -170,6 +170,258 @@ function parseFile(buffer, filename) {
   return { data, columns };
 }
 
+const COMMON_MAPPING_FIELDS = ['phone', 'customer_name'];
+
+const PURPOSE_TEMPLATE_FIELDS = {
+  collection: ['debt_amount', 'currency', 'due_date'],
+  sales: ['product_name', 'product_price', 'campaign_name'],
+  general: ['info_type', 'custom_data']
+};
+
+const LEGACY_GENERAL_FIELDS = ['custom_info', 'custom_notes', 'appointment_date', 'custom_1', 'custom_2'];
+
+const COLUMN_ALIASES = {
+  phone: [
+    'phone',
+    'phone number',
+    'phone_number',
+    'phonenumber',
+    'telefon',
+    'telefon no',
+    'telefon numarasi',
+    'telefon numarası',
+    'tel',
+    'gsm',
+    'cep telefonu',
+    'mobile',
+    'mobile phone'
+  ],
+  customer_name: [
+    'customer_name',
+    'customer name',
+    'name',
+    'full name',
+    'isim',
+    'ad',
+    'ad soyad',
+    'isim soyisim',
+    'musteri adi',
+    'müşteri adı'
+  ],
+  debt_amount: [
+    'debt_amount',
+    'debt amount',
+    'borc tutari',
+    'borç tutarı',
+    'borc miktari',
+    'borç miktarı',
+    'tutar',
+    'amount'
+  ],
+  currency: [
+    'currency',
+    'para birimi',
+    'doviz',
+    'döviz',
+    'kur'
+  ],
+  due_date: [
+    'due_date',
+    'due date',
+    'vade tarihi',
+    'odeme tarihi',
+    'ödeme tarihi'
+  ],
+  product_name: [
+    'product_name',
+    'product name',
+    'service name',
+    'urun hizmet adi',
+    'ürün hizmet adı',
+    'urun adi',
+    'ürün adı',
+    'hizmet adi',
+    'hizmet adı'
+  ],
+  product_price: [
+    'product_price',
+    'product price',
+    'price',
+    'fiyat',
+    'ucret',
+    'ücret'
+  ],
+  campaign_name: [
+    'campaign_name',
+    'campaign name',
+    'kampanya adi',
+    'kampanya adı'
+  ],
+  info_type: [
+    'info_type',
+    'info type',
+    'konu',
+    'amac',
+    'amaç',
+    'konu amac',
+    'konu amaç',
+    'bilgi turu',
+    'bilgi türü'
+  ],
+  custom_data: [
+    'custom_data',
+    'custom data',
+    'ek bilgi',
+    'ek aciklama',
+    'ek açıklama',
+    'ozel veri',
+    'özel veri',
+    'aciklama',
+    'açıklama',
+    'not',
+    'detay'
+  ],
+  custom_info: [
+    'custom_info',
+    'custom info'
+  ],
+  custom_notes: [
+    'custom_notes',
+    'custom notes'
+  ],
+  appointment_date: [
+    'appointment_date',
+    'appointment date',
+    'randevu tarihi'
+  ],
+  custom_1: [
+    'custom_1',
+    'custom 1'
+  ],
+  custom_2: [
+    'custom_2',
+    'custom 2'
+  ]
+};
+
+function normalizeColumnName(value = '') {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[ı]/g, 'i')
+    .replace(/[ğ]/g, 'g')
+    .replace(/[ü]/g, 'u')
+    .replace(/[ş]/g, 's')
+    .replace(/[ö]/g, 'o')
+    .replace(/[ç]/g, 'c')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '');
+}
+
+const NORMALIZED_COLUMN_ALIASES = Object.fromEntries(
+  Object.entries(COLUMN_ALIASES).map(([key, aliases]) => {
+    const normalizedAliases = aliases
+      .map(alias => normalizeColumnName(alias))
+      .filter(Boolean);
+    return [key, new Set(normalizedAliases)];
+  })
+);
+
+function getMappingFieldsForPurpose(callPurpose = '') {
+  const normalizedPurpose = String(callPurpose || '').trim().toLowerCase();
+  const templateFields = PURPOSE_TEMPLATE_FIELDS[normalizedPurpose];
+
+  if (templateFields) {
+    return normalizedPurpose === 'general'
+      ? [...COMMON_MAPPING_FIELDS, ...templateFields, ...LEGACY_GENERAL_FIELDS]
+      : [...COMMON_MAPPING_FIELDS, ...templateFields];
+  }
+
+  return [
+    ...COMMON_MAPPING_FIELDS,
+    ...PURPOSE_TEMPLATE_FIELDS.collection,
+    ...PURPOSE_TEMPLATE_FIELDS.sales,
+    ...PURPOSE_TEMPLATE_FIELDS.general,
+    ...LEGACY_GENERAL_FIELDS
+  ];
+}
+
+function detectKnownColumnMapping(columns = [], callPurpose = '') {
+  if (!Array.isArray(columns) || columns.length === 0) {
+    return {};
+  }
+
+  const normalizedColumns = columns.map((column) => ({
+    original: column,
+    normalized: normalizeColumnName(column)
+  }));
+  const usedColumns = new Set();
+  const detectedMapping = {};
+
+  for (const field of getMappingFieldsForPurpose(callPurpose)) {
+    const aliasSet = NORMALIZED_COLUMN_ALIASES[field];
+    if (!aliasSet) continue;
+
+    const match = normalizedColumns.find((entry) => (
+      !usedColumns.has(entry.original) && aliasSet.has(entry.normalized)
+    ));
+
+    if (match) {
+      detectedMapping[field] = match.original;
+      usedColumns.add(match.original);
+    }
+  }
+
+  return detectedMapping;
+}
+
+function normalizeColumnMapping(mapping = {}) {
+  if (!mapping || typeof mapping !== 'object' || Array.isArray(mapping)) {
+    return {};
+  }
+
+  return Object.entries(mapping).reduce((acc, [key, value]) => {
+    if (typeof value !== 'string') return acc;
+    const trimmed = value.trim();
+    if (!trimmed || trimmed === '_none_') return acc;
+    acc[key] = trimmed;
+    return acc;
+  }, {});
+}
+
+function buildEffectiveColumnMapping(columns = [], providedMapping = {}, callPurpose = '') {
+  const autoMapping = detectKnownColumnMapping(columns, callPurpose);
+  const userMapping = normalizeColumnMapping(providedMapping);
+  const mergedMapping = {
+    ...autoMapping,
+    ...userMapping
+  };
+
+  // Keep outbound general prompt variables populated even when only new keys are mapped.
+  if (mergedMapping.info_type && !mergedMapping.custom_info) {
+    mergedMapping.custom_info = mergedMapping.info_type;
+  }
+  if (mergedMapping.custom_data && !mergedMapping.custom_notes) {
+    mergedMapping.custom_notes = mergedMapping.custom_data;
+  }
+
+  return {
+    autoMapping,
+    mergedMapping
+  };
+}
+
+function readMappedValue(row = {}, mapping = {}, key, defaultValue = null) {
+  const column = mapping[key];
+  if (!column) return null;
+  const rawValue = row[column];
+  if (rawValue === undefined || rawValue === null || rawValue === '') {
+    return defaultValue;
+  }
+  return String(rawValue);
+}
+
 /**
  * Check if plan allows batch calls
  */
@@ -318,82 +570,114 @@ router.get('/check-access', async (req, res) => {
 /**
  * GET /api/batch-calls/template
  * Download Excel template for batch calling
- * Supports both collection (default) and sales templates via ?type=sales
+ * Supports collection (default), sales, and general templates via ?type=
  * NOTE: This route must be defined BEFORE /:id to avoid being caught by it
  */
 router.get('/template', async (req, res) => {
   try {
-    const templateType = req.query.type || 'collection';
+    const templateType = String(req.query.type || 'collection').trim().toLowerCase();
 
     let sampleData;
     let sheetName;
     let columnWidths;
     let filename;
 
-    if (templateType === 'sales') {
-      // Sales template
-      sampleData = [
-        {
-          'Telefon': '+905321234567',
-          'Müşteri Adı': 'Ahmet Yılmaz',
-          'Ürün/Hizmet Adı': 'Premium Paket',
-          'Fiyat': '2500 TL',
-          'Kampanya Adı': 'Yılsonu İndirimi'
-        },
-        {
-          'Telefon': '+905331234568',
-          'Müşteri Adı': 'Ayşe Demir',
-          'Ürün/Hizmet Adı': 'Standart Paket',
-          'Fiyat': '1500 TL',
-          'Kampanya Adı': 'Yılsonu İndirimi'
-        },
-        {
-          'Telefon': '+905341234569',
-          'Müşteri Adı': 'Mehmet Kaya',
-          'Ürün/Hizmet Adı': 'Enterprise Paket',
-          'Fiyat': '5000 TL',
-          'Kampanya Adı': 'Kurumsal Fırsat'
-        }
-      ];
-      sheetName = 'Satış Araması';
-      columnWidths = [
-        { wch: 15 }, // Telefon
-        { wch: 18 }, // Müşteri Adı
-        { wch: 20 }, // Ürün/Hizmet Adı
-        { wch: 12 }, // Fiyat
-        { wch: 18 }, // Kampanya Adı
-      ];
-      filename = 'satis-sablon.xlsx';
-    } else {
-      // Collection template (default)
-      sampleData = [
-        {
-          'Telefon': '+905321234567',
-          'Borç Tutarı': '1500',
-          'Para Birimi': 'TL',
-          'Vade Tarihi': '15/01/2024'
-        },
-        {
-          'Telefon': '+905331234568',
-          'Borç Tutarı': '2300',
-          'Para Birimi': 'TL',
-          'Vade Tarihi': '20/01/2024'
-        },
-        {
-          'Telefon': '+905341234569',
-          'Borç Tutarı': '800',
-          'Para Birimi': 'USD',
-          'Vade Tarihi': '25/01/2024'
-        }
-      ];
-      sheetName = 'Toplu Arama';
-      columnWidths = [
-        { wch: 15 }, // Telefon
-        { wch: 12 }, // Borç Tutarı
-        { wch: 12 }, // Para Birimi
-        { wch: 12 }, // Vade Tarihi
-      ];
-      filename = 'tahsilat-sablon.xlsx';
+    switch (templateType) {
+      case 'sales':
+        sampleData = [
+          {
+            'Telefon': '+905321234567',
+            'Müşteri Adı': 'Ahmet Yılmaz',
+            'Ürün/Hizmet Adı': 'Premium Paket',
+            'Fiyat': '2500 TL',
+            'Kampanya Adı': 'Yılsonu İndirimi'
+          },
+          {
+            'Telefon': '+905331234568',
+            'Müşteri Adı': 'Ayşe Demir',
+            'Ürün/Hizmet Adı': 'Standart Paket',
+            'Fiyat': '1500 TL',
+            'Kampanya Adı': 'Yılsonu İndirimi'
+          },
+          {
+            'Telefon': '+905341234569',
+            'Müşteri Adı': 'Mehmet Kaya',
+            'Ürün/Hizmet Adı': 'Enterprise Paket',
+            'Fiyat': '5000 TL',
+            'Kampanya Adı': 'Kurumsal Fırsat'
+          }
+        ];
+        sheetName = 'Satış Araması';
+        columnWidths = [
+          { wch: 15 }, // Telefon
+          { wch: 18 }, // Müşteri Adı
+          { wch: 20 }, // Ürün/Hizmet Adı
+          { wch: 12 }, // Fiyat
+          { wch: 18 }, // Kampanya Adı
+        ];
+        filename = 'satis-sablon.xlsx';
+        break;
+      case 'general':
+        sampleData = [
+          {
+            'Telefon No': '+905321234567',
+            'İsim Soyisim': 'Ahmet Yılmaz',
+            'Konu/Amaç': 'Randevu hatırlatması',
+            'Ek Bilgi': 'Randevu tarihi 05/03/2026 saat 14:30'
+          },
+          {
+            'Telefon No': '+905331234568',
+            'İsim Soyisim': 'Ayşe Demir',
+            'Konu/Amaç': 'Bilgilendirme',
+            'Ek Bilgi': 'Yeni çalışma saatleri Pazartesi itibarıyla güncellendi'
+          },
+          {
+            'Telefon No': '+905341234569',
+            'İsim Soyisim': 'Mehmet Kaya',
+            'Konu/Amaç': 'Üyelik güncellemesi',
+            'Ek Bilgi': 'Paket yükseltme kampanyası 31/03/2026 tarihine kadar geçerli'
+          }
+        ];
+        sheetName = 'Genel Bilgilendirme';
+        columnWidths = [
+          { wch: 15 }, // Telefon No
+          { wch: 20 }, // İsim Soyisim
+          { wch: 22 }, // Konu/Amaç
+          { wch: 40 }, // Ek Bilgi
+        ];
+        filename = 'bilgilendirme-sablon.xlsx';
+        break;
+      case 'collection':
+      default:
+        sampleData = [
+          {
+            'Telefon': '+905321234567',
+            'Borç Tutarı': '1500',
+            'Para Birimi': 'TL',
+            'Vade Tarihi': '15/01/2024'
+          },
+          {
+            'Telefon': '+905331234568',
+            'Borç Tutarı': '2300',
+            'Para Birimi': 'TL',
+            'Vade Tarihi': '20/01/2024'
+          },
+          {
+            'Telefon': '+905341234569',
+            'Borç Tutarı': '800',
+            'Para Birimi': 'USD',
+            'Vade Tarihi': '25/01/2024'
+          }
+        ];
+        sheetName = 'Toplu Arama';
+        columnWidths = [
+          { wch: 15 }, // Telefon
+          { wch: 12 }, // Borç Tutarı
+          { wch: 12 }, // Para Birimi
+          { wch: 12 }, // Vade Tarihi
+        ];
+        filename = 'tahsilat-sablon.xlsx';
+        break;
     }
 
     // Create workbook and worksheet
@@ -444,6 +728,8 @@ router.post('/parse', upload.single('file'), async (req, res) => {
     });
 
     const { data, columns } = parseFile(req.file.buffer, req.file.originalname);
+    const callPurpose = String(req.body?.callPurpose || req.query?.callPurpose || '').trim().toLowerCase();
+    const suggestedMapping = detectKnownColumnMapping(columns, callPurpose);
 
     // Return first 5 rows as preview
     const preview = data.slice(0, 5);
@@ -452,7 +738,8 @@ router.post('/parse', upload.single('file'), async (req, res) => {
       success: true,
       columns,
       preview,
-      totalRows: data.length
+      totalRows: data.length,
+      suggestedMapping
     });
   } catch (error) {
     console.error('Parse file error:', error);
@@ -476,7 +763,15 @@ router.post('/', upload.single('file'), checkPermission('campaigns:view'), async
       return sendBatchCallAccessDenied(res, access);
     }
 
-    const { name, assistantId, phoneNumberId, columnMapping, scheduledAt } = req.body;
+    const {
+      name,
+      assistantId,
+      phoneNumberId,
+      columnMapping,
+      scheduledAt,
+      callPurpose
+    } = req.body;
+    const normalizedCallPurpose = String(callPurpose || '').trim().toLowerCase();
 
     // Validate required fields
     if (!name || !assistantId || !phoneNumberId) {
@@ -552,11 +847,22 @@ router.post('/', upload.single('file'), checkPermission('campaigns:view'), async
     const { data } = parseFile(req.file.buffer, req.file.originalname);
 
     // Parse column mapping
-    let mapping = {};
+    let providedMapping = {};
     try {
-      mapping = typeof columnMapping === 'string' ? JSON.parse(columnMapping) : columnMapping || {};
+      providedMapping = typeof columnMapping === 'string' ? JSON.parse(columnMapping) : columnMapping || {};
     } catch (e) {
       console.error('Column mapping parse error:', e);
+    }
+
+    const fileColumns = Object.keys(data[0] || {});
+    const { autoMapping, mergedMapping: mapping } = buildEffectiveColumnMapping(
+      fileColumns,
+      providedMapping,
+      normalizedCallPurpose
+    );
+
+    if (Object.keys(autoMapping).length > 0) {
+      console.log('🧩 [BatchCall] Auto-detected column mapping:', autoMapping);
     }
 
     // Build recipients list
@@ -585,37 +891,73 @@ router.post('/', upload.single('file'), checkPermission('campaigns:view'), async
 
       // Map other columns to dynamic variables
       // Collection template variables
-      if (mapping.customer_name) {
-        recipient.customer_name = String(row[mapping.customer_name] || '');
+      const customerName = readMappedValue(row, mapping, 'customer_name');
+      if (customerName !== null) {
+        recipient.customer_name = customerName;
       }
-      if (mapping.debt_amount) {
-        recipient.debt_amount = String(row[mapping.debt_amount] || '');
+      const debtAmount = readMappedValue(row, mapping, 'debt_amount');
+      if (debtAmount !== null) {
+        recipient.debt_amount = debtAmount;
       }
-      if (mapping.currency) {
-        recipient.currency = String(row[mapping.currency] || 'TL');
+      const currency = readMappedValue(row, mapping, 'currency', 'TL');
+      if (currency !== null) {
+        recipient.currency = currency;
       }
-      if (mapping.due_date) {
-        recipient.due_date = String(row[mapping.due_date] || '');
+      const dueDate = readMappedValue(row, mapping, 'due_date');
+      if (dueDate !== null) {
+        recipient.due_date = dueDate;
       }
+
       // Sales template variables
-      if (mapping.product_name) {
-        recipient.product_name = String(row[mapping.product_name] || '');
+      const productName = readMappedValue(row, mapping, 'product_name');
+      if (productName !== null) {
+        recipient.product_name = productName;
       }
-      if (mapping.product_price) {
-        recipient.product_price = String(row[mapping.product_price] || '');
+      const productPrice = readMappedValue(row, mapping, 'product_price');
+      if (productPrice !== null) {
+        recipient.product_price = productPrice;
       }
-      if (mapping.campaign_name) {
-        recipient.campaign_name = String(row[mapping.campaign_name] || '');
+      const campaignName = readMappedValue(row, mapping, 'campaign_name');
+      if (campaignName !== null) {
+        recipient.campaign_name = campaignName;
       }
-      // General variables
-      if (mapping.appointment_date) {
-        recipient.appointment_date = String(row[mapping.appointment_date] || '');
+
+      // General template variables
+      const infoType = readMappedValue(row, mapping, 'info_type');
+      if (infoType !== null) {
+        recipient.info_type = infoType;
+        if (!mapping.custom_info) {
+          recipient.custom_info = infoType;
+        }
       }
-      if (mapping.custom_1) {
-        recipient.custom_1 = String(row[mapping.custom_1] || '');
+      const customData = readMappedValue(row, mapping, 'custom_data');
+      if (customData !== null) {
+        recipient.custom_data = customData;
+        if (!mapping.custom_notes) {
+          recipient.custom_notes = customData;
+        }
       }
-      if (mapping.custom_2) {
-        recipient.custom_2 = String(row[mapping.custom_2] || '');
+
+      // Legacy general variables (backward compatibility)
+      const customInfo = readMappedValue(row, mapping, 'custom_info');
+      if (customInfo !== null) {
+        recipient.custom_info = customInfo;
+      }
+      const customNotes = readMappedValue(row, mapping, 'custom_notes');
+      if (customNotes !== null) {
+        recipient.custom_notes = customNotes;
+      }
+      const appointmentDate = readMappedValue(row, mapping, 'appointment_date');
+      if (appointmentDate !== null) {
+        recipient.appointment_date = appointmentDate;
+      }
+      const custom1 = readMappedValue(row, mapping, 'custom_1');
+      if (custom1 !== null) {
+        recipient.custom_1 = custom1;
+      }
+      const custom2 = readMappedValue(row, mapping, 'custom_2');
+      if (custom2 !== null) {
+        recipient.custom_2 = custom2;
       }
 
       recipients.push(recipient);
@@ -687,6 +1029,11 @@ router.post('/', upload.single('file'), checkPermission('campaigns:view'), async
         if (r.product_price) dynamicVars.product_price = r.product_price;
         if (r.campaign_name) dynamicVars.campaign_name = r.campaign_name;
         // General variables
+        if (r.info_type) dynamicVars.info_type = r.info_type;
+        if (r.custom_data) dynamicVars.custom_data = r.custom_data;
+        if (r.custom_info) dynamicVars.custom_info = r.custom_info;
+        if (r.custom_notes) dynamicVars.custom_notes = r.custom_notes;
+        // Legacy general variables
         if (r.appointment_date) dynamicVars.appointment_date = r.appointment_date;
         if (r.custom_1) dynamicVars.custom_1 = r.custom_1;
         if (r.custom_2) dynamicVars.custom_2 = r.custom_2;

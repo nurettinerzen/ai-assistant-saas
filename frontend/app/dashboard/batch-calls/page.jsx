@@ -242,11 +242,13 @@ export default function BatchCallsPage() {
     }
 
     setSelectedFile(file);
+    setColumnMapping({});
     setUploading(true);
 
     try {
       const formDataUpload = new FormData();
       formDataUpload.append('file', file);
+      formDataUpload.append('callPurpose', formData.callPurpose);
 
       const response = await apiClient.post('/api/batch-calls/parse', formDataUpload, {
         headers: { 'Content-Type': 'multipart/form-data' }
@@ -258,28 +260,41 @@ export default function BatchCallsPage() {
         totalRows: response.data.totalRows
       });
 
-      // Auto-detect phone column
-      const phoneColumn = response.data.columns.find(col =>
-        col.toLowerCase().includes('phone') ||
-        col.toLowerCase().includes('telefon') ||
-        col.toLowerCase().includes('tel') ||
-        col.toLowerCase().includes('gsm')
-      );
+      const suggestedMapping = response.data.suggestedMapping || {};
+      const nextMapping = { ...suggestedMapping };
 
-      if (phoneColumn) {
-        setColumnMapping(prev => ({ ...prev, phone: phoneColumn }));
+      // Frontend fallback auto-detect (if backend suggestion is missing a key)
+      if (!nextMapping.phone) {
+        const phoneColumn = response.data.columns.find(col => {
+          const normalized = String(col || '').toLowerCase();
+          return (
+            normalized.includes('phone') ||
+            normalized.includes('telefon') ||
+            normalized.includes('tel') ||
+            normalized.includes('gsm')
+          );
+        });
+        if (phoneColumn) {
+          nextMapping.phone = phoneColumn;
+        }
       }
 
-      // Auto-detect name column
-      const nameColumn = response.data.columns.find(col =>
-        col.toLowerCase().includes('name') ||
-        col.toLowerCase().includes('ad') ||
-        col.toLowerCase().includes('isim') ||
-        col.toLowerCase().includes('müşteri')
-      );
-      if (nameColumn) {
-        setColumnMapping(prev => ({ ...prev, customer_name: nameColumn }));
+      if (!nextMapping.customer_name) {
+        const nameColumn = response.data.columns.find(col => {
+          const normalized = String(col || '').toLowerCase();
+          return (
+            normalized.includes('name') ||
+            normalized.includes('ad') ||
+            normalized.includes('isim') ||
+            normalized.includes('müşteri')
+          );
+        });
+        if (nameColumn) {
+          nextMapping.customer_name = nameColumn;
+        }
       }
+
+      setColumnMapping(nextMapping);
 
     } catch (error) {
       console.error('Parse error:', error);
@@ -318,7 +333,7 @@ export default function BatchCallsPage() {
       submitFormData.append('callPurpose', formData.callPurpose);
 
       // Set dataType based on purpose for backend processing
-      const dataType = (formData.callPurpose === 'collection' || formData.callPurpose === 'sales')
+      const dataType = ['collection', 'sales', 'general'].includes(formData.callPurpose)
         ? formData.callPurpose
         : 'custom';
       submitFormData.append('dataType', dataType);
@@ -384,7 +399,12 @@ export default function BatchCallsPage() {
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', type === 'sales' ? 'satis-sablon.xlsx' : 'tahsilat-sablon.xlsx');
+      const fileNameByType = {
+        sales: 'satis-sablon.xlsx',
+        collection: 'tahsilat-sablon.xlsx',
+        general: 'bilgilendirme-sablon.xlsx'
+      };
+      link.setAttribute('download', fileNameByType[type] || 'kampanya-sablon.xlsx');
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -396,7 +416,13 @@ export default function BatchCallsPage() {
   };
 
   // Check if current purpose has template
-  const hasTemplate = formData.callPurpose === 'collection' || formData.callPurpose === 'sales';
+  const hasTemplate = ['collection', 'sales', 'general'].includes(formData.callPurpose);
+
+  const getTemplateTitle = () => {
+    if (formData.callPurpose === 'sales') return t('dashboard.batchCallsPage.salesTemplate');
+    if (formData.callPurpose === 'collection') return t('dashboard.batchCallsPage.collectionTemplate');
+    return t('dashboard.batchCallsPage.purpose.general');
+  };
 
   // Get template variable keys for current purpose
   const getTemplateVariableKeys = () => {
@@ -775,10 +801,7 @@ export default function BatchCallsPage() {
                   <div className="bg-neutral-50 dark:bg-neutral-800 rounded-lg p-4 flex items-center justify-between">
                     <div>
                       <p className="font-medium text-neutral-900 dark:text-white">
-                        {formData.callPurpose === 'sales'
-                          ? t('dashboard.batchCallsPage.salesTemplate')
-                          : t('dashboard.batchCallsPage.collectionTemplate')
-                        }
+                        {getTemplateTitle()}
                       </p>
                       <p className="text-sm text-neutral-500">
                         {t('dashboard.batchCallsPage.downloadFillTemplate')}

@@ -31,6 +31,9 @@ const DANGEROUS_EXTENSIONS = new Set([
   '.war', '.apk', '.bin', '.scr',
 ]);
 
+const SUPPORTED_SCAN_MODES = new Set(['required', 'best_effort']);
+let hasLoggedInvalidScanMode = false;
+
 function ensureDirectoryPermissionsSync(targetDir) {
   fs.mkdirSync(targetDir, { recursive: true, mode: 0o700 });
   try {
@@ -108,6 +111,28 @@ async function runClamAvScan(filePath) {
   return { scanned: false, clean: false, engine: null, details: 'ENGINE_NOT_AVAILABLE' };
 }
 
+function resolveMalwareScanMode() {
+  const configuredMode = process.env.MALWARE_SCAN_MODE;
+
+  if (!configuredMode) {
+    return 'best_effort';
+  }
+
+  const normalizedMode = String(configuredMode).trim().toLowerCase();
+  if (SUPPORTED_SCAN_MODES.has(normalizedMode)) {
+    return normalizedMode;
+  }
+
+  if (!hasLoggedInvalidScanMode) {
+    console.warn(
+      `⚠️ [UploadSecurity] Unsupported MALWARE_SCAN_MODE "${configuredMode}", falling back to "best_effort".`
+    );
+    hasLoggedInvalidScanMode = true;
+  }
+
+  return 'best_effort';
+}
+
 export function resolveUntrustedUploadDir(scope = 'general') {
   const normalizedScope = String(scope || 'general')
     .toLowerCase()
@@ -170,9 +195,7 @@ export async function validateUntrustedUpload({
     throw new Error(`MALWARE_DETECTED_${executableHit}`);
   }
 
-  const mode = String(
-    process.env.MALWARE_SCAN_MODE || (process.env.NODE_ENV === 'production' ? 'required' : 'best_effort')
-  ).toLowerCase();
+  const mode = resolveMalwareScanMode();
 
   let scanPath = filePath;
   let temporaryScanPath = null;
