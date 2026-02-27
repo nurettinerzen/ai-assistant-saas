@@ -1,5 +1,3 @@
-import type { MetadataRoute } from 'next';
-
 const STATIC_ROUTES = [
   '/',
   '/pricing',
@@ -11,7 +9,7 @@ const STATIC_ROUTES = [
   '/signup',
 ];
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default function sitemap() {
   const envBaseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://telyx.ai';
   const baseUrl = envBaseUrl.endsWith('/') ? envBaseUrl.slice(0, -1) : envBaseUrl;
   const now = new Date();
