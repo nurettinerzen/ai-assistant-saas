@@ -12,27 +12,27 @@ export default function ApiDocsPage() {
   const { t } = useLanguage();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-teal-50">
+    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-teal-50 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950">
       <Navigation />
 
       {/* Content Section */}
-      <section className="pt-32 pb-16">
+      <section className="pt-28 md:pt-32 pb-12 md:pb-16">
         <div className="container mx-auto px-4">
           <div className="max-w-2xl mx-auto text-center">
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.6 }}
-              className="w-24 h-24 bg-gradient-to-br from-teal-500 to-blue-500 rounded-3xl flex items-center justify-center mx-auto mb-8"
+              className="w-20 h-20 md:w-24 md:h-24 bg-gradient-to-br from-teal-500 to-blue-500 rounded-3xl flex items-center justify-center mx-auto mb-6 md:mb-8"
             >
-              <FileCode className="w-12 h-12 text-white" />
+              <FileCode className="w-10 h-10 md:w-12 md:h-12 text-white" />
             </motion.div>
 
             <motion.h1
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
-              className="text-4xl md:text-5xl font-bold mb-6"
+              className="text-4xl md:text-5xl font-bold mb-6 text-gray-900 dark:text-white"
             >
               {t('apiDocs.title')}
             </motion.h1>
@@ -41,7 +41,7 @@ export default function ApiDocsPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
-              className="text-xl text-gray-600 mb-8"
+              className="text-base sm:text-xl text-gray-600 dark:text-neutral-400 mb-8"
             >
               {t('apiDocs.comingSoon')}
             </motion.p>
@@ -50,15 +50,15 @@ export default function ApiDocsPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.3 }}
-              className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 mb-8"
+              className="bg-white dark:bg-neutral-800 rounded-2xl p-8 shadow-sm border border-gray-100 dark:border-neutral-700 mb-8"
             >
               <div className="flex items-center justify-center gap-3 mb-4">
-                <Mail className="w-5 h-5 text-teal-600" />
-                <span className="text-gray-600">{t('apiDocs.contactText')}</span>
+                <Mail className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+                <span className="text-gray-600 dark:text-neutral-400">{t('apiDocs.contactText')}</span>
               </div>
               <a
                 href="mailto:info@telyx.ai"
-                className="text-teal-600 hover:text-teal-700 font-semibold text-lg"
+                className="text-teal-600 hover:text-teal-700 dark:text-teal-400 dark:hover:text-teal-300 font-semibold text-lg"
               >
                 info@telyx.ai
               </a>

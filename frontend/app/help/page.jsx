@@ -28,18 +28,18 @@ export default function HelpPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-teal-50">
+    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-teal-50 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950">
       <Navigation />
 
       {/* Hero Section */}
-      <section className="pt-32 pb-16">
+      <section className="pt-28 md:pt-32 pb-12 md:pb-16">
         <div className="container mx-auto px-4">
           <div className="text-center max-w-3xl mx-auto">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
-              className="inline-flex items-center gap-2 bg-teal-100 text-teal-700 px-4 py-2 rounded-full text-sm font-medium mb-6"
+              className="inline-flex items-center gap-2 bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300 px-4 py-2 rounded-full text-sm font-medium mb-6"
             >
               <HelpCircle className="w-4 h-4" />
               {t('help.badge')}
@@ -48,7 +48,7 @@ export default function HelpPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
-              className="text-5xl md:text-6xl font-bold mb-6"
+              className="text-4xl sm:text-5xl md:text-6xl font-bold mb-6 text-gray-900 dark:text-white"
             >
               {t('help.hero.title')}
             </motion.h1>
@@ -56,7 +56,7 @@ export default function HelpPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
-              className="text-xl text-gray-600"
+              className="text-base sm:text-xl text-gray-600 dark:text-neutral-400"
             >
               {t('help.hero.subtitle')}
             </motion.p>
@@ -77,14 +77,14 @@ export default function HelpPage() {
                   viewport={{ once: true }}
                   transition={{ duration: 0.4, delay: index * 0.05 }}
                 >
-                  <div className="bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm">
+                  <div className="bg-white dark:bg-neutral-800 rounded-xl border border-gray-100 dark:border-neutral-700 overflow-hidden shadow-sm">
                     <button
                       onClick={() => toggleFaq(index)}
-                      className="w-full px-6 py-5 text-left flex items-center justify-between hover:bg-gray-50 transition-colors"
+                      className="w-full px-6 py-5 text-left flex items-center justify-between hover:bg-gray-50 dark:hover:bg-neutral-700/50 transition-colors"
                     >
-                      <span className="font-semibold text-gray-900 pr-4">{t(faq.questionKey)}</span>
+                      <span className="font-semibold text-gray-900 dark:text-white pr-4">{t(faq.questionKey)}</span>
                       <ChevronDown
-                        className={`w-5 h-5 text-gray-500 flex-shrink-0 transition-transform duration-300 ${
+                        className={`w-5 h-5 text-gray-500 dark:text-neutral-400 flex-shrink-0 transition-transform duration-300 ${
                           openIndex === index ? 'rotate-180' : ''
                         }`}
                       />
@@ -97,7 +97,7 @@ export default function HelpPage() {
                           exit={{ height: 0, opacity: 0 }}
                           transition={{ duration: 0.3 }}
                         >
-                          <div className="px-6 pb-5 text-gray-600 border-t border-gray-100 pt-4">
+                          <div className="px-6 pb-5 text-gray-600 dark:text-neutral-300 border-t border-gray-100 dark:border-neutral-700 pt-4">
                             {t(faq.answerKey)}
                           </div>
                         </motion.div>
@@ -119,16 +119,16 @@ export default function HelpPage() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
-            className="max-w-2xl mx-auto text-center bg-white rounded-2xl p-8 shadow-sm border border-gray-100"
+            className="max-w-2xl mx-auto text-center bg-white dark:bg-neutral-800 rounded-2xl p-8 shadow-sm border border-gray-100 dark:border-neutral-700"
           >
             <div className="w-16 h-16 bg-gradient-to-br from-teal-500 to-blue-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
               <Mail className="w-8 h-8 text-white" />
             </div>
-            <h3 className="text-2xl font-bold mb-4">{t('help.contact.title')}</h3>
-            <p className="text-gray-600 mb-4">{t('help.contact.text')}</p>
+            <h3 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">{t('help.contact.title')}</h3>
+            <p className="text-gray-600 dark:text-neutral-400 mb-4">{t('help.contact.text')}</p>
             <a
               href="mailto:info@telyx.ai"
-              className="text-teal-600 hover:text-teal-700 font-semibold text-lg"
+              className="text-teal-600 hover:text-teal-700 dark:text-teal-400 dark:hover:text-teal-300 font-semibold text-lg"
             >
               info@telyx.ai
             </a>

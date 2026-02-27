@@ -61,18 +61,18 @@ export default function ContactPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-teal-50">
+    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-teal-50 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950">
       <Navigation />
 
       {/* Hero Section */}
-      <section className="pt-32 pb-16">
+      <section className="pt-28 md:pt-32 pb-12 md:pb-16">
         <div className="container mx-auto px-4">
           <div className="text-center max-w-3xl mx-auto">
             <motion.h1
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
-              className="text-5xl md:text-6xl font-bold mb-6"
+              className="text-4xl sm:text-5xl md:text-6xl font-bold mb-6 text-gray-900 dark:text-white"
             >
               {t('contact.hero.title')}
             </motion.h1>
@@ -80,7 +80,7 @@ export default function ContactPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
-              className="text-xl text-gray-600"
+              className="text-base sm:text-xl text-gray-600 dark:text-neutral-400"
             >
               {t('contact.hero.subtitle')}
             </motion.p>
@@ -98,11 +98,11 @@ export default function ContactPage() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6 }}
             >
-              <Card className="p-8 bg-white border-gray-100">
-                <h2 className="text-2xl font-bold mb-6">{t('contact.form.title')}</h2>
+              <Card className="p-8 bg-white dark:bg-neutral-800 border-gray-100 dark:border-neutral-700">
+                <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">{t('contact.form.title')}</h2>
 
                 {submitted && (
-                  <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg text-green-800 flex items-center gap-2">
+                  <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg text-green-800 dark:text-green-300 flex items-center gap-2">
                     <Check className="h-5 w-5 flex-shrink-0" />
                     <span>{t('contact.form.success')}</span>
                   </div>
@@ -165,7 +165,7 @@ export default function ContactPage() {
                       id="businessType"
                       value={formData.businessType}
                       onChange={(e) => setFormData({ ...formData, businessType: e.target.value })}
-                      className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                      className="mt-2 w-full px-3 py-2 border border-gray-300 dark:border-neutral-600 rounded-md bg-white dark:bg-neutral-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
                     >
                       <option value="">{t('contact.form.selectType')}</option>
                       <option value="ecommerce">{t('contact.form.types.ecommerce')}</option>
@@ -184,7 +184,7 @@ export default function ContactPage() {
                       rows={4}
                       value={formData.message}
                       onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                      className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                      className="mt-2 w-full px-3 py-2 border border-gray-300 dark:border-neutral-600 rounded-md bg-white dark:bg-neutral-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
                       placeholder={t('contact.form.messagePlaceholder')}
                     />
                   </div>
@@ -215,16 +215,16 @@ export default function ContactPage() {
               transition={{ duration: 0.6 }}
               className="space-y-6"
             >
-              <Card className="p-8 bg-white border-gray-100">
-                <h3 className="text-xl font-bold mb-6">{t('contact.info.title')}</h3>
+              <Card className="p-8 bg-white dark:bg-neutral-800 border-gray-100 dark:border-neutral-700">
+                <h3 className="text-xl font-bold mb-6 text-gray-900 dark:text-white">{t('contact.info.title')}</h3>
                 <div className="space-y-6">
                   <div className="flex items-start gap-4">
                     <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-blue-500 rounded-xl flex items-center justify-center flex-shrink-0">
                       <Mail className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                      <h4 className="font-semibold mb-1">{t('contact.info.email')}</h4>
-                      <a href="mailto:info@telyx.ai" className="text-gray-600 hover:text-primary">
+                      <h4 className="font-semibold mb-1 text-gray-900 dark:text-white">{t('contact.info.email')}</h4>
+                      <a href="mailto:info@telyx.ai" className="text-gray-600 dark:text-neutral-400 hover:text-primary">
                         info@telyx.ai
                       </a>
                     </div>
@@ -235,16 +235,16 @@ export default function ContactPage() {
                       <Clock className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                      <h4 className="font-semibold mb-1">{t('contact.info.hours')}</h4>
-                      <p className="text-gray-600">{t('contact.info.hoursValue')}</p>
+                      <h4 className="font-semibold mb-1 text-gray-900 dark:text-white">{t('contact.info.hours')}</h4>
+                      <p className="text-gray-600 dark:text-neutral-400">{t('contact.info.hoursValue')}</p>
                     </div>
                   </div>
                 </div>
               </Card>
 
-              <Card className="p-8 bg-white border-gray-100">
-                <h3 className="text-xl font-bold mb-4">{t('contact.response.title')}</h3>
-                <p className="text-gray-600">
+              <Card className="p-8 bg-white dark:bg-neutral-800 border-gray-100 dark:border-neutral-700">
+                <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">{t('contact.response.title')}</h3>
+                <p className="text-gray-600 dark:text-neutral-400">
                   {t('contact.response.text')}
                 </p>
               </Card>

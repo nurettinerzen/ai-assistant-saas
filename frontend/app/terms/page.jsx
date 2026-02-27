@@ -167,26 +167,26 @@ The Platform may automate on your behalf, however:
   const currentContent = content[locale] || content.tr;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-teal-50">
+    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-teal-50 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950">
       <Navigation />
 
       {/* Hero Section */}
-      <section className="pt-32 pb-16">
+      <section className="pt-28 md:pt-32 pb-12 md:pb-16">
         <div className="container mx-auto px-4">
           <div className="text-center max-w-3xl mx-auto">
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.6 }}
-              className="w-20 h-20 bg-gradient-to-br from-teal-500 to-blue-500 rounded-2xl flex items-center justify-center mx-auto mb-8"
+              className="w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-teal-500 to-blue-500 rounded-2xl flex items-center justify-center mx-auto mb-6 md:mb-8"
             >
-              <FileText className="w-10 h-10 text-white" />
+              <FileText className="w-8 h-8 md:w-10 md:h-10 text-white" />
             </motion.div>
             <motion.h1
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
-              className="text-4xl md:text-5xl font-bold mb-4"
+              className="text-4xl md:text-5xl font-bold mb-4 text-gray-900 dark:text-white"
             >
               {currentContent.title}
             </motion.h1>
@@ -194,7 +194,7 @@ The Platform may automate on your behalf, however:
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
-              className="text-gray-600"
+              className="text-gray-600 dark:text-neutral-400"
             >
               {currentContent.lastUpdated}
             </motion.p>
@@ -211,15 +211,15 @@ The Platform may automate on your behalf, however:
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6 }}
-              className="bg-white rounded-2xl p-8 md:p-12 shadow-sm border border-gray-100"
+              className="bg-white dark:bg-neutral-800 rounded-2xl p-8 md:p-12 shadow-sm border border-gray-100 dark:border-neutral-700"
             >
-              <div className="prose prose-gray max-w-none">
+              <div className="prose prose-gray dark:prose-invert max-w-none">
                 {currentContent.sections.map((section, index) => (
                   <div key={index} className={index > 0 ? 'mt-8' : ''}>
-                    <h2 className="text-xl font-bold text-gray-900 mb-4">
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
                       {index + 1}. {section.title}
                     </h2>
-                    <p className="text-gray-600 whitespace-pre-line">
+                    <p className="text-gray-600 dark:text-neutral-300 whitespace-pre-line">
                       {section.content}
                     </p>
                   </div>

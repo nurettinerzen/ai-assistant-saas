@@ -41,7 +41,7 @@ export default function SalonSolutionPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-teal-50">
+    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-teal-50 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950">
       <Navigation />
 
       {/* Hero Section */}
@@ -57,10 +57,10 @@ export default function SalonSolutionPage() {
               <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-pink-500 to-teal-500 flex items-center justify-center mx-auto mb-8">
                 <Scissors className="w-10 h-10 text-white" />
               </div>
-              <h1 className="text-5xl md:text-6xl font-bold mb-6">
+              <h1 className="text-5xl md:text-6xl font-bold mb-6 text-gray-900 dark:text-white">
                 {t('solutions.salon.hero.title')}
               </h1>
-              <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+              <p className="text-xl text-gray-600 dark:text-neutral-400 mb-8 max-w-2xl mx-auto">
                 {t('solutions.salon.hero.subtitle')}
               </p>
               <Link href="/waitlist">
@@ -76,7 +76,7 @@ export default function SalonSolutionPage() {
       {/* Use Cases */}
       <section className="py-16">
         <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center mb-12">
+          <h2 className="text-3xl font-bold text-center mb-12 text-gray-900 dark:text-white">
             {t('solutions.salon.useCases.title')}
           </h2>
           <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
@@ -90,16 +90,16 @@ export default function SalonSolutionPage() {
                   viewport={{ once: true }}
                   transition={{ duration: 0.5, delay: index * 0.1 }}
                 >
-                  <Card className="p-6 h-full bg-white border-gray-100 hover:shadow-lg transition-all">
+                  <Card className="p-6 h-full bg-white dark:bg-neutral-800 border-gray-100 dark:border-neutral-700 hover:shadow-lg transition-all">
                     <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-pink-100 flex items-center justify-center flex-shrink-0">
+                      <div className="w-12 h-12 rounded-xl bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center flex-shrink-0">
                         <Icon className="w-6 h-6 text-pink-600" />
                       </div>
                       <div>
-                        <h3 className="text-lg font-bold text-gray-900 mb-2">
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
                           {t(useCase.titleKey)}
                         </h3>
-                        <p className="text-gray-600">
+                        <p className="text-gray-600 dark:text-neutral-400">
                           {t(useCase.descKey)}
                         </p>
                       </div>
@@ -138,11 +138,11 @@ export default function SalonSolutionPage() {
       {/* CTA Section */}
       <section className="py-20">
         <div className="container mx-auto px-4">
-          <div className="glass rounded-3xl p-12 text-center max-w-4xl mx-auto">
-            <h2 className="text-4xl font-bold mb-6">
+          <div className="glass rounded-3xl p-12 text-center max-w-4xl mx-auto dark:bg-neutral-800/60 dark:border dark:border-neutral-700">
+            <h2 className="text-4xl font-bold mb-6 text-gray-900 dark:text-white">
               {t('solutions.salon.cta.title')}
             </h2>
-            <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+            <p className="text-xl text-gray-600 dark:text-neutral-400 mb-8 max-w-2xl mx-auto">
               {t('solutions.salon.cta.subtitle')}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
