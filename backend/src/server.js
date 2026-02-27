@@ -140,6 +140,30 @@ function parseOrigins(value) {
     .filter(Boolean);
 }
 
+function getOriginSite(origin) {
+  if (!origin) {
+    return null;
+  }
+
+  try {
+    const { hostname } = new URL(origin);
+    if (!hostname) return null;
+
+    const host = hostname.toLowerCase();
+    if (host === 'localhost' || host === '127.0.0.1' || host === '::1') {
+      return host;
+    }
+
+    const parts = host.split('.').filter(Boolean);
+    if (parts.length < 2) {
+      return host;
+    }
+    return parts.slice(-2).join('.');
+  } catch {
+    return null;
+  }
+}
+
 const allowedOrigins = new Set([
   ...parseOrigins(process.env.ALLOWED_ORIGINS),
   normalizeOrigin(process.env.FRONTEND_URL),
@@ -150,6 +174,11 @@ const publicCorsAllowedOrigins = new Set([
   ...parseOrigins(process.env.PUBLIC_CORS_ORIGINS),
   ...parseOrigins(process.env.WIDGET_ALLOWED_ORIGINS)
 ]);
+const trustedDashboardSites = new Set(
+  Array.from(allowedOrigins)
+    .map((origin) => getOriginSite(origin))
+    .filter(Boolean)
+);
 const publicCorsPathPrefixes = ['/api/chat', '/api/chat-v2'];
 
 const corsMethods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'];
@@ -180,10 +209,15 @@ const corsOptionsDelegate = (req, callback) => {
   );
   const originPool = isPublicCorsPath ? publicCorsAllowedOrigins : allowedOrigins;
   const isAllowedOrigin = Boolean(origin && originPool.has(origin));
+  const originSite = getOriginSite(origin);
+  const isTrustedDashboardOrigin = Boolean(
+    origin && (allowedOrigins.has(origin) || (originSite && trustedDashboardSites.has(originSite)))
+  );
+  const allowCredentials = !isPublicCorsPath || isTrustedDashboardOrigin;
 
   callback(null, {
     origin: isAllowedOrigin,
-    credentials: !isPublicCorsPath,
+    credentials: allowCredentials,
     methods: corsMethods,
     allowedHeaders: corsAllowedHeaders,
     maxAge: 600,

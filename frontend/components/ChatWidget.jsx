@@ -44,9 +44,9 @@ export default function ChatWidget({
       try {
         let statusUrl;
         if (embedKey) {
-          statusUrl = `${API_URL}/api/chat-v2/widget/status/embed/${embedKey}`;
+          statusUrl = `${API_URL}/api/chat/widget/status/embed/${embedKey}`;
         } else if (assistantId) {
-          statusUrl = `${API_URL}/api/chat-v2/widget/status/${assistantId}`;
+          statusUrl = `${API_URL}/api/chat/widget/status/${assistantId}`;
         } else {
           setIsWidgetEnabled(false);
           return;
@@ -156,15 +156,28 @@ useEffect(() => {
         requestBody.assistantId = assistantId;
       }
 
-      // In preview mode, send auth token so backend can bypass widget-enabled/trial checks
+      // In preview mode, include dashboard session cookie so backend can allow preview bypasses
       const headers = { 'Content-Type': 'application/json' };
 
-      const response = await fetch(`${API_URL}/api/chat-v2/widget`, {
-        method: 'POST',
-        credentials: preview ? 'include' : 'omit',
-        headers,
-        body: JSON.stringify(requestBody)
-      });
+      const sendWidgetRequest = (credentialsMode) =>
+        fetch(`${API_URL}/api/chat/widget`, {
+          method: 'POST',
+          credentials: credentialsMode,
+          headers,
+          body: JSON.stringify(requestBody)
+        });
+
+      let response;
+      try {
+        response = await sendWidgetRequest(preview ? 'include' : 'omit');
+      } catch (initialError) {
+        // Some edge/cors setups reject credentialed preview requests despite a valid dashboard session.
+        // Retry once without credentials so preview can still work when widget is already publicly active.
+        if (!preview) {
+          throw initialError;
+        }
+        response = await sendWidgetRequest('omit');
+      }
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));

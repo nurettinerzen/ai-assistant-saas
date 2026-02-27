@@ -10,7 +10,6 @@
  */
 
 import express from 'express';
-import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 // getDateTimeContext, buildAssistantPrompt: handled by orchestrator Step 2 (02_prepareContext.js)
 import { getActiveTools as getPromptBuilderTools } from '../services/promptBuilder.js';
@@ -68,6 +67,7 @@ import {
   assistantHasCapability,
   resolveChatAssistantForBusiness
 } from '../services/assistantChannels.js';
+import { extractSessionToken, verifySessionToken } from '../security/sessionToken.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -79,11 +79,10 @@ const prisma = new PrismaClient();
  */
 async function _isDashboardPreview(req, businessId) {
   try {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+    const token = extractSessionToken(req);
     if (!token) return false;
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = verifySessionToken(token);
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
       select: { businessId: true }
