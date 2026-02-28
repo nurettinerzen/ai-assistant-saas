@@ -324,7 +324,7 @@ app.get('/version', (req, res) => {
 });
 
 // API Routes
-app.use('/api/auth', authRateLimiter.middleware(), authRoutes);
+app.use('/api/auth', apiRateLimiter.middleware(), authRoutes);
 app.use('/api/business', businessRoutes);
 app.use('/api/call-logs', callLogRoutes);
 app.use('/api/subscription', subscriptionRoutes);

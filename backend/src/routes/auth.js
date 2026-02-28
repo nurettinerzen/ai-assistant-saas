@@ -12,8 +12,12 @@ import { validatePasswordPolicy, passwordPolicyMessage } from '../security/passw
 import { clearSessionCookie, issueSession } from '../security/sessionToken.js';
 import { isAdmin } from '../middleware/adminAuth.js';
 import { safeCompareStrings } from '../security/constantTime.js';
+import { authRateLimiter } from '../middleware/rateLimiter.js';
 
 const router = express.Router();
+
+// Strict rate limit middleware for brute-force sensitive endpoints (10 req/min)
+const strictRateLimit = authRateLimiter.middleware();
 const prisma = new PrismaClient();
 
 const FRONTEND_URL = process.env.FRONTEND_URL;
@@ -75,7 +79,7 @@ const createAndSendVerificationEmail = async (userId, email, businessName) => {
 };
 
 // Register - Creates Business, Owner User, and Free Subscription
-router.post('/register', async (req, res) => {
+router.post('/register', strictRateLimit, async (req, res) => {
   try {
     const { email, password, businessName } = req.body;
 
@@ -179,7 +183,7 @@ router.post('/register', async (req, res) => {
 
 
 // Signup (alias for register) - Requires invite code
-router.post("/signup", async (req, res) => {
+router.post("/signup", strictRateLimit, async (req, res) => {
   try {
     const { email, password, fullName, businessName, inviteCode } = req.body;
 
@@ -296,7 +300,7 @@ router.post("/signup", async (req, res) => {
   }
 });
 // Login
-router.post('/login', async (req, res) => {
+router.post('/login', strictRateLimit, async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -1073,7 +1077,7 @@ router.post('/google/code', async (req, res) => {
 // ============================================================================
 
 // Forgot password - request password reset
-router.post('/forgot-password', async (req, res) => {
+router.post('/forgot-password', strictRateLimit, async (req, res) => {
   try {
     const { email } = req.body;
 
@@ -1124,7 +1128,7 @@ router.post('/forgot-password', async (req, res) => {
 });
 
 // Reset password with token
-router.post('/reset-password', async (req, res) => {
+router.post('/reset-password', strictRateLimit, async (req, res) => {
   try {
     const { token, password } = req.body;
 
