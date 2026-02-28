@@ -180,6 +180,18 @@ function KnowledgeBaseContent() {
     setShowContentModal(true);
     setContentModalData({ type: 'document', title: doc.name || doc.title, content: null });
 
+    // Content is already available from the list query (Prisma returns all fields)
+    if (doc.content) {
+      setContentModalData({
+        type: 'document',
+        title: doc.name || doc.title,
+        content: doc.content
+      });
+      setLoadingContent(false);
+      return;
+    }
+
+    // Fallback: fetch from API if content wasn't in list data
     try {
       const response = await apiClient.knowledge.getDocument(doc.id);
       setContentModalData({
@@ -188,6 +200,7 @@ function KnowledgeBaseContent() {
         content: response.data.document?.content || t('dashboard.knowledgeBasePage.noContent')
       });
     } catch (error) {
+      console.error('Failed to load document content:', error);
       setContentModalData({
         type: 'document',
         title: doc.name || doc.title,

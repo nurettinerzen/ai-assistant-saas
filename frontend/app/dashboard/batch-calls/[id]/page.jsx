@@ -26,27 +26,27 @@ import { useLanguage } from '@/contexts/LanguageContext';
 const STATUS_CONFIG = {
   PENDING: {
     labelKey: 'dashboard.batchCallDetailPage.status.pending',
-    color: 'bg-yellow-100 text-yellow-800',
+    color: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400',
     icon: Clock
   },
   IN_PROGRESS: {
     labelKey: 'dashboard.batchCallDetailPage.status.inProgress',
-    color: 'bg-blue-100 text-blue-800',
+    color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400',
     icon: Loader2
   },
   COMPLETED: {
     labelKey: 'dashboard.batchCallDetailPage.status.completed',
-    color: 'bg-green-100 text-green-800',
+    color: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400',
     icon: CheckCircle2
   },
   FAILED: {
     labelKey: 'dashboard.batchCallDetailPage.status.failed',
-    color: 'bg-red-100 text-red-800',
+    color: 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400',
     icon: XCircle
   },
   CANCELLED: {
     labelKey: 'dashboard.batchCallDetailPage.status.cancelled',
-    color: 'bg-neutral-100 text-neutral-800',
+    color: 'bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-300',
     icon: Pause
   }
 };
@@ -54,27 +54,27 @@ const STATUS_CONFIG = {
 const CALL_STATUS_CONFIG = {
   pending: {
     labelKey: 'dashboard.batchCallDetailPage.callStatus.pending',
-    color: 'bg-yellow-100 text-yellow-800',
+    color: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400',
     icon: Clock
   },
   in_progress: {
     labelKey: 'dashboard.batchCallDetailPage.callStatus.inProgress',
-    color: 'bg-blue-100 text-blue-800',
+    color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400',
     icon: PhoneCall
   },
   completed: {
     labelKey: 'dashboard.batchCallDetailPage.callStatus.completed',
-    color: 'bg-green-100 text-green-800',
+    color: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400',
     icon: CheckCircle2
   },
   failed: {
     labelKey: 'dashboard.batchCallDetailPage.callStatus.failed',
-    color: 'bg-red-100 text-red-800',
+    color: 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400',
     icon: PhoneOff
   },
   no_answer: {
     labelKey: 'dashboard.batchCallDetailPage.callStatus.noAnswer',
-    color: 'bg-neutral-100 text-neutral-800',
+    color: 'bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-300',
     icon: PhoneOff
   }
 };
@@ -181,13 +181,13 @@ export default function BatchCallDetailPage() {
         <div className="flex items-center gap-4">
           <Megaphone className="h-8 w-8 text-neutral-600 dark:text-neutral-400" />
           <div>
-            <h1 className="text-2xl font-bold text-neutral-900">{batchCall.name}</h1>
+            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{batchCall.name}</h1>
             <div className="flex items-center gap-2 mt-1">
               <Badge className={`${statusConfig.color} flex items-center gap-1`}>
                 <StatusIcon className={`h-3 w-3 ${batchCall.status === 'IN_PROGRESS' ? 'animate-spin' : ''}`} />
                 {t(statusConfig.labelKey)}
               </Badge>
-              <span className="text-sm text-neutral-500">
+              <span className="text-sm text-neutral-500 dark:text-neutral-400">
                 {formatDate(batchCall.createdAt, 'long')}
               </span>
             </div>
@@ -204,42 +204,42 @@ export default function BatchCallDetailPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl border border-neutral-200 p-4">
+        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-4">
           <div className="flex items-center gap-3">
             <Users className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
             <div>
-              <p className="text-sm text-neutral-500">{t('dashboard.batchCallDetailPage.total')}</p>
-              <p className="text-2xl font-bold text-neutral-900">{batchCall.totalRecipients}</p>
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">{t('dashboard.batchCallDetailPage.total')}</p>
+              <p className="text-2xl font-bold text-neutral-900 dark:text-white">{batchCall.totalRecipients}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-neutral-200 p-4">
+        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-4">
           <div className="flex items-center gap-3">
             <CheckCircle2 className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
             <div>
-              <p className="text-sm text-neutral-500">{t('dashboard.batchCallDetailPage.successful')}</p>
-              <p className="text-2xl font-bold text-green-600">{batchCall.successfulCalls || 0}</p>
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">{t('dashboard.batchCallDetailPage.successful')}</p>
+              <p className="text-2xl font-bold text-green-600 dark:text-green-400">{batchCall.successfulCalls || 0}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-neutral-200 p-4">
+        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-4">
           <div className="flex items-center gap-3">
             <XCircle className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
             <div>
-              <p className="text-sm text-neutral-500">{t('dashboard.batchCallDetailPage.failed')}</p>
-              <p className="text-2xl font-bold text-red-600">{batchCall.failedCalls || 0}</p>
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">{t('dashboard.batchCallDetailPage.failed')}</p>
+              <p className="text-2xl font-bold text-red-600 dark:text-red-400">{batchCall.failedCalls || 0}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-neutral-200 p-4">
+        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-4">
           <div className="flex items-center gap-3">
             <Clock className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
             <div>
-              <p className="text-sm text-neutral-500">{t('dashboard.batchCallDetailPage.pending')}</p>
-              <p className="text-2xl font-bold text-yellow-600">
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">{t('dashboard.batchCallDetailPage.pending')}</p>
+              <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
                 {batchCall.totalRecipients - batchCall.completedCalls}
               </p>
             </div>
@@ -248,16 +248,16 @@ export default function BatchCallDetailPage() {
       </div>
 
       {/* Progress Bar */}
-      <div className="bg-white rounded-xl border border-neutral-200 p-4">
+      <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-4">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-neutral-700">
+          <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
             {t('dashboard.batchCallDetailPage.progress')}
           </span>
-          <span className="text-sm text-neutral-600">
+          <span className="text-sm text-neutral-600 dark:text-neutral-400">
             {batchCall.completedCalls} / {batchCall.totalRecipients} ({progress}%)
           </span>
         </div>
-        <div className="w-full h-3 bg-neutral-200 rounded-full overflow-hidden">
+        <div className="w-full h-3 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden">
           <div
             className="h-full bg-primary-600 rounded-full transition-all duration-500"
             style={{ width: `${progress}%` }}
@@ -266,57 +266,57 @@ export default function BatchCallDetailPage() {
       </div>
 
       {/* Recipients Table */}
-      <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-neutral-200">
-          <h2 className="text-lg font-semibold text-neutral-900">
+      <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden">
+        <div className="px-6 py-4 border-b border-neutral-200 dark:border-neutral-700">
+          <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">
             {t('dashboard.batchCallDetailPage.recipientsList')}
           </h2>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-neutral-50 border-b border-neutral-200">
+            <thead className="bg-neutral-50 dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
                   {t('dashboard.batchCallDetailPage.phoneHeader')}
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
                   {t('dashboard.batchCallDetailPage.customerHeader')}
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
                   {t('dashboard.batchCallDetailPage.statusHeader')}
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
                   {t('dashboard.batchCallDetailPage.durationHeader')}
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
                   {t('dashboard.batchCallDetailPage.terminationHeader')}
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-right text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
                   {t('dashboard.batchCallDetailPage.actionHeader')}
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-neutral-200">
+            <tbody className="divide-y divide-neutral-200 dark:divide-neutral-700">
               {recipients.length > 0 ? (
                 recipients.map((recipient, index) => {
                   const callStatus = CALL_STATUS_CONFIG[recipient.status] || CALL_STATUS_CONFIG.pending;
                   const CallStatusIcon = callStatus.icon;
 
                   return (
-                    <tr key={index} className="hover:bg-neutral-50">
+                    <tr key={index} className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          <Phone className="h-4 w-4 text-neutral-400 mr-2" />
-                          <span className="text-sm text-neutral-900">{recipient.phone_number}</span>
+                          <Phone className="h-4 w-4 text-neutral-400 dark:text-neutral-500 mr-2" />
+                          <span className="text-sm text-neutral-900 dark:text-white">{recipient.phone_number}</span>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-neutral-900">
+                        <span className="text-sm text-neutral-900 dark:text-white">
                           {recipient.customer_name || '-'}
                         </span>
                         {recipient.debt_amount && (
-                          <span className="text-xs text-neutral-500 ml-2">
+                          <span className="text-xs text-neutral-500 dark:text-neutral-400 ml-2">
                             ({recipient.debt_amount} TL)
                           </span>
                         )}
@@ -329,25 +329,25 @@ export default function BatchCallDetailPage() {
                             recipient.status === 'in_progress' ? 'bg-blue-500' :
                             'bg-yellow-500'
                           }`} />
-                          <span className="text-sm text-gray-700 dark:text-gray-300">
+                          <span className="text-sm text-neutral-700 dark:text-neutral-300">
                             {t(callStatus.labelKey)}
                           </span>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-neutral-600">
+                        <span className="text-sm text-neutral-600 dark:text-neutral-400">
                           {recipient.duration ? `${Math.floor(recipient.duration / 60)}:${String(recipient.duration % 60).padStart(2, '0')}` : '-'}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-neutral-600">
+                        <span className="text-sm text-neutral-600 dark:text-neutral-400">
                           {recipient.terminationReason ? (
                             <Badge variant="outline" className={
-                              recipient.terminationReason === 'agent_goodbye' ? 'bg-green-50 text-green-700 border-green-200' :
-                              recipient.terminationReason === 'user_goodbye' ? 'bg-green-50 text-green-700 border-green-200' :
-                              recipient.terminationReason === 'voicemail_detected' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
-                              recipient.terminationReason === 'no_input' ? 'bg-red-50 text-red-700 border-red-200' :
-                              'bg-neutral-50 text-neutral-700 border-neutral-200'
+                              recipient.terminationReason === 'agent_goodbye' ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800' :
+                              recipient.terminationReason === 'user_goodbye' ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800' :
+                              recipient.terminationReason === 'voicemail_detected' ? 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800' :
+                              recipient.terminationReason === 'no_input' ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800' :
+                              'bg-neutral-50 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-neutral-600'
                             }>
                               {TERMINATION_KEYS[recipient.terminationReason]
                                 ? t(TERMINATION_KEYS[recipient.terminationReason])
@@ -367,7 +367,7 @@ export default function BatchCallDetailPage() {
                             {t('dashboard.batchCallDetailPage.details')}
                           </Button>
                         ) : (recipient.status === 'completed' || recipient.status === 'failed') ? (
-                          <span className="text-xs text-neutral-400">
+                          <span className="text-xs text-neutral-400 dark:text-neutral-500">
                             {t('dashboard.batchCallDetailPage.waitingForRecord')}
                           </span>
                         ) : null}
@@ -377,7 +377,7 @@ export default function BatchCallDetailPage() {
                 })
               ) : (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-neutral-500">
+                  <td colSpan={6} className="px-6 py-12 text-center text-neutral-500 dark:text-neutral-400">
                     {t('dashboard.batchCallDetailPage.noRecipientsFound')}
                   </td>
                 </tr>
