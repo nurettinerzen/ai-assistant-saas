@@ -756,13 +756,42 @@ const handleShopifyConnect = async () => {
                   <Lock className="h-4 w-4 mr-2" />
                   {t('dashboard.integrationsPage.unlock')}
                 </Button>
+              ) : isCrmConnected ? (
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => window.location.href = '/dashboard/integrations/custom-crm'}
+                  >
+                    {t('dashboard.integrationsPage.manage')}
+                  </Button>
+                  {can('integrations:connect') && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={async () => {
+                      if (!confirm(t('dashboard.integrationsPage.confirmDisconnectIntegration'))) return;
+                      try {
+                        await apiClient.patch('/api/crm/webhook/toggle');
+                        toast.success(t('dashboard.integrationsPage.crmDisconnected') || 'CRM bağlantısı kesildi');
+                        window.location.reload();
+                      } catch (error) {
+                        toast.error(t('dashboard.integrationsPage.disconnectFailed'));
+                      }
+                    }}
+                  >
+                    {t('dashboard.integrationsPage.disconnect')}
+                  </Button>
+                  )}
+                </div>
               ) : (
               <Button
                 size="sm"
                 className="w-full"
                 onClick={() => window.location.href = '/dashboard/integrations/custom-crm'}
               >
-                {t('dashboard.integrationsPage.manage')}
+                {t('dashboard.integrationsPage.connect')}
               </Button>
               )}
             </div>
