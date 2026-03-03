@@ -22,7 +22,11 @@ import {
   Hash,
   Clock,
   ExternalLink,
-  Mail
+  Mail,
+  ShoppingBag,
+  FileText,
+  AlertCircle,
+  CircleDollarSign
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
@@ -339,6 +343,7 @@ export default function CRMDataPage() {
                     <tr>
                       <th className="text-left p-3 font-medium">Sipariş No</th>
                       <th className="text-left p-3 font-medium">Müşteri</th>
+                      <th className="text-left p-3 font-medium">Ürünler</th>
                       <th className="text-left p-3 font-medium">Durum</th>
                       <th className="text-left p-3 font-medium">Kargo</th>
                       <th className="text-left p-3 font-medium">Tutar</th>
@@ -373,6 +378,26 @@ export default function CRMDataPage() {
                               </div>
                             )}
                           </div>
+                        </td>
+                        <td className="p-3 text-sm max-w-xs">
+                          {order.items && Array.isArray(order.items) && order.items.length > 0 ? (
+                            <div className="space-y-1">
+                              {order.items.slice(0, 3).map((item, idx) => (
+                                <div key={idx} className="flex items-center gap-1">
+                                  <ShoppingBag className="w-3 h-3 text-muted-foreground shrink-0" />
+                                  <span className="truncate">
+                                    {item.name || item.productName || item.title || JSON.stringify(item)}
+                                    {item.quantity ? ` ×${item.quantity}` : ''}
+                                  </span>
+                                </div>
+                              ))}
+                              {order.items.length > 3 && (
+                                <span className="text-muted-foreground text-xs">+{order.items.length - 3} ürün daha</span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
                         </td>
                         <td className="p-3">
                           <Badge variant="outline" className={ORDER_STATUS_COLORS[order.status] || 'text-gray-600 dark:text-gray-400'}>
@@ -493,8 +518,10 @@ export default function CRMDataPage() {
                     <tr>
                       <th className="text-left p-3 font-medium">Servis No</th>
                       <th className="text-left p-3 font-medium">Müşteri</th>
+                      <th className="text-left p-3 font-medium">Ürün</th>
                       <th className="text-left p-3 font-medium">Durum</th>
-                      <th className="text-left p-3 font-medium">Açıklama</th>
+                      <th className="text-left p-3 font-medium">Sorun / Notlar</th>
+                      <th className="text-left p-3 font-medium">Maliyet</th>
                       <th className="text-left p-3 font-medium">Tarih</th>
                     </tr>
                   </thead>
@@ -519,13 +546,43 @@ export default function CRMDataPage() {
                             )}
                           </div>
                         </td>
+                        <td className="p-3 text-sm">
+                          {ticket.product || '-'}
+                        </td>
                         <td className="p-3">
                           <Badge variant="outline" className={TICKET_STATUS_COLORS[ticket.status] || 'text-gray-600 dark:text-gray-400'}>
                             {TICKET_STATUS_LABELS[ticket.status] || ticket.status}
                           </Badge>
                         </td>
-                        <td className="p-3 max-w-md truncate text-sm">
-                          {ticket.description || '-'}
+                        <td className="p-3 max-w-xs text-sm">
+                          {ticket.issue || ticket.notes ? (
+                            <div>
+                              {ticket.issue && (
+                                <div className="flex items-start gap-1">
+                                  <AlertCircle className="w-3 h-3 text-muted-foreground mt-0.5 shrink-0" />
+                                  <span>{ticket.issue}</span>
+                                </div>
+                              )}
+                              {ticket.notes && (
+                                <div className="flex items-start gap-1 mt-1 text-muted-foreground">
+                                  <FileText className="w-3 h-3 mt-0.5 shrink-0" />
+                                  <span className="truncate">{ticket.notes}</span>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </td>
+                        <td className="p-3 text-sm">
+                          {ticket.cost ? (
+                            <div className="flex items-center gap-1">
+                              <CircleDollarSign className="w-4 h-4 text-muted-foreground" />
+                              <span className="font-medium">{ticket.cost.toLocaleString('tr-TR')} ₺</span>
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
                         </td>
                         <td className="p-3 text-sm text-muted-foreground">
                           {formatDate(ticket.createdAt)}
