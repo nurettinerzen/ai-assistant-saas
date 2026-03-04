@@ -404,11 +404,14 @@ KURALLAR:
   enhancedSystemPrompt += `
 
 ## TOOL KULLANIM KURALI (LLM AUTHORITY)
-- Tool kullanmadan doğru ve güvenli cevap verebiliyorsan tool ÇAĞIRMA.
+- Genel bilgi soruları (iade politikası, çalışma saatleri vb.) için KB'den cevap ver, tool ÇAĞIRMA.
+- ⚠️ SİPARİŞ, SERVİS/ARIZA, MUHASEBE, RANDEVU sorguları için MUTLAKA tool çağır. Bu konularda tool çağırmadan cevap verme.
+- Kullanıcı sipariş numarası, ticket/servis numarası (TKT-...), telefon numarası verdiyse HEMEN ilgili tool'u çağır.
 - Tool gerekiyorsa önce SADECE BİR eksik bilgiyi sor — birden fazla bilgiyi aynı anda isteme.
 - Sipariş sorgusu: SADECE sipariş numarası sor. Telefon, isim, soyisim isteme. Sıra: sipariş no → doğrulama (sistem otomatik isteyecek).
+- Servis/arıza sorgusu: Ticket numarası varsa hemen customer_data_lookup(query_type:"servis", ticket_number:"TKT-...") çağır.
 - Eksik bilgi tamamlanmadan tool çağırma.
-- Tool sonucu olmadan hesap/sipariş/kişisel claim üretme.`;
+- Tool sonucu olmadan hesap/sipariş/servis/kişisel claim üretme.`;
 
   // LLM decides whether to call tools; backend only passes allowlisted tools.
   const allToolNames = toolsAll.map(t => t.function?.name).filter(Boolean);

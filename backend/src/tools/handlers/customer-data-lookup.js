@@ -222,7 +222,7 @@ function buildAccountingMissingIdentityResponse(language = 'TR') {
  */
 export async function execute(args, business, context = {}) {
   try {
-    const { query_type, phone, order_number, customer_name, vkn, tc, verification_input } = args;
+    const { query_type, phone, order_number, ticket_number, customer_name, vkn, tc, verification_input } = args;
     const sessionId = context.sessionId || context.conversationId;
     const language = business.language || 'TR';
     const state = context.state || {};
@@ -240,8 +240,10 @@ export async function execute(args, business, context = {}) {
     const isOrderQuery = normalizedQueryType === 'siparis' || normalizedQueryType === 'order';
     const isTicketQuery = normalizedQueryType === 'servis' || normalizedQueryType === 'ticket' || normalizedQueryType === 'service';
     const isAccountingQuery = isAccountingQueryType(normalizedQueryType);
-    const hasLookupIdentifier = Boolean(order_number || phone || vkn || tc);
-    const orderLookup = order_number ? buildOrderLookupCandidates(order_number) : null;
+    // Normalize ticket_number: if LLM sends ticket_number, use it as order_number for lookup
+    const effectiveOrderNumber = order_number || ticket_number || null;
+    const hasLookupIdentifier = Boolean(effectiveOrderNumber || phone || vkn || tc);
+    const orderLookup = effectiveOrderNumber ? buildOrderLookupCandidates(effectiveOrderNumber) : null;
 
     // Minimal validation only: reject empty/too-short values.
     // Do not apply format/prefix regex gates before DB lookup.
@@ -259,6 +261,7 @@ export async function execute(args, business, context = {}) {
       query_type,
       has_phone: !!phone,
       has_order: !!order_number,
+      has_ticket: !!ticket_number,
       has_name: !!customer_name,
       has_vkn: !!vkn,
       has_tc: !!tc,
@@ -391,8 +394,31 @@ export async function execute(args, business, context = {}) {
     let anchorValue = null;
     let sourceTable = 'CustomerData'; // Track which DB table the record came from
 
-    // Strategy 1: Order number
-    if (order_number) {
+    // Strategy 0: Ticket query with ticket_number → go directly to CrmTicket
+    if (isTicketQuery && (ticket_number || effectiveOrderNumber)) {
+      console.log('🔍 [Lookup] Ticket query — trying CrmTicket table first...');
+      const ticketId = ticket_number || effectiveOrderNumber;
+      const ticketCandidates = orderLookup ? orderLookup.exactCandidates : [ticketId];
+
+      const crmTicket = await prisma.crmTicket.findFirst({
+        where: {
+          businessId: business.id,
+          OR: ticketCandidates.map(c => ({ ticketNumber: c }))
+        },
+        orderBy: { updatedAt: 'desc' }
+      });
+
+      if (crmTicket) {
+        console.log('✅ [Lookup] Found CrmTicket:', crmTicket.ticketNumber);
+        record = crmTicket;
+        sourceTable = 'CrmTicket';
+        anchorType = 'ticket';
+        anchorValue = crmTicket.ticketNumber;
+      }
+    }
+
+    // Strategy 1: Order number (skip if already found via ticket)
+    if (!record && order_number) {
       const {
         normalizedLookup,
         compactNormalized,
@@ -602,15 +628,15 @@ export async function execute(args, business, context = {}) {
       }
     }
 
-    // Strategy 4: CrmTicket (service/repair tickets)
-    // If query is ticket/service-related, or no record found yet, try CrmTicket
-    if (!record && (isTicketQuery || phone || order_number)) {
-      console.log('🔍 [Lookup] Trying CrmTicket table...');
+    // Strategy 4: CrmTicket fallback (service/repair tickets)
+    // If no record found yet, try CrmTicket as fallback
+    if (!record && (isTicketQuery || phone || effectiveOrderNumber)) {
+      console.log('🔍 [Lookup] Trying CrmTicket table (fallback)...');
       const ticketWhere = { businessId: business.id };
 
-      if (order_number) {
-        // order_number might actually be a ticket number (e.g. TKT-2024-0009)
-        const ticketCandidates = orderLookup ? orderLookup.exactCandidates : [order_number];
+      if (effectiveOrderNumber) {
+        // order_number or ticket_number might be a ticket number (e.g. TKT-2024-0009)
+        const ticketCandidates = orderLookup ? orderLookup.exactCandidates : [effectiveOrderNumber];
         ticketWhere.OR = ticketCandidates.map(c => ({ ticketNumber: c }));
       } else if (phone) {
         const phoneDigits = phone.replace(/\D/g, '');

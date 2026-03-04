@@ -11,9 +11,7 @@
 
 export default {
   name: 'customer_data_lookup',
-  description: `Müşteri verilerini sorgular. SİPARİŞ, MUHASEBE, RANDEVU gibi VERİ TİPLERİNİ destekler.
-
-⚠️ ARIZA/SERVİS TAKİP İÇİN BU ARACI KULLANMA → check_ticket_status_crm aracını kullan.
+  description: `Müşteri verilerini sorgular. SİPARİŞ, MUHASEBE, RANDEVU, SERVİS/ARIZA TAKİP gibi VERİ TİPLERİNİ destekler.
 
 ÖNCELİKLİ SORGULAMA AKIŞI (query_type'a göre):
 
@@ -21,6 +19,12 @@ export default {
 1. SADECE sipariş numarası sor
 2. EĞER kullanıcı bilmiyorsa telefon numarası sor
 3. Doğrulama: İsim/soyisim sor
+
+🔧 SERVİS/ARIZA SORGUSU (query_type: "servis"):
+1. Ticket/servis numarası sor (örn: TKT-2024-0009)
+2. Ticket numarası yoksa telefon numarası sor
+3. Doğrulama: İsim/soyisim sor
+⚠️ Kullanıcı servis kaydı, arıza takibi, destek talebi soruyorsa MUTLAKA bu aracı çağır.
 
 💰 MUHASEBE SORGUSU (query_type: "muhasebe", "sgk_borcu", "vergi_borcu"):
 1. ÖNCE VKN veya TC Kimlik No sor
@@ -42,7 +46,7 @@ DOĞRULAMA AKIŞI:
 4. Eğer telefon yoksa isim/soyisim iste ve verification_input'a yaz
 
 ÖNEMLİ:
-- Her sorgu için SADECE primary bilgiyi sor (önce sipariş no, sonra telefon)
+- Her sorgu için SADECE primary bilgiyi sor (önce sipariş/ticket no, sonra telefon)
 - Birden fazla seçenek sunma, tek tek sor
 - 4 haneli sayı = telefon son 4 hanesi (verification_input'a yaz)`,
   parameters: {
@@ -50,8 +54,12 @@ DOĞRULAMA AKIŞI:
     properties: {
       query_type: {
         type: 'string',
-        enum: ['siparis', 'order', 'muhasebe', 'sgk_borcu', 'vergi_borcu', 'randevu', 'genel'],
-        description: 'ZORUNLU: Sorgu türü. Sipariş için "siparis", muhasebe için "muhasebe", randevu için "randevu". Arıza/servis için bu aracı DEĞİL check_ticket_status_crm aracını kullan.'
+        enum: ['siparis', 'order', 'muhasebe', 'sgk_borcu', 'vergi_borcu', 'randevu', 'servis', 'ticket', 'service', 'genel'],
+        description: 'ZORUNLU: Sorgu türü. Sipariş için "siparis", muhasebe için "muhasebe", randevu için "randevu", servis/arıza takibi için "servis".'
+      },
+      ticket_number: {
+        type: 'string',
+        description: 'Servis/arıza ticket numarası (örn: TKT-2024-0009) - SERVİS sorgusunda PRIMARY bilgi'
       },
       order_number: {
         type: 'string',

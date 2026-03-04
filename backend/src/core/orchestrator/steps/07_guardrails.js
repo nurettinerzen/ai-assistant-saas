@@ -45,7 +45,8 @@ function getBarrierMessage(language = 'TR') {
 
 function resolveMinInfoQuestion({
   language,
-  missingFields = []
+  missingFields = [],
+  userMessage = ''
 }) {
   const missingSet = new Set(Array.isArray(missingFields) ? missingFields : []);
 
@@ -57,6 +58,23 @@ function resolveMinInfoQuestion({
   const hasReference = missingSet.has('reference_id');
   const hasDebtIdentity = missingSet.has('vkn_or_tc_or_phone');
   const lang = String(language || 'TR').toUpperCase() === 'EN' ? 'EN' : 'TR';
+
+  // Check if user already provided the identifier in their message
+  // to avoid asking for it again (loop prevention)
+  const msg = String(userMessage || '').toLowerCase();
+  const userAlreadyProvidedTicket = hasTicket && /\b(tkt[-_]?\d+|ticket[-_]?\d+|servis[-_]?\d+)\b/i.test(msg);
+  const userAlreadyProvidedOrder = hasOrder && /\b(ord|sip|order)[-_]?\d+\b/i.test(msg);
+
+  if (userAlreadyProvidedTicket || userAlreadyProvidedOrder) {
+    const retryMsg = lang === 'EN'
+      ? 'I see you provided a reference number. Let me try to look that up for you. One moment please...'
+      : 'Referans numaranızı aldım, sistemi kontrol ediyorum. Bir saniye lütfen...';
+    return {
+      text: retryMsg,
+      messageKey: 'NEED_MIN_INFO_FOR_TOOL_RETRY',
+      variantIndex: 0
+    };
+  }
 
   if (lang === 'EN') {
     if (hasOrderOrPhone) {
@@ -506,7 +524,8 @@ export async function applyGuardrails(params) {
     if (toolRequiredGate.needsMinInfo) {
       const minInfoVariant = resolveMinInfoQuestion({
         language,
-        missingFields: toolRequiredGate.missingFields || []
+        missingFields: toolRequiredGate.missingFields || [],
+        userMessage
       });
       metrics.toolRequiredClaimGate = {
         reason: toolRequiredGate.reason,
