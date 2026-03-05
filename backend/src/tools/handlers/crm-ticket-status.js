@@ -60,40 +60,60 @@ export async function execute(args, business, context = {}) {
 
     console.log(`✅ CRM Ticket found: ${ticket.ticketNumber}`);
 
-    // Verification: require name before returning data
+    // Verification: phone_last4 if phone exists, otherwise name (consistent with customer_data_lookup)
+    const askFor = ticket.customerPhone ? 'phone_last4' : 'name';
+
+    const anchor = {
+      id: ticket.id,
+      name: ticket.customerName,
+      phone: ticket.customerPhone,
+      sourceTable: 'CrmTicket',
+      anchorType: 'TICKET',
+      anchorValue: ticket.ticketNumber
+    };
+
     if (!verification_input) {
-      const anchor = {
-        id: ticket.id,
-        name: ticket.customerName,
-        phone: ticket.customerPhone,
-        sourceTable: 'CrmTicket',
-        anchorType: 'TICKET',
-        anchorValue: ticket.ticketNumber
-      };
-      const result = verificationRequired(
-        language === 'TR'
+      const askMessage = askFor === 'phone_last4'
+        ? (language === 'TR'
+          ? 'Servis kaydı bulundu. Güvenlik doğrulaması için kayıtlı telefon numaranızın son 4 hanesini söyler misiniz?'
+          : 'Service record found. Could you please tell me the last 4 digits of your registered phone number?')
+        : (language === 'TR'
           ? 'Servis kaydı bulundu. Kimlik doğrulaması için ad ve soyadınızı söyler misiniz?'
-          : 'Service record found. Could you please tell me your full name for verification?',
-        { askFor: 'name' }
-      );
+          : 'Service record found. Could you please tell me your full name for verification?');
+
+      const result = verificationRequired(askMessage, { askFor });
       result.stateEvents = [{
         type: OutcomeEventType.VERIFICATION_REQUIRED,
-        askFor: 'name',
+        askFor,
         anchor
       }];
       return result;
     }
 
-    // Verify name against customerName
-    const inputName = verification_input.trim().toLowerCase().replace(/\s+/g, ' ');
-    const storedName = (ticket.customerName || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    // Verify input against stored data
+    const input = verification_input.trim();
+    let verified = false;
 
-    if (!storedName || !storedName.includes(inputName.split(' ')[0])) {
-      // Generic message — don't reveal whether record exists (security)
+    if (askFor === 'phone_last4') {
+      // Extract digits from input
+      const inputDigits = input.replace(/\D/g, '');
+      const storedPhone = (ticket.customerPhone || '').replace(/\D/g, '');
+      // Match last 4 digits
+      if (inputDigits.length >= 4 && storedPhone.length >= 4) {
+        verified = storedPhone.slice(-4) === inputDigits.slice(-4);
+      }
+    } else {
+      // Name verification fallback
+      const inputName = input.toLowerCase().replace(/\s+/g, ' ');
+      const storedName = (ticket.customerName || '').trim().toLowerCase().replace(/\s+/g, ' ');
+      verified = storedName && storedName.includes(inputName.split(' ')[0]);
+    }
+
+    if (!verified) {
       const failResult = notFound(
         language === 'TR'
-          ? 'Bu bilgilerle eşleşen bir servis kaydı bulunamadı. Lütfen bilgilerinizi kontrol edin.'
-          : 'No service record found matching this information. Please check your details.'
+          ? 'Doğrulama başarısız. Lütfen bilgilerinizi kontrol edip tekrar deneyin.'
+          : 'Verification failed. Please check your information and try again.'
       );
       failResult.stateEvents = [{
         type: OutcomeEventType.VERIFICATION_FAILED
