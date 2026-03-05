@@ -7,7 +7,7 @@
  */
 
 import axios from 'axios';
-import { decrypt } from '../utils/encryption.js';
+import { decryptPossiblyEncryptedValue } from '../utils/encryption.js';
 import prisma from '../config/database.js';
 
 const OUTBOUND_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days (Meta can retry for 24h+)
@@ -71,7 +71,7 @@ export async function sendWhatsAppMessage(business, to, text, options = {}) {
         throw new Error('WhatsApp credentials not configured for business');
       }
 
-      accessToken = decrypt(business.whatsappAccessToken);
+      accessToken = decryptPossiblyEncryptedValue(business.whatsappAccessToken, { allowPlaintext: true });
       phoneNumberId = business.whatsappPhoneNumberId;
     }
 
@@ -154,7 +154,7 @@ export async function sendTypingIndicator(business, to) {
         return;
       }
 
-      accessToken = decrypt(business.whatsappAccessToken);
+      accessToken = decryptPossiblyEncryptedValue(business.whatsappAccessToken, { allowPlaintext: true });
       phoneNumberId = business.whatsappPhoneNumberId;
     }
 

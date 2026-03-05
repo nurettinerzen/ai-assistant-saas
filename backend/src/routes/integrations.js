@@ -9,7 +9,7 @@ import whatsappService from '../services/whatsapp.js';
 import { getFilteredIntegrations, getIntegrationPriority } from '../config/integrationMetadata.js';
 import { generateOAuthState, validateOAuthState } from '../middleware/oauthState.js';
 import { safeRedirect } from '../middleware/redirectWhitelist.js';
-import { decryptTokenValue } from '../utils/encryption.js';
+import { decryptTokenValue, decryptPossiblyEncryptedValue } from '../utils/encryption.js';
 import { encryptGoogleTokenCredentials, decryptGoogleTokenCredentials } from '../utils/google-oauth-tokens.js';
 import { revokeGoogleOAuthToken } from '../utils/google-oauth-revoke.js';
 import axios from 'axios';
@@ -862,9 +862,8 @@ router.post('/whatsapp/send', async (req, res) => {
       return res.status(404).json({ error: 'WhatsApp not connected' });
     }
 
-    // Decrypt access token
-    const { decrypt } = await import('../utils/encryption.js');
-    const accessToken = decrypt(business.whatsappAccessToken);
+    // Decrypt access token (supports legacy encrypted and plaintext values)
+    const accessToken = decryptPossiblyEncryptedValue(business.whatsappAccessToken, { allowPlaintext: true });
 
     // Send message via WhatsApp service
     const result = await whatsappService.sendMessage(

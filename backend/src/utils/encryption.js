@@ -30,21 +30,18 @@ function deriveKey(secret, salt) {
   );
 }
 
-function getEncryptionSecret() {
-  const masterSecret = process.env.ENCRYPTION_MASTER_KEY;
-  if (typeof masterSecret === 'string' && masterSecret.trim().length >= 16) {
-    return masterSecret;
-  }
+function normalizeSecret(secret) {
+  if (typeof secret !== 'string') return null;
+  const normalized = secret.trim();
+  if (normalized.length < 16) return null;
+  return normalized;
+}
 
-  const legacySecret = process.env.ENCRYPTION_SECRET;
-  if (typeof legacySecret === 'string' && legacySecret.trim().length >= 16) {
-    return legacySecret;
-  }
-
+function getNonProdJwtFallbackSecret() {
   // Non-production fallback for local/dev convenience.
   if (process.env.NODE_ENV !== 'production') {
-    const jwtSecret = process.env.JWT_SECRET;
-    if (typeof jwtSecret === 'string' && jwtSecret.trim().length >= 16) {
+    const jwtSecret = normalizeSecret(process.env.JWT_SECRET);
+    if (jwtSecret) {
       if (!warnedWeakFallback) {
         warnedWeakFallback = true;
         console.warn('⚠️ ENCRYPTION_MASTER_KEY/ENCRYPTION_SECRET is not set. Falling back to JWT_SECRET in non-production.');
@@ -52,8 +49,62 @@ function getEncryptionSecret() {
       return jwtSecret;
     }
   }
+  return null;
+}
+
+function getPrimaryEncryptionSecret() {
+  const masterSecret = normalizeSecret(process.env.ENCRYPTION_MASTER_KEY);
+  if (masterSecret) {
+    return masterSecret;
+  }
+
+  const legacySecret = normalizeSecret(process.env.ENCRYPTION_SECRET);
+  if (legacySecret) {
+    return legacySecret;
+  }
+
+  const nonProdFallback = getNonProdJwtFallbackSecret();
+  if (nonProdFallback) {
+    return nonProdFallback;
+  }
 
   throw new Error('ENCRYPTION_MASTER_KEY (or ENCRYPTION_SECRET) must be configured with at least 16 characters');
+}
+
+function getFallbackEncryptionSecrets() {
+  const rawFallbacks = process.env.ENCRYPTION_FALLBACK_KEYS || '';
+  if (typeof rawFallbacks !== 'string' || rawFallbacks.trim().length === 0) {
+    return [];
+  }
+
+  return rawFallbacks
+    .split(',')
+    .map((candidate) => normalizeSecret(candidate))
+    .filter(Boolean);
+}
+
+function getEncryptionSecretsForDecryption() {
+  const secrets = [];
+  const add = (secret) => {
+    if (!secret) return;
+    if (!secrets.includes(secret)) secrets.push(secret);
+  };
+
+  add(normalizeSecret(process.env.ENCRYPTION_MASTER_KEY));
+  add(normalizeSecret(process.env.ENCRYPTION_SECRET));
+  for (const fallbackSecret of getFallbackEncryptionSecrets()) {
+    add(fallbackSecret);
+  }
+
+  if (secrets.length === 0) {
+    add(getNonProdJwtFallbackSecret());
+  }
+
+  if (secrets.length === 0) {
+    throw new Error('ENCRYPTION_MASTER_KEY (or ENCRYPTION_SECRET) must be configured with at least 16 characters');
+  }
+
+  return secrets;
 }
 
 /**
@@ -64,7 +115,7 @@ function getEncryptionSecret() {
 export function encrypt(text) {
   if (!text) return null;
 
-  const secret = getEncryptionSecret();
+  const secret = getPrimaryEncryptionSecret();
 
   // Generate random salt and IV
   const salt = crypto.randomBytes(SALT_LENGTH);
@@ -95,8 +146,6 @@ export function encrypt(text) {
 export function decrypt(encryptedText) {
   if (!encryptedText) return null;
 
-  const secret = getEncryptionSecret();
-
   try {
     // Split the encrypted text
     const parts = encryptedText.split(':');
@@ -109,18 +158,28 @@ export function decrypt(encryptedText) {
     const encrypted = parts[2];
     const tag = Buffer.from(parts[3], 'base64');
 
-    // Derive key from secret
-    const key = deriveKey(secret, salt);
+    const secrets = getEncryptionSecretsForDecryption();
+    let lastError = null;
 
-    // Create decipher
-    const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
-    decipher.setAuthTag(tag);
+    for (const secret of secrets) {
+      try {
+        // Derive key from secret
+        const key = deriveKey(secret, salt);
 
-    // Decrypt
-    let decrypted = decipher.update(encrypted, 'base64', 'utf8');
-    decrypted += decipher.final('utf8');
+        // Create decipher
+        const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
+        decipher.setAuthTag(tag);
 
-    return decrypted;
+        // Decrypt
+        let decrypted = decipher.update(encrypted, 'base64', 'utf8');
+        decrypted += decipher.final('utf8');
+        return decrypted;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    throw lastError || new Error('Unable to decrypt payload with configured secrets');
   } catch (error) {
     console.error('Decryption error:', error.message);
     throw new Error('Failed to decrypt data');
@@ -171,6 +230,39 @@ export function decryptTokenValue(value, { allowPlaintext = true } = {}) {
   throw new Error('Token value is not encrypted');
 }
 
+function looksLikeLegacyEncryptedPayload(value) {
+  if (typeof value !== 'string') return false;
+  const parts = value.split(':');
+  if (parts.length !== 4) return false;
+  return parts.every((part) => part.length > 0 && /^[A-Za-z0-9+/=]+$/.test(part));
+}
+
+/**
+ * Decrypts versioned tokens, legacy encrypted payloads, or passes plaintext through.
+ * @param {string|null|undefined} value
+ * @param {Object} [options]
+ * @param {boolean} [options.allowPlaintext=true]
+ * @returns {string|null|undefined}
+ */
+export function decryptPossiblyEncryptedValue(value, { allowPlaintext = true } = {}) {
+  if (value == null) return value;
+  if (typeof value !== 'string' || value.length === 0) return value;
+
+  if (isEncryptedValue(value)) {
+    return decrypt(value.slice(TOKEN_ENCRYPTION_PREFIX.length));
+  }
+
+  if (looksLikeLegacyEncryptedPayload(value)) {
+    return decrypt(value);
+  }
+
+  if (allowPlaintext) {
+    return value;
+  }
+
+  throw new Error('Value is not encrypted');
+}
+
 /**
  * Validates that encryption is properly configured
  * @returns {boolean} True if encryption is working
@@ -202,6 +294,7 @@ export default {
   isEncryptedValue,
   encryptTokenValue,
   decryptTokenValue,
+  decryptPossiblyEncryptedValue,
   validateEncryption,
   generateSecureToken
 };

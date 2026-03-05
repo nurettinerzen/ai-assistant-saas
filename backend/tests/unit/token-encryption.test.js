@@ -1,8 +1,11 @@
 import assert from 'assert';
 import {
+  encrypt,
+  decrypt,
   isEncryptedValue,
   encryptTokenValue,
-  decryptTokenValue
+  decryptTokenValue,
+  decryptPossiblyEncryptedValue
 } from '../../src/utils/encryption.js';
 
 function expectThrows(fn, label) {
@@ -37,6 +40,11 @@ function run() {
       plaintext,
       'plaintext token should be accepted for lazy migration'
     );
+    assert.strictEqual(
+      decryptPossiblyEncryptedValue(plaintext, { allowPlaintext: true }),
+      plaintext,
+      'plaintext should pass through in mixed-mode decrypt helper'
+    );
 
     process.env.ENCRYPTION_MASTER_KEY = 'different-master-key-for-failure-check';
     expectThrows(
@@ -54,6 +62,28 @@ function run() {
     expectThrows(
       () => decryptTokenValue(tampered, { allowPlaintext: false }),
       'decrypt must fail when ciphertext is tampered'
+    );
+
+    // Legacy (non-prefixed) encrypted value should still decrypt.
+    process.env.ENCRYPTION_MASTER_KEY = 'test-master-key-for-aes-gcm-32-chars!!';
+    const legacyEncrypted = encrypt(plaintext);
+    assert.strictEqual(
+      decryptPossiblyEncryptedValue(legacyEncrypted, { allowPlaintext: false }),
+      plaintext,
+      'legacy encrypted values should decrypt via mixed-mode helper'
+    );
+
+    // Key-rotation compatibility:
+    // Data encrypted with legacy key must decrypt even after master key is introduced.
+    delete process.env.ENCRYPTION_MASTER_KEY;
+    process.env.ENCRYPTION_SECRET = 'legacy-key-for-rotation-compat-check-1234';
+    const encryptedWithLegacyKey = encrypt('legacy-token-value');
+    process.env.ENCRYPTION_MASTER_KEY = 'new-master-key-for-rotation-compat-5678';
+    process.env.ENCRYPTION_SECRET = 'legacy-key-for-rotation-compat-check-1234';
+    assert.strictEqual(
+      decrypt(encryptedWithLegacyKey),
+      'legacy-token-value',
+      'decrypt should try legacy key when master key does not match old data'
     );
 
     console.log('✅ token-encryption.test.js passed');
