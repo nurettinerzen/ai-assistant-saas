@@ -5,6 +5,7 @@
 
 import prisma from '../../prismaClient.js';
 import { ok, notFound, validationError, systemError, verificationRequired } from '../toolResult.js';
+import { OutcomeEventType } from '../../security/outcomePolicy.js';
 
 /**
  * Execute CRM ticket status check
@@ -61,12 +62,26 @@ export async function execute(args, business, context = {}) {
 
     // Verification: require name before returning data
     if (!verification_input) {
-      return verificationRequired(
+      const anchor = {
+        id: ticket.id,
+        name: ticket.customerName,
+        phone: ticket.customerPhone,
+        sourceTable: 'CrmTicket',
+        anchorType: 'TICKET',
+        anchorValue: ticket.ticketNumber
+      };
+      const result = verificationRequired(
         language === 'TR'
           ? 'Servis kaydı bulundu. Kimlik doğrulaması için ad ve soyadınızı söyler misiniz?'
           : 'Service record found. Could you please tell me your full name for verification?',
         { askFor: 'name' }
       );
+      result.stateEvents = [{
+        type: OutcomeEventType.VERIFICATION_REQUIRED,
+        askFor: 'name',
+        anchor
+      }];
+      return result;
     }
 
     // Verify name against customerName
@@ -75,18 +90,31 @@ export async function execute(args, business, context = {}) {
 
     if (!storedName || !storedName.includes(inputName.split(' ')[0])) {
       // Generic message — don't reveal whether record exists (security)
-      return notFound(
+      const failResult = notFound(
         language === 'TR'
           ? 'Bu bilgilerle eşleşen bir servis kaydı bulunamadı. Lütfen bilgilerinizi kontrol edin.'
           : 'No service record found matching this information. Please check your details.'
       );
+      failResult.stateEvents = [{
+        type: OutcomeEventType.VERIFICATION_FAILED
+      }];
+      return failResult;
     }
 
     // Verification passed — return full data
     const statusText = translateTicketStatus(ticket.status, language);
     const responseMessage = formatTicketMessage(ticket, statusText, language);
 
-    return ok({
+    const verifiedAnchor = {
+      id: ticket.id,
+      name: ticket.customerName,
+      phone: ticket.customerPhone,
+      sourceTable: 'CrmTicket',
+      anchorType: 'TICKET',
+      anchorValue: ticket.ticketNumber
+    };
+
+    const okResult = ok({
       ticket_number: ticket.ticketNumber,
       product: ticket.product,
       issue: ticket.issue,
@@ -97,6 +125,18 @@ export async function execute(args, business, context = {}) {
       cost: ticket.cost,
       last_update: ticket.externalUpdatedAt
     }, responseMessage);
+
+    okResult.stateEvents = [{
+      type: OutcomeEventType.VERIFICATION_PASSED,
+      anchor: verifiedAnchor,
+      verifiedField: 'name'
+    }];
+    okResult._identityContext = {
+      verifiedName: ticket.customerName,
+      sourceTable: 'CrmTicket'
+    };
+
+    return okResult;
 
   } catch (error) {
     console.error('❌ CRM ticket lookup error:', error);
