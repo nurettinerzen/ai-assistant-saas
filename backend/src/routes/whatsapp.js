@@ -57,6 +57,12 @@ import { safeCompareHex } from '../security/constantTime.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
+const VERIFY_TOKEN_ENV_KEYS = [
+  'WHATSAPP_VERIFY_TOKEN',
+  'META_VERIFY_TOKEN',
+  'WHATSAPP_WEBHOOK_VERIFY_TOKEN',
+  'VERIFY_TOKEN'
+];
 
 // In-memory conversation history
 // Format: Map<conversationKey, Array<message>>
@@ -77,6 +83,48 @@ setInterval(() => {
   }
 }, 60 * 1000);
 
+function maskSecret(value) {
+  if (!value || typeof value !== 'string') {
+    return 'missing';
+  }
+  if (value.length <= 4) {
+    return `${value.slice(0, 1)}***`;
+  }
+  return `${value.slice(0, 2)}***${value.slice(-2)}`;
+}
+
+function getBodyKeys(req) {
+  if (!req.body || typeof req.body !== 'object' || Buffer.isBuffer(req.body)) {
+    return [];
+  }
+  return Object.keys(req.body);
+}
+
+function logWebhookEntry(req, extra = {}) {
+  console.log('📥 [WhatsApp Webhook ENTRY]', {
+    requestId: req.requestId || null,
+    method: req.method,
+    path: req.originalUrl || req.path || null,
+    queryKeys: Object.keys(req.query || {}),
+    bodyKeys: getBodyKeys(req),
+    ...extra
+  });
+}
+
+function sendWebhookStatus(req, res, statusCode, reason, extra = {}) {
+  if (statusCode !== 200) {
+    console.warn('⚠️ [WhatsApp Webhook NON-200]', {
+      requestId: req.requestId || null,
+      method: req.method,
+      path: req.originalUrl || req.path || null,
+      statusCode,
+      reason,
+      ...extra
+    });
+  }
+  return res.sendStatus(statusCode);
+}
+
 // ============================================================================
 // WEBHOOK ENDPOINTS
 // ============================================================================
@@ -87,25 +135,54 @@ router.get('/webhook', webhookRateLimiter.middleware(), async (req, res) => {
   const token = req.query['hub.verify_token'];
   const challenge = req.query['hub.challenge'];
 
-  if (mode && token) {
-    if (mode === 'subscribe') {
-      const business = await prisma.business.findFirst({
-        where: { whatsappVerifyToken: token }
-      });
+  logWebhookEntry(req, {
+    phase: 'verification',
+    hubMode: mode || null,
+    hasVerifyToken: Boolean(token),
+    hasChallenge: Boolean(challenge)
+  });
 
-      if (business) {
-        console.log(`✅ Webhook verified for business: ${business.name} (ID: ${business.id})`);
-        res.status(200).send(challenge);
-      } else {
-        console.log('❌ Webhook verification failed: Invalid verify token');
-        res.sendStatus(403);
-      }
-    } else {
-      res.sendStatus(403);
-    }
-  } else {
-    res.sendStatus(400);
+  if (mode !== 'subscribe' || !token) {
+    return sendWebhookStatus(req, res, 403, 'verification_rejected', {
+      hubMode: mode || null,
+      hasVerifyToken: Boolean(token)
+    });
   }
+
+  if (!challenge) {
+    return sendWebhookStatus(req, res, 400, 'missing_challenge');
+  }
+
+  const business = await prisma.business.findFirst({
+    where: { whatsappVerifyToken: token }
+  });
+
+  if (business) {
+    console.log('✅ [WhatsApp Verify] Token matched business', {
+      requestId: req.requestId || null,
+      businessId: business.id,
+      businessName: business.name
+    });
+    return res.status(200).send(challenge);
+  }
+
+  const matchedEnvKey = VERIFY_TOKEN_ENV_KEYS.find((key) => {
+    const envValue = process.env[key];
+    return typeof envValue === 'string' && envValue.length > 0 && envValue === token;
+  });
+
+  if (matchedEnvKey) {
+    console.log('✅ [WhatsApp Verify] Token matched env verify token', {
+      requestId: req.requestId || null,
+      envKey: matchedEnvKey,
+      tokenMasked: maskSecret(token)
+    });
+    return res.status(200).send(challenge);
+  }
+
+  return sendWebhookStatus(req, res, 403, 'verify_token_mismatch', {
+    tokenMasked: maskSecret(token)
+  });
 });
 
 /**
@@ -114,37 +191,83 @@ router.get('/webhook', webhookRateLimiter.middleware(), async (req, res) => {
  */
 function verifyWhatsAppSignature(req, appSecret) {
   if (!appSecret) {
-    console.warn('⚠️ WHATSAPP_APP_SECRET not configured - signature verification disabled');
-    return true; // Allow in development, but log warning
+    return {
+      valid: true,
+      skipped: true,
+      reason: 'app_secret_missing'
+    };
   }
 
   const signature = req.headers['x-hub-signature-256'];
   if (!signature) {
-    console.error('❌ Missing X-Hub-Signature-256 header');
-    return false;
+    return {
+      valid: false,
+      reason: 'missing_signature_header'
+    };
   }
 
   // Meta sends signature as "sha256=<hash>"
   const signatureHash = signature.split('=')[1];
   if (!signatureHash) {
-    console.error('❌ Invalid signature format');
-    return false;
+    return {
+      valid: false,
+      reason: 'invalid_signature_format'
+    };
+  }
+
+  let payloadBuffer;
+  if (Buffer.isBuffer(req.rawBody)) {
+    payloadBuffer = req.rawBody;
+  } else if (typeof req.rawBody === 'string') {
+    payloadBuffer = Buffer.from(req.rawBody);
+  } else if (Buffer.isBuffer(req.body)) {
+    payloadBuffer = req.body;
+  } else {
+    payloadBuffer = Buffer.from(JSON.stringify(req.body || {}));
   }
 
   // Calculate expected signature
   const expectedHash = crypto
     .createHmac('sha256', appSecret)
-    .update(JSON.stringify(req.body))
+    .update(payloadBuffer)
     .digest('hex');
 
-  return safeCompareHex(signatureHash, expectedHash);
+  const valid = safeCompareHex(signatureHash, expectedHash);
+  return {
+    valid,
+    reason: valid ? 'ok' : 'signature_mismatch',
+    usedRawBody: Buffer.isBuffer(req.rawBody) || typeof req.rawBody === 'string'
+  };
+}
+
+async function logSignatureFailure(req, reason) {
+  console.error('❌ [WhatsApp Webhook] Signature verification failed', {
+    requestId: req.requestId || null,
+    reason,
+    signaturePresent: Boolean(req.headers['x-hub-signature-256'])
+  });
+
+  try {
+    await logWebhookSignatureFailure(req, 'whatsapp', 401);
+  } catch (eventLogError) {
+    console.error('❌ [WhatsApp Webhook] Failed to persist signature failure event', {
+      requestId: req.requestId || null,
+      error: eventLogError.message
+    });
+  }
 }
 
 // Webhook - Incoming messages (Multi-tenant)
 router.post('/webhook', webhookRateLimiter.middleware(), async (req, res) => {
+  logWebhookEntry(req, {
+    phase: 'event',
+    signaturePresent: Boolean(req.headers['x-hub-signature-256'])
+  });
+
   const entryCount = Array.isArray(req.body?.entry) ? req.body.entry.length : 0;
   const changeCount = Array.isArray(req.body?.entry?.[0]?.changes) ? req.body.entry[0].changes.length : 0;
   console.log('🔔 WhatsApp WEBHOOK RECEIVED', {
+    requestId: req.requestId || null,
     object: req.body?.object || null,
     entryCount,
     changeCount,
@@ -152,13 +275,19 @@ router.post('/webhook', webhookRateLimiter.middleware(), async (req, res) => {
 
   // SECURITY: Verify webhook signature
   const appSecret = process.env.WHATSAPP_APP_SECRET || process.env.META_APP_SECRET;
-  if (!verifyWhatsAppSignature(req, appSecret)) {
-    console.error('❌ WhatsApp webhook signature verification failed');
+  const signatureResult = verifyWhatsAppSignature(req, appSecret);
+  if (signatureResult.skipped) {
+    console.warn('⚠️ [WhatsApp Webhook] Signature verification skipped', {
+      requestId: req.requestId || null,
+      reason: signatureResult.reason
+    });
+  }
 
-    // Log security event
-    await logWebhookSignatureFailure(req, 'whatsapp', 401);
-
-    return res.sendStatus(401);
+  if (!signatureResult.valid) {
+    await logSignatureFailure(req, signatureResult.reason);
+    return sendWebhookStatus(req, res, 401, 'invalid_signature', {
+      reason: signatureResult.reason
+    });
   }
 
   try {
@@ -174,8 +303,10 @@ router.post('/webhook', webhookRateLimiter.middleware(), async (req, res) => {
       const phoneNumberId = value?.metadata?.phone_number_id;
 
       if (!phoneNumberId) {
-        console.error('❌ No phone number ID in webhook payload');
-        return res.sendStatus(400);
+        console.error('❌ No phone number ID in webhook payload', {
+          requestId: req.requestId || null
+        });
+        return sendWebhookStatus(req, res, 400, 'missing_phone_number_id');
       }
 
       // Find the business by phone number ID (include integrations for tools)
@@ -236,8 +367,10 @@ router.post('/webhook', webhookRateLimiter.middleware(), async (req, res) => {
       }
 
       if (!business) {
-        console.error(`❌ No business found for phone number ID: ${phoneNumberId}`);
-        return res.sendStatus(404);
+        console.error(`❌ No business found for phone number ID: ${phoneNumberId}`, {
+          requestId: req.requestId || null
+        });
+        return sendWebhookStatus(req, res, 404, 'business_not_found', { phoneNumberId });
       }
 
       console.log(`✅ Message for business: ${business.name} (ID: ${business.id})`);
@@ -296,13 +429,18 @@ router.post('/webhook', webhookRateLimiter.middleware(), async (req, res) => {
         return; // Already sent response
       }
 
-      res.sendStatus(200);
+      return res.sendStatus(200);
     } else {
-      res.sendStatus(404);
+      return sendWebhookStatus(req, res, 404, 'unexpected_object', {
+        object: body?.object || null
+      });
     }
   } catch (error) {
-    console.error('❌ Webhook error:', error);
-    res.sendStatus(500);
+    console.error('❌ Webhook error:', {
+      requestId: req.requestId || null,
+      message: error.message
+    });
+    return sendWebhookStatus(req, res, 500, 'handler_exception');
   }
 });
 
@@ -1132,17 +1270,27 @@ async function sendWhatsAppMessage(business, to, text, options = {}) {
   try {
     const result = await sendWhatsAppMessageCentral(business, to, text, options);
 
+    if (!result || result.success === false) {
+      const outboundError = new Error(result?.error || 'WhatsApp outbound send failed');
+      outboundError.name = 'WhatsAppSendError';
+      outboundError.details = result || null;
+      throw outboundError;
+    }
+
     if (result.duplicate) {
       console.log(`♻️ [WhatsApp] Duplicate send blocked for business ${business.name}`);
-    } else if (result.success) {
-      console.log(`✅ WhatsApp message sent for business ${business.name}:`, result.messageId);
     } else {
-      console.error(`❌ WhatsApp message FAILED for business ${business.name}:`, result.error);
+      console.log(`✅ WhatsApp message sent for business ${business.name}:`, result.messageId);
     }
 
     return result;
   } catch (error) {
-    console.error('❌ Error sending WhatsApp message:', error.message);
+    console.error('❌ Error sending WhatsApp message:', {
+      businessId: business?.id || null,
+      to,
+      error: error.message,
+      details: error.details || null
+    });
     throw error;
   }
 }
@@ -1153,9 +1301,9 @@ async function sendWhatsAppMessage(business, to, text, options = {}) {
 
 // Manual message sending endpoint (for testing)
 router.post('/send', async (req, res) => {
-  try {
-    const { businessId, to, message } = req.body;
+  const { businessId, to, message } = req.body || {};
 
+  try {
     if (!businessId || !to || !message) {
       return res.status(400).json({ error: 'businessId, to and message required' });
     }
