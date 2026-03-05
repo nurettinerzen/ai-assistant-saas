@@ -11,7 +11,7 @@
  *   4. If LLM classifier confidence >= 0.7 → catalog redirect template
  *   5. Else → safe fallback via LLM (tools stripped)
  *
- * Channel modes: FULL | KB_ONLY (default fail-closed when config is missing)
+ * Channel modes: FULL (default) | KB_ONLY (explicit opt-in per channel)
  */
 
 // ─── Turkish Text Normalization ───
@@ -113,15 +113,16 @@ Output format (strict JSON, no markdown):
  * @returns {'FULL' | 'KB_ONLY'}
  */
 export function getChannelMode(business, channel) {
-  // Fail-closed default: missing/invalid config should NOT grant FULL channel access.
-  if (!business?.channelConfig || typeof business.channelConfig !== 'object') return 'KB_ONLY';
+  // Default FULL: businesses get full tool access unless explicitly restricted to KB_ONLY.
+  // KB_ONLY must be an explicit opt-in per channel in channelConfig.
+  if (!business?.channelConfig || typeof business.channelConfig !== 'object') return 'FULL';
   const config = business.channelConfig;
   const key = String(channel).toLowerCase();
   const mode = String(config[key] || '').toUpperCase();
   if (mode === 'FULL' || mode === 'KB_ONLY') {
     return mode;
   }
-  return 'KB_ONLY';
+  return 'FULL';
 }
 
 /**
