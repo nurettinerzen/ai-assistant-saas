@@ -283,7 +283,7 @@ function inferFlowFromMessage(message = '') {
 
   const servicePattern = /\b(servis|service|ariza|ticket|rma|tamir|onarim|repair)\b/;
   if (servicePattern.test(text)) {
-    return null;
+    return 'TICKET_STATUS';
   }
 
   const stockPattern = /\b(stok|stock|envanter|available|availability|kac tane|kac adet|adet|tane|kac var|ne kadar var)\b/;

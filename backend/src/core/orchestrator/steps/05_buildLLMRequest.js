@@ -15,9 +15,10 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 const FLOW_TOOL_OVERRIDES = Object.freeze({
   STOCK_CHECK: ['get_product_stock', 'check_stock_crm'],
+  TICKET_STATUS: ['customer_data_lookup'],
   CALLBACK_REQUEST: ['create_callback']
 });
-const VERIFICATION_FLOWS = Object.freeze(['ORDER_STATUS', 'DEBT_INQUIRY', 'TRACKING_INFO', 'ACCOUNT_LOOKUP']);
+const VERIFICATION_FLOWS = Object.freeze(['ORDER_STATUS', 'DEBT_INQUIRY', 'TRACKING_INFO', 'TICKET_STATUS', 'ACCOUNT_LOOKUP']);
 
 function normalizeFlowName(flowName) {
   const normalized = String(flowName || '').toUpperCase();
@@ -47,7 +48,7 @@ function inferFlowFromMessage(message = '') {
 
   const servicePattern = /\b(servis|service|ariza|ticket|rma|tamir|onarim|repair)\b/;
   if (servicePattern.test(text)) {
-    return null;
+    return 'TICKET_STATUS';
   }
 
   if (/\b(stok|stock|envanter|available|availability|kac tane|kac adet|adet|tane|kac var|ne kadar var)\b/.test(text)) {

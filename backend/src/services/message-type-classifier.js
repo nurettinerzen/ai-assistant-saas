@@ -191,6 +191,7 @@ If message contains slot data, extract it:
 - order_number: SP001, ORD-123456, etc.
 - phone: 5551234567, 905551234567, etc.
 - customer_name: "Ali Yılmaz", etc.
+- ticket_number: SRV-19186, TKT-2026-0001, B21-TKT-2026-0001, etc.
 - complaint_details: extracted text if complaint intent
 
 **Response Format (JSON):**
@@ -198,7 +199,7 @@ If message contains slot data, extract it:
   "message_type": "SLOT_ANSWER" | "FOLLOWUP_DISPUTE" | "NEW_INTENT" | "CHATTER",
   "confidence": 0.0-1.0,
   "reason": "Brief explanation in ${languageName}",
-  "suggested_flow": "ORDER_STATUS" | "DEBT_INQUIRY" | "COMPLAINT" | null,
+  "suggested_flow": "ORDER_STATUS" | "TRACKING_INFO" | "DEBT_INQUIRY" | "TICKET_STATUS" | "COMPLAINT" | null,
   "extracted_slots": {
     "slot_name": "value"
   },
