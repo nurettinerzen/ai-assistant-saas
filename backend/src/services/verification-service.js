@@ -401,11 +401,32 @@ export function getFullResult(record, queryType, language = 'TR') {
     }
   } else if (normalizedQueryType === 'ariza' || normalizedQueryType === 'ticket') {
     const ticketNo = customFields['Servis No'] || record.ticketNumber;
-    const status = customFields['Durum'] || record.status;
+    const rawStatus = customFields['Durum'] || record.status;
     const issue = customFields['Arıza'] || record.issue;
     const notes = record.notes;
     const estimatedCompletion = record.estimatedCompletion;
     const cost = record.cost;
+
+    // Translate ticket status for display
+    const ticketStatusMap = {
+      'open': 'Açık',
+      'in_progress': 'İşlemde',
+      'in progress': 'İşlemde',
+      'pending': 'Beklemede',
+      'waiting_parts': 'Parça Bekleniyor',
+      'waiting parts': 'Parça Bekleniyor',
+      'closed': 'Kapatıldı',
+      'resolved': 'Çözüldü',
+      'cancelled': 'İptal Edildi',
+      'canceled': 'İptal Edildi',
+      'on_hold': 'Askıda',
+      'on hold': 'Askıda',
+      'escalated': 'Yönlendirildi',
+      'completed': 'Tamamlandı'
+    };
+    const status = language === 'TR'
+      ? (ticketStatusMap[rawStatus?.toLowerCase()] || rawStatus)
+      : rawStatus;
 
     // Add ticket fields to data
     result.data.ticket = {
@@ -419,7 +440,7 @@ export function getFullResult(record, queryType, language = 'TR') {
 
     result.message = language === 'TR'
       ? `${ticketNo} numaralı servis talebiniz "${status}" durumunda.${issue ? ` Arıza: ${issue}` : ''}`
-      : `Your service ticket ${ticketNo} is "${status}".${issue ? ` Issue: ${issue}` : ''}`;
+      : `Your service ticket ${ticketNo} is "${rawStatus}".${issue ? ` Issue: ${issue}` : ''}`;
 
   } else {
     result.message = language === 'TR'
