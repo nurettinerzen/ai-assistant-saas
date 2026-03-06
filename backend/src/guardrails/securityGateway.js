@@ -627,7 +627,8 @@ export function evaluateToolRequiredClaimGate({
   intent = null,
   activeFlow = null,
   userMessage = '',
-  toolsCalled = []
+  toolsCalled = [],
+  verificationState = 'none'
 } = {}) {
   const topic = detectClaimGateTopic({ intent, activeFlow, userMessage });
   if (!topic) return { needsMinInfo: false };
@@ -638,6 +639,13 @@ export function evaluateToolRequiredClaimGate({
   const called = new Set((Array.isArray(toolsCalled) ? toolsCalled : []).map(String));
   const hasRequiredToolCall = [...topicConfig.requiredTools].some(tool => called.has(tool));
   if (hasRequiredToolCall) {
+    return { needsMinInfo: false };
+  }
+
+  // If verification already passed, data was fetched in a previous turn.
+  // Allow follow-up questions without requiring the tool again.
+  if (verificationState === 'verified') {
+    console.log(`✅ [ClaimGate] Skipping ${topic} — verification already passed, data available from previous turn`);
     return { needsMinInfo: false };
   }
 

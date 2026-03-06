@@ -533,7 +533,8 @@ export async function applyGuardrails(params) {
       intent,
       activeFlow,
       userMessage,
-      toolsCalled
+      toolsCalled,
+      verificationState
     });
     if (toolRequiredGate.needsMinInfo) {
       const minInfoVariant = resolveMinInfoQuestion({
