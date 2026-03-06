@@ -134,6 +134,31 @@ function appendPolicyBlock(metrics = {}, blockId = null) {
   metrics.policy_blocks = list;
 }
 
+function isRouterPassthroughEnabled() {
+  return String(process.env.ROUTER_PASSTHROUGH || '').toLowerCase() === 'true';
+}
+
+function getContractEnforceMode() {
+  const mode = String(process.env.CONTRACT_ENFORCE_MODE || 'enforce').toLowerCase().trim();
+  return mode === 'disabled' ? 'disabled' : 'enforce';
+}
+
+function cloneStateForRouterDecision(state = {}) {
+  try {
+    if (typeof structuredClone === 'function') {
+      return structuredClone(state);
+    }
+  } catch {
+    // Fall through to JSON clone.
+  }
+
+  try {
+    return JSON.parse(JSON.stringify(state || {}));
+  } catch {
+    return { ...(state || {}) };
+  }
+}
+
 function mapAssistantMessageType({
   guardrailAction = 'PASS',
   responseGrounding = RESPONSE_GROUNDING.GROUNDED,
@@ -1258,9 +1283,14 @@ export async function handleIncomingMessage({
     // STEP 4: Router Decision
     // ========================================
     console.log('\n[STEP 4] Making routing decision...');
-    const routingResult = await makeRoutingDecision({
+    const routerPassthroughEnabled = isRouterPassthroughEnabled();
+    const routerState = routerPassthroughEnabled
+      ? cloneStateForRouterDecision(state)
+      : state;
+
+    const rawRoutingResult = await makeRoutingDecision({
       classification,
-      state,
+      state: routerState,
       userMessage,
       conversationHistory,
       language,
@@ -1271,8 +1301,46 @@ export async function handleIncomingMessage({
       channel,
       hasKBMatch
     });
+
+    let routingResult = rawRoutingResult;
+
+    if (routerPassthroughEnabled) {
+      const routerLog = {
+        at: new Date().toISOString(),
+        passthrough: true,
+        action: rawRoutingResult?.routing?.routing?.action || rawRoutingResult?.routing?.action || null,
+        suggestedFlow: rawRoutingResult?.routing?.routing?.suggestedFlow || null,
+        reason: rawRoutingResult?.routing?.routing?.reason || rawRoutingResult?.routing?.reason || null,
+        isChatter: !!(rawRoutingResult?.isChatter || rawRoutingResult?.chatterDirective),
+        detectedBy: rawRoutingResult?.metadata?.detectedBy || null
+      };
+
+      state._routerLog = routerLog;
+      metrics._routerLog = routerLog;
+      metrics.router_passthrough = true;
+
+      routingResult = {
+        directResponse: false,
+        routing: {
+          action: 'ROUTER_PASSTHROUGH',
+          routing: {
+            action: 'ROUTER_PASSTHROUGH',
+            reason: 'ROUTER_PASSTHROUGH=true',
+            suggestedFlow: null
+          }
+        },
+        metadata: {
+          mode: 'router_passthrough'
+        }
+      };
+
+      metrics.route_final = 'ROUTER_PASSTHROUGH';
+      console.log('⚪ [Orchestrator] ROUTER_PASSTHROUGH=true — router decision logged to state._routerLog and ignored');
+    } else {
+      metrics.route_final = routingResult?.routing?.routing?.action || null;
+    }
+
     traceRouting = routingResult;
-    metrics.route_final = routingResult?.routing?.routing?.action || null;
 
     // Enforce LLM-first: any directResponse signal is treated as context only.
     if (routingResult.directResponse) {
@@ -1288,7 +1356,8 @@ export async function handleIncomingMessage({
     const messageOrderNumber = extractOrderNumberFromMessage(userMessage);
     const currentAnchorOrder = state.verification?.anchor?.value || state.anchor?.order_number || null;
 
-    if (messageOrderNumber && currentAnchorOrder &&
+    if (!routerPassthroughEnabled &&
+        messageOrderNumber && currentAnchorOrder &&
         messageOrderNumber !== currentAnchorOrder) {
       console.log(`🔄 [Orchestrator] New order detected: ${messageOrderNumber} (current anchor: ${currentAnchorOrder})`);
 
@@ -1936,9 +2005,16 @@ export async function handleIncomingMessage({
     });
 
     // ── Contract enforcement: clarification ⇒ NEED_MORE_INFO (fail-safe) ──
-    if (assistantMessageType === 'clarification' && turnOutcome === ToolOutcome.OK) {
+    const contractEnforceMode = getContractEnforceMode();
+    if (contractEnforceMode === 'enforce' &&
+        assistantMessageType === 'clarification' &&
+        turnOutcome === ToolOutcome.OK) {
       console.warn('🔒 [ContractEnforce] messageType=clarification but outcome=OK → overriding to NEED_MORE_INFO');
       turnOutcome = ToolOutcome.NEED_MORE_INFO;
+    } else if (contractEnforceMode === 'disabled' &&
+               assistantMessageType === 'clarification' &&
+               turnOutcome === ToolOutcome.OK) {
+      console.warn('⚪ [ContractEnforce] CONTRACT_ENFORCE_MODE=disabled — skipping clarification outcome override');
     }
 
     const normalizedToolOutcomes = Array.isArray(toolLoopResult?.toolResults)

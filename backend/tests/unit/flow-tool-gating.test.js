@@ -67,6 +67,55 @@ describe('flow scoped tool gating', () => {
     expect(result.gatedTools).toEqual(['get_product_stock', 'check_stock_crm']);
   });
 
+  it('bypasses flow-based gating in tenant_scoped mode', () => {
+    const previousMode = process.env.TOOL_ALLOWLIST_MODE;
+    process.env.TOOL_ALLOWLIST_MODE = 'tenant_scoped';
+
+    try {
+      const result = resolveFlowScopedTools({
+        state: { activeFlow: 'PRODUCT_INFO' },
+        classification: {},
+        routingResult: {},
+        allToolNames: ['customer_data_lookup', 'get_product_stock', 'check_stock_crm']
+      });
+
+      expect(result.resolvedFlow).toBe('PRODUCT_INFO');
+      expect(result.gatedTools).toEqual(['customer_data_lookup', 'get_product_stock', 'check_stock_crm']);
+      expect(result.allowlistMode).toBe('tenant_scoped');
+    } finally {
+      if (previousMode === undefined) {
+        delete process.env.TOOL_ALLOWLIST_MODE;
+      } else {
+        process.env.TOOL_ALLOWLIST_MODE = previousMode;
+      }
+    }
+  });
+
+  it('disables inferFlowFromMessage in tenant_scoped mode', () => {
+    const previousMode = process.env.TOOL_ALLOWLIST_MODE;
+    process.env.TOOL_ALLOWLIST_MODE = 'tenant_scoped';
+
+    try {
+      const result = resolveFlowScopedTools({
+        state: {},
+        classification: {},
+        routingResult: {},
+        userMessage: 'Bu model stokta var mı, kaç tane kaldı?',
+        allToolNames: ['customer_data_lookup', 'get_product_stock', 'check_stock_crm']
+      });
+
+      expect(result.resolvedFlow).toBe(null);
+      expect(result.gatedTools).toEqual(['customer_data_lookup', 'get_product_stock', 'check_stock_crm']);
+      expect(result.allowlistMode).toBe('tenant_scoped');
+    } finally {
+      if (previousMode === undefined) {
+        delete process.env.TOOL_ALLOWLIST_MODE;
+      } else {
+        process.env.TOOL_ALLOWLIST_MODE = previousMode;
+      }
+    }
+  });
+
   it('keeps verification context relevant when activeFlow is null but pending anchor exists', () => {
     const relevant = isVerificationContextRelevant({
       state: {

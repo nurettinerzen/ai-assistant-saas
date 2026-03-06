@@ -267,6 +267,9 @@ export async function applyGuardrails(params) {
 
   // Mutable response text (sanitize policies)
   let responseText = initialResponseText;
+  const guardrailMode = String(process.env.GUARDRAIL_MODE || 'full').toLowerCase().trim();
+  const safetyOnlyMode = guardrailMode === 'safety_only';
+  metrics.guardrailMode = safetyOnlyMode ? 'safety_only' : 'full';
 
   console.log('🛡️ [Guardrails] Applying policies...');
 
@@ -668,6 +671,47 @@ export async function applyGuardrails(params) {
         };
       }
     }
+  }
+
+  if (safetyOnlyMode) {
+    console.log('⚪ [Guardrails] GUARDRAIL_MODE=safety_only — skipped non-safety policies');
+
+    const appliedPolicies = [
+      'RESPONSE_FIREWALL',
+      piiScan.hasHigh ? 'PII_PREVENTION (WARN)' : 'PII_PREVENTION',
+      'SECURITY_GATEWAY'
+    ];
+
+    const responseChanged = String(responseText || '') !== String(initialResponseText || '');
+    const finalAction = responseChanged ? GuardrailAction.SANITIZE : GuardrailAction.PASS;
+
+    metrics.securityTelemetry = {
+      blocked: false,
+      blockReason: null,
+      repromptCount: 0,
+      fallbackUsed: false,
+      fallbackMessageKey: null,
+      policiesRan: appliedPolicies,
+      violations: {
+        toolOnlyData: null,
+        internalProtocol: null,
+        confabulation: null,
+        fieldGrounding: null,
+      },
+      featureFlags: {
+        TOOL_ONLY_DATA_HARDBLOCK: isFeatureEnabled('TOOL_ONLY_DATA_HARDBLOCK'),
+        FIELD_GROUNDING_HARDBLOCK: isFeatureEnabled('FIELD_GROUNDING_HARDBLOCK'),
+        PRODUCT_SPEC_ENFORCE: isFeatureEnabled('PRODUCT_SPEC_ENFORCE'),
+      },
+      toolsCalled: toolsCalled.length,
+      toolSuccess: hadToolSuccess,
+    };
+
+    return {
+      finalResponse: responseText,
+      action: finalAction,
+      guardrailsApplied: appliedPolicies
+    };
   }
 
   // POLICY 2: Tool-Only Data Guard (P0-A - semantic gating)

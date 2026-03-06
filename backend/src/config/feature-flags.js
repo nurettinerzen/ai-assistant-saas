@@ -16,7 +16,7 @@ export const FEATURE_FLAGS = {
   // Action Claim Enforcement
   // When enabled: Validates that AI doesn't claim actions without tool calls
   // When disabled: No validation (may allow hallucinated actions)
-  ENFORCE_ACTION_CLAIMS: process.env.FEATURE_ENFORCE_ACTION_CLAIMS === 'true' || true, // Always on
+  ENFORCE_ACTION_CLAIMS: process.env.FEATURE_ENFORCE_ACTION_CLAIMS === 'true',
 
   // Post-Result Grace Period
   // When enabled: After flow resolves, enters post_result state for 1-3 turns
@@ -26,7 +26,7 @@ export const FEATURE_FLAGS = {
   // Complaint Tool Enforcement
   // When enabled: COMPLAINT flow MUST call create_callback (backend enforced)
   // When disabled: Relies on AI to call tool (may fail)
-  ENFORCE_COMPLAINT_CALLBACK: process.env.FEATURE_ENFORCE_COMPLAINT_CALLBACK === 'true' || true, // Always on
+  ENFORCE_COMPLAINT_CALLBACK: process.env.FEATURE_ENFORCE_COMPLAINT_CALLBACK === 'true',
 
   // Logging
   LOG_MESSAGE_CLASSIFICATION: true, // Log classification decisions for debugging
@@ -371,6 +371,15 @@ export function getPolicyAppendMode(context = {}) {
 
 // ─── Startup log: PHONE V1 flags ───
 if (ENVIRONMENT !== 'test') {
+  console.log('[feature-flags] LLM-FIRST config:', {
+    ROUTER_PASSTHROUGH: process.env.ROUTER_PASSTHROUGH,
+    GUARDRAIL_MODE: process.env.GUARDRAIL_MODE,
+    CONTRACT_ENFORCE_MODE: process.env.CONTRACT_ENFORCE_MODE,
+    USE_LLM_FOR_TOOL_OUTCOMES: process.env.USE_LLM_FOR_TOOL_OUTCOMES,
+    CLASSIFIER_PASSTHROUGH: process.env.CLASSIFIER_PASSTHROUGH,
+    PRE_LLM_CONTENT_MODE: process.env.PRE_LLM_CONTENT_MODE,
+    TOOL_ALLOWLIST_MODE: process.env.TOOL_ALLOWLIST_MODE
+  });
   console.log('[feature-flags] PHONE V1 startup config:');
   console.log(`  PHONE_OUTBOUND_V1_ENABLED     = ${FEATURE_FLAGS.PHONE_OUTBOUND_V1_ENABLED}`);
   console.log(`  PHONE_INBOUND_ENABLED          = ${FEATURE_FLAGS.PHONE_INBOUND_ENABLED}`);

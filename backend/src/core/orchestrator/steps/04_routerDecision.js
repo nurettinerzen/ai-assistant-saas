@@ -19,6 +19,10 @@ import { routeMessage } from '../../../services/message-router.js';
 import { buildChatterDirective, isPureChatter } from '../../../services/chatter-response.js';
 import { hasAccountHint, classifyRedirectCategory, buildKbOnlyRedirectVariables } from '../../../config/channelMode.js';
 
+function isRouterPassthroughEnabled() {
+  return String(process.env.ROUTER_PASSTHROUGH || '').toLowerCase() === 'true';
+}
+
 /**
  * Unified chatter handler (LLM-first).
  * Called from both the early regex path and the ACKNOWLEDGE_CHATTER action path.
@@ -301,6 +305,7 @@ function inferFlowFromMessage(message = '') {
 
 export async function makeRoutingDecision(params) {
   const { classification, state, userMessage, conversationHistory, language, business, sessionId = '' } = params;
+  const routerPassthroughEnabled = isRouterPassthroughEnabled();
 
   // ========================================
   // KB_ONLY MODE: Intercept account-specific queries BEFORE routing
@@ -435,7 +440,7 @@ export async function makeRoutingDecision(params) {
     state.flowStatus === 'post_result' ||
     Boolean(state.activeFlow);
 
-  if (!hasActiveTask && isPureChatter(userMessage)) {
+  if (!routerPassthroughEnabled && !hasActiveTask && isPureChatter(userMessage)) {
     return handleChatter({ userMessage, state, language, sessionId, messageRouting, detectedBy: 'regex_early' });
   }
 
@@ -567,6 +572,17 @@ export async function makeRoutingDecision(params) {
     }
 
     case 'ACKNOWLEDGE_CHATTER': {
+      if (routerPassthroughEnabled) {
+        console.log('⚪ [RouterDecision] ROUTER_PASSTHROUGH=true — chatter directive suppressed');
+        return {
+          directResponse: false,
+          routing: messageRouting,
+          metadata: {
+            mode: 'router_passthrough',
+            suppressed: 'ACKNOWLEDGE_CHATTER'
+          }
+        };
+      }
       return handleChatter({ userMessage, state, language, sessionId, messageRouting, detectedBy: 'action_route' });
     }
 

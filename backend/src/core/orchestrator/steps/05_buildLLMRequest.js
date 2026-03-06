@@ -20,6 +20,13 @@ const FLOW_TOOL_OVERRIDES = Object.freeze({
 });
 const VERIFICATION_FLOWS = Object.freeze(['ORDER_STATUS', 'DEBT_INQUIRY', 'TRACKING_INFO', 'TICKET_STATUS', 'ACCOUNT_LOOKUP']);
 
+function getToolAllowlistMode() {
+  const mode = String(process.env.TOOL_ALLOWLIST_MODE || 'flow_scoped')
+    .toLowerCase()
+    .trim();
+  return mode === 'tenant_scoped' ? 'tenant_scoped' : 'flow_scoped';
+}
+
 function normalizeFlowName(flowName) {
   const normalized = String(flowName || '').toUpperCase();
   if (!normalized) return null;
@@ -85,26 +92,43 @@ export function isVerificationContextRelevant({
 }
 
 export function resolveFlowScopedTools({ state, classification, routingResult, userMessage = '', allToolNames = [] }) {
+  const allowlistMode = getToolAllowlistMode();
   const normalizedAllTools = Array.isArray(allToolNames) ? allToolNames.filter(Boolean) : [];
   if (normalizedAllTools.length === 0) {
     return {
       resolvedFlow: null,
-      gatedTools: []
+      gatedTools: [],
+      allowlistMode
     };
   }
 
   const candidates = [
     state?.activeFlow,
     routingResult?.routing?.routing?.suggestedFlow,
-    classification?.suggestedFlow,
-    inferFlowFromMessage(userMessage)
+    classification?.suggestedFlow
   ].map(normalizeFlowName).filter(Boolean);
 
+  if (allowlistMode !== 'tenant_scoped') {
+    const inferredFlow = normalizeFlowName(inferFlowFromMessage(userMessage));
+    if (inferredFlow) {
+      candidates.push(inferredFlow);
+    }
+  }
+
   const resolvedFlow = candidates[0] || null;
+  if (allowlistMode === 'tenant_scoped') {
+    return {
+      resolvedFlow,
+      gatedTools: normalizedAllTools,
+      allowlistMode
+    };
+  }
+
   if (!resolvedFlow) {
     return {
       resolvedFlow: null,
-      gatedTools: normalizedAllTools
+      gatedTools: normalizedAllTools,
+      allowlistMode
     };
   }
 
@@ -116,7 +140,8 @@ export function resolveFlowScopedTools({ state, classification, routingResult, u
   if (flowTools.length === 0) {
     return {
       resolvedFlow,
-      gatedTools: normalizedAllTools
+      gatedTools: normalizedAllTools,
+      allowlistMode
     };
   }
 
@@ -129,7 +154,8 @@ export function resolveFlowScopedTools({ state, classification, routingResult, u
 
   return {
     resolvedFlow,
-    gatedTools
+    gatedTools,
+    allowlistMode
   };
 }
 
@@ -433,7 +459,7 @@ KURALLAR:
 
   // LLM decides whether to call tools; backend only passes allowlisted tools.
   const allToolNames = toolsAll.map(t => t.function?.name).filter(Boolean);
-  const { gatedTools, resolvedFlow } = resolveFlowScopedTools({
+  const { gatedTools, resolvedFlow, allowlistMode } = resolveFlowScopedTools({
     state,
     classification,
     routingResult,
@@ -448,6 +474,7 @@ KURALLAR:
   });
 
   metrics.flowScopedTools = {
+    allowlistMode,
     resolvedFlow: resolvedFlow || null,
     allToolCount: allToolNames.length,
     gatedToolCount: gatedTools.length
