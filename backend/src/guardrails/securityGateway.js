@@ -231,9 +231,17 @@ function checkIdentityMatch(verifiedIdentity, requestedRecord) {
   // Eşleşme kriterleri (en az biri match etmeli)
   const checks = [];
 
-  // Telefon kontrolü
+  // Telefon kontrolü (masked phone desteği: '+90******9514' vs '+905556959514')
   if (verifiedIdentity.phone && requestedRecord.phone) {
-    const phoneMatch = comparePhones(verifiedIdentity.phone, requestedRecord.phone);
+    let phoneMatch;
+    if (requestedRecord.phone.includes('*')) {
+      // redactPII masked phone → compare only visible (last 4) digits
+      const last4Verified = verifiedIdentity.phone.replace(/\D/g, '').slice(-4);
+      const last4Requested = requestedRecord.phone.replace(/\D/g, '').slice(-4);
+      phoneMatch = last4Verified === last4Requested;
+    } else {
+      phoneMatch = comparePhones(verifiedIdentity.phone, requestedRecord.phone);
+    }
     checks.push({ field: 'phone', matches: phoneMatch });
   }
 
