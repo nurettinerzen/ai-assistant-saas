@@ -1,23 +1,24 @@
 /**
  * CRM Stock Handler
- * Checks stock from custom CRM webhook data
  *
- * ARCHITECTURE:
- * - Phase A: Candidate listing (findMany, not findFirst)
- * - Phase B: Disambiguation if multiple candidates
+ * LLM-first approach: returns the full stock catalog to LLM.
+ * LLM decides which product matches the customer's query (handles typos,
+ * Turkish chars, partial names, etc.) and responds accordingly.
+ *
+ * - SKU given → exact match (single product)
+ * - product_name given → return full catalog, LLM matches
  * - Stock Disclosure Policy: NEVER return raw quantities to LLM
- *
- * match_type: EXACT_SKU | MULTIPLE_CANDIDATES | NO_MATCH
  */
 
 import prisma from '../../prismaClient.js';
-import { ok, notFound, validationError, systemError } from '../toolResult.js';
+import { ok, notFound, systemError } from '../toolResult.js';
 import {
   applyDisclosurePolicy,
-  applyDisclosureToCandidates,
   formatAvailabilityStatus,
   formatQuantityCheck
 } from '../../policies/stockDisclosurePolicy.js';
+
+const CATALOG_LIMIT = 200;
 
 /**
  * Execute CRM stock check
@@ -29,61 +30,25 @@ export async function execute(args, business, context = {}) {
 
     console.log('🔍 CRM: Checking stock:', { product_name, sku, requested_qty });
 
-    // Validate - at least one parameter required
-    if (!product_name && !sku) {
-      return validationError(
-        language === 'TR'
-          ? 'Ürün adı veya SKU kodu gerekli.'
-          : 'Product name or SKU is required.',
-        'product_name | sku'
-      );
-    }
-
-    // ─── Phase A: Candidate listing ───────────────────────────────
-    let candidates;
-
-    if (sku) {
-      // Exact SKU match → Prisma is fine
-      candidates = await prisma.crmStock.findMany({
-        where: { businessId: business.id, sku: { equals: sku, mode: 'insensitive' } },
-        take: 20
-      });
-    } else {
-      // Product name search: use translate() for Turkish char normalization
-      // "nova ses gecidi" must match "Nova Ses Geçidi Pro Bulut"
-      candidates = await prisma.$queryRaw`
-        SELECT * FROM "CrmStock"
-        WHERE "businessId" = ${business.id}
-        AND (
-          LOWER("sku") LIKE '%' || LOWER(${product_name}) || '%'
-          OR translate(LOWER("productName"), 'çğıöşü', 'cgiosu')
-             LIKE '%' || translate(LOWER(${product_name}), 'çğıöşü', 'cgiosu') || '%'
-        )
-        LIMIT 20
-      `;
-    }
-
-    if (candidates.length === 0) {
-      return notFound(
-        language === 'TR'
-          ? `"${product_name || sku}" için stok bilgisi bulunamadı.`
-          : `Stock information not found for "${product_name || sku}".`
-      );
-    }
-
-    console.log(`✅ CRM Stock: ${candidates.length} candidate(s) found`);
-
-    // Parse requested quantity if provided
     const reqQty = requested_qty ? parseInt(requested_qty, 10) : null;
 
-    // ─── Phase B: Single match → apply disclosure and return ───────
-    if (candidates.length === 1) {
-      const stock = candidates[0];
-      const disclosed = applyDisclosurePolicy(stock, {
-        requestedQty: reqQty
+    // ─── SKU: exact match ──────────────────────────────────────────
+    if (sku) {
+      const candidates = await prisma.crmStock.findMany({
+        where: { businessId: business.id, sku: { equals: sku, mode: 'insensitive' } },
+        take: 5
       });
 
-      const responseMessage = formatSingleStockMessage(stock, disclosed, language);
+      if (candidates.length === 0) {
+        return notFound(
+          language === 'TR'
+            ? `"${sku}" SKU kodlu ürün bulunamadı.`
+            : `Product with SKU "${sku}" not found.`
+        );
+      }
+
+      const stock = candidates[0];
+      const disclosed = applyDisclosurePolicy(stock, { requestedQty: reqQty });
 
       return ok({
         match_type: 'EXACT_SKU',
@@ -94,27 +59,51 @@ export async function execute(args, business, context = {}) {
         estimated_restock: disclosed.estimated_restock,
         quantity_check: disclosed.quantity_check || null,
         last_update: stock.externalUpdatedAt
-        // NOTE: raw quantity is NEVER included
-      }, responseMessage);
+      }, formatSingleStockMessage(stock, disclosed, language));
     }
 
-    // ─── Phase B: Multiple candidates → disambiguation needed ──────
-    const disambiguationResult = applyDisclosureToCandidates(candidates, {
-      requestedQty: reqQty
+    // ─── Product name: return full catalog, LLM decides ────────────
+    const allStock = await prisma.crmStock.findMany({
+      where: { businessId: business.id },
+      select: {
+        sku: true,
+        productName: true,
+        inStock: true,
+        price: true,
+        estimatedRestock: true,
+        externalUpdatedAt: true
+      },
+      orderBy: { productName: 'asc' },
+      take: CATALOG_LIMIT
     });
 
-    const responseMessage = formatDisambiguationMessage(
-      product_name || sku,
-      disambiguationResult,
-      language
-    );
+    if (allStock.length === 0) {
+      return notFound(
+        language === 'TR'
+          ? 'Bu işletme için stok verisi bulunamadı.'
+          : 'No stock data found for this business.'
+      );
+    }
+
+    console.log(`✅ CRM Stock: Returning ${allStock.length} items from catalog`);
+
+    // Build compact catalog for LLM
+    const catalog = allStock.map(item => ({
+      sku: item.sku,
+      name: item.productName,
+      in_stock: item.inStock,
+      price: item.price
+    }));
+
+    const responseMessage = language === 'TR'
+      ? `Stok kataloğunda ${allStock.length} ürün bulundu. Müşterinin sorduğu "${product_name || ''}" ile eşleşen ürünü belirle ve stok durumunu bildir.`
+      : `Found ${allStock.length} products in stock catalog. Match the customer's query "${product_name || ''}" and report stock status.`;
 
     return ok({
-      match_type: 'MULTIPLE_CANDIDATES',
-      search_term: product_name || sku,
-      candidates_summary: disambiguationResult.candidates_summary,
-      // LLM should ask clarifying questions before giving stock status
-      disambiguation_required: true
+      match_type: 'CATALOG',
+      search_term: product_name || null,
+      total_products: allStock.length,
+      catalog
     }, responseMessage);
 
   } catch (error) {
@@ -130,9 +119,6 @@ export async function execute(args, business, context = {}) {
 
 // ─── Formatting helpers ──────────────────────────────────────────────
 
-/**
- * Format stock message for a single matched product (no raw quantity)
- */
 function formatSingleStockMessage(stock, disclosed, language) {
   const statusLabel = formatAvailabilityStatus(disclosed.availability, language);
 
@@ -155,7 +141,6 @@ function formatSingleStockMessage(stock, disclosed, language) {
     return message;
   }
 
-  // English
   let message = `${stock.productName}: ${statusLabel}.`;
 
   if (disclosed.quantity_check) {
@@ -170,49 +155,6 @@ function formatSingleStockMessage(stock, disclosed, language) {
   if (stock.price) {
     message += ` Price: ${stock.price} TL.`;
   }
-
-  return message;
-}
-
-/**
- * Format disambiguation message when multiple candidates found
- */
-function formatDisambiguationMessage(searchTerm, result, language) {
-  const { candidates_summary } = result;
-  const count = candidates_summary.count;
-  const options = candidates_summary.top_options.map(o => o.label);
-  const dims = candidates_summary.dimensions;
-
-  if (language === 'TR') {
-    let message = `"${searchTerm}" araması için ${count} farklı ürün bulundu.`;
-
-    if (dims.length > 0) {
-      const dimLabels = {
-        model: 'model',
-        storage: 'depolama',
-        color: 'renk',
-        size: 'beden',
-        carrier: 'operatör'
-      };
-      const dimStr = dims.map(d => dimLabels[d] || d).join(', ');
-      message += ` Varyasyon boyutları: ${dimStr}.`;
-    }
-
-    message += ` Seçenekler: ${options.join(', ')}.`;
-    message += ` Stok durumu modele göre değişiyor. Hangi ürünü sorgulamak istediğini netleştirmek gerekiyor.`;
-
-    return message;
-  }
-
-  // English
-  let message = `Found ${count} products matching "${searchTerm}".`;
-
-  if (dims.length > 0) {
-    message += ` Variation dimensions: ${dims.join(', ')}.`;
-  }
-
-  message += ` Options: ${options.join(', ')}.`;
-  message += ` Stock status varies by product. Please specify which product you'd like to check.`;
 
   return message;
 }

@@ -29,6 +29,5 @@ export default {
     },
     required: [] // At least one of product_name or sku should be provided
   },
-  allowedBusinessTypes: ['ECOMMERCE', 'SERVICE', 'OTHER'],
-  requiredIntegrations: ['CRM_WEBHOOK']
+  allowedBusinessTypes: ['ECOMMERCE', 'SERVICE', 'OTHER']
 };
