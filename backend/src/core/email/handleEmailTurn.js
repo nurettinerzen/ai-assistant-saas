@@ -16,8 +16,8 @@
  * 2. Fetch Thread (get email history from provider)
  * 3. Classify Email (intent, urgency, needs_tools)
  * 4. Tool Gating (determine which tools are available)
- * 5. Tool Loop (read-only lookups)
- * 6. Generate Draft (LLM generates response)
+ * 5. Init (no-op — tools called by LLM in Step 6)
+ * 6. Generate Draft (LLM generates response + calls tools via function calling)
  * 7. Guardrails (recipient, action-claim, verification)
  * 8. Create Draft (save to provider as draft)
  * 9. Persist & Metrics
@@ -326,20 +326,40 @@ export async function handleEmailTurn(params) {
     const toolLoopResult = await executeEmailToolLoop(ctx);
 
     metrics.steps.toolLoop = Date.now() - step5Start;
-    metrics.toolsCalled = ctx.toolResults.map(r => r.toolName);
-    metrics.hadToolSuccess = ctx.toolResults.some(r => normalizeOutcome(r.outcome) === ToolOutcome.OK);
-    console.log(`✅ [EmailTurn] Tool loop complete: ${ctx.toolResults.length} calls (${metrics.steps.toolLoop}ms)`);
+    console.log(`✅ [EmailTurn] Tool loop init complete (${metrics.steps.toolLoop}ms)`);
 
     // ============================================
-    // STEP 5.25: Tool Result PII Scrubbing
-    // Scrub PII from tool results BEFORE sending to LLM
+    // STEP 6: Generate Draft
+    // ============================================
+    const step6Start = Date.now();
+    const generateResult = await generateEmailDraft(ctx);
+
+    if (!generateResult.success) {
+      console.error('❌ [EmailTurn] Failed to generate draft:', generateResult.error);
+      return {
+        success: false,
+        error: generateResult.error,
+        errorCode: 'DRAFT_GENERATION_FAILED',
+        metrics
+      };
+    }
+
+    metrics.steps.generateDraft = Date.now() - step6Start;
+    metrics.inputTokens = generateResult.inputTokens;
+    metrics.outputTokens = generateResult.outputTokens;
+    metrics.toolsCalled = ctx.toolResults.map(r => r.toolName);
+    metrics.hadToolSuccess = ctx.toolResults.some(r => normalizeOutcome(r.outcome) === ToolOutcome.OK);
+    console.log(`✅ [EmailTurn] Draft generated: ${ctx.toolResults.length} tool calls (${metrics.steps.generateDraft}ms)`);
+
+    // ============================================
+    // STEP 6.1: Tool Result PII Scrubbing
+    // Scrub PII from tool results called by LLM in Step 6
     // ============================================
     const toolPiiStart = Date.now();
     let toolPiiCount = 0;
 
     ctx.toolResults = ctx.toolResults.map(result => {
       if (result.data && typeof result.data === 'object') {
-        // Scrub string fields in tool data
         const scrubbedData = {};
         for (const [key, value] of Object.entries(result.data)) {
           if (typeof value === 'string') {
@@ -370,7 +390,8 @@ export async function handleEmailTurn(params) {
     }
 
     // ============================================
-    // STEP 5.5: Tool Required Policy Check
+    // STEP 6.2: Tool Required Policy Check (Post-Draft)
+    // Validates that tool-required intents had proper tool usage
     // ============================================
     const toolRequiredStart = Date.now();
     const toolRequiredResult = enforceToolRequiredPolicy({
@@ -383,20 +404,17 @@ export async function handleEmailTurn(params) {
     metrics.toolRequiredEnforced = toolRequiredResult.enforced;
 
     if (toolRequiredResult.enforced) {
-      console.warn(`⚠️ [EmailTurn] Tool required policy enforced: ${toolRequiredResult.reason}`);
+      console.warn(`⚠️ [EmailTurn] Tool required policy enforced (post-draft): ${toolRequiredResult.reason}`);
 
-      // Barrier-only forced drafts: single clarification question or system barrier.
       if (toolRequiredResult.action === 'NEED_MIN_INFO_FOR_TOOL' || toolRequiredResult.action === 'ASK_VERIFICATION') {
-        ctx.forcedDraftContent = toolRequiredResult.message;
-        ctx.draftForced = true;
+        ctx.draftContent = toolRequiredResult.message;
         ctx.assistantMessageMeta = {
           messageType: 'clarification',
           guardrailAction: 'NEED_MIN_INFO_FOR_TOOL',
           guardrailReason: toolRequiredResult.reason || 'NEED_MIN_INFO_FOR_TOOL'
         };
       } else if (toolRequiredResult.action === 'SYSTEM_ERROR_FALLBACK') {
-        ctx.forcedDraftContent = toolRequiredResult.message;
-        ctx.draftForced = true;
+        ctx.draftContent = toolRequiredResult.message;
         ctx.assistantMessageMeta = {
           messageType: 'system_barrier',
           guardrailAction: 'BLOCK',
@@ -405,35 +423,7 @@ export async function handleEmailTurn(params) {
       }
     }
 
-    // ============================================
-    // STEP 6: Generate Draft
-    // ============================================
-    const step6Start = Date.now();
-    let generateResult;
-
-    // If draft is forced by tool-required policy, skip LLM
-    if (ctx.draftForced && ctx.forcedDraftContent) {
-      ctx.draftContent = ctx.forcedDraftContent;
-      generateResult = { success: true, inputTokens: 0, outputTokens: 0 };
-      console.log(`📧 [EmailTurn] Using forced draft (tool-required policy)`);
-    } else {
-      generateResult = await generateEmailDraft(ctx);
-    }
-
-    if (!generateResult.success) {
-      console.error('❌ [EmailTurn] Failed to generate draft:', generateResult.error);
-      return {
-        success: false,
-        error: generateResult.error,
-        errorCode: 'DRAFT_GENERATION_FAILED',
-        metrics
-      };
-    }
-
-    metrics.steps.generateDraft = Date.now() - step6Start;
-    metrics.inputTokens = generateResult.inputTokens;
-    metrics.outputTokens = generateResult.outputTokens;
-    ctx.responseGrounding = ctx.responseGrounding || (ctx.draftForced ? 'CLARIFICATION' : 'GROUNDED');
+    ctx.responseGrounding = ctx.responseGrounding || 'GROUNDED';
     if (!ctx.assistantMessageMeta) {
       ctx.assistantMessageMeta = ctx.responseGrounding === 'CLARIFICATION'
         ? {
@@ -448,7 +438,6 @@ export async function handleEmailTurn(params) {
         };
     }
     metrics.responseGrounding = ctx.responseGrounding;
-    console.log(`✅ [EmailTurn] Draft generated (${metrics.steps.generateDraft}ms)`);
 
     // ============================================
     // STEP 6.25: Strip Recipient Mentions from Draft

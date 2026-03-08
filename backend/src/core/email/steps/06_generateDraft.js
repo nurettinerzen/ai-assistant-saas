@@ -32,6 +32,9 @@ import {
   getFactGroundingInstructions
 } from '../policies/toolRequiredPolicy.js';
 import { sanitizeToolResults } from '../toolResultSanitizer.js';
+import { executeTool } from '../../../tools/index.js';
+import { ToolOutcome, normalizeOutcome } from '../../../tools/toolResult.js';
+import { tryAutoverify } from '../../../security/autoverify.js';
 import {
   estimateTokens,
   recordTokenAccuracy
@@ -42,7 +45,6 @@ import {
 } from '../../../services/email-pair-retrieval.js';
 import { classifyTone } from '../../../services/email-tone-classifier.js';
 import { cleanEmailText } from '../../../services/email-text-cleaner.js';
-import { ToolOutcome, normalizeOutcome } from '../../../tools/toolResult.js';
 import { buildBusinessIdentity } from '../../../services/businessIdentity.js';
 import {
   resolveMentionedEntity,
@@ -261,16 +263,105 @@ export async function generateEmailDraft(ctx) {
       feedback
     });
 
-    // Call OpenAI
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
-      ],
-      temperature: 0.7,
-      max_tokens: 1500
-    });
+    // ─── LLM call with function calling (tool loop) ──────────────
+    const MAX_TOOL_ROUNDS = 3;
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt }
+    ];
+
+    // Build OpenAI tools array from gated tool definitions
+    const openaiTools = (ctx.gatedToolDefs || []).length > 0
+      ? ctx.gatedToolDefs.map(t => ({ type: 'function', function: t.function }))
+      : undefined;
+
+    let response;
+    let totalInputTokens = 0;
+    let totalOutputTokens = 0;
+
+    for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
+      response = await openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages,
+        tools: openaiTools,
+        temperature: 0.7,
+        max_tokens: 1500
+      });
+
+      totalInputTokens += response.usage?.prompt_tokens || 0;
+      totalOutputTokens += response.usage?.completion_tokens || 0;
+
+      const assistantMsg = response.choices[0]?.message;
+
+      if (!assistantMsg?.tool_calls || assistantMsg.tool_calls.length === 0) {
+        break; // No tool calls — LLM is done, draft is ready
+      }
+
+      // LLM wants to call tools — add its message and execute each tool
+      messages.push(assistantMsg);
+
+      for (const toolCall of assistantMsg.tool_calls) {
+        const toolName = toolCall.function.name;
+        let toolArgs;
+        try {
+          toolArgs = JSON.parse(toolCall.function.arguments);
+        } catch {
+          toolArgs = {};
+        }
+
+        console.log(`📧 [DraftToolLoop] LLM calling: ${toolName}`, Object.keys(toolArgs));
+
+        const result = await executeTool(toolName, toolArgs, business, {
+          channel: 'EMAIL',
+          fromEmail: ctx.customerEmail || null,
+          sessionId: ctx.thread?.id,
+          messageId: ctx.inboundMessage?.id,
+          language: ctx.language,
+          state: {}
+        });
+
+        // Attempt autoverify using email identity
+        const autoverifyResult = await tryAutoverify({
+          toolResult: result,
+          toolName,
+          business,
+          state: {},
+          language: ctx.language,
+          metrics: ctx.metrics
+        });
+
+        if (autoverifyResult.applied) {
+          console.log('📧 [DraftToolLoop] Autoverify succeeded');
+        }
+
+        // Store tool result for metrics/guardrails
+        ctx.toolResults.push({
+          toolName,
+          args: toolArgs,
+          outcome: normalizeOutcome(result.outcome) || (result.success ? ToolOutcome.OK : ToolOutcome.INFRA_ERROR),
+          success: result.success,
+          data: result.data || null,
+          message: result.message
+        });
+
+        // If we got customer data, store it prominently
+        if (toolName === 'customer_data_lookup' && result.success && result.data) {
+          ctx.customerData = result.data;
+        }
+
+        // Send tool result back to LLM
+        messages.push({
+          role: 'tool',
+          tool_call_id: toolCall.id,
+          content: JSON.stringify({
+            outcome: result.outcome,
+            success: result.success,
+            data: result.data,
+            message: result.message
+          })
+        });
+      }
+    }
 
     const draftContent = response.choices[0]?.message?.content || '';
 
@@ -281,7 +372,7 @@ export async function generateEmailDraft(ctx) {
       };
     }
 
-    const hadToolSuccess = sanitizedToolResults.some((toolResult) =>
+    const hadToolSuccess = ctx.toolResults.some((toolResult) =>
       normalizeOutcome(toolResult?.outcome) === ToolOutcome.OK
     );
 
@@ -314,8 +405,8 @@ export async function generateEmailDraft(ctx) {
     ctx.resolvedSnippets = resolvedSnippets;
     ctx.ragSettings = ragSettings;
 
-    const inputTokens = response.usage?.prompt_tokens || 0;
-    const outputTokens = response.usage?.completion_tokens || 0;
+    const inputTokens = totalInputTokens;
+    const outputTokens = totalOutputTokens;
 
     // Track token estimation accuracy
     // Estimate vs actual from OpenAI API
