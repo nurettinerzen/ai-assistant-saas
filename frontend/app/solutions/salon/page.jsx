@@ -41,7 +41,7 @@ export default function SalonSolutionPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-teal-50 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950">
+    <div className="min-h-screen bg-white dark:bg-neutral-950">
       <Navigation />
 
       {/* Hero Section */}
@@ -54,17 +54,17 @@ export default function SalonSolutionPage() {
               transition={{ duration: 0.6 }}
               className="text-center"
             >
-              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-pink-500 to-teal-500 flex items-center justify-center mx-auto mb-8">
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-pink-500 to-primary flex items-center justify-center mx-auto mb-8">
                 <Scissors className="w-10 h-10 text-white" />
               </div>
-              <h1 className="text-5xl md:text-6xl font-bold mb-6 text-gray-900 dark:text-white">
+              <h1 className="text-5xl md:text-6xl font-normal tracking-tight mb-6 text-gray-900 dark:text-white">
                 {t('solutions.salon.hero.title')}
               </h1>
               <p className="text-xl text-gray-600 dark:text-neutral-400 mb-8 max-w-2xl mx-auto">
                 {t('solutions.salon.hero.subtitle')}
               </p>
               <Link href="/waitlist">
-                <Button size="lg" className="bg-gradient-to-r from-teal-600 to-blue-500 hover:from-teal-700 hover:to-blue-600">
+                <Button size="lg" className="rounded-full bg-primary text-white hover:bg-primary/90">
                   {t('solutions.startFree')}
                 </Button>
               </Link>
@@ -76,7 +76,7 @@ export default function SalonSolutionPage() {
       {/* Use Cases */}
       <section className="py-16">
         <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center mb-12 text-gray-900 dark:text-white">
+          <h2 className="text-3xl font-normal tracking-tight text-center mb-12 text-gray-900 dark:text-white">
             {t('solutions.salon.useCases.title')}
           </h2>
           <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
@@ -96,7 +96,7 @@ export default function SalonSolutionPage() {
                         <Icon className="w-6 h-6 text-pink-600" />
                       </div>
                       <div>
-                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+                        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
                           {t(useCase.titleKey)}
                         </h3>
                         <p className="text-gray-600 dark:text-neutral-400">
@@ -115,7 +115,7 @@ export default function SalonSolutionPage() {
       <section className="py-16">
         <div className="container mx-auto px-4">
           <div className="max-w-5xl mx-auto bg-white dark:bg-neutral-800 rounded-2xl border border-gray-100 dark:border-neutral-700 p-6 md:p-8 shadow-sm">
-            <h2 className="text-3xl font-bold mb-3 text-gray-900 dark:text-white">
+            <h2 className="text-3xl font-normal tracking-tight mb-3 text-gray-900 dark:text-white">
               {t('solutions.exampleFlow.title')}
             </h2>
             <p className="text-gray-600 dark:text-neutral-400 mb-6">
@@ -139,7 +139,7 @@ export default function SalonSolutionPage() {
       <section className="py-20">
         <div className="container mx-auto px-4">
           <div className="glass rounded-3xl p-12 text-center max-w-4xl mx-auto dark:bg-neutral-800/60 dark:border dark:border-neutral-700">
-            <h2 className="text-4xl font-bold mb-6 text-gray-900 dark:text-white">
+            <h2 className="text-4xl font-normal tracking-tight mb-6 text-gray-900 dark:text-white">
               {t('solutions.salon.cta.title')}
             </h2>
             <p className="text-xl text-gray-600 dark:text-neutral-400 mb-8 max-w-2xl mx-auto">
@@ -147,7 +147,7 @@ export default function SalonSolutionPage() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/waitlist">
-                <Button size="lg" className="bg-gradient-to-r from-teal-600 to-blue-500 hover:from-teal-700 hover:to-blue-600">
+                <Button size="lg" className="rounded-full bg-primary text-white hover:bg-primary/90">
                   {t('solutions.startFree')}
                 </Button>
               </Link>

@@ -29,7 +29,7 @@ export const IntegrationsSection = () => {
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
-          <h2 className="text-4xl sm:text-5xl font-bold text-foreground dark:text-white mb-4">
+          <h2 className="text-4xl sm:text-5xl font-normal tracking-tight text-foreground dark:text-white mb-4">
             {t('landing.integrations.title')}
           </h2>
           <p className="text-xl text-muted-foreground dark:text-neutral-400 max-w-3xl mx-auto">
@@ -62,7 +62,7 @@ export const IntegrationsSection = () => {
                   height={30}
                   className="h-[30px] w-[30px]"
                 />
-                <span className="text-xs sm:text-sm font-semibold text-gray-700 dark:text-neutral-200 group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors text-center">
+                <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-neutral-200 group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors text-center">
                   {integration.name}
                 </span>
               </div>
@@ -79,7 +79,7 @@ export const IntegrationsSection = () => {
         >
           <Link
             href="/integrations"
-            className="inline-flex items-center gap-2 text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 font-semibold transition-colors group"
+            className="inline-flex items-center gap-2 text-primary dark:text-primary-400 hover:text-primary/80 font-medium transition-colors group"
           >
             {t('landing.integrations.viewAll')}
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />

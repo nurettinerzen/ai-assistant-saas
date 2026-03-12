@@ -125,6 +125,26 @@
       "subtitle": "Kullandığınız araçlarla sorunsuz entegrasyon",
       "viewAll": "Tüm Entegrasyonları Gör"
     },
+    "feature1": {
+      "title": "İşletmeniz İçin\nYapay Zekâ Asistanı",
+      "desc": "Sipariş takibi, iade işlemleri, randevu oluşturma, ödeme soruları — müşterilerinizin en sık sorduğu soruları 7/24 otomatik yanıtlayın. Shopify, ikas ve Google Calendar entegrasyonları ile mevcut sistemlerinizle sorunsuz çalışır.",
+      "link": "Entegrasyonları incele"
+    },
+    "feature2": {
+      "title": "Anlık Sohbet\nDeneyimi",
+      "desc": "Ortalama 1,8 saniye yanıt süresi. Müşterileriniz doğal bir sohbet deneyimi yaşarken, yapay zekâ arka planda sipariş takibi, iade işlemleri ve daha fazlasını halleder.",
+      "link": "Canlı demo"
+    },
+    "feature3": {
+      "title": "Tüm Kanallar,\nTek Panel",
+      "desc": "WhatsApp, e-posta, web chat ve telefon — dört farklı kanaldan gelen tüm müşteri iletişimini tek bir yerden yönetin. Türkiye, ABD, Avrupa ve Brezilya dahil 8+ bölgede aktif.",
+      "link": "Kanalları incele"
+    },
+    "feature4": {
+      "title": "Canlı Performans\nMetrikleri",
+      "desc": "Müşteri memnuniyeti, ilk temasta çözüm oranı ve yapay zekâ performansını gerçek zamanlı takip edin. 7 gün, 30 gün veya 90 günlük trend analiziyle veriye dayalı kararlar alın.",
+      "link": "Dashboard'u gör"
+    },
     "howItWorks": {
       "title": "Nasıl Çalışır?",
       "subtitle": "4 basit adımda AI müşteri hizmetlerinizi başlatın",

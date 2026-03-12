@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { ArrowRight, Link2, MessageCircleMore, Rocket, UserPlus } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from './ui/button';
-import { WaveformAnimation } from './animations/WaveformAnimation';
+import { TrailingCirclesCanvas } from './animations/TrailingCirclesCanvas';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 export const Hero = () => {
@@ -19,8 +19,8 @@ export const Hero = () => {
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Animated Background */}
-      <div className="absolute inset-0 bg-gradient-to-b from-background via-gray-50 to-background dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950">
-        <WaveformAnimation />
+      <div className="absolute inset-0 bg-white dark:bg-neutral-950">
+        <TrailingCirclesCanvas />
       </div>
 
       {/* Content - Centered */}
@@ -37,7 +37,7 @@ export const Hero = () => {
             transition={{ delay: 0.2, duration: 0.5 }}
             className="inline-block mb-6"
           >
-            <span className="px-5 py-2.5 bg-primary/10 dark:bg-primary/20 text-primary rounded-full text-sm font-semibold border border-primary/20 dark:border-primary/30 shadow-sm">
+            <span className="px-5 py-2.5 bg-primary/10 dark:bg-primary/20 text-primary rounded-full text-sm font-medium border border-primary/20 dark:border-primary/30">
               {t('landing.hero.badge')}
             </span>
           </motion.div>
@@ -47,7 +47,7 @@ export const Hero = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3, duration: 0.8 }}
-            className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold text-foreground dark:text-white leading-[1.1] mb-6"
+            className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-normal text-foreground dark:text-white leading-[1.1] mb-6 tracking-tight"
           >
             {t('landing.hero.title')}
           </motion.h1>
@@ -72,7 +72,8 @@ export const Hero = () => {
             <Link href="/signup">
               <Button
                 size="lg"
-                className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground shadow-blue-lg group px-8 py-6 text-lg h-auto"
+                variant="pill"
+                className="w-full sm:w-auto group px-8 py-6 text-lg h-auto"
               >
                 {t('landing.hero.ctaPrimary')}
                 <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
@@ -82,7 +83,7 @@ export const Hero = () => {
               <Button
                 size="lg"
                 variant="outline"
-                className="w-full sm:w-auto border-2 border-border hover:border-primary hover:bg-primary/5 group px-8 py-6 text-lg h-auto"
+                className="w-full sm:w-auto rounded-full border border-gray-300 dark:border-neutral-600 hover:border-primary hover:bg-primary/5 group px-8 py-6 text-lg h-auto"
               >
                 <MessageCircleMore className="mr-2 h-5 w-5" />
                 {t('landing.hero.ctaDemo')}
@@ -97,7 +98,7 @@ export const Hero = () => {
             className="mx-auto max-w-3xl rounded-2xl border border-primary/20 bg-white/80 dark:bg-neutral-900/70 backdrop-blur-sm p-4 sm:p-6"
           >
             <div className="flex flex-col gap-4">
-              <p className="text-sm sm:text-base font-semibold text-foreground dark:text-white">
+              <p className="text-sm sm:text-base font-medium text-foreground dark:text-white">
                 {t('landing.hero.demoProcess.title')}
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

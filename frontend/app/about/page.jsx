@@ -21,7 +21,7 @@ export default function AboutPage() {
     : t('about.companyInfo.locationFallback');
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-teal-50 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950">
+    <div className="min-h-screen bg-white dark:bg-neutral-950">
       <Navigation />
 
       <section className="pt-28 md:pt-32 pb-12 md:pb-16">
@@ -31,7 +31,7 @@ export default function AboutPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
-              className="text-4xl sm:text-5xl md:text-6xl font-bold mb-6 text-gray-900 dark:text-white"
+              className="text-4xl sm:text-5xl md:text-6xl font-normal tracking-tight mb-6 text-gray-900 dark:text-white"
             >
               {t('about.hero.title')}
             </motion.h1>
@@ -58,10 +58,10 @@ export default function AboutPage() {
               className="bg-white dark:bg-neutral-800 rounded-2xl p-6 md:p-8 shadow-sm border border-gray-100 dark:border-neutral-700"
             >
               <div className="flex items-center gap-3 mb-5">
-                <div className="w-11 h-11 bg-gradient-to-br from-teal-500 to-blue-500 rounded-xl flex items-center justify-center">
+                <div className="w-11 h-11 bg-primary rounded-xl flex items-center justify-center">
                   <Building2 className="w-5 h-5 text-white" />
                 </div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{t('about.companyInfo.title')}</h2>
+                <h2 className="text-2xl font-medium text-gray-900 dark:text-white">{t('about.companyInfo.title')}</h2>
               </div>
               <p className="text-gray-600 dark:text-neutral-300 mb-6 leading-relaxed">
                 {t('about.companyInfo.description')}
@@ -98,10 +98,10 @@ export default function AboutPage() {
               className="bg-white dark:bg-neutral-800 rounded-2xl p-6 md:p-8 shadow-sm border border-gray-100 dark:border-neutral-700"
             >
               <div className="flex items-center gap-3 mb-5">
-                <div className="w-11 h-11 bg-gradient-to-br from-teal-500 to-pink-500 rounded-xl flex items-center justify-center">
+                <div className="w-11 h-11 bg-primary rounded-xl flex items-center justify-center">
                   <Users className="w-5 h-5 text-white" />
                 </div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{t('about.team.title')}</h2>
+                <h2 className="text-2xl font-medium text-gray-900 dark:text-white">{t('about.team.title')}</h2>
               </div>
               <p className="text-gray-600 dark:text-neutral-300 mb-6 leading-relaxed">
                 {t('about.team.content')}
@@ -136,10 +136,10 @@ export default function AboutPage() {
               className="bg-white dark:bg-neutral-800 rounded-2xl p-6 md:p-8 shadow-sm border border-gray-100 dark:border-neutral-700"
             >
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-11 h-11 bg-gradient-to-br from-teal-500 to-blue-500 rounded-xl flex items-center justify-center">
+                <div className="w-11 h-11 bg-primary rounded-xl flex items-center justify-center">
                   <Heart className="w-5 h-5 text-white" />
                 </div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{t('about.story.title')}</h2>
+                <h2 className="text-2xl font-medium text-gray-900 dark:text-white">{t('about.story.title')}</h2>
               </div>
               <p className="text-gray-600 dark:text-neutral-300 text-base leading-relaxed">
                 {t('about.story.content')}
@@ -151,13 +151,13 @@ export default function AboutPage() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6 }}
-              className="bg-gradient-to-br from-teal-600 to-blue-500 rounded-2xl p-6 md:p-8 text-white"
+              className="bg-primary rounded-2xl p-6 md:p-8 text-white"
             >
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-11 h-11 bg-white/20 rounded-xl flex items-center justify-center">
                   <Target className="w-5 h-5 text-white" />
                 </div>
-                <h2 className="text-2xl font-bold">{t('about.mission.title')}</h2>
+                <h2 className="text-2xl font-medium">{t('about.mission.title')}</h2>
               </div>
               <p className="text-blue-100 text-base leading-relaxed">
                 {t('about.mission.content')}
@@ -175,7 +175,7 @@ export default function AboutPage() {
                 <div className="w-11 h-11 bg-gradient-to-br from-red-500 to-orange-500 rounded-xl flex items-center justify-center">
                   <Globe className="w-5 h-5 text-white" />
                 </div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{t('about.whyTurkey.title')}</h2>
+                <h2 className="text-2xl font-medium text-gray-900 dark:text-white">{t('about.whyTurkey.title')}</h2>
               </div>
               <p className="text-gray-600 dark:text-neutral-300 text-base leading-relaxed">
                 {t('about.whyTurkey.content')}
@@ -194,13 +194,13 @@ export default function AboutPage() {
             transition={{ duration: 0.6 }}
             className="text-center max-w-2xl mx-auto"
           >
-            <h2 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white">{t('about.cta.title')}</h2>
+            <h2 className="text-3xl font-normal tracking-tight mb-6 text-gray-900 dark:text-white">{t('about.cta.title')}</h2>
             <p className="text-gray-600 dark:text-neutral-400 text-lg mb-8">
               {t('about.cta.subtitle')}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/waitlist">
-                <Button size="lg" className="w-full sm:w-auto bg-gradient-to-r from-teal-600 to-blue-500 hover:from-teal-700 hover:to-blue-600">
+                <Button size="lg" className="w-full sm:w-auto rounded-full bg-primary text-white hover:bg-primary/90">
                   {t('about.cta.button')}
                 </Button>
               </Link>

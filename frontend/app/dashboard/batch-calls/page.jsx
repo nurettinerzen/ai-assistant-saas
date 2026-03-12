@@ -281,12 +281,15 @@ export default function BatchCallsPage() {
 
       if (!nextMapping.customer_name) {
         const nameColumn = response.data.columns.find(col => {
-          const normalized = String(col || '').toLowerCase();
+          const normalized = String(col || '').toLowerCase().trim();
           return (
             normalized.includes('name') ||
-            normalized.includes('ad') ||
             normalized.includes('isim') ||
-            normalized.includes('müşteri')
+            normalized.includes('müşteri') ||
+            normalized.includes('musteri') ||
+            normalized === 'ad' ||
+            normalized.startsWith('ad ') ||
+            normalized.includes('ad soyad')
           );
         });
         if (nameColumn) {

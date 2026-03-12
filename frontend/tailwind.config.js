@@ -28,18 +28,18 @@ module.exports = {
       colors: {
         // Primary Color (Teal - Brand color)
         primary: {
-          50: '#e6f7f9',
-          100: '#b3e6ec',
-          200: '#80d5df',
-          300: '#4dc4d2',
-          400: '#1ab3c5',
-          500: '#00A2B3', // Main brand color
-          600: '#008ea0', // Hover state
-          700: '#00798d',
-          800: '#00657a',
-          900: '#005167',
-          950: '#003d54',
-          DEFAULT: '#00A2B3',
+          50: '#e8f7f8',
+          100: '#b8e8ec',
+          200: '#88d9e0',
+          300: '#58cad4',
+          400: '#28bbc8',
+          500: '#17a2b3', // Main brand color
+          600: '#148f9e', // Hover state
+          700: '#117c89',
+          800: '#0e6974',
+          900: '#0b565f',
+          950: '#08434a',
+          DEFAULT: '#17a2b3',
           foreground: '#ffffff',
         },
         // Accent Color (Teal for links/active states)
@@ -145,7 +145,7 @@ module.exports = {
         },
       },
       fontFamily: {
-        sans: ['"Plus Jakarta Sans"', 'Inter', ...fontFamily.sans],
+        sans: ['"Google Sans"', '"Google Sans Flex"', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'sans-serif'],
       },
       fontSize: {
         xs: ['0.75rem', { lineHeight: '1rem' }],      // 12px - Caption

@@ -67,7 +67,7 @@ export default function WaitlistPage() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-teal-50 to-teal-50 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-white dark:bg-neutral-950 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
           <div className="flex justify-between items-center mb-8">
             <Link href="/">
@@ -80,7 +80,7 @@ export default function WaitlistPage() {
             <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
               <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+            <h1 className="text-2xl font-medium text-gray-900 dark:text-white mb-4">
               {t('waitlist.success')}
             </h1>
             <p className="text-gray-600 dark:text-neutral-400 mb-8">
@@ -98,7 +98,7 @@ export default function WaitlistPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-teal-50 to-teal-50 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-white dark:bg-neutral-950 flex items-center justify-center p-4">
       <Toaster position="top-right" />
 
       <div className="w-full max-w-md">
@@ -111,7 +111,7 @@ export default function WaitlistPage() {
 
         <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-xl dark:border dark:border-neutral-700 p-8">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+            <h1 className="text-3xl font-normal tracking-tight text-gray-900 dark:text-white mb-2">
               {t('waitlist.title')}
             </h1>
             <p className="text-gray-600 dark:text-neutral-400">{t('waitlist.subtitle')}</p>
@@ -171,7 +171,7 @@ export default function WaitlistPage() {
                 <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-gray-500" />
                 <select
                   id="businessType"
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-neutral-600 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white dark:bg-neutral-700 dark:text-white"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-neutral-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-neutral-700 dark:text-white"
                   value={formData.businessType}
                   onChange={(e) => setFormData({ ...formData, businessType: e.target.value })}
                 >
@@ -192,7 +192,7 @@ export default function WaitlistPage() {
                 <textarea
                   id="message"
                   placeholder={t('contact.form.messagePlaceholder')}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-neutral-600 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent min-h-[100px] resize-none bg-white dark:bg-neutral-700 dark:text-white dark:placeholder-neutral-400"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-neutral-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent min-h-[100px] resize-none bg-white dark:bg-neutral-700 dark:text-white dark:placeholder-neutral-400"
                   value={formData.message}
                   onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                 />
@@ -213,7 +213,7 @@ export default function WaitlistPage() {
 
           <div className="mt-6 text-center text-sm text-gray-600 dark:text-neutral-400">
             {t('auth.alreadyHaveAccount')}{' '}
-            <Link href="/login" className="text-teal-600 dark:text-teal-400 hover:underline font-medium">
+            <Link href="/login" className="text-primary dark:text-primary hover:underline font-medium">
               {t('common.signIn')}
             </Link>
           </div>

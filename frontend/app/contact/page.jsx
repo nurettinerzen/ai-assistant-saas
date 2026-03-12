@@ -61,7 +61,7 @@ export default function ContactPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-teal-50 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950">
+    <div className="min-h-screen bg-white dark:bg-neutral-950">
       <Navigation />
 
       {/* Hero Section */}
@@ -72,7 +72,7 @@ export default function ContactPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
-              className="text-4xl sm:text-5xl md:text-6xl font-bold mb-6 text-gray-900 dark:text-white"
+              className="text-4xl sm:text-5xl md:text-6xl font-normal tracking-tight mb-6 text-gray-900 dark:text-white"
             >
               {t('contact.hero.title')}
             </motion.h1>
@@ -99,7 +99,7 @@ export default function ContactPage() {
               transition={{ duration: 0.6 }}
             >
               <Card className="p-8 bg-white dark:bg-neutral-800 border-gray-100 dark:border-neutral-700">
-                <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">{t('contact.form.title')}</h2>
+                <h2 className="text-2xl font-medium mb-6 text-gray-900 dark:text-white">{t('contact.form.title')}</h2>
 
                 {submitted && (
                   <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg text-green-800 dark:text-green-300 flex items-center gap-2">
@@ -192,7 +192,7 @@ export default function ContactPage() {
                   <Button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-gradient-to-r from-teal-600 to-blue-500 hover:from-teal-700 hover:to-blue-600"
+                    className="w-full rounded-full bg-primary text-white hover:bg-primary/90"
                     size="lg"
                   >
                     {loading ? (
@@ -216,10 +216,10 @@ export default function ContactPage() {
               className="space-y-6"
             >
               <Card className="p-8 bg-white dark:bg-neutral-800 border-gray-100 dark:border-neutral-700">
-                <h3 className="text-xl font-bold mb-6 text-gray-900 dark:text-white">{t('contact.info.title')}</h3>
+                <h3 className="text-xl font-medium mb-6 text-gray-900 dark:text-white">{t('contact.info.title')}</h3>
                 <div className="space-y-6">
                   <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-blue-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center flex-shrink-0">
                       <Mail className="w-6 h-6 text-white" />
                     </div>
                     <div>
@@ -243,7 +243,7 @@ export default function ContactPage() {
               </Card>
 
               <Card className="p-8 bg-white dark:bg-neutral-800 border-gray-100 dark:border-neutral-700">
-                <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">{t('contact.response.title')}</h3>
+                <h3 className="text-xl font-medium mb-4 text-gray-900 dark:text-white">{t('contact.response.title')}</h3>
                 <p className="text-gray-600 dark:text-neutral-400">
                   {t('contact.response.text')}
                 </p>

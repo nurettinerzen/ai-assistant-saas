@@ -97,14 +97,14 @@ export default function PricingPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-teal-50 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950">
+    <div className="min-h-screen bg-white dark:bg-neutral-950">
       <Navigation />
 
       {/* Hero Section */}
       <section className="pt-28 md:pt-32 pb-12 md:pb-16">
         <div className="container mx-auto px-4">
           <div className="text-center max-w-3xl mx-auto">
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-6 text-gray-900 dark:text-white">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-normal tracking-tight mb-6 text-gray-900 dark:text-white">
               {t('pricing.title')}
             </h1>
             <p className="text-base sm:text-xl text-gray-600 dark:text-neutral-400 mb-4">
@@ -141,7 +141,7 @@ export default function PricingPage() {
                 )}
 
                 <div className="text-center mb-6">
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                  <h3 className="text-xl font-medium text-gray-900 dark:text-white mb-2">
                     {plan.name}
                   </h3>
                   <p className="text-gray-600 dark:text-neutral-400 text-sm mb-4 min-h-[40px]">
@@ -200,7 +200,7 @@ export default function PricingPage() {
                     <Button
                       className={`w-full ${
                         plan.popular
-                          ? 'bg-gradient-to-r from-teal-600 to-blue-500 hover:from-teal-700 hover:to-blue-600'
+                          ? 'rounded-full bg-primary text-white hover:bg-primary/90'
                           : ''
                       }`}
                       variant={plan.popular ? 'default' : 'outline'}
@@ -222,7 +222,7 @@ export default function PricingPage() {
           <div className="mt-20 text-center max-w-4xl mx-auto">
             <div className="flex items-center justify-center gap-2 mb-3">
               <Zap className="h-6 w-6 text-primary" />
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+              <h3 className="text-2xl font-medium text-gray-900 dark:text-white">
                 {isTR ? 'Kullandıkça Öde' : 'Pay As You Go'}
               </h3>
             </div>
@@ -265,7 +265,7 @@ export default function PricingPage() {
           {/* Overage Details */}
           <div className="mt-20 max-w-5xl mx-auto">
             <div className="text-center mb-8">
-              <h3 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
+              <h3 className="text-3xl font-normal tracking-tight text-gray-900 dark:text-white mb-3">
                 {isTR ? 'Paket aşım detayları' : 'Plan overage details'}
               </h3>
               <p className="text-gray-600 dark:text-neutral-400 max-w-3xl mx-auto">
@@ -312,7 +312,7 @@ export default function PricingPage() {
           {/* Decision CTA */}
           <div className="mt-20 max-w-4xl mx-auto">
             <div className="rounded-3xl border border-gray-200 dark:border-neutral-700 bg-gradient-to-r from-slate-900 to-blue-900 p-10 text-center shadow-xl">
-              <h3 className="text-3xl md:text-4xl font-bold text-white mb-4">
+              <h3 className="text-3xl md:text-4xl font-normal tracking-tight text-white mb-4">
                 {isTR ? 'Hâlâ kararsız mısınız?' : 'Still undecided?'}
               </h3>
               <p className="text-lg text-blue-100 mb-8">

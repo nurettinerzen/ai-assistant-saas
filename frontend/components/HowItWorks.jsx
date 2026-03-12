@@ -46,7 +46,7 @@ export const HowItWorks = () => {
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
-          <h2 className="text-4xl sm:text-5xl font-bold text-foreground dark:text-white mb-4">
+          <h2 className="text-4xl sm:text-5xl font-normal tracking-tight text-foreground dark:text-white mb-4">
             {t('landing.howItWorks.title')}
           </h2>
           <p className="text-xl text-muted-foreground dark:text-neutral-400 max-w-3xl mx-auto">
@@ -77,8 +77,8 @@ export const HowItWorks = () => {
                     </div>
 
                     <div className="flex items-center gap-3 mb-4">
-                      <span className="text-sm font-bold text-primary">{step.number}</span>
-                      <h3 className="text-xl font-bold text-foreground dark:text-white">
+                      <span className="text-sm font-medium text-primary">{step.number}</span>
+                      <h3 className="text-xl font-medium text-foreground dark:text-white">
                         {t(step.titleKey)}
                       </h3>
                     </div>

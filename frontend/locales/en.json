@@ -125,6 +125,26 @@
       "subtitle": "Seamless integration with the tools you use",
       "viewAll": "View All Integrations"
     },
+    "feature1": {
+      "title": "AI Assistant\nFor Your Business",
+      "desc": "Order tracking, returns, appointment booking, payment inquiries — automatically answer your customers' most frequent questions 24/7. Works seamlessly with your existing systems through Shopify, ikas, and Google Calendar integrations.",
+      "link": "Explore integrations"
+    },
+    "feature2": {
+      "title": "Instant Chat\nExperience",
+      "desc": "Average 1.8 second response time. While your customers enjoy a natural conversation experience, AI handles order tracking, returns, and more in the background.",
+      "link": "Live demo"
+    },
+    "feature3": {
+      "title": "All Channels,\nOne Dashboard",
+      "desc": "WhatsApp, email, web chat, and phone — manage all customer communication from four different channels in one place. Active in 8+ regions including Turkey, US, Europe, and Brazil.",
+      "link": "Explore channels"
+    },
+    "feature4": {
+      "title": "Live Performance\nMetrics",
+      "desc": "Track customer satisfaction, first-contact resolution rate, and AI performance in real-time. Make data-driven decisions with 7-day, 30-day, or 90-day trend analysis.",
+      "link": "See dashboard"
+    },
     "howItWorks": {
       "title": "How It Works",
       "subtitle": "Start your AI customer service in 4 simple steps",

@@ -64,7 +64,7 @@ export const SectorsSection = () => {
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
-          <h2 className="text-4xl sm:text-5xl font-bold text-foreground dark:text-white mb-4">
+          <h2 className="text-4xl sm:text-5xl font-normal tracking-tight text-foreground dark:text-white mb-4">
             {t('landing.sectors.title')}
           </h2>
           <p className="text-xl text-muted-foreground dark:text-neutral-400 max-w-3xl mx-auto">
@@ -87,7 +87,7 @@ export const SectorsSection = () => {
                   <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${sector.color} flex items-center justify-center mb-4`}>
                     <Icon className="w-6 h-6 text-white" />
                   </div>
-                  <h3 className="text-lg font-bold text-foreground dark:text-white mb-3">
+                  <h3 className="text-lg font-medium text-foreground dark:text-white mb-3">
                     {t(sector.titleKey)}
                   </h3>
                   <ul className="space-y-2 mb-4 flex-1">

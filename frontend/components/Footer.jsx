@@ -3,105 +3,35 @@
 import React from 'react';
 import Link from 'next/link';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { TelyxLogoWhite } from '@/components/TelyxLogo';
 
 export const Footer = () => {
   const { t } = useLanguage();
 
-  const footerLinks = {
-    company: [
-      { labelKey: 'landing.footer.about', href: '/about' },
-      { labelKey: 'landing.footer.contact', href: '/contact' }
-    ],
-    product: [
-      { labelKey: 'landing.footer.features', href: '/features' },
-      { labelKey: 'landing.footer.pricing', href: '/pricing' },
-      { labelKey: 'landing.footer.integrations', href: '/integrations' }
-    ],
-    resources: [
-      { labelKey: 'landing.footer.help', href: '/help' },
-      { labelKey: 'landing.footer.api', href: '/docs/api' }
-    ],
-    legal: [
-      { labelKey: 'landing.footer.privacy', href: '/privacy' },
-      { labelKey: 'landing.footer.terms', href: '/terms' }
-    ]
-  };
+  const links = [
+    { labelKey: 'landing.footer.about', href: '/about' },
+    { labelKey: 'landing.footer.contact', href: '/contact' },
+    { labelKey: 'landing.footer.features', href: '/features' },
+    { labelKey: 'landing.footer.pricing', href: '/pricing' },
+    { labelKey: 'landing.footer.integrations', href: '/integrations' },
+    { labelKey: 'landing.footer.help', href: '/help' },
+    { labelKey: 'landing.footer.api', href: '/docs/api' },
+    { labelKey: 'landing.footer.privacy', href: '/privacy' },
+    { labelKey: 'landing.footer.terms', href: '/terms' },
+  ];
 
   return (
-    <footer className="bg-gray-900 text-white py-16">
-      <div className="container mx-auto px-4">
-        <div className="grid md:grid-cols-5 gap-8">
-          {/* Brand */}
-          <div className="md:col-span-1">
-            <Link href="/" className="inline-block">
-              <TelyxLogoWhite width={160} height={45} />
-            </Link>
-            <p className="text-gray-400 mt-4 text-sm">
-              {t('landing.footer.tagline')}
-            </p>
-          </div>
-
-          {/* Company */}
-          <div>
-            <h4 className="font-semibold mb-4">{t('landing.footer.company')}</h4>
-            <ul className="space-y-3 text-gray-400">
-              {footerLinks.company.map((link, i) => (
-                <li key={i}>
-                  <Link href={link.href} className="hover:text-white transition-colors text-sm">
-                    {t(link.labelKey)}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Product */}
-          <div>
-            <h4 className="font-semibold mb-4">{t('landing.footer.product')}</h4>
-            <ul className="space-y-3 text-gray-400">
-              {footerLinks.product.map((link, i) => (
-                <li key={i}>
-                  <Link href={link.href} className="hover:text-white transition-colors text-sm">
-                    {t(link.labelKey)}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Resources */}
-          <div>
-            <h4 className="font-semibold mb-4">{t('landing.footer.resources')}</h4>
-            <ul className="space-y-3 text-gray-400">
-              {footerLinks.resources.map((link, i) => (
-                <li key={i}>
-                  <Link href={link.href} className="hover:text-white transition-colors text-sm">
-                    {t(link.labelKey)}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Legal */}
-          <div>
-            <h4 className="font-semibold mb-4">{t('landing.footer.legal')}</h4>
-            <ul className="space-y-3 text-gray-400">
-              {footerLinks.legal.map((link, i) => (
-                <li key={i}>
-                  <Link href={link.href} className="hover:text-white transition-colors text-sm">
-                    {t(link.labelKey)}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-
-        <div className="border-t border-gray-800 mt-12 pt-8 text-center text-gray-400 text-sm">
-          <p>{t('landing.footer.copyright')}</p>
-        </div>
+    <footer className="py-8 px-6 sm:px-12 border-t border-gray-200 dark:border-neutral-800 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-gray-400 dark:text-neutral-500 bg-white dark:bg-neutral-950">
+      <div>{t('landing.footer.copyright')}</div>
+      <div className="flex flex-wrap gap-5 justify-center">
+        {links.map((link, i) => (
+          <Link
+            key={i}
+            href={link.href}
+            className="hover:text-gray-900 dark:hover:text-white transition-colors"
+          >
+            {t(link.labelKey)}
+          </Link>
+        ))}
       </div>
     </footer>
   );

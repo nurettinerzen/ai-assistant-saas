@@ -175,7 +175,9 @@ Vedalaştıktan sonra başka bir şey söyleme.
 - Randevu Tarihi: {{appointment_date}}
 
 ÖNEMLİ: Yukarıdaki bilgiler müşteriye özeldir. SADECE bu bilgileri kullan.
-Bilgi yoksa veya boşsa, o konuyu atlayabilirsin ama ASLA uydurma!
+Bilgi yoksa, boşsa veya {{...}} şeklinde şablon olarak kaldıysa o bilgiyi KULLANMA, konuşmada hiç bahsetme.
+Örneğin müşteri adı yoksa "bey/hanım" gibi hitapları isim olmadan kullan veya hiç isim kullanma.
+ASLA "customer name", "debt amount" gibi İngilizce placeholder metinleri seslendirme!
 `;
 
 // Outbound Sales (Satış) için özel kurallar
@@ -218,7 +220,8 @@ Müşteri hakkında şu bilgiler olabilir - KULLAN:
 - Notlar: {{custom_notes}}
 
 ÖNEMLİ: Bu bilgiler müşteriye özel. Varsa konuşmayı kişiselleştir.
-"Daha önce {{previous_product}} almıştınız, bununla ilgili yeni bir fırsat var" gibi.
+Bilgi yoksa, boşsa veya {{...}} şeklinde şablon olarak kaldıysa o bilgiyi KULLANMA, konuşmada hiç bahsetme.
+ASLA "customer name", "previous product" gibi İngilizce placeholder metinleri seslendirme!
 
 ## SESSİZLİK YÖNETİMİ (GİDEN ARAMA İÇİN - KRİTİK!)
 Sen müşteriyi arıyorsun, bu yüzden sessizlik durumlarında aktif olmalısın.
@@ -289,6 +292,8 @@ Müşteri hakkında şu bilgiler olabilir - KULLAN:
 - Notlar: {{custom_notes}}
 
 ÖNEMLİ: Bu bilgiler müşteriye özel. Varsa konuşmayı kişiselleştir.
+Bilgi yoksa, boşsa veya {{...}} şeklinde şablon olarak kaldıysa o bilgiyi KULLANMA, konuşmada hiç bahsetme.
+ASLA "customer name", "custom info" gibi İngilizce placeholder metinleri seslendirme!
 
 ## SESSİZLİK YÖNETİMİ (GİDEN ARAMA İÇİN - KRİTİK!)
 Sen müşteriyi arıyorsun, bu yüzden sessizlik durumlarında aktif olmalısın.

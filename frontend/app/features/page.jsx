@@ -38,7 +38,7 @@ export default function FeaturesPage() {
         'features.multichannel.item3',
         'features.multichannel.item4',
       ],
-      color: 'from-blue-500 to-teal-500'
+      color: 'from-blue-500 to-primary'
     },
     {
       id: 'ai',
@@ -51,7 +51,7 @@ export default function FeaturesPage() {
         'features.ai.item3',
         'features.ai.item4',
       ],
-      color: 'from-teal-500 to-pink-500'
+      color: 'from-primary to-pink-500'
     },
     {
       id: 'ecommerce',
@@ -100,7 +100,7 @@ export default function FeaturesPage() {
         'features.analytics.item2',
         'features.analytics.item3',
       ],
-      color: 'from-violet-500 to-teal-500'
+      color: 'from-violet-500 to-primary'
     },
   ];
 
@@ -119,7 +119,7 @@ export default function FeaturesPage() {
     {
       id: 'securityKvkk',
       icon: ShieldCheck,
-      color: 'from-emerald-500 to-teal-500',
+      color: 'from-emerald-500 to-primary',
       items: [
         'features.deepDive.securityKvkk.item1',
         'features.deepDive.securityKvkk.item2',
@@ -166,7 +166,7 @@ export default function FeaturesPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-teal-50 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950">
+    <div className="min-h-screen bg-white dark:bg-neutral-950">
       <Navigation />
 
       <section className="pt-28 md:pt-32 pb-12 md:pb-16">
@@ -176,7 +176,7 @@ export default function FeaturesPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
-              className="text-4xl sm:text-5xl md:text-6xl font-bold mb-5 text-gray-900 dark:text-white"
+              className="text-4xl sm:text-5xl md:text-6xl font-normal tracking-tight mb-5 text-gray-900 dark:text-white"
             >
               {t('features.hero.title')}
             </motion.h1>
@@ -209,7 +209,7 @@ export default function FeaturesPage() {
                     <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${feature.color} flex items-center justify-center mb-6`}>
                       <Icon className="w-7 h-7 text-white" />
                     </div>
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
+                    <h3 className="text-xl font-medium text-gray-900 dark:text-white mb-3">
                       {t(feature.titleKey)}
                     </h3>
                     <p className="text-gray-600 dark:text-neutral-400 mb-4">
@@ -234,7 +234,7 @@ export default function FeaturesPage() {
       <section className="py-12 md:py-16">
         <div className="container mx-auto px-4">
           <div className="text-center max-w-3xl mx-auto mb-8 md:mb-10">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">
+            <h2 className="text-3xl md:text-4xl font-normal tracking-tight text-gray-900 dark:text-white">
               {t('features.deepDive.title')}
             </h2>
             <p className="text-gray-600 dark:text-neutral-400 mt-3">
@@ -252,7 +252,7 @@ export default function FeaturesPage() {
                   <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${section.color} flex items-center justify-center mb-4`}>
                     <Icon className="w-6 h-6 text-white" />
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
+                  <h3 className="text-xl font-medium text-gray-900 dark:text-white mb-3">
                     {t(`features.deepDive.${section.id}.title`)}
                   </h3>
                   <p className="text-sm text-gray-600 dark:text-neutral-400 mb-4">
@@ -276,7 +276,7 @@ export default function FeaturesPage() {
       <section className="py-12 md:py-16">
         <div className="container mx-auto px-4">
           <div className="text-center max-w-3xl mx-auto mb-8 md:mb-10">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">
+            <h2 className="text-3xl md:text-4xl font-normal tracking-tight text-gray-900 dark:text-white">
               {t('features.solutions.title')}
             </h2>
             <p className="text-gray-600 dark:text-neutral-400 mt-3">
@@ -300,7 +300,7 @@ export default function FeaturesPage() {
                         <Icon className="h-5 w-5" />
                       </div>
                       <div>
-                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                        <h3 className="text-lg font-medium text-gray-900 dark:text-white">
                           {t(solution.titleKey)}
                         </h3>
                         <p className="text-sm text-gray-600 dark:text-neutral-400 mt-1">
@@ -326,7 +326,7 @@ export default function FeaturesPage() {
       <section className="py-16 md:py-20">
         <div className="container mx-auto px-4">
           <div className="glass rounded-3xl p-8 md:p-12 text-center max-w-4xl mx-auto dark:bg-neutral-800/60 dark:border dark:border-neutral-700">
-            <h2 className="text-3xl md:text-4xl font-bold mb-6 text-gray-900 dark:text-white">
+            <h2 className="text-3xl md:text-4xl font-normal tracking-tight mb-6 text-gray-900 dark:text-white">
               {t('features.cta.title')}
             </h2>
             <p className="text-base md:text-xl text-gray-600 dark:text-neutral-400 mb-8 max-w-2xl mx-auto">
@@ -334,7 +334,7 @@ export default function FeaturesPage() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/waitlist">
-                <Button size="lg" className="w-full sm:w-auto bg-gradient-to-r from-teal-600 to-blue-500 hover:from-teal-700 hover:to-blue-600">
+                <Button size="lg" className="w-full sm:w-auto rounded-full bg-primary text-white hover:bg-primary/90">
                   {t('features.cta.applyEarlyAccess')}
                 </Button>
               </Link>

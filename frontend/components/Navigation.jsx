@@ -93,7 +93,7 @@ export default function Navigation() {
               </Button>
             </Link>
             <Link href="/waitlist">
-              <Button size="sm" className="bg-gradient-to-r from-teal-600 to-blue-500 hover:from-teal-700 hover:to-blue-600">
+              <Button size="sm" variant="pill" className="px-5">
                 {t('navigation.applyEarlyAccess')}
               </Button>
             </Link>
@@ -150,7 +150,7 @@ export default function Navigation() {
                 </Button>
               </Link>
               <Link href="/waitlist">
-                <Button className="w-full bg-gradient-to-r from-teal-600 to-blue-500">
+                <Button variant="pill" className="w-full">
                   {t('navigation.applyEarlyAccess')}
                 </Button>
               </Link>

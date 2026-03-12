@@ -46,7 +46,7 @@ export const ChannelsSection = () => {
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
-          <h2 className="text-4xl sm:text-5xl font-bold text-foreground dark:text-white mb-4">
+          <h2 className="text-4xl sm:text-5xl font-normal tracking-tight text-foreground dark:text-white mb-4">
             {t('landing.channels.title')}
           </h2>
           <p className="text-xl text-muted-foreground dark:text-neutral-400 max-w-3xl mx-auto">
@@ -69,7 +69,7 @@ export const ChannelsSection = () => {
                   <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${channel.color} flex items-center justify-center mb-6`}>
                     <Icon className="w-7 h-7 text-white" />
                   </div>
-                  <h3 className="text-xl font-bold text-foreground dark:text-white mb-3">
+                  <h3 className="text-xl font-medium text-foreground dark:text-white mb-3">
                     {t(channel.titleKey)}
                   </h3>
                   <p className="text-muted-foreground dark:text-neutral-400">
