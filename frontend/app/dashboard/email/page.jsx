@@ -17,23 +17,15 @@ import {
   SendHorizonal,
   RefreshCw,
   CheckCircle2,
-  Clock,
   MessageSquare,
   Pencil,
   RotateCcw,
   X,
-  AlertCircle,
   Search,
   Paperclip,
-  Tag,
-  Bell,
-  Package,
   ChevronDown,
   ChevronRight,
   Sparkles,
-  User,
-  ArrowDownLeft,
-  ArrowUpRight,
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast } from '@/lib/toast';
@@ -95,12 +87,23 @@ function dateLabel(dateString, locale) {
 /** Extract quoted content from email body */
 function splitQuotedContent(bodyText) {
   if (!bodyText) return { main: '', quoted: null };
-  const pattern = /\n\s*(?:From|Gönderen|Kimden|De)\s*:.*\n(?:Date|Tarih|Sent|Envoyé)\s*:.*\n/i;
-  const idx = bodyText.search(pattern);
-  if (idx > 0) {
+  // Match common quote headers: "From: ... Date/Sent: ..." with possible lines in between
+  const patterns = [
+    /\n\s*(?:From|Gönderen|Kimden|De)\s*:.*[\s\S]*?(?:Date|Tarih|Sent|Envoyé)\s*:.*\n/i,
+    /\n\s*(?:From|Gönderen|Kimden|De)\s*:.*\n(?:.*\n){0,3}(?:Date|Tarih|Sent|Envoyé)\s*:.*\n/i,
+    /\n-{3,}\s*\n/,                                        // --- separator
+    /\nOn .+ wrote:\s*\n/i,                                // "On Mon, Jan 1 X wrote:"
+    /\n\s*>+\s/,                                           // > quoted line
+  ];
+  let earliest = -1;
+  for (const p of patterns) {
+    const idx = bodyText.search(p);
+    if (idx > 0 && (earliest === -1 || idx < earliest)) earliest = idx;
+  }
+  if (earliest > 0) {
     return {
-      main: bodyText.substring(0, idx).trim(),
-      quoted: bodyText.substring(idx).trim(),
+      main: bodyText.substring(0, earliest).trim(),
+      quoted: bodyText.substring(earliest).trim(),
     };
   }
   return { main: bodyText, quoted: null };
@@ -359,7 +362,7 @@ export default function EmailDashboardPage() {
   // ════════════════════════════════════════════════════════════
 
   return (
-    <div className="flex h-[calc(100vh-64px)] bg-white dark:bg-neutral-950 -m-6 -mt-6">
+    <div className="flex h-[calc(100vh-64px)] bg-white dark:bg-neutral-950 -m-6 lg:-m-8">
 
       {/* ════════ LEFT: MAIL LIST ════════ */}
       <div className="w-[380px] min-w-[380px] border-r border-neutral-200 dark:border-neutral-800 flex flex-col bg-neutral-50 dark:bg-neutral-900">
@@ -564,7 +567,7 @@ export default function EmailDashboardPage() {
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-1">
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
               {messagesWithSeparators.map((item, idx) => {
                 if (item.type === 'separator') {
                   return (
@@ -679,7 +682,7 @@ export default function EmailDashboardPage() {
 }
 
 // ════════════════════════════════════════════════════════════
-// MESSAGE BUBBLE COMPONENT
+// MESSAGE CARD COMPONENT (Outlook-style full-width)
 // ════════════════════════════════════════════════════════════
 
 function MessageBubble({ msg, isInbound, mainContent, quotedContent, locale, customerName, customerEmail }) {
@@ -689,84 +692,97 @@ function MessageBubble({ msg, isInbound, mainContent, quotedContent, locale, cus
     ? (msg.fromName || msg.fromEmail || customerName || customerEmail)
     : 'Telyx AI';
 
-  const time = (() => {
+  const senderEmail = isInbound
+    ? (msg.fromEmail || customerEmail)
+    : null;
+
+  const dateStr = (() => {
     const d = msg.receivedAt || msg.sentAt || msg.createdAt;
     if (!d) return '';
-    try { return format(new Date(d), 'HH:mm'); } catch { return ''; }
+    try {
+      return format(new Date(d), 'd MMM yyyy, HH:mm', { locale: locale === 'tr' ? tr : undefined });
+    } catch { return ''; }
   })();
 
   return (
-    <div className={`flex gap-2.5 max-w-[85%] ${isInbound ? 'self-start' : 'self-end ml-auto flex-row-reverse'}`}>
-      {/* Avatar */}
-      <div className={`w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0 mt-0.5 ${
-        isInbound ? avatarColor(customerEmail) : 'bg-blue-500'
+    <div className="w-full border border-neutral-200 dark:border-neutral-800 rounded-lg overflow-hidden">
+      {/* Header bar */}
+      <div className={`flex items-center gap-3 px-4 py-2.5 ${
+        isInbound
+          ? 'bg-neutral-50 dark:bg-neutral-800/80'
+          : 'bg-blue-50/50 dark:bg-blue-950/20'
       }`}>
-        {isInbound ? initials(customerName, customerEmail) : 'T'}
+        {/* Avatar */}
+        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 ${
+          isInbound ? avatarColor(customerEmail) : 'bg-blue-500'
+        }`}>
+          {isInbound ? initials(customerName, customerEmail) : 'T'}
+        </div>
+
+        {/* Sender info */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-neutral-900 dark:text-white truncate">{senderName}</span>
+            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded flex-shrink-0 ${
+              isInbound
+                ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                : 'bg-purple-500/10 text-purple-600 dark:text-purple-400'
+            }`}>
+              {isInbound
+                ? (locale === 'tr' ? 'Gelen' : 'Inbound')
+                : (locale === 'tr' ? 'Gönderilen' : 'Sent')}
+            </span>
+            {!isInbound && (
+              <span className="flex items-center gap-0.5 text-[10px] text-purple-500 dark:text-purple-400 flex-shrink-0">
+                <Sparkles className="h-2.5 w-2.5" />
+                AI
+              </span>
+            )}
+          </div>
+          {senderEmail && (
+            <p className="text-[11px] text-neutral-500 dark:text-neutral-500 truncate">{senderEmail}</p>
+          )}
+        </div>
+
+        {/* Date */}
+        <span className="text-[11px] text-neutral-400 dark:text-neutral-500 flex-shrink-0">{dateStr}</span>
       </div>
 
-      {/* Content */}
-      <div className="flex-1">
-        {/* Sender row */}
-        <div className={`flex items-center gap-2 mb-1 ${isInbound ? '' : 'flex-row-reverse'}`}>
-          <span className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400">{senderName}</span>
-          <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded ${
-            isInbound
-              ? 'bg-blue-500/10 text-blue-500 dark:text-blue-400'
-              : 'bg-purple-500/10 text-purple-500 dark:text-purple-400'
-          }`}>
-            {isInbound ? '← ' + (locale === 'tr' ? 'Gelen' : 'In') : '→ ' + (locale === 'tr' ? 'Gönderilen' : 'Out')}
-          </span>
-          <span className="text-[10px] text-neutral-400">{time}</span>
-        </div>
+      {/* Body */}
+      <div className="px-4 py-3 bg-white dark:bg-neutral-900">
+        <p className="whitespace-pre-wrap text-sm leading-relaxed text-neutral-700 dark:text-neutral-300">
+          {mainContent || msg.bodyText?.substring(0, 500)}
+        </p>
 
-        {/* Bubble */}
-        <div className={`rounded-xl px-3.5 py-2.5 text-sm leading-relaxed ${
-          isInbound
-            ? 'bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-tl-sm'
-            : 'bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700/50 rounded-tr-sm'
-        }`}>
-          <p className="whitespace-pre-wrap text-neutral-700 dark:text-neutral-300">
-            {mainContent || msg.bodyText?.substring(0, 500)}
-          </p>
+        {/* Attachments */}
+        {msg.attachments?.length > 0 && (
+          <div className="mt-3 pt-2 border-t border-neutral-100 dark:border-neutral-800 flex flex-wrap gap-1.5">
+            {msg.attachments.map((att, i) => (
+              <span key={i} className="inline-flex items-center gap-1 px-2 py-1 rounded bg-neutral-100 dark:bg-neutral-800 text-[11px] text-neutral-600 dark:text-neutral-400">
+                <Paperclip className="h-3 w-3" />
+                {att.filename}
+              </span>
+            ))}
+          </div>
+        )}
 
-          {/* Attachments */}
-          {msg.attachments?.length > 0 && (
-            <div className="mt-2 pt-2 border-t border-neutral-200 dark:border-neutral-700 flex flex-wrap gap-1.5">
-              {msg.attachments.map((att, i) => (
-                <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-neutral-200/50 dark:bg-neutral-700/50 text-[10px] text-neutral-500">
-                  <Paperclip className="h-2.5 w-2.5" />
-                  {att.filename}
-                </span>
-              ))}
-            </div>
-          )}
-
-          {/* Quoted content toggle */}
-          {quotedContent && (
-            <>
-              <button
-                onClick={() => setShowQuoted(!showQuoted)}
-                className="flex items-center gap-1 text-[11px] text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 mt-2"
-              >
-                {showQuoted ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-                {showQuoted
-                  ? (locale === 'tr' ? 'Alıntıyı gizle' : 'Hide quote')
-                  : (locale === 'tr' ? 'Alıntıyı göster' : 'Show quote')}
-              </button>
-              {showQuoted && (
-                <div className="mt-2 pl-3 border-l-2 border-neutral-300 dark:border-neutral-600 text-xs text-neutral-400 whitespace-pre-wrap">
-                  {quotedContent}
-                </div>
-              )}
-            </>
-          )}
-        </div>
-
-        {/* AI indicator for outbound */}
-        {!isInbound && (
-          <div className="flex items-center gap-1 mt-1">
-            <Sparkles className="h-2.5 w-2.5 text-purple-400" />
-            <span className="text-[9px] text-purple-400">AI {locale === 'tr' ? 'tarafından oluşturuldu' : 'generated'}</span>
+        {/* Quoted content toggle */}
+        {quotedContent && (
+          <div className="mt-3 pt-2 border-t border-neutral-100 dark:border-neutral-800">
+            <button
+              onClick={() => setShowQuoted(!showQuoted)}
+              className="flex items-center gap-1 text-[11px] text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
+            >
+              {showQuoted ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+              {showQuoted
+                ? (locale === 'tr' ? 'Alıntıyı gizle' : 'Hide quoted text')
+                : (locale === 'tr' ? 'Alıntıyı göster' : 'Show quoted text')}
+            </button>
+            {showQuoted && (
+              <div className="mt-2 pl-3 border-l-2 border-neutral-300 dark:border-neutral-700 text-xs text-neutral-400 dark:text-neutral-500 whitespace-pre-wrap">
+                {quotedContent}
+              </div>
+            )}
           </div>
         )}
       </div>
