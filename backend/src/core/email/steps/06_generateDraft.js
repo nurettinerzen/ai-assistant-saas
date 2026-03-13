@@ -65,6 +65,111 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
+function collectInboundVerificationCandidates(inboundMessage, threadMessages = []) {
+  const candidates = [];
+  const pushCandidate = (value) => {
+    if (typeof value !== 'string') return;
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    candidates.push(trimmed);
+  };
+
+  pushCandidate(inboundMessage?.bodyText);
+  pushCandidate(inboundMessage?.body);
+  pushCandidate(inboundMessage?.textPlain);
+  pushCandidate(inboundMessage?.snippet);
+
+  const latestInboundFromThread = Array.isArray(threadMessages)
+    ? [...threadMessages]
+      .reverse()
+      .find((msg) => msg?.direction === 'INBOUND' || msg?.role === 'customer')
+    : null;
+
+  pushCandidate(latestInboundFromThread?.body);
+  pushCandidate(latestInboundFromThread?.content);
+
+  return candidates;
+}
+
+export function extractVerificationInputFromText(rawText, askForField) {
+  const text = String(rawText || '').trim();
+  if (!text) return null;
+
+  const normalizedAskFor = String(askForField || '').toLowerCase();
+  if (normalizedAskFor !== 'phone_last4') {
+    return null;
+  }
+
+  // Most common case: user replies with only 4 digits.
+  if (/^\d{4}$/.test(text)) {
+    return text;
+  }
+
+  // Also accept full phone numbers; tool supports both 4-digit and 10+ digit verification input.
+  const compactPhone = text.replace(/[\s\-()]/g, '');
+  if (/^\+?\d{10,13}$/.test(compactPhone)) {
+    return compactPhone;
+  }
+
+  // "last 4: 1234" / "son 4 hane 1234" style replies.
+  const contextualMatch = text.match(/(?:son\s*4|last\s*4|hane|digit|telefon|phone)[^\d]*(\d{4})/i);
+  if (contextualMatch?.[1]) {
+    return contextualMatch[1];
+  }
+
+  // Short replies often contain only the verification fragment.
+  const standaloneGroups = [...text.matchAll(/\b(\d{4})\b/g)].map((match) => match[1]);
+  if (standaloneGroups.length === 1 && text.length <= 80) {
+    return standaloneGroups[0];
+  }
+
+  return null;
+}
+
+export function hydrateLookupArgsWithVerificationInput({
+  toolName,
+  toolArgs,
+  emailState,
+  inboundMessage,
+  threadMessages
+}) {
+  if (toolName !== 'customer_data_lookup') {
+    return { args: toolArgs, hydrated: false };
+  }
+
+  const verificationStatus = emailState?.verification?.status;
+  const isVerificationPending = verificationStatus === 'pending' || verificationStatus === 'failed';
+  const askForField = emailState?.verification?.pendingField || null;
+
+  if (!isVerificationPending || !askForField) {
+    return { args: toolArgs, hydrated: false };
+  }
+
+  if (toolArgs?.verification_input) {
+    return { args: toolArgs, hydrated: false };
+  }
+
+  const candidates = collectInboundVerificationCandidates(inboundMessage, threadMessages);
+  for (const candidate of candidates) {
+    const cleaned = cleanEmailText(candidate, 'INBOUND').cleanedText || candidate;
+    const extracted = extractVerificationInputFromText(cleaned, askForField);
+    if (!extracted) {
+      continue;
+    }
+
+    return {
+      args: {
+        ...toolArgs,
+        verification_input: extracted
+      },
+      hydrated: true,
+      askForField
+    };
+  }
+
+  return { args: toolArgs, hydrated: false };
+}
+
 /**
  * Generate email draft content
  *
@@ -314,6 +419,17 @@ export async function generateEmailDraft(ctx) {
 
         // Use thread-scoped verification state (persists across drafts)
         const emailState = ctx.emailVerificationState || { verification: { status: 'none' } };
+        const hydratedArgs = hydrateLookupArgsWithVerificationInput({
+          toolName,
+          toolArgs,
+          emailState,
+          inboundMessage: ctx.inboundMessage,
+          threadMessages: ctx.threadMessages
+        });
+        if (hydratedArgs.hydrated) {
+          toolArgs = hydratedArgs.args;
+          console.log(`📧 [DraftToolLoop] Hydrated verification_input for ${toolName} (askFor=${hydratedArgs.askForField})`);
+        }
 
         const result = await executeTool(toolName, toolArgs, business, {
           channel: 'EMAIL',
@@ -344,6 +460,8 @@ export async function generateEmailDraft(ctx) {
           applyOutcomeEventsToState(emailState, outcomeEvents);
         }
 
+        const askForField = result.askFor || result.data?.askFor || null;
+
         // Store tool result for metrics/guardrails
         ctx.toolResults.push({
           toolName,
@@ -351,7 +469,9 @@ export async function generateEmailDraft(ctx) {
           outcome: normalizeOutcome(result.outcome) || (result.success ? ToolOutcome.OK : ToolOutcome.INFRA_ERROR),
           success: result.success,
           data: result.data || null,
-          message: result.message
+          message: result.message,
+          askFor: askForField,
+          _askFor: askForField
         });
 
         // If we got customer data, store it prominently
@@ -367,7 +487,8 @@ export async function generateEmailDraft(ctx) {
             outcome: result.outcome,
             success: result.success,
             data: result.data,
-            message: result.message
+            message: result.message,
+            askFor: askForField
           })
         });
       }

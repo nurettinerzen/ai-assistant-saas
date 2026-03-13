@@ -243,7 +243,7 @@ export function enforceToolRequiredPolicy({ classification, toolResults, languag
         requiredTools.includes(r.toolName) && normalizeOutcome(r.outcome) === ToolOutcome.VERIFICATION_REQUIRED
       );
       const toolMessage = verificationToolResult?.message;
-      const askFor = verificationToolResult?._askFor;
+      const askFor = verificationToolResult?.askFor || verificationToolResult?._askFor;
 
       // If tool provided a specific message, use it instead of the generic catalog message.
       // The tool message already knows which field is missing (e.g. phone_last4 only).

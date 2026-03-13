@@ -89,7 +89,8 @@ export async function applyEmailGuardrails(ctx) {
   // ============================================
   const verificationRequired = toolResults?.some(r => normalizeOutcome(r.outcome) === ToolOutcome.VERIFICATION_REQUIRED);
   // Extract askFor from tool results so the fallback message only asks for the missing field
-  const askForField = toolResults?.find(r => normalizeOutcome(r.outcome) === ToolOutcome.VERIFICATION_REQUIRED)?._askFor || null;
+  const verificationToolResult = toolResults?.find(r => normalizeOutcome(r.outcome) === ToolOutcome.VERIFICATION_REQUIRED);
+  const askForField = verificationToolResult?.askFor || verificationToolResult?._askFor || null;
 
   const verificationResult = checkVerificationPolicy(modifiedContent, verificationRequired, language, askForField);
   ctx.guardrailsApplied.push({
