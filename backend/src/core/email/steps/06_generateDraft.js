@@ -130,7 +130,9 @@ export function hydrateLookupArgsWithVerificationInput({
   }
 
   const verificationStatus = emailState?.verification?.status || emailState?.verificationStatus;
-  const isVerificationPending = verificationStatus === 'pending' || verificationStatus === 'failed';
+  // Include 'verified' — TTL may have expired, tool will re-check.
+  // Without this, hydration skips entirely for TTL-expired sessions.
+  const isVerificationActive = ['pending', 'failed', 'verified'].includes(verificationStatus);
   const verificationAnchor = emailState?.verification?.anchor || emailState?.verificationAnchor || null;
   const pendingFieldRaw =
     emailState?.verification?.pendingField ||
@@ -140,7 +142,7 @@ export function hydrateLookupArgsWithVerificationInput({
   const askForField = Array.isArray(pendingFieldRaw) ? pendingFieldRaw[0] : pendingFieldRaw;
   const inferredAskForField = askForField || (verificationAnchor?.phone ? 'phone_last4' : null);
 
-  if (!isVerificationPending || !inferredAskForField) {
+  if (!isVerificationActive || !inferredAskForField) {
     return { args: toolArgs, hydrated: false };
   }
 
