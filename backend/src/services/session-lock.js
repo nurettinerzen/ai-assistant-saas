@@ -408,14 +408,22 @@ export async function checkEnumerationAttempt(sessionId, options = {}) {
 export async function resetEnumerationCounter(sessionId) {
   const state = await getState(sessionId);
   state.enumerationAttempts = [];
-  state.enumeration = {
-    verificationAttempts: [],
-    notFoundAttempts: [],
-    lastProbeAt: null,
-    lastProbeIdentifier: null
-  };
+  if (state.enumeration) {
+    // Reset verification attempts (successful verify clears these)
+    state.enumeration.verificationAttempts = [];
+    // SECURITY: Preserve notFoundAttempts, lastProbeAt, lastProbeIdentifier
+    // A successful verify on one anchor must NOT reset cross-anchor probing counters.
+    // This prevents: verify own order → reset counter → probe other orders.
+  } else {
+    state.enumeration = {
+      verificationAttempts: [],
+      notFoundAttempts: [],
+      lastProbeAt: null,
+      lastProbeIdentifier: null
+    };
+  }
   await updateState(sessionId, state);
-  console.log(`[Enumeration] Reset counter for session ${sessionId}`);
+  console.log(`[Enumeration] Reset verification counter for session ${sessionId} (notFound preserved)`);
 }
 
 export default {

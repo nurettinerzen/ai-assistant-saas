@@ -120,11 +120,12 @@ export function applyOutcomeEventsToState(state, events = []) {
       }
 
       case OutcomeEventType.VERIFICATION_FAILED: {
-        state.verification.status = 'pending';
+        state.verification.status = 'failed';
         state.verification.pendingField = state.verification.pendingField || 'name';
         state.verification.attempts = Number.isFinite(event.attempts)
           ? event.attempts
           : (state.verification.attempts || 0) + 1;
+        state.verification.failedAt = Date.now();
         break;
       }
 

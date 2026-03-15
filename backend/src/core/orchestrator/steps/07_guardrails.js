@@ -603,23 +603,21 @@ export async function applyGuardrails(params) {
       });
 
       if (gatewayResult.requiresVerification && verificationState !== 'verified') {
-        // LLM-FIRST: Don't override with deterministic question.
-        // Use needsCorrection so LLM regenerates naturally without leaking unverified data.
+        // HARD BLOCK: Authorization decision is NOT delegated to LLM.
+        // Previously used needsCorrection (LLM regenerate) — that's a request, not a barrier.
+        // Now: if tool output has protected fields and user is NOT verified, hard block.
         metrics.securityGatewayVerificationRequired = {
           deniedFields: gatewayResult.deniedFields,
-          action: 'LLM_REGENERATE'
+          action: 'HARD_BLOCK'
         };
 
-        console.log('🔄 [SecurityGateway] Verification required — LLM will regenerate without unverified data');
+        console.warn('🚫 [SecurityGateway] Verification HARD BLOCK — unverified user, protected fields in tool output');
         return {
-          needsCorrection: true,
-          correctionType: 'VERIFICATION_REQUIRED',
-          correctionConstraint: language === 'TR'
-            ? 'Kullanıcının kimliği doğrulanmamış. Hassas sipariş/müşteri verisi paylaşma. Kullanıcıdan doğrulama için gerekli bilgiyi doğal bir şekilde iste.'
-            : 'User identity is not verified. Do not share sensitive order/customer data. Naturally ask the user for verification information.',
-          action: GuardrailAction.NEED_MIN_INFO_FOR_TOOL,
-          blocked: false,
-          guardrailsApplied: ['RESPONSE_FIREWALL', 'PII_PREVENTION', 'SECURITY_GATEWAY_VERIFICATION_ENFORCEMENT']
+          finalResponse: getBarrierMessage(language),
+          action: GuardrailAction.BLOCK,
+          blocked: true,
+          blockReason: 'VERIFICATION_NOT_COMPLETED',
+          guardrailsApplied: ['RESPONSE_FIREWALL', 'PII_PREVENTION', 'SECURITY_GATEWAY_VERIFICATION_HARD_BLOCK']
         };
       }
 
