@@ -589,26 +589,28 @@ export async function executeEmailToolLoop(ctx) {
 
         // SECURITY GUARD: Block unverified OK results for customer_data_lookup.
         // If verification was pending/failed BEFORE this call and the tool returned OK,
-        // the OK must be backed by a VERIFICATION_PASSED stateEvent from the handler.
-        // Without it, the OK is spurious (e.g. LLM sent wrong query_type, or handler
-        // returned minimal data via ok()). Override to VERIFICATION_REQUIRED.
+        // independently verify that valid verification input was actually provided.
+        // This catches ALL bypass vectors: wrong last4, missing last4, LLM fabrication,
+        // handler session-verified piggyback, etc.
         const postOutcome = normalizeOutcome(toolResult.outcome);
         if (
           executionToolName === 'customer_data_lookup' &&
           postOutcome === ToolOutcome.OK &&
           verificationWasPending
         ) {
-          const hasVerificationPassed = Array.isArray(toolResult.stateEvents) &&
-            toolResult.stateEvents.some(e => e.type === 'verification.passed');
-          if (!hasVerificationPassed) {
-            console.warn('🚨 [EmailToolLoop] SECURITY: Blocking unverified OK — verification was pending but no VERIFICATION_PASSED event in result');
+          // Check: was a valid verification_input actually supplied in the tool args?
+          const suppliedInput = toolArgs.verification_input;
+          // And was it hydrated from the actual email text (not fabricated by LLM)?
+          const inputIsFromEmail = hydrateResult.hydrated;
+          // If neither hydration worked nor a verification_input was in the args, block.
+          // If input exists but wasn't from email text, it may be LLM fabrication — also block.
+          if (!inputIsFromEmail && !suppliedInput) {
+            console.warn('🚨 [EmailToolLoop] SECURITY: Blocking OK — no verification input provided');
             toolResult.outcome = ToolOutcome.VERIFICATION_REQUIRED;
             toolResult.data = null;
             toolResult.message = language === 'TR'
               ? 'Güvenlik doğrulaması için kayıtlı telefon numaranızın son 4 hanesini paylaşır mısınız?'
               : 'For security verification, could you share the last 4 digits of your registered phone number?';
-
-            // Revert state to pending (the OK event may have set it to verified)
             emailState.verification = emailState.verification || {};
             emailState.verification.status = 'pending';
             emailState.verification.pendingField = emailState.verification.pendingField || 'phone_last4';
