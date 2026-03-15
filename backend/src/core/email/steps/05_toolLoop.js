@@ -385,24 +385,26 @@ export async function executeEmailToolLoop(ctx) {
             }
 
             // SECURITY GUARD: Block unverified OK in deterministic fallback path.
-            // Same logic as LLM-driven path — if verification was pending but no valid
-            // verification_input was in the args, an OK result is spurious.
+            // Same logic as LLM-driven path — OK must be backed by VERIFICATION_PASSED event.
             const fallbackPostOutcome = normalizeOutcome(toolResult.outcome);
             if (
               fallbackPostOutcome === ToolOutcome.OK &&
-              verificationInfo.isPending &&
-              !forcedArgs.verification_input
+              verificationInfo.isPending
             ) {
-              console.warn('🚨 [EmailToolLoop] SECURITY: Blocking unverified OK in deterministic fallback — verification was pending but no input provided');
-              toolResult.outcome = ToolOutcome.VERIFICATION_REQUIRED;
-              toolResult.data = null;
-              toolResult.message = language === 'TR'
-                ? 'Güvenlik doğrulaması için kayıtlı telefon numaranızın son 4 hanesini paylaşır mısınız?'
-                : 'For security verification, could you share the last 4 digits of your registered phone number?';
+              const hasVerificationPassed = Array.isArray(toolResult.stateEvents) &&
+                toolResult.stateEvents.some(e => e.type === 'verification.passed');
+              if (!hasVerificationPassed) {
+                console.warn('🚨 [EmailToolLoop] SECURITY: Blocking unverified OK in deterministic fallback — no VERIFICATION_PASSED event');
+                toolResult.outcome = ToolOutcome.VERIFICATION_REQUIRED;
+                toolResult.data = null;
+                toolResult.message = language === 'TR'
+                  ? 'Güvenlik doğrulaması için kayıtlı telefon numaranızın son 4 hanesini paylaşır mısınız?'
+                  : 'For security verification, could you share the last 4 digits of your registered phone number?';
 
-              verificationInfo.state.verification = verificationInfo.state.verification || {};
-              verificationInfo.state.verification.status = 'pending';
-              verificationInfo.state.verification.pendingField = verificationInfo.state.verification.pendingField || 'phone_last4';
+                verificationInfo.state.verification = verificationInfo.state.verification || {};
+                verificationInfo.state.verification.status = 'pending';
+                verificationInfo.state.verification.pendingField = verificationInfo.state.verification.pendingField || 'phone_last4';
+              }
             }
 
             const outcome = normalizeOutcome(toolResult.outcome);
@@ -563,27 +565,31 @@ export async function executeEmailToolLoop(ctx) {
         }
 
         // SECURITY GUARD: Block unverified OK results for customer_data_lookup.
-        // If verification was pending/failed BEFORE this call and the tool returned OK
-        // but no valid verification input was hydrated from the email, the OK is spurious
-        // (LLM non-determinism). Override to VERIFICATION_REQUIRED to prevent PII leakage.
+        // If verification was pending/failed BEFORE this call and the tool returned OK,
+        // the OK must be backed by a VERIFICATION_PASSED stateEvent from the handler.
+        // Without it, the OK is spurious (e.g. LLM sent wrong query_type, or handler
+        // returned minimal data via ok()). Override to VERIFICATION_REQUIRED.
         const postOutcome = normalizeOutcome(toolResult.outcome);
         if (
           executionToolName === 'customer_data_lookup' &&
           postOutcome === ToolOutcome.OK &&
-          verificationWasPending &&
-          !hydrateResult.hydrated
+          verificationWasPending
         ) {
-          console.warn('🚨 [EmailToolLoop] SECURITY: Blocking unverified OK — verification was pending but no valid input hydrated');
-          toolResult.outcome = ToolOutcome.VERIFICATION_REQUIRED;
-          toolResult.data = null;
-          toolResult.message = language === 'TR'
-            ? 'Güvenlik doğrulaması için kayıtlı telefon numaranızın son 4 hanesini paylaşır mısınız?'
-            : 'For security verification, could you share the last 4 digits of your registered phone number?';
+          const hasVerificationPassed = Array.isArray(toolResult.stateEvents) &&
+            toolResult.stateEvents.some(e => e.type === 'verification.passed');
+          if (!hasVerificationPassed) {
+            console.warn('🚨 [EmailToolLoop] SECURITY: Blocking unverified OK — verification was pending but no VERIFICATION_PASSED event in result');
+            toolResult.outcome = ToolOutcome.VERIFICATION_REQUIRED;
+            toolResult.data = null;
+            toolResult.message = language === 'TR'
+              ? 'Güvenlik doğrulaması için kayıtlı telefon numaranızın son 4 hanesini paylaşır mısınız?'
+              : 'For security verification, could you share the last 4 digits of your registered phone number?';
 
-          // Revert state to pending (the OK event may have set it to verified)
-          emailState.verification = emailState.verification || {};
-          emailState.verification.status = 'pending';
-          emailState.verification.pendingField = emailState.verification.pendingField || 'phone_last4';
+            // Revert state to pending (the OK event may have set it to verified)
+            emailState.verification = emailState.verification || {};
+            emailState.verification.status = 'pending';
+            emailState.verification.pendingField = emailState.verification.pendingField || 'phone_last4';
+          }
         }
 
         const outcome = normalizeOutcome(toolResult.outcome);
