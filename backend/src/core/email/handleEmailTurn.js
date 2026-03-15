@@ -46,7 +46,7 @@ import {
   buildSafeRecipients
 } from './policies/recipientOwnershipPolicy.js';
 import { enforceToolRequiredPolicy } from './policies/toolRequiredPolicy.js';
-import { preventPIILeak, scanForPII } from './policies/piiPreventionPolicy.js';
+import { preventPIILeak } from './policies/piiPreventionPolicy.js';
 import {
   containsChildSafetyViolation,
   getBlockedContentMessage,
@@ -54,6 +54,117 @@ import {
 } from '../../utils/content-safety.js';
 import { ToolOutcome, normalizeOutcome } from '../../tools/toolResult.js';
 import { getState, updateState } from '../../services/state-manager.js';
+import { handleIncomingMessage } from '../handleIncomingMessage.js';
+
+function shouldUseCoreEmailOrchestrator() {
+  const raw = String(process.env.EMAIL_USE_CORE_ORCHESTRATOR || 'true').trim().toLowerCase();
+  return !['false', '0', 'off', 'no'].includes(raw);
+}
+
+function mapCoreToolsToEmailResults(tools = []) {
+  if (!Array.isArray(tools)) return [];
+
+  return tools.map((tool) => {
+    const toolName = String(tool?.name || 'unknown_tool');
+    const outcome = normalizeOutcome(tool?.outcome) || (tool?.success === false ? ToolOutcome.INFRA_ERROR : ToolOutcome.OK);
+    return {
+      toolName,
+      requestedToolName: toolName,
+      args: tool?.input && typeof tool.input === 'object' ? tool.input : {},
+      outcome,
+      success: outcome === ToolOutcome.OK,
+      data: null,
+      message: null
+    };
+  });
+}
+
+async function runCoreEmailOrchestratorTurn(ctx) {
+  const inboundText = String(
+    ctx?.inboundMessage?._originalBody
+    || ctx?.inboundMessage?.bodyText
+    || ctx?.inboundMessage?.body
+    || ctx?.inboundMessage?.snippet
+    || ''
+  ).trim();
+
+  if (!inboundText) {
+    return {
+      success: false,
+      error: 'No inbound email content to process'
+    };
+  }
+
+  const coreSessionId = `email_${ctx.threadId}`;
+  const coreMessageId = String(ctx?.inboundMessage?.id || ctx?.messageId || `email_${Date.now()}`);
+
+  const coreResult = await handleIncomingMessage({
+    channel: 'EMAIL',
+    business: ctx.business,
+    assistant: ctx.assistant,
+    channelUserId: ctx.customerEmail || ctx.thread?.customerEmail || coreSessionId,
+    sessionId: coreSessionId,
+    messageId: coreMessageId,
+    userMessage: inboundText,
+    language: ctx.language || ctx.business?.language || 'TR',
+    timezone: ctx.business?.timezone || 'Europe/Istanbul',
+    metadata: {
+      businessId: ctx.businessId,
+      requestId: ctx.options?.requestId || null,
+      emailThreadId: ctx.threadId,
+      inboundMessageId: ctx?.inboundMessage?.id || null
+    }
+  });
+
+  const draftContent = String(coreResult?.reply || '').trim();
+  if (!draftContent) {
+    return {
+      success: false,
+      error: 'Core orchestrator returned empty draft content',
+      coreResult
+    };
+  }
+
+  const traceTools = Array.isArray(coreResult?.traceContext?.tools) ? coreResult.traceContext.tools : [];
+  const mappedToolResults = mapCoreToolsToEmailResults(traceTools);
+  const toolsCalled = Array.isArray(coreResult?.toolsCalled)
+    ? coreResult.toolsCalled
+    : mappedToolResults.map((item) => item.toolName);
+  const intent = String(
+    coreResult?.traceContext?.plan?.intent
+    || coreResult?.metrics?.intent_final
+    || coreResult?.debug?.classification
+    || 'GENERAL'
+  ).toUpperCase();
+  const confidence = Number.isFinite(coreResult?.traceContext?.plan?.confidence)
+    ? coreResult.traceContext.plan.confidence
+    : (Number.isFinite(coreResult?.debug?.confidence) ? coreResult.debug.confidence : 0.5);
+
+  return {
+    success: true,
+    coreResult,
+    draftContent,
+    toolsCalled,
+    toolResults: mappedToolResults,
+    inputTokens: Number(coreResult?.inputTokens || 0),
+    outputTokens: Number(coreResult?.outputTokens || 0),
+    responseGrounding: coreResult?.metadata?.responseGrounding || 'GROUNDED',
+    assistantMessageMeta: {
+      messageType: coreResult?.metadata?.messageType || 'assistant_claim',
+      guardrailAction: coreResult?.metadata?.guardrailAction || 'PASS',
+      guardrailReason: coreResult?.metadata?.guardrailReason || null
+    },
+    classification: {
+      intent,
+      confidence,
+      needs_tools: toolsCalled.length > 0,
+      urgency: 'MEDIUM',
+      topic: intent,
+      sentiment: 'NEUTRAL',
+      actionable: true
+    }
+  };
+}
 
 /**
  * Handle email draft generation turn
@@ -67,6 +178,7 @@ import { getState, updateState } from '../../services/state-manager.js';
  */
 export async function handleEmailTurn(params) {
   const { businessId, threadId, messageId, options = {} } = params;
+  const useCoreEmailOrchestrator = shouldUseCoreEmailOrchestrator();
 
   const turnStartTime = Date.now();
   const metrics = {
@@ -333,180 +445,216 @@ export async function handleEmailTurn(params) {
       console.log(`🛡️ [EmailTurn] Input PII scrubbed: ${inputPiiCount} items (${metrics.steps.inputPiiScrub}ms)`);
     }
 
-    // ============================================
-    // STEP 3: Classify Email
-    // ============================================
-    const step3Start = Date.now();
-    const classifyResult = await classifyEmail(ctx);
+    let toolRequiredResult = { enforced: false };
 
-    metrics.steps.classify = Date.now() - step3Start;
-    metrics.classification = ctx.classification;
-    console.log(`✅ [EmailTurn] Classified: ${ctx.classification?.intent} (${metrics.steps.classify}ms)`);
+    if (useCoreEmailOrchestrator) {
+      // ============================================
+      // STEP 3-6: Unified Core Orchestrator (same as CHAT/WHATSAPP)
+      // ============================================
+      const coreStart = Date.now();
+      const coreTurn = await runCoreEmailOrchestratorTurn(ctx);
+      metrics.steps.coreOrchestrator = Date.now() - coreStart;
 
-    // ============================================
-    // STEP 4: Tool Gating
-    // ============================================
-    const step4Start = Date.now();
-    const gatingResult = await gateEmailTools(ctx);
-
-    metrics.steps.toolGating = Date.now() - step4Start;
-    metrics.gatedTools = ctx.gatedTools;
-    console.log(`✅ [EmailTurn] Tools gated: ${ctx.gatedTools.length} available (${metrics.steps.toolGating}ms)`);
-
-    // ============================================
-    // STEP 5a: Prepare Prompts (RAG + prompt building)
-    // ============================================
-    const step5aStart = Date.now();
-    const promptResult = await prepareEmailPrompts(ctx);
-
-    metrics.steps.preparePrompts = Date.now() - step5aStart;
-
-    if (!promptResult.success) {
-      console.error('❌ [EmailTurn] Failed to prepare prompts:', promptResult.error);
-      return {
-        success: false,
-        error: promptResult.error,
-        errorCode: 'PROMPT_PREPARATION_FAILED',
-        metrics
-      };
-    }
-
-    console.log(`✅ [EmailTurn] Prompts prepared (${metrics.steps.preparePrompts}ms)`);
-
-    // ============================================
-    // STEP 5b: Tool Loop (Gemini orchestrator-driven)
-    // ============================================
-    const step5bStart = Date.now();
-    const toolLoopResult = await executeEmailToolLoop(ctx);
-
-    metrics.steps.toolLoop = Date.now() - step5bStart;
-    console.log(`✅ [EmailTurn] Tool loop complete: ${ctx.toolResults.length} tool calls (${metrics.steps.toolLoop}ms)`);
-
-    // ============================================
-    // STEP 6: Finalize Draft (grounding + metrics)
-    // ============================================
-    const step6Start = Date.now();
-    const generateResult = await generateEmailDraft(ctx);
-
-    if (!generateResult.success) {
-      console.error('❌ [EmailTurn] Failed to finalize draft:', generateResult.error);
-      return {
-        success: false,
-        error: generateResult.error,
-        errorCode: 'DRAFT_GENERATION_FAILED',
-        metrics
-      };
-    }
-
-    metrics.steps.generateDraft = Date.now() - step6Start;
-    metrics.inputTokens = generateResult.inputTokens;
-    metrics.outputTokens = generateResult.outputTokens;
-    metrics.toolsCalled = ctx.toolResults.map(r => r.toolName);
-    metrics.hadToolSuccess = ctx.toolResults.some(r => normalizeOutcome(r.outcome) === ToolOutcome.OK);
-    console.log(`✅ [EmailTurn] Draft finalized: ${ctx.toolResults.length} tool calls (${metrics.steps.generateDraft}ms)`);
-
-    // Persist email verification state after tool execution
-    if (ctx.emailVerificationState?.verification?.status !== 'none') {
-      try {
-        await updateState(emailSessionId, ctx.emailVerificationState);
-        console.log('📧 [EmailTurn] Verification state persisted:', {
-          status: ctx.emailVerificationState?.verification?.status || 'none',
-          pendingField: ctx.emailVerificationState?.verification?.pendingField || null,
-          hasAnchor: Boolean(ctx.emailVerificationState?.verification?.anchor),
-          attempts: ctx.emailVerificationState?.verification?.attempts || 0
-        });
-      } catch (stateErr) {
-        console.warn('⚠️ [EmailTurn] Failed to persist email verification state:', stateErr.message);
-      }
-    }
-
-    // ============================================
-    // STEP 6.1: Tool Result PII Scrubbing
-    // Scrub PII from tool results called by LLM in Step 6
-    // ============================================
-    const toolPiiStart = Date.now();
-    let toolPiiCount = 0;
-
-    ctx.toolResults = ctx.toolResults.map(result => {
-      if (result.data && typeof result.data === 'object') {
-        const scrubbedData = {};
-        for (const [key, value] of Object.entries(result.data)) {
-          if (typeof value === 'string') {
-            const scrubResult = preventPIILeak(value, { strict: false });
-            scrubbedData[key] = scrubResult.content;
-            if (scrubResult.modified) {
-              toolPiiCount += scrubResult.modifications?.length || 0;
-            }
-          } else {
-            scrubbedData[key] = value;
-          }
-        }
+      if (!coreTurn.success) {
+        console.error('❌ [EmailTurn] Core orchestrator failed:', coreTurn.error);
         return {
-          ...result,
-          data: scrubbedData,
-          _originalData: result.data,
-          _piiScrubbed: toolPiiCount > 0
+          success: false,
+          error: coreTurn.error,
+          errorCode: 'CORE_ORCHESTRATOR_FAILED',
+          metrics
         };
       }
-      return result;
-    });
 
-    metrics.steps.toolPiiScrub = Date.now() - toolPiiStart;
-    metrics.toolPiiScrubbed = toolPiiCount;
+      ctx.draftContent = coreTurn.draftContent;
+      ctx.toolResults = coreTurn.toolResults;
+      ctx.classification = coreTurn.classification;
+      ctx.responseGrounding = coreTurn.responseGrounding;
+      ctx.assistantMessageMeta = coreTurn.assistantMessageMeta;
 
-    if (toolPiiCount > 0) {
-      console.log(`🛡️ [EmailTurn] Tool result PII scrubbed: ${toolPiiCount} items (${metrics.steps.toolPiiScrub}ms)`);
-    }
+      metrics.classification = ctx.classification;
+      metrics.inputTokens = coreTurn.inputTokens;
+      metrics.outputTokens = coreTurn.outputTokens;
+      metrics.toolsCalled = coreTurn.toolsCalled;
+      metrics.hadToolSuccess = ctx.toolResults.some(r => normalizeOutcome(r.outcome) === ToolOutcome.OK);
+      metrics.responseGrounding = ctx.responseGrounding;
 
-    // ============================================
-    // STEP 6.2: Tool Required Policy Check (Post-Draft)
-    // Validates that tool-required intents had proper tool usage
-    // ============================================
-    const toolRequiredStart = Date.now();
-    const toolRequiredResult = enforceToolRequiredPolicy({
-      classification: ctx.classification,
-      toolResults: ctx.toolResults,
-      language: ctx.language
-    });
+      console.log(`✅ [EmailTurn] Core orchestrator completed (${metrics.steps.coreOrchestrator}ms, tools=${ctx.toolResults.length})`);
+    } else {
+      // ============================================
+      // STEP 3: Classify Email
+      // ============================================
+      const step3Start = Date.now();
+      await classifyEmail(ctx);
 
-    metrics.steps.toolRequiredPolicy = Date.now() - toolRequiredStart;
-    metrics.toolRequiredEnforced = toolRequiredResult.enforced;
+      metrics.steps.classify = Date.now() - step3Start;
+      metrics.classification = ctx.classification;
+      console.log(`✅ [EmailTurn] Classified: ${ctx.classification?.intent} (${metrics.steps.classify}ms)`);
 
-    if (toolRequiredResult.enforced) {
-      console.warn(`⚠️ [EmailTurn] Tool required policy enforced (post-draft): ${toolRequiredResult.reason}`);
+      // ============================================
+      // STEP 4: Tool Gating
+      // ============================================
+      const step4Start = Date.now();
+      await gateEmailTools(ctx);
 
-      if (toolRequiredResult.action === 'NEED_MIN_INFO_FOR_TOOL' || toolRequiredResult.action === 'ASK_VERIFICATION') {
-        ctx.draftContent = toolRequiredResult.message;
-        ctx.assistantMessageMeta = {
-          messageType: 'clarification',
-          guardrailAction: 'NEED_MIN_INFO_FOR_TOOL',
-          guardrailReason: toolRequiredResult.reason || 'NEED_MIN_INFO_FOR_TOOL'
-        };
-      } else if (toolRequiredResult.action === 'SYSTEM_ERROR_FALLBACK') {
-        ctx.draftContent = toolRequiredResult.message;
-        ctx.assistantMessageMeta = {
-          messageType: 'system_barrier',
-          guardrailAction: 'BLOCK',
-          guardrailReason: toolRequiredResult.reason || 'SYSTEM_ERROR'
+      metrics.steps.toolGating = Date.now() - step4Start;
+      metrics.gatedTools = ctx.gatedTools;
+      console.log(`✅ [EmailTurn] Tools gated: ${ctx.gatedTools.length} available (${metrics.steps.toolGating}ms)`);
+
+      // ============================================
+      // STEP 5a: Prepare Prompts (RAG + prompt building)
+      // ============================================
+      const step5aStart = Date.now();
+      const promptResult = await prepareEmailPrompts(ctx);
+
+      metrics.steps.preparePrompts = Date.now() - step5aStart;
+
+      if (!promptResult.success) {
+        console.error('❌ [EmailTurn] Failed to prepare prompts:', promptResult.error);
+        return {
+          success: false,
+          error: promptResult.error,
+          errorCode: 'PROMPT_PREPARATION_FAILED',
+          metrics
         };
       }
-    }
 
-    ctx.responseGrounding = ctx.responseGrounding || 'GROUNDED';
-    if (!ctx.assistantMessageMeta) {
-      ctx.assistantMessageMeta = ctx.responseGrounding === 'CLARIFICATION'
-        ? {
-          messageType: 'clarification',
-          guardrailAction: 'NEED_MIN_INFO_FOR_TOOL',
-          guardrailReason: null
+      console.log(`✅ [EmailTurn] Prompts prepared (${metrics.steps.preparePrompts}ms)`);
+
+      // ============================================
+      // STEP 5b: Tool Loop (Gemini orchestrator-driven)
+      // ============================================
+      const step5bStart = Date.now();
+      await executeEmailToolLoop(ctx);
+
+      metrics.steps.toolLoop = Date.now() - step5bStart;
+      console.log(`✅ [EmailTurn] Tool loop complete: ${ctx.toolResults.length} tool calls (${metrics.steps.toolLoop}ms)`);
+
+      // ============================================
+      // STEP 6: Finalize Draft (grounding + metrics)
+      // ============================================
+      const step6Start = Date.now();
+      const generateResult = await generateEmailDraft(ctx);
+
+      if (!generateResult.success) {
+        console.error('❌ [EmailTurn] Failed to finalize draft:', generateResult.error);
+        return {
+          success: false,
+          error: generateResult.error,
+          errorCode: 'DRAFT_GENERATION_FAILED',
+          metrics
+        };
+      }
+
+      metrics.steps.generateDraft = Date.now() - step6Start;
+      metrics.inputTokens = generateResult.inputTokens;
+      metrics.outputTokens = generateResult.outputTokens;
+      metrics.toolsCalled = ctx.toolResults.map(r => r.toolName);
+      metrics.hadToolSuccess = ctx.toolResults.some(r => normalizeOutcome(r.outcome) === ToolOutcome.OK);
+      console.log(`✅ [EmailTurn] Draft finalized: ${ctx.toolResults.length} tool calls (${metrics.steps.generateDraft}ms)`);
+
+      // Persist email verification state after tool execution
+      if (ctx.emailVerificationState?.verification?.status !== 'none') {
+        try {
+          await updateState(emailSessionId, ctx.emailVerificationState);
+          console.log('📧 [EmailTurn] Verification state persisted:', {
+            status: ctx.emailVerificationState?.verification?.status || 'none',
+            pendingField: ctx.emailVerificationState?.verification?.pendingField || null,
+            hasAnchor: Boolean(ctx.emailVerificationState?.verification?.anchor),
+            attempts: ctx.emailVerificationState?.verification?.attempts || 0
+          });
+        } catch (stateErr) {
+          console.warn('⚠️ [EmailTurn] Failed to persist email verification state:', stateErr.message);
         }
-        : {
-          messageType: 'assistant_claim',
-          guardrailAction: 'PASS',
-          guardrailReason: null
-        };
+      }
+
+      // ============================================
+      // STEP 6.1: Tool Result PII Scrubbing
+      // Scrub PII from tool results called by LLM in Step 6
+      // ============================================
+      const toolPiiStart = Date.now();
+      let toolPiiCount = 0;
+
+      ctx.toolResults = ctx.toolResults.map(result => {
+        if (result.data && typeof result.data === 'object') {
+          const scrubbedData = {};
+          for (const [key, value] of Object.entries(result.data)) {
+            if (typeof value === 'string') {
+              const scrubResult = preventPIILeak(value, { strict: false });
+              scrubbedData[key] = scrubResult.content;
+              if (scrubResult.modified) {
+                toolPiiCount += scrubResult.modifications?.length || 0;
+              }
+            } else {
+              scrubbedData[key] = value;
+            }
+          }
+          return {
+            ...result,
+            data: scrubbedData,
+            _originalData: result.data,
+            _piiScrubbed: toolPiiCount > 0
+          };
+        }
+        return result;
+      });
+
+      metrics.steps.toolPiiScrub = Date.now() - toolPiiStart;
+      metrics.toolPiiScrubbed = toolPiiCount;
+
+      if (toolPiiCount > 0) {
+        console.log(`🛡️ [EmailTurn] Tool result PII scrubbed: ${toolPiiCount} items (${metrics.steps.toolPiiScrub}ms)`);
+      }
+
+      // ============================================
+      // STEP 6.2: Tool Required Policy Check (Post-Draft)
+      // Validates that tool-required intents had proper tool usage
+      // ============================================
+      const toolRequiredStart = Date.now();
+      toolRequiredResult = enforceToolRequiredPolicy({
+        classification: ctx.classification,
+        toolResults: ctx.toolResults,
+        language: ctx.language
+      });
+
+      metrics.steps.toolRequiredPolicy = Date.now() - toolRequiredStart;
+      metrics.toolRequiredEnforced = toolRequiredResult.enforced;
+
+      if (toolRequiredResult.enforced) {
+        console.warn(`⚠️ [EmailTurn] Tool required policy enforced (post-draft): ${toolRequiredResult.reason}`);
+
+        if (toolRequiredResult.action === 'NEED_MIN_INFO_FOR_TOOL' || toolRequiredResult.action === 'ASK_VERIFICATION') {
+          ctx.draftContent = toolRequiredResult.message;
+          ctx.assistantMessageMeta = {
+            messageType: 'clarification',
+            guardrailAction: 'NEED_MIN_INFO_FOR_TOOL',
+            guardrailReason: toolRequiredResult.reason || 'NEED_MIN_INFO_FOR_TOOL'
+          };
+        } else if (toolRequiredResult.action === 'SYSTEM_ERROR_FALLBACK') {
+          ctx.draftContent = toolRequiredResult.message;
+          ctx.assistantMessageMeta = {
+            messageType: 'system_barrier',
+            guardrailAction: 'BLOCK',
+            guardrailReason: toolRequiredResult.reason || 'SYSTEM_ERROR'
+          };
+        }
+      }
+
+      ctx.responseGrounding = ctx.responseGrounding || 'GROUNDED';
+      if (!ctx.assistantMessageMeta) {
+        ctx.assistantMessageMeta = ctx.responseGrounding === 'CLARIFICATION'
+          ? {
+            messageType: 'clarification',
+            guardrailAction: 'NEED_MIN_INFO_FOR_TOOL',
+            guardrailReason: null
+          }
+          : {
+            messageType: 'assistant_claim',
+            guardrailAction: 'PASS',
+            guardrailReason: null
+          };
+      }
+      metrics.responseGrounding = ctx.responseGrounding;
     }
-    metrics.responseGrounding = ctx.responseGrounding;
 
     // ============================================
     // STEP 6.25: Strip Recipient Mentions from Draft
