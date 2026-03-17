@@ -66,7 +66,7 @@
       "cta": "Get Started Free",
       "ctaPrimary": "Try Free",
       "ctaDemo": "Request Demo",
-      "ctaWaitlist": "Apply for Early Access",
+      "ctaWaitlist": "Request Demo",
       "watch": "See Pricing",
       "demoProcess": {
         "title": "How does the demo work?",
@@ -197,7 +197,7 @@
       "title": "Get Started Now",
       "subtitle": "Try with 15 free minutes of calls. No credit card required.",
       "startTrial": "Start Free",
-      "applyEarlyAccess": "Apply for Early Access",
+      "applyEarlyAccess": "Request Demo",
       "talkToSales": "Talk to Sales"
     },
     "footer": {
@@ -227,7 +227,7 @@
     "pricing": "Pricing",
     "contact": "Contact",
     "getStarted": "Get Started Free",
-    "applyEarlyAccess": "Apply for Early Access",
+    "applyEarlyAccess": "Request Demo",
     "solutionsEcommerce": "E-commerce",
     "solutionsRestaurant": "Restaurant",
     "solutionsSalon": "Salon/Spa",
@@ -240,7 +240,7 @@
     "trial": "14-day free trial - No credit card required",
     "recommended": "Recommended",
     "cta": "Get Started",
-    "ctaWaitlist": "Apply for Early Access",
+    "ctaWaitlist": "Request Demo",
     "questions": "Have questions?",
     "contactUs": "Contact us",
     "starter": {
@@ -330,7 +330,7 @@
       "title": "Ready to Start?",
       "subtitle": "Get started now and transform your customer service with AI",
       "start": "Get Started Free",
-      "applyEarlyAccess": "Apply for Early Access",
+      "applyEarlyAccess": "Request Demo",
       "contact": "Contact Us"
     },
     "deepDive": {
@@ -357,6 +357,53 @@
         "item1": "Data flows from ERP/CRM and commerce systems",
         "item2": "Webhook-based sync for external platforms",
         "item3": "Sheets/Calendar support for lightweight operations"
+      }
+    },
+    "easySetup": {
+      "title": "Easy Setup",
+      "subtitle": "Set up your AI assistant in 4 steps and start using it right away.",
+      "step1": {
+        "title": "Create assistant",
+        "desc": "Create a new AI assistant from the panel and select a template for your industry."
+      },
+      "step2": {
+        "title": "Connect channels",
+        "desc": "Integrate WhatsApp, Email or Chat channels in a few clicks."
+      },
+      "step3": {
+        "title": "Add knowledge base",
+        "desc": "Upload your product information, FAQs and policies."
+      },
+      "step4": {
+        "title": "Test and go live",
+        "desc": "Test your assistant, review results and go live."
+      }
+    },
+    "sectorFlows": {
+      "title": "Industry Solution Flows",
+      "subtitle": "Explore sample customer flows for each industry.",
+      "seeAll": "All solutions",
+      "tryFree": "Try free",
+      "sampleFlow": "Sample Flow",
+      "sampleFlowDesc": "3-step automation + integration output",
+      "kpis": "KPIs",
+      "kpisDesc": "Metrics to track",
+      "detail": "Detail",
+      "ecommerce": {
+        "title": "E-commerce",
+        "desc": "Order status, returns, shipping queries and pre-sales support automation.",
+        "features": ["Order query → ERP/Shopify/ikas", "Return request → Form + tagging", "Shipping tracking → automatic link + updates"],
+        "flow": {
+          "step1": "Customer question",
+          "step1Desc": "\"Where is my order?\"",
+          "step2": "Verification + integration",
+          "step2Desc": "Identity/order/appointment info is collected → relevant system is queried → appropriate action is generated.",
+          "step3": "Response + handoff option",
+          "step3Desc": "Clear response, links and live agent transfer if needed."
+        },
+        "flowNote": "Note: A \"human approval\" step can be added for critical operations.",
+        "kpiList": ["Resolution rate", "Handoff rate", "Average response time", "Top 20 topics", "Missed call recovery"],
+        "integrations": ["Webhook", "Sheets", "Calendar"]
       }
     },
     "solutions": {
@@ -2765,14 +2812,14 @@
     }
   },
   "waitlist": {
-    "title": "Apply for Early Access",
-    "subtitle": "Be among the first to try Telyx.ai",
+    "title": "Request Demo",
+    "subtitle": "Fill out the form below to try Telyx for free",
     "name": "Full Name",
     "email": "Email",
     "company": "Company Name",
     "businessType": "Business Type",
     "message": "Your Message (Optional)",
-    "submit": "Apply",
+    "submit": "Request",
     "success": "Application received! We'll contact you soon.",
     "alreadyApplied": "An application with this email already exists."
   },
@@ -2897,7 +2944,7 @@
     "cta": {
       "title": "Join Us",
       "subtitle": "Apply for early access and discover the power of AI-powered customer service.",
-      "button": "Apply for Early Access"
+      "button": "Request Demo"
     },
     "companyInfo": {
       "title": "Company information",
@@ -3087,7 +3134,7 @@
     "cta": {
       "title": "Get Started",
       "subtitle": "Start using all integrations for free",
-      "button": "Apply for Early Access",
+      "button": "Request Demo",
       "contact": "Contact Us"
     },
     "catalogCount": "{count} integrations in the current catalog",

@@ -165,7 +165,7 @@ export default function ContactPage() {
                       id="businessType"
                       value={formData.businessType}
                       onChange={(e) => setFormData({ ...formData, businessType: e.target.value })}
-                      className="mt-2 w-full px-3 py-2 border border-gray-300 dark:border-neutral-600 rounded-md bg-white dark:bg-neutral-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                      className="mt-2 w-full px-3 py-2 border border-gray-300 dark:border-neutral-600 rounded-md bg-white dark:bg-neutral-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary"
                     >
                       <option value="">{t('contact.form.selectType')}</option>
                       <option value="ecommerce">{t('contact.form.types.ecommerce')}</option>
@@ -184,7 +184,7 @@ export default function ContactPage() {
                       rows={4}
                       value={formData.message}
                       onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                      className="mt-2 w-full px-3 py-2 border border-gray-300 dark:border-neutral-600 rounded-md bg-white dark:bg-neutral-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                      className="mt-2 w-full px-3 py-2 border border-gray-300 dark:border-neutral-600 rounded-md bg-white dark:bg-neutral-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary"
                       placeholder={t('contact.form.messagePlaceholder')}
                     />
                   </div>

@@ -322,7 +322,7 @@ export default function PricingPage() {
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link href="/contact">
-                  <Button variant="outline" size="lg" className="border-white/30 text-white hover:bg-white/10">
+                  <Button variant="outline" size="lg" className="border-white/30 bg-transparent text-white hover:bg-white/10">
                     {isTR ? 'Demo Talep Et' : 'Request Demo'}
                   </Button>
                 </Link>

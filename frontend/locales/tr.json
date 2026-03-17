@@ -66,7 +66,7 @@
       "cta": "Ücretsiz Başla",
       "ctaPrimary": "Ücretsiz Dene",
       "ctaDemo": "Demo Talep Et",
-      "ctaWaitlist": "Erken Erişim İçin Başvur",
+      "ctaWaitlist": "Demo Talep Edin",
       "watch": "Fiyatları Gör",
       "demoProcess": {
         "title": "Demo nasıl çalışır?",
@@ -197,7 +197,7 @@
       "title": "Hemen Başlayın",
       "subtitle": "15 dakika ücretsiz arama ile deneyin. Kredi kartı gerekmez.",
       "startTrial": "Ücretsiz Başlat",
-      "applyEarlyAccess": "Erken Erişim İçin Başvur",
+      "applyEarlyAccess": "Demo Talep Edin",
       "talkToSales": "Satış ile Konuşun"
     },
     "footer": {
@@ -227,7 +227,7 @@
     "pricing": "Fiyatlar",
     "contact": "İletişim",
     "getStarted": "Ücretsiz Başla",
-    "applyEarlyAccess": "Erken Erişim İçin Başvur",
+    "applyEarlyAccess": "Demo Talep Edin",
     "solutionsEcommerce": "E-ticaret",
     "solutionsRestaurant": "Restoran",
     "solutionsSalon": "Kuaför/Salon",
@@ -330,7 +330,7 @@
       "title": "Hazır mısınız?",
       "subtitle": "Hemen başlayın ve AI ile müşteri hizmetlerinizi dönüştürün",
       "start": "Ücretsiz Başla",
-      "applyEarlyAccess": "Erken Erişim İçin Başvur",
+      "applyEarlyAccess": "Demo Talep Edin",
       "contact": "İletişime Geçin"
     },
     "deepDive": {
@@ -357,6 +357,53 @@
         "item1": "ERP/CRM ve e-ticaret sistemlerinden veri akışı",
         "item2": "Webhook ile harici platform senkronizasyonu",
         "item3": "Hafif operasyonlar için Sheets/Takvim desteği"
+      }
+    },
+    "easySetup": {
+      "title": "Kolay Kurulum",
+      "subtitle": "4 adımda AI asistanınızı kurun ve hemen kullanmaya başlayın.",
+      "step1": {
+        "title": "Asistan oluştur",
+        "desc": "Panelden yeni bir AI asistanı oluşturun ve sektörünüze uygun şablonu seçin."
+      },
+      "step2": {
+        "title": "Kanalları bağla",
+        "desc": "WhatsApp, Email veya Chat kanallarını birkaç tıkla entegre edin."
+      },
+      "step3": {
+        "title": "Bilgi tabanına bilgi ekle",
+        "desc": "Ürün bilgileri, SSS ve politikalarınızı yükleyin."
+      },
+      "step4": {
+        "title": "Test et ve yayına al",
+        "desc": "Asistanınızı test edin, sonuçları kontrol edin ve canlıya alın."
+      }
+    },
+    "sectorFlows": {
+      "title": "Sektörel Çözüm Akışları",
+      "subtitle": "Her sektör için örnek müşteri akışlarını inceleyin.",
+      "seeAll": "Tüm çözümler",
+      "tryFree": "Ücretsiz dene",
+      "sampleFlow": "Örnek Akış",
+      "sampleFlowDesc": "3 adımda otomasyon + entegrasyon çıktısı",
+      "kpis": "KPI'lar",
+      "kpisDesc": "Takip edilecek metrikler",
+      "detail": "Detay",
+      "ecommerce": {
+        "title": "E-ticaret",
+        "desc": "Sipariş durumu, iade, kargo soruları ve satış öncesi destek otomasyonu.",
+        "features": ["Sipariş sorgu → ERP/Shopify/ikas/ikas benzeri", "İade talebi → Form + etiketleme", "Kargo takip → otomatik link + güncelleme"],
+        "flow": {
+          "step1": "Müşteri sorusu",
+          "step1Desc": "\"Kargom nerede?\"",
+          "step2": "Doğrulama + entegrasyon",
+          "step2Desc": "Kimlik/sipariş/randevu bilgisi alınır → ilgili sistem sorgulanır → uygun aksiyon üretilir.",
+          "step3": "Yanıt + handoff opsiyonu",
+          "step3Desc": "Net yanıt, bağlantı ve gerekirse canlı temsilciye aktarım."
+        },
+        "flowNote": "Not: Kritik işlemler için \"insan onay\" adımı eklenebilir.",
+        "kpiList": ["Çözüm oranı", "Handoff oranı", "Ortalama yanıt süresi", "En çok sorulan 20 konu", "Kaçan çağrı kurtarma"],
+        "integrations": ["Webhook", "Sheets", "Calendar"]
       }
     },
     "solutions": {
@@ -2765,14 +2812,14 @@
     }
   },
   "waitlist": {
-    "title": "Erken Erişim İçin Başvurun",
-    "subtitle": "Telyx.ai'yi ilk deneyenlerden olun",
+    "title": "Demo Talep Edin",
+    "subtitle": "Telyx'i ücretsiz denemek için aşağıdaki formu doldurun",
     "name": "Ad Soyad",
     "email": "E-posta",
     "company": "Şirket Adı",
     "businessType": "İşletme Türü",
     "message": "Mesajınız (Opsiyonel)",
-    "submit": "Başvur",
+    "submit": "Talep Et",
     "success": "Başvurunuz alındı! En kısa sürede sizinle iletişime geçeceğiz.",
     "alreadyApplied": "Bu e-posta ile zaten başvuru yapılmış."
   },
@@ -2781,7 +2828,7 @@
     "codePlaceholder": "Davet kodunuzu girin",
     "codeRequired": "Geçerli bir davet kodu gereklidir",
     "noCode": "Davet kodunuz yok mu?",
-    "applyEarlyAccess": "Erken erişim için başvurun"
+    "applyEarlyAccess": "Demo talep edin"
   },
   "integrations": {
     "whatsapp": {
@@ -2896,8 +2943,8 @@
     },
     "cta": {
       "title": "Bize Katılın",
-      "subtitle": "Erken erişim için başvurun ve AI destekli müşteri hizmetlerinin gücünü keşfedin.",
-      "button": "Erken Erişim İçin Başvurun"
+      "subtitle": "Demo talep edin ve AI destekli müşteri hizmetlerinin gücünü keşfedin.",
+      "button": "Demo Talep Edin"
     },
     "companyInfo": {
       "title": "Şirket bilgileri",
@@ -2929,7 +2976,7 @@
       "q6": "Fiyatlandırma nasıl çalışıyor?",
       "a6": "Aylık abonelik modeliyle çalışıyoruz. Detaylar için fiyatlandırma sayfamızı ziyaret edin.",
       "q7": "Ücretsiz deneme var mı?",
-      "a7": "Şu an erken erişim dönemindeyiz. Waitlist'e kaydolarak öncelikli erişim sağlayabilirsiniz.",
+      "a7": "Evet, ücretsiz demo talep ederek platformumuzu deneyebilirsiniz.",
       "q8": "Verilerim güvende mi?",
       "a8": "Evet, tüm veriler şifrelenmiş olarak saklanır ve KVKK'ya uygun şekilde işlenir.",
       "q9": "Destek nasıl alabilirim?",
@@ -3087,7 +3134,7 @@
     "cta": {
       "title": "Hemen Başlayın",
       "subtitle": "Tüm entegrasyonları ücretsiz kullanmaya başlayın",
-      "button": "Erken Erişim İçin Başvurun",
+      "button": "Demo Talep Edin",
       "contact": "İletişime Geçin"
     },
     "catalogCount": "Güncel katalogda {count} entegrasyon",
