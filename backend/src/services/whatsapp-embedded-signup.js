@@ -259,6 +259,13 @@ export function buildWhatsAppStatusResponse({ business, integration, manualFallb
   const credentials = rawCredentials && typeof rawCredentials === 'object' && !Array.isArray(rawCredentials)
     ? rawCredentials
     : {};
+  const hasPersistedIntegrationState = Boolean(
+    integration ||
+    credentials.phoneNumberId ||
+    credentials.displayPhoneNumber ||
+    credentials.wabaId ||
+    credentials.metaBusinessId
+  );
 
   const tokenExpiresAt = toIsoDate(credentials?.tokenMetadata?.expiresAt);
   const tokenExpired = isTokenExpired(tokenExpiresAt);
@@ -268,25 +275,27 @@ export function buildWhatsAppStatusResponse({ business, integration, manualFallb
 
   let connectionStatus = credentials.connectionStatus || 'DISCONNECTED';
 
-  if (!business?.whatsappPhoneNumberId && !integration?.connected) {
+  if (!hasPersistedIntegrationState) {
     connectionStatus = 'DISCONNECTED';
   } else if (tokenExpired) {
     connectionStatus = 'EXPIRED';
-  } else if (business?.whatsappPhoneNumberId && connectionStatus === 'DISCONNECTED') {
+  } else if (integration?.connected && connectionStatus === 'DISCONNECTED') {
     connectionStatus = 'CONNECTED';
   }
 
   const connected = connectionStatus === 'CONNECTED';
+  const needsReconnect = ['EXPIRED', 'ERROR', 'RECONNECT_REQUIRED'].includes(connectionStatus);
+  const shouldExposeConnectionDetails = connected || needsReconnect;
 
   return {
     connected,
-    phoneNumberId: credentials.phoneNumberId || business?.whatsappPhoneNumberId || null,
-    displayPhoneNumber: credentials.displayPhoneNumber || null,
-    wabaId: credentials.wabaId || null,
-    metaBusinessId: credentials.metaBusinessId || null,
+    phoneNumberId: shouldExposeConnectionDetails ? (credentials.phoneNumberId || business?.whatsappPhoneNumberId || null) : null,
+    displayPhoneNumber: shouldExposeConnectionDetails ? (credentials.displayPhoneNumber || null) : null,
+    wabaId: shouldExposeConnectionDetails ? (credentials.wabaId || null) : null,
+    metaBusinessId: shouldExposeConnectionDetails ? (credentials.metaBusinessId || null) : null,
     webhookUrl: credentials.webhookUrl || business?.whatsappWebhookUrl || null,
     connectionStatus,
-    needsReconnect: ['EXPIRED', 'ERROR', 'RECONNECT_REQUIRED'].includes(connectionStatus),
+    needsReconnect,
     grantedScopes: Array.isArray(credentials.grantedScopes) ? credentials.grantedScopes : [],
     tokenExpiresAt,
     tokenExpired,
@@ -296,6 +305,7 @@ export function buildWhatsAppStatusResponse({ business, integration, manualFallb
     lastError: credentials.lastError || null,
     lastConnectedAt: credentials.lastConnectedAt || null,
     lastValidatedAt: credentials?.tokenMetadata?.lastValidatedAt || null,
+    hasPersistedIntegrationState,
   };
 }
 

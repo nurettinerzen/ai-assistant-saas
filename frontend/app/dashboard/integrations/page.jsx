@@ -637,10 +637,13 @@ const handleShopifyConnect = async () => {
     const disabled = isEcommerceDisabled(integration.type);
     const whatsappConnected = isWhatsApp ? Boolean(whatsappStatus?.connected ?? integration.connected) : integration.connected;
     const whatsappNeedsReconnect = isWhatsApp ? Boolean(whatsappStatus?.needsReconnect) : false;
+    const shouldShowWhatsappDetails = isWhatsApp && (whatsappConnected || whatsappNeedsReconnect);
     const isEffectivelyConnected = isWhatsApp
-      ? (whatsappConnected || whatsappNeedsReconnect || Boolean(whatsappStatus?.phoneNumberId))
+      ? (whatsappConnected || whatsappNeedsReconnect)
       : integration.connected;
-    const whatsappNumberLabel = whatsappStatus?.displayPhoneNumber || whatsappStatus?.phoneNumberId || null;
+    const whatsappNumberLabel = shouldShowWhatsappDetails
+      ? (whatsappStatus?.displayPhoneNumber || whatsappStatus?.phoneNumberId || null)
+      : null;
     const whatsappExpiryLabel = formatWhatsAppTimestamp(whatsappStatus?.tokenExpiresAt);
     const whatsappActionLabel = whatsappEmbeddedSignupState === 'awaiting_completion'
       ? t('dashboard.integrationsPage.whatsappWaitingForMeta')
@@ -701,7 +704,7 @@ const handleShopifyConnect = async () => {
 
         <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4 line-clamp-2">{getCategoryDescription(integration.type)}</p>
 
-        {isWhatsApp && (
+        {isWhatsApp && shouldShowWhatsappDetails && (
           <div className="space-y-2 mb-4">
             {whatsappNumberLabel && (
               <p className="text-xs text-neutral-700 dark:text-neutral-300">
