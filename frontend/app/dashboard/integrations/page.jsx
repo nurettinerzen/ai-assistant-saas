@@ -62,7 +62,9 @@ import {
   useTestGoogleCalendar,
   useTestIkas,
   useCrmWebhookStatus,
+  useRefreshWhatsAppConnection,
 } from '@/hooks/useIntegrations';
+import { useWhatsAppEmbeddedSignup } from '@/hooks/useWhatsAppEmbeddedSignup';
 
 // Integration logo paths
 const INTEGRATION_LOGOS = {
@@ -123,6 +125,7 @@ export default function IntegrationsPage() {
   // Mutations
   const connectWhatsApp = useConnectWhatsApp();
   const disconnectWhatsApp = useDisconnectWhatsApp();
+  const refreshWhatsAppConnection = useRefreshWhatsAppConnection();
   const connectIyzico = useConnectIyzico();
   const disconnectIyzico = useDisconnectIyzico();
   const disconnectEmail = useDisconnectEmail();
@@ -135,6 +138,7 @@ export default function IntegrationsPage() {
   const disconnectGoogleCalendar = useDisconnectGoogleCalendar();
   const testGoogleCalendar = useTestGoogleCalendar();
   const testIkas = useTestIkas();
+  const isWhatsAppManualFallbackEnabled = process.env.NEXT_PUBLIC_WHATSAPP_MANUAL_FALLBACK === 'true' && user?.role === 'OWNER';
 
   // Upgrade modal state
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
@@ -144,6 +148,22 @@ export default function IntegrationsPage() {
   const [whatsappModalOpen, setWhatsappModalOpen] = useState(false);
   const [whatsappLoading, setWhatsappLoading] = useState(false);
   const [whatsappForm, setWhatsappForm] = useState({ accessToken: '', phoneNumberId: '', verifyToken: '' });
+  const {
+    flowState: whatsappEmbeddedSignupState,
+    flowError: whatsappEmbeddedSignupError,
+    isBusy: whatsappEmbeddedSignupBusy,
+    startEmbeddedSignup,
+  } = useWhatsAppEmbeddedSignup({
+    onSuccess: () => {
+      toast.success(t('dashboard.integrationsPage.whatsappConnected'));
+    },
+    onCancel: () => {
+      toast.info(t('dashboard.integrationsPage.whatsappEmbeddedSignupCancelled'));
+    },
+    onError: (error) => {
+      toast.error(error?.response?.data?.error || error?.message || t('dashboard.integrationsPage.whatsappConnectFailed'));
+    },
+  });
 
   // iyzico state
   const [iyzicoModalOpen, setIyzicoModalOpen] = useState(false);
@@ -260,6 +280,19 @@ export default function IntegrationsPage() {
       await disconnectWhatsApp.mutateAsync();
       toast.success(t('dashboard.integrationsPage.whatsappDisconnected'));
     } catch (error) { toast.error(t('dashboard.integrationsPage.disconnectFailed')); }
+  };
+
+  const handleWhatsAppRefresh = async () => {
+    try {
+      const response = await refreshWhatsAppConnection.mutateAsync();
+      if (response.data?.success) {
+        toast.success(t('dashboard.integrationsPage.whatsappRefreshSuccess'));
+      } else {
+        toast.error(response.data?.error || t('dashboard.integrationsPage.whatsappRefreshFailed'));
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.error || t('dashboard.integrationsPage.whatsappRefreshFailed'));
+    }
   };
 
 
@@ -411,7 +444,10 @@ const handleShopifyConnect = async () => {
 
   const handleConnect = async (integration) => {
     try {
-      if (integration.type === 'WHATSAPP') { setWhatsappModalOpen(true); return; }
+      if (integration.type === 'WHATSAPP') {
+        await startEmbeddedSignup();
+        return;
+      }
       if (integration.type === 'IYZICO') { setIyzicoModalOpen(true); return; }
       if (integration.type === 'SHOPIFY') { setShopifyModalOpen(true); return; }
       if (integration.type === 'ZAPIER') {
@@ -453,6 +489,10 @@ const handleShopifyConnect = async () => {
 
   const handleTest = async (integration) => {
   try {
+    if (integration.type === 'WHATSAPP') {
+      await handleWhatsAppRefresh();
+      return;
+    }
     if (integration.type === 'GOOGLE_CALENDAR') {
       const response = await testGoogleCalendar.mutateAsync();
       if (response.data.success) toast.success(t('dashboard.integrationsPage.googleCalendarActive'));
@@ -474,6 +514,18 @@ const handleShopifyConnect = async () => {
   const getIntegrationIcon = (type) => INTEGRATION_ICONS[type] || Hash;
   const getCategoryColors = () => ({ icon: 'text-neutral-600 dark:text-neutral-400', bg: 'bg-neutral-100 dark:bg-neutral-800' });
   const getDocsUrl = (type) => INTEGRATION_DOCS[type] || '#';
+  const formatWhatsAppTimestamp = (value) => {
+    if (!value) return null;
+
+    try {
+      return new Intl.DateTimeFormat(locale === 'tr' ? 'tr-TR' : 'en-US', {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+      }).format(new Date(value));
+    } catch {
+      return null;
+    }
+  };
   const getBusinessTypeDisplay = (type) => {
     const typeMap = { RESTAURANT: 'Restaurant', SALON: 'Salon/Spa', ECOMMERCE: 'E-commerce', CLINIC: 'Clinic/Healthcare', SERVICE: 'Service Business', OTHER: 'General' };
     return typeMap[type] || type;
@@ -581,13 +633,25 @@ const handleShopifyConnect = async () => {
 
   const renderIntegrationCard = (integration) => {
     const Icon = getIntegrationIcon(integration.type);
-    const colors = getCategoryColors(integration.category);
-    const docsUrl = getDocsUrl(integration.type);
+    const isWhatsApp = integration.type === 'WHATSAPP';
     const disabled = isEcommerceDisabled(integration.type);
+    const whatsappConnected = isWhatsApp ? Boolean(whatsappStatus?.connected ?? integration.connected) : integration.connected;
+    const whatsappNeedsReconnect = isWhatsApp ? Boolean(whatsappStatus?.needsReconnect) : false;
+    const isEffectivelyConnected = isWhatsApp
+      ? (whatsappConnected || whatsappNeedsReconnect || Boolean(whatsappStatus?.phoneNumberId))
+      : integration.connected;
+    const whatsappNumberLabel = whatsappStatus?.displayPhoneNumber || whatsappStatus?.phoneNumberId || null;
+    const whatsappExpiryLabel = formatWhatsAppTimestamp(whatsappStatus?.tokenExpiresAt);
+    const whatsappActionLabel = whatsappEmbeddedSignupState === 'awaiting_completion'
+      ? t('dashboard.integrationsPage.whatsappWaitingForMeta')
+      : (whatsappNeedsReconnect ? t('dashboard.integrationsPage.whatsappReconnect') : t('dashboard.integrationsPage.connect'));
+    const whatsappRefreshLabel = refreshWhatsAppConnection.isPending
+      ? t('dashboard.integrationsPage.whatsappRefreshing')
+      : (whatsappNeedsReconnect ? t('dashboard.integrationsPage.whatsappReconnect') : t('dashboard.integrationsPage.whatsappRefresh'));
 
     // Check if this integration is locked based on user's plan
     const featureInfo = getIntegrationFeatureInfo(integration.type, userPlan);
-    const isLocked = featureInfo.isLocked && !integration.connected;
+    const isLocked = featureInfo.isLocked && !isEffectivelyConnected;
 
     return (
       <div key={integration.type} className={`bg-white dark:bg-neutral-900 rounded-xl border p-6 transition-shadow ${disabled || isLocked ? 'opacity-70 bg-neutral-50 dark:bg-neutral-800' : 'hover:shadow-md'} border-neutral-200 dark:border-neutral-700`}>
@@ -614,12 +678,19 @@ const handleShopifyConnect = async () => {
               </div>
             </div>
           </div>
-          {integration.connected && (
+          {whatsappConnected && (
             <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-xs">
               {t('dashboard.integrationsPage.connected')}
             </Badge>
           )}
         </div>
+
+        {isWhatsApp && !whatsappConnected && whatsappNeedsReconnect && (
+          <div className="mb-3 px-2 py-1 bg-amber-100 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300 text-xs rounded-md inline-flex items-center gap-1">
+            <RefreshCw className="h-3 w-3" />
+            {t('dashboard.integrationsPage.whatsappReconnectRequired')}
+          </div>
+        )}
 
         {isLocked && (
           <div className="mb-3 px-2 py-1 bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400 text-xs rounded-md inline-flex items-center gap-1">
@@ -629,6 +700,35 @@ const handleShopifyConnect = async () => {
         )}
 
         <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4 line-clamp-2">{getCategoryDescription(integration.type)}</p>
+
+        {isWhatsApp && (
+          <div className="space-y-2 mb-4">
+            {whatsappNumberLabel && (
+              <p className="text-xs text-neutral-700 dark:text-neutral-300">
+                {t('dashboard.integrationsPage.whatsappConnectedNumber')}: <span className="font-medium">{whatsappNumberLabel}</span>
+              </p>
+            )}
+            {whatsappStatus?.tokenExpired ? (
+              <p className="text-xs text-amber-700 dark:text-amber-300">
+                {t('dashboard.integrationsPage.whatsappTokenExpired')}
+              </p>
+            ) : whatsappExpiryLabel ? (
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                {t('dashboard.integrationsPage.whatsappTokenExpires')}: {whatsappExpiryLabel}
+              </p>
+            ) : null}
+            {whatsappEmbeddedSignupState === 'awaiting_completion' && (
+              <p className="text-xs text-blue-700 dark:text-blue-300">
+                {t('dashboard.integrationsPage.whatsappEmbeddedSignupInProgress')}
+              </p>
+            )}
+            {whatsappEmbeddedSignupState === 'error' && whatsappEmbeddedSignupError && (
+              <p className="text-xs text-red-600 dark:text-red-400">
+                {whatsappEmbeddedSignupError?.response?.data?.error || whatsappEmbeddedSignupError?.message}
+              </p>
+            )}
+          </div>
+        )}
 
         <div className="flex gap-2">
           {isLocked ? (
@@ -641,7 +741,34 @@ const handleShopifyConnect = async () => {
               <Lock className="h-4 w-4 mr-2" />
               {t('dashboard.integrationsPage.unlock')}
             </Button>
-          ) : integration.connected ? (
+          ) : isWhatsApp ? (
+            <>
+              {can('integrations:connect') && (
+                <>
+                  <Button
+                    size="sm"
+                    className="flex-1"
+                    variant={whatsappConnected && !whatsappNeedsReconnect ? 'outline' : 'default'}
+                    onClick={() => (whatsappConnected && !whatsappNeedsReconnect ? handleWhatsAppRefresh() : handleConnect(integration))}
+                    disabled={disabled || whatsappEmbeddedSignupBusy || refreshWhatsAppConnection.isPending}
+                  >
+                    {(whatsappEmbeddedSignupBusy || refreshWhatsAppConnection.isPending) && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
+                    {whatsappConnected && !whatsappNeedsReconnect ? whatsappRefreshLabel : whatsappActionLabel}
+                  </Button>
+                  {whatsappConnected && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDisconnect(integration)}
+                      disabled={whatsappEmbeddedSignupBusy || refreshWhatsAppConnection.isPending}
+                    >
+                      {t('dashboard.integrationsPage.disconnect')}
+                    </Button>
+                  )}
+                </>
+              )}
+            </>
+          ) : whatsappConnected ? (
             <>
               <Button variant="outline" size="sm" className="flex-1" onClick={() => handleTest(integration)}>{t('dashboard.integrationsPage.testIntegration')}</Button>
               {can('integrations:connect') && (
@@ -656,6 +783,18 @@ const handleShopifyConnect = async () => {
             )
           )}
         </div>
+
+        {isWhatsApp && !isLocked && isWhatsAppManualFallbackEnabled && can('integrations:connect') && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mt-2 w-full"
+            onClick={() => setWhatsappModalOpen(true)}
+            disabled={whatsappEmbeddedSignupBusy}
+          >
+            {t('dashboard.integrationsPage.whatsappManualFallback')}
+          </Button>
+        )}
       </div>
     );
   };
@@ -854,46 +993,47 @@ const handleShopifyConnect = async () => {
       </div>
       )}
 
-      {/* WhatsApp Modal */}
-      <Dialog open={whatsappModalOpen} onOpenChange={setWhatsappModalOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>{t('dashboard.integrationsPage.whatsappModalTitle')}</DialogTitle>
-            <DialogDescription>{t('dashboard.integrationsPage.whatsappModalDesc')}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>{t('dashboard.integrationsPage.accessToken')}</Label>
-              <Input type="password" placeholder={t('dashboard.integrationsPage.accessTokenPlaceholder')} value={whatsappForm.accessToken} onChange={(e) => setWhatsappForm({ ...whatsappForm, accessToken: e.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <Label>{t('dashboard.integrationsPage.phoneNumberId')}</Label>
-              <Input type="text" placeholder={t('dashboard.integrationsPage.phoneNumberIdPlaceholder')} value={whatsappForm.phoneNumberId} onChange={(e) => setWhatsappForm({ ...whatsappForm, phoneNumberId: e.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <Label>{t('dashboard.integrationsPage.verifyToken')}</Label>
-              <Input type="text" placeholder={t('dashboard.integrationsPage.verifyTokenPlaceholder')} value={whatsappForm.verifyToken} onChange={(e) => setWhatsappForm({ ...whatsappForm, verifyToken: e.target.value })} />
-              <p className="text-xs text-neutral-500">
-                {t('dashboard.integrationsPage.verifyTokenHint')}
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label>Webhook URL</Label>
-              <div className="flex gap-2">
-                <Input type="text" readOnly value={`${process.env.NEXT_PUBLIC_API_URL || 'https://api.telyx.ai'}/api/whatsapp/webhook`} className="bg-neutral-50" />
-                <Button type="button" variant="outline" size="icon" onClick={copyWebhookUrl}><Copy className="h-4 w-4" /></Button>
+      {isWhatsAppManualFallbackEnabled && (
+        <Dialog open={whatsappModalOpen} onOpenChange={setWhatsappModalOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>{t('dashboard.integrationsPage.whatsappModalTitle')}</DialogTitle>
+              <DialogDescription>{t('dashboard.integrationsPage.whatsappModalDesc')}</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>{t('dashboard.integrationsPage.accessToken')}</Label>
+                <Input type="password" placeholder={t('dashboard.integrationsPage.accessTokenPlaceholder')} value={whatsappForm.accessToken} onChange={(e) => setWhatsappForm({ ...whatsappForm, accessToken: e.target.value })} />
               </div>
-              <p className="text-xs text-neutral-500">
-                {t('dashboard.integrationsPage.webhookUrlPasteHint')}
-              </p>
+              <div className="space-y-2">
+                <Label>{t('dashboard.integrationsPage.phoneNumberId')}</Label>
+                <Input type="text" placeholder={t('dashboard.integrationsPage.phoneNumberIdPlaceholder')} value={whatsappForm.phoneNumberId} onChange={(e) => setWhatsappForm({ ...whatsappForm, phoneNumberId: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>{t('dashboard.integrationsPage.verifyToken')}</Label>
+                <Input type="text" placeholder={t('dashboard.integrationsPage.verifyTokenPlaceholder')} value={whatsappForm.verifyToken} onChange={(e) => setWhatsappForm({ ...whatsappForm, verifyToken: e.target.value })} />
+                <p className="text-xs text-neutral-500">
+                  {t('dashboard.integrationsPage.verifyTokenHint')}
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label>Webhook URL</Label>
+                <div className="flex gap-2">
+                  <Input type="text" readOnly value={`${process.env.NEXT_PUBLIC_API_URL || 'https://api.telyx.ai'}/api/whatsapp/webhook`} className="bg-neutral-50" />
+                  <Button type="button" variant="outline" size="icon" onClick={copyWebhookUrl}><Copy className="h-4 w-4" /></Button>
+                </div>
+                <p className="text-xs text-neutral-500">
+                  {t('dashboard.integrationsPage.webhookUrlPasteHint')}
+                </p>
+              </div>
             </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setWhatsappModalOpen(false)} disabled={whatsappLoading}>{t('common.cancel')}</Button>
-            <Button onClick={handleWhatsAppConnect} disabled={whatsappLoading}>{whatsappLoading ? t('dashboard.integrationsPage.connectingText') : t('dashboard.integrationsPage.connectWhatsApp')}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setWhatsappModalOpen(false)} disabled={whatsappLoading}>{t('common.cancel')}</Button>
+              <Button onClick={handleWhatsAppConnect} disabled={whatsappLoading}>{whatsappLoading ? t('dashboard.integrationsPage.connectingText') : t('dashboard.integrationsPage.connectWhatsApp')}</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* iyzico Modal */}
       <Dialog open={iyzicoModalOpen} onOpenChange={setIyzicoModalOpen}>

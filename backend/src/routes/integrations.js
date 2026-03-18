@@ -9,13 +9,57 @@ import whatsappService from '../services/whatsapp.js';
 import { getFilteredIntegrations, getIntegrationPriority } from '../config/integrationMetadata.js';
 import { generateOAuthState, validateOAuthState } from '../middleware/oauthState.js';
 import { safeRedirect } from '../middleware/redirectWhitelist.js';
-import { decryptTokenValue, decryptPossiblyEncryptedValue } from '../utils/encryption.js';
+import { decryptTokenValue, decryptPossiblyEncryptedValue, encryptTokenValue, generateSecureToken } from '../utils/encryption.js';
 import { encryptGoogleTokenCredentials, decryptGoogleTokenCredentials } from '../utils/google-oauth-tokens.js';
 import { revokeGoogleOAuthToken } from '../utils/google-oauth-revoke.js';
+import {
+  buildWhatsAppConnectionCredentials,
+  buildWhatsAppRefreshFailureCredentials,
+  buildWhatsAppStatusResponse,
+  debugAccessToken,
+  exchangeCodeForAccessToken,
+  fetchWhatsAppBusinessAccount,
+  fetchWhatsAppPhoneNumber,
+  getMetaConnectionStatusFromError,
+  getWhatsAppEmbeddedSignupConfig,
+  isEmbeddedSignupFinishEvent,
+  normalizeEmbeddedSignupEventPayload,
+} from '../services/whatsapp-embedded-signup.js';
 import axios from 'axios';
 
 const router = express.Router();
 const prisma = new PrismaClient();
+const WHATSAPP_EMBEDDED_SIGNUP_SESSION_TTL_MS = 15 * 60 * 1000;
+
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function getWhatsAppManualFallbackEnabled() {
+  return process.env.WHATSAPP_MANUAL_FALLBACK_ENABLED === 'true';
+}
+
+function getWebhookVerifyToken(existingVerifyToken = null) {
+  return (
+    existingVerifyToken ||
+    process.env.WHATSAPP_VERIFY_TOKEN ||
+    process.env.META_VERIFY_TOKEN ||
+    process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN ||
+    generateSecureToken(24)
+  );
+}
+
+function getWhatsAppWebhookUrl() {
+  return `${process.env.BACKEND_URL}/api/whatsapp/webhook`;
+}
+
+function getIntegrationCredentials(integration) {
+  if (!integration || !isPlainObject(integration.credentials)) {
+    return {};
+  }
+
+  return integration.credentials;
+}
 
 router.use(authenticateToken);
 
@@ -56,7 +100,8 @@ router.get('/available', async (req, res) => {
       select: {
         businessType: true,
         country: true,
-        whatsappPhoneNumberId: true
+        whatsappPhoneNumberId: true,
+        whatsappWebhookUrl: true
       }
     });
 
@@ -69,7 +114,7 @@ router.get('/available', async (req, res) => {
     // Get connected integrations from database
     const connectedIntegrations = await prisma.integration.findMany({
       where: { businessId: req.businessId },
-      select: { type: true, connected: true, isActive: true }
+      select: { type: true, connected: true, isActive: true, credentials: true }
     });
 
     // Create a map of connected integrations
@@ -82,10 +127,15 @@ router.get('/available', async (req, res) => {
     });
 
     // Special handling for WhatsApp (stored directly in Business model)
-    const whatsappConnected = !!business?.whatsappPhoneNumberId;
+    const whatsappIntegration = connectedIntegrations.find((integration) => integration.type === 'WHATSAPP') || null;
+    const whatsappStatus = buildWhatsAppStatusResponse({
+      business,
+      integration: whatsappIntegration,
+      manualFallbackEnabled: getWhatsAppManualFallbackEnabled(),
+    });
     connectedMap['WHATSAPP'] = {
-      connected: whatsappConnected,
-      isActive: whatsappConnected
+      connected: whatsappStatus.connected,
+      isActive: whatsappStatus.connected
     };
 
     // Merge available integrations with connection status
@@ -681,11 +731,11 @@ router.get('/google-sheets/callback', async (req, res) => {
    WHATSAPP BUSINESS INTEGRATION - MULTI-TENANT
 ============================================================ */
 
-router.post('/whatsapp/connect', requireOwner, async (req, res) => {
+async function handleLegacyWhatsAppManualConnect(req, res) {
   try {
     const { accessToken, phoneNumberId, verifyToken } = req.body;
+    let metaResponse = null;
 
-    // Validate required fields
     if (!accessToken || !phoneNumberId || !verifyToken) {
       return res.status(400).json({
         error: 'Access token, phone number ID, and verify token are required'
@@ -700,9 +750,12 @@ router.post('/whatsapp/connect', requireOwner, async (req, res) => {
 
     // Validate access token with Meta API
     try {
-      const metaResponse = await axios.get(
+      metaResponse = await axios.get(
         `https://graph.facebook.com/v18.0/${phoneNumberId}`,
         {
+          params: {
+            fields: 'id,display_phone_number',
+          },
           headers: {
             'Authorization': `Bearer ${accessToken}`
           }
@@ -722,14 +775,36 @@ router.post('/whatsapp/connect', requireOwner, async (req, res) => {
       });
     }
 
-    // Encrypt the access token before storage
-    const { encrypt } = await import('../utils/encryption.js');
-    const encryptedAccessToken = encrypt(accessToken);
+    const existingIntegration = await prisma.integration.findUnique({
+      where: {
+        businessId_type: {
+          businessId: req.businessId,
+          type: 'WHATSAPP'
+        }
+      }
+    });
 
-    // Generate webhook URL for this business
-    const webhookUrl = `${process.env.BACKEND_URL}/api/whatsapp/webhook`;
+    const existingCredentials = getIntegrationCredentials(existingIntegration);
+    const encryptedAccessToken = encryptTokenValue(accessToken);
+    const webhookUrl = getWhatsAppWebhookUrl();
+    const nowIso = new Date().toISOString();
+    const manualCredentials = {
+      ...existingCredentials,
+      tenantId: req.businessId,
+      phoneNumberId,
+      displayPhoneNumber: metaResponse.data?.display_phone_number || existingCredentials.displayPhoneNumber || null,
+      webhookUrl,
+      connectionStatus: 'CONNECTED',
+      onboardingMethod: 'MANUAL',
+      tokenMetadata: {
+        ...(isPlainObject(existingCredentials.tokenMetadata) ? existingCredentials.tokenMetadata : {}),
+        lastValidatedAt: nowIso,
+      },
+      lastError: null,
+      lastConnectedAt: nowIso,
+      updatedAt: nowIso,
+    };
 
-    // Store in Business model for direct access
     await prisma.business.update({
       where: { id: req.businessId },
       data: {
@@ -749,22 +824,14 @@ router.post('/whatsapp/connect', requireOwner, async (req, res) => {
         }
       },
       update: {
-        credentials: {
-          phoneNumberId,
-          verifyToken,
-          webhookUrl
-        },
+        credentials: manualCredentials,
         connected: true,
         isActive: true
       },
       create: {
         businessId: req.businessId,
         type: 'WHATSAPP',
-        credentials: {
-          phoneNumberId,
-          verifyToken,
-          webhookUrl
-        },
+        credentials: manualCredentials,
         connected: true,
         isActive: true
       }
@@ -780,10 +847,487 @@ router.post('/whatsapp/connect', requireOwner, async (req, res) => {
     console.error('WhatsApp connect error:', error);
     res.status(500).json({ error: 'Failed to connect WhatsApp' });
   }
+}
+
+router.post('/whatsapp/connect', requireOwner, async (req, res) => {
+  if (!getWhatsAppManualFallbackEnabled()) {
+    return res.status(404).json({ error: 'Manual WhatsApp connection is disabled.' });
+  }
+
+  return handleLegacyWhatsAppManualConnect(req, res);
+});
+
+router.post('/whatsapp/connect/manual', requireOwner, async (req, res) => {
+  if (!getWhatsAppManualFallbackEnabled()) {
+    return res.status(404).json({ error: 'Manual WhatsApp connection is disabled.' });
+  }
+
+  return handleLegacyWhatsAppManualConnect(req, res);
+});
+
+router.post('/whatsapp/embedded-signup/session', requireOwner, async (req, res) => {
+  try {
+    const { appId, configId, graphApiVersion } = getWhatsAppEmbeddedSignupConfig();
+    const expiresAt = new Date(Date.now() + WHATSAPP_EMBEDDED_SIGNUP_SESSION_TTL_MS);
+
+    const session = await prisma.whatsappEmbeddedSignupSession.create({
+      data: {
+        businessId: req.businessId,
+        userId: req.userId,
+        configId,
+        expiresAt,
+        status: 'PENDING',
+        sessionInfo: {
+          source: 'dashboard-integrations',
+          initiatedAt: new Date().toISOString(),
+          initiatedByRole: req.userRole,
+        },
+      }
+    });
+
+    res.json({
+      success: true,
+      sessionId: session.id,
+      configId,
+      appId,
+      graphApiVersion,
+      expiresAt: session.expiresAt,
+      manualFallbackEnabled: getWhatsAppManualFallbackEnabled(),
+    });
+  } catch (error) {
+    console.error('WhatsApp Embedded Signup session error:', error);
+    res.status(500).json({
+      error: error.message || 'Failed to start WhatsApp Embedded Signup',
+    });
+  }
+});
+
+router.post('/whatsapp/embedded-signup/cancel', requireOwner, async (req, res) => {
+  try {
+    const { sessionId, reason, currentStep, eventPayload } = req.body;
+
+    if (!sessionId) {
+      return res.status(400).json({ error: 'Session ID is required' });
+    }
+
+    const session = await prisma.whatsappEmbeddedSignupSession.findFirst({
+      where: {
+        id: sessionId,
+        businessId: req.businessId,
+        userId: req.userId,
+      }
+    });
+
+    if (!session) {
+      return res.status(404).json({ error: 'Embedded Signup session not found' });
+    }
+
+    if (session.status !== 'PENDING' && session.status !== 'PROCESSING') {
+      return res.json({ success: true, status: session.status });
+    }
+
+    await prisma.whatsappEmbeddedSignupSession.update({
+      where: { id: session.id },
+      data: {
+        status: 'CANCELLED',
+        errorCode: reason || 'USER_CANCELLED',
+        errorMessage: currentStep ? `User cancelled at ${currentStep}` : 'User cancelled WhatsApp Embedded Signup',
+        sessionInfo: {
+          ...(isPlainObject(session.sessionInfo) ? session.sessionInfo : {}),
+          cancelledAt: new Date().toISOString(),
+          currentStep: currentStep || null,
+          cancelPayload: eventPayload || null,
+        },
+      }
+    });
+
+    res.json({ success: true, status: 'CANCELLED' });
+  } catch (error) {
+    console.error('WhatsApp Embedded Signup cancel error:', error);
+    res.status(500).json({ error: 'Failed to cancel WhatsApp Embedded Signup session' });
+  }
+});
+
+router.post('/whatsapp/embedded-signup/complete', requireOwner, async (req, res) => {
+  let session = null;
+
+  try {
+    const { sessionId, code, eventPayload } = req.body;
+
+    if (!sessionId || !code || !eventPayload) {
+      return res.status(400).json({
+        error: 'Session ID, authorization code, and Embedded Signup payload are required'
+      });
+    }
+
+    session = await prisma.whatsappEmbeddedSignupSession.findFirst({
+      where: {
+        id: sessionId,
+        businessId: req.businessId,
+        userId: req.userId,
+      }
+    });
+
+    if (!session) {
+      return res.status(404).json({ error: 'Embedded Signup session not found' });
+    }
+
+    if (session.expiresAt.getTime() <= Date.now()) {
+      await prisma.whatsappEmbeddedSignupSession.update({
+        where: { id: session.id },
+        data: {
+          status: 'EXPIRED',
+          errorCode: 'SESSION_EXPIRED',
+          errorMessage: 'Embedded Signup session expired before completion',
+        }
+      });
+
+      return res.status(410).json({ error: 'Embedded Signup session expired. Please try again.' });
+    }
+
+    if (session.status === 'COMPLETED') {
+      const [business, integration] = await Promise.all([
+        prisma.business.findUnique({
+          where: { id: req.businessId },
+          select: {
+            whatsappPhoneNumberId: true,
+            whatsappWebhookUrl: true,
+          }
+        }),
+        prisma.integration.findUnique({
+          where: {
+            businessId_type: {
+              businessId: req.businessId,
+              type: 'WHATSAPP'
+            }
+          }
+        }),
+      ]);
+
+      return res.json({
+        success: true,
+        connection: buildWhatsAppStatusResponse({
+          business,
+          integration,
+          manualFallbackEnabled: getWhatsAppManualFallbackEnabled(),
+        }),
+      });
+    }
+
+    if (session.status !== 'PENDING' && session.status !== 'PROCESSING') {
+      return res.status(409).json({ error: `Embedded Signup session is ${session.status.toLowerCase()}` });
+    }
+
+    const normalizedEvent = normalizeEmbeddedSignupEventPayload(eventPayload);
+
+    if (!isEmbeddedSignupFinishEvent(normalizedEvent.event)) {
+      return res.status(400).json({ error: 'Embedded Signup did not complete successfully' });
+    }
+
+    if (!normalizedEvent.wabaId || !normalizedEvent.phoneNumberId) {
+      return res.status(400).json({
+        error: 'Embedded Signup did not return the required WhatsApp asset IDs',
+      });
+    }
+
+    await prisma.whatsappEmbeddedSignupSession.update({
+      where: { id: session.id },
+      data: {
+        status: 'PROCESSING',
+        errorCode: null,
+        errorMessage: null,
+        sessionInfo: {
+          ...(isPlainObject(session.sessionInfo) ? session.sessionInfo : {}),
+          processingAt: new Date().toISOString(),
+          completionPayload: eventPayload,
+        },
+      }
+    });
+
+    const [business, existingIntegration] = await Promise.all([
+      prisma.business.findUnique({
+        where: { id: req.businessId },
+        select: {
+          whatsappVerifyToken: true,
+        }
+      }),
+      prisma.integration.findUnique({
+        where: {
+          businessId_type: {
+            businessId: req.businessId,
+            type: 'WHATSAPP'
+          }
+        }
+      }),
+    ]);
+
+    const tokenExchange = await exchangeCodeForAccessToken(code);
+    const accessToken = tokenExchange?.access_token;
+
+    if (!accessToken) {
+      throw new Error('Meta did not return an access token for the completed onboarding flow.');
+    }
+
+    const [tokenDebugData, phoneNumberData, wabaData] = await Promise.all([
+      debugAccessToken(accessToken),
+      fetchWhatsAppPhoneNumber(normalizedEvent.phoneNumberId, accessToken),
+      fetchWhatsAppBusinessAccount(normalizedEvent.wabaId, accessToken),
+    ]);
+
+    const webhookUrl = getWhatsAppWebhookUrl();
+    const verifyToken = getWebhookVerifyToken(business?.whatsappVerifyToken);
+    const connectionCredentials = buildWhatsAppConnectionCredentials({
+      businessId: req.businessId,
+      configId: session.configId,
+      webhookUrl,
+      existingCredentials: getIntegrationCredentials(existingIntegration),
+      normalizedEvent,
+      tokenExchange,
+      tokenDebugData,
+      phoneNumberData,
+      wabaData,
+    });
+    const encryptedAccessToken = encryptTokenValue(accessToken);
+    const isConnected = connectionCredentials.connectionStatus === 'CONNECTED';
+
+    await prisma.$transaction([
+      prisma.business.update({
+        where: { id: req.businessId },
+        data: {
+          whatsappPhoneNumberId: connectionCredentials.phoneNumberId,
+          whatsappAccessToken: encryptedAccessToken,
+          whatsappVerifyToken: verifyToken,
+          whatsappWebhookUrl: webhookUrl,
+        }
+      }),
+      prisma.integration.upsert({
+        where: {
+          businessId_type: {
+            businessId: req.businessId,
+            type: 'WHATSAPP'
+          }
+        },
+        update: {
+          credentials: connectionCredentials,
+          connected: isConnected,
+          isActive: isConnected,
+        },
+        create: {
+          businessId: req.businessId,
+          type: 'WHATSAPP',
+          credentials: connectionCredentials,
+          connected: isConnected,
+          isActive: isConnected,
+        }
+      }),
+      prisma.whatsappEmbeddedSignupSession.update({
+        where: { id: session.id },
+        data: {
+          status: 'COMPLETED',
+          completedAt: new Date(),
+          errorCode: null,
+          errorMessage: null,
+          sessionInfo: {
+            ...(isPlainObject(session.sessionInfo) ? session.sessionInfo : {}),
+            completionPayload: eventPayload,
+            completionResult: {
+              wabaId: connectionCredentials.wabaId,
+              phoneNumberId: connectionCredentials.phoneNumberId,
+              metaBusinessId: connectionCredentials.metaBusinessId,
+            },
+            completedAt: new Date().toISOString(),
+          },
+        }
+      }),
+    ]);
+
+    res.json({
+      success: true,
+      connection: buildWhatsAppStatusResponse({
+        business: {
+          whatsappPhoneNumberId: connectionCredentials.phoneNumberId,
+          whatsappWebhookUrl: webhookUrl,
+        },
+        integration: {
+          connected: isConnected,
+          isActive: isConnected,
+          credentials: connectionCredentials,
+        },
+        manualFallbackEnabled: getWhatsAppManualFallbackEnabled(),
+      }),
+    });
+  } catch (error) {
+    console.error('WhatsApp Embedded Signup completion error:', error.response?.data || error.message || error);
+
+    if (session?.id) {
+      await prisma.whatsappEmbeddedSignupSession.updateMany({
+        where: { id: session.id },
+        data: {
+          status: 'ERROR',
+          errorCode: String(error?.response?.data?.error?.code || 'EMBEDDED_SIGNUP_FAILED'),
+          errorMessage: error?.response?.data?.error?.message || error.message || 'Failed to complete WhatsApp Embedded Signup',
+          sessionInfo: {
+            ...(isPlainObject(session.sessionInfo) ? session.sessionInfo : {}),
+            failedAt: new Date().toISOString(),
+          },
+        }
+      });
+    }
+
+    const mappedStatus = getMetaConnectionStatusFromError(error);
+    const statusCode = error?.response?.status && error.response.status < 500 ? 400 : 500;
+
+    return res.status(statusCode).json({
+      error: mappedStatus === 'EXPIRED'
+        ? 'WhatsApp authorization expired before the connection could be saved. Please reconnect.'
+        : (error?.response?.data?.error?.message || error.message || 'Failed to complete WhatsApp Embedded Signup'),
+    });
+  }
+});
+
+router.post('/whatsapp/refresh', requireOwner, async (req, res) => {
+  try {
+    const [business, integration] = await Promise.all([
+      prisma.business.findUnique({
+        where: { id: req.businessId },
+        select: {
+          whatsappPhoneNumberId: true,
+          whatsappAccessToken: true,
+          whatsappWebhookUrl: true,
+        }
+      }),
+      prisma.integration.findUnique({
+        where: {
+          businessId_type: {
+            businessId: req.businessId,
+            type: 'WHATSAPP'
+          }
+        }
+      }),
+    ]);
+
+    if (!business?.whatsappPhoneNumberId || !business?.whatsappAccessToken || !integration) {
+      return res.status(404).json({ error: 'WhatsApp not connected' });
+    }
+
+    const existingCredentials = getIntegrationCredentials(integration);
+    const accessToken = decryptPossiblyEncryptedValue(business.whatsappAccessToken, { allowPlaintext: true });
+
+    try {
+      const normalizedEvent = normalizeEmbeddedSignupEventPayload({
+        event: 'FINISH',
+        data: {
+          business_id: existingCredentials.metaBusinessId,
+          waba_id: existingCredentials.wabaId,
+          phone_number_id: existingCredentials.phoneNumberId || business.whatsappPhoneNumberId,
+          display_phone_number: existingCredentials.displayPhoneNumber,
+        },
+      });
+
+      const [tokenDebugData, phoneNumberData, wabaData] = await Promise.all([
+        debugAccessToken(accessToken),
+        fetchWhatsAppPhoneNumber(normalizedEvent.phoneNumberId, accessToken),
+        fetchWhatsAppBusinessAccount(normalizedEvent.wabaId, accessToken),
+      ]);
+
+      const refreshedCredentials = buildWhatsAppConnectionCredentials({
+        businessId: req.businessId,
+        configId: existingCredentials.configId || getWhatsAppEmbeddedSignupConfig().configId,
+        webhookUrl: business.whatsappWebhookUrl || getWhatsAppWebhookUrl(),
+        existingCredentials,
+        normalizedEvent,
+        tokenExchange: {},
+        tokenDebugData,
+        phoneNumberData,
+        wabaData,
+      });
+      const isConnected = refreshedCredentials.connectionStatus === 'CONNECTED';
+
+      await prisma.integration.update({
+        where: {
+          businessId_type: {
+            businessId: req.businessId,
+            type: 'WHATSAPP'
+          }
+        },
+        data: {
+          credentials: refreshedCredentials,
+          connected: isConnected,
+          isActive: isConnected,
+        }
+      });
+
+      return res.json({
+        success: true,
+        connection: buildWhatsAppStatusResponse({
+          business: {
+            whatsappPhoneNumberId: business.whatsappPhoneNumberId,
+            whatsappWebhookUrl: business.whatsappWebhookUrl,
+          },
+          integration: {
+            connected: isConnected,
+            isActive: isConnected,
+            credentials: refreshedCredentials,
+          },
+          manualFallbackEnabled: getWhatsAppManualFallbackEnabled(),
+        }),
+      });
+    } catch (error) {
+      const failedCredentials = buildWhatsAppRefreshFailureCredentials(
+        existingCredentials,
+        error,
+        existingCredentials?.tokenMetadata?.expiresAt
+      );
+
+      await prisma.integration.update({
+        where: {
+          businessId_type: {
+            businessId: req.businessId,
+            type: 'WHATSAPP'
+          }
+        },
+        data: {
+          credentials: failedCredentials,
+          connected: false,
+          isActive: false,
+        }
+      });
+
+      return res.json({
+        success: false,
+        error: failedCredentials?.lastError?.message || 'Failed to refresh WhatsApp connection',
+        connection: buildWhatsAppStatusResponse({
+          business: {
+            whatsappPhoneNumberId: business.whatsappPhoneNumberId,
+            whatsappWebhookUrl: business.whatsappWebhookUrl,
+          },
+          integration: {
+            connected: false,
+            isActive: false,
+            credentials: failedCredentials,
+          },
+          manualFallbackEnabled: getWhatsAppManualFallbackEnabled(),
+        }),
+      });
+    }
+  } catch (error) {
+    console.error('WhatsApp refresh error:', error);
+    res.status(500).json({ error: 'Failed to refresh WhatsApp connection' });
+  }
 });
 
 router.post('/whatsapp/disconnect', requireOwner, async (req, res) => {
   try {
+    const existingIntegration = await prisma.integration.findUnique({
+      where: {
+        businessId_type: {
+          businessId: req.businessId,
+          type: 'WHATSAPP'
+        }
+      }
+    });
+    const existingCredentials = getIntegrationCredentials(existingIntegration);
+
     // Remove from Business model
     await prisma.business.update({
       where: { id: req.businessId },
@@ -795,17 +1339,27 @@ router.post('/whatsapp/disconnect', requireOwner, async (req, res) => {
       }
     });
 
-    // Mark as disconnected in Integration model
-    await prisma.integration.updateMany({
-      where: {
-        businessId: req.businessId,
-        type: 'WHATSAPP'
-      },
-      data: {
-        connected: false,
-        isActive: false
-      }
-    });
+    if (existingIntegration) {
+      await prisma.integration.update({
+        where: {
+          businessId_type: {
+            businessId: req.businessId,
+            type: 'WHATSAPP'
+          }
+        },
+        data: {
+          connected: false,
+          isActive: false,
+          credentials: {
+            ...existingCredentials,
+            connectionStatus: 'DISCONNECTED',
+            lastError: null,
+            disconnectedAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          }
+        }
+      });
+    }
 
     res.json({
       success: true,
@@ -819,21 +1373,29 @@ router.post('/whatsapp/disconnect', requireOwner, async (req, res) => {
 
 router.get('/whatsapp/status', async (req, res) => {
   try {
-    const business = await prisma.business.findUnique({
-      where: { id: req.businessId },
-      select: {
-        whatsappPhoneNumberId: true,
-        whatsappWebhookUrl: true
-      }
-    });
+    const [business, integration] = await Promise.all([
+      prisma.business.findUnique({
+        where: { id: req.businessId },
+        select: {
+          whatsappPhoneNumberId: true,
+          whatsappWebhookUrl: true
+        }
+      }),
+      prisma.integration.findUnique({
+        where: {
+          businessId_type: {
+            businessId: req.businessId,
+            type: 'WHATSAPP'
+          }
+        }
+      }),
+    ]);
 
-    const isConnected = !!business?.whatsappPhoneNumberId;
-
-    res.json({
-      connected: isConnected,
-      phoneNumberId: business?.whatsappPhoneNumberId || null,
-      webhookUrl: business?.whatsappWebhookUrl || null
-    });
+    res.json(buildWhatsAppStatusResponse({
+      business,
+      integration,
+      manualFallbackEnabled: getWhatsAppManualFallbackEnabled(),
+    }));
   } catch (error) {
     console.error('WhatsApp status error:', error);
     res.status(500).json({ error: 'Failed to get WhatsApp status' });

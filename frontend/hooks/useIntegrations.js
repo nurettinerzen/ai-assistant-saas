@@ -181,7 +181,7 @@ export function useConnectWhatsApp() {
 
   return useMutation({
     mutationFn: async (formData) => {
-      return await apiClient.post('/api/integrations/whatsapp/connect', formData);
+      return await apiClient.post('/api/integrations/whatsapp/connect/manual', formData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['integrations'] });
@@ -200,6 +200,24 @@ export function useDisconnectWhatsApp() {
   return useMutation({
     mutationFn: async () => {
       return await apiClient.post('/api/integrations/whatsapp/disconnect');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['integrations'] });
+      queryClient.invalidateQueries({ queryKey: ['integrations', 'whatsapp', 'status'] });
+    },
+  });
+}
+
+/**
+ * Hook to refresh WhatsApp connection health/status
+ * @returns {object} Mutation object
+ */
+export function useRefreshWhatsAppConnection() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      return await apiClient.post('/api/integrations/whatsapp/refresh');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['integrations'] });

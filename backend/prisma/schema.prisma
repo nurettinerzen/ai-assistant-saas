@@ -37,6 +37,7 @@ model User {
   passwordResetTokens PasswordResetToken[]
   auditLogsAsActor    BusinessAuditLog[]       @relation("AuditActor")
   auditLogsAsTarget   BusinessAuditLog[]       @relation("AuditTarget")
+  whatsappEmbeddedSignupSessions WhatsappEmbeddedSignupSession[]
 
   @@index([businessId])
   @@index([email])
@@ -176,6 +177,7 @@ model Business {
   pilotBusinesses          PilotBusiness[]         @relation("PilotBusinesses")
   emailPairs               EmailPair[]             @relation("EmailPairs")
   oauthStates              OAuthState[]            @relation("OAuthStates")
+  whatsappEmbeddedSignupSessions WhatsappEmbeddedSignupSession[]
 
   @@index([name])
   @@index([suspended])
@@ -506,6 +508,28 @@ model Integration {
   @@unique([businessId, type])
   @@index([businessId])
   @@index([type])
+}
+
+model WhatsappEmbeddedSignupSession {
+  id           String   @id @default(cuid())
+  businessId   Int
+  userId       Int
+  configId     String
+  status       String   @default("PENDING")
+  sessionInfo  Json?
+  errorCode    String?
+  errorMessage String?
+  expiresAt    DateTime
+  completedAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, status])
+  @@index([userId, status])
+  @@index([expiresAt])
 }
 
 model BusinessHours {
