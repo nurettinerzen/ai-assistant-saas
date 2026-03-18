@@ -53,6 +53,15 @@ function getWhatsAppWebhookUrl() {
   return `${process.env.BACKEND_URL}/api/whatsapp/webhook`;
 }
 
+function getWhatsAppEmbeddedSignupRedirectUri() {
+  const frontendUrl = String(process.env.FRONTEND_URL || '').replace(/\/+$/, '');
+  if (!frontendUrl) {
+    return null;
+  }
+
+  return `${frontendUrl}/auth/meta/whatsapp-callback`;
+}
+
 function getIntegrationCredentials(integration) {
   if (!integration || !isPlainObject(integration.credentials)) {
     return {};
@@ -868,6 +877,7 @@ router.post('/whatsapp/connect/manual', requireOwner, async (req, res) => {
 router.post('/whatsapp/embedded-signup/session', requireOwner, async (req, res) => {
   try {
     const { appId, configId, graphApiVersion } = getWhatsAppEmbeddedSignupConfig();
+    const redirectUri = getWhatsAppEmbeddedSignupRedirectUri();
     const expiresAt = new Date(Date.now() + WHATSAPP_EMBEDDED_SIGNUP_SESSION_TTL_MS);
 
     const session = await prisma.whatsappEmbeddedSignupSession.create({
@@ -881,6 +891,7 @@ router.post('/whatsapp/embedded-signup/session', requireOwner, async (req, res) 
           source: 'dashboard-integrations',
           initiatedAt: new Date().toISOString(),
           initiatedByRole: req.userRole,
+          redirectUri,
         },
       }
     });
@@ -891,6 +902,7 @@ router.post('/whatsapp/embedded-signup/session', requireOwner, async (req, res) 
       configId,
       appId,
       graphApiVersion,
+      redirectUri,
       expiresAt: session.expiresAt,
       manualFallbackEnabled: getWhatsAppManualFallbackEnabled(),
     });
@@ -1061,7 +1073,8 @@ router.post('/whatsapp/embedded-signup/complete', requireOwner, async (req, res)
       }),
     ]);
 
-    const tokenExchange = await exchangeCodeForAccessToken(code);
+    const redirectUri = (isPlainObject(session.sessionInfo) ? session.sessionInfo.redirectUri : null) || getWhatsAppEmbeddedSignupRedirectUri();
+    const tokenExchange = await exchangeCodeForAccessToken(code, redirectUri);
     const accessToken = tokenExchange?.access_token;
 
     if (!accessToken) {

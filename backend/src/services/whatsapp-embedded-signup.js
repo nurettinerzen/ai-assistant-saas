@@ -148,7 +148,7 @@ export function getMetaConnectionStatusFromError(error, expiresAt = null) {
   return 'ERROR';
 }
 
-export async function exchangeCodeForAccessToken(code) {
+export async function exchangeCodeForAccessToken(code, redirectUri = null) {
   const { appId, appSecret, graphApiVersion } = getWhatsAppEmbeddedSignupConfig();
 
   const response = await axios.get(getGraphUrl('oauth/access_token', graphApiVersion), {
@@ -156,6 +156,7 @@ export async function exchangeCodeForAccessToken(code) {
       client_id: appId,
       client_secret: appSecret,
       code,
+      ...(redirectUri ? { redirect_uri: redirectUri } : {}),
     },
   });
 

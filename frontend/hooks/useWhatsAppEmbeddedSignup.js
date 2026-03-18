@@ -30,6 +30,14 @@ function isMetaMessageOrigin(origin) {
   );
 }
 
+function isSameOriginMessage(origin) {
+  if (typeof window === 'undefined' || !origin || typeof origin !== 'string') {
+    return false;
+  }
+
+  return origin === window.location.origin;
+}
+
 function normalizeEmbeddedSignupPayload(payload = {}) {
   const rawPayload = isPlainObject(payload) ? payload : {};
   const rawData = isPlainObject(rawPayload.data) ? rawPayload.data : rawPayload;
@@ -204,6 +212,21 @@ export function useWhatsAppEmbeddedSignup({
       });
 
       listenerRef.current = async (event) => {
+        if (isSameOriginMessage(event.origin) && isPlainObject(event.data)) {
+          if (event.data.type === 'TELYX_META_WHATSAPP_CODE' && event.data.code) {
+            codeRef.current = event.data.code;
+            setFlowState(eventPayloadRef.current ? 'completing' : 'awaiting_completion');
+            await completeIfReady();
+            return;
+          }
+
+          if (event.data.type === 'TELYX_META_WHATSAPP_ERROR') {
+            const error = new Error(event.data.errorMessage || 'Meta WhatsApp onboarding did not return an authorization code.');
+            finalizeError(error);
+            return;
+          }
+        }
+
         if (!isMetaMessageOrigin(event.origin)) {
           return;
         }
@@ -282,6 +305,7 @@ export function useWhatsAppEmbeddedSignup({
           version: 'v3',
           setup: {},
         },
+        redirect_uri: sessionData.redirectUri || undefined,
         scope: 'business_management,whatsapp_business_management,whatsapp_business_messaging',
       });
     } catch (error) {
