@@ -6,12 +6,12 @@ const contentSecurityPolicy = [
   "base-uri 'self'",
   "object-src 'none'",
   `frame-ancestors ${frameAncestors}`,
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://apis.google.com https://www.gstatic.com https://static.iyzipay.com https://sandbox-static.iyzipay.com",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://apis.google.com https://www.gstatic.com https://static.iyzipay.com https://sandbox-static.iyzipay.com https://connect.facebook.net https://*.facebook.net https://*.facebook.com https://*.fbcdn.net",
   "style-src 'self' 'unsafe-inline' https://accounts.google.com",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data: https:",
   "connect-src 'self' https: wss:",
-  "frame-src 'self' https://accounts.google.com https://*.google.com https://*.iyzipay.com",
+  "frame-src 'self' https://accounts.google.com https://*.google.com https://*.iyzipay.com https://www.facebook.com https://web.facebook.com https://*.facebook.com",
   "form-action 'self' https:",
 ].join('; ');
 
