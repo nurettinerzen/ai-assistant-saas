@@ -23,7 +23,11 @@ function isMetaMessageOrigin(origin) {
     return false;
   }
 
-  return origin === 'https://www.facebook.com' || origin === 'https://web.facebook.com';
+  return (
+    origin === 'https://www.facebook.com' ||
+    origin === 'https://web.facebook.com' ||
+    origin === 'https://business.facebook.com'
+  );
 }
 
 function normalizeEmbeddedSignupPayload(payload = {}) {
@@ -247,8 +251,8 @@ export function useWhatsAppEmbeddedSignup({
         response_type: 'code',
         override_default_response_type: true,
         extras: {
-          feature: 'whatsapp_embedded_signup',
           sessionInfoVersion: '3',
+          version: 'v3',
           setup: {},
         },
         scope: 'business_management,whatsapp_business_management,whatsapp_business_messaging',
