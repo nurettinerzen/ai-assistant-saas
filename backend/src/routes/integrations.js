@@ -88,6 +88,22 @@ function getIntegrationCredentials(integration) {
   return integration.credentials;
 }
 
+function appendEmbeddedSignupTelemetry(sessionInfo, entry) {
+  const normalizedInfo = isPlainObject(sessionInfo) ? sessionInfo : {};
+  const existingTelemetry = Array.isArray(normalizedInfo.telemetry) ? normalizedInfo.telemetry : [];
+
+  return {
+    ...normalizedInfo,
+    telemetry: [
+      ...existingTelemetry.slice(-24),
+      {
+        at: new Date().toISOString(),
+        ...entry,
+      },
+    ],
+  };
+}
+
 router.use(authenticateToken);
 
 /* ============================================================
@@ -976,6 +992,43 @@ router.post('/whatsapp/embedded-signup/cancel', requireOwner, async (req, res) =
   } catch (error) {
     console.error('WhatsApp Embedded Signup cancel error:', error);
     res.status(500).json({ error: 'Failed to cancel WhatsApp Embedded Signup session' });
+  }
+});
+
+router.post('/whatsapp/embedded-signup/telemetry', requireOwner, async (req, res) => {
+  try {
+    const { sessionId, stage, details } = req.body;
+
+    if (!sessionId || !stage) {
+      return res.status(400).json({ error: 'Session ID and telemetry stage are required' });
+    }
+
+    const session = await prisma.whatsappEmbeddedSignupSession.findFirst({
+      where: {
+        id: sessionId,
+        businessId: req.businessId,
+        userId: req.userId,
+      }
+    });
+
+    if (!session) {
+      return res.status(404).json({ error: 'Embedded Signup session not found' });
+    }
+
+    await prisma.whatsappEmbeddedSignupSession.update({
+      where: { id: session.id },
+      data: {
+        sessionInfo: appendEmbeddedSignupTelemetry(session.sessionInfo, {
+          stage: String(stage),
+          details: isPlainObject(details) || Array.isArray(details) ? details : { value: details ?? null },
+        }),
+      }
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('WhatsApp Embedded Signup telemetry error:', error);
+    res.status(500).json({ error: 'Failed to record WhatsApp Embedded Signup telemetry' });
   }
 });
 

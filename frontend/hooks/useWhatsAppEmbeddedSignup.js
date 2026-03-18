@@ -58,6 +58,40 @@ function normalizeEmbeddedSignupPayload(payload = {}) {
   };
 }
 
+function buildTelemetrySnapshot(value, depth = 0) {
+  if (value == null) {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    return value.length > 2000 ? `${value.slice(0, 2000)}...` : value;
+  }
+
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    const items = value.slice(0, 10);
+    if (depth >= 2) {
+      return items.map((item) => typeof item);
+    }
+
+    return items.map((item) => buildTelemetrySnapshot(item, depth + 1));
+  }
+
+  if (!isPlainObject(value)) {
+    return String(value);
+  }
+
+  const entries = Object.entries(value).slice(0, 20);
+  if (depth >= 2) {
+    return Object.fromEntries(entries.map(([key, item]) => [key, typeof item]));
+  }
+
+  return Object.fromEntries(entries.map(([key, item]) => [key, buildTelemetrySnapshot(item, depth + 1)]));
+}
+
 function extractAuthorizationCodeFromString(messageData) {
   if (typeof messageData !== 'string') {
     return null;
@@ -195,6 +229,7 @@ export function useWhatsAppEmbeddedSignup({
   const codeRef = useRef(null);
   const eventPayloadRef = useRef(null);
   const completionStartedRef = useRef(false);
+  const completionTimeoutRef = useRef(null);
   const settledRef = useRef(false);
 
   const cleanupListener = useCallback(() => {
@@ -204,8 +239,36 @@ export function useWhatsAppEmbeddedSignup({
     }
   }, []);
 
+  const clearCompletionTimeout = useCallback(() => {
+    if (completionTimeoutRef.current && typeof window !== 'undefined') {
+      window.clearTimeout(completionTimeoutRef.current);
+      completionTimeoutRef.current = null;
+    }
+  }, []);
+
+  const trackTelemetry = useCallback(async (stage, details = {}) => {
+    const sessionId = sessionRef.current?.sessionId;
+    if (!sessionId) {
+      return;
+    }
+
+    try {
+      await apiClient.post('/api/integrations/whatsapp/embedded-signup/telemetry', {
+        sessionId,
+        stage,
+        details: buildTelemetrySnapshot({
+          ...details,
+          flowState: details.flowState || flowState,
+        }),
+      });
+    } catch {
+      // Telemetry is best-effort only.
+    }
+  }, [flowState]);
+
   const resetFlow = useCallback(() => {
     cleanupListener();
+    clearCompletionTimeout();
     sessionRef.current = null;
     codeRef.current = null;
     eventPayloadRef.current = null;
@@ -213,15 +276,16 @@ export function useWhatsAppEmbeddedSignup({
     settledRef.current = false;
     setFlowError(null);
     setFlowState('idle');
-  }, [cleanupListener]);
+  }, [cleanupListener, clearCompletionTimeout]);
 
   const finalizeError = useCallback((error) => {
     settledRef.current = true;
     cleanupListener();
+    clearCompletionTimeout();
     setFlowError(error);
     setFlowState('error');
     onError?.(error);
-  }, [cleanupListener, onError]);
+  }, [cleanupListener, clearCompletionTimeout, onError]);
 
   const finalizeCancel = useCallback(async (payload, reason = 'USER_CANCELLED') => {
     if (settledRef.current) {
@@ -230,6 +294,7 @@ export function useWhatsAppEmbeddedSignup({
 
     settledRef.current = true;
     cleanupListener();
+    clearCompletionTimeout();
     setFlowError(null);
     setFlowState('cancelled');
 
@@ -241,7 +306,32 @@ export function useWhatsAppEmbeddedSignup({
     });
 
     onCancel?.(payload || null);
-  }, [cleanupListener, onCancel]);
+  }, [cleanupListener, clearCompletionTimeout, onCancel]);
+
+  const armCompletionTimeout = useCallback(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    clearCompletionTimeout();
+
+    completionTimeoutRef.current = window.setTimeout(async () => {
+      if (settledRef.current || completionStartedRef.current || !eventPayloadRef.current || codeRef.current) {
+        return;
+      }
+
+      await trackTelemetry('completion_timeout', {
+        hasEventPayload: true,
+        hasAuthorizationCode: false,
+        event: eventPayloadRef.current?.event || null,
+        currentStep: eventPayloadRef.current?.currentStep || null,
+      });
+
+      const error = new Error('Meta completed the WhatsApp signup flow, but Telyx did not receive the authorization code needed to finish the connection.');
+      error.code = 'META_AUTH_CODE_MISSING';
+      finalizeError(error);
+    }, 8000);
+  }, [clearCompletionTimeout, finalizeError, trackTelemetry]);
 
   const completeIfReady = useCallback(async () => {
     if (completionStartedRef.current || !sessionRef.current?.sessionId || !codeRef.current || !eventPayloadRef.current) {
@@ -249,6 +339,7 @@ export function useWhatsAppEmbeddedSignup({
     }
 
     completionStartedRef.current = true;
+    clearCompletionTimeout();
     setFlowError(null);
     setFlowState('completing');
 
@@ -261,6 +352,7 @@ export function useWhatsAppEmbeddedSignup({
 
       settledRef.current = true;
       cleanupListener();
+      clearCompletionTimeout();
       setFlowState('success');
 
       await Promise.all([
@@ -273,7 +365,7 @@ export function useWhatsAppEmbeddedSignup({
       completionStartedRef.current = false;
       finalizeError(error);
     }
-  }, [cleanupListener, finalizeError, onSuccess, queryClient]);
+  }, [cleanupListener, clearCompletionTimeout, finalizeError, onSuccess, queryClient]);
 
   const startEmbeddedSignup = useCallback(async () => {
     if (flowState === 'preparing' || flowState === 'loading_sdk' || flowState === 'launching' || flowState === 'awaiting_completion' || flowState === 'completing') {
@@ -281,6 +373,7 @@ export function useWhatsAppEmbeddedSignup({
     }
 
     cleanupListener();
+    clearCompletionTimeout();
     sessionRef.current = null;
     codeRef.current = null;
     eventPayloadRef.current = null;
@@ -309,13 +402,23 @@ export function useWhatsAppEmbeddedSignup({
       listenerRef.current = async (event) => {
         if (isSameOriginMessage(event.origin) && isPlainObject(event.data)) {
           if (event.data.type === 'TELYX_META_WHATSAPP_CODE' && event.data.code) {
+            void trackTelemetry('same_origin_code_message', {
+              origin: event.origin,
+              hasAuthorizationCode: true,
+              payload: event.data,
+            });
             codeRef.current = event.data.code;
+            clearCompletionTimeout();
             setFlowState(eventPayloadRef.current ? 'completing' : 'awaiting_completion');
             await completeIfReady();
             return;
           }
 
           if (event.data.type === 'TELYX_META_WHATSAPP_ERROR') {
+            void trackTelemetry('same_origin_error_message', {
+              origin: event.origin,
+              payload: event.data,
+            });
             const error = new Error(event.data.errorMessage || 'Meta WhatsApp onboarding did not return an authorization code.');
             finalizeError(error);
             return;
@@ -329,7 +432,13 @@ export function useWhatsAppEmbeddedSignup({
         const authorizationCode = extractAuthorizationCode(event.data);
 
         if (authorizationCode) {
+          void trackTelemetry('meta_message_with_code', {
+            origin: event.origin,
+            hasAuthorizationCode: true,
+            payload: event.data,
+          });
           codeRef.current = authorizationCode;
+          clearCompletionTimeout();
           setFlowState(eventPayloadRef.current ? 'completing' : 'awaiting_completion');
           await completeIfReady();
         }
@@ -351,8 +460,16 @@ export function useWhatsAppEmbeddedSignup({
         const normalizedEventName = String(normalizedPayload.event || '').toUpperCase();
 
         if (FINISH_EVENTS.has(normalizedEventName)) {
+          void trackTelemetry('finish_event_received', {
+            origin: event.origin,
+            hasAuthorizationCode: Boolean(codeRef.current),
+            payload: normalizedPayload.rawPayload,
+          });
           eventPayloadRef.current = normalizedPayload;
           setFlowState(codeRef.current ? 'completing' : 'awaiting_completion');
+          if (!codeRef.current) {
+            armCompletionTimeout();
+          }
           await completeIfReady();
           return;
         }
@@ -371,10 +488,15 @@ export function useWhatsAppEmbeddedSignup({
 
       setFlowState('launching');
       FB.login((response) => {
+        void trackTelemetry('fb_login_callback', {
+          hasAuthorizationCode: Boolean(extractAuthorizationCode(response)),
+          payload: response,
+        });
         const code = extractAuthorizationCode(response);
 
         if (code) {
           codeRef.current = code;
+          clearCompletionTimeout();
           setFlowState(eventPayloadRef.current ? 'completing' : 'awaiting_completion');
           completeIfReady();
           return;
@@ -406,7 +528,7 @@ export function useWhatsAppEmbeddedSignup({
     } catch (error) {
       finalizeError(error);
     }
-  }, [cleanupListener, completeIfReady, finalizeCancel, finalizeError, flowState]);
+  }, [armCompletionTimeout, cleanupListener, clearCompletionTimeout, completeIfReady, finalizeCancel, finalizeError, flowState, trackTelemetry]);
 
   useEffect(() => {
     return () => {
