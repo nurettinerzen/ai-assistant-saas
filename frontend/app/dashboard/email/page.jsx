@@ -1,7 +1,8 @@
 /**
- * Email Inbox Dashboard — Outlook-style 2-Panel Layout
+ * Email Inbox Dashboard — Outlook-style 3-Panel Layout
  * Left: Mail list with Inbox/Sent tabs, filters, search
- * Right: Thread view with bubble messages, customer strip, reply composer
+ * Middle: Thread view with bubble messages, customer strip, reply composer
+ * Right: Customer data sidebar (CRM info, order stats, tags, notes)
  */
 
 'use client';
@@ -24,13 +25,27 @@ import {
   Search,
   Paperclip,
   Sparkles,
+  PanelRightOpen,
+  PanelRightClose,
+  Building2,
+  Phone,
+  AtSign,
+  Package,
+  Tag,
+  StickyNote,
+  BarChart3,
+  UserCircle,
+  ExternalLink,
+  Wrench,
+  ShoppingBag,
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast } from '@/lib/toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { formatDistanceToNow, format, isToday, isYesterday } from 'date-fns';
 import { tr } from 'date-fns/locale';
-import { useEmailStatus, useEmailThreads, useEmailThread, useEmailStats } from '@/hooks/useEmail';
+import { useEmailStatus, useEmailThreads, useEmailThread, useEmailStats, useCustomerByEmail } from '@/hooks/useEmail';
+import Link from 'next/link';
 import { useQueryClient } from '@tanstack/react-query';
 
 // ─── Helpers ───────────────────────────────────────────────
@@ -160,6 +175,10 @@ export default function EmailDashboardPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [generatingDraft, setGeneratingDraft] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  // Customer data for sidebar
+  const { data: customerData, isLoading: customerLoading } = useCustomerByEmail(selectedThread?.customerEmail);
 
   // Update draft content when thread changes
   useEffect(() => {
@@ -553,6 +572,15 @@ export default function EmailDashboardPage() {
                   <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
                   {locale === 'tr' ? 'Çözümlendi' : 'Resolve'}
                 </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  onClick={() => setSidebarOpen(prev => !prev)}
+                  title={locale === 'tr' ? 'Müşteri paneli' : 'Customer panel'}
+                >
+                  {sidebarOpen ? <PanelRightClose className="h-3.5 w-3.5" /> : <PanelRightOpen className="h-3.5 w-3.5" />}
+                </Button>
               </div>
             </div>
 
@@ -680,6 +708,286 @@ export default function EmailDashboardPage() {
           </div>
         )}
       </div>
+
+      {/* ════════ RIGHT SIDEBAR: CUSTOMER DATA ════════ */}
+      {selectedThread && sidebarOpen && (
+        <CustomerSidebar
+          customer={customerData?.customer}
+          orderStats={customerData?.orderStats}
+          recentOrders={customerData?.recentOrders}
+          tickets={customerData?.tickets}
+          loading={customerLoading}
+          locale={locale}
+          customerEmail={selectedThread.customerEmail}
+          customerName={selectedThread.customerName}
+        />
+      )}
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════
+// CUSTOMER SIDEBAR COMPONENT
+// ════════════════════════════════════════════════════════════
+
+function CustomerSidebar({ customer, orderStats, recentOrders, tickets, loading, locale, customerEmail, customerName }) {
+  if (loading) {
+    return (
+      <div className="w-[300px] min-w-[300px] border-l border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 hidden lg:flex flex-col items-center justify-center">
+        <div className="animate-pulse space-y-3 w-full px-4">
+          <div className="h-4 bg-neutral-200 dark:bg-neutral-700 rounded w-3/4 mx-auto" />
+          <div className="h-3 bg-neutral-200 dark:bg-neutral-700 rounded w-1/2 mx-auto" />
+          <div className="h-20 bg-neutral-200 dark:bg-neutral-700 rounded" />
+          <div className="h-16 bg-neutral-200 dark:bg-neutral-700 rounded" />
+        </div>
+      </div>
+    );
+  }
+
+  const formatCurrency = (amount) => {
+    if (!amount && amount !== 0) return '-';
+    return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount);
+  };
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '-';
+    try {
+      return formatDistanceToNow(new Date(dateStr), { addSuffix: true, locale: locale === 'tr' ? tr : undefined });
+    } catch { return '-'; }
+  };
+
+  const STATUS_LABELS = {
+    'hazırlanıyor': { label: 'Hazırlanıyor', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' },
+    'kargoda': { label: 'Kargoda', cls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' },
+    'onaylandı': { label: 'Onaylandı', cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' },
+    'dağıtımda': { label: 'Dağıtımda', cls: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300' },
+    'teslim edildi': { label: 'Teslim Edildi', cls: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' },
+    'iptal': { label: 'İptal', cls: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' },
+  };
+
+  const customFieldEntries = customer?.customFields ? Object.entries(customer.customFields).filter(([, v]) => v != null && v !== '') : [];
+  const hasAnyData = customer || (orderStats && orderStats.orderCount > 0) || (tickets && tickets.length > 0);
+
+  // Completely empty — no customer data, no orders, no tickets
+  if (!hasAnyData) {
+    return (
+      <div className="w-[300px] min-w-[300px] border-l border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 hidden lg:flex flex-col">
+        <div className="p-4 border-b border-neutral-200 dark:border-neutral-800">
+          <h3 className="text-sm font-semibold text-neutral-900 dark:text-white flex items-center gap-2">
+            <UserCircle className="h-4 w-4" />
+            {locale === 'tr' ? 'Müşteri Bilgisi' : 'Customer Info'}
+          </h3>
+        </div>
+        <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
+          <UserCircle className="h-10 w-10 text-neutral-300 dark:text-neutral-600 mb-3" />
+          <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-1">
+            {locale === 'tr' ? 'CRM verisi bulunamadı' : 'No CRM data found'}
+          </p>
+          <p className="text-xs text-neutral-400 dark:text-neutral-500">
+            {customerEmail}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-[300px] min-w-[300px] border-l border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 hidden lg:flex flex-col overflow-y-auto">
+      {/* Header */}
+      <div className="p-4 border-b border-neutral-200 dark:border-neutral-800">
+        <h3 className="text-sm font-semibold text-neutral-900 dark:text-white flex items-center gap-2">
+          <UserCircle className="h-4 w-4" />
+          {locale === 'tr' ? 'Müşteri Bilgisi' : 'Customer Info'}
+        </h3>
+      </div>
+
+      {/* Customer Info (from CustomerData table) */}
+      {customer && (
+        <div className="p-4 border-b border-neutral-200 dark:border-neutral-800 space-y-2.5">
+          {customer.companyName && (
+            <div className="flex items-start gap-2.5">
+              <Building2 className="h-3.5 w-3.5 mt-0.5 text-neutral-400 flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="text-[11px] text-neutral-400">{locale === 'tr' ? 'Firma' : 'Company'}</p>
+                <p className="text-sm font-medium text-neutral-900 dark:text-white truncate">{customer.companyName}</p>
+              </div>
+            </div>
+          )}
+          {customer.contactName && (
+            <div className="flex items-start gap-2.5">
+              <UserCircle className="h-3.5 w-3.5 mt-0.5 text-neutral-400 flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="text-[11px] text-neutral-400">{locale === 'tr' ? 'İletişim' : 'Contact'}</p>
+                <p className="text-sm text-neutral-700 dark:text-neutral-300 truncate">{customer.contactName}</p>
+              </div>
+            </div>
+          )}
+          {customer.phone && (
+            <div className="flex items-start gap-2.5">
+              <Phone className="h-3.5 w-3.5 mt-0.5 text-neutral-400 flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="text-[11px] text-neutral-400">{locale === 'tr' ? 'Telefon' : 'Phone'}</p>
+                <p className="text-sm text-neutral-700 dark:text-neutral-300">{customer.phone}</p>
+              </div>
+            </div>
+          )}
+          {customer.email && (
+            <div className="flex items-start gap-2.5">
+              <AtSign className="h-3.5 w-3.5 mt-0.5 text-neutral-400 flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="text-[11px] text-neutral-400">Email</p>
+                <p className="text-sm text-neutral-700 dark:text-neutral-300 truncate">{customer.email}</p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Order Stats */}
+      {orderStats && orderStats.orderCount > 0 && (
+        <div className="p-4 border-b border-neutral-200 dark:border-neutral-800">
+          <div className="flex items-center gap-2 mb-3">
+            <Package className="h-3.5 w-3.5 text-neutral-400" />
+            <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">
+              {locale === 'tr' ? 'Sipariş Özeti' : 'Order Summary'}
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-white dark:bg-neutral-800 rounded-lg p-2.5 text-center">
+              <p className="text-lg font-bold text-neutral-900 dark:text-white">{orderStats.orderCount}</p>
+              <p className="text-[10px] text-neutral-500">{locale === 'tr' ? 'Sipariş' : 'Orders'}</p>
+            </div>
+            <div className="bg-white dark:bg-neutral-800 rounded-lg p-2.5 text-center">
+              <p className="text-sm font-bold text-neutral-900 dark:text-white">{formatCurrency(orderStats.totalSpent)}</p>
+              <p className="text-[10px] text-neutral-500">{locale === 'tr' ? 'Toplam' : 'Total'}</p>
+            </div>
+          </div>
+          {orderStats.lastOrderDate && (
+            <p className="text-[11px] text-neutral-400 mt-2">
+              {locale === 'tr' ? 'Son sipariş: ' : 'Last order: '}{formatDate(orderStats.lastOrderDate)}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Recent Orders */}
+      {recentOrders?.length > 0 && (
+        <div className="p-4 border-b border-neutral-200 dark:border-neutral-800">
+          <div className="flex items-center gap-2 mb-2">
+            <ShoppingBag className="h-3.5 w-3.5 text-neutral-400" />
+            <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">
+              {locale === 'tr' ? 'Son Siparişler' : 'Recent Orders'}
+            </p>
+          </div>
+          <div className="space-y-2">
+            {recentOrders.map((order) => {
+              const statusCfg = STATUS_LABELS[order.status?.toLowerCase()] || { label: order.status, cls: 'bg-neutral-100 text-neutral-600 dark:bg-neutral-700 dark:text-neutral-300' };
+              return (
+                <div key={order.id} className="bg-white dark:bg-neutral-800 rounded-lg p-2.5">
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <span className="text-xs font-mono font-medium text-neutral-700 dark:text-neutral-200 truncate">
+                      {order.orderNumber}
+                    </span>
+                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full whitespace-nowrap ${statusCfg.cls}`}>
+                      {statusCfg.label}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    {order.totalAmount != null && (
+                      <span className="text-xs font-semibold text-neutral-900 dark:text-white">{formatCurrency(order.totalAmount)}</span>
+                    )}
+                    <span className="text-[10px] text-neutral-400">{formatDate(order.createdAt)}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Tickets / Service Records */}
+      {tickets?.length > 0 && (
+        <div className="p-4 border-b border-neutral-200 dark:border-neutral-800">
+          <div className="flex items-center gap-2 mb-2">
+            <Wrench className="h-3.5 w-3.5 text-neutral-400" />
+            <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">
+              {locale === 'tr' ? 'Servis Kayıtları' : 'Service Records'}
+            </p>
+          </div>
+          <div className="space-y-2">
+            {tickets.map((ticket) => (
+              <div key={ticket.id} className="bg-white dark:bg-neutral-800 rounded-lg p-2.5">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <span className="text-xs font-mono font-medium text-neutral-700 dark:text-neutral-200 truncate">
+                    {ticket.ticketNumber}
+                  </span>
+                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-neutral-100 text-neutral-600 dark:bg-neutral-700 dark:text-neutral-300">
+                    {ticket.status}
+                  </span>
+                </div>
+                <p className="text-[11px] text-neutral-600 dark:text-neutral-400 truncate">{ticket.product}</p>
+                {ticket.issue && <p className="text-[10px] text-neutral-400 truncate mt-0.5">{ticket.issue}</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Tags */}
+      {customer?.tags?.length > 0 && (
+        <div className="p-4 border-b border-neutral-200 dark:border-neutral-800">
+          <div className="flex items-center gap-2 mb-2">
+            <Tag className="h-3.5 w-3.5 text-neutral-400" />
+            <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">
+              {locale === 'tr' ? 'Etiketler' : 'Tags'}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {customer.tags.map((tag, i) => (
+              <span key={i} className="px-2 py-0.5 rounded-full bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 text-[11px] font-medium">
+                {tag}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Notes */}
+      {customer?.notes && (
+        <div className="p-4 border-b border-neutral-200 dark:border-neutral-800">
+          <div className="flex items-center gap-2 mb-2">
+            <StickyNote className="h-3.5 w-3.5 text-neutral-400" />
+            <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">
+              {locale === 'tr' ? 'Notlar' : 'Notes'}
+            </p>
+          </div>
+          <p className="text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed whitespace-pre-wrap">
+            {customer.notes}
+          </p>
+        </div>
+      )}
+
+      {/* Custom Fields */}
+      {customFieldEntries.length > 0 && (
+        <div className="p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <BarChart3 className="h-3.5 w-3.5 text-neutral-400" />
+            <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">
+              {locale === 'tr' ? 'Özel Alanlar' : 'Custom Fields'}
+            </p>
+          </div>
+          <div className="space-y-1.5">
+            {customFieldEntries.map(([key, value]) => (
+              <div key={key} className="flex items-center justify-between gap-2">
+                <span className="text-xs text-neutral-500 dark:text-neutral-400 truncate">{key}</span>
+                <span className="text-xs font-medium text-neutral-900 dark:text-white text-right">
+                  {typeof value === 'number' ? value.toLocaleString('tr-TR') : String(value)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

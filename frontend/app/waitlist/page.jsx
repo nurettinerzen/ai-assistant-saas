@@ -171,7 +171,7 @@ export default function WaitlistPage() {
                 <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-gray-500" />
                 <select
                   id="businessType"
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-neutral-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-neutral-700 dark:text-white"
+                  className="w-full pl-11 pr-4 py-2 border border-gray-300 dark:border-neutral-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-neutral-700 dark:text-white appearance-none"
                   value={formData.businessType}
                   onChange={(e) => setFormData({ ...formData, businessType: e.target.value })}
                 >
@@ -192,7 +192,7 @@ export default function WaitlistPage() {
                 <textarea
                   id="message"
                   placeholder={t('contact.form.messagePlaceholder')}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-neutral-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent min-h-[100px] resize-none bg-white dark:bg-neutral-700 dark:text-white dark:placeholder-neutral-400"
+                  className="w-full pl-11 pr-4 py-2 border border-gray-300 dark:border-neutral-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent min-h-[100px] resize-none bg-white dark:bg-neutral-700 dark:text-white placeholder-gray-400 dark:placeholder-neutral-400"
                   value={formData.message}
                   onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                 />
