@@ -26,6 +26,16 @@ function getMetaAppSecret() {
   );
 }
 
+export function getWhatsAppPartnerAccessToken() {
+  return (
+    process.env.META_SYSTEM_USER_ACCESS_TOKEN ||
+    process.env.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN ||
+    process.env.WHATSAPP_PARTNER_ACCESS_TOKEN ||
+    process.env.WHATSAPP_ACCESS_TOKEN ||
+    null
+  );
+}
+
 function getGraphUrl(path, graphApiVersion = DEFAULT_GRAPH_API_VERSION) {
   const normalizedPath = String(path || '').replace(/^\/+/, '');
   return `https://graph.facebook.com/${graphApiVersion}/${normalizedPath}`;
@@ -269,6 +279,7 @@ export function buildWhatsAppConnectionCredentials({
   tokenDebugData,
   phoneNumberData,
   wabaData,
+  tokenSource = 'EMBEDDED_SIGNUP_CODE_EXCHANGE',
 }) {
   const nowIso = new Date().toISOString();
   const existingTokenMetadata = existingCredentials?.tokenMetadata && typeof existingCredentials.tokenMetadata === 'object'
@@ -297,6 +308,7 @@ export function buildWhatsAppConnectionCredentials({
     configId,
     webhookUrl,
     onboardingMethod: 'EMBEDDED_SIGNUP',
+    tokenSource,
     tokenMetadata: {
       type: tokenExchange?.token_type || tokenDebugData?.type || existingTokenMetadata.type || null,
       expiresAt: tokenExpiresAt,

@@ -12,6 +12,24 @@ import prisma from '../config/database.js';
 
 const OUTBOUND_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days (Meta can retry for 24h+)
 
+function getWhatsAppAccessTokenForBusiness(business) {
+  if (business._useEnvCredentials) {
+    return process.env.WHATSAPP_ACCESS_TOKEN || process.env.META_SYSTEM_USER_ACCESS_TOKEN || null;
+  }
+
+  if (business.whatsappAccessToken) {
+    return decryptPossiblyEncryptedValue(business.whatsappAccessToken, { allowPlaintext: true });
+  }
+
+  return (
+    process.env.META_SYSTEM_USER_ACCESS_TOKEN ||
+    process.env.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN ||
+    process.env.WHATSAPP_PARTNER_ACCESS_TOKEN ||
+    process.env.WHATSAPP_ACCESS_TOKEN ||
+    null
+  );
+}
+
 /**
  * Send WhatsApp message using business credentials
  * With outbound idempotency to prevent duplicate sends
@@ -62,17 +80,21 @@ export async function sendWhatsAppMessage(business, to, text, options = {}) {
 
     if (business._useEnvCredentials) {
       // Use environment variables (testing/dev)
-      accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+      accessToken = getWhatsAppAccessTokenForBusiness(business);
       phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
       console.log('📤 Using env credentials for WhatsApp send');
     } else {
       // Use business's encrypted credentials
-      if (!business.whatsappAccessToken || !business.whatsappPhoneNumberId) {
+      if (!business.whatsappPhoneNumberId) {
         throw new Error('WhatsApp credentials not configured for business');
       }
 
-      accessToken = decryptPossiblyEncryptedValue(business.whatsappAccessToken, { allowPlaintext: true });
+      accessToken = getWhatsAppAccessTokenForBusiness(business);
       phoneNumberId = business.whatsappPhoneNumberId;
+    }
+
+    if (!accessToken) {
+      throw new Error('WhatsApp access token not configured for business');
     }
 
     // Send message via WhatsApp API
@@ -147,15 +169,19 @@ export async function sendTypingIndicator(business, to) {
     let phoneNumberId;
 
     if (business._useEnvCredentials) {
-      accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+      accessToken = getWhatsAppAccessTokenForBusiness(business);
       phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
     } else {
-      if (!business.whatsappAccessToken || !business.whatsappPhoneNumberId) {
+      if (!business.whatsappPhoneNumberId) {
         return;
       }
 
-      accessToken = decryptPossiblyEncryptedValue(business.whatsappAccessToken, { allowPlaintext: true });
+      accessToken = getWhatsAppAccessTokenForBusiness(business);
       phoneNumberId = business.whatsappPhoneNumberId;
+    }
+
+    if (!accessToken) {
+      return;
     }
 
     await axios.post(

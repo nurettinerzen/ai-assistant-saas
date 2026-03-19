@@ -22,6 +22,7 @@ import {
   fetchAccessibleWhatsAppAssets,
   fetchWhatsAppPhoneNumber,
   getMetaConnectionStatusFromError,
+  getWhatsAppPartnerAccessToken,
   getWhatsAppEmbeddedSignupConfig,
   isEmbeddedSignupFinishEvent,
   normalizeEmbeddedSignupEventPayload,
@@ -1039,9 +1040,9 @@ router.post('/whatsapp/embedded-signup/complete', requireOwner, async (req, res)
   try {
     const { sessionId, code, eventPayload } = req.body;
 
-    if (!sessionId || !code) {
+    if (!sessionId || (!code && !eventPayload)) {
       return res.status(400).json({
-        error: 'Session ID and authorization code are required'
+        error: 'Session ID and either authorization code or Embedded Signup payload are required'
       });
     }
 
@@ -1141,11 +1142,22 @@ router.post('/whatsapp/embedded-signup/complete', requireOwner, async (req, res)
     ]);
 
     const redirectUri = (isPlainObject(session.sessionInfo) ? session.sessionInfo.redirectUri : null) || getWhatsAppEmbeddedSignupRedirectUri();
-    const tokenExchange = await exchangeCodeForAccessToken(code, redirectUri);
-    const accessToken = tokenExchange?.access_token;
+    let tokenExchange = null;
+    let accessToken = null;
+    let tokenSource = 'EMBEDDED_SIGNUP_CODE_EXCHANGE';
+
+    if (code) {
+      tokenExchange = await exchangeCodeForAccessToken(code, redirectUri);
+      accessToken = tokenExchange?.access_token || null;
+    }
 
     if (!accessToken) {
-      throw new Error('Meta did not return an access token for the completed onboarding flow.');
+      accessToken = getWhatsAppPartnerAccessToken();
+      tokenSource = 'PARTNER_SYSTEM_USER';
+    }
+
+    if (!accessToken) {
+      throw new Error('Meta completed the signup flow, but no authorization code or partner system-user access token was available to finish the connection.');
     }
 
     let effectiveEvent = normalizedEvent;
@@ -1203,12 +1215,15 @@ router.post('/whatsapp/embedded-signup/complete', requireOwner, async (req, res)
       webhookUrl,
       existingCredentials: getIntegrationCredentials(existingIntegration),
       normalizedEvent: effectiveEvent,
-      tokenExchange,
+      tokenExchange: tokenExchange || {},
       tokenDebugData,
       phoneNumberData,
       wabaData,
+      tokenSource,
     });
-    const encryptedAccessToken = encryptTokenValue(accessToken);
+    const encryptedAccessToken = tokenSource === 'PARTNER_SYSTEM_USER'
+      ? null
+      : encryptTokenValue(accessToken);
     const isConnected = connectionCredentials.connectionStatus === 'CONNECTED';
 
     await prisma.$transaction([
@@ -1327,12 +1342,19 @@ router.post('/whatsapp/refresh', requireOwner, async (req, res) => {
       }),
     ]);
 
-    if (!business?.whatsappPhoneNumberId || !business?.whatsappAccessToken || !integration) {
+    if (!integration) {
       return res.status(404).json({ error: 'WhatsApp not connected' });
     }
 
     const existingCredentials = getIntegrationCredentials(integration);
-    const accessToken = decryptPossiblyEncryptedValue(business.whatsappAccessToken, { allowPlaintext: true });
+    const phoneNumberId = existingCredentials.phoneNumberId || business?.whatsappPhoneNumberId || null;
+    const accessToken = business?.whatsappAccessToken
+      ? decryptPossiblyEncryptedValue(business.whatsappAccessToken, { allowPlaintext: true })
+      : getWhatsAppPartnerAccessToken();
+
+    if (!phoneNumberId || !accessToken) {
+      return res.status(404).json({ error: 'WhatsApp not connected' });
+    }
 
     try {
       const normalizedEvent = normalizeEmbeddedSignupEventPayload({
@@ -1340,7 +1362,7 @@ router.post('/whatsapp/refresh', requireOwner, async (req, res) => {
         data: {
           business_id: existingCredentials.metaBusinessId,
           waba_id: existingCredentials.wabaId,
-          phone_number_id: existingCredentials.phoneNumberId || business.whatsappPhoneNumberId,
+          phone_number_id: phoneNumberId,
           display_phone_number: existingCredentials.displayPhoneNumber,
         },
       });
@@ -1361,6 +1383,7 @@ router.post('/whatsapp/refresh', requireOwner, async (req, res) => {
         tokenDebugData,
         phoneNumberData,
         wabaData,
+        tokenSource: business?.whatsappAccessToken ? 'EMBEDDED_SIGNUP_CODE_EXCHANGE' : 'PARTNER_SYSTEM_USER',
       });
       const isConnected = refreshedCredentials.connectionStatus === 'CONNECTED';
 

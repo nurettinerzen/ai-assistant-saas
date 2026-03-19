@@ -368,7 +368,7 @@ export function useWhatsAppEmbeddedSignup({
   }, [clearCompletionTimeout, finalizeError, trackTelemetry]);
 
   const completeIfReady = useCallback(async () => {
-    if (completionStartedRef.current || !sessionRef.current?.sessionId || !codeRef.current) {
+    if (completionStartedRef.current || !sessionRef.current?.sessionId || (!codeRef.current && !eventPayloadRef.current)) {
       return;
     }
 
