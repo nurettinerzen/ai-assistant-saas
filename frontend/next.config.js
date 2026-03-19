@@ -60,6 +60,20 @@ const nextConfig = {
         headers: noStoreHeaders,
       },
       {
+        source: '/dashboard/integrations',
+        headers: [
+          ...noStoreHeaders,
+          { key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' },
+        ],
+      },
+      {
+        source: '/auth/meta/whatsapp-callback',
+        headers: [
+          ...noStoreHeaders,
+          { key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' },
+        ],
+      },
+      {
         source: '/login',
         headers: [
           ...noStoreHeaders,
