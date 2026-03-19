@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api';
-import { loadMetaFacebookSdk } from '@/lib/meta-facebook-sdk';
 
 const FINISH_EVENTS = new Set([
   'FINISH',
@@ -13,6 +12,8 @@ const CANCEL_EVENTS = new Set([
   'CANCEL',
   'CANCELLED',
 ]);
+
+const WHATSAPP_EMBEDDED_SIGNUP_SCOPE = 'business_management,whatsapp_business_management,whatsapp_business_messaging';
 
 function isPlainObject(value) {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -56,6 +57,39 @@ function normalizeEmbeddedSignupPayload(payload = {}) {
     currentStep: rawData.current_step || rawData.currentStep || null,
     rawPayload,
   };
+}
+
+function getEmbeddedSignupLocale() {
+  if (typeof navigator === 'undefined' || !navigator.language) {
+    return 'en_US';
+  }
+
+  const [language = 'en', region = 'US'] = String(navigator.language).split('-');
+  return `${language.toLowerCase()}_${region.toUpperCase()}`;
+}
+
+function buildEmbeddedSignupPopupUrl({ appId, configId, graphApiVersion, redirectUri, sessionId }) {
+  const version = String(graphApiVersion || 'v22.0');
+  const params = new URLSearchParams({
+    app_id: appId,
+    client_id: appId,
+    config_id: configId,
+    display: 'popup',
+    response_type: 'code',
+    override_default_response_type: 'true',
+    redirect_uri: redirectUri,
+    fallback_redirect_uri: redirectUri,
+    scope: WHATSAPP_EMBEDDED_SIGNUP_SCOPE,
+    extras: JSON.stringify({
+      sessionInfoVersion: '3',
+      version: 'v3',
+      setup: {},
+    }),
+    locale: getEmbeddedSignupLocale(),
+    state: sessionId,
+  });
+
+  return `https://www.facebook.com/${version}/dialog/oauth?${params.toString()}`;
 }
 
 function buildTelemetrySnapshot(value, depth = 0) {
@@ -334,7 +368,7 @@ export function useWhatsAppEmbeddedSignup({
   }, [clearCompletionTimeout, finalizeError, trackTelemetry]);
 
   const completeIfReady = useCallback(async () => {
-    if (completionStartedRef.current || !sessionRef.current?.sessionId || !codeRef.current || !eventPayloadRef.current) {
+    if (completionStartedRef.current || !sessionRef.current?.sessionId || !codeRef.current) {
       return;
     }
 
@@ -347,7 +381,7 @@ export function useWhatsAppEmbeddedSignup({
       const response = await apiClient.post('/api/integrations/whatsapp/embedded-signup/complete', {
         sessionId: sessionRef.current.sessionId,
         code: codeRef.current,
-        eventPayload: eventPayloadRef.current.rawPayload,
+        eventPayload: eventPayloadRef.current?.rawPayload || null,
       });
 
       settledRef.current = true;
@@ -392,12 +426,7 @@ export function useWhatsAppEmbeddedSignup({
       const sessionData = sessionResponse.data || {};
 
       sessionRef.current = sessionData;
-      setFlowState('loading_sdk');
-
-      const FB = await loadMetaFacebookSdk({
-        appId: sessionData.appId,
-        graphApiVersion: sessionData.graphApiVersion,
-      });
+      setFlowState('launching');
 
       listenerRef.current = async (event) => {
         if (isSameOriginMessage(event.origin) && isPlainObject(event.data)) {
@@ -486,45 +515,30 @@ export function useWhatsAppEmbeddedSignup({
 
       window.addEventListener('message', listenerRef.current);
 
-      setFlowState('launching');
-      FB.login((response) => {
-        void trackTelemetry('fb_login_callback', {
-          hasAuthorizationCode: Boolean(extractAuthorizationCode(response)),
-          payload: response,
-        });
-        const code = extractAuthorizationCode(response);
-
-        if (code) {
-          codeRef.current = code;
-          clearCompletionTimeout();
-          setFlowState(eventPayloadRef.current ? 'completing' : 'awaiting_completion');
-          completeIfReady();
-          return;
-        }
-
-        if (response?.authResponse?.accessToken && !response?.authResponse?.code) {
-          const error = new Error('Meta returned an access token instead of an authorization code. Verify the Embedded Signup configuration.');
-          finalizeError(error);
-          return;
-        }
-
-        // Meta may invoke the callback before the hosted flow is actually completed.
-        // We only treat explicit WA_EMBEDDED_SIGNUP CANCEL events as a user cancellation.
-        setFlowState((currentState) => (
-          currentState === 'launching' ? 'awaiting_completion' : currentState
-        ));
-      }, {
-        config_id: sessionData.configId,
-        response_type: 'code',
-        override_default_response_type: true,
-        extras: {
-          sessionInfoVersion: '3',
-          version: 'v3',
-          setup: {},
-        },
-        redirect_uri: sessionData.redirectUri || undefined,
-        scope: 'business_management,whatsapp_business_management,whatsapp_business_messaging',
+      const popupUrl = buildEmbeddedSignupPopupUrl({
+        appId: sessionData.appId,
+        configId: sessionData.configId,
+        graphApiVersion: sessionData.graphApiVersion,
+        redirectUri: sessionData.redirectUri,
+        sessionId: sessionData.sessionId,
       });
+      const popup = window.open(
+        popupUrl,
+        'telyx-whatsapp-embedded-signup',
+        'width=680,height=820,menubar=no,toolbar=no,status=no,scrollbars=yes,resizable=yes'
+      );
+
+      void trackTelemetry('manual_popup_opened', {
+        popupUrl,
+        redirectUri: sessionData.redirectUri,
+      });
+
+      if (!popup) {
+        throw new Error('The Meta signup popup was blocked by the browser. Please allow popups and try again.');
+      }
+
+      popup.focus();
+      setFlowState('awaiting_completion');
     } catch (error) {
       finalizeError(error);
     }

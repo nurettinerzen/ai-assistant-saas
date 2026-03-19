@@ -19,6 +19,7 @@ import {
   debugAccessToken,
   exchangeCodeForAccessToken,
   fetchWhatsAppBusinessAccount,
+  fetchAccessibleWhatsAppAssets,
   fetchWhatsAppPhoneNumber,
   getMetaConnectionStatusFromError,
   getWhatsAppEmbeddedSignupConfig,
@@ -1038,9 +1039,9 @@ router.post('/whatsapp/embedded-signup/complete', requireOwner, async (req, res)
   try {
     const { sessionId, code, eventPayload } = req.body;
 
-    if (!sessionId || !code || !eventPayload) {
+    if (!sessionId || !code) {
       return res.status(400).json({
-        error: 'Session ID, authorization code, and Embedded Signup payload are required'
+        error: 'Session ID and authorization code are required'
       });
     }
 
@@ -1104,14 +1105,8 @@ router.post('/whatsapp/embedded-signup/complete', requireOwner, async (req, res)
 
     const normalizedEvent = normalizeEmbeddedSignupEventPayload(eventPayload);
 
-    if (!isEmbeddedSignupFinishEvent(normalizedEvent.event)) {
+    if (eventPayload && !isEmbeddedSignupFinishEvent(normalizedEvent.event)) {
       return res.status(400).json({ error: 'Embedded Signup did not complete successfully' });
-    }
-
-    if (!normalizedEvent.wabaId || !normalizedEvent.phoneNumberId) {
-      return res.status(400).json({
-        error: 'Embedded Signup did not return the required WhatsApp asset IDs',
-      });
     }
 
     await prisma.whatsappEmbeddedSignupSession.update({
@@ -1153,10 +1148,51 @@ router.post('/whatsapp/embedded-signup/complete', requireOwner, async (req, res)
       throw new Error('Meta did not return an access token for the completed onboarding flow.');
     }
 
+    let effectiveEvent = normalizedEvent;
+
+    if (!effectiveEvent.wabaId || !effectiveEvent.phoneNumberId) {
+      const accessibleAssets = await fetchAccessibleWhatsAppAssets(accessToken);
+      const dedupedAssets = Array.from(
+        new Map(
+          accessibleAssets.map((asset) => [`${asset.metaBusinessId || 'unknown'}:${asset.wabaId}:${asset.phoneNumberId}`, asset])
+        ).values()
+      );
+
+      let matchedAsset = null;
+
+      if (effectiveEvent.metaBusinessId) {
+        const businessMatches = dedupedAssets.filter((asset) => asset.metaBusinessId === effectiveEvent.metaBusinessId);
+        if (businessMatches.length === 1) {
+          matchedAsset = businessMatches[0];
+        }
+      }
+
+      if (!matchedAsset && dedupedAssets.length === 1) {
+        matchedAsset = dedupedAssets[0];
+      }
+
+      if (!matchedAsset) {
+        throw new Error('Meta completed onboarding, but Telyx could not determine which WhatsApp assets were selected. Please try again.');
+      }
+
+      effectiveEvent = {
+        ...effectiveEvent,
+        event: effectiveEvent.event || 'FINISH',
+        metaBusinessId: effectiveEvent.metaBusinessId || matchedAsset.metaBusinessId || null,
+        wabaId: effectiveEvent.wabaId || matchedAsset.wabaId,
+        phoneNumberId: effectiveEvent.phoneNumberId || matchedAsset.phoneNumberId,
+        displayPhoneNumber: effectiveEvent.displayPhoneNumber || matchedAsset.displayPhoneNumber || null,
+      };
+    }
+
+    if (!effectiveEvent.wabaId || !effectiveEvent.phoneNumberId) {
+      throw new Error('Embedded Signup did not return the required WhatsApp asset IDs.');
+    }
+
     const [tokenDebugData, phoneNumberData, wabaData] = await Promise.all([
       debugAccessToken(accessToken),
-      fetchWhatsAppPhoneNumber(normalizedEvent.phoneNumberId, accessToken),
-      fetchWhatsAppBusinessAccount(normalizedEvent.wabaId, accessToken),
+      fetchWhatsAppPhoneNumber(effectiveEvent.phoneNumberId, accessToken),
+      fetchWhatsAppBusinessAccount(effectiveEvent.wabaId, accessToken),
     ]);
 
     const webhookUrl = getWhatsAppWebhookUrl();
@@ -1166,7 +1202,7 @@ router.post('/whatsapp/embedded-signup/complete', requireOwner, async (req, res)
       configId: session.configId,
       webhookUrl,
       existingCredentials: getIntegrationCredentials(existingIntegration),
-      normalizedEvent,
+      normalizedEvent: effectiveEvent,
       tokenExchange,
       tokenDebugData,
       phoneNumberData,
@@ -1214,7 +1250,7 @@ router.post('/whatsapp/embedded-signup/complete', requireOwner, async (req, res)
           errorMessage: null,
           sessionInfo: {
             ...(isPlainObject(session.sessionInfo) ? session.sessionInfo : {}),
-            completionPayload: eventPayload,
+            completionPayload: eventPayload || null,
             completionResult: {
               wabaId: connectionCredentials.wabaId,
               phoneNumberId: connectionCredentials.phoneNumberId,

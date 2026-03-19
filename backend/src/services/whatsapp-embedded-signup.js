@@ -202,6 +202,63 @@ export async function fetchWhatsAppBusinessAccount(wabaId, accessToken) {
   return response.data || null;
 }
 
+function normalizeGraphDataList(value) {
+  if (Array.isArray(value)) {
+    return value;
+  }
+
+  if (value && Array.isArray(value.data)) {
+    return value.data;
+  }
+
+  return [];
+}
+
+export async function fetchAccessibleWhatsAppAssets(accessToken) {
+  const response = await axios.get(getGraphUrl('me/businesses'), {
+    params: {
+      fields: [
+        'id',
+        'name',
+        'owned_whatsapp_business_accounts{id,name,timezone_id,phone_numbers{id,display_phone_number,verified_name,quality_rating,code_verification_status,name_status}}',
+        'client_whatsapp_business_accounts{id,name,timezone_id,phone_numbers{id,display_phone_number,verified_name,quality_rating,code_verification_status,name_status}}',
+      ].join(','),
+    },
+    headers: buildBearerHeaders(accessToken),
+  });
+
+  const businesses = normalizeGraphDataList(response.data?.data ?? response.data);
+  const candidates = [];
+
+  for (const business of businesses) {
+    for (const relationKey of ['owned_whatsapp_business_accounts', 'client_whatsapp_business_accounts']) {
+      const wabas = normalizeGraphDataList(business?.[relationKey]);
+
+      for (const waba of wabas) {
+        const phoneNumbers = normalizeGraphDataList(waba?.phone_numbers);
+
+        for (const phoneNumber of phoneNumbers) {
+          if (!waba?.id || !phoneNumber?.id) {
+            continue;
+          }
+
+          candidates.push({
+            metaBusinessId: business?.id || null,
+            metaBusinessName: business?.name || null,
+            wabaId: waba.id,
+            wabaName: waba?.name || null,
+            phoneNumberId: phoneNumber.id,
+            displayPhoneNumber: phoneNumber?.display_phone_number || null,
+            verifiedName: phoneNumber?.verified_name || null,
+          });
+        }
+      }
+    }
+  }
+
+  return candidates;
+}
+
 export function buildWhatsAppConnectionCredentials({
   businessId,
   configId,
