@@ -208,12 +208,13 @@ export default function EmailSnippetsPage() {
         </div>
       ) : filtered.length === 0 ? (
         <EmptyState
-          icon={<FileText className="h-10 w-10" />}
+          icon={FileText}
           title={locale === 'tr' ? 'Henuz hazir yanit yok' : 'No snippets yet'}
           description={locale === 'tr'
             ? 'E-posta yanıtlarınızı hızlandırmak için şablon oluşturun'
             : 'Create templates to speed up your email replies'}
-          action={<Button onClick={openCreate} className="gap-1.5"><Plus className="h-4 w-4" />{locale === 'tr' ? 'Ilk Yaniti Olustur' : 'Create First Snippet'}</Button>}
+          actionLabel={locale === 'tr' ? 'Ilk Yaniti Olustur' : 'Create First Snippet'}
+          onAction={openCreate}
         />
       ) : (
         <div className="grid gap-3">
