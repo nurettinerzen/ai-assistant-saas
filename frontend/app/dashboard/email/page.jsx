@@ -508,14 +508,15 @@ export default function EmailDashboardPage() {
               { key: 'DRAFT_READY', label: locale === 'tr' ? 'AI Taslak' : 'AI Draft' },
               { key: 'REPLIED', label: locale === 'tr' ? 'Yanıtlandı' : 'Replied' },
               { key: 'CLOSED', label: locale === 'tr' ? 'Kapalı' : 'Closed' },
+              { key: 'SPAM', label: 'Spam', cls: 'spam' },
             ].map(f => (
               <button
                 key={f.key || 'all'}
                 onClick={() => setStatusFilter(f.key)}
                 className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all ${
                   statusFilter === f.key
-                    ? 'bg-blue-500 border-blue-500 text-white'
-                    : 'border-neutral-300 dark:border-neutral-700 text-neutral-500 dark:text-neutral-400 hover:border-neutral-400 dark:hover:border-neutral-600'
+                    ? f.cls === 'spam' ? 'bg-red-500 border-red-500 text-white' : 'bg-blue-500 border-blue-500 text-white'
+                    : f.cls === 'spam' ? 'border-red-300 dark:border-red-800 text-red-500 dark:text-red-400 hover:border-red-400 dark:hover:border-red-700' : 'border-neutral-300 dark:border-neutral-700 text-neutral-500 dark:text-neutral-400 hover:border-neutral-400 dark:hover:border-neutral-600'
                 }`}
               >
                 {f.label}
