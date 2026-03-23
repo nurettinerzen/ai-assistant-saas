@@ -35,16 +35,16 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import EmptyState from '@/components/EmptyState';
 
 const INTENT_OPTIONS = [
-  { value: 'ORDER_STATUS', labelTr: 'Siparis Durumu', labelEn: 'Order Status' },
-  { value: 'RETURN_REQUEST', labelTr: 'Iade Talebi', labelEn: 'Return Request' },
-  { value: 'COMPLAINT', labelTr: 'Sikayet', labelEn: 'Complaint' },
+  { value: 'ORDER_STATUS', labelTr: 'Sipariş Durumu', labelEn: 'Order Status' },
+  { value: 'RETURN_REQUEST', labelTr: 'İade Talebi', labelEn: 'Return Request' },
+  { value: 'COMPLAINT', labelTr: 'Şikayet', labelEn: 'Complaint' },
   { value: 'GENERAL_INQUIRY', labelTr: 'Genel Bilgi', labelEn: 'General Inquiry' },
   { value: 'TECHNICAL_SUPPORT', labelTr: 'Teknik Destek', labelEn: 'Technical Support' },
-  { value: 'BILLING', labelTr: 'Fatura/Odeme', labelEn: 'Billing' },
-  { value: 'CANCELLATION', labelTr: 'Iptal', labelEn: 'Cancellation' },
+  { value: 'BILLING', labelTr: 'Fatura/Ödeme', labelEn: 'Billing' },
+  { value: 'CANCELLATION', labelTr: 'İptal', labelEn: 'Cancellation' },
   { value: 'GREETING', labelTr: 'Selamlama', labelEn: 'Greeting' },
-  { value: 'CLOSING', labelTr: 'Kapanis', labelEn: 'Closing' },
-  { value: 'OTHER', labelTr: 'Diger', labelEn: 'Other' },
+  { value: 'CLOSING', labelTr: 'Kapanış', labelEn: 'Closing' },
+  { value: 'OTHER', labelTr: 'Diğer', labelEn: 'Other' },
 ];
 
 const TONE_OPTIONS = [
@@ -80,7 +80,7 @@ export default function EmailSnippetsPage() {
       const res = await apiClient.get('/api/email-snippets');
       setSnippets(res.data?.snippets || []);
     } catch (err) {
-      toast.error(locale === 'tr' ? 'Yanitlar yuklenemedi' : 'Failed to load snippets');
+      toast.error(locale === 'tr' ? 'Yanıtlar yüklenemedi' : 'Failed to load snippets');
     } finally {
       setLoading(false);
     }
@@ -110,17 +110,17 @@ export default function EmailSnippetsPage() {
 
   const handleSave = async () => {
     if (!form.name.trim() || !form.body.trim()) {
-      toast.error(locale === 'tr' ? 'Ad ve icerik zorunlu' : 'Name and body are required');
+      toast.error(locale === 'tr' ? 'Ad ve içerik zorunlu' : 'Name and body are required');
       return;
     }
     setSaving(true);
     try {
       if (editingSnippet) {
         await apiClient.put(`/api/email-snippets/${editingSnippet.id}`, form);
-        toast.success(locale === 'tr' ? 'Yanit guncellendi' : 'Snippet updated');
+        toast.success(locale === 'tr' ? 'Yanıt güncellendi' : 'Snippet updated');
       } else {
         await apiClient.post('/api/email-snippets', form);
-        toast.success(locale === 'tr' ? 'Yanit olusturuldu' : 'Snippet created');
+        toast.success(locale === 'tr' ? 'Yanıt oluşturuldu' : 'Snippet created');
       }
       setDialogOpen(false);
       resetForm();
@@ -136,7 +136,7 @@ export default function EmailSnippetsPage() {
   const handleDelete = async (id) => {
     try {
       await apiClient.delete(`/api/email-snippets/${id}`);
-      toast.success(locale === 'tr' ? 'Yanit silindi' : 'Snippet deleted');
+      toast.success(locale === 'tr' ? 'Yanıt silindi' : 'Snippet deleted');
       setDeleteConfirm(null);
       fetchSnippets();
     } catch (err) {
@@ -149,13 +149,13 @@ export default function EmailSnippetsPage() {
       await apiClient.put(`/api/email-snippets/${snippet.id}`, { enabled: !snippet.enabled });
       fetchSnippets();
     } catch (err) {
-      toast.error(locale === 'tr' ? 'Guncellenemedi' : 'Update failed');
+      toast.error(locale === 'tr' ? 'Güncellenemedi' : 'Update failed');
     }
   };
 
   const handleCopy = (body) => {
     navigator.clipboard.writeText(body);
-    toast.success(locale === 'tr' ? 'Kopyalandi' : 'Copied');
+    toast.success(locale === 'tr' ? 'Kopyalandı' : 'Copied');
   };
 
   const filtered = snippets.filter(s => {
@@ -176,7 +176,7 @@ export default function EmailSnippetsPage() {
         <div>
           <h1 className="text-2xl font-bold text-neutral-900 dark:text-white flex items-center gap-2">
             <Zap className="h-6 w-6 text-amber-500" />
-            {locale === 'tr' ? 'Hazir Yanitlar' : 'Quick Replies'}
+            {locale === 'tr' ? 'Hazır Yanıtlar' : 'Quick Replies'}
           </h1>
           <p className="text-sm text-neutral-500 mt-1">
             {locale === 'tr'
@@ -186,7 +186,7 @@ export default function EmailSnippetsPage() {
         </div>
         <Button onClick={openCreate} className="gap-1.5">
           <Plus className="h-4 w-4" />
-          {locale === 'tr' ? 'Yeni Yanit' : 'New Snippet'}
+          {locale === 'tr' ? 'Yeni Yanıt' : 'New Snippet'}
         </Button>
       </div>
 
@@ -196,7 +196,7 @@ export default function EmailSnippetsPage() {
         <Input
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder={locale === 'tr' ? 'Yanit ara...' : 'Search snippets...'}
+          placeholder={locale === 'tr' ? 'Yanıt ara...' : 'Search snippets...'}
           className="pl-10"
         />
       </div>
@@ -209,11 +209,11 @@ export default function EmailSnippetsPage() {
       ) : filtered.length === 0 ? (
         <EmptyState
           icon={FileText}
-          title={locale === 'tr' ? 'Henuz hazir yanit yok' : 'No snippets yet'}
+          title={locale === 'tr' ? 'Henüz hazır yanıt yok' : 'No snippets yet'}
           description={locale === 'tr'
             ? 'E-posta yanıtlarınızı hızlandırmak için şablon oluşturun'
             : 'Create templates to speed up your email replies'}
-          actionLabel={locale === 'tr' ? 'Ilk Yaniti Olustur' : 'Create First Snippet'}
+          actionLabel={locale === 'tr' ? 'İlk Yanıtı Oluştur' : 'Create First Snippet'}
           onAction={openCreate}
         />
       ) : (
@@ -252,7 +252,7 @@ export default function EmailSnippetsPage() {
                   <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleCopy(snippet.body)} title={locale === 'tr' ? 'Kopyala' : 'Copy'}>
                     <Copy className="h-3.5 w-3.5" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleToggle(snippet)} title={snippet.enabled !== false ? (locale === 'tr' ? 'Devre Disi Birak' : 'Disable') : (locale === 'tr' ? 'Etkinlestir' : 'Enable')}>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleToggle(snippet)} title={snippet.enabled !== false ? (locale === 'tr' ? 'Devre Dışı Bırak' : 'Disable') : (locale === 'tr' ? 'Etkinleştir' : 'Enable')}>
                     {snippet.enabled !== false ? <ToggleRight className="h-4 w-4 text-emerald-500" /> : <ToggleLeft className="h-4 w-4 text-neutral-400" />}
                   </Button>
                   <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(snippet)}>
@@ -264,7 +264,7 @@ export default function EmailSnippetsPage() {
                         {locale === 'tr' ? 'Sil' : 'Delete'}
                       </Button>
                       <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={() => setDeleteConfirm(null)}>
-                        {locale === 'tr' ? 'Iptal' : 'Cancel'}
+                        {locale === 'tr' ? 'İptal' : 'Cancel'}
                       </Button>
                     </div>
                   ) : (
@@ -285,8 +285,8 @@ export default function EmailSnippetsPage() {
           <DialogHeader>
             <DialogTitle>
               {editingSnippet
-                ? (locale === 'tr' ? 'Yaniti Duzenle' : 'Edit Snippet')
-                : (locale === 'tr' ? 'Yeni Yanit' : 'New Snippet')}
+                ? (locale === 'tr' ? 'Yanıtı Düzenle' : 'Edit Snippet')
+                : (locale === 'tr' ? 'Yeni Yanıt' : 'New Snippet')}
             </DialogTitle>
           </DialogHeader>
 
@@ -296,7 +296,7 @@ export default function EmailSnippetsPage() {
               <Input
                 value={form.name}
                 onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))}
-                placeholder={locale === 'tr' ? 'orn. Siparis Durumu Yaniti' : 'e.g. Order Status Reply'}
+                placeholder={locale === 'tr' ? 'örn. Sipariş Durumu Yanıtı' : 'e.g. Order Status Reply'}
               />
             </div>
 
@@ -332,37 +332,37 @@ export default function EmailSnippetsPage() {
               <Input
                 value={form.subject}
                 onChange={(e) => setForm(f => ({ ...f, subject: e.target.value }))}
-                placeholder={locale === 'tr' ? 'E-posta konu satiri' : 'Email subject line'}
+                placeholder={locale === 'tr' ? 'E-posta konu satırı' : 'Email subject line'}
               />
             </div>
 
             <div>
-              <Label>{locale === 'tr' ? 'Icerik' : 'Body'}</Label>
+              <Label>{locale === 'tr' ? 'İçerik' : 'Body'}</Label>
               <Textarea
                 value={form.body}
                 onChange={(e) => setForm(f => ({ ...f, body: e.target.value }))}
                 placeholder={locale === 'tr'
-                  ? 'Sayin {musteri_adi},\n\nSiparisinizin durumu: {siparis_durumu}\n\nSaygilarimizla'
+                  ? 'Sayın {müşteri_adı},\n\nSiparişinizin durumu: {sipariş_durumu}\n\nSaygılarımızla'
                   : 'Dear {customer_name},\n\nYour order status: {order_status}\n\nBest regards'}
                 rows={6}
                 className="font-mono text-sm"
               />
               <p className="text-[11px] text-neutral-400 mt-1">
                 {locale === 'tr'
-                  ? 'Degisken kullanmak icin {degisken_adi} yazin'
+                  ? 'Değişken kullanmak için {değişken_adı} yazın'
                   : 'Use {variable_name} for dynamic values'}
               </p>
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => { setDialogOpen(false); resetForm(); }}>
-                {locale === 'tr' ? 'Iptal' : 'Cancel'}
+                {locale === 'tr' ? 'İptal' : 'Cancel'}
               </Button>
               <Button onClick={handleSave} disabled={saving}>
                 {saving && <Loader2 className="h-4 w-4 animate-spin mr-1.5" />}
                 {editingSnippet
-                  ? (locale === 'tr' ? 'Guncelle' : 'Update')
-                  : (locale === 'tr' ? 'Olustur' : 'Create')}
+                  ? (locale === 'tr' ? 'Güncelle' : 'Update')
+                  : (locale === 'tr' ? 'Oluştur' : 'Create')}
               </Button>
             </div>
           </div>

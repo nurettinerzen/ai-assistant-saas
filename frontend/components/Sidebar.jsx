@@ -38,7 +38,6 @@ import {
   History,
   AlertTriangle,
   BookMarked,
-  Zap,
 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -131,7 +130,6 @@ export default function Sidebar({ user, credits, business }) {
         { icon: Database, label: t('dashboard.sidebar.inbox'), href: NAVIGATION_ITEMS.inbox.href, permission: 'campaigns:view' },
         { icon: Megaphone, label: t('dashboard.sidebar.campaigns'), href: NAVIGATION_ITEMS.campaigns.href, permission: 'campaigns:view', featureId: 'batch_calls' },
         { icon: Mail, label: t('dashboard.sidebar.email'), href: NAVIGATION_ITEMS.email.href, permission: 'campaigns:view' },
-        { icon: Zap, label: locale === 'tr' ? 'Hazır Yanıtlar' : 'Quick Replies', href: '/dashboard/email-snippets', permission: 'campaigns:view' },
       ],
     },
     {
