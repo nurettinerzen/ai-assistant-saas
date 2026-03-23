@@ -300,6 +300,8 @@ const SERVICE_QUERY_TYPES = new Set([
   'service'
 ]);
 
+const STRONG_TICKET_NUMBER_PATTERN = /^(?:B\d+-)?(?:TKT|SRV)-\d{4}-\d+$/i;
+
 function normalizeQueryTypeAlias(queryType) {
   const normalized = String(queryType || '').trim().toLowerCase();
   if (normalized === 'order') return 'siparis';
@@ -362,6 +364,21 @@ function normalizeVerificationCandidate(
     return null;
   }
   return candidate;
+}
+
+function looksLikeStrongTicketNumber(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return false;
+  if (STRONG_TICKET_NUMBER_PATTERN.test(raw)) return true;
+
+  const digitsOnly = raw.replace(/\D/g, '');
+  const hasLetters = /[a-zA-Z]/.test(raw);
+
+  if (!hasLetters && digitsOnly.length <= 4) {
+    return false;
+  }
+
+  return hasLetters && digitsOnly.length >= 4;
 }
 
 function requestExpectedVerificationInput({ language, anchor, askFor }) {
@@ -591,6 +608,14 @@ export async function execute(args, business, context = {}) {
           : 'The order number looks too short. Please share it again with at least 3 characters.',
         'order_number'
       );
+    }
+
+    if (isTicketQuery && ticket_number && !looksLikeStrongTicketNumber(ticket_number)) {
+      return buildLookupIdentifierRequiredResponse({
+        language,
+        queryType: normalizedQueryType,
+        hasPartialPhone: false
+      });
     }
 
     // If the model routed into a lookup tool without a usable primary identifier,
