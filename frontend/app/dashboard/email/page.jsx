@@ -1164,7 +1164,7 @@ function MessageBubble({ msg, isInbound, mainContent, locale, customerName, cust
       {/* Body */}
       <div className="px-4 py-3 bg-white dark:bg-neutral-900">
         <p className="whitespace-pre-wrap text-sm leading-relaxed text-neutral-700 dark:text-neutral-300">
-          {(mainContent || msg.bodyText?.substring(0, 500))?.replace(/\n{2,}/g, '\n\n')?.replace(/[ \t]+\n/g, '\n')?.replace(/\n[ \t]+/g, '\n')?.trim()}
+          {(mainContent || msg.bodyText?.substring(0, 500))?.replace(/[\u200c\u200b\u200d\u200e\u200f\ufeff]/g, '')?.replace(/[\u00a0\t ]{2,}/g, ' ')?.replace(/\n[\u00a0\t ]*\n/g, '\n\n')?.replace(/\n{2,}/g, '\n\n')?.trim()}
         </p>
 
         {/* Attachments */}
