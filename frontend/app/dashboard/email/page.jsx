@@ -1165,8 +1165,8 @@ function MessageBubble({ msg, isInbound, mainContent, locale, customerName, cust
       <div className="px-4 py-3 bg-white dark:bg-neutral-900">
         <p className="whitespace-pre-wrap text-sm leading-relaxed text-neutral-700 dark:text-neutral-300">
           {(mainContent || msg.bodyText?.substring(0, 500))
-            ?.replace(/[\u200c\u200b\u200d\u200e\u200f\ufeff]/g, '')
-            ?.replace(/\u00a0/g, ' ')
+            ?.replace(/[\u200b-\u200f\u2028\u2029\u202a-\u202f\u2060-\u206f\u034f\ufeff\u00ad]/g, '')
+            ?.replace(/[\u00a0\u2007\u2008\u2009\u200a\u205f\u3000]/g, ' ')
             ?.replace(/^[ \t]+$/gm, '')
             ?.replace(/\n{3,}/g, '\n\n')
             ?.trim()}
