@@ -177,6 +177,7 @@ export default function EmailDashboardPage() {
   const [snippetsOpen, setSnippetsOpen] = useState(false);
   const [snippets, setSnippets] = useState([]);
   const [snippetsLoaded, setSnippetsLoaded] = useState(false);
+  const [quickReplyMode, setQuickReplyMode] = useState(false);
   const snippetsRef = useRef(null);
 
   // Debounce search (300ms)
@@ -323,6 +324,23 @@ export default function EmailDashboardPage() {
     }
   };
 
+  const handleSendQuickReply = async () => {
+    if (!selectedThread || !editedContent.trim()) return;
+    setSending(true);
+    try {
+      await apiClient.post(`/api/email/threads/${selectedThread.id}/quick-reply`, { content: editedContent });
+      toast.success(locale === 'tr' ? 'E-posta gönderildi' : 'Email sent');
+      queryClient.invalidateQueries({ queryKey: ['email'] });
+      setQuickReplyMode(false);
+      setEditedContent('');
+      setIsEditing(false);
+    } catch {
+      toast.error(locale === 'tr' ? 'Gönderim başarısız' : 'Failed to send');
+    } finally {
+      setSending(false);
+    }
+  };
+
   const handleRegenerateDraft = async (feedback = null) => {
     if (!selectedThread?.drafts?.length) return;
     const active = selectedThread.drafts.find(d => d.status === 'PENDING_REVIEW');
@@ -378,7 +396,7 @@ export default function EmailDashboardPage() {
     setSnippetsOpen(false);
     setEditedContent(snippet.body);
     setIsEditing(true);
-    toast.success(locale === 'tr' ? `"${snippet.name}" yüklendi` : `"${snippet.name}" loaded`);
+    if (!getActiveDraft()) setQuickReplyMode(true);
   };
 
   const handleMarkSpam = async () => {
@@ -706,7 +724,32 @@ export default function EmailDashboardPage() {
 
             {/* Draft Editor / Reply Composer */}
             <div className="border-t border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 p-4">
-              {getActiveDraft() && selectedThread.status !== 'CLOSED' ? (
+              {quickReplyMode && selectedThread.status !== 'CLOSED' ? (
+                <>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-neutral-500 font-medium uppercase tracking-wide flex items-center gap-1.5">
+                      <Zap className="h-3 w-3 text-amber-500" />
+                      {locale === 'tr' ? 'Hızlı Yanıt' : 'Quick Reply'}
+                    </span>
+                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => { setQuickReplyMode(false); setEditedContent(''); }}>
+                      <X className="h-3 w-3 mr-1" />
+                      {locale === 'tr' ? 'İptal' : 'Cancel'}
+                    </Button>
+                  </div>
+                  <Textarea
+                    value={editedContent}
+                    onChange={(e) => setEditedContent(e.target.value)}
+                    className="min-h-[120px] text-sm bg-white dark:bg-neutral-800 border-neutral-300 dark:border-neutral-700"
+                    autoFocus
+                  />
+                  <div className="flex items-center justify-end mt-3">
+                    <Button size="sm" onClick={handleSendQuickReply} disabled={sending || !editedContent.trim()} className="h-8">
+                      <Send className={`h-3.5 w-3.5 mr-1.5 ${sending ? 'animate-pulse' : ''}`} />
+                      {sending ? (locale === 'tr' ? 'Gönderiliyor...' : 'Sending...') : (locale === 'tr' ? 'Gönder' : 'Send')}
+                    </Button>
+                  </div>
+                </>
+              ) : getActiveDraft() && selectedThread.status !== 'CLOSED' ? (
                 <>
                   {/* Active Draft */}
                   <div className="flex items-center justify-between mb-2">

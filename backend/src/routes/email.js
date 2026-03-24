@@ -663,6 +663,66 @@ router.post('/drafts/:draftId/send', authenticateToken, async (req, res) => {
 });
 
 /**
+ * Quick Reply — send without creating a draft
+ * POST /api/email/threads/:threadId/quick-reply
+ */
+router.post('/threads/:threadId/quick-reply', authenticateToken, async (req, res) => {
+  try {
+    const { content } = req.body;
+    if (!content?.trim()) return res.status(400).json({ error: 'Content is required' });
+
+    const thread = await prisma.emailThread.findFirst({
+      where: { id: req.params.threadId, businessId: req.businessId }
+    });
+    if (!thread) return res.status(404).json({ error: 'Thread not found' });
+
+    const integration = await emailAggregator.getIntegration(req.businessId);
+    const business = await prisma.business.findUnique({ where: { id: req.businessId } });
+    const htmlContent = buildHtmlEmail(content, business, integration.email);
+
+    const result = await emailAggregator.sendMessage(
+      req.businessId,
+      thread.customerEmail,
+      `Re: ${thread.subject}`,
+      htmlContent,
+      { threadId: thread.threadId, conversationId: thread.threadId }
+    );
+
+    await prisma.emailMessage.create({
+      data: {
+        threadId: thread.id,
+        messageId: result.messageId || `sent-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+        direction: 'OUTBOUND',
+        fromEmail: integration.email,
+        fromName: business?.name || null,
+        toEmail: thread.customerEmail,
+        subject: `Re: ${thread.subject}`,
+        bodyText: content,
+        bodyHtml: htmlContent,
+        status: 'SENT',
+        sentAt: new Date()
+      }
+    });
+
+    await prisma.emailThread.update({
+      where: { id: thread.id },
+      data: { status: 'REPLIED' }
+    });
+
+    onEmailSent({
+      messageId: result.messageId,
+      threadId: thread.id,
+      businessId: req.businessId
+    }).catch(err => console.error('RAG indexing failed (non-blocking):', err));
+
+    res.json({ success: true, messageId: result.messageId });
+  } catch (error) {
+    console.error('Quick reply error:', error);
+    res.status(500).json({ error: 'Failed to send email' });
+  }
+});
+
+/**
  * Reject Draft
  * POST /api/email/drafts/:draftId/reject
  */
