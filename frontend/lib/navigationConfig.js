@@ -64,6 +64,14 @@ export const NAVIGATION_ITEMS = {
     href: '/dashboard/email',
     group: 'operations',
   },
+  emailSnippets: {
+    labelTr: 'Hızlı Yanıtlar',
+    labelEn: 'Quick Replies',
+    descriptionTr: 'Hazır yanıt şablonlarını oluşturun ve yönetin.',
+    descriptionEn: 'Create and manage reusable email reply snippets.',
+    href: '/dashboard/email-snippets',
+    group: 'operations',
+  },
 
   // Monitoring
   analytics: {

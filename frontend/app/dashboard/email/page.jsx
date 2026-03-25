@@ -399,6 +399,45 @@ export default function EmailDashboardPage() {
     if (!getActiveDraft()) setQuickReplyMode(true);
   };
 
+  const renderSnippetActions = (buttonVariant = 'outline') => (
+    <div className="flex items-center gap-1.5">
+      <div className="relative" ref={snippetsRef}>
+        <Button variant={buttonVariant} size="sm" onClick={loadSnippets} className="h-8 text-xs">
+          <Zap className="h-3.5 w-3.5 mr-1" />
+          {locale === 'tr' ? 'Hızlı Yanıt' : 'Quick Reply'}
+          <ChevronDown className="h-3 w-3 ml-1" />
+        </Button>
+        {snippetsOpen && (
+          <div className="absolute bottom-full mb-1 right-0 w-64 bg-white dark:bg-neutral-800 rounded-lg shadow-xl border border-neutral-200 dark:border-neutral-700 py-1 z-50 max-h-64 overflow-y-auto">
+            {snippets.length === 0 ? (
+              <div className="px-3 py-4 text-center">
+                <p className="text-xs text-neutral-500">{locale === 'tr' ? 'Henüz hazır yanıt yok' : 'No snippets yet'}</p>
+                <Link href="/dashboard/email-snippets" className="text-xs text-blue-500 hover:underline mt-1 inline-block">
+                  {locale === 'tr' ? 'Oluştur →' : 'Create →'}
+                </Link>
+              </div>
+            ) : snippets.map(s => (
+              <button
+                key={s.id}
+                onClick={() => handleSelectSnippet(s)}
+                className="w-full text-left px-3 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
+              >
+                <p className="text-xs font-medium text-neutral-900 dark:text-white">{s.name}</p>
+                <p className="text-[10px] text-neutral-500 truncate mt-0.5">{s.body?.substring(0, 60)}...</p>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      <Button asChild variant="ghost" size="sm" className="h-8 text-xs">
+        <Link href="/dashboard/email-snippets">
+          <ExternalLink className="h-3.5 w-3.5 mr-1" />
+          {locale === 'tr' ? 'Yönet' : 'Manage'}
+        </Link>
+      </Button>
+    </div>
+  );
+
   const handleMarkSpam = async () => {
     if (!selectedThread) return;
     try {
@@ -757,7 +796,8 @@ export default function EmailDashboardPage() {
                       <Sparkles className="h-3 w-3 text-purple-500" />
                       AI {locale === 'tr' ? 'Taslak' : 'Draft'}
                     </span>
-                    <div className="flex gap-1.5">
+                    <div className="flex flex-wrap justify-end gap-1.5">
+                      {renderSnippetActions('ghost')}
                       <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => handleRegenerateDraft()} disabled={regenerating}>
                         <RotateCcw className={`h-3 w-3 mr-1 ${regenerating ? 'animate-spin' : ''}`} />
                         {locale === 'tr' ? 'Yeniden' : 'Regen'}
@@ -803,34 +843,7 @@ export default function EmailDashboardPage() {
                     <Sparkles className={`h-3.5 w-3.5 mr-1.5 ${generatingDraft ? 'animate-spin' : ''}`} />
                     {generatingDraft ? (locale === 'tr' ? 'Oluşturuluyor...' : 'Generating...') : 'AI Öneri'}
                   </Button>
-                  <div className="relative" ref={snippetsRef}>
-                    <Button variant="outline" size="sm" onClick={loadSnippets} className="h-8 text-xs">
-                      <Zap className="h-3.5 w-3.5 mr-1" />
-                      {locale === 'tr' ? 'Hızlı Yanıt' : 'Quick Reply'}
-                      <ChevronDown className="h-3 w-3 ml-1" />
-                    </Button>
-                    {snippetsOpen && (
-                      <div className="absolute bottom-full mb-1 right-0 w-64 bg-white dark:bg-neutral-800 rounded-lg shadow-xl border border-neutral-200 dark:border-neutral-700 py-1 z-50 max-h-64 overflow-y-auto">
-                        {snippets.length === 0 ? (
-                          <div className="px-3 py-4 text-center">
-                            <p className="text-xs text-neutral-500">{locale === 'tr' ? 'Henüz hazır yanıt yok' : 'No snippets yet'}</p>
-                            <Link href="/dashboard/email-snippets" className="text-xs text-blue-500 hover:underline mt-1 inline-block">
-                              {locale === 'tr' ? 'Oluştur →' : 'Create →'}
-                            </Link>
-                          </div>
-                        ) : snippets.map(s => (
-                          <button
-                            key={s.id}
-                            onClick={() => handleSelectSnippet(s)}
-                            className="w-full text-left px-3 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
-                          >
-                            <p className="text-xs font-medium text-neutral-900 dark:text-white">{s.name}</p>
-                            <p className="text-[10px] text-neutral-500 truncate mt-0.5">{s.body?.substring(0, 60)}...</p>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  {renderSnippetActions('outline')}
                   <Button variant="outline" size="sm" onClick={handleMarkNoReplyNeeded} className="h-8 text-xs">
                     <X className="h-3.5 w-3.5 mr-1" />
                     {locale === 'tr' ? 'Gerek Yok' : 'No Reply'}

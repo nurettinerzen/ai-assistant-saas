@@ -30,6 +30,7 @@ import {
   Check,
   Database,
   Sparkles,
+  Zap,
   Shield,
   MessageSquare,
   Mail,
@@ -130,6 +131,7 @@ export default function Sidebar({ user, credits, business }) {
         { icon: Database, label: t('dashboard.sidebar.inbox'), href: NAVIGATION_ITEMS.inbox.href, permission: 'campaigns:view' },
         { icon: Megaphone, label: t('dashboard.sidebar.campaigns'), href: NAVIGATION_ITEMS.campaigns.href, permission: 'campaigns:view', featureId: 'batch_calls' },
         { icon: Mail, label: t('dashboard.sidebar.email'), href: NAVIGATION_ITEMS.email.href, permission: 'campaigns:view' },
+        { icon: Zap, label: locale === 'tr' ? 'Hızlı Yanıtlar' : 'Quick Replies', href: NAVIGATION_ITEMS.emailSnippets.href, permission: 'campaigns:view' },
       ],
     },
     {

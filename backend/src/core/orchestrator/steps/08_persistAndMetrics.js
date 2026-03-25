@@ -7,7 +7,7 @@
  * - Returns metadata for channel adapter
  */
 
-import { updateState } from '../../../services/state-manager.js';
+import { getState, updateState } from '../../../services/state-manager.js';
 import { emitTurnMetrics } from '../../../metrics/emit.js';
 import prisma from '../../../config/database.js';
 
@@ -56,6 +56,17 @@ export async function persistAndEmitMetrics(params) {
   }
 
   console.log('💾 [Persist] Saving state and conversation...');
+
+  const persistedState = await getState(sessionId);
+  if (persistedState?.lockReason && !state.lockReason) {
+    state.lockReason = persistedState.lockReason;
+    state.lockedAt = persistedState.lockedAt || state.lockedAt || null;
+    state.lockUntil = persistedState.lockUntil || state.lockUntil || null;
+    state.lockMessageSentAt = persistedState.lockMessageSentAt || state.lockMessageSentAt || null;
+    state.flowStatus = persistedState.flowStatus === 'terminated'
+      ? 'terminated'
+      : (state.flowStatus || 'terminated');
+  }
 
   // STEP 1: Update state in database
   await updateState(sessionId, state);

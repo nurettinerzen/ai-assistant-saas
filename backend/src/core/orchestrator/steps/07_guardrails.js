@@ -254,6 +254,7 @@ export async function applyGuardrails(params) {
     chat,
     language,
     sessionId,
+    state = null,
     channel = 'CHAT',
     metrics,
     userMessage,
@@ -358,7 +359,14 @@ export async function applyGuardrails(params) {
     }
 
     // Lock session immediately (1 hour)
-    await lockSession(sessionId, 'PII_RISK', 60 * 60 * 1000); // 1 hour
+    const lockResult = await lockSession(sessionId, 'PII_RISK', 60 * 60 * 1000); // 1 hour
+    if (state) {
+      state.flowStatus = 'terminated';
+      state.lockReason = lockResult.reason;
+      state.lockedAt = lockResult.lockedAt;
+      state.lockUntil = lockResult.lockUntil;
+      state.lockMessageSentAt = null;
+    }
 
     // Return safe error message instead of leaking PII
     const safeMessage = getLockMessage('PII_RISK', language, sessionId);

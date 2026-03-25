@@ -552,6 +552,90 @@ function buildHtmlEmail(bodyContent, business, senderEmail) {
 </html>`.trim();
 }
 
+function buildReplySubject(subject) {
+  let sanitized = String(subject || '(no subject)')
+    .replace(/[\r\n]/g, ' ')
+    .replace(/[\x00-\x1F\x7F]/g, '')
+    .trim();
+
+  if (!sanitized) {
+    sanitized = '(no subject)';
+  }
+
+  if (!/^re:/i.test(sanitized)) {
+    sanitized = `Re: ${sanitized}`;
+  }
+
+  return sanitized;
+}
+
+function buildReplyReferences({ references, internetMessageId }) {
+  const chain = [];
+
+  if (references) {
+    chain.push(
+      ...String(references)
+        .split(/\s+/)
+        .map(part => part.trim())
+        .filter(Boolean)
+    );
+  }
+
+  if (internetMessageId) {
+    chain.push(String(internetMessageId).trim());
+  }
+
+  return Array.from(new Set(chain)).join(' ') || null;
+}
+
+async function resolveReplyOptions({ businessId, thread, parentMessage = null }) {
+  const options = {
+    threadId: thread.threadId,
+    conversationId: thread.threadId
+  };
+
+  let replyTarget = parentMessage;
+  if (!replyTarget) {
+    replyTarget = await prisma.emailMessage.findFirst({
+      where: {
+        threadId: thread.id,
+        direction: 'INBOUND'
+      },
+      orderBy: [
+        { receivedAt: 'desc' },
+        { createdAt: 'desc' }
+      ]
+    });
+  }
+
+  if (!replyTarget?.messageId) {
+    return options;
+  }
+
+  options.replyToId = replyTarget.messageId;
+
+  try {
+    const providerMessage = await emailAggregator.getMessage(businessId, replyTarget.messageId);
+    const internetMessageId = providerMessage?.internetMessageId || null;
+    const references = buildReplyReferences({
+      references: providerMessage?.references || null,
+      internetMessageId
+    });
+
+    if (internetMessageId) {
+      options.inReplyTo = internetMessageId;
+    }
+
+    if (references) {
+      options.references = references;
+    }
+  } catch (error) {
+    console.warn(`⚠️ [Email] Failed to resolve reply headers for message ${replyTarget.messageId}:`, error.message);
+  }
+
+  return options;
+}
+
 /**
  * Send Draft
  * POST /api/email/drafts/:draftId/send
@@ -578,23 +662,18 @@ router.post('/drafts/:draftId/send', authenticateToken, async (req, res) => {
     // Convert plain text to HTML with signature
     const htmlContent = buildHtmlEmail(plainContent, business, integration.email);
 
-    // Build reply options
-    const options = {
-      threadId: thread.threadId,
-      conversationId: thread.threadId // For Outlook
-    };
-
-    // If replying to a specific message, include reference
-    if (draft.message) {
-      options.inReplyTo = draft.message.messageId;
-      options.replyToId = draft.message.messageId;
-    }
+    const replySubject = buildReplySubject(thread.subject);
+    const options = await resolveReplyOptions({
+      businessId: req.businessId,
+      thread,
+      parentMessage: draft.message || null
+    });
 
     // Send the email (with HTML content)
     const result = await emailAggregator.sendMessage(
       req.businessId,
       thread.customerEmail,
-      `Re: ${thread.subject}`,
+      replySubject,
       htmlContent,
       options
     );
@@ -618,7 +697,7 @@ router.post('/drafts/:draftId/send', authenticateToken, async (req, res) => {
         fromEmail: integration.email,
         fromName: business?.name || null,
         toEmail: thread.customerEmail,
-        subject: `Re: ${thread.subject}`,
+        subject: replySubject,
         bodyText: plainContent,
         bodyHtml: htmlContent,
         status: 'SENT',
@@ -679,13 +758,18 @@ router.post('/threads/:threadId/quick-reply', authenticateToken, async (req, res
     const integration = await emailAggregator.getIntegration(req.businessId);
     const business = await prisma.business.findUnique({ where: { id: req.businessId } });
     const htmlContent = buildHtmlEmail(content, business, integration.email);
+    const replySubject = buildReplySubject(thread.subject);
+    const replyOptions = await resolveReplyOptions({
+      businessId: req.businessId,
+      thread
+    });
 
     const result = await emailAggregator.sendMessage(
       req.businessId,
       thread.customerEmail,
-      `Re: ${thread.subject}`,
+      replySubject,
       htmlContent,
-      { threadId: thread.threadId, conversationId: thread.threadId }
+      replyOptions
     );
 
     await prisma.emailMessage.create({
@@ -696,7 +780,7 @@ router.post('/threads/:threadId/quick-reply', authenticateToken, async (req, res
         fromEmail: integration.email,
         fromName: business?.name || null,
         toEmail: thread.customerEmail,
-        subject: `Re: ${thread.subject}`,
+        subject: replySubject,
         bodyText: content,
         bodyHtml: htmlContent,
         status: 'SENT',

@@ -616,6 +616,7 @@ async syncNewMessages(businessId) {
 
     return {
       messageId: message.id,
+      internetMessageId: message.internetMessageId || null,
       threadId: message.conversationId,
       subject: message.subject || '(No Subject)',
       from: {

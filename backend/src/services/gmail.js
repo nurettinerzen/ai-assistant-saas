@@ -559,6 +559,7 @@ async disconnect(businessId) {
 
     return {
       messageId: message.id,
+      internetMessageId: getHeader('Message-ID') || getHeader('Message-Id') || null,
       threadId: message.threadId,
       subject: getHeader('Subject') || '(No Subject)',
       from: {

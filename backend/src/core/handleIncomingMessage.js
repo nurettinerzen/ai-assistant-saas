@@ -1720,6 +1720,7 @@ export async function handleIncomingMessage({
       chat: toolLoopResult.chat,
       language,
       sessionId: resolvedSessionId,
+      state,
       channel,
       metrics,
       userMessage,

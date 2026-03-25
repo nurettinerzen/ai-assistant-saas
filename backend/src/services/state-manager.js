@@ -52,6 +52,43 @@ function deepMerge(target, source) {
   return result;
 }
 
+function getActiveLockStatus(state) {
+  if (!state?.lockReason) {
+    return { locked: false, permanent: false, expiresAtMs: null };
+  }
+
+  if (!state.lockUntil) {
+    return { locked: true, permanent: true, expiresAtMs: null };
+  }
+
+  const expiresAtMs = new Date(state.lockUntil).getTime();
+  if (!Number.isFinite(expiresAtMs)) {
+    return { locked: false, permanent: false, expiresAtMs: null };
+  }
+
+  return {
+    locked: expiresAtMs > Date.now(),
+    permanent: false,
+    expiresAtMs
+  };
+}
+
+function resolveStateExpiryDate(sessionId, state) {
+  const ttlMs = resolveStateTTL(sessionId);
+  let expiresAtMs = Date.now() + ttlMs;
+
+  const lockStatus = getActiveLockStatus(state);
+  if (lockStatus.locked) {
+    if (lockStatus.permanent) {
+      expiresAtMs = Math.max(expiresAtMs, Date.now() + (365 * 24 * 60 * 60 * 1000));
+    } else if (lockStatus.expiresAtMs) {
+      expiresAtMs = Math.max(expiresAtMs, lockStatus.expiresAtMs);
+    }
+  }
+
+  return new Date(expiresAtMs);
+}
+
 /**
  * Create initial state for a new session
  */
@@ -124,7 +161,8 @@ export async function getState(sessionId) {
   if (cached) {
     const lastActivity = cached.lastActivity ? new Date(cached.lastActivity).getTime() : 0;
     const now = Date.now();
-    if (now - lastActivity > ttlMs) {
+    const lockStatus = getActiveLockStatus(cached);
+    if (now - lastActivity > ttlMs && !lockStatus.locked) {
       // Cache entry expired — remove and create fresh state
       console.log(`[StateManager] Cache expired for session ${sessionId} (idle ${Math.round((now - lastActivity) / 60000)}min)`);
       stateCache.delete(sessionId);
@@ -145,8 +183,9 @@ export async function getState(sessionId) {
     // 3. Validate TTL
     const now = new Date();
     const expiresAt = new Date(dbRecord.expiresAt);
+    const lockStatus = getActiveLockStatus(dbRecord.state);
 
-    if (expiresAt < now) {
+    if (expiresAt < now && !lockStatus.locked) {
       // Expired - delete and return fresh state
       console.log(`[StateManager] Session ${sessionId} expired, deleting`);
       await prisma.conversationState.delete({
@@ -205,7 +244,7 @@ export async function updateState(sessionId, updates) {
   stateCache.set(sessionId, mergedState);
 
   // 5. Write full state to DB
-  const expiresAt = new Date(Date.now() + ttlMs);
+  const expiresAt = resolveStateExpiryDate(sessionId, mergedState);
 
   try {
     await prisma.conversationState.upsert({

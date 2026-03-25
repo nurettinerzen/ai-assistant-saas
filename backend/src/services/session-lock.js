@@ -101,6 +101,12 @@ export async function lockSession(sessionId, reason, customDuration = null) {
   await updateState(sessionId, state);
 
   console.log(`🔒 [SessionLock] Locked ${sessionId}: ${reason} (until: ${lockUntil || 'permanent'})`);
+
+  return {
+    reason,
+    lockedAt: state.lockedAt,
+    lockUntil: state.lockUntil
+  };
 }
 
 /**

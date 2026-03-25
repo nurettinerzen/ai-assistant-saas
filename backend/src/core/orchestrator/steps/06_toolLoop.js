@@ -714,6 +714,9 @@ export async function executeToolLoop(params) {
             state.callbackFlow.completedAt = new Date().toISOString();
             state.callbackFlow.missingFields = [];
           }
+          state.activeFlow = null;
+          state.flowStatus = 'idle';
+          state.expectedSlot = null;
         }
       }
 
