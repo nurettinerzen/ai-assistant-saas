@@ -463,9 +463,9 @@ export default function FeaturesPage() {
                   viewport={{ once: true }}
                   transition={{ duration: 0.45, delay: index * 0.08 }}
                 >
-                  <Card className="p-6 bg-white dark:bg-neutral-800 border-gray-100 dark:border-neutral-700 h-full">
+                  <Card className="p-6 rounded-2xl bg-white dark:bg-neutral-800 border-gray-100 dark:border-neutral-700 h-full">
                     <div className="flex items-start gap-3">
-                      <div className="h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                      <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
                         <Icon className="h-5 w-5" />
                       </div>
                       <div>
@@ -508,7 +508,7 @@ export default function FeaturesPage() {
                 </Button>
               </Link>
               <Link href="/contact">
-                <Button size="lg" variant="outline" className="w-full sm:w-auto">
+                <Button size="lg" variant="outline" className="w-full sm:w-auto rounded-full">
                   {t('features.cta.contact')}
                 </Button>
               </Link>
