@@ -389,8 +389,10 @@
   },
   "features": {
     "hero": {
+      "badge": "Telyx Platform Features",
       "title": "Powerful Features",
-      "subtitle": "Everything you need to automate your customer service"
+      "subtitle": "Everything you need to automate your customer service",
+      "explore": "Explore Features"
     },
     "multichannel": {
       "title": "Multi-Channel Support",
@@ -500,6 +502,9 @@
       "kpis": "KPIs",
       "kpisDesc": "Metrics to track",
       "detail": "Detail",
+      "solutionLabel": "Solution",
+      "ecommerceLabel": "E-commerce",
+      "suggestedIntegrations": "Suggested integrations:",
       "ecommerce": {
         "title": "E-commerce",
         "desc": "Order status, returns, shipping queries and pre-sales support automation.",

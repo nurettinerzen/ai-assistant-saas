@@ -389,8 +389,10 @@
   },
   "features": {
     "hero": {
+      "badge": "Telyx Platform Özellikleri",
       "title": "Güçlü Özellikler",
-      "subtitle": "Müşteri hizmetlerinizi otomatikleştirmek için ihtiyacınız olan her şey"
+      "subtitle": "Müşteri hizmetlerinizi otomatikleştirmek için ihtiyacınız olan her şey",
+      "explore": "Özellikleri Keşfet"
     },
     "multichannel": {
       "title": "Çok Kanallı Destek",
@@ -500,6 +502,9 @@
       "kpis": "KPI'lar",
       "kpisDesc": "Takip edilecek metrikler",
       "detail": "Detay",
+      "solutionLabel": "Çözüm",
+      "ecommerceLabel": "E-ticaret",
+      "suggestedIntegrations": "Önerilen entegrasyonlar:",
       "ecommerce": {
         "title": "E-ticaret",
         "desc": "Sipariş durumu, iade, kargo soruları ve satış öncesi destek otomasyonu.",
