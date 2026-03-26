@@ -307,7 +307,7 @@
     "integrationsFeature": {
       "kicker": "Entegrasyonlar",
       "title": "Mevcut sisteminizle anında çalışın",
-      "desc": "Shopify, ikas, Google Calendar, Gmail ve daha fazlası. CRM verinize erişerek sipariş, kargo, randevu sorgularını otomatik yanıtlayın.",
+      "desc": "Shopify, Gmail, Outlook ve CRM Webhook entegrasyonları ile mevcut sisteminize bağlanın. Sipariş, kargo ve müşteri sorgularını otomatik yanıtlayın.",
       "visualTitle": "Desteklenen entegrasyonlar"
     },
     "securityFeature": {

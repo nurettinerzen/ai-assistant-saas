@@ -307,7 +307,7 @@
     "integrationsFeature": {
       "kicker": "Integrations",
       "title": "Works instantly with your existing system",
-      "desc": "Shopify, ikas, Google Calendar, Gmail and more. Access your CRM data to automatically answer order, shipping and appointment queries.",
+      "desc": "Connect to your existing systems with Shopify, Gmail, Outlook and CRM Webhook integrations. Automatically answer order, shipping and customer queries.",
       "visualTitle": "Supported integrations"
     },
     "securityFeature": {

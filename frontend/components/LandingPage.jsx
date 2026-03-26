@@ -576,11 +576,9 @@ export function LandingPage() {
                 <div className="feature-visual-title">{t('landing.integrationsFeature.visualTitle')}</div>
                 <div className="integration-logos">
                   <div className="integration-logo"><span>{'\u{1F6CD}\u{FE0F}'}</span> Shopify</div>
-                  <div className="integration-logo"><span>{'\u{1F4E6}'}</span> ikas</div>
-                  <div className="integration-logo"><span>{'\u{1F4C5}'}</span> Google Calendar</div>
                   <div className="integration-logo"><span>{'\u2709\uFE0F'}</span> Gmail</div>
-                  <div className="integration-logo"><span>{'\u{1F4B3}'}</span> iyzico</div>
-                  <div className="integration-logo"><span>{'\u{1F517}'}</span> Webhook API</div>
+                  <div className="integration-logo"><span>{'\u{1F4E8}'}</span> Outlook</div>
+                  <div className="integration-logo"><span>{'\u{1F517}'}</span> CRM Webhook</div>
                 </div>
               </div>
             </div>
