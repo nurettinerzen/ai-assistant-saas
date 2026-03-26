@@ -38,8 +38,6 @@ export default function ChatWidget({
   useEffect(() => {
     if (preview) {
       setIsWidgetEnabled(true);
-      setAllowReset(false);
-      return;
     }
 
     const checkWidgetStatus = async () => {
@@ -50,17 +48,18 @@ export default function ChatWidget({
         } else if (assistantId) {
           statusUrl = `${API_URL}/api/chat/widget/status/${assistantId}`;
         } else {
-          setIsWidgetEnabled(false);
+          if (!preview) setIsWidgetEnabled(false);
+          setAllowReset(false);
           return;
         }
 
         const response = await fetch(statusUrl);
         const data = await response.json();
-        setIsWidgetEnabled(data.active === true);
+        if (!preview) setIsWidgetEnabled(data.active === true);
         setAllowReset(data.allowReset === true);
       } catch (error) {
         console.error('Failed to check widget status:', error);
-        setIsWidgetEnabled(false);
+        if (!preview) setIsWidgetEnabled(false);
         setAllowReset(false);
       }
     };
