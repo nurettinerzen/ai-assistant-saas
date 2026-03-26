@@ -1,11 +1,7 @@
 'use client';
 
 import Navigation from '@/components/Navigation';
-import { Hero } from '@/components/Hero';
-import { DashboardPreview } from '@/components/DashboardPreview';
-import { IconRibbon } from '@/components/IconRibbon';
-import { FeatureSections } from '@/components/FeatureSections';
-import { CTASection } from '@/components/CTASection';
+import { LandingPage } from '@/components/LandingPage';
 import { Footer } from '@/components/Footer';
 import ChatWidget from '@/components/ChatWidget';
 
@@ -17,27 +13,10 @@ export default function Home() {
     <div className="min-h-screen">
       <Navigation />
 
-      {/* Hero Section */}
-      <Hero />
+      <LandingPage />
 
-      {/* Dashboard Preview */}
-      <div className="bg-white dark:bg-neutral-950 px-4 sm:px-6 lg:px-8 pb-16">
-        <DashboardPreview />
-      </div>
-
-      {/* Icon Ribbon */}
-      <IconRibbon />
-
-      {/* Feature Sections (4x two-column with mock visuals) */}
-      <FeatureSections />
-
-      {/* CTA Section */}
-      <CTASection />
-
-      {/* Footer */}
       <Footer />
 
-      {/* Chat Widget for visitor support */}
       <ChatWidget
         embedKey={TELYX_EMBED_KEY}
         position="bottom-right"
