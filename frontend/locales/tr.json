@@ -758,6 +758,36 @@
     "response": {
       "title": "Hızlı Yanıt",
       "text": "Ekibimiz genellikle iş saatleri içerisinde 1 saat içinde yanıt verir. Acil konular için lütfen bizi doğrudan arayın."
+    },
+    "highlights": {
+      "setup": {
+        "title": "Dakikalar İçinde Kurulum",
+        "desc": "Teknik bilgi gerektirmez. Hemen başlayın."
+      },
+      "channels": {
+        "title": "4 Kanal, Tek AI",
+        "desc": "Telefon, WhatsApp, Chat ve Email"
+      },
+      "security": {
+        "title": "Kurumsal Güvenlik",
+        "desc": "KVKK uyumlu, verileriniz güvende"
+      },
+      "support": {
+        "title": "Özel Destek",
+        "desc": "Kurulum ve entegrasyonda yanınızdayız"
+      }
+    },
+    "trust": {
+      "title": "Rakamlarla Telyx",
+      "stat1": "Daha hızlı yanıt",
+      "stat2": "Kesintisiz hizmet",
+      "stat3": "Ort. yanıt süresi",
+      "stat4": "Daha fazla kapasite"
+    },
+    "testimonial": {
+      "quote": "Telyx sayesinde müşteri hizmetlerimiz 7/24 aktif. Ekibimiz artık daha stratejik işlere odaklanabiliyor.",
+      "name": "Test Kullanıcı",
+      "role": "E-ticaret Yöneticisi"
     }
   },
   "auth": {

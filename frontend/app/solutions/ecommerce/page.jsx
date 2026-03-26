@@ -176,7 +176,7 @@ export default function EcommerceSolutionPage() {
                 </Button>
               </Link>
               <Link href="/contact">
-                <Button size="lg" variant="outline">
+                <Button size="lg" variant="outline" className="rounded-full">
                   {t('solutions.contactSales')}
                 </Button>
               </Link>

@@ -320,15 +320,10 @@ export default function PricingPage() {
                   ? 'İhtiyacınıza göre doğru paketi birlikte seçelim.'
                   : 'Let’s choose the right package together for your needs.'}
               </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Link href="/contact">
-                  <Button variant="outline" size="lg" className="border-white/30 bg-transparent text-white hover:bg-white/10">
-                    {isTR ? 'Demo Talep Et' : 'Request Demo'}
-                  </Button>
-                </Link>
-                <Link href="/signup">
-                  <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                    {isTR ? 'Ücretsiz Dene' : 'Try Free'}
+              <div className="flex justify-center">
+                <Link href="/waitlist">
+                  <Button size="lg" className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground">
+                    {isTR ? 'Demo Talep Edin' : 'Request Demo'}
                   </Button>
                 </Link>
               </div>

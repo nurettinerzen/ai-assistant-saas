@@ -758,6 +758,36 @@
     "response": {
       "title": "Quick Response",
       "text": "Our team typically responds within 1 hour during business hours. For urgent matters, please call us directly."
+    },
+    "highlights": {
+      "setup": {
+        "title": "Setup in Minutes",
+        "desc": "No technical knowledge required. Start right away."
+      },
+      "channels": {
+        "title": "4 Channels, One AI",
+        "desc": "Phone, WhatsApp, Chat and Email"
+      },
+      "security": {
+        "title": "Enterprise Security",
+        "desc": "GDPR compliant, your data is safe"
+      },
+      "support": {
+        "title": "Dedicated Support",
+        "desc": "We're with you for setup and integration"
+      }
+    },
+    "trust": {
+      "title": "Telyx in Numbers",
+      "stat1": "Faster response",
+      "stat2": "Always available",
+      "stat3": "Avg. response time",
+      "stat4": "More capacity"
+    },
+    "testimonial": {
+      "quote": "Thanks to Telyx, our customer service is active 24/7. Our team can now focus on more strategic tasks.",
+      "name": "Test User",
+      "role": "E-commerce Manager"
     }
   },
   "auth": {
