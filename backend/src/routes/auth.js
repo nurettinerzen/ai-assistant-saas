@@ -12,7 +12,7 @@ import { validatePasswordPolicy, passwordPolicyMessage } from '../security/passw
 import { clearSessionCookie, issueSession } from '../security/sessionToken.js';
 import { isAdmin } from '../middleware/adminAuth.js';
 import { safeCompareStrings } from '../security/constantTime.js';
-import { authRateLimiter } from '../middleware/rateLimiter.js';
+import { authRateLimiter, apiRateLimiter } from '../middleware/rateLimiter.js';
 
 const router = express.Router();
 

@@ -355,7 +355,12 @@ app.get('/version', (req, res) => {
 });
 
 // API Routes
-app.use('/api/auth', authRateLimiter.middleware(), authRoutes);
+app.use('/api/auth', (req, res, next) => {
+  // /me is read-only, called on every page navigation — use lenient limit (100/min)
+  if (req.path === '/me') return apiRateLimiter.middleware()(req, res, next);
+  // All other auth endpoints (login, register, etc.) — strict limit (10/min)
+  return authRateLimiter.middleware()(req, res, next);
+}, authRoutes);
 app.use('/api/business', businessRoutes);
 app.use('/api/call-logs', callLogRoutes);
 app.use('/api/subscription', subscriptionRoutes);
