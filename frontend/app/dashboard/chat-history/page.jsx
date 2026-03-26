@@ -39,6 +39,7 @@ import {
   Download,
   Filter,
   MessageCircle,
+  Mail,
   Eye,
   User,
   Bot,
@@ -236,7 +237,7 @@ function ChatsPageContent() {
         [t('dashboard.chatHistoryPage.csvDate'), t('dashboard.chatHistoryPage.csvChannel'), t('dashboard.chatHistoryPage.csvMessageCount'), t('dashboard.chatHistoryPage.csvStatus')].join(','),
         ...chats.map(chat => [
           new Date(chat.createdAt).toLocaleString(locale === 'tr' ? 'tr-TR' : 'en-US'),
-          chat.channel === 'CHAT' ? t('dashboard.chatHistoryPage.csvChat') : 'WhatsApp',
+          chat.channel === 'CHAT' ? t('dashboard.chatHistoryPage.csvChat') : chat.channel === 'EMAIL' ? 'Email' : 'WhatsApp',
           chat.messageCount,
           chat.status === 'active' ? t('dashboard.chatHistoryPage.csvActive') : (chat.status === 'completed' || chat.status === 'ended') ? t('dashboard.chatHistoryPage.csvCompleted') : chat.status
         ].join(','))
@@ -263,6 +264,14 @@ function ChatsPageContent() {
         <Badge variant="ghost" className="text-green-700 dark:text-green-400 text-xs">
           <MessageSquare className="h-3 w-3 mr-1" />
           WhatsApp
+        </Badge>
+      );
+    }
+    if (channel === 'EMAIL') {
+      return (
+        <Badge variant="ghost" className="text-purple-700 dark:text-purple-400 text-xs">
+          <Mail className="h-3 w-3 mr-1" />
+          Email
         </Badge>
       );
     }
@@ -362,6 +371,7 @@ function ChatsPageContent() {
             <SelectItem value="all">{t('dashboard.chatHistoryPage.allChannels')}</SelectItem>
             <SelectItem value="CHAT">Chat</SelectItem>
             <SelectItem value="WHATSAPP">WhatsApp</SelectItem>
+            <SelectItem value="EMAIL">Email</SelectItem>
           </SelectContent>
         </Select>
         <Select value={statusFilter} onValueChange={(val) => { setStatusFilter(val); setPagination(prev => ({ ...prev, page: 1 })); }}>
@@ -508,6 +518,8 @@ function ChatsPageContent() {
             <DialogTitle className="flex items-center gap-2">
               {selectedChat?.channel === 'WHATSAPP' ? (
                 <MessageSquare className="h-5 w-5 text-green-600" />
+              ) : selectedChat?.channel === 'EMAIL' ? (
+                <Mail className="h-5 w-5 text-purple-600" />
               ) : (
                 <MessageCircle className="h-5 w-5 text-blue-600" />
               )}
@@ -521,7 +533,7 @@ function ChatsPageContent() {
               <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg text-sm">
                 <div>
                   <span className="text-gray-500">{t('dashboard.chatHistoryPage.channel')}</span>
-                  <p className="font-medium">{selectedChat.channel === 'CHAT' ? t('dashboard.chatHistoryPage.chat') : 'WhatsApp'}</p>
+                  <p className="font-medium">{selectedChat.channel === 'CHAT' ? t('dashboard.chatHistoryPage.chat') : selectedChat.channel === 'EMAIL' ? 'Email' : 'WhatsApp'}</p>
                 </div>
                 <div>
                   <span className="text-gray-500">{t('dashboard.chatHistoryPage.date')}</span>
