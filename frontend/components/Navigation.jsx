@@ -68,16 +68,18 @@ export default function Navigation() {
 
                 {/* Dropdown */}
                 {item.items && activeDropdown === item.name && (
-                  <div className="absolute top-full left-0 mt-2 w-64 glass rounded-xl shadow-xl border border-white/20 dark:bg-neutral-800 dark:border-neutral-700 overflow-hidden animate-fade-in">
-                    {item.items.map((subItem) => (
-                      <Link
-                        key={subItem.nameKey}
-                        href={subItem.href}
-                        className="block px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-primary/10 hover:text-primary transition-colors"
-                      >
-                        {t(subItem.nameKey)}
-                      </Link>
-                    ))}
+                  <div className="absolute top-full left-0 pt-2 w-64">
+                    <div className="glass rounded-xl shadow-xl border border-white/20 dark:bg-neutral-800 dark:border-neutral-700 overflow-hidden animate-fade-in">
+                      {item.items.map((subItem) => (
+                        <Link
+                          key={subItem.nameKey}
+                          href={subItem.href}
+                          className="block px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-primary/10 hover:text-primary transition-colors"
+                        >
+                          {t(subItem.nameKey)}
+                        </Link>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
