@@ -178,6 +178,9 @@ ${context.anchor?.type === 'STOCK' ? `- Stock Context: product="${context.anchor
 3. **NEW_INTENT**: User asks about a different topic or starts new conversation
    - Example: User: "Siparişim nerede?" (new topic: order tracking)
    - Example: User: "Borcum var mı?" (new topic: debt inquiry)
+   - Example: User: "Artemis var mı stokta?" → suggested_flow: STOCK_CHECK
+   - Example: User: "Ses geçidi var mı stokta?" → suggested_flow: STOCK_CHECK
+   - Example: User: "iPhone 17 fiyatı nedir?" → suggested_flow: PRODUCT_INFO
    - Example: User: "Hızlandırır mısın şu işi?" → suggested_flow: COMPLAINT
    - Can happen even when expecting slot (topic switch)
 
@@ -199,7 +202,7 @@ If message contains slot data, extract it:
   "message_type": "SLOT_ANSWER" | "FOLLOWUP_DISPUTE" | "NEW_INTENT" | "CHATTER",
   "confidence": 0.0-1.0,
   "reason": "Brief explanation in ${languageName}",
-  "suggested_flow": "ORDER_STATUS" | "TRACKING_INFO" | "DEBT_INQUIRY" | "TICKET_STATUS" | "COMPLAINT" | null,
+  "suggested_flow": "ORDER_STATUS" | "TRACKING_INFO" | "DEBT_INQUIRY" | "TICKET_STATUS" | "COMPLAINT" | "STOCK_CHECK" | "PRODUCT_INFO" | null,
   "extracted_slots": {
     "slot_name": "value"
   },
@@ -211,6 +214,8 @@ If message contains slot data, extract it:
 - Medium confidence (0.7-0.85) if somewhat ambiguous
 - Low confidence (<0.7) if very unclear
 - Always prioritize context over keywords
+- Stock / availability / in-stock / inventory questions should use suggested_flow="STOCK_CHECK"
+- Product detail / model / specification / price questions should use suggested_flow="PRODUCT_INFO"
 - If expecting slot but message is emotional/angry → CHATTER, not SLOT_ANSWER
 - If flowStatus="post_result" and user contradicts → FOLLOWUP_DISPUTE
 - If activeFlow="STOCK_CHECK" and user asks about quantity/stock → SLOT_ANSWER (stock follow-up), NOT NEW_INTENT`;

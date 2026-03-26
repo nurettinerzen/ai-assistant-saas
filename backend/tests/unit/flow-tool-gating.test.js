@@ -89,32 +89,6 @@ describe('flow scoped tool gating', () => {
     expect(result.gatedTools).toEqual(['get_product_stock', 'check_stock_crm']);
   });
 
-  it('infers STOCK_CHECK from natural availability phrasing without quantity words', () => {
-    const result = resolveFlowScopedTools({
-      state: {},
-      classification: {},
-      routingResult: {},
-      userMessage: 'artemis var mi stokta',
-      allToolNames: ['customer_data_lookup', 'get_product_stock', 'check_stock_crm']
-    });
-
-    expect(result.resolvedFlow).toBe('STOCK_CHECK');
-    expect(result.gatedTools).toEqual(['get_product_stock', 'check_stock_crm']);
-  });
-
-  it('infers STOCK_CHECK from "mevcut mu" availability phrasing', () => {
-    const result = resolveFlowScopedTools({
-      state: {},
-      classification: {},
-      routingResult: {},
-      userMessage: 'artemis mevcut mu',
-      allToolNames: ['customer_data_lookup', 'get_product_stock', 'check_stock_crm']
-    });
-
-    expect(result.resolvedFlow).toBe('STOCK_CHECK');
-    expect(result.gatedTools).toEqual(['get_product_stock', 'check_stock_crm']);
-  });
-
   it('infers PRODUCT_INFO from user message when no flow metadata exists', () => {
     const result = resolveFlowScopedTools({
       state: {},

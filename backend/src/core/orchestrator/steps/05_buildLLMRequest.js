@@ -77,13 +77,7 @@ function inferFlowFromMessage(message = '') {
     return 'TICKET_STATUS';
   }
 
-  const stockPattern = /\b(stok|stokta|stoklarda|stock|envanter|mevcut|available|availability|kac tane|kac adet|adet|tane|kac var|ne kadar var|varmi|var mi|satiliyor mu|satiyor musunuz|satiliyor musunuz)\b/;
-  const hasStockPhrase = stockPattern.test(text);
-  const asksAvailability =
-    /\b(var|mevcut)\b/.test(text) &&
-    /\b(mi|mı|mu|mü)\b/.test(text);
-
-  if (hasStockPhrase || asksAvailability) {
+  if (/\b(stok|stock|envanter|available|availability|kac tane|kac adet|adet|tane|kac var|ne kadar var)\b/.test(text)) {
     return 'STOCK_CHECK';
   }
 
