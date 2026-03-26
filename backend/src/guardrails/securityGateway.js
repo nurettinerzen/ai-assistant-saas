@@ -737,6 +737,14 @@ export function evaluateNotFoundClaimGate(toolOutputs = [], options = {}) {
 export function extractFieldsFromToolOutput(toolResult) {
   if (!toolResult) return [];
 
+  const toolName = String(toolResult.name || toolResult.toolName || '').toLowerCase();
+  if (toolName === 'create_callback') {
+    // Callback creation does not disclose account/order data.
+    // Treat its operational status (e.g. PENDING) as non-sensitive workflow state,
+    // not as "order_status" or any other protected field.
+    return [];
+  }
+
   const fields = [];
   // Support both new format (toolResult.output) and legacy format
   const rawOutput = toolResult.output || toolResult;
@@ -789,6 +797,13 @@ export function extractFieldsFromToolOutput(toolResult) {
  */
 export function extractRecordOwner(toolResult) {
   if (!toolResult) return null;
+
+  const toolName = String(toolResult.name || toolResult.toolName || '').toLowerCase();
+  if (toolName === 'create_callback') {
+    // Callback records are operational writes, not account record lookups.
+    // They should not participate in identity-match enforcement.
+    return null;
+  }
 
   // Support both new format (toolResult.output) and legacy format
   const rawOutput = toolResult.output || toolResult;

@@ -3,6 +3,7 @@ import { makeRoutingDecision } from '../../src/core/orchestrator/steps/04_router
 import createCallbackHandler from '../../src/tools/handlers/create-callback.js';
 import { shouldBlockRepeatedToolCall } from '../../src/core/orchestrator/steps/06_toolLoop.js';
 import { applyLeakFilter } from '../../src/guardrails/securityGateway.js';
+import { applyGuardrails } from '../../src/core/orchestrator/steps/07_guardrails.js';
 import { ToolOutcome } from '../../src/tools/toolResult.js';
 import crypto from 'crypto';
 
@@ -16,7 +17,7 @@ function hashArgs(args) {
 }
 
 describe('P0 Callback deterministic flow', () => {
-  it('A1: callback intent should return direct callback-info prompt (no order verification language)', async () => {
+  it('A1: callback intent should activate callback flow with only name/phone missing fields', async () => {
     const state = {};
 
     const result = await makeRoutingDecision({
@@ -32,12 +33,11 @@ describe('P0 Callback deterministic flow', () => {
       hasKBMatch: false
     });
 
-    expect(result.directResponse).toBe(true);
-    expect(result.reply.toLowerCase()).toContain('ad-soyad');
-    expect(result.reply.toLowerCase()).toContain('telefon');
-    expect(result.reply.toLowerCase()).not.toContain('sipariş');
-    expect(result.reply.toLowerCase()).not.toContain('son 4');
+    expect(result.directResponse).toBe(false);
+    expect(result.callbackRequest).toBe(true);
+    expect(result.metadata?.missingFields).toEqual(['customer_name', 'phone']);
     expect(state.callbackFlow?.pending).toBe(true);
+    expect(state.activeFlow).toBe('CALLBACK_REQUEST');
   });
 
   it('A2: create_callback should reject missing/placeholder identity data deterministically', async () => {
@@ -68,7 +68,7 @@ describe('P0 Callback deterministic flow', () => {
     expect(placeholderName.askFor).toContain('customer_name');
   });
 
-  it('A2: callback pending flow should ask only the missing slot (name vs phone)', async () => {
+  it('A2: callback pending flow should track only the missing slot (name vs phone)', async () => {
     const stateNeedsPhone = {
       callbackFlow: { pending: true }
     };
@@ -85,9 +85,10 @@ describe('P0 Callback deterministic flow', () => {
       channelMode: 'FULL',
       hasKBMatch: false
     });
-    expect(phonePrompt.directResponse).toBe(true);
-    expect(phonePrompt.reply.toLowerCase()).toContain('telefon');
-    expect(phonePrompt.reply.toLowerCase()).not.toContain('sipariş');
+    expect(phonePrompt.directResponse).toBe(false);
+    expect(phonePrompt.callbackRequest).toBe(true);
+    expect(phonePrompt.metadata?.missingFields).toEqual(['phone']);
+    expect(stateNeedsPhone.callbackFlow?.customerName).toBe('Ahmet Yılmaz');
 
     const stateNeedsName = {
       callbackFlow: { pending: true }
@@ -105,12 +106,13 @@ describe('P0 Callback deterministic flow', () => {
       channelMode: 'FULL',
       hasKBMatch: false
     });
-    expect(namePrompt.directResponse).toBe(true);
-    expect(namePrompt.reply.toLowerCase()).toContain('ad-soyad');
-    expect(namePrompt.reply.toLowerCase()).not.toContain('son 4');
+    expect(namePrompt.directResponse).toBe(false);
+    expect(namePrompt.callbackRequest).toBe(true);
+    expect(namePrompt.metadata?.missingFields).toEqual(['customer_name']);
+    expect(stateNeedsName.callbackFlow?.customerPhone).toBe('05551112233');
   });
 
-  it('2.3: callback context should never produce VERIFICATION_REQUIRED from leak filter', () => {
+  it('2.3: callback context should not trigger leak-filter verification prompts on generic text', () => {
     const leakResult = applyLeakFilter(
       'Takip numaranız TR123456789TR olarak görünüyor.',
       'none',
@@ -119,10 +121,46 @@ describe('P0 Callback deterministic flow', () => {
       { callbackPending: true, activeFlow: 'CALLBACK_REQUEST' }
     );
 
-    expect(leakResult.safe).toBe(false);
-    expect(leakResult.needsCallbackInfo).toBe(true);
+    expect(leakResult.safe).toBe(true);
+    expect(leakResult.action).toBe('PASS');
     expect(leakResult.needsVerification).not.toBe(true);
-    expect(leakResult.missingFields).toEqual(['customer_name', 'phone']);
+  });
+
+  it('2.4: successful create_callback output should not be reclassified as order verification', async () => {
+    const result = await applyGuardrails({
+      responseText: 'Geri arama kaydı oluşturuldu. Ahmet Yılmaz en kısa sürede aranacak.',
+      hadToolSuccess: true,
+      toolsCalled: ['create_callback'],
+      toolOutputs: [{
+        name: 'create_callback',
+        success: true,
+        outcome: ToolOutcome.OK,
+        output: {
+          data: {
+            callbackId: 'cb_123',
+            status: 'PENDING'
+          }
+        }
+      }],
+      chat: { businessId: 1 },
+      language: 'TR',
+      sessionId: 'callback-tool-output-test',
+      channel: 'CHAT',
+      metrics: {},
+      userMessage: 'evet olur',
+      verificationState: 'none',
+      verifiedIdentity: null,
+      intent: 'callback_request',
+      collectedData: {},
+      callbackPending: true,
+      activeFlow: 'CALLBACK_REQUEST',
+      channelMode: 'FULL',
+      helpLinks: {}
+    });
+
+    expect(result.action).toBe('PASS');
+    expect(result.blockReason).toBeUndefined();
+    expect(result.finalResponse.toLowerCase()).toContain('geri arama kaydı oluşturuldu');
   });
 });
 
